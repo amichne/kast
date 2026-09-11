@@ -20,7 +20,8 @@ import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
 import java.nio.file.Path
 
-internal class InstalledChangeProtocolFixture private constructor(
+internal class InstalledChangeProtocolFixture
+private constructor(
     val published: PublishedWorkspace,
     val workspace: WorkspaceInspectionOperations,
     val addFile: AddFilePlanRequest,
@@ -28,34 +29,41 @@ internal class InstalledChangeProtocolFixture private constructor(
     companion object {
         fun create(root: Path): InstalledChangeProtocolFixture {
             val canonical = CanonicalWorkspaceRoot.fromCanonicalPath(root).fixtureRefined()
-            val sourceRoot = SourceRoot.admit(
-                GradleSourceRootEvidence(
-                    "app",
-                    ".",
-                    ":app",
-                    "main",
-                    "src/main/kotlin",
-                    SourceRootProvenance.Authored,
-                ),
-            ).fixtureRefined()
-            val reconciled = ReconciledWorkspace.admit(
-                WorkspaceCandidate(canonical, WorkspaceStateIdentity.parse("change-state").fixtureRefined()),
-                WorkspaceEvidenceKind.entries.toSet(),
-                listOf(sourceRoot),
-            ).fixtureRefined()
-            val published = PublishedWorkspace.publish(
-                reconciled,
-                EvidenceGeneration.parse(13).fixtureRefined(),
-            )
+            val sourceRoot =
+                SourceRoot.admit(
+                        GradleSourceRootEvidence(
+                            "app",
+                            ".",
+                            ":app",
+                            "main",
+                            "src/main/kotlin",
+                            SourceRootProvenance.Authored,
+                        )
+                    )
+                    .fixtureRefined()
+            val reconciled =
+                ReconciledWorkspace.admit(
+                        WorkspaceCandidate(canonical, WorkspaceStateIdentity.parse("change-state").fixtureRefined()),
+                        WorkspaceEvidenceKind.entries.toSet(),
+                        listOf(sourceRoot),
+                    )
+                    .fixtureRefined()
+            val published =
+                PublishedWorkspace.publish(
+                    reconciled,
+                    EvidenceGeneration.parse(13).fixtureRefined(),
+                )
             val path = root.resolve("src/main/kotlin/sample/Added.kt")
-            val file = SymbolDiscoveryFileIdentity.fromBoundary(
-                canonical,
-                path,
-                path.toUri().toString(),
-            ).fixtureRefined() as SymbolDiscoveryFileIdentity.Workspace
-            val target = CreatableKotlinFileTarget.admit(
-                AddFileTargetObservation(published, file, sourceRoot.owner),
-            ).fixtureRefined()
+            val file =
+                SymbolDiscoveryFileIdentity.fromBoundary(
+                        canonical,
+                        path,
+                        path.toUri().toString(),
+                    )
+                    .fixtureRefined() as SymbolDiscoveryFileIdentity.Workspace
+            val target =
+                CreatableKotlinFileTarget.admit(AddFileTargetObservation(published, file, sourceRoot.owner))
+                    .fixtureRefined()
             return InstalledChangeProtocolFixture(
                 published,
                 WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(published) },
@@ -68,7 +76,8 @@ internal class InstalledChangeProtocolFixture private constructor(
     }
 }
 
-private fun <Value, Failure> Refinement<Value, Failure>.fixtureRefined(): Value = when (this) {
-    is Refinement.Refined -> value
-    is Refinement.Rejected -> error("unexpected change fixture rejection: $failure")
-}
+private fun <Value, Failure> Refinement<Value, Failure>.fixtureRefined(): Value =
+    when (this) {
+        is Refinement.Refined -> value
+        is Refinement.Rejected -> error("unexpected change fixture rejection: $failure")
+    }

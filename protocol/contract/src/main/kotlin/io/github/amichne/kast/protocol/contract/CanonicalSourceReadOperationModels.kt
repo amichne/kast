@@ -2,9 +2,12 @@
 
 package io.github.amichne.kast.protocol.contract
 
-import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.LiveReadEvidence
+import io.github.amichne.kast.kernel.Refinement
+import java.nio.charset.CharacterCodingException
+import java.security.MessageDigest
+import java.util.Base64
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.KeepGeneratedSerializer
 import kotlinx.serialization.SerialName
@@ -12,9 +15,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
-import java.nio.charset.CharacterCodingException
-import java.security.MessageDigest
-import java.util.Base64
 
 private const val MAX_SOURCE_READ_LINE_COUNT = 1_000
 private const val MAX_SOURCE_READ_ENTITY_LIMIT = 1_000
@@ -29,78 +29,66 @@ enum class SourceReadAnchorDocumentFailure {
 
 @Serializable
 sealed interface SourceReadAnchorDocument {
-    @Serializable
-    @SerialName("candidate")
-    data class Candidate(val selector: ProtocolText) : SourceReadAnchorDocument
-    @Serializable
-    @SerialName("symbol")
-    data class Symbol(val selector: ProtocolText) : SourceReadAnchorDocument
-    @Serializable
-    @SerialName("source")
-    data class Source(val selector: ProtocolText) : SourceReadAnchorDocument
+    @Serializable @SerialName("candidate") data class Candidate(val selector: ProtocolText) : SourceReadAnchorDocument
+
+    @Serializable @SerialName("symbol") data class Symbol(val selector: ProtocolText) : SourceReadAnchorDocument
+
+    @Serializable @SerialName("source") data class Source(val selector: ProtocolText) : SourceReadAnchorDocument
 
     companion object {
         /** Refines one opaque selector to its sole disjoint anchor family. */
-        fun admit(
-            selector: ProtocolText,
-        ): Refinement<SourceReadAnchorDocument, SourceReadAnchorDocumentFailure> {
+        fun admit(selector: ProtocolText): Refinement<SourceReadAnchorDocument, SourceReadAnchorDocumentFailure> {
             val parts = selector.value.split(':')
-            val family = when {
-                parts.size == 4 && parts[0] == "candidate" && parts[1] in setOf("v2", "v3") ->
-                    SourceReadAnchorFamily.CANDIDATE
-                parts.size == 4 && parts[0] == "exact" && parts[1] in setOf("v2", "v3") ->
-                    SourceReadAnchorFamily.SYMBOL
-                parts.size == 3 && parts[0] in setOf("source-selector-v1", "source-selector-v2") ->
-                    SourceReadAnchorFamily.SOURCE
-                parts.firstOrNull() in setOf("candidate", "exact", "source-selector-v1", "source-selector-v2") ->
-                    return Refinement.Rejected(
-                        SourceReadAnchorDocumentFailure.INVALID_TOKEN_STRUCTURE,
-                    )
-                else -> return Refinement.Rejected(
-                    SourceReadAnchorDocumentFailure.UNKNOWN_TOKEN_FAMILY,
-                )
-            }
+            val family =
+                when {
+                    parts.size == 4 && parts[0] == "candidate" && parts[1] in setOf("v2", "v3") ->
+                        SourceReadAnchorFamily.CANDIDATE
+                    parts.size == 4 && parts[0] == "exact" && parts[1] in setOf("v2", "v3") ->
+                        SourceReadAnchorFamily.SYMBOL
+                    parts.size == 3 && parts[0] in setOf("source-selector-v1", "source-selector-v2") ->
+                        SourceReadAnchorFamily.SOURCE
+                    parts.firstOrNull() in setOf("candidate", "exact", "source-selector-v1", "source-selector-v2") ->
+                        return Refinement.Rejected(SourceReadAnchorDocumentFailure.INVALID_TOKEN_STRUCTURE)
+                    else -> return Refinement.Rejected(SourceReadAnchorDocumentFailure.UNKNOWN_TOKEN_FAMILY)
+                }
             val payloadIndex = if (family == SourceReadAnchorFamily.SOURCE) 1 else 2
             val digestIndex = payloadIndex + 1
-            val payload = try {
-                Base64.getUrlDecoder().decode(parts[payloadIndex])
-            } catch (_: IllegalArgumentException) {
-                return Refinement.Rejected(
-                    SourceReadAnchorDocumentFailure.INVALID_PAYLOAD_ENCODING,
-                )
-            }
+            val payload =
+                try {
+                    Base64.getUrlDecoder().decode(parts[payloadIndex])
+                } catch (_: IllegalArgumentException) {
+                    return Refinement.Rejected(SourceReadAnchorDocumentFailure.INVALID_PAYLOAD_ENCODING)
+                }
             if (
                 payload.isEmpty() ||
-                Base64.getUrlEncoder().withoutPadding().encodeToString(payload) != parts[payloadIndex]
+                    Base64.getUrlEncoder().withoutPadding().encodeToString(payload) != parts[payloadIndex]
             ) {
-                return Refinement.Rejected(
-                    SourceReadAnchorDocumentFailure.INVALID_PAYLOAD_ENCODING,
-                )
+                return Refinement.Rejected(SourceReadAnchorDocumentFailure.INVALID_PAYLOAD_ENCODING)
             }
             try {
                 payload.decodeToString(throwOnInvalidSequence = true)
             } catch (_: CharacterCodingException) {
-                return Refinement.Rejected(
-                    SourceReadAnchorDocumentFailure.INVALID_PAYLOAD_ENCODING,
-                )
+                return Refinement.Rejected(SourceReadAnchorDocumentFailure.INVALID_PAYLOAD_ENCODING)
             }
             if (parts[digestIndex] != sourceReadSha256(payload)) {
-                return Refinement.Rejected(
-                    SourceReadAnchorDocumentFailure.PAYLOAD_DIGEST_MISMATCH,
-                )
+                return Refinement.Rejected(SourceReadAnchorDocumentFailure.PAYLOAD_DIGEST_MISMATCH)
             }
             return Refinement.Refined(
                 when (family) {
                     SourceReadAnchorFamily.CANDIDATE -> Candidate(selector)
                     SourceReadAnchorFamily.SYMBOL -> Symbol(selector)
                     SourceReadAnchorFamily.SOURCE -> Source(selector)
-                },
+                }
             )
         }
     }
 }
 
-private enum class SourceReadAnchorFamily { CANDIDATE, SYMBOL, SOURCE }
+private enum class SourceReadAnchorFamily {
+    CANDIDATE,
+    SYMBOL,
+    SOURCE,
+}
 
 private fun sourceReadSha256(bytes: ByteArray): String =
     MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { byte ->
@@ -109,88 +97,64 @@ private fun sourceReadSha256(bytes: ByteArray): String =
 
 @Serializable
 enum class SourceBodyKindDocument {
-    @SerialName("callable")
-    CALLABLE,
-    @SerialName("class")
-    CLASS,
+    @SerialName("callable") CALLABLE,
+    @SerialName("class") CLASS,
 }
 
 @Serializable
 enum class SourceEnclosingRegionKindDocument {
-    @SerialName("declaration")
-    DECLARATION,
-    @SerialName("callable-body")
-    CALLABLE_BODY,
-    @SerialName("class-body")
-    CLASS_BODY,
+    @SerialName("declaration") DECLARATION,
+    @SerialName("callable-body") CALLABLE_BODY,
+    @SerialName("class-body") CLASS_BODY,
 }
 
 @Serializable
 sealed interface SourceRegionSelectionDocument {
-    @Serializable
-    @SerialName("anchor")
-    data object Anchor : SourceRegionSelectionDocument
-    @Serializable
-    @SerialName("body")
-    data class Body(val kind: SourceBodyKindDocument) : SourceRegionSelectionDocument
-    @Serializable
-    @SerialName("file")
-    data object File : SourceRegionSelectionDocument
+    @Serializable @SerialName("anchor") data object Anchor : SourceRegionSelectionDocument
+
+    @Serializable @SerialName("body") data class Body(val kind: SourceBodyKindDocument) : SourceRegionSelectionDocument
+
+    @Serializable @SerialName("file") data object File : SourceRegionSelectionDocument
+
     @Serializable
     @SerialName("enclosing")
-    data class Enclosing(
-        val kind: SourceEnclosingRegionKindDocument,
-    ) : SourceRegionSelectionDocument
+    data class Enclosing(val kind: SourceEnclosingRegionKindDocument) : SourceRegionSelectionDocument
 }
 
 @Serializable
 enum class SourceDeclarationKindDocument {
-    @SerialName("classlike")
-    CLASSLIKE,
-    @SerialName("constructor")
-    CONSTRUCTOR,
-    @SerialName("function")
-    FUNCTION,
-    @SerialName("property")
-    PROPERTY,
-    @SerialName("type-alias")
-    TYPE_ALIAS,
+    @SerialName("classlike") CLASSLIKE,
+    @SerialName("constructor") CONSTRUCTOR,
+    @SerialName("function") FUNCTION,
+    @SerialName("property") PROPERTY,
+    @SerialName("type-alias") TYPE_ALIAS,
 }
 
 @Serializable
 enum class SourceDeclarationVisibilityDocument {
-    @SerialName("public")
-    PUBLIC,
-    @SerialName("protected")
-    PROTECTED,
-    @SerialName("internal")
-    INTERNAL,
-    @SerialName("private")
-    PRIVATE,
-    @SerialName("local")
-    LOCAL,
+    @SerialName("public") PUBLIC,
+    @SerialName("protected") PROTECTED,
+    @SerialName("internal") INTERNAL,
+    @SerialName("private") PRIVATE,
+    @SerialName("local") LOCAL,
 }
 
 @Serializable
 enum class SourceContainmentDocument {
-    @SerialName("direct")
-    DIRECT,
-    @SerialName("descendants")
-    DESCENDANTS,
+    @SerialName("direct") DIRECT,
+    @SerialName("descendants") DESCENDANTS,
 }
 
 @Serializable
 sealed interface SourceVisibilitySelectionDocument {
-    @Serializable
-    @SerialName("any")
-    data object Any : SourceVisibilitySelectionDocument
+    @Serializable @SerialName("any") data object Any : SourceVisibilitySelectionDocument
+
     @Serializable
     @SerialName("exact")
     data class Exact(
         @ProtocolCollectionConstraint(minimumItems = 1, uniqueItems = true)
-        val values: List<SourceDeclarationVisibilityDocument>,
-    ) :
-        SourceVisibilitySelectionDocument
+        val values: List<SourceDeclarationVisibilityDocument>
+    ) : SourceVisibilitySelectionDocument
 }
 
 @Serializable
@@ -203,22 +167,17 @@ sealed interface SourceEntityFilterDocument {
         val visibility: SourceVisibilitySelectionDocument,
     ) : SourceEntityFilterDocument
 
-    @Serializable
-    @SerialName("parameters")
-    data object Parameters : SourceEntityFilterDocument
-    @Serializable
-    @SerialName("calls")
-    data object Calls : SourceEntityFilterDocument
-    @Serializable
-    @SerialName("references")
-    data object References : SourceEntityFilterDocument
+    @Serializable @SerialName("parameters") data object Parameters : SourceEntityFilterDocument
+
+    @Serializable @SerialName("calls") data object Calls : SourceEntityFilterDocument
+
+    @Serializable @SerialName("references") data object References : SourceEntityFilterDocument
 }
 
 @Serializable
 sealed interface SourceEntitySelectionDocument {
-    @Serializable
-    @SerialName("none")
-    data object None : SourceEntitySelectionDocument
+    @Serializable @SerialName("none") data object None : SourceEntitySelectionDocument
+
     @Serializable
     @SerialName("matching")
     data class Matching(
@@ -237,36 +196,32 @@ enum class SourceLineCountDocumentFailure {
 @Serializable(with = SourceLineCountDocumentSerializer::class)
 value class SourceLineCountDocument private constructor(val value: Int) {
     companion object {
-        fun parse(
-            raw: Int,
-        ): Refinement<SourceLineCountDocument, SourceLineCountDocumentFailure> = when {
-            raw < 0 -> Refinement.Rejected(SourceLineCountDocumentFailure.NEGATIVE)
-            raw > MAX_SOURCE_READ_LINE_COUNT ->
-                Refinement.Rejected(SourceLineCountDocumentFailure.TOO_LARGE)
-            else -> Refinement.Refined(SourceLineCountDocument(raw))
-        }
+        fun parse(raw: Int): Refinement<SourceLineCountDocument, SourceLineCountDocumentFailure> =
+            when {
+                raw < 0 -> Refinement.Rejected(SourceLineCountDocumentFailure.NEGATIVE)
+                raw > MAX_SOURCE_READ_LINE_COUNT -> Refinement.Rejected(SourceLineCountDocumentFailure.TOO_LARGE)
+                else -> Refinement.Refined(SourceLineCountDocument(raw))
+            }
     }
 }
 
-internal object SourceLineCountDocumentSerializer : RefiningIntSerializer<SourceLineCountDocument>(
-    serialName = "io.github.amichne.kast.protocol.contract.SourceLineCountDocument",
-    minimum = 0,
-    maximum = MAX_SOURCE_READ_LINE_COUNT.toLong(),
-) {
+internal object SourceLineCountDocumentSerializer :
+    RefiningIntSerializer<SourceLineCountDocument>(
+        serialName = "io.github.amichne.kast.protocol.contract.SourceLineCountDocument",
+        minimum = 0,
+        maximum = MAX_SOURCE_READ_LINE_COUNT.toLong(),
+    ) {
     override fun raw(value: SourceLineCountDocument): Int = value.value
 
-    override fun refine(raw: Int): Refinement<SourceLineCountDocument, *> =
-        SourceLineCountDocument.parse(raw)
+    override fun refine(raw: Int): Refinement<SourceLineCountDocument, *> = SourceLineCountDocument.parse(raw)
 }
 
 @Serializable
 sealed interface SourceTextRequestDocument {
-    @Serializable
-    @SerialName("complete")
-    data object Complete : SourceTextRequestDocument
-    @Serializable
-    @SerialName("none")
-    data object None : SourceTextRequestDocument
+    @Serializable @SerialName("complete") data object Complete : SourceTextRequestDocument
+
+    @Serializable @SerialName("none") data object None : SourceTextRequestDocument
+
     @Serializable
     @SerialName("window")
     data class Window(
@@ -284,39 +239,35 @@ enum class SourceEntityLimitDocumentFailure {
 @Serializable(with = SourceEntityLimitDocumentSerializer::class)
 value class SourceEntityLimitDocument private constructor(val value: Int) {
     companion object {
-        fun parse(
-            raw: Int,
-        ): Refinement<SourceEntityLimitDocument, SourceEntityLimitDocumentFailure> = when {
-            raw < 1 -> Refinement.Rejected(SourceEntityLimitDocumentFailure.NOT_POSITIVE)
-            raw > MAX_SOURCE_READ_ENTITY_LIMIT ->
-                Refinement.Rejected(SourceEntityLimitDocumentFailure.TOO_LARGE)
-            else -> Refinement.Refined(SourceEntityLimitDocument(raw))
-        }
+        fun parse(raw: Int): Refinement<SourceEntityLimitDocument, SourceEntityLimitDocumentFailure> =
+            when {
+                raw < 1 -> Refinement.Rejected(SourceEntityLimitDocumentFailure.NOT_POSITIVE)
+                raw > MAX_SOURCE_READ_ENTITY_LIMIT -> Refinement.Rejected(SourceEntityLimitDocumentFailure.TOO_LARGE)
+                else -> Refinement.Refined(SourceEntityLimitDocument(raw))
+            }
     }
 }
 
-internal object SourceEntityLimitDocumentSerializer : RefiningIntSerializer<SourceEntityLimitDocument>(
-    serialName = "io.github.amichne.kast.protocol.contract.SourceEntityLimitDocument",
-    minimum = 1,
-    maximum = MAX_SOURCE_READ_ENTITY_LIMIT.toLong(),
-) {
+internal object SourceEntityLimitDocumentSerializer :
+    RefiningIntSerializer<SourceEntityLimitDocument>(
+        serialName = "io.github.amichne.kast.protocol.contract.SourceEntityLimitDocument",
+        minimum = 1,
+        maximum = MAX_SOURCE_READ_ENTITY_LIMIT.toLong(),
+    ) {
     override fun raw(value: SourceEntityLimitDocument): Int = value.value
 
-    override fun refine(raw: Int): Refinement<SourceEntityLimitDocument, *> =
-        SourceEntityLimitDocument.parse(raw)
+    override fun refine(raw: Int): Refinement<SourceEntityLimitDocument, *> = SourceEntityLimitDocument.parse(raw)
 }
 
 enum class SourceTextByteLimitDocumentFailure {
-    NOT_POSITIVE,
+    NOT_POSITIVE
 }
 
 @JvmInline
 @Serializable(with = SourceTextByteLimitDocumentSerializer::class)
 value class SourceTextByteLimitDocument private constructor(val value: Long) {
     companion object {
-        fun parse(
-            raw: Long,
-        ): Refinement<SourceTextByteLimitDocument, SourceTextByteLimitDocumentFailure> =
+        fun parse(raw: Long): Refinement<SourceTextByteLimitDocument, SourceTextByteLimitDocumentFailure> =
             if (raw < 1L) {
                 Refinement.Rejected(SourceTextByteLimitDocumentFailure.NOT_POSITIVE)
             } else {
@@ -325,24 +276,21 @@ value class SourceTextByteLimitDocument private constructor(val value: Long) {
     }
 }
 
-internal object SourceTextByteLimitDocumentSerializer : RefiningLongSerializer<SourceTextByteLimitDocument>(
-    serialName = "io.github.amichne.kast.protocol.contract.SourceTextByteLimitDocument",
-    minimum = 1,
-) {
+internal object SourceTextByteLimitDocumentSerializer :
+    RefiningLongSerializer<SourceTextByteLimitDocument>(
+        serialName = "io.github.amichne.kast.protocol.contract.SourceTextByteLimitDocument",
+        minimum = 1,
+    ) {
     override fun raw(value: SourceTextByteLimitDocument): Long = value.value
 
-    override fun refine(raw: Long): Refinement<SourceTextByteLimitDocument, *> =
-        SourceTextByteLimitDocument.parse(raw)
+    override fun refine(raw: Long): Refinement<SourceTextByteLimitDocument, *> = SourceTextByteLimitDocument.parse(raw)
 }
 
 @Serializable
 sealed interface SourceReadPageDocument {
-    @Serializable
-    @SerialName("first")
-    data object First : SourceReadPageDocument
-    @Serializable
-    @SerialName("continue")
-    data class Continue(val continuation: ProtocolText) : SourceReadPageDocument
+    @Serializable @SerialName("first") data object First : SourceReadPageDocument
+
+    @Serializable @SerialName("continue") data class Continue(val continuation: ProtocolText) : SourceReadPageDocument
 }
 
 @Serializable(with = SourceReadRequestSerializer::class)
@@ -375,21 +323,23 @@ private fun SourceReadRequest.requireCanonicalSyntax(): SourceReadRequest =
     else throw SerializationException("SourceReadRequest rejected non-canonical request syntax")
 
 private fun SourceReadAnchorDocument.hasCanonicalSyntax(): Boolean {
-    val selector = when (this) {
-        is SourceReadAnchorDocument.Candidate -> selector
-        is SourceReadAnchorDocument.Symbol -> selector
-        is SourceReadAnchorDocument.Source -> selector
-    }
+    val selector =
+        when (this) {
+            is SourceReadAnchorDocument.Candidate -> selector
+            is SourceReadAnchorDocument.Symbol -> selector
+            is SourceReadAnchorDocument.Source -> selector
+        }
     return when (val admitted = SourceReadAnchorDocument.admit(selector)) {
         is Refinement.Refined -> admitted.value::class == this::class
         is Refinement.Rejected -> false
     }
 }
 
-private fun SourceEntitySelectionDocument.hasCanonicalSyntax(): Boolean = when (this) {
-    SourceEntitySelectionDocument.None -> true
-    is SourceEntitySelectionDocument.Matching -> filters.hasCanonicalSyntax()
-}
+private fun SourceEntitySelectionDocument.hasCanonicalSyntax(): Boolean =
+    when (this) {
+        SourceEntitySelectionDocument.None -> true
+        is SourceEntitySelectionDocument.Matching -> filters.hasCanonicalSyntax()
+    }
 
 private fun List<SourceEntityFilterDocument>.hasCanonicalSyntax(): Boolean {
     if (isEmpty()) return false
@@ -408,21 +358,21 @@ private fun List<SourceEntityFilterDocument>.hasCanonicalSyntax(): Boolean {
 }
 
 private fun SourceEntityFilterDocument.Declarations.hasCanonicalSyntax(): Boolean =
-    kinds.isNotEmpty() && kinds == kinds.distinct().sortedBy { it.ordinal } &&
-        visibility.hasCanonicalSyntax()
+    kinds.isNotEmpty() && kinds == kinds.distinct().sortedBy { it.ordinal } && visibility.hasCanonicalSyntax()
 
-private fun SourceVisibilitySelectionDocument.hasCanonicalSyntax(): Boolean = when (this) {
-    SourceVisibilitySelectionDocument.Any -> true
-    is SourceVisibilitySelectionDocument.Exact ->
-        values.isNotEmpty() && values == values.distinct().sortedBy { it.ordinal }
-}
+private fun SourceVisibilitySelectionDocument.hasCanonicalSyntax(): Boolean =
+    when (this) {
+        SourceVisibilitySelectionDocument.Any -> true
+        is SourceVisibilitySelectionDocument.Exact ->
+            values.isNotEmpty() && values == values.distinct().sortedBy { it.ordinal }
+    }
 
 enum class SourceCoordinateUnitDocument {
-    UTF16_CODE_UNIT,
+    UTF16_CODE_UNIT
 }
 
 enum class SourceLengthDocumentFailure {
-    NEGATIVE,
+    NEGATIVE
 }
 
 @JvmInline
@@ -438,7 +388,9 @@ value class SourceLengthDocument private constructor(val value: Int) {
 }
 
 sealed interface SourceSnapshotContextDocument {
-    data class Published(val generation: EvidenceGeneration, val sourceState: ProtocolText) : SourceSnapshotContextDocument
+    data class Published(val generation: EvidenceGeneration, val sourceState: ProtocolText) :
+        SourceSnapshotContextDocument
+
     data class Live(val evidence: LiveReadEvidence) : SourceSnapshotContextDocument
 }
 
@@ -450,23 +402,37 @@ data class SourceSnapshotDocument(
     val coordinateUnit: SourceCoordinateUnitDocument,
     val length: SourceLengthDocument,
 ) {
-    constructor(canonicalRoot: ProtocolText, generation: Long, sourceState: ProtocolText,
-                file: ProtocolText, textIdentity: ProtocolText,
-                coordinateUnit: SourceCoordinateUnitDocument, length: SourceLengthDocument) : this(
-        canonicalRoot, SourceSnapshotContextDocument.Published(
+    constructor(
+        canonicalRoot: ProtocolText,
+        generation: Long,
+        sourceState: ProtocolText,
+        file: ProtocolText,
+        textIdentity: ProtocolText,
+        coordinateUnit: SourceCoordinateUnitDocument,
+        length: SourceLengthDocument,
+    ) : this(
+        canonicalRoot,
+        SourceSnapshotContextDocument.Published(
             when (val admitted = EvidenceGeneration.parse(generation)) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> error("A source snapshot requires an admitted generation")
-            }, sourceState), file, textIdentity, coordinateUnit, length,
+            },
+            sourceState,
+        ),
+        file,
+        textIdentity,
+        coordinateUnit,
+        length,
     )
 }
 
 enum class SourceSelectionRangeDocumentFailure {
-    REVERSED,
+    REVERSED
 }
 
 @ConsistentCopyVisibility
-data class SourceSelectionRangeDocument private constructor(
+data class SourceSelectionRangeDocument
+private constructor(
     val startInclusive: ProtocolOffset,
     val endExclusive: ProtocolOffset,
 ) {
@@ -503,15 +469,13 @@ data class SourceRegionDocument(
 )
 
 enum class SourceNestingDepthDocumentFailure {
-    NEGATIVE,
+    NEGATIVE
 }
 
 @JvmInline
 value class SourceNestingDepthDocument private constructor(val value: Int) {
     companion object {
-        fun parse(
-            raw: Int,
-        ): Refinement<SourceNestingDepthDocument, SourceNestingDepthDocumentFailure> =
+        fun parse(raw: Int): Refinement<SourceNestingDepthDocument, SourceNestingDepthDocumentFailure> =
             if (raw < 0) {
                 Refinement.Rejected(SourceNestingDepthDocumentFailure.NEGATIVE)
             } else {
@@ -533,7 +497,9 @@ enum class SourceUnresolvedReasonDocument {
 
 sealed interface SourceEntityTargetDocument {
     data class Candidate(val selector: ProtocolText) : SourceEntityTargetDocument
+
     data class Local(val selector: ProtocolText) : SourceEntityTargetDocument
+
     data class Unresolved(val reason: SourceUnresolvedReasonDocument) : SourceEntityTargetDocument
 }
 
@@ -585,14 +551,12 @@ enum class ProtocolSourceTextFailure {
 @JvmInline
 value class ProtocolSourceText private constructor(val value: String) {
     companion object {
-        fun parse(
-            raw: String,
-        ): Refinement<ProtocolSourceText, ProtocolSourceTextFailure> = when {
-            raw.length > MAX_SOURCE_READ_TEXT_LENGTH ->
-                Refinement.Rejected(ProtocolSourceTextFailure.TOO_LONG)
-            '\r' in raw -> Refinement.Rejected(ProtocolSourceTextFailure.NOT_NORMALIZED)
-            else -> Refinement.Refined(ProtocolSourceText(raw))
-        }
+        fun parse(raw: String): Refinement<ProtocolSourceText, ProtocolSourceTextFailure> =
+            when {
+                raw.length > MAX_SOURCE_READ_TEXT_LENGTH -> Refinement.Rejected(ProtocolSourceTextFailure.TOO_LONG)
+                '\r' in raw -> Refinement.Rejected(ProtocolSourceTextFailure.NOT_NORMALIZED)
+                else -> Refinement.Refined(ProtocolSourceText(raw))
+            }
     }
 }
 
@@ -603,14 +567,14 @@ enum class SourceTextWithheldReasonDocument {
 
 sealed interface SourceTextProjectionDocument {
     data object NotRequested : SourceTextProjectionDocument
+
     data class Returned(
         val selection: SourceSelectionDocument,
         val text: ProtocolSourceText,
         val lines: SourceLineRangeDocument,
     ) : SourceTextProjectionDocument
-    data class Withheld(
-        val reason: SourceTextWithheldReasonDocument,
-    ) : SourceTextProjectionDocument
+
+    data class Withheld(val reason: SourceTextWithheldReasonDocument) : SourceTextProjectionDocument
 }
 
 data class SourceReadResult(
@@ -632,15 +596,13 @@ enum class SourceReadLimitationDocument {
 }
 
 enum class SourceEntityCountDocumentFailure {
-    NEGATIVE,
+    NEGATIVE
 }
 
 @JvmInline
 value class SourceEntityCountDocument private constructor(val value: Int) {
     companion object {
-        fun parse(
-            raw: Int,
-        ): Refinement<SourceEntityCountDocument, SourceEntityCountDocumentFailure> =
+        fun parse(raw: Int): Refinement<SourceEntityCountDocument, SourceEntityCountDocumentFailure> =
             if (raw < 0) {
                 Refinement.Rejected(SourceEntityCountDocumentFailure.NEGATIVE)
             } else {
@@ -651,6 +613,7 @@ value class SourceEntityCountDocument private constructor(val value: Int) {
 
 sealed interface SourceReadContinuationStateDocument {
     data object Unavailable : SourceReadContinuationStateDocument
+
     data class Available(val continuation: ProtocolText) : SourceReadContinuationStateDocument
 }
 
@@ -661,7 +624,8 @@ enum class SourceReadQualificationFailure {
 }
 
 @ConsistentCopyVisibility
-data class SourceReadQualification private constructor(
+data class SourceReadQualification
+private constructor(
     val knownMinimumEntityCount: SourceEntityCountDocument,
     val limitations: List<SourceReadLimitationDocument>,
     val continuation: SourceReadContinuationStateDocument,
@@ -676,19 +640,15 @@ data class SourceReadQualification private constructor(
                 return Refinement.Rejected(SourceReadQualificationFailure.EMPTY_LIMITATIONS)
             }
             if (limitations != limitations.distinct().sortedBy { it.ordinal }) {
-                return Refinement.Rejected(
-                    SourceReadQualificationFailure.NON_CANONICAL_LIMITATIONS,
-                )
+                return Refinement.Rejected(SourceReadQualificationFailure.NON_CANONICAL_LIMITATIONS)
             }
             if (
                 SourceReadLimitationDocument.ENTITY_LIMIT_REACHED in limitations &&
-                continuation is SourceReadContinuationStateDocument.Unavailable
+                    continuation is SourceReadContinuationStateDocument.Unavailable
             ) {
                 return Refinement.Rejected(SourceReadQualificationFailure.CONTINUATION_REQUIRED)
             }
-            return Refinement.Refined(
-                SourceReadQualification(knownMinimumEntityCount, limitations, continuation),
-            )
+            return Refinement.Refined(SourceReadQualification(knownMinimumEntityCount, limitations, continuation))
         }
     }
 }

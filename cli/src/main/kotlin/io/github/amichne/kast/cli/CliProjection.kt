@@ -16,9 +16,9 @@ fun interface CliRequestPreparer<Request : OperationRequest> {
     /**
      * Proof transition: `Request -> CliProjectionPreparation`.
      *
-     * Establishes a generated request document and captured outcome decoder for the concrete
-     * request type. [CliProjectionFailure.RequestEncodingFailed] is the closed expected failure.
-     * Raw wire text may leave only at the UDS exchange boundary.
+     * Establishes a generated request document and captured outcome decoder for the concrete request type.
+     * [CliProjectionFailure.RequestEncodingFailed] is the closed expected failure. Raw wire text may leave only at the
+     * UDS exchange boundary.
      */
     fun prepare(request: Request): CliProjectionPreparation
 }
@@ -27,17 +27,14 @@ fun interface CliOutcomeProjector<
     Result : OperationResult,
     Qualification : OperationQualification,
     Rejection : OperationRejection,
-    > {
+> {
     /**
-     * Proof transition: `OperationOutcome<Result, Qualification, Rejection> ->
-     * ProjectedCliOutcome`.
+     * Proof transition: `OperationOutcome<Result, Qualification, Rejection> -> ProjectedCliOutcome`.
      *
-     * Preserves the closed semantic outcome variant while producing canonical JSON. Raw result
-     * extraction is permitted only within this outer presentation boundary.
+     * Preserves the closed semantic outcome variant while producing canonical JSON. Raw result extraction is permitted
+     * only within this outer presentation boundary.
      */
-    fun project(
-        outcome: OperationOutcome<Result, Qualification, Rejection>,
-    ): ProjectedCliOutcome
+    fun project(outcome: OperationOutcome<Result, Qualification, Rejection>): ProjectedCliOutcome
 }
 
 /** A generated wire binding whose concrete request and outcome types stay captured. */
@@ -46,17 +43,19 @@ class TypedCliProjection<
     Result : OperationResult,
     Qualification : OperationQualification,
     Rejection : OperationRejection,
-    >(
+>(
     private val wireBinding: OperationWireBinding<Request, Result, Qualification, Rejection>,
     private val outcomeProjector: CliOutcomeProjector<Result, Qualification, Rejection>,
 ) : CliRequestPreparer<Request> {
     override fun prepare(request: Request): CliProjectionPreparation {
-        val requestDocument = when (val encoded = wireBinding.encodeRequest(request)) {
-            is WireEncoding.Encoded -> encoded.document
-            is WireEncoding.Rejected -> return CliProjectionPreparation.Rejected(
-                CliProjectionFailure.RequestEncodingFailed(wireBinding.operation, encoded.failure),
-            )
-        }
+        val requestDocument =
+            when (val encoded = wireBinding.encodeRequest(request)) {
+                is WireEncoding.Encoded -> encoded.document
+                is WireEncoding.Rejected ->
+                    return CliProjectionPreparation.Rejected(
+                        CliProjectionFailure.RequestEncodingFailed(wireBinding.operation, encoded.failure)
+                    )
+            }
         return CliProjectionPreparation.Prepared(
             PreparedCliRequest(
                 wireBinding.operation,
@@ -64,22 +63,23 @@ class TypedCliProjection<
                 requestDocument,
             ) { response ->
                 when (val decoded = wireBinding.decodeOutcome(response)) {
-                    is WireDecoding.Decoded -> CliProjectionCompletion.Completed(
-                        outcomeProjector.project(decoded.value),
-                    )
-                    is WireDecoding.Rejected -> CliProjectionCompletion.Rejected(
-                        CliProjectionFailure.ResponseDecodingFailed(
-                            wireBinding.operation,
-                            decoded.failure,
-                        ),
-                    )
+                    is WireDecoding.Decoded ->
+                        CliProjectionCompletion.Completed(outcomeProjector.project(decoded.value))
+                    is WireDecoding.Rejected ->
+                        CliProjectionCompletion.Rejected(
+                            CliProjectionFailure.ResponseDecodingFailed(
+                                wireBinding.operation,
+                                decoded.failure,
+                            )
+                        )
                 }
-            },
+            }
         )
     }
 }
 
-class PreparedCliRequest internal constructor(
+class PreparedCliRequest
+internal constructor(
     val operation: CanonicalOperation,
     val hostedDemand: HostedRuntimeDemand,
     val document: String,
@@ -89,8 +89,8 @@ class PreparedCliRequest internal constructor(
      * Proof transition: `String -> CliProjectionCompletion`.
      *
      * Establishes the captured operation's generated outcome types and canonical JSON projection.
-     * [CliProjectionFailure.ResponseDecodingFailed] is the closed expected failure. Raw response
-     * text may be extracted only at this wire-decoding boundary.
+     * [CliProjectionFailure.ResponseDecodingFailed] is the closed expected failure. Raw response text may be extracted
+     * only at this wire-decoding boundary.
      */
     fun complete(response: String): CliProjectionCompletion = completion(response)
 }
@@ -98,32 +98,23 @@ class PreparedCliRequest internal constructor(
 private fun hostedDemand(
     operation: CanonicalOperation,
     request: OperationRequest,
-): HostedRuntimeDemand = if (
-    operation == CanonicalOperation.CHANGE_PLAN && request is ChangePlanRequest
-) {
-    HostedRuntimeDemand.ChangePlan(request.intent)
-} else {
-    HostedRuntimeDemand.Operation(operation)
-}
+): HostedRuntimeDemand =
+    if (operation == CanonicalOperation.CHANGE_PLAN && request is ChangePlanRequest) {
+        HostedRuntimeDemand.ChangePlan(request.intent)
+    } else {
+        HostedRuntimeDemand.Operation(operation)
+    }
 
 sealed interface CliProjectionPreparation {
-    data class Prepared(
-        val request: PreparedCliRequest,
-    ) : CliProjectionPreparation
+    data class Prepared(val request: PreparedCliRequest) : CliProjectionPreparation
 
-    data class Rejected(
-        val failure: CliProjectionFailure,
-    ) : CliProjectionPreparation
+    data class Rejected(val failure: CliProjectionFailure) : CliProjectionPreparation
 }
 
 sealed interface CliProjectionCompletion {
-    data class Completed(
-        val outcome: ProjectedCliOutcome,
-    ) : CliProjectionCompletion
+    data class Completed(val outcome: ProjectedCliOutcome) : CliProjectionCompletion
 
-    data class Rejected(
-        val failure: CliProjectionFailure,
-    ) : CliProjectionCompletion
+    data class Rejected(val failure: CliProjectionFailure) : CliProjectionCompletion
 }
 
 sealed interface CliProjectionFailure {

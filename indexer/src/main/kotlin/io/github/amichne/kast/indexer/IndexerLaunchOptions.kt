@@ -30,8 +30,8 @@ value class IndexerRuntimeId private constructor(val value: String) {
          * Proof transition: `String -> IndexerRuntimeIdRefinement`.
          *
          * Establishes one canonical lowercase SHA-256 identity. The closed expected failure is
-         * [IndexerRuntimeIdRefinement.Rejected]. Raw text may leave only for transport identity
-         * admission and process diagnostics.
+         * [IndexerRuntimeIdRefinement.Rejected]. Raw text may leave only for transport identity admission and process
+         * diagnostics.
          */
         fun parse(raw: String): IndexerRuntimeIdRefinement =
             if (Regex("sha256:[0-9a-f]{64}").matches(raw)) {
@@ -44,12 +44,15 @@ value class IndexerRuntimeId private constructor(val value: String) {
 
 sealed interface IndexerRuntimeIdRefinement {
     data class Refined(val runtimeId: IndexerRuntimeId) : IndexerRuntimeIdRefinement
+
     data object Rejected : IndexerRuntimeIdRefinement
+
     data object NotRequested : IndexerRuntimeIdRefinement
 }
 
 /** Exact installed-process launch authority. */
-class IndexerLaunchOptions private constructor(
+class IndexerLaunchOptions
+private constructor(
     val workspaceRoot: Path,
     val socketPath: Path,
     val runtimeId: IndexerRuntimeId,
@@ -58,10 +61,10 @@ class IndexerLaunchOptions private constructor(
         /**
          * Proof transition: `List<String> -> IndexerLaunchAdmission`.
          *
-         * Establishes one canonical physical workspace root, one absolute normalized Unix socket
-         * path, and one canonical semantic-runtime identity from the complete installed command
-         * line. [IndexerLaunchFailure] is the closed expected failure. Raw paths and identity text
-         * may leave only for runtime construction and the Unix-domain transport boundary.
+         * Establishes one canonical physical workspace root, one absolute normalized Unix socket path, and one
+         * canonical semantic-runtime identity from the complete installed command line. [IndexerLaunchFailure] is the
+         * closed expected failure. Raw paths and identity text may leave only for runtime construction and the
+         * Unix-domain transport boundary.
          */
         fun admit(arguments: List<String>): IndexerLaunchAdmission {
             val failures = linkedSetOf<IndexerLaunchFailure>()
@@ -86,33 +89,37 @@ class IndexerLaunchOptions private constructor(
                 1 -> Unit
                 else -> failures += IndexerLaunchFailure.DUPLICATE_RUNTIME_ID
             }
-            if (arguments.drop(1).any { argument ->
+            if (
+                arguments.drop(1).any { argument ->
                     !argument.startsWith(WORKSPACE_ROOT_PREFIX) &&
-                    !argument.startsWith(SOCKET_PATH_PREFIX)
-                    && !argument.startsWith(RUNTIME_ID_PREFIX)
+                        !argument.startsWith(SOCKET_PATH_PREFIX) &&
+                        !argument.startsWith(RUNTIME_ID_PREFIX)
                 }
             ) {
                 failures += IndexerLaunchFailure.UNKNOWN_ARGUMENT
             }
 
-            val workspaceRoot = when (rawWorkspaceRoots.size) {
-                1 -> rawWorkspaceRoots.single().canonicalWorkspaceRoot()
-                else -> WorkspaceRootRefinement.NotRequested
-            }
+            val workspaceRoot =
+                when (rawWorkspaceRoots.size) {
+                    1 -> rawWorkspaceRoots.single().canonicalWorkspaceRoot()
+                    else -> WorkspaceRootRefinement.NotRequested
+                }
             if (workspaceRoot is WorkspaceRootRefinement.Rejected) {
                 failures += IndexerLaunchFailure.INVALID_WORKSPACE_ROOT
             }
-            val socketPath = when (rawSocketPaths.size) {
-                1 -> rawSocketPaths.single().absoluteSocketPath()
-                else -> SocketPathRefinement.NotRequested
-            }
+            val socketPath =
+                when (rawSocketPaths.size) {
+                    1 -> rawSocketPaths.single().absoluteSocketPath()
+                    else -> SocketPathRefinement.NotRequested
+                }
             if (socketPath is SocketPathRefinement.Rejected) {
                 failures += IndexerLaunchFailure.INVALID_SOCKET_PATH
             }
-            val runtimeId = when (rawRuntimeIds.size) {
-                1 -> IndexerRuntimeId.parse(rawRuntimeIds.single())
-                else -> IndexerRuntimeIdRefinement.NotRequested
-            }
+            val runtimeId =
+                when (rawRuntimeIds.size) {
+                    1 -> IndexerRuntimeId.parse(rawRuntimeIds.single())
+                    else -> IndexerRuntimeIdRefinement.NotRequested
+                }
             if (runtimeId is IndexerRuntimeIdRefinement.Rejected) {
                 failures += IndexerLaunchFailure.INVALID_RUNTIME_ID
             }
@@ -122,20 +129,16 @@ class IndexerLaunchOptions private constructor(
                     workspaceRoot = (workspaceRoot as WorkspaceRootRefinement.Refined).path,
                     socketPath = (socketPath as SocketPathRefinement.Refined).path,
                     runtimeId = (runtimeId as IndexerRuntimeIdRefinement.Refined).runtimeId,
-                ),
+                )
             )
         }
     }
 }
 
 sealed interface IndexerLaunchAdmission {
-    data class Admitted(
-        val options: IndexerLaunchOptions,
-    ) : IndexerLaunchAdmission
+    data class Admitted(val options: IndexerLaunchOptions) : IndexerLaunchAdmission
 
-    data class Rejected(
-        val failures: Set<IndexerLaunchFailure>,
-    ) : IndexerLaunchAdmission
+    data class Rejected(val failures: Set<IndexerLaunchFailure>) : IndexerLaunchAdmission
 }
 
 private const val WORKSPACE_ROOT_PREFIX = "--workspace-root="
@@ -145,50 +148,53 @@ private const val RUNTIME_ID_PREFIX = "--runtime-id="
 /**
  * Boundary extraction: `List<String> + String -> List<String>`.
  *
- * Extracts only exact option values for immediate refinement by [IndexerLaunchOptions.admit]. Raw
- * strings do not leave that outer command-line boundary.
+ * Extracts only exact option values for immediate refinement by [IndexerLaunchOptions.admit]. Raw strings do not leave
+ * that outer command-line boundary.
  */
 private fun List<String>.argumentValues(prefix: String): List<String> =
     drop(1).filter { it.startsWith(prefix) }.map { it.removePrefix(prefix) }
 
 private sealed interface WorkspaceRootRefinement {
     data class Refined(val path: Path) : WorkspaceRootRefinement
+
     data object Rejected : WorkspaceRootRefinement
+
     data object NotRequested : WorkspaceRootRefinement
 }
 
 private sealed interface SocketPathRefinement {
     data class Refined(val path: Path) : SocketPathRefinement
+
     data object Rejected : SocketPathRefinement
+
     data object NotRequested : SocketPathRefinement
 }
 
 /**
  * Proof transition: `String -> WorkspaceRootRefinement`.
  *
- * Establishes one absolute, normalized, physically canonical directory path.
- * [WorkspaceRootRefinement.Rejected] is the closed expected failure. The raw path may leave only
- * for physical filesystem admission.
+ * Establishes one absolute, normalized, physically canonical directory path. [WorkspaceRootRefinement.Rejected] is the
+ * closed expected failure. The raw path may leave only for physical filesystem admission.
  */
 private fun String.canonicalWorkspaceRoot(): WorkspaceRootRefinement {
     if (isBlank()) return WorkspaceRootRefinement.Rejected
-    val candidate = try {
-        Path(this)
-    } catch (_: RuntimeException) {
-        return WorkspaceRootRefinement.Rejected
-    }
+    val candidate =
+        try {
+            Path(this)
+        } catch (_: RuntimeException) {
+            return WorkspaceRootRefinement.Rejected
+        }
     if (!candidate.isAbsolute) return WorkspaceRootRefinement.Rejected
     val normalized = candidate.normalize()
-    val canonical = try {
-        normalized.toRealPath()
-    } catch (_: IOException) {
-        return WorkspaceRootRefinement.Rejected
-    } catch (_: SecurityException) {
-        return WorkspaceRootRefinement.Rejected
-    }
-    return if (
-        canonical == normalized && Files.isDirectory(canonical, LinkOption.NOFOLLOW_LINKS)
-    ) {
+    val canonical =
+        try {
+            normalized.toRealPath()
+        } catch (_: IOException) {
+            return WorkspaceRootRefinement.Rejected
+        } catch (_: SecurityException) {
+            return WorkspaceRootRefinement.Rejected
+        }
+    return if (canonical == normalized && Files.isDirectory(canonical, LinkOption.NOFOLLOW_LINKS)) {
         WorkspaceRootRefinement.Refined(canonical)
     } else {
         WorkspaceRootRefinement.Rejected
@@ -198,17 +204,17 @@ private fun String.canonicalWorkspaceRoot(): WorkspaceRootRefinement {
 /**
  * Proof transition: `String -> SocketPathRefinement`.
  *
- * Establishes one absolute normalized socket path with a final path component.
- * [SocketPathRefinement.Rejected] is the closed expected failure. The raw path may leave only for
- * the Unix-domain transport boundary.
+ * Establishes one absolute normalized socket path with a final path component. [SocketPathRefinement.Rejected] is the
+ * closed expected failure. The raw path may leave only for the Unix-domain transport boundary.
  */
 private fun String.absoluteSocketPath(): SocketPathRefinement {
     if (isBlank()) return SocketPathRefinement.Rejected
-    val candidate = try {
-        Path(this)
-    } catch (_: RuntimeException) {
-        return SocketPathRefinement.Rejected
-    }
+    val candidate =
+        try {
+            Path(this)
+        } catch (_: RuntimeException) {
+            return SocketPathRefinement.Rejected
+        }
     return if (!candidate.isAbsolute || candidate.fileName == null) {
         SocketPathRefinement.Rejected
     } else {

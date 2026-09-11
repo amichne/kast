@@ -13,15 +13,16 @@ internal fun indexCommandGroup(
     preparers: CanonicalCliRequestPreparers,
     requestInput: CliRequestDocumentInput,
 ): CommandFamily {
-    val sync = SemanticKastCommand(
-        name = "sync",
-        operation = CanonicalOperation.INDEX_SYNC,
-        schemaUsage = "index sync < request.json",
-        description = "Synchronize indexes from a canonical JSON request on standard input.",
-        serializer = IndexSyncRequest.serializer(),
-        requestInput = requestInput,
-        preparer = preparers.indexSync,
-    )
+    val sync =
+        SemanticKastCommand(
+            name = "sync",
+            operation = CanonicalOperation.INDEX_SYNC,
+            schemaUsage = "index sync < request.json",
+            description = "Synchronize indexes from a canonical JSON request on standard input.",
+            serializer = IndexSyncRequest.serializer(),
+            requestInput = requestInput,
+            preparer = preparers.indexSync,
+        )
     return CommandFamily(
         KastCommandGroup("index", "Synchronize the semantic index.").subcommands(sync),
         listOf(sync),

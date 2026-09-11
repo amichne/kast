@@ -19,13 +19,17 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 internal sealed interface UnixSocketOwnershipLeaseAcquisition {
     data class Acquired(val lease: UnixSocketOwnershipLease) : UnixSocketOwnershipLeaseAcquisition
+
     data object Owned : UnixSocketOwnershipLeaseAcquisition
+
     data object Rejected : UnixSocketOwnershipLeaseAcquisition
+
     data object ParentRejected : UnixSocketOwnershipLeaseAcquisition
 }
 
 /** Process-lifetime proof that one broker alone may prepare and own a public socket path. */
-internal class UnixSocketOwnershipLease internal constructor(
+internal class UnixSocketOwnershipLease
+internal constructor(
     private val channel: FileChannel,
     private val lock: FileLock,
 ) : AutoCloseable {
@@ -68,31 +72,28 @@ internal object UnixSocketPathOwnership {
         }
 
     internal fun acquireLease(socketPath: Path): UnixSocketOwnershipLeaseAcquisition {
-        val parent = socketPath.parent
-            ?: return UnixSocketOwnershipLeaseAcquisition.ParentRejected
+        val parent = socketPath.parent ?: return UnixSocketOwnershipLeaseAcquisition.ParentRejected
         try {
             Files.createDirectories(parent)
-            if (
-                parent.toRealPath() != parent ||
-                !Files.isDirectory(parent, LinkOption.NOFOLLOW_LINKS)
-            ) {
+            if (parent.toRealPath() != parent || !Files.isDirectory(parent, LinkOption.NOFOLLOW_LINKS)) {
                 return UnixSocketOwnershipLeaseAcquisition.ParentRejected
             }
             val lockPath = socketPath.resolveSibling("${socketPath.fileName}.lock")
-            val channel = try {
-                FileChannel.open(
-                    lockPath,
-                    StandardOpenOption.CREATE,
-                    StandardOpenOption.WRITE,
-                    LinkOption.NOFOLLOW_LINKS,
-                )
-            } catch (_: IOException) {
-                return UnixSocketOwnershipLeaseAcquisition.Rejected
-            } catch (_: UnsupportedOperationException) {
-                return UnixSocketOwnershipLeaseAcquisition.Rejected
-            } catch (_: SecurityException) {
-                return UnixSocketOwnershipLeaseAcquisition.Rejected
-            }
+            val channel =
+                try {
+                    FileChannel.open(
+                        lockPath,
+                        StandardOpenOption.CREATE,
+                        StandardOpenOption.WRITE,
+                        LinkOption.NOFOLLOW_LINKS,
+                    )
+                } catch (_: IOException) {
+                    return UnixSocketOwnershipLeaseAcquisition.Rejected
+                } catch (_: UnsupportedOperationException) {
+                    return UnixSocketOwnershipLeaseAcquisition.Rejected
+                } catch (_: SecurityException) {
+                    return UnixSocketOwnershipLeaseAcquisition.Rejected
+                }
             return acquireOpenedLease(channel, lockPath)
         } catch (_: IOException) {
             return UnixSocketOwnershipLeaseAcquisition.Rejected
@@ -106,45 +107,44 @@ internal object UnixSocketPathOwnership {
     private fun acquireOpenedLease(
         channel: FileChannel,
         lockPath: Path,
-    ): UnixSocketOwnershipLeaseAcquisition = try {
-        val attributes = Files.readAttributes(
-            lockPath,
-            BasicFileAttributes::class.java,
-            LinkOption.NOFOLLOW_LINKS,
-        )
-        if (!attributes.isRegularFile || attributes.isSymbolicLink) {
-            channel.close()
-            UnixSocketOwnershipLeaseAcquisition.Rejected
-        } else {
-            Files.setPosixFilePermissions(
-                lockPath,
-                PosixFilePermissions.fromString("rw-------"),
-            )
-            val lock = try {
-                channel.tryLock()
-            } catch (_: OverlappingFileLockException) {
-                null
-            }
-            if (lock == null) {
-                channel.close()
-                UnixSocketOwnershipLeaseAcquisition.Owned
-            } else {
-                UnixSocketOwnershipLeaseAcquisition.Acquired(
-                    UnixSocketOwnershipLease(channel, lock),
+    ): UnixSocketOwnershipLeaseAcquisition =
+        try {
+            val attributes =
+                Files.readAttributes(
+                    lockPath,
+                    BasicFileAttributes::class.java,
+                    LinkOption.NOFOLLOW_LINKS,
                 )
+            if (!attributes.isRegularFile || attributes.isSymbolicLink) {
+                channel.close()
+                UnixSocketOwnershipLeaseAcquisition.Rejected
+            } else {
+                Files.setPosixFilePermissions(
+                    lockPath,
+                    PosixFilePermissions.fromString("rw-------"),
+                )
+                val lock =
+                    try {
+                        channel.tryLock()
+                    } catch (_: OverlappingFileLockException) {
+                        null
+                    }
+                if (lock == null) {
+                    channel.close()
+                    UnixSocketOwnershipLeaseAcquisition.Owned
+                } else {
+                    UnixSocketOwnershipLeaseAcquisition.Acquired(UnixSocketOwnershipLease(channel, lock))
+                }
             }
+        } catch (_: IOException) {
+            closeRejectedChannel(channel)
+        } catch (_: UnsupportedOperationException) {
+            closeRejectedChannel(channel)
+        } catch (_: SecurityException) {
+            closeRejectedChannel(channel)
         }
-    } catch (_: IOException) {
-        closeRejectedChannel(channel)
-    } catch (_: UnsupportedOperationException) {
-        closeRejectedChannel(channel)
-    } catch (_: SecurityException) {
-        closeRejectedChannel(channel)
-    }
 
-    private fun closeRejectedChannel(
-        channel: FileChannel,
-    ): UnixSocketOwnershipLeaseAcquisition {
+    private fun closeRejectedChannel(channel: FileChannel): UnixSocketOwnershipLeaseAcquisition {
         try {
             channel.close()
         } catch (_: IOException) {
@@ -182,11 +182,12 @@ internal object UnixSocketPathOwnership {
     }
 
     private fun probe(path: Path): UnixSocketReachability {
-        val channel = try {
-            SocketChannel.open(StandardProtocolFamily.UNIX)
-        } catch (_: Exception) {
-            return UnixSocketReachability.REJECTED
-        }
+        val channel =
+            try {
+                SocketChannel.open(StandardProtocolFamily.UNIX)
+            } catch (_: Exception) {
+                return UnixSocketReachability.REJECTED
+            }
         return channel.use { socket ->
             try {
                 socket.connect(UnixDomainSocketAddress.of(path))
@@ -202,18 +203,21 @@ internal object UnixSocketPathOwnership {
     }
 }
 
-internal class OwnedUnixSocket private constructor(
+internal class OwnedUnixSocket
+private constructor(
     private val path: Path,
     private val fileKey: Any,
 ) {
     internal fun retire() {
         try {
             if (!Files.exists(path, LinkOption.NOFOLLOW_LINKS)) return
-            val current = Files.readAttributes(
-                path,
-                BasicFileAttributes::class.java,
-                LinkOption.NOFOLLOW_LINKS,
-            ).fileKey() ?: return
+            val current =
+                Files.readAttributes(
+                        path,
+                        BasicFileAttributes::class.java,
+                        LinkOption.NOFOLLOW_LINKS,
+                    )
+                    .fileKey() ?: return
             if (current == fileKey) Files.deleteIfExists(path)
         } catch (_: IOException) {
             return
@@ -223,26 +227,33 @@ internal class OwnedUnixSocket private constructor(
     }
 
     companion object {
-        internal fun capture(socket: BrokerSocketPath): OwnedUnixSocket? = when (socket.revalidate()) {
-            is Validation.Validated -> capture(socket.physicalPath)
-            is Validation.Rejected -> null
-        }
+        internal fun capture(socket: BrokerSocketPath): OwnedUnixSocket? =
+            when (socket.revalidate()) {
+                is Validation.Validated -> capture(socket.physicalPath)
+                is Validation.Rejected -> null
+            }
 
-        internal fun capture(path: Path): OwnedUnixSocket? = try {
-            val attributes = Files.readAttributes(
-                path,
-                BasicFileAttributes::class.java,
-                LinkOption.NOFOLLOW_LINKS,
-            )
-            val key = attributes.fileKey() ?: return null
-            if (!attributes.isOther || attributes.isSymbolicLink) return null
-            OwnedUnixSocket(path, key)
-        } catch (_: IOException) {
-            null
-        } catch (_: SecurityException) {
-            null
-        }
+        internal fun capture(path: Path): OwnedUnixSocket? =
+            try {
+                val attributes =
+                    Files.readAttributes(
+                        path,
+                        BasicFileAttributes::class.java,
+                        LinkOption.NOFOLLOW_LINKS,
+                    )
+                val key = attributes.fileKey() ?: return null
+                if (!attributes.isOther || attributes.isSymbolicLink) return null
+                OwnedUnixSocket(path, key)
+            } catch (_: IOException) {
+                null
+            } catch (_: SecurityException) {
+                null
+            }
     }
 }
 
-private enum class UnixSocketReachability { REACHABLE, UNREACHABLE, REJECTED }
+private enum class UnixSocketReachability {
+    REACHABLE,
+    UNREACHABLE,
+    REJECTED,
+}

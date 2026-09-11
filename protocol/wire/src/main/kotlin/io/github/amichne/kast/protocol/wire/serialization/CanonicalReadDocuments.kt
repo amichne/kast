@@ -1,7 +1,6 @@
 package io.github.amichne.kast.protocol.wire
 
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
-import io.github.amichne.kast.protocol.contract.DiagnosticCheckRequest
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckResult
 import io.github.amichne.kast.protocol.contract.DiagnosticDocument
 import io.github.amichne.kast.protocol.contract.DiagnosticLocationDocument
@@ -10,26 +9,14 @@ import io.github.amichne.kast.protocol.contract.DiagnosticSeverityDocument
 import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
-import io.github.amichne.kast.protocol.contract.RelationReadRequest
-import io.github.amichne.kast.protocol.contract.RelationReadPositionDocument
-import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
-import io.github.amichne.kast.protocol.contract.SymbolInspectTarget
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
-import io.github.amichne.kast.protocol.contract.TraversalContinuationDocument
-import io.github.amichne.kast.protocol.contract.TraversalRunPositionDocument
-import io.github.amichne.kast.protocol.contract.TraversalRunRequest
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-internal data class SymbolDiscoverQualificationDocument(
-    val limitations: List<SymbolDiscoverLimitationWireDocument>,
-)
+internal data class SymbolDiscoverQualificationDocument(val limitations: List<SymbolDiscoverLimitationWireDocument>)
 
-@Serializable
-internal data class DiagnosticCheckResultDocument(
-    val diagnostics: List<DiagnosticWireDocument>,
-)
+@Serializable internal data class DiagnosticCheckResultDocument(val diagnostics: List<DiagnosticWireDocument>)
 
 @Serializable
 internal data class DiagnosticWireDocument(
@@ -80,7 +67,7 @@ internal enum class SymbolDiscoverRejectionWireDocument {
 
 @Serializable
 internal enum class SymbolInspectQualificationWireDocument {
-    @SerialName("evidence_incomplete") EVIDENCE_INCOMPLETE,
+    @SerialName("evidence_incomplete") EVIDENCE_INCOMPLETE
 }
 
 @Serializable
@@ -231,30 +218,22 @@ internal enum class DiagnosticLimitationReasonWireDocument {
 internal enum class DiagnosticCheckRejectionWireDocument {
     @SerialName("workspace_not_ready") WORKSPACE_NOT_READY,
     @SerialName("scope_rejected") SCOPE_REJECTED,
-    @SerialName("scope_empty")
-    SCOPE_EMPTY,
-    @SerialName("scope_limit_exceeded")
-    SCOPE_LIMIT_EXCEEDED,
-    @SerialName("scope_unavailable")
-    SCOPE_UNAVAILABLE,
+    @SerialName("scope_empty") SCOPE_EMPTY,
+    @SerialName("scope_limit_exceeded") SCOPE_LIMIT_EXCEEDED,
+    @SerialName("scope_unavailable") SCOPE_UNAVAILABLE,
 }
 
-internal fun SymbolDiscoverQualification.toReadDocument():
-    SymbolDiscoverQualificationDocument = SymbolDiscoverQualificationDocument(
-    limitations.map { it.toWireDocument() },
-)
+internal fun SymbolDiscoverQualification.toReadDocument(): SymbolDiscoverQualificationDocument =
+    SymbolDiscoverQualificationDocument(limitations.map { it.toWireDocument() })
 
 /**
  * Proof transition: `SymbolDiscoverQualificationDocument -> SymbolDiscoverQualification`.
  *
- * Establishes a non-empty, canonical limitation set.
- * [WireDocumentConversion.Rejected] is the closed expected failure. Raw
- * document collections remain inside this wire adapter.
+ * Establishes a non-empty, canonical limitation set. [WireDocumentConversion.Rejected] is the closed expected failure.
+ * Raw document collections remain inside this wire adapter.
  */
-internal fun SymbolDiscoverQualificationDocument.toContract():
-    WireDocumentConversion<SymbolDiscoverQualification> = SymbolDiscoverQualification.from(
-    limitations.map { it.toContract() }.toSet(),
-).toWireDocumentConversion()
+internal fun SymbolDiscoverQualificationDocument.toContract(): WireDocumentConversion<SymbolDiscoverQualification> =
+    SymbolDiscoverQualification.from(limitations.map { it.toContract() }.toSet()).toWireDocumentConversion()
 
 internal fun DiagnosticCheckResult.toReadDocument(): DiagnosticCheckResultDocument =
     DiagnosticCheckResultDocument(diagnostics.values.map { it.toWireDocument() })
@@ -262,30 +241,32 @@ internal fun DiagnosticCheckResult.toReadDocument(): DiagnosticCheckResultDocume
 /**
  * Proof transition: `DiagnosticCheckResultDocument -> DiagnosticCheckResult`.
  *
- * Establishes a bounded list of refined diagnostic text.
- * [WireDocumentConversion.Rejected] is the closed expected failure. Raw
- * strings are extracted only in this wire adapter.
+ * Establishes a bounded list of refined diagnostic text. [WireDocumentConversion.Rejected] is the closed expected
+ * failure. Raw strings are extracted only in this wire adapter.
  */
 internal fun DiagnosticCheckResultDocument.toContract(): WireDocumentConversion<DiagnosticCheckResult> =
-    diagnostics.convertEach { it.toContract() }
+    diagnostics
+        .convertEach { it.toContract() }
         .flatMapConverted { values ->
             BoundedProtocolList.create(values).toWireDocumentConversion()
         }
         .mapConverted(::DiagnosticCheckResult)
 
-private fun DiagnosticDocument.toWireDocument(): DiagnosticWireDocument = DiagnosticWireDocument(
-    severity = severity.toWireDocument(),
-    code = code.value,
-    message = message.value,
-    location = DiagnosticLocationWireDocument(
-        location.candidateSelector.value,
-        location.file.value,
-        DiagnosticRangeWireDocument(
-            location.range.startInclusive.value,
-            location.range.endExclusive.value,
-        ),
-    ),
-)
+private fun DiagnosticDocument.toWireDocument(): DiagnosticWireDocument =
+    DiagnosticWireDocument(
+        severity = severity.toWireDocument(),
+        code = code.value,
+        message = message.value,
+        location =
+            DiagnosticLocationWireDocument(
+                location.candidateSelector.value,
+                location.file.value,
+                DiagnosticRangeWireDocument(
+                    location.range.startInclusive.value,
+                    location.range.endExclusive.value,
+                ),
+            ),
+    )
 
 private fun DiagnosticWireDocument.toContract(): WireDocumentConversion<DiagnosticDocument> =
     combineConverted(
@@ -296,19 +277,21 @@ private fun DiagnosticWireDocument.toContract(): WireDocumentConversion<Diagnost
         DiagnosticDocument(severity.toContract(), code, message, location)
     }
 
-private fun DiagnosticLocationWireDocument.toContract():
-    WireDocumentConversion<DiagnosticLocationDocument> = combineConverted(
-    candidateSelector.protocolText(),
-    file.protocolText(),
-    range.toContract(),
-    ::DiagnosticLocationDocument,
-)
+private fun DiagnosticLocationWireDocument.toContract(): WireDocumentConversion<DiagnosticLocationDocument> =
+    combineConverted(
+        candidateSelector.protocolText(),
+        file.protocolText(),
+        range.toContract(),
+        ::DiagnosticLocationDocument,
+    )
 
 private fun DiagnosticRangeWireDocument.toContract(): WireDocumentConversion<DiagnosticRangeDocument> =
     combineConverted(
-        ProtocolOffset.parse(startInclusive).toWireDocumentConversion(),
-        ProtocolOffset.parse(endExclusive).toWireDocumentConversion(),
-    ) { start, end -> start to end }
+            ProtocolOffset.parse(startInclusive).toWireDocumentConversion(),
+            ProtocolOffset.parse(endExclusive).toWireDocumentConversion(),
+        ) { start, end ->
+            start to end
+        }
         .flatMapConverted { (start, end) ->
             DiagnosticRangeDocument.create(start, end).toWireDocumentConversion()
         }
@@ -320,28 +303,27 @@ private fun DiagnosticSeverityDocument.toWireDocument(): DiagnosticSeverityWireD
         DiagnosticSeverityDocument.INFO -> DiagnosticSeverityWireDocument.INFO
     }
 
-private fun DiagnosticSeverityWireDocument.toContract(): DiagnosticSeverityDocument = when (this) {
-    DiagnosticSeverityWireDocument.ERROR -> DiagnosticSeverityDocument.ERROR
-    DiagnosticSeverityWireDocument.WARNING -> DiagnosticSeverityDocument.WARNING
-    DiagnosticSeverityWireDocument.INFO -> DiagnosticSeverityDocument.INFO
-}
+private fun DiagnosticSeverityWireDocument.toContract(): DiagnosticSeverityDocument =
+    when (this) {
+        DiagnosticSeverityWireDocument.ERROR -> DiagnosticSeverityDocument.ERROR
+        DiagnosticSeverityWireDocument.WARNING -> DiagnosticSeverityDocument.WARNING
+        DiagnosticSeverityWireDocument.INFO -> DiagnosticSeverityDocument.INFO
+    }
 
 /**
  * Proof transition: `String -> ProtocolText`.
  *
- * Establishes non-blank bounded protocol text.
- * [WireDocumentConversion.Rejected] is the closed expected failure. Raw extraction is
- * permitted only in generated document conversion.
+ * Establishes non-blank bounded protocol text. [WireDocumentConversion.Rejected] is the closed expected failure. Raw
+ * extraction is permitted only in generated document conversion.
  */
-private fun String.protocolText(): WireDocumentConversion<ProtocolText> = ProtocolText.parse(this)
-    .toWireDocumentConversion()
+private fun String.protocolText(): WireDocumentConversion<ProtocolText> =
+    ProtocolText.parse(this).toWireDocumentConversion()
 
 /**
  * Proof transition: `Int -> ProtocolCount`.
  *
- * Establishes a positive count within the public protocol bound.
- * [WireDocumentConversion.Rejected] is the closed expected failure. Raw extraction is
- * permitted only in generated document conversion.
+ * Establishes a positive count within the public protocol bound. [WireDocumentConversion.Rejected] is the closed
+ * expected failure. Raw extraction is permitted only in generated document conversion.
  */
-private fun Int.protocolCount(): WireDocumentConversion<ProtocolCount> = ProtocolCount.parse(this)
-    .toWireDocumentConversion()
+private fun Int.protocolCount(): WireDocumentConversion<ProtocolCount> =
+    ProtocolCount.parse(this).toWireDocumentConversion()

@@ -34,15 +34,17 @@ internal class TarjanGraph(
             val targetIdentity = identity(edge.target)
             if (targetIdentity !in indices) {
                 connect(edge.target)
-                lowLinks[symbolIdentity] = minOf(
-                    lowLinks.getValue(symbolIdentity),
-                    lowLinks.getValue(targetIdentity),
-                )
+                lowLinks[symbolIdentity] =
+                    minOf(
+                        lowLinks.getValue(symbolIdentity),
+                        lowLinks.getValue(targetIdentity),
+                    )
             } else if (targetIdentity in onStack) {
-                lowLinks[symbolIdentity] = minOf(
-                    lowLinks.getValue(symbolIdentity),
-                    indices.getValue(targetIdentity),
-                )
+                lowLinks[symbolIdentity] =
+                    minOf(
+                        lowLinks.getValue(symbolIdentity),
+                        indices.getValue(targetIdentity),
+                    )
             }
         }
 

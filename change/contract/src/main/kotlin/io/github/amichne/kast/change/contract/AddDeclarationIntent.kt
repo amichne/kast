@@ -1,8 +1,8 @@
 package io.github.amichne.kast.change.contract
 
 import io.github.amichne.kast.kernel.Refinement
-import kotlinx.serialization.Serializable
 import java.nio.file.Path
+import kotlinx.serialization.Serializable
 
 private val SHA256_FORMAT = Regex("[0-9a-f]{64}")
 
@@ -21,22 +21,19 @@ value class AddDeclarationWorkspaceRoot private constructor(val value: String) {
     internal fun toPath(): Path = Path.of(value)
 
     companion object {
-        internal fun fromProvenRaw(value: String): AddDeclarationWorkspaceRoot =
-            AddDeclarationWorkspaceRoot(value)
+        internal fun fromProvenRaw(value: String): AddDeclarationWorkspaceRoot = AddDeclarationWorkspaceRoot(value)
     }
 }
 
 @Serializable
 @JvmInline
-value class AddDeclarationTargetPath private constructor(val value: String) :
-    Comparable<AddDeclarationTargetPath> {
+value class AddDeclarationTargetPath private constructor(val value: String) : Comparable<AddDeclarationTargetPath> {
     internal fun toPath(): Path = Path.of(value)
 
     override fun compareTo(other: AddDeclarationTargetPath): Int = value.compareTo(other.value)
 
     companion object {
-        internal fun fromProvenRaw(value: String): AddDeclarationTargetPath =
-            AddDeclarationTargetPath(value)
+        internal fun fromProvenRaw(value: String): AddDeclarationTargetPath = AddDeclarationTargetPath(value)
     }
 }
 
@@ -58,7 +55,8 @@ value class AddDeclarationText private constructor(val value: String) {
 
 @Serializable
 @ConsistentCopyVisibility
-data class AddDeclarationIntent private constructor(
+data class AddDeclarationIntent
+private constructor(
     val workspaceRoot: AddDeclarationWorkspaceRoot,
     val targetPath: AddDeclarationTargetPath,
     val expectedCurrentSha256: AddDeclarationSha256,
@@ -70,12 +68,13 @@ data class AddDeclarationIntent private constructor(
             targetPath: String,
             expectedCurrentSha256: String,
             proposedDeclaration: String,
-        ): AddDeclarationIntent = AddDeclarationIntent(
-            workspaceRoot = AddDeclarationWorkspaceRoot.fromProvenRaw(workspaceRoot),
-            targetPath = AddDeclarationTargetPath.fromProvenRaw(targetPath),
-            expectedCurrentSha256 = AddDeclarationSha256.fromProvenRaw(expectedCurrentSha256),
-            proposedDeclaration = AddDeclarationText.fromProvenRaw(proposedDeclaration),
-        )
+        ): AddDeclarationIntent =
+            AddDeclarationIntent(
+                workspaceRoot = AddDeclarationWorkspaceRoot.fromProvenRaw(workspaceRoot),
+                targetPath = AddDeclarationTargetPath.fromProvenRaw(targetPath),
+                expectedCurrentSha256 = AddDeclarationSha256.fromProvenRaw(expectedCurrentSha256),
+                proposedDeclaration = AddDeclarationText.fromProvenRaw(proposedDeclaration),
+            )
     }
 }
 
@@ -86,20 +85,21 @@ data class RawAddDeclarationPlanRequest(
     val proposedDeclaration: String,
 ) {
     /**
-     * Proof transition:
-     * RawAddDeclarationPlanRequest to Refinement of AddDeclarationIntent or AddDeclarationIntentFailure.
+     * Proof transition: RawAddDeclarationPlanRequest to Refinement of AddDeclarationIntent or
+     * AddDeclarationIntentFailure.
      *
-     * Establishes a canonical absolute workspace root, one canonical workspace-contained Kotlin
-     * target, an exact lowercase SHA-256 preimage identity, and non-blank normalized-LF declaration
-     * text without a terminal line break. AddDeclarationIntentFailure is the closed expected
-     * failure. Raw extraction is permitted only at the plan codec and explicit adapter
-     * boundaries.
+     * Establishes a canonical absolute workspace root, one canonical workspace-contained Kotlin target, an exact
+     * lowercase SHA-256 preimage identity, and non-blank normalized-LF declaration text without a terminal line break.
+     * AddDeclarationIntentFailure is the closed expected failure. Raw extraction is permitted only at the plan codec
+     * and explicit adapter boundaries.
      */
     fun refine(): Refinement<AddDeclarationIntent, AddDeclarationIntentFailure> {
-        val root = canonicalAbsolutePath(workspaceRoot)
-                   ?: return Refinement.Rejected(AddDeclarationIntentFailure.WORKSPACE_ROOT_NOT_CANONICAL)
-        val target = canonicalAbsolutePath(targetPath)
-                     ?: return Refinement.Rejected(AddDeclarationIntentFailure.TARGET_PATH_NOT_CANONICAL_KOTLIN)
+        val root =
+            canonicalAbsolutePath(workspaceRoot)
+                ?: return Refinement.Rejected(AddDeclarationIntentFailure.WORKSPACE_ROOT_NOT_CANONICAL)
+        val target =
+            canonicalAbsolutePath(targetPath)
+                ?: return Refinement.Rejected(AddDeclarationIntentFailure.TARGET_PATH_NOT_CANONICAL_KOTLIN)
         if (!targetPath.endsWith(".kt") || targetPath.endsWith(".kts")) {
             return Refinement.Rejected(AddDeclarationIntentFailure.TARGET_PATH_NOT_CANONICAL_KOTLIN)
         }
@@ -114,8 +114,8 @@ data class RawAddDeclarationPlanRequest(
         }
         if (
             '\r' in proposedDeclaration ||
-            proposedDeclaration != proposedDeclaration.trim() ||
-            proposedDeclaration.endsWith('\n')
+                proposedDeclaration != proposedDeclaration.trim() ||
+                proposedDeclaration.endsWith('\n')
         ) {
             return Refinement.Rejected(AddDeclarationIntentFailure.DECLARATION_NOT_NORMALIZED)
         }
@@ -125,18 +125,19 @@ data class RawAddDeclarationPlanRequest(
                 targetPath = targetPath,
                 expectedCurrentSha256 = expectedCurrentSha256,
                 proposedDeclaration = proposedDeclaration,
-            ),
+            )
         )
     }
 }
 
 internal fun sha256Hex(bytes: ByteArray): String =
-    java.security.MessageDigest.getInstance("SHA-256")
-        .digest(bytes)
-        .joinToString(separator = "") { byte -> "%02x".format(byte) }
+    java.security.MessageDigest.getInstance("SHA-256").digest(bytes).joinToString(separator = "") { byte ->
+        "%02x".format(byte)
+    }
 
 private fun canonicalAbsolutePath(raw: String): Path? = runCatching {
     Path.of(raw).takeIf { path ->
         path.isAbsolute && path.normalize().toString() == raw
     }
-}.getOrNull()
+}
+    .getOrNull()

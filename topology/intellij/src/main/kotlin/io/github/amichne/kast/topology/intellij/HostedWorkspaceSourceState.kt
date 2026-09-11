@@ -27,13 +27,14 @@ import java.util.UUID
 import java.util.concurrent.atomic.AtomicReference
 
 sealed interface HostedWorkspaceSourceStateAdmissionFailure {
-    data class ProjectRejected(
-        val failure: HostedProjectAdmissionFailure,
-    ) : HostedWorkspaceSourceStateAdmissionFailure
+    data class ProjectRejected(val failure: HostedProjectAdmissionFailure) : HostedWorkspaceSourceStateAdmissionFailure
 
     data object SourceRootUnavailable : HostedWorkspaceSourceStateAdmissionFailure
+
     data object SourceContentUnavailable : HostedWorkspaceSourceStateAdmissionFailure
+
     data object AmbiguousSourceRootOwner : HostedWorkspaceSourceStateAdmissionFailure
+
     data object SourceStateRejected : HostedWorkspaceSourceStateAdmissionFailure
 }
 
@@ -43,13 +44,9 @@ data class HostedWorkspaceSourcePublication(
 )
 
 sealed interface HostedWorkspaceSourceResumption {
-    data class Resumed(
-        val publication: HostedWorkspaceSourcePublication,
-    ) : HostedWorkspaceSourceResumption
+    data class Resumed(val publication: HostedWorkspaceSourcePublication) : HostedWorkspaceSourceResumption
 
-    data class Rejected(
-        val failure: HostedWorkspaceSourceStateAdmissionFailure,
-    ) : HostedWorkspaceSourceResumption
+    data class Rejected(val failure: HostedWorkspaceSourceStateAdmissionFailure) : HostedWorkspaceSourceResumption
 }
 
 /** Durable boundary that resumes the latest state descended from one bounded workspace basis. */
@@ -59,12 +56,9 @@ fun interface HostedWorkspaceSourceResumptionOperations {
 
 /** One explicit cold-project epoch; a fresh project service can never reuse an unverified basis. */
 @JvmInline
-value class HostedWorkspaceColdStartIdentity private constructor(
-    val value: String,
-) {
+value class HostedWorkspaceColdStartIdentity private constructor(val value: String) {
     companion object {
-        fun issue(): HostedWorkspaceColdStartIdentity =
-            HostedWorkspaceColdStartIdentity(UUID.randomUUID().toString())
+        fun issue(): HostedWorkspaceColdStartIdentity = HostedWorkspaceColdStartIdentity(UUID.randomUUID().toString())
 
         internal fun testing(value: String): HostedWorkspaceColdStartIdentity {
             require(value.isNotBlank())
@@ -83,37 +77,31 @@ sealed interface HostedWorkspaceSourceStateAdmission {
             get() = publication.sourceState
     }
 
-    data class Rejected(
-        val failure: HostedWorkspaceSourceStateAdmissionFailure,
-    ) : HostedWorkspaceSourceStateAdmission
+    data class Rejected(val failure: HostedWorkspaceSourceStateAdmissionFailure) : HostedWorkspaceSourceStateAdmission
 }
 
 sealed interface HostedWorkspaceSourceStateObservation {
-    data class Observed(
-        val sourceState: WorkspaceStateIdentity,
-    ) : HostedWorkspaceSourceStateObservation
+    data class Observed(val sourceState: WorkspaceStateIdentity) : HostedWorkspaceSourceStateObservation
 
-    data class Rejected(
-        val failure: HostedWorkspaceSourceStateAdmissionFailure,
-    ) : HostedWorkspaceSourceStateObservation
+    data class Rejected(val failure: HostedWorkspaceSourceStateAdmissionFailure) : HostedWorkspaceSourceStateObservation
 }
 
 sealed interface HostedWorkspaceSourceInvalidation {
     data object Invalidated : HostedWorkspaceSourceInvalidation
-    data class Rejected(
-        val failure: HostedWorkspaceSourceStateAdmissionFailure,
-    ) : HostedWorkspaceSourceInvalidation
+
+    data class Rejected(val failure: HostedWorkspaceSourceStateAdmissionFailure) : HostedWorkspaceSourceInvalidation
 }
 
 /** Constant-size observation and explicit refinement of source transitions in one project. */
 interface HostedWorkspaceSourceStateOperations {
     fun observe(): HostedWorkspaceSourceStateObservation
+
     fun invalidate(): HostedWorkspaceSourceInvalidation
 }
 
 /**
- * One project-service-owned source admission. Deferred endpoint attempts reuse its exact listener,
- * event counter, and publication; a changed admission input cannot silently replace that state.
+ * One project-service-owned source admission. Deferred endpoint attempts reuse its exact listener, event counter, and
+ * publication; a changed admission input cannot silently replace that state.
  */
 class HostedWorkspaceSourceStateSession(
     private val coldStart: HostedWorkspaceColdStartIdentity,
@@ -134,35 +122,39 @@ class HostedWorkspaceSourceStateSession(
         if (current != null) {
             return if (
                 current.project === project &&
-                current.root == root &&
-                current.compatibilityCandidate == compatibilityCandidate &&
-                current.compatibilityPolicy == compatibilityPolicy &&
-                current.sourceRoots == sourceRoots
+                    current.root == root &&
+                    current.compatibilityCandidate == compatibilityCandidate &&
+                    current.compatibilityPolicy == compatibilityPolicy &&
+                    current.sourceRoots == sourceRoots
             ) {
                 current.admission
             } else {
                 rejected(HostedWorkspaceSourceStateAdmissionFailure.SourceStateRejected)
             }
         }
-        return when (val admission = admitHostedWorkspaceSourceState(
-            project,
-            root,
-            compatibilityCandidate,
-            compatibilityPolicy,
-            sourceRoots,
-            resumptions,
-            coldStart,
-            lifecycle,
-        )) {
-            is HostedWorkspaceSourceStateAdmission.Admitted -> {
-                cached = CachedHostedWorkspaceSourceState(
+        return when (
+            val admission =
+                admitHostedWorkspaceSourceState(
                     project,
                     root,
                     compatibilityCandidate,
                     compatibilityPolicy,
-                    sourceRoots.toList(),
-                    admission,
+                    sourceRoots,
+                    resumptions,
+                    coldStart,
+                    lifecycle,
                 )
+        ) {
+            is HostedWorkspaceSourceStateAdmission.Admitted -> {
+                cached =
+                    CachedHostedWorkspaceSourceState(
+                        project,
+                        root,
+                        compatibilityCandidate,
+                        compatibilityPolicy,
+                        sourceRoots.toList(),
+                        admission,
+                    )
                 admission
             }
             is HostedWorkspaceSourceStateAdmission.Rejected -> admission
@@ -180,9 +172,9 @@ private data class CachedHostedWorkspaceSourceState(
 )
 
 /**
- * Verifies the already-open exact Project, installs a source-root-filtered VFS transition
- * listener, and resumes the last durable state in the bounded workspace lineage. Startup performs
- * neither repository enumeration nor source-content reads.
+ * Verifies the already-open exact Project, installs a source-root-filtered VFS transition listener, and resumes the
+ * last durable state in the bounded workspace lineage. Startup performs neither repository enumeration nor
+ * source-content reads.
  */
 fun admitHostedWorkspaceSourceState(
     project: Project,
@@ -194,40 +186,50 @@ fun admitHostedWorkspaceSourceState(
     coldStart: HostedWorkspaceColdStartIdentity,
     lifecycle: Disposable,
 ): HostedWorkspaceSourceStateAdmission {
-    when (val validation = ExistingProjectValidation.validate(
-        project,
-        root,
-        compatibilityCandidate,
-        compatibilityPolicy,
-    )) {
+    when (
+        val validation =
+            ExistingProjectValidation.validate(
+                project,
+                root,
+                compatibilityCandidate,
+                compatibilityPolicy,
+            )
+    ) {
         ExistingProjectValidation.Validated -> Unit
-        is ExistingProjectValidation.Rejected -> return rejected(
-            HostedWorkspaceSourceStateAdmissionFailure.ProjectRejected(
-                HostedProjectAdmissionFailure.ProjectRejected(validation.failure),
-            ),
-        )
+        is ExistingProjectValidation.Rejected ->
+            return rejected(
+                HostedWorkspaceSourceStateAdmissionFailure.ProjectRejected(
+                    HostedProjectAdmissionFailure.ProjectRejected(validation.failure)
+                )
+            )
     }
-    val basis = when (val admission = admitHostedWorkspaceSourceBasis(
-        root,
-        sourceRoots,
-        coldStart,
-    )) {
-        is HostedWorkspaceSourceBasisAdmission.Admitted -> admission.basis
-        is HostedWorkspaceSourceBasisAdmission.Rejected -> return rejected(admission.failure)
-    }
+    val basis =
+        when (
+            val admission =
+                admitHostedWorkspaceSourceBasis(
+                    root,
+                    sourceRoots,
+                    coldStart,
+                )
+        ) {
+            is HostedWorkspaceSourceBasisAdmission.Admitted -> admission.basis
+            is HostedWorkspaceSourceBasisAdmission.Rejected -> return rejected(admission.failure)
+        }
     val serialization = WorkspacePublicationSerialization()
     val eventCounter = HostedWorkspaceSourceEventCounter(serialization)
     val listener = HostedWorkspaceSourceVfsListener(basis.roots, eventCounter)
     val subscribed = runCatching {
         project.messageBus.connect(lifecycle).subscribe(VirtualFileManager.VFS_CHANGES, listener)
-    }.isSuccess
+    }
+        .isSuccess
     if (!subscribed) {
         return rejected(HostedWorkspaceSourceStateAdmissionFailure.SourceContentUnavailable)
     }
-    val publication = when (val resumed = resumptions.resume(basis.identity)) {
-        is HostedWorkspaceSourceResumption.Resumed -> resumed.publication
-        is HostedWorkspaceSourceResumption.Rejected -> return rejected(resumed.failure)
-    }
+    val publication =
+        when (val resumed = resumptions.resume(basis.identity)) {
+            is HostedWorkspaceSourceResumption.Resumed -> resumed.publication
+            is HostedWorkspaceSourceResumption.Rejected -> return rejected(resumed.failure)
+        }
     return HostedWorkspaceSourceStateAdmission.Admitted(
         publication,
         liveHostedWorkspaceSourceStateOperations(publication.sourceState, eventCounter),
@@ -236,11 +238,9 @@ fun admitHostedWorkspaceSourceState(
 }
 
 internal sealed interface HostedWorkspaceSourceBasisAdmission {
-    data class Admitted(val basis: HostedWorkspaceSourceBasis) :
-        HostedWorkspaceSourceBasisAdmission
+    data class Admitted(val basis: HostedWorkspaceSourceBasis) : HostedWorkspaceSourceBasisAdmission
 
-    data class Rejected(val failure: HostedWorkspaceSourceStateAdmissionFailure) :
-        HostedWorkspaceSourceBasisAdmission
+    data class Rejected(val failure: HostedWorkspaceSourceStateAdmissionFailure) : HostedWorkspaceSourceBasisAdmission
 }
 
 internal class HostedWorkspaceSourceBasis(
@@ -261,7 +261,8 @@ internal fun admitHostedWorkspaceSourceBasis(
     val physicalRoots = sourceRoots.map { sourceRoot ->
         workspaceRoot.resolve(sourceRoot.location.value).normalize()
     }
-    if (physicalRoots.any { physicalRoot ->
+    if (
+        physicalRoots.any { physicalRoot ->
             !physicalRoot.isAbsolute || !physicalRoot.startsWith(workspaceRoot)
         }
     ) {
@@ -269,14 +270,13 @@ internal fun admitHostedWorkspaceSourceBasis(
     }
     val orderedRoots = physicalRoots.sortedBy(Path::toString)
     if (orderedRoots.zipWithNext().any { (left, right) -> right.startsWith(left) }) {
-        return basisRejected(
-            HostedWorkspaceSourceStateAdmissionFailure.AmbiguousSourceRootOwner,
-        )
+        return basisRejected(HostedWorkspaceSourceStateAdmissionFailure.AmbiguousSourceRootOwner)
     }
-    val roots = when (val admission = HostedWorkspacePhysicalSourceRoots.admit(physicalRoots)) {
-        is Refinement.Refined -> admission.value
-        is Refinement.Rejected -> return basisRejected(admission.failure)
-    }
+    val roots =
+        when (val admission = HostedWorkspacePhysicalSourceRoots.admit(physicalRoots)) {
+            is Refinement.Refined -> admission.value
+            is Refinement.Rejected -> return basisRejected(admission.failure)
+        }
     val digest = MessageDigest.getInstance("SHA-256")
     digest.update("kast-hosted-source-basis-v3".toByteArray(StandardCharsets.UTF_8))
     digest.update(0)
@@ -284,47 +284,40 @@ internal fun admitHostedWorkspaceSourceBasis(
     digest.update(0)
     digest.update(coldStart.value.toByteArray(StandardCharsets.UTF_8))
     digest.update(0)
-    sourceRoots.sortedBy { it.location.value }.forEach { sourceRoot ->
-        digest.update(sourceRoot.owner.module.value.toByteArray(StandardCharsets.UTF_8))
-        digest.update(0)
-        digest.update(sourceRoot.owner.project.buildRoot.value.toByteArray(StandardCharsets.UTF_8))
-        digest.update(0)
-        digest.update(sourceRoot.owner.project.projectPath.value.toByteArray(StandardCharsets.UTF_8))
-        digest.update(0)
-        digest.update(sourceRoot.owner.sourceSet.value.toByteArray(StandardCharsets.UTF_8))
-        digest.update(0)
-        digest.update(sourceRoot.location.value.toByteArray(StandardCharsets.UTF_8))
-        digest.update(0)
-        digest.update(sourceRoot.provenance.basisToken().toByteArray(StandardCharsets.UTF_8))
-        digest.update(0)
-    }
-    return when (
-        val parsed = WorkspaceStateIdentity.parse(HexFormat.of().formatHex(digest.digest()))
-    ) {
-        is Refinement.Refined -> HostedWorkspaceSourceBasisAdmission.Admitted(
-            HostedWorkspaceSourceBasis(parsed.value, roots),
-        )
-        is Refinement.Rejected -> basisRejected(
-            HostedWorkspaceSourceStateAdmissionFailure.SourceStateRejected,
-        )
+    sourceRoots
+        .sortedBy { it.location.value }
+        .forEach { sourceRoot ->
+            digest.update(sourceRoot.owner.module.value.toByteArray(StandardCharsets.UTF_8))
+            digest.update(0)
+            digest.update(sourceRoot.owner.project.buildRoot.value.toByteArray(StandardCharsets.UTF_8))
+            digest.update(0)
+            digest.update(sourceRoot.owner.project.projectPath.value.toByteArray(StandardCharsets.UTF_8))
+            digest.update(0)
+            digest.update(sourceRoot.owner.sourceSet.value.toByteArray(StandardCharsets.UTF_8))
+            digest.update(0)
+            digest.update(sourceRoot.location.value.toByteArray(StandardCharsets.UTF_8))
+            digest.update(0)
+            digest.update(sourceRoot.provenance.basisToken().toByteArray(StandardCharsets.UTF_8))
+            digest.update(0)
+        }
+    return when (val parsed = WorkspaceStateIdentity.parse(HexFormat.of().formatHex(digest.digest()))) {
+        is Refinement.Refined ->
+            HostedWorkspaceSourceBasisAdmission.Admitted(HostedWorkspaceSourceBasis(parsed.value, roots))
+        is Refinement.Rejected -> basisRejected(HostedWorkspaceSourceStateAdmissionFailure.SourceStateRejected)
     }
 }
 
-internal class HostedWorkspacePhysicalSourceRoots private constructor(
-    private val paths: List<Path>,
-) {
+internal class HostedWorkspacePhysicalSourceRoots private constructor(private val paths: List<Path>) {
     fun contains(candidate: Path): Boolean = paths.any { sourceRoot ->
         candidate.startsWith(sourceRoot) || sourceRoot.startsWith(candidate)
     }
 
     companion object {
         fun admit(
-            paths: List<Path>,
+            paths: List<Path>
         ): Refinement<HostedWorkspacePhysicalSourceRoots, HostedWorkspaceSourceStateAdmissionFailure> =
             if (paths.size > MAX_SOURCE_ROOTS) {
-                Refinement.Rejected(
-                    HostedWorkspaceSourceStateAdmissionFailure.SourceRootUnavailable,
-                )
+                Refinement.Rejected(HostedWorkspaceSourceStateAdmissionFailure.SourceRootUnavailable)
             } else {
                 Refinement.Refined(HostedWorkspacePhysicalSourceRoots(paths.toList()))
             }
@@ -333,29 +326,28 @@ internal class HostedWorkspacePhysicalSourceRoots private constructor(
 
 internal sealed interface HostedWorkspaceSourceEventRevision {
     data class Current(val value: Long) : HostedWorkspaceSourceEventRevision
-    data class Rejected(val failure: HostedWorkspaceSourceStateAdmissionFailure) :
-        HostedWorkspaceSourceEventRevision
+
+    data class Rejected(val failure: HostedWorkspaceSourceStateAdmissionFailure) : HostedWorkspaceSourceEventRevision
 }
 
 internal class HostedWorkspaceSourceEventCounter(
-    private val serialization: WorkspacePublicationSerialization =
-        WorkspacePublicationSerialization(),
+    private val serialization: WorkspacePublicationSerialization = WorkspacePublicationSerialization()
 ) {
-    private val revision = AtomicReference<HostedWorkspaceSourceEventRevision>(
-        HostedWorkspaceSourceEventRevision.Current(0),
-    )
+    private val revision =
+        AtomicReference<HostedWorkspaceSourceEventRevision>(HostedWorkspaceSourceEventRevision.Current(0))
 
     fun advance() = serialization.serialized {
         while (true) when (val current = revision.get()) {
             is HostedWorkspaceSourceEventRevision.Rejected -> return@serialized
             is HostedWorkspaceSourceEventRevision.Current -> {
-                val next = if (current.value == Long.MAX_VALUE) {
-                    HostedWorkspaceSourceEventRevision.Rejected(
-                        HostedWorkspaceSourceStateAdmissionFailure.SourceStateRejected,
-                    )
-                } else {
-                    HostedWorkspaceSourceEventRevision.Current(current.value + 1)
-                }
+                val next =
+                    if (current.value == Long.MAX_VALUE) {
+                        HostedWorkspaceSourceEventRevision.Rejected(
+                            HostedWorkspaceSourceStateAdmissionFailure.SourceStateRejected
+                        )
+                    } else {
+                        HostedWorkspaceSourceEventRevision.Current(current.value + 1)
+                    }
                 if (revision.compareAndSet(current, next)) return@serialized
             }
         }
@@ -387,35 +379,39 @@ internal fun liveHostedWorkspaceSourceStateOperations(
     return object : HostedWorkspaceSourceStateOperations {
         override fun observe(): HostedWorkspaceSourceStateObservation {
             while (true) {
-                val revision = when (val sampled = events.sample()) {
-                    is HostedWorkspaceSourceEventRevision.Current -> sampled.value
-                    is HostedWorkspaceSourceEventRevision.Rejected ->
-                        return HostedWorkspaceSourceStateObservation.Rejected(sampled.failure)
-                }
+                val revision =
+                    when (val sampled = events.sample()) {
+                        is HostedWorkspaceSourceEventRevision.Current -> sampled.value
+                        is HostedWorkspaceSourceEventRevision.Rejected ->
+                            return HostedWorkspaceSourceStateObservation.Rejected(sampled.failure)
+                    }
                 val current = state.get()
                 if (revision == current.eventRevision) {
                     return HostedWorkspaceSourceStateObservation.Observed(current.sourceState)
                 }
                 if (revision < current.eventRevision) {
                     return HostedWorkspaceSourceStateObservation.Rejected(
-                        HostedWorkspaceSourceStateAdmissionFailure.SourceStateRejected,
+                        HostedWorkspaceSourceStateAdmissionFailure.SourceStateRejected
                     )
                 }
-                val next = when (
-                    val transitioned = transitionHostedWorkspaceSourceState(
-                        current.sourceState,
-                        revision,
-                    )
-                ) {
-                    is Refinement.Refined -> ObservedHostedWorkspaceSourceState(
-                        transitioned.value,
-                        revision,
-                    )
-                    is Refinement.Rejected ->
-                        return HostedWorkspaceSourceStateObservation.Rejected(
-                            HostedWorkspaceSourceStateAdmissionFailure.SourceStateRejected,
-                        )
-                }
+                val next =
+                    when (
+                        val transitioned =
+                            transitionHostedWorkspaceSourceState(
+                                current.sourceState,
+                                revision,
+                            )
+                    ) {
+                        is Refinement.Refined ->
+                            ObservedHostedWorkspaceSourceState(
+                                transitioned.value,
+                                revision,
+                            )
+                        is Refinement.Rejected ->
+                            return HostedWorkspaceSourceStateObservation.Rejected(
+                                HostedWorkspaceSourceStateAdmissionFailure.SourceStateRejected
+                            )
+                    }
                 if (state.compareAndSet(current, next)) {
                     return HostedWorkspaceSourceStateObservation.Observed(next.sourceState)
                 }
@@ -429,8 +425,7 @@ internal fun liveHostedWorkspaceSourceStateOperations(
             }
             events.advance()
             return when (val advanced = events.sample()) {
-                is HostedWorkspaceSourceEventRevision.Current ->
-                    HostedWorkspaceSourceInvalidation.Invalidated
+                is HostedWorkspaceSourceEventRevision.Current -> HostedWorkspaceSourceInvalidation.Invalidated
                 is HostedWorkspaceSourceEventRevision.Rejected ->
                     HostedWorkspaceSourceInvalidation.Rejected(advanced.failure)
             }
@@ -451,14 +446,16 @@ private fun transitionHostedWorkspaceSourceState(
     return WorkspaceStateIdentity.parse(HexFormat.of().formatHex(digest.digest()))
 }
 
-private fun SourceRootProvenance.basisToken(): String = when (this) {
-    SourceRootProvenance.Authored -> "authored"
-    SourceRootProvenance.Generated -> "generated"
-    is SourceRootProvenance.Unknown -> when (reason) {
-        io.github.amichne.kast.workspace.contract.ProvenanceFailure.ExcludedFromSourceModel ->
-            "unknown:excluded-from-source-model"
+private fun SourceRootProvenance.basisToken(): String =
+    when (this) {
+        SourceRootProvenance.Authored -> "authored"
+        SourceRootProvenance.Generated -> "generated"
+        is SourceRootProvenance.Unknown ->
+            when (reason) {
+                io.github.amichne.kast.workspace.contract.ProvenanceFailure.ExcludedFromSourceModel ->
+                    "unknown:excluded-from-source-model"
+            }
     }
-}
 
 private class HostedWorkspaceSourceVfsListener(
     private val roots: HostedWorkspacePhysicalSourceRoots,
@@ -471,22 +468,24 @@ private class HostedWorkspaceSourceVfsListener(
         }
         var touchesSource = false
         for (event in events) {
-            val paths = when (event) {
-                is VFileMoveEvent -> listOf(event.oldPath, event.newPath)
-                is VFilePropertyChangeEvent -> if (event.isRename) {
-                    listOf(event.oldPath, event.newPath)
-                } else {
-                    listOf(event.path)
+            val paths =
+                when (event) {
+                    is VFileMoveEvent -> listOf(event.oldPath, event.newPath)
+                    is VFilePropertyChangeEvent ->
+                        if (event.isRename) {
+                            listOf(event.oldPath, event.newPath)
+                        } else {
+                            listOf(event.path)
+                        }
+                    else -> listOf(event.path)
                 }
-                else -> listOf(event.path)
-            }
             for (raw in paths) {
-                val path = admitVfsEventPath(raw) ?: run {
-                    counter.reject(
-                        HostedWorkspaceSourceStateAdmissionFailure.SourceStateRejected,
-                    )
-                    return
-                }
+                val path =
+                    admitVfsEventPath(raw)
+                        ?: run {
+                            counter.reject(HostedWorkspaceSourceStateAdmissionFailure.SourceStateRejected)
+                            return
+                        }
                 if (roots.contains(path)) touchesSource = true
             }
         }
@@ -497,28 +496,27 @@ private class HostedWorkspaceSourceVfsListener(
 private fun admitVfsEventPath(raw: String): Path? {
     if (
         raw.isEmpty() ||
-        raw.length > MAX_VFS_PATH_CHARACTERS ||
-        raw.toByteArray(StandardCharsets.UTF_8).size > MAX_VFS_PATH_UTF8_BYTES
+            raw.length > MAX_VFS_PATH_CHARACTERS ||
+            raw.toByteArray(StandardCharsets.UTF_8).size > MAX_VFS_PATH_UTF8_BYTES
     ) {
         return null
     }
-    val path = try {
-        Path.of(raw)
-    } catch (_: InvalidPathException) {
-        return null
-    }
+    val path =
+        try {
+            Path.of(raw)
+        } catch (_: InvalidPathException) {
+            return null
+        }
     return path.takeIf { it.isAbsolute && it.normalize() == it }
 }
 
 private fun rejected(
-    failure: HostedWorkspaceSourceStateAdmissionFailure,
-): HostedWorkspaceSourceStateAdmission.Rejected =
-    HostedWorkspaceSourceStateAdmission.Rejected(failure)
+    failure: HostedWorkspaceSourceStateAdmissionFailure
+): HostedWorkspaceSourceStateAdmission.Rejected = HostedWorkspaceSourceStateAdmission.Rejected(failure)
 
 private fun basisRejected(
-    failure: HostedWorkspaceSourceStateAdmissionFailure,
-): HostedWorkspaceSourceBasisAdmission.Rejected =
-    HostedWorkspaceSourceBasisAdmission.Rejected(failure)
+    failure: HostedWorkspaceSourceStateAdmissionFailure
+): HostedWorkspaceSourceBasisAdmission.Rejected = HostedWorkspaceSourceBasisAdmission.Rejected(failure)
 
 private const val MAX_SOURCE_ROOTS = 4_096
 private const val MAX_VFS_EVENTS_PER_BATCH = 4_096

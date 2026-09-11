@@ -12,27 +12,17 @@ internal data class IntellijAddFileInput(
 internal sealed interface IntellijAddFilePhysicalState {
     data object Absent : IntellijAddFilePhysicalState
 
-    data class Present(
-        val text: String,
-    ) : IntellijAddFilePhysicalState
+    data class Present(val text: String) : IntellijAddFilePhysicalState
 
-    data class Rejected(
-        val failure: SourceWriteFailure,
-    ) : IntellijAddFilePhysicalState
+    data class Rejected(val failure: SourceWriteFailure) : IntellijAddFilePhysicalState
 }
 
-internal class IntellijStagedAddFile internal constructor(
-    val postimageText: String,
-)
+internal class IntellijStagedAddFile internal constructor(val postimageText: String)
 
 internal sealed interface IntellijAddFileStageResult {
-    data class Staged(
-        val file: IntellijStagedAddFile,
-    ) : IntellijAddFileStageResult
+    data class Staged(val file: IntellijStagedAddFile) : IntellijAddFileStageResult
 
-    data class Rejected(
-        val failure: SourceWriteFailure,
-    ) : IntellijAddFileStageResult
+    data class Rejected(val failure: SourceWriteFailure) : IntellijAddFileStageResult
 }
 
 internal interface IntellijAddFileStagingSession {
@@ -50,13 +40,12 @@ internal interface IntellijAddFileStagingSession {
 /** Stages one absent-file postimage in memory before the applied-write durability barrier. */
 internal class IntellijAddFileWriteProtocol {
     /**
-     * Proof transition: `(IntellijAddFileInput, MutationDurabilityBarrier,
-     * IntellijAddFileStagingSession) -> IntellijWriteProtocolResult`.
+     * Proof transition: `(IntellijAddFileInput, MutationDurabilityBarrier, IntellijAddFileStagingSession) ->
+     * IntellijWriteProtocolResult`.
      *
-     * Applied establishes that an absent exact target was staged without a physical write, made
-     * recovery-durable, saved once, and observed with its exact postimage. Expected platform and
-     * durability failure is closed by [IntellijWriteProtocolResult]. Live IntelliJ values remain
-     * inside the supplied request-local session.
+     * Applied establishes that an absent exact target was staged without a physical write, made recovery-durable, saved
+     * once, and observed with its exact postimage. Expected platform and durability failure is closed by
+     * [IntellijWriteProtocolResult]. Live IntelliJ values remain inside the supplied request-local session.
      */
     fun execute(
         input: IntellijAddFileInput,
@@ -65,36 +54,38 @@ internal class IntellijAddFileWriteProtocol {
     ): IntellijWriteProtocolResult {
         when (val state = session.physicalState()) {
             IntellijAddFilePhysicalState.Absent -> Unit
-            is IntellijAddFilePhysicalState.Present -> return IntellijWriteProtocolResult
-                .RejectedBeforeMutation(SourceWriteFailure.PREIMAGE_CHANGED)
-            is IntellijAddFilePhysicalState.Rejected -> return IntellijWriteProtocolResult
-                .RejectedBeforeMutation(state.failure)
+            is IntellijAddFilePhysicalState.Present ->
+                return IntellijWriteProtocolResult.RejectedBeforeMutation(SourceWriteFailure.PREIMAGE_CHANGED)
+            is IntellijAddFilePhysicalState.Rejected ->
+                return IntellijWriteProtocolResult.RejectedBeforeMutation(state.failure)
         }
-        val staged = when (val result = session.stage(input.postimageText)) {
-            is IntellijAddFileStageResult.Staged -> result.file
-            is IntellijAddFileStageResult.Rejected -> return IntellijWriteProtocolResult
-                .RejectedBeforeMutation(result.failure)
-        }
+        val staged =
+            when (val result = session.stage(input.postimageText)) {
+                is IntellijAddFileStageResult.Staged -> result.file
+                is IntellijAddFileStageResult.Rejected ->
+                    return IntellijWriteProtocolResult.RejectedBeforeMutation(result.failure)
+            }
         when (val durable = durability.recordApplied()) {
             MutationDurabilityResult.Durable -> Unit
-            is MutationDurabilityResult.Rejected -> return rejectAfterClear(
-                session,
-                staged,
-                SourceWriteFailure.DURABILITY_REJECTED,
-            )
+            is MutationDurabilityResult.Rejected ->
+                return rejectAfterClear(
+                    session,
+                    staged,
+                    SourceWriteFailure.DURABILITY_REJECTED,
+                )
         }
         when (val saved = session.save(staged)) {
             IntellijSessionStepResult.Completed -> Unit
-            is IntellijSessionStepResult.Rejected -> return IntellijWriteProtocolResult
-                .RecoveryRequired(saved.failure)
+            is IntellijSessionStepResult.Rejected -> return IntellijWriteProtocolResult.RecoveryRequired(saved.failure)
         }
         return when (val observed = session.observe()) {
-            is IntellijPhysicalSourceObservation.Observed -> IntellijWriteProtocolResult.Applied(
-                observed.bytes,
-                observed.changedPaths,
-            )
-            is IntellijPhysicalSourceObservation.Rejected -> IntellijWriteProtocolResult
-                .RecoveryRequired(observed.failure)
+            is IntellijPhysicalSourceObservation.Observed ->
+                IntellijWriteProtocolResult.Applied(
+                    observed.bytes,
+                    observed.changedPaths,
+                )
+            is IntellijPhysicalSourceObservation.Rejected ->
+                IntellijWriteProtocolResult.RecoveryRequired(observed.failure)
         }
     }
 
@@ -102,10 +93,10 @@ internal class IntellijAddFileWriteProtocol {
         session: IntellijAddFileStagingSession,
         staged: IntellijStagedAddFile,
         failure: SourceWriteFailure,
-    ): IntellijWriteProtocolResult = when (session.clearStage(staged)) {
-        IntellijSessionStepResult.Completed ->
-            IntellijWriteProtocolResult.RejectedAfterRollback(failure)
-        is IntellijSessionStepResult.Rejected ->
-            IntellijWriteProtocolResult.RecoveryRequired(SourceWriteFailure.ROLLBACK_FAILED)
-    }
+    ): IntellijWriteProtocolResult =
+        when (session.clearStage(staged)) {
+            IntellijSessionStepResult.Completed -> IntellijWriteProtocolResult.RejectedAfterRollback(failure)
+            is IntellijSessionStepResult.Rejected ->
+                IntellijWriteProtocolResult.RecoveryRequired(SourceWriteFailure.ROLLBACK_FAILED)
+        }
 }

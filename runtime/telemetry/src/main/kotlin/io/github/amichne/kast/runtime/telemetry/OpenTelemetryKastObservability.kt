@@ -1,7 +1,7 @@
 package io.github.amichne.kast.runtime.telemetry
 
-import io.github.amichne.kast.kernel.KastObservability
 import io.github.amichne.kast.kernel.KastChangeVerificationOutcome
+import io.github.amichne.kast.kernel.KastObservability
 import io.github.amichne.kast.kernel.KastSpanCompletion
 import io.github.amichne.kast.kernel.KastSpanEvent
 import io.github.amichne.kast.kernel.KastSpanMeasurement
@@ -19,9 +19,7 @@ import io.opentelemetry.context.Context
 import java.util.concurrent.CancellationException
 
 /** OpenTelemetry adapter over the host-neutral Kast trace contract. */
-class OpenTelemetryKastObservability private constructor(
-    private val tracer: Tracer,
-) : KastObservability {
+class OpenTelemetryKastObservability private constructor(private val tracer: Tracer) : KastObservability {
     override fun observeChangeVerification(outcome: KastChangeVerificationOutcome) {
         val span = tracer.spanBuilder("kast.change.verification").startSpan()
         span.setAttribute("kast.change.verification.outcome", outcome.name.lowercase())
@@ -38,7 +36,8 @@ class OpenTelemetryKastObservability private constructor(
     override fun observeWorkspaceRefresh(outcome: io.github.amichne.kast.kernel.KastWorkspaceRefreshOutcome) {
         val span = tracer.spanBuilder("kast.workspace.refresh").startSpan()
         span.setAttribute("kast.workspace.refresh.outcome", outcome.name.lowercase())
-        if (outcome != io.github.amichne.kast.kernel.KastWorkspaceRefreshOutcome.COMPLETED) span.setStatus(StatusCode.ERROR)
+        if (outcome != io.github.amichne.kast.kernel.KastWorkspaceRefreshOutcome.COMPLETED)
+            span.setStatus(StatusCode.ERROR)
         span.end()
     }
 
@@ -52,9 +51,7 @@ class OpenTelemetryKastObservability private constructor(
         parent: Context,
         operation: suspend (KastTraceSpan) -> Value,
     ): Value {
-        val span = tracer.spanBuilder(name.wireName)
-            .setParent(parent)
-            .startSpan()
+        val span = tracer.spanBuilder(name.wireName).setParent(parent).startSpan()
         val context = parent.with(span)
         val scope = OpenTelemetryKastSpan(this, span, context)
         return try {
@@ -108,20 +105,18 @@ class OpenTelemetryKastObservability private constructor(
             }
             observation.measurements.forEach { measurement ->
                 when (measurement) {
-                    is KastSpanMeasurement.FileCount ->
-                        span.setAttribute(FILE_COUNT, measurement.count.value)
-                    is KastSpanMeasurement.RecordCount ->
-                        span.setAttribute(RECORD_COUNT, measurement.count.value)
-                    is KastSpanMeasurement.WorkUnitCount ->
-                        span.setAttribute(WORK_UNIT_COUNT, measurement.count.value)
+                    is KastSpanMeasurement.FileCount -> span.setAttribute(FILE_COUNT, measurement.count.value)
+                    is KastSpanMeasurement.RecordCount -> span.setAttribute(RECORD_COUNT, measurement.count.value)
+                    is KastSpanMeasurement.WorkUnitCount -> span.setAttribute(WORK_UNIT_COUNT, measurement.count.value)
                 }
             }
             observation.events.forEach { event ->
                 when (event) {
-                    is KastSpanEvent.TopologyIdentityMismatch -> span.addEvent(
-                        TOPOLOGY_IDENTITY_MISMATCH_EVENT,
-                        event.attributes(),
-                    )
+                    is KastSpanEvent.TopologyIdentityMismatch ->
+                        span.addEvent(
+                            TOPOLOGY_IDENTITY_MISMATCH_EVENT,
+                            event.attributes(),
+                        )
                 }
             }
         }
@@ -155,22 +150,15 @@ private val RECORD_COUNT = AttributeKey.longKey("io.github.amichne.kast.record.c
 private val WORK_UNIT_COUNT = AttributeKey.longKey("io.github.amichne.kast.work.unit.count")
 
 private const val TOPOLOGY_IDENTITY_MISMATCH_EVENT = "kast.topology.identity.mismatch"
-private val TOPOLOGY_IDENTITY_STAGE =
-    AttributeKey.stringKey("io.github.amichne.kast.topology.identity.stage")
-private val TOPOLOGY_CACHE_DISPOSITION =
-    AttributeKey.stringKey("io.github.amichne.kast.topology.cache.disposition")
+private val TOPOLOGY_IDENTITY_STAGE = AttributeKey.stringKey("io.github.amichne.kast.topology.identity.stage")
+private val TOPOLOGY_CACHE_DISPOSITION = AttributeKey.stringKey("io.github.amichne.kast.topology.cache.disposition")
 private val SOURCE_FILE = AttributeKey.stringKey("io.github.amichne.kast.source.file")
-private val SOURCE_OCCURRENCE_START =
-    AttributeKey.longKey("io.github.amichne.kast.source.occurrence.start")
-private val SOURCE_OCCURRENCE_END =
-    AttributeKey.longKey("io.github.amichne.kast.source.occurrence.end")
+private val SOURCE_OCCURRENCE_START = AttributeKey.longKey("io.github.amichne.kast.source.occurrence.start")
+private val SOURCE_OCCURRENCE_END = AttributeKey.longKey("io.github.amichne.kast.source.occurrence.end")
 private val TARGET_FILE = AttributeKey.stringKey("io.github.amichne.kast.target.file")
-private val TARGET_DECLARATION_START =
-    AttributeKey.longKey("io.github.amichne.kast.target.declaration.start")
-private val TARGET_DECLARATION_END =
-    AttributeKey.longKey("io.github.amichne.kast.target.declaration.end")
-private val BINDING_FAILURE_REASON =
-    AttributeKey.stringKey("io.github.amichne.kast.topology.binding.reason")
+private val TARGET_DECLARATION_START = AttributeKey.longKey("io.github.amichne.kast.target.declaration.start")
+private val TARGET_DECLARATION_END = AttributeKey.longKey("io.github.amichne.kast.target.declaration.end")
+private val BINDING_FAILURE_REASON = AttributeKey.stringKey("io.github.amichne.kast.topology.binding.reason")
 
 /** Stable attributes for unexpected exceptions, without messages or stack traces. */
 private val ERROR_TYPE = AttributeKey.stringKey("error.type")

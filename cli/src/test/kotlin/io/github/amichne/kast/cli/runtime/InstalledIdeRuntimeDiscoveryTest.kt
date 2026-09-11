@@ -1,27 +1,27 @@
 package io.github.amichne.kast.cli
 
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermission
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
 
 class InstalledIdeRuntimeDiscoveryTest {
     @Test
-    fun `explicit home refines exact IDEA Kotlin JBR and platform evidence`(
-        @TempDir temporary: Path,
-    ) {
+    fun `explicit home refines exact IDEA Kotlin JBR and platform evidence`(@TempDir temporary: Path) {
         val home = ideaHome(temporary.resolve("idea"))
 
-        val discovered = InstalledIdeRuntimeDiscovery.discover(
-            support = supportedPair(),
-            kastPayloadDigest = digest('a'),
-            selection = IdeHomeSelection.Explicit(home),
-        ).discovered()
+        val discovered =
+            InstalledIdeRuntimeDiscovery.discover(
+                    support = supportedPair(),
+                    kastPayloadDigest = digest('a'),
+                    selection = IdeHomeSelection.Explicit(home),
+                )
+                .discovered()
 
         assertEquals(home.toRealPath(), discovered.home)
         assertEquals(
@@ -33,20 +33,21 @@ class InstalledIdeRuntimeDiscoveryTest {
     }
 
     @Test
-    fun `compatible patch builds retain their exact installed runtime identity`(
-        @TempDir temporary: Path,
-    ) {
-        val home = ideaHome(
-            temporary.resolve("patched-idea"),
-            ideaBuild = "262.9999.41",
-            kotlinBuild = "262.8888.17-IJ",
-        )
+    fun `compatible patch builds retain their exact installed runtime identity`(@TempDir temporary: Path) {
+        val home =
+            ideaHome(
+                temporary.resolve("patched-idea"),
+                ideaBuild = "262.9999.41",
+                kotlinBuild = "262.8888.17-IJ",
+            )
 
-        val discovered = InstalledIdeRuntimeDiscovery.discover(
-            support = supportedPair(),
-            kastPayloadDigest = digest('b'),
-            selection = IdeHomeSelection.Explicit(home),
-        ).discovered()
+        val discovered =
+            InstalledIdeRuntimeDiscovery.discover(
+                    support = supportedPair(),
+                    kastPayloadDigest = digest('b'),
+                    selection = IdeHomeSelection.Explicit(home),
+                )
+                .discovered()
 
         assertEquals("262.9999.41", discovered.identity.supportedPair.ideaBuild)
         assertEquals(
@@ -58,16 +59,15 @@ class InstalledIdeRuntimeDiscoveryTest {
     }
 
     @Test
-    fun `automatic discovery fails closed for missing and ambiguous matches`(
-        @TempDir temporary: Path,
-    ) {
+    fun `automatic discovery fails closed for missing and ambiguous matches`(@TempDir temporary: Path) {
         assertEquals(
             IndexSeedFailure.MissingInstallation,
             InstalledIdeRuntimeDiscovery.discover(
-                supportedPair(),
-                digest('a'),
-                IdeHomeSelection.Standard(emptyList()),
-            ).rejected(),
+                    supportedPair(),
+                    digest('a'),
+                    IdeHomeSelection.Standard(emptyList()),
+                )
+                .rejected(),
         )
 
         val first = ideaHome(temporary.resolve("first"))
@@ -75,23 +75,24 @@ class InstalledIdeRuntimeDiscoveryTest {
         assertEquals(
             IndexSeedFailure.Ambiguity,
             InstalledIdeRuntimeDiscovery.discover(
-                supportedPair(),
-                digest('a'),
-                IdeHomeSelection.Standard(listOf(first, second)),
-            ).rejected(),
+                    supportedPair(),
+                    digest('a'),
+                    IdeHomeSelection.Standard(listOf(first, second)),
+                )
+                .rejected(),
         )
     }
 
     @Test
-    fun `incompatible build and incomplete layout retain finite rejection`(
-        @TempDir temporary: Path,
-    ) {
+    fun `incompatible build and incomplete layout retain finite rejection`(@TempDir temporary: Path) {
         val incompatible = ideaHome(temporary.resolve("incompatible"), ideaBuild = "261.1")
-        val incompatibleFailure = InstalledIdeRuntimeDiscovery.discover(
-            supportedPair(),
-            digest('a'),
-            IdeHomeSelection.Explicit(incompatible),
-        ).rejected()
+        val incompatibleFailure =
+            InstalledIdeRuntimeDiscovery.discover(
+                    supportedPair(),
+                    digest('a'),
+                    IdeHomeSelection.Explicit(incompatible),
+                )
+                .rejected()
         assertTrue(incompatibleFailure is IndexSeedFailure.Incompatibility)
 
         val incomplete = ideaHome(temporary.resolve("incomplete"))
@@ -99,10 +100,11 @@ class InstalledIdeRuntimeDiscoveryTest {
         assertEquals(
             IndexSeedFailure.ValidationFailure,
             InstalledIdeRuntimeDiscovery.discover(
-                supportedPair(),
-                digest('a'),
-                IdeHomeSelection.Explicit(incomplete),
-            ).rejected(),
+                    supportedPair(),
+                    digest('a'),
+                    IdeHomeSelection.Explicit(incomplete),
+                )
+                .rejected(),
         )
 
         val incompleteGradle = ideaHome(temporary.resolve("incomplete-gradle"))
@@ -111,10 +113,11 @@ class InstalledIdeRuntimeDiscoveryTest {
         assertEquals(
             IndexSeedFailure.ValidationFailure,
             InstalledIdeRuntimeDiscovery.discover(
-                supportedPair(),
-                digest('a'),
-                IdeHomeSelection.Explicit(incompleteGradle),
-            ).rejected(),
+                    supportedPair(),
+                    digest('a'),
+                    IdeHomeSelection.Explicit(incompleteGradle),
+                )
+                .rejected(),
         )
     }
 
@@ -169,10 +172,12 @@ class InstalledIdeRuntimeDiscoveryTest {
         }
     }
 
-    private fun supportedPair(): SupportedIdeRuntimePair = SupportedIdeRuntimePair.admit(
-        "262.9437.185",
-        "262.9437.185-IJ",
-    ).let { (it as SupportedIdeRuntimePairAdmission.Admitted).pair }
+    private fun supportedPair(): SupportedIdeRuntimePair =
+        SupportedIdeRuntimePair.admit(
+                "262.9437.185",
+                "262.9437.185-IJ",
+            )
+            .let { (it as SupportedIdeRuntimePairAdmission.Admitted).pair }
 
     private fun digest(character: Char): String = "sha256:${character.toString().repeat(64)}"
 }

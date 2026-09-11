@@ -1,9 +1,7 @@
 package io.github.amichne.kast.kernel
 
 /** Stable, bounded span identities for the first instrumented orchestration surfaces. */
-enum class KastSpanName(
-    val wireName: String,
-) {
+enum class KastSpanName(val wireName: String) {
     RELATION_READ("kast.relation.read"),
     SYMBOL_DISCOVERY("kast.symbol.discovery"),
     TOPOLOGY_BUILD("kast.topology.build"),
@@ -19,6 +17,7 @@ enum class KastSpanName(
     TRAVERSAL_SNAPSHOT_OPEN("kast.traversal.snapshot.open"),
     TRAVERSAL_EXPANSION("kast.traversal.expansion"),
 }
+
 /** Low-cardinality terminal failure families; request values can never enter this type. */
 enum class KastSpanFailure {
     RELATION_WORKSPACE_NOT_READY,
@@ -44,14 +43,12 @@ enum class KastSpanFailure {
 }
 
 enum class KastSpanCountFailure {
-    NEGATIVE,
+    NEGATIVE
 }
 
 /** A trace count proven non-negative before it may become an attribute. */
 @JvmInline
-value class KastSpanCount private constructor(
-    val value: Long,
-) {
+value class KastSpanCount private constructor(val value: Long) {
     companion object {
         fun parse(raw: Long): Refinement<KastSpanCount, KastSpanCountFailure> =
             if (raw < 0L) {
@@ -65,7 +62,9 @@ value class KastSpanCount private constructor(
 /** Bounded measurements intentionally retained on spans, never as metric dimensions. */
 sealed interface KastSpanMeasurement {
     data class FileCount(val count: KastSpanCount) : KastSpanMeasurement
+
     data class RecordCount(val count: KastSpanCount) : KastSpanMeasurement
+
     data class WorkUnitCount(val count: KastSpanCount) : KastSpanMeasurement
 }
 
@@ -83,8 +82,12 @@ enum class KastTopologyCacheDisposition {
 
 /** Closed native declaration-binding failures, with no compiler renderings. */
 enum class KastTopologyBindingFailure {
-    EPOCH_CHANGED, DECLARATION_UNAVAILABLE, ORIGIN_NOT_ADMITTED,
-    ROLE_MISMATCH, MODULE_MISMATCH, DECLARATION_MISMATCH,
+    EPOCH_CHANGED,
+    DECLARATION_UNAVAILABLE,
+    ORIGIN_NOT_ADMITTED,
+    ROLE_MISMATCH,
+    MODULE_MISMATCH,
+    DECLARATION_MISMATCH,
 }
 
 /** Detached non-empty source range carried only by a topology diagnostic event. */
@@ -119,7 +122,9 @@ sealed interface KastSpanEvent {
 /** Expected terminal classification. Rejection remains ordinary span data, not an exception. */
 sealed interface KastSpanCompletion {
     data object Complete : KastSpanCompletion
+
     data object Qualified : KastSpanCompletion
+
     data class Rejected(val failure: KastSpanFailure) : KastSpanCompletion
 }
 
@@ -141,19 +146,37 @@ interface KastTraceSpan {
 }
 
 /** Host-neutral trace boundary. OpenTelemetry types are confined to the runtime adapter. */
-enum class KastWorkspaceRefreshOutcome { COMPLETED, REJECTED, INTERRUPTED }
+enum class KastWorkspaceRefreshOutcome {
+    COMPLETED,
+    REJECTED,
+    INTERRUPTED,
+}
 
 /** Finite readiness evidence only; names never contain workspace paths or source content. */
 enum class KastWorkspaceReadinessOutcome {
-    REUSED, PUBLISHED, REFRESHED_UNCHANGED, REJECTED,
-    MODEL_INPUTS_CHANGED, MODEL_INPUTS_UNAVAILABLE,
-    WORKSPACE_NOT_READY, WORKSPACE_ABSENT, WORKSPACE_STARTING, WORKSPACE_STOPPING, REFRESH_BASIS_UNAVAILABLE,
+    REUSED,
+    PUBLISHED,
+    REFRESHED_UNCHANGED,
+    REJECTED,
+    MODEL_INPUTS_CHANGED,
+    MODEL_INPUTS_UNAVAILABLE,
+    WORKSPACE_NOT_READY,
+    WORKSPACE_ABSENT,
+    WORKSPACE_STARTING,
+    WORKSPACE_STOPPING,
+    REFRESH_BASIS_UNAVAILABLE,
     SOURCE_OBSERVATION_UNAVAILABLE,
-    REFRESH_INVALID_SOURCE_ROOT_SCOPE, REFRESH_UNAVAILABLE,
-    INDEXING_INTERRUPTED, INDEXING_TIMED_OUT, INDEXING_FAILED,
-    PUBLICATION_INVALIDATED, PUBLICATION_CONTRACT_VIOLATION,
-    CANDIDATE_CAPTURE_UNAVAILABLE, RECONCILIATION_UNAVAILABLE,
-    INCOMPLETE_EVIDENCE, PUBLICATION_UNAVAILABLE,
+    REFRESH_INVALID_SOURCE_ROOT_SCOPE,
+    REFRESH_UNAVAILABLE,
+    INDEXING_INTERRUPTED,
+    INDEXING_TIMED_OUT,
+    INDEXING_FAILED,
+    PUBLICATION_INVALIDATED,
+    PUBLICATION_CONTRACT_VIOLATION,
+    CANDIDATE_CAPTURE_UNAVAILABLE,
+    RECONCILIATION_UNAVAILABLE,
+    INCOMPLETE_EVIDENCE,
+    PUBLICATION_UNAVAILABLE,
 }
 
 /** Terminal mutation verification stages, without source, selector, or plan payloads. */
@@ -174,7 +197,9 @@ enum class KastChangeVerificationOutcome {
 
 interface KastObservability {
     fun observeWorkspaceReadiness(outcome: KastWorkspaceReadinessOutcome) {}
+
     fun observeWorkspaceRefresh(outcome: KastWorkspaceRefreshOutcome) {}
+
     fun observeChangeVerification(outcome: KastChangeVerificationOutcome) {}
 
     suspend fun <Value> inSpan(

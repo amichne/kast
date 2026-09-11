@@ -11,10 +11,15 @@ import java.util.Properties
 private val SIDECAR_PAYLOAD_DIGEST = Regex("sha256:[0-9a-f]{64}")
 private const val SIDECAR_SEED_RECEIPT = "seed-receipt.properties"
 
-enum class SidecarPayloadFailure { EXECUTABLE_INVALID, PLUGINS_INVALID, DIGEST_INVALID }
+enum class SidecarPayloadFailure {
+    EXECUTABLE_INVALID,
+    PLUGINS_INVALID,
+    DIGEST_INVALID,
+}
 
 /** Exact small launcher/private-plugin payload; no IntelliJ distribution is represented here. */
-class SidecarPayload private constructor(
+class SidecarPayload
+private constructor(
     val runtimeId: SemanticRuntimeId,
     val executable: IndexerExecutable,
     val privatePluginsDirectory: Path,
@@ -27,31 +32,32 @@ class SidecarPayload private constructor(
             privatePluginsDirectory: Path,
             digest: String,
         ): SidecarPayloadAdmission {
-            val admittedExecutable = when (val admission = IndexerExecutable.admit(executable)) {
-                is Refinement.Refined -> admission.value
-                is Refinement.Rejected -> return SidecarPayloadAdmission.Rejected(
-                    SidecarPayloadFailure.EXECUTABLE_INVALID,
-                )
-            }
-            val plugins = canonicalDirectory(privatePluginsDirectory)
-                ?: return SidecarPayloadAdmission.Rejected(SidecarPayloadFailure.PLUGINS_INVALID)
+            val admittedExecutable =
+                when (val admission = IndexerExecutable.admit(executable)) {
+                    is Refinement.Refined -> admission.value
+                    is Refinement.Rejected ->
+                        return SidecarPayloadAdmission.Rejected(SidecarPayloadFailure.EXECUTABLE_INVALID)
+                }
+            val plugins =
+                canonicalDirectory(privatePluginsDirectory)
+                    ?: return SidecarPayloadAdmission.Rejected(SidecarPayloadFailure.PLUGINS_INVALID)
             if (!SIDECAR_PAYLOAD_DIGEST.matches(digest)) {
                 return SidecarPayloadAdmission.Rejected(SidecarPayloadFailure.DIGEST_INVALID)
             }
-            return SidecarPayloadAdmission.Admitted(
-                SidecarPayload(runtimeId, admittedExecutable, plugins, digest),
-            )
+            return SidecarPayloadAdmission.Admitted(SidecarPayload(runtimeId, admittedExecutable, plugins, digest))
         }
     }
 }
 
 sealed interface SidecarPayloadAdmission {
     data class Admitted(val payload: SidecarPayload) : SidecarPayloadAdmission
+
     data class Rejected(val failure: SidecarPayloadFailure) : SidecarPayloadAdmission
 }
 
 sealed interface SidecarPayloadResolution {
     data class Resolved(val payload: SidecarPayload) : SidecarPayloadResolution
+
     data class Rejected(val failure: RuntimeAdmissionFailure) : SidecarPayloadResolution
 }
 
@@ -77,13 +83,17 @@ enum class KastCacheState(val wireName: String) {
 
 sealed interface SidecarCacheFailure {
     data object FilesystemRejected : SidecarCacheFailure
+
     data object RebuildRequired : SidecarCacheFailure
+
     data class SeedRejected(val failure: IndexSeedFailure) : SidecarCacheFailure
+
     data class ObservationRejected(val failure: SidecarCacheLifecycleFailure) : SidecarCacheFailure
 }
 
 /** Private cache layout admitted for one exact cache identity. */
-class PreparedSidecarCache private constructor(
+class PreparedSidecarCache
+private constructor(
     val identity: KastCacheIdentity,
     val root: Path,
     val systemDirectory: Path,
@@ -100,23 +110,22 @@ class PreparedSidecarCache private constructor(
             logDirectory: Path,
             state: KastCacheState,
         ): SidecarCachePreparation {
-            val canonicalRoot = canonicalDirectory(root)
-                ?: return SidecarCachePreparation.Rejected(
-                    SidecarCacheFailure.FilesystemRejected,
-                )
+            val canonicalRoot =
+                canonicalDirectory(root)
+                    ?: return SidecarCachePreparation.Rejected(SidecarCacheFailure.FilesystemRejected)
             if (canonicalRoot.fileName.toString() != identity.key) {
                 return SidecarCachePreparation.Rejected(SidecarCacheFailure.FilesystemRejected)
             }
-            val paths = listOf(systemDirectory, configDirectory, logDirectory).map { path ->
-                canonicalDirectory(path)
-                    ?: return SidecarCachePreparation.Rejected(
-                        SidecarCacheFailure.FilesystemRejected,
-                    )
-            }
+            val paths =
+                listOf(systemDirectory, configDirectory, logDirectory).map { path ->
+                    canonicalDirectory(path)
+                        ?: return SidecarCachePreparation.Rejected(SidecarCacheFailure.FilesystemRejected)
+                }
             if (paths.distinct().size != paths.size || paths.any { !it.startsWith(canonicalRoot) }) {
                 return SidecarCachePreparation.Rejected(SidecarCacheFailure.FilesystemRejected)
             }
-            if (paths.indices.any { left ->
+            if (
+                paths.indices.any { left ->
                     paths.indices.any { right ->
                         left != right && paths[left].startsWith(paths[right])
                     }
@@ -132,7 +141,7 @@ class PreparedSidecarCache private constructor(
                     paths[1],
                     paths[2],
                     state,
-                ),
+                )
             )
         }
     }
@@ -140,6 +149,7 @@ class PreparedSidecarCache private constructor(
 
 sealed interface SidecarCachePreparation {
     data class Prepared(val cache: PreparedSidecarCache) : SidecarCachePreparation
+
     data class Rejected(val failure: SidecarCacheFailure) : SidecarCachePreparation
 }
 
@@ -152,13 +162,19 @@ fun interface SidecarCachePreparer {
 }
 
 /** Process-bound proof retaining both the cache lifecycle state and launch context. */
-class PreparedSidecarLaunch internal constructor(
+class PreparedSidecarLaunch
+internal constructor(
     val cache: PreparedSidecarCache,
     val context: SidecarLaunchContext,
 ) {
-    val runtime: InstalledIdeRuntime get() = context.runtime
-    val systemDirectory: Path get() = context.systemDirectory
-    val cacheState: KastCacheState get() = cache.state
+    val runtime: InstalledIdeRuntime
+        get() = context.runtime
+
+    val systemDirectory: Path
+        get() = context.systemDirectory
+
+    val cacheState: KastCacheState
+        get() = cache.state
 }
 
 fun interface SidecarProcessDemander {
@@ -171,12 +187,14 @@ fun interface SidecarProcessDemander {
 }
 
 internal class ExactSidecarProcessDemander(
-    private val runtimeDemanderFactory: (
-        IndexerExecutable,
-        SidecarLaunchContext,
-    ) -> RuntimeDemander = { executable, context ->
-        ExactRootProcessRuntimeDemander(executable, context)
-    },
+    private val runtimeDemanderFactory:
+        (
+            IndexerExecutable,
+            SidecarLaunchContext,
+        ) -> RuntimeDemander =
+        { executable, context ->
+            ExactRootProcessRuntimeDemander(executable, context)
+        }
 ) : SidecarProcessDemander {
     override fun demand(
         executable: IndexerExecutable,
@@ -194,9 +212,9 @@ internal class ExactSidecarProcessDemander(
 /**
  * Root-level installed sidecar admission.
  *
- * Payload, installed IDEA, cache identity, cache state, and launch context are each refined before
- * the next effect can run. Ordinary startup supplies [StartupCacheIntent.Reuse], so no
- * source IDEA system path exists in that execution branch.
+ * Payload, installed IDEA, cache identity, cache state, and launch context are each refined before the next effect can
+ * run. Ordinary startup supplies [StartupCacheIntent.Reuse], so no source IDEA system path exists in that execution
+ * branch.
  */
 class InstalledSidecarRootRuntimeDemander(
     private val endpointLocator: RuntimeEndpointLocator,
@@ -210,186 +228,199 @@ class InstalledSidecarRootRuntimeDemander(
     private val legacyProcessAuthority: RuntimeProcessAuthority = JdkRuntimeProcessAuthority,
     private val cacheLifecycle: RootSidecarCacheLifecycle = NoRootSidecarCacheLifecycle,
     private val lifecycle: RuntimeLifecycleController = ExactRootRuntimeLifecycle(),
-    private val maxHeap: io.github.amichne.kast.distribution.contract.IndexerHeapSize = io.github.amichne.kast.distribution.contract.IndexerHeapSize.Default,
+    private val maxHeap: io.github.amichne.kast.distribution.contract.IndexerHeapSize =
+        io.github.amichne.kast.distribution.contract.IndexerHeapSize.Default,
     private val sidecarEnvironment: SidecarEnvironmentInputs = SidecarEnvironmentInputs.Empty,
 ) : RootRuntimeDemander {
     override fun demand(
         root: CanonicalRoot,
         demand: HostedRuntimeDemand,
         startup: RuntimeStartupRequest,
-    ): RuntimeAdmission = cacheLifecycle.withStartupLock(root.path) {
-        demandExclusively(root, startup)
-    }
+    ): RuntimeAdmission =
+        cacheLifecycle.withStartupLock(root.path) {
+            demandExclusively(root, startup)
+        }
 
     private fun demandExclusively(
         root: CanonicalRoot,
         startup: RuntimeStartupRequest,
     ): RuntimeAdmission {
-        val endpoint = when (val resolution = endpointLocator.locate(root)) {
-            is RuntimeEndpointResolution.Resolved -> resolution.endpoint
-            is RuntimeEndpointResolution.Rejected -> return RuntimeAdmission.Rejected(
-                RuntimeAdmissionFailure.EndpointUnavailable,
-            )
-        }
-        val payload = when (val resolution = payloadResolver.resolve()) {
-            is SidecarPayloadResolution.Resolved -> resolution.payload
-            is SidecarPayloadResolution.Rejected -> return RuntimeAdmission.Rejected(
-                resolution.failure,
-            )
-        }
+        val endpoint =
+            when (val resolution = endpointLocator.locate(root)) {
+                is RuntimeEndpointResolution.Resolved -> resolution.endpoint
+                is RuntimeEndpointResolution.Rejected ->
+                    return RuntimeAdmission.Rejected(RuntimeAdmissionFailure.EndpointUnavailable)
+            }
+        val payload =
+            when (val resolution = payloadResolver.resolve()) {
+                is SidecarPayloadResolution.Resolved -> resolution.payload
+                is SidecarPayloadResolution.Rejected -> return RuntimeAdmission.Rejected(resolution.failure)
+            }
         if (payload.runtimeId != endpoint.runtimeId) {
             return RuntimeAdmission.Rejected(RuntimeAdmissionFailure.RuntimeIdentityMismatch)
         }
-        val requestedHome = when (val requested = startup.ideHome) {
-            StartupIdeHome.Standard -> {
-                val inventory = when (val observed = cacheLifecycle.inventory(root.path)) {
-                    is Refinement.Refined -> observed.value
-                    is Refinement.Rejected -> return RuntimeAdmission.Rejected(
-                        RuntimeAdmissionFailure.SidecarCacheRejected(
-                            SidecarCacheFailure.ObservationRejected(observed.failure),
-                        ),
-                    )
+        val requestedHome =
+            when (val requested = startup.ideHome) {
+                StartupIdeHome.Standard -> {
+                    val inventory =
+                        when (val observed = cacheLifecycle.inventory(root.path)) {
+                            is Refinement.Refined -> observed.value
+                            is Refinement.Rejected ->
+                                return RuntimeAdmission.Rejected(
+                                    RuntimeAdmissionFailure.SidecarCacheRejected(
+                                        SidecarCacheFailure.ObservationRejected(observed.failure)
+                                    )
+                                )
+                        }
+                    when (val retained = inventory.retainedIdeHome()) {
+                        is Refinement.Refined -> retained.value
+                        is Refinement.Rejected ->
+                            return RuntimeAdmission.Rejected(
+                                RuntimeAdmissionFailure.SidecarCacheRejected(
+                                    SidecarCacheFailure.ObservationRejected(retained.failure)
+                                )
+                            )
+                    }
                 }
-                when (val retained = inventory.retainedIdeHome()) {
-                    is Refinement.Refined -> retained.value
-                    is Refinement.Rejected -> return RuntimeAdmission.Rejected(
-                        RuntimeAdmissionFailure.SidecarCacheRejected(
-                            SidecarCacheFailure.ObservationRejected(retained.failure),
-                        ),
-                    )
-                }
+                is StartupIdeHome.Explicit -> requested
             }
-            is StartupIdeHome.Explicit -> requested
-        }
-        val selection = when (requestedHome) {
-            StartupIdeHome.Standard -> IdeHomeSelection.standard(userHome)
-            is StartupIdeHome.Explicit -> IdeHomeSelection.Explicit(requestedHome.path)
-        }
-        val runtime = when (
-            val resolution = ideRuntimeResolver.resolve(support, payload.digest, selection)
-        ) {
-            is InstalledIdeRuntimeDiscoveryResult.Discovered -> resolution.runtime
-            is InstalledIdeRuntimeDiscoveryResult.Rejected -> return RuntimeAdmission.Rejected(
-                RuntimeAdmissionFailure.InstalledIdeRejected(resolution.failure),
-            )
-        }
-        val importEnvironment = when (val admission = sidecarEnvironment.importEnvironment()) {
-            is Refinement.Refined -> admission.value
-            is Refinement.Rejected -> return RuntimeAdmission.Rejected(
-                RuntimeAdmissionFailure.GradleImportEnvironmentRejected(admission.failure),
-            )
-        }
-        val cacheIdentity = when (
-            val derivation = KastCacheIdentity.derive(root.path, runtime, endpoint.runtimeId, importEnvironment.identity)
-        ) {
-            is KastCacheIdentityDerivation.Derived -> derivation.identity
-            is KastCacheIdentityDerivation.Rejected -> return RuntimeAdmission.Rejected(
-                RuntimeAdmissionFailure.SidecarCacheRejected(
-                    SidecarCacheFailure.FilesystemRejected,
-                ),
-            )
-        }
+        val selection =
+            when (requestedHome) {
+                StartupIdeHome.Standard -> IdeHomeSelection.standard(userHome)
+                is StartupIdeHome.Explicit -> IdeHomeSelection.Explicit(requestedHome.path)
+            }
+        val runtime =
+            when (val resolution = ideRuntimeResolver.resolve(support, payload.digest, selection)) {
+                is InstalledIdeRuntimeDiscoveryResult.Discovered -> resolution.runtime
+                is InstalledIdeRuntimeDiscoveryResult.Rejected ->
+                    return RuntimeAdmission.Rejected(RuntimeAdmissionFailure.InstalledIdeRejected(resolution.failure))
+            }
+        val importEnvironment =
+            when (val admission = sidecarEnvironment.importEnvironment()) {
+                is Refinement.Refined -> admission.value
+                is Refinement.Rejected ->
+                    return RuntimeAdmission.Rejected(
+                        RuntimeAdmissionFailure.GradleImportEnvironmentRejected(admission.failure)
+                    )
+            }
+        val cacheIdentity =
+            when (
+                val derivation =
+                    KastCacheIdentity.derive(root.path, runtime, endpoint.runtimeId, importEnvironment.identity)
+            ) {
+                is KastCacheIdentityDerivation.Derived -> derivation.identity
+                is KastCacheIdentityDerivation.Rejected ->
+                    return RuntimeAdmission.Rejected(
+                        RuntimeAdmissionFailure.SidecarCacheRejected(SidecarCacheFailure.FilesystemRejected)
+                    )
+            }
         val removed = linkedSetOf<RuntimeEndpointArtifact>()
-        val cacheIntent = when (val intent = startup.cacheIntent) {
-            StartupCacheIntent.Rebuild -> {
-                val inventory = when (val observed = cacheLifecycle.inventory(root.path)) {
-                    is Refinement.Refined -> observed.value
-                    is Refinement.Rejected -> return RuntimeAdmission.Rejected(
-                        RuntimeAdmissionFailure.SidecarCacheRejected(
-                            SidecarCacheFailure.ObservationRejected(observed.failure),
-                        ),
-                    )
+        val cacheIntent =
+            when (val intent = startup.cacheIntent) {
+                StartupCacheIntent.Rebuild -> {
+                    val inventory =
+                        when (val observed = cacheLifecycle.inventory(root.path)) {
+                            is Refinement.Refined -> observed.value
+                            is Refinement.Rejected ->
+                                return RuntimeAdmission.Rejected(
+                                    RuntimeAdmissionFailure.SidecarCacheRejected(
+                                        SidecarCacheFailure.ObservationRejected(observed.failure)
+                                    )
+                                )
+                        }
+                    val stopped =
+                        when (val result = StoppedSidecarCaches.stopAll(inventory, endpoint, lifecycle)) {
+                            is Refinement.Refined -> result.value
+                            is Refinement.Rejected -> return RuntimeAdmission.Rejected(result.failure)
+                        }
+                    when (val result = cacheLifecycle.quarantine(stopped)) {
+                        is RootSidecarCacheQuarantine.Quarantined -> removed += stopped.removed
+                        is RootSidecarCacheQuarantine.Rejected ->
+                            return RuntimeAdmission.Rejected(RuntimeAdmissionFailure.CacheQuarantineRejected(result))
+                    }
+                    StartupCacheIntent.Reuse
                 }
-                val stopped = when (val result = StoppedSidecarCaches.stopAll(inventory, endpoint, lifecycle)) {
-                    is Refinement.Refined -> result.value
-                    is Refinement.Rejected -> return RuntimeAdmission.Rejected(result.failure)
-                }
-                when (val result = cacheLifecycle.quarantine(stopped)) {
-                    is RootSidecarCacheQuarantine.Quarantined -> removed += stopped.removed
-                    is RootSidecarCacheQuarantine.Rejected -> return RuntimeAdmission.Rejected(
-                        RuntimeAdmissionFailure.CacheQuarantineRejected(result),
-                    )
-                }
-                StartupCacheIntent.Reuse
+                StartupCacheIntent.Reuse,
+                is StartupCacheIntent.Seed -> intent
             }
-            StartupCacheIntent.Reuse,
-            is StartupCacheIntent.Seed,
-                -> intent
-        }
-        val cache = when (
-            val preparation = cachePreparer.prepare(
-                runtime,
-                cacheIdentity,
-                cacheIntent,
-            )
-        ) {
-            is SidecarCachePreparation.Prepared -> preparation.cache
-            is SidecarCachePreparation.Rejected -> return RuntimeAdmission.Rejected(
-                RuntimeAdmissionFailure.SidecarCacheRejected(preparation.failure),
-            )
-        }
-        val exactEndpoint = when (
-            val resolution = endpoint.forSidecarCache(
-                cacheIdentity.key,
-                cacheIdentity.semanticRuntimeId,
-                cache.root,
-            )
-        ) {
-            is RuntimeEndpointResolution.Resolved -> resolution.endpoint
-            is RuntimeEndpointResolution.Rejected -> return RuntimeAdmission.Rejected(
-                RuntimeAdmissionFailure.EndpointUnavailable,
-            )
-        }
-        val legacyProcessPresent = when (legacyProcessAuthority.observe(endpoint)) {
-            RuntimeProcessObservation.Absent -> false
-            RuntimeProcessObservation.Ambiguous,
-            is RuntimeProcessObservation.Owned,
-                -> true
-        }
-        if (endpoint != exactEndpoint && (
-                legacyProcessPresent ||
-                    legacyEndpointProbe.probe(endpoint) is RuntimeEndpointReachability.Reachable
-                )
+        val cache =
+            when (
+                val preparation =
+                    cachePreparer.prepare(
+                        runtime,
+                        cacheIdentity,
+                        cacheIntent,
+                    )
+            ) {
+                is SidecarCachePreparation.Prepared -> preparation.cache
+                is SidecarCachePreparation.Rejected ->
+                    return RuntimeAdmission.Rejected(RuntimeAdmissionFailure.SidecarCacheRejected(preparation.failure))
+            }
+        val exactEndpoint =
+            when (
+                val resolution =
+                    endpoint.forSidecarCache(
+                        cacheIdentity.key,
+                        cacheIdentity.semanticRuntimeId,
+                        cache.root,
+                    )
+            ) {
+                is RuntimeEndpointResolution.Resolved -> resolution.endpoint
+                is RuntimeEndpointResolution.Rejected ->
+                    return RuntimeAdmission.Rejected(RuntimeAdmissionFailure.EndpointUnavailable)
+            }
+        val legacyProcessPresent =
+            when (legacyProcessAuthority.observe(endpoint)) {
+                RuntimeProcessObservation.Absent -> false
+                RuntimeProcessObservation.Ambiguous,
+                is RuntimeProcessObservation.Owned -> true
+            }
+        if (
+            endpoint != exactEndpoint &&
+                (legacyProcessPresent || legacyEndpointProbe.probe(endpoint) is RuntimeEndpointReachability.Reachable)
         ) {
             return RuntimeAdmission.Rejected(RuntimeAdmissionFailure.LegacySidecarActive)
         }
         when (val status = lifecycle.status(exactEndpoint)) {
-            is RuntimeStatusResult.Observed -> if (status.state == RuntimeLifecycleState.STALE) {
-                when (val stopped = lifecycle.stop(exactEndpoint)) {
-                    is RuntimeStopResult.Stopped -> removed += stopped.removed
-                    is RuntimeStopResult.Rejected -> return RuntimeAdmission.Rejected(
-                        RuntimeAdmissionFailure.StopRejected(stopped.failure),
-                    )
+            is RuntimeStatusResult.Observed ->
+                if (status.state == RuntimeLifecycleState.STALE) {
+                    when (val stopped = lifecycle.stop(exactEndpoint)) {
+                        is RuntimeStopResult.Stopped -> removed += stopped.removed
+                        is RuntimeStopResult.Rejected ->
+                            return RuntimeAdmission.Rejected(RuntimeAdmissionFailure.StopRejected(stopped.failure))
+                    }
                 }
+            is RuntimeStatusResult.Rejected ->
+                return RuntimeAdmission.Rejected(RuntimeAdmissionFailure.EndpointUnavailable)
+        }
+        val context =
+            when (
+                val admission =
+                    SidecarLaunchContext.admit(
+                        runtime,
+                        cache.root,
+                        cache.systemDirectory,
+                        cache.configDirectory,
+                        cache.logDirectory,
+                        payload.privatePluginsDirectory,
+                        importEnvironment,
+                        maxHeap,
+                        sidecarEnvironment,
+                    )
+            ) {
+                is SidecarLaunchContextAdmission.Admitted -> admission.context
+                is SidecarLaunchContextAdmission.Rejected ->
+                    return RuntimeAdmission.Rejected(RuntimeAdmissionFailure.LayoutInvalid)
             }
-            is RuntimeStatusResult.Rejected -> return RuntimeAdmission.Rejected(
-                RuntimeAdmissionFailure.EndpointUnavailable,
-            )
-        }
-        val context = when (
-            val admission = SidecarLaunchContext.admit(
-                runtime,
-                cache.root,
-                cache.systemDirectory,
-                cache.configDirectory,
-                cache.logDirectory,
-                payload.privatePluginsDirectory,
-                importEnvironment,
-                maxHeap,
-                sidecarEnvironment,
-            )
+        return when (
+            val admitted =
+                processDemander.demand(
+                    payload.executable,
+                    PreparedSidecarLaunch(cache, context),
+                    root,
+                    exactEndpoint,
+                )
         ) {
-            is SidecarLaunchContextAdmission.Admitted -> admission.context
-            is SidecarLaunchContextAdmission.Rejected -> return RuntimeAdmission.Rejected(
-                RuntimeAdmissionFailure.LayoutInvalid,
-            )
-        }
-        return when (val admitted = processDemander.demand(
-            payload.executable,
-            PreparedSidecarLaunch(cache, context),
-            root,
-            exactEndpoint,
-        )) {
             is RuntimeAdmission.Ready -> admitted.copy(removed = admitted.removed + removed)
             is RuntimeAdmission.Rejected -> admitted
         }
@@ -407,34 +438,29 @@ class FilesystemSidecarCachePreparer(
         cacheIdentity: KastCacheIdentity,
         intent: StartupCacheIntent,
     ): SidecarCachePreparation {
-        val root = prepareCacheRoot()
-            ?: return SidecarCachePreparation.Rejected(SidecarCacheFailure.FilesystemRejected)
-        val preparation = when (intent) {
-            StartupCacheIntent.Reuse -> prepareExistingOrFresh(root, cacheIdentity)
-            is StartupCacheIntent.Seed -> seed(root, runtime, cacheIdentity, intent)
-            StartupCacheIntent.Rebuild -> return SidecarCachePreparation.Rejected(
-                SidecarCacheFailure.RebuildRequired,
-            )
-        }
-        val cache = when (preparation) {
-            is SidecarCachePreparation.Prepared -> preparation.cache
-            is SidecarCachePreparation.Rejected -> return preparation
-        }
-        if (
-            SidecarCacheIdentityFile.record(cache.root, runtime, cacheIdentity) !=
-            CacheIdentityTransition.Recorded
-        ) {
+        val root = prepareCacheRoot() ?: return SidecarCachePreparation.Rejected(SidecarCacheFailure.FilesystemRejected)
+        val preparation =
+            when (intent) {
+                StartupCacheIntent.Reuse -> prepareExistingOrFresh(root, cacheIdentity)
+                is StartupCacheIntent.Seed -> seed(root, runtime, cacheIdentity, intent)
+                StartupCacheIntent.Rebuild ->
+                    return SidecarCachePreparation.Rejected(SidecarCacheFailure.RebuildRequired)
+            }
+        val cache =
+            when (preparation) {
+                is SidecarCachePreparation.Prepared -> preparation.cache
+                is SidecarCachePreparation.Rejected -> return preparation
+            }
+        if (SidecarCacheIdentityFile.record(cache.root, runtime, cacheIdentity) != CacheIdentityTransition.Recorded) {
             return SidecarCachePreparation.Rejected(SidecarCacheFailure.FilesystemRejected)
         }
         when (SidecarCacheStateFile.observe(cache.root)) {
-            CacheStateObservation.Absent -> if (
-                SidecarCacheStateFile.record(cache.root, cache.state) != CacheStateTransition.Recorded
-            ) {
-                return SidecarCachePreparation.Rejected(SidecarCacheFailure.FilesystemRejected)
-            }
-            CacheStateObservation.Rejected -> return SidecarCachePreparation.Rejected(
-                SidecarCacheFailure.RebuildRequired,
-            )
+            CacheStateObservation.Absent ->
+                if (SidecarCacheStateFile.record(cache.root, cache.state) != CacheStateTransition.Recorded) {
+                    return SidecarCachePreparation.Rejected(SidecarCacheFailure.FilesystemRejected)
+                }
+            CacheStateObservation.Rejected ->
+                return SidecarCachePreparation.Rejected(SidecarCacheFailure.RebuildRequired)
             is CacheStateObservation.Observed -> Unit
         }
         return preparation
@@ -446,30 +472,34 @@ class FilesystemSidecarCachePreparer(
         cacheIdentity: KastCacheIdentity,
         intent: StartupCacheIntent.Seed,
     ): SidecarCachePreparation {
-        val source = when (val requested = intent.sourceSystem) {
-            StartupIdeaSystem.Standard -> defaultSourceSystem
-            is StartupIdeaSystem.Explicit -> requested.path
-        }
-        val publication = when (
-            val execution = seedService.seed(
-                IndexSeedRequest(
-                    source,
-                    cacheRoot,
-                    runtime,
-                    cacheIdentity,
-                    intent.consentRequest,
-                ),
-            )
-        ) {
-            is IndexSeedExecution.Seeded -> execution.publication
-            is IndexSeedExecution.Rejected -> return SidecarCachePreparation.Rejected(
-                SidecarCacheFailure.SeedRejected(execution.failure),
-            )
-        }
-        val config = createPrivateDirectory(publication.root.resolve("config"))
-            ?: return SidecarCachePreparation.Rejected(SidecarCacheFailure.FilesystemRejected)
-        val log = createPrivateDirectory(publication.root.resolve("log"))
-            ?: return SidecarCachePreparation.Rejected(SidecarCacheFailure.FilesystemRejected)
+        val source =
+            when (val requested = intent.sourceSystem) {
+                StartupIdeaSystem.Standard -> defaultSourceSystem
+                is StartupIdeaSystem.Explicit -> requested.path
+            }
+        val publication =
+            when (
+                val execution =
+                    seedService.seed(
+                        IndexSeedRequest(
+                            source,
+                            cacheRoot,
+                            runtime,
+                            cacheIdentity,
+                            intent.consentRequest,
+                        )
+                    )
+            ) {
+                is IndexSeedExecution.Seeded -> execution.publication
+                is IndexSeedExecution.Rejected ->
+                    return SidecarCachePreparation.Rejected(SidecarCacheFailure.SeedRejected(execution.failure))
+            }
+        val config =
+            createPrivateDirectory(publication.root.resolve("config"))
+                ?: return SidecarCachePreparation.Rejected(SidecarCacheFailure.FilesystemRejected)
+        val log =
+            createPrivateDirectory(publication.root.resolve("log"))
+                ?: return SidecarCachePreparation.Rejected(SidecarCacheFailure.FilesystemRejected)
         return PreparedSidecarCache.admit(
             cacheIdentity,
             publication.root,
@@ -485,50 +515,55 @@ class FilesystemSidecarCachePreparer(
         cacheIdentity: KastCacheIdentity,
     ): SidecarCachePreparation {
         val root = cacheRoot.resolve(cacheIdentity.key)
-        val created = try {
-            if (Files.notExists(root, LinkOption.NOFOLLOW_LINKS)) {
-                Files.createDirectory(root)
-                true
-            } else {
-                false
-            }
-        } catch (_: IOException) {
-            return SidecarCachePreparation.Rejected(SidecarCacheFailure.FilesystemRejected)
-        } catch (_: SecurityException) {
-            return SidecarCachePreparation.Rejected(SidecarCacheFailure.FilesystemRejected)
-        }
-        val canonicalRoot = canonicalDirectory(root)
-            ?: return SidecarCachePreparation.Rejected(SidecarCacheFailure.FilesystemRejected)
-        val system = createPrivateDirectory(canonicalRoot.resolve("system"))
-            ?: return SidecarCachePreparation.Rejected(SidecarCacheFailure.FilesystemRejected)
-        val config = createPrivateDirectory(canonicalRoot.resolve("config"))
-            ?: return SidecarCachePreparation.Rejected(SidecarCacheFailure.FilesystemRejected)
-        val log = createPrivateDirectory(canonicalRoot.resolve("log"))
-            ?: return SidecarCachePreparation.Rejected(SidecarCacheFailure.FilesystemRejected)
-        val state = when (val recorded = SidecarCacheStateFile.observe(canonicalRoot)) {
-            is CacheStateObservation.Observed -> if (
-                recorded.state == KastCacheState.SEEDED &&
-                admitSeedReceipt(canonicalRoot, cacheIdentity) != SeedReceiptPresence.Valid
-            ) {
-                return SidecarCachePreparation.Rejected(SidecarCacheFailure.RebuildRequired)
-            } else {
-                recorded.state
-            }
-            CacheStateObservation.Rejected -> return SidecarCachePreparation.Rejected(
-                SidecarCacheFailure.RebuildRequired,
-            )
-            CacheStateObservation.Absent -> if (created) {
-                KastCacheState.FRESH
-            } else {
-                when (admitSeedReceipt(canonicalRoot, cacheIdentity)) {
-                    SeedReceiptPresence.Absent -> KastCacheState.FRESH
-                    SeedReceiptPresence.Valid -> KastCacheState.SEEDED
-                    SeedReceiptPresence.Invalid -> return SidecarCachePreparation.Rejected(
-                        SidecarCacheFailure.RebuildRequired,
-                    )
+        val created =
+            try {
+                if (Files.notExists(root, LinkOption.NOFOLLOW_LINKS)) {
+                    Files.createDirectory(root)
+                    true
+                } else {
+                    false
                 }
+            } catch (_: IOException) {
+                return SidecarCachePreparation.Rejected(SidecarCacheFailure.FilesystemRejected)
+            } catch (_: SecurityException) {
+                return SidecarCachePreparation.Rejected(SidecarCacheFailure.FilesystemRejected)
             }
-        }
+        val canonicalRoot =
+            canonicalDirectory(root) ?: return SidecarCachePreparation.Rejected(SidecarCacheFailure.FilesystemRejected)
+        val system =
+            createPrivateDirectory(canonicalRoot.resolve("system"))
+                ?: return SidecarCachePreparation.Rejected(SidecarCacheFailure.FilesystemRejected)
+        val config =
+            createPrivateDirectory(canonicalRoot.resolve("config"))
+                ?: return SidecarCachePreparation.Rejected(SidecarCacheFailure.FilesystemRejected)
+        val log =
+            createPrivateDirectory(canonicalRoot.resolve("log"))
+                ?: return SidecarCachePreparation.Rejected(SidecarCacheFailure.FilesystemRejected)
+        val state =
+            when (val recorded = SidecarCacheStateFile.observe(canonicalRoot)) {
+                is CacheStateObservation.Observed ->
+                    if (
+                        recorded.state == KastCacheState.SEEDED &&
+                            admitSeedReceipt(canonicalRoot, cacheIdentity) != SeedReceiptPresence.Valid
+                    ) {
+                        return SidecarCachePreparation.Rejected(SidecarCacheFailure.RebuildRequired)
+                    } else {
+                        recorded.state
+                    }
+                CacheStateObservation.Rejected ->
+                    return SidecarCachePreparation.Rejected(SidecarCacheFailure.RebuildRequired)
+                CacheStateObservation.Absent ->
+                    if (created) {
+                        KastCacheState.FRESH
+                    } else {
+                        when (admitSeedReceipt(canonicalRoot, cacheIdentity)) {
+                            SeedReceiptPresence.Absent -> KastCacheState.FRESH
+                            SeedReceiptPresence.Valid -> KastCacheState.SEEDED
+                            SeedReceiptPresence.Invalid ->
+                                return SidecarCachePreparation.Rejected(SidecarCacheFailure.RebuildRequired)
+                        }
+                    }
+            }
         return PreparedSidecarCache.admit(
             cacheIdentity,
             canonicalRoot,
@@ -539,23 +574,26 @@ class FilesystemSidecarCachePreparer(
         )
     }
 
-    private fun prepareCacheRoot(): Path? = try {
-        if (Files.isSymbolicLink(cacheRoot)) return null
-        Files.createDirectories(cacheRoot)
-        if (Files.isSymbolicLink(cacheRoot)) return null
-        cacheRoot.toRealPath().takeIf { physical ->
-            Files.isDirectory(physical, LinkOption.NOFOLLOW_LINKS)
+    private fun prepareCacheRoot(): Path? =
+        try {
+            if (Files.isSymbolicLink(cacheRoot)) return null
+            Files.createDirectories(cacheRoot)
+            if (Files.isSymbolicLink(cacheRoot)) return null
+            cacheRoot.toRealPath().takeIf { physical ->
+                Files.isDirectory(physical, LinkOption.NOFOLLOW_LINKS)
+            }
+        } catch (_: IOException) {
+            null
+        } catch (_: SecurityException) {
+            null
         }
-    } catch (_: IOException) {
-        null
-    } catch (_: SecurityException) {
-        null
-    }
 }
 
 private sealed interface SeedReceiptPresence {
     data object Absent : SeedReceiptPresence
+
     data object Valid : SeedReceiptPresence
+
     data object Invalid : SeedReceiptPresence
 }
 
@@ -569,19 +607,19 @@ private fun admitSeedReceipt(
         return SeedReceiptPresence.Invalid
     }
     return try {
-        val values = Properties().apply {
-            Files.newInputStream(receipt).use(::load)
-        }
+        val values =
+            Properties().apply {
+                Files.newInputStream(receipt).use(::load)
+            }
         if (
             values.getProperty("format") == INDEX_SEED_RECEIPT_FORMAT &&
-            values.getProperty("cache.key") == identity.key &&
-            values.getProperty("project.root") == identity.canonicalProjectRoot.toString() &&
-            values.getProperty("idea.build") == identity.runtimeIdentity.supportedPair.ideaBuild &&
-            values.getProperty("kotlin.plugin.build") ==
-            identity.runtimeIdentity.supportedPair.kotlinPluginBuild &&
-            values.getProperty("jbr.identity") == identity.runtimeIdentity.jbrIdentity &&
-            values.getProperty("kast.payload.digest") == identity.runtimeIdentity.kastPayloadDigest &&
-            validSeedCategoryProof(values)
+                values.getProperty("cache.key") == identity.key &&
+                values.getProperty("project.root") == identity.canonicalProjectRoot.toString() &&
+                values.getProperty("idea.build") == identity.runtimeIdentity.supportedPair.ideaBuild &&
+                values.getProperty("kotlin.plugin.build") == identity.runtimeIdentity.supportedPair.kotlinPluginBuild &&
+                values.getProperty("jbr.identity") == identity.runtimeIdentity.jbrIdentity &&
+                values.getProperty("kast.payload.digest") == identity.runtimeIdentity.kastPayloadDigest &&
+                validSeedCategoryProof(values)
         ) {
             SeedReceiptPresence.Valid
         } else {
@@ -594,39 +632,39 @@ private fun admitSeedReceipt(
     }
 }
 
-private fun validSeedCategoryProof(
-    values: Properties,
-): Boolean {
-    val categories = values.getProperty("categories")
-        ?.split(',')
-        ?.takeIf { names -> names.isNotEmpty() && names.none(String::isBlank) }
-        ?.map { name -> IndexSeedCategory.entries.singleOrNull { it.name == name } ?: return false }
-        ?.takeIf { parsed -> parsed.size == parsed.distinct().size }
-        ?.toSet()
-        ?: return false
+private fun validSeedCategoryProof(values: Properties): Boolean {
+    val categories =
+        values
+            .getProperty("categories")
+            ?.split(',')
+            ?.takeIf { names -> names.isNotEmpty() && names.none(String::isBlank) }
+            ?.map { name -> IndexSeedCategory.entries.singleOrNull { it.name == name } ?: return false }
+            ?.takeIf { parsed -> parsed.size == parsed.distinct().size }
+            ?.toSet() ?: return false
     return when (values.getProperty("project.proof")) {
         SeedProjectProofState.GlobalOnly.wireName -> categories == GLOBAL_INDEX_SEED_CATEGORIES
-        "retired" -> categories == GLOBAL_INDEX_SEED_CATEGORIES &&
-            values.getProperty("project.expected.fingerprint").isIndexSeedDigest() &&
-            values.getProperty("project.observed.fingerprint").isIndexSeedDigest()
+        "retired" ->
+            categories == GLOBAL_INDEX_SEED_CATEGORIES &&
+                values.getProperty("project.expected.fingerprint").isIndexSeedDigest() &&
+                values.getProperty("project.observed.fingerprint").isIndexSeedDigest()
         // A receipt proves what was copied, not that the current project still has that identity.
         "verified" -> false
         else -> false
     }
 }
 
-private fun String?.isIndexSeedDigest(): Boolean =
-    this != null && Regex("sha256:[0-9a-f]{64}").matches(this)
+private fun String?.isIndexSeedDigest(): Boolean = this != null && Regex("sha256:[0-9a-f]{64}").matches(this)
 
-private fun createPrivateDirectory(path: Path): Path? = try {
-    if (Files.isSymbolicLink(path)) return null
-    Files.createDirectories(path)
-    canonicalDirectory(path)
-} catch (_: IOException) {
-    null
-} catch (_: SecurityException) {
-    null
-}
+private fun createPrivateDirectory(path: Path): Path? =
+    try {
+        if (Files.isSymbolicLink(path)) return null
+        Files.createDirectories(path)
+        canonicalDirectory(path)
+    } catch (_: IOException) {
+        null
+    } catch (_: SecurityException) {
+        null
+    }
 
 private fun canonicalDirectory(path: Path): Path? {
     if (!path.isAbsolute || path.normalize() != path) return null

@@ -43,41 +43,40 @@ annotation class ProtocolCollectionConstraint(
 )
 
 /** Restricts enum values in a property or in the elements of a collection property. */
-@SerialInfo
-@Target(AnnotationTarget.PROPERTY)
-annotation class ProtocolAllowedValues(vararg val values: String)
+@SerialInfo @Target(AnnotationTarget.PROPERTY) annotation class ProtocolAllowedValues(vararg val values: String)
 
 /** Requires every item to use the same closed serializer variant. */
-@SerialInfo
-@Target(AnnotationTarget.PROPERTY)
-annotation class ProtocolHomogeneousCollection
+@SerialInfo @Target(AnnotationTarget.PROPERTY) annotation class ProtocolHomogeneousCollection
 
 internal fun constrainedStringDescriptor(
     serialName: String,
     minimumLength: Int,
     maximumLength: Int,
     pattern: String = "",
-): SerialDescriptor = annotatedDescriptor(
-    PrimitiveSerialDescriptor(serialName, PrimitiveKind.STRING),
-    ProtocolStringConstraint(minimumLength, maximumLength, pattern),
-)
+): SerialDescriptor =
+    annotatedDescriptor(
+        PrimitiveSerialDescriptor(serialName, PrimitiveKind.STRING),
+        ProtocolStringConstraint(minimumLength, maximumLength, pattern),
+    )
 
 internal fun constrainedIntegerDescriptor(
     serialName: String,
     primitiveKind: PrimitiveKind,
     minimum: Long,
     maximum: Long = Long.MAX_VALUE,
-): SerialDescriptor = annotatedDescriptor(
-    PrimitiveSerialDescriptor(serialName, primitiveKind),
-    ProtocolIntegerConstraint(minimum, maximum),
-)
+): SerialDescriptor =
+    annotatedDescriptor(
+        PrimitiveSerialDescriptor(serialName, primitiveKind),
+        ProtocolIntegerConstraint(minimum, maximum),
+    )
 
 internal fun annotatedDescriptor(
     descriptor: SerialDescriptor,
     vararg annotations: Annotation,
-): SerialDescriptor = object : SerialDescriptor by descriptor {
-    override val annotations: List<Annotation> = descriptor.annotations + annotations
-}
+): SerialDescriptor =
+    object : SerialDescriptor by descriptor {
+        override val annotations: List<Annotation> = descriptor.annotations + annotations
+    }
 
 internal abstract class RefiningStringSerializer<Value>(
     serialName: String,
@@ -85,12 +84,13 @@ internal abstract class RefiningStringSerializer<Value>(
     maximumLength: Int,
     pattern: String = "",
 ) : KSerializer<Value> {
-    final override val descriptor: SerialDescriptor = constrainedStringDescriptor(
-        serialName,
-        minimumLength,
-        maximumLength,
-        pattern,
-    )
+    final override val descriptor: SerialDescriptor =
+        constrainedStringDescriptor(
+            serialName,
+            minimumLength,
+            maximumLength,
+            pattern,
+        )
 
     protected abstract fun raw(value: Value): String
 
@@ -100,14 +100,12 @@ internal abstract class RefiningStringSerializer<Value>(
         encoder.encodeString(raw(value))
     }
 
-    final override fun deserialize(decoder: Decoder): Value = when (
-        val refinement = refine(decoder.decodeString())
-    ) {
-        is Refinement.Refined -> refinement.value
-        is Refinement.Rejected -> throw SerializationException(
-            "${descriptor.serialName} rejected ${refinement.failure}",
-        )
-    }
+    final override fun deserialize(decoder: Decoder): Value =
+        when (val refinement = refine(decoder.decodeString())) {
+            is Refinement.Refined -> refinement.value
+            is Refinement.Rejected ->
+                throw SerializationException("${descriptor.serialName} rejected ${refinement.failure}")
+        }
 }
 
 internal abstract class RefiningIntSerializer<Value>(
@@ -115,12 +113,13 @@ internal abstract class RefiningIntSerializer<Value>(
     minimum: Long,
     maximum: Long = Long.MAX_VALUE,
 ) : KSerializer<Value> {
-    final override val descriptor: SerialDescriptor = constrainedIntegerDescriptor(
-        serialName,
-        PrimitiveKind.INT,
-        minimum,
-        maximum,
-    )
+    final override val descriptor: SerialDescriptor =
+        constrainedIntegerDescriptor(
+            serialName,
+            PrimitiveKind.INT,
+            minimum,
+            maximum,
+        )
 
     protected abstract fun raw(value: Value): Int
 
@@ -130,14 +129,12 @@ internal abstract class RefiningIntSerializer<Value>(
         encoder.encodeInt(raw(value))
     }
 
-    final override fun deserialize(decoder: Decoder): Value = when (
-        val refinement = refine(decoder.decodeInt())
-    ) {
-        is Refinement.Refined -> refinement.value
-        is Refinement.Rejected -> throw SerializationException(
-            "${descriptor.serialName} rejected ${refinement.failure}",
-        )
-    }
+    final override fun deserialize(decoder: Decoder): Value =
+        when (val refinement = refine(decoder.decodeInt())) {
+            is Refinement.Refined -> refinement.value
+            is Refinement.Rejected ->
+                throw SerializationException("${descriptor.serialName} rejected ${refinement.failure}")
+        }
 }
 
 internal abstract class RefiningLongSerializer<Value>(
@@ -145,12 +142,13 @@ internal abstract class RefiningLongSerializer<Value>(
     minimum: Long,
     maximum: Long = Long.MAX_VALUE,
 ) : KSerializer<Value> {
-    final override val descriptor: SerialDescriptor = constrainedIntegerDescriptor(
-        serialName,
-        PrimitiveKind.LONG,
-        minimum,
-        maximum,
-    )
+    final override val descriptor: SerialDescriptor =
+        constrainedIntegerDescriptor(
+            serialName,
+            PrimitiveKind.LONG,
+            minimum,
+            maximum,
+        )
 
     protected abstract fun raw(value: Value): Long
 
@@ -160,12 +158,10 @@ internal abstract class RefiningLongSerializer<Value>(
         encoder.encodeLong(raw(value))
     }
 
-    final override fun deserialize(decoder: Decoder): Value = when (
-        val refinement = refine(decoder.decodeLong())
-    ) {
-        is Refinement.Refined -> refinement.value
-        is Refinement.Rejected -> throw SerializationException(
-            "${descriptor.serialName} rejected ${refinement.failure}",
-        )
-    }
+    final override fun deserialize(decoder: Decoder): Value =
+        when (val refinement = refine(decoder.decodeLong())) {
+            is Refinement.Refined -> refinement.value
+            is Refinement.Rejected ->
+                throw SerializationException("${descriptor.serialName} rejected ${refinement.failure}")
+        }
 }

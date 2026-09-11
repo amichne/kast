@@ -1,7 +1,7 @@
 package io.github.amichne.kast.cli.projection
 
-import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.EvidenceBasis
+import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.protocol.contract.CompilerSymbolEvidenceDocument
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.RelationFactDocument
@@ -9,17 +9,9 @@ import io.github.amichne.kast.protocol.contract.SymbolDocument
 import io.github.amichne.kast.protocol.contract.TraversalRecordDocument
 import kotlinx.serialization.Serializable
 
-@Serializable
-@JvmInline
-internal value class TraversalGraphNodeIndex(
-    val value: Int,
-)
+@Serializable @JvmInline internal value class TraversalGraphNodeIndex(val value: Int)
 
-@Serializable
-@JvmInline
-internal value class TraversalGraphProofIndex(
-    val value: Int,
-)
+@Serializable @JvmInline internal value class TraversalGraphProofIndex(val value: Int)
 
 @Serializable
 internal data class NormalizedTraversalGraphCliDocument(
@@ -31,16 +23,21 @@ internal data class NormalizedTraversalGraphCliDocument(
 
 @Serializable
 @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
-internal data class TraversalGraphSnapshotCliDocument private constructor(
+internal data class TraversalGraphSnapshotCliDocument
+private constructor(
     val canonicalRoot: String,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER) val generation: Long? = null,
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER) val live: LiveReadCliEvidence? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val live: LiveReadCliEvidence? = null,
 ) {
     companion object {
-        fun from(root: ProtocolText, basis: EvidenceBasis) = when (basis) {
-            is EvidenceBasis.Published -> TraversalGraphSnapshotCliDocument(root.value, generation = basis.generation.value)
-            is EvidenceBasis.Live -> TraversalGraphSnapshotCliDocument(root.value, live = LiveReadCliEvidence.from(basis.evidence))
-        }
+        fun from(root: ProtocolText, basis: EvidenceBasis) =
+            when (basis) {
+                is EvidenceBasis.Published ->
+                    TraversalGraphSnapshotCliDocument(root.value, generation = basis.generation.value)
+                is EvidenceBasis.Live ->
+                    TraversalGraphSnapshotCliDocument(root.value, live = LiveReadCliEvidence.from(basis.evidence))
+            }
     }
 }
 
@@ -81,15 +78,16 @@ internal data class NormalizedTraversalProofCliDocument(
 )
 
 /**
- * Pure boundary normalization from repeated traversal records to compact node, edge, and proof
- * tables. Full compiler signatures remain behind `symbol_inspect`; this graph retains their exact
- * stable identities without repeating evidence on every edge.
+ * Pure boundary normalization from repeated traversal records to compact node, edge, and proof tables. Full compiler
+ * signatures remain behind `symbol_inspect`; this graph retains their exact stable identities without repeating
+ * evidence on every edge.
  */
 internal fun normalizeTraversalGraph(
     snapshotRoot: ProtocolText,
     generation: EvidenceGeneration,
     records: List<TraversalRecordDocument>,
-): NormalizedTraversalGraphCliDocument = normalizeTraversalGraph(snapshotRoot, EvidenceBasis.Published(generation), records)
+): NormalizedTraversalGraphCliDocument =
+    normalizeTraversalGraph(snapshotRoot, EvidenceBasis.Published(generation), records)
 
 internal fun normalizeTraversalGraph(
     snapshotRoot: ProtocolText,
@@ -113,25 +111,27 @@ internal fun normalizeTraversalGraph(
         nodeIndices.getOrPut(symbol) {
             val projected = symbol.toCliDocument()
             TraversalGraphNodeIndex(nodes.size).also { index ->
-                nodes += NormalizedTraversalNodeCliDocument(
-                    id = index,
-                    selector = projected.selector,
-                    kind = projected.kind,
-                    name = projected.name,
-                    qualifiedIdentity = projected.qualifiedIdentity,
-                    file = projected.file,
-                    range = projected.range,
-                    proof = proofIndex(symbol.compilerEvidence),
-                )
+                nodes +=
+                    NormalizedTraversalNodeCliDocument(
+                        id = index,
+                        selector = projected.selector,
+                        kind = projected.kind,
+                        name = projected.name,
+                        qualifiedIdentity = projected.qualifiedIdentity,
+                        file = projected.file,
+                        range = projected.range,
+                        proof = proofIndex(symbol.compilerEvidence),
+                    )
             }
         }
 
     records.forEach { record ->
-        edges += record.relation.toNormalizedEdge(
-            depth = record.depth.value,
-            source = nodeIndex(record.relation.source),
-            target = nodeIndex(record.relation.target),
-        )
+        edges +=
+            record.relation.toNormalizedEdge(
+                depth = record.depth.value,
+                source = nodeIndex(record.relation.source),
+                target = nodeIndex(record.relation.target),
+            )
     }
     return NormalizedTraversalGraphCliDocument(
         snapshot = TraversalGraphSnapshotCliDocument.from(snapshotRoot, basis),
@@ -145,19 +145,22 @@ private fun RelationFactDocument.toNormalizedEdge(
     depth: Int,
     source: TraversalGraphNodeIndex,
     target: TraversalGraphNodeIndex,
-): NormalizedTraversalEdgeCliDocument = NormalizedTraversalEdgeCliDocument(
-    depth = depth,
-    meaning = meaning.cliName(),
-    source = source,
-    target = target,
-    occurrence = NormalizedTraversalOccurrenceCliDocument(
-        candidateSelector = occurrence.candidateSelector.value,
-        file = occurrence.file.value,
-        range = SourceRangeCliDocument(
-            occurrence.range.startInclusive.value,
-            occurrence.range.endExclusive.value,
-        ),
-    ),
-    provenance = provenance.cliName(),
-    coverage = coverage.cliName(),
-)
+): NormalizedTraversalEdgeCliDocument =
+    NormalizedTraversalEdgeCliDocument(
+        depth = depth,
+        meaning = meaning.cliName(),
+        source = source,
+        target = target,
+        occurrence =
+            NormalizedTraversalOccurrenceCliDocument(
+                candidateSelector = occurrence.candidateSelector.value,
+                file = occurrence.file.value,
+                range =
+                    SourceRangeCliDocument(
+                        occurrence.range.startInclusive.value,
+                        occurrence.range.endExclusive.value,
+                    ),
+            ),
+        provenance = provenance.cliName(),
+        coverage = coverage.cliName(),
+    )

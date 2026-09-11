@@ -21,9 +21,7 @@ internal sealed interface WorkspaceExactInitiation {
     data class Present(val entry: ActiveWorkspaceInitiation) : WorkspaceExactInitiation
 }
 
-internal class ActiveWorkspaceInitiation(
-    val key: WorkspaceInitiationKey,
-) : WorkspaceAdmissionWaitSignal {
+internal class ActiveWorkspaceInitiation(val key: WorkspaceInitiationKey) : WorkspaceAdmissionWaitSignal {
     private val finished = CountDownLatch(1)
     private val state = AtomicReference(WorkspaceInitiationCompletion.Running)
 
@@ -34,15 +32,13 @@ internal class ActiveWorkspaceInitiation(
     }
 
     @Throws(InterruptedException::class)
-    override fun await(timeoutNanos: Long): Boolean =
-        finished.await(timeoutNanos, TimeUnit.NANOSECONDS)
+    override fun await(timeoutNanos: Long): Boolean = finished.await(timeoutNanos, TimeUnit.NANOSECONDS)
 
     fun completion(): WorkspaceInitiationCompletion = state.get()
 }
 
 internal fun interface WorkspaceAdmissionWaitSignal {
-    @Throws(InterruptedException::class)
-    fun await(timeoutNanos: Long): Boolean
+    @Throws(InterruptedException::class) fun await(timeoutNanos: Long): Boolean
 }
 
 internal class WorkspaceKindCapacityRelease : WorkspaceAdmissionWaitSignal {
@@ -51,8 +47,7 @@ internal class WorkspaceKindCapacityRelease : WorkspaceAdmissionWaitSignal {
     fun complete(): Unit = released.countDown()
 
     @Throws(InterruptedException::class)
-    override fun await(timeoutNanos: Long): Boolean =
-        released.await(timeoutNanos, TimeUnit.NANOSECONDS)
+    override fun await(timeoutNanos: Long): Boolean = released.await(timeoutNanos, TimeUnit.NANOSECONDS)
 }
 
 internal enum class WorkspaceInitiationCompletion {
@@ -75,21 +70,13 @@ internal sealed interface WorkspaceInitiationClaim {
 }
 
 internal sealed interface WorkspaceEntryWait {
-    data class Completed(
-        val queueDuration: WorkspaceResourceDurationNanos,
-    ) : WorkspaceEntryWait
+    data class Completed(val queueDuration: WorkspaceResourceDurationNanos) : WorkspaceEntryWait
 
-    data class Rejected(
-        val result: WorkspaceResourceInitiationResult.Rejected,
-    ) : WorkspaceEntryWait
+    data class Rejected(val result: WorkspaceResourceInitiationResult.Rejected) : WorkspaceEntryWait
 }
 
 internal sealed interface WorkspaceCapacityWait {
-    data class Retry(
-        val queueDuration: WorkspaceResourceDurationNanos,
-    ) : WorkspaceCapacityWait
+    data class Retry(val queueDuration: WorkspaceResourceDurationNanos) : WorkspaceCapacityWait
 
-    data class Complete(
-        val result: WorkspaceResourceInitiationResult.Rejected,
-    ) : WorkspaceCapacityWait
+    data class Complete(val result: WorkspaceResourceInitiationResult.Rejected) : WorkspaceCapacityWait
 }

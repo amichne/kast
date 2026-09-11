@@ -20,37 +20,39 @@ val diagnosticIdeaDistribution: Configuration by configurations.creating {
     isCanBeResolved = true
 }
 
-private val extractedKotlinPluginDirectory = objects.directoryProperty().apply {
-    set(file(gradle.gradleUserHomeDir.resolve("kast/diagnostic-intellij-kotlin-plugin/$ideaDistributionVersion")))
-}
-
-val extractDiagnosticKotlinPlugin by tasks.registering(Sync::class) {
-    from({ zipTree(diagnosticIdeaDistribution.singleFile) }) {
-        include("**/plugins/Kotlin/lib/**/*.jar")
-        include("**/plugins/java/lib/**/*.jar")
-        exclude("**/plugins/Kotlin/lib/jps/**")
-        exclude("**/plugins/Kotlin/lib/kotlinc/lib/kotlin-compiler.jar")
-        eachFile {
-            relativePath = RelativePath(
-                true,
-                *relativePath.segments
-                    .dropWhile { segment -> segment != "lib" }
-                    .drop(1)
-                    .toTypedArray(),
-            )
-        }
+private val extractedKotlinPluginDirectory =
+    objects.directoryProperty().apply {
+        set(file(gradle.gradleUserHomeDir.resolve("kast/diagnostic-intellij-kotlin-plugin/$ideaDistributionVersion")))
     }
-    includeEmptyDirs = false
-    into(extractedKotlinPluginDirectory)
-}
 
-private val kotlinPluginLibs: ConfigurableFileCollection = files(
-    extractedKotlinPluginDirectory.map { directory ->
-        fileTree(directory) {
-            include("**/*.jar")
+val extractDiagnosticKotlinPlugin by
+    tasks.registering(Sync::class) {
+        from({ zipTree(diagnosticIdeaDistribution.singleFile) }) {
+            include("**/plugins/Kotlin/lib/**/*.jar")
+            include("**/plugins/java/lib/**/*.jar")
+            exclude("**/plugins/Kotlin/lib/jps/**")
+            exclude("**/plugins/Kotlin/lib/kotlinc/lib/kotlin-compiler.jar")
+            eachFile {
+                relativePath =
+                    RelativePath(
+                        true,
+                        *relativePath.segments.dropWhile { segment -> segment != "lib" }.drop(1).toTypedArray(),
+                    )
+            }
         }
-    },
-).builtBy(extractDiagnosticKotlinPlugin)
+        includeEmptyDirs = false
+        into(extractedKotlinPluginDirectory)
+    }
+
+private val kotlinPluginLibs: ConfigurableFileCollection =
+    files(
+            extractedKotlinPluginDirectory.map { directory ->
+                fileTree(directory) {
+                    include("**/*.jar")
+                }
+            }
+        )
+        .builtBy(extractDiagnosticKotlinPlugin)
 
 dependencies {
     implementation(catalog.findLibrary("serialization-json").get())

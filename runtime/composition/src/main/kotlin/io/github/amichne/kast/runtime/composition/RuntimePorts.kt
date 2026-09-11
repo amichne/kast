@@ -10,9 +10,9 @@ import io.github.amichne.kast.diagnostic.contract.DiagnosticCompilerPort
 import io.github.amichne.kast.evidence.contract.MutationRecoveryEvidenceStore
 import io.github.amichne.kast.evidence.contract.WorkspacePublicationTransaction
 import io.github.amichne.kast.relation.contract.RelationCompilerPort
+import io.github.amichne.kast.source.contract.SourceReadPort
 import io.github.amichne.kast.symbol.contract.SymbolCompilerPort
 import io.github.amichne.kast.symbol.contract.SymbolExactCompilerPort
-import io.github.amichne.kast.source.contract.SourceReadPort
 import io.github.amichne.kast.topology.contract.TopologyCandidateEnumerator
 import io.github.amichne.kast.topology.contract.TopologyFileExtractor
 import io.github.amichne.kast.topology.contract.TopologySnapshotStore

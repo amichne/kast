@@ -1,7 +1,5 @@
 package io.github.amichne.kast.runtime.composition.protocol.graph
 
-import io.github.amichne.kast.query.protocol.*
-
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
@@ -23,6 +21,8 @@ import io.github.amichne.kast.protocol.contract.SymbolDiscoveryMatchDocument
 import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
 import io.github.amichne.kast.protocol.contract.SymbolInspectTarget
 import io.github.amichne.kast.protocol.contract.SymbolNameKindDocument
+import io.github.amichne.kast.query.protocol.*
+import io.github.amichne.kast.query.protocol.RelationSubjectLookup
 import io.github.amichne.kast.relation.contract.RelationBatch
 import io.github.amichne.kast.relation.contract.RelationBudget
 import io.github.amichne.kast.relation.contract.RelationByteCount
@@ -39,7 +39,6 @@ import io.github.amichne.kast.runtime.composition.InstalledSymbolProtocolFixture
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalProtocolAuthority
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalSymbolDiscoverHandler
 import io.github.amichne.kast.runtime.composition.protocol.CanonicalSymbolInspectHandler
-import io.github.amichne.kast.query.protocol.RelationSubjectLookup
 import java.nio.file.Files
 import java.nio.file.Path
 import java.security.MessageDigest
@@ -54,38 +53,39 @@ import org.junit.jupiter.api.io.TempDir
 
 class RelationContinuationCodecTest {
     @Test
-    fun `self contained continuation round trips and runtime admits resume`(
-        @TempDir temporary: Path,
-    ) {
-        val fixture = InstalledSymbolProtocolFixture.create(
-            Files.createDirectories(temporary.resolve("repo")).toRealPath(),
-        )
+    fun `self contained continuation round trips and runtime admits resume`(@TempDir temporary: Path) {
+        val fixture =
+            InstalledSymbolProtocolFixture.create(Files.createDirectories(temporary.resolve("repo")).toRealPath())
         val authority = CanonicalProtocolAuthority()
         val exact = exactSelector(fixture, authority)
         val selector = (authority.relationSubject(exact) as RelationSubjectLookup.Selector).selector
         val start = DomainRelationRequest.start(selector, RelationMeaning.References, budget())
-        val continuation = io.github.amichne.kast.relation.contract.RelationContinuation.issue(
-            start,
-            start.providerCursor,
-        )
+        val continuation =
+            io.github.amichne.kast.relation.contract.RelationContinuation.issue(
+                start,
+                start.providerCursor,
+            )
         val document = checkNotNull(CanonicalRelationContinuationCodec.encode(continuation))
-        val decoded = assertInstanceOf(
-            CanonicalRelationContinuationDecoding.Decoded::class.java,
-            CanonicalRelationContinuationCodec.decode(document, selector.lease),
-        ).continuation
+        val decoded =
+            assertInstanceOf(
+                    CanonicalRelationContinuationDecoding.Decoded::class.java,
+                    CanonicalRelationContinuationCodec.decode(document, selector.lease),
+                )
+                .continuation
         assertEquals(continuation.fingerprint, decoded.fingerprint)
         assertEquals(continuation.nextProviderCursor, decoded.nextProviderCursor)
 
         var captured: DomainRelationRequest? = null
-        val handler = CanonicalRelationReadHandler(
-            RelationOperations { request ->
-                captured = request
-                RelationReadResult.Rejected(
-                    io.github.amichne.kast.relation.contract.RelationReadRejection.COMPILER_CONTRACT_VIOLATION,
-                )
-            },
-            authority,
-        )
+        val handler =
+            CanonicalRelationReadHandler(
+                RelationOperations { request ->
+                    captured = request
+                    RelationReadResult.Rejected(
+                        io.github.amichne.kast.relation.contract.RelationReadRejection.COMPILER_CONTRACT_VIOLATION
+                    )
+                },
+                authority,
+            )
         runSuspend {
             handler.execute(
                 RelationReadRequest(
@@ -93,7 +93,7 @@ class RelationContinuationCodecTest {
                     RelationKindDocument.REFERENCES,
                     count(4),
                     RelationReadPositionDocument.Resume(document),
-                ),
+                )
             )
         }
         assertInstanceOf(
@@ -108,7 +108,7 @@ class RelationContinuationCodecTest {
                     RelationKindDocument.CALLERS,
                     count(4),
                     RelationReadPositionDocument.Resume(document),
-                ),
+                )
             )
         }
         assertEquals(
@@ -119,21 +119,21 @@ class RelationContinuationCodecTest {
 
     @Test
     fun `malformed payload rejects before relation work`(@TempDir temporary: Path) {
-        val fixture = InstalledSymbolProtocolFixture.create(
-            Files.createDirectories(temporary.resolve("repo")).toRealPath(),
-        )
+        val fixture =
+            InstalledSymbolProtocolFixture.create(Files.createDirectories(temporary.resolve("repo")).toRealPath())
         val authority = CanonicalProtocolAuthority()
         val exact = exactSelector(fixture, authority)
         var calls = 0
-        val handler = CanonicalRelationReadHandler(
-            RelationOperations {
-                calls += 1
-                RelationReadResult.Rejected(
-                    io.github.amichne.kast.relation.contract.RelationReadRejection.COMPILER_CONTRACT_VIOLATION,
-                )
-            },
-            authority,
-        )
+        val handler =
+            CanonicalRelationReadHandler(
+                RelationOperations {
+                    calls += 1
+                    RelationReadResult.Rejected(
+                        io.github.amichne.kast.relation.contract.RelationReadRejection.COMPILER_CONTRACT_VIOLATION
+                    )
+                },
+                authority,
+            )
 
         val outcome = runSuspend {
             handler.execute(
@@ -142,7 +142,7 @@ class RelationContinuationCodecTest {
                     RelationKindDocument.REFERENCES,
                     count(4),
                     RelationReadPositionDocument.Resume(token("not-domain-fields")),
-                ),
+                )
             )
         }
 
@@ -155,20 +155,18 @@ class RelationContinuationCodecTest {
 
     @Test
     fun `terminal incomplete projection exposes no continuation`(@TempDir temporary: Path) {
-        val fixture = InstalledSymbolProtocolFixture.create(
-            Files.createDirectories(temporary.resolve("repo")).toRealPath(),
-        )
+        val fixture =
+            InstalledSymbolProtocolFixture.create(Files.createDirectories(temporary.resolve("repo")).toRealPath())
         val authority = CanonicalProtocolAuthority()
         val exact = exactSelector(fixture, authority)
-        val handler = CanonicalRelationReadHandler(
-            RelationOperations { request -> terminalIncomplete(request) },
-            authority,
-        )
+        val handler =
+            CanonicalRelationReadHandler(
+                RelationOperations { request -> terminalIncomplete(request) },
+                authority,
+            )
 
         val outcome = runSuspend {
-            handler.execute(
-                RelationReadRequest(exact, RelationKindDocument.REFERENCES, count(4)),
-            )
+            handler.execute(RelationReadRequest(exact, RelationKindDocument.REFERENCES, count(4)))
         }
 
         val qualified = assertInstanceOf(OperationOutcome.Qualified::class.java, outcome)
@@ -179,17 +177,21 @@ class RelationContinuationCodecTest {
     }
 
     private fun terminalIncomplete(request: DomainRelationRequest): RelationReadResult {
-        val batch = RelationBatch.create(
-            request,
-            emptyList(),
-            RelationByteCount.parse(0L).refined(),
-            RelationWorkCount.parse(0L).refined(),
-            RelationResultCount.parse(0).refined(),
-        ).refined()
-        val qualified = RelationCompilation.qualifiedTerminal(
-            batch,
-            setOf(RelationLimitation.UNRESOLVED_TARGET),
-        ).refined()
+        val batch =
+            RelationBatch.create(
+                    request,
+                    emptyList(),
+                    RelationByteCount.parse(0L).refined(),
+                    RelationWorkCount.parse(0L).refined(),
+                    RelationResultCount.parse(0).refined(),
+                )
+                .refined()
+        val qualified =
+            RelationCompilation.qualifiedTerminal(
+                    batch,
+                    setOf(RelationLimitation.UNRESOLVED_TARGET),
+                )
+                .refined()
         return RelationReadResult.Qualified(batch, qualified.coverage)
     }
 
@@ -199,57 +201,64 @@ class RelationContinuationCodecTest {
     ): ProtocolText {
         val discover = CanonicalSymbolDiscoverHandler(fixture.workspace, fixture.discovery, authority)
         val inspect = CanonicalSymbolInspectHandler(fixture.exact, authority)
-        val candidate = (
-            runSuspend {
-                discover.execute(
-                    SymbolDiscoverRequest(
-                        SymbolDiscoverTargetDocument.Name(
-                            text("sample"),
-                            SymbolNameKindDocument.SYMBOL,
-                            SymbolDiscoveryMatchDocument.EXACT_NAME,
-                        ),
-                        count(4),
-                    ),
-                )
-            } as OperationOutcome.Complete
-            ).evidence.payload.items.values.single() as SymbolDiscoveryDocument.Declaration
-        return (
-            runSuspend {
-                inspect.execute(
-                    SymbolInspectRequest(SymbolInspectTarget.Candidate(candidate.candidateSelector)),
-                )
-            } as OperationOutcome.Complete
-            ).evidence.payload.symbol.selector
+        val candidate =
+            (runSuspend {
+                    discover.execute(
+                        SymbolDiscoverRequest(
+                            SymbolDiscoverTargetDocument.Name(
+                                text("sample"),
+                                SymbolNameKindDocument.SYMBOL,
+                                SymbolDiscoveryMatchDocument.EXACT_NAME,
+                            ),
+                            count(4),
+                        )
+                    )
+                }
+                    as OperationOutcome.Complete)
+                .evidence
+                .payload
+                .items
+                .values
+                .single() as SymbolDiscoveryDocument.Declaration
+        return (runSuspend {
+                inspect.execute(SymbolInspectRequest(SymbolInspectTarget.Candidate(candidate.candidateSelector)))
+            }
+                as OperationOutcome.Complete)
+            .evidence
+            .payload
+            .symbol
+            .selector
     }
 
-    private fun budget(): RelationBudget = RelationBudget(
-        ResourceBudget(
-            ResultLimit.parse(4).refined(),
-            WorkUnitLimit.parse(16L).refined(),
-            ElapsedTimeLimitMillis.parse(1_000L).refined(),
-        ),
-        RelationByteLimit.parse(100_000L).refined(),
-    )
+    private fun budget(): RelationBudget =
+        RelationBudget(
+            ResourceBudget(
+                ResultLimit.parse(4).refined(),
+                WorkUnitLimit.parse(16L).refined(),
+                ElapsedTimeLimitMillis.parse(1_000L).refined(),
+            ),
+            RelationByteLimit.parse(100_000L).refined(),
+        )
 
     private fun token(payloadText: String): RelationContinuationDocument {
         val payload = payloadText.toByteArray()
         val encoded = Base64.getUrlEncoder().withoutPadding().encodeToString(payload)
-        val digest = MessageDigest.getInstance("SHA-256").digest(payload).joinToString("") { byte ->
-            (byte.toInt() and 0xff).toString(16).padStart(2, '0')
-        }
-        return RelationContinuationDocument.parse(
-            "relation-continuation:v1:$encoded:$digest",
-        ).refined()
+        val digest =
+            MessageDigest.getInstance("SHA-256").digest(payload).joinToString("") { byte ->
+                (byte.toInt() and 0xff).toString(16).padStart(2, '0')
+            }
+        return RelationContinuationDocument.parse("relation-continuation:v1:$encoded:$digest").refined()
     }
 
     private fun count(raw: Int): ProtocolCount = ProtocolCount.parse(raw).refined()
 
     private fun text(raw: String): ProtocolText = ProtocolText.parse(raw).refined()
 
-    private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value = when (this) {
-        is Refinement.Refined -> value
-        is Refinement.Rejected -> error("Unexpected fixture rejection: $failure")
-    }
+    private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value =
+        when (this) {
+            is Refinement.Refined -> value
+            is Refinement.Rejected -> error("Unexpected fixture rejection: $failure")
+        }
 }
 
 private fun <Value> runSuspend(block: suspend () -> Value): Value {
@@ -261,7 +270,7 @@ private fun <Value> runSuspend(block: suspend () -> Value): Value {
             override fun resumeWith(resultValue: Result<Value>) {
                 result = resultValue
             }
-        },
+        }
     )
     return checkNotNull(result).getOrThrow()
 }

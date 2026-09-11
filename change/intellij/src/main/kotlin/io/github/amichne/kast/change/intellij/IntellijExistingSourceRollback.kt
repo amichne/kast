@@ -16,25 +16,21 @@ import io.github.amichne.kast.change.apply.MutationAuthority
 import io.github.amichne.kast.change.apply.MutationPreconditionAtIntellijBoundary
 import io.github.amichne.kast.change.recovery.AddDeclarationRollbackFailure
 import io.github.amichne.kast.change.recovery.AddDeclarationRollbackResult
-import org.jetbrains.kotlin.psi.KtFile
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
+import org.jetbrains.kotlin.psi.KtFile
 
 /** Exact recovery primitive for a source that existed before mutation. */
-internal class IntellijExistingSourceRollback(
-    private val project: Project,
-) {
+internal class IntellijExistingSourceRollback(private val project: Project) {
     private val log = Logger.getInstance(IntellijExistingSourceRollback::class.java)
 
     /**
-     * Proof transition: `(MutationAuthority, ExistingPrecondition, ByteArray) ->
-     * AddDeclarationRollbackResult`.
+     * Proof transition: `(MutationAuthority, ExistingPrecondition, ByteArray) -> AddDeclarationRollbackResult`.
      *
-     * RolledBack establishes that both the physical file and live IntelliJ document equal the
-     * exact durable recovery preimage, overwriting only the authority's exact postimage.
-     * [AddDeclarationRollbackFailure] closes divergent or unavailable state. Raw recovery bytes
-     * remain inside this adapter boundary.
+     * RolledBack establishes that both the physical file and live IntelliJ document equal the exact durable recovery
+     * preimage, overwriting only the authority's exact postimage. [AddDeclarationRollbackFailure] closes divergent or
+     * unavailable state. Raw recovery bytes remain inside this adapter boundary.
      */
     fun rollback(
         authority: MutationAuthority,
@@ -48,95 +44,109 @@ internal class IntellijExistingSourceRollback(
             )
         }
         val path = Path.of(authority.source.path.value)
-        val current = try {
-            Files.readAllBytes(path)
-        } catch (_: Exception) {
-            return rejected(
-                AddDeclarationRollbackFailure.TARGET_UNAVAILABLE,
-                IntellijExistingRollbackRejection.PHYSICAL_SOURCE_UNAVAILABLE,
-            )
-        }
-        val physicalState = when (existingRollbackPhysicalState(
-            current,
-            preimage,
-            authority.postimageBytesAtIntellijBoundary(),
-        )) {
-            ExistingRollbackPhysicalState.Preimage -> ExistingRollbackPhysicalState.Preimage
-            ExistingRollbackPhysicalState.Postimage -> ExistingRollbackPhysicalState.Postimage
-            ExistingRollbackPhysicalState.Diverged -> return rejected(
-                AddDeclarationRollbackFailure.CONTENT_DIVERGED,
-                IntellijExistingRollbackRejection.CURRENT_POSTIMAGE_MISMATCH,
-            )
-        }
-        val file = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(path)
-                   ?: return rejected(
-                       AddDeclarationRollbackFailure.TARGET_UNAVAILABLE,
-                       IntellijExistingRollbackRejection.VIRTUAL_FILE_UNAVAILABLE,
-                   )
-        val document = ReadAction.computeBlocking<Document?, RuntimeException> {
-            FileDocumentManager.getInstance().getDocument(file)
-        } ?: return rejected(
-            AddDeclarationRollbackFailure.TARGET_UNAVAILABLE,
-            IntellijExistingRollbackRejection.PSI_OR_DOCUMENT_UNAVAILABLE,
-        )
-        val expectedDocumentText = when (physicalState) {
-            ExistingRollbackPhysicalState.Preimage -> expected.text
-            ExistingRollbackPhysicalState.Postimage -> authority.postimageTextAtIntellijBoundary()
-            ExistingRollbackPhysicalState.Diverged -> error("Divergent physical state escaped")
-        }
-        val documentStage = when (physicalState) {
-            ExistingRollbackPhysicalState.Preimage -> ExistingRollbackDocumentStage.ALREADY_PREIMAGE
-            ExistingRollbackPhysicalState.Postimage -> ExistingRollbackDocumentStage.POSTIMAGE
-            ExistingRollbackPhysicalState.Diverged -> error("Divergent physical state escaped")
-        }
-        when (val synchronized = synchronizeDocument(
-            file,
-            document,
-            expectedDocumentText,
-            documentStage,
-        )) {
+        val current =
+            try {
+                Files.readAllBytes(path)
+            } catch (_: Exception) {
+                return rejected(
+                    AddDeclarationRollbackFailure.TARGET_UNAVAILABLE,
+                    IntellijExistingRollbackRejection.PHYSICAL_SOURCE_UNAVAILABLE,
+                )
+            }
+        val physicalState =
+            when (
+                existingRollbackPhysicalState(
+                    current,
+                    preimage,
+                    authority.postimageBytesAtIntellijBoundary(),
+                )
+            ) {
+                ExistingRollbackPhysicalState.Preimage -> ExistingRollbackPhysicalState.Preimage
+                ExistingRollbackPhysicalState.Postimage -> ExistingRollbackPhysicalState.Postimage
+                ExistingRollbackPhysicalState.Diverged ->
+                    return rejected(
+                        AddDeclarationRollbackFailure.CONTENT_DIVERGED,
+                        IntellijExistingRollbackRejection.CURRENT_POSTIMAGE_MISMATCH,
+                    )
+            }
+        val file =
+            LocalFileSystem.getInstance().refreshAndFindFileByNioFile(path)
+                ?: return rejected(
+                    AddDeclarationRollbackFailure.TARGET_UNAVAILABLE,
+                    IntellijExistingRollbackRejection.VIRTUAL_FILE_UNAVAILABLE,
+                )
+        val document =
+            ReadAction.computeBlocking<Document?, RuntimeException> {
+                FileDocumentManager.getInstance().getDocument(file)
+            }
+                ?: return rejected(
+                    AddDeclarationRollbackFailure.TARGET_UNAVAILABLE,
+                    IntellijExistingRollbackRejection.PSI_OR_DOCUMENT_UNAVAILABLE,
+                )
+        val expectedDocumentText =
+            when (physicalState) {
+                ExistingRollbackPhysicalState.Preimage -> expected.text
+                ExistingRollbackPhysicalState.Postimage -> authority.postimageTextAtIntellijBoundary()
+                ExistingRollbackPhysicalState.Diverged -> error("Divergent physical state escaped")
+            }
+        val documentStage =
+            when (physicalState) {
+                ExistingRollbackPhysicalState.Preimage -> ExistingRollbackDocumentStage.ALREADY_PREIMAGE
+                ExistingRollbackPhysicalState.Postimage -> ExistingRollbackDocumentStage.POSTIMAGE
+                ExistingRollbackPhysicalState.Diverged -> error("Divergent physical state escaped")
+            }
+        when (
+            val synchronized =
+                synchronizeDocument(
+                    file,
+                    document,
+                    expectedDocumentText,
+                    documentStage,
+                )
+        ) {
             ExistingRollbackDocumentSynchronization.Synchronized -> Unit
-            is ExistingRollbackDocumentSynchronization.Rejected -> return rejected(
-                synchronized.failure,
-                synchronized.reason,
-            )
+            is ExistingRollbackDocumentSynchronization.Rejected ->
+                return rejected(
+                    synchronized.failure,
+                    synchronized.reason,
+                )
         }
         if (physicalState == ExistingRollbackPhysicalState.Preimage) {
             return AddDeclarationRollbackResult.RolledBack
         }
-        val target = ReadAction.computeBlocking<ExistingRollbackTarget?, RuntimeException> {
-            val psi = PsiManager.getInstance(project).findFile(file) as? KtFile
-                ?: return@computeBlocking null
-            if (FileDocumentManager.getInstance().getDocument(file) !== document) {
-                return@computeBlocking null
+        val target =
+            ReadAction.computeBlocking<ExistingRollbackTarget?, RuntimeException> {
+                val psi = PsiManager.getInstance(project).findFile(file) as? KtFile ?: return@computeBlocking null
+                if (FileDocumentManager.getInstance().getDocument(file) !== document) {
+                    return@computeBlocking null
+                }
+                ExistingRollbackTarget(psi, document)
             }
-            ExistingRollbackTarget(psi, document)
-        } ?: return rejected(
-            AddDeclarationRollbackFailure.TARGET_UNAVAILABLE,
-            IntellijExistingRollbackRejection.PSI_OR_DOCUMENT_UNAVAILABLE,
-        )
+                ?: return rejected(
+                    AddDeclarationRollbackFailure.TARGET_UNAVAILABLE,
+                    IntellijExistingRollbackRejection.PSI_OR_DOCUMENT_UNAVAILABLE,
+                )
         return try {
             val write = onEdt {
                 if (!file.isValid || !target.psi.isValid) {
-                    return@onEdt ExistingRollbackWrite.Rejected(
-                        IntellijExistingRollbackRejection.TARGET_INVALIDATED,
-                    )
+                    return@onEdt ExistingRollbackWrite.Rejected(IntellijExistingRollbackRejection.TARGET_INVALIDATED)
                 }
                 if (target.document.text != authority.postimageTextAtIntellijBoundary()) {
                     return@onEdt ExistingRollbackWrite.Rejected(
-                        IntellijExistingRollbackRejection.DOCUMENT_POSTIMAGE_CHANGED,
+                        IntellijExistingRollbackRejection.DOCUMENT_POSTIMAGE_CHANGED
                     )
                 }
-                val immediatePhysical = try {
-                    Files.readAllBytes(path)
-                } catch (_: Exception) {
-                    return@onEdt ExistingRollbackWrite.Rejected(
-                        IntellijExistingRollbackRejection.PHYSICAL_SOURCE_UNAVAILABLE,
-                    )
-                }
+                val immediatePhysical =
+                    try {
+                        Files.readAllBytes(path)
+                    } catch (_: Exception) {
+                        return@onEdt ExistingRollbackWrite.Rejected(
+                            IntellijExistingRollbackRejection.PHYSICAL_SOURCE_UNAVAILABLE
+                        )
+                    }
                 if (!immediatePhysical.contentEquals(authority.postimageBytesAtIntellijBoundary())) {
                     return@onEdt ExistingRollbackWrite.Rejected(
-                        IntellijExistingRollbackRejection.PHYSICAL_POSTIMAGE_CHANGED,
+                        IntellijExistingRollbackRejection.PHYSICAL_POSTIMAGE_CHANGED
                     )
                 }
                 WriteCommandAction.writeCommandAction(project, target.psi)
@@ -148,17 +158,21 @@ internal class IntellijExistingSourceRollback(
             }
             when (write) {
                 ExistingRollbackWrite.Written -> {
-                    when (val synchronized = synchronizeDocument(
-                        file,
-                        document,
-                        expected.text,
-                        ExistingRollbackDocumentStage.PREIMAGE,
-                    )) {
+                    when (
+                        val synchronized =
+                            synchronizeDocument(
+                                file,
+                                document,
+                                expected.text,
+                                ExistingRollbackDocumentStage.PREIMAGE,
+                            )
+                    ) {
                         ExistingRollbackDocumentSynchronization.Synchronized -> Unit
-                        is ExistingRollbackDocumentSynchronization.Rejected -> return rejected(
-                            synchronized.failure,
-                            synchronized.reason,
-                        )
+                        is ExistingRollbackDocumentSynchronization.Rejected ->
+                            return rejected(
+                                synchronized.failure,
+                                synchronized.reason,
+                            )
                     }
                     val restored = Files.readAllBytes(path)
                     if (restored.contentEquals(preimage)) {
@@ -166,10 +180,7 @@ internal class IntellijExistingSourceRollback(
                     } else {
                         rejected(
                             AddDeclarationRollbackFailure.WRITE_REJECTED,
-                            if (restored.contentEquals(
-                                    authority.postimageBytesAtIntellijBoundary(),
-                                )
-                            ) {
+                            if (restored.contentEquals(authority.postimageBytesAtIntellijBoundary())) {
                                 IntellijExistingRollbackRejection.POST_WRITE_POSTIMAGE_UNCHANGED
                             } else {
                                 IntellijExistingRollbackRejection.POST_WRITE_CONTENT_DIVERGED
@@ -177,17 +188,18 @@ internal class IntellijExistingSourceRollback(
                         )
                     }
                 }
-                is ExistingRollbackWrite.Rejected -> rejected(
-                    when (write.reason) {
-                        IntellijExistingRollbackRejection.DOCUMENT_POSTIMAGE_CHANGED,
-                        IntellijExistingRollbackRejection.PHYSICAL_POSTIMAGE_CHANGED,
-                        -> AddDeclarationRollbackFailure.CONTENT_DIVERGED
-                        IntellijExistingRollbackRejection.PHYSICAL_SOURCE_UNAVAILABLE ->
-                            AddDeclarationRollbackFailure.TARGET_UNAVAILABLE
-                        else -> AddDeclarationRollbackFailure.WRITE_REJECTED
-                    },
-                    write.reason,
-                )
+                is ExistingRollbackWrite.Rejected ->
+                    rejected(
+                        when (write.reason) {
+                            IntellijExistingRollbackRejection.DOCUMENT_POSTIMAGE_CHANGED,
+                            IntellijExistingRollbackRejection.PHYSICAL_POSTIMAGE_CHANGED ->
+                                AddDeclarationRollbackFailure.CONTENT_DIVERGED
+                            IntellijExistingRollbackRejection.PHYSICAL_SOURCE_UNAVAILABLE ->
+                                AddDeclarationRollbackFailure.TARGET_UNAVAILABLE
+                            else -> AddDeclarationRollbackFailure.WRITE_REJECTED
+                        },
+                        write.reason,
+                    )
             }
         } catch (cancellation: ProcessCanceledException) {
             throw cancellation
@@ -208,46 +220,48 @@ internal class IntellijExistingSourceRollback(
         document: Document,
         expectedText: String,
         stage: ExistingRollbackDocumentStage,
-    ): ExistingRollbackDocumentSynchronization = try {
-        VfsUtil.markDirtyAndRefresh(false, false, false, file)
-        onEdt {
-            val documents = FileDocumentManager.getInstance()
-            when {
-                !file.isValid -> ExistingRollbackDocumentSynchronization.Rejected(
-                    AddDeclarationRollbackFailure.TARGET_UNAVAILABLE,
-                    IntellijExistingRollbackRejection.TARGET_INVALIDATED,
-                )
-                documents.isDocumentUnsaved(document) ->
-                    ExistingRollbackDocumentSynchronization.Rejected(
-                        stage.failure,
-                        stage.unsavedReason,
-                    )
-                else -> {
-                    documents.reloadFromDisk(document, project)
-                    PsiDocumentManager.getInstance(project).commitDocument(document)
-                    if (document.text == expectedText) {
-                        ExistingRollbackDocumentSynchronization.Synchronized
-                    } else {
+    ): ExistingRollbackDocumentSynchronization =
+        try {
+            VfsUtil.markDirtyAndRefresh(false, false, false, file)
+            onEdt {
+                val documents = FileDocumentManager.getInstance()
+                when {
+                    !file.isValid ->
+                        ExistingRollbackDocumentSynchronization.Rejected(
+                            AddDeclarationRollbackFailure.TARGET_UNAVAILABLE,
+                            IntellijExistingRollbackRejection.TARGET_INVALIDATED,
+                        )
+                    documents.isDocumentUnsaved(document) ->
                         ExistingRollbackDocumentSynchronization.Rejected(
                             stage.failure,
-                            stage.mismatchReason,
+                            stage.unsavedReason,
                         )
+                    else -> {
+                        documents.reloadFromDisk(document, project)
+                        PsiDocumentManager.getInstance(project).commitDocument(document)
+                        if (document.text == expectedText) {
+                            ExistingRollbackDocumentSynchronization.Synchronized
+                        } else {
+                            ExistingRollbackDocumentSynchronization.Rejected(
+                                stage.failure,
+                                stage.mismatchReason,
+                            )
+                        }
                     }
                 }
             }
+        } catch (cancellation: ProcessCanceledException) {
+            throw cancellation
+        } catch (failure: Exception) {
+            log.warn(
+                "Kast exact existing-source rollback failed while synchronizing the IntelliJ document",
+                failure,
+            )
+            ExistingRollbackDocumentSynchronization.Rejected(
+                AddDeclarationRollbackFailure.WRITE_REJECTED,
+                IntellijExistingRollbackRejection.DOCUMENT_SYNCHRONIZATION_FAILED,
+            )
         }
-    } catch (cancellation: ProcessCanceledException) {
-        throw cancellation
-    } catch (failure: Exception) {
-        log.warn(
-            "Kast exact existing-source rollback failed while synchronizing the IntelliJ document",
-            failure,
-        )
-        ExistingRollbackDocumentSynchronization.Rejected(
-            AddDeclarationRollbackFailure.WRITE_REJECTED,
-            IntellijExistingRollbackRejection.DOCUMENT_SYNCHRONIZATION_FAILED,
-        )
-    }
 
     private fun rejected(
         failure: AddDeclarationRollbackFailure,
@@ -312,9 +326,7 @@ private sealed interface ExistingRollbackDocumentSynchronization {
 private sealed interface ExistingRollbackWrite {
     data object Written : ExistingRollbackWrite
 
-    data class Rejected(
-        val reason: IntellijExistingRollbackRejection,
-    ) : ExistingRollbackWrite
+    data class Rejected(val reason: IntellijExistingRollbackRejection) : ExistingRollbackWrite
 }
 
 internal enum class ExistingRollbackPhysicalState {
@@ -327,11 +339,12 @@ internal fun existingRollbackPhysicalState(
     current: ByteArray,
     preimage: ByteArray,
     postimage: ByteArray,
-): ExistingRollbackPhysicalState = when {
-    current.contentEquals(preimage) -> ExistingRollbackPhysicalState.Preimage
-    current.contentEquals(postimage) -> ExistingRollbackPhysicalState.Postimage
-    else -> ExistingRollbackPhysicalState.Diverged
-}
+): ExistingRollbackPhysicalState =
+    when {
+        current.contentEquals(preimage) -> ExistingRollbackPhysicalState.Preimage
+        current.contentEquals(postimage) -> ExistingRollbackPhysicalState.Postimage
+        else -> ExistingRollbackPhysicalState.Diverged
+    }
 
 /** Request-local read-action proof required before the EDT write command can restore a source. */
 private data class ExistingRollbackTarget(

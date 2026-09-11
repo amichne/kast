@@ -19,90 +19,96 @@ import io.github.amichne.kast.workspace.contract.WorkspaceEvidenceKind
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceContentHash
 import io.github.amichne.kast.workspace.contract.WorkspaceSourcePath
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
+import java.nio.file.Files
+import java.nio.file.Path
+import java.sql.DriverManager
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Files
-import java.nio.file.Path
-import java.sql.DriverManager
 
 class SqliteTopologyCorruptPathTest {
-    @TempDir
-    lateinit var tempDir: Path
+    @TempDir lateinit var tempDir: Path
 
     @Test
     fun `malformed persisted source root is corrupt`() {
         val generation = generation()
-        val database = tempDir.resolve("malformed-root/topology.sqlite").also {
-            Files.createDirectories(it.parent)
-        }
-        val published = assertInstanceOf(
-            TopologyPublicationResult.Published::class.java,
-            store(database).publish(generation),
-        ).snapshot
+        val database =
+            tempDir.resolve("malformed-root/topology.sqlite").also {
+                Files.createDirectories(it.parent)
+            }
+        val published =
+            assertInstanceOf(
+                    TopologyPublicationResult.Published::class.java,
+                    store(database).publish(generation),
+                )
+                .snapshot
         DriverManager.getConnection("jdbc:sqlite:$database").use { connection ->
-            connection.prepareStatement(
-                "UPDATE topology_file_v3 SET source_root = ?",
-            ).use { statement ->
+            connection.prepareStatement("UPDATE topology_file_v3 SET source_root = ?").use { statement ->
                 statement.setString(1, "src" + 0.toChar() + "/main/kotlin")
                 statement.executeUpdate()
             }
         }
 
         assertEquals(
-            TopologySnapshotContentRead.Rejected(
-                TopologySnapshotReadFailure.CORRUPT_SNAPSHOT,
-            ),
+            TopologySnapshotContentRead.Rejected(TopologySnapshotReadFailure.CORRUPT_SNAPSHOT),
             store(database).read(published),
         )
     }
 
     private fun generation(): CompleteTopologyGeneration {
-        val sourceRoot = SourceRoot.admit(
-            GradleSourceRootEvidence(
-                "root.main",
-                ".",
-                ":",
-                "main",
-                "src/main/kotlin",
-                SourceRootProvenance.Authored,
-            ),
-        ).refined()
-        val candidate = WorkspaceCandidate(
-            CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined(),
-            WorkspaceStateIdentity.parse("source-state").refined(),
-        )
-        val workspace = PublishedWorkspace.publish(
-            ReconciledWorkspace.admit(
-                candidate,
-                WorkspaceEvidenceKind.entries.toSet(),
-                listOf(sourceRoot),
-            ).refined(),
-            EvidenceGeneration.parse(7).refined(),
-        )
-        val source = TopologySourceFile.admit(
-            workspace,
-            sourceRoot,
-            WorkspaceSourcePath.parse("src/main/kotlin/Source.kt").refined(),
-            WorkspaceSourceContentHash.parse("a".repeat(64)).refined(),
-        ).refined()
+        val sourceRoot =
+            SourceRoot.admit(
+                    GradleSourceRootEvidence(
+                        "root.main",
+                        ".",
+                        ":",
+                        "main",
+                        "src/main/kotlin",
+                        SourceRootProvenance.Authored,
+                    )
+                )
+                .refined()
+        val candidate =
+            WorkspaceCandidate(
+                CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined(),
+                WorkspaceStateIdentity.parse("source-state").refined(),
+            )
+        val workspace =
+            PublishedWorkspace.publish(
+                ReconciledWorkspace.admit(
+                        candidate,
+                        WorkspaceEvidenceKind.entries.toSet(),
+                        listOf(sourceRoot),
+                    )
+                    .refined(),
+                EvidenceGeneration.parse(7).refined(),
+            )
+        val source =
+            TopologySourceFile.admit(
+                    workspace,
+                    sourceRoot,
+                    WorkspaceSourcePath.parse("src/main/kotlin/Source.kt").refined(),
+                    WorkspaceSourceContentHash.parse("a".repeat(64)).refined(),
+                )
+                .refined()
         return CompleteTopologyGeneration.admit(
-            workspace,
-            listOf(source),
-            listOf(CompleteTopologyFile.admit(source, emptyList(), emptyList()).refined()),
-        ).refined()
+                workspace,
+                listOf(source),
+                listOf(CompleteTopologyFile.admit(source, emptyList(), emptyList()).refined()),
+            )
+            .refined()
     }
 
-    private fun store(path: Path): SqliteTopologySnapshotStore = when (
-        val opened = SqliteTopologySnapshotStore.open(path)
-    ) {
-        is SqliteTopologySnapshotStoreOpening.Opened -> opened.store
-        is SqliteTopologySnapshotStoreOpening.Rejected -> error(opened.failure)
-    }
+    private fun store(path: Path): SqliteTopologySnapshotStore =
+        when (val opened = SqliteTopologySnapshotStore.open(path)) {
+            is SqliteTopologySnapshotStoreOpening.Opened -> opened.store
+            is SqliteTopologySnapshotStoreOpening.Rejected -> error(opened.failure)
+        }
 
-    private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value = when (this) {
-        is Refinement.Refined -> value
-        is Refinement.Rejected -> error(failure.toString())
-    }
+    private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value =
+        when (this) {
+            is Refinement.Refined -> value
+            is Refinement.Rejected -> error(failure.toString())
+        }
 }

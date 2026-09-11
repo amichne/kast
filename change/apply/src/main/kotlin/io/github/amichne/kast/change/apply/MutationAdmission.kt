@@ -43,7 +43,8 @@ internal class ExactAdmittedSourceWrite(
 )
 
 /** Exact derived postimage that preserves the successful mutation and content-hash proof. */
-internal class DerivedMutationPostimage private constructor(
+internal class DerivedMutationPostimage
+private constructor(
     internal val text: String,
     val content: WorkspaceSourceContentHash,
     mutations: List<SourceTextMutation>,
@@ -55,12 +56,10 @@ internal class DerivedMutationPostimage private constructor(
          * Proof transition: `(ObservedMutationPrecondition, List<SourceTextMutation>) ->
          * Refinement<DerivedMutationPostimage, MutationAdmissionFailure>`.
          *
-         * Establishes either a non-overlapping existing-source mutation set whose expected text
-         * matches the preimage or one whole-file creation against proven absence, plus the
-         * SHA-256 identity of the deterministic postimage.
-         * [MutationAdmissionFailure] closes invalid mutation sets and unrepresentable content.
-         * Raw source text may enter from [ObservedMutationSource] and leave only through the
-         * authority-bound IntelliJ mutation boundary.
+         * Establishes either a non-overlapping existing-source mutation set whose expected text matches the preimage or
+         * one whole-file creation against proven absence, plus the SHA-256 identity of the deterministic postimage.
+         * [MutationAdmissionFailure] closes invalid mutation sets and unrepresentable content. Raw source text may
+         * enter from [ObservedMutationSource] and leave only through the authority-bound IntelliJ mutation boundary.
          */
         fun derive(
             preimage: ObservedMutationPrecondition,
@@ -79,10 +78,9 @@ internal class DerivedMutationPostimage private constructor(
          * Proof transition: `(ObservedMutationSource, List<SourceTextMutation>) -> Refinement<
          * DerivedMutationPostimage, MutationAdmissionFailure>`.
          *
-         * Establishes non-overlapping in-file mutations whose expected text matches the exact
-         * existing preimage and retains their deterministic SHA-256 postimage.
-         * [MutationAdmissionFailure] closes mixed mutation kinds, invalid ranges, overlap, and
-         * preimage mismatch. Raw text leaves only through the returned stronger postimage.
+         * Establishes non-overlapping in-file mutations whose expected text matches the exact existing preimage and
+         * retains their deterministic SHA-256 postimage. [MutationAdmissionFailure] closes mixed mutation kinds,
+         * invalid ranges, overlap, and preimage mismatch. Raw text leaves only through the returned stronger postimage.
          */
         private fun deriveExisting(
             preimage: ObservedMutationSource,
@@ -92,138 +90,149 @@ internal class DerivedMutationPostimage private constructor(
                 return Refinement.Rejected(MutationAdmissionFailure.MUTATION_KIND_MISMATCH)
             }
             val rangedMutations = mutations.map { mutation ->
-                val range = when (mutation) {
-                    is SourceTextMutation.CreateFile -> return Refinement.Rejected(
-                        MutationAdmissionFailure.MUTATION_KIND_MISMATCH,
-                    )
-                    is SourceTextMutation.InsertAfterDeclaration -> MutationRange(
-                        mutation.anchor.endExclusive,
-                        mutation.anchor.endExclusive,
-                    )
-                    is SourceTextMutation.InsertIntoClassBody -> MutationRange(
-                        mutation.anchor.endExclusive - 1,
-                        mutation.anchor.endExclusive - 1,
-                    )
-                    is SourceTextMutation.Replace -> MutationRange(
-                        mutation.range.startInclusive,
-                        mutation.range.endExclusive,
-                    )
-                    is SourceTextMutation.ReplaceDeclaration -> MutationRange(
-                        mutation.range.startInclusive,
-                        mutation.range.endExclusive,
-                    )
-                }
+                val range =
+                    when (mutation) {
+                        is SourceTextMutation.CreateFile ->
+                            return Refinement.Rejected(MutationAdmissionFailure.MUTATION_KIND_MISMATCH)
+                        is SourceTextMutation.InsertAfterDeclaration ->
+                            MutationRange(
+                                mutation.anchor.endExclusive,
+                                mutation.anchor.endExclusive,
+                            )
+                        is SourceTextMutation.InsertIntoClassBody ->
+                            MutationRange(
+                                mutation.anchor.endExclusive - 1,
+                                mutation.anchor.endExclusive - 1,
+                            )
+                        is SourceTextMutation.Replace ->
+                            MutationRange(
+                                mutation.range.startInclusive,
+                                mutation.range.endExclusive,
+                            )
+                        is SourceTextMutation.ReplaceDeclaration ->
+                            MutationRange(
+                                mutation.range.startInclusive,
+                                mutation.range.endExclusive,
+                            )
+                    }
                 mutation to range
             }
             val ranges = rangedMutations.map { it.second }.sortedBy(MutationRange::startInclusive)
-            if (ranges.zipWithNext().any { (left, right) ->
-                    left.startInclusive == right.startInclusive ||
-                    left.endExclusive > right.startInclusive
+            if (
+                ranges.zipWithNext().any { (left, right) ->
+                    left.startInclusive == right.startInclusive || left.endExclusive > right.startInclusive
                 }
             ) {
                 return Refinement.Rejected(MutationAdmissionFailure.MUTATION_OVERLAP)
             }
-            if (ranges.any {
+            if (
+                ranges.any {
                     it.startInclusive < 0 ||
-                    it.endExclusive < it.startInclusive ||
-                    it.endExclusive > preimage.text.length
+                        it.endExclusive < it.startInclusive ||
+                        it.endExclusive > preimage.text.length
                 }
             ) {
                 return Refinement.Rejected(MutationAdmissionFailure.MUTATION_OUT_OF_BOUNDS)
             }
-            if (mutations.any { mutation ->
+            if (
+                mutations.any { mutation ->
                     mutation is SourceTextMutation.InsertIntoClassBody &&
-                    preimage.text.getOrNull(mutation.anchor.endExclusive - 1) != '}'
+                        preimage.text.getOrNull(mutation.anchor.endExclusive - 1) != '}'
                 }
             ) {
-                return Refinement.Rejected(
-                    MutationAdmissionFailure.MUTATION_PREIMAGE_MISMATCH,
-                )
+                return Refinement.Rejected(MutationAdmissionFailure.MUTATION_PREIMAGE_MISMATCH)
             }
-            if (mutations.any { mutation ->
+            if (
+                mutations.any { mutation ->
                     when (mutation) {
-                        is SourceTextMutation.Replace -> preimage.text.substring(
-                            mutation.range.startInclusive,
-                            mutation.range.endExclusive,
-                        ) != mutation.expected.value
-                        is SourceTextMutation.ReplaceDeclaration -> preimage.text.substring(
-                            mutation.range.startInclusive,
-                            mutation.range.endExclusive,
-                        ) != mutation.expected.value
+                        is SourceTextMutation.Replace ->
+                            preimage.text.substring(
+                                mutation.range.startInclusive,
+                                mutation.range.endExclusive,
+                            ) != mutation.expected.value
+                        is SourceTextMutation.ReplaceDeclaration ->
+                            preimage.text.substring(
+                                mutation.range.startInclusive,
+                                mutation.range.endExclusive,
+                            ) != mutation.expected.value
                         else -> false
                     }
                 }
             ) {
-                return Refinement.Rejected(
-                    MutationAdmissionFailure.MUTATION_PREIMAGE_MISMATCH,
-                )
+                return Refinement.Rejected(MutationAdmissionFailure.MUTATION_PREIMAGE_MISMATCH)
             }
             var result = preimage.text
-            rangedMutations.sortedByDescending { it.second.startInclusive }.forEach { pair ->
-                val mutation = pair.first
-                result = when (mutation) {
-                    is SourceTextMutation.CreateFile -> return Refinement.Rejected(
-                        MutationAdmissionFailure.MUTATION_KIND_MISMATCH,
-                    )
-                    is SourceTextMutation.InsertAfterDeclaration -> {
-                        val offset = mutation.anchor.endExclusive
-                        result.substring(0, offset) + "\n\n${mutation.declaration.value}" +
-                        result.substring(offset)
-                    }
-                    is SourceTextMutation.InsertIntoClassBody -> {
-                        val offset = mutation.anchor.endExclusive - 1
-                        result.substring(0, offset) + "\n    ${mutation.declaration.value}\n" +
-                        result.substring(offset)
-                    }
-                    is SourceTextMutation.Replace -> result.substring(
-                        0,
-                        mutation.range.startInclusive,
-                    ) + mutation.replacement.value + result.substring(mutation.range.endExclusive)
-                    is SourceTextMutation.ReplaceDeclaration -> result.substring(
-                        0,
-                        mutation.range.startInclusive,
-                    ) + mutation.replacement.value + result.substring(mutation.range.endExclusive)
+            rangedMutations
+                .sortedByDescending { it.second.startInclusive }
+                .forEach { pair ->
+                    val mutation = pair.first
+                    result =
+                        when (mutation) {
+                            is SourceTextMutation.CreateFile ->
+                                return Refinement.Rejected(MutationAdmissionFailure.MUTATION_KIND_MISMATCH)
+                            is SourceTextMutation.InsertAfterDeclaration -> {
+                                val offset = mutation.anchor.endExclusive
+                                result.substring(0, offset) +
+                                    "\n\n${mutation.declaration.value}" +
+                                    result.substring(offset)
+                            }
+                            is SourceTextMutation.InsertIntoClassBody -> {
+                                val offset = mutation.anchor.endExclusive - 1
+                                result.substring(0, offset) +
+                                    "\n    ${mutation.declaration.value}\n" +
+                                    result.substring(offset)
+                            }
+                            is SourceTextMutation.Replace ->
+                                result.substring(
+                                    0,
+                                    mutation.range.startInclusive,
+                                ) + mutation.replacement.value + result.substring(mutation.range.endExclusive)
+                            is SourceTextMutation.ReplaceDeclaration ->
+                                result.substring(
+                                    0,
+                                    mutation.range.startInclusive,
+                                ) + mutation.replacement.value + result.substring(mutation.range.endExclusive)
+                        }
                 }
-            }
-            val content = when (val parsed = WorkspaceSourceContentHash.parse(
-                sha256(result.toByteArray(StandardCharsets.UTF_8)),
-            )) {
-                is Refinement.Refined -> parsed.value
-                is Refinement.Rejected -> return Refinement.Rejected(
-                    MutationAdmissionFailure.SOURCE_HASH_UNREPRESENTABLE,
-                )
-            }
+            val content =
+                when (
+                    val parsed = WorkspaceSourceContentHash.parse(sha256(result.toByteArray(StandardCharsets.UTF_8)))
+                ) {
+                    is Refinement.Refined -> parsed.value
+                    is Refinement.Rejected ->
+                        return Refinement.Rejected(MutationAdmissionFailure.SOURCE_HASH_UNREPRESENTABLE)
+                }
             return Refinement.Refined(DerivedMutationPostimage(result, content, mutations))
         }
 
         /**
-         * Proof transition: `List<SourceTextMutation> -> Refinement<
-         * DerivedMutationPostimage, MutationAdmissionFailure>` under an admitted absent source.
+         * Proof transition: `List<SourceTextMutation> -> Refinement< DerivedMutationPostimage,
+         * MutationAdmissionFailure>` under an admitted absent source.
          *
-         * Establishes exactly one whole-file creation and its SHA-256 postimage identity.
-         * [MutationAdmissionFailure] closes mixed, missing, or repeated mutation kinds. Raw source
-         * text leaves only through the returned stronger postimage.
+         * Establishes exactly one whole-file creation and its SHA-256 postimage identity. [MutationAdmissionFailure]
+         * closes mixed, missing, or repeated mutation kinds. Raw source text leaves only through the returned stronger
+         * postimage.
          */
         private fun deriveCreatedFile(
-            mutations: List<SourceTextMutation>,
+            mutations: List<SourceTextMutation>
         ): Refinement<DerivedMutationPostimage, MutationAdmissionFailure> {
-            val create = mutations.singleOrNull() as? SourceTextMutation.CreateFile
-                         ?: return Refinement.Rejected(MutationAdmissionFailure.MUTATION_KIND_MISMATCH)
+            val create =
+                mutations.singleOrNull() as? SourceTextMutation.CreateFile
+                    ?: return Refinement.Rejected(MutationAdmissionFailure.MUTATION_KIND_MISMATCH)
             val result = create.content.value
-            val content = when (val parsed = WorkspaceSourceContentHash.parse(
-                sha256(result.toByteArray(StandardCharsets.UTF_8)),
-            )) {
-                is Refinement.Refined -> parsed.value
-                is Refinement.Rejected -> return Refinement.Rejected(
-                    MutationAdmissionFailure.SOURCE_HASH_UNREPRESENTABLE,
-                )
-            }
+            val content =
+                when (
+                    val parsed = WorkspaceSourceContentHash.parse(sha256(result.toByteArray(StandardCharsets.UTF_8)))
+                ) {
+                    is Refinement.Refined -> parsed.value
+                    is Refinement.Rejected ->
+                        return Refinement.Rejected(MutationAdmissionFailure.SOURCE_HASH_UNREPRESENTABLE)
+                }
             return Refinement.Refined(DerivedMutationPostimage(result, content, mutations))
         }
 
-        private fun sha256(bytes: ByteArray): String = HexFormat.of().formatHex(
-            MessageDigest.getInstance("SHA-256").digest(bytes),
-        )
+        private fun sha256(bytes: ByteArray): String =
+            HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes))
     }
 }
 
@@ -241,12 +250,12 @@ enum class MutationPlanPublicationRelationship {
 /**
  * Proof that one durable plan remained physically applicable at one exact workspace publication.
  *
- * A successor relationship is available only after the admission service has re-established the
- * exact planned target, precondition, authored source root, owner, and singleton write scope. The
- * actual pre-apply lease is retained so publication and verification remain causally bound to the
- * write even when the plan was created before an IDE restart.
+ * A successor relationship is available only after the admission service has re-established the exact planned target,
+ * precondition, authored source root, owner, and singleton write scope. The actual pre-apply lease is retained so
+ * publication and verification remain causally bound to the write even when the plan was created before an IDE restart.
  */
-class MutationPlanPublication private constructor(
+class MutationPlanPublication
+private constructor(
     val plannedLease: SemanticReadLease,
     val plannedState: WorkspaceStateIdentity,
     val applicationLease: SemanticReadLease,
@@ -263,8 +272,9 @@ class MutationPlanPublication private constructor(
             write: ExactAdmittedSourceWrite,
         ): Refinement<MutationPlanPublication, MutationAdmissionFailure> {
             val plan = request.plan
-            val plannedWrite = plan.writes.entries.singleOrNull()
-                ?: return Refinement.Rejected(MutationAdmissionFailure.UNPLANNED_WRITE_SET)
+            val plannedWrite =
+                plan.writes.entries.singleOrNull()
+                    ?: return Refinement.Rejected(MutationAdmissionFailure.UNPLANNED_WRITE_SET)
             if (plan.priorLease.workspaceRoot != request.workspace.root) {
                 return Refinement.Rejected(MutationAdmissionFailure.WRONG_ROOT)
             }
@@ -273,30 +283,25 @@ class MutationPlanPublication private constructor(
             }
             if (
                 request.workspace.generation == plan.priorLease.generation &&
-                request.workspace.sourceState != plan.workspaceState
+                    request.workspace.sourceState != plan.workspaceState
             ) {
                 return Refinement.Rejected(MutationAdmissionFailure.STALE_SOURCE_STATE)
             }
-            if (
-                request.workspace.readLease != plan.priorLease &&
-                plan !is AddDeclarationChangePlan
-            ) {
+            if (request.workspace.readLease != plan.priorLease && plan !is AddDeclarationChangePlan) {
                 return Refinement.Rejected(MutationAdmissionFailure.STALE_GENERATION)
             }
-            if (
-                write.source != plannedWrite.source ||
-                sourceRoot != plannedWrite.sourceRoot
-            ) {
+            if (write.source != plannedWrite.source || sourceRoot != plannedWrite.sourceRoot) {
                 return Refinement.Rejected(MutationAdmissionFailure.WRONG_SOURCE_ROOT_OWNER)
             }
-            val relationship = if (
-                request.workspace.readLease == plan.priorLease &&
-                request.workspace.sourceState == plan.workspaceState
-            ) {
-                MutationPlanPublicationRelationship.EXACT
-            } else {
-                MutationPlanPublicationRelationship.REVALIDATED_SUCCESSOR
-            }
+            val relationship =
+                if (
+                    request.workspace.readLease == plan.priorLease &&
+                        request.workspace.sourceState == plan.workspaceState
+                ) {
+                    MutationPlanPublicationRelationship.EXACT
+                } else {
+                    MutationPlanPublicationRelationship.REVALIDATED_SUCCESSOR
+                }
             return Refinement.Refined(
                 MutationPlanPublication(
                     plan.priorLease,
@@ -307,7 +312,7 @@ class MutationPlanPublication private constructor(
                     plannedWrite.source,
                     plannedWrite.sourceRoot,
                     plannedWrite.precondition,
-                ),
+                )
             )
         }
 
@@ -316,40 +321,27 @@ class MutationPlanPublication private constructor(
             applicationLease: SemanticReadLease,
             applicationState: WorkspaceStateIdentity,
         ): Refinement<MutationPlanPublication, MutationPlanPublicationRestorationFailure> {
-            val write = plan.writes.entries.singleOrNull()
-                ?: return Refinement.Rejected(
-                    MutationPlanPublicationRestorationFailure.WRITE_SET_NOT_SINGLETON,
-                )
+            val write =
+                plan.writes.entries.singleOrNull()
+                    ?: return Refinement.Rejected(MutationPlanPublicationRestorationFailure.WRITE_SET_NOT_SINGLETON)
             if (applicationLease.workspaceRoot != plan.priorLease.workspaceRoot) {
-                return Refinement.Rejected(
-                    MutationPlanPublicationRestorationFailure.APPLICATION_ROOT_MISMATCH,
-                )
+                return Refinement.Rejected(MutationPlanPublicationRestorationFailure.APPLICATION_ROOT_MISMATCH)
             }
             if (applicationLease.generation.value < plan.priorLease.generation.value) {
-                return Refinement.Rejected(
-                    MutationPlanPublicationRestorationFailure.APPLICATION_GENERATION_STALE,
-                )
+                return Refinement.Rejected(MutationPlanPublicationRestorationFailure.APPLICATION_GENERATION_STALE)
             }
-            if (
-                applicationLease.generation == plan.priorLease.generation &&
-                applicationState != plan.workspaceState
-            ) {
-                return Refinement.Rejected(
-                    MutationPlanPublicationRestorationFailure.APPLICATION_STATE_MISMATCH,
-                )
+            if (applicationLease.generation == plan.priorLease.generation && applicationState != plan.workspaceState) {
+                return Refinement.Rejected(MutationPlanPublicationRestorationFailure.APPLICATION_STATE_MISMATCH)
             }
             if (applicationLease != plan.priorLease && plan !is AddDeclarationChangePlan) {
-                return Refinement.Rejected(
-                    MutationPlanPublicationRestorationFailure.APPLICATION_SUCCESSOR_UNSUPPORTED,
-                )
+                return Refinement.Rejected(MutationPlanPublicationRestorationFailure.APPLICATION_SUCCESSOR_UNSUPPORTED)
             }
-            val relationship = if (
-                applicationLease == plan.priorLease && applicationState == plan.workspaceState
-            ) {
-                MutationPlanPublicationRelationship.EXACT
-            } else {
-                MutationPlanPublicationRelationship.REVALIDATED_SUCCESSOR
-            }
+            val relationship =
+                if (applicationLease == plan.priorLease && applicationState == plan.workspaceState) {
+                    MutationPlanPublicationRelationship.EXACT
+                } else {
+                    MutationPlanPublicationRelationship.REVALIDATED_SUCCESSOR
+                }
             return Refinement.Refined(
                 MutationPlanPublication(
                     plan.priorLease,
@@ -360,7 +352,7 @@ class MutationPlanPublication private constructor(
                     write.source,
                     write.sourceRoot,
                     write.precondition,
-                ),
+                )
             )
         }
     }
@@ -386,14 +378,13 @@ internal class AdmittedMutation(
 /** Pure KCS-017 admission from a detached plan and current source observation. */
 internal class MutationAdmissionService {
     /**
-     * Proof transition: `(ChangeApplyRequest, ObservedMutationPrecondition) -> Refinement<
-     * AdmittedMutation, MutationAdmissionFailure>`.
+     * Proof transition: `(ChangeApplyRequest, ObservedMutationPrecondition) -> Refinement< AdmittedMutation,
+     * MutationAdmissionFailure>`.
      *
-     * Establishes one exact root, a current or strictly newer revalidated publication, content
-     * image, uniquely owned authored source root, writable target, exact caller scope, planned
-     * semantic transformations, and exact derived postimage. [MutationAdmissionFailure] is the
-     * closed expected failure. Raw source extraction is prohibited here and remains confined to
-     * the physical source boundary.
+     * Establishes one exact root, a current or strictly newer revalidated publication, content image, uniquely owned
+     * authored source root, writable target, exact caller scope, planned semantic transformations, and exact derived
+     * postimage. [MutationAdmissionFailure] is the closed expected failure. Raw source extraction is prohibited here
+     * and remains confined to the physical source boundary.
      */
     fun admit(
         request: AddDeclarationApplyRequest,
@@ -401,25 +392,21 @@ internal class MutationAdmissionService {
     ): Refinement<AdmittedMutation, MutationAdmissionFailure> {
         val plan = request.plan
         val workspace = request.workspace
-        if (
-            plan.priorLease.workspaceRoot != workspace.root ||
-            request.writeScope.root != workspace.root
-        ) {
+        if (plan.priorLease.workspaceRoot != workspace.root || request.writeScope.root != workspace.root) {
             return rejected(MutationAdmissionFailure.WRONG_ROOT)
         }
-        val currentRoot = when (val root = currentSourceRoot(request)) {
-            is Refinement.Refined -> root.value
-            is Refinement.Rejected -> return root
-        }
+        val currentRoot =
+            when (val root = currentSourceRoot(request)) {
+                is Refinement.Refined -> root.value
+                is Refinement.Rejected -> return root
+            }
         when (currentRoot.provenance) {
             SourceRootProvenance.Authored -> Unit
-            SourceRootProvenance.Generated ->
-                return rejected(MutationAdmissionFailure.GENERATED_TARGET)
-            is SourceRootProvenance.Unknown ->
-                return rejected(MutationAdmissionFailure.UNKNOWN_TARGET_PROVENANCE)
+            SourceRootProvenance.Generated -> return rejected(MutationAdmissionFailure.GENERATED_TARGET)
+            is SourceRootProvenance.Unknown -> return rejected(MutationAdmissionFailure.UNKNOWN_TARGET_PROVENANCE)
         }
-        val plannedWrite = plan.writes.entries.singleOrNull()
-                           ?: return rejected(MutationAdmissionFailure.UNPLANNED_WRITE_SET)
+        val plannedWrite =
+            plan.writes.entries.singleOrNull() ?: return rejected(MutationAdmissionFailure.UNPLANNED_WRITE_SET)
         if (currentRoot != plannedWrite.sourceRoot) {
             return rejected(MutationAdmissionFailure.WRONG_SOURCE_ROOT_OWNER)
         }
@@ -441,33 +428,43 @@ internal class MutationAdmissionService {
                     return rejected(MutationAdmissionFailure.SOURCE_CONTENT_CHANGED)
                 }
             }
-            PlannedSourcePrecondition.Absent -> if (observed !is ObservedAbsentMutationSource) {
-                return rejected(MutationAdmissionFailure.SOURCE_PRECONDITION_MISMATCH)
-            }
+            PlannedSourcePrecondition.Absent ->
+                if (observed !is ObservedAbsentMutationSource) {
+                    return rejected(MutationAdmissionFailure.SOURCE_PRECONDITION_MISMATCH)
+                }
         }
         if (observed.access != SourceWriteAccess.Writable) {
             return rejected(MutationAdmissionFailure.TARGET_READ_ONLY)
         }
-        val postimage = when (val derived = DerivedMutationPostimage.derive(
-            observed,
-            plannedWrite.mutations,
-        )) {
-            is Refinement.Refined -> derived.value
-            is Refinement.Rejected -> return derived
-        }
-        val write = ExactAdmittedSourceWrite(
-            plannedWrite.source,
-            observed,
-            postimage,
-        )
-        val publication = when (val admitted = MutationPlanPublication.admit(
-            request,
-            currentRoot,
-            write,
-        )) {
-            is Refinement.Refined -> admitted.value
-            is Refinement.Rejected -> return admitted
-        }
+        val postimage =
+            when (
+                val derived =
+                    DerivedMutationPostimage.derive(
+                        observed,
+                        plannedWrite.mutations,
+                    )
+            ) {
+                is Refinement.Refined -> derived.value
+                is Refinement.Rejected -> return derived
+            }
+        val write =
+            ExactAdmittedSourceWrite(
+                plannedWrite.source,
+                observed,
+                postimage,
+            )
+        val publication =
+            when (
+                val admitted =
+                    MutationPlanPublication.admit(
+                        request,
+                        currentRoot,
+                        write,
+                    )
+            ) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return admitted
+            }
         return Refinement.Refined(
             AdmittedMutation(
                 request,
@@ -475,28 +472,27 @@ internal class MutationAdmissionService {
                 currentRoot,
                 write,
                 publication,
-            ),
+            )
         )
     }
 
     /**
-     * Proof transition: `ChangeApplyRequest -> Refinement<SourceRoot,
-     * MutationAdmissionFailure>`.
+     * Proof transition: `ChangeApplyRequest -> Refinement<SourceRoot, MutationAdmissionFailure>`.
      *
-     * Establishes one current source root at the plan's exact modeled location and proves that the
-     * target remains strictly contained by it. [MutationAdmissionFailure] closes ambiguous,
-     * absent, or escaped ownership. Raw path interpretation is confined to this pure admission
-     * boundary and no path handle leaves it.
+     * Establishes one current source root at the plan's exact modeled location and proves that the target remains
+     * strictly contained by it. [MutationAdmissionFailure] closes ambiguous, absent, or escaped ownership. Raw path
+     * interpretation is confined to this pure admission boundary and no path handle leaves it.
      */
     private fun currentSourceRoot(
-        request: AddDeclarationApplyRequest,
+        request: AddDeclarationApplyRequest
     ): Refinement<SourceRoot, MutationAdmissionFailure> {
         val plan = request.plan
-        val plannedWrite = plan.writes.entries.singleOrNull()
-                           ?: return rejected(MutationAdmissionFailure.UNPLANNED_WRITE_SET)
-        val matching = request.workspace.sourceRoots.filter { root ->
-            root.location == plannedWrite.sourceRoot.location
-        }
+        val plannedWrite =
+            plan.writes.entries.singleOrNull() ?: return rejected(MutationAdmissionFailure.UNPLANNED_WRITE_SET)
+        val matching =
+            request.workspace.sourceRoots.filter { root ->
+                root.location == plannedWrite.sourceRoot.location
+            }
         if (matching.size != 1) {
             return rejected(MutationAdmissionFailure.WRONG_SOURCE_ROOT_OWNER)
         }
@@ -510,7 +506,6 @@ internal class MutationAdmissionService {
         return Refinement.Refined(root)
     }
 
-    private fun rejected(
-        failure: MutationAdmissionFailure,
-    ): Refinement.Rejected<MutationAdmissionFailure> = Refinement.Rejected(failure)
+    private fun rejected(failure: MutationAdmissionFailure): Refinement.Rejected<MutationAdmissionFailure> =
+        Refinement.Rejected(failure)
 }

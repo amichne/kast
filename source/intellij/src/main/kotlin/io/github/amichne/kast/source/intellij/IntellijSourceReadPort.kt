@@ -1,7 +1,7 @@
 package io.github.amichne.kast.source.intellij
 
-import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.ReadLimitParameter
+import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.source.contract.Containment
 import io.github.amichne.kast.source.contract.DeclarationVisibility
@@ -13,7 +13,6 @@ import io.github.amichne.kast.source.contract.SourceEntityCount
 import io.github.amichne.kast.source.contract.SourceEntityLimit
 import io.github.amichne.kast.source.contract.SourceRange
 import io.github.amichne.kast.source.contract.SourceReadAnchor
-import io.github.amichne.kast.source.contract.SourceReadScope
 import io.github.amichne.kast.source.contract.SourceReadContext
 import io.github.amichne.kast.source.contract.SourceReadContinuation
 import io.github.amichne.kast.source.contract.SourceReadContinuationState
@@ -24,6 +23,7 @@ import io.github.amichne.kast.source.contract.SourceReadQualification
 import io.github.amichne.kast.source.contract.SourceReadRejection
 import io.github.amichne.kast.source.contract.SourceReadRequest
 import io.github.amichne.kast.source.contract.SourceReadResult
+import io.github.amichne.kast.source.contract.SourceReadScope
 import io.github.amichne.kast.source.contract.SourceRegion
 import io.github.amichne.kast.source.contract.SourceRegionKind
 import io.github.amichne.kast.source.contract.SourceSelector
@@ -35,16 +35,15 @@ import io.github.amichne.kast.source.contract.TextProjection
 import io.github.amichne.kast.source.contract.Utf16CodeUnitCount
 import io.github.amichne.kast.source.contract.Utf16CodeUnitOffset
 import io.github.amichne.kast.source.contract.VisibilitySelection
-import io.github.amichne.kast.symbol.contract.fingerprintFields
 import io.github.amichne.kast.symbol.contract.CandidateSelector
 import io.github.amichne.kast.symbol.contract.RevalidatedSymbolSelector
-import io.github.amichne.kast.symbol.contract.SymbolSearchScope
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
+import io.github.amichne.kast.symbol.contract.SymbolSearchScope
 import io.github.amichne.kast.symbol.contract.SymbolSelector
+import io.github.amichne.kast.symbol.contract.fingerprintFields
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.util.LinkedHashMap
-
 
 internal enum class IntellijSourceReadRejection {
     WORKSPACE_ROOT_MISMATCH,
@@ -65,13 +64,9 @@ internal enum class IntellijSourceReadRejection {
 }
 
 internal sealed interface IntellijSourceReadAccessResult {
-    data class Captured(
-        val capture: IntellijCommittedSourceCapture,
-    ) : IntellijSourceReadAccessResult
+    data class Captured(val capture: IntellijCommittedSourceCapture) : IntellijSourceReadAccessResult
 
-    data class Rejected(
-        val reason: IntellijSourceReadRejection,
-    ) : IntellijSourceReadAccessResult
+    data class Rejected(val reason: IntellijSourceReadRejection) : IntellijSourceReadAccessResult
 }
 
 internal fun interface IntellijSourceReadAccess {
@@ -82,13 +77,9 @@ internal fun interface IntellijSourceReadAccess {
 }
 
 internal sealed interface IntellijSourceRegionAccessResult {
-    data class Selected(
-        val capture: IntellijSelectedSourceCapture,
-    ) : IntellijSourceRegionAccessResult
+    data class Selected(val capture: IntellijSelectedSourceCapture) : IntellijSourceRegionAccessResult
 
-    data class Rejected(
-        val reason: IntellijSourceReadRejection,
-    ) : IntellijSourceRegionAccessResult
+    data class Rejected(val reason: IntellijSourceReadRejection) : IntellijSourceRegionAccessResult
 }
 
 internal fun interface IntellijSourceRegionAccess {
@@ -100,7 +91,8 @@ internal fun interface IntellijSourceRegionAccess {
 }
 
 /** Typed position in the deterministic matching-entity order. */
-internal data class IntellijSourceEntityCursor internal constructor(
+internal data class IntellijSourceEntityCursor
+internal constructor(
     val startOrdinal: Int,
     internal val expectedSnapshot: SourceSnapshot? = null,
     internal val expectedRegionFingerprint: String? = null,
@@ -118,7 +110,8 @@ internal sealed interface IntellijSourceEntityPage {
     val limitations: Set<SourceReadLimitation>
     val nextOrdinal: Int?
 
-    data class Complete internal constructor(
+    data class Complete
+    internal constructor(
         override val entities: List<SourceEntity>,
         override val knownMinimumEntityCount: Int,
         override val limitations: Set<SourceReadLimitation>,
@@ -126,16 +119,15 @@ internal sealed interface IntellijSourceEntityPage {
         override val nextOrdinal: Int? = null
     }
 
-    data class Prefix internal constructor(
+    data class Prefix
+    internal constructor(
         override val entities: List<SourceEntity>,
         override val knownMinimumEntityCount: Int,
         override val limitations: Set<SourceReadLimitation>,
         override val nextOrdinal: Int,
     ) : IntellijSourceEntityPage
 
-    data class Rejected internal constructor(
-        val reason: IntellijSourceReadRejection,
-    ) : IntellijSourceEntityPage {
+    data class Rejected internal constructor(val reason: IntellijSourceReadRejection) : IntellijSourceEntityPage {
         override val entities: List<SourceEntity> = emptyList()
         override val knownMinimumEntityCount: Int = 0
         override val limitations: Set<SourceReadLimitation> = emptySet()
@@ -146,8 +138,8 @@ internal sealed interface IntellijSourceEntityPage {
         fun empty(): IntellijSourceEntityPage = Complete(emptyList(), 0, emptySet())
 
         /**
-         * Consumes at most one exact page plus lookahead, while a separate fixed work ceiling
-         * prevents an adversarial non-matching PSI stream from becoming unbounded.
+         * Consumes at most one exact page plus lookahead, while a separate fixed work ceiling prevents an adversarial
+         * non-matching PSI stream from becoming unbounded.
          */
         fun select(
             source: Sequence<SourceEntity>,
@@ -211,7 +203,8 @@ internal sealed interface IntellijSourceEntityPage {
 }
 
 /** One selected structural region detached from a single committed-document read. */
-internal class IntellijSelectedSourceCapture private constructor(
+internal class IntellijSelectedSourceCapture
+private constructor(
     val snapshot: SourceSnapshot,
     val anchorSelector: SourceSelector,
     val regionSelector: SourceSelector,
@@ -228,16 +221,16 @@ internal class IntellijSelectedSourceCapture private constructor(
         ): Refinement<IntellijSelectedSourceCapture, IntellijSourceReadRejection> {
             if (
                 anchorSelector.snapshot != snapshot ||
-                regionSelector.snapshot != snapshot ||
-                '\r' in normalizedDocumentText ||
-                normalizedDocumentText.length != snapshot.length.value ||
-                SourceTextIdentity.fromNormalizedCommittedText(normalizedDocumentText) !=
-                snapshot.textIdentity
+                    regionSelector.snapshot != snapshot ||
+                    '\r' in normalizedDocumentText ||
+                    normalizedDocumentText.length != snapshot.length.value ||
+                    SourceTextIdentity.fromNormalizedCommittedText(normalizedDocumentText) != snapshot.textIdentity
             ) {
                 return Refinement.Rejected(IntellijSourceReadRejection.CONTRACT_VIOLATION)
             }
-            val overlaps = anchorSelector.range.startInclusive <= regionSelector.range.endExclusive &&
-                anchorSelector.range.endExclusive >= regionSelector.range.startInclusive
+            val overlaps =
+                anchorSelector.range.startInclusive <= regionSelector.range.endExclusive &&
+                    anchorSelector.range.endExclusive >= regionSelector.range.startInclusive
             if (!overlaps) {
                 return Refinement.Rejected(IntellijSourceReadRejection.CONTRACT_VIOLATION)
             }
@@ -246,19 +239,15 @@ internal class IntellijSelectedSourceCapture private constructor(
             }
             if (
                 entityPage.knownMinimumEntityCount < entityPage.entities.size ||
-                entityPage.entities.any { entity ->
-                    entity.selector.snapshot != snapshot ||
-                        entity.selector.range.startInclusive < regionSelector.range.startInclusive ||
-                        entity.selector.range.endExclusive > regionSelector.range.endExclusive
-                } ||
-                (
-                    entityPage.nextOrdinal == null &&
-                        SourceReadLimitation.ENTITY_LIMIT_REACHED in entityPage.limitations
-                ) ||
-                (
-                    entityPage.nextOrdinal != null &&
-                        SourceReadLimitation.ENTITY_LIMIT_REACHED !in entityPage.limitations
-                )
+                    entityPage.entities.any { entity ->
+                        entity.selector.snapshot != snapshot ||
+                            entity.selector.range.startInclusive < regionSelector.range.startInclusive ||
+                            entity.selector.range.endExclusive > regionSelector.range.endExclusive
+                    } ||
+                    (entityPage.nextOrdinal == null &&
+                        SourceReadLimitation.ENTITY_LIMIT_REACHED in entityPage.limitations) ||
+                    (entityPage.nextOrdinal != null &&
+                        SourceReadLimitation.ENTITY_LIMIT_REACHED !in entityPage.limitations)
             ) {
                 return Refinement.Rejected(IntellijSourceReadRejection.CONTRACT_VIOLATION)
             }
@@ -269,14 +258,15 @@ internal class IntellijSelectedSourceCapture private constructor(
                     regionSelector,
                     normalizedDocumentText,
                     entityPage,
-                ),
+                )
             )
         }
     }
 }
 
 /** Detached result of one K2-revalidated declaration in one committed IntelliJ document. */
-internal class IntellijCommittedSourceCapture private constructor(
+internal class IntellijCommittedSourceCapture
+private constructor(
     val revalidated: RevalidatedSymbolSelector,
     val snapshot: SourceSnapshot,
     val declarationRange: SourceRange,
@@ -295,44 +285,46 @@ internal class IntellijCommittedSourceCapture private constructor(
             if (selector.lease != context.lease) {
                 return Refinement.Rejected(IntellijSourceReadRejection.STALE_GENERATION)
             }
-            val file = selector.file as? SymbolDiscoveryFileIdentity.Workspace
-                ?: return Refinement.Rejected(IntellijSourceReadRejection.OUTSIDE_SOURCE_SCOPE)
+            val file =
+                selector.file as? SymbolDiscoveryFileIdentity.Workspace
+                    ?: return Refinement.Rejected(IntellijSourceReadRejection.OUTSIDE_SOURCE_SCOPE)
             if (selector.range.endExclusive > normalizedDocumentText.length) {
                 return Refinement.Rejected(IntellijSourceReadRejection.DECLARATION_MOVED_OR_CHANGED)
             }
-            val snapshot = SourceSnapshot.create(
-                context,
-                file,
-                SourceTextIdentity.fromNormalizedCommittedText(normalizedDocumentText),
-                when (val length = Utf16CodeUnitCount.parse(normalizedDocumentText.length)) {
-                    is Refinement.Refined -> length.value
-                    is Refinement.Rejected ->
-                        return Refinement.Rejected(IntellijSourceReadRejection.CONTRACT_VIOLATION)
-                },
-                SourceReadScope.Constrained(selector.scope, selector.constraints),
-            )
-            val start = when (val parsed = Utf16CodeUnitOffset.parse(selector.range.startInclusive)) {
-                is Refinement.Refined -> parsed.value
-                is Refinement.Rejected ->
-                    return Refinement.Rejected(IntellijSourceReadRejection.CONTRACT_VIOLATION)
-            }
-            val end = when (val parsed = Utf16CodeUnitOffset.parse(selector.range.endExclusive)) {
-                is Refinement.Refined -> parsed.value
-                is Refinement.Rejected ->
-                    return Refinement.Rejected(IntellijSourceReadRejection.CONTRACT_VIOLATION)
-            }
-            val range = when (val admitted = SourceRange.create(snapshot, start, end)) {
-                is Refinement.Refined -> admitted.value
-                is Refinement.Rejected ->
-                    return Refinement.Rejected(IntellijSourceReadRejection.CONTRACT_VIOLATION)
-            }
+            val snapshot =
+                SourceSnapshot.create(
+                    context,
+                    file,
+                    SourceTextIdentity.fromNormalizedCommittedText(normalizedDocumentText),
+                    when (val length = Utf16CodeUnitCount.parse(normalizedDocumentText.length)) {
+                        is Refinement.Refined -> length.value
+                        is Refinement.Rejected ->
+                            return Refinement.Rejected(IntellijSourceReadRejection.CONTRACT_VIOLATION)
+                    },
+                    SourceReadScope.Constrained(selector.scope, selector.constraints),
+                )
+            val start =
+                when (val parsed = Utf16CodeUnitOffset.parse(selector.range.startInclusive)) {
+                    is Refinement.Refined -> parsed.value
+                    is Refinement.Rejected -> return Refinement.Rejected(IntellijSourceReadRejection.CONTRACT_VIOLATION)
+                }
+            val end =
+                when (val parsed = Utf16CodeUnitOffset.parse(selector.range.endExclusive)) {
+                    is Refinement.Refined -> parsed.value
+                    is Refinement.Rejected -> return Refinement.Rejected(IntellijSourceReadRejection.CONTRACT_VIOLATION)
+                }
+            val range =
+                when (val admitted = SourceRange.create(snapshot, start, end)) {
+                    is Refinement.Refined -> admitted.value
+                    is Refinement.Rejected -> return Refinement.Rejected(IntellijSourceReadRejection.CONTRACT_VIOLATION)
+                }
             return Refinement.Refined(
                 IntellijCommittedSourceCapture(
                     revalidated,
                     snapshot,
                     range,
                     normalizedDocumentText.substring(start.value, end.value),
-                ),
+                )
             )
         }
     }
@@ -344,119 +336,122 @@ internal class IntellijSourceReadPort(
     private val continuations: IntellijSourceReadContinuations = IntellijSourceReadContinuations(),
 ) : SourceReadPort {
 
-    constructor(access: IntellijSourceReadAccess) : this(
+    constructor(
+        access: IntellijSourceReadAccess
+    ) : this(
         IntellijSourceRegionAccess { context, request, cursor ->
-            val selector = (request.anchor as? SourceReadAnchor.Symbol)?.selector
-                ?: return@IntellijSourceRegionAccess IntellijSourceRegionAccessResult.Rejected(
-                    IntellijSourceReadRejection.UNSUPPORTED_REQUEST,
-                )
+            val selector =
+                (request.anchor as? SourceReadAnchor.Symbol)?.selector
+                    ?: return@IntellijSourceRegionAccess IntellijSourceRegionAccessResult.Rejected(
+                        IntellijSourceReadRejection.UNSUPPORTED_REQUEST
+                    )
             if (
                 request.region != RegionSelection.Anchor ||
-                request.entities != EntitySelection.None ||
-                request.text != TextProjection.Complete ||
-                request.page != SourceReadPage.First ||
-                cursor.startOrdinal != 0
+                    request.entities != EntitySelection.None ||
+                    request.text != TextProjection.Complete ||
+                    request.page != SourceReadPage.First ||
+                    cursor.startOrdinal != 0
             ) {
                 return@IntellijSourceRegionAccess IntellijSourceRegionAccessResult.Rejected(
-                    IntellijSourceReadRejection.UNSUPPORTED_REQUEST,
+                    IntellijSourceReadRejection.UNSUPPORTED_REQUEST
                 )
             }
             when (val result = access.capture(context, selector)) {
-                is IntellijSourceReadAccessResult.Rejected ->
-                    IntellijSourceRegionAccessResult.Rejected(result.reason)
+                is IntellijSourceReadAccessResult.Rejected -> IntellijSourceRegionAccessResult.Rejected(result.reason)
                 is IntellijSourceReadAccessResult.Captured -> {
                     val capture = result.capture
-                    val sourceSelector = SourceSelector.issueRoot(
-                        capture.declarationRange,
-                        SourceRegionKind.DECLARATION,
-                    )
-                    when (
-                        val selected = IntellijSelectedSourceCapture.create(
-                            capture.snapshot,
-                            sourceSelector,
-                            sourceSelector,
-                            capture.snapshotText(capture.declarationText),
+                    val sourceSelector =
+                        SourceSelector.issueRoot(
+                            capture.declarationRange,
+                            SourceRegionKind.DECLARATION,
                         )
+                    when (
+                        val selected =
+                            IntellijSelectedSourceCapture.create(
+                                capture.snapshot,
+                                sourceSelector,
+                                sourceSelector,
+                                capture.snapshotText(capture.declarationText),
+                            )
                     ) {
-                        is Refinement.Refined ->
-                            IntellijSourceRegionAccessResult.Selected(selected.value)
-                        is Refinement.Rejected ->
-                            IntellijSourceRegionAccessResult.Rejected(selected.failure)
+                        is Refinement.Refined -> IntellijSourceRegionAccessResult.Selected(selected.value)
+                        is Refinement.Rejected -> IntellijSourceRegionAccessResult.Rejected(selected.failure)
                     }
                 }
             }
-        },
+        }
     )
 
     override suspend fun read(
         context: SourceReadContext,
         request: SourceReadRequest,
     ): SourceReadResult {
-        val cursor = when (val admission = continuations.admit(context, request)) {
-            is IntellijSourceContinuationAdmission.Admitted -> admission.cursor
-            IntellijSourceContinuationAdmission.Rejected ->
-                return rejected(SourceReadRejection.CONTRACT_VIOLATION)
-        }
-        val capture = when (val result = regions.select(context, request, cursor)) {
-            is IntellijSourceRegionAccessResult.Selected -> result.capture
-            is IntellijSourceRegionAccessResult.Rejected ->
-                return rejected(result.reason.publicReason())
-        }
+        val cursor =
+            when (val admission = continuations.admit(context, request)) {
+                is IntellijSourceContinuationAdmission.Admitted -> admission.cursor
+                IntellijSourceContinuationAdmission.Rejected -> return rejected(SourceReadRejection.CONTRACT_VIOLATION)
+            }
+        val capture =
+            when (val result = regions.select(context, request, cursor)) {
+                is IntellijSourceRegionAccessResult.Selected -> result.capture
+                is IntellijSourceRegionAccessResult.Rejected -> return rejected(result.reason.publicReason())
+            }
         if (!cursor.admits(capture)) {
             return rejected(SourceReadRejection.CONTRACT_VIOLATION)
         }
-        val regionKind = capture.regionSelector.regionKind()
-            ?: return rejected(SourceReadRejection.CONTRACT_VIOLATION)
-        val region = when (
-            val admitted = SourceRegion.create(regionKind, capture.regionSelector)
-        ) {
-            is Refinement.Refined -> admitted.value
-            is Refinement.Rejected -> return rejected(SourceReadRejection.CONTRACT_VIOLATION)
-        }
-        val text = when (val projection = request.text) {
-            TextProjection.None -> SourceTextProjection.NotRequested
-            TextProjection.Complete -> when (
-                val admitted = SourceTextProjection.returned(
-                    capture.regionSelector,
-                    capture.normalizedDocumentText,
-                )
-            ) {
+        val regionKind = capture.regionSelector.regionKind() ?: return rejected(SourceReadRejection.CONTRACT_VIOLATION)
+        val region =
+            when (val admitted = SourceRegion.create(regionKind, capture.regionSelector)) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> return rejected(SourceReadRejection.CONTRACT_VIOLATION)
             }
-            is TextProjection.Window -> {
-                val windowRange = capture.windowRange(projection)
-                    ?: return rejected(SourceReadRejection.CONTRACT_VIOLATION)
-                val windowSelector = when (
-                    val issued = SourceSelector.issueNested(
-                        capture.regionSelector,
-                        windowRange,
-                        SourceRegionKind.WINDOW,
-                    )
-                ) {
-                    is Refinement.Refined -> issued.value
-                    is Refinement.Rejected ->
-                        return rejected(SourceReadRejection.CONTRACT_VIOLATION)
-                }
-                when (
-                    val admitted = SourceTextProjection.returned(
-                        windowSelector,
-                        capture.normalizedDocumentText,
-                    )
-                ) {
-                    is Refinement.Refined -> admitted.value
-                    is Refinement.Rejected ->
-                        return rejected(SourceReadRejection.CONTRACT_VIOLATION)
+        val text =
+            when (val projection = request.text) {
+                TextProjection.None -> SourceTextProjection.NotRequested
+                TextProjection.Complete ->
+                    when (
+                        val admitted =
+                            SourceTextProjection.returned(
+                                capture.regionSelector,
+                                capture.normalizedDocumentText,
+                            )
+                    ) {
+                        is Refinement.Refined -> admitted.value
+                        is Refinement.Rejected -> return rejected(SourceReadRejection.CONTRACT_VIOLATION)
+                    }
+                is TextProjection.Window -> {
+                    val windowRange =
+                        capture.windowRange(projection) ?: return rejected(SourceReadRejection.CONTRACT_VIOLATION)
+                    val windowSelector =
+                        when (
+                            val issued =
+                                SourceSelector.issueNested(
+                                    capture.regionSelector,
+                                    windowRange,
+                                    SourceRegionKind.WINDOW,
+                                )
+                        ) {
+                            is Refinement.Refined -> issued.value
+                            is Refinement.Rejected -> return rejected(SourceReadRejection.CONTRACT_VIOLATION)
+                        }
+                    when (
+                        val admitted =
+                            SourceTextProjection.returned(
+                                windowSelector,
+                                capture.normalizedDocumentText,
+                            )
+                    ) {
+                        is Refinement.Refined -> admitted.value
+                        is Refinement.Rejected -> return rejected(SourceReadRejection.CONTRACT_VIOLATION)
+                    }
                 }
             }
-        }
-        val returnedBytes = when (text) {
-            is SourceTextProjection.Returned ->
-                text.text.toByteArray(StandardCharsets.UTF_8).size.toLong()
-            SourceTextProjection.NotRequested,
-            is SourceTextProjection.Withheld,
-                -> 0L
-        }
+        val returnedBytes =
+            when (text) {
+                is SourceTextProjection.Returned -> text.text.toByteArray(StandardCharsets.UTF_8).size.toLong()
+                SourceTextProjection.NotRequested,
+                is SourceTextProjection.Withheld -> 0L
+            }
         val page = capture.entityPage
         val limitations = buildSet {
             addAll(page.limitations)
@@ -464,49 +459,56 @@ internal class IntellijSourceReadPort(
                 add(SourceReadLimitation.TEXT_BYTE_LIMIT_REACHED)
             }
         }
-        val projectedText = if (returnedBytes > request.textByteLimit.value) {
-            SourceTextProjection.Withheld(SourceTextWithheldReason.BYTE_LIMIT_REACHED)
-        } else {
-            text
-        }
+        val projectedText =
+            if (returnedBytes > request.textByteLimit.value) {
+                SourceTextProjection.Withheld(SourceTextWithheldReason.BYTE_LIMIT_REACHED)
+            } else {
+                text
+            }
         if (limitations.isNotEmpty()) {
-            val continuation = when (val next = page.nextOrdinal) {
-                null -> SourceReadContinuationState.Unavailable
-                else -> when (val issued = continuations.issue(request, capture, next)) {
-                    is Refinement.Refined -> SourceReadContinuationState.Available(issued.value)
-                    is Refinement.Rejected -> return rejected(issued.failure)
+            val continuation =
+                when (val next = page.nextOrdinal) {
+                    null -> SourceReadContinuationState.Unavailable
+                    else ->
+                        when (val issued = continuations.issue(request, capture, next)) {
+                            is Refinement.Refined -> SourceReadContinuationState.Available(issued.value)
+                            is Refinement.Rejected -> return rejected(issued.failure)
+                        }
                 }
-            }
-            val qualification = when (
-                val admitted = SourceReadQualification.create(
-                    knownMinimumEntityCount = sourceEntityCount(page.knownMinimumEntityCount),
-                    limitations = limitations,
-                    continuation = continuation,
-                )
-            ) {
-                is Refinement.Refined -> admitted.value
-                is Refinement.Rejected -> return rejected(SourceReadRejection.CONTRACT_VIOLATION)
-            }
+            val qualification =
+                when (
+                    val admitted =
+                        SourceReadQualification.create(
+                            knownMinimumEntityCount = sourceEntityCount(page.knownMinimumEntityCount),
+                            limitations = limitations,
+                            continuation = continuation,
+                        )
+                ) {
+                    is Refinement.Refined -> admitted.value
+                    is Refinement.Rejected -> return rejected(SourceReadRejection.CONTRACT_VIOLATION)
+                }
             return when (
-                val admitted = SourceReadResult.Qualified.create(
-                    capture.snapshot,
-                    region,
-                    page.entities,
-                    projectedText,
-                    qualification,
-                )
+                val admitted =
+                    SourceReadResult.Qualified.create(
+                        capture.snapshot,
+                        region,
+                        page.entities,
+                        projectedText,
+                        qualification,
+                    )
             ) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> rejected(SourceReadRejection.CONTRACT_VIOLATION)
             }
         }
         return when (
-            val admitted = SourceReadResult.Complete.create(
-                capture.snapshot,
-                region,
-                page.entities,
-                projectedText,
-            )
+            val admitted =
+                SourceReadResult.Complete.create(
+                    capture.snapshot,
+                    region,
+                    page.entities,
+                    projectedText,
+                )
         ) {
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected -> rejected(SourceReadRejection.CONTRACT_VIOLATION)
@@ -515,12 +517,9 @@ internal class IntellijSourceReadPort(
 }
 
 private val SOURCE_ENTITY_ORDER: Comparator<SourceEntity> = Comparator { left, right ->
-    compareValues(left.selector.range.startInclusive, right.selector.range.startInclusive)
-        .takeIf { it != 0 }
-        ?: compareValues(right.selector.range.endExclusive, left.selector.range.endExclusive)
-            .takeIf { it != 0 }
-        ?: compareValues(left.selector.kind.ordinal, right.selector.kind.ordinal)
-            .takeIf { it != 0 }
+    compareValues(left.selector.range.startInclusive, right.selector.range.startInclusive).takeIf { it != 0 }
+        ?: compareValues(right.selector.range.endExclusive, left.selector.range.endExclusive).takeIf { it != 0 }
+        ?: compareValues(left.selector.kind.ordinal, right.selector.kind.ordinal).takeIf { it != 0 }
         ?: compareValues(left.selector.name.sortValue(), right.selector.name.sortValue())
 }
 
@@ -532,8 +531,8 @@ private fun SourceEntity.matches(selection: EntitySelection.Matching): Boolean {
     }
     return selection.filters.any { filter ->
         when (filter) {
-            is EntityFilter.Declarations -> this is SourceEntity.Declaration &&
-                kind in filter.kinds.values && visibility.matches(filter.visibility)
+            is EntityFilter.Declarations ->
+                this is SourceEntity.Declaration && kind in filter.kinds.values && visibility.matches(filter.visibility)
             EntityFilter.Parameters -> this is SourceEntity.ValueParameter
             EntityFilter.Calls -> this is SourceEntity.Call
             EntityFilter.References -> this is SourceEntity.Reference
@@ -554,22 +553,25 @@ private fun io.github.amichne.kast.source.contract.SourceEntityName.sortValue():
     }
 
 internal sealed interface IntellijSourceContinuationAdmission {
-    data class Admitted(val cursor: IntellijSourceEntityCursor) :
-        IntellijSourceContinuationAdmission
+    data class Admitted(val cursor: IntellijSourceEntityCursor) : IntellijSourceContinuationAdmission
 
     data object Rejected : IntellijSourceContinuationAdmission
 }
 
 /** Project-owned bounded registry. Entries retain detached source identity and scope only. */
 class IntellijSourceReadContinuations(private val limits: ReadLimits = ReadLimits.Default) {
-    private enum class Lifetime { ACTIVE, RETIRED }
+    private enum class Lifetime {
+        ACTIVE,
+        RETIRED,
+    }
 
     private var lifetime = Lifetime.ACTIVE
     private var sequence = 0L
-    private val entries = object : LinkedHashMap<String, Entry>(16, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Entry>?): Boolean =
-            size > limits[ReadLimitParameter.SOURCE_CONTINUATIONS].value
-    }
+    private val entries =
+        object : LinkedHashMap<String, Entry>(16, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Entry>?): Boolean =
+                size > limits[ReadLimitParameter.SOURCE_CONTINUATIONS].value
+        }
 
     @Synchronized
     fun retire() {
@@ -587,9 +589,13 @@ class IntellijSourceReadContinuations(private val limits: ReadLimits = ReadLimit
                 if (entry.snapshot.context != context || entry.request != request.binding()) {
                     IntellijSourceContinuationAdmission.Rejected
                 } else {
-                    IntellijSourceContinuationAdmission.Admitted(IntellijSourceEntityCursor(
-                        entry.nextOrdinal, entry.snapshot, entry.regionFingerprint,
-                    ))
+                    IntellijSourceContinuationAdmission.Admitted(
+                        IntellijSourceEntityCursor(
+                            entry.nextOrdinal,
+                            entry.snapshot,
+                            entry.regionFingerprint,
+                        )
+                    )
                 }
             }
         }
@@ -617,14 +623,19 @@ class IntellijSourceReadContinuations(private val limits: ReadLimits = ReadLimit
             appendBoundedField(nextOrdinal.toString())
             appendBoundedField(predecessor)
         }
-        val digest = MessageDigest.getInstance("SHA-256")
-            .digest(canonical.toByteArray(StandardCharsets.UTF_8))
-            .joinToString(separator = "") { byte -> (byte.toInt() and 0xff).toString(16).padStart(2, '0') }
-        val continuation = when (val parsed = SourceReadContinuation.parse("source-read-continuation-v1|$digest")) {
-            is Refinement.Refined -> parsed.value
-            is Refinement.Rejected -> return Refinement.Rejected(SourceReadRejection.CONTRACT_VIOLATION)
-        }
-        entries[continuation.value] = Entry(binding, capture.snapshot, capture.regionSelector.fingerprint.value, nextOrdinal)
+        val digest =
+            MessageDigest.getInstance("SHA-256").digest(canonical.toByteArray(StandardCharsets.UTF_8)).joinToString(
+                separator = ""
+            ) { byte ->
+                (byte.toInt() and 0xff).toString(16).padStart(2, '0')
+            }
+        val continuation =
+            when (val parsed = SourceReadContinuation.parse("source-read-continuation-v1|$digest")) {
+                is Refinement.Refined -> parsed.value
+                is Refinement.Rejected -> return Refinement.Rejected(SourceReadRejection.CONTRACT_VIOLATION)
+            }
+        entries[continuation.value] =
+            Entry(binding, capture.snapshot, capture.regionSelector.fingerprint.value, nextOrdinal)
         return Refinement.Refined(continuation)
     }
 
@@ -647,12 +658,15 @@ private data class SourceRequestBinding(
 
 private sealed interface SourceAnchorBinding {
     data class Candidate(val canonical: String) : SourceAnchorBinding
+
     data class Symbol(val fingerprint: String) : SourceAnchorBinding
+
     data class Source(val fingerprint: String) : SourceAnchorBinding
 }
 
 private sealed interface EntitySelectionBinding {
     data object None : EntitySelectionBinding
+
     data class Matching(
         val containment: Containment,
         val filters: List<EntityFilterBinding>,
@@ -666,72 +680,83 @@ private sealed interface EntityFilterBinding {
     ) : EntityFilterBinding
 
     data object Parameters : EntityFilterBinding
+
     data object Calls : EntityFilterBinding
+
     data object References : EntityFilterBinding
 }
 
-private fun SourceReadRequest.binding(): SourceRequestBinding = SourceRequestBinding(
-    anchor = when (val value = anchor) {
-        is SourceReadAnchor.Candidate -> SourceAnchorBinding.Candidate(value.selector.canonical())
-        is SourceReadAnchor.Symbol -> SourceAnchorBinding.Symbol(value.selector.fingerprint.value)
-        is SourceReadAnchor.Source -> SourceAnchorBinding.Source(value.selector.fingerprint.value)
-    },
-    region = region,
-    entities = entities.binding(),
-    text = text,
-    entityLimit = entityLimit.value,
-    textByteLimit = textByteLimit.value,
-)
-
-private fun EntitySelection.binding(): EntitySelectionBinding = when (this) {
-    EntitySelection.None -> EntitySelectionBinding.None
-    is EntitySelection.Matching -> EntitySelectionBinding.Matching(
-        containment,
-        filters.map { filter ->
-            when (filter) {
-                is EntityFilter.Declarations -> EntityFilterBinding.Declarations(
-                    filter.kinds.values,
-                    when (val visibility = filter.visibility) {
-                        VisibilitySelection.Any -> null
-                        is VisibilitySelection.Exact -> visibility.values
-                    },
-                )
-                EntityFilter.Parameters -> EntityFilterBinding.Parameters
-                EntityFilter.Calls -> EntityFilterBinding.Calls
-                EntityFilter.References -> EntityFilterBinding.References
-            }
-        },
+private fun SourceReadRequest.binding(): SourceRequestBinding =
+    SourceRequestBinding(
+        anchor =
+            when (val value = anchor) {
+                is SourceReadAnchor.Candidate -> SourceAnchorBinding.Candidate(value.selector.canonical())
+                is SourceReadAnchor.Symbol -> SourceAnchorBinding.Symbol(value.selector.fingerprint.value)
+                is SourceReadAnchor.Source -> SourceAnchorBinding.Source(value.selector.fingerprint.value)
+            },
+        region = region,
+        entities = entities.binding(),
+        text = text,
+        entityLimit = entityLimit.value,
+        textByteLimit = textByteLimit.value,
     )
-}
 
-private fun CandidateSelector.canonical(): String = when (this) {
-    is CandidateSelector.Declaration -> buildString {
-        appendBoundedField(lease.identity.revisionKey.value)
-        appendBoundedField(lease.workspaceRoot.value)
-        appendBoundedField("declaration")
-        appendBoundedField(SymbolSearchScope.snapshot(selection.scope).toString())
-        selection.constraints.fingerprintFields().forEach { appendBoundedField(it) }
-        appendBoundedField(selection.candidate.toString())
+private fun EntitySelection.binding(): EntitySelectionBinding =
+    when (this) {
+        EntitySelection.None -> EntitySelectionBinding.None
+        is EntitySelection.Matching ->
+            EntitySelectionBinding.Matching(
+                containment,
+                filters.map { filter ->
+                    when (filter) {
+                        is EntityFilter.Declarations ->
+                            EntityFilterBinding.Declarations(
+                                filter.kinds.values,
+                                when (val visibility = filter.visibility) {
+                                    VisibilitySelection.Any -> null
+                                    is VisibilitySelection.Exact -> visibility.values
+                                },
+                            )
+                        EntityFilter.Parameters -> EntityFilterBinding.Parameters
+                        EntityFilter.Calls -> EntityFilterBinding.Calls
+                        EntityFilter.References -> EntityFilterBinding.References
+                    }
+                },
+            )
     }
-    is CandidateSelector.File -> buildString {
-        appendBoundedField(lease.identity.revisionKey.value)
-        appendBoundedField(lease.workspaceRoot.value)
-        appendBoundedField("file")
-        appendBoundedField(SymbolSearchScope.snapshot(scope).toString())
-        constraints.fingerprintFields().forEach { appendBoundedField(it) }
-        appendBoundedField(file.path.value)
+
+private fun CandidateSelector.canonical(): String =
+    when (this) {
+        is CandidateSelector.Declaration ->
+            buildString {
+                appendBoundedField(lease.identity.revisionKey.value)
+                appendBoundedField(lease.workspaceRoot.value)
+                appendBoundedField("declaration")
+                appendBoundedField(SymbolSearchScope.snapshot(selection.scope).toString())
+                selection.constraints.fingerprintFields().forEach { appendBoundedField(it) }
+                appendBoundedField(selection.candidate.toString())
+            }
+        is CandidateSelector.File ->
+            buildString {
+                appendBoundedField(lease.identity.revisionKey.value)
+                appendBoundedField(lease.workspaceRoot.value)
+                appendBoundedField("file")
+                appendBoundedField(SymbolSearchScope.snapshot(scope).toString())
+                constraints.fingerprintFields().forEach { appendBoundedField(it) }
+                appendBoundedField(file.path.value)
+            }
+        is CandidateSelector.Range ->
+            buildString {
+                appendBoundedField(lease.identity.revisionKey.value)
+                appendBoundedField(lease.workspaceRoot.value)
+                appendBoundedField("range")
+                appendBoundedField(SymbolSearchScope.snapshot(scope).toString())
+                constraints.fingerprintFields().forEach { appendBoundedField(it) }
+                appendBoundedField(file.path.value)
+                appendBoundedField(startInclusive.value.toString())
+                appendBoundedField(endExclusive.value.toString())
+            }
     }
-    is CandidateSelector.Range -> buildString {
-        appendBoundedField(lease.identity.revisionKey.value)
-        appendBoundedField(lease.workspaceRoot.value)
-        appendBoundedField("range")
-        appendBoundedField(SymbolSearchScope.snapshot(scope).toString())
-        constraints.fingerprintFields().forEach { appendBoundedField(it) }
-        appendBoundedField(file.path.value)
-        appendBoundedField(startInclusive.value.toString())
-        appendBoundedField(endExclusive.value.toString())
-    }
-}
 
 private fun StringBuilder.appendBoundedField(value: String) {
     append(value.length)
@@ -742,22 +767,17 @@ private fun StringBuilder.appendBoundedField(value: String) {
 
 private fun IntellijSourceEntityCursor.admits(capture: IntellijSelectedSourceCapture): Boolean =
     expectedSnapshot == null ||
-        (
-            expectedSnapshot == capture.snapshot &&
-                expectedRegionFingerprint == capture.regionSelector.fingerprint.value
-        )
+        (expectedSnapshot == capture.snapshot && expectedRegionFingerprint == capture.regionSelector.fingerprint.value)
 
-private fun SourceSelector.regionKind(): SourceRegionKind? = when (this) {
-    is SourceSelector.RootRegion -> kind
-    is SourceSelector.NestedRegion -> kind
-    is SourceSelector.Entity -> null
-}
+private fun SourceSelector.regionKind(): SourceRegionKind? =
+    when (this) {
+        is SourceSelector.RootRegion -> kind
+        is SourceSelector.NestedRegion -> kind
+        is SourceSelector.Entity -> null
+    }
 
 private fun IntellijCommittedSourceCapture.snapshotText(declarationText: String): String {
-    if (
-        declarationRange.startInclusive.value == 0 &&
-        declarationRange.endExclusive.value == snapshot.length.value
-    ) {
+    if (declarationRange.startInclusive.value == 0 && declarationRange.endExclusive.value == snapshot.length.value) {
         return declarationText
     }
     return buildString(snapshot.length.value) {
@@ -767,9 +787,7 @@ private fun IntellijCommittedSourceCapture.snapshotText(declarationText: String)
     }
 }
 
-private fun IntellijSelectedSourceCapture.windowRange(
-    projection: TextProjection.Window,
-): SourceRange? {
+private fun IntellijSelectedSourceCapture.windowRange(projection: TextProjection.Window): SourceRange? {
     val regionStart = regionSelector.range.startInclusive.value
     val regionEnd = regionSelector.range.endExclusive.value
     val seedStart = maxOf(anchorSelector.range.startInclusive.value, regionStart)
@@ -779,27 +797,30 @@ private fun IntellijSelectedSourceCapture.windowRange(
     var start = lineStart(normalizedDocumentText, seedStart).coerceAtLeast(regionStart)
     repeat(projection.beforeLines.value) {
         if (start > regionStart) {
-            start = lineStart(normalizedDocumentText, (start - 1).coerceAtLeast(regionStart))
-                .coerceAtLeast(regionStart)
+            start = lineStart(normalizedDocumentText, (start - 1).coerceAtLeast(regionStart)).coerceAtLeast(regionStart)
         }
     }
     var end = lineEnd(normalizedDocumentText, seedEnd).coerceAtMost(regionEnd)
     repeat(projection.afterLines.value) {
         if (end < regionEnd) {
-            end = lineEnd(
-                normalizedDocumentText,
-                (end + 1).coerceAtMost(regionEnd),
-            ).coerceAtMost(regionEnd)
+            end =
+                lineEnd(
+                        normalizedDocumentText,
+                        (end + 1).coerceAtMost(regionEnd),
+                    )
+                    .coerceAtMost(regionEnd)
         }
     }
-    val startOffset = when (val parsed = Utf16CodeUnitOffset.parse(start)) {
-        is Refinement.Refined -> parsed.value
-        is Refinement.Rejected -> return null
-    }
-    val endOffset = when (val parsed = Utf16CodeUnitOffset.parse(end)) {
-        is Refinement.Refined -> parsed.value
-        is Refinement.Rejected -> return null
-    }
+    val startOffset =
+        when (val parsed = Utf16CodeUnitOffset.parse(start)) {
+            is Refinement.Refined -> parsed.value
+            is Refinement.Rejected -> return null
+        }
+    val endOffset =
+        when (val parsed = Utf16CodeUnitOffset.parse(end)) {
+            is Refinement.Refined -> parsed.value
+            is Refinement.Rejected -> return null
+        }
     return when (val admitted = SourceRange.create(snapshot, startOffset, endOffset)) {
         is Refinement.Refined -> admitted.value
         is Refinement.Rejected -> null
@@ -818,35 +839,29 @@ private fun lineEnd(text: String, offset: Int): Int {
     return if (newline < 0) text.length else newline + 1
 }
 
-private fun sourceEntityCount(raw: Int): SourceEntityCount = when (
-    val parsed = SourceEntityCount.parse(raw)
-) {
-    is Refinement.Refined -> parsed.value
-    is Refinement.Rejected -> error("Non-negative source entity count literal rejected")
-}
+private fun sourceEntityCount(raw: Int): SourceEntityCount =
+    when (val parsed = SourceEntityCount.parse(raw)) {
+        is Refinement.Refined -> parsed.value
+        is Refinement.Rejected -> error("Non-negative source entity count literal rejected")
+    }
 
-private fun rejected(reason: SourceReadRejection): SourceReadResult.Rejected =
-    SourceReadResult.Rejected(reason)
+private fun rejected(reason: SourceReadRejection): SourceReadResult.Rejected = SourceReadResult.Rejected(reason)
 
-private fun IntellijSourceReadRejection.publicReason(): SourceReadRejection = when (this) {
-    IntellijSourceReadRejection.WORKSPACE_ROOT_MISMATCH ->
-        SourceReadRejection.WORKSPACE_ROOT_MISMATCH
-    IntellijSourceReadRejection.STALE_GENERATION -> SourceReadRejection.STALE_GENERATION
-    IntellijSourceReadRejection.SOURCE_STATE_MISMATCH -> SourceReadRejection.SOURCE_STATE_MISMATCH
-    IntellijSourceReadRejection.SOURCE_UNAVAILABLE -> SourceReadRejection.SOURCE_UNAVAILABLE
-    IntellijSourceReadRejection.DOCUMENT_DIRTY -> SourceReadRejection.DOCUMENT_DIRTY
-    IntellijSourceReadRejection.PSI_DOCUMENT_UNCOMMITTED ->
-        SourceReadRejection.PSI_DOCUMENT_UNCOMMITTED
-    IntellijSourceReadRejection.OUTSIDE_SOURCE_SCOPE -> SourceReadRejection.OUTSIDE_SOURCE_SCOPE
-    IntellijSourceReadRejection.ANCHOR_NOT_FOUND -> SourceReadRejection.ANCHOR_NOT_FOUND
-    IntellijSourceReadRejection.AMBIGUOUS_ANCHOR -> SourceReadRejection.AMBIGUOUS_ANCHOR
-    IntellijSourceReadRejection.COMPILER_ANALYSIS_UNAVAILABLE ->
-        SourceReadRejection.COMPILER_ANALYSIS_UNAVAILABLE
-    IntellijSourceReadRejection.DECLARATION_MOVED_OR_CHANGED ->
-        SourceReadRejection.SOURCE_SELECTOR_STALE
-    IntellijSourceReadRejection.REGION_ABSENT -> SourceReadRejection.REGION_ABSENT
-    IntellijSourceReadRejection.UNSUPPORTED_REQUEST -> SourceReadRejection.REGION_NOT_APPLICABLE
-    IntellijSourceReadRejection.PROVIDER_FAILURE,
-    IntellijSourceReadRejection.CONTRACT_VIOLATION,
-        -> SourceReadRejection.CONTRACT_VIOLATION
-}
+private fun IntellijSourceReadRejection.publicReason(): SourceReadRejection =
+    when (this) {
+        IntellijSourceReadRejection.WORKSPACE_ROOT_MISMATCH -> SourceReadRejection.WORKSPACE_ROOT_MISMATCH
+        IntellijSourceReadRejection.STALE_GENERATION -> SourceReadRejection.STALE_GENERATION
+        IntellijSourceReadRejection.SOURCE_STATE_MISMATCH -> SourceReadRejection.SOURCE_STATE_MISMATCH
+        IntellijSourceReadRejection.SOURCE_UNAVAILABLE -> SourceReadRejection.SOURCE_UNAVAILABLE
+        IntellijSourceReadRejection.DOCUMENT_DIRTY -> SourceReadRejection.DOCUMENT_DIRTY
+        IntellijSourceReadRejection.PSI_DOCUMENT_UNCOMMITTED -> SourceReadRejection.PSI_DOCUMENT_UNCOMMITTED
+        IntellijSourceReadRejection.OUTSIDE_SOURCE_SCOPE -> SourceReadRejection.OUTSIDE_SOURCE_SCOPE
+        IntellijSourceReadRejection.ANCHOR_NOT_FOUND -> SourceReadRejection.ANCHOR_NOT_FOUND
+        IntellijSourceReadRejection.AMBIGUOUS_ANCHOR -> SourceReadRejection.AMBIGUOUS_ANCHOR
+        IntellijSourceReadRejection.COMPILER_ANALYSIS_UNAVAILABLE -> SourceReadRejection.COMPILER_ANALYSIS_UNAVAILABLE
+        IntellijSourceReadRejection.DECLARATION_MOVED_OR_CHANGED -> SourceReadRejection.SOURCE_SELECTOR_STALE
+        IntellijSourceReadRejection.REGION_ABSENT -> SourceReadRejection.REGION_ABSENT
+        IntellijSourceReadRejection.UNSUPPORTED_REQUEST -> SourceReadRejection.REGION_NOT_APPLICABLE
+        IntellijSourceReadRejection.PROVIDER_FAILURE,
+        IntellijSourceReadRejection.CONTRACT_VIOLATION -> SourceReadRejection.CONTRACT_VIOLATION
+    }

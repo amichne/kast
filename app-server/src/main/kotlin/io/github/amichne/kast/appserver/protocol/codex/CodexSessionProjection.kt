@@ -16,20 +16,26 @@ internal data class CodexSessionProjection(
 internal fun AgentSessionBootstrap.toCodexSessionProjection(): CodexSessionProjection =
     CodexSessionProjection(
         developerInstructions = policy.text,
-        namespace = buildJsonObject {
-            put("type", "namespace")
-            put("name", "kast")
-            put("description", "Compiler-grounded Kotlin source intelligence from Kast.")
-            put("tools", buildJsonArray {
-                tools.definitions.forEach { tool ->
-                    add(buildJsonObject {
-                        put("type", "function")
-                        put("name", tool.name.value)
-                        put("description", tool.description.value)
-                        put("inputSchema", tool.inputSchema.document)
-                        put("deferLoading", tool.loading == HostedToolLoading.DEFERRED)
-                    })
-                }
-            })
-        },
+        namespace =
+            buildJsonObject {
+                put("type", "namespace")
+                put("name", "kast")
+                put("description", "Compiler-grounded Kotlin source intelligence from Kast.")
+                put(
+                    "tools",
+                    buildJsonArray {
+                        tools.definitions.forEach { tool ->
+                            add(
+                                buildJsonObject {
+                                    put("type", "function")
+                                    put("name", tool.name.value)
+                                    put("description", tool.description.value)
+                                    put("inputSchema", tool.inputSchema.document)
+                                    put("deferLoading", tool.loading == HostedToolLoading.DEFERRED)
+                                }
+                            )
+                        }
+                    },
+                )
+            },
     )

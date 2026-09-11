@@ -10,7 +10,8 @@ internal data class IntellijCanonicalRelationProviderItem<out Value>(
 
 /** Establishes provider order before any result, work, byte, or continuation boundary is applied. */
 internal fun <Value> Iterable<Value>.canonicalRelationProviderOrder(
-    descriptorOf: (Value) -> RelationProviderItemDescriptor,
+    descriptorOf: (Value) -> RelationProviderItemDescriptor
 ): List<IntellijCanonicalRelationProviderItem<Value>> = map { value ->
     IntellijCanonicalRelationProviderItem(descriptorOf(value), value)
-}.sortedBy { item -> item.descriptor.value }
+}
+    .sortedBy { item -> item.descriptor.value }

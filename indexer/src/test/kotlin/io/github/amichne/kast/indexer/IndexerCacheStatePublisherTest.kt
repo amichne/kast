@@ -1,14 +1,13 @@
 package io.github.amichne.kast.indexer
 
+import java.nio.file.Files
+import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Files
-import java.nio.file.Path
 
 class IndexerCacheStatePublisherTest {
-    @TempDir
-    lateinit var temporary: Path
+    @TempDir lateinit var temporary: Path
 
     @Test
     fun `refreshing and smart state replace one exact marker`() {

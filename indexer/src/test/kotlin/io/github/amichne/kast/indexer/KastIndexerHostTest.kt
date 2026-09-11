@@ -1,11 +1,11 @@
 package io.github.amichne.kast.indexer
 
 import io.github.amichne.kast.runtime.composition.KastRuntimeDispatch
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Test
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.startCoroutine
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Test
 
 class KastIndexerHostTest {
     @Test
@@ -32,7 +32,7 @@ class KastIndexerHostTest {
                 override fun resumeWith(result: Result<Value>) {
                     outcome = result
                 }
-            },
+            }
         )
         return checkNotNull(outcome).getOrThrow()
     }

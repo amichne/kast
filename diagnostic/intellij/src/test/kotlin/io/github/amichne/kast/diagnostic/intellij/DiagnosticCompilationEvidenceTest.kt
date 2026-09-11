@@ -10,9 +10,9 @@ import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
-import java.nio.file.Path
 
 class DiagnosticCompilationEvidenceTest {
     @Test
@@ -42,7 +42,10 @@ class DiagnosticCompilationEvidenceTest {
         val qualified = collector.finish().observation() as IntellijDiagnosticCompilationEvidence.Qualified
         assertEquals(setOf(DiagnosticLimitationReason.INDEXING), qualified.limitations)
         for (reason in DiagnosticCompilerRejection.entries) {
-            assertEquals(IntellijDiagnosticCompilationEvidence.Rejected(reason), DiagnosticCompilation.Rejected(reason).observation())
+            assertEquals(
+                IntellijDiagnosticCompilationEvidence.Rejected(reason),
+                DiagnosticCompilation.Rejected(reason).observation(),
+            )
         }
         assertTrue(IntellijDiagnosticCompilationEvidence.Cancelled.logFields().toString().contains("cancelled"))
     }
@@ -60,16 +63,30 @@ class DiagnosticCompilationEvidenceTest {
     }
 
     private fun fact(scope: DiagnosticScope, code: String): DiagnosticFact =
-        DiagnosticFact.fromBoundary(scope, scope.files.single(), 0, 1, DiagnosticSeverity.ERROR,
-            code, "SensitiveName private-token compiler message").refined()
+        DiagnosticFact.fromBoundary(
+                scope,
+                scope.files.single(),
+                0,
+                1,
+                DiagnosticSeverity.ERROR,
+                code,
+                "SensitiveName private-token compiler message",
+            )
+            .refined()
 
-    private fun scope(): DiagnosticScope = DiagnosticScope.fromCanonicalPaths(
-        SemanticReadLease(CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined(),
-            EvidenceGeneration.parse(1).refined()), listOf(Path.of("/workspace/SensitiveName.kt")),
-    ).refined()
+    private fun scope(): DiagnosticScope =
+        DiagnosticScope.fromCanonicalPaths(
+                SemanticReadLease(
+                    CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined(),
+                    EvidenceGeneration.parse(1).refined(),
+                ),
+                listOf(Path.of("/workspace/SensitiveName.kt")),
+            )
+            .refined()
 
-    private fun <S, F> Refinement<S, F>.refined(): S = when (this) {
-        is Refinement.Refined -> value
-        is Refinement.Rejected -> error(failure.toString())
-    }
+    private fun <S, F> Refinement<S, F>.refined(): S =
+        when (this) {
+            is Refinement.Refined -> value
+            is Refinement.Rejected -> error(failure.toString())
+        }
 }

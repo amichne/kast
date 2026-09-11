@@ -2,9 +2,6 @@ package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.Refinement
-import org.junit.jupiter.api.Assertions.*
-import org.junit.jupiter.api.Tag
-import org.junit.jupiter.api.Test
 import java.net.StandardProtocolFamily
 import java.net.UnixDomainSocketAddress
 import java.nio.ByteBuffer
@@ -15,10 +12,14 @@ import java.nio.file.Path
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
+import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Tag
+import org.junit.jupiter.api.Test
 
 @Tag("native")
 class WireDeadlineTest {
-    @Test fun `successful frame preserves its reusable connection and reports completion`() {
+    @Test
+    fun `successful frame preserves its reusable connection and reports completion`() {
         val root = Files.createTempDirectory(Path.of("/private/tmp"), "kwd-")
         val socket = root.resolve("s")
         try {
@@ -35,14 +36,24 @@ class WireDeadlineTest {
                                 assertEquals(WireExchange.Received("{}"), session.exchange("{}"))
                                 assertTrue(client.isOpen)
                             }
-                            assertEquals(List(2) { WireRequestActivity(WireRequestStage.EXCHANGE, WireRequestOutcome.COMPLETED) }, events)
+                            assertEquals(
+                                List(2) {
+                                    WireRequestActivity(WireRequestStage.EXCHANGE, WireRequestOutcome.COMPLETED)
+                                },
+                                events,
+                            )
                         }
                     }
                 }
             }
-        } finally { Files.deleteIfExists(socket); Files.deleteIfExists(root) }
+        } finally {
+            Files.deleteIfExists(socket)
+            Files.deleteIfExists(root)
+        }
     }
+
     @Test fun `silent peer consumes one elapsed allowance and closes its owned socket`() = stalledPeer(false)
+
     @Test fun `partial frame cannot renew the elapsed allowance`() = stalledPeer(true)
 
     private fun stalledPeer(partial: Boolean) {
@@ -60,11 +71,18 @@ class WireDeadlineTest {
                         val events = mutableListOf<WireRequestActivity>()
                         WireSession(client, limit, WireActivitySink { events.add(it) }).use { session ->
                             val future = executor.submit<WireExchange> { session.exchange("{}") }
-                            val result = try { future.get(2, TimeUnit.SECONDS) }
-                            catch (_: TimeoutException) { null }
+                            val result =
+                                try {
+                                    future.get(2, TimeUnit.SECONDS)
+                                } catch (_: TimeoutException) {
+                                    null
+                                }
                             assertNotNull(result, "the request did not terminate after its injected elapsed allowance")
                             assertEquals(WireExchange.Rejected(WireTransportFailure.TIMED_OUT), result)
-                            assertEquals(listOf(WireRequestActivity(WireRequestStage.EXCHANGE, WireRequestOutcome.TIMED_OUT)), events)
+                            assertEquals(
+                                listOf(WireRequestActivity(WireRequestStage.EXCHANGE, WireRequestOutcome.TIMED_OUT)),
+                                events,
+                            )
                             assertFalse(client.isOpen, "expired blocking I/O must close its owned channel")
                         }
                     }

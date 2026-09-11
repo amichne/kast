@@ -1,7 +1,7 @@
 package io.github.amichne.kast.diagnostic.contract
 
-import io.github.amichne.kast.workspace.contract.SemanticReadIdentity
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.workspace.contract.SemanticReadIdentity
 
 private const val MAX_DIAGNOSTIC_CODE_LENGTH = 256
 private const val MAX_DIAGNOSTIC_MESSAGE_LENGTH = 32_768
@@ -19,25 +19,22 @@ enum class DiagnosticCodeFailure {
 }
 
 @JvmInline
-value class DiagnosticCode private constructor(
-    val value: String,
-) {
+value class DiagnosticCode private constructor(val value: String) {
     companion object {
         /**
          * Proof transition: `String -> Refinement<DiagnosticCode, DiagnosticCodeFailure>`.
          *
-         * Establishes a non-blank, bounded, single-line compiler diagnostic identity.
-         * [DiagnosticCodeFailure] is the closed expected failure. Raw text may enter only from
-         * the request-local compiler diagnostic projection boundary.
+         * Establishes a non-blank, bounded, single-line compiler diagnostic identity. [DiagnosticCodeFailure] is the
+         * closed expected failure. Raw text may enter only from the request-local compiler diagnostic projection
+         * boundary.
          */
-        fun parse(raw: String): Refinement<DiagnosticCode, DiagnosticCodeFailure> = when {
-            raw.isBlank() -> Refinement.Rejected(DiagnosticCodeFailure.BLANK)
-            raw.length > MAX_DIAGNOSTIC_CODE_LENGTH ->
-                Refinement.Rejected(DiagnosticCodeFailure.TOO_LONG)
-            raw.any(Char::isISOControl) ->
-                Refinement.Rejected(DiagnosticCodeFailure.CONTROL_CHARACTER)
-            else -> Refinement.Refined(DiagnosticCode(raw))
-        }
+        fun parse(raw: String): Refinement<DiagnosticCode, DiagnosticCodeFailure> =
+            when {
+                raw.isBlank() -> Refinement.Rejected(DiagnosticCodeFailure.BLANK)
+                raw.length > MAX_DIAGNOSTIC_CODE_LENGTH -> Refinement.Rejected(DiagnosticCodeFailure.TOO_LONG)
+                raw.any(Char::isISOControl) -> Refinement.Rejected(DiagnosticCodeFailure.CONTROL_CHARACTER)
+                else -> Refinement.Refined(DiagnosticCode(raw))
+            }
     }
 }
 
@@ -48,26 +45,24 @@ enum class DiagnosticMessageFailure {
 }
 
 @JvmInline
-value class DiagnosticMessage private constructor(
-    val value: String,
-) {
+value class DiagnosticMessage private constructor(val value: String) {
     companion object {
         /**
          * Proof transition: `String -> Refinement<DiagnosticMessage, DiagnosticMessageFailure>`.
          *
-         * Establishes a non-blank, bounded detached compiler message with no unsupported control
-         * characters. [DiagnosticMessageFailure] is the closed expected failure. Raw text may
-         * enter only from the request-local compiler diagnostic projection boundary.
+         * Establishes a non-blank, bounded detached compiler message with no unsupported control characters.
+         * [DiagnosticMessageFailure] is the closed expected failure. Raw text may enter only from the request-local
+         * compiler diagnostic projection boundary.
          */
-        fun parse(raw: String): Refinement<DiagnosticMessage, DiagnosticMessageFailure> = when {
-            raw.isBlank() -> Refinement.Rejected(DiagnosticMessageFailure.BLANK)
-            raw.length > MAX_DIAGNOSTIC_MESSAGE_LENGTH ->
-                Refinement.Rejected(DiagnosticMessageFailure.TOO_LONG)
-            raw.any { character ->
-                character.isISOControl() && character != '\n' && character != '\t'
-            } -> Refinement.Rejected(DiagnosticMessageFailure.CONTROL_CHARACTER)
-            else -> Refinement.Refined(DiagnosticMessage(raw))
-        }
+        fun parse(raw: String): Refinement<DiagnosticMessage, DiagnosticMessageFailure> =
+            when {
+                raw.isBlank() -> Refinement.Rejected(DiagnosticMessageFailure.BLANK)
+                raw.length > MAX_DIAGNOSTIC_MESSAGE_LENGTH -> Refinement.Rejected(DiagnosticMessageFailure.TOO_LONG)
+                raw.any { character ->
+                    character.isISOControl() && character != '\n' && character != '\t'
+                } -> Refinement.Rejected(DiagnosticMessageFailure.CONTROL_CHARACTER)
+                else -> Refinement.Refined(DiagnosticMessage(raw))
+            }
     }
 }
 
@@ -76,39 +71,36 @@ enum class DiagnosticTextRangeFailure {
     END_BEFORE_START,
 }
 
-@JvmInline
-value class DiagnosticTextOffset internal constructor(
-    val value: Int,
-)
+@JvmInline value class DiagnosticTextOffset internal constructor(val value: Int)
 
 @ConsistentCopyVisibility
-data class DiagnosticTextRange private constructor(
+data class DiagnosticTextRange
+private constructor(
     val start: DiagnosticTextOffset,
     val endExclusive: DiagnosticTextOffset,
 ) {
     companion object {
         /**
-         * Proof transition: `(Int, Int) ->
-         * Refinement<DiagnosticTextRange, DiagnosticTextRangeFailure>`.
+         * Proof transition: `(Int, Int) -> Refinement<DiagnosticTextRange, DiagnosticTextRangeFailure>`.
          *
-         * Establishes a non-negative half-open range whose end is not before its start.
-         * [DiagnosticTextRangeFailure] is the closed expected failure. Raw offsets may enter only
-         * from the request-local PSI/K2 projection boundary.
+         * Establishes a non-negative half-open range whose end is not before its start. [DiagnosticTextRangeFailure] is
+         * the closed expected failure. Raw offsets may enter only from the request-local PSI/K2 projection boundary.
          */
         fun fromBoundary(
             start: Int,
             endExclusive: Int,
-        ): Refinement<DiagnosticTextRange, DiagnosticTextRangeFailure> = when {
-            start < 0 -> Refinement.Rejected(DiagnosticTextRangeFailure.NEGATIVE_START)
-            endExclusive < start ->
-                Refinement.Rejected(DiagnosticTextRangeFailure.END_BEFORE_START)
-            else -> Refinement.Refined(
-                DiagnosticTextRange(
-                    DiagnosticTextOffset(start),
-                    DiagnosticTextOffset(endExclusive),
-                ),
-            )
-        }
+        ): Refinement<DiagnosticTextRange, DiagnosticTextRangeFailure> =
+            when {
+                start < 0 -> Refinement.Rejected(DiagnosticTextRangeFailure.NEGATIVE_START)
+                endExclusive < start -> Refinement.Rejected(DiagnosticTextRangeFailure.END_BEFORE_START)
+                else ->
+                    Refinement.Refined(
+                        DiagnosticTextRange(
+                            DiagnosticTextOffset(start),
+                            DiagnosticTextOffset(endExclusive),
+                        )
+                    )
+            }
     }
 }
 
@@ -125,7 +117,8 @@ enum class DiagnosticFactFailure {
 }
 
 /** Detached compiler diagnostic permanently owned by one exact scope and generation. */
-class DiagnosticFact private constructor(
+class DiagnosticFact
+private constructor(
     val scope: DiagnosticScope,
     val location: DiagnosticLocation,
     val severity: DiagnosticSeverity,
@@ -137,14 +130,12 @@ class DiagnosticFact private constructor(
 
     companion object {
         /**
-         * Proof transition: `(DiagnosticScope, DiagnosticSourceFile, Int, Int,
-         * DiagnosticSeverity, String, String) ->
+         * Proof transition: `(DiagnosticScope, DiagnosticSourceFile, Int, Int, DiagnosticSeverity, String, String) ->
          * Refinement<DiagnosticFact, Set<DiagnosticFactFailure>>`.
          *
-         * Establishes that the detached diagnostic belongs to a file in the exact scope and
-         * inherits that scope's semantic generation, with typed range, code, and message.
-         * [DiagnosticFactFailure] is the closed expected failure. Raw offsets and compiler text
-         * may enter only at the request-local K2 projection boundary.
+         * Establishes that the detached diagnostic belongs to a file in the exact scope and inherits that scope's
+         * semantic generation, with typed range, code, and message. [DiagnosticFactFailure] is the closed expected
+         * failure. Raw offsets and compiler text may enter only at the request-local K2 projection boundary.
          */
         fun fromBoundary(
             scope: DiagnosticScope,
@@ -175,26 +166,26 @@ class DiagnosticFact private constructor(
                 return Refinement.Rejected(failures)
             }
             return when (range) {
-                is Refinement.Rejected ->
-                    Refinement.Rejected(setOf(DiagnosticFactFailure.INVALID_RANGE))
-                is Refinement.Refined -> when (parsedCode) {
-                    is Refinement.Rejected ->
-                        Refinement.Rejected(setOf(DiagnosticFactFailure.INVALID_CODE))
-                    is Refinement.Refined -> when (parsedMessage) {
-                        is Refinement.Rejected -> Refinement.Rejected(
-                            setOf(DiagnosticFactFailure.INVALID_MESSAGE),
-                        )
-                        is Refinement.Refined -> Refinement.Refined(
-                            DiagnosticFact(
-                                scope,
-                                DiagnosticLocation(file, range.value),
-                                severity,
-                                parsedCode.value,
-                                parsedMessage.value,
-                            ),
-                        )
+                is Refinement.Rejected -> Refinement.Rejected(setOf(DiagnosticFactFailure.INVALID_RANGE))
+                is Refinement.Refined ->
+                    when (parsedCode) {
+                        is Refinement.Rejected -> Refinement.Rejected(setOf(DiagnosticFactFailure.INVALID_CODE))
+                        is Refinement.Refined ->
+                            when (parsedMessage) {
+                                is Refinement.Rejected ->
+                                    Refinement.Rejected(setOf(DiagnosticFactFailure.INVALID_MESSAGE))
+                                is Refinement.Refined ->
+                                    Refinement.Refined(
+                                        DiagnosticFact(
+                                            scope,
+                                            DiagnosticLocation(file, range.value),
+                                            severity,
+                                            parsedCode.value,
+                                            parsedMessage.value,
+                                        )
+                                    )
+                            }
                     }
-                }
             }
         }
     }

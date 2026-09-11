@@ -3,11 +3,12 @@ package io.github.amichne.kast.diagnostic.contract
 import io.github.amichne.kast.kernel.Refinement
 
 enum class DiagnosticBatchFailure {
-    FACT_OUTSIDE_EXACT_SCOPE,
+    FACT_OUTSIDE_EXACT_SCOPE
 }
 
 /** Detached diagnostics projected for one exact scope. */
-class DiagnosticBatch private constructor(
+class DiagnosticBatch
+private constructor(
     val scope: DiagnosticScope,
     facts: List<DiagnosticFact>,
 ) {
@@ -15,12 +16,12 @@ class DiagnosticBatch private constructor(
 
     companion object {
         /**
-         * Proof transition: `(DiagnosticScope, Iterable<DiagnosticFact>) ->
-         * Refinement<DiagnosticBatch, DiagnosticBatchFailure>`.
+         * Proof transition: `(DiagnosticScope, Iterable<DiagnosticFact>) -> Refinement<DiagnosticBatch,
+         * DiagnosticBatchFailure>`.
          *
-         * Establishes that every fact was constructed for the identical exact scope and therefore
-         * carries its semantic generation. [DiagnosticBatchFailure] is the closed expected
-         * failure. Detached facts may enter only from a request-local compiler collector.
+         * Establishes that every fact was constructed for the identical exact scope and therefore carries its semantic
+         * generation. [DiagnosticBatchFailure] is the closed expected failure. Detached facts may enter only from a
+         * request-local compiler collector.
          */
         fun create(
             scope: DiagnosticScope,
@@ -37,8 +38,8 @@ class DiagnosticBatch private constructor(
         /**
          * Proof transition: `DiagnosticScope -> DiagnosticBatch`.
          *
-         * Establishes an empty detached batch owned by the exact scope. Empty facts prove no
-         * absence until paired with [DiagnosticCompleteCoverage]. Raw extraction is unnecessary.
+         * Establishes an empty detached batch owned by the exact scope. Empty facts prove no absence until paired with
+         * [DiagnosticCompleteCoverage]. Raw extraction is unnecessary.
          */
         fun empty(scope: DiagnosticScope): DiagnosticBatch = DiagnosticBatch(scope, emptyList())
     }
@@ -60,9 +61,7 @@ data class DiagnosticLimitation(
 )
 
 /** Proof that every file in the exact scope was analyzed without limitation. */
-class DiagnosticCompleteCoverage internal constructor(
-    analyzedFiles: List<DiagnosticSourceFile>,
-) {
+class DiagnosticCompleteCoverage internal constructor(analyzedFiles: List<DiagnosticSourceFile>) {
     val analyzedFiles: List<DiagnosticSourceFile> = analyzedFiles.toList()
 }
 
@@ -75,7 +74,8 @@ enum class DiagnosticCoverageFailure {
 }
 
 /** Proof that every scope file is either analyzed or explicitly limited, but not both. */
-class DiagnosticIncompleteCoverage private constructor(
+class DiagnosticIncompleteCoverage
+private constructor(
     analyzedFiles: List<DiagnosticSourceFile>,
     limitations: Set<DiagnosticLimitation>,
 ) {
@@ -84,14 +84,12 @@ class DiagnosticIncompleteCoverage private constructor(
 
     companion object {
         /**
-         * Proof transition: `(DiagnosticScope, Iterable<DiagnosticSourceFile>,
-         * Set<DiagnosticLimitation>) ->
+         * Proof transition: `(DiagnosticScope, Iterable<DiagnosticSourceFile>, Set<DiagnosticLimitation>) ->
          * Refinement<DiagnosticIncompleteCoverage, Set<DiagnosticCoverageFailure>>`.
          *
-         * Establishes a non-empty limitation set and exact accounting for every scope file, with
-         * no file simultaneously claimed analyzed and limited. [DiagnosticCoverageFailure] is the
-         * closed expected failure. Raw provider completion state may enter only from the
-         * request-local compiler collector.
+         * Establishes a non-empty limitation set and exact accounting for every scope file, with no file simultaneously
+         * claimed analyzed and limited. [DiagnosticCoverageFailure] is the closed expected failure. Raw provider
+         * completion state may enter only from the request-local compiler collector.
          */
         fun create(
             scope: DiagnosticScope,
@@ -123,7 +121,7 @@ class DiagnosticIncompleteCoverage private constructor(
                     DiagnosticIncompleteCoverage(
                         scope.files.filter(analyzedSet::contains),
                         limitations,
-                    ),
+                    )
                 )
             } else {
                 Refinement.Rejected(failures)
@@ -143,58 +141,58 @@ enum class DiagnosticCompilerRejection {
 /** Closed detached output of the request-local diagnostic compiler boundary. */
 sealed interface DiagnosticCompilation {
     @ConsistentCopyVisibility
-    data class Complete internal constructor(
+    data class Complete
+    internal constructor(
         val batch: DiagnosticBatch,
         val coverage: DiagnosticCompleteCoverage,
     ) : DiagnosticCompilation
 
     @ConsistentCopyVisibility
-    data class Qualified internal constructor(
+    data class Qualified
+    internal constructor(
         val batch: DiagnosticBatch,
         val coverage: DiagnosticIncompleteCoverage,
     ) : DiagnosticCompilation
 
-    data class Rejected(
-        val reason: DiagnosticCompilerRejection,
-    ) : DiagnosticCompilation
+    data class Rejected(val reason: DiagnosticCompilerRejection) : DiagnosticCompilation
 
     companion object {
         /**
-         * Proof transition: `DiagnosticBatch + terminal exact-scope compiler proof ->
-         * DiagnosticCompilation.Complete`.
+         * Proof transition: `DiagnosticBatch + terminal exact-scope compiler proof -> DiagnosticCompilation.Complete`.
          *
-         * Establishes that every exact scope file was analyzed and permits an empty batch to mean
-         * diagnostic absence. Only a terminal limitation-free compiler collector may call this
-         * boundary; raw platform state never escapes.
+         * Establishes that every exact scope file was analyzed and permits an empty batch to mean diagnostic absence.
+         * Only a terminal limitation-free compiler collector may call this boundary; raw platform state never escapes.
          */
-        fun complete(batch: DiagnosticBatch): Complete = Complete(
-            batch,
-            DiagnosticCompleteCoverage(batch.scope.files),
-        )
+        fun complete(batch: DiagnosticBatch): Complete =
+            Complete(
+                batch,
+                DiagnosticCompleteCoverage(batch.scope.files),
+            )
 
         /**
-         * Proof transition: `(DiagnosticBatch, Iterable<DiagnosticSourceFile>,
-         * Set<DiagnosticLimitation>) ->
+         * Proof transition: `(DiagnosticBatch, Iterable<DiagnosticSourceFile>, Set<DiagnosticLimitation>) ->
          * Refinement<DiagnosticCompilation.Qualified, Set<DiagnosticCoverageFailure>>`.
          *
-         * Establishes exact accounted but incomplete scope coverage. Empty diagnostic evidence
-         * remains qualified and cannot mean absence. [DiagnosticCoverageFailure] is the closed
-         * expected failure. Raw provider state may enter only from the compiler collector.
+         * Establishes exact accounted but incomplete scope coverage. Empty diagnostic evidence remains qualified and
+         * cannot mean absence. [DiagnosticCoverageFailure] is the closed expected failure. Raw provider state may enter
+         * only from the compiler collector.
          */
         fun qualified(
             batch: DiagnosticBatch,
             analyzedFiles: Iterable<DiagnosticSourceFile>,
             limitations: Set<DiagnosticLimitation>,
-        ): Refinement<Qualified, Set<DiagnosticCoverageFailure>> = when (
-            val coverage = DiagnosticIncompleteCoverage.create(
-                batch.scope,
-                analyzedFiles,
-                limitations,
-            )
-        ) {
-            is Refinement.Refined -> Refinement.Refined(Qualified(batch, coverage.value))
-            is Refinement.Rejected -> coverage
-        }
+        ): Refinement<Qualified, Set<DiagnosticCoverageFailure>> =
+            when (
+                val coverage =
+                    DiagnosticIncompleteCoverage.create(
+                        batch.scope,
+                        analyzedFiles,
+                        limitations,
+                    )
+            ) {
+                is Refinement.Refined -> Refinement.Refined(Qualified(batch, coverage.value))
+                is Refinement.Rejected -> coverage
+            }
     }
 }
 
@@ -203,9 +201,9 @@ fun interface DiagnosticCompilerPort {
     /**
      * Proof transition: `DiagnosticScope -> DiagnosticCompilation`.
      *
-     * A non-rejected result establishes detached exact-scope evidence for the scope generation,
-     * with complete or explicitly qualified coverage. [DiagnosticCompilerRejection] is the closed
-     * expected failure. Live compiler/platform values remain inside the implementation call.
+     * A non-rejected result establishes detached exact-scope evidence for the scope generation, with complete or
+     * explicitly qualified coverage. [DiagnosticCompilerRejection] is the closed expected failure. Live
+     * compiler/platform values remain inside the implementation call.
      */
     suspend fun check(scope: DiagnosticScope): DiagnosticCompilation
 }

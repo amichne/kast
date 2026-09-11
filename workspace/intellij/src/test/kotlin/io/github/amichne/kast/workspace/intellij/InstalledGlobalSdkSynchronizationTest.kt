@@ -35,12 +35,18 @@ class InstalledGlobalSdkSynchronizationTest {
 
     @Test
     fun `SDK synchronization failures remain closed and cancellation propagates`() = runBlocking {
-        assertEquals(InstalledGlobalSdkSynchronization.PLATFORM_UNAVAILABLE,
-            synchronizeInstalledGlobalSdkModel { throw IllegalStateException("private payload") })
-        assertEquals(InstalledGlobalSdkSynchronization.PLATFORM_LINKAGE_INVALID,
-            synchronizeInstalledGlobalSdkModel { throw NoClassDefFoundError("private payload") })
-        assertEquals(InstalledGlobalSdkSynchronization.TIMED_OUT,
-            synchronizeInstalledGlobalSdkModel { withTimeout(1) { awaitCancellation() } })
+        assertEquals(
+            InstalledGlobalSdkSynchronization.PLATFORM_UNAVAILABLE,
+            synchronizeInstalledGlobalSdkModel { throw IllegalStateException("private payload") },
+        )
+        assertEquals(
+            InstalledGlobalSdkSynchronization.PLATFORM_LINKAGE_INVALID,
+            synchronizeInstalledGlobalSdkModel { throw NoClassDefFoundError("private payload") },
+        )
+        assertEquals(
+            InstalledGlobalSdkSynchronization.TIMED_OUT,
+            synchronizeInstalledGlobalSdkModel { withTimeout(1) { awaitCancellation() } },
+        )
         assertThrows(CancellationException::class.java) {
             runBlocking { synchronizeInstalledGlobalSdkModel { throw CancellationException("cancelled") } }
         }

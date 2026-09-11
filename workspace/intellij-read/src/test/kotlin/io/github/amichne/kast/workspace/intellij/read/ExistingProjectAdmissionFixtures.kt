@@ -13,42 +13,42 @@ import java.nio.file.Path
 
 internal val FIXTURE_ROOT = fixtureRoot("/workspace/kast")
 internal val OTHER_FIXTURE_ROOT = fixtureRoot("/workspace/other")
-internal val FIXTURE_COMPATIBILITY = IdeHostCompatibilityCandidate(
-    ideBuild = "262.9437.185",
-    kotlinPluginBuild = "262.9437.185-IJ",
-    kastPluginVersion = "1.2.3",
-    runtimeProtocolIdentity = "kast.ide-hosted.runtime.v1",
-    operationRegistryDigest = "sha256:" + "1".repeat(64),
-    wireSchemaDigest = "sha256:" + "2".repeat(64),
-    capabilities = listOf(
-        "index.sync",
-        "topology.build",
-        "symbol.discover",
-        "symbol.inspect",
-        "source.read",
-        "relation.read",
-        "traversal.run",
-        "diagnostic.check",
-        "change.plan",
-        "change.apply",
-        "change.recover",
-    ),
-)
+internal val FIXTURE_COMPATIBILITY =
+    IdeHostCompatibilityCandidate(
+        ideBuild = "262.9437.185",
+        kotlinPluginBuild = "262.9437.185-IJ",
+        kastPluginVersion = "1.2.3",
+        runtimeProtocolIdentity = "kast.ide-hosted.runtime.v1",
+        operationRegistryDigest = "sha256:" + "1".repeat(64),
+        wireSchemaDigest = "sha256:" + "2".repeat(64),
+        capabilities =
+            listOf(
+                "index.sync",
+                "topology.build",
+                "symbol.discover",
+                "symbol.inspect",
+                "source.read",
+                "relation.read",
+                "traversal.run",
+                "diagnostic.check",
+                "change.plan",
+                "change.apply",
+                "change.recover",
+            ),
+    )
 
-internal val FIXTURE_COMPATIBILITY_POLICY = when (
-    val result = IdeHostCompatibilityPolicy.define(FIXTURE_COMPATIBILITY)
-) {
-    is Refinement.Refined -> result.value
-    is Refinement.Rejected -> error("invalid compatibility fixture: ${result.failure}")
-}
+internal val FIXTURE_COMPATIBILITY_POLICY =
+    when (val result = IdeHostCompatibilityPolicy.define(FIXTURE_COMPATIBILITY)) {
+        is Refinement.Refined -> result.value
+        is Refinement.Rejected -> error("invalid compatibility fixture: ${result.failure}")
+    }
 
 internal val FIXTURE_EPOCH_SOURCE_FACTORY = ExistingProjectReadEpochSourceFactory { _, _ ->
-    Refinement.Refined(
-        ProjectReadEpoch.Source.create { ProjectReadEpochState.admit(stableFixtureEpochBoundary()) },
-    )
+    Refinement.Refined(ProjectReadEpoch.Source.create { ProjectReadEpochState.admit(stableFixtureEpochBoundary()) })
 }
 
-internal val EXPECTED_PROJECT_ADMISSION_REPORT = """
+internal val EXPECTED_PROJECT_ADMISSION_REPORT =
+    """
     {
         "schemaVersion": 1,
         "authority": "EXISTING_IDE_PROJECT",
@@ -68,16 +68,15 @@ internal val EXPECTED_PROJECT_ADMISSION_REPORT = """
         "repositoryWalkCount": 0,
         "sourceHashCount": 0
     }
-""".trimIndent() + "\n"
+    """
+        .trimIndent() + "\n"
 
 internal class RecordingProjectObservation(
     var disposed: Boolean = false,
     var open: Boolean = true,
     var initialized: Boolean = true,
-    var projectRoot: ExistingProjectRootObservation =
-        ExistingProjectRootObservation.Available(FIXTURE_ROOT),
-    var gradleModelState: ExistingProjectGradleModelState =
-        ExistingProjectGradleModelState.COMPLETE,
+    var projectRoot: ExistingProjectRootObservation = ExistingProjectRootObservation.Available(FIXTURE_ROOT),
+    var gradleModelState: ExistingProjectGradleModelState = ExistingProjectGradleModelState.COMPLETE,
     var indexingState: ExistingProjectIndexingState = ExistingProjectIndexingState.SMART,
     var kotlinModeState: ExistingProjectKotlinMode = ExistingProjectKotlinMode.K2,
     var hostIdentity: ExistingProjectHostIdentityObservation = fixtureHostIdentity(),
@@ -86,51 +85,59 @@ internal class RecordingProjectObservation(
 ) : ExistingProjectObservationPort {
     val observedStages = mutableListOf<ExistingProjectObservationStage>()
 
-    override fun isDisposed(project: Project): Boolean = observe(
-        ExistingProjectObservationStage.DISPOSAL,
-        disposed,
-    )
+    override fun isDisposed(project: Project): Boolean =
+        observe(
+            ExistingProjectObservationStage.DISPOSAL,
+            disposed,
+        )
 
-    override fun isOpen(project: Project): Boolean = observe(
-        ExistingProjectObservationStage.OPEN,
-        open,
-    )
+    override fun isOpen(project: Project): Boolean =
+        observe(
+            ExistingProjectObservationStage.OPEN,
+            open,
+        )
 
-    override fun isInitialized(project: Project): Boolean = observe(
-        ExistingProjectObservationStage.INITIALIZATION,
-        initialized,
-    )
+    override fun isInitialized(project: Project): Boolean =
+        observe(
+            ExistingProjectObservationStage.INITIALIZATION,
+            initialized,
+        )
 
     override fun root(
         project: Project,
         expectedRoot: CanonicalWorkspaceRoot,
-    ): ExistingProjectRootObservation = observe(
-        ExistingProjectObservationStage.ROOT,
-        projectRoot,
-    )
+    ): ExistingProjectRootObservation =
+        observe(
+            ExistingProjectObservationStage.ROOT,
+            projectRoot,
+        )
 
     override fun gradleModel(
         project: Project,
         expectedRoot: CanonicalWorkspaceRoot,
-    ): ExistingProjectGradleModelState = observe(
-        ExistingProjectObservationStage.GRADLE_MODEL,
-        gradleModelState,
-    )
+    ): ExistingProjectGradleModelState =
+        observe(
+            ExistingProjectObservationStage.GRADLE_MODEL,
+            gradleModelState,
+        )
 
-    override fun indexing(project: Project): ExistingProjectIndexingState = observe(
-        ExistingProjectObservationStage.INDEXING,
-        indexingState,
-    )
+    override fun indexing(project: Project): ExistingProjectIndexingState =
+        observe(
+            ExistingProjectObservationStage.INDEXING,
+            indexingState,
+        )
 
-    override fun kotlinMode(): ExistingProjectKotlinMode = observe(
-        ExistingProjectObservationStage.KOTLIN_MODE,
-        kotlinModeState,
-    )
+    override fun kotlinMode(): ExistingProjectKotlinMode =
+        observe(
+            ExistingProjectObservationStage.KOTLIN_MODE,
+            kotlinModeState,
+        )
 
-    override fun hostIdentity(): ExistingProjectHostIdentityObservation = observe(
-        ExistingProjectObservationStage.HOST_IDENTITY,
-        hostIdentity,
-    )
+    override fun hostIdentity(): ExistingProjectHostIdentityObservation =
+        observe(
+            ExistingProjectObservationStage.HOST_IDENTITY,
+            hostIdentity,
+        )
 
     private fun <Value> observe(
         stage: ExistingProjectObservationStage,
@@ -147,67 +154,67 @@ internal fun opaqueProject(): Project = proxyProject { methodName ->
 }
 
 internal fun projectWithBasePath(basePath: String?): Project = proxyProject { methodName ->
-    if (methodName == "getBasePath") basePath else error(
-        "Project method unexpectedly invoked while observing root: $methodName",
-    )
+    if (methodName == "getBasePath") basePath
+    else error("Project method unexpectedly invoked while observing root: $methodName")
 }
 
 internal fun disposedProject(): Project = proxyProject { methodName ->
-    if (methodName == "isDisposed") true else error(
-        "Project method unexpectedly invoked while rejecting disposed source: $methodName",
-    )
+    if (methodName == "isDisposed") true
+    else error("Project method unexpectedly invoked while rejecting disposed source: $methodName")
 }
 
-internal fun admittedFailure(
-    result: ExistingProjectAdmission,
-): ExistingProjectAdmissionFailure = when (result) {
-    is ExistingProjectAdmission.Admitted -> error("fixture Project unexpectedly admitted")
-    is ExistingProjectAdmission.Rejected -> result.failure
-}
+internal fun admittedFailure(result: ExistingProjectAdmission): ExistingProjectAdmissionFailure =
+    when (result) {
+        is ExistingProjectAdmission.Admitted -> error("fixture Project unexpectedly admitted")
+        is ExistingProjectAdmission.Rejected -> result.failure
+    }
 
 internal fun fixtureHostIdentity(
     ideBuild: String = FIXTURE_COMPATIBILITY.ideBuild,
     kotlinBuild: String = FIXTURE_COMPATIBILITY.kotlinPluginBuild,
 ): ExistingProjectHostIdentityObservation.Available {
-    val ide = when (val result = IdeBuildIdentity.parse(ideBuild)) {
-        is Refinement.Refined -> result.value
-        is Refinement.Rejected -> error("invalid IDE build fixture: ${result.failure}")
-    }
-    val kotlin = when (val result = KotlinPluginBuildIdentity.parse(kotlinBuild)) {
-        is Refinement.Refined -> result.value
-        is Refinement.Rejected -> error("invalid Kotlin build fixture: ${result.failure}")
-    }
+    val ide =
+        when (val result = IdeBuildIdentity.parse(ideBuild)) {
+            is Refinement.Refined -> result.value
+            is Refinement.Rejected -> error("invalid IDE build fixture: ${result.failure}")
+        }
+    val kotlin =
+        when (val result = KotlinPluginBuildIdentity.parse(kotlinBuild)) {
+            is Refinement.Refined -> result.value
+            is Refinement.Rejected -> error("invalid Kotlin build fixture: ${result.failure}")
+        }
     return ExistingProjectHostIdentityObservation.Available(ide, kotlin)
 }
 
-private fun fixtureRoot(raw: String): CanonicalWorkspaceRoot = when (
-    val result = CanonicalWorkspaceRoot.fromCanonicalPath(Path.of(raw))
-) {
-    is Refinement.Refined -> result.value
-    is Refinement.Rejected -> error("invalid root fixture: ${result.failure}")
-}
-
-private fun stableFixtureEpochBoundary() = ProjectReadEpochBoundary(
-    ProjectReadEpochSignalSample.Value(1),
-    fixtureProjectEpochRoot(FIXTURE_ROOT.value),
-    fixtureGradleEpochRoot(FIXTURE_ROOT.value),
-    1,
-    1,
-    ProjectReadEpochSignalSample.Value(1),
-    ProjectReadEpochSignalSample.Value(1),
-    ProjectReadEpochSignalSample.Value(1),
-    ProjectReadEpochSignalSample.Value(1),
-    false,
-)
-
-private fun proxyProject(read: (String) -> Any?): Project = Proxy.newProxyInstance(
-    Project::class.java.classLoader,
-    arrayOf(Project::class.java),
-) { proxy, method, arguments ->
-    when (method.name) {
-        "toString" -> "OpaqueFixtureProject"
-        "hashCode" -> System.identityHashCode(proxy)
-        "equals" -> arguments?.singleOrNull() === proxy
-        else -> read(method.name)
+private fun fixtureRoot(raw: String): CanonicalWorkspaceRoot =
+    when (val result = CanonicalWorkspaceRoot.fromCanonicalPath(Path.of(raw))) {
+        is Refinement.Refined -> result.value
+        is Refinement.Rejected -> error("invalid root fixture: ${result.failure}")
     }
-} as Project
+
+private fun stableFixtureEpochBoundary() =
+    ProjectReadEpochBoundary(
+        ProjectReadEpochSignalSample.Value(1),
+        fixtureProjectEpochRoot(FIXTURE_ROOT.value),
+        fixtureGradleEpochRoot(FIXTURE_ROOT.value),
+        1,
+        1,
+        ProjectReadEpochSignalSample.Value(1),
+        ProjectReadEpochSignalSample.Value(1),
+        ProjectReadEpochSignalSample.Value(1),
+        ProjectReadEpochSignalSample.Value(1),
+        false,
+    )
+
+private fun proxyProject(read: (String) -> Any?): Project =
+    Proxy.newProxyInstance(
+        Project::class.java.classLoader,
+        arrayOf(Project::class.java),
+    ) { proxy, method, arguments ->
+        when (method.name) {
+            "toString" -> "OpaqueFixtureProject"
+            "hashCode" -> System.identityHashCode(proxy)
+            "equals" -> arguments?.singleOrNull() === proxy
+            else -> read(method.name)
+        }
+    } as Project

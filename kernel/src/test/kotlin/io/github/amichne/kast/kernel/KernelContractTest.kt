@@ -11,22 +11,22 @@ class KernelContractTest {
         val capability = CapabilityId.parse("symbol.read").refinedValue()
         val typedCapability: CapabilityMarker = SymbolReadCapability(capability)
         val generation = EvidenceGeneration.parse(7).refinedValue()
-        val budget = ResourceBudget(
-            resultLimit = ResultLimit.parse(250).refinedValue(),
-            workUnitLimit = WorkUnitLimit.parse(10_000).refinedValue(),
-            elapsedTimeLimit = ElapsedTimeLimitMillis.parse(5_000).refinedValue(),
-        )
-        val evidence = EvidenceEnvelope(
-            operation = operation,
-            generation = generation,
-            payload = root,
-        )
-        val complete: OperationOutcome<NamedRoot, Qualification, Failure> =
-            OperationOutcome.Complete(evidence)
+        val budget =
+            ResourceBudget(
+                resultLimit = ResultLimit.parse(250).refinedValue(),
+                workUnitLimit = WorkUnitLimit.parse(10_000).refinedValue(),
+                elapsedTimeLimit = ElapsedTimeLimitMillis.parse(5_000).refinedValue(),
+            )
+        val evidence =
+            EvidenceEnvelope(
+                operation = operation,
+                generation = generation,
+                payload = root,
+            )
+        val complete: OperationOutcome<NamedRoot, Qualification, Failure> = OperationOutcome.Complete(evidence)
         val qualified: OperationOutcome<NamedRoot, Qualification, Failure> =
             OperationOutcome.Qualified(evidence, Qualification.BOUNDED)
-        val rejected: OperationOutcome<NamedRoot, Qualification, Failure> =
-            OperationOutcome.Rejected(Failure.NOT_READY)
+        val rejected: OperationOutcome<NamedRoot, Qualification, Failure> = OperationOutcome.Rejected(Failure.NOT_READY)
 
         assertEquals("workspace.primary", root.value)
         assertEquals(capability, typedCapability.id)
@@ -69,46 +69,46 @@ class KernelContractTest {
         )
     }
 
-    private data class SymbolReadCapability(
-        override val id: CapabilityId,
-    ) : CapabilityMarker
+    private data class SymbolReadCapability(override val id: CapabilityId) : CapabilityMarker
 
     private enum class Qualification {
-        BOUNDED,
+        BOUNDED
     }
 
     private enum class Failure {
-        NOT_READY,
+        NOT_READY
     }
 
-    private fun <Strong, Failure> Refinement<Strong, Failure>.refinedValue(): Strong = when (this) {
-        is Refinement.Refined -> value
-        is Refinement.Rejected -> error("Expected refined value, got $failure")
-    }
+    private fun <Strong, Failure> Refinement<Strong, Failure>.refinedValue(): Strong =
+        when (this) {
+            is Refinement.Refined -> value
+            is Refinement.Rejected -> error("Expected refined value, got $failure")
+        }
 
-    private fun <Strong, Failure> Refinement<Strong, Failure>.rejectedFailure(): Failure = when (this) {
-        is Refinement.Refined -> error("Expected rejection, got $value")
-        is Refinement.Rejected -> failure
-    }
+    private fun <Strong, Failure> Refinement<Strong, Failure>.rejectedFailure(): Failure =
+        when (this) {
+            is Refinement.Refined -> error("Expected rejection, got $value")
+            is Refinement.Rejected -> failure
+        }
 
-    private fun <Payload, Qualification, Rejection>
-        OperationOutcome<Payload, Qualification, Rejection>.evidence(): EvidenceEnvelope<Payload> =
+    private fun <Payload, Qualification, Rejection> OperationOutcome<Payload, Qualification, Rejection>.evidence():
+        EvidenceEnvelope<Payload> =
         when (this) {
             is OperationOutcome.Complete -> evidence
             is OperationOutcome.Qualified -> evidence
             is OperationOutcome.Rejected -> error("Rejected outcome: $reason")
         }
 
-    private fun <Payload, Qualification, Rejection>
-        OperationOutcome<Payload, Qualification, Rejection>.qualification(): Qualification =
+    private fun <Payload, Qualification, Rejection> OperationOutcome<Payload, Qualification, Rejection>.qualification():
+        Qualification =
         when (this) {
             is OperationOutcome.Complete -> error("Complete outcome")
             is OperationOutcome.Qualified -> qualification
             is OperationOutcome.Rejected -> error("Rejected outcome: $reason")
         }
 
-    private fun <Payload, Qualification, Rejection>
-        OperationOutcome<Payload, Qualification, Rejection>.rejection(): Rejection =
+    private fun <Payload, Qualification, Rejection> OperationOutcome<Payload, Qualification, Rejection>.rejection():
+        Rejection =
         when (this) {
             is OperationOutcome.Complete -> error("Complete outcome")
             is OperationOutcome.Qualified -> error("Qualified outcome: $qualification")

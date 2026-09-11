@@ -23,8 +23,10 @@ class HostedOperationProjectionTest {
             ),
             HostedOperationProjection.publicDefinitions.map { it.operation },
         )
-        assertEquals(listOf(CanonicalOperation.INDEX_SYNC, CanonicalOperation.TOPOLOGY_BUILD),
-            HostedOperationProjection.internalDefinitions.map { it.operation })
+        assertEquals(
+            listOf(CanonicalOperation.INDEX_SYNC, CanonicalOperation.TOPOLOGY_BUILD),
+            HostedOperationProjection.internalDefinitions.map { it.operation },
+        )
         assertTrue(HostedOperationProjection.unavailableDefinitions.isEmpty())
     }
 
@@ -48,22 +50,14 @@ class HostedOperationProjectionTest {
     fun `hosted binding completeness requires every public operation and forbids unavailable ones`() {
         assertEquals(
             HostedBindingCompleteness.Complete,
-            HostedOperationProjection.verifyBindings(
-                HostedOperationProjection.publicDefinitions.map { it.operation },
-            ),
+            HostedOperationProjection.verifyBindings(HostedOperationProjection.publicDefinitions.map { it.operation }),
         )
         assertEquals(
             HostedBindingCompleteness.Rejected(
-                setOf(
-                    HostedBindingCompletenessFailure.MissingPublicBinding(
-                        CanonicalOperation.CHANGE_RECOVER,
-                    ),
-                ),
+                setOf(HostedBindingCompletenessFailure.MissingPublicBinding(CanonicalOperation.CHANGE_RECOVER))
             ),
             HostedOperationProjection.verifyBindings(
-                HostedOperationProjection.publicDefinitions
-                    .map { it.operation }
-                    .dropLast(1),
+                HostedOperationProjection.publicDefinitions.map { it.operation }.dropLast(1)
             ),
         )
     }

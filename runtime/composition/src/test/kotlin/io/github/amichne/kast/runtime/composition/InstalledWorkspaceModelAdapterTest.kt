@@ -11,39 +11,40 @@ import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootKind
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootProvenance
 import io.github.amichne.kast.workspace.intellij.GradleWorkspaceModelCapture
 import io.github.amichne.kast.workspace.intellij.IntellijWorkspaceReconciliationResult
+import java.nio.file.Files
+import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Files
-import java.nio.file.Path
 
 class InstalledWorkspaceModelAdapterTest {
     @Test
-    fun `one installed model snapshot supplies capture reconciliation and semantic scope`(
-        @TempDir temporary: Path,
-    ) {
+    fun `one installed model snapshot supplies capture reconciliation and semantic scope`(@TempDir temporary: Path) {
         val root = Files.createDirectories(temporary.resolve("repo")).toRealPath()
         val fixture = InstalledChangeProtocolFixture.create(root)
         val published = fixture.published
         val sourceRoot = published.sourceRoots.single()
-        val boundary = WorkspaceSourceRootBoundary(
-            sourceRoot.owner.module.value,
-            root.resolve(sourceRoot.owner.project.buildRoot.value).normalize(),
-            sourceRoot.owner.project.projectPath.value,
-            sourceRoot.owner.sourceSet.value,
-            root.resolve(sourceRoot.location.value).normalize(),
-            WorkspaceSourceRootKind.PRODUCTION,
-            WorkspaceSourceRootProvenance.AUTHORED,
-        )
-        val read = projectInstalledGradleModel(
-            InstalledGradleModelBoundary(
-                published.root,
-                true,
-                listOf(boundary),
-                published.sourceState,
-            ),
-        ) as InstalledGradleModelRead.Captured
+        val boundary =
+            WorkspaceSourceRootBoundary(
+                sourceRoot.owner.module.value,
+                root.resolve(sourceRoot.owner.project.buildRoot.value).normalize(),
+                sourceRoot.owner.project.projectPath.value,
+                sourceRoot.owner.sourceSet.value,
+                root.resolve(sourceRoot.location.value).normalize(),
+                WorkspaceSourceRootKind.PRODUCTION,
+                WorkspaceSourceRootProvenance.AUTHORED,
+            )
+        val read =
+            projectInstalledGradleModel(
+                InstalledGradleModelBoundary(
+                    published.root,
+                    true,
+                    listOf(boundary),
+                    published.sourceState,
+                )
+            )
+                as InstalledGradleModelRead.Captured
         val model = read.model
         val scope = model.searchScope
         var reads = 0

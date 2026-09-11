@@ -30,7 +30,7 @@ internal data class SourceSnapshotWireDocument(
 
 @Serializable
 internal enum class SourceCoordinateUnitWireDocument {
-    @SerialName("utf16-code-unit") UTF16_CODE_UNIT,
+    @SerialName("utf16-code-unit") UTF16_CODE_UNIT
 }
 
 @Serializable
@@ -70,13 +70,9 @@ internal sealed interface SourceDeclarationSemanticIdentityWireDocument {
 
 @Serializable
 internal sealed interface SourceEntityTargetWireDocument {
-    @Serializable
-    @SerialName("candidate")
-    data class Candidate(val selector: String) : SourceEntityTargetWireDocument
+    @Serializable @SerialName("candidate") data class Candidate(val selector: String) : SourceEntityTargetWireDocument
 
-    @Serializable
-    @SerialName("local")
-    data class Local(val selector: String) : SourceEntityTargetWireDocument
+    @Serializable @SerialName("local") data class Local(val selector: String) : SourceEntityTargetWireDocument
 
     @Serializable
     @SerialName("unresolved")
@@ -137,9 +133,7 @@ internal sealed interface SourceEntityWireDocument {
 
 @Serializable
 internal sealed interface SourceTextProjectionWireDocument {
-    @Serializable
-    @SerialName("not-requested")
-    data object NotRequested : SourceTextProjectionWireDocument
+    @Serializable @SerialName("not-requested") data object NotRequested : SourceTextProjectionWireDocument
 
     @Serializable
     @SerialName("returned")
@@ -151,9 +145,7 @@ internal sealed interface SourceTextProjectionWireDocument {
 
     @Serializable
     @SerialName("withheld")
-    data class Withheld(
-        val reason: SourceTextWithheldReasonWireDocument,
-    ) : SourceTextProjectionWireDocument
+    data class Withheld(val reason: SourceTextWithheldReasonWireDocument) : SourceTextProjectionWireDocument
 }
 
 @Serializable
@@ -183,9 +175,7 @@ internal enum class SourceReadLimitationWireDocument {
 
 @Serializable
 internal sealed interface SourceReadContinuationStateWireDocument {
-    @Serializable
-    @SerialName("unavailable")
-    data object Unavailable : SourceReadContinuationStateWireDocument
+    @Serializable @SerialName("unavailable") data object Unavailable : SourceReadContinuationStateWireDocument
 
     @Serializable
     @SerialName("available")
@@ -213,5 +203,4 @@ internal enum class SourceReadRejectionWireDocument {
     @SerialName("contract-violation") CONTRACT_VIOLATION,
 }
 
-@Serializable
-internal data class SourceLineRangeWireDocument(val startInclusive: Long, val endInclusive: Long)
+@Serializable internal data class SourceLineRangeWireDocument(val startInclusive: Long, val endInclusive: Long)

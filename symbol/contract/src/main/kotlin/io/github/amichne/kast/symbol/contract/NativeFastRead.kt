@@ -6,25 +6,20 @@ import io.github.amichne.kast.kernel.Refinement
 interface NativeDetachedDefinition
 
 enum class NativeProjectionByteCountFailure {
-    NEGATIVE,
+    NEGATIVE
 }
 
 @JvmInline
-value class NativeProjectionByteCount private constructor(
-    val value: Long,
-) {
+value class NativeProjectionByteCount private constructor(val value: Long) {
     companion object {
         /**
-         * Proof transition:
-         * Long to Refinement<NativeProjectionByteCount, NativeProjectionByteCountFailure>.
+         * Proof transition: Long to Refinement<NativeProjectionByteCount, NativeProjectionByteCountFailure>.
          *
          * Establishes the non-negative encoded size of detached definition projections.
-         * [NativeProjectionByteCountFailure] is the closed expected failure. Raw byte counts may be
-         * extracted only at projection, metrics, or transport boundaries.
+         * [NativeProjectionByteCountFailure] is the closed expected failure. Raw byte counts may be extracted only at
+         * projection, metrics, or transport boundaries.
          */
-        fun parse(
-            raw: Long,
-        ): Refinement<NativeProjectionByteCount, NativeProjectionByteCountFailure> =
+        fun parse(raw: Long): Refinement<NativeProjectionByteCount, NativeProjectionByteCountFailure> =
             if (raw >= 0L) {
                 Refinement.Refined(NativeProjectionByteCount(raw))
             } else {

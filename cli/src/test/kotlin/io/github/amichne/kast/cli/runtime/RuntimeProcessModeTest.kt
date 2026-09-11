@@ -1,15 +1,15 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironment
+import io.github.amichne.kast.kernel.Refinement
+import java.nio.file.Files
+import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Files
-import java.nio.file.Path
 
 class RuntimeProcessModeTest {
     @Test
@@ -20,15 +20,18 @@ class RuntimeProcessModeTest {
         val changed = (currentGradleImportEnvironment(second) as Refinement.Refined).value
         assertNotEquals(admitted.identity, changed.identity)
         assertEquals(first, admitted.processVariables())
-        val launch = MacOsRuntimeProcessEnvironment.resolve(installedRuntime(temporary), admitted, second)
-            as MacOsRuntimeProcessEnvironmentResolution.Resolved
+        val launch =
+            MacOsRuntimeProcessEnvironment.resolve(installedRuntime(temporary), admitted, second)
+                as MacOsRuntimeProcessEnvironmentResolution.Resolved
         assertEquals(first.getValue("GRADLE_USER_HOME"), launch.environment.variables["GRADLE_USER_HOME"])
     }
 
     @Test
     fun `relative Gradle user home rejects before runtime identity or launch`() {
-        assertInstanceOf(Refinement.Rejected::class.java,
-            currentGradleImportEnvironment(mapOf("GRADLE_USER_HOME" to "relative")))
+        assertInstanceOf(
+            Refinement.Rejected::class.java,
+            currentGradleImportEnvironment(mapOf("GRADLE_USER_HOME" to "relative")),
+        )
     }
 
     @Test
@@ -59,9 +62,7 @@ class RuntimeProcessModeTest {
     fun `unsupported environment values remain closed failures`() {
         listOf("", " ", "true", "yes", "2").forEach { configured ->
             assertEquals(
-                RuntimeProcessModeAdmission.Rejected(
-                    RuntimeProcessModeFailure.INVALID_ENVIRONMENT_VALUE,
-                ),
+                RuntimeProcessModeAdmission.Rejected(RuntimeProcessModeFailure.INVALID_ENVIRONMENT_VALUE),
                 RuntimeProcessModeEnvironment.admit(configured),
                 "configured value: '$configured'",
             )
@@ -70,9 +71,8 @@ class RuntimeProcessModeTest {
 
     @Test
     fun `invalid launchd flag retains an actionable bootstrap reason`() {
-        val failure = InstalledCompositionFailure.RuntimeProcessModeRejected(
-            RuntimeProcessModeFailure.INVALID_ENVIRONMENT_VALUE,
-        )
+        val failure =
+            InstalledCompositionFailure.RuntimeProcessModeRejected(RuntimeProcessModeFailure.INVALID_ENVIRONMENT_VALUE)
 
         assertEquals("invalid-launchd-flag", failure.outputReason)
     }
@@ -89,54 +89,61 @@ class RuntimeProcessModeTest {
     }
 
     @Test
-    fun `explicit import input is admitted without an ambient secret`(
-        @TempDir temporary: Path,
-    ) {
-        val resolved = assertInstanceOf(
-            MacOsRuntimeProcessEnvironmentResolution.Resolved::class.java,
-            MacOsRuntimeProcessEnvironment.resolve(
-                installedRuntime(temporary),
-                (GradleImportEnvironment.admit("TEST_IMPORT_INPUT", "", mapOf(
-                    "TEST_IMPORT_INPUT" to "required", "AMBIENT_SECRET_TOKEN" to "never-forward",
-                )) as Refinement.Refined).value,
-            ),
-        )
+    fun `explicit import input is admitted without an ambient secret`(@TempDir temporary: Path) {
+        val resolved =
+            assertInstanceOf(
+                MacOsRuntimeProcessEnvironmentResolution.Resolved::class.java,
+                MacOsRuntimeProcessEnvironment.resolve(
+                    installedRuntime(temporary),
+                    (GradleImportEnvironment.admit(
+                            "TEST_IMPORT_INPUT",
+                            "",
+                            mapOf(
+                                "TEST_IMPORT_INPUT" to "required",
+                                "AMBIENT_SECRET_TOKEN" to "never-forward",
+                            ),
+                        ) as Refinement.Refined)
+                        .value,
+                ),
+            )
         assertEquals("required", resolved.environment.variables["TEST_IMPORT_INPUT"])
         assertEquals(null, resolved.environment.variables["AMBIENT_SECRET_TOKEN"])
     }
 
     @Test
-    fun `detached process environment exposes only the allowlisted variables`(
-        @TempDir temporary: Path,
-    ) {
-        val resolved = assertInstanceOf(
-            MacOsRuntimeProcessEnvironmentResolution.Resolved::class.java,
-            MacOsRuntimeProcessEnvironment.resolve(installedRuntime(temporary), emptyMap()),
-        )
+    fun `detached process environment exposes only the allowlisted variables`(@TempDir temporary: Path) {
+        val resolved =
+            assertInstanceOf(
+                MacOsRuntimeProcessEnvironmentResolution.Resolved::class.java,
+                MacOsRuntimeProcessEnvironment.resolve(installedRuntime(temporary), emptyMap()),
+            )
 
         assertEquals(setOf("JAVA_HOME", "HOME", "PATH"), resolved.environment.variables.keys)
     }
 
     @Test
-    fun `admitted ambient Java home crosses as optional Gradle and trust authority`(
-        @TempDir temporary: Path,
-    ) {
+    fun `admitted ambient Java home crosses as optional Gradle and trust authority`(@TempDir temporary: Path) {
         val ambientHome = Files.createDirectories(temporary.resolve("ambient/bin")).parent.toRealPath()
         val java = ambientHome.resolve("bin/java")
         Files.writeString(java, "#!/bin/sh\nexit 0\n")
         java.toFile().setExecutable(true)
 
-        val resolved = assertInstanceOf(
-            MacOsRuntimeProcessEnvironmentResolution.Resolved::class.java,
-            MacOsRuntimeProcessEnvironment.resolve(
-                installedRuntime(temporary.resolve("runtime")),
-                mapOf(
-                    "JAVA_HOME" to installedRuntime(temporary.resolve("control-runtime"))
-                        .javaExecutable.parent.parent.toString(),
-                    GradleImportEnvironment.INHERITED_JAVA_HOME_SETTING to ambientHome.toString(),
+        val resolved =
+            assertInstanceOf(
+                MacOsRuntimeProcessEnvironmentResolution.Resolved::class.java,
+                MacOsRuntimeProcessEnvironment.resolve(
+                    installedRuntime(temporary.resolve("runtime")),
+                    mapOf(
+                        "JAVA_HOME" to
+                            installedRuntime(temporary.resolve("control-runtime"))
+                                .javaExecutable
+                                .parent
+                                .parent
+                                .toString(),
+                        GradleImportEnvironment.INHERITED_JAVA_HOME_SETTING to ambientHome.toString(),
+                    ),
                 ),
-            ),
-        )
+            )
 
         assertEquals(
             ambientHome.toString(),
@@ -154,13 +161,14 @@ class RuntimeProcessModeTest {
 
     @Test
     fun `invalid ambient Java home is ignored rather than mandated`(@TempDir temporary: Path) {
-        val resolved = assertInstanceOf(
-            MacOsRuntimeProcessEnvironmentResolution.Resolved::class.java,
-            MacOsRuntimeProcessEnvironment.resolve(
-                installedRuntime(temporary),
-                mapOf("JAVA_HOME" to "relative-or-missing"),
-            ),
-        )
+        val resolved =
+            assertInstanceOf(
+                MacOsRuntimeProcessEnvironmentResolution.Resolved::class.java,
+                MacOsRuntimeProcessEnvironment.resolve(
+                    installedRuntime(temporary),
+                    mapOf("JAVA_HOME" to "relative-or-missing"),
+                ),
+            )
 
         assertEquals(null, resolved.environment.variables["KAST_TRUST_DONOR_JAVA_HOME"])
         assertEquals(
@@ -177,16 +185,17 @@ class RuntimeProcessModeTest {
         java.toFile().setExecutable(true)
         val explicitDonor = temporary.resolve("explicit-donor").toString()
 
-        val resolved = assertInstanceOf(
-            MacOsRuntimeProcessEnvironmentResolution.Resolved::class.java,
-            MacOsRuntimeProcessEnvironment.resolve(
-                installedRuntime(temporary.resolve("runtime")),
-                mapOf(
-                    GradleImportEnvironment.INHERITED_JAVA_HOME_SETTING to inheritedHome.toString(),
-                    "KAST_TRUST_DONOR_JAVA_HOME" to explicitDonor,
+        val resolved =
+            assertInstanceOf(
+                MacOsRuntimeProcessEnvironmentResolution.Resolved::class.java,
+                MacOsRuntimeProcessEnvironment.resolve(
+                    installedRuntime(temporary.resolve("runtime")),
+                    mapOf(
+                        GradleImportEnvironment.INHERITED_JAVA_HOME_SETTING to inheritedHome.toString(),
+                        "KAST_TRUST_DONOR_JAVA_HOME" to explicitDonor,
+                    ),
                 ),
-            ),
-        )
+            )
 
         assertEquals(explicitDonor, resolved.environment.variables["KAST_TRUST_DONOR_JAVA_HOME"])
         assertEquals(
@@ -196,16 +205,15 @@ class RuntimeProcessModeTest {
     }
 
     @Test
-    fun `detached process environment uses the admitted IDEA JBR`(
-        @TempDir temporary: Path,
-    ) {
+    fun `detached process environment uses the admitted IDEA JBR`(@TempDir temporary: Path) {
         val runtime = installedRuntime(temporary)
         val jbrHome = runtime.javaExecutable.parent.parent
 
-        val resolved = assertInstanceOf(
-            MacOsRuntimeProcessEnvironmentResolution.Resolved::class.java,
-            MacOsRuntimeProcessEnvironment.resolve(runtime),
-        )
+        val resolved =
+            assertInstanceOf(
+                MacOsRuntimeProcessEnvironmentResolution.Resolved::class.java,
+                MacOsRuntimeProcessEnvironment.resolve(runtime),
+            )
 
         assertEquals(jbrHome.toString(), resolved.environment.variables["JAVA_HOME"])
         assertEquals(
@@ -217,38 +225,34 @@ class RuntimeProcessModeTest {
             resolved.environment.variables["JAVA_HOME"],
         )
 
-        val alternateJava = Files.createDirectories(temporary.resolve("alternate/bin"))
-            .resolve("java")
+        val alternateJava = Files.createDirectories(temporary.resolve("alternate/bin")).resolve("java")
         Files.writeString(alternateJava, "#!/bin/sh\nexit 0\n")
         alternateJava.toFile().setExecutable(true)
         assertEquals(
             MacOsRuntimeProcessEnvironmentResolution.Rejected(
-                MacOsRuntimeProcessEnvironmentFailure.JAVA_HOME_UNAVAILABLE,
+                MacOsRuntimeProcessEnvironmentFailure.JAVA_HOME_UNAVAILABLE
             ),
             MacOsRuntimeProcessEnvironment.resolve(
-                InstalledIdeRuntime(runtime.home, alternateJava.toRealPath(), runtime.identity),
+                InstalledIdeRuntime(runtime.home, alternateJava.toRealPath(), runtime.identity)
             ),
         )
     }
 
     @Test
-    fun `detached process environment accepts a physically owned symlinked IDEA JBR`(
-        @TempDir temporary: Path,
-    ) {
+    fun `detached process environment accepts a physically owned symlinked IDEA JBR`(@TempDir temporary: Path) {
         val runtime = installedRuntime(temporary.resolve("managed-runtime"))
-        val ideaHome = Files.createDirectories(
-            temporary.resolve("IntelliJ IDEA.app/Contents"),
-        ).toRealPath()
+        val ideaHome = Files.createDirectories(temporary.resolve("IntelliJ IDEA.app/Contents")).toRealPath()
         Files.createSymbolicLink(
             ideaHome.resolve("jbr"),
             runtime.javaExecutable.parent.parent.parent.parent,
         )
         val linkedRuntime = InstalledIdeRuntime(ideaHome, runtime.javaExecutable, runtime.identity)
 
-        val resolved = assertInstanceOf(
-            MacOsRuntimeProcessEnvironmentResolution.Resolved::class.java,
-            MacOsRuntimeProcessEnvironment.resolve(linkedRuntime),
-        )
+        val resolved =
+            assertInstanceOf(
+                MacOsRuntimeProcessEnvironmentResolution.Resolved::class.java,
+                MacOsRuntimeProcessEnvironment.resolve(linkedRuntime),
+            )
 
         assertEquals(
             runtime.javaExecutable.parent.parent.toString(),
@@ -257,29 +261,28 @@ class RuntimeProcessModeTest {
     }
 
     private fun installedRuntime(temporary: Path): InstalledIdeRuntime {
-        val ideaHome = Files.createDirectories(
-            temporary.resolve("IntelliJ IDEA.app/Contents"),
-        ).toRealPath()
-        val jbrHome = Files.createDirectories(
-            ideaHome.resolve("jbr/Contents/Home"),
-        ).toRealPath()
-        val javaExecutable = Files.createDirectories(jbrHome.resolve("bin"))
-            .resolve("java")
+        val ideaHome = Files.createDirectories(temporary.resolve("IntelliJ IDEA.app/Contents")).toRealPath()
+        val jbrHome = Files.createDirectories(ideaHome.resolve("jbr/Contents/Home")).toRealPath()
+        val javaExecutable = Files.createDirectories(jbrHome.resolve("bin")).resolve("java")
         Files.writeString(javaExecutable, "#!/bin/sh\nexit 0\n")
         javaExecutable.toFile().setExecutable(true)
-        val pair = SupportedIdeRuntimePair.admit(
-            "262.9437.185",
-            "262.9437.185-IJ",
-        ).let { (it as SupportedIdeRuntimePairAdmission.Admitted).pair }
-        val identity = IdeRuntimeIdentity.admit(
-            pair,
-            IdeRuntimeIdentityCandidate(
-                pair.ideaBuild,
-                pair.kotlinPluginBuild,
-                "jbr-25.0.3+9-b508.16-aarch64",
-                "sha256:${"a".repeat(64)}",
-            ),
-        ).let { (it as IdeRuntimeIdentityAdmission.Admitted).identity }
+        val pair =
+            SupportedIdeRuntimePair.admit(
+                    "262.9437.185",
+                    "262.9437.185-IJ",
+                )
+                .let { (it as SupportedIdeRuntimePairAdmission.Admitted).pair }
+        val identity =
+            IdeRuntimeIdentity.admit(
+                    pair,
+                    IdeRuntimeIdentityCandidate(
+                        pair.ideaBuild,
+                        pair.kotlinPluginBuild,
+                        "jbr-25.0.3+9-b508.16-aarch64",
+                        "sha256:${"a".repeat(64)}",
+                    ),
+                )
+                .let { (it as IdeRuntimeIdentityAdmission.Admitted).identity }
         return InstalledIdeRuntime(ideaHome, javaExecutable.toRealPath(), identity)
     }
 }

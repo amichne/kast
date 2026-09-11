@@ -19,13 +19,13 @@ import io.github.amichne.kast.workspace.contract.WorkspaceEvidenceKind
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
 import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertInstanceOf
-import org.junit.jupiter.api.Test
 import java.nio.file.Path
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.startCoroutine
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.Test
 
 class DiagnosticServiceTest {
     @Test
@@ -33,15 +33,17 @@ class DiagnosticServiceTest {
         val workspace = published(19L)
         val request = request(workspace.readLease)
         val compiler = RecordingCompiler(DiagnosticCompilation.complete(DiagnosticBatch.empty(request.scope)))
-        val service = DiagnosticService(
-            WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(workspace) },
-            compiler,
-        )
+        val service =
+            DiagnosticService(
+                WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(workspace) },
+                compiler,
+            )
 
-        val complete = assertInstanceOf(
-            DiagnosticCheckResult.Complete::class.java,
-            runSuspend { service.check(request) },
-        )
+        val complete =
+            assertInstanceOf(
+                DiagnosticCheckResult.Complete::class.java,
+                runSuspend { service.check(request) },
+            )
 
         assertEquals(request.scope.files, complete.coverage.analyzedFiles)
         assertEquals(listOf(request.scope), compiler.scopes)
@@ -51,10 +53,11 @@ class DiagnosticServiceTest {
     fun `stale generation rejects before compiler work`() {
         val workspace = published(19L)
         val compiler = RecordingCompiler()
-        val service = DiagnosticService(
-            WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(workspace) },
-            compiler,
-        )
+        val service =
+            DiagnosticService(
+                WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(workspace) },
+                compiler,
+            )
 
         assertEquals(
             DiagnosticCheckResult.Rejected(DiagnosticReadRejection.STALE_GENERATION),
@@ -67,13 +70,15 @@ class DiagnosticServiceTest {
     fun `workspace movement after compiler work discards diagnostic evidence`() {
         val workspace = published(19L)
         val request = request(workspace.readLease)
-        val states = ArrayDeque<WorkspaceRuntimeState>(
-            listOf(WorkspaceRuntimeState.Ready(workspace), WorkspaceRuntimeState.Reconciling),
-        )
-        val service = DiagnosticService(
-            WorkspaceInspectionOperations { states.removeFirst() },
-            RecordingCompiler(DiagnosticCompilation.complete(DiagnosticBatch.empty(request.scope))),
-        )
+        val states =
+            ArrayDeque<WorkspaceRuntimeState>(
+                listOf(WorkspaceRuntimeState.Ready(workspace), WorkspaceRuntimeState.Reconciling)
+            )
+        val service =
+            DiagnosticService(
+                WorkspaceInspectionOperations { states.removeFirst() },
+                RecordingCompiler(DiagnosticCompilation.complete(DiagnosticBatch.empty(request.scope))),
+            )
 
         assertEquals(
             DiagnosticCheckResult.Rejected(DiagnosticReadRejection.STALE_GENERATION),
@@ -84,12 +89,13 @@ class DiagnosticServiceTest {
     @Test
     fun `compiler rejection remains finite public rejection data`() {
         val workspace = published(19L)
-        val service = DiagnosticService(
-            WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(workspace) },
-            RecordingCompiler(
-                DiagnosticCompilation.Rejected(DiagnosticCompilerRejection.WORKSPACE_INDEX_UNAVAILABLE),
-            ),
-        )
+        val service =
+            DiagnosticService(
+                WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(workspace) },
+                RecordingCompiler(
+                    DiagnosticCompilation.Rejected(DiagnosticCompilerRejection.WORKSPACE_INDEX_UNAVAILABLE)
+                ),
+            )
 
         assertEquals(
             DiagnosticCheckResult.Rejected(DiagnosticReadRejection.WORKSPACE_INDEX_UNAVAILABLE),
@@ -97,25 +103,30 @@ class DiagnosticServiceTest {
         )
     }
 
-    private fun request(lease: SemanticReadLease): DiagnosticCheckRequest = DiagnosticCheckRequest(
-        DiagnosticScope.fromCanonicalPaths(
-            lease,
-            listOf(Path.of("${lease.workspaceRoot.value}/src/Subject.kt")),
-        ).refined(),
-    )
+    private fun request(lease: SemanticReadLease): DiagnosticCheckRequest =
+        DiagnosticCheckRequest(
+            DiagnosticScope.fromCanonicalPaths(
+                    lease,
+                    listOf(Path.of("${lease.workspaceRoot.value}/src/Subject.kt")),
+                )
+                .refined()
+        )
 
-    private fun published(generation: Long): PublishedWorkspace = PublishedWorkspace.publish(
-        ReconciledWorkspace.admit(
-            WorkspaceCandidate(root(), WorkspaceStateIdentity("source-state")),
-            WorkspaceEvidenceKind.entries.toSet(),
-        ).refined(),
-        EvidenceGeneration.parse(generation).refined(),
-    )
+    private fun published(generation: Long): PublishedWorkspace =
+        PublishedWorkspace.publish(
+            ReconciledWorkspace.admit(
+                    WorkspaceCandidate(root(), WorkspaceStateIdentity("source-state")),
+                    WorkspaceEvidenceKind.entries.toSet(),
+                )
+                .refined(),
+            EvidenceGeneration.parse(generation).refined(),
+        )
 
-    private fun lease(generation: Long): SemanticReadLease = SemanticReadLease(
-        root(),
-        EvidenceGeneration.parse(generation).refined(),
-    )
+    private fun lease(generation: Long): SemanticReadLease =
+        SemanticReadLease(
+            root(),
+            EvidenceGeneration.parse(generation).refined(),
+        )
 
     private fun root(): CanonicalWorkspaceRoot =
         CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined()
@@ -125,23 +136,24 @@ class DiagnosticServiceTest {
         block.startCoroutine(
             object : Continuation<T> {
                 override val context = EmptyCoroutineContext
+
                 override fun resumeWith(result: Result<T>) {
                     outcome = result
                 }
-            },
+            }
         )
         return checkNotNull(outcome).getOrThrow()
     }
 
-    private fun <Strong, Failure> Refinement<Strong, Failure>.refined(): Strong = when (this) {
-        is Refinement.Refined -> value
-        is Refinement.Rejected -> error(failure.toString())
-    }
+    private fun <Strong, Failure> Refinement<Strong, Failure>.refined(): Strong =
+        when (this) {
+            is Refinement.Refined -> value
+            is Refinement.Rejected -> error(failure.toString())
+        }
 
     private class RecordingCompiler(
-        private val result: DiagnosticCompilation = DiagnosticCompilation.Rejected(
-            DiagnosticCompilerRejection.COMPILER_CONTRACT_VIOLATION,
-        ),
+        private val result: DiagnosticCompilation =
+            DiagnosticCompilation.Rejected(DiagnosticCompilerRejection.COMPILER_CONTRACT_VIOLATION)
     ) : DiagnosticCompilerPort {
         val scopes = mutableListOf<DiagnosticScope>()
 

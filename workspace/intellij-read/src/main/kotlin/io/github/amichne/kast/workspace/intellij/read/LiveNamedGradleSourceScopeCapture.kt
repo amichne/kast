@@ -8,17 +8,17 @@ import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootManager
-import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.ReadLimitParameter
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.*
+import java.nio.file.Path
 import kotlinx.coroutines.CancellationException
+import org.jetbrains.jps.model.java.JavaResourceRootType
 import org.jetbrains.jps.model.java.JavaSourceRootProperties
 import org.jetbrains.jps.model.java.JavaSourceRootType
-import org.jetbrains.jps.model.java.JavaResourceRootType
 import org.jetbrains.plugins.gradle.model.ExternalProject
 import org.jetbrains.plugins.gradle.service.project.data.ExternalProjectDataCache
-import java.nio.file.Path
 
 /** Cached imported Gradle facts only. No resolver registration, sync, VFS refresh or project lookup. */
 internal object LiveNamedGradleSourceScopeCapture {
@@ -37,8 +37,9 @@ internal object LiveNamedGradleSourceScopeCapture {
                 if (DumbService.isDumb(project)) return@readAction rejected(NamedGradleSourceScopeFailure.INDEXING)
                 stage = NamedGradleCaptureStage.CACHE
                 val cache = ExternalProjectDataCache.getInstance(project)
-                val imported = cache.getRootExternalProject(root.value)
-                    ?: return@readAction rejected(NamedGradleSourceScopeFailure.MODEL_UNAVAILABLE)
+                val imported =
+                    cache.getRootExternalProject(root.value)
+                        ?: return@readAction rejected(NamedGradleSourceScopeFailure.MODEL_UNAVAILABLE)
                 val projects = ArrayList<ExternalProject>()
                 val pending = ArrayDeque<ExternalProject>().apply { add(imported) }
                 while (pending.isNotEmpty()) {
@@ -46,7 +47,10 @@ internal object LiveNamedGradleSourceScopeCapture {
                     val current = pending.removeFirst()
                     projects += current
                     observation.count(IntellijReadCounter.IMPORTED_PROJECTS)
-                    if (projects.size + pending.size + current.childProjects.size > limits[ReadLimitParameter.MODEL_MODULES].value) {
+                    if (
+                        projects.size + pending.size + current.childProjects.size >
+                            limits[ReadLimitParameter.MODEL_MODULES].value
+                    ) {
                         observation.terminated(IntellijReadTermination.MODULE_ADMISSION_LIMIT)
                         return@readAction rejected(NamedGradleSourceScopeFailure.CAPTURE_LIMIT)
                     }
@@ -65,7 +69,8 @@ internal object LiveNamedGradleSourceScopeCapture {
                 for (module in modules) {
                     ProgressManager.checkCanceled()
                     if (module.isDisposed) return@readAction rejected(NamedGradleSourceScopeFailure.PROJECT_UNAVAILABLE)
-                    val folders = ModuleRootManager.getInstance(module).contentEntries.flatMap { it.sourceFolders.toList() }
+                    val folders =
+                        ModuleRootManager.getInstance(module).contentEntries.flatMap { it.sourceFolders.toList() }
                     observation.count(IntellijReadCounter.SOURCE_ROOTS, amount = folders.size)
                     if (folders.size > limits[ReadLimitParameter.MODEL_SOURCE_ROOTS_PER_MODULE].value) {
                         observation.terminated(IntellijReadTermination.SOURCE_ROOT_ADMISSION_LIMIT)
@@ -75,7 +80,9 @@ internal object LiveNamedGradleSourceScopeCapture {
                         when (folder.rootType) {
                             is JavaSourceRootType -> Unit
                             is JavaResourceRootType -> {
-                                val file = folder.file ?: return@readAction rejected(NamedGradleSourceScopeFailure.IDE_ROOT_UNMAPPED)
+                                val file =
+                                    folder.file
+                                        ?: return@readAction rejected(NamedGradleSourceScopeFailure.IDE_ROOT_UNMAPPED)
                                 excludedRoots.add(file.toNioPath())
                             }
                             else -> return@readAction rejected(NamedGradleSourceScopeFailure.IDE_ROOT_INCOHERENT)
@@ -86,32 +93,42 @@ internal object LiveNamedGradleSourceScopeCapture {
                     if (!ExternalSystemApiUtil.isExternalSystemAwareModule("GRADLE", module)) {
                         return@readAction rejected(NamedGradleSourceScopeFailure.OWNER_UNAVAILABLE)
                     }
-                    val externalPath = ExternalSystemApiUtil.getExternalProjectPath(module)
-                        ?: return@readAction rejected(NamedGradleSourceScopeFailure.OWNER_UNAVAILABLE)
-                    val buildPath = ExternalSystemApiUtil.getExternalRootProjectPath(module)
-                        ?: return@readAction rejected(NamedGradleSourceScopeFailure.OWNER_UNAVAILABLE)
-                    val owner = projects.singleOrNull { it.projectDir.toPath() == Path.of(externalPath) }
-                        ?: return@readAction rejected(NamedGradleSourceScopeFailure.OWNER_UNAVAILABLE)
+                    val externalPath =
+                        ExternalSystemApiUtil.getExternalProjectPath(module)
+                            ?: return@readAction rejected(NamedGradleSourceScopeFailure.OWNER_UNAVAILABLE)
+                    val buildPath =
+                        ExternalSystemApiUtil.getExternalRootProjectPath(module)
+                            ?: return@readAction rejected(NamedGradleSourceScopeFailure.OWNER_UNAVAILABLE)
+                    val owner =
+                        projects.singleOrNull { it.projectDir.toPath() == Path.of(externalPath) }
+                            ?: return@readAction rejected(NamedGradleSourceScopeFailure.OWNER_UNAVAILABLE)
                     for (folder in codeFolders) {
-                        val file = folder.file ?: return@readAction rejected(NamedGradleSourceScopeFailure.IDE_ROOT_UNMAPPED)
-                        val properties = folder.jpsElement.properties as? JavaSourceRootProperties
-                            ?: return@readAction rejected(NamedGradleSourceScopeFailure.IDE_ROOT_INCOHERENT)
-                        ideRoots += IdeCodeSourceRoot(file.toNioPath(),
-                            if (folder.rootType == JavaSourceRootType.TEST_SOURCE) WorkspaceSourceRootKind.TEST
-                            else WorkspaceSourceRootKind.PRODUCTION,
-                            if (properties.isForGeneratedSources) WorkspaceSourceRootProvenance.GENERATED
-                            else WorkspaceSourceRootProvenance.AUTHORED)
+                        val file =
+                            folder.file ?: return@readAction rejected(NamedGradleSourceScopeFailure.IDE_ROOT_UNMAPPED)
+                        val properties =
+                            folder.jpsElement.properties as? JavaSourceRootProperties
+                                ?: return@readAction rejected(NamedGradleSourceScopeFailure.IDE_ROOT_INCOHERENT)
+                        ideRoots +=
+                            IdeCodeSourceRoot(
+                                file.toNioPath(),
+                                if (folder.rootType == JavaSourceRootType.TEST_SOURCE) WorkspaceSourceRootKind.TEST
+                                else WorkspaceSourceRootKind.PRODUCTION,
+                                if (properties.isForGeneratedSources) WorkspaceSourceRootProvenance.GENERATED
+                                else WorkspaceSourceRootProvenance.AUTHORED,
+                            )
                     }
                     stage = NamedGradleCaptureStage.SOURCE_SETS
                     val sourceSets = cache.findExternalProject(imported, module)
-                    if (sourceSets.isEmpty()) return@readAction rejected(NamedGradleSourceScopeFailure.MODEL_UNAVAILABLE)
+                    if (sourceSets.isEmpty())
+                        return@readAction rejected(NamedGradleSourceScopeFailure.MODEL_UNAVAILABLE)
                     if (sourceSets.size > limits[ReadLimitParameter.MODEL_SOURCE_ROOTS_PER_MODULE].value) {
                         return@readAction rejected(NamedGradleSourceScopeFailure.CAPTURE_LIMIT)
                     }
                     var moduleRoots = 0
                     for ((name, sourceSet) in sourceSets) {
                         ProgressManager.checkCanceled()
-                        if (name != sourceSet.name) return@readAction rejected(NamedGradleSourceScopeFailure.IDE_ROOT_INCOHERENT)
+                        if (name != sourceSet.name)
+                            return@readAction rejected(NamedGradleSourceScopeFailure.IDE_ROOT_INCOHERENT)
                         for ((type, directories) in sourceSet.sources) {
                             for (path in directories.srcDirs) {
                                 if (++moduleRoots > limits[ReadLimitParameter.MODEL_SOURCE_ROOTS_PER_MODULE].value) {
@@ -119,23 +136,37 @@ internal object LiveNamedGradleSourceScopeCapture {
                                 }
                                 if (type.isResource || type.isExcluded) excludedRoots.add(path.toPath())
                                 if (type.isResource) continue
-                                entries += WorkspaceSourceRootBoundary(module.name, Path.of(buildPath), owner.path,
-                                    sourceSet.name, path.toPath(),
-                                    if (type.isTest) WorkspaceSourceRootKind.TEST else WorkspaceSourceRootKind.PRODUCTION,
-                                    if (type.isGenerated) WorkspaceSourceRootProvenance.GENERATED else WorkspaceSourceRootProvenance.AUTHORED)
+                                entries +=
+                                    WorkspaceSourceRootBoundary(
+                                        module.name,
+                                        Path.of(buildPath),
+                                        owner.path,
+                                        sourceSet.name,
+                                        path.toPath(),
+                                        if (type.isTest) WorkspaceSourceRootKind.TEST
+                                        else WorkspaceSourceRootKind.PRODUCTION,
+                                        if (type.isGenerated) WorkspaceSourceRootProvenance.GENERATED
+                                        else WorkspaceSourceRootProvenance.AUTHORED,
+                                    )
                             }
                         }
                     }
                 }
                 stage = NamedGradleCaptureStage.OWNERSHIP
-                NamedGradleSourceScope.admit(root, NamedGradleModelObservation.Captured(entries, excludedRoots), ideRoots)
+                NamedGradleSourceScope.admit(
+                    root,
+                    NamedGradleModelObservation.Captured(entries, excludedRoots),
+                    ideRoots,
+                )
             }
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (cancelled: ProcessCanceledException) {
             throw cancelled
         } catch (failure: RuntimeException) {
-            observation.unexpected(IntellijReadUnexpectedFailure.capture(IntellijReadStage.MODEL_CAPTURE, failure, limits))
+            observation.unexpected(
+                IntellijReadUnexpectedFailure.capture(IntellijReadStage.MODEL_CAPTURE, failure, limits)
+            )
             rejected(NamedGradleSourceScopeFailure.ObservationFailed(stage))
         }
     }

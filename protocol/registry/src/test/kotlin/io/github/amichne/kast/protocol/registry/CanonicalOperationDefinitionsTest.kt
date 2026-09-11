@@ -8,20 +8,21 @@ class CanonicalOperationDefinitionsTest {
     @Test
     fun `production registry owns exactly twelve distinct typed operation definitions`() {
         val definitions = CanonicalOperationDefinitions.all
-        val expectedIds = listOf(
-            "index.sync",
-            "topology.build",
-            "query.run",
-            "symbol.discover",
-            "symbol.inspect",
-            "source.read",
-            "relation.read",
-            "traversal.run",
-            "diagnostic.check",
-            "change.plan",
-            "change.apply",
-            "change.recover",
-        )
+        val expectedIds =
+            listOf(
+                "index.sync",
+                "topology.build",
+                "query.run",
+                "symbol.discover",
+                "symbol.inspect",
+                "source.read",
+                "relation.read",
+                "traversal.run",
+                "diagnostic.check",
+                "change.plan",
+                "change.apply",
+                "change.recover",
+            )
 
         assertEquals(expectedIds, CanonicalOperation.entries.map { it.id.value })
         assertEquals(CanonicalOperation.entries, definitions.map { it.operation })
@@ -31,16 +32,17 @@ class CanonicalOperationDefinitionsTest {
         assertEquals(12, definitions.map { it.rejectionType }.toSet().size)
         assertEquals(12, definitions.map { it.schema }.toSet().size)
         definitions.forEach { definition ->
-            val version = when (definition.operation) {
-                CanonicalOperation.SOURCE_READ -> 4
-                CanonicalOperation.QUERY_RUN -> 2
-                CanonicalOperation.SYMBOL_DISCOVER,
-                CanonicalOperation.SYMBOL_INSPECT,
-                CanonicalOperation.RELATION_READ,
-                CanonicalOperation.TRAVERSAL_RUN,
-                CanonicalOperation.DIAGNOSTIC_CHECK -> 3
-                else -> 2
-            }
+            val version =
+                when (definition.operation) {
+                    CanonicalOperation.SOURCE_READ -> 4
+                    CanonicalOperation.QUERY_RUN -> 2
+                    CanonicalOperation.SYMBOL_DISCOVER,
+                    CanonicalOperation.SYMBOL_INSPECT,
+                    CanonicalOperation.RELATION_READ,
+                    CanonicalOperation.TRAVERSAL_RUN,
+                    CanonicalOperation.DIAGNOSTIC_CHECK -> 3
+                    else -> 2
+                }
             assertEquals("kast.${definition.operation.id.value}.v$version", definition.schema.value)
         }
         assertEquals(definitions, CanonicalOperationDefinitions.registry.definitions)

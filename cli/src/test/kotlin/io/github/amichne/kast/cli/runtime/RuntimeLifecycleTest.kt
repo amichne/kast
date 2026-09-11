@@ -2,15 +2,15 @@ package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.distribution.contract.SemanticRuntimeId
 import io.github.amichne.kast.kernel.Refinement
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.io.TempDir
 import java.net.StandardProtocolFamily
 import java.net.UnixDomainSocketAddress
 import java.nio.channels.ServerSocketChannel
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
 
 class RuntimeLifecycleTest {
     @Test
@@ -18,11 +18,12 @@ class RuntimeLifecycleTest {
         val endpoint = endpoint(temporary)
         val artifacts = FakeRuntimeEndpointArtifacts()
         var reachability: RuntimeEndpointReachability = RuntimeEndpointReachability.Unreachable
-        val lifecycle = ExactRootRuntimeLifecycle(
-            endpointProbe = RuntimeEndpointProbe { reachability },
-            processAuthority = RuntimeProcessAuthority { RuntimeProcessObservation.Absent },
-            artifacts = artifacts,
-        )
+        val lifecycle =
+            ExactRootRuntimeLifecycle(
+                endpointProbe = RuntimeEndpointProbe { reachability },
+                processAuthority = RuntimeProcessAuthority { RuntimeProcessObservation.Absent },
+                artifacts = artifacts,
+            )
 
         assertEquals(
             RuntimeStatusResult.Observed(RuntimeLifecycleState.STOPPED),
@@ -33,10 +34,11 @@ class RuntimeLifecycleTest {
             RuntimeStatusResult.Observed(RuntimeLifecycleState.STOPPED),
             lifecycle.status(endpoint),
         )
-        artifacts.present = setOf(
-            RuntimeEndpointMarker.DESCRIPTOR,
-            RuntimePersistentState,
-        )
+        artifacts.present =
+            setOf(
+                RuntimeEndpointMarker.DESCRIPTOR,
+                RuntimePersistentState,
+            )
         assertEquals(
             RuntimeStatusResult.Observed(RuntimeLifecycleState.STALE),
             lifecycle.status(endpoint),
@@ -53,17 +55,21 @@ class RuntimeLifecycleTest {
         val endpoint = endpoint(temporary)
         var observed: RuntimeEndpoint? = null
         var reachability: RuntimeEndpointReachability = RuntimeEndpointReachability.Reachable
-        val lifecycle = ExactRootRuntimeLifecycle(
-            endpointProbe = RuntimeEndpointProbe { reachability },
-            processAuthority = RuntimeProcessAuthority { candidate ->
-                observed = candidate
-                RuntimeProcessObservation.Owned(RuntimeOwnedProcess {
-                    reachability = RuntimeEndpointReachability.Unreachable
-                    RuntimeProcessTermination.Terminated
-                })
-            },
-            artifacts = FakeRuntimeEndpointArtifacts(),
-        )
+        val lifecycle =
+            ExactRootRuntimeLifecycle(
+                endpointProbe = RuntimeEndpointProbe { reachability },
+                processAuthority =
+                    RuntimeProcessAuthority { candidate ->
+                        observed = candidate
+                        RuntimeProcessObservation.Owned(
+                            RuntimeOwnedProcess {
+                                reachability = RuntimeEndpointReachability.Unreachable
+                                RuntimeProcessTermination.Terminated
+                            }
+                        )
+                    },
+                artifacts = FakeRuntimeEndpointArtifacts(),
+            )
 
         assertEquals(
             RuntimeStopResult.Stopped(),
@@ -73,16 +79,10 @@ class RuntimeLifecycleTest {
     }
 
     @Test
-    fun `default stop closes the exact child process and removes owned artifacts`(
-        @TempDir temporary: Path,
-    ) {
+    fun `default stop closes the exact child process and removes owned artifacts`(@TempDir temporary: Path) {
         val endpoint = endpoint(temporary)
-        val descriptor = endpoint.socketPath.resolveSibling(
-            "${endpoint.socketPath.fileName}.endpoint.json",
-        )
-        val state = endpoint.socketPath.parent.toRealPath().resolve(
-            "${endpoint.socketPath.fileName}.state",
-        )
+        val descriptor = endpoint.socketPath.resolveSibling("${endpoint.socketPath.fileName}.endpoint.json")
+        val state = endpoint.socketPath.parent.toRealPath().resolve("${endpoint.socketPath.fileName}.state")
         val persisted = Files.createDirectories(state).resolve("workspace-publication.sqlite")
         Files.writeString(persisted, "persistent")
         val process = startRuntimeFixture(endpoint)
@@ -105,20 +105,17 @@ class RuntimeLifecycleTest {
     @Test
     fun `stop removes all inactive exact endpoint artifacts`(@TempDir temporary: Path) {
         val endpoint = endpoint(temporary)
-        val descriptor = endpoint.socketPath.resolveSibling(
-            "${endpoint.socketPath.fileName}.endpoint.json",
-        )
-        val state = endpoint.socketPath.parent.toRealPath().resolve(
-            "${endpoint.socketPath.fileName}.state",
-        )
+        val descriptor = endpoint.socketPath.resolveSibling("${endpoint.socketPath.fileName}.endpoint.json")
+        val state = endpoint.socketPath.parent.toRealPath().resolve("${endpoint.socketPath.fileName}.state")
         Files.writeString(endpoint.socketPath, "stale")
         Files.writeString(descriptor, "stale")
         val persisted = Files.createDirectories(state).resolve("workspace-publication.sqlite")
         Files.writeString(persisted, "persistent")
-        val lifecycle = ExactRootRuntimeLifecycle(
-            endpointProbe = RuntimeEndpointProbe { RuntimeEndpointReachability.Unreachable },
-            processAuthority = RuntimeProcessAuthority { RuntimeProcessObservation.Absent },
-        )
+        val lifecycle =
+            ExactRootRuntimeLifecycle(
+                endpointProbe = RuntimeEndpointProbe { RuntimeEndpointReachability.Unreachable },
+                processAuthority = RuntimeProcessAuthority { RuntimeProcessObservation.Absent },
+            )
 
         assertEquals(
             RuntimeStopResult.Stopped(allRuntimeEndpointArtifacts),
@@ -134,19 +131,17 @@ class RuntimeLifecycleTest {
     }
 
     @Test
-    fun `stop rejects when the endpoint remains reachable after owned process exit`(
-        @TempDir temporary: Path,
-    ) {
+    fun `stop rejects when the endpoint remains reachable after owned process exit`(@TempDir temporary: Path) {
         val endpoint = endpoint(temporary)
-        val lifecycle = ExactRootRuntimeLifecycle(
-            endpointProbe = RuntimeEndpointProbe { RuntimeEndpointReachability.Reachable },
-            processAuthority = RuntimeProcessAuthority {
-                RuntimeProcessObservation.Owned(
-                    RuntimeOwnedProcess { RuntimeProcessTermination.Terminated },
-                )
-            },
-            artifacts = FakeRuntimeEndpointArtifacts(),
-        )
+        val lifecycle =
+            ExactRootRuntimeLifecycle(
+                endpointProbe = RuntimeEndpointProbe { RuntimeEndpointReachability.Reachable },
+                processAuthority =
+                    RuntimeProcessAuthority {
+                        RuntimeProcessObservation.Owned(RuntimeOwnedProcess { RuntimeProcessTermination.Terminated })
+                    },
+                artifacts = FakeRuntimeEndpointArtifacts(),
+            )
 
         assertEquals(
             RuntimeStopResult.Rejected(RuntimeStopFailure.ACTIVE_ENDPOINT),
@@ -157,35 +152,36 @@ class RuntimeLifecycleTest {
     private fun endpoint(temporary: Path): RuntimeEndpoint {
         val rootPath = Files.createDirectories(temporary.resolve("repo"))
         Files.writeString(rootPath.resolve("settings.gradle.kts"), "rootProject.name = \"fixture\"")
-        val root = when (val discovery = FilesystemCanonicalRootDiscovery.discover(rootPath)) {
-            is CanonicalRootDiscovery.Discovered -> discovery.root
-            is CanonicalRootDiscovery.Rejected -> error(discovery.failure)
-        }
-        val runtimeId = when (
-            val parsed = SemanticRuntimeId.parse("sha256:${"a".repeat(64)}")
-        ) {
-            is Refinement.Refined -> parsed.value
-            is Refinement.Rejected -> error(parsed.failure)
-        }
-        return when (
-            val resolution = RuntimeEndpoint.at(root, runtimeId, temporary.resolve("runtime.sock"))
-        ) {
+        val root =
+            when (val discovery = FilesystemCanonicalRootDiscovery.discover(rootPath)) {
+                is CanonicalRootDiscovery.Discovered -> discovery.root
+                is CanonicalRootDiscovery.Rejected -> error(discovery.failure)
+            }
+        val runtimeId =
+            when (val parsed = SemanticRuntimeId.parse("sha256:${"a".repeat(64)}")) {
+                is Refinement.Refined -> parsed.value
+                is Refinement.Rejected -> error(parsed.failure)
+            }
+        return when (val resolution = RuntimeEndpoint.at(root, runtimeId, temporary.resolve("runtime.sock"))) {
             is RuntimeEndpointResolution.Resolved -> resolution.endpoint
             is RuntimeEndpointResolution.Rejected -> error(resolution.failure)
         }
     }
 
     private fun startRuntimeFixture(endpoint: RuntimeEndpoint): Process {
-        val process = ProcessBuilder(
-            Path.of(System.getProperty("java.home"), "bin", "java").toString(),
-            "-cp",
-            System.getProperty("java.class.path"),
-            RuntimeLifecycleFixtureProcess::class.java.name,
-            INDEXER_FIXTURE_MARKER,
-            "--workspace-root=${endpoint.root.path}",
-            "--socket-path=${endpoint.socketPath}",
-            "--runtime-id=${endpoint.runtimeId.value}",
-        ).redirectErrorStream(true).start()
+        val process =
+            ProcessBuilder(
+                    Path.of(System.getProperty("java.home"), "bin", "java").toString(),
+                    "-cp",
+                    System.getProperty("java.class.path"),
+                    RuntimeLifecycleFixtureProcess::class.java.name,
+                    INDEXER_FIXTURE_MARKER,
+                    "--workspace-root=${endpoint.root.path}",
+                    "--socket-path=${endpoint.socketPath}",
+                    "--runtime-id=${endpoint.runtimeId.value}",
+                )
+                .redirectErrorStream(true)
+                .start()
         val ready = process.inputReader().readLine()
         check(ready == FIXTURE_READY) {
             "runtime fixture failed before readiness: ${ready ?: "<no output>"}"
@@ -197,26 +193,25 @@ class RuntimeLifecycleTest {
 internal object RuntimeLifecycleFixtureProcess {
     @JvmStatic
     fun main(arguments: Array<String>) {
-        val socket = arguments.single { argument -> argument.startsWith(SOCKET_ARGUMENT_PREFIX) }
-            .removePrefix(SOCKET_ARGUMENT_PREFIX)
-            .let(Path::of)
+        val socket =
+            arguments
+                .single { argument -> argument.startsWith(SOCKET_ARGUMENT_PREFIX) }
+                .removePrefix(SOCKET_ARGUMENT_PREFIX)
+                .let(Path::of)
         val descriptor = socket.resolveSibling("${socket.fileName}.endpoint.json")
         val channel = ServerSocketChannel.open(StandardProtocolFamily.UNIX)
         channel.bind(UnixDomainSocketAddress.of(socket))
         Files.writeString(descriptor, "fixture")
         Runtime.getRuntime().addShutdownHook(Thread(channel::close))
         println(FIXTURE_READY)
-        while (true) channel.accept().use { }
+        while (true) channel.accept().use {}
     }
 }
 
-private class FakeRuntimeEndpointArtifacts(
-    var present: Set<RuntimeEndpointArtifact> = emptySet(),
-) : RuntimeEndpointArtifacts {
+private class FakeRuntimeEndpointArtifacts(var present: Set<RuntimeEndpointArtifact> = emptySet()) :
+    RuntimeEndpointArtifacts {
     override fun observeMarkers(endpoint: RuntimeEndpoint): RuntimeEndpointMarkerObservation =
-        RuntimeEndpointMarkerObservation.Observed(
-            present.filterIsInstance<RuntimeEndpointMarker>().toSet(),
-        )
+        RuntimeEndpointMarkerObservation.Observed(present.filterIsInstance<RuntimeEndpointMarker>().toSet())
 
     override fun clean(endpoint: InactiveRuntimeEndpoint): RuntimeEndpointArtifactCleaning {
         val removed = present

@@ -10,42 +10,41 @@ import org.jetbrains.kotlin.analysis.api.diagnostics.KaDiagnosticWithPsi
 import org.jetbrains.kotlin.analysis.api.diagnostics.KaSeverity
 
 internal sealed interface IntellijDiagnosticProjection {
-    data class Projected(
-        val facts: List<DiagnosticFact>,
-    ) : IntellijDiagnosticProjection
+    data class Projected(val facts: List<DiagnosticFact>) : IntellijDiagnosticProjection
 
     data object Rejected : IntellijDiagnosticProjection
 }
 
 /**
- * Proof transition: `(DiagnosticScope, DiagnosticSourceFile, KaDiagnosticWithPsi) ->
- * IntellijDiagnosticProjection`.
+ * Proof transition: `(DiagnosticScope, DiagnosticSourceFile, KaDiagnosticWithPsi) -> IntellijDiagnosticProjection`.
  *
- * [IntellijDiagnosticProjection.Projected] establishes detached typed facts for every compiler
- * range, permanently bound to the exact scope authority. Rejected is the closed unsupported
- * compiler projection. Raw PSI, ranges, severity, code, and message remain inside this boundary.
+ * [IntellijDiagnosticProjection.Projected] establishes detached typed facts for every compiler range, permanently bound
+ * to the exact scope authority. Rejected is the closed unsupported compiler projection. Raw PSI, ranges, severity,
+ * code, and message remain inside this boundary.
  */
 internal fun projectDiagnostic(
     scope: DiagnosticScope,
     file: DiagnosticSourceFile,
     diagnostic: KaDiagnosticWithPsi<*>,
 ): IntellijDiagnosticProjection {
-    val ranges = diagnostic.textRanges.ifEmpty {
-        listOf(TextRange(0, diagnostic.psi.textLength))
-    }
+    val ranges =
+        diagnostic.textRanges.ifEmpty {
+            listOf(TextRange(0, diagnostic.psi.textLength))
+        }
     val facts = mutableListOf<DiagnosticFact>()
     ranges.forEach { range ->
         val absolute = diagnostic.absoluteRange(range)
         when (
-            val fact = DiagnosticFact.fromBoundary(
-                scope,
-                file,
-                absolute.startOffset,
-                absolute.endOffset,
-                diagnostic.severity.toContractSeverity(),
-                diagnostic.factoryName,
-                diagnostic.defaultMessage,
-            )
+            val fact =
+                DiagnosticFact.fromBoundary(
+                    scope,
+                    file,
+                    absolute.startOffset,
+                    absolute.endOffset,
+                    diagnostic.severity.toContractSeverity(),
+                    diagnostic.factoryName,
+                    diagnostic.defaultMessage,
+                )
         ) {
             is Refinement.Refined -> facts += fact.value
             is Refinement.Rejected -> return IntellijDiagnosticProjection.Rejected
@@ -72,8 +71,9 @@ private fun KaDiagnosticWithPsi<*>.absoluteRange(relativeRange: TextRange): Text
     }
 }
 
-private fun KaSeverity.toContractSeverity(): DiagnosticSeverity = when (this) {
-    KaSeverity.ERROR -> DiagnosticSeverity.ERROR
-    KaSeverity.WARNING -> DiagnosticSeverity.WARNING
-    KaSeverity.INFO -> DiagnosticSeverity.INFO
-}
+private fun KaSeverity.toContractSeverity(): DiagnosticSeverity =
+    when (this) {
+        KaSeverity.ERROR -> DiagnosticSeverity.ERROR
+        KaSeverity.WARNING -> DiagnosticSeverity.WARNING
+        KaSeverity.INFO -> DiagnosticSeverity.INFO
+    }

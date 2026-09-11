@@ -1,7 +1,7 @@
 package io.github.amichne.kast.traversal.service
 
-import io.github.amichne.kast.relation.contract.RelationEndpointFingerprint
 import io.github.amichne.kast.relation.contract.RelationBudget
+import io.github.amichne.kast.relation.contract.RelationEndpointFingerprint
 import io.github.amichne.kast.relation.contract.RelationLimitation
 import io.github.amichne.kast.traversal.contract.TraversalCheckpoint
 import io.github.amichne.kast.traversal.contract.TraversalFrontierEntry
@@ -21,55 +21,58 @@ internal class MutableTraversalState(
     /**
      * Proof transition: `MutableTraversalState -> TraversalWorkAvailability`.
      *
-     * Establishes either exhausted state or the exact pending/lowest deterministic frontier item
-     * without mutating the checkpoint. No raw state escapes the pure engine.
+     * Establishes either exhausted state or the exact pending/lowest deterministic frontier item without mutating the
+     * checkpoint. No raw state escapes the pure engine.
      */
-    fun peek(): TraversalWorkAvailability = when (val pendingState = pending) {
-        is TraversalPendingState.Active -> TraversalWorkAvailability.Ready(
-            pendingState.read.entry,
-            OneHopRelationPosition.Resume(pendingState.read.relationContinuation),
-        )
-        TraversalPendingState.None -> if (frontier.isEmpty()) {
-            TraversalWorkAvailability.Exhausted
-        } else {
-            TraversalWorkAvailability.Ready(frontier.first(), OneHopRelationPosition.Start)
+    fun peek(): TraversalWorkAvailability =
+        when (val pendingState = pending) {
+            is TraversalPendingState.Active ->
+                TraversalWorkAvailability.Ready(
+                    pendingState.read.entry,
+                    OneHopRelationPosition.Resume(pendingState.read.relationContinuation),
+                )
+            TraversalPendingState.None ->
+                if (frontier.isEmpty()) {
+                    TraversalWorkAvailability.Exhausted
+                } else {
+                    TraversalWorkAvailability.Ready(frontier.first(), OneHopRelationPosition.Start)
+                }
         }
-    }
 
     /**
-     * Proof transition: `(MutableTraversalState, TraversalWorkAvailability.Ready) ->
-     * TraversalFrontierEntry`.
+     * Proof transition: `(MutableTraversalState, TraversalWorkAvailability.Ready) -> TraversalFrontierEntry`.
      *
-     * Establishes one cycle-marked first expansion or retains one already-visited pending read.
-     * Raw queue mutation remains inside the pure engine.
+     * Establishes one cycle-marked first expansion or retains one already-visited pending read. Raw queue mutation
+     * remains inside the pure engine.
      */
     fun begin(work: TraversalWorkAvailability.Ready): TraversalFrontierEntry =
         when (work.position) {
             is OneHopRelationPosition.Resume -> work.entry
-            OneHopRelationPosition.Start -> frontier.removeAt(0).also { entry ->
-                visited += entry.node.fingerprint
-            }
+            OneHopRelationPosition.Start ->
+                frontier.removeAt(0).also { entry ->
+                    visited += entry.node.fingerprint
+                }
         }
 
     /**
      * Proof transition: `(MutableTraversalState, TraversalNode) -> FrontierAdmission`.
      *
-     * Establishes that only an exact node absent from both visited and queued identities may enter
-     * the frontier. [FrontierAdmission.Skip] is the closed duplicate/cycle outcome.
+     * Establishes that only an exact node absent from both visited and queued identities may enter the frontier.
+     * [FrontierAdmission.Skip] is the closed duplicate/cycle outcome.
      */
     fun frontierAdmission(node: TraversalNode): FrontierAdmission =
-        if (
-            node.fingerprint in visited ||
-            frontier.any { it.node.fingerprint == node.fingerprint }
-        ) FrontierAdmission.Skip else FrontierAdmission.Admit
+        if (node.fingerprint in visited || frontier.any { it.node.fingerprint == node.fingerprint })
+            FrontierAdmission.Skip
+        else FrontierAdmission.Admit
 
     companion object {
-        fun from(checkpoint: TraversalCheckpoint): MutableTraversalState = MutableTraversalState(
-            checkpoint.frontier.toMutableList(),
-            checkpoint.visited.toMutableSet(),
-            checkpoint.pending,
-            checkpoint.terminalRelationLimitations.toMutableSet(),
-        )
+        fun from(checkpoint: TraversalCheckpoint): MutableTraversalState =
+            MutableTraversalState(
+                checkpoint.frontier.toMutableList(),
+                checkpoint.visited.toMutableSet(),
+                checkpoint.pending,
+                checkpoint.terminalRelationLimitations.toMutableSet(),
+            )
     }
 }
 
@@ -84,7 +87,9 @@ internal sealed interface TraversalWorkAvailability {
 
 internal sealed interface TraversalReadAdmission {
     data class Admitted(val budget: RelationBudget) : TraversalReadAdmission
+
     data class Limited(val limitation: TraversalLimitation) : TraversalReadAdmission
+
     data object Rejected : TraversalReadAdmission
 }
 
@@ -106,19 +111,19 @@ internal class TraversalAccounting(
     var expandedFrontier: Int = 0,
 ) {
     /**
-     * Proof transition: `(TraversalAccounting, TraversalPlan) -> Refinement<TraversalPage,
-     * TraversalPageFailure>`.
+     * Proof transition: `(TraversalAccounting, TraversalPlan) -> Refinement<TraversalPage, TraversalPageFailure>`.
      *
      * Establishes exact deterministic aggregate measures under every plan bound.
-     * [io.github.amichne.kast.traversal.contract.TraversalPageFailure] is the closed expected
-     * failure. Raw counters are extracted only at this pure page-construction boundary.
+     * [io.github.amichne.kast.traversal.contract.TraversalPageFailure] is the closed expected failure. Raw counters are
+     * extracted only at this pure page-construction boundary.
      */
-    fun page(plan: TraversalPlan) = TraversalPage.fromBoundary(
-        plan,
-        records.sorted(),
-        encodedBytes,
-        examinedWorkUnits,
-        elapsedMillis,
-        expandedFrontier,
-    )
+    fun page(plan: TraversalPlan) =
+        TraversalPage.fromBoundary(
+            plan,
+            records.sorted(),
+            encodedBytes,
+            examinedWorkUnits,
+            elapsedMillis,
+            expandedFrontier,
+        )
 }

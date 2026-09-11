@@ -3,7 +3,6 @@ package io.github.amichne.kast.change.apply
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.SourceRootProvenance
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 
 class MutationAdmissionTest {
@@ -12,10 +11,11 @@ class MutationAdmissionTest {
 
     @Test
     fun `exact current state and singleton write scope are admitted`() {
-        val admitted = when (val result = admission.admit(fixture.request(), fixture.observed())) {
-            is Refinement.Refined -> result.value
-            is Refinement.Rejected -> error(result.failure.toString())
-        }
+        val admitted =
+            when (val result = admission.admit(fixture.request(), fixture.observed())) {
+                is Refinement.Refined -> result.value
+                is Refinement.Rejected -> error(result.failure.toString())
+            }
         assertEquals(
             MutationPlanPublicationRelationship.EXACT,
             admitted.publication.relationship,
@@ -24,15 +24,17 @@ class MutationAdmissionTest {
 
     @Test
     fun `durable plan is revalidated against an exact successor publication`() {
-        val successor = fixture.workspace(
-            generationValue = 12L,
-            sourceState = "cold-start-successor",
-        )
+        val successor =
+            fixture.workspace(
+                generationValue = 12L,
+                sourceState = "cold-start-successor",
+            )
 
-        val admitted = admission.admit(
-            fixture.request(current = successor),
-            fixture.observed(),
-        ) as Refinement.Refined<AdmittedMutation>
+        val admitted =
+            admission.admit(
+                fixture.request(current = successor),
+                fixture.observed(),
+            ) as Refinement.Refined<AdmittedMutation>
 
         assertEquals(
             MutationPlanPublicationRelationship.REVALIDATED_SUCCESSOR,
@@ -47,8 +49,7 @@ class MutationAdmissionTest {
     @Test
     fun `classlike add declaration derives a postimage inside the class body`() {
         val fixture = ApplyTestFixture(classLike = true)
-        val admitted = admission.admit(fixture.request(), fixture.observed())
-            as Refinement.Refined<AdmittedMutation>
+        val admitted = admission.admit(fixture.request(), fixture.observed()) as Refinement.Refined<AdmittedMutation>
 
         assertEquals(
             "package sample\n\nclass service {\n\n    fun added(): Int = 1\n}\n",
@@ -80,9 +81,7 @@ class MutationAdmissionTest {
         )
         assertRejected(
             MutationAdmissionFailure.OUT_OF_SCOPE,
-            fixture.request(
-                scope = RequestedMutationWriteScope(fixture.workspace.root, emptySet()),
-            ),
+            fixture.request(scope = RequestedMutationWriteScope(fixture.workspace.root, emptySet())),
             fixture.observed(),
         )
     }
@@ -91,9 +90,7 @@ class MutationAdmissionTest {
     fun `generated wrong owner and additional writes cannot gain authority`() {
         assertRejected(
             MutationAdmissionFailure.GENERATED_TARGET,
-            fixture.request(
-                current = fixture.workspace(provenance = SourceRootProvenance.Generated),
-            ),
+            fixture.request(current = fixture.workspace(provenance = SourceRootProvenance.Generated)),
             fixture.observed(),
         )
         assertRejected(
@@ -104,10 +101,11 @@ class MutationAdmissionTest {
         assertRejected(
             MutationAdmissionFailure.UNPLANNED_WRITE_SET,
             fixture.request(
-                scope = RequestedMutationWriteScope(
-                    fixture.workspace.root,
-                    setOf(fixture.plan.target.file, fixture.otherFile()),
-                ),
+                scope =
+                    RequestedMutationWriteScope(
+                        fixture.workspace.root,
+                        setOf(fixture.plan.target.file, fixture.otherFile()),
+                    )
             ),
             fixture.observed(),
         )

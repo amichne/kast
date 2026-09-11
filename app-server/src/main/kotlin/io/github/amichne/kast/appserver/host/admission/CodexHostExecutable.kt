@@ -20,42 +20,34 @@ internal enum class CodexExecutableIdentity {
 
 /** Exact executable installed as Desktop's process-local Codex CLI substitution. */
 @JvmInline
-internal value class DesktopFacadeExecutable private constructor(
-    private val executable: BrokerExecutable,
-) {
-    val path: Path get() = executable.path
+internal value class DesktopFacadeExecutable private constructor(private val executable: BrokerExecutable) {
+    val path: Path
+        get() = executable.path
 
-    internal fun compareIdentity(candidate: BrokerExecutable): CodexExecutableIdentity = try {
-        if (Files.isSameFile(executable.path, candidate.path)) {
-            CodexExecutableIdentity.SAME
-        } else {
-            CodexExecutableIdentity.DISTINCT
+    internal fun compareIdentity(candidate: BrokerExecutable): CodexExecutableIdentity =
+        try {
+            if (Files.isSameFile(executable.path, candidate.path)) {
+                CodexExecutableIdentity.SAME
+            } else {
+                CodexExecutableIdentity.DISTINCT
+            }
+        } catch (_: IOException) {
+            CodexExecutableIdentity.REJECTED
+        } catch (_: SecurityException) {
+            CodexExecutableIdentity.REJECTED
         }
-    } catch (_: IOException) {
-        CodexExecutableIdentity.REJECTED
-    } catch (_: SecurityException) {
-        CodexExecutableIdentity.REJECTED
-    }
 
     companion object {
-        internal fun admit(
-            candidate: Path,
-        ): Refinement<DesktopFacadeExecutable, CodexHostExecutableFailure> =
+        internal fun admit(candidate: Path): Refinement<DesktopFacadeExecutable, CodexHostExecutableFailure> =
             when (val admission = BrokerExecutable.admit(candidate)) {
-                is Refinement.Refined -> Refinement.Refined(
-                    DesktopFacadeExecutable(admission.value),
-                )
-                is Refinement.Rejected -> Refinement.Rejected(
-                    CodexHostExecutableFailure.UNAVAILABLE,
-                )
+                is Refinement.Refined -> Refinement.Refined(DesktopFacadeExecutable(admission.value))
+                is Refinement.Rejected -> Refinement.Rejected(CodexHostExecutableFailure.UNAVAILABLE)
             }
     }
 }
 
 /** All executable identities that could be selected as this installation's Desktop façade. */
-internal class DesktopFacadeExecutables private constructor(
-    internal val values: List<DesktopFacadeExecutable>,
-) {
+internal class DesktopFacadeExecutables private constructor(internal val values: List<DesktopFacadeExecutable>) {
     companion object {
         internal fun none(): DesktopFacadeExecutables = DesktopFacadeExecutables(emptyList())
 
@@ -70,26 +62,29 @@ internal class DesktopFacadeExecutables private constructor(
                     null
                 }
             }
-            val values = listOfNotNull(configuredCandidate, installedFacadeCandidate)
-                .mapNotNull { candidate ->
-                    when (val admission = DesktopFacadeExecutable.admit(candidate)) {
-                        is Refinement.Refined -> admission.value
-                        is Refinement.Rejected -> null
+            val values =
+                listOfNotNull(configuredCandidate, installedFacadeCandidate)
+                    .mapNotNull { candidate ->
+                        when (val admission = DesktopFacadeExecutable.admit(candidate)) {
+                            is Refinement.Refined -> admission.value
+                            is Refinement.Rejected -> null
+                        }
                     }
-                }
-                .distinctBy(DesktopFacadeExecutable::path)
+                    .distinctBy(DesktopFacadeExecutable::path)
             return DesktopFacadeExecutables(values)
         }
     }
 }
 
 /** Real Codex executable proven distinct from the Desktop façade. */
-internal class UpstreamCodexExecutable private constructor(
+internal class UpstreamCodexExecutable
+private constructor(
     internal val executable: BrokerExecutable,
     /** Original launcher path retains interpreter discovery across a desktop child. */
     val launcherPath: Path,
 ) {
-    val path: Path get() = executable.path
+    val path: Path
+        get() = executable.path
 
     companion object {
         internal fun admit(
@@ -98,38 +93,35 @@ internal class UpstreamCodexExecutable private constructor(
             launcherCandidate: Path = candidate,
         ): Refinement<UpstreamCodexExecutable, CodexHostExecutableFailure> =
             when (val admission = BrokerExecutable.admit(candidate)) {
-                is Refinement.Rejected -> Refinement.Rejected(
-                    CodexHostExecutableFailure.UNAVAILABLE,
-                )
-                is Refinement.Refined -> facades.values
-                    .map { facade -> facade.compareIdentity(admission.value) }
-                    .let { identities ->
-                        when {
-                            CodexExecutableIdentity.REJECTED in identities ->
-                                Refinement.Rejected(
-                                    CodexHostExecutableFailure.IDENTITY_REJECTED,
-                                )
-                            CodexExecutableIdentity.SAME in identities -> Refinement.Rejected(
-                                CodexHostExecutableFailure.RECURSIVE_FACADE,
-                            )
-                            else -> retainLauncher(admission.value, launcherCandidate)
+                is Refinement.Rejected -> Refinement.Rejected(CodexHostExecutableFailure.UNAVAILABLE)
+                is Refinement.Refined ->
+                    facades.values
+                        .map { facade -> facade.compareIdentity(admission.value) }
+                        .let { identities ->
+                            when {
+                                CodexExecutableIdentity.REJECTED in identities ->
+                                    Refinement.Rejected(CodexHostExecutableFailure.IDENTITY_REJECTED)
+                                CodexExecutableIdentity.SAME in identities ->
+                                    Refinement.Rejected(CodexHostExecutableFailure.RECURSIVE_FACADE)
+                                else -> retainLauncher(admission.value, launcherCandidate)
+                            }
                         }
-                    }
             }
 
         private fun retainLauncher(
             executable: BrokerExecutable,
             launcher: Path,
-        ): Refinement<UpstreamCodexExecutable, CodexHostExecutableFailure> = try {
-            if (Files.isSameFile(executable.path, launcher)) {
-                Refinement.Refined(UpstreamCodexExecutable(executable, launcher))
-            } else {
+        ): Refinement<UpstreamCodexExecutable, CodexHostExecutableFailure> =
+            try {
+                if (Files.isSameFile(executable.path, launcher)) {
+                    Refinement.Refined(UpstreamCodexExecutable(executable, launcher))
+                } else {
+                    Refinement.Rejected(CodexHostExecutableFailure.IDENTITY_REJECTED)
+                }
+            } catch (_: IOException) {
+                Refinement.Rejected(CodexHostExecutableFailure.IDENTITY_REJECTED)
+            } catch (_: SecurityException) {
                 Refinement.Rejected(CodexHostExecutableFailure.IDENTITY_REJECTED)
             }
-        } catch (_: IOException) {
-            Refinement.Rejected(CodexHostExecutableFailure.IDENTITY_REJECTED)
-        } catch (_: SecurityException) {
-            Refinement.Rejected(CodexHostExecutableFailure.IDENTITY_REJECTED)
-        }
     }
 }

@@ -4,8 +4,7 @@ import io.github.amichne.kast.kernel.Refinement
 import kotlin.reflect.KClass
 
 private const val MAX_SCHEMA_IDENTITY_LENGTH = 160
-private val SCHEMA_IDENTITY_FORMAT =
-    Regex("[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:\\.[a-z][a-z0-9]*(?:-[a-z0-9]+)*)+")
+private val SCHEMA_IDENTITY_FORMAT = Regex("[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:\\.[a-z][a-z0-9]*(?:-[a-z0-9]+)*)+")
 
 enum class SchemaIdentityFailure {
     BLANK,
@@ -15,25 +14,21 @@ enum class SchemaIdentityFailure {
 
 /** A permanent schema identity admitted for one public operation binding. */
 @JvmInline
-value class SchemaIdentity private constructor(
-    val value: String,
-) : Comparable<SchemaIdentity> {
+value class SchemaIdentity private constructor(val value: String) : Comparable<SchemaIdentity> {
     companion object {
         /**
          * Proof transition: `String -> Refinement<SchemaIdentity, SchemaIdentityFailure>`.
          *
-         * Establishes a non-blank, bounded, lowercase, dot-separated schema identity.
-         * [SchemaIdentityFailure] is the closed expected failure. Raw text may be extracted only
-         * at the wire envelope boundary.
+         * Establishes a non-blank, bounded, lowercase, dot-separated schema identity. [SchemaIdentityFailure] is the
+         * closed expected failure. Raw text may be extracted only at the wire envelope boundary.
          */
-        fun parse(raw: String): Refinement<SchemaIdentity, SchemaIdentityFailure> = when {
-            raw.isBlank() -> Refinement.Rejected(SchemaIdentityFailure.BLANK)
-            raw.length > MAX_SCHEMA_IDENTITY_LENGTH ->
-                Refinement.Rejected(SchemaIdentityFailure.TOO_LONG)
-            !SCHEMA_IDENTITY_FORMAT.matches(raw) ->
-                Refinement.Rejected(SchemaIdentityFailure.INVALID_FORMAT)
-            else -> Refinement.Refined(SchemaIdentity(raw))
-        }
+        fun parse(raw: String): Refinement<SchemaIdentity, SchemaIdentityFailure> =
+            when {
+                raw.isBlank() -> Refinement.Rejected(SchemaIdentityFailure.BLANK)
+                raw.length > MAX_SCHEMA_IDENTITY_LENGTH -> Refinement.Rejected(SchemaIdentityFailure.TOO_LONG)
+                !SCHEMA_IDENTITY_FORMAT.matches(raw) -> Refinement.Rejected(SchemaIdentityFailure.INVALID_FORMAT)
+                else -> Refinement.Refined(SchemaIdentity(raw))
+            }
     }
 
     override fun compareTo(other: SchemaIdentity): Int = value.compareTo(other.value)
@@ -54,15 +49,15 @@ interface OperationRejection
 /**
  * The complete nominal type and schema binding for one public operation.
  *
- * Generic bounds prevent primitives, `Any`, maps, and untyped payloads from becoming registry
- * metadata. Serializer bindings consume the same type parameters at the wire boundary.
+ * Generic bounds prevent primitives, `Any`, maps, and untyped payloads from becoming registry metadata. Serializer
+ * bindings consume the same type parameters at the wire boundary.
  */
 data class OperationTypeBinding<
     Request : OperationRequest,
     Result : OperationResult,
     Qualification : OperationQualification,
     Rejection : OperationRejection,
-    >(
+>(
     val requestType: KClass<Request>,
     val resultType: KClass<Result>,
     val qualificationType: KClass<Qualification>,

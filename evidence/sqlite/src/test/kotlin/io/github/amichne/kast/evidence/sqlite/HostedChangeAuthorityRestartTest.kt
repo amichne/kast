@@ -13,8 +13,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
 class HostedChangeAuthorityRestartTest {
-    @TempDir
-    lateinit var temporary: Path
+    @TempDir lateinit var temporary: Path
 
     @Test
     fun `exact source state keeps its generation across reopen and changed source advances it`() {
@@ -69,18 +68,17 @@ class HostedChangeAuthorityRestartTest {
         val older = issue(state, "source-older")
         val current = resume(state, "source-current")
 
-        val rejected = SqliteHostedWorkspaceGenerationAuthority.advance(
-            state.mutationDatabase,
-            current.sourceState,
-            WorkspaceStateIdentity.parse("source-older").refined(),
-        )
+        val rejected =
+            SqliteHostedWorkspaceGenerationAuthority.advance(
+                state.mutationDatabase,
+                current.sourceState,
+                WorkspaceStateIdentity.parse("source-older").refined(),
+            )
 
         assertEquals(0L, older.generation.value)
         assertEquals(1L, current.generation.value)
         assertEquals(
-            HostedWorkspaceGenerationIssuance.Rejected(
-                HostedWorkspaceGenerationFailure.STALE_SOURCE_STATE,
-            ),
+            HostedWorkspaceGenerationIssuance.Rejected(HostedWorkspaceGenerationFailure.STALE_SOURCE_STATE),
             rejected,
         )
     }
@@ -91,16 +89,15 @@ class HostedChangeAuthorityRestartTest {
         resume(state, "source-basis")
         advance(state, "source-basis", "source-v2")
 
-        val stale = SqliteHostedWorkspaceGenerationAuthority.advance(
-            state.mutationDatabase,
-            WorkspaceStateIdentity.parse("source-basis").refined(),
-            WorkspaceStateIdentity.parse("source-v3").refined(),
-        )
+        val stale =
+            SqliteHostedWorkspaceGenerationAuthority.advance(
+                state.mutationDatabase,
+                WorkspaceStateIdentity.parse("source-basis").refined(),
+                WorkspaceStateIdentity.parse("source-v3").refined(),
+            )
 
         assertEquals(
-            HostedWorkspaceGenerationIssuance.Rejected(
-                HostedWorkspaceGenerationFailure.STALE_SOURCE_STATE,
-            ),
+            HostedWorkspaceGenerationIssuance.Rejected(HostedWorkspaceGenerationFailure.STALE_SOURCE_STATE),
             stale,
         )
     }
@@ -111,16 +108,15 @@ class HostedChangeAuthorityRestartTest {
         resume(state, "source-basis")
         corruptCurrentGeneration(state, 999L)
 
-        val corrupted = SqliteHostedWorkspaceGenerationAuthority.advance(
-            state.mutationDatabase,
-            WorkspaceStateIdentity.parse("source-basis").refined(),
-            WorkspaceStateIdentity.parse("source-v2").refined(),
-        )
+        val corrupted =
+            SqliteHostedWorkspaceGenerationAuthority.advance(
+                state.mutationDatabase,
+                WorkspaceStateIdentity.parse("source-basis").refined(),
+                WorkspaceStateIdentity.parse("source-v2").refined(),
+            )
 
         assertEquals(
-            HostedWorkspaceGenerationIssuance.Rejected(
-                HostedWorkspaceGenerationFailure.CORRUPT_STATE,
-            ),
+            HostedWorkspaceGenerationIssuance.Rejected(HostedWorkspaceGenerationFailure.CORRUPT_STATE),
             corrupted,
         )
     }
@@ -132,86 +128,90 @@ class HostedChangeAuthorityRestartTest {
         advance(state, "source-basis", "source-v2")
         corruptCurrentGeneration(state, 999L)
 
-        val corrupted = SqliteHostedWorkspaceGenerationAuthority.advance(
-            state.mutationDatabase,
-            WorkspaceStateIdentity.parse("source-basis").refined(),
-            WorkspaceStateIdentity.parse("source-v2").refined(),
-        )
+        val corrupted =
+            SqliteHostedWorkspaceGenerationAuthority.advance(
+                state.mutationDatabase,
+                WorkspaceStateIdentity.parse("source-basis").refined(),
+                WorkspaceStateIdentity.parse("source-v2").refined(),
+            )
 
         assertEquals(
-            HostedWorkspaceGenerationIssuance.Rejected(
-                HostedWorkspaceGenerationFailure.CORRUPT_STATE,
-            ),
+            HostedWorkspaceGenerationIssuance.Rejected(HostedWorkspaceGenerationFailure.CORRUPT_STATE),
             corrupted,
         )
     }
 
     private fun location(name: String): HostedWorkspaceStateLocation {
-        val root = CanonicalWorkspaceRoot.fromCanonicalPath(
-            temporary.resolve(name).toAbsolutePath().normalize(),
-        ).refined()
+        val root =
+            CanonicalWorkspaceRoot.fromCanonicalPath(temporary.resolve(name).toAbsolutePath().normalize()).refined()
         return HostedWorkspaceStateLocation.locate(
-            KastUserStateRoot.parse(temporary.toAbsolutePath().normalize().toString()).refined(),
-            root,
-        ).refined()
+                KastUserStateRoot.parse(temporary.toAbsolutePath().normalize().toString()).refined(),
+                root,
+            )
+            .refined()
     }
 
     private fun issue(
         location: HostedWorkspaceStateLocation,
         state: String,
-    ): HostedWorkspaceGenerationIssuance.Issued = when (
-        val issued = SqliteHostedWorkspaceGenerationAuthority.issue(
-            location.mutationDatabase,
-            WorkspaceStateIdentity.parse(state).refined(),
-        )
-    ) {
-        is HostedWorkspaceGenerationIssuance.Issued -> issued
-        is HostedWorkspaceGenerationIssuance.Rejected -> error(issued.failure.toString())
-    }
+    ): HostedWorkspaceGenerationIssuance.Issued =
+        when (
+            val issued =
+                SqliteHostedWorkspaceGenerationAuthority.issue(
+                    location.mutationDatabase,
+                    WorkspaceStateIdentity.parse(state).refined(),
+                )
+        ) {
+            is HostedWorkspaceGenerationIssuance.Issued -> issued
+            is HostedWorkspaceGenerationIssuance.Rejected -> error(issued.failure.toString())
+        }
 
     private fun resume(
         location: HostedWorkspaceStateLocation,
         basis: String,
-    ): HostedWorkspaceGenerationResumption.Resumed = when (
-        val resumed = SqliteHostedWorkspaceGenerationAuthority.resume(
-            location.mutationDatabase,
-            WorkspaceStateIdentity.parse(basis).refined(),
-        )
-    ) {
-        is HostedWorkspaceGenerationResumption.Resumed -> resumed
-        is HostedWorkspaceGenerationResumption.Rejected -> error(resumed.failure.toString())
-    }
+    ): HostedWorkspaceGenerationResumption.Resumed =
+        when (
+            val resumed =
+                SqliteHostedWorkspaceGenerationAuthority.resume(
+                    location.mutationDatabase,
+                    WorkspaceStateIdentity.parse(basis).refined(),
+                )
+        ) {
+            is HostedWorkspaceGenerationResumption.Resumed -> resumed
+            is HostedWorkspaceGenerationResumption.Rejected -> error(resumed.failure.toString())
+        }
 
     private fun advance(
         location: HostedWorkspaceStateLocation,
         prior: String,
         next: String,
-    ): HostedWorkspaceGenerationIssuance.Issued = when (
-        val issued = SqliteHostedWorkspaceGenerationAuthority.advance(
-            location.mutationDatabase,
-            WorkspaceStateIdentity.parse(prior).refined(),
-            WorkspaceStateIdentity.parse(next).refined(),
-        )
-    ) {
-        is HostedWorkspaceGenerationIssuance.Issued -> issued
-        is HostedWorkspaceGenerationIssuance.Rejected -> error(issued.failure.toString())
-    }
+    ): HostedWorkspaceGenerationIssuance.Issued =
+        when (
+            val issued =
+                SqliteHostedWorkspaceGenerationAuthority.advance(
+                    location.mutationDatabase,
+                    WorkspaceStateIdentity.parse(prior).refined(),
+                    WorkspaceStateIdentity.parse(next).refined(),
+                )
+        ) {
+            is HostedWorkspaceGenerationIssuance.Issued -> issued
+            is HostedWorkspaceGenerationIssuance.Rejected -> error(issued.failure.toString())
+        }
 
     private fun corruptCurrentGeneration(location: HostedWorkspaceStateLocation, generation: Long) {
-        DriverManager.getConnection(
-            "jdbc:sqlite:${location.mutationDatabase.valueAtSqliteBoundary()}",
-        ).use { connection ->
-            connection.prepareStatement(
-                "UPDATE hosted_workspace_source_lineage SET current_generation = ?",
-            ).use { statement ->
+        DriverManager.getConnection("jdbc:sqlite:${location.mutationDatabase.valueAtSqliteBoundary()}").use { connection
+            ->
+            connection.prepareStatement("UPDATE hosted_workspace_source_lineage SET current_generation = ?").use {
+                statement ->
                 statement.setLong(1, generation)
                 assertEquals(1, statement.executeUpdate())
             }
         }
     }
 
-    private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value = when (this) {
-        is Refinement.Refined -> value
-        is Refinement.Rejected -> error(failure.toString())
-    }
+    private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value =
+        when (this) {
+            is Refinement.Refined -> value
+            is Refinement.Rejected -> error(failure.toString())
+        }
 }

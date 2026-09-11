@@ -10,7 +10,8 @@ data class TopologyCandidateSetFailure(
 )
 
 /** Deterministic unique Kotlin candidates for one exact workspace publication. */
-class TopologyCandidateSet private constructor(
+class TopologyCandidateSet
+private constructor(
     val workspace: TopologyWorkspaceIdentity,
     val files: List<TopologySourceFile>,
 ) {
@@ -18,23 +19,21 @@ class TopologyCandidateSet private constructor(
 
     companion object {
         /**
-         * Proof transition: `(PublishedWorkspace, List<TopologySourceFile>) ->
-         * Refinement<TopologyCandidateSet, TopologyCandidateSetFailure>`.
+         * Proof transition: `(PublishedWorkspace, List<TopologySourceFile>) -> Refinement<TopologyCandidateSet,
+         * TopologyCandidateSetFailure>`.
          *
-         * Establishes unique path coverage, one exact workspace identity, and canonical file
-         * ordering. [TopologyCandidateSetFailure] is the closed expected failure. Candidate lists
-         * may enter only from the admitted-root enumeration adapter.
+         * Establishes unique path coverage, one exact workspace identity, and canonical file ordering.
+         * [TopologyCandidateSetFailure] is the closed expected failure. Candidate lists may enter only from the
+         * admitted-root enumeration adapter.
          */
         fun admit(
             workspace: PublishedWorkspace,
             files: List<TopologySourceFile>,
         ): Refinement<TopologyCandidateSet, TopologyCandidateSetFailure> {
             val identity = TopologyWorkspaceIdentity.from(workspace)
-            val duplicatePaths = files.groupBy(TopologySourceFile::path)
-                .filterValues { it.size > 1 }
-                .keys
-            val workspaceMismatches = files.filter { it.workspace != identity }
-                .mapTo(linkedSetOf(), TopologySourceFile::path)
+            val duplicatePaths = files.groupBy(TopologySourceFile::path).filterValues { it.size > 1 }.keys
+            val workspaceMismatches =
+                files.filter { it.workspace != identity }.mapTo(linkedSetOf(), TopologySourceFile::path)
             val failure = TopologyCandidateSetFailure(duplicatePaths, workspaceMismatches)
             return if (duplicatePaths.isEmpty() && workspaceMismatches.isEmpty()) {
                 Refinement.Refined(TopologyCandidateSet(identity, files.sorted()))
@@ -48,12 +47,11 @@ class TopologyCandidateSet private constructor(
      * Proof transition: `TopologySourceFile -> Refinement<TopologyExtractionRequest,
      * TopologyExtractionRequestFailure>`.
      *
-     * Establishes that one exact candidate belongs to this complete candidate set. The closed
-     * expected failure is [TopologyExtractionRequestFailure]. Raw file selection remains inside
-     * the explicit build coordinator.
+     * Establishes that one exact candidate belongs to this complete candidate set. The closed expected failure is
+     * [TopologyExtractionRequestFailure]. Raw file selection remains inside the explicit build coordinator.
      */
     fun extractionRequest(
-        file: TopologySourceFile,
+        file: TopologySourceFile
     ): Refinement<TopologyExtractionRequest, TopologyExtractionRequestFailure> =
         if (file in exactFiles) {
             Refinement.Refined(TopologyExtractionRequest(this, file))
@@ -63,11 +61,12 @@ class TopologyCandidateSet private constructor(
 }
 
 enum class TopologyExtractionRequestFailure {
-    FILE_NOT_ADMITTED,
+    FILE_NOT_ADMITTED
 }
 
 /** Exact candidate plus complete admitted file set supplied to one K2 extraction call. */
-class TopologyExtractionRequest internal constructor(
+class TopologyExtractionRequest
+internal constructor(
     val candidates: TopologyCandidateSet,
     val file: TopologySourceFile,
 )
@@ -81,13 +80,9 @@ enum class TopologyCandidateEnumerationFailure {
 }
 
 sealed interface TopologyCandidateEnumeration {
-    data class Complete(
-        val candidates: TopologyCandidateSet,
-    ) : TopologyCandidateEnumeration
+    data class Complete(val candidates: TopologyCandidateSet) : TopologyCandidateEnumeration
 
-    data class Rejected(
-        val failure: TopologyCandidateEnumerationFailure,
-    ) : TopologyCandidateEnumeration
+    data class Rejected(val failure: TopologyCandidateEnumerationFailure) : TopologyCandidateEnumeration
 }
 
 /** Physical enumeration boundary restricted to one already published source-root set. */
@@ -95,9 +90,9 @@ fun interface TopologyCandidateEnumerator {
     /**
      * Proof transition: `PublishedWorkspace -> TopologyCandidateEnumeration`.
      *
-     * Complete output establishes deterministic Kotlin files from only the workspace's admitted
-     * source roots. [TopologyCandidateEnumerationFailure] is the closed expected failure. VFS and
-     * content hashing values remain inside the physical adapter.
+     * Complete output establishes deterministic Kotlin files from only the workspace's admitted source roots.
+     * [TopologyCandidateEnumerationFailure] is the closed expected failure. VFS and content hashing values remain
+     * inside the physical adapter.
      */
     fun enumerate(workspace: PublishedWorkspace): TopologyCandidateEnumeration
 }
@@ -142,39 +137,26 @@ enum class TopologyFileExtractionFailure {
 /** Total public projection for one ordinary file-extractor failure. */
 fun TopologyFileExtractionFailure.toTopologyExtractionFailure(): TopologyExtractionFailure =
     when (this) {
-        TopologyFileExtractionFailure.PROJECT_UNAVAILABLE ->
-            TopologyExtractionFailure.PROJECT_UNAVAILABLE
-        TopologyFileExtractionFailure.FILE_UNAVAILABLE ->
-            TopologyExtractionFailure.FILE_UNAVAILABLE
+        TopologyFileExtractionFailure.PROJECT_UNAVAILABLE -> TopologyExtractionFailure.PROJECT_UNAVAILABLE
+        TopologyFileExtractionFailure.FILE_UNAVAILABLE -> TopologyExtractionFailure.FILE_UNAVAILABLE
         TopologyFileExtractionFailure.DOCUMENT_DIRTY -> TopologyExtractionFailure.DOCUMENT_DIRTY
-        TopologyFileExtractionFailure.PSI_DOCUMENT_UNCOMMITTED ->
-            TopologyExtractionFailure.PSI_DOCUMENT_UNCOMMITTED
-        TopologyFileExtractionFailure.VFS_CONTENT_MISMATCH ->
-            TopologyExtractionFailure.VFS_CONTENT_MISMATCH
-        TopologyFileExtractionFailure.NOT_KOTLIN_PSI ->
-            TopologyExtractionFailure.NOT_KOTLIN_PSI
-        TopologyFileExtractionFailure.COMPILER_UNAVAILABLE ->
-            TopologyExtractionFailure.COMPILER_UNAVAILABLE
+        TopologyFileExtractionFailure.PSI_DOCUMENT_UNCOMMITTED -> TopologyExtractionFailure.PSI_DOCUMENT_UNCOMMITTED
+        TopologyFileExtractionFailure.VFS_CONTENT_MISMATCH -> TopologyExtractionFailure.VFS_CONTENT_MISMATCH
+        TopologyFileExtractionFailure.NOT_KOTLIN_PSI -> TopologyExtractionFailure.NOT_KOTLIN_PSI
+        TopologyFileExtractionFailure.COMPILER_UNAVAILABLE -> TopologyExtractionFailure.COMPILER_UNAVAILABLE
         TopologyFileExtractionFailure.DECLARATION_EVIDENCE_REJECTED ->
             TopologyExtractionFailure.DECLARATION_EVIDENCE_REJECTED
         TopologyFileExtractionFailure.PROJECTION_REGISTRY_REJECTED ->
             TopologyExtractionFailure.PROJECTION_REGISTRY_REJECTED
-        TopologyFileExtractionFailure.REFERENCE_TARGET_REJECTED ->
-            TopologyExtractionFailure.REFERENCE_TARGET_REJECTED
-        TopologyFileExtractionFailure.OCCURRENCE_REJECTED ->
-            TopologyExtractionFailure.OCCURRENCE_REJECTED
-        TopologyFileExtractionFailure.EDGE_REJECTED ->
-            TopologyExtractionFailure.EDGE_REJECTED
-        TopologyFileExtractionFailure.OVERRIDE_REJECTED ->
-            TopologyExtractionFailure.OVERRIDE_REJECTED
-        TopologyFileExtractionFailure.FILE_ADMISSION_REJECTED ->
-            TopologyExtractionFailure.FILE_ADMISSION_REJECTED
+        TopologyFileExtractionFailure.REFERENCE_TARGET_REJECTED -> TopologyExtractionFailure.REFERENCE_TARGET_REJECTED
+        TopologyFileExtractionFailure.OCCURRENCE_REJECTED -> TopologyExtractionFailure.OCCURRENCE_REJECTED
+        TopologyFileExtractionFailure.EDGE_REJECTED -> TopologyExtractionFailure.EDGE_REJECTED
+        TopologyFileExtractionFailure.OVERRIDE_REJECTED -> TopologyExtractionFailure.OVERRIDE_REJECTED
+        TopologyFileExtractionFailure.FILE_ADMISSION_REJECTED -> TopologyExtractionFailure.FILE_ADMISSION_REJECTED
     }
 
 sealed interface TopologyFileExtraction {
-    data class Complete(
-        val file: CompleteTopologyFile,
-    ) : TopologyFileExtraction
+    data class Complete(val file: CompleteTopologyFile) : TopologyFileExtraction
 
     data class Failed(
         val file: TopologySourceFile,
@@ -182,8 +164,8 @@ sealed interface TopologyFileExtraction {
     ) : TopologyFileExtraction
 
     /**
-     * Fail-closed native declaration-binding rejection retaining exact detached failure evidence.
-     * Public protocol projection continues to expose [TopologyExtractionFailure.COMPILER_IDENTITY_MISMATCH].
+     * Fail-closed native declaration-binding rejection retaining exact detached failure evidence. Public protocol
+     * projection continues to expose [TopologyExtractionFailure.COMPILER_IDENTITY_MISMATCH].
      */
     data class IdentityMismatch(
         val evidence: TopologyIdentityMismatchEvidence,
@@ -199,31 +181,40 @@ fun interface TopologyFileExtractor {
      * Proof transition: `TopologyExtractionRequest -> TopologyFileExtraction`.
      *
      * Complete output establishes terminal detached K2 facts for the exact admitted file.
-     * [TopologyFileExtractionFailure] and evidence-bearing [TopologyFileExtraction.IdentityMismatch]
-     * are the closed expected failures. Live project, PSI, and K2 values remain inside the adapter
-     * and cancellation propagates.
+     * [TopologyFileExtractionFailure] and evidence-bearing [TopologyFileExtraction.IdentityMismatch] are the closed
+     * expected failures. Live project, PSI, and K2 values remain inside the adapter and cancellation propagates.
      */
     suspend fun extract(request: TopologyExtractionRequest): TopologyFileExtraction
 }
 
 sealed interface TopologyBuildFailure {
     data object WorkspaceNotReady : TopologyBuildFailure
+
     data object SnapshotContractViolation : TopologyBuildFailure
+
     data class SnapshotRead(val failure: TopologySnapshotReadFailure) : TopologyBuildFailure
+
     data class Enumeration(val failure: TopologyCandidateEnumerationFailure) : TopologyBuildFailure
+
     data class Extraction(
         val file: WorkspaceSourcePath,
         val failure: TopologyExtractionFailure,
     ) : TopologyBuildFailure
+
     data object ExtractionContractViolation : TopologyBuildFailure
+
     data class Coverage(val failure: TopologyGenerationCoverageFailure) : TopologyBuildFailure
+
     data class Publication(val failure: TopologyPublicationFailure) : TopologyBuildFailure
 }
 
 sealed interface TopologyBuildResult {
     data class Published(val snapshot: PublishedTopologySnapshot) : TopologyBuildResult
+
     data class Reused(val snapshot: PublishedTopologySnapshot) : TopologyBuildResult
+
     data object WorkspaceMoved : TopologyBuildResult
+
     data class Rejected(val failure: TopologyBuildFailure) : TopologyBuildResult
 }
 

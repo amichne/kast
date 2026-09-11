@@ -49,10 +49,11 @@ class AddDeclarationApplyServiceTest {
     fun `AddFile post durability fault rolls back and records terminal evidence`() {
         val plan = fixture.addFilePlan()
         val store = InMemoryApplyRecoveryStore()
-        val adapter = FakeSourceAdapter(
-            fixture.absent(plan),
-            WriteMode.FAULT_AFTER_DURABILITY,
-        )
+        val adapter =
+            FakeSourceAdapter(
+                fixture.absent(plan),
+                WriteMode.FAULT_AFTER_DURABILITY,
+            )
         val service = service(store, adapter)
 
         val result = service.apply(fixture.request(plan = plan))
@@ -65,11 +66,12 @@ class AddDeclarationApplyServiceTest {
     @Test
     fun `rollback rejection remains recovery required`() {
         val store = InMemoryApplyRecoveryStore()
-        val adapter = FakeSourceAdapter(
-            fixture.observed(),
-            WriteMode.FAULT_AFTER_DURABILITY,
-            AddDeclarationRollbackResult.Rejected(AddDeclarationRollbackFailure.CONTENT_DIVERGED),
-        )
+        val adapter =
+            FakeSourceAdapter(
+                fixture.observed(),
+                WriteMode.FAULT_AFTER_DURABILITY,
+                AddDeclarationRollbackResult.Rejected(AddDeclarationRollbackFailure.CONTENT_DIVERGED),
+            )
         val service = service(store, adapter)
 
         val result = service.apply(fixture.request())
@@ -93,12 +95,13 @@ class AddDeclarationApplyServiceTest {
     private fun service(
         store: InMemoryApplyRecoveryStore,
         adapter: FakeSourceAdapter,
-    ): AddDeclarationApplyService = AddDeclarationApplyService(
-        AddDeclarationRecoveryService(store),
-        adapter,
-        adapter,
-        adapter,
-    )
+    ): AddDeclarationApplyService =
+        AddDeclarationApplyService(
+            AddDeclarationRecoveryService(store),
+            adapter,
+            adapter,
+            adapter,
+        )
 }
 
 private enum class WriteMode {
@@ -115,31 +118,36 @@ private class FakeSourceAdapter(
     var writeCalls: Int = 0
     var rollbackCalls: Int = 0
 
-    override fun observe(source: io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity.Workspace): SourceObservationResult =
-        SourceObservationResult.Observed(observation)
+    override fun observe(
+        source: io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity.Workspace
+    ): SourceObservationResult = SourceObservationResult.Observed(observation)
 
     override fun write(
         authority: MutationAuthority,
         durability: MutationDurabilityBarrier,
     ): SourceWriteResult {
         writeCalls += 1
-        val applied = AppliedSourceWrite.observe(
-            authority,
-            authority.postimageBytesAtIntellijBoundary(),
-            setOf(authority.source.path.value),
-        ).refined()
+        val applied =
+            AppliedSourceWrite.observe(
+                    authority,
+                    authority.postimageBytesAtIntellijBoundary(),
+                    setOf(authority.source.path.value),
+                )
+                .refined()
         return when (mode) {
-            WriteMode.APPLIED -> when (durability.recordApplied()) {
-                MutationDurabilityResult.Durable -> SourceWriteResult.Applied(applied)
-                is MutationDurabilityResult.Rejected ->
-                    SourceWriteResult.RejectedAfterRollback(SourceWriteFailure.DURABILITY_REJECTED)
-            }
-            WriteMode.FAULT_AFTER_DURABILITY -> when (durability.recordApplied()) {
-                MutationDurabilityResult.Durable ->
-                    SourceWriteResult.RecoveryRequired(SourceWriteFailure.SAVE_FAILED)
-                is MutationDurabilityResult.Rejected ->
-                    SourceWriteResult.RejectedAfterRollback(SourceWriteFailure.DURABILITY_REJECTED)
-            }
+            WriteMode.APPLIED ->
+                when (durability.recordApplied()) {
+                    MutationDurabilityResult.Durable -> SourceWriteResult.Applied(applied)
+                    is MutationDurabilityResult.Rejected ->
+                        SourceWriteResult.RejectedAfterRollback(SourceWriteFailure.DURABILITY_REJECTED)
+                }
+            WriteMode.FAULT_AFTER_DURABILITY ->
+                when (durability.recordApplied()) {
+                    MutationDurabilityResult.Durable ->
+                        SourceWriteResult.RecoveryRequired(SourceWriteFailure.SAVE_FAILED)
+                    is MutationDurabilityResult.Rejected ->
+                        SourceWriteResult.RejectedAfterRollback(SourceWriteFailure.DURABILITY_REJECTED)
+                }
             WriteMode.SKIP_DURABILITY -> SourceWriteResult.Applied(applied)
         }
     }
@@ -157,14 +165,13 @@ private class InMemoryApplyRecoveryStore : MutationRecoveryEvidenceStore {
     private val records = linkedMapOf<String, MutationRecoveryRecord>()
 
     override fun prepare(
-        record: MutationRecoveryRecord.PreWriteDurable,
+        record: MutationRecoveryRecord.PreWriteDurable
     ): MutationRecoveryPersistResult<MutationRecoveryRecord.PreWriteDurable> = persist(record)
 
     override fun recordApplied(
         prior: MutationRecoveryRecord.PreWriteDurable,
         record: MutationRecoveryRecord.AppliedWritesDurable,
-    ): MutationRecoveryPersistResult<MutationRecoveryRecord.AppliedWritesDurable> =
-        transition(prior, record)
+    ): MutationRecoveryPersistResult<MutationRecoveryRecord.AppliedWritesDurable> = transition(prior, record)
 
     override fun <Record : MutationRecoveryRecord.Terminal> recordTerminal(
         prior: MutationRecoveryRecord.AppliedWritesDurable,
@@ -172,14 +179,11 @@ private class InMemoryApplyRecoveryStore : MutationRecoveryEvidenceStore {
     ): MutationRecoveryPersistResult<Record> = transition(prior, record)
 
     override fun load(binding: MutationPlanBinding): MutationRecoveryLoadResult =
-        records[binding.value]?.let(MutationRecoveryLoadResult::Found)
-        ?: MutationRecoveryLoadResult.Absent(binding)
+        records[binding.value]?.let(MutationRecoveryLoadResult::Found) ?: MutationRecoveryLoadResult.Absent(binding)
 
     fun current(): MutationRecoveryRecord = records.values.single()
 
-    private fun <Record : MutationRecoveryRecord> persist(
-        record: Record,
-    ): MutationRecoveryPersistResult<Record> {
+    private fun <Record : MutationRecoveryRecord> persist(record: Record): MutationRecoveryPersistResult<Record> {
         records[record.binding.value] = record
         return MutationRecoveryPersistResult.Durable(record)
     }
@@ -191,8 +195,6 @@ private class InMemoryApplyRecoveryStore : MutationRecoveryEvidenceStore {
         if (records[prior.binding.value]?.digest == prior.digest) {
             persist(record)
         } else {
-            MutationRecoveryPersistResult.Rejected(
-                MutationRecoveryEvidenceFailure.PRIOR_STATE_MISMATCH,
-            )
+            MutationRecoveryPersistResult.Rejected(MutationRecoveryEvidenceFailure.PRIOR_STATE_MISMATCH)
         }
 }

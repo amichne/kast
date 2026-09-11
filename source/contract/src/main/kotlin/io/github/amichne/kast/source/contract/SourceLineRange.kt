@@ -3,7 +3,8 @@ package io.github.amichne.kast.source.contract
 import io.github.amichne.kast.kernel.Refinement
 
 /** Inclusive one-based lines proven against the complete normalized snapshot text. */
-class SourceLineRange private constructor(
+class SourceLineRange
+private constructor(
     val startInclusive: SourceLineNumber,
     val endInclusive: SourceLineNumber,
 ) {
@@ -30,9 +31,12 @@ value class SourceLineNumber private constructor(val value: Long) {
     }
 }
 
-enum class SourceLineNumberFailure { OUT_OF_RANGE }
-
-private fun lineNumber(value: Long): SourceLineNumber = when (val admitted = SourceLineNumber.parse(value)) {
-    is Refinement.Refined -> admitted.value
-    is Refinement.Rejected -> error("A proven document range produced an invalid line coordinate")
+enum class SourceLineNumberFailure {
+    OUT_OF_RANGE
 }
+
+private fun lineNumber(value: Long): SourceLineNumber =
+    when (val admitted = SourceLineNumber.parse(value)) {
+        is Refinement.Refined -> admitted.value
+        is Refinement.Rejected -> error("A proven document range produced an invalid line coordinate")
+    }

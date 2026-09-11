@@ -1,8 +1,5 @@
 package io.github.amichne.kast.appserver
 
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.io.TempDir
 import java.net.StandardProtocolFamily
 import java.net.UnixDomainSocketAddress
 import java.nio.channels.ServerSocketChannel
@@ -10,12 +7,13 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
 import kotlin.concurrent.thread
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
 
 class JdkBrokerSocketProbeTest {
     @Test
-    fun `real JDK path observation distinguishes absent socket and rejected paths`(
-        @TempDir temporary: Path,
-    ) {
+    fun `real JDK path observation distinguishes absent socket and rejected paths`(@TempDir temporary: Path) {
         val admittedParent = Files.createDirectory(temporary.resolve("admitted")).toRealPath()
         val missingParentSocket = admittedParent.resolve("missing/broker.sock")
         assertEquals(
@@ -37,10 +35,11 @@ class JdkBrokerSocketProbeTest {
             JdkBrokerSocketProbe.probe(regularFile),
         )
 
-        val symbolicLink = Files.createSymbolicLink(
-            admittedParent.resolve("link"),
-            regularFile.fileName,
-        )
+        val symbolicLink =
+            Files.createSymbolicLink(
+                admittedParent.resolve("link"),
+                regularFile.fileName,
+            )
         assertEquals(
             BrokerSocketPathObservation.WrongType,
             JdkBrokerSocketPathObserver.observe(symbolicLink),
@@ -73,9 +72,7 @@ class JdkBrokerSocketProbeTest {
     }
 
     @Test
-    fun `real JDK probe distinguishes broker protocol from stale and absent sockets`(
-        @TempDir temporary: Path,
-    ) {
+    fun `real JDK probe distinguishes broker protocol from stale and absent sockets`(@TempDir temporary: Path) {
         val admittedParent = Files.createDirectory(temporary.resolve("sockets")).toRealPath()
         val absent = admittedParent.resolve("absent.sock")
         assertEquals(BrokerSocketReachability.UNREACHABLE, JdkBrokerSocketProbe.probe(absent))
@@ -83,7 +80,7 @@ class JdkBrokerSocketProbeTest {
         val live = admittedParent.resolve("live.sock")
         ServerSocketChannel.open(StandardProtocolFamily.UNIX).use { listener ->
             listener.bind(UnixDomainSocketAddress.of(live))
-            val acceptor = thread(start = true) { listener.accept().use { } }
+            val acceptor = thread(start = true) { listener.accept().use {} }
             assertEquals(
                 BrokerSocketPathObservation.Socket,
                 JdkBrokerSocketPathObserver.observe(live),

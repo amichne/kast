@@ -10,32 +10,28 @@ enum class CanonicalSemanticProjectRootFailure {
 }
 
 /**
- * Detached identity of the runtime-owned IntelliJ project whose imported model serves one Gradle
- * workspace.
+ * Detached identity of the runtime-owned IntelliJ project whose imported model serves one Gradle workspace.
  *
- * This identity is intentionally distinct from [CanonicalWorkspaceRoot]: the semantic project may
- * store generated IntelliJ configuration only at this root, while source and Gradle ownership stay
- * rooted at the workspace.
+ * This identity is intentionally distinct from [CanonicalWorkspaceRoot]: the semantic project may store generated
+ * IntelliJ configuration only at this root, while source and Gradle ownership stay rooted at the workspace.
  */
-class CanonicalSemanticProjectRoot private constructor(
+class CanonicalSemanticProjectRoot
+private constructor(
     val workspaceRoot: CanonicalWorkspaceRoot,
     val value: String,
 ) {
     override fun equals(other: Any?): Boolean =
-        other is CanonicalSemanticProjectRoot &&
-            workspaceRoot == other.workspaceRoot && value == other.value
+        other is CanonicalSemanticProjectRoot && workspaceRoot == other.workspaceRoot && value == other.value
 
     override fun hashCode(): Int = 31 * workspaceRoot.hashCode() + value.hashCode()
 
     companion object {
         /**
-         * Proof transition:
-         * `(CanonicalWorkspaceRoot, Path) -> Refinement<CanonicalSemanticProjectRoot,
+         * Proof transition: `(CanonicalWorkspaceRoot, Path) -> Refinement<CanonicalSemanticProjectRoot,
          * CanonicalSemanticProjectRootFailure>`.
          *
-         * Establishes that a physically canonicalized semantic-project path is absolute,
-         * lexically normalized, and disjoint from the exact Gradle workspace before retaining both
-         * identities.
+         * Establishes that a physically canonicalized semantic-project path is absolute, lexically normalized, and
+         * disjoint from the exact Gradle workspace before retaining both identities.
          */
         fun fromCanonicalPath(
             workspaceRoot: CanonicalWorkspaceRoot,
@@ -43,15 +39,11 @@ class CanonicalSemanticProjectRoot private constructor(
         ): Refinement<CanonicalSemanticProjectRoot, CanonicalSemanticProjectRootFailure> {
             val workspacePath = Path.of(workspaceRoot.value)
             return when {
-                !path.isAbsolute ->
-                    Refinement.Rejected(CanonicalSemanticProjectRootFailure.NOT_ABSOLUTE)
-                path.normalize() != path ->
-                    Refinement.Rejected(CanonicalSemanticProjectRootFailure.NOT_NORMALIZED)
+                !path.isAbsolute -> Refinement.Rejected(CanonicalSemanticProjectRootFailure.NOT_ABSOLUTE)
+                path.normalize() != path -> Refinement.Rejected(CanonicalSemanticProjectRootFailure.NOT_NORMALIZED)
                 path.startsWith(workspacePath) || workspacePath.startsWith(path) ->
                     Refinement.Rejected(CanonicalSemanticProjectRootFailure.OVERLAPS_WORKSPACE)
-                else -> Refinement.Refined(
-                    CanonicalSemanticProjectRoot(workspaceRoot, path.toString()),
-                )
+                else -> Refinement.Refined(CanonicalSemanticProjectRoot(workspaceRoot, path.toString()))
             }
         }
     }

@@ -16,12 +16,8 @@ class ExistingProjectAdmissionNegativeTest {
         rejectionCases().forEach { case ->
             val observation = RecordingProjectObservation().also(case.configure)
             val validationObservation = RecordingProjectObservation().also(case.configure)
-            val failure = admittedFailure(
-                admit(observation),
-            )
-            val validationFailure = validatedFailure(
-                validate(validationObservation),
-            )
+            val failure = admittedFailure(admit(observation))
+            val validationFailure = validatedFailure(validate(validationObservation))
 
             assertEquals(case.failure, failure, case.name)
             assertEquals(case.failure, validationFailure, "${case.name} validation")
@@ -62,14 +58,16 @@ class ExistingProjectAdmissionNegativeTest {
     fun `platform cancellation propagates from every observation stage`() {
         ExistingProjectObservationStage.entries.forEachIndexed { index, stage ->
             val cancellation = ProcessCanceledException()
-            val observation = RecordingProjectObservation(
-                throwAt = stage,
-                thrownFailure = cancellation,
-            )
+            val observation =
+                RecordingProjectObservation(
+                    throwAt = stage,
+                    thrownFailure = cancellation,
+                )
 
-            val propagated = assertThrows(ProcessCanceledException::class.java) {
-                admit(observation)
-            }
+            val propagated =
+                assertThrows(ProcessCanceledException::class.java) {
+                    admit(observation)
+                }
 
             assertSame(cancellation, propagated, stage.name)
             assertEquals(
@@ -121,20 +119,19 @@ class ExistingProjectAdmissionNegativeTest {
         )
         assertEquals(
             ExistingProjectGradleModelState.UNAVAILABLE,
-            classifyCachedGradleModel(
-                listOf(gradleObservation(path = ExistingProjectPathMatch.MISMATCH)),
-            ),
+            classifyCachedGradleModel(listOf(gradleObservation(path = ExistingProjectPathMatch.MISMATCH))),
         )
         listOf(
-            gradleObservation(structure = ExistingProjectStructureState.INCOMPLETE),
-            gradleObservation(importState = ExistingProjectImportState.ABSENT),
-            gradleObservation(importState = ExistingProjectImportState.STALE),
-        ).forEach { observation ->
-            assertEquals(
-                ExistingProjectGradleModelState.INCOMPLETE,
-                classifyCachedGradleModel(listOf(observation)),
+                gradleObservation(structure = ExistingProjectStructureState.INCOMPLETE),
+                gradleObservation(importState = ExistingProjectImportState.ABSENT),
+                gradleObservation(importState = ExistingProjectImportState.STALE),
             )
-        }
+            .forEach { observation ->
+                assertEquals(
+                    ExistingProjectGradleModelState.INCOMPLETE,
+                    classifyCachedGradleModel(listOf(observation)),
+                )
+            }
         assertEquals(
             ExistingProjectGradleModelState.INCOMPLETE,
             classifyCachedGradleModel(listOf(gradleObservation(), gradleObservation())),
@@ -143,33 +140,30 @@ class ExistingProjectAdmissionNegativeTest {
         assertEquals(ExistingProjectImportState.STALE, observeImportState(4, 5))
     }
 
-    private fun admit(
-        observation: RecordingProjectObservation,
-    ): ExistingProjectAdmission = AdmittedIdeProject.admitObserved(
-        opaqueProject(),
-        FIXTURE_ROOT,
-        FIXTURE_COMPATIBILITY,
-        FIXTURE_COMPATIBILITY_POLICY,
-        observation,
-        FIXTURE_EPOCH_SOURCE_FACTORY,
-    )
+    private fun admit(observation: RecordingProjectObservation): ExistingProjectAdmission =
+        AdmittedIdeProject.admitObserved(
+            opaqueProject(),
+            FIXTURE_ROOT,
+            FIXTURE_COMPATIBILITY,
+            FIXTURE_COMPATIBILITY_POLICY,
+            observation,
+            FIXTURE_EPOCH_SOURCE_FACTORY,
+        )
 
-    private fun validate(
-        observation: RecordingProjectObservation,
-    ): ExistingProjectValidation = ExistingProjectValidation.validateObserved(
-        opaqueProject(),
-        FIXTURE_ROOT,
-        FIXTURE_COMPATIBILITY,
-        FIXTURE_COMPATIBILITY_POLICY,
-        observation,
-    )
+    private fun validate(observation: RecordingProjectObservation): ExistingProjectValidation =
+        ExistingProjectValidation.validateObserved(
+            opaqueProject(),
+            FIXTURE_ROOT,
+            FIXTURE_COMPATIBILITY,
+            FIXTURE_COMPATIBILITY_POLICY,
+            observation,
+        )
 
-    private fun validatedFailure(
-        result: ExistingProjectValidation,
-    ): ExistingProjectAdmissionFailure = when (result) {
-        ExistingProjectValidation.Validated -> error("fixture Project unexpectedly validated")
-        is ExistingProjectValidation.Rejected -> result.failure
-    }
+    private fun validatedFailure(result: ExistingProjectValidation): ExistingProjectAdmissionFailure =
+        when (result) {
+            ExistingProjectValidation.Validated -> error("fixture Project unexpectedly validated")
+            is ExistingProjectValidation.Rejected -> result.failure
+        }
 
     private data class RejectionCase(
         val name: String,
@@ -178,97 +172,116 @@ class ExistingProjectAdmissionNegativeTest {
         val configure: RecordingProjectObservation.() -> Unit,
     )
 
-    private fun rejectionCases(): List<RejectionCase> = listOf(
-        rejection(
-            "disposed",
-            ExistingProjectAdmissionFailure.ProjectDisposed,
-            ExistingProjectObservationStage.DISPOSAL,
-        ) { disposed = true },
-        rejection(
-            "not open",
-            ExistingProjectAdmissionFailure.ProjectNotOpen,
-            ExistingProjectObservationStage.OPEN,
-        ) { open = false },
-        rejection(
-            "not initialized",
-            ExistingProjectAdmissionFailure.ProjectNotInitialized,
-            ExistingProjectObservationStage.INITIALIZATION,
-        ) { initialized = false },
-        rejection(
-            "root unavailable",
-            ExistingProjectAdmissionFailure.ProjectRootUnavailable,
-            ExistingProjectObservationStage.ROOT,
-        ) { projectRoot = ExistingProjectRootObservation.Unavailable },
-        rejection(
-            "wrong root",
-            ExistingProjectAdmissionFailure.ProjectRootMismatch,
-            ExistingProjectObservationStage.ROOT,
-        ) { projectRoot = ExistingProjectRootObservation.Mismatch },
-        rejection(
-            "available other root",
-            ExistingProjectAdmissionFailure.ProjectRootMismatch,
-            ExistingProjectObservationStage.ROOT,
-        ) { projectRoot = ExistingProjectRootObservation.Available(OTHER_FIXTURE_ROOT) },
-        rejection(
-            "model unavailable",
-            ExistingProjectAdmissionFailure.GradleModelUnavailable,
-            ExistingProjectObservationStage.GRADLE_MODEL,
-        ) { gradleModelState = ExistingProjectGradleModelState.UNAVAILABLE },
-        rejection(
-            "model incomplete",
-            ExistingProjectAdmissionFailure.GradleModelIncomplete,
-            ExistingProjectObservationStage.GRADLE_MODEL,
-        ) { gradleModelState = ExistingProjectGradleModelState.INCOMPLETE },
-        rejection(
-            "dumb mode",
-            ExistingProjectAdmissionFailure.DumbMode,
-            ExistingProjectObservationStage.INDEXING,
-        ) { indexingState = ExistingProjectIndexingState.DUMB },
-        rejection(
-            "K2 unavailable",
-            ExistingProjectAdmissionFailure.K2Unavailable,
-            ExistingProjectObservationStage.KOTLIN_MODE,
-        ) { kotlinModeState = ExistingProjectKotlinMode.K1 },
-        rejection(
-            "host identity unavailable",
-            ExistingProjectAdmissionFailure.HostIdentityUnavailable,
-            ExistingProjectObservationStage.HOST_IDENTITY,
-        ) { hostIdentity = ExistingProjectHostIdentityObservation.Unavailable },
-        rejection(
-            "host identity malformed",
-            ExistingProjectAdmissionFailure.HostIncompatible(
-                IdeHostCompatibilityFailure.Malformed(
-                    IdeHostCompatibilityField.IDE_BUILD,
-                    IdeHostCompatibilitySyntaxFailure.INVALID_FORMAT,
-                ),
-            ),
-            ExistingProjectObservationStage.HOST_IDENTITY,
-        ) {
-            hostIdentity = ExistingProjectHostIdentityObservation.Rejected(
-                IdeHostCompatibilityFailure.Malformed(
-                    IdeHostCompatibilityField.IDE_BUILD,
-                    IdeHostCompatibilitySyntaxFailure.INVALID_FORMAT,
-                ),
-            )
-        },
-        RejectionCase(
-            name = "incompatible host",
-            failure = ExistingProjectAdmissionFailure.HostIncompatible(
-                fixtureCompatibilityMismatch("262.9437.186"),
-            ),
-            observedStageCount = ExistingProjectObservationStage.entries.size,
-            configure = {
-                hostIdentity = fixtureHostIdentity(ideBuild = "262.9437.186")
+    private fun rejectionCases(): List<RejectionCase> =
+        listOf(
+            rejection(
+                "disposed",
+                ExistingProjectAdmissionFailure.ProjectDisposed,
+                ExistingProjectObservationStage.DISPOSAL,
+            ) {
+                disposed = true
             },
-        ),
-    )
+            rejection(
+                "not open",
+                ExistingProjectAdmissionFailure.ProjectNotOpen,
+                ExistingProjectObservationStage.OPEN,
+            ) {
+                open = false
+            },
+            rejection(
+                "not initialized",
+                ExistingProjectAdmissionFailure.ProjectNotInitialized,
+                ExistingProjectObservationStage.INITIALIZATION,
+            ) {
+                initialized = false
+            },
+            rejection(
+                "root unavailable",
+                ExistingProjectAdmissionFailure.ProjectRootUnavailable,
+                ExistingProjectObservationStage.ROOT,
+            ) {
+                projectRoot = ExistingProjectRootObservation.Unavailable
+            },
+            rejection(
+                "wrong root",
+                ExistingProjectAdmissionFailure.ProjectRootMismatch,
+                ExistingProjectObservationStage.ROOT,
+            ) {
+                projectRoot = ExistingProjectRootObservation.Mismatch
+            },
+            rejection(
+                "available other root",
+                ExistingProjectAdmissionFailure.ProjectRootMismatch,
+                ExistingProjectObservationStage.ROOT,
+            ) {
+                projectRoot = ExistingProjectRootObservation.Available(OTHER_FIXTURE_ROOT)
+            },
+            rejection(
+                "model unavailable",
+                ExistingProjectAdmissionFailure.GradleModelUnavailable,
+                ExistingProjectObservationStage.GRADLE_MODEL,
+            ) {
+                gradleModelState = ExistingProjectGradleModelState.UNAVAILABLE
+            },
+            rejection(
+                "model incomplete",
+                ExistingProjectAdmissionFailure.GradleModelIncomplete,
+                ExistingProjectObservationStage.GRADLE_MODEL,
+            ) {
+                gradleModelState = ExistingProjectGradleModelState.INCOMPLETE
+            },
+            rejection(
+                "dumb mode",
+                ExistingProjectAdmissionFailure.DumbMode,
+                ExistingProjectObservationStage.INDEXING,
+            ) {
+                indexingState = ExistingProjectIndexingState.DUMB
+            },
+            rejection(
+                "K2 unavailable",
+                ExistingProjectAdmissionFailure.K2Unavailable,
+                ExistingProjectObservationStage.KOTLIN_MODE,
+            ) {
+                kotlinModeState = ExistingProjectKotlinMode.K1
+            },
+            rejection(
+                "host identity unavailable",
+                ExistingProjectAdmissionFailure.HostIdentityUnavailable,
+                ExistingProjectObservationStage.HOST_IDENTITY,
+            ) {
+                hostIdentity = ExistingProjectHostIdentityObservation.Unavailable
+            },
+            rejection(
+                "host identity malformed",
+                ExistingProjectAdmissionFailure.HostIncompatible(
+                    IdeHostCompatibilityFailure.Malformed(
+                        IdeHostCompatibilityField.IDE_BUILD,
+                        IdeHostCompatibilitySyntaxFailure.INVALID_FORMAT,
+                    )
+                ),
+                ExistingProjectObservationStage.HOST_IDENTITY,
+            ) {
+                hostIdentity =
+                    ExistingProjectHostIdentityObservation.Rejected(
+                        IdeHostCompatibilityFailure.Malformed(
+                            IdeHostCompatibilityField.IDE_BUILD,
+                            IdeHostCompatibilitySyntaxFailure.INVALID_FORMAT,
+                        )
+                    )
+            },
+            RejectionCase(
+                name = "incompatible host",
+                failure =
+                    ExistingProjectAdmissionFailure.HostIncompatible(fixtureCompatibilityMismatch("262.9437.186")),
+                observedStageCount = ExistingProjectObservationStage.entries.size,
+                configure = {
+                    hostIdentity = fixtureHostIdentity(ideBuild = "262.9437.186")
+                },
+            ),
+        )
 
     private fun fixtureCompatibilityMismatch(ideBuild: String): IdeHostCompatibilityFailure =
-        when (
-            val admission = FIXTURE_COMPATIBILITY_POLICY.admit(
-                FIXTURE_COMPATIBILITY.copy(ideBuild = ideBuild),
-            )
-        ) {
+        when (val admission = FIXTURE_COMPATIBILITY_POLICY.admit(FIXTURE_COMPATIBILITY.copy(ideBuild = ideBuild))) {
             is IdeHostCompatibilityAdmission.Admitted -> error("fixture unexpectedly admitted")
             is IdeHostCompatibilityAdmission.Rejected -> admission.failure
         }
@@ -278,12 +291,13 @@ class ExistingProjectAdmissionNegativeTest {
         failure: ExistingProjectAdmissionFailure,
         stop: ExistingProjectObservationStage,
         configure: RecordingProjectObservation.() -> Unit,
-    ): RejectionCase = RejectionCase(
-        name = name,
-        failure = failure,
-        observedStageCount = stop.ordinal + 1,
-        configure = configure,
-    )
+    ): RejectionCase =
+        RejectionCase(
+            name = name,
+            failure = failure,
+            observedStageCount = stop.ordinal + 1,
+            configure = configure,
+        )
 
     private fun gradleObservation(
         path: ExistingProjectPathMatch = ExistingProjectPathMatch.EXACT,

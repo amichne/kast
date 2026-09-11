@@ -46,26 +46,28 @@ class IntellijSourceRegionReadTest {
         val text = "fun subject() = 1\n"
         val snapshot = snapshot(text)
         val candidate = CandidateSelector.restoreFile(snapshot.lease, snapshot.file)
-        val fileSelector = SourceSelector.issueRoot(
-            range(snapshot, 0, text.length),
-            SourceRegionKind.FILE,
-        )
-        val port = IntellijSourceReadPort(
-            IntellijSourceRegionAccess { _, request, _ ->
-                assertEquals(candidate, (request.anchor as SourceReadAnchor.Candidate).selector)
-                IntellijSourceRegionAccessResult.Selected(
-                    IntellijSelectedSourceCapture.create(
-                        snapshot,
-                        fileSelector,
-                        fileSelector,
-                        text,
-                    ).refined(),
-                )
-            },
-        )
+        val fileSelector =
+            SourceSelector.issueRoot(
+                range(snapshot, 0, text.length),
+                SourceRegionKind.FILE,
+            )
+        val port =
+            IntellijSourceReadPort(
+                IntellijSourceRegionAccess { _, request, _ ->
+                    assertEquals(candidate, (request.anchor as SourceReadAnchor.Candidate).selector)
+                    IntellijSourceRegionAccessResult.Selected(
+                        IntellijSelectedSourceCapture.create(
+                                snapshot,
+                                fileSelector,
+                                fileSelector,
+                                text,
+                            )
+                            .refined()
+                    )
+                }
+            )
 
-        val result = runSuspend { port.read(context(snapshot), request(candidate)) }
-            as SourceReadResult.Complete
+        val result = runSuspend { port.read(context(snapshot), request(candidate)) } as SourceReadResult.Complete
 
         assertEquals(SourceRegionKind.FILE, result.region.kind)
         assertEquals(text, (result.text as SourceTextProjection.Returned).text)
@@ -77,32 +79,36 @@ class IntellijSourceRegionReadTest {
         val snapshot = snapshot(text)
         val start = text.indexOf("subject")
         val end = start + "subject".length
-        val candidate = CandidateSelector.restoreRange(
-            snapshot.lease,
-            snapshot.file,
-            start,
-            end,
-        ).refined()
-        val anchorSelector = SourceSelector.issueRoot(
-            range(snapshot, start, end),
-            SourceRegionKind.ANCHOR,
-        )
-        val port = IntellijSourceReadPort(
-            IntellijSourceRegionAccess { _, request, _ ->
-                assertEquals(candidate, (request.anchor as SourceReadAnchor.Candidate).selector)
-                IntellijSourceRegionAccessResult.Selected(
-                    IntellijSelectedSourceCapture.create(
-                        snapshot,
-                        anchorSelector,
-                        anchorSelector,
-                        text,
-                    ).refined(),
+        val candidate =
+            CandidateSelector.restoreRange(
+                    snapshot.lease,
+                    snapshot.file,
+                    start,
+                    end,
                 )
-            },
-        )
+                .refined()
+        val anchorSelector =
+            SourceSelector.issueRoot(
+                range(snapshot, start, end),
+                SourceRegionKind.ANCHOR,
+            )
+        val port =
+            IntellijSourceReadPort(
+                IntellijSourceRegionAccess { _, request, _ ->
+                    assertEquals(candidate, (request.anchor as SourceReadAnchor.Candidate).selector)
+                    IntellijSourceRegionAccessResult.Selected(
+                        IntellijSelectedSourceCapture.create(
+                                snapshot,
+                                anchorSelector,
+                                anchorSelector,
+                                text,
+                            )
+                            .refined()
+                    )
+                }
+            )
 
-        val result = runSuspend { port.read(context(snapshot), request(candidate)) }
-            as SourceReadResult.Complete
+        val result = runSuspend { port.read(context(snapshot), request(candidate)) } as SourceReadResult.Complete
 
         assertEquals(SourceRegionKind.ANCHOR, result.region.kind)
         assertEquals("subject", (result.text as SourceTextProjection.Returned).text)
@@ -113,12 +119,9 @@ class IntellijSourceRegionReadTest {
         val text = "fun subject() = 1\n"
         val snapshot = snapshot(text)
         val selector = SourceSelector.issueRoot(range(snapshot, 0, text.length), SourceRegionKind.DECLARATION)
-        val port = port(
-            IntellijSelectedSourceCapture.create(snapshot, selector, selector, text).refined(),
-        )
+        val port = port(IntellijSelectedSourceCapture.create(snapshot, selector, selector, text).refined())
 
-        val result = runSuspend { port.read(context(snapshot), request(selector)) }
-            as SourceReadResult.Complete
+        val result = runSuspend { port.read(context(snapshot), request(selector)) } as SourceReadResult.Complete
         val returned = result.text as SourceTextProjection.Returned
 
         assertEquals(selector.fingerprint, result.region.selector.fingerprint)
@@ -132,25 +135,29 @@ class IntellijSourceRegionReadTest {
         val snapshot = snapshot(text)
         val bodyStart = text.indexOf('{')
         val bodyEnd = text.lastIndexOf('}') + 1
-        val body = SourceSelector.issueRoot(
-            range(snapshot, bodyStart, bodyEnd),
-            SourceRegionKind.CALLABLE_BODY,
-        )
+        val body =
+            SourceSelector.issueRoot(
+                range(snapshot, bodyStart, bodyEnd),
+                SourceRegionKind.CALLABLE_BODY,
+            )
         val targetStart = text.indexOf("target")
         val targetRange = range(snapshot, targetStart, targetStart + "target".length)
-        val target = SourceSelector.issueEntity(
-            body,
-            NonEmptySourceRange.create(targetRange).refined(),
-            SourceEntityKind.REFERENCE,
-            SourceEntityName.present("target").refined(),
-        ).refined()
+        val target =
+            SourceSelector.issueEntity(
+                    body,
+                    NonEmptySourceRange.create(targetRange).refined(),
+                    SourceEntityKind.REFERENCE,
+                    SourceEntityName.present("target").refined(),
+                )
+                .refined()
         val selected = IntellijSelectedSourceCapture.create(snapshot, target, body, text).refined()
         val port = port(selected)
-        val request = request(
-            target,
-            region = RegionSelection.Enclosing(EnclosingRegionKind.CALLABLE_BODY),
-            text = TextProjection.window(lineCount(1), lineCount(1)),
-        )
+        val request =
+            request(
+                target,
+                region = RegionSelection.Enclosing(EnclosingRegionKind.CALLABLE_BODY),
+                text = TextProjection.window(lineCount(1), lineCount(1)),
+            )
 
         val result = runSuspend { port.read(context(snapshot), request) } as SourceReadResult.Complete
         val returned = result.text as SourceTextProjection.Returned
@@ -160,17 +167,21 @@ class IntellijSourceRegionReadTest {
         assertTrue(returned.selector.range.startInclusive >= body.range.startInclusive)
         assertTrue(returned.selector.range.endExclusive <= body.range.endExclusive)
 
-        val roundTrip = port(
-            IntellijSelectedSourceCapture.create(
-                snapshot,
-                returned.selector,
-                returned.selector,
-                text,
-            ).refined(),
-        )
-        val reread = runSuspend {
-            roundTrip.read(context(snapshot), request(returned.selector))
-        } as SourceReadResult.Complete
+        val roundTrip =
+            port(
+                IntellijSelectedSourceCapture.create(
+                        snapshot,
+                        returned.selector,
+                        returned.selector,
+                        text,
+                    )
+                    .refined()
+            )
+        val reread =
+            runSuspend {
+                roundTrip.read(context(snapshot), request(returned.selector))
+            }
+                as SourceReadResult.Complete
         assertEquals(returned.text, (reread.text as SourceTextProjection.Returned).text)
     }
 
@@ -178,10 +189,12 @@ class IntellijSourceRegionReadTest {
     fun `empty file is a complete exact source region`() {
         val snapshot = snapshot("")
         val file = SourceSelector.issueRoot(range(snapshot, 0, 0), SourceRegionKind.FILE)
-        val result = runSuspend {
-            port(IntellijSelectedSourceCapture.create(snapshot, file, file, "").refined())
-                .read(context(snapshot), request(file))
-        } as SourceReadResult.Complete
+        val result =
+            runSuspend {
+                port(IntellijSelectedSourceCapture.create(snapshot, file, file, "").refined())
+                    .read(context(snapshot), request(file))
+            }
+                as SourceReadResult.Complete
 
         assertEquals("", (result.text as SourceTextProjection.Returned).text)
         assertEquals(0, result.snapshot.length.value)
@@ -192,18 +205,22 @@ class IntellijSourceRegionReadTest {
         val text = "expect fun subject()\n"
         val snapshot = snapshot(text)
         val selector = SourceSelector.issueRoot(range(snapshot, 0, text.length), SourceRegionKind.DECLARATION)
-        val port = IntellijSourceReadPort(
-            IntellijSourceRegionAccess { _, _, _ ->
-                IntellijSourceRegionAccessResult.Rejected(IntellijSourceReadRejection.REGION_ABSENT)
-            },
-        )
+        val port =
+            IntellijSourceReadPort(
+                IntellijSourceRegionAccess { _, _, _ ->
+                    IntellijSourceRegionAccessResult.Rejected(IntellijSourceReadRejection.REGION_ABSENT)
+                }
+            )
 
         assertEquals(
             SourceReadResult.Rejected(SourceReadRejection.REGION_ABSENT),
             runSuspend {
                 port.read(
                     context(snapshot),
-                    request(selector, region = RegionSelection.Body(io.github.amichne.kast.source.contract.BodyKind.CALLABLE)),
+                    request(
+                        selector,
+                        region = RegionSelection.Body(io.github.amichne.kast.source.contract.BodyKind.CALLABLE),
+                    ),
                 )
             },
         )
@@ -213,7 +230,7 @@ class IntellijSourceRegionReadTest {
         IntellijSourceReadPort(
             IntellijSourceRegionAccess { _, _, _ ->
                 IntellijSourceRegionAccessResult.Selected(capture)
-            },
+            }
         )
 
     private fun request(
@@ -232,22 +249,25 @@ class IntellijSourceRegionReadTest {
         anchor: SourceReadAnchor,
         region: RegionSelection,
         text: TextProjection,
-    ): SourceReadRequest = SourceReadRequest(
-        anchor,
-        region,
-        EntitySelection.None,
-        text,
-        SourceEntityLimit.parse(250).refined(),
-        SourceTextByteLimit.parse(65_536).refined(),
-        SourceReadPage.First,
-    )
+    ): SourceReadRequest =
+        SourceReadRequest(
+            anchor,
+            region,
+            EntitySelection.None,
+            text,
+            SourceEntityLimit.parse(250).refined(),
+            SourceTextByteLimit.parse(65_536).refined(),
+            SourceReadPage.First,
+        )
 
     private fun snapshot(text: String): SourceSnapshot {
         val root = CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined()
-        val path = CanonicalWorkspaceFilePath.fromCanonicalPath(
-            root,
-            Path.of("/workspace/src/Subject.kt"),
-        ).refined()
+        val path =
+            CanonicalWorkspaceFilePath.fromCanonicalPath(
+                    root,
+                    Path.of("/workspace/src/Subject.kt"),
+                )
+                .refined()
         return SourceSnapshot.create(
             SemanticReadLease(root, EvidenceGeneration.parse(42).refined()),
             WorkspaceStateIdentity.parse("workspace-state-v1|source").refined(),
@@ -257,32 +277,34 @@ class IntellijSourceRegionReadTest {
         )
     }
 
-    private fun context(snapshot: SourceSnapshot): SourceReadContext =
-        snapshot.context
+    private fun context(snapshot: SourceSnapshot): SourceReadContext = snapshot.context
 
     private fun range(snapshot: SourceSnapshot, start: Int, end: Int): SourceRange =
         SourceRange.create(
-            snapshot,
-            Utf16CodeUnitOffset.parse(start).refined(),
-            Utf16CodeUnitOffset.parse(end).refined(),
-        ).refined()
+                snapshot,
+                Utf16CodeUnitOffset.parse(start).refined(),
+                Utf16CodeUnitOffset.parse(end).refined(),
+            )
+            .refined()
 
     private fun lineCount(raw: Int): LineCount = LineCount.parse(raw).refined()
 
-    private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value = when (this) {
-        is Refinement.Refined -> value
-        is Refinement.Rejected -> error("Expected refined value, got $failure")
-    }
+    private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value =
+        when (this) {
+            is Refinement.Refined -> value
+            is Refinement.Rejected -> error("Expected refined value, got $failure")
+        }
 
     private fun <Value> runSuspend(block: suspend () -> Value): Value {
         var completion: Result<Value>? = null
         block.startCoroutine(
             object : Continuation<Value> {
                 override val context = EmptyCoroutineContext
+
                 override fun resumeWith(result: Result<Value>) {
                     completion = result
                 }
-            },
+            }
         )
         return checkNotNull(completion).getOrThrow()
     }

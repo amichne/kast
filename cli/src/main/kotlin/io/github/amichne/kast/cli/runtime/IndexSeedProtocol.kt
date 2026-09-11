@@ -1,8 +1,8 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.distribution.contract.SemanticRuntimeId
 import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironment
 import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironmentIdentity
-import io.github.amichne.kast.distribution.contract.SemanticRuntimeId
 import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
@@ -29,17 +29,23 @@ sealed interface IndexSeedFailure {
     ) : IndexSeedFailure
 
     data object Ambiguity : IndexSeedFailure
+
     data object MissingInstallation : IndexSeedFailure
+
     data object RunningSourceIde : IndexSeedFailure
+
     data object ConsentAbsent : IndexSeedFailure
+
     data object UnsupportedFilesystem : IndexSeedFailure
+
     data object SourceMutation : IndexSeedFailure
+
     data object CopyFailure : IndexSeedFailure
+
     data object ValidationFailure : IndexSeedFailure
 }
 
-@JvmInline
-private value class JetBrainsPlatformReleaseLine(val value: String)
+@JvmInline private value class JetBrainsPlatformReleaseLine(val value: String)
 
 private data class JetBrainsRuntimeBuild(
     val value: String,
@@ -48,59 +54,57 @@ private data class JetBrainsRuntimeBuild(
 
 internal sealed interface IdeRuntimePairCompatibility {
     data class Compatible(val observed: SupportedIdeRuntimePair) : IdeRuntimePairCompatibility
+
     data object Incompatible : IdeRuntimePairCompatibility
 }
 
 /** An exact IDEA and Kotlin build pair with independently refined platform release lines. */
-class SupportedIdeRuntimePair private constructor(
+class SupportedIdeRuntimePair
+private constructor(
     private val idea: JetBrainsRuntimeBuild,
     private val kotlinPlugin: JetBrainsRuntimeBuild,
 ) {
-    val ideaBuild: String get() = idea.value
-    val kotlinPluginBuild: String get() = kotlinPlugin.value
+    val ideaBuild: String
+        get() = idea.value
+
+    val kotlinPluginBuild: String
+        get() = kotlinPlugin.value
 
     override fun equals(other: Any?): Boolean =
-        other is SupportedIdeRuntimePair &&
-            ideaBuild == other.ideaBuild && kotlinPluginBuild == other.kotlinPluginBuild
+        other is SupportedIdeRuntimePair && ideaBuild == other.ideaBuild && kotlinPluginBuild == other.kotlinPluginBuild
 
     override fun hashCode(): Int = 31 * ideaBuild.hashCode() + kotlinPluginBuild.hashCode()
 
     /** Preserves the observed exact pair only when both release lines remain supported. */
-    internal fun compatibilityWith(
-        observed: SupportedIdeRuntimePair,
-    ): IdeRuntimePairCompatibility = if (
-        idea.releaseLine == observed.idea.releaseLine &&
-        kotlinPlugin.releaseLine == observed.kotlinPlugin.releaseLine
-    ) {
-        IdeRuntimePairCompatibility.Compatible(observed)
-    } else {
-        IdeRuntimePairCompatibility.Incompatible
-    }
+    internal fun compatibilityWith(observed: SupportedIdeRuntimePair): IdeRuntimePairCompatibility =
+        if (
+            idea.releaseLine == observed.idea.releaseLine &&
+                kotlinPlugin.releaseLine == observed.kotlinPlugin.releaseLine
+        ) {
+            IdeRuntimePairCompatibility.Compatible(observed)
+        } else {
+            IdeRuntimePairCompatibility.Incompatible
+        }
 
     companion object {
         /**
          * Proof transition: `String + String -> SupportedIdeRuntimePairAdmission`.
          *
-         * Establishes two exact, bounded build identities with explicit JetBrains platform
-         * release lines. Malformed metadata is closed [IndexSeedFailure.ValidationFailure]. Raw
-         * text may leave only at installed-runtime, cache-receipt, and product-report boundaries.
+         * Establishes two exact, bounded build identities with explicit JetBrains platform release lines. Malformed
+         * metadata is closed [IndexSeedFailure.ValidationFailure]. Raw text may leave only at installed-runtime,
+         * cache-receipt, and product-report boundaries.
          */
         fun admit(
             ideaBuild: String,
             kotlinPluginBuild: String,
         ): SupportedIdeRuntimePairAdmission {
-            val idea = IDEA_RUNTIME_BUILD.matchEntire(ideaBuild)?.runtimeBuild(ideaBuild)
-                ?: return SupportedIdeRuntimePairAdmission.Rejected(
-                    IndexSeedFailure.ValidationFailure,
-                )
-            val kotlin = KOTLIN_RUNTIME_BUILD.matchEntire(kotlinPluginBuild)
-                ?.runtimeBuild(kotlinPluginBuild)
-                ?: return SupportedIdeRuntimePairAdmission.Rejected(
-                    IndexSeedFailure.ValidationFailure,
-                )
-            return SupportedIdeRuntimePairAdmission.Admitted(
-                SupportedIdeRuntimePair(idea, kotlin),
-            )
+            val idea =
+                IDEA_RUNTIME_BUILD.matchEntire(ideaBuild)?.runtimeBuild(ideaBuild)
+                    ?: return SupportedIdeRuntimePairAdmission.Rejected(IndexSeedFailure.ValidationFailure)
+            val kotlin =
+                KOTLIN_RUNTIME_BUILD.matchEntire(kotlinPluginBuild)?.runtimeBuild(kotlinPluginBuild)
+                    ?: return SupportedIdeRuntimePairAdmission.Rejected(IndexSeedFailure.ValidationFailure)
+            return SupportedIdeRuntimePairAdmission.Admitted(SupportedIdeRuntimePair(idea, kotlin))
         }
 
         private fun MatchResult.runtimeBuild(raw: String): JetBrainsRuntimeBuild =
@@ -110,11 +114,13 @@ class SupportedIdeRuntimePair private constructor(
 
 sealed interface SupportedIdeRuntimePairAdmission {
     data class Admitted(val pair: SupportedIdeRuntimePair) : SupportedIdeRuntimePairAdmission
+
     data class Rejected(val failure: IndexSeedFailure) : SupportedIdeRuntimePairAdmission
 }
 
 /** Release-level cache selector that excludes valid caches produced by other Kast payloads. */
-class SidecarCacheReleaseIdentity private constructor(
+class SidecarCacheReleaseIdentity
+private constructor(
     private val supportedPair: SupportedIdeRuntimePair,
     private val kastPayloadDigest: String,
     private val semanticRuntimeId: SemanticRuntimeId,
@@ -130,45 +136,43 @@ class SidecarCacheReleaseIdentity private constructor(
     internal fun discoverCurrentRuntime(
         ideaHome: Path,
         resolver: SidecarIdeRuntimeResolver,
-    ): InstalledIdeRuntimeDiscoveryResult = resolver.resolve(
-        supportedPair,
-        kastPayloadDigest,
-        IdeHomeSelection.Explicit(ideaHome),
-    )
+    ): InstalledIdeRuntimeDiscoveryResult =
+        resolver.resolve(
+            supportedPair,
+            kastPayloadDigest,
+            IdeHomeSelection.Explicit(ideaHome),
+        )
 
     companion object {
         /**
          * Proof transition: `SupportedIdeRuntimePair + String + SemanticRuntimeId ->
          * SidecarCacheReleaseIdentityAdmission`.
          *
-         * The raw digest is accepted only at the release-manifest boundary. Once admitted, cache
-         * observation and quarantine cannot accidentally select a valid cache from an older Kast
-         * payload. Malformed release metadata remains closed as
-         * [IndexSeedFailure.ValidationFailure].
+         * The raw digest is accepted only at the release-manifest boundary. Once admitted, cache observation and
+         * quarantine cannot accidentally select a valid cache from an older Kast payload. Malformed release metadata
+         * remains closed as [IndexSeedFailure.ValidationFailure].
          */
         fun admit(
             supportedPair: SupportedIdeRuntimePair,
             kastPayloadDigest: String,
             semanticRuntimeId: SemanticRuntimeId,
-        ): SidecarCacheReleaseIdentityAdmission = if (
-            INDEX_SEED_DIGEST.matches(kastPayloadDigest)
-        ) {
-            SidecarCacheReleaseIdentityAdmission.Admitted(
-                SidecarCacheReleaseIdentity(
-                    supportedPair,
-                    kastPayloadDigest,
-                    semanticRuntimeId,
-                ),
-            )
-        } else {
-            SidecarCacheReleaseIdentityAdmission.Rejected(IndexSeedFailure.ValidationFailure)
-        }
+        ): SidecarCacheReleaseIdentityAdmission =
+            if (INDEX_SEED_DIGEST.matches(kastPayloadDigest)) {
+                SidecarCacheReleaseIdentityAdmission.Admitted(
+                    SidecarCacheReleaseIdentity(
+                        supportedPair,
+                        kastPayloadDigest,
+                        semanticRuntimeId,
+                    )
+                )
+            } else {
+                SidecarCacheReleaseIdentityAdmission.Rejected(IndexSeedFailure.ValidationFailure)
+            }
     }
 }
 
 sealed interface SidecarCacheReleaseIdentityAdmission {
-    data class Admitted(val identity: SidecarCacheReleaseIdentity) :
-        SidecarCacheReleaseIdentityAdmission
+    data class Admitted(val identity: SidecarCacheReleaseIdentity) : SidecarCacheReleaseIdentityAdmission
 
     data class Rejected(val failure: IndexSeedFailure) : SidecarCacheReleaseIdentityAdmission
 }
@@ -182,7 +186,8 @@ data class IdeRuntimeIdentityCandidate(
 )
 
 /** Exact installed platform, JBR, Kotlin plugin, and private Kast payload identity. */
-class IdeRuntimeIdentity private constructor(
+class IdeRuntimeIdentity
+private constructor(
     /** The exact observed pair after release-line compatibility was proven. */
     val supportedPair: SupportedIdeRuntimePair,
     val jbrIdentity: String,
@@ -195,57 +200,57 @@ class IdeRuntimeIdentity private constructor(
             kastPayloadDigest == other.kastPayloadDigest
 
     override fun hashCode(): Int =
-        31 * (31 * supportedPair.hashCode() + jbrIdentity.hashCode()) +
-            kastPayloadDigest.hashCode()
+        31 * (31 * supportedPair.hashCode() + jbrIdentity.hashCode()) + kastPayloadDigest.hashCode()
 
-    internal fun identityMaterial(): String = listOf(
-        supportedPair.ideaBuild,
-        supportedPair.kotlinPluginBuild,
-        jbrIdentity,
-        kastPayloadDigest,
-    ).joinToString("\n")
+    internal fun identityMaterial(): String =
+        listOf(
+                supportedPair.ideaBuild,
+                supportedPair.kotlinPluginBuild,
+                jbrIdentity,
+                kastPayloadDigest,
+            )
+            .joinToString("\n")
 
     companion object {
         /**
-         * Proof transition: `SupportedIdeRuntimePair + IdeRuntimeIdentityCandidate ->
-         * IdeRuntimeIdentityAdmission`.
+         * Proof transition: `SupportedIdeRuntimePair + IdeRuntimeIdentityCandidate -> IdeRuntimeIdentityAdmission`.
          *
-         * Establishes release-line compatibility while preserving the observed exact build pair,
-         * plus bounded JBR and SHA-256 private-payload identities.
-         * [IndexSeedFailure.Incompatibility] retains an unsupported pair;
-         * malformed remaining fields fail closed as [IndexSeedFailure.ValidationFailure]. Raw
-         * identity fields may leave only at installation discovery and process launch boundaries.
+         * Establishes release-line compatibility while preserving the observed exact build pair, plus bounded JBR and
+         * SHA-256 private-payload identities. [IndexSeedFailure.Incompatibility] retains an unsupported pair; malformed
+         * remaining fields fail closed as [IndexSeedFailure.ValidationFailure]. Raw identity fields may leave only at
+         * installation discovery and process launch boundaries.
          */
         fun admit(
             supported: SupportedIdeRuntimePair,
             candidate: IdeRuntimeIdentityCandidate,
         ): IdeRuntimeIdentityAdmission {
-            val observed = when (
-                val admission = SupportedIdeRuntimePair.admit(
-                    candidate.ideaBuild,
-                    candidate.kotlinPluginBuild,
-                )
-            ) {
-                is SupportedIdeRuntimePairAdmission.Admitted -> admission.pair
-                is SupportedIdeRuntimePairAdmission.Rejected ->
-                    return IdeRuntimeIdentityAdmission.Rejected(admission.failure)
-            }
-            val compatible = when (
-                val compatibility = supported.compatibilityWith(observed)
-            ) {
-                is IdeRuntimePairCompatibility.Compatible -> compatibility.observed
-                IdeRuntimePairCompatibility.Incompatible ->
-                    return IdeRuntimeIdentityAdmission.Rejected(
-                        IndexSeedFailure.Incompatibility(
-                            supported,
+            val observed =
+                when (
+                    val admission =
+                        SupportedIdeRuntimePair.admit(
                             candidate.ideaBuild,
                             candidate.kotlinPluginBuild,
-                        ),
-                    )
-            }
+                        )
+                ) {
+                    is SupportedIdeRuntimePairAdmission.Admitted -> admission.pair
+                    is SupportedIdeRuntimePairAdmission.Rejected ->
+                        return IdeRuntimeIdentityAdmission.Rejected(admission.failure)
+                }
+            val compatible =
+                when (val compatibility = supported.compatibilityWith(observed)) {
+                    is IdeRuntimePairCompatibility.Compatible -> compatibility.observed
+                    IdeRuntimePairCompatibility.Incompatible ->
+                        return IdeRuntimeIdentityAdmission.Rejected(
+                            IndexSeedFailure.Incompatibility(
+                                supported,
+                                candidate.ideaBuild,
+                                candidate.kotlinPluginBuild,
+                            )
+                        )
+                }
             if (
                 !INDEX_SEED_COMPATIBILITY_TOKEN.matches(candidate.jbrIdentity) ||
-                !INDEX_SEED_DIGEST.matches(candidate.kastPayloadDigest)
+                    !INDEX_SEED_DIGEST.matches(candidate.kastPayloadDigest)
             ) {
                 return IdeRuntimeIdentityAdmission.Rejected(IndexSeedFailure.ValidationFailure)
             }
@@ -254,7 +259,7 @@ class IdeRuntimeIdentity private constructor(
                     compatible,
                     candidate.jbrIdentity,
                     candidate.kastPayloadDigest,
-                ),
+                )
             )
         }
     }
@@ -262,11 +267,13 @@ class IdeRuntimeIdentity private constructor(
 
 sealed interface IdeRuntimeIdentityAdmission {
     data class Admitted(val identity: IdeRuntimeIdentity) : IdeRuntimeIdentityAdmission
+
     data class Rejected(val failure: IndexSeedFailure) : IdeRuntimeIdentityAdmission
 }
 
 /** Stable key for one canonical project and one exact sidecar runtime identity. */
-class KastCacheIdentity private constructor(
+class KastCacheIdentity
+private constructor(
     val canonicalProjectRoot: Path,
     val ideaHome: Path,
     val javaExecutable: Path,
@@ -278,28 +285,31 @@ class KastCacheIdentity private constructor(
     override fun equals(other: Any?): Boolean =
         other is KastCacheIdentity &&
             canonicalProjectRoot == other.canonicalProjectRoot &&
-            ideaHome == other.ideaHome && javaExecutable == other.javaExecutable &&
+            ideaHome == other.ideaHome &&
+            javaExecutable == other.javaExecutable &&
             semanticRuntimeId == other.semanticRuntimeId &&
-            runtimeIdentity == other.runtimeIdentity && key == other.key
+            runtimeIdentity == other.runtimeIdentity &&
+            key == other.key
 
-    override fun hashCode(): Int = listOf(
-        canonicalProjectRoot,
-        ideaHome,
-        javaExecutable,
-        semanticRuntimeId,
-        runtimeIdentity,
-        key,
-    ).hashCode()
+    override fun hashCode(): Int =
+        listOf(
+                canonicalProjectRoot,
+                ideaHome,
+                javaExecutable,
+                semanticRuntimeId,
+                runtimeIdentity,
+                key,
+            )
+            .hashCode()
 
     companion object {
         /**
-         * Proof transition: `Path + InstalledIdeRuntime + SemanticRuntimeId ->
-         * KastCacheIdentityDerivation`.
+         * Proof transition: `Path + InstalledIdeRuntime + SemanticRuntimeId -> KastCacheIdentityDerivation`.
          *
-         * Establishes an existing physical canonical project root and deterministic SHA-256 key
-         * over that root, physical IDEA/JBR launch authority, and every runtime identity field.
-         * Invalid paths remain closed [IndexSeedFailure.ValidationFailure]. The paths and key may
-         * leave only at private cache and process boundaries.
+         * Establishes an existing physical canonical project root and deterministic SHA-256 key over that root,
+         * physical IDEA/JBR launch authority, and every runtime identity field. Invalid paths remain closed
+         * [IndexSeedFailure.ValidationFailure]. The paths and key may leave only at private cache and process
+         * boundaries.
          */
         fun derive(
             projectRoot: Path,
@@ -307,26 +317,25 @@ class KastCacheIdentity private constructor(
             semanticRuntimeId: SemanticRuntimeId,
             importEnvironmentIdentity: GradleImportEnvironmentIdentity = GradleImportEnvironment.Empty.identity,
         ): KastCacheIdentityDerivation {
-            val canonicalProject = canonicalDirectory(projectRoot)
-                ?: return KastCacheIdentityDerivation.Rejected(
-                    IndexSeedFailure.ValidationFailure,
-                )
-            val canonicalIdeaHome = canonicalDirectory(runtime.home)
-                ?: return KastCacheIdentityDerivation.Rejected(
-                    IndexSeedFailure.ValidationFailure,
-                )
-            val canonicalJava = canonicalRegularFile(runtime.javaExecutable)
-                ?: return KastCacheIdentityDerivation.Rejected(
-                    IndexSeedFailure.ValidationFailure,
-                )
-            val material = listOf(
-                canonicalProject.toString(),
-                canonicalIdeaHome.toString(),
-                canonicalJava.toString(),
-                semanticRuntimeId.value,
-                runtime.identity.identityMaterial(),
-                importEnvironmentIdentity.value,
-            ).joinToString("\n")
+            val canonicalProject =
+                canonicalDirectory(projectRoot)
+                    ?: return KastCacheIdentityDerivation.Rejected(IndexSeedFailure.ValidationFailure)
+            val canonicalIdeaHome =
+                canonicalDirectory(runtime.home)
+                    ?: return KastCacheIdentityDerivation.Rejected(IndexSeedFailure.ValidationFailure)
+            val canonicalJava =
+                canonicalRegularFile(runtime.javaExecutable)
+                    ?: return KastCacheIdentityDerivation.Rejected(IndexSeedFailure.ValidationFailure)
+            val material =
+                listOf(
+                        canonicalProject.toString(),
+                        canonicalIdeaHome.toString(),
+                        canonicalJava.toString(),
+                        semanticRuntimeId.value,
+                        runtime.identity.identityMaterial(),
+                        importEnvironmentIdentity.value,
+                    )
+                    .joinToString("\n")
             val key = sha256(material.toByteArray(StandardCharsets.UTF_8))
             return KastCacheIdentityDerivation.Derived(
                 KastCacheIdentity(
@@ -337,7 +346,7 @@ class KastCacheIdentity private constructor(
                     runtime.identity,
                     importEnvironmentIdentity,
                     key,
-                ),
+                )
             )
         }
     }
@@ -345,15 +354,13 @@ class KastCacheIdentity private constructor(
 
 sealed interface KastCacheIdentityDerivation {
     data class Derived(val identity: KastCacheIdentity) : KastCacheIdentityDerivation
+
     data class Rejected(val failure: IndexSeedFailure) : KastCacheIdentityDerivation
 }
 
 /** Content identity for exactly the allowlisted files copied by one seed attempt. */
-class IndexContentManifest private constructor(
-    val entries: Map<String, String>,
-) {
-    override fun equals(other: Any?): Boolean =
-        other is IndexContentManifest && entries == other.entries
+class IndexContentManifest private constructor(val entries: Map<String, String>) {
+    override fun equals(other: Any?): Boolean = other is IndexContentManifest && entries == other.entries
 
     override fun hashCode(): Int = entries.hashCode()
 
@@ -361,49 +368,38 @@ class IndexContentManifest private constructor(
         /**
          * Proof transition: `Map<String, String> -> IndexContentManifestAdmission`.
          *
-         * Establishes a non-empty, sorted set of safe relative paths and canonical SHA-256 file
-         * identities. Unsafe, escaping, or malformed entries remain closed validation failure.
+         * Establishes a non-empty, sorted set of safe relative paths and canonical SHA-256 file identities. Unsafe,
+         * escaping, or malformed entries remain closed validation failure.
          */
         fun from(entries: Map<String, String>): IndexContentManifestAdmission {
             if (entries.isEmpty()) {
-                return IndexContentManifestAdmission.Rejected(
-                    IndexSeedFailure.ValidationFailure,
-                )
+                return IndexContentManifestAdmission.Rejected(IndexSeedFailure.ValidationFailure)
             }
             val admitted = sortedMapOf<String, String>()
             entries.forEach { (entry, digest) ->
-                if (
-                    !entry.isCanonicalIndexSeedManifestPath() ||
-                    !INDEX_SEED_DIGEST.matches(digest)
-                ) {
-                    return IndexContentManifestAdmission.Rejected(
-                        IndexSeedFailure.ValidationFailure,
-                    )
+                if (!entry.isCanonicalIndexSeedManifestPath() || !INDEX_SEED_DIGEST.matches(digest)) {
+                    return IndexContentManifestAdmission.Rejected(IndexSeedFailure.ValidationFailure)
                 }
                 admitted[entry] = digest
             }
-            return IndexContentManifestAdmission.Admitted(
-                IndexContentManifest(admitted.toMap()),
-            )
+            return IndexContentManifestAdmission.Admitted(IndexContentManifest(admitted.toMap()))
         }
     }
 }
 
 private fun String.isCanonicalIndexSeedManifestPath(): Boolean {
-    if (
-        isEmpty() || length > MAX_INDEX_SEED_ENTRY_CHARACTERS ||
-        any(Char::isISOControl)
-    ) {
+    if (isEmpty() || length > MAX_INDEX_SEED_ENTRY_CHARACTERS || any(Char::isISOControl)) {
         return false
     }
     val directory = endsWith('/')
     val relative = if (directory) dropLast(1) else this
     if (relative.isBlank()) return false
-    val path = try {
-        Path.of(relative)
-    } catch (_: InvalidPathException) {
-        return false
-    }
+    val path =
+        try {
+            Path.of(relative)
+        } catch (_: InvalidPathException) {
+            return false
+        }
     if (path.isAbsolute || path.normalize() != path) return false
     if (
         path.any { segment ->
@@ -419,26 +415,35 @@ private fun String.isCanonicalIndexSeedManifestPath(): Boolean {
 
 sealed interface IndexContentManifestAdmission {
     data class Admitted(val manifest: IndexContentManifest) : IndexContentManifestAdmission
+
     data class Rejected(val failure: IndexSeedFailure) : IndexContentManifestAdmission
 }
 
-enum class SourceIdeProcessState { STOPPED, RUNNING, UNKNOWN }
-enum class SourceIdeLockState { UNLOCKED, LOCKED, UNKNOWN }
+enum class SourceIdeProcessState {
+    STOPPED,
+    RUNNING,
+    UNKNOWN,
+}
+
+enum class SourceIdeLockState {
+    UNLOCKED,
+    LOCKED,
+    UNKNOWN,
+}
 
 /** Source system directory carrying proof that IDEA is stopped and its lock is absent. */
-class QuiescentIdeSystem private constructor(
+class QuiescentIdeSystem
+private constructor(
     val sourceSystem: Path,
     val runtimeIdentity: IdeRuntimeIdentity,
     val contentManifest: IndexContentManifest,
 ) {
     companion object {
         /**
-         * Proof transition: `Path + runtime + process + lock + manifest ->
-         * QuiescentIdeSystemAdmission`.
+         * Proof transition: `Path + runtime + process + lock + manifest -> QuiescentIdeSystemAdmission`.
          *
-         * Establishes one physical source directory with both stopped-process and unlocked-system
-         * proof. Running, locked, and unknown observations all fail closed as
-         * [IndexSeedFailure.RunningSourceIde].
+         * Establishes one physical source directory with both stopped-process and unlocked-system proof. Running,
+         * locked, and unknown observations all fail closed as [IndexSeedFailure.RunningSourceIde].
          */
         fun admit(
             sourceSystem: Path,
@@ -447,33 +452,37 @@ class QuiescentIdeSystem private constructor(
             lockState: SourceIdeLockState,
             contentManifest: IndexContentManifest,
         ): QuiescentIdeSystemAdmission {
-            if (
-                processState != SourceIdeProcessState.STOPPED ||
-                lockState != SourceIdeLockState.UNLOCKED
-            ) {
-                return QuiescentIdeSystemAdmission.Rejected(
-                    IndexSeedFailure.RunningSourceIde,
-                )
+            if (processState != SourceIdeProcessState.STOPPED || lockState != SourceIdeLockState.UNLOCKED) {
+                return QuiescentIdeSystemAdmission.Rejected(IndexSeedFailure.RunningSourceIde)
             }
-            val canonical = canonicalDirectory(sourceSystem)
-                ?: return QuiescentIdeSystemAdmission.Rejected(
-                    IndexSeedFailure.ValidationFailure,
-                )
-            return QuiescentIdeSystemAdmission.Admitted(
-                QuiescentIdeSystem(canonical, runtimeIdentity, contentManifest),
-            )
+            val canonical =
+                canonicalDirectory(sourceSystem)
+                    ?: return QuiescentIdeSystemAdmission.Rejected(IndexSeedFailure.ValidationFailure)
+            return QuiescentIdeSystemAdmission.Admitted(QuiescentIdeSystem(canonical, runtimeIdentity, contentManifest))
         }
     }
 }
 
 sealed interface QuiescentIdeSystemAdmission {
     data class Admitted(val system: QuiescentIdeSystem) : QuiescentIdeSystemAdmission
+
     data class Rejected(val failure: IndexSeedFailure) : QuiescentIdeSystemAdmission
 }
 
-enum class IndexSeedConsent { GRANTED, ABSENT }
-enum class IndexSeedConsentRequest { PREGRANTED, INTERACTIVE }
-enum class IndexSeedFilesystem { APFS, UNSUPPORTED }
+enum class IndexSeedConsent {
+    GRANTED,
+    ABSENT,
+}
+
+enum class IndexSeedConsentRequest {
+    PREGRANTED,
+    INTERACTIVE,
+}
+
+enum class IndexSeedFilesystem {
+    APFS,
+    UNSUPPORTED,
+}
 
 /** Version-specific copy categories disclosed before a seed starts. */
 enum class IndexSeedCategory {
@@ -483,10 +492,11 @@ enum class IndexSeedCategory {
     CLASSPATH_METADATA,
 }
 
-internal val GLOBAL_INDEX_SEED_CATEGORIES = setOf(
-    IndexSeedCategory.GLOBAL_VFS,
-    IndexSeedCategory.GLOBAL_INDEXES,
-)
+internal val GLOBAL_INDEX_SEED_CATEGORIES =
+    setOf(
+        IndexSeedCategory.GLOBAL_VFS,
+        IndexSeedCategory.GLOBAL_INDEXES,
+    )
 
 /** Raw project-specific compatibility evidence from a seed receipt or current import. */
 data class SeedProjectIdentityCandidate(
@@ -500,7 +510,8 @@ data class SeedProjectIdentityCandidate(
 )
 
 /** Exact identity required before project-model or classpath seed state can be copied. */
-class SeedProjectIdentity private constructor(
+class SeedProjectIdentity
+private constructor(
     val canonicalProjectRoot: Path,
     val gradleDistribution: String,
     val selectedGradleJvmFingerprint: String,
@@ -519,45 +530,50 @@ class SeedProjectIdentity private constructor(
             classpathFingerprint == other.classpathFingerprint &&
             sourceGeneration == other.sourceGeneration
 
-    override fun hashCode(): Int = listOf(
-        canonicalProjectRoot,
-        gradleDistribution,
-        selectedGradleJvmFingerprint,
-        repositoryGradleInputsFingerprint,
-        importedProjectJvmModelFingerprint,
-        classpathFingerprint,
-        sourceGeneration,
-    ).hashCode()
-
-    internal fun fingerprint(): String = sha256(
+    override fun hashCode(): Int =
         listOf(
-            canonicalProjectRoot.toString(),
-            gradleDistribution,
-            selectedGradleJvmFingerprint,
-            repositoryGradleInputsFingerprint,
-            importedProjectJvmModelFingerprint,
-            classpathFingerprint,
-            sourceGeneration,
-        ).joinToString("\n").toByteArray(StandardCharsets.UTF_8),
-    )
+                canonicalProjectRoot,
+                gradleDistribution,
+                selectedGradleJvmFingerprint,
+                repositoryGradleInputsFingerprint,
+                importedProjectJvmModelFingerprint,
+                classpathFingerprint,
+                sourceGeneration,
+            )
+            .hashCode()
+
+    internal fun fingerprint(): String =
+        sha256(
+            listOf(
+                    canonicalProjectRoot.toString(),
+                    gradleDistribution,
+                    selectedGradleJvmFingerprint,
+                    repositoryGradleInputsFingerprint,
+                    importedProjectJvmModelFingerprint,
+                    classpathFingerprint,
+                    sourceGeneration,
+                )
+                .joinToString("\n")
+                .toByteArray(StandardCharsets.UTF_8)
+        )
 
     companion object {
         /** Refines every project-specific seed compatibility input as one inseparable identity. */
         fun admit(candidate: SeedProjectIdentityCandidate): SeedProjectIdentityAdmission {
-            val projectRoot = canonicalDirectory(candidate.projectRoot)
-                ?: return SeedProjectIdentityAdmission.Rejected(
-                    IndexSeedFailure.ValidationFailure,
-                )
+            val projectRoot =
+                canonicalDirectory(candidate.projectRoot)
+                    ?: return SeedProjectIdentityAdmission.Rejected(IndexSeedFailure.ValidationFailure)
             if (!INDEX_SEED_GRADLE_DISTRIBUTION.matches(candidate.gradleDistribution)) {
                 return SeedProjectIdentityAdmission.Rejected(IndexSeedFailure.ValidationFailure)
             }
-            val fingerprints = listOf(
-                candidate.selectedGradleJvmFingerprint,
-                candidate.repositoryGradleInputsFingerprint,
-                candidate.importedProjectJvmModelFingerprint,
-                candidate.classpathFingerprint,
-                candidate.sourceGeneration,
-            )
+            val fingerprints =
+                listOf(
+                    candidate.selectedGradleJvmFingerprint,
+                    candidate.repositoryGradleInputsFingerprint,
+                    candidate.importedProjectJvmModelFingerprint,
+                    candidate.classpathFingerprint,
+                    candidate.sourceGeneration,
+                )
             if (fingerprints.any { fingerprint -> !INDEX_SEED_DIGEST.matches(fingerprint) }) {
                 return SeedProjectIdentityAdmission.Rejected(IndexSeedFailure.ValidationFailure)
             }
@@ -570,7 +586,7 @@ class SeedProjectIdentity private constructor(
                     candidate.importedProjectJvmModelFingerprint,
                     candidate.classpathFingerprint,
                     candidate.sourceGeneration,
-                ),
+                )
             )
         }
     }
@@ -578,6 +594,7 @@ class SeedProjectIdentity private constructor(
 
 sealed interface SeedProjectIdentityAdmission {
     data class Admitted(val identity: SeedProjectIdentity) : SeedProjectIdentityAdmission
+
     data class Rejected(val failure: IndexSeedFailure) : SeedProjectIdentityAdmission
 }
 
@@ -618,17 +635,19 @@ sealed interface SeedProjectProofState {
         fun classify(
             evidence: SeedProjectEvidence,
             requiredProjectRoot: Path,
-        ): SeedProjectProofState = when (evidence) {
-            SeedProjectEvidence.Absent -> GlobalOnly
-            is SeedProjectEvidence.Comparison -> if (
-                evidence.expected == evidence.observed &&
-                evidence.expected.canonicalProjectRoot == requiredProjectRoot
-            ) {
-                Verified(evidence.expected)
-            } else {
-                Retired(evidence.expected, evidence.observed)
+        ): SeedProjectProofState =
+            when (evidence) {
+                SeedProjectEvidence.Absent -> GlobalOnly
+                is SeedProjectEvidence.Comparison ->
+                    if (
+                        evidence.expected == evidence.observed &&
+                            evidence.expected.canonicalProjectRoot == requiredProjectRoot
+                    ) {
+                        Verified(evidence.expected)
+                    } else {
+                        Retired(evidence.expected, evidence.observed)
+                    }
             }
-        }
     }
 }
 
@@ -642,7 +661,8 @@ value class IndexSeedEstimatedBytes private constructor(val value: Long) {
 }
 
 /** Fixed-category disclosure issued before an interactive copy is authorized. */
-class IndexSeedDisclosure private constructor(
+class IndexSeedDisclosure
+private constructor(
     val categories: Set<IndexSeedCategory>,
     val estimatedBytes: IndexSeedEstimatedBytes,
 ) {
@@ -659,12 +679,12 @@ fun interface IndexSeedConsentProvider {
 }
 
 data object RejectingIndexSeedConsentProvider : IndexSeedConsentProvider {
-    override fun request(disclosure: IndexSeedDisclosure): IndexSeedConsent =
-        IndexSeedConsent.ABSENT
+    override fun request(disclosure: IndexSeedDisclosure): IndexSeedConsent = IndexSeedConsent.ABSENT
 }
 
 /** Fully admitted authority to clone one quiescent source into one private cache. */
-class IndexSeedPlan private constructor(
+class IndexSeedPlan
+private constructor(
     val cacheIdentity: KastCacheIdentity,
     val source: QuiescentIdeSystem,
     val categories: Set<IndexSeedCategory>,
@@ -674,8 +694,8 @@ class IndexSeedPlan private constructor(
         /**
          * Proof transition: `cache + quiescent source + consent + filesystem -> IndexSeedPlanning`.
          *
-         * Establishes exact runtime compatibility, explicit global-index copy consent, APFS clone
-         * capability, and the fixed version-specific category set before any copy effect occurs.
+         * Establishes exact runtime compatibility, explicit global-index copy consent, APFS clone capability, and the
+         * fixed version-specific category set before any copy effect occurs.
          */
         fun create(
             cacheIdentity: KastCacheIdentity,
@@ -698,7 +718,7 @@ class IndexSeedPlan private constructor(
                         expected,
                         observed.ideaBuild,
                         observed.kotlinPluginBuild,
-                    ),
+                    )
                 )
             }
             return IndexSeedPlanning.Planned(
@@ -707,7 +727,7 @@ class IndexSeedPlan private constructor(
                     source,
                     projectProofState.categories,
                     projectProofState,
-                ),
+                )
             )
         }
     }
@@ -715,11 +735,13 @@ class IndexSeedPlan private constructor(
 
 sealed interface IndexSeedPlanning {
     data class Planned(val plan: IndexSeedPlan) : IndexSeedPlanning
+
     data class Rejected(val failure: IndexSeedFailure) : IndexSeedPlanning
 }
 
 /** Receipt published only after source stability and cloned-content equality are proven. */
-class IndexSeedReceipt private constructor(
+class IndexSeedReceipt
+private constructor(
     val cacheIdentity: KastCacheIdentity,
     val runtimeIdentity: IdeRuntimeIdentity,
     val sourceSystem: Path,
@@ -729,12 +751,11 @@ class IndexSeedReceipt private constructor(
 ) {
     companion object {
         /**
-         * Proof transition: `plan + post-copy source manifest + clone manifest ->
-         * IndexSeedCompletion`.
+         * Proof transition: `plan + post-copy source manifest + clone manifest -> IndexSeedCompletion`.
          *
-         * Establishes that the source did not mutate and the unpublished clone exactly matches the
-         * planned allowlisted content. Source drift and clone mismatch remain distinct closed
-         * failures; only the completed variant may cross the atomic-publication boundary.
+         * Establishes that the source did not mutate and the unpublished clone exactly matches the planned allowlisted
+         * content. Source drift and clone mismatch remain distinct closed failures; only the completed variant may
+         * cross the atomic-publication boundary.
          */
         fun complete(
             plan: IndexSeedPlan,
@@ -755,7 +776,7 @@ class IndexSeedReceipt private constructor(
                     plan.categories,
                     plan.projectProofState,
                     clonedContent,
-                ),
+                )
             )
         }
     }
@@ -763,6 +784,7 @@ class IndexSeedReceipt private constructor(
 
 sealed interface IndexSeedCompletion {
     data class Completed(val receipt: IndexSeedReceipt) : IndexSeedCompletion
+
     data class Rejected(val failure: IndexSeedFailure) : IndexSeedCompletion
 }
 
@@ -792,6 +814,5 @@ private fun canonicalRegularFile(path: Path): Path? {
     }
 }
 
-private fun sha256(bytes: ByteArray): String = "sha256:" + HexFormat.of().formatHex(
-    MessageDigest.getInstance("SHA-256").digest(bytes),
-)
+private fun sha256(bytes: ByteArray): String =
+    "sha256:" + HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes))

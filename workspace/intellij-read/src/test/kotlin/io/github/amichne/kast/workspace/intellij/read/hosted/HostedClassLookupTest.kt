@@ -12,7 +12,11 @@ class HostedClassLookupTest {
         assertEquals(FIXTURE_ROOT, lookup.root)
         assertEquals("Refinement", lookup.name.value)
         for (name in listOf("", " ", "com.example.Refinement", "Refin*", "A\nB", "1Class", "a".repeat(513))) {
-            assertEquals(Refinement.Rejected(HostedQueryFailure.INVALID_SELECTION), HostedClassLookup.parse(FIXTURE_ROOT, name), name)
+            assertEquals(
+                Refinement.Rejected(HostedQueryFailure.INVALID_SELECTION),
+                HostedClassLookup.parse(FIXTURE_ROOT, name),
+                name,
+            )
         }
     }
 

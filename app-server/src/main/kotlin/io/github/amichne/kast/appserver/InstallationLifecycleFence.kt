@@ -8,17 +8,26 @@ import java.nio.file.Path
 import java.nio.file.attribute.BasicFileAttributes
 
 /** A transition marker survives retirement and state replacement. Unknown observation fails closed. */
-internal enum class InstallationLifecycleStartAdmission { AVAILABLE, TRANSITION_IN_PROGRESS, OBSERVATION_REJECTED }
+internal enum class InstallationLifecycleStartAdmission {
+    AVAILABLE,
+    TRANSITION_IN_PROGRESS,
+    OBSERVATION_REJECTED,
+}
 
 internal object InstallationLifecycleFence {
-    fun observe(installationRoot: Path): InstallationLifecycleStartAdmission = try {
-        Files.readAttributes(installationRoot.resolve(".lifecycle-transition.json"), BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
-        InstallationLifecycleStartAdmission.TRANSITION_IN_PROGRESS
-    } catch (_: NoSuchFileException) {
-        InstallationLifecycleStartAdmission.AVAILABLE
-    } catch (_: IOException) {
-        InstallationLifecycleStartAdmission.OBSERVATION_REJECTED
-    } catch (_: SecurityException) {
-        InstallationLifecycleStartAdmission.OBSERVATION_REJECTED
-    }
+    fun observe(installationRoot: Path): InstallationLifecycleStartAdmission =
+        try {
+            Files.readAttributes(
+                installationRoot.resolve(".lifecycle-transition.json"),
+                BasicFileAttributes::class.java,
+                LinkOption.NOFOLLOW_LINKS,
+            )
+            InstallationLifecycleStartAdmission.TRANSITION_IN_PROGRESS
+        } catch (_: NoSuchFileException) {
+            InstallationLifecycleStartAdmission.AVAILABLE
+        } catch (_: IOException) {
+            InstallationLifecycleStartAdmission.OBSERVATION_REJECTED
+        } catch (_: SecurityException) {
+            InstallationLifecycleStartAdmission.OBSERVATION_REJECTED
+        }
 }

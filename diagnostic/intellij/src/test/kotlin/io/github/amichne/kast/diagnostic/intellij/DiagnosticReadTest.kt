@@ -10,11 +10,11 @@ import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
-import java.nio.file.Path
 
 class DiagnosticReadTest {
     @Test
@@ -29,15 +29,17 @@ class DiagnosticReadTest {
     fun `collector completes only after every exact scope file is analyzed`() {
         val scope = scope("Subject.kt", "Related.kt")
         val collector = IntellijDiagnosticCollector(scope)
-        val fact = DiagnosticFact.fromBoundary(
-            scope,
-            scope.files.first(),
-            4,
-            11,
-            DiagnosticSeverity.ERROR,
-            "UNRESOLVED_REFERENCE",
-            "Unresolved reference",
-        ).refined()
+        val fact =
+            DiagnosticFact.fromBoundary(
+                    scope,
+                    scope.files.first(),
+                    4,
+                    11,
+                    DiagnosticSeverity.ERROR,
+                    "UNRESOLVED_REFERENCE",
+                    "Unresolved reference",
+                )
+                .refined()
 
         assertEquals(IntellijDiagnosticCollectionAdmission.ACCEPTED, collector.accept(fact))
         scope.files.forEach { file ->
@@ -80,22 +82,26 @@ class DiagnosticReadTest {
         assertFalse(
             IntellijDiagnosticCompilerAdapter::class.java.declaredMethods.any { method ->
                 forbidden.containsMatchIn(method.name)
-            },
+            }
         )
     }
 
-    private fun scope(vararg files: String): DiagnosticScope = DiagnosticScope.fromCanonicalPaths(
-        lease(19L),
-        files.map { name -> Path.of("/workspace/src/$name") },
-    ).refined()
+    private fun scope(vararg files: String): DiagnosticScope =
+        DiagnosticScope.fromCanonicalPaths(
+                lease(19L),
+                files.map { name -> Path.of("/workspace/src/$name") },
+            )
+            .refined()
 
-    private fun lease(generation: Long): SemanticReadLease = SemanticReadLease(
-        CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined(),
-        EvidenceGeneration.parse(generation).refined(),
-    )
+    private fun lease(generation: Long): SemanticReadLease =
+        SemanticReadLease(
+            CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined(),
+            EvidenceGeneration.parse(generation).refined(),
+        )
 
-    private fun <Strong, Failure> Refinement<Strong, Failure>.refined(): Strong = when (this) {
-        is Refinement.Refined -> value
-        is Refinement.Rejected -> error(failure.toString())
-    }
+    private fun <Strong, Failure> Refinement<Strong, Failure>.refined(): Strong =
+        when (this) {
+            is Refinement.Refined -> value
+            is Refinement.Rejected -> error(failure.toString())
+        }
 }

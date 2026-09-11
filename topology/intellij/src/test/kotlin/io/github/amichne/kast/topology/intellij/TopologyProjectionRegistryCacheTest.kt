@@ -1,14 +1,13 @@
 package io.github.amichne.kast.topology.intellij
 
 import io.github.amichne.kast.kernel.EvidenceGeneration
-import io.github.amichne.kast.topology.contract.TopologyBindingFailure
-import io.github.amichne.kast.kernel.KastTopologyBindingFailure
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
+import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.topology.contract.CompleteTopologyFile
+import io.github.amichne.kast.topology.contract.TopologyBindingFailure
 import io.github.amichne.kast.topology.contract.TopologyCacheDisposition
 import io.github.amichne.kast.topology.contract.TopologyCandidateSet
 import io.github.amichne.kast.topology.contract.TopologyFileExtraction
@@ -28,18 +27,17 @@ import io.github.amichne.kast.workspace.contract.WorkspaceEvidenceKind
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceContentHash
 import io.github.amichne.kast.workspace.contract.WorkspaceSourcePath
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
+import java.nio.file.Path
+import java.security.MessageDigest
+import java.util.concurrent.atomic.AtomicInteger
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Path
-import java.security.MessageDigest
-import java.util.concurrent.atomic.AtomicInteger
 
 class TopologyProjectionRegistryCacheTest {
-    @TempDir
-    lateinit var tempDir: Path
+    @TempDir lateinit var tempDir: Path
 
     @Test
     fun `one exact candidate generation builds one detached projection registry`() {
@@ -48,14 +46,16 @@ class TopologyProjectionRegistryCacheTest {
         val cache = TopologyProjectionRegistryCache()
         val builds = AtomicInteger()
 
-        val first = cache.resolve(key) {
-            builds.incrementAndGet()
-            TopologyProjectionRegistryResolution.Ready(TopologyProjectionRegistry.empty(key))
-        }
-        val second = cache.resolve(key) {
-            builds.incrementAndGet()
-            TopologyProjectionRegistryResolution.Ready(TopologyProjectionRegistry.empty(key))
-        }
+        val first =
+            cache.resolve(key) {
+                builds.incrementAndGet()
+                TopologyProjectionRegistryResolution.Ready(TopologyProjectionRegistry.empty(key))
+            }
+        val second =
+            cache.resolve(key) {
+                builds.incrementAndGet()
+                TopologyProjectionRegistryResolution.Ready(TopologyProjectionRegistry.empty(key))
+            }
 
         assertSame(first.ready(), second.ready())
         assertEquals(1, builds.get())
@@ -70,16 +70,15 @@ class TopologyProjectionRegistryCacheTest {
 
         cache.resolve(original) {
             builds.incrementAndGet()
-            TopologyProjectionRegistryResolution.Ready(
-                TopologyProjectionRegistry.empty(original),
-            )
+            TopologyProjectionRegistryResolution.Ready(TopologyProjectionRegistry.empty(original))
         }
-        val changedRegistry = cache.resolve(changed) {
-            builds.incrementAndGet()
-            TopologyProjectionRegistryResolution.Ready(
-                TopologyProjectionRegistry.empty(changed),
-            )
-        }.ready()
+        val changedRegistry =
+            cache
+                .resolve(changed) {
+                    builds.incrementAndGet()
+                    TopologyProjectionRegistryResolution.Ready(TopologyProjectionRegistry.empty(changed))
+                }
+                .ready()
 
         assertEquals(changed, changedRegistry.key)
         assertEquals(2, builds.get())
@@ -100,25 +99,28 @@ class TopologyProjectionRegistryCacheTest {
         val file = candidates.files.single()
         val cache = TopologyReadEpochCache()
         val builds = AtomicInteger()
-        val mismatch = TopologyFileExtraction.IdentityMismatch(
-            mismatchEvidence(file),
-            TopologyCacheDisposition.COMPUTED,
-        )
-
-        val first = cache.resolve(key, file) {
-            builds.incrementAndGet()
-            mismatch
-        }
-        val second = cache.resolve(
-            TopologyProjectionRegistryKey.from(candidates("a".repeat(64))),
-            file,
-        ) {
-            builds.incrementAndGet()
-            TopologyFileExtraction.Failed(
-                file,
-                TopologyFileExtractionFailure.REFERENCE_TARGET_REJECTED,
+        val mismatch =
+            TopologyFileExtraction.IdentityMismatch(
+                mismatchEvidence(file),
+                TopologyCacheDisposition.COMPUTED,
             )
-        }
+
+        val first =
+            cache.resolve(key, file) {
+                builds.incrementAndGet()
+                mismatch
+            }
+        val second =
+            cache.resolve(
+                TopologyProjectionRegistryKey.from(candidates("a".repeat(64))),
+                file,
+            ) {
+                builds.incrementAndGet()
+                TopologyFileExtraction.Failed(
+                    file,
+                    TopologyFileExtractionFailure.REFERENCE_TARGET_REJECTED,
+                )
+            }
 
         val computed = assertInstanceOf(TopologyReadEpochResolution.Computed::class.java, first)
         val reused = assertInstanceOf(TopologyReadEpochResolution.Reused::class.java, second)
@@ -136,15 +138,16 @@ class TopologyProjectionRegistryCacheTest {
         val cache = TopologyReadEpochCache()
         val builds = AtomicInteger()
 
-        val resolutions = List(2) {
-            cache.resolve(key, file) {
-                builds.incrementAndGet()
-                TopologyFileExtraction.Failed(
-                    file,
-                    TopologyFileExtractionFailure.VFS_CONTENT_MISMATCH,
-                )
+        val resolutions =
+            List(2) {
+                cache.resolve(key, file) {
+                    builds.incrementAndGet()
+                    TopologyFileExtraction.Failed(
+                        file,
+                        TopologyFileExtractionFailure.VFS_CONTENT_MISMATCH,
+                    )
+                }
             }
-        }
 
         assertEquals(
             listOf(
@@ -158,20 +161,23 @@ class TopologyProjectionRegistryCacheTest {
 
     @Test
     fun `document readiness recovery is observed within the same content generation`() {
-        for (failure in listOf(
-            TopologyFileExtractionFailure.DOCUMENT_DIRTY,
-            TopologyFileExtractionFailure.PSI_DOCUMENT_UNCOMMITTED,
-        )) {
+        for (failure in
+            listOf(
+                TopologyFileExtractionFailure.DOCUMENT_DIRTY,
+                TopologyFileExtractionFailure.PSI_DOCUMENT_UNCOMMITTED,
+            )) {
             val candidates = candidates("a".repeat(64))
             val key = TopologyProjectionRegistryKey.from(candidates)
             val file = candidates.files.single()
             val cache = TopologyReadEpochCache()
             cache.resolve(key, file) { TopologyFileExtraction.Failed(file, failure) }
-            val ready = TopologyFileExtraction.Complete(
-                CompleteTopologyFile.admit(file, emptyList(), emptyList()).refined(),
-            )
-            val recovered = assertInstanceOf(TopologyReadEpochResolution.Computed::class.java,
-                cache.resolve(key, file) { ready })
+            val ready =
+                TopologyFileExtraction.Complete(CompleteTopologyFile.admit(file, emptyList(), emptyList()).refined())
+            val recovered =
+                assertInstanceOf(
+                    TopologyReadEpochResolution.Computed::class.java,
+                    cache.resolve(key, file) { ready },
+                )
             assertSame(ready, recovered.extraction)
         }
     }
@@ -185,10 +191,11 @@ class TopologyProjectionRegistryCacheTest {
             Refinement.Refined::class.java,
             LiveTopologySourceContent.validate(file, original),
         )
-        val moved = assertInstanceOf(
-            Refinement.Rejected::class.java,
-            LiveTopologySourceContent.validate(file, "fun changed() = Unit".toByteArray()),
-        )
+        val moved =
+            assertInstanceOf(
+                Refinement.Rejected::class.java,
+                LiveTopologySourceContent.validate(file, "fun changed() = Unit".toByteArray()),
+            )
 
         assertEquals(TopologySourceContentFailure.CONTENT_MOVED, moved.failure)
     }
@@ -201,10 +208,11 @@ class TopologyProjectionRegistryCacheTest {
         val first = symbol(file, "function|sample.first|-|||0")
         val second = symbol(file, "function|sample.second|-|||0")
 
-        val rejected = assertInstanceOf(
-            Refinement.Rejected::class.java,
-            TopologyProjectionRegistry.from(key, listOf(first, second)),
-        )
+        val rejected =
+            assertInstanceOf(
+                Refinement.Rejected::class.java,
+                TopologyProjectionRegistry.from(key, listOf(first, second)),
+            )
 
         assertEquals(
             TopologyProjectionRegistryFailure.DUPLICATE_DECLARATION_LOCATION,
@@ -213,76 +221,91 @@ class TopologyProjectionRegistryCacheTest {
     }
 
     private fun candidates(contentHash: String): TopologyCandidateSet {
-        val root = SourceRoot.admit(
-            GradleSourceRootEvidence(
-                ideaModuleName = "topology.main",
-                workspaceRelativeBuildRoot = ".",
-                gradleProjectPath = ":topology",
-                sourceSetName = "main",
-                workspaceRelativeSourceRoot = "src/main/kotlin",
-                provenance = SourceRootProvenance.Authored,
-            ),
-        ).refined()
+        val root =
+            SourceRoot.admit(
+                    GradleSourceRootEvidence(
+                        ideaModuleName = "topology.main",
+                        workspaceRelativeBuildRoot = ".",
+                        gradleProjectPath = ":topology",
+                        sourceSetName = "main",
+                        workspaceRelativeSourceRoot = "src/main/kotlin",
+                        provenance = SourceRootProvenance.Authored,
+                    )
+                )
+                .refined()
         val workspace = workspace(root)
-        val file = TopologySourceFile.admit(
-            workspace,
-            root,
-            WorkspaceSourcePath.parse("src/main/kotlin/Example.kt").refined(),
-            WorkspaceSourceContentHash.parse(contentHash).refined(),
-        ).refined()
+        val file =
+            TopologySourceFile.admit(
+                    workspace,
+                    root,
+                    WorkspaceSourcePath.parse("src/main/kotlin/Example.kt").refined(),
+                    WorkspaceSourceContentHash.parse(contentHash).refined(),
+                )
+                .refined()
         return TopologyCandidateSet.admit(workspace, listOf(file)).refined()
     }
 
-    private fun sha256(content: ByteArray): String = MessageDigest.getInstance("SHA-256")
-        .digest(content)
-        .joinToString("") { byte ->
+    private fun sha256(content: ByteArray): String =
+        MessageDigest.getInstance("SHA-256").digest(content).joinToString("") { byte ->
             (byte.toInt() and 0xff).toString(16).padStart(2, '0')
         }
 
     private fun symbol(file: TopologySourceFile, compilerIdentity: String): TopologySymbol {
         val absolute = Path.of(file.workspace.lease.workspaceRoot.value).resolve(file.path.value)
-        val fileIdentity = SymbolDiscoveryFileIdentity.fromBoundary(
-            file.workspace.lease.workspaceRoot,
-            absolute,
-            absolute.toUri().toString(),
-        ).refined()
-        val evidence = CompilerGroundedSymbolEvidence.fromBoundary(
-            fileIdentity,
-            0,
-            7,
-            "example",
-            "sample.example",
-            CompilerSymbolKind.FUNCTION,
-            CanonicalCompilerSignature.function(
-                rawQualifiedIdentity = "sample.example",
-                rawReceiverType = null,
-                rawContextReceiverTypes = emptyList(),
-                rawValueParameterTypes = listOf(compilerIdentity),
-                rawTypeParameterCount = 0,
-            ).refined(),
-        ).refined()
+        val fileIdentity =
+            SymbolDiscoveryFileIdentity.fromBoundary(
+                    file.workspace.lease.workspaceRoot,
+                    absolute,
+                    absolute.toUri().toString(),
+                )
+                .refined()
+        val evidence =
+            CompilerGroundedSymbolEvidence.fromBoundary(
+                    fileIdentity,
+                    0,
+                    7,
+                    "example",
+                    "sample.example",
+                    CompilerSymbolKind.FUNCTION,
+                    CanonicalCompilerSignature.function(
+                            rawQualifiedIdentity = "sample.example",
+                            rawReceiverType = null,
+                            rawContextReceiverTypes = emptyList(),
+                            rawValueParameterTypes = listOf(compilerIdentity),
+                            rawTypeParameterCount = 0,
+                        )
+                        .refined(),
+                )
+                .refined()
         return TopologySymbol.admit(file, evidence).refined()
     }
 
     private fun mismatchEvidence(file: TopologySourceFile): TopologyIdentityMismatchEvidence {
         val evidence = symbol(file, "kotlin.String").evidence
         return TopologyIdentityMismatchEvidence(
-            TopologyIdentityStage.REFERENCE_TARGET, file, evidence.range,
-            file, evidence.range, TopologyBindingFailure.DECLARATION_MISMATCH,
+            TopologyIdentityStage.REFERENCE_TARGET,
+            file,
+            evidence.range,
+            file,
+            evidence.range,
+            TopologyBindingFailure.DECLARATION_MISMATCH,
         )
     }
 
     private fun workspace(root: SourceRoot): PublishedWorkspace {
         val canonical = CanonicalWorkspaceRoot.fromCanonicalPath(tempDir.toRealPath()).refined()
-        val candidate = WorkspaceCandidate(
-            canonical,
-            WorkspaceStateIdentity.parse("projection-registry-state").refined(),
-        )
-        val reconciled = ReconciledWorkspace.admit(
-            candidate,
-            WorkspaceEvidenceKind.entries.toSet(),
-            listOf(root),
-        ).refined()
+        val candidate =
+            WorkspaceCandidate(
+                canonical,
+                WorkspaceStateIdentity.parse("projection-registry-state").refined(),
+            )
+        val reconciled =
+            ReconciledWorkspace.admit(
+                    candidate,
+                    WorkspaceEvidenceKind.entries.toSet(),
+                    listOf(root),
+                )
+                .refined()
         return PublishedWorkspace.publish(reconciled, EvidenceGeneration.parse(1).refined())
     }
 
@@ -292,8 +315,9 @@ class TopologyProjectionRegistryCacheTest {
             is TopologyProjectionRegistryResolution.Rejected -> error(failure.toString())
         }
 
-    private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value = when (this) {
-        is Refinement.Refined -> value
-        is Refinement.Rejected -> error(failure.toString())
-    }
+    private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value =
+        when (this) {
+            is Refinement.Refined -> value
+            is Refinement.Rejected -> error(failure.toString())
+        }
 }

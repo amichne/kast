@@ -1,12 +1,12 @@
 package io.github.amichne.kast.workspace.intellij
 
+import java.nio.file.Files
+import java.nio.file.Path
 import org.gradle.util.GradleVersion
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Files
-import java.nio.file.Path
 
 class RepositoryDaemonJvmCriteriaTest {
     @Test
@@ -14,10 +14,20 @@ class RepositoryDaemonJvmCriteriaTest {
         val root = temporary.toRealPath()
         Files.createDirectories(root.resolve("gradle"))
         Files.writeString(root.resolve("shared.properties"), "toolchainVersion=21\n")
-        val link = Files.createSymbolicLink(root.resolve("gradle/gradle-daemon-jvm.properties"), Path.of("../shared.properties"))
-        assertInstanceOf(RepositoryDaemonJvmCriteria.Required::class.java, repositoryDaemonJvmCriteria(root, org.gradle.util.GradleVersion.version("9.4.1")))
+        val link =
+            Files.createSymbolicLink(
+                root.resolve("gradle/gradle-daemon-jvm.properties"),
+                Path.of("../shared.properties"),
+            )
+        assertInstanceOf(
+            RepositoryDaemonJvmCriteria.Required::class.java,
+            repositoryDaemonJvmCriteria(root, org.gradle.util.GradleVersion.version("9.4.1")),
+        )
         Files.delete(root.resolve("shared.properties"))
-        assertEquals(RepositoryDaemonJvmCriteria.Rejected, repositoryDaemonJvmCriteria(root, org.gradle.util.GradleVersion.version("9.4.1")))
+        assertEquals(
+            RepositoryDaemonJvmCriteria.Rejected,
+            repositoryDaemonJvmCriteria(root, org.gradle.util.GradleVersion.version("9.4.1")),
+        )
         org.junit.jupiter.api.Assertions.assertTrue(Files.isSymbolicLink(link))
     }
 
@@ -29,13 +39,15 @@ class RepositoryDaemonJvmCriteriaTest {
             """
             toolchainUrl.MAC_OS.AARCH64=https\://example.invalid/jdk
             toolchainVersion=17
-            """.trimIndent(),
+            """
+                .trimIndent(),
         )
 
-        val criteria = assertInstanceOf(
-            RepositoryDaemonJvmCriteria.Required::class.java,
-            repositoryDaemonJvmCriteria(root, GradleVersion.version("8.8")),
-        )
+        val criteria =
+            assertInstanceOf(
+                RepositoryDaemonJvmCriteria.Required::class.java,
+                repositoryDaemonJvmCriteria(root, GradleVersion.version("8.8")),
+            )
 
         assertEquals(JavaFeature.of(17), criteria.feature)
     }

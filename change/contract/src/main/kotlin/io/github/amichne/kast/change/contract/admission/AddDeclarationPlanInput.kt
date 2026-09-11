@@ -11,32 +11,25 @@ enum class AddDeclarationSourceTextFailure {
 
 /** Canonical detached Kotlin declaration source admitted before pure planning. */
 @JvmInline
-value class AddDeclarationSourceText private constructor(
-    val value: String,
-) {
+value class AddDeclarationSourceText private constructor(val value: String) {
     companion object {
         /**
-         * Proof transition: `String -> Refinement<AddDeclarationSourceText,
-         * AddDeclarationSourceTextFailure>`.
+         * Proof transition: `String -> Refinement<AddDeclarationSourceText, AddDeclarationSourceTextFailure>`.
          *
-         * Establishes non-blank LF-normalized declaration source without a terminal line break or
-         * unsupported control characters. [AddDeclarationSourceTextFailure] is the closed expected
-         * failure. Raw source text may enter only at the public change-intent boundary and may be
-         * extracted only by a later admitted mutation boundary.
+         * Establishes non-blank LF-normalized declaration source without a terminal line break or unsupported control
+         * characters. [AddDeclarationSourceTextFailure] is the closed expected failure. Raw source text may enter only
+         * at the public change-intent boundary and may be extracted only by a later admitted mutation boundary.
          */
-        fun parse(
-            raw: String,
-        ): Refinement<AddDeclarationSourceText, AddDeclarationSourceTextFailure> = when {
-            raw.isBlank() -> Refinement.Rejected(AddDeclarationSourceTextFailure.BLANK)
-            '\r' in raw ->
-                Refinement.Rejected(AddDeclarationSourceTextFailure.NON_CANONICAL_LINE_ENDING)
-            raw.endsWith('\n') ->
-                Refinement.Rejected(AddDeclarationSourceTextFailure.TERMINAL_LINE_BREAK)
-            raw.any { character ->
-                character.isISOControl() && character != '\n' && character != '\t'
-            } -> Refinement.Rejected(AddDeclarationSourceTextFailure.CONTROL_CHARACTER)
-            else -> Refinement.Refined(AddDeclarationSourceText(raw))
-        }
+        fun parse(raw: String): Refinement<AddDeclarationSourceText, AddDeclarationSourceTextFailure> =
+            when {
+                raw.isBlank() -> Refinement.Rejected(AddDeclarationSourceTextFailure.BLANK)
+                '\r' in raw -> Refinement.Rejected(AddDeclarationSourceTextFailure.NON_CANONICAL_LINE_ENDING)
+                raw.endsWith('\n') -> Refinement.Rejected(AddDeclarationSourceTextFailure.TERMINAL_LINE_BREAK)
+                raw.any { character ->
+                    character.isISOControl() && character != '\n' && character != '\t'
+                } -> Refinement.Rejected(AddDeclarationSourceTextFailure.CONTROL_CHARACTER)
+                else -> Refinement.Refined(AddDeclarationSourceText(raw))
+            }
     }
 }
 

@@ -9,7 +9,6 @@ import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import org.jetbrains.kotlin.idea.references.KtReference
 import org.jetbrains.kotlin.psi.KtCallElement
-import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtTypeReference
 
 internal enum class IntellijExactReferenceShape {
@@ -25,43 +24,40 @@ internal enum class IntellijDefinitionRelation {
 }
 
 internal sealed interface IntellijRelationPlanKind {
-    data class ExactReferences(
-        val shape: IntellijExactReferenceShape,
-    ) : IntellijRelationPlanKind
+    data class ExactReferences(val shape: IntellijExactReferenceShape) : IntellijRelationPlanKind
 
     data object ClassConstructionCallers : IntellijRelationPlanKind
+
     data object Callees : IntellijRelationPlanKind
 
-    data class Definitions(
-        val relation: IntellijDefinitionRelation,
-    ) : IntellijRelationPlanKind
+    data class Definitions(val relation: IntellijDefinitionRelation) : IntellijRelationPlanKind
 
     companion object {
         /**
          * Proof transition: `(RelationMeaning, CompilerSymbolKind) -> IntellijRelationPlanKind`.
          *
-         * Establishes one request-local enumeration and K2-confirmation policy. A classlike caller
-         * request gains constructor-ownership confirmation; every other reference request retains
-         * exact-symbol confirmation. Raw meaning and kind extraction ends at relation planning.
+         * Establishes one request-local enumeration and K2-confirmation policy. A classlike caller request gains
+         * constructor-ownership confirmation; every other reference request retains exact-symbol confirmation. Raw
+         * meaning and kind extraction ends at relation planning.
          */
         fun derive(
             meaning: RelationMeaning,
             subjectKind: CompilerSymbolKind,
-        ): IntellijRelationPlanKind = when (meaning) {
-            RelationMeaning.References -> ExactReferences(IntellijExactReferenceShape.ANY)
-            RelationMeaning.Callers -> if (subjectKind == CompilerSymbolKind.CLASSLIKE) {
-                ClassConstructionCallers
-            } else {
-                ExactReferences(IntellijExactReferenceShape.CALL)
+        ): IntellijRelationPlanKind =
+            when (meaning) {
+                RelationMeaning.References -> ExactReferences(IntellijExactReferenceShape.ANY)
+                RelationMeaning.Callers ->
+                    if (subjectKind == CompilerSymbolKind.CLASSLIKE) {
+                        ClassConstructionCallers
+                    } else {
+                        ExactReferences(IntellijExactReferenceShape.CALL)
+                    }
+                RelationMeaning.TypeUses -> ExactReferences(IntellijExactReferenceShape.TYPE)
+                RelationMeaning.Callees -> Callees
+                RelationMeaning.Implementations -> Definitions(IntellijDefinitionRelation.IMPLEMENTATIONS)
+                RelationMeaning.Inheritors -> Definitions(IntellijDefinitionRelation.INHERITORS)
+                RelationMeaning.Overrides -> Definitions(IntellijDefinitionRelation.OVERRIDES)
             }
-            RelationMeaning.TypeUses -> ExactReferences(IntellijExactReferenceShape.TYPE)
-            RelationMeaning.Callees -> Callees
-            RelationMeaning.Implementations -> Definitions(
-                IntellijDefinitionRelation.IMPLEMENTATIONS,
-            )
-            RelationMeaning.Inheritors -> Definitions(IntellijDefinitionRelation.INHERITORS)
-            RelationMeaning.Overrides -> Definitions(IntellijDefinitionRelation.OVERRIDES)
-        }
     }
 }
 
@@ -74,9 +70,7 @@ internal sealed interface IntellijRelationPlan {
         val confirmation: IntellijReferenceConfirmationPlan,
     ) : IntellijRelationPlan
 
-    data class Callees(
-        override val subject: PsiNamedElement,
-    ) : IntellijRelationPlan
+    data class Callees(override val subject: PsiNamedElement) : IntellijRelationPlan
 
     data class Definitions(
         override val subject: PsiNamedElement,
@@ -85,9 +79,7 @@ internal sealed interface IntellijRelationPlan {
 }
 
 internal sealed interface IntellijReferenceConfirmationPlan {
-    data class ExactSymbol(
-        val shape: IntellijExactReferenceShape,
-    ) : IntellijReferenceConfirmationPlan
+    data class ExactSymbol(val shape: IntellijExactReferenceShape) : IntellijReferenceConfirmationPlan
 
     data object ClassConstruction : IntellijReferenceConfirmationPlan
 }
@@ -103,86 +95,87 @@ internal sealed interface IntellijRelationReferenceAdmission {
             val endpoint: RelationEndpoint,
         ) : Admitted
 
-        class ClassConstruction private constructor(
+        class ClassConstruction
+        private constructor(
             override val reference: KtReference,
             val selectedClass: PsiNamedElement,
         ) : Admitted {
             companion object {
                 /**
-                 * Proof transition: `(KtReference, KtNamedDeclaration) ->
-                 * IntellijRelationReferenceAdmission`.
+                 * Proof transition: `(KtReference, KtNamedDeclaration) -> IntellijRelationReferenceAdmission`.
                  *
-                 * An admitted result establishes that the reference occupies the callee range of
-                 * a Kotlin call. Skipped is the closed non-call shape. Raw PSI remains inside the
-                 * request-local relation adapter and may be read only by K2 confirmation.
+                 * An admitted result establishes that the reference occupies the callee range of a Kotlin call. Skipped
+                 * is the closed non-call shape. Raw PSI remains inside the request-local relation adapter and may be
+                 * read only by K2 confirmation.
                  */
                 fun admit(
                     reference: KtReference,
                     selectedClass: PsiNamedElement,
-                ): IntellijRelationReferenceAdmission = if (reference.element.isCallCallee()) {
-                    ClassConstruction(reference, selectedClass)
-                } else {
-                    Skipped
-                }
+                ): IntellijRelationReferenceAdmission =
+                    if (reference.element.isCallCallee()) {
+                        ClassConstruction(reference, selectedClass)
+                    } else {
+                        Skipped
+                    }
             }
         }
     }
 }
 
 /**
- * Proof transition: `(IntellijRelationSubjectLookup.Found, RelationRequest) ->
- * IntellijRelationPlan`.
+ * Proof transition: `(IntellijRelationSubjectLookup.Found, RelationRequest) -> IntellijRelationPlan`.
  *
- * Establishes a closed request-local plan only after exact PSI and K2 subject revalidation. The
- * plan preserves the selected declaration and exact endpoint through enumeration and confirmation.
- * Live PSI may be extracted only by the request-local search and K2 projection.
+ * Establishes a closed request-local plan only after exact PSI and K2 subject revalidation. The plan preserves the
+ * selected declaration and exact endpoint through enumeration and confirmation. Live PSI may be extracted only by the
+ * request-local search and K2 projection.
  */
 internal fun IntellijRelationSubjectLookup.Found.plan(request: RelationRequest): IntellijRelationPlan =
     when (val kind = IntellijRelationPlanKind.derive(request.meaning, evidence.kind)) {
-        is IntellijRelationPlanKind.ExactReferences -> IntellijRelationPlan.References(
-            declaration,
-            request.subject,
-            IntellijReferenceConfirmationPlan.ExactSymbol(kind.shape),
-        )
-        IntellijRelationPlanKind.ClassConstructionCallers -> IntellijRelationPlan.References(
-            declaration,
-            request.subject,
-            IntellijReferenceConfirmationPlan.ClassConstruction,
-        )
+        is IntellijRelationPlanKind.ExactReferences ->
+            IntellijRelationPlan.References(
+                declaration,
+                request.subject,
+                IntellijReferenceConfirmationPlan.ExactSymbol(kind.shape),
+            )
+        IntellijRelationPlanKind.ClassConstructionCallers ->
+            IntellijRelationPlan.References(
+                declaration,
+                request.subject,
+                IntellijReferenceConfirmationPlan.ClassConstruction,
+            )
         IntellijRelationPlanKind.Callees -> IntellijRelationPlan.Callees(declaration)
-        is IntellijRelationPlanKind.Definitions -> IntellijRelationPlan.Definitions(
-            declaration,
-            kind.relation,
-        )
+        is IntellijRelationPlanKind.Definitions ->
+            IntellijRelationPlan.Definitions(
+                declaration,
+                kind.relation,
+            )
     }
 
 /**
- * Proof transition: `(IntellijRelationPlan.References, KtReference) ->
- * IntellijRelationReferenceAdmission`.
+ * Proof transition: `(IntellijRelationPlan.References, KtReference) -> IntellijRelationReferenceAdmission`.
  *
- * Admitted variants carry the exact proof required by their K2 confirmation policy. Skipped is a
- * closed nonmatching PSI shape. Raw PSI remains inside the request-local relation adapter.
+ * Admitted variants carry the exact proof required by their K2 confirmation policy. Skipped is a closed nonmatching PSI
+ * shape. Raw PSI remains inside the request-local relation adapter.
  */
-internal fun IntellijRelationPlan.References.admit(
-    reference: KtReference,
-): IntellijRelationReferenceAdmission = when (val plan = confirmation) {
-    is IntellijReferenceConfirmationPlan.ExactSymbol -> if (
-        plan.shape.admits(reference.element)
-    ) {
-        IntellijRelationReferenceAdmission.Admitted.ExactSymbol(reference, endpoint)
-    } else {
-        IntellijRelationReferenceAdmission.Skipped
+internal fun IntellijRelationPlan.References.admit(reference: KtReference): IntellijRelationReferenceAdmission =
+    when (val plan = confirmation) {
+        is IntellijReferenceConfirmationPlan.ExactSymbol ->
+            if (plan.shape.admits(reference.element)) {
+                IntellijRelationReferenceAdmission.Admitted.ExactSymbol(reference, endpoint)
+            } else {
+                IntellijRelationReferenceAdmission.Skipped
+            }
+        IntellijReferenceConfirmationPlan.ClassConstruction ->
+            IntellijRelationReferenceAdmission.Admitted.ClassConstruction.admit(reference, subject)
     }
-    IntellijReferenceConfirmationPlan.ClassConstruction ->
-        IntellijRelationReferenceAdmission.Admitted.ClassConstruction.admit(reference, subject)
-}
 
-private fun IntellijExactReferenceShape.admits(element: PsiElement): Boolean = when (this) {
-    IntellijExactReferenceShape.ANY -> true
-    IntellijExactReferenceShape.CALL -> element.isCallCallee()
-    IntellijExactReferenceShape.TYPE ->
-        PsiTreeUtil.getParentOfType(element, KtTypeReference::class.java, false) != null
-}
+private fun IntellijExactReferenceShape.admits(element: PsiElement): Boolean =
+    when (this) {
+        IntellijExactReferenceShape.ANY -> true
+        IntellijExactReferenceShape.CALL -> element.isCallCallee()
+        IntellijExactReferenceShape.TYPE ->
+            PsiTreeUtil.getParentOfType(element, KtTypeReference::class.java, false) != null
+    }
 
 private fun PsiElement.isCallCallee(): Boolean {
     val call = PsiTreeUtil.getParentOfType(this, KtCallElement::class.java, false) ?: return false
@@ -193,20 +186,26 @@ private fun PsiElement.isCallCallee(): Boolean {
 internal fun IntellijRelationPlan.References.admitsJava(reference: com.intellij.psi.PsiReference): Boolean =
     when (val plan = confirmation) {
         IntellijReferenceConfirmationPlan.ClassConstruction -> reference.element.isJavaCallCallee()
-        is IntellijReferenceConfirmationPlan.ExactSymbol -> when (plan.shape) {
-            IntellijExactReferenceShape.ANY -> true
-            IntellijExactReferenceShape.CALL -> reference.element.isJavaCallCallee()
-            IntellijExactReferenceShape.TYPE ->
-                PsiTreeUtil.getParentOfType(reference.element, com.intellij.psi.PsiTypeElement::class.java, false) != null
-        }
+        is IntellijReferenceConfirmationPlan.ExactSymbol ->
+            when (plan.shape) {
+                IntellijExactReferenceShape.ANY -> true
+                IntellijExactReferenceShape.CALL -> reference.element.isJavaCallCallee()
+                IntellijExactReferenceShape.TYPE ->
+                    PsiTreeUtil.getParentOfType(
+                        reference.element,
+                        com.intellij.psi.PsiTypeElement::class.java,
+                        false,
+                    ) != null
+            }
     }
 
 private fun PsiElement.isJavaCallCallee(): Boolean {
     val call = PsiTreeUtil.getParentOfType(this, com.intellij.psi.PsiCallExpression::class.java, false) ?: return false
-    val callee = when (call) {
-        is com.intellij.psi.PsiNewExpression -> call.classReference
-        is com.intellij.psi.PsiMethodCallExpression -> call.methodExpression
-        else -> null
-    }
+    val callee =
+        when (call) {
+            is com.intellij.psi.PsiNewExpression -> call.classReference
+            is com.intellij.psi.PsiMethodCallExpression -> call.methodExpression
+            else -> null
+        }
     return callee?.textRange?.contains(textRange) == true
 }

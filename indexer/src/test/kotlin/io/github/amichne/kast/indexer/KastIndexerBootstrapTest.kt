@@ -28,7 +28,7 @@ class KastIndexerBootstrapTest {
                     "--workspace-root=/workspace",
                     "--socket-path=/runtime/kast.sock",
                     "--runtime-id=sha256:${"a".repeat(64)}",
-                ),
+                )
             ),
         )
     }

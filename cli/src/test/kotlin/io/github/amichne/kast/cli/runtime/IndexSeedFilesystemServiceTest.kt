@@ -2,20 +2,18 @@ package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.distribution.contract.SemanticRuntimeId
 import io.github.amichne.kast.kernel.Refinement
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.StandardCopyOption
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Files
-import java.nio.file.Path
-import java.nio.file.StandardCopyOption
 
 class IndexSeedFilesystemServiceTest {
     @Test
-    fun `stale source pid marker is not a live lock`(
-        @TempDir temporary: Path,
-    ) {
+    fun `stale source pid marker is not a live lock`(@TempDir temporary: Path) {
         val source = Files.createDirectory(temporary.resolve("source-system")).toRealPath()
         Files.writeString(source.resolve(".pid"), Long.MAX_VALUE.toString())
 
@@ -29,9 +27,7 @@ class IndexSeedFilesystemServiceTest {
     }
 
     @Test
-    fun `live source pid and source port remain locked`(
-        @TempDir temporary: Path,
-    ) {
+    fun `live source pid and source port remain locked`(@TempDir temporary: Path) {
         val liveSource = Files.createDirectory(temporary.resolve("live-source")).toRealPath()
         Files.writeString(liveSource.resolve(".pid"), ProcessHandle.current().pid().toString())
         assertEquals(
@@ -42,8 +38,7 @@ class IndexSeedFilesystemServiceTest {
             FilesystemSourceIdeQuiescenceProbe.observe(liveSource),
         )
 
-        val portLockedSource = Files.createDirectory(temporary.resolve("port-locked-source"))
-            .toRealPath()
+        val portLockedSource = Files.createDirectory(temporary.resolve("port-locked-source")).toRealPath()
         Files.writeString(portLockedSource.resolve(".pid"), Long.MAX_VALUE.toString())
         Files.writeString(portLockedSource.resolve(".port"), "6942")
         assertEquals(
@@ -56,9 +51,7 @@ class IndexSeedFilesystemServiceTest {
     }
 
     @Test
-    fun `escaped IntelliJ project state identifies the exact project cache`(
-        @TempDir temporary: Path,
-    ) {
+    fun `escaped IntelliJ project state identifies the exact project cache`(@TempDir temporary: Path) {
         val fixture = seedFixture(temporary)
         val escapedProjectRoot = fixture.projectRoot.toString().replace("&", "&amp;")
         Files.writeString(
@@ -73,41 +66,40 @@ class IndexSeedFilesystemServiceTest {
                 }
               }</component>
             </project>
-            """.trimIndent(),
+            """
+                .trimIndent(),
         )
 
         val projectIdentity = fixture.projectIdentity()
-        val publication = service(cloner = CopyingTestCloner)
-            .seed(
-                fixture.request(
-                    projectEvidence = SeedProjectEvidence.Comparison(
-                        projectIdentity,
-                        projectIdentity,
-                    ),
-                ),
-            )
-            .seeded()
+        val publication =
+            service(cloner = CopyingTestCloner)
+                .seed(
+                    fixture.request(
+                        projectEvidence =
+                            SeedProjectEvidence.Comparison(
+                                projectIdentity,
+                                projectIdentity,
+                            )
+                    )
+                )
+                .seeded()
 
-        assertTrue(
-            Files.exists(
-                publication.systemDirectory.resolve("projects/target.0123abcd/cache-state.xml"),
-            ),
-        )
+        assertTrue(Files.exists(publication.systemDirectory.resolve("projects/target.0123abcd/cache-state.xml")))
     }
 
     @Test
-    fun `external seed publishes only the global allowlist without project proof`(
-        @TempDir temporary: Path,
-    ) {
+    fun `external seed publishes only the global allowlist without project proof`(@TempDir temporary: Path) {
         val fixture = seedFixture(temporary)
         val activity = mutableListOf<IndexSeedActivity>()
-        val service = service(
-            cloner = CopyingTestCloner,
-            activitySink = IndexSeedActivitySink { event ->
-                activity += event
-                IndexSeedActivityPublication.PUBLISHED
-            },
-        )
+        val service =
+            service(
+                cloner = CopyingTestCloner,
+                activitySink =
+                    IndexSeedActivitySink { event ->
+                        activity += event
+                        IndexSeedActivityPublication.PUBLISHED
+                    },
+            )
 
         val publication = service.seed(fixture.request()).seeded()
 
@@ -140,42 +132,32 @@ class IndexSeedFilesystemServiceTest {
     }
 
     @Test
-    fun `exact project proof admits project model and classpath categories`(
-        @TempDir temporary: Path,
-    ) {
+    fun `exact project proof admits project model and classpath categories`(@TempDir temporary: Path) {
         val fixture = seedFixture(temporary)
         val identity = fixture.projectIdentity()
 
-        val publication = service(cloner = CopyingTestCloner).seed(
-            fixture.request(
-                projectEvidence = SeedProjectEvidence.Comparison(identity, identity),
-            ),
-        ).seeded()
+        val publication =
+            service(cloner = CopyingTestCloner)
+                .seed(fixture.request(projectEvidence = SeedProjectEvidence.Comparison(identity, identity)))
+                .seeded()
 
         assertEquals(IndexSeedCategory.entries.toSet(), publication.receipt.categories)
         assertTrue(publication.receipt.projectProofState is SeedProjectProofState.Verified)
         assertTrue(Files.exists(publication.systemDirectory.resolve("classpath/roots.dat")))
         assertTrue(Files.exists(publication.systemDirectory.resolve("global-model-cache/model.dat")))
-        assertTrue(
-            Files.exists(
-                publication.systemDirectory.resolve("projects/target.0123abcd/cache-state.xml"),
-            ),
-        )
+        assertTrue(Files.exists(publication.systemDirectory.resolve("projects/target.0123abcd/cache-state.xml")))
     }
 
     @Test
-    fun `incompatible project proof retires project categories but keeps global seed`(
-        @TempDir temporary: Path,
-    ) {
+    fun `incompatible project proof retires project categories but keeps global seed`(@TempDir temporary: Path) {
         val fixture = seedFixture(temporary)
         val expected = fixture.projectIdentity(gradleDistribution = "8.8")
         val observed = fixture.projectIdentity(gradleDistribution = "8.7")
 
-        val publication = service(cloner = CopyingTestCloner).seed(
-            fixture.request(
-                projectEvidence = SeedProjectEvidence.Comparison(expected, observed),
-            ),
-        ).seeded()
+        val publication =
+            service(cloner = CopyingTestCloner)
+                .seed(fixture.request(projectEvidence = SeedProjectEvidence.Comparison(expected, observed)))
+                .seeded()
 
         assertTrue(publication.receipt.projectProofState is SeedProjectProofState.Retired)
         assertEquals(
@@ -188,9 +170,7 @@ class IndexSeedFilesystemServiceTest {
     }
 
     @Test
-    fun `source mutation or relaunch rejects and removes unpublished staging`(
-        @TempDir temporary: Path,
-    ) {
+    fun `source mutation or relaunch rejects and removes unpublished staging`(@TempDir temporary: Path) {
         val mutated = seedFixture(temporary.resolve("mutated"))
         val mutatingCloner = IndexSeedCloner { entries, target ->
             val copied = CopyingTestCloner.clone(entries, target)
@@ -206,22 +186,24 @@ class IndexSeedFilesystemServiceTest {
         assertTrue(Files.list(mutated.cacheRoot).use { entries -> entries.findAny().isEmpty })
 
         val relaunched = seedFixture(temporary.resolve("relaunched"))
-        val observations = ArrayDeque(
-            listOf(
-                SourceIdeQuiescence(
-                    SourceIdeProcessState.STOPPED,
-                    SourceIdeLockState.UNLOCKED,
-                ),
-                SourceIdeQuiescence(
-                    SourceIdeProcessState.RUNNING,
-                    SourceIdeLockState.LOCKED,
-                ),
-            ),
-        )
-        val relaunchingService = service(
-            cloner = CopyingTestCloner,
-            quiescenceProbe = SourceIdeQuiescenceProbe { observations.removeFirst() },
-        )
+        val observations =
+            ArrayDeque(
+                listOf(
+                    SourceIdeQuiescence(
+                        SourceIdeProcessState.STOPPED,
+                        SourceIdeLockState.UNLOCKED,
+                    ),
+                    SourceIdeQuiescence(
+                        SourceIdeProcessState.RUNNING,
+                        SourceIdeLockState.LOCKED,
+                    ),
+                )
+            )
+        val relaunchingService =
+            service(
+                cloner = CopyingTestCloner,
+                quiescenceProbe = SourceIdeQuiescenceProbe { observations.removeFirst() },
+            )
 
         assertEquals(
             IndexSeedFailure.RunningSourceIde,
@@ -231,9 +213,7 @@ class IndexSeedFilesystemServiceTest {
     }
 
     @Test
-    fun `copy capability and failures remain finite before publication`(
-        @TempDir temporary: Path,
-    ) {
+    fun `copy capability and failures remain finite before publication`(@TempDir temporary: Path) {
         val unsupported = seedFixture(temporary.resolve("unsupported"))
         var copyAttempted = false
         val recordingCloner = IndexSeedCloner { _, _ ->
@@ -243,11 +223,14 @@ class IndexSeedFilesystemServiceTest {
         assertEquals(
             IndexSeedFailure.UnsupportedFilesystem,
             service(
-                cloner = recordingCloner,
-                filesystemProbe = IndexSeedFilesystemProbe { _, _ ->
-                    IndexSeedFilesystem.UNSUPPORTED
-                },
-            ).seed(unsupported.request()).rejected(),
+                    cloner = recordingCloner,
+                    filesystemProbe =
+                        IndexSeedFilesystemProbe { _, _ ->
+                            IndexSeedFilesystem.UNSUPPORTED
+                        },
+                )
+                .seed(unsupported.request())
+                .rejected(),
         )
         assertFalse(copyAttempted)
 
@@ -256,12 +239,15 @@ class IndexSeedFilesystemServiceTest {
         assertEquals(
             IndexSeedFailure.CopyFailure,
             service(
-                cloner = IndexSeedCloner { _, _ -> IndexSeedCopyResult.Rejected },
-                activitySink = IndexSeedActivitySink { event ->
-                    activity += event
-                    IndexSeedActivityPublication.PUBLISHED
-                },
-            ).seed(failed.request()).rejected(),
+                    cloner = IndexSeedCloner { _, _ -> IndexSeedCopyResult.Rejected },
+                    activitySink =
+                        IndexSeedActivitySink { event ->
+                            activity += event
+                            IndexSeedActivityPublication.PUBLISHED
+                        },
+                )
+                .seed(failed.request())
+                .rejected(),
         )
         assertEquals(
             IndexSeedActivity.Rejected(IndexSeedStage.COPY, IndexSeedFailure.CopyFailure),
@@ -271,24 +257,20 @@ class IndexSeedFilesystemServiceTest {
     }
 
     @Test
-    fun `interactive seed discloses exact categories and measured size before consent`(
-        @TempDir temporary: Path,
-    ) {
+    fun `interactive seed discloses exact categories and measured size before consent`(@TempDir temporary: Path) {
         val fixture = seedFixture(temporary)
         var observed: IndexSeedDisclosure? = null
-        val interactive = service(
-            cloner = CopyingTestCloner,
-            consentProvider = IndexSeedConsentProvider { disclosure ->
-                observed = disclosure
-                IndexSeedConsent.GRANTED
-            },
-        )
+        val interactive =
+            service(
+                cloner = CopyingTestCloner,
+                consentProvider =
+                    IndexSeedConsentProvider { disclosure ->
+                        observed = disclosure
+                        IndexSeedConsent.GRANTED
+                    },
+            )
 
-        assertTrue(
-            interactive.seed(
-                fixture.request(IndexSeedConsentRequest.INTERACTIVE),
-            ) is IndexSeedExecution.Seeded,
-        )
+        assertTrue(interactive.seed(fixture.request(IndexSeedConsentRequest.INTERACTIVE)) is IndexSeedExecution.Seeded)
         assertEquals(
             setOf(IndexSeedCategory.GLOBAL_VFS, IndexSeedCategory.GLOBAL_INDEXES),
             observed?.categories,
@@ -298,9 +280,7 @@ class IndexSeedFilesystemServiceTest {
         val denied = seedFixture(temporary.resolve("denied"))
         assertEquals(
             IndexSeedFailure.ConsentAbsent,
-            service(cloner = CopyingTestCloner).seed(
-                denied.request(IndexSeedConsentRequest.INTERACTIVE),
-            ).rejected(),
+            service(cloner = CopyingTestCloner).seed(denied.request(IndexSeedConsentRequest.INTERACTIVE)).rejected(),
         )
         assertFalse(Files.exists(denied.cacheRoot.resolve(denied.cacheIdentity.key)))
     }
@@ -318,13 +298,14 @@ class IndexSeedFilesystemServiceTest {
         },
         consentProvider: IndexSeedConsentProvider = RejectingIndexSeedConsentProvider,
         activitySink: IndexSeedActivitySink = IndexSeedActivitySink.Disabled,
-    ): IndexSeedFilesystemService = IndexSeedFilesystemService(
-        quiescenceProbe,
-        filesystemProbe,
-        cloner,
-        consentProvider,
-        activitySink,
-    )
+    ): IndexSeedFilesystemService =
+        IndexSeedFilesystemService(
+            quiescenceProbe,
+            filesystemProbe,
+            cloner,
+            consentProvider,
+            activitySink,
+        )
 
     private fun seedFixture(temporary: Path): SeedFixture {
         Files.createDirectories(temporary)
@@ -350,22 +331,24 @@ class IndexSeedFilesystemServiceTest {
         write(source, "log/idea.log", "log")
 
         val runtimeIdentity = supportedRuntime()
-        val runtime = InstalledIdeRuntime(
-            ideaHome,
-            Files.createFile(ideaHome.resolve("java")),
-            runtimeIdentity,
-        )
-        val semanticRuntimeId = when (
-            val refinement = SemanticRuntimeId.parse("sha256:${"9".repeat(64)}")
-        ) {
-            is Refinement.Refined -> refinement.value
-            is Refinement.Rejected -> error(refinement.failure)
-        }
-        val cacheIdentity = KastCacheIdentity.derive(
-            project,
-            runtime,
-            semanticRuntimeId,
-        ).derivedForSeed()
+        val runtime =
+            InstalledIdeRuntime(
+                ideaHome,
+                Files.createFile(ideaHome.resolve("java")),
+                runtimeIdentity,
+            )
+        val semanticRuntimeId =
+            when (val refinement = SemanticRuntimeId.parse("sha256:${"9".repeat(64)}")) {
+                is Refinement.Refined -> refinement.value
+                is Refinement.Rejected -> error(refinement.failure)
+            }
+        val cacheIdentity =
+            KastCacheIdentity.derive(
+                    project,
+                    runtime,
+                    semanticRuntimeId,
+                )
+                .derivedForSeed()
         return SeedFixture(source, project, cacheRoot, runtime, cacheIdentity)
     }
 
@@ -376,19 +359,22 @@ class IndexSeedFilesystemServiceTest {
     }
 
     private fun supportedRuntime(): IdeRuntimeIdentity {
-        val pair = SupportedIdeRuntimePair.admit(
-            "262.9437.185",
-            "262.9437.185-IJ",
-        ).let { (it as SupportedIdeRuntimePairAdmission.Admitted).pair }
+        val pair =
+            SupportedIdeRuntimePair.admit(
+                    "262.9437.185",
+                    "262.9437.185-IJ",
+                )
+                .let { (it as SupportedIdeRuntimePairAdmission.Admitted).pair }
         return IdeRuntimeIdentity.admit(
-            pair,
-            IdeRuntimeIdentityCandidate(
-                pair.ideaBuild,
-                pair.kotlinPluginBuild,
-                "jbr-25.0.3+9-b508.16-aarch64",
-                "sha256:${"a".repeat(64)}",
-            ),
-        ).let { (it as IdeRuntimeIdentityAdmission.Admitted).identity }
+                pair,
+                IdeRuntimeIdentityCandidate(
+                    pair.ideaBuild,
+                    pair.kotlinPluginBuild,
+                    "jbr-25.0.3+9-b508.16-aarch64",
+                    "sha256:${"a".repeat(64)}",
+                ),
+            )
+            .let { (it as IdeRuntimeIdentityAdmission.Admitted).identity }
     }
 }
 
@@ -402,71 +388,71 @@ private data class SeedFixture(
     fun request(
         consent: IndexSeedConsentRequest = IndexSeedConsentRequest.PREGRANTED,
         projectEvidence: SeedProjectEvidence = SeedProjectEvidence.Absent,
-    ): IndexSeedRequest = IndexSeedRequest(
-        sourceSystem,
-        cacheRoot,
-        runtime,
-        cacheIdentity,
-        consent,
-        projectEvidence,
-    )
-
-    fun projectIdentity(
-        gradleDistribution: String = "8.8",
-    ): SeedProjectIdentity = when (
-        val admission = SeedProjectIdentity.admit(
-            SeedProjectIdentityCandidate(
-                projectRoot,
-                gradleDistribution,
-                "sha256:${"1".repeat(64)}",
-                "sha256:${"2".repeat(64)}",
-                "sha256:${"3".repeat(64)}",
-                "sha256:${"4".repeat(64)}",
-                "sha256:${"5".repeat(64)}",
-            ),
+    ): IndexSeedRequest =
+        IndexSeedRequest(
+            sourceSystem,
+            cacheRoot,
+            runtime,
+            cacheIdentity,
+            consent,
+            projectEvidence,
         )
-    ) {
-        is SeedProjectIdentityAdmission.Admitted -> admission.identity
-        is SeedProjectIdentityAdmission.Rejected -> error(admission.failure)
-    }
+
+    fun projectIdentity(gradleDistribution: String = "8.8"): SeedProjectIdentity =
+        when (
+            val admission =
+                SeedProjectIdentity.admit(
+                    SeedProjectIdentityCandidate(
+                        projectRoot,
+                        gradleDistribution,
+                        "sha256:${"1".repeat(64)}",
+                        "sha256:${"2".repeat(64)}",
+                        "sha256:${"3".repeat(64)}",
+                        "sha256:${"4".repeat(64)}",
+                        "sha256:${"5".repeat(64)}",
+                    )
+                )
+        ) {
+            is SeedProjectIdentityAdmission.Admitted -> admission.identity
+            is SeedProjectIdentityAdmission.Rejected -> error(admission.failure)
+        }
 }
 
 private data object CopyingTestCloner : IndexSeedCloner {
     override fun clone(
         entries: List<IndexSeedCopyEntry>,
         targetSystem: Path,
-    ): IndexSeedCopyResult = try {
-        entries.forEach { entry ->
-            val target = targetSystem.resolve(entry.relativePath)
-            if (Files.isDirectory(entry.source)) {
-                Files.walk(entry.source).use { paths ->
-                    paths.forEach { source ->
-                        val relative = entry.source.relativize(source)
-                        val destination = target.resolve(relative)
-                        if (Files.isDirectory(source)) {
-                            Files.createDirectories(destination)
-                        } else {
-                            Files.createDirectories(destination.parent)
-                            Files.copy(source, destination, StandardCopyOption.COPY_ATTRIBUTES)
+    ): IndexSeedCopyResult =
+        try {
+            entries.forEach { entry ->
+                val target = targetSystem.resolve(entry.relativePath)
+                if (Files.isDirectory(entry.source)) {
+                    Files.walk(entry.source).use { paths ->
+                        paths.forEach { source ->
+                            val relative = entry.source.relativize(source)
+                            val destination = target.resolve(relative)
+                            if (Files.isDirectory(source)) {
+                                Files.createDirectories(destination)
+                            } else {
+                                Files.createDirectories(destination.parent)
+                                Files.copy(source, destination, StandardCopyOption.COPY_ATTRIBUTES)
+                            }
                         }
                     }
+                } else {
+                    Files.createDirectories(target.parent)
+                    Files.copy(entry.source, target, StandardCopyOption.COPY_ATTRIBUTES)
                 }
-            } else {
-                Files.createDirectories(target.parent)
-                Files.copy(entry.source, target, StandardCopyOption.COPY_ATTRIBUTES)
             }
+            IndexSeedCopyResult.Copied
+        } catch (_: Exception) {
+            IndexSeedCopyResult.Rejected
         }
-        IndexSeedCopyResult.Copied
-    } catch (_: Exception) {
-        IndexSeedCopyResult.Rejected
-    }
 }
 
-private fun IndexSeedExecution.seeded(): IndexSeedPublication =
-    (this as IndexSeedExecution.Seeded).publication
+private fun IndexSeedExecution.seeded(): IndexSeedPublication = (this as IndexSeedExecution.Seeded).publication
 
-private fun IndexSeedExecution.rejected(): IndexSeedFailure =
-    (this as IndexSeedExecution.Rejected).failure
+private fun IndexSeedExecution.rejected(): IndexSeedFailure = (this as IndexSeedExecution.Rejected).failure
 
 private fun KastCacheIdentityDerivation.derivedForSeed(): KastCacheIdentity =
     (this as KastCacheIdentityDerivation.Derived).identity

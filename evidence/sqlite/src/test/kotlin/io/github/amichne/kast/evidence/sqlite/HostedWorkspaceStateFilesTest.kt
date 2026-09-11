@@ -11,15 +11,16 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
 class HostedWorkspaceStateFilesTest {
-    @TempDir
-    lateinit var temporary: Path
+    @TempDir lateinit var temporary: Path
 
     @Test
     fun `typed location creates durable parents and opens both SQLite stores`() {
-        val state = HostedWorkspaceStateLocation.locate(
-            KastUserStateRoot.parse(temporary.toString()).refined(),
-            CanonicalWorkspaceRoot.fromCanonicalPath(temporary.resolve("workspace")).refined(),
-        ).refined()
+        val state =
+            HostedWorkspaceStateLocation.locate(
+                    KastUserStateRoot.parse(temporary.toString()).refined(),
+                    CanonicalWorkspaceRoot.fromCanonicalPath(temporary.resolve("workspace")).refined(),
+                )
+                .refined()
 
         assertInstanceOf(
             SqliteTopologySnapshotStoreOpening.Opened::class.java,
@@ -33,8 +34,9 @@ class HostedWorkspaceStateFilesTest {
         assertTrue(Path.of(state.mutationDatabase.valueAtSqliteBoundary()).toFile().isFile)
     }
 
-    private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value = when (this) {
-        is Refinement.Refined -> value
-        is Refinement.Rejected -> error(failure.toString())
-    }
+    private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value =
+        when (this) {
+            is Refinement.Refined -> value
+            is Refinement.Rejected -> error(failure.toString())
+        }
 }

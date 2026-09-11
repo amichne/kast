@@ -6,15 +6,22 @@ import java.nio.file.InvalidPathException
 import java.nio.file.Path
 
 /** A requested file or directory, not yet proof of source membership or completeness. */
-class DiagnosticScopeQuery private constructor(
+class DiagnosticScopeQuery
+private constructor(
     val lease: SemanticReadAuthority,
     val path: Path,
 ) {
     companion object {
-        fun parse(lease: SemanticReadAuthority, raw: String): Refinement<DiagnosticScopeQuery, DiagnosticScopeResolutionFailure> {
-            val parsed = try { Path.of(raw) } catch (_: InvalidPathException) {
-                return Refinement.Rejected(DiagnosticScopeResolutionFailure.INVALID_SCOPE)
-            }
+        fun parse(
+            lease: SemanticReadAuthority,
+            raw: String,
+        ): Refinement<DiagnosticScopeQuery, DiagnosticScopeResolutionFailure> {
+            val parsed =
+                try {
+                    Path.of(raw)
+                } catch (_: InvalidPathException) {
+                    return Refinement.Rejected(DiagnosticScopeResolutionFailure.INVALID_SCOPE)
+                }
             val root = Path.of(lease.workspaceRoot.value)
             val path = if (parsed.isAbsolute) parsed else root.resolve(parsed).normalize()
             if (raw.isBlank() || path.normalize() != path || !path.startsWith(root)) {

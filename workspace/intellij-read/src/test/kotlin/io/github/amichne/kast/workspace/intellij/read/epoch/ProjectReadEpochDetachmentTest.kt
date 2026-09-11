@@ -13,12 +13,15 @@ import org.junit.jupiter.api.Test
 class ProjectReadEpochDetachmentTest {
     @Test
     fun `production epoch object graph retains no callback or live authority`() {
-        val observed = LiveProjectReadEpochSource(
-            RecordingProjectReadEpochPlatform(),
-            ProjectReadEpochMetadataCounter(),
-            ProjectReadEpochMetadataCounter(),
-            RecordingProjectReadEpochExecution(),
-        ).source.observe()
+        val observed =
+            LiveProjectReadEpochSource(
+                    RecordingProjectReadEpochPlatform(),
+                    ProjectReadEpochMetadataCounter(),
+                    ProjectReadEpochMetadataCounter(),
+                    RecordingProjectReadEpochExecution(),
+                )
+                .source
+                .observe()
         val epoch = assertInstanceOf(ProjectReadEpochObservation.Observed::class.java, observed).epoch
 
         assertDetached(epoch, IdentityHashMap())

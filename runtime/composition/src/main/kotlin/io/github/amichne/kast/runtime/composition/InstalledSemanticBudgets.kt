@@ -5,10 +5,10 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
-import io.github.amichne.kast.relation.contract.RelationBudget
-import io.github.amichne.kast.relation.contract.RelationByteLimit
 import io.github.amichne.kast.query.contract.QueryBudget
 import io.github.amichne.kast.query.contract.QueryByteLimit
+import io.github.amichne.kast.relation.contract.RelationBudget
+import io.github.amichne.kast.relation.contract.RelationByteLimit
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBudget
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteLimit
 import io.github.amichne.kast.traversal.contract.TraversalBudget
@@ -27,9 +27,9 @@ internal data class InstalledSemanticBudgets(
 /**
  * Proof transition: fixed installed limits to `InstalledSemanticBudgets?`.
  *
- * A non-null result establishes strictly positive discovery, relation, and one-hop traversal
- * limits with no child authority exceeding its aggregate. Null is the closed impossible guard if
- * a fixed literal ceases to satisfy its refined contract. Raw limits are extracted only here.
+ * A non-null result establishes strictly positive discovery, relation, and one-hop traversal limits with no child
+ * authority exceeding its aggregate. Null is the closed impossible guard if a fixed literal ceases to satisfy its
+ * refined contract. Raw limits are extracted only here.
  */
 internal fun installedSemanticBudgets(): InstalledSemanticBudgets? {
     val records = ResultLimit.parse(256).refinedOrNull() ?: return null
@@ -53,7 +53,8 @@ internal fun installedSemanticBudgets(): InstalledSemanticBudgets? {
     )
 }
 
-private fun <Value, Failure> Refinement<Value, Failure>.refinedOrNull(): Value? = when (this) {
-    is Refinement.Refined -> value
-    is Refinement.Rejected -> null
-}
+private fun <Value, Failure> Refinement<Value, Failure>.refinedOrNull(): Value? =
+    when (this) {
+        is Refinement.Refined -> value
+        is Refinement.Rejected -> null
+    }

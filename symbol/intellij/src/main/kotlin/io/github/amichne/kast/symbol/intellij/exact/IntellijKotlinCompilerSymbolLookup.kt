@@ -5,22 +5,19 @@
 
 package io.github.amichne.kast.symbol.intellij
 
-import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
-import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
-import io.github.amichne.kast.workspace.intellij.read.IntellijReadContributor
-import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
-
+import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiMember
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignatureFailure
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import org.jetbrains.kotlin.analysis.api.analyze
-import org.jetbrains.kotlin.analysis.api.projectStructure.kaModule
-import org.jetbrains.kotlin.analysis.api.javaInterop.namedClassSymbol
 import org.jetbrains.kotlin.analysis.api.javaInterop.callableSymbol
-import com.intellij.psi.PsiClass
-import com.intellij.psi.PsiMember
+import org.jetbrains.kotlin.analysis.api.javaInterop.namedClassSymbol
+import org.jetbrains.kotlin.analysis.api.projectStructure.kaModule
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassLikeSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaConstructorSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaFunctionSymbol
@@ -32,13 +29,9 @@ import org.jetbrains.kotlin.analysis.api.symbols.KaValueParameterSymbol
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 
 internal sealed interface IntellijCompilerSymbolLookupResult {
-    data class Found(
-        val evidence: CompilerGroundedSymbolEvidence,
-    ) : IntellijCompilerSymbolLookupResult
+    data class Found(val evidence: CompilerGroundedSymbolEvidence) : IntellijCompilerSymbolLookupResult
 
-    data class Rejected(
-        val reason: IntellijSymbolSelectorRejection,
-    ) : IntellijCompilerSymbolLookupResult
+    data class Rejected(val reason: IntellijSymbolSelectorRejection) : IntellijCompilerSymbolLookupResult
 }
 
 internal fun interface IntellijCompilerSymbolLookup {
@@ -46,9 +39,9 @@ internal fun interface IntellijCompilerSymbolLookup {
      * Proof transition: `(CompiledIntellijSearchScope, IntellijExactDeclarationLookupKey) ->
      * IntellijCompilerSymbolLookupResult`.
      *
-     * A found result establishes one scope-contained Kotlin declaration resolved to a detached K2
-     * compiler identity. [IntellijSymbolSelectorRejection] is the closed expected failure. Live
-     * PSI, K2 symbols, files, and scopes remain inside this request-local call.
+     * A found result establishes one scope-contained Kotlin declaration resolved to a detached K2 compiler identity.
+     * [IntellijSymbolSelectorRejection] is the closed expected failure. Live PSI, K2 symbols, files, and scopes remain
+     * inside this request-local call.
      */
     fun find(
         compiledScope: CompiledIntellijSearchScope,
@@ -65,54 +58,57 @@ internal class IntellijKotlinCompilerSymbolLookup(
      * Proof transition: `(CompiledIntellijSearchScope, IntellijExactDeclarationLookupKey) ->
      * IntellijCompilerSymbolLookupResult`.
      *
-     * Establishes that exact scope/name/offset PSI resolution produced one [KtNamedDeclaration],
-     * then K2 analysis produced a closed symbol kind, qualified identity state, and overload-aware
-     * compiler identity. [IntellijSymbolSelectorRejection] is the closed expected failure. Raw K2
-     * values are detached before the analysis session ends.
+     * Establishes that exact scope/name/offset PSI resolution produced one [KtNamedDeclaration], then K2 analysis
+     * produced a closed symbol kind, qualified identity state, and overload-aware compiler identity.
+     * [IntellijSymbolSelectorRejection] is the closed expected failure. Raw K2 values are detached before the analysis
+     * session ends.
      */
     override fun find(
         compiledScope: CompiledIntellijSearchScope,
         key: IntellijExactDeclarationLookupKey,
     ): IntellijCompilerSymbolLookupResult {
-        val live = when (val lookup = psiLookup.findLive(compiledScope, key)) {
-            is IntellijLiveExactDeclarationLookupResult.Found -> lookup
-            is IntellijLiveExactDeclarationLookupResult.Rejected ->
-                return IntellijCompilerSymbolLookupResult.Rejected(
-                    lookup.reason.toSymbolSelectorRejection(),
-                )
-        }
+        val live =
+            when (val lookup = psiLookup.findLive(compiledScope, key)) {
+                is IntellijLiveExactDeclarationLookupResult.Found -> lookup
+                is IntellijLiveExactDeclarationLookupResult.Rejected ->
+                    return IntellijCompilerSymbolLookupResult.Rejected(lookup.reason.toSymbolSelectorRejection())
+            }
         val declaration = live.declaration
         observation.count(IntellijReadCounter.COMPILER_REFINEMENTS)
-        val projection = when (val result = analyze(declaration.kaModule(null)) {
-            val symbol = when (declaration) {
-                is KtNamedDeclaration -> declaration.symbol
-                is PsiClass -> declaration.namedClassSymbol
-                is PsiMember -> declaration.callableSymbol
-                else -> null
+        val projection =
+            when (
+                val result =
+                    analyze(declaration.kaModule(null)) {
+                        val symbol =
+                            when (declaration) {
+                                is KtNamedDeclaration -> declaration.symbol
+                                is PsiClass -> declaration.namedClassSymbol
+                                is PsiMember -> declaration.callableSymbol
+                                else -> null
+                            }
+                        symbol?.toCompilerProjection() ?: compilerProjectionRejected()
+                    }
+            ) {
+                is IntellijCompilerSymbolProjectionResult.Projected -> result.projection
+                is IntellijCompilerSymbolProjectionResult.Rejected -> {
+                    observation.count(IntellijReadCounter.COMPILER_REFINEMENTS_REJECTED)
+                    return rejected(result.reason)
+                }
             }
-            symbol?.toCompilerProjection() ?: compilerProjectionRejected()
-        }) {
-            is IntellijCompilerSymbolProjectionResult.Projected -> result.projection
-            is IntellijCompilerSymbolProjectionResult.Rejected -> {
-                observation.count(IntellijReadCounter.COMPILER_REFINEMENTS_REJECTED)
-                return rejected(result.reason)
-            }
-        }
         return when (
-            val evidence = CompilerGroundedSymbolEvidence.fromBoundary(
-                file = key.file,
-                rawStartInclusive = declaration.textRange.startOffset,
-                rawEndExclusive = declaration.textRange.endOffset,
-                rawName = declaration.name.orEmpty(),
-                rawQualifiedIdentity = projection.qualifiedIdentity,
-                kind = projection.kind,
-                signature = projection.signature,
-            )
+            val evidence =
+                CompilerGroundedSymbolEvidence.fromBoundary(
+                    file = key.file,
+                    rawStartInclusive = declaration.textRange.startOffset,
+                    rawEndExclusive = declaration.textRange.endOffset,
+                    rawName = declaration.name.orEmpty(),
+                    rawQualifiedIdentity = projection.qualifiedIdentity,
+                    kind = projection.kind,
+                    signature = projection.signature,
+                )
         ) {
             is Refinement.Refined -> IntellijCompilerSymbolLookupResult.Found(evidence.value)
-            is Refinement.Rejected -> rejected(
-                IntellijSymbolSelectorRejection.INTERNAL_INVARIANT,
-            )
+            is Refinement.Rejected -> rejected(IntellijSymbolSelectorRejection.INTERNAL_INVARIANT)
         }
     }
 }
@@ -124,30 +120,24 @@ private data class IntellijCompilerSymbolProjection(
 )
 
 private sealed interface IntellijCompilerSymbolProjectionResult {
-    data class Projected(
-        val projection: IntellijCompilerSymbolProjection,
-    ) : IntellijCompilerSymbolProjectionResult
+    data class Projected(val projection: IntellijCompilerSymbolProjection) : IntellijCompilerSymbolProjectionResult
 
-    data class Rejected(
-        val reason: IntellijSymbolSelectorRejection,
-    ) : IntellijCompilerSymbolProjectionResult
+    data class Rejected(val reason: IntellijSymbolSelectorRejection) : IntellijCompilerSymbolProjectionResult
 }
 
 /**
  * Proof transition: `KaSymbol -> IntellijCompilerSymbolProjectionResult`.
  *
- * A projected result establishes a closed public kind plus versioned, fixed-size,
- * canonical-signature compiler identity. Rejection is the closed
- * [IntellijSymbolSelectorRejection.COMPILER_IDENTITY_UNAVAILABLE] state. Raw K2 values remain
- * inside the analysis-session receiver.
+ * A projected result establishes a closed public kind plus versioned, fixed-size, canonical-signature compiler
+ * identity. Rejection is the closed [IntellijSymbolSelectorRejection.COMPILER_IDENTITY_UNAVAILABLE] state. Raw K2
+ * values remain inside the analysis-session receiver.
  */
 private fun KaSymbol.toCompilerProjection(): IntellijCompilerSymbolProjectionResult {
     return when (this) {
-        is KaValueParameterSymbol -> generatedPrimaryConstructorProperty?.toCompilerProjection()
-            ?: compilerProjectionRejected()
+        is KaValueParameterSymbol ->
+            generatedPrimaryConstructorProperty?.toCompilerProjection() ?: compilerProjectionRejected()
         is KaConstructorSymbol -> {
-            val owner = containingClassId?.asSingleFqName()?.asString()
-                        ?: return compilerProjectionRejected()
+            val owner = containingClassId?.asSingleFqName()?.asString() ?: return compilerProjectionRejected()
             projected(
                 CompilerSymbolKind.CONSTRUCTOR,
                 "$owner.<init>",
@@ -155,8 +145,7 @@ private fun KaSymbol.toCompilerProjection(): IntellijCompilerSymbolProjectionRes
             )
         }
         is KaFunctionSymbol -> {
-            val callable = callableId?.asSingleFqName()?.asString()
-                           ?: return compilerProjectionRejected()
+            val callable = callableId?.asSingleFqName()?.asString() ?: return compilerProjectionRejected()
             projected(
                 CompilerSymbolKind.FUNCTION,
                 callable,
@@ -164,8 +153,7 @@ private fun KaSymbol.toCompilerProjection(): IntellijCompilerSymbolProjectionRes
             )
         }
         is KaKotlinPropertySymbol -> {
-            val callable = callableId?.asSingleFqName()?.asString()
-                           ?: return compilerProjectionRejected()
+            val callable = callableId?.asSingleFqName()?.asString() ?: return compilerProjectionRejected()
             projected(
                 CompilerSymbolKind.PROPERTY,
                 callable,
@@ -178,8 +166,7 @@ private fun KaSymbol.toCompilerProjection(): IntellijCompilerSymbolProjectionRes
             )
         }
         is KaTypeAliasSymbol -> {
-            val className = classId?.asSingleFqName()?.asString()
-                            ?: return compilerProjectionRejected()
+            val className = classId?.asSingleFqName()?.asString() ?: return compilerProjectionRejected()
             projected(
                 CompilerSymbolKind.TYPE_ALIAS,
                 className,
@@ -187,8 +174,7 @@ private fun KaSymbol.toCompilerProjection(): IntellijCompilerSymbolProjectionRes
             )
         }
         is KaClassLikeSymbol -> {
-            val className = classId?.asSingleFqName()?.asString()
-                            ?: return compilerProjectionRejected()
+            val className = classId?.asSingleFqName()?.asString() ?: return compilerProjectionRejected()
             projected(
                 CompilerSymbolKind.CLASSLIKE,
                 className,
@@ -200,7 +186,7 @@ private fun KaSymbol.toCompilerProjection(): IntellijCompilerSymbolProjectionRes
 }
 
 private fun KaFunctionSymbol.functionSignature(
-    callable: String,
+    callable: String
 ): Refinement<CanonicalCompilerSignature, CanonicalCompilerSignatureFailure> =
     CanonicalCompilerSignature.function(
         rawQualifiedIdentity = callable,
@@ -214,35 +200,31 @@ private fun projected(
     kind: CompilerSymbolKind,
     qualifiedIdentity: String,
     signature: Refinement<CanonicalCompilerSignature, CanonicalCompilerSignatureFailure>,
-): IntellijCompilerSymbolProjectionResult = when (signature) {
-    is Refinement.Refined -> IntellijCompilerSymbolProjectionResult.Projected(
-        IntellijCompilerSymbolProjection(
-            kind,
-            qualifiedIdentity,
-            signature.value,
-        ),
-    )
-    is Refinement.Rejected -> compilerProjectionRejected()
-}
+): IntellijCompilerSymbolProjectionResult =
+    when (signature) {
+        is Refinement.Refined ->
+            IntellijCompilerSymbolProjectionResult.Projected(
+                IntellijCompilerSymbolProjection(
+                    kind,
+                    qualifiedIdentity,
+                    signature.value,
+                )
+            )
+        is Refinement.Rejected -> compilerProjectionRejected()
+    }
 
-private fun rejected(
-    reason: IntellijSymbolSelectorRejection,
-): IntellijCompilerSymbolLookupResult.Rejected =
+private fun rejected(reason: IntellijSymbolSelectorRejection): IntellijCompilerSymbolLookupResult.Rejected =
     IntellijCompilerSymbolLookupResult.Rejected(reason)
 
 private fun compilerProjectionRejected(): IntellijCompilerSymbolProjectionResult.Rejected =
-    IntellijCompilerSymbolProjectionResult.Rejected(
-        IntellijSymbolSelectorRejection.COMPILER_IDENTITY_UNAVAILABLE,
-    )
+    IntellijCompilerSymbolProjectionResult.Rejected(IntellijSymbolSelectorRejection.COMPILER_IDENTITY_UNAVAILABLE)
 
-private fun IntellijExactDeclarationLookupRejection.toSymbolSelectorRejection():
-    IntellijSymbolSelectorRejection = when (this) {
-    IntellijExactDeclarationLookupRejection.STALE_LOCATION ->
-        IntellijSymbolSelectorRejection.STALE_LOCATION
-    IntellijExactDeclarationLookupRejection.OUTSIDE_SCOPE ->
-        IntellijSymbolSelectorRejection.OUTSIDE_SCOPE
-    IntellijExactDeclarationLookupRejection.AMBIGUOUS_DECLARATION ->
-        IntellijSymbolSelectorRejection.AMBIGUOUS_DECLARATION
-    IntellijExactDeclarationLookupRejection.UNSUPPORTED_DECLARATION ->
-        IntellijSymbolSelectorRejection.UNSUPPORTED_DECLARATION
-}
+private fun IntellijExactDeclarationLookupRejection.toSymbolSelectorRejection(): IntellijSymbolSelectorRejection =
+    when (this) {
+        IntellijExactDeclarationLookupRejection.STALE_LOCATION -> IntellijSymbolSelectorRejection.STALE_LOCATION
+        IntellijExactDeclarationLookupRejection.OUTSIDE_SCOPE -> IntellijSymbolSelectorRejection.OUTSIDE_SCOPE
+        IntellijExactDeclarationLookupRejection.AMBIGUOUS_DECLARATION ->
+            IntellijSymbolSelectorRejection.AMBIGUOUS_DECLARATION
+        IntellijExactDeclarationLookupRejection.UNSUPPORTED_DECLARATION ->
+            IntellijSymbolSelectorRejection.UNSUPPORTED_DECLARATION
+    }

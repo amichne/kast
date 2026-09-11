@@ -1,23 +1,20 @@
 package io.github.amichne.kast.appserver
 
 import io.github.amichne.kast.appserver.host.admission.CodexHostExecutableFailure
-import io.github.amichne.kast.appserver.host.admission.DesktopFacadeExecutable
 import io.github.amichne.kast.appserver.host.admission.DesktopFacadeExecutables
 import io.github.amichne.kast.appserver.host.admission.UpstreamCodexExecutable
 import io.github.amichne.kast.kernel.Refinement
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.attribute.PosixFilePermissions
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Files
-import java.nio.file.Path
-import java.nio.file.attribute.PosixFilePermissions
 
 class CodexHostExecutableTest {
     @Test
-    fun `upstream executable is distinct from the Desktop facade`(
-        @TempDir temporary: Path,
-    ) {
+    fun `upstream executable is distinct from the Desktop facade`(@TempDir temporary: Path) {
         val facadePath = executable(temporary.resolve("kast-codex"))
         val upstreamPath = executable(temporary.resolve("codex"))
         val facades = DesktopFacadeExecutables.resolve(facadePath, null)
@@ -33,9 +30,7 @@ class CodexHostExecutableTest {
     }
 
     @Test
-    fun `hard linked facade identity is rejected as recursive`(
-        @TempDir temporary: Path,
-    ) {
+    fun `hard linked facade identity is rejected as recursive`(@TempDir temporary: Path) {
         val facadePath = executable(temporary.resolve("kast-codex"))
         val alias = Files.createLink(temporary.resolve("codex"), facadePath)
         val facades = DesktopFacadeExecutables.resolve(facadePath, null)
@@ -47,35 +42,34 @@ class CodexHostExecutableTest {
     }
 
     @Test
-    fun `standard real Codex override wins without consulting facade substitution`(
-        @TempDir temporary: Path,
-    ) {
+    fun `standard real Codex override wins without consulting facade substitution`(@TempDir temporary: Path) {
         val bin = Files.createDirectory(temporary.resolve("bin"))
         val userHome = Files.createDirectory(temporary.resolve("home")).toRealPath()
         val kast = executable(bin.resolve("kast"))
         val facade = executable(bin.resolve("kast-codex"))
         val upstream = executable(bin.resolve("codex"))
-        val resolution = BrokerServiceLaunchCommand.resolve(
-            kast,
-            userHome,
-            mapOf(
-                "PATH" to "/usr/bin:/bin",
-                "CODEX_CLI_PATH" to facade.toString(),
-                "CODEX_EXECUTABLE" to upstream.toString(),
-            ),
-        )
+        val resolution =
+            BrokerServiceLaunchCommand.resolve(
+                kast,
+                userHome,
+                mapOf(
+                    "PATH" to "/usr/bin:/bin",
+                    "CODEX_CLI_PATH" to facade.toString(),
+                    "CODEX_EXECUTABLE" to upstream.toString(),
+                ),
+            )
 
-        val command = assertInstanceOf(
-            BrokerServiceLaunchCommandResolution.Resolved::class.java,
-            resolution,
-        ).command
+        val command =
+            assertInstanceOf(
+                    BrokerServiceLaunchCommandResolution.Resolved::class.java,
+                    resolution,
+                )
+                .command
         assertEquals(upstream, (command.host as BrokerHostSelection.Selected).executable.path)
     }
 
     @Test
-    fun `installed sibling remains a recursion guard for the standard Codex override`(
-        @TempDir temporary: Path,
-    ) {
+    fun `installed sibling remains a recursion guard for the standard Codex override`(@TempDir temporary: Path) {
         val bin = Files.createDirectory(temporary.resolve("bin"))
         val userHome = Files.createDirectory(temporary.resolve("home")).toRealPath()
         val kast = executable(bin.resolve("kast"))
@@ -83,9 +77,7 @@ class CodexHostExecutableTest {
         val configuredFacade = executable(bin.resolve("configured-codex-facade"))
 
         assertEquals(
-            BrokerServiceLaunchCommandResolution.Rejected(
-                PersistentBrokerServiceFailure.CODEX_EXECUTABLE_UNAVAILABLE,
-            ),
+            BrokerServiceLaunchCommandResolution.Rejected(PersistentBrokerServiceFailure.CODEX_EXECUTABLE_UNAVAILABLE),
             BrokerServiceLaunchCommand.resolve(
                 kast,
                 userHome,
@@ -117,6 +109,5 @@ class CodexHostExecutableTest {
         return path.toRealPath()
     }
 
-    private fun <T, E> refined(refinement: Refinement<T, E>): T =
-        (refinement as Refinement.Refined).value
+    private fun <T, E> refined(refinement: Refinement<T, E>): T = (refinement as Refinement.Refined).value
 }

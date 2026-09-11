@@ -17,18 +17,14 @@ class IndexerBootstrapProgressTest {
         assertEquals(3, importing.completedPhases.value)
         assertEquals(8, importing.totalPhases.value)
         assertEquals(
-            InstalledIndexerBootstrapAdvance.Rejected(
-                InstalledIndexerBootstrapAdvanceFailure.PHASE_OUT_OF_ORDER,
-            ),
+            InstalledIndexerBootstrapAdvance.Rejected(InstalledIndexerBootstrapAdvanceFailure.PHASE_OUT_OF_ORDER),
             importing.advance(InstalledIndexerBootstrapPhase.MODEL_CAPTURE),
         )
 
         val indexing = importing.advance(InstalledIndexerBootstrapPhase.INDEXING).advanced()
         val model = indexing.advance(InstalledIndexerBootstrapPhase.MODEL_CAPTURE).advanced()
         val assembly = model.advance(InstalledIndexerBootstrapPhase.RUNTIME_ASSEMBLY).advanced()
-        val transport = assembly.advance(
-            InstalledIndexerBootstrapPhase.TRANSPORT_ACTIVATION,
-        ).advanced()
+        val transport = assembly.advance(InstalledIndexerBootstrapPhase.TRANSPORT_ACTIVATION).advanced()
         val ready = transport.ready()
 
         assertEquals(4, indexing.completedPhases.value)
@@ -41,15 +37,17 @@ class IndexerBootstrapProgressTest {
 
     @Test
     fun `terminal failure retains its exact active phase and finite cause`() {
-        val indexing = InstalledIndexerBootstrapProgress.start()
-            .advance(InstalledIndexerBootstrapPhase.GRADLE_JVM_SELECTION).advanced()
-            .advance(InstalledIndexerBootstrapPhase.MODEL_INPUT_CAPTURE).advanced()
-            .advance(InstalledIndexerBootstrapPhase.PROJECT_IMPORT).advanced()
-            .advance(InstalledIndexerBootstrapPhase.INDEXING)
-            .advanced()
-        val failure = InstalledIndexerBootstrapTerminalFailure.Transport(
-            IndexerTransportFailure.SOCKET_BIND_FAILED,
-        )
+        val indexing =
+            InstalledIndexerBootstrapProgress.start()
+                .advance(InstalledIndexerBootstrapPhase.GRADLE_JVM_SELECTION)
+                .advanced()
+                .advance(InstalledIndexerBootstrapPhase.MODEL_INPUT_CAPTURE)
+                .advanced()
+                .advance(InstalledIndexerBootstrapPhase.PROJECT_IMPORT)
+                .advanced()
+                .advance(InstalledIndexerBootstrapPhase.INDEXING)
+                .advanced()
+        val failure = InstalledIndexerBootstrapTerminalFailure.Transport(IndexerTransportFailure.SOCKET_BIND_FAILED)
 
         assertEquals(
             InstalledIndexerBootstrapState.Rejected(

@@ -5,7 +5,8 @@ package io.github.amichne.kast.kernel
  *
  * The constructor is closed so an empty failure protocol cannot cross into the strong core.
  */
-class NonEmptyFailures<out Failure> private constructor(
+class NonEmptyFailures<out Failure>
+private constructor(
     private val first: Failure,
     private val remaining: List<Failure>,
 ) : Iterable<Failure> {
@@ -16,12 +17,10 @@ class NonEmptyFailures<out Failure> private constructor(
 
     fun toList(): List<Failure> = listOf(first) + remaining
 
-    internal fun concatenate(
-        other: NonEmptyFailures<@UnsafeVariance Failure>,
-    ): NonEmptyFailures<Failure> = NonEmptyFailures(first, remaining + other.first + other.remaining)
+    internal fun concatenate(other: NonEmptyFailures<@UnsafeVariance Failure>): NonEmptyFailures<Failure> =
+        NonEmptyFailures(first, remaining + other.first + other.remaining)
 
-    override fun equals(other: Any?): Boolean =
-        other is NonEmptyFailures<*> && toList() == other.toList()
+    override fun equals(other: Any?): Boolean = other is NonEmptyFailures<*> && toList() == other.toList()
 
     override fun hashCode(): Int = toList().hashCode()
 
@@ -41,17 +40,13 @@ class NonEmptyFailures<out Failure> private constructor(
 /**
  * Closed result of admitting a weak value when independent checks may all contribute failures.
  *
- * [Validated] carries the stronger representation. [Rejected] always carries at least one typed
- * failure and preserves definition order when validations are combined.
+ * [Validated] carries the stronger representation. [Rejected] always carries at least one typed failure and preserves
+ * definition order when validations are combined.
  */
 sealed interface Validation<out Strong, out Failure> {
-    data class Validated<Strong>(
-        val value: Strong,
-    ) : Validation<Strong, Nothing>
+    data class Validated<Strong>(val value: Strong) : Validation<Strong, Nothing>
 
-    data class Rejected<Failure>(
-        val failures: NonEmptyFailures<Failure>,
-    ) : Validation<Nothing, Failure>
+    data class Rejected<Failure>(val failures: NonEmptyFailures<Failure>) : Validation<Nothing, Failure>
 
     companion object {
         fun <Strong> validated(value: Strong): Validation<Strong, Nothing> = Validated(value)
@@ -63,45 +58,48 @@ sealed interface Validation<out Strong, out Failure> {
 
 /** Transforms an admitted value while retaining an already-proven rejection unchanged. */
 inline fun <Strong, Transformed, Failure> Validation<Strong, Failure>.map(
-    transform: (Strong) -> Transformed,
-): Validation<Transformed, Failure> = when (this) {
-    is Validation.Validated -> Validation.Validated(transform(value))
-    is Validation.Rejected -> Validation.Rejected(failures)
-}
+    transform: (Strong) -> Transformed
+): Validation<Transformed, Failure> =
+    when (this) {
+        is Validation.Validated -> Validation.Validated(transform(value))
+        is Validation.Rejected -> Validation.Rejected(failures)
+    }
 
 /** Refines failure values without changing whether the validation succeeded. */
 inline fun <Strong, Failure, TransformedFailure> Validation<Strong, Failure>.mapFailures(
-    transform: (Failure) -> TransformedFailure,
-): Validation<Strong, TransformedFailure> = when (this) {
-    is Validation.Validated -> Validation.Validated(value)
-    is Validation.Rejected -> {
-        val transformed = failures.map(transform)
-        Validation.Rejected(
-            NonEmptyFailures.from(
-                first = transformed.first(),
-                remaining = transformed.drop(1),
-            ),
-        )
+    transform: (Failure) -> TransformedFailure
+): Validation<Strong, TransformedFailure> =
+    when (this) {
+        is Validation.Validated -> Validation.Validated(value)
+        is Validation.Rejected -> {
+            val transformed = failures.map(transform)
+            Validation.Rejected(
+                NonEmptyFailures.from(
+                    first = transformed.first(),
+                    remaining = transformed.drop(1),
+                )
+            )
+        }
     }
-}
 
-/**
- * Applicatively combines independent validations, retaining every failure in evaluation order.
- */
+/** Applicatively combines independent validations, retaining every failure in evaluation order. */
 fun <First, Second, Combined, Failure> Validation<First, Failure>.zipAccumulating(
     other: Validation<Second, Failure>,
     combine: (First, Second) -> Combined,
-): Validation<Combined, Failure> = when (this) {
-    is Validation.Validated -> when (other) {
-        is Validation.Validated -> Validation.Validated(combine(value, other.value))
-        is Validation.Rejected -> Validation.Rejected(other.failures)
-    }
+): Validation<Combined, Failure> =
+    when (this) {
+        is Validation.Validated ->
+            when (other) {
+                is Validation.Validated -> Validation.Validated(combine(value, other.value))
+                is Validation.Rejected -> Validation.Rejected(other.failures)
+            }
 
-    is Validation.Rejected -> when (other) {
-        is Validation.Validated -> Validation.Rejected(failures)
-        is Validation.Rejected -> Validation.Rejected(failures.concatenate(other.failures))
+        is Validation.Rejected ->
+            when (other) {
+                is Validation.Validated -> Validation.Rejected(failures)
+                is Validation.Rejected -> Validation.Rejected(failures.concatenate(other.failures))
+            }
     }
-}
 
 /** A reusable boundary definition from one weak representation to one proven domain value. */
 fun interface RefinementDefinition<in Weak, out Strong, out Failure> {
@@ -109,11 +107,10 @@ fun interface RefinementDefinition<in Weak, out Strong, out Failure> {
 }
 
 /** Combines two independent definitions over the same weak candidate. */
-fun <Weak, First, Second, Combined, Failure>
-    RefinementDefinition<Weak, First, Failure>.zipAccumulating(
-        other: RefinementDefinition<Weak, Second, Failure>,
-        combine: (First, Second) -> Combined,
-    ): RefinementDefinition<Weak, Combined, Failure> = RefinementDefinition { candidate ->
+fun <Weak, First, Second, Combined, Failure> RefinementDefinition<Weak, First, Failure>.zipAccumulating(
+    other: RefinementDefinition<Weak, Second, Failure>,
+    combine: (First, Second) -> Combined,
+): RefinementDefinition<Weak, Combined, Failure> = RefinementDefinition { candidate ->
     refine(candidate).zipAccumulating(other.refine(candidate), combine)
 }
 

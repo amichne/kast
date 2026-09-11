@@ -6,7 +6,9 @@ import io.github.amichne.kast.protocol.contract.ChangeIntentDocument
 /** The exact installed-sidecar capability required by one CLI action. */
 sealed interface HostedRuntimeDemand {
     data class Operation(val operation: CanonicalOperation) : HostedRuntimeDemand
+
     data class ChangePlan(val intent: ChangeIntentDocument) : HostedRuntimeDemand
+
     data object Lifecycle : HostedRuntimeDemand
 }
 
@@ -34,21 +36,22 @@ internal class LocatedRuntimeDemander(
         demand: HostedRuntimeDemand,
         startup: RuntimeStartupRequest,
     ): RuntimeAdmission {
-        val requested = when (val resolution = locator.locate(root)) {
-            is RuntimeEndpointResolution.Resolved -> resolution.endpoint
-            is RuntimeEndpointResolution.Rejected -> return RuntimeAdmission.Rejected(
-                RuntimeAdmissionFailure.EndpointUnavailable,
-            )
-        }
+        val requested =
+            when (val resolution = locator.locate(root)) {
+                is RuntimeEndpointResolution.Resolved -> resolution.endpoint
+                is RuntimeEndpointResolution.Rejected ->
+                    return RuntimeAdmission.Rejected(RuntimeAdmissionFailure.EndpointUnavailable)
+            }
         if (requested.root != root) {
             return RuntimeAdmission.Rejected(RuntimeAdmissionFailure.EndpointUnavailable)
         }
         return when (val admission = demander.demand(root, requested)) {
-            is RuntimeAdmission.Ready -> if (admission.endpoint == requested) {
-                admission
-            } else {
-                RuntimeAdmission.Rejected(RuntimeAdmissionFailure.EndpointUnavailable)
-            }
+            is RuntimeAdmission.Ready ->
+                if (admission.endpoint == requested) {
+                    admission
+                } else {
+                    RuntimeAdmission.Rejected(RuntimeAdmissionFailure.EndpointUnavailable)
+                }
             is RuntimeAdmission.Rejected -> admission
         }
     }

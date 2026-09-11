@@ -17,29 +17,23 @@ enum class CompilerSymbolIdentityFailure {
 
 /** Bounded, detached identity projected from one compiler symbol. */
 @JvmInline
-value class CompilerSymbolIdentity private constructor(
-    val value: String,
-) {
+value class CompilerSymbolIdentity private constructor(val value: String) {
     companion object {
         /**
-         * Proof transition: `String -> Refinement<CompilerSymbolIdentity,
-         * CompilerSymbolIdentityFailure>`.
+         * Proof transition: `String -> Refinement<CompilerSymbolIdentity, CompilerSymbolIdentityFailure>`.
          *
-         * Establishes a non-blank, bounded serialized compiler identity without control
-         * characters. [CompilerSymbolIdentityFailure] is the closed expected failure. Native
-         * compiler adapters must canonicalize and hash raw compiler signatures before parsing
-         * their serialized identity.
+         * Establishes a non-blank, bounded serialized compiler identity without control characters.
+         * [CompilerSymbolIdentityFailure] is the closed expected failure. Native compiler adapters must canonicalize
+         * and hash raw compiler signatures before parsing their serialized identity.
          */
-        fun parse(
-            raw: String,
-        ): Refinement<CompilerSymbolIdentity, CompilerSymbolIdentityFailure> = when {
-            raw.isBlank() -> Refinement.Rejected(CompilerSymbolIdentityFailure.BLANK)
-            raw.length > MAX_COMPILER_SYMBOL_IDENTITY_LENGTH ->
-                Refinement.Rejected(CompilerSymbolIdentityFailure.TOO_LONG)
-            raw.any(Char::isISOControl) ->
-                Refinement.Rejected(CompilerSymbolIdentityFailure.CONTROL_CHARACTER)
-            else -> Refinement.Refined(CompilerSymbolIdentity(raw))
-        }
+        fun parse(raw: String): Refinement<CompilerSymbolIdentity, CompilerSymbolIdentityFailure> =
+            when {
+                raw.isBlank() -> Refinement.Rejected(CompilerSymbolIdentityFailure.BLANK)
+                raw.length > MAX_COMPILER_SYMBOL_IDENTITY_LENGTH ->
+                    Refinement.Rejected(CompilerSymbolIdentityFailure.TOO_LONG)
+                raw.any(Char::isISOControl) -> Refinement.Rejected(CompilerSymbolIdentityFailure.CONTROL_CHARACTER)
+                else -> Refinement.Refined(CompilerSymbolIdentity(raw))
+            }
     }
 }
 
@@ -63,7 +57,8 @@ enum class CompilerGroundedSymbolEvidenceFailure {
 
 /** Detached evidence created only after one native declaration resolves to a compiler symbol. */
 @ConsistentCopyVisibility
-data class CompilerGroundedSymbolEvidence private constructor(
+data class CompilerGroundedSymbolEvidence
+private constructor(
     val file: SymbolDiscoveryFileIdentity,
     val range: ExactDeclarationTextRange,
     val name: SymbolDiscoveryCandidateName,
@@ -74,15 +69,14 @@ data class CompilerGroundedSymbolEvidence private constructor(
 ) {
     companion object {
         /**
-         * Proof transition: `(SymbolDiscoveryFileIdentity, Int, Int, String, String?,
-         * CompilerSymbolKind, CanonicalCompilerSignature) -> Refinement<
-         * CompilerGroundedSymbolEvidence, CompilerGroundedSymbolEvidenceFailure>`.
+         * Proof transition: `(SymbolDiscoveryFileIdentity, Int, Int, String, String?, CompilerSymbolKind,
+         * CanonicalCompilerSignature) -> Refinement< CompilerGroundedSymbolEvidence,
+         * CompilerGroundedSymbolEvidenceFailure>`.
          *
-         * Establishes a detached exact file, non-empty range, bounded name, explicit qualified
-         * identity state, closed compiler kind, structured compiler signature, and its derived
-         * compiler identity.
-         * [CompilerGroundedSymbolEvidenceFailure] is the closed expected failure. Raw PSI and
-         * compiler values may be extracted only at the request-local native compiler boundary.
+         * Establishes a detached exact file, non-empty range, bounded name, explicit qualified identity state, closed
+         * compiler kind, structured compiler signature, and its derived compiler identity.
+         * [CompilerGroundedSymbolEvidenceFailure] is the closed expected failure. Raw PSI and compiler values may be
+         * extracted only at the request-local native compiler boundary.
          */
         fun fromBoundary(
             file: SymbolDiscoveryFileIdentity,
@@ -93,43 +87,38 @@ data class CompilerGroundedSymbolEvidence private constructor(
             kind: CompilerSymbolKind,
             signature: CanonicalCompilerSignature,
         ): Refinement<CompilerGroundedSymbolEvidence, CompilerGroundedSymbolEvidenceFailure> {
-            val range = when (
-                val parsed = ExactDeclarationTextRange.parse(
-                    rawStartInclusive,
-                    rawEndExclusive,
-                )
-            ) {
-                is Refinement.Refined -> parsed.value
-                is Refinement.Rejected -> return Refinement.Rejected(
-                    CompilerGroundedSymbolEvidenceFailure.INVALID_RANGE,
-                )
-            }
-            val name = when (val parsed = SymbolDiscoveryCandidateName.parse(rawName)) {
-                is Refinement.Refined -> parsed.value
-                is Refinement.Rejected -> return Refinement.Rejected(
-                    CompilerGroundedSymbolEvidenceFailure.INVALID_NAME,
-                )
-            }
-            val qualifiedIdentity = when (
-                val parsed = ExactDeclarationQualifiedIdentity.fromBoundary(rawQualifiedIdentity)
-            ) {
-                is Refinement.Refined -> parsed.value
-                is Refinement.Rejected -> return Refinement.Rejected(
-                    CompilerGroundedSymbolEvidenceFailure.INVALID_QUALIFIED_IDENTITY,
-                )
-            }
+            val range =
+                when (
+                    val parsed =
+                        ExactDeclarationTextRange.parse(
+                            rawStartInclusive,
+                            rawEndExclusive,
+                        )
+                ) {
+                    is Refinement.Refined -> parsed.value
+                    is Refinement.Rejected ->
+                        return Refinement.Rejected(CompilerGroundedSymbolEvidenceFailure.INVALID_RANGE)
+                }
+            val name =
+                when (val parsed = SymbolDiscoveryCandidateName.parse(rawName)) {
+                    is Refinement.Refined -> parsed.value
+                    is Refinement.Rejected ->
+                        return Refinement.Rejected(CompilerGroundedSymbolEvidenceFailure.INVALID_NAME)
+                }
+            val qualifiedIdentity =
+                when (val parsed = ExactDeclarationQualifiedIdentity.fromBoundary(rawQualifiedIdentity)) {
+                    is Refinement.Refined -> parsed.value
+                    is Refinement.Rejected ->
+                        return Refinement.Rejected(CompilerGroundedSymbolEvidenceFailure.INVALID_QUALIFIED_IDENTITY)
+                }
             if (!signature.supports(kind)) {
-                return Refinement.Rejected(
-                    CompilerGroundedSymbolEvidenceFailure.SIGNATURE_KIND_MISMATCH,
-                )
+                return Refinement.Rejected(CompilerGroundedSymbolEvidenceFailure.SIGNATURE_KIND_MISMATCH)
             }
             if (
                 qualifiedIdentity !is ExactDeclarationQualifiedIdentity.Available ||
-                qualifiedIdentity.value != signature.qualifiedIdentity.value
+                    qualifiedIdentity.value != signature.qualifiedIdentity.value
             ) {
-                return Refinement.Rejected(
-                    CompilerGroundedSymbolEvidenceFailure.QUALIFIED_IDENTITY_MISMATCH,
-                )
+                return Refinement.Rejected(CompilerGroundedSymbolEvidenceFailure.QUALIFIED_IDENTITY_MISMATCH)
             }
             return Refinement.Refined(
                 CompilerGroundedSymbolEvidence(
@@ -140,13 +129,13 @@ data class CompilerGroundedSymbolEvidence private constructor(
                     kind = kind,
                     signature = signature,
                     compilerIdentity = CompilerSymbolIdentity.fromCanonicalSignature(signature),
-                ),
+                )
             )
         }
 
         /**
-         * Restores persisted compiler evidence only when the stored identity is the exact
-         * projection of the retained canonical signature.
+         * Restores persisted compiler evidence only when the stored identity is the exact projection of the retained
+         * canonical signature.
          */
         fun restoreBoundary(
             file: SymbolDiscoveryFileIdentity,
@@ -159,53 +148,46 @@ data class CompilerGroundedSymbolEvidence private constructor(
             compilerIdentity: CompilerSymbolIdentity,
         ): Refinement<CompilerGroundedSymbolEvidence, CompilerGroundedSymbolEvidenceFailure> =
             when (
-                val evidence = fromBoundary(
-                    file = file,
-                    rawStartInclusive = rawStartInclusive,
-                    rawEndExclusive = rawEndExclusive,
-                    rawName = rawName,
-                    rawQualifiedIdentity = rawQualifiedIdentity,
-                    kind = kind,
-                    signature = signature,
-                )
+                val evidence =
+                    fromBoundary(
+                        file = file,
+                        rawStartInclusive = rawStartInclusive,
+                        rawEndExclusive = rawEndExclusive,
+                        rawName = rawName,
+                        rawQualifiedIdentity = rawQualifiedIdentity,
+                        kind = kind,
+                        signature = signature,
+                    )
             ) {
                 is Refinement.Rejected -> evidence
-                is Refinement.Refined -> if (
-                    evidence.value.compilerIdentity == compilerIdentity
-                ) {
-                    evidence
-                } else {
-                    Refinement.Rejected(
-                        CompilerGroundedSymbolEvidenceFailure.COMPILER_IDENTITY_MISMATCH,
-                    )
-                }
+                is Refinement.Refined ->
+                    if (evidence.value.compilerIdentity == compilerIdentity) {
+                        evidence
+                    } else {
+                        Refinement.Rejected(CompilerGroundedSymbolEvidenceFailure.COMPILER_IDENTITY_MISMATCH)
+                    }
             }
     }
 }
 
 enum class SymbolSelectorFingerprintFailure {
-    INVALID_FORMAT,
+    INVALID_FORMAT
 }
 
 @JvmInline
-value class SymbolSelectorFingerprint private constructor(
-    val value: String,
-) {
+value class SymbolSelectorFingerprint private constructor(val value: String) {
     companion object {
         /**
-         * Proof transition: `String -> Refinement<SymbolSelectorFingerprint,
-         * SymbolSelectorFingerprintFailure>`.
+         * Proof transition: `String -> Refinement<SymbolSelectorFingerprint, SymbolSelectorFingerprintFailure>`.
          *
-         * Establishes the canonical lowercase SHA-256 fingerprint form. The closed expected
-         * failure is [SymbolSelectorFingerprintFailure]. Raw text may enter only at compiler issue
-         * or protocol-token restoration boundaries.
+         * Establishes the canonical lowercase SHA-256 fingerprint form. The closed expected failure is
+         * [SymbolSelectorFingerprintFailure]. Raw text may enter only at compiler issue or protocol-token restoration
+         * boundaries.
          */
-        fun parse(
-            raw: String,
-        ): Refinement<SymbolSelectorFingerprint, SymbolSelectorFingerprintFailure> =
+        fun parse(raw: String): Refinement<SymbolSelectorFingerprint, SymbolSelectorFingerprintFailure> =
             if (
                 raw.length == SYMBOL_SELECTOR_FINGERPRINT_HEX_LENGTH &&
-                raw.all { character -> character in '0'..'9' || character in 'a'..'f' }
+                    raw.all { character -> character in '0'..'9' || character in 'a'..'f' }
             ) {
                 Refinement.Refined(SymbolSelectorFingerprint(raw))
             } else {
@@ -223,7 +205,8 @@ enum class SymbolSelectorIssueFailure {
 }
 
 /** Compiler-grounded exact symbol authority bound to one root, generation, scope, and declaration. */
-class SymbolSelector private constructor(
+class SymbolSelector
+private constructor(
     val lease: SemanticReadAuthority,
     val scope: SymbolSearchScope,
     val constraints: SymbolDiscoveryConstraints,
@@ -238,14 +221,13 @@ class SymbolSelector private constructor(
 ) {
     companion object {
         /**
-         * Proof transition: `(SymbolDiscoverySelection, CompilerGroundedSymbolEvidence) ->
-         * Refinement<SymbolSelector, SymbolSelectorIssueFailure>`.
+         * Proof transition: `(SymbolDiscoverySelection, CompilerGroundedSymbolEvidence) -> Refinement<SymbolSelector,
+         * SymbolSelectorIssueFailure>`.
          *
-         * Establishes that compiler evidence resolves the selected file, name, and exact source
-         * offset, then seals root, generation, complete scope, declaration location, and compiler
-         * identity under one opaque fingerprint. [SymbolSelectorIssueFailure] is the closed
-         * expected failure. Compiler evidence may enter only from the request-local native
-         * selector adapter.
+         * Establishes that compiler evidence resolves the selected file, name, and exact source offset, then seals
+         * root, generation, complete scope, declaration location, and compiler identity under one opaque fingerprint.
+         * [SymbolSelectorIssueFailure] is the closed expected failure. Compiler evidence may enter only from the
+         * request-local native selector adapter.
          */
         fun issue(
             selection: SymbolDiscoverySelection,
@@ -269,38 +251,38 @@ class SymbolSelector private constructor(
         }
 
         /**
-         * Proof transition: `(SemanticReadAuthority, SymbolSearchScope,
-         * CompilerGroundedSymbolEvidence) -> SymbolSelector`.
+         * Proof transition: `(SemanticReadAuthority, SymbolSearchScope, CompilerGroundedSymbolEvidence) ->
+         * SymbolSelector`.
          *
-         * Issues exact selector authority from already compiler-grounded relation evidence. Raw
-         * compiler values cannot enter this transition.
+         * Issues exact selector authority from already compiler-grounded relation evidence. Raw compiler values cannot
+         * enter this transition.
          */
         fun issue(
             lease: SemanticReadAuthority,
             scope: SymbolSearchScope,
             evidence: CompilerGroundedSymbolEvidence,
             constraints: SymbolDiscoveryConstraints = SymbolDiscoveryConstraints.None,
-        ): SymbolSelector = SymbolSelector(
-            lease = lease,
-            scope = scope,
-            constraints = constraints,
-            file = evidence.file,
-            range = evidence.range,
-            name = evidence.name,
-            qualifiedIdentity = evidence.qualifiedIdentity,
-            kind = evidence.kind,
-            signature = evidence.signature,
-            compilerIdentity = evidence.compilerIdentity,
-            fingerprint = symbolSelectorFingerprint(lease, scope, evidence, constraints),
-        )
+        ): SymbolSelector =
+            SymbolSelector(
+                lease = lease,
+                scope = scope,
+                constraints = constraints,
+                file = evidence.file,
+                range = evidence.range,
+                name = evidence.name,
+                qualifiedIdentity = evidence.qualifiedIdentity,
+                kind = evidence.kind,
+                signature = evidence.signature,
+                compilerIdentity = evidence.compilerIdentity,
+                fingerprint = symbolSelectorFingerprint(lease, scope, evidence, constraints),
+            )
 
         /**
-         * Proof transition: `(SemanticReadAuthority, SymbolSearchScope,
-         * CompilerGroundedSymbolEvidence, SymbolSelectorFingerprint) ->
-         * Refinement<SymbolSelector, SymbolSelectorIssueFailure>`.
+         * Proof transition: `(SemanticReadAuthority, SymbolSearchScope, CompilerGroundedSymbolEvidence,
+         * SymbolSelectorFingerprint) -> Refinement<SymbolSelector, SymbolSelectorIssueFailure>`.
          *
-         * Restores exact selector authority only when every decoded fact reproduces the encoded
-         * fingerprint. [SymbolSelectorIssueFailure] closes tampering and stale reconstruction.
+         * Restores exact selector authority only when every decoded fact reproduces the encoded fingerprint.
+         * [SymbolSelectorIssueFailure] closes tampering and stale reconstruction.
          */
         fun restore(
             lease: SemanticReadAuthority,
@@ -318,22 +300,19 @@ class SymbolSelector private constructor(
 }
 
 enum class SymbolSelectorRevalidationFailure {
-    DECLARATION_MOVED_OR_CHANGED,
+    DECLARATION_MOVED_OR_CHANGED
 }
 
 /** Proof that current compiler evidence is identical to one issued exact selector. */
-class RevalidatedSymbolSelector private constructor(
-    val selector: SymbolSelector,
-) {
+class RevalidatedSymbolSelector private constructor(val selector: SymbolSelector) {
     companion object {
         /**
-         * Proof transition: `(SymbolSelector, CompilerGroundedSymbolEvidence) -> Refinement<
-         * RevalidatedSymbolSelector, SymbolSelectorRevalidationFailure>`.
+         * Proof transition: `(SymbolSelector, CompilerGroundedSymbolEvidence) -> Refinement< RevalidatedSymbolSelector,
+         * SymbolSelectorRevalidationFailure>`.
          *
-         * Establishes exact fingerprint identity under the selector's original root, generation,
-         * scope, location, and compiler identity. [SymbolSelectorRevalidationFailure] is the closed
-         * expected failure. Compiler evidence may enter only from the request-local native
-         * selector adapter.
+         * Establishes exact fingerprint identity under the selector's original root, generation, scope, location, and
+         * compiler identity. [SymbolSelectorRevalidationFailure] is the closed expected failure. Compiler evidence may
+         * enter only from the request-local native selector adapter.
          */
         fun validate(
             selector: SymbolSelector,
@@ -349,16 +328,15 @@ class RevalidatedSymbolSelector private constructor(
             ) {
                 Refinement.Refined(RevalidatedSymbolSelector(selector))
             } else {
-                Refinement.Rejected(
-                    SymbolSelectorRevalidationFailure.DECLARATION_MOVED_OR_CHANGED,
-                )
+                Refinement.Rejected(SymbolSelectorRevalidationFailure.DECLARATION_MOVED_OR_CHANGED)
             }
     }
 }
 
 /** Detached public description projected from one exact selector. */
 @ConsistentCopyVisibility
-data class SymbolDescription private constructor(
+data class SymbolDescription
+private constructor(
     val selector: SymbolSelector,
     val file: SymbolDiscoveryFileIdentity,
     val range: ExactDeclarationTextRange,
@@ -372,29 +350,31 @@ data class SymbolDescription private constructor(
         /**
          * Proof transition: `SymbolSelector -> SymbolDescription`.
          *
-         * Preserves the selector's root/generation authority and projects only detached compiler
-         * evidence. No PSI, VFS, search scope, or compiler object crosses this contract boundary.
+         * Preserves the selector's root/generation authority and projects only detached compiler evidence. No PSI, VFS,
+         * search scope, or compiler object crosses this contract boundary.
          */
-        fun from(selector: SymbolSelector): SymbolDescription = SymbolDescription(
-            selector = selector,
-            file = selector.file,
-            range = selector.range,
-            name = selector.name,
-            qualifiedIdentity = selector.qualifiedIdentity,
-            kind = selector.kind,
-            signature = selector.signature,
-            compilerIdentity = selector.compilerIdentity,
-        )
+        fun from(selector: SymbolSelector): SymbolDescription =
+            SymbolDescription(
+                selector = selector,
+                file = selector.file,
+                range = selector.range,
+                name = selector.name,
+                qualifiedIdentity = selector.qualifiedIdentity,
+                kind = selector.kind,
+                signature = selector.signature,
+                compilerIdentity = selector.compilerIdentity,
+            )
     }
 }
 
-private fun CanonicalCompilerSignature.supports(kind: CompilerSymbolKind): Boolean = when (this) {
-    is CanonicalCompilerSignature.Function ->
-        kind == CompilerSymbolKind.FUNCTION || kind == CompilerSymbolKind.CONSTRUCTOR
-    is CanonicalCompilerSignature.Property -> kind == CompilerSymbolKind.PROPERTY
-    is CanonicalCompilerSignature.TypeAlias -> kind == CompilerSymbolKind.TYPE_ALIAS
-    is CanonicalCompilerSignature.ClassLike -> kind == CompilerSymbolKind.CLASSLIKE
-}
+private fun CanonicalCompilerSignature.supports(kind: CompilerSymbolKind): Boolean =
+    when (this) {
+        is CanonicalCompilerSignature.Function ->
+            kind == CompilerSymbolKind.FUNCTION || kind == CompilerSymbolKind.CONSTRUCTOR
+        is CanonicalCompilerSignature.Property -> kind == CompilerSymbolKind.PROPERTY
+        is CanonicalCompilerSignature.TypeAlias -> kind == CompilerSymbolKind.TYPE_ALIAS
+        is CanonicalCompilerSignature.ClassLike -> kind == CompilerSymbolKind.CLASSLIKE
+    }
 
 private fun symbolSelectorFingerprint(
     lease: SemanticReadAuthority,
@@ -414,11 +394,11 @@ private fun symbolSelectorFingerprint(
         appendSelectorField(evidence.kind.name)
         appendSelectorField(evidence.compilerIdentity.value)
     }
-    val digest = MessageDigest.getInstance("SHA-256")
-        .digest(canonical.toByteArray(StandardCharsets.UTF_8))
-    val raw = digest.joinToString(separator = "") { byte ->
-        (byte.toInt() and 0xff).toString(SELECTOR_HEX_RADIX).padStart(2, '0')
-    }
+    val digest = MessageDigest.getInstance("SHA-256").digest(canonical.toByteArray(StandardCharsets.UTF_8))
+    val raw =
+        digest.joinToString(separator = "") { byte ->
+            (byte.toInt() and 0xff).toString(SELECTOR_HEX_RADIX).padStart(2, '0')
+        }
     return when (val parsed = SymbolSelectorFingerprint.parse(raw)) {
         is Refinement.Refined -> parsed.value
         is Refinement.Rejected -> error("SHA-256 projection is a canonical selector fingerprint")

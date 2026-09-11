@@ -57,9 +57,9 @@ import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
@@ -70,9 +70,7 @@ class SerializedMutationTransitionTest {
         val applied = fixture.apply()
         assertEquals(0, fixture.refreshes)
         assertEquals(13L, (fixture.coordinator.inspect() as WorkspaceRuntimeState.Ready).workspace.generation.value)
-        val result = fixture.graph.operations.changeApply.verify.verify(
-            VerifiedMutationRequest(fixture.plan, applied),
-        )
+        val result = fixture.graph.operations.changeApply.verify.verify(VerifiedMutationRequest(fixture.plan, applied))
 
         assertTrue(result is VerifiedMutationResult.RejectedAfterResultingWorkspace, result.toString())
         assertEquals(listOf(14L), fixture.observedGenerations)
@@ -96,9 +94,7 @@ class SerializedMutationTransitionTest {
         fixture.graph.operations.indexSync.synchronize()
         assertEquals(1, fixture.refreshes)
 
-        val result = fixture.graph.operations.changeApply.verify.verify(
-            VerifiedMutationRequest(fixture.plan, applied),
-        )
+        val result = fixture.graph.operations.changeApply.verify.verify(VerifiedMutationRequest(fixture.plan, applied))
 
         assertTrue(result is VerifiedMutationResult.RejectedBeforePublication)
         assertEquals(1, fixture.refreshes)
@@ -140,9 +136,12 @@ class SerializedMutationTransitionTest {
         val cancelled = object : java.util.concurrent.CancellationException("refresh interrupted") {}
         fixture.onRefresh = { throw cancelled }
 
-        assertSame(cancelled, assertThrows(java.util.concurrent.CancellationException::class.java) {
-            fixture.graph.operations.changeApply.verify.verify(VerifiedMutationRequest(fixture.plan, applied))
-        })
+        assertSame(
+            cancelled,
+            assertThrows(java.util.concurrent.CancellationException::class.java) {
+                fixture.graph.operations.changeApply.verify.verify(VerifiedMutationRequest(fixture.plan, applied))
+            },
+        )
         assertEquals(emptyList<Long>(), fixture.observedGenerations)
         fixture.onRefresh = { WorkspaceIndexRefresh.Refreshed }
         val pool = Executors.newSingleThreadExecutor()
@@ -162,14 +161,16 @@ class SerializedMutationTransitionTest {
         val completed = CountDownLatch(1)
         val competitor = AtomicReference<java.util.concurrent.Future<*>>()
         fixture.afterWrite = {
-            competitor.set(pool.submit {
-                entered.countDown()
-                try {
-                    fixture.graph.operations.indexSync.synchronize()
-                } finally {
-                    completed.countDown()
+            competitor.set(
+                pool.submit {
+                    entered.countDown()
+                    try {
+                        fixture.graph.operations.indexSync.synchronize()
+                    } finally {
+                        completed.countDown()
+                    }
                 }
-            })
+            )
             assertTrue(entered.await(5, TimeUnit.SECONDS))
             assertFalse(completed.await(100, TimeUnit.MILLISECONDS), "readiness entered during application")
         }
@@ -186,14 +187,19 @@ class SerializedMutationTransitionTest {
         }
         val authority = CanonicalChangeAuthority()
         val identity = (authority.issuePlan(fixture.plan) as ChangePlanIssuance.Issued).identity
-        val handler = CanonicalChangeApplyHandler(
-            fixture.graph.semanticWorkspace, fixture.graph.operations.changeApply, authority,
-        )
+        val handler =
+            CanonicalChangeApplyHandler(
+                fixture.graph.semanticWorkspace,
+                fixture.graph.operations.changeApply,
+                authority,
+            )
         try {
             runBlocking {
-                handler.execute(io.github.amichne.kast.protocol.contract.ChangeApplyRequest(
-                    ProtocolText.parse(identity.value).mutationRefined(),
-                ))
+                handler.execute(
+                    io.github.amichne.kast.protocol.contract.ChangeApplyRequest(
+                        ProtocolText.parse(identity.value).mutationRefined()
+                    )
+                )
             }
             competitor.get().get(5, TimeUnit.SECONDS)
             assertEquals(listOf(14L), fixture.observedGenerations)
@@ -213,108 +219,156 @@ private class MutationTransitionFixture(root: Path) {
     var afterWrite: () -> Unit = {}
     var beforeObservation: () -> Unit = {}
     val observedGenerations = mutableListOf<Long>()
-    val coordinator = WorkspacePublicationCoordinator(
-        object : WorkspaceReconciliationPort {
-            override fun capture(signals: Set<WorkspaceSignal>): WorkspaceCandidateCapture =
-                WorkspaceCandidateCapture.Captured(WorkspaceCandidate(admitted.published.root, state))
+    val coordinator =
+        WorkspacePublicationCoordinator(
+                object : WorkspaceReconciliationPort {
+                    override fun capture(signals: Set<WorkspaceSignal>): WorkspaceCandidateCapture =
+                        WorkspaceCandidateCapture.Captured(WorkspaceCandidate(admitted.published.root, state))
 
-            override fun reconcile(candidate: WorkspaceCandidate): WorkspaceCandidateReconciliation =
-                WorkspaceCandidateReconciliation.Reconciled(
-                    ReconciledWorkspace.admit(
-                        candidate, WorkspaceEvidenceKind.entries.toSet(), admitted.published.sourceRoots,
-                    ).mutationRefined(),
-                )
-        },
-        MutationPublicationTransaction(),
-    ).also { it.reconcile() }
-    val graph = KastRuntimeComposition.constructGraph(
-        coordinator,
-        KastRuntimeCompositionTest.semanticPorts(),
-        KastRuntimeCompositionTest.topologyPorts(),
-        IndexRuntimePorts(
-            refresh = {
-                refreshes++
-                onRefresh().also { result ->
-                    if (result == WorkspaceIndexRefresh.Refreshed) state = physicalState
-                }
-            },
-            sourceObservation = { WorkspaceSourceObservation.Observed(physicalState) },
-        ),
-        KastRuntimeCompositionTest.changePorts().copy(
-            recoveryEvidence = MutationRecoveryStore(),
-            sourceObserver = { source ->
-                SourceObservationResult.Observed(
-                    ObservedAbsentMutationSource.fromPhysicalBoundary(source, SourceWriteAccess.Writable),
-                )
-            },
-            sourceWriter = { authority, durability ->
-                val applied = AppliedSourceWrite.observe(
-                    authority, authority.postimageBytesAtIntellijBoundary(), setOf(authority.source.path.value),
-                ).mutationRefined()
-                when (durability.recordApplied()) {
-                    MutationDurabilityResult.Durable -> {
-                        physicalState = WorkspaceStateIdentity.parse("after-mutation").mutationRefined()
-                        afterWrite()
-                        SourceWriteResult.Applied(applied)
+                    override fun reconcile(candidate: WorkspaceCandidate): WorkspaceCandidateReconciliation =
+                        WorkspaceCandidateReconciliation.Reconciled(
+                            ReconciledWorkspace.admit(
+                                    candidate,
+                                    WorkspaceEvidenceKind.entries.toSet(),
+                                    admitted.published.sourceRoots,
+                                )
+                                .mutationRefined()
+                        )
+                },
+                MutationPublicationTransaction(),
+            )
+            .also { it.reconcile() }
+    val graph =
+        KastRuntimeComposition.constructGraph(
+            coordinator,
+            KastRuntimeCompositionTest.semanticPorts(),
+            KastRuntimeCompositionTest.topologyPorts(),
+            IndexRuntimePorts(
+                refresh = {
+                    refreshes++
+                    onRefresh().also { result ->
+                        if (result == WorkspaceIndexRefresh.Refreshed) state = physicalState
                     }
-                    is MutationDurabilityResult.Rejected ->
-                        SourceWriteResult.RejectedAfterRollback(SourceWriteFailure.DURABILITY_REJECTED)
-                }
-            },
-            verificationObserver = { request ->
-                beforeObservation()
-                observedGenerations.add(request.resulting.workspace.generation.value)
-                ChangeVerificationObservation.Rejected(
-                    ChangeVerificationObservationRejection.COMPILER_OBSERVATION_REJECTED,
-                )
-            },
-        ),
-        KastObservability.Disabled,
-    )
+                },
+                sourceObservation = { WorkspaceSourceObservation.Observed(physicalState) },
+            ),
+            KastRuntimeCompositionTest.changePorts()
+                .copy(
+                    recoveryEvidence = MutationRecoveryStore(),
+                    sourceObserver = { source ->
+                        SourceObservationResult.Observed(
+                            ObservedAbsentMutationSource.fromPhysicalBoundary(source, SourceWriteAccess.Writable)
+                        )
+                    },
+                    sourceWriter = { authority, durability ->
+                        val applied =
+                            AppliedSourceWrite.observe(
+                                    authority,
+                                    authority.postimageBytesAtIntellijBoundary(),
+                                    setOf(authority.source.path.value),
+                                )
+                                .mutationRefined()
+                        when (durability.recordApplied()) {
+                            MutationDurabilityResult.Durable -> {
+                                physicalState = WorkspaceStateIdentity.parse("after-mutation").mutationRefined()
+                                afterWrite()
+                                SourceWriteResult.Applied(applied)
+                            }
+                            is MutationDurabilityResult.Rejected ->
+                                SourceWriteResult.RejectedAfterRollback(SourceWriteFailure.DURABILITY_REJECTED)
+                        }
+                    },
+                    verificationObserver = { request ->
+                        beforeObservation()
+                        observedGenerations.add(request.resulting.workspace.generation.value)
+                        ChangeVerificationObservation.Rejected(
+                            ChangeVerificationObservationRejection.COMPILER_OBSERVATION_REJECTED
+                        )
+                    },
+                ),
+            KastObservability.Disabled,
+        )
     val plan = (graph.operations.changePlan.addFile.plan(admitted.addFile) as AddFilePlanResult.Planned).plan
 
-    fun apply(): AppliedUnverified = graph.operations.changeApply.apply.apply(
-        ChangeApplyRequest(
-            plan, admitted.published,
-            RequestedMutationWriteScope(admitted.published.root, plan.writes.entries.mapTo(linkedSetOf()) { it.source }),
-        ),
-    ) as AppliedUnverified
+    fun apply(): AppliedUnverified =
+        graph.operations.changeApply.apply.apply(
+            ChangeApplyRequest(
+                plan,
+                admitted.published,
+                RequestedMutationWriteScope(
+                    admitted.published.root,
+                    plan.writes.entries.mapTo(linkedSetOf()) { it.source },
+                ),
+            )
+        ) as AppliedUnverified
 }
 
 private data object MutationOpenPublication : OpenCanonicalWorkspacePublication
-private data class MutationPreparedPublication(val candidate: ReconciledWorkspace) : PreparedCanonicalWorkspacePublication
+
+private data class MutationPreparedPublication(val candidate: ReconciledWorkspace) :
+    PreparedCanonicalWorkspacePublication
 
 private class MutationPublicationTransaction : WorkspacePublicationTransaction {
     private var generation = 12L
+
     override fun begin(): WorkspacePublicationOpening = WorkspacePublicationOpening.Opened(MutationOpenPublication)
+
     override fun prepare(
-        open: OpenCanonicalWorkspacePublication, candidate: ReconciledWorkspace,
-    ): WorkspacePublicationPreparation = WorkspacePublicationPreparation.Prepared(MutationPreparedPublication(candidate))
+        open: OpenCanonicalWorkspacePublication,
+        candidate: ReconciledWorkspace,
+    ): WorkspacePublicationPreparation =
+        WorkspacePublicationPreparation.Prepared(MutationPreparedPublication(candidate))
+
     override fun commit(prepared: PreparedCanonicalWorkspacePublication): WorkspacePublicationResult =
-        WorkspacePublicationResult.Advanced(PublishedWorkspace.publish(
-            (prepared as MutationPreparedPublication).candidate,
-            EvidenceGeneration.parse(++generation).mutationRefined(),
-        ))
-    override fun discard(open: OpenCanonicalWorkspacePublication): WorkspacePublicationDiscard = WorkspacePublicationDiscard.Discarded
-    override fun discard(prepared: PreparedCanonicalWorkspacePublication): WorkspacePublicationDiscard = WorkspacePublicationDiscard.Discarded
+        WorkspacePublicationResult.Advanced(
+            PublishedWorkspace.publish(
+                (prepared as MutationPreparedPublication).candidate,
+                EvidenceGeneration.parse(++generation).mutationRefined(),
+            )
+        )
+
+    override fun discard(open: OpenCanonicalWorkspacePublication): WorkspacePublicationDiscard =
+        WorkspacePublicationDiscard.Discarded
+
+    override fun discard(prepared: PreparedCanonicalWorkspacePublication): WorkspacePublicationDiscard =
+        WorkspacePublicationDiscard.Discarded
 }
 
 private class MutationRecoveryStore : MutationRecoveryEvidenceStore {
     private val records = mutableMapOf<MutationPlanBinding, MutationRecoveryRecord>()
-    override fun prepare(record: MutationRecoveryRecord.PreWriteDurable): MutationRecoveryPersistResult<MutationRecoveryRecord.PreWriteDurable> = persist(record)
-    override fun recordApplied(prior: MutationRecoveryRecord.PreWriteDurable, record: MutationRecoveryRecord.AppliedWritesDurable): MutationRecoveryPersistResult<MutationRecoveryRecord.AppliedWritesDurable> = transition(prior, record)
-    override fun <Record : MutationRecoveryRecord.Terminal> recordTerminal(prior: MutationRecoveryRecord.AppliedWritesDurable, record: Record): MutationRecoveryPersistResult<Record> = transition(prior, record)
-    override fun load(binding: MutationPlanBinding): MutationRecoveryLoadResult = records[binding]?.let(MutationRecoveryLoadResult::Found) ?: MutationRecoveryLoadResult.Absent(binding)
+
+    override fun prepare(
+        record: MutationRecoveryRecord.PreWriteDurable
+    ): MutationRecoveryPersistResult<MutationRecoveryRecord.PreWriteDurable> = persist(record)
+
+    override fun recordApplied(
+        prior: MutationRecoveryRecord.PreWriteDurable,
+        record: MutationRecoveryRecord.AppliedWritesDurable,
+    ): MutationRecoveryPersistResult<MutationRecoveryRecord.AppliedWritesDurable> = transition(prior, record)
+
+    override fun <Record : MutationRecoveryRecord.Terminal> recordTerminal(
+        prior: MutationRecoveryRecord.AppliedWritesDurable,
+        record: Record,
+    ): MutationRecoveryPersistResult<Record> = transition(prior, record)
+
+    override fun load(binding: MutationPlanBinding): MutationRecoveryLoadResult =
+        records[binding]?.let(MutationRecoveryLoadResult::Found) ?: MutationRecoveryLoadResult.Absent(binding)
+
     private fun <Record : MutationRecoveryRecord> persist(record: Record): MutationRecoveryPersistResult<Record> {
         records[record.binding] = record
         return MutationRecoveryPersistResult.Durable(record)
     }
-    private fun <Record : MutationRecoveryRecord> transition(prior: MutationRecoveryRecord, record: Record): MutationRecoveryPersistResult<Record> =
+
+    private fun <Record : MutationRecoveryRecord> transition(
+        prior: MutationRecoveryRecord,
+        record: Record,
+    ): MutationRecoveryPersistResult<Record> =
         if (records[prior.binding]?.digest == prior.digest) persist(record)
         else MutationRecoveryPersistResult.Rejected(MutationRecoveryEvidenceFailure.PRIOR_STATE_MISMATCH)
 }
 
-private fun <Value, Failure> Refinement<Value, Failure>.mutationRefined(): Value = when (this) {
-    is Refinement.Refined -> value
-    is Refinement.Rejected -> error(failure.toString())
-}
+private fun <Value, Failure> Refinement<Value, Failure>.mutationRefined(): Value =
+    when (this) {
+        is Refinement.Refined -> value
+        is Refinement.Rejected -> error(failure.toString())
+    }

@@ -15,18 +15,20 @@ class DetachedIndexerTransportExecutorTest {
             startupContext.get()
         }
 
-        val completed = assertInstanceOf(
-            IndexerTransportExecution.Completed::class.java,
-            execution,
-        )
+        val completed =
+            assertInstanceOf(
+                IndexerTransportExecution.Completed::class.java,
+                execution,
+            )
         assertNull(completed.value)
     }
 
     @Test
     fun `transport execution failure remains finite data`() {
-        val execution = DetachedIndexerTransportExecutor.execute<Unit> {
-            error("transport failed")
-        }
+        val execution =
+            DetachedIndexerTransportExecutor.execute<Unit> {
+                error("transport failed")
+            }
 
         assertEquals(IndexerTransportExecution.Failed, execution)
     }

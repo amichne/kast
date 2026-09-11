@@ -3,18 +3,9 @@ package io.github.amichne.kast.appserver.provider
 import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.appserver.core.CanonicalBrokerDirectory
 import io.github.amichne.kast.appserver.core.ProviderFailureCode
-import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.ReadLimitParameter
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.TimeoutCancellationException
-import kotlinx.coroutines.async
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.withTimeout
-import kotlinx.coroutines.withContext
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.Refinement
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.nio.file.Files
@@ -22,21 +13,27 @@ import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 
-internal enum class BrokerExecutableFailure { UNAVAILABLE }
+internal enum class BrokerExecutableFailure {
+    UNAVAILABLE
+}
 
 @JvmInline
-internal value class BrokerExecutable private constructor(
-    val path: Path,
-) {
+internal value class BrokerExecutable private constructor(val path: Path) {
     companion object {
         internal fun admit(candidate: Path): Refinement<BrokerExecutable, BrokerExecutableFailure> =
             try {
                 val canonical = candidate.toRealPath()
-                if (
-                    Files.isRegularFile(canonical, LinkOption.NOFOLLOW_LINKS) &&
-                    Files.isExecutable(canonical)
-                ) {
+                if (Files.isRegularFile(canonical, LinkOption.NOFOLLOW_LINKS) && Files.isExecutable(canonical)) {
                     Refinement.Refined(BrokerExecutable(canonical))
                 } else {
                     Refinement.Rejected(BrokerExecutableFailure.UNAVAILABLE)
@@ -58,11 +55,12 @@ internal enum class BrokerProcessRequestFailure {
 internal sealed interface BrokerProcessInput {
     data object Empty : BrokerProcessInput
 
-    class Document private constructor(
-        internal val value: String,
-    ) : BrokerProcessInput {
+    class Document private constructor(internal val value: String) : BrokerProcessInput {
         companion object {
-            internal fun admit(document: String, limits: ReadLimits = ReadLimits.Default): Refinement<Document, BrokerProcessRequestFailure> {
+            internal fun admit(
+                document: String,
+                limits: ReadLimits = ReadLimits.Default,
+            ): Refinement<Document, BrokerProcessRequestFailure> {
                 val bytes = document.toByteArray(Charsets.UTF_8)
                 return if (document.isBlank() || bytes.size > limits[ReadLimitParameter.PROCESS_INPUT_BYTES].value) {
                     Refinement.Rejected(BrokerProcessRequestFailure.INVALID_INPUT)
@@ -76,7 +74,8 @@ internal sealed interface BrokerProcessInput {
     }
 }
 
-internal class BrokerProcessRequest private constructor(
+internal class BrokerProcessRequest
+private constructor(
     val executable: BrokerExecutable,
     val arguments: List<String>,
     val workingDirectory: CanonicalBrokerDirectory,
@@ -95,25 +94,25 @@ internal class BrokerProcessRequest private constructor(
             input: BrokerProcessInput = BrokerProcessInput.Empty,
             environment: Map<String, String> = emptyMap(),
             limits: ReadLimits = ReadLimits.Default,
-        ): Refinement<BrokerProcessRequest, BrokerProcessRequestFailure> = when {
-            maximumOutputBytes !in 1..limits[ReadLimitParameter.PROCESS_OUTPUT_BYTES].value -> Refinement.Rejected(
-                BrokerProcessRequestFailure.INVALID_OUTPUT_BUDGET,
-            )
-            timeoutMillis !in 1..limits[ReadLimitParameter.PROCESS_TIMEOUT_MILLIS].value.toLong() -> Refinement.Rejected(
-                BrokerProcessRequestFailure.INVALID_TIMEOUT,
-            )
-            else -> Refinement.Refined(
-                BrokerProcessRequest(
-                    executable,
-                    arguments,
-                    workingDirectory,
-                    maximumOutputBytes,
-                    timeoutMillis,
-                    input,
-                    environment,
-                ),
-            )
-        }
+        ): Refinement<BrokerProcessRequest, BrokerProcessRequestFailure> =
+            when {
+                maximumOutputBytes !in 1..limits[ReadLimitParameter.PROCESS_OUTPUT_BYTES].value ->
+                    Refinement.Rejected(BrokerProcessRequestFailure.INVALID_OUTPUT_BUDGET)
+                timeoutMillis !in 1..limits[ReadLimitParameter.PROCESS_TIMEOUT_MILLIS].value.toLong() ->
+                    Refinement.Rejected(BrokerProcessRequestFailure.INVALID_TIMEOUT)
+                else ->
+                    Refinement.Refined(
+                        BrokerProcessRequest(
+                            executable,
+                            arguments,
+                            workingDirectory,
+                            maximumOutputBytes,
+                            timeoutMillis,
+                            input,
+                            environment,
+                        )
+                    )
+            }
 
         private const val MAXIMUM_OUTPUT_BYTES = BrokerOperationalLimits.maximumProcessOutputBytes
         private val MAXIMUM_TIMEOUT_MILLIS = BrokerOperationalLimits.maximumProcessTimeout.value
@@ -128,13 +127,14 @@ internal enum class BrokerProcessFailure {
     TIMED_OUT,
 }
 
-internal fun BrokerProcessFailure.providerFailureCode(): ProviderFailureCode = when (this) {
-    BrokerProcessFailure.IO_REJECTED -> ProviderFailureCode.IO_REJECTED
-    BrokerProcessFailure.OUTPUT_LIMIT -> ProviderFailureCode.OUTPUT_LIMIT
-    BrokerProcessFailure.SPAWN_FAILED -> ProviderFailureCode.SPAWN_FAILED
-    BrokerProcessFailure.TERMINATED -> ProviderFailureCode.TERMINATED
-    BrokerProcessFailure.TIMED_OUT -> ProviderFailureCode.TIMED_OUT
-}
+internal fun BrokerProcessFailure.providerFailureCode(): ProviderFailureCode =
+    when (this) {
+        BrokerProcessFailure.IO_REJECTED -> ProviderFailureCode.IO_REJECTED
+        BrokerProcessFailure.OUTPUT_LIMIT -> ProviderFailureCode.OUTPUT_LIMIT
+        BrokerProcessFailure.SPAWN_FAILED -> ProviderFailureCode.SPAWN_FAILED
+        BrokerProcessFailure.TERMINATED -> ProviderFailureCode.TERMINATED
+        BrokerProcessFailure.TIMED_OUT -> ProviderFailureCode.TIMED_OUT
+    }
 
 internal sealed interface BrokerProcessExecution {
     data class Completed(
@@ -143,9 +143,7 @@ internal sealed interface BrokerProcessExecution {
         val stderr: String,
     ) : BrokerProcessExecution
 
-    data class Rejected(
-        val failure: BrokerProcessFailure,
-    ) : BrokerProcessExecution
+    data class Rejected(val failure: BrokerProcessFailure) : BrokerProcessExecution
 }
 
 internal fun interface BrokerProcessExecutor {
@@ -156,22 +154,17 @@ internal fun interface BrokerProcessExecutor {
 internal object JdkBrokerProcessExecutor : BrokerProcessExecutor {
     override suspend fun execute(request: BrokerProcessRequest): BrokerProcessExecution =
         withContext(Dispatchers.IO) {
-            val process = try {
-                ProcessBuilder(
-                    listOf(request.executable.path.toString()) + request.arguments,
-                )
-                    .directory(request.workingDirectory.path.toFile())
-                    .also { builder -> builder.environment().putAll(request.environment) }
-                    .start()
-            } catch (_: IOException) {
-                return@withContext BrokerProcessExecution.Rejected(
-                    BrokerProcessFailure.SPAWN_FAILED,
-                )
-            } catch (_: SecurityException) {
-                return@withContext BrokerProcessExecution.Rejected(
-                    BrokerProcessFailure.SPAWN_FAILED,
-                )
-            }
+            val process =
+                try {
+                    ProcessBuilder(listOf(request.executable.path.toString()) + request.arguments)
+                        .directory(request.workingDirectory.path.toFile())
+                        .also { builder -> builder.environment().putAll(request.environment) }
+                        .start()
+                } catch (_: IOException) {
+                    return@withContext BrokerProcessExecution.Rejected(BrokerProcessFailure.SPAWN_FAILED)
+                } catch (_: SecurityException) {
+                    return@withContext BrokerProcessExecution.Rejected(BrokerProcessFailure.SPAWN_FAILED)
+                }
 
             val processIo = CoroutineScope(SupervisorJob() + Dispatchers.IO)
             try {
@@ -181,9 +174,7 @@ internal object JdkBrokerProcessExecutor : BrokerProcessExecutor {
                         process.outputStream.use { output ->
                             when (val value = request.input) {
                                 BrokerProcessInput.Empty -> Unit
-                                is BrokerProcessInput.Document -> output.write(
-                                    value.value.toByteArray(Charsets.UTF_8),
-                                )
+                                is BrokerProcessInput.Document -> output.write(value.value.toByteArray(Charsets.UTF_8))
                             }
                         }
                     }
@@ -204,9 +195,7 @@ internal object JdkBrokerProcessExecutor : BrokerProcessExecutor {
                         input.await()
                     } catch (_: IOException) {
                         terminate(process)
-                        return@withTimeout BrokerProcessExecution.Rejected(
-                            BrokerProcessFailure.IO_REJECTED,
-                        )
+                        return@withTimeout BrokerProcessExecution.Rejected(BrokerProcessFailure.IO_REJECTED)
                     }
                     val exitCode = exit.await()
                     if (stdoutRead is BoundedRead.Exceeded || stderrRead is BoundedRead.Exceeded) {
@@ -259,8 +248,7 @@ internal object JdkBrokerProcessExecutor : BrokerProcessExecutor {
             BoundedRead.Read(output.toByteArray())
         } catch (_: IOException) {
             terminate(process)
-            if (observedBytes.get() > maximumOutputBytes) BoundedRead.Exceeded
-            else BoundedRead.Rejected
+            if (observedBytes.get() > maximumOutputBytes) BoundedRead.Exceeded else BoundedRead.Rejected
         }
     }
 
@@ -269,7 +257,10 @@ internal object JdkBrokerProcessExecutor : BrokerProcessExecutor {
             if (process.isAlive) process.destroy()
             closeProcessStreams(process)
             try {
-                if (process.isAlive && !process.waitFor(BrokerOperationalLimits.processRetirementWait.value, TimeUnit.MILLISECONDS)) {
+                if (
+                    process.isAlive &&
+                        !process.waitFor(BrokerOperationalLimits.processRetirementWait.value, TimeUnit.MILLISECONDS)
+                ) {
                     process.destroyForcibly()
                     process.waitFor(BrokerOperationalLimits.processRetirementWait.value, TimeUnit.MILLISECONDS)
                 }
@@ -300,7 +291,9 @@ internal object JdkBrokerProcessExecutor : BrokerProcessExecutor {
 
     private sealed interface BoundedRead {
         data class Read(val bytes: ByteArray) : BoundedRead
+
         data object Exceeded : BoundedRead
+
         data object Rejected : BoundedRead
     }
 }

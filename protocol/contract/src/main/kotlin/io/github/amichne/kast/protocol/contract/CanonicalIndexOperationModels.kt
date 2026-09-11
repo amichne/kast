@@ -2,12 +2,9 @@ package io.github.amichne.kast.protocol.contract
 
 import kotlinx.serialization.Serializable
 
-@Serializable
-data object IndexSyncRequest : OperationRequest
+@Serializable data object IndexSyncRequest : OperationRequest
 
-data class IndexSyncResult(
-    val state: IndexSyncStateDocument,
-) : OperationResult
+data class IndexSyncResult(val state: IndexSyncStateDocument) : OperationResult
 
 enum class IndexSyncStateDocument {
     SYNCHRONIZED,
@@ -16,7 +13,7 @@ enum class IndexSyncStateDocument {
 
 /** Reserved typed qualification; index synchronization currently requires complete evidence. */
 enum class IndexSyncQualification : OperationQualification {
-    INDEXING_IN_PROGRESS,
+    INDEXING_IN_PROGRESS
 }
 
 enum class IndexSyncRejection : OperationRejection {

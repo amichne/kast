@@ -32,12 +32,15 @@ class TopologyExtractionFailureTest {
     @Test
     fun `ordinary file failures cannot erase compiler identity mismatch evidence`() {
         assertEquals(
-            TopologyExtractionFailure.entries.toSet() - setOf(
-                TopologyExtractionFailure.COMPILER_IDENTITY_MISMATCH,
-                TopologyExtractionFailure.SOURCE_CONTENT_CHANGED_DURING_BUILD,
+            TopologyExtractionFailure.entries.toSet() -
+                setOf(
+                    TopologyExtractionFailure.COMPILER_IDENTITY_MISMATCH,
+                    TopologyExtractionFailure.SOURCE_CONTENT_CHANGED_DURING_BUILD,
+                ),
+            TopologyFileExtractionFailure.entries.mapTo(
+                linkedSetOf(),
+                TopologyFileExtractionFailure::toTopologyExtractionFailure,
             ),
-            TopologyFileExtractionFailure.entries
-                .mapTo(linkedSetOf(), TopologyFileExtractionFailure::toTopologyExtractionFailure),
         )
     }
 }

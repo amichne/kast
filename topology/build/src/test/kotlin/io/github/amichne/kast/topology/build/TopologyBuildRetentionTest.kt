@@ -35,62 +35,65 @@ import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceContentHash
 import io.github.amichne.kast.workspace.contract.WorkspaceSourcePath
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
+import java.nio.file.Path
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
-import java.nio.file.Path
-import java.util.concurrent.atomic.AtomicInteger
 
 class TopologyBuildRetentionTest {
     @Test
     fun `extractor foreign evidence reaches typed coverage rejection`() = runTest {
         val fixture = retentionFixture()
         val candidate = fixture.complete.file
-        val completed = TopologySourceFile.admit(
-            fixture.workspace,
-            candidate.sourceRoot,
-            candidate.path,
-            WorkspaceSourceContentHash.parse("b".repeat(64)).retentionRefined(),
-        ).retentionRefined()
-        val foreignCompletion = CompleteTopologyFile.admit(
-            completed,
-            emptyList(),
-            emptyList(),
-        ).retentionRefined()
+        val completed =
+            TopologySourceFile.admit(
+                    fixture.workspace,
+                    candidate.sourceRoot,
+                    candidate.path,
+                    WorkspaceSourceContentHash.parse("b".repeat(64)).retentionRefined(),
+                )
+                .retentionRefined()
+        val foreignCompletion =
+            CompleteTopologyFile.admit(
+                    completed,
+                    emptyList(),
+                    emptyList(),
+                )
+                .retentionRefined()
         val publicationCalls = AtomicInteger()
-        val service = TopologyBuildService.create(
-            WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(fixture.workspace) },
-            RetentionCurrentGuard(fixture.workspace.readLease),
-            TopologyCandidateEnumerator {
-                TopologyCandidateEnumeration.Complete(fixture.candidates)
-            },
-            TopologyFileExtractor { TopologyFileExtraction.Complete(foreignCompletion) },
-            object : TopologySnapshotStore {
-                override fun eligible(identity: TopologyWorkspaceIdentity) =
-                    TopologySnapshotEligibility.Unavailable
+        val service =
+            TopologyBuildService.create(
+                WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(fixture.workspace) },
+                RetentionCurrentGuard(fixture.workspace.readLease),
+                TopologyCandidateEnumerator {
+                    TopologyCandidateEnumeration.Complete(fixture.candidates)
+                },
+                TopologyFileExtractor { TopologyFileExtraction.Complete(foreignCompletion) },
+                object : TopologySnapshotStore {
+                    override fun eligible(identity: TopologyWorkspaceIdentity) = TopologySnapshotEligibility.Unavailable
 
-                override fun read(snapshot: PublishedTopologySnapshot) =
-                    TopologySnapshotContentRead.Rejected(
-                        TopologySnapshotReadFailure.STORAGE_UNAVAILABLE,
-                    )
+                    override fun read(snapshot: PublishedTopologySnapshot) =
+                        TopologySnapshotContentRead.Rejected(TopologySnapshotReadFailure.STORAGE_UNAVAILABLE)
 
-                override fun publish(generation: CompleteTopologyGeneration):
-                    TopologyPublicationResult {
-                    publicationCalls.incrementAndGet()
-                    return TopologyPublicationResult.Published(fixture.snapshot)
-                }
-            },
-        )
+                    override fun publish(generation: CompleteTopologyGeneration): TopologyPublicationResult {
+                        publicationCalls.incrementAndGet()
+                        return TopologyPublicationResult.Published(fixture.snapshot)
+                    }
+                },
+            )
 
-        val rejected = assertInstanceOf(
-            TopologyBuildResult.Rejected::class.java,
-            service.build(),
-        )
-        val coverage = assertInstanceOf(
-            io.github.amichne.kast.topology.contract.TopologyBuildFailure.Coverage::class.java,
-            rejected.failure,
-        )
+        val rejected =
+            assertInstanceOf(
+                TopologyBuildResult.Rejected::class.java,
+                service.build(),
+            )
+        val coverage =
+            assertInstanceOf(
+                io.github.amichne.kast.topology.contract.TopologyBuildFailure.Coverage::class.java,
+                rejected.failure,
+            )
         val mismatch = coverage.failure.candidateEvidenceMismatches.single()
         assertEquals(candidate, mismatch.candidate)
         assertEquals(completed, mismatch.completed)
@@ -104,35 +107,35 @@ class TopologyBuildRetentionTest {
         val enumerationCalls = AtomicInteger()
         val extractionCalls = AtomicInteger()
         val publicationCalls = AtomicInteger()
-        val snapshots = object : TopologySnapshotStore {
-            override fun eligible(identity: TopologyWorkspaceIdentity): TopologySnapshotEligibility {
-                eligibilityCalls.incrementAndGet()
-                return TopologySnapshotEligibility.Unavailable
-            }
+        val snapshots =
+            object : TopologySnapshotStore {
+                override fun eligible(identity: TopologyWorkspaceIdentity): TopologySnapshotEligibility {
+                    eligibilityCalls.incrementAndGet()
+                    return TopologySnapshotEligibility.Unavailable
+                }
 
-            override fun read(snapshot: PublishedTopologySnapshot) =
-                TopologySnapshotContentRead.Rejected(
-                    TopologySnapshotReadFailure.STORAGE_UNAVAILABLE,
-                )
+                override fun read(snapshot: PublishedTopologySnapshot) =
+                    TopologySnapshotContentRead.Rejected(TopologySnapshotReadFailure.STORAGE_UNAVAILABLE)
 
-            override fun publish(generation: CompleteTopologyGeneration): TopologyPublicationResult {
-                publicationCalls.incrementAndGet()
-                return TopologyPublicationResult.Published(fixture.snapshot)
+                override fun publish(generation: CompleteTopologyGeneration): TopologyPublicationResult {
+                    publicationCalls.incrementAndGet()
+                    return TopologyPublicationResult.Published(fixture.snapshot)
+                }
             }
-        }
-        val service = TopologyBuildService.create(
-            WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(fixture.workspace) },
-            RetentionCurrentGuard(fixture.workspace.readLease),
-            TopologyCandidateEnumerator {
-                enumerationCalls.incrementAndGet()
-                TopologyCandidateEnumeration.Complete(fixture.candidates)
-            },
-            TopologyFileExtractor {
-                extractionCalls.incrementAndGet()
-                TopologyFileExtraction.Complete(fixture.complete)
-            },
-            snapshots,
-        )
+        val service =
+            TopologyBuildService.create(
+                WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(fixture.workspace) },
+                RetentionCurrentGuard(fixture.workspace.readLease),
+                TopologyCandidateEnumerator {
+                    enumerationCalls.incrementAndGet()
+                    TopologyCandidateEnumeration.Complete(fixture.candidates)
+                },
+                TopologyFileExtractor {
+                    extractionCalls.incrementAndGet()
+                    TopologyFileExtraction.Complete(fixture.complete)
+                },
+                snapshots,
+            )
 
         val first = service.build()
         val second = service.build()
@@ -151,40 +154,40 @@ class TopologyBuildRetentionTest {
         val moved = retentionFixture("moved-workspace-state", 8)
         var current = first.workspace
         val eligibilityCalls = AtomicInteger()
-        val snapshots = object : TopologySnapshotStore {
-            override fun eligible(identity: TopologyWorkspaceIdentity): TopologySnapshotEligibility {
-                eligibilityCalls.incrementAndGet()
-                return if (identity == moved.snapshot.identity) {
-                    TopologySnapshotEligibility.Eligible(moved.snapshot)
-                } else {
-                    TopologySnapshotEligibility.Unavailable
+        val snapshots =
+            object : TopologySnapshotStore {
+                override fun eligible(identity: TopologyWorkspaceIdentity): TopologySnapshotEligibility {
+                    eligibilityCalls.incrementAndGet()
+                    return if (identity == moved.snapshot.identity) {
+                        TopologySnapshotEligibility.Eligible(moved.snapshot)
+                    } else {
+                        TopologySnapshotEligibility.Unavailable
+                    }
                 }
+
+                override fun read(snapshot: PublishedTopologySnapshot) =
+                    TopologySnapshotContentRead.Rejected(TopologySnapshotReadFailure.STORAGE_UNAVAILABLE)
+
+                override fun publish(generation: CompleteTopologyGeneration) =
+                    TopologyPublicationResult.Published(first.snapshot)
             }
-
-            override fun read(snapshot: PublishedTopologySnapshot) =
-                TopologySnapshotContentRead.Rejected(
-                    TopologySnapshotReadFailure.STORAGE_UNAVAILABLE,
-                )
-
-            override fun publish(generation: CompleteTopologyGeneration) =
-                TopologyPublicationResult.Published(first.snapshot)
-        }
-        val service = TopologyBuildService.create(
-            WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(current) },
-            object : SemanticReadLeaseGuard {
-                override fun <Value> whileCurrent(
-                    expected: SemanticReadLease,
-                    operation: () -> Value,
-                ): SemanticReadLeaseUse<Value> = SemanticReadLeaseUse.Completed(operation())
-            },
-            TopologyCandidateEnumerator {
-                TopologyCandidateEnumeration.Complete(first.candidates)
-            },
-            TopologyFileExtractor {
-                TopologyFileExtraction.Complete(first.complete)
-            },
-            snapshots,
-        )
+        val service =
+            TopologyBuildService.create(
+                WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(current) },
+                object : SemanticReadLeaseGuard {
+                    override fun <Value> whileCurrent(
+                        expected: SemanticReadLease,
+                        operation: () -> Value,
+                    ): SemanticReadLeaseUse<Value> = SemanticReadLeaseUse.Completed(operation())
+                },
+                TopologyCandidateEnumerator {
+                    TopologyCandidateEnumeration.Complete(first.candidates)
+                },
+                TopologyFileExtractor {
+                    TopologyFileExtraction.Complete(first.complete)
+                },
+                snapshots,
+            )
 
         assertEquals(TopologyBuildResult.Published(first.snapshot), service.build())
         current = moved.workspace
@@ -197,41 +200,50 @@ private fun retentionFixture(
     state: String = "workspace-state",
     generation: Long = 7,
 ): RetentionFixture {
-    val sourceRoot = SourceRoot.admit(
-        GradleSourceRootEvidence(
-            "alpha.main",
-            ".",
-            ":alpha",
-            "main",
-            "alpha/src/main/kotlin",
-            SourceRootProvenance.Authored,
-        ),
-    ).retentionRefined()
-    val candidate = WorkspaceCandidate(
-        CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).retentionRefined(),
-        WorkspaceStateIdentity.parse(state).retentionRefined(),
-    )
-    val workspace = PublishedWorkspace.publish(
-        ReconciledWorkspace.admit(
-            candidate,
-            WorkspaceEvidenceKind.entries.toSet(),
-            listOf(sourceRoot),
-        ).retentionRefined(),
-        EvidenceGeneration.parse(generation).retentionRefined(),
-    )
-    val file = TopologySourceFile.admit(
-        workspace,
-        sourceRoot,
-        WorkspaceSourcePath.parse("alpha/src/main/kotlin/Alpha.kt").retentionRefined(),
-        WorkspaceSourceContentHash.parse("a".repeat(64)).retentionRefined(),
-    ).retentionRefined()
+    val sourceRoot =
+        SourceRoot.admit(
+                GradleSourceRootEvidence(
+                    "alpha.main",
+                    ".",
+                    ":alpha",
+                    "main",
+                    "alpha/src/main/kotlin",
+                    SourceRootProvenance.Authored,
+                )
+            )
+            .retentionRefined()
+    val candidate =
+        WorkspaceCandidate(
+            CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).retentionRefined(),
+            WorkspaceStateIdentity.parse(state).retentionRefined(),
+        )
+    val workspace =
+        PublishedWorkspace.publish(
+            ReconciledWorkspace.admit(
+                    candidate,
+                    WorkspaceEvidenceKind.entries.toSet(),
+                    listOf(sourceRoot),
+                )
+                .retentionRefined(),
+            EvidenceGeneration.parse(generation).retentionRefined(),
+        )
+    val file =
+        TopologySourceFile.admit(
+                workspace,
+                sourceRoot,
+                WorkspaceSourcePath.parse("alpha/src/main/kotlin/Alpha.kt").retentionRefined(),
+                WorkspaceSourceContentHash.parse("a".repeat(64)).retentionRefined(),
+            )
+            .retentionRefined()
     val candidates = TopologyCandidateSet.admit(workspace, listOf(file)).retentionRefined()
     val complete = CompleteTopologyFile.admit(file, emptyList(), emptyList()).retentionRefined()
-    val generation = CompleteTopologyGeneration.admit(
-        workspace,
-        candidates.files,
-        listOf(complete),
-    ).retentionRefined()
+    val generation =
+        CompleteTopologyGeneration.admit(
+                workspace,
+                candidates.files,
+                listOf(complete),
+            )
+            .retentionRefined()
     return RetentionFixture(
         workspace,
         candidates,
@@ -252,20 +264,20 @@ private data class RetentionSnapshot(
     override val manifest: TopologySnapshotManifest,
 ) : PublishedTopologySnapshot
 
-private class RetentionCurrentGuard(
-    private val current: SemanticReadLease,
-) : SemanticReadLeaseGuard {
+private class RetentionCurrentGuard(private val current: SemanticReadLease) : SemanticReadLeaseGuard {
     override fun <Value> whileCurrent(
         expected: SemanticReadLease,
         operation: () -> Value,
-    ): SemanticReadLeaseUse<Value> = if (expected == current) {
-        SemanticReadLeaseUse.Completed(operation())
-    } else {
-        SemanticReadLeaseUse.Moved
-    }
+    ): SemanticReadLeaseUse<Value> =
+        if (expected == current) {
+            SemanticReadLeaseUse.Completed(operation())
+        } else {
+            SemanticReadLeaseUse.Moved
+        }
 }
 
-private fun <Value, Failure> Refinement<Value, Failure>.retentionRefined(): Value = when (this) {
-    is Refinement.Refined -> value
-    is Refinement.Rejected -> error(failure.toString())
-}
+private fun <Value, Failure> Refinement<Value, Failure>.retentionRefined(): Value =
+    when (this) {
+        is Refinement.Refined -> value
+        is Refinement.Rejected -> error(failure.toString())
+    }

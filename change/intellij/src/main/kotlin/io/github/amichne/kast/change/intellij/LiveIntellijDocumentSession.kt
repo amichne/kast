@@ -11,11 +11,11 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiDocumentManager
 import io.github.amichne.kast.change.apply.SourceWriteFailure
-import org.jetbrains.kotlin.psi.KtFile
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicReference
+import org.jetbrains.kotlin.psi.KtFile
 
 internal sealed interface IntellijSourcePreparation {
     data class Ready(
@@ -24,9 +24,7 @@ internal sealed interface IntellijSourcePreparation {
         val document: Document,
     ) : IntellijSourcePreparation
 
-    data class Rejected(
-        val failure: SourceWriteFailure,
-    ) : IntellijSourcePreparation
+    data class Rejected(val failure: SourceWriteFailure) : IntellijSourcePreparation
 }
 
 internal class LiveIntellijDocumentSession(
@@ -40,18 +38,19 @@ internal class LiveIntellijDocumentSession(
     override fun mutate(input: IntellijMutationInput): IntellijSessionStepResult = writeCommand {
         when (val precondition = finalPrecondition(input.preimageText)) {
             IntellijFinalPrecondition.Ready -> {
-                input.mutations.sortedByDescending { it.startInclusive }.forEach { mutation ->
-                    prepared.document.replaceString(
-                        mutation.startInclusive,
-                        mutation.endExclusive,
-                        mutation.replacement,
-                    )
-                }
+                input.mutations
+                    .sortedByDescending { it.startInclusive }
+                    .forEach { mutation ->
+                        prepared.document.replaceString(
+                            mutation.startInclusive,
+                            mutation.endExclusive,
+                            mutation.replacement,
+                        )
+                    }
                 PsiDocumentManager.getInstance(project).commitDocument(prepared.document)
                 IntellijSessionStepResult.Completed
             }
-            is IntellijFinalPrecondition.Rejected ->
-                IntellijSessionStepResult.Rejected(precondition.failure)
+            is IntellijFinalPrecondition.Rejected -> IntellijSessionStepResult.Rejected(precondition.failure)
         }
     }
 
@@ -65,49 +64,48 @@ internal class LiveIntellijDocumentSession(
         }
     }
 
-    override fun save(): IntellijSessionStepResult = try {
-        onEdt {
-            WriteAction.run<RuntimeException> {
-                prepared.file.setBinaryContent(
-                    input.postimageText.toByteArray(StandardCharsets.UTF_8),
-                )
-                FileDocumentManager.getInstance().saveDocumentAsIs(prepared.document)
+    override fun save(): IntellijSessionStepResult =
+        try {
+            onEdt {
+                WriteAction.run<RuntimeException> {
+                    prepared.file.setBinaryContent(input.postimageText.toByteArray(StandardCharsets.UTF_8))
+                    FileDocumentManager.getInstance().saveDocumentAsIs(prepared.document)
+                }
             }
+            IntellijSessionStepResult.Completed
+        } catch (cancellation: ProcessCanceledException) {
+            throw cancellation
+        } catch (_: Exception) {
+            IntellijSessionStepResult.Rejected(SourceWriteFailure.SAVE_FAILED)
         }
-        IntellijSessionStepResult.Completed
-    } catch (cancellation: ProcessCanceledException) {
-        throw cancellation
-    } catch (_: Exception) {
-        IntellijSessionStepResult.Rejected(SourceWriteFailure.SAVE_FAILED)
-    }
 
-    override fun observe(): IntellijPhysicalSourceObservation = try {
-        IntellijPhysicalSourceObservation.Observed(
-            Files.readAllBytes(Path.of(input.sourcePath)),
-            changedPaths.toSet(),
-        )
-    } catch (_: Exception) {
-        IntellijPhysicalSourceObservation.Rejected(SourceWriteFailure.OBSERVATION_FAILED)
-    }
+    override fun observe(): IntellijPhysicalSourceObservation =
+        try {
+            IntellijPhysicalSourceObservation.Observed(
+                Files.readAllBytes(Path.of(input.sourcePath)),
+                changedPaths.toSet(),
+            )
+        } catch (_: Exception) {
+            IntellijPhysicalSourceObservation.Rejected(SourceWriteFailure.OBSERVATION_FAILED)
+        }
 
     /**
      * Proof transition: `String -> IntellijFinalPrecondition`.
      *
-     * Ready re-establishes valid writable target, smart mode, and exact document preimage on EDT
-     * immediately before insertion. [SourceWriteFailure] closes rejection. Raw expected text is
-     * extracted only from `MutationAuthority` within this request-local adapter session.
+     * Ready re-establishes valid writable target, smart mode, and exact document preimage on EDT immediately before
+     * insertion. [SourceWriteFailure] closes rejection. Raw expected text is extracted only from `MutationAuthority`
+     * within this request-local adapter session.
      */
-    private fun finalPrecondition(expected: String): IntellijFinalPrecondition = when {
-        !prepared.file.isValid || !prepared.target.isValid ->
-            IntellijFinalPrecondition.Rejected(SourceWriteFailure.TARGET_INVALIDATED)
-        !prepared.file.isWritable ->
-            IntellijFinalPrecondition.Rejected(SourceWriteFailure.TARGET_READ_ONLY)
-        DumbService.getInstance(project).isDumb ->
-            IntellijFinalPrecondition.Rejected(SourceWriteFailure.DUMB_MODE)
-        prepared.document.text != expected ->
-            IntellijFinalPrecondition.Rejected(SourceWriteFailure.PREIMAGE_CHANGED)
-        else -> IntellijFinalPrecondition.Ready
-    }
+    private fun finalPrecondition(expected: String): IntellijFinalPrecondition =
+        when {
+            !prepared.file.isValid || !prepared.target.isValid ->
+                IntellijFinalPrecondition.Rejected(SourceWriteFailure.TARGET_INVALIDATED)
+            !prepared.file.isWritable -> IntellijFinalPrecondition.Rejected(SourceWriteFailure.TARGET_READ_ONLY)
+            DumbService.getInstance(project).isDumb -> IntellijFinalPrecondition.Rejected(SourceWriteFailure.DUMB_MODE)
+            prepared.document.text != expected ->
+                IntellijFinalPrecondition.Rejected(SourceWriteFailure.PREIMAGE_CHANGED)
+            else -> IntellijFinalPrecondition.Ready
+        }
 
     private fun writeCommand(action: () -> IntellijSessionStepResult): IntellijSessionStepResult =
         try {
@@ -116,7 +114,7 @@ internal class LiveIntellijDocumentSession(
                     .withName("Kast semantic change")
                     .withGroupId("kast.change.semantic")
                     .compute<IntellijSessionStepResult, RuntimeException>(action)
-                ?: IntellijSessionStepResult.Rejected(SourceWriteFailure.MUTATION_FAILED)
+                    ?: IntellijSessionStepResult.Rejected(SourceWriteFailure.MUTATION_FAILED)
             }
         } catch (cancellation: ProcessCanceledException) {
             throw cancellation
@@ -128,17 +126,13 @@ internal class LiveIntellijDocumentSession(
 private sealed interface IntellijFinalPrecondition {
     data object Ready : IntellijFinalPrecondition
 
-    data class Rejected(
-        val failure: SourceWriteFailure,
-    ) : IntellijFinalPrecondition
+    data class Rejected(val failure: SourceWriteFailure) : IntellijFinalPrecondition
 }
 
 private sealed interface EdtValue<out Value> {
     data object Pending : EdtValue<Nothing>
 
-    data class Completed<Value>(
-        val value: Value,
-    ) : EdtValue<Value>
+    data class Completed<Value>(val value: Value) : EdtValue<Value>
 }
 
 internal fun <Value> onEdt(action: () -> Value): Value {

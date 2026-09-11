@@ -1,10 +1,10 @@
 package io.github.amichne.kast.workspace.intellij
 
+import io.github.amichne.kast.kernel.Refinement
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.InvalidPathException
 import java.nio.file.Path
-import io.github.amichne.kast.kernel.Refinement
 
 internal sealed interface ProjectGradleJvmAuthority {
     sealed interface Admitted : ProjectGradleJvmAuthority
@@ -15,9 +15,13 @@ internal sealed interface ProjectGradleJvmAuthority {
         companion object {
             /** Establishes physical executable JDK-home authority before IntelliJ is entered. */
             fun admit(home: Path): ProjectGradleJvmAuthority =
-                if (Files.isDirectory(home) && Files.isRegularFile(home.resolve("bin/java")) &&
-                    Files.isExecutable(home.resolve("bin/java"))
-                ) Present(home) else Rejected
+                if (
+                    Files.isDirectory(home) &&
+                        Files.isRegularFile(home.resolve("bin/java")) &&
+                        Files.isExecutable(home.resolve("bin/java"))
+                )
+                    Present(home)
+                else Rejected
         }
     }
 
@@ -33,9 +37,13 @@ internal sealed interface AmbientGradleJvmAuthority {
     class Present private constructor(val home: Path) : AmbientGradleJvmAuthority {
         companion object {
             fun admit(home: Path): AmbientGradleJvmAuthority =
-                if (Files.isDirectory(home) && Files.isRegularFile(home.resolve("bin/java")) &&
-                    Files.isExecutable(home.resolve("bin/java"))
-                ) Present(home) else Rejected
+                if (
+                    Files.isDirectory(home) &&
+                        Files.isRegularFile(home.resolve("bin/java")) &&
+                        Files.isExecutable(home.resolve("bin/java"))
+                )
+                    Present(home)
+                else Rejected
         }
     }
 
@@ -45,30 +53,34 @@ internal sealed interface AmbientGradleJvmAuthority {
 
 /** Reads only the repository-owned property; user and installation Gradle properties stay out. */
 internal fun projectGradleJvmAuthority(root: Path): ProjectGradleJvmAuthority {
-    val properties = when (val read = InstalledGradleModelInputs.readProperties(root, Path.of("gradle.properties"))) {
-        is Refinement.Rejected -> return ProjectGradleJvmAuthority.InputRejected(read.failure)
-        is Refinement.Refined -> when (val input = read.value) {
-            InstalledGradleProperties.Absent -> return ProjectGradleJvmAuthority.Absent
-            is InstalledGradleProperties.Present -> input.properties
+    val properties =
+        when (val read = InstalledGradleModelInputs.readProperties(root, Path.of("gradle.properties"))) {
+            is Refinement.Rejected -> return ProjectGradleJvmAuthority.InputRejected(read.failure)
+            is Refinement.Refined ->
+                when (val input = read.value) {
+                    InstalledGradleProperties.Absent -> return ProjectGradleJvmAuthority.Absent
+                    is InstalledGradleProperties.Present -> input.properties
+                }
         }
-    }
     val raw = properties.getProperty("org.gradle.java.home") ?: return ProjectGradleJvmAuthority.Absent
     if (raw.isBlank()) return ProjectGradleJvmAuthority.Rejected
-    val candidate = try {
-        Path.of(raw)
-    } catch (_: InvalidPathException) {
-        return ProjectGradleJvmAuthority.Rejected
-    }
+    val candidate =
+        try {
+            Path.of(raw)
+        } catch (_: InvalidPathException) {
+            return ProjectGradleJvmAuthority.Rejected
+        }
     if (!candidate.isAbsolute || candidate.normalize() != candidate) {
         return ProjectGradleJvmAuthority.Rejected
     }
-    val canonical = try {
-        candidate.toRealPath()
-    } catch (_: IOException) {
-        return ProjectGradleJvmAuthority.Rejected
-    } catch (_: SecurityException) {
-        return ProjectGradleJvmAuthority.Rejected
-    }
+    val canonical =
+        try {
+            candidate.toRealPath()
+        } catch (_: IOException) {
+            return ProjectGradleJvmAuthority.Rejected
+        } catch (_: SecurityException) {
+            return ProjectGradleJvmAuthority.Rejected
+        }
     return ProjectGradleJvmAuthority.Present.admit(canonical)
 }
 
@@ -76,20 +88,22 @@ internal fun projectGradleJvmAuthority(root: Path): ProjectGradleJvmAuthority {
 internal fun ambientGradleJvmAuthority(raw: String?): AmbientGradleJvmAuthority {
     if (raw == null) return AmbientGradleJvmAuthority.Absent
     if (raw.isBlank()) return AmbientGradleJvmAuthority.Rejected
-    val candidate = try {
-        Path.of(raw)
-    } catch (_: InvalidPathException) {
-        return AmbientGradleJvmAuthority.Rejected
-    }
+    val candidate =
+        try {
+            Path.of(raw)
+        } catch (_: InvalidPathException) {
+            return AmbientGradleJvmAuthority.Rejected
+        }
     if (!candidate.isAbsolute || candidate.normalize() != candidate) {
         return AmbientGradleJvmAuthority.Rejected
     }
-    val canonical = try {
-        candidate.toRealPath()
-    } catch (_: IOException) {
-        return AmbientGradleJvmAuthority.Rejected
-    } catch (_: SecurityException) {
-        return AmbientGradleJvmAuthority.Rejected
-    }
+    val canonical =
+        try {
+            candidate.toRealPath()
+        } catch (_: IOException) {
+            return AmbientGradleJvmAuthority.Rejected
+        } catch (_: SecurityException) {
+            return AmbientGradleJvmAuthority.Rejected
+        }
     return AmbientGradleJvmAuthority.Present.admit(canonical)
 }

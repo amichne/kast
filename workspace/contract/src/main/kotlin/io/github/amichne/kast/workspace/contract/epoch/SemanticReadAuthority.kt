@@ -8,15 +8,17 @@ sealed interface SemanticReadAuthority {
     val workspaceRoot: CanonicalWorkspaceRoot
 
     val identity: SemanticReadIdentity
-        get() = when (this) {
-            is SemanticReadLease -> SemanticReadIdentity.Published(this)
-            is LiveSemanticReadAuthority -> SemanticReadIdentity.Live(reference)
-        }
+        get() =
+            when (this) {
+                is SemanticReadLease -> SemanticReadIdentity.Published(this)
+                is LiveSemanticReadAuthority -> SemanticReadIdentity.Live(reference)
+            }
 
-    fun requirePublished(): Refinement<SemanticReadLease, PublishedReadAuthorityFailure> = when (this) {
-        is SemanticReadLease -> Refinement.Refined(this)
-        is LiveSemanticReadAuthority -> Refinement.Rejected(PublishedReadAuthorityFailure.LIVE_AUTHORITY)
-    }
+    fun requirePublished(): Refinement<SemanticReadLease, PublishedReadAuthorityFailure> =
+        when (this) {
+            is SemanticReadLease -> Refinement.Refined(this)
+            is LiveSemanticReadAuthority -> Refinement.Rejected(PublishedReadAuthorityFailure.LIVE_AUTHORITY)
+        }
 }
 
 /** Detached identity, never a capability to find, open, or execute against an IDE. */
@@ -36,12 +38,17 @@ value class IdeReadEpochRevision private constructor(val value: Long) {
     }
 }
 
-enum class IdeReadEpochRevisionFailure { NOT_POSITIVE }
-enum class IdeReadContentView { SAVED_PSI_COMMITTED }
+enum class IdeReadEpochRevisionFailure {
+    NOT_POSITIVE
+}
+
+enum class IdeReadContentView {
+    SAVED_PSI_COMMITTED
+}
 
 /**
- * Versioned transport reference. Decoding it proves only representation validity. The original
- * owner must re-admit the current epoch; selectors must then recheck scope, declaration and content.
+ * Versioned transport reference. Decoding it proves only representation validity. The original owner must re-admit the
+ * current epoch; selectors must then recheck scope, declaration and content.
  */
 data class LiveSemanticReadReference(
     val workspaceRoot: CanonicalWorkspaceRoot,
@@ -56,11 +63,13 @@ data class LiveSemanticReadReference(
 }
 
 /** Opaque in-process read admission. No generation, copy, parser, or execution capability exists. */
-class LiveSemanticReadAuthority private constructor(
+class LiveSemanticReadAuthority
+private constructor(
     val reference: LiveSemanticReadReference,
     val admittedEpoch: ProjectReadEpoch<*>,
 ) : SemanticReadAuthority {
-    override val workspaceRoot: CanonicalWorkspaceRoot get() = reference.workspaceRoot
+    override val workspaceRoot: CanonicalWorkspaceRoot
+        get() = reference.workspaceRoot
 
     internal companion object {
         @JvmSynthetic
@@ -80,9 +89,9 @@ enum class LiveSemanticReadFailure {
 }
 
 /**
- * Explicit session effect boundary, retained only by the admitted project's original owner.
- * The adapter supplies freshly admitted VFS evidence and one host-lifetime nonce. This owner
- * never observes a project, reads a file, generates randomness, or manufactures freshness.
+ * Explicit session effect boundary, retained only by the admitted project's original owner. The adapter supplies
+ * freshly admitted VFS evidence and one host-lifetime nonce. This owner never observes a project, reads a file,
+ * generates randomness, or manufactures freshness.
  */
 internal class LiveSemanticReadOwner(
     private val root: CanonicalWorkspaceRoot,
@@ -90,7 +99,9 @@ internal class LiveSemanticReadOwner(
 ) {
     private sealed interface State {
         data object Unobserved : State
+
         data class Current(val authority: LiveSemanticReadAuthority) : State
+
         data object Retired : State
     }
 
@@ -100,35 +111,45 @@ internal class LiveSemanticReadOwner(
     @Synchronized
     @JvmSynthetic
     internal fun admit(
-        freshness: VfsPassiveReadCapability,
+        freshness: VfsPassiveReadCapability
     ): Refinement<LiveSemanticReadAuthority, LiveSemanticReadFailure> {
         if (state == State.Retired) return rejected(LiveSemanticReadFailure.RETIRED)
         if (freshness.canonicalRoot != root) return rejected(LiveSemanticReadFailure.WRONG_ROOT)
-        val next = when (val current = state) {
-            State.Unobserved -> 1L
-            State.Retired -> return rejected(LiveSemanticReadFailure.RETIRED)
-            is State.Current -> when (current.authority.admittedEpoch.relationTo(freshness.admittedEpoch)) {
-                ProjectReadEpochRelation.SAME -> return Refinement.Refined(current.authority)
-                ProjectReadEpochRelation.INCOMPARABLE -> return rejected(LiveSemanticReadFailure.INCOMPARABLE_EPOCH)
-                ProjectReadEpochRelation.MOVED -> {
-                    val previous = current.authority.reference.epoch.value
-                    if (previous == Long.MAX_VALUE) {
-                        state = State.Retired
-                        return rejected(LiveSemanticReadFailure.EPOCH_EXHAUSTED)
+        val next =
+            when (val current = state) {
+                State.Unobserved -> 1L
+                State.Retired -> return rejected(LiveSemanticReadFailure.RETIRED)
+                is State.Current ->
+                    when (current.authority.admittedEpoch.relationTo(freshness.admittedEpoch)) {
+                        ProjectReadEpochRelation.SAME -> return Refinement.Refined(current.authority)
+                        ProjectReadEpochRelation.INCOMPARABLE ->
+                            return rejected(LiveSemanticReadFailure.INCOMPARABLE_EPOCH)
+                        ProjectReadEpochRelation.MOVED -> {
+                            val previous = current.authority.reference.epoch.value
+                            if (previous == Long.MAX_VALUE) {
+                                state = State.Retired
+                                return rejected(LiveSemanticReadFailure.EPOCH_EXHAUSTED)
+                            }
+                            previous + 1
+                        }
                     }
-                    previous + 1
-                }
             }
-        }
-        val revision = when (val parsed = IdeReadEpochRevision.parse(next)) {
-            is Refinement.Refined -> parsed.value
-            is Refinement.Rejected -> return rejected(LiveSemanticReadFailure.EPOCH_EXHAUSTED)
-        }
-        val authority = LiveSemanticReadAuthority.issue(
-            LiveSemanticReadReference(root, host, revision, IdeReadContentView.SAVED_PSI_COMMITTED,
-                LiveSemanticReadReference.VERSION),
-            freshness.admittedEpoch,
-        )
+        val revision =
+            when (val parsed = IdeReadEpochRevision.parse(next)) {
+                is Refinement.Refined -> parsed.value
+                is Refinement.Rejected -> return rejected(LiveSemanticReadFailure.EPOCH_EXHAUSTED)
+            }
+        val authority =
+            LiveSemanticReadAuthority.issue(
+                LiveSemanticReadReference(
+                    root,
+                    host,
+                    revision,
+                    IdeReadContentView.SAVED_PSI_COMMITTED,
+                    LiveSemanticReadReference.VERSION,
+                ),
+                freshness.admittedEpoch,
+            )
         state = State.Current(authority)
         return Refinement.Refined(authority)
     }
@@ -140,10 +161,11 @@ internal class LiveSemanticReadOwner(
         reference: LiveSemanticReadReference,
         freshness: VfsPassiveReadCapability,
     ): Refinement<LiveSemanticReadAuthority, LiveSemanticReadFailure> {
-        val current = when (val admitted = admit(freshness)) {
-            is Refinement.Refined -> admitted.value
-            is Refinement.Rejected -> return admitted
-        }
+        val current =
+            when (val admitted = admit(freshness)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return admitted
+            }
         return when {
             reference.version != LiveSemanticReadReference.VERSION ->
                 rejected(LiveSemanticReadFailure.REFERENCE_VERSION_UNSUPPORTED)
@@ -169,13 +191,19 @@ sealed interface SemanticReadIdentity {
     val revisionKey: SemanticReadRevisionKey
 
     data class Published(val lease: SemanticReadLease) : SemanticReadIdentity {
-        override val workspaceRoot get() = lease.workspaceRoot
-        override val revisionKey get() = SemanticReadRevisionKey.published(lease)
+        override val workspaceRoot
+            get() = lease.workspaceRoot
+
+        override val revisionKey
+            get() = SemanticReadRevisionKey.published(lease)
     }
 
     data class Live(val reference: LiveSemanticReadReference) : SemanticReadIdentity {
-        override val workspaceRoot get() = reference.workspaceRoot
-        override val revisionKey get() = SemanticReadRevisionKey.live(reference)
+        override val workspaceRoot
+            get() = reference.workspaceRoot
+
+        override val revisionKey
+            get() = SemanticReadRevisionKey.live(reference)
     }
 }
 
@@ -184,30 +212,40 @@ sealed interface SemanticReadIdentity {
 value class SemanticReadRevisionKey private constructor(val value: String) {
     companion object {
         internal fun published(lease: SemanticReadLease) = SemanticReadRevisionKey(lease.generation.value.toString())
-        internal fun live(reference: LiveSemanticReadReference) = SemanticReadRevisionKey(
-            "live-ide-v${reference.version}:${reference.host.value}:${reference.epoch.value}:${reference.contentView.name}",
-        )
+
+        internal fun live(reference: LiveSemanticReadReference) =
+            SemanticReadRevisionKey(
+                "live-ide-v${reference.version}:${reference.host.value}:${reference.epoch.value}:${reference.contentView.name}"
+            )
     }
 }
 
-enum class PublishedReadAuthorityFailure { LIVE_AUTHORITY }
+enum class PublishedReadAuthorityFailure {
+    LIVE_AUTHORITY
+}
 
 /** Request-local freshness effect, implemented by the owner of the admitted authority. */
 fun interface SemanticReadValidationPort {
     suspend fun validate(expected: SemanticReadAuthority): SemanticReadValidation
 }
 
-enum class SemanticReadValidation { CURRENT, UNAVAILABLE, ROOT_MISMATCH, MOVED }
+enum class SemanticReadValidation {
+    CURRENT,
+    UNAVAILABLE,
+    ROOT_MISMATCH,
+    MOVED,
+}
 
 /** Published observation adapter; a live authority can never pass a publication observation. */
 fun WorkspaceInspectionOperations.semanticReadValidation(): SemanticReadValidationPort =
     SemanticReadValidationPort { expected ->
         when (val state = inspect()) {
-            is WorkspaceRuntimeState.Ready -> when {
-                state.workspace.root != expected.workspaceRoot -> SemanticReadValidation.ROOT_MISMATCH
-                state.workspace.readLease != expected -> SemanticReadValidation.MOVED
-                else -> SemanticReadValidation.CURRENT
-            }
+            is WorkspaceRuntimeState.Ready ->
+                when {
+                    state.workspace.root != expected.workspaceRoot -> SemanticReadValidation.ROOT_MISMATCH
+                    state.workspace.readLease != expected -> SemanticReadValidation.MOVED
+                    else -> SemanticReadValidation.CURRENT
+                }
             WorkspaceRuntimeState.Absent,
             WorkspaceRuntimeState.Starting,
             WorkspaceRuntimeState.Reconciling,

@@ -7,10 +7,15 @@ import org.jetbrains.kotlin.psi.KtFile
 
 internal sealed interface IntellijRelationPackageEvidence {
     data class Known(val value: String) : IntellijRelationPackageEvidence
+
     data object Unavailable : IntellijRelationPackageEvidence
 }
 
-internal enum class IntellijRelationPackageAdmission { ADMITTED, OUTSIDE_SCOPE, UNSUPPORTED }
+internal enum class IntellijRelationPackageAdmission {
+    ADMITTED,
+    OUTSIDE_SCOPE,
+    UNSUPPORTED,
+}
 
 /** Called only after native provider collection, never by GlobalSearchScope.contains. */
 internal fun PsiElement.relationPackageEvidence(): IntellijRelationPackageEvidence =
@@ -20,16 +25,19 @@ internal fun PsiElement.relationPackageEvidence(): IntellijRelationPackageEviden
     }
 
 internal fun SymbolDiscoveryPackageConstraint?.admitPackage(
-    evidence: () -> IntellijRelationPackageEvidence,
+    evidence: () -> IntellijRelationPackageEvidence
 ): IntellijRelationPackageAdmission {
     if (this == null) return IntellijRelationPackageAdmission.ADMITTED
-    val observed = when (val result = evidence()) {
-        is IntellijRelationPackageEvidence.Known -> result.value
-        IntellijRelationPackageEvidence.Unavailable -> return IntellijRelationPackageAdmission.UNSUPPORTED
-    }
-    val included = when (containment) {
-        SymbolDiscoveryContainment.DIRECT -> observed == packageName.value
-        SymbolDiscoveryContainment.DESCENDANTS -> observed == packageName.value || observed.startsWith("${packageName.value}.")
-    }
+    val observed =
+        when (val result = evidence()) {
+            is IntellijRelationPackageEvidence.Known -> result.value
+            IntellijRelationPackageEvidence.Unavailable -> return IntellijRelationPackageAdmission.UNSUPPORTED
+        }
+    val included =
+        when (containment) {
+            SymbolDiscoveryContainment.DIRECT -> observed == packageName.value
+            SymbolDiscoveryContainment.DESCENDANTS ->
+                observed == packageName.value || observed.startsWith("${packageName.value}.")
+        }
     return if (included) IntellijRelationPackageAdmission.ADMITTED else IntellijRelationPackageAdmission.OUTSIDE_SCOPE
 }

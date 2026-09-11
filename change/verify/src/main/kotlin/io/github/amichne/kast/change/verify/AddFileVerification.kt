@@ -16,31 +16,25 @@ enum class ObservedAddFileDeltaFailure {
 }
 
 /** Exact compiler observation that one Kotlin file identity exists in the resulting generation. */
-class ObservedAddFileDelta private constructor(
-    val source: SymbolDiscoveryFileIdentity.Workspace,
-) {
+class ObservedAddFileDelta private constructor(val source: SymbolDiscoveryFileIdentity.Workspace) {
     companion object {
         /**
-         * Proof transition: `(WorkspaceFile, Int) -> Refinement<ObservedAddFileDelta,
-         * ObservedAddFileDeltaFailure>`.
+         * Proof transition: `(WorkspaceFile, Int) -> Refinement<ObservedAddFileDelta, ObservedAddFileDeltaFailure>`.
          *
          * Establishes exactly one compiler-visible Kotlin file at the requested workspace identity.
-         * [ObservedAddFileDeltaFailure] closes invalid, absent, and ambiguous counts. Raw compiler
-         * counts may enter only at the result-generation observation boundary.
+         * [ObservedAddFileDeltaFailure] closes invalid, absent, and ambiguous counts. Raw compiler counts may enter
+         * only at the result-generation observation boundary.
          */
         fun fromCompilerBoundary(
             source: SymbolDiscoveryFileIdentity.Workspace,
             matchingFileCount: Int,
-        ): Refinement<ObservedAddFileDelta, ObservedAddFileDeltaFailure> = when {
-            matchingFileCount < 0 -> Refinement.Rejected(
-                ObservedAddFileDeltaFailure.FILE_COUNT_INVALID,
-            )
-            matchingFileCount == 0 -> Refinement.Rejected(
-                ObservedAddFileDeltaFailure.FILE_MISSING,
-            )
-            matchingFileCount == 1 -> Refinement.Refined(ObservedAddFileDelta(source))
-            else -> Refinement.Rejected(ObservedAddFileDeltaFailure.FILE_AMBIGUOUS)
-        }
+        ): Refinement<ObservedAddFileDelta, ObservedAddFileDeltaFailure> =
+            when {
+                matchingFileCount < 0 -> Refinement.Rejected(ObservedAddFileDeltaFailure.FILE_COUNT_INVALID)
+                matchingFileCount == 0 -> Refinement.Rejected(ObservedAddFileDeltaFailure.FILE_MISSING)
+                matchingFileCount == 1 -> Refinement.Refined(ObservedAddFileDelta(source))
+                else -> Refinement.Rejected(ObservedAddFileDeltaFailure.FILE_AMBIGUOUS)
+            }
     }
 }
 
@@ -64,7 +58,8 @@ enum class AddFileProofFailure : ChangeProofFailure {
 }
 
 /** Complete G0-absence-to-G1-file proof for one exact AddFile plan. */
-class CompleteAddFileVerification private constructor(
+class CompleteAddFileVerification
+private constructor(
     override val plan: AddFileChangePlan,
     override val applied: AppliedUnverified,
     override val resulting: DistinctResultingWorkspace,
@@ -74,14 +69,13 @@ class CompleteAddFileVerification private constructor(
 
     companion object {
         /**
-         * Proof transition: `(AddFileChangePlan, AppliedUnverified,
-         * DistinctResultingWorkspace, AddFileVerificationEvidence) -> Refinement<
-         * CompleteAddFileVerification, Set<AddFileProofFailure>>`.
+         * Proof transition: `(AddFileChangePlan, AppliedUnverified, DistinctResultingWorkspace,
+         * AddFileVerificationEvidence) -> Refinement< CompleteAddFileVerification, Set<AddFileProofFailure>>`.
          *
-         * Establishes the exact authority-derived postimage, complete clean diagnostics scoped to
-         * the singleton created source, one compiler-visible resulting file identity, and the
-         * exhaustive obligation set. [AddFileProofFailure] is the closed expected failure. Raw
-         * compiler extraction is confined to [ObservedAddFileDelta].
+         * Establishes the exact authority-derived postimage, complete clean diagnostics scoped to the singleton created
+         * source, one compiler-visible resulting file identity, and the exhaustive obligation set.
+         * [AddFileProofFailure] is the closed expected failure. Raw compiler extraction is confined to
+         * [ObservedAddFileDelta].
          */
         fun admit(
             plan: AddFileChangePlan,
@@ -96,29 +90,32 @@ class CompleteAddFileVerification private constructor(
             if (evidence.content != applied.postimage) {
                 failures += AddFileProofFailure.RESULT_SOURCE_CONTENT_MISMATCH
             }
-            val completeDiagnostics = evidence.diagnostics.mapNotNull {
-                it as? DiagnosticCheckResult.Complete
-            }
+            val completeDiagnostics =
+                evidence.diagnostics.mapNotNull {
+                    it as? DiagnosticCheckResult.Complete
+                }
             when {
-                evidence.diagnostics.isEmpty() ->
-                    failures += AddFileProofFailure.DIAGNOSTIC_EVIDENCE_REQUIRED
+                evidence.diagnostics.isEmpty() -> failures += AddFileProofFailure.DIAGNOSTIC_EVIDENCE_REQUIRED
                 completeDiagnostics.size != evidence.diagnostics.size ->
                     failures += AddFileProofFailure.DIAGNOSTIC_EVIDENCE_INCOMPLETE
                 else -> {
-                    if (completeDiagnostics.any {
+                    if (
+                        completeDiagnostics.any {
                             it.batch.scope.lease != resulting.workspace.readLease
                         }
                     ) {
                         failures += AddFileProofFailure.DIAGNOSTIC_LEASE_MISMATCH
                     }
-                    if (completeDiagnostics.any { result ->
+                    if (
+                        completeDiagnostics.any { result ->
                             result.batch.scope.files.mapTo(linkedSetOf()) { it.value } !=
                                 setOf(applied.source.path.value)
                         }
                     ) {
                         failures += AddFileProofFailure.DIAGNOSTIC_SCOPE_MISMATCH
                     }
-                    if (completeDiagnostics.any { result ->
+                    if (
+                        completeDiagnostics.any { result ->
                             result.batch.facts.any { it.severity == DiagnosticSeverity.ERROR }
                         }
                     ) {

@@ -23,9 +23,6 @@ import io.github.amichne.kast.evidence.contract.WorkspacePublicationResult
 import io.github.amichne.kast.evidence.contract.WorkspacePublicationTransaction
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
-import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
-import io.github.amichne.kast.protocol.wire.WireEncoding
-import kotlinx.coroutines.test.runTest
 import io.github.amichne.kast.protocol.contract.ChangeApplyQualification
 import io.github.amichne.kast.protocol.contract.ChangeApplyRejection
 import io.github.amichne.kast.protocol.contract.ChangeApplyRequest
@@ -42,48 +39,53 @@ import io.github.amichne.kast.protocol.contract.DiagnosticCheckQualification
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRejection
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRequest
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckResult
-import io.github.amichne.kast.protocol.contract.OperationQualification
-import io.github.amichne.kast.protocol.contract.OperationRejection
-import io.github.amichne.kast.protocol.contract.OperationRequest
-import io.github.amichne.kast.protocol.contract.OperationResult
 import io.github.amichne.kast.protocol.contract.IndexSyncQualification
 import io.github.amichne.kast.protocol.contract.IndexSyncRejection
 import io.github.amichne.kast.protocol.contract.IndexSyncRequest
 import io.github.amichne.kast.protocol.contract.IndexSyncResult
-import io.github.amichne.kast.protocol.contract.RelationReadQualification
-import io.github.amichne.kast.protocol.contract.RelationReadRejection
-import io.github.amichne.kast.protocol.contract.RelationReadRequest
-import io.github.amichne.kast.protocol.contract.RelationReadResult
+import io.github.amichne.kast.protocol.contract.OperationQualification
+import io.github.amichne.kast.protocol.contract.OperationRejection
+import io.github.amichne.kast.protocol.contract.OperationRequest
+import io.github.amichne.kast.protocol.contract.OperationResult
 import io.github.amichne.kast.protocol.contract.QueryRunQualification
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.QueryRunResult
-import io.github.amichne.kast.query.contract.QueryOperations
-import io.github.amichne.kast.query.service.QueryService
-import io.github.amichne.kast.protocol.contract.SymbolInspectQualification
-import io.github.amichne.kast.protocol.contract.SymbolInspectRejection
-import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
-import io.github.amichne.kast.protocol.contract.SymbolInspectResult
-import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
-import io.github.amichne.kast.protocol.contract.SymbolDiscoverRejection
-import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
-import io.github.amichne.kast.protocol.contract.SymbolDiscoverResult
+import io.github.amichne.kast.protocol.contract.RelationReadQualification
+import io.github.amichne.kast.protocol.contract.RelationReadRejection
+import io.github.amichne.kast.protocol.contract.RelationReadRequest
+import io.github.amichne.kast.protocol.contract.RelationReadResult
 import io.github.amichne.kast.protocol.contract.SourceReadQualification
 import io.github.amichne.kast.protocol.contract.SourceReadRejection
 import io.github.amichne.kast.protocol.contract.SourceReadRequest
 import io.github.amichne.kast.protocol.contract.SourceReadResult
-import io.github.amichne.kast.protocol.contract.TraversalRunQualification
-import io.github.amichne.kast.protocol.contract.TraversalRunRejection
-import io.github.amichne.kast.protocol.contract.TraversalRunRequest
-import io.github.amichne.kast.protocol.contract.TraversalRunResult
+import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
+import io.github.amichne.kast.protocol.contract.SymbolDiscoverRejection
+import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
+import io.github.amichne.kast.protocol.contract.SymbolDiscoverResult
+import io.github.amichne.kast.protocol.contract.SymbolInspectQualification
+import io.github.amichne.kast.protocol.contract.SymbolInspectRejection
+import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
+import io.github.amichne.kast.protocol.contract.SymbolInspectResult
 import io.github.amichne.kast.protocol.contract.TopologyBuildQualification
 import io.github.amichne.kast.protocol.contract.TopologyBuildRejection
 import io.github.amichne.kast.protocol.contract.TopologyBuildRequest
 import io.github.amichne.kast.protocol.contract.TopologyBuildResult
+import io.github.amichne.kast.protocol.contract.TraversalRunQualification
+import io.github.amichne.kast.protocol.contract.TraversalRunRejection
+import io.github.amichne.kast.protocol.contract.TraversalRunRequest
+import io.github.amichne.kast.protocol.contract.TraversalRunResult
+import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
+import io.github.amichne.kast.protocol.wire.WireEncoding
+import io.github.amichne.kast.query.contract.QueryOperations
+import io.github.amichne.kast.query.service.QueryService
 import io.github.amichne.kast.relation.contract.RelationCompilerPort
 import io.github.amichne.kast.relation.contract.RelationOperations
 import io.github.amichne.kast.relation.service.RelationService
 import io.github.amichne.kast.runtime.server.OperationHandler
+import io.github.amichne.kast.source.contract.SourceReadOperations
+import io.github.amichne.kast.source.contract.SourceReadPort
+import io.github.amichne.kast.source.service.SourceReadService
 import io.github.amichne.kast.symbol.contract.ExactSymbolRequest
 import io.github.amichne.kast.symbol.contract.SymbolCompilerPort
 import io.github.amichne.kast.symbol.contract.SymbolDescriptionCompilation
@@ -94,10 +96,6 @@ import io.github.amichne.kast.symbol.contract.SymbolResolutionCompilation
 import io.github.amichne.kast.symbol.contract.SymbolResolutionRequest
 import io.github.amichne.kast.symbol.service.SymbolDiscoveryService
 import io.github.amichne.kast.symbol.service.SymbolExactService
-import io.github.amichne.kast.source.contract.SourceReadOperations
-import io.github.amichne.kast.source.contract.SourceReadPort
-import io.github.amichne.kast.source.service.SourceReadService
-import io.github.amichne.kast.traversal.contract.TraversalOperations
 import io.github.amichne.kast.topology.contract.CompleteTopologyGeneration
 import io.github.amichne.kast.topology.contract.PublishedTopologySnapshot
 import io.github.amichne.kast.topology.contract.TopologyBuildOperations
@@ -106,17 +104,17 @@ import io.github.amichne.kast.topology.contract.TopologySnapshotContentRead
 import io.github.amichne.kast.topology.contract.TopologySnapshotEligibility
 import io.github.amichne.kast.topology.contract.TopologySnapshotStore
 import io.github.amichne.kast.topology.contract.TopologyWorkspaceIdentity
+import io.github.amichne.kast.traversal.contract.TraversalOperations
+import io.github.amichne.kast.workspace.contract.IndexSynchronizationOperations
 import io.github.amichne.kast.workspace.contract.ReconciledWorkspace
 import io.github.amichne.kast.workspace.contract.WorkspaceCandidate
 import io.github.amichne.kast.workspace.contract.WorkspaceCandidateCapture
 import io.github.amichne.kast.workspace.contract.WorkspaceCandidateReconciliation
-import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
-import io.github.amichne.kast.workspace.contract.IndexSynchronizationOperations
 import io.github.amichne.kast.workspace.contract.WorkspaceIndexRefresh
 import io.github.amichne.kast.workspace.contract.WorkspaceReconciliationPort
 import io.github.amichne.kast.workspace.contract.WorkspaceSignal
-import io.github.amichne.kast.workspace.service.WorkspacePublicationCoordinator
 import io.github.amichne.kast.workspace.service.WorkspaceIndexSynchronizationService
+import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Test
@@ -124,9 +122,10 @@ import org.junit.jupiter.api.Test
 class KastRuntimeCompositionTest {
     @Test
     fun `composition api owns service construction instead of accepting a service aggregate`() {
-        val create = KastRuntimeComposition.Companion::class.java.declaredMethods.single {
-            it.name == "create"
-        }
+        val create =
+            KastRuntimeComposition.Companion::class.java.declaredMethods.single {
+                it.name == "create"
+            }
 
         assertEquals(
             listOf(
@@ -144,14 +143,23 @@ class KastRuntimeCompositionTest {
     @Test
     fun `composition constructs every target service and exact nominal association`() {
         val handlers = RecordingHandlerFactory()
-        val composition = KastRuntimeComposition.create(
-            workspacePorts(),
-            semanticPorts(),
-            topologyPorts(),
-            IndexRuntimePorts({ WorkspaceIndexRefresh.Refreshed }, { prior -> io.github.amichne.kast.workspace.contract.WorkspaceSourceObservation.Observed(prior.sourceState) }),
-            changePorts(),
-            handlers,
-        ).created()
+        val composition =
+            KastRuntimeComposition.create(
+                    workspacePorts(),
+                    semanticPorts(),
+                    topologyPorts(),
+                    IndexRuntimePorts(
+                        { WorkspaceIndexRefresh.Refreshed },
+                        { prior ->
+                            io.github.amichne.kast.workspace.contract.WorkspaceSourceObservation.Observed(
+                                prior.sourceState
+                            )
+                        },
+                    ),
+                    changePorts(),
+                    handlers,
+                )
+                .created()
         val operations = composition.operations
 
         assertSame(operations.indexSync, handlers.observed.getValue(CanonicalOperation.INDEX_SYNC))
@@ -182,36 +190,48 @@ class KastRuntimeCompositionTest {
     @Test
     fun `internal services remain constructed but raw lifecycle routes are retired`() = runTest {
         val handlers = RecordingHandlerFactory()
-        val composition = KastRuntimeComposition.create(
-            workspacePorts(), semanticPorts(), topologyPorts(),
-            IndexRuntimePorts(
-                { WorkspaceIndexRefresh.Refreshed },
-                { prior -> io.github.amichne.kast.workspace.contract.WorkspaceSourceObservation.Observed(prior.sourceState) },
-            ),
-            changePorts(), handlers,
-        ).created()
+        val composition =
+            KastRuntimeComposition.create(
+                    workspacePorts(),
+                    semanticPorts(),
+                    topologyPorts(),
+                    IndexRuntimePorts(
+                        { WorkspaceIndexRefresh.Refreshed },
+                        { prior ->
+                            io.github.amichne.kast.workspace.contract.WorkspaceSourceObservation.Observed(
+                                prior.sourceState
+                            )
+                        },
+                    ),
+                    changePorts(),
+                    handlers,
+                )
+                .created()
         assertSame(composition.operations.indexSync, handlers.observed.getValue(CanonicalOperation.INDEX_SYNC))
         assertSame(composition.operations.topologyBuild, handlers.observed.getValue(CanonicalOperation.TOPOLOGY_BUILD))
         listOf(
-            CanonicalOperationWireBindings.indexSync.encodeRequest(IndexSyncRequest),
-            CanonicalOperationWireBindings.topologyBuild.encodeRequest(TopologyBuildRequest),
-        ).forEach { encoded ->
-            val document = when (encoded) {
-                is WireEncoding.Encoded -> encoded.document
-                is WireEncoding.Rejected -> error(encoded.failure)
-            }
-            assertEquals(
-                KastRuntimeDispatch.Rejected(KastRuntimeDispatchFailure.UNSUPPORTED_OPERATION),
-                composition.dispatch(document),
+                CanonicalOperationWireBindings.indexSync.encodeRequest(IndexSyncRequest),
+                CanonicalOperationWireBindings.topologyBuild.encodeRequest(TopologyBuildRequest),
             )
-        }
+            .forEach { encoded ->
+                val document =
+                    when (encoded) {
+                        is WireEncoding.Encoded -> encoded.document
+                        is WireEncoding.Rejected -> error(encoded.failure)
+                    }
+                assertEquals(
+                    KastRuntimeDispatch.Rejected(KastRuntimeDispatchFailure.UNSUPPORTED_OPERATION),
+                    composition.dispatch(document),
+                )
+            }
         assertEquals(emptyList<CanonicalOperation>(), handlers.invoked)
     }
 
-    private fun KastRuntimeCompositionConstruction.created(): KastRuntimeComposition = when (this) {
-        is KastRuntimeCompositionConstruction.Created -> composition
-        is KastRuntimeCompositionConstruction.Rejected -> error("unexpected rejection: $failures")
-    }
+    private fun KastRuntimeCompositionConstruction.created(): KastRuntimeComposition =
+        when (this) {
+            is KastRuntimeCompositionConstruction.Created -> composition
+            is KastRuntimeCompositionConstruction.Rejected -> error("unexpected rejection: $failures")
+        }
 
     private class RecordingHandlerFactory : KastOperationHandlerFactory {
         val observed = linkedMapOf<CanonicalOperation, Any>()
@@ -273,8 +293,16 @@ class KastRuntimeCompositionTest {
                 QueryRunRejection.WorkspaceNotReady,
             )
 
-        override fun diagnosticCheck(operations: DiagnosticOperations, scopes: io.github.amichne.kast.diagnostic.contract.DiagnosticScopeResolver) =
-            record<DiagnosticCheckRequest, DiagnosticCheckResult, DiagnosticCheckQualification, DiagnosticCheckRejection>(
+        override fun diagnosticCheck(
+            operations: DiagnosticOperations,
+            scopes: io.github.amichne.kast.diagnostic.contract.DiagnosticScopeResolver,
+        ) =
+            record<
+                DiagnosticCheckRequest,
+                DiagnosticCheckResult,
+                DiagnosticCheckQualification,
+                DiagnosticCheckRejection,
+            >(
                 CanonicalOperation.DIAGNOSTIC_CHECK,
                 operations,
                 DiagnosticCheckRejection.WORKSPACE_NOT_READY,
@@ -306,7 +334,7 @@ class KastRuntimeCompositionTest {
             Result : OperationResult,
             Qualification : OperationQualification,
             Rejection : OperationRejection,
-            > record(
+        > record(
             operation: CanonicalOperation,
             operations: Any,
             rejection: Rejection,
@@ -320,84 +348,86 @@ class KastRuntimeCompositionTest {
     }
 
     companion object {
-        fun workspacePorts(): WorkspaceRuntimePorts = WorkspaceRuntimePorts(
-            reconciliation = object : WorkspaceReconciliationPort {
-                override fun capture(signals: Set<WorkspaceSignal>): WorkspaceCandidateCapture =
-                    error("not executed")
+        fun workspacePorts(): WorkspaceRuntimePorts =
+            WorkspaceRuntimePorts(
+                reconciliation =
+                    object : WorkspaceReconciliationPort {
+                        override fun capture(signals: Set<WorkspaceSignal>): WorkspaceCandidateCapture =
+                            error("not executed")
 
-                override fun reconcile(candidate: WorkspaceCandidate): WorkspaceCandidateReconciliation =
-                    error("not executed")
-            },
-            publication = object : WorkspacePublicationTransaction {
-                override fun begin(): WorkspacePublicationOpening = error("not executed")
+                        override fun reconcile(candidate: WorkspaceCandidate): WorkspaceCandidateReconciliation =
+                            error("not executed")
+                    },
+                publication =
+                    object : WorkspacePublicationTransaction {
+                        override fun begin(): WorkspacePublicationOpening = error("not executed")
 
-                override fun prepare(
-                    open: OpenCanonicalWorkspacePublication,
-                    candidate: ReconciledWorkspace,
-                ): WorkspacePublicationPreparation = error("not executed")
+                        override fun prepare(
+                            open: OpenCanonicalWorkspacePublication,
+                            candidate: ReconciledWorkspace,
+                        ): WorkspacePublicationPreparation = error("not executed")
 
-                override fun commit(
-                    prepared: PreparedCanonicalWorkspacePublication,
-                ): WorkspacePublicationResult = error("not executed")
+                        override fun commit(
+                            prepared: PreparedCanonicalWorkspacePublication
+                        ): WorkspacePublicationResult = error("not executed")
 
-                override fun discard(
-                    open: OpenCanonicalWorkspacePublication,
-                ): WorkspacePublicationDiscard = error("not executed")
+                        override fun discard(open: OpenCanonicalWorkspacePublication): WorkspacePublicationDiscard =
+                            error("not executed")
 
-                override fun discard(
-                    prepared: PreparedCanonicalWorkspacePublication,
-                ): WorkspacePublicationDiscard = error("not executed")
-            },
-        )
+                        override fun discard(
+                            prepared: PreparedCanonicalWorkspacePublication
+                        ): WorkspacePublicationDiscard = error("not executed")
+                    },
+            )
 
-        fun semanticPorts(): SemanticRuntimePorts = SemanticRuntimePorts(
-            symbolDiscovery = SymbolCompilerPort { error("not executed") },
-            symbolExact = object : SymbolExactCompilerPort {
-                override suspend fun resolve(
-                    request: SymbolResolutionRequest,
-                ): SymbolResolutionCompilation = error("not executed")
+        fun semanticPorts(): SemanticRuntimePorts =
+            SemanticRuntimePorts(
+                symbolDiscovery = SymbolCompilerPort { error("not executed") },
+                symbolExact =
+                    object : SymbolExactCompilerPort {
+                        override suspend fun resolve(request: SymbolResolutionRequest): SymbolResolutionCompilation =
+                            error("not executed")
 
-                override suspend fun describe(
-                    request: ExactSymbolRequest,
-                ): SymbolDescriptionCompilation = error("not executed")
-            },
-            sourceRead = SourceReadPort { _, _ -> error("not executed") },
-            relation = RelationCompilerPort { error("not executed") },
-            diagnostic = DiagnosticCompilerPort { error("not executed") },
-            diagnosticScopes = io.github.amichne.kast.diagnostic.contract.DiagnosticScopeResolver { error("not executed") },
-        )
+                        override suspend fun describe(request: ExactSymbolRequest): SymbolDescriptionCompilation =
+                            error("not executed")
+                    },
+                sourceRead = SourceReadPort { _, _ -> error("not executed") },
+                relation = RelationCompilerPort { error("not executed") },
+                diagnostic = DiagnosticCompilerPort { error("not executed") },
+                diagnosticScopes =
+                    io.github.amichne.kast.diagnostic.contract.DiagnosticScopeResolver { error("not executed") },
+            )
 
-        fun topologyPorts(): TopologyRuntimePorts = TopologyRuntimePorts(
-            candidates = { error("not executed") },
-            extractor = { error("not executed") },
-            snapshots = UnusedTopologySnapshotStore,
-        )
+        fun topologyPorts(): TopologyRuntimePorts =
+            TopologyRuntimePorts(
+                candidates = { error("not executed") },
+                extractor = { error("not executed") },
+                snapshots = UnusedTopologySnapshotStore,
+            )
 
-        fun changePorts(): ChangeRuntimePorts = ChangeRuntimePorts(
-            recoveryEvidence = UnusedRecoveryEvidenceStore,
-            sourceObserver = AddDeclarationSourceObserver { error("not executed") },
-            sourceWriter = AddDeclarationSourceWriter { _, _ -> error("not executed") },
-            sourceRollback = AddDeclarationSourceRollback { _, _ -> error("not executed") },
-            recoveryRollback = AddDeclarationRollbackPort { error("not executed") },
-            verificationObserver = ChangeVerificationObserver { error("not executed") },
-        )
+        fun changePorts(): ChangeRuntimePorts =
+            ChangeRuntimePorts(
+                recoveryEvidence = UnusedRecoveryEvidenceStore,
+                sourceObserver = AddDeclarationSourceObserver { error("not executed") },
+                sourceWriter = AddDeclarationSourceWriter { _, _ -> error("not executed") },
+                sourceRollback = AddDeclarationSourceRollback { _, _ -> error("not executed") },
+                recoveryRollback = AddDeclarationRollbackPort { error("not executed") },
+                verificationObserver = ChangeVerificationObserver { error("not executed") },
+            )
     }
 }
 
 private object UnusedTopologySnapshotStore : TopologySnapshotStore {
-    override fun eligible(identity: TopologyWorkspaceIdentity): TopologySnapshotEligibility =
-        error("not executed")
+    override fun eligible(identity: TopologyWorkspaceIdentity): TopologySnapshotEligibility = error("not executed")
 
-    override fun publish(generation: CompleteTopologyGeneration): TopologyPublicationResult =
-        error("not executed")
+    override fun publish(generation: CompleteTopologyGeneration): TopologyPublicationResult = error("not executed")
 
-    override fun read(snapshot: PublishedTopologySnapshot): TopologySnapshotContentRead =
-        error("not executed")
+    override fun read(snapshot: PublishedTopologySnapshot): TopologySnapshotContentRead = error("not executed")
 }
 
 private object UnusedRecoveryEvidenceStore : MutationRecoveryEvidenceStore {
     override fun prepare(
-        record: MutationRecoveryRecord.PreWriteDurable,
+        record: MutationRecoveryRecord.PreWriteDurable
     ): MutationRecoveryPersistResult<MutationRecoveryRecord.PreWriteDurable> = error("not executed")
 
     override fun recordApplied(

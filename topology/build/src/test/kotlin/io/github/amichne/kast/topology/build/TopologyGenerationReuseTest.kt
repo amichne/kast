@@ -2,8 +2,8 @@ package io.github.amichne.kast.topology.build
 
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
+import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.topology.contract.CompleteTopologyFile
@@ -28,9 +28,9 @@ import io.github.amichne.kast.workspace.contract.WorkspaceEvidenceKind
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceContentHash
 import io.github.amichne.kast.workspace.contract.WorkspaceSourcePath
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
+import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
-import java.nio.file.Path
 
 class TopologyGenerationReuseTest {
     @Test
@@ -41,56 +41,72 @@ class TopologyGenerationReuseTest {
         val priorSecond = sourceFile(priorWorkspace, root, "Second.kt", 'b')
         val priorFirstSymbol = symbol(priorFirst, "first", 0)
         val priorSecondSymbol = symbol(priorSecond, "second", 20)
-        val priorEdge = TopologyEdge.fromBoundary(
-            TopologyEdgeKind.CALL,
-            priorFirstSymbol,
-            priorSecondSymbol,
-            1,
-            2,
-        ).refined()
-        val priorFirstComplete = CompleteTopologyFile.admit(
-            priorFirst,
-            listOf(priorFirstSymbol),
-            listOf(priorEdge),
-        ).refined()
-        val priorSecondComplete = CompleteTopologyFile.admit(
-            priorSecond,
-            listOf(priorSecondSymbol),
-            emptyList(),
-        ).refined()
-        val priorGeneration = CompleteTopologyGeneration.admit(
-            priorWorkspace,
-            listOf(priorFirst, priorSecond),
-            listOf(priorFirstComplete, priorSecondComplete),
-        ).refined()
-        val priorContent = TopologySnapshotContent.admit(
-            Snapshot(
-                priorGeneration.identity,
-                TopologySnapshotManifest.from(priorGeneration),
-            ),
-            listOf(priorFirstComplete, priorSecondComplete),
-        ).refined()
+        val priorEdge =
+            TopologyEdge.fromBoundary(
+                    TopologyEdgeKind.CALL,
+                    priorFirstSymbol,
+                    priorSecondSymbol,
+                    1,
+                    2,
+                )
+                .refined()
+        val priorFirstComplete =
+            CompleteTopologyFile.admit(
+                    priorFirst,
+                    listOf(priorFirstSymbol),
+                    listOf(priorEdge),
+                )
+                .refined()
+        val priorSecondComplete =
+            CompleteTopologyFile.admit(
+                    priorSecond,
+                    listOf(priorSecondSymbol),
+                    emptyList(),
+                )
+                .refined()
+        val priorGeneration =
+            CompleteTopologyGeneration.admit(
+                    priorWorkspace,
+                    listOf(priorFirst, priorSecond),
+                    listOf(priorFirstComplete, priorSecondComplete),
+                )
+                .refined()
+        val priorContent =
+            TopologySnapshotContent.admit(
+                    Snapshot(
+                        priorGeneration.identity,
+                        TopologySnapshotManifest.from(priorGeneration),
+                    ),
+                    listOf(priorFirstComplete, priorSecondComplete),
+                )
+                .refined()
         val currentWorkspace = workspace(root, "changed-state", 8)
         val currentFirst = sourceFile(currentWorkspace, root, "First.kt", 'a')
         val currentSecond = sourceFile(currentWorkspace, root, "Second.kt", 'c')
-        val candidates = TopologyCandidateSet.admit(
-            currentWorkspace,
-            listOf(currentFirst, currentSecond),
-        ).refined()
+        val candidates =
+            TopologyCandidateSet.admit(
+                    currentWorkspace,
+                    listOf(currentFirst, currentSecond),
+                )
+                .refined()
         val movedSecond = symbol(currentSecond, "second", 30)
         val added = symbol(currentSecond, "added", 40)
-        val extractedSecond = CompleteTopologyFile.admit(
-            currentSecond,
-            listOf(movedSecond, added).sorted(),
-            emptyList(),
-        ).refined()
+        val extractedSecond =
+            CompleteTopologyFile.admit(
+                    currentSecond,
+                    listOf(movedSecond, added).sorted(),
+                    emptyList(),
+                )
+                .refined()
 
-        val rebound = rebindVerifiedSingletonChange(
-            currentWorkspace,
-            candidates,
-            priorContent,
-            extractedSecond,
-        ) as VerifiedTopologyGenerationReuse.Rebound
+        val rebound =
+            rebindVerifiedSingletonChange(
+                currentWorkspace,
+                candidates,
+                priorContent,
+                extractedSecond,
+            )
+                as VerifiedTopologyGenerationReuse.Rebound
 
         assertEquals(3, rebound.generation.symbols.size)
         assertEquals(currentFirst, rebound.generation.edges.single().source.file)
@@ -102,35 +118,45 @@ class TopologyGenerationReuseTest {
         val root = sourceRoot()
         val priorWorkspace = workspace(root)
         val priorFile = sourceFile(priorWorkspace, root, "Alpha.kt", 'a')
-        val priorComplete = CompleteTopologyFile.admit(
-            priorFile,
-            emptyList(),
-            emptyList(),
-        ).refined()
-        val priorGeneration = CompleteTopologyGeneration.admit(
-            priorWorkspace,
-            listOf(priorFile),
-            listOf(priorComplete),
-        ).refined()
-        val content = TopologySnapshotContent.admit(
-            Snapshot(
-                priorGeneration.identity,
-                TopologySnapshotManifest.from(priorGeneration),
-            ),
-            listOf(priorComplete),
-        ).refined()
+        val priorComplete =
+            CompleteTopologyFile.admit(
+                    priorFile,
+                    emptyList(),
+                    emptyList(),
+                )
+                .refined()
+        val priorGeneration =
+            CompleteTopologyGeneration.admit(
+                    priorWorkspace,
+                    listOf(priorFile),
+                    listOf(priorComplete),
+                )
+                .refined()
+        val content =
+            TopologySnapshotContent.admit(
+                    Snapshot(
+                        priorGeneration.identity,
+                        TopologySnapshotManifest.from(priorGeneration),
+                    ),
+                    listOf(priorComplete),
+                )
+                .refined()
         val currentWorkspace = workspace(root, "dependency-changed-state", 8)
         val currentFile = sourceFile(currentWorkspace, root, "Alpha.kt", 'a')
-        val candidates = TopologyCandidateSet.admit(
-            currentWorkspace,
-            listOf(currentFile),
-        ).refined()
+        val candidates =
+            TopologyCandidateSet.admit(
+                    currentWorkspace,
+                    listOf(currentFile),
+                )
+                .refined()
 
-        val rebound = rebindUnchangedTopologyGeneration(
-            currentWorkspace,
-            candidates,
-            content,
-        ) as TopologyGenerationReuse.Rebound
+        val rebound =
+            rebindUnchangedTopologyGeneration(
+                currentWorkspace,
+                candidates,
+                content,
+            )
+                as TopologyGenerationReuse.Rebound
 
         assertEquals(TopologyWorkspaceIdentity.from(currentWorkspace), rebound.generation.identity)
         assertEquals(listOf(currentFile), rebound.generation.files.map { it.file })
@@ -144,48 +170,62 @@ class TopologyGenerationReuseTest {
         val secondFile = sourceFile(priorWorkspace, root, "Second.kt", 'b')
         val firstSymbol = symbol(firstFile, "first", 0)
         val secondSymbol = symbol(secondFile, "second", 20)
-        val edge = TopologyEdge.fromBoundary(
-            TopologyEdgeKind.CALL,
-            firstSymbol,
-            secondSymbol,
-            1,
-            2,
-        ).refined()
-        val firstComplete = CompleteTopologyFile.admit(
-            firstFile,
-            listOf(firstSymbol),
-            listOf(edge),
-        ).refined()
-        val secondComplete = CompleteTopologyFile.admit(
-            secondFile,
-            listOf(secondSymbol),
-            emptyList(),
-        ).refined()
-        val priorGeneration = CompleteTopologyGeneration.admit(
-            priorWorkspace,
-            listOf(firstFile, secondFile),
-            listOf(firstComplete, secondComplete),
-        ).refined()
-        val priorContent = TopologySnapshotContent.admit(
-            Snapshot(
-                priorGeneration.identity,
-                TopologySnapshotManifest.from(priorGeneration),
-            ),
-            listOf(firstComplete, secondComplete),
-        ).refined()
+        val edge =
+            TopologyEdge.fromBoundary(
+                    TopologyEdgeKind.CALL,
+                    firstSymbol,
+                    secondSymbol,
+                    1,
+                    2,
+                )
+                .refined()
+        val firstComplete =
+            CompleteTopologyFile.admit(
+                    firstFile,
+                    listOf(firstSymbol),
+                    listOf(edge),
+                )
+                .refined()
+        val secondComplete =
+            CompleteTopologyFile.admit(
+                    secondFile,
+                    listOf(secondSymbol),
+                    emptyList(),
+                )
+                .refined()
+        val priorGeneration =
+            CompleteTopologyGeneration.admit(
+                    priorWorkspace,
+                    listOf(firstFile, secondFile),
+                    listOf(firstComplete, secondComplete),
+                )
+                .refined()
+        val priorContent =
+            TopologySnapshotContent.admit(
+                    Snapshot(
+                        priorGeneration.identity,
+                        TopologySnapshotManifest.from(priorGeneration),
+                    ),
+                    listOf(firstComplete, secondComplete),
+                )
+                .refined()
         val currentWorkspace = workspace(root, "workspace-state", 8)
         val currentFirst = sourceFile(currentWorkspace, root, "First.kt", 'a')
         val currentSecond = sourceFile(currentWorkspace, root, "Second.kt", 'b')
-        val candidates = TopologyCandidateSet.admit(
-            currentWorkspace,
-            listOf(currentFirst, currentSecond),
-        ).refined()
+        val candidates =
+            TopologyCandidateSet.admit(
+                    currentWorkspace,
+                    listOf(currentFirst, currentSecond),
+                )
+                .refined()
 
-        val rebound = rebindUnchangedTopologyGeneration(
-            currentWorkspace,
-            candidates,
-            priorContent,
-        ) as TopologyGenerationReuse.Rebound
+        val rebound =
+            rebindUnchangedTopologyGeneration(
+                currentWorkspace,
+                candidates,
+                priorContent,
+            )
+                as TopologyGenerationReuse.Rebound
 
         assertEquals(2, rebound.generation.symbols.size)
         assertEquals(currentFirst, rebound.generation.edges.single().source.file)
@@ -197,12 +237,14 @@ class TopologyGenerationReuseTest {
         root: SourceRoot,
         name: String,
         hashDigit: Char,
-    ): TopologySourceFile = TopologySourceFile.admit(
-        workspace,
-        root,
-        WorkspaceSourcePath.parse("alpha/src/main/kotlin/$name").refined(),
-        WorkspaceSourceContentHash.parse(hashDigit.toString().repeat(64)).refined(),
-    ).refined()
+    ): TopologySourceFile =
+        TopologySourceFile.admit(
+                workspace,
+                root,
+                WorkspaceSourcePath.parse("alpha/src/main/kotlin/$name").refined(),
+                WorkspaceSourceContentHash.parse(hashDigit.toString().repeat(64)).refined(),
+            )
+            .refined()
 
     private fun symbol(
         file: TopologySourceFile,
@@ -210,26 +252,31 @@ class TopologyGenerationReuseTest {
         start: Int,
     ): TopologySymbol {
         val absolute = Path.of(file.workspace.lease.workspaceRoot.value).resolve(file.path.value)
-        val fileIdentity = SymbolDiscoveryFileIdentity.fromBoundary(
-            file.workspace.lease.workspaceRoot,
-            absolute,
-            absolute.toUri().toString(),
-        ).refined()
-        val evidence = CompilerGroundedSymbolEvidence.fromBoundary(
-            fileIdentity,
-            start,
-            start + name.length,
-            name,
-            "sample.shared",
-            CompilerSymbolKind.FUNCTION,
-            CanonicalCompilerSignature.function(
-                "sample.shared",
-                null,
-                emptyList(),
-                emptyList(),
-                0,
-            ).refined(),
-        ).refined()
+        val fileIdentity =
+            SymbolDiscoveryFileIdentity.fromBoundary(
+                    file.workspace.lease.workspaceRoot,
+                    absolute,
+                    absolute.toUri().toString(),
+                )
+                .refined()
+        val evidence =
+            CompilerGroundedSymbolEvidence.fromBoundary(
+                    fileIdentity,
+                    start,
+                    start + name.length,
+                    name,
+                    "sample.shared",
+                    CompilerSymbolKind.FUNCTION,
+                    CanonicalCompilerSignature.function(
+                            "sample.shared",
+                            null,
+                            emptyList(),
+                            emptyList(),
+                            0,
+                        )
+                        .refined(),
+                )
+                .refined()
         return TopologySymbol.admit(file, evidence).refined()
     }
 
@@ -238,33 +285,39 @@ class TopologyGenerationReuseTest {
         state: String = "workspace-state",
         generation: Long = 7,
     ): PublishedWorkspace {
-        val candidate = WorkspaceCandidate(
-            CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined(),
-            WorkspaceStateIdentity.parse(state).refined(),
-        )
-        val reconciled = ReconciledWorkspace.admit(
-            candidate,
-            WorkspaceEvidenceKind.entries.toSet(),
-            listOf(root),
-        ).refined()
+        val candidate =
+            WorkspaceCandidate(
+                CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined(),
+                WorkspaceStateIdentity.parse(state).refined(),
+            )
+        val reconciled =
+            ReconciledWorkspace.admit(
+                    candidate,
+                    WorkspaceEvidenceKind.entries.toSet(),
+                    listOf(root),
+                )
+                .refined()
         return PublishedWorkspace.publish(reconciled, EvidenceGeneration.parse(generation).refined())
     }
 
-    private fun sourceRoot(): SourceRoot = SourceRoot.admit(
-        GradleSourceRootEvidence(
-            "alpha.main",
-            ".",
-            ":alpha",
-            "main",
-            "alpha/src/main/kotlin",
-            SourceRootProvenance.Authored,
-        ),
-    ).refined()
+    private fun sourceRoot(): SourceRoot =
+        SourceRoot.admit(
+                GradleSourceRootEvidence(
+                    "alpha.main",
+                    ".",
+                    ":alpha",
+                    "main",
+                    "alpha/src/main/kotlin",
+                    SourceRootProvenance.Authored,
+                )
+            )
+            .refined()
 
-    private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value = when (this) {
-        is Refinement.Refined -> value
-        is Refinement.Rejected -> error(failure.toString())
-    }
+    private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value =
+        when (this) {
+            is Refinement.Refined -> value
+            is Refinement.Rejected -> error(failure.toString())
+        }
 }
 
 private data class Snapshot(

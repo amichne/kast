@@ -13,15 +13,16 @@ import io.ktor.client.plugins.websocket.*
 import io.ktor.client.request.unixSocket
 import io.ktor.client.request.url
 import io.ktor.websocket.*
+import java.nio.file.Files
+import java.nio.file.Path
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.serialization.json.*
-import java.nio.file.Files
-import java.nio.file.Path
 
 /** Test-only scripted upstream; every provider call executes the real private installed Kast product. */
 object InstalledWorkspaceRoutingAcceptanceMain {
-    @JvmStatic fun main(arguments: Array<String>): Unit = runBlocking {
+    @JvmStatic
+    fun main(arguments: Array<String>): Unit = runBlocking {
         require(arguments.size == 5)
         val product = Path.of(arguments[0]).toRealPath()
         val first = Path.of(arguments[1]).toRealPath()
@@ -33,7 +34,9 @@ object InstalledWorkspaceRoutingAcceptanceMain {
         stage(Stage.PROVIDER_QUALIFICATION)
         val options = KastProviderOptions.admit(product.resolve("bin/kast"), first).refined()
         val qualification = KastProviderQualifier.qualify(options)
-        check(qualification is KastProviderQualification.Qualified) { "installed provider qualification rejected: $qualification" }
+        check(qualification is KastProviderQualification.Qualified) {
+            "installed provider qualification rejected: $qualification"
+        }
         val broker = Broker.create(listOf(qualification.registration), BrokerLimits.defaults()).validated()
         val store = FileThreadCatalogStore.open(scope.resolve("threads.json"))
         check(store is FileThreadCatalogStoreOpen.Opened)
@@ -46,20 +49,37 @@ object InstalledWorkspaceRoutingAcceptanceMain {
         val contracts = CodexProtocolContracts.define(CodexOwnedSchema.entries.associateWith { shape }).validated()
         val connecting = Channel<ScriptedUpstream>(4)
         val socket = BrokerSocketPath.admit(fixture.resolve("routing.sock")).validated()
-        val server = KtorBrokerServer.start(KtorBrokerServerOptions(socket, broker, contracts, store.store,
-            BrokerUpstreamConnector { BrokerUpstreamConnectionAdmission.Connected(connecting.receive()) },
-            4, 4 * 1024 * 1024, enrollment = enrollment.enrollment, bindingOwner = owner,
-            sessionBootstrap = qualification.bootstrap, invocationJournal = scope.resolve("invocations.json")))
+        val server =
+            KtorBrokerServer.start(
+                KtorBrokerServerOptions(
+                    socket,
+                    broker,
+                    contracts,
+                    store.store,
+                    BrokerUpstreamConnector { BrokerUpstreamConnectionAdmission.Connected(connecting.receive()) },
+                    4,
+                    4 * 1024 * 1024,
+                    enrollment = enrollment.enrollment,
+                    bindingOwner = owner,
+                    sessionBootstrap = qualification.bootstrap,
+                    invocationJournal = scope.resolve("invocations.json"),
+                )
+            )
         check(server is KtorBrokerServerStart.Started) { "routing server rejected: $server" }
         val client = HttpClient(CIO) { install(WebSockets) { maxFrameSize = 4 * 1024 * 1024 } }
         val peers = mutableListOf<Peer>()
         suspend fun connect(): Peer {
             val upstream = ScriptedUpstream()
             connecting.send(upstream)
-            val connection = client.webSocketSession { url("ws://localhost/rpc"); unixSocket(socket.path.toString()) }
+            val connection = client.webSocketSession {
+                url("ws://localhost/rpc")
+                unixSocket(socket.path.toString())
+            }
             val peer = Peer(connection, upstream)
             peers += peer
-            connection.send("""{"id":0,"method":"initialize","params":{"clientInfo":{"name":"installed-routing-fixture"}}}""")
+            connection.send(
+                """{"id":0,"method":"initialize","params":{"clientInfo":{"name":"installed-routing-fixture"}}}"""
+            )
             upstream.sent.receive()
             upstream.received.send(BrokerUpstreamFrame.Text("""{"id":0,"result":{}}"""))
             peer.response()
@@ -86,7 +106,9 @@ object InstalledWorkspaceRoutingAcceptanceMain {
                 a.upstream.call("thread-a", "call-1", "FirstWorkspaceValue")
                 b.upstream.call("thread-b", "call-1", "SecondWorkspaceValue")
                 val independent = b.toolResult("SecondWorkspaceValue", "FirstWorkspaceValue")
-                check(!Files.exists(first.resolve(".acceptance-import-release"))) { "B did not complete during delayed A import" }
+                check(!Files.exists(first.resolve(".acceptance-import-release"))) {
+                    "B did not complete during delayed A import"
+                }
                 stage(Stage.READY_B_COMPLETED)
                 Files.writeString(ready, "ready-workspace-semantic-complete\n")
                 stage(Stage.DELAYED_A_COMPLETION)
@@ -103,75 +125,158 @@ object InstalledWorkspaceRoutingAcceptanceMain {
                 check(persisted is FileThreadCatalogStoreOpen.Opened)
                 bindingsBefore.forEach { (thread, root) ->
                     val binding = persisted.store.read(thread)
-                    check(binding is ThreadStoreRead.Found && binding.binding.workspace.root.path == root && binding.binding.owner == owner)
+                    check(
+                        binding is ThreadStoreRead.Found &&
+                            binding.binding.workspace.root.path == root &&
+                            binding.binding.owner == owner
+                    )
                 }
                 stage(Stage.COMPLETE)
-                Files.writeString(report, buildJsonObject {
-                    put("status", "complete")
-                    put("upstream", "scripted protocol fixture; stock Codex qualification is a separate gate")
-                    put("provider", "qualified private installed Kast executable")
-                    put("installationId", owner.installationId.value); put("stateEpoch", owner.stateEpoch.value.toString())
-                    put("readyBCompletedDuringImportA", true); put("reconnectRetainedBindings", true)
-                    putJsonObject("threadRoots") { bindingsBefore.forEach { (thread, root) -> put(thread, root.toString()) } }
-                    putJsonArray("semanticResults") { listOf(independent, delayed, interleaved, resumed).forEach(::add) }
-                }.toString() + "\n")
+                Files.writeString(
+                    report,
+                    buildJsonObject {
+                        put("status", "complete")
+                        put("upstream", "scripted protocol fixture; stock Codex qualification is a separate gate")
+                        put("provider", "qualified private installed Kast executable")
+                        put("installationId", owner.installationId.value)
+                        put("stateEpoch", owner.stateEpoch.value.toString())
+                        put("readyBCompletedDuringImportA", true)
+                        put("reconnectRetainedBindings", true)
+                        putJsonObject("threadRoots") {
+                            bindingsBefore.forEach { (thread, root) -> put(thread, root.toString()) }
+                        }
+                        putJsonArray("semanticResults") {
+                            listOf(independent, delayed, interleaved, resumed).forEach(::add)
+                        }
+                    }
+                        .toString() + "\n",
+                )
             }
         } finally {
-            peers.forEach { try { it.connection.close() } catch (_: Exception) {} }
+            peers.forEach {
+                try {
+                    it.connection.close()
+                } catch (_: Exception) {}
+            }
             client.close()
             server.server.close()
         }
     }
 
-    private enum class Stage { PROVIDER_QUALIFICATION, CLIENT_CONNECTIONS, THREAD_BINDINGS, INTERLEAVED_DISPATCH,
-        READY_B_COMPLETED, DELAYED_A_COMPLETION, RECONNECT, COMPLETE }
-    private fun stage(stage: Stage) = System.err.println(buildJsonObject {
-        put("event", "installed-routing-acceptance"); put("stage", stage.name)
-    })
+    private enum class Stage {
+        PROVIDER_QUALIFICATION,
+        CLIENT_CONNECTIONS,
+        THREAD_BINDINGS,
+        INTERLEAVED_DISPATCH,
+        READY_B_COMPLETED,
+        DELAYED_A_COMPLETION,
+        RECONNECT,
+        COMPLETE,
+    }
+
+    private fun stage(stage: Stage) =
+        System.err.println(
+            buildJsonObject {
+                put("event", "installed-routing-acceptance")
+                put("stage", stage.name)
+            }
+        )
 
     private class ScriptedUpstream : BrokerUpstreamConnection {
         val sent = Channel<String>(32)
         val received = Channel<BrokerUpstreamFrame>(32)
-        override suspend fun send(message: String): BrokerUpstreamSend { sent.send(message); return BrokerUpstreamSend.SENT }
-        override suspend fun receive(): BrokerUpstreamFrame = received.receiveCatching().getOrNull() ?: BrokerUpstreamFrame.Closed
-        override suspend fun close() { sent.close(); received.close() }
+
+        override suspend fun send(message: String): BrokerUpstreamSend {
+            sent.send(message)
+            return BrokerUpstreamSend.SENT
+        }
+
+        override suspend fun receive(): BrokerUpstreamFrame =
+            received.receiveCatching().getOrNull() ?: BrokerUpstreamFrame.Closed
+
+        override suspend fun close() {
+            sent.close()
+            received.close()
+        }
+
         suspend fun call(thread: String, call: String, symbol: String) {
-            received.send(BrokerUpstreamFrame.Text(buildJsonObject {
-                put("id", 7); put("method", "item/tool/call")
-                putJsonObject("params") {
-                    put("threadId", thread); put("turnId", "turn-$call"); put("callId", call)
-                    put("namespace", "kast"); put("tool", "query")
-                    putJsonObject("arguments") { put("type", "QUERY"); putJsonObject("from") { put("type", "SEARCH"); put("query", symbol) } }
-                }
-            }.toString()))
+            received.send(
+                BrokerUpstreamFrame.Text(
+                    buildJsonObject {
+                        put("id", 7)
+                        put("method", "item/tool/call")
+                        putJsonObject("params") {
+                            put("threadId", thread)
+                            put("turnId", "turn-$call")
+                            put("callId", call)
+                            put("namespace", "kast")
+                            put("tool", "query")
+                            putJsonObject("arguments") {
+                                put("type", "QUERY")
+                                putJsonObject("from") {
+                                    put("type", "SEARCH")
+                                    put("query", symbol)
+                                }
+                            }
+                        }
+                    }
+                        .toString()
+                )
+            )
         }
     }
+
     private class Peer(val connection: DefaultClientWebSocketSession, val upstream: ScriptedUpstream) {
         suspend fun response(): JsonObject {
             val frame = connection.incoming.receive()
             check(frame is Frame.Text)
             return Json.parseToJsonElement(frame.readText()).jsonObject
         }
+
         suspend fun bind(thread: String, root: Path, resume: Boolean = false) {
-            connection.send(buildJsonObject {
-                put("id", 1); put("method", if (resume) "thread/resume" else "thread/start")
-                putJsonObject("params") { put("cwd", root.toString()); if (resume) put("threadId", thread) }
-            }.toString())
+            connection.send(
+                buildJsonObject {
+                    put("id", 1)
+                    put("method", if (resume) "thread/resume" else "thread/start")
+                    putJsonObject("params") {
+                        put("cwd", root.toString())
+                        if (resume) put("threadId", thread)
+                    }
+                }
+                    .toString()
+            )
             val forwarded = Json.parseToJsonElement(upstream.sent.receive()).jsonObject
             check(forwarded["method"] == JsonPrimitive(if (resume) "thread/resume" else "thread/start"))
-            upstream.received.send(BrokerUpstreamFrame.Text(buildJsonObject {
-                put("id", 1); putJsonObject("result") { put("cwd", root.toString()); putJsonObject("thread") { put("id", thread); putJsonArray("turns") {} } }
-            }.toString()))
+            upstream.received.send(
+                BrokerUpstreamFrame.Text(
+                    buildJsonObject {
+                        put("id", 1)
+                        putJsonObject("result") {
+                            put("cwd", root.toString())
+                            putJsonObject("thread") {
+                                put("id", thread)
+                                putJsonArray("turns") {}
+                            }
+                        }
+                    }
+                        .toString()
+                )
+            )
             check(response()["error"] == null) { "thread binding rejected" }
         }
+
         suspend fun toolResult(own: String, other: String): JsonObject {
             val document = Json.parseToJsonElement(upstream.sent.receive()).jsonObject
             val result = document["result"]?.jsonObject
             check(result?.get("success") == JsonPrimitive(true)) { "semantic provider rejected: $document" }
-            check(own in document.toString() && other !in document.toString()) { "semantic result used wrong workspace: $document" }
+            check(own in document.toString() && other !in document.toString()) {
+                "semantic result used wrong workspace: $document"
+            }
             return document
         }
     }
+
     private fun <T, E> Refinement<T, E>.refined(): T = (this as Refinement.Refined).value
+
     private fun <T, E> Validation<T, E>.validated(): T = (this as Validation.Validated).value
 }

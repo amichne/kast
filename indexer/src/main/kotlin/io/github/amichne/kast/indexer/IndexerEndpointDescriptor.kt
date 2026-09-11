@@ -1,13 +1,13 @@
 package io.github.amichne.kast.indexer
 
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 
 private const val ENDPOINT_SCHEMA = "kast.runtime.endpoint.v1"
 private const val ENDPOINT_FRAMING = "length-prefixed-json-v1"
@@ -30,15 +30,14 @@ internal data class IndexerEndpointDescriptorDocument(
 )
 
 internal sealed interface EndpointDescriptorPublication {
-    data class Published(
-        val path: Path,
-    ) : EndpointDescriptorPublication
+    data class Published(val path: Path) : EndpointDescriptorPublication
 
     data object Rejected : EndpointDescriptorPublication
 }
 
 internal sealed interface EndpointDescriptorRetirement {
     data object Retired : EndpointDescriptorRetirement
+
     data object Rejected : EndpointDescriptorRetirement
 }
 
@@ -46,8 +45,8 @@ internal sealed interface EndpointDescriptorRetirement {
  * Proof transition: `IndexerLaunchOptions -> EndpointDescriptorPublication`.
  *
  * Establishes one atomically published, versioned descriptor for the bound exact-root runtime.
- * [EndpointDescriptorPublication.Rejected] is the closed expected filesystem failure. Raw launch
- * paths and identity text leave only in the descriptor document at this installed-host boundary.
+ * [EndpointDescriptorPublication.Rejected] is the closed expected filesystem failure. Raw launch paths and identity
+ * text leave only in the descriptor document at this installed-host boundary.
  */
 internal fun publishEndpointDescriptor(
     options: IndexerLaunchOptions,
@@ -55,13 +54,14 @@ internal fun publishEndpointDescriptor(
 ): EndpointDescriptorPublication {
     val descriptor = physicalSocket.endpointDescriptorPath()
     val parent = descriptor.parent ?: return EndpointDescriptorPublication.Rejected
-    val temporary = try {
-        Files.createTempFile(parent, ".${descriptor.fileName}.", ".tmp")
-    } catch (_: IOException) {
-        return EndpointDescriptorPublication.Rejected
-    } catch (_: SecurityException) {
-        return EndpointDescriptorPublication.Rejected
-    }
+    val temporary =
+        try {
+            Files.createTempFile(parent, ".${descriptor.fileName}.", ".tmp")
+        } catch (_: IOException) {
+            return EndpointDescriptorPublication.Rejected
+        } catch (_: SecurityException) {
+            return EndpointDescriptorPublication.Rejected
+        }
     return try {
         Files.writeString(
             temporary,
@@ -88,24 +88,24 @@ internal fun publishEndpointDescriptor(
     }
 }
 
-internal fun Path.endpointDescriptorPath(): Path =
-    resolveSibling("${fileName}.endpoint.json")
+internal fun Path.endpointDescriptorPath(): Path = resolveSibling("${fileName}.endpoint.json")
 
 /**
  * Proof transition: `Path -> EndpointDescriptorRetirement`.
  *
- * [EndpointDescriptorRetirement.Retired] establishes absence of the exact stale descriptor before
- * a new runtime construction attempt. [EndpointDescriptorRetirement.Rejected] closes inaccessible
- * filesystem state. The raw path leaves only at the filesystem boundary.
+ * [EndpointDescriptorRetirement.Retired] establishes absence of the exact stale descriptor before a new runtime
+ * construction attempt. [EndpointDescriptorRetirement.Rejected] closes inaccessible filesystem state. The raw path
+ * leaves only at the filesystem boundary.
  */
-internal fun retireEndpointDescriptor(path: Path): EndpointDescriptorRetirement = try {
-    Files.deleteIfExists(path)
-    EndpointDescriptorRetirement.Retired
-} catch (_: IOException) {
-    EndpointDescriptorRetirement.Rejected
-} catch (_: SecurityException) {
-    EndpointDescriptorRetirement.Rejected
-}
+internal fun retireEndpointDescriptor(path: Path): EndpointDescriptorRetirement =
+    try {
+        Files.deleteIfExists(path)
+        EndpointDescriptorRetirement.Retired
+    } catch (_: IOException) {
+        EndpointDescriptorRetirement.Rejected
+    } catch (_: SecurityException) {
+        EndpointDescriptorRetirement.Rejected
+    }
 
 internal fun deleteEndpointDescriptor(path: Path) {
     deleteDescriptorFile(path)
@@ -126,7 +126,5 @@ private fun IndexerLaunchOptions.endpointDescriptorDocument(): String =
 private fun deleteDescriptorFile(path: Path) {
     try {
         Files.deleteIfExists(path)
-    } catch (_: IOException) {
-    } catch (_: SecurityException) {
-    }
+    } catch (_: IOException) {} catch (_: SecurityException) {}
 }

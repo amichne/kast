@@ -13,28 +13,33 @@ import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
 /**
  * Direct SQLite authority for one begin, prepare, commit-or-discard generation publication.
  *
- * Opaque outward capabilities retain the exact database session and adapter owner. No JDBC handle
- * or weaker persistence authority crosses this boundary.
+ * Opaque outward capabilities retain the exact database session and adapter owner. No JDBC handle or weaker persistence
+ * authority crosses this boundary.
  */
-class SqliteWorkspaceGenerationPublication private constructor(
+class SqliteWorkspaceGenerationPublication
+private constructor(
     private val database: SqliteWorkspacePublicationDatabase,
     private val faultInjector: SqliteWorkspacePublicationFaultInjector,
 ) : WorkspacePublicationAuthority {
-    constructor(database: SqliteWorkspacePublicationDatabase) : this(
+    constructor(
+        database: SqliteWorkspacePublicationDatabase
+    ) : this(
         database,
         SqliteWorkspacePublicationFaultInjector.Disabled,
     )
 
     private val owner = Owner()
 
-    override fun current(): PublishedWorkspaceGenerationState = database.current()?.let {
-        PublishedWorkspaceGenerationState.Published(it.publication)
-    } ?: PublishedWorkspaceGenerationState.Unpublished
+    override fun current(): PublishedWorkspaceGenerationState =
+        database.current()?.let {
+            PublishedWorkspaceGenerationState.Published(it.publication)
+        } ?: PublishedWorkspaceGenerationState.Unpublished
 
-    override fun begin(): OpenWorkspacePublication = OwnedOpen(
-        session = database.begin(faultInjector),
-        owner = owner,
-    )
+    override fun begin(): OpenWorkspacePublication =
+        OwnedOpen(
+            session = database.begin(faultInjector),
+            owner = owner,
+        )
 
     override fun prepare(
         open: OpenWorkspacePublication,
@@ -46,16 +51,13 @@ class SqliteWorkspaceGenerationPublication private constructor(
         return OwnedPrepared(session, owner)
     }
 
-    override fun commit(
-        prepared: PreparedWorkspacePublication,
-    ): GenerationPublication = when (val result = prepared.requireOwned().commit()) {
-        is SqliteWorkspacePublicationCommitResult.Advanced -> GenerationPublication.Published(
-            SqliteWorkspacePublicationCommit(result.record.publication),
-        )
-        is SqliteWorkspacePublicationCommitResult.Unchanged -> GenerationPublication.Unchanged(
-            SqliteWorkspacePublicationCommit(result.record.publication),
-        )
-    }
+    override fun commit(prepared: PreparedWorkspacePublication): GenerationPublication =
+        when (val result = prepared.requireOwned().commit()) {
+            is SqliteWorkspacePublicationCommitResult.Advanced ->
+                GenerationPublication.Published(SqliteWorkspacePublicationCommit(result.record.publication))
+            is SqliteWorkspacePublicationCommitResult.Unchanged ->
+                GenerationPublication.Unchanged(SqliteWorkspacePublicationCommit(result.record.publication))
+        }
 
     override fun discard(open: OpenWorkspacePublication) = open.requireOwned().discard()
 
@@ -64,31 +66,32 @@ class SqliteWorkspaceGenerationPublication private constructor(
     /**
      * Proof transition: `OpenWorkspacePublication -> SqliteWorkspacePublicationSession`.
      *
-     * Establishes that the opaque open capability belongs to this exact adapter instance. A
-     * foreign capability is programmer misuse; raw JDBC state remains inside the session.
+     * Establishes that the opaque open capability belongs to this exact adapter instance. A foreign capability is
+     * programmer misuse; raw JDBC state remains inside the session.
      */
     private fun OpenWorkspacePublication.requireOwned(): SqliteWorkspacePublicationSession =
         (this as? OwnedOpen)?.takeIf { it.owner === owner }?.session
-        ?: error("Open workspace publication belongs to another SQLite authority")
+            ?: error("Open workspace publication belongs to another SQLite authority")
 
     /**
      * Proof transition: `PreparedWorkspacePublication -> SqliteWorkspacePublicationSession`.
      *
-     * Establishes that the opaque prepared capability belongs to this exact adapter instance. A
-     * foreign capability is programmer misuse; raw JDBC state remains inside the session.
+     * Establishes that the opaque prepared capability belongs to this exact adapter instance. A foreign capability is
+     * programmer misuse; raw JDBC state remains inside the session.
      */
     private fun PreparedWorkspacePublication.requireOwned(): SqliteWorkspacePublicationSession =
         (this as? OwnedPrepared)?.takeIf { it.owner === owner }?.session
-        ?: error("Prepared workspace publication belongs to another SQLite authority")
+            ?: error("Prepared workspace publication belongs to another SQLite authority")
 
     internal companion object {
         fun faultInjecting(
             database: SqliteWorkspacePublicationDatabase,
             faultInjector: SqliteWorkspacePublicationFaultInjector,
-        ): SqliteWorkspaceGenerationPublication = SqliteWorkspaceGenerationPublication(
-            database,
-            faultInjector,
-        )
+        ): SqliteWorkspaceGenerationPublication =
+            SqliteWorkspaceGenerationPublication(
+                database,
+                faultInjector,
+            )
     }
 
     private class Owner
@@ -104,6 +107,5 @@ class SqliteWorkspaceGenerationPublication private constructor(
     ) : PreparedWorkspacePublication
 }
 
-private data class SqliteWorkspacePublicationCommit(
-    override val publication: PublishedWorkspaceGeneration,
-) : WorkspacePublicationCommit
+private data class SqliteWorkspacePublicationCommit(override val publication: PublishedWorkspaceGeneration) :
+    WorkspacePublicationCommit

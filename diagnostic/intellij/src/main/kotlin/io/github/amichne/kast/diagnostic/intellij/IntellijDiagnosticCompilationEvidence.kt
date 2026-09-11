@@ -27,6 +27,7 @@ internal value class DiagnosticFactoryEvidence private constructor(val value: St
 
 internal sealed interface DiagnosticFactoryObservation {
     data class Named(val factory: DiagnosticFactoryEvidence) : DiagnosticFactoryObservation
+
     data object Withheld : DiagnosticFactoryObservation
 }
 
@@ -41,7 +42,8 @@ internal value class DiagnosticObservationCount private constructor(val value: I
 }
 
 /** Error count stays complete even when the bounded factory-code projection withholds identities. */
-internal data class DiagnosticErrorEvidence private constructor(
+internal data class DiagnosticErrorEvidence
+private constructor(
     val errorCount: DiagnosticObservationCount,
     val factories: List<DiagnosticFactoryEvidence>,
     val withheldFactCount: DiagnosticObservationCount,
@@ -50,14 +52,21 @@ internal data class DiagnosticErrorEvidence private constructor(
         fun observe(facts: List<DiagnosticFact>): DiagnosticErrorEvidence {
             val errors = facts.filter { it.severity == DiagnosticSeverity.ERROR }
             val observations = errors.map(DiagnosticFactoryEvidence::observe)
-            val factories = observations.filterIsInstance<DiagnosticFactoryObservation.Named>()
-                .map { it.factory }.distinct().sortedBy { it.value }.take(16)
+            val factories =
+                observations
+                    .filterIsInstance<DiagnosticFactoryObservation.Named>()
+                    .map { it.factory }
+                    .distinct()
+                    .sortedBy { it.value }
+                    .take(16)
             return DiagnosticErrorEvidence(
                 DiagnosticObservationCount.observed(errors.size),
                 factories,
-                DiagnosticObservationCount.observed(observations.count { observation ->
-                    observation !is DiagnosticFactoryObservation.Named || observation.factory !in factories
-                }),
+                DiagnosticObservationCount.observed(
+                    observations.count { observation ->
+                        observation !is DiagnosticFactoryObservation.Named || observation.factory !in factories
+                    }
+                ),
             )
         }
     }
@@ -77,6 +86,7 @@ internal sealed interface IntellijDiagnosticCompilationEvidence {
     ) : IntellijDiagnosticCompilationEvidence
 
     data class Rejected(val reason: DiagnosticCompilerRejection) : IntellijDiagnosticCompilationEvidence
+
     data object Cancelled : IntellijDiagnosticCompilationEvidence
 }
 
@@ -85,18 +95,21 @@ internal fun interface IntellijDiagnosticCompilationObserver {
 }
 
 /** Total projection retains terminal status and all error counts without exposing semantic payload. */
-internal fun DiagnosticCompilation.observation(): IntellijDiagnosticCompilationEvidence = when (this) {
-    is DiagnosticCompilation.Complete -> IntellijDiagnosticCompilationEvidence.Complete(
-        DiagnosticObservationCount.observed(coverage.analyzedFiles.size),
-        DiagnosticErrorEvidence.observe(batch.facts),
-    )
-    is DiagnosticCompilation.Qualified -> IntellijDiagnosticCompilationEvidence.Qualified(
-        DiagnosticObservationCount.observed(coverage.analyzedFiles.size),
-        DiagnosticErrorEvidence.observe(batch.facts),
-        coverage.limitations.map { it.reason }.toSet(),
-    )
-    is DiagnosticCompilation.Rejected -> IntellijDiagnosticCompilationEvidence.Rejected(reason)
-}
+internal fun DiagnosticCompilation.observation(): IntellijDiagnosticCompilationEvidence =
+    when (this) {
+        is DiagnosticCompilation.Complete ->
+            IntellijDiagnosticCompilationEvidence.Complete(
+                DiagnosticObservationCount.observed(coverage.analyzedFiles.size),
+                DiagnosticErrorEvidence.observe(batch.facts),
+            )
+        is DiagnosticCompilation.Qualified ->
+            IntellijDiagnosticCompilationEvidence.Qualified(
+                DiagnosticObservationCount.observed(coverage.analyzedFiles.size),
+                DiagnosticErrorEvidence.observe(batch.facts),
+                coverage.limitations.map { it.reason }.toSet(),
+            )
+        is DiagnosticCompilation.Rejected -> IntellijDiagnosticCompilationEvidence.Rejected(reason)
+    }
 
 internal object LoggingIntellijDiagnosticCompilationObserver : IntellijDiagnosticCompilationObserver {
     override fun observe(evidence: IntellijDiagnosticCompilationEvidence) {

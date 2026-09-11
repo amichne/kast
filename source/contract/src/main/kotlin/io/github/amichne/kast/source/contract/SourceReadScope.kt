@@ -15,23 +15,26 @@ sealed interface SourceReadScope {
     ) : SourceReadScope
 }
 
-fun SourceReadAnchor.readScope(): SourceReadScope = when (this) {
-    is SourceReadAnchor.Candidate -> SourceReadScope.Constrained(selector.scope, selector.constraints)
-    is SourceReadAnchor.Symbol -> SourceReadScope.Constrained(selector.scope, selector.constraints)
-    is SourceReadAnchor.Source -> selector.snapshot.readScope
-}
-
-internal fun SourceReadScope.fingerprintFields(): List<String> = when (this) {
-    SourceReadScope.ExactFile -> emptyList()
-    is SourceReadScope.Constrained -> buildList {
-        val captured = SymbolSearchScope.snapshot(scope)
-        add("source-read-scope-v1")
-        add(captured.kind.name)
-        add(captured.primary ?: "")
-        add(captured.secondary ?: "")
-        add(captured.sourceKinds.name)
-        add(captured.generatedSources.name)
-        add(captured.libraries?.name ?: "")
-        addAll(constraints.fingerprintFields())
+fun SourceReadAnchor.readScope(): SourceReadScope =
+    when (this) {
+        is SourceReadAnchor.Candidate -> SourceReadScope.Constrained(selector.scope, selector.constraints)
+        is SourceReadAnchor.Symbol -> SourceReadScope.Constrained(selector.scope, selector.constraints)
+        is SourceReadAnchor.Source -> selector.snapshot.readScope
     }
-}
+
+internal fun SourceReadScope.fingerprintFields(): List<String> =
+    when (this) {
+        SourceReadScope.ExactFile -> emptyList()
+        is SourceReadScope.Constrained ->
+            buildList {
+                val captured = SymbolSearchScope.snapshot(scope)
+                add("source-read-scope-v1")
+                add(captured.kind.name)
+                add(captured.primary ?: "")
+                add(captured.secondary ?: "")
+                add(captured.sourceKinds.name)
+                add(captured.generatedSources.name)
+                add(captured.libraries?.name ?: "")
+                addAll(constraints.fingerprintFields())
+            }
+    }

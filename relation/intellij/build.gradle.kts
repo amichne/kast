@@ -20,38 +20,40 @@ val relationIdeaDistribution: Configuration by configurations.creating {
     isCanBeResolved = true
 }
 
-private val extractedKotlinPluginDirectory = objects.directoryProperty().apply {
-    set(file(gradle.gradleUserHomeDir.resolve("kast/relation-intellij-kotlin-plugin/$ideaDistributionVersion")))
-}
-
-val extractRelationKotlinPlugin by tasks.registering(Sync::class) {
-    inputs.property("pluginLibrarySets", listOf("Kotlin", "java"))
-    from({ zipTree(relationIdeaDistribution.singleFile) }) {
-        include("**/plugins/Kotlin/lib/**/*.jar")
-        include("**/plugins/java/lib/**/*.jar")
-        exclude("**/plugins/Kotlin/lib/jps/**")
-        exclude("**/plugins/Kotlin/lib/kotlinc/lib/kotlin-compiler.jar")
-        eachFile {
-            relativePath = RelativePath(
-                true,
-                *relativePath.segments
-                    .dropWhile { segment -> segment != "lib" }
-                    .drop(1)
-                    .toTypedArray(),
-            )
-        }
+private val extractedKotlinPluginDirectory =
+    objects.directoryProperty().apply {
+        set(file(gradle.gradleUserHomeDir.resolve("kast/relation-intellij-kotlin-plugin/$ideaDistributionVersion")))
     }
-    includeEmptyDirs = false
-    into(extractedKotlinPluginDirectory)
-}
 
-private val kotlinPluginLibs: ConfigurableFileCollection = files(
-    extractedKotlinPluginDirectory.map { directory ->
-        fileTree(directory) {
-            include("**/*.jar")
+val extractRelationKotlinPlugin by
+    tasks.registering(Sync::class) {
+        inputs.property("pluginLibrarySets", listOf("Kotlin", "java"))
+        from({ zipTree(relationIdeaDistribution.singleFile) }) {
+            include("**/plugins/Kotlin/lib/**/*.jar")
+            include("**/plugins/java/lib/**/*.jar")
+            exclude("**/plugins/Kotlin/lib/jps/**")
+            exclude("**/plugins/Kotlin/lib/kotlinc/lib/kotlin-compiler.jar")
+            eachFile {
+                relativePath =
+                    RelativePath(
+                        true,
+                        *relativePath.segments.dropWhile { segment -> segment != "lib" }.drop(1).toTypedArray(),
+                    )
+            }
         }
-    },
-).builtBy(extractRelationKotlinPlugin)
+        includeEmptyDirs = false
+        into(extractedKotlinPluginDirectory)
+    }
+
+private val kotlinPluginLibs: ConfigurableFileCollection =
+    files(
+            extractedKotlinPluginDirectory.map { directory ->
+                fileTree(directory) {
+                    include("**/*.jar")
+                }
+            }
+        )
+        .builtBy(extractRelationKotlinPlugin)
 
 dependencies {
     implementation(project(":protocol:contract"))

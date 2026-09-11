@@ -7,36 +7,30 @@ class InstalledWorkspaceIndexingAdmissionTest {
     @Test
     fun `platform linkage failure is retained as an exact indexing rejection`() {
         assertEquals(
-            InstalledIndexingPlatformObservation.Rejected(
-                InstalledIndexingReadinessFailure.PlatformLinkageInvalid,
-            ),
+            InstalledIndexingPlatformObservation.Rejected(InstalledIndexingReadinessFailure.PlatformLinkageInvalid),
             observeInstalledIndexingPlatform<Unit> { throw LinkageError("duplicate fixture") },
         )
         assertEquals(
-            InstalledWorkspaceIndexingAdmission.Rejected(
-                InstalledIntellijWorkspaceFailure.PLATFORM_LINKAGE_INVALID,
-            ),
-            InstalledIndexingReadiness.Rejected(
-                InstalledIndexingReadinessFailure.PlatformLinkageInvalid,
-            ).workspaceOpeningAdmission(),
+            InstalledWorkspaceIndexingAdmission.Rejected(InstalledIntellijWorkspaceFailure.PLATFORM_LINKAGE_INVALID),
+            InstalledIndexingReadiness.Rejected(InstalledIndexingReadinessFailure.PlatformLinkageInvalid)
+                .workspaceOpeningAdmission(),
         )
     }
 
     @Test
     fun `non JVM indexing failures remain startup failures`() {
         listOf(
-            InstalledIndexingReadinessFailure.IndexingTimedOut,
-            InstalledIndexingReadinessFailure.ModuleMaterializationUnavailable,
-            InstalledIndexingReadinessFailure.PlatformObservationUnavailable,
-            InstalledIndexingReadinessFailure.ProjectDisposed,
-        ).forEach { failure ->
-            assertEquals(
-                InstalledWorkspaceIndexingAdmission.Rejected(
-                    InstalledIntellijWorkspaceFailure.STARTUP_FAILED,
-                ),
-                InstalledIndexingReadiness.Rejected(failure).workspaceOpeningAdmission(),
+                InstalledIndexingReadinessFailure.IndexingTimedOut,
+                InstalledIndexingReadinessFailure.ModuleMaterializationUnavailable,
+                InstalledIndexingReadinessFailure.PlatformObservationUnavailable,
+                InstalledIndexingReadinessFailure.ProjectDisposed,
             )
-        }
+            .forEach { failure ->
+                assertEquals(
+                    InstalledWorkspaceIndexingAdmission.Rejected(InstalledIntellijWorkspaceFailure.STARTUP_FAILED),
+                    InstalledIndexingReadiness.Rejected(failure).workspaceOpeningAdmission(),
+                )
+            }
     }
 
     @Test
@@ -46,12 +40,9 @@ class InstalledWorkspaceIndexingAdmissionTest {
             InstalledIndexingReadiness.Ready.workspaceOpeningAdmission(),
         )
         assertEquals(
-            InstalledWorkspaceIndexingAdmission.Rejected(
-                InstalledIntellijWorkspaceFailure.INDEXING_INTERRUPTED,
-            ),
-            InstalledIndexingReadiness.Rejected(
-                InstalledIndexingReadinessFailure.Interrupted,
-            ).workspaceOpeningAdmission(),
+            InstalledWorkspaceIndexingAdmission.Rejected(InstalledIntellijWorkspaceFailure.INDEXING_INTERRUPTED),
+            InstalledIndexingReadiness.Rejected(InstalledIndexingReadinessFailure.Interrupted)
+                .workspaceOpeningAdmission(),
         )
     }
 }

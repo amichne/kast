@@ -5,11 +5,11 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
+import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
-import java.nio.file.Path
 
 class BoundedSourceFileCollectorTest {
     @Test
@@ -18,7 +18,10 @@ class BoundedSourceFileCollectorTest {
         for (order in listOf(inputs, inputs.reversed())) {
             val collector = collector()
             order.forEach { assertTrue(collector.accept(it, 0)) }
-            assertEquals(Refinement.Refined(listOf(Path.of("/workspace/src/A.kt"), Path.of("/workspace/src/B.kt"))), collector.finish())
+            assertEquals(
+                Refinement.Refined(listOf(Path.of("/workspace/src/A.kt"), Path.of("/workspace/src/B.kt"))),
+                collector.finish(),
+            )
         }
     }
 
@@ -51,9 +54,14 @@ class BoundedSourceFileCollectorTest {
     }
 
     private fun source(name: String) = ProjectSourceEntry.Source(Path.of("/workspace/src/$name"))
-    private fun collector(files: Int = 3, work: Long = 10) = BoundedSourceFileCollector(Path.of("/workspace/src"), ResourceBudget(
-        (ResultLimit.parse(files) as Refinement.Refined).value,
-        (WorkUnitLimit.parse(work) as Refinement.Refined).value,
-        (ElapsedTimeLimitMillis.parse(2_000) as Refinement.Refined).value,
-    ))
+
+    private fun collector(files: Int = 3, work: Long = 10) =
+        BoundedSourceFileCollector(
+            Path.of("/workspace/src"),
+            ResourceBudget(
+                (ResultLimit.parse(files) as Refinement.Refined).value,
+                (WorkUnitLimit.parse(work) as Refinement.Refined).value,
+                (ElapsedTimeLimitMillis.parse(2_000) as Refinement.Refined).value,
+            ),
+        )
 }

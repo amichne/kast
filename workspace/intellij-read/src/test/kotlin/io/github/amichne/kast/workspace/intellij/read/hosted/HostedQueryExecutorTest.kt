@@ -1,4 +1,5 @@
 @file:OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+
 package io.github.amichne.kast.workspace.intellij.read.hosted
 
 import kotlinx.coroutines.CompletableDeferred
@@ -17,17 +18,23 @@ class HostedQueryExecutorTest {
     @Test
     fun `success and platform failure preserve the last bounded stage`() = runTest {
         val executor = HostedQueryExecutor(backgroundScope)
-        assertEquals(HostedExecution.Completed(42, HostedQueryStage.RESULT_DETACHED),
+        assertEquals(
+            HostedExecution.Completed(42, HostedQueryStage.RESULT_DETACHED),
             executor.execute(executor.endpoint) { progress ->
                 progress.advance(HostedQueryStage.RESULT_DETACHED)
                 42
-            })
-        assertEquals(HostedExecution.Rejected(
-            HostedQueryFailure.Platform(HostedPlatformFailureCause.RUNTIME), HostedQueryStage.SEMANTIC_READ,
-        ), executor.execute<Int>(executor.endpoint) { progress ->
-            progress.advance(HostedQueryStage.SEMANTIC_READ)
-            throw IllegalStateException("Must not escape into result evidence")
-        })
+            },
+        )
+        assertEquals(
+            HostedExecution.Rejected(
+                HostedQueryFailure.Platform(HostedPlatformFailureCause.RUNTIME),
+                HostedQueryStage.SEMANTIC_READ,
+            ),
+            executor.execute<Int>(executor.endpoint) { progress ->
+                progress.advance(HostedQueryStage.SEMANTIC_READ)
+                throw IllegalStateException("Must not escape into result evidence")
+            },
+        )
         executor.retire()
         executor.drain()
     }
@@ -38,7 +45,11 @@ class HostedQueryExecutorTest {
         val cleanup = CompletableDeferred<Unit>()
         val first = async {
             executor.execute(executor.endpoint) {
-                try { awaitCancellation() } finally { withContext(NonCancellable) { cleanup.await() } }
+                try {
+                    awaitCancellation()
+                } finally {
+                    withContext(NonCancellable) { cleanup.await() }
+                }
             }
         }
         runCurrent()
@@ -58,11 +69,13 @@ class HostedQueryExecutorTest {
     fun `retirement invalidates an in-flight detached result and waits for owned cleanup`() = runTest {
         val executor = HostedQueryExecutor(backgroundScope)
         val cleanup = CompletableDeferred<Unit>()
-        val work = async { executor.execute(executor.endpoint) { progress ->
-            progress.advance(HostedQueryStage.CONTENT_REVALIDATION)
-            withContext(NonCancellable) { cleanup.await() }
-            42
-        } }
+        val work = async {
+            executor.execute(executor.endpoint) { progress ->
+                progress.advance(HostedQueryStage.CONTENT_REVALIDATION)
+                withContext(NonCancellable) { cleanup.await() }
+                42
+            }
+        }
         runCurrent()
         executor.retire()
         val retired = async { executor.drain() }
@@ -70,7 +83,10 @@ class HostedQueryExecutorTest {
         assertFalse(retired.isCompleted)
         cleanup.complete(Unit)
         runCurrent()
-        assertEquals(HostedExecution.Rejected(HostedQueryFailure.RETIRED, HostedQueryStage.CONTENT_REVALIDATION), work.await())
+        assertEquals(
+            HostedExecution.Rejected(HostedQueryFailure.RETIRED, HostedQueryStage.CONTENT_REVALIDATION),
+            work.await(),
+        )
         retired.await()
         assertEquals(HostedExecution.Rejected(HostedQueryFailure.RETIRED), executor.execute(executor.endpoint) { 1 })
     }
@@ -79,9 +95,16 @@ class HostedQueryExecutorTest {
     fun `caller cancellation drains owned analysis before releasing admission`() = runTest {
         val executor = HostedQueryExecutor(backgroundScope)
         val cleanup = CompletableDeferred<Unit>()
-        val first = async { executor.execute(executor.endpoint) {
-            try { delay(100_000); 1 } finally { withContext(NonCancellable) { cleanup.await() } }
-        } }
+        val first = async {
+            executor.execute(executor.endpoint) {
+                try {
+                    delay(100_000)
+                    1
+                } finally {
+                    withContext(NonCancellable) { cleanup.await() }
+                }
+            }
+        }
         runCurrent()
         first.cancel()
         runCurrent()

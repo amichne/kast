@@ -1,7 +1,6 @@
 package io.github.amichne.kast.workspace.intellij.read
 
 import io.github.amichne.kast.kernel.ReadLimits
-import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.protocol.contract.AdmittedIdeHostCompatibility
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import java.util.Collections
@@ -54,54 +53,56 @@ enum class DetachedModelCaptureFailure {
 
 /** Closed result of the state-specific existing-Project model capture. */
 sealed interface DetachedModelCapture {
-    data class Captured(
-        val model: DetachedIdeWorkspaceModel,
-    ) : DetachedModelCapture
+    data class Captured(val model: DetachedIdeWorkspaceModel) : DetachedModelCapture
 
     /** A rejection whose required first failure makes the empty state unrepresentable. */
-    class Rejected internal constructor(
+    class Rejected
+    internal constructor(
         firstFailure: DetachedModelCaptureFailure,
         additionalFailures: Set<DetachedModelCaptureFailure> = emptySet(),
     ) : DetachedModelCapture {
-        val failures: Set<DetachedModelCaptureFailure> = Collections.unmodifiableSet(
-            LinkedHashSet<DetachedModelCaptureFailure>().apply {
-                add(firstFailure)
-                addAll(additionalFailures)
-            },
-        )
+        val failures: Set<DetachedModelCaptureFailure> =
+            Collections.unmodifiableSet(
+                LinkedHashSet<DetachedModelCaptureFailure>().apply {
+                    add(firstFailure)
+                    addAll(additionalFailures)
+                }
+            )
     }
 }
 
 /** Finite source-root kinds detached from IntelliJ source-folder implementations. */
-enum class DetachedSourceRootKind { PRODUCTION, TEST, RESOURCE, TEST_RESOURCE }
+enum class DetachedSourceRootKind {
+    PRODUCTION,
+    TEST,
+    RESOURCE,
+    TEST_RESOURCE,
+}
 
 /** Cached IntelliJ source-folder provenance detached without path inference. */
-enum class DetachedSourceRootProvenance { AUTHORED, GENERATED }
+enum class DetachedSourceRootProvenance {
+    AUTHORED,
+    GENERATED,
+}
 
-@JvmInline
-value class DetachedModuleName internal constructor(val value: String)
+@JvmInline value class DetachedModuleName internal constructor(val value: String)
 
-@JvmInline
-value class DetachedWorkspaceRelativePath internal constructor(val value: String)
+@JvmInline value class DetachedWorkspaceRelativePath internal constructor(val value: String)
 
-@JvmInline
-value class DetachedGradleProjectIdentity internal constructor(val value: String)
+@JvmInline value class DetachedGradleProjectIdentity internal constructor(val value: String)
 
-@JvmInline
-value class DetachedSdkName internal constructor(val value: String)
+@JvmInline value class DetachedSdkName internal constructor(val value: String)
 
-@JvmInline
-value class DetachedSdkType internal constructor(val value: String)
+@JvmInline value class DetachedSdkType internal constructor(val value: String)
 
-@JvmInline
-value class DetachedSdkVersion internal constructor(val value: String)
+@JvmInline value class DetachedSdkVersion internal constructor(val value: String)
 
-@JvmInline
-value class DetachedClasspathEntryUrl internal constructor(val value: String)
+@JvmInline value class DetachedClasspathEntryUrl internal constructor(val value: String)
 
 /** Detached Gradle owner of one admitted IntelliJ module. */
 @ConsistentCopyVisibility
-data class DetachedGradleModuleOwner internal constructor(
+data class DetachedGradleModuleOwner
+internal constructor(
     val buildRoot: DetachedWorkspaceRelativePath,
     val projectRoot: DetachedWorkspaceRelativePath,
     val projectIdentity: DetachedGradleProjectIdentity,
@@ -109,7 +110,8 @@ data class DetachedGradleModuleOwner internal constructor(
 
 /** Detached source-root identity owned by exactly one admitted module. */
 @ConsistentCopyVisibility
-data class DetachedIdeSourceRoot internal constructor(
+data class DetachedIdeSourceRoot
+internal constructor(
     val location: DetachedWorkspaceRelativePath,
     val kind: DetachedSourceRootKind,
     val provenance: DetachedSourceRootProvenance,
@@ -117,20 +119,19 @@ data class DetachedIdeSourceRoot internal constructor(
 
 /** Detached SDK identity used by one admitted module. */
 @ConsistentCopyVisibility
-data class DetachedIdeSdkIdentity internal constructor(
+data class DetachedIdeSdkIdentity
+internal constructor(
     val name: DetachedSdkName,
     val type: DetachedSdkType,
     val version: DetachedSdkVersion,
 )
 
 /** Detached classpath identity used by one admitted module. */
-@ConsistentCopyVisibility
-data class DetachedIdeClasspathEntry internal constructor(
-    val url: DetachedClasspathEntryUrl,
-)
+@ConsistentCopyVisibility data class DetachedIdeClasspathEntry internal constructor(val url: DetachedClasspathEntryUrl)
 
 /** One immutable exact Gradle-owned module in the detached workspace model. */
-class DetachedIdeModule internal constructor(
+class DetachedIdeModule
+internal constructor(
     val name: DetachedModuleName,
     val owner: DetachedGradleModuleOwner,
     sourceRoots: List<DetachedIdeSourceRoot>,
@@ -144,10 +145,11 @@ class DetachedIdeModule internal constructor(
 /**
  * Immutable model detached from one already-admitted IntelliJ Project.
  *
- * Every retained value is host-neutral data. No live Project, module, VFS, PSI, search-scope,
- * Gradle model, callback, or mutable collection can be recovered from this surface.
+ * Every retained value is host-neutral data. No live Project, module, VFS, PSI, search-scope, Gradle model, callback,
+ * or mutable collection can be recovered from this surface.
  */
-class DetachedIdeWorkspaceModel private constructor(
+class DetachedIdeWorkspaceModel
+private constructor(
     exactRoot: ExactObservedWorkspaceRoot,
     val compatibility: AdmittedIdeHostCompatibility,
     modules: RefinedDetachedModules,
@@ -157,13 +159,13 @@ class DetachedIdeWorkspaceModel private constructor(
 
     companion object {
         /**
-         * Proof transition: `(CanonicalWorkspaceRoot, AdmittedIdeHostCompatibility,
-         * DetachedModelObservation) -> DetachedModelCapture`.
+         * Proof transition: `(CanonicalWorkspaceRoot, AdmittedIdeHostCompatibility, DetachedModelObservation) ->
+         * DetachedModelCapture`.
          *
          * Establishes one exact-root, complete, bounded, deterministically ordered immutable
          * module/source-root/Gradle-owner/SDK/classpath model. The closed expected failure is
-         * [DetachedModelCaptureFailure]. Raw path and identity extraction is permitted only at
-         * the live IntelliJ observation boundary.
+         * [DetachedModelCaptureFailure]. Raw path and identity extraction is permitted only at the live IntelliJ
+         * observation boundary.
          */
         internal fun admit(
             expectedRoot: CanonicalWorkspaceRoot,
@@ -171,20 +173,21 @@ class DetachedIdeWorkspaceModel private constructor(
             observation: DetachedModelObservation,
             limits: ReadLimits = ReadLimits.Default,
         ): DetachedModelCapture {
-            val boundary = when (observation) {
-                is DetachedModelObservation.Observed -> observation.boundary
-                is DetachedModelObservation.Rejected -> return rejected(observation.failure)
-            }
+            val boundary =
+                when (observation) {
+                    is DetachedModelObservation.Observed -> observation.boundary
+                    is DetachedModelObservation.Rejected -> return rejected(observation.failure)
+                }
             return refineDetachedModel(expectedRoot, compatibility, boundary, limits = limits)
         }
 
         /**
-         * Proof transition: `(ExactObservedWorkspaceRoot, AdmittedIdeHostCompatibility,
-         * RefinedDetachedModules) -> DetachedIdeWorkspaceModel`.
+         * Proof transition: `(ExactObservedWorkspaceRoot, AdmittedIdeHostCompatibility, RefinedDetachedModules) ->
+         * DetachedIdeWorkspaceModel`.
          *
-         * Establishes an unmodifiable model surface whose module aggregate proves non-emptiness,
-         * boundedness, unique names, and unambiguous source-root ownership. No further raw
-         * extraction is permitted beyond the live adapter boundary.
+         * Establishes an unmodifiable model surface whose module aggregate proves non-emptiness, boundedness, unique
+         * names, and unambiguous source-root ownership. No further raw extraction is permitted beyond the live adapter
+         * boundary.
          */
         internal fun captured(
             root: ExactObservedWorkspaceRoot,
@@ -196,9 +199,8 @@ class DetachedIdeWorkspaceModel private constructor(
 
 internal sealed interface DetachedModelObservation {
     data class Observed(val boundary: DetachedModelBoundary) : DetachedModelObservation
-    data class Rejected(
-        val failure: DetachedModelCaptureFailure,
-    ) : DetachedModelObservation
+
+    data class Rejected(val failure: DetachedModelCaptureFailure) : DetachedModelObservation
 }
 
 internal data class DetachedModelBoundary(
@@ -233,15 +235,11 @@ internal data class DetachedSdkBoundary(
     val version: String?,
 )
 
-internal data class DetachedClasspathBoundary(
-    val url: String,
-)
+internal data class DetachedClasspathBoundary(val url: String)
 
-private fun rejected(failure: DetachedModelCaptureFailure) =
-    DetachedModelCapture.Rejected(failure)
+private fun rejected(failure: DetachedModelCaptureFailure) = DetachedModelCapture.Rejected(failure)
 
-private fun <Value> immutableList(values: List<Value>): List<Value> =
-    Collections.unmodifiableList(ArrayList(values))
+private fun <Value> immutableList(values: List<Value>): List<Value> = Collections.unmodifiableList(ArrayList(values))
 
 internal object DetachedModelLimits {
     const val MAX_CACHED_GRADLE_MODELS = 8

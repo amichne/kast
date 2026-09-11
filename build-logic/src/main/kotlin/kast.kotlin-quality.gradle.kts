@@ -8,6 +8,8 @@ plugins {
 spotless {
     kotlin {
         target("src/**/*.kt")
+        // The schema generator owns these bytes; verifyPublicQueryGeneration enforces parity.
+        targetExclude("src/main/kotlin/io/github/amichne/kast/appserver/query/PublicQueryDocuments.kt")
         ktfmt("0.64").kotlinlangStyle().configure {
             it.setMaxWidth(120)
         }

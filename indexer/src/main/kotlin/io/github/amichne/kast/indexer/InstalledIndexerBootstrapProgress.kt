@@ -17,12 +17,10 @@ enum class InstalledIndexerBootstrapPhase {
 
 /** A proven count within the closed installed bootstrap phase set. */
 @JvmInline
-value class InstalledIndexerBootstrapPhaseCount private constructor(
-    val value: Int,
-) {
+value class InstalledIndexerBootstrapPhaseCount private constructor(val value: Int) {
     companion object {
-        internal fun completed(phase: InstalledIndexerBootstrapPhase):
-            InstalledIndexerBootstrapPhaseCount = InstalledIndexerBootstrapPhaseCount(phase.ordinal)
+        internal fun completed(phase: InstalledIndexerBootstrapPhase): InstalledIndexerBootstrapPhaseCount =
+            InstalledIndexerBootstrapPhaseCount(phase.ordinal)
 
         internal fun total(): InstalledIndexerBootstrapPhaseCount =
             InstalledIndexerBootstrapPhaseCount(InstalledIndexerBootstrapPhase.entries.size)
@@ -30,17 +28,14 @@ value class InstalledIndexerBootstrapPhaseCount private constructor(
 }
 
 enum class InstalledIndexerBootstrapAdvanceFailure {
-    PHASE_OUT_OF_ORDER,
+    PHASE_OUT_OF_ORDER
 }
 
 sealed interface InstalledIndexerBootstrapTerminalFailure {
-    data class Runtime internal constructor(
-        val failures: Set<InstalledKastRuntimeFailure>,
-    ) : InstalledIndexerBootstrapTerminalFailure
+    data class Runtime internal constructor(val failures: Set<InstalledKastRuntimeFailure>) :
+        InstalledIndexerBootstrapTerminalFailure
 
-    data class Transport(
-        val failure: IndexerTransportFailure,
-    ) : InstalledIndexerBootstrapTerminalFailure
+    data class Transport(val failure: IndexerTransportFailure) : InstalledIndexerBootstrapTerminalFailure
 }
 
 /** Closed externally observable sidecar bootstrap state. */
@@ -75,26 +70,18 @@ sealed interface InstalledIndexerBootstrapState {
 }
 
 sealed interface InstalledIndexerBootstrapAdvance {
-    data class Advanced(
-        val progress: InstalledIndexerBootstrapProgress,
-    ) : InstalledIndexerBootstrapAdvance
+    data class Advanced(val progress: InstalledIndexerBootstrapProgress) : InstalledIndexerBootstrapAdvance
 
-    data class Rejected(
-        val failure: InstalledIndexerBootstrapAdvanceFailure,
-    ) : InstalledIndexerBootstrapAdvance
+    data class Rejected(val failure: InstalledIndexerBootstrapAdvanceFailure) : InstalledIndexerBootstrapAdvance
 }
 
 /**
- * One immutable active bootstrap position. Construction and transitions admit only the canonical
- * phase order, so observed progress cannot skip or repeat import, indexing, or model capture.
+ * One immutable active bootstrap position. Construction and transitions admit only the canonical phase order, so
+ * observed progress cannot skip or repeat import, indexing, or model capture.
  */
-class InstalledIndexerBootstrapProgress private constructor(
-    val phase: InstalledIndexerBootstrapPhase,
-) {
-    val completedPhases: InstalledIndexerBootstrapPhaseCount =
-        InstalledIndexerBootstrapPhaseCount.completed(phase)
-    val totalPhases: InstalledIndexerBootstrapPhaseCount =
-        InstalledIndexerBootstrapPhaseCount.total()
+class InstalledIndexerBootstrapProgress private constructor(val phase: InstalledIndexerBootstrapPhase) {
+    val completedPhases: InstalledIndexerBootstrapPhaseCount = InstalledIndexerBootstrapPhaseCount.completed(phase)
+    val totalPhases: InstalledIndexerBootstrapPhaseCount = InstalledIndexerBootstrapPhaseCount.total()
 
     fun snapshot(): InstalledIndexerBootstrapState.Starting =
         InstalledIndexerBootstrapState.Starting(phase, completedPhases, totalPhases)
@@ -103,9 +90,7 @@ class InstalledIndexerBootstrapProgress private constructor(
         if (phase.next() == next) {
             InstalledIndexerBootstrapAdvance.Advanced(InstalledIndexerBootstrapProgress(next))
         } else {
-            InstalledIndexerBootstrapAdvance.Rejected(
-                InstalledIndexerBootstrapAdvanceFailure.PHASE_OUT_OF_ORDER,
-            )
+            InstalledIndexerBootstrapAdvance.Rejected(InstalledIndexerBootstrapAdvanceFailure.PHASE_OUT_OF_ORDER)
         }
 
     fun ready(): InstalledIndexerBootstrapState =
@@ -120,19 +105,17 @@ class InstalledIndexerBootstrapProgress private constructor(
             )
         }
 
-    fun reject(
-        failure: InstalledIndexerBootstrapTerminalFailure,
-    ): InstalledIndexerBootstrapState.Rejected = InstalledIndexerBootstrapState.Rejected(
-        phase,
-        completedPhases,
-        totalPhases,
-        failure,
-    )
+    fun reject(failure: InstalledIndexerBootstrapTerminalFailure): InstalledIndexerBootstrapState.Rejected =
+        InstalledIndexerBootstrapState.Rejected(
+            phase,
+            completedPhases,
+            totalPhases,
+            failure,
+        )
 
     companion object {
-        fun start(): InstalledIndexerBootstrapProgress = InstalledIndexerBootstrapProgress(
-            InstalledIndexerBootstrapPhase.DISCOVERING_RUNTIME,
-        )
+        fun start(): InstalledIndexerBootstrapProgress =
+            InstalledIndexerBootstrapProgress(InstalledIndexerBootstrapPhase.DISCOVERING_RUNTIME)
     }
 }
 
@@ -142,31 +125,20 @@ fun interface InstalledIndexerBootstrapStateSink {
 
 /** Finite reporter outcomes for attempted installed bootstrap state publication. */
 sealed interface InstalledIndexerBootstrapReport {
-    data class Published(
-        val state: InstalledIndexerBootstrapState,
-    ) : InstalledIndexerBootstrapReport
+    data class Published(val state: InstalledIndexerBootstrapState) : InstalledIndexerBootstrapReport
 
-    data class Rejected(
-        val failure: InstalledIndexerBootstrapReportFailure,
-    ) : InstalledIndexerBootstrapReport
+    data class Rejected(val failure: InstalledIndexerBootstrapReportFailure) : InstalledIndexerBootstrapReport
 }
 
 sealed interface InstalledIndexerBootstrapReportFailure {
-    data class Advance(
-        val failure: InstalledIndexerBootstrapAdvanceFailure,
-    ) : InstalledIndexerBootstrapReportFailure
+    data class Advance(val failure: InstalledIndexerBootstrapAdvanceFailure) : InstalledIndexerBootstrapReportFailure
 
     data object EmptyRuntimeFailureSet : InstalledIndexerBootstrapReportFailure
 }
 
-/**
- * Process-owned bridge from runtime observations to one monotonic installed sidecar state stream.
- */
-class InstalledIndexerBootstrapReporter(
-    private val sink: InstalledIndexerBootstrapStateSink,
-) {
-    private var progress: InstalledIndexerBootstrapProgress =
-        InstalledIndexerBootstrapProgress.start()
+/** Process-owned bridge from runtime observations to one monotonic installed sidecar state stream. */
+class InstalledIndexerBootstrapReporter(private val sink: InstalledIndexerBootstrapStateSink) {
+    private var progress: InstalledIndexerBootstrapProgress = InstalledIndexerBootstrapProgress.start()
     private var terminal: Boolean = false
 
     init {
@@ -188,8 +160,8 @@ class InstalledIndexerBootstrapReporter(
         if (terminal) {
             return InstalledIndexerBootstrapReport.Rejected(
                 InstalledIndexerBootstrapReportFailure.Advance(
-                    InstalledIndexerBootstrapAdvanceFailure.PHASE_OUT_OF_ORDER,
-                ),
+                    InstalledIndexerBootstrapAdvanceFailure.PHASE_OUT_OF_ORDER
+                )
             )
         }
         val state = progress.ready()
@@ -200,43 +172,33 @@ class InstalledIndexerBootstrapReporter(
                 InstalledIndexerBootstrapReport.Published(state)
             }
             is InstalledIndexerBootstrapState.TransitionRejected ->
-                InstalledIndexerBootstrapReport.Rejected(
-                    InstalledIndexerBootstrapReportFailure.Advance(state.failure),
-                )
+                InstalledIndexerBootstrapReport.Rejected(InstalledIndexerBootstrapReportFailure.Advance(state.failure))
             is InstalledIndexerBootstrapState.Rejected,
-            is InstalledIndexerBootstrapState.Starting,
-                -> InstalledIndexerBootstrapReport.Rejected(
+            is InstalledIndexerBootstrapState.Starting ->
+                InstalledIndexerBootstrapReport.Rejected(
                     InstalledIndexerBootstrapReportFailure.Advance(
-                        InstalledIndexerBootstrapAdvanceFailure.PHASE_OUT_OF_ORDER,
-                    ),
+                        InstalledIndexerBootstrapAdvanceFailure.PHASE_OUT_OF_ORDER
+                    )
                 )
         }
     }
 
-    fun rejectRuntime(
-        failures: Set<InstalledKastRuntimeFailure>,
-    ): InstalledIndexerBootstrapReport = if (failures.isEmpty()) {
-        InstalledIndexerBootstrapReport.Rejected(
-            InstalledIndexerBootstrapReportFailure.EmptyRuntimeFailureSet,
-        )
-    } else {
-        reject(InstalledIndexerBootstrapTerminalFailure.Runtime(failures))
-    }
+    fun rejectRuntime(failures: Set<InstalledKastRuntimeFailure>): InstalledIndexerBootstrapReport =
+        if (failures.isEmpty()) {
+            InstalledIndexerBootstrapReport.Rejected(InstalledIndexerBootstrapReportFailure.EmptyRuntimeFailureSet)
+        } else {
+            reject(InstalledIndexerBootstrapTerminalFailure.Runtime(failures))
+        }
 
-    fun rejectTransport(
-        failure: IndexerTransportFailure,
-    ): InstalledIndexerBootstrapReport = reject(
-        InstalledIndexerBootstrapTerminalFailure.Transport(failure),
-    )
+    fun rejectTransport(failure: IndexerTransportFailure): InstalledIndexerBootstrapReport =
+        reject(InstalledIndexerBootstrapTerminalFailure.Transport(failure))
 
-    private fun advance(
-        phase: InstalledIndexerBootstrapPhase,
-    ): InstalledIndexerBootstrapReport {
+    private fun advance(phase: InstalledIndexerBootstrapPhase): InstalledIndexerBootstrapReport {
         if (terminal) {
             return InstalledIndexerBootstrapReport.Rejected(
                 InstalledIndexerBootstrapReportFailure.Advance(
-                    InstalledIndexerBootstrapAdvanceFailure.PHASE_OUT_OF_ORDER,
-                ),
+                    InstalledIndexerBootstrapAdvanceFailure.PHASE_OUT_OF_ORDER
+                )
             )
         }
         return when (val advanced = progress.advance(phase)) {
@@ -248,19 +210,17 @@ class InstalledIndexerBootstrapReporter(
             }
             is InstalledIndexerBootstrapAdvance.Rejected ->
                 InstalledIndexerBootstrapReport.Rejected(
-                    InstalledIndexerBootstrapReportFailure.Advance(advanced.failure),
+                    InstalledIndexerBootstrapReportFailure.Advance(advanced.failure)
                 )
         }
     }
 
-    private fun reject(
-        failure: InstalledIndexerBootstrapTerminalFailure,
-    ): InstalledIndexerBootstrapReport {
+    private fun reject(failure: InstalledIndexerBootstrapTerminalFailure): InstalledIndexerBootstrapReport {
         if (terminal) {
             return InstalledIndexerBootstrapReport.Rejected(
                 InstalledIndexerBootstrapReportFailure.Advance(
-                    InstalledIndexerBootstrapAdvanceFailure.PHASE_OUT_OF_ORDER,
-                ),
+                    InstalledIndexerBootstrapAdvanceFailure.PHASE_OUT_OF_ORDER
+                )
             )
         }
         val state = progress.reject(failure)
@@ -272,42 +232,37 @@ class InstalledIndexerBootstrapReporter(
 
 private fun InstalledRuntimeBootstrapPhase.sidecarPhase(): InstalledIndexerBootstrapPhase =
     when (this) {
-        InstalledRuntimeBootstrapPhase.DISCOVERING_RUNTIME ->
-            InstalledIndexerBootstrapPhase.DISCOVERING_RUNTIME
-        InstalledRuntimeBootstrapPhase.GRADLE_JVM_SELECTION ->
-            InstalledIndexerBootstrapPhase.GRADLE_JVM_SELECTION
-        InstalledRuntimeBootstrapPhase.TRANSPORT_ACTIVATION ->
-            InstalledIndexerBootstrapPhase.TRANSPORT_ACTIVATION
+        InstalledRuntimeBootstrapPhase.DISCOVERING_RUNTIME -> InstalledIndexerBootstrapPhase.DISCOVERING_RUNTIME
+        InstalledRuntimeBootstrapPhase.GRADLE_JVM_SELECTION -> InstalledIndexerBootstrapPhase.GRADLE_JVM_SELECTION
+        InstalledRuntimeBootstrapPhase.TRANSPORT_ACTIVATION -> InstalledIndexerBootstrapPhase.TRANSPORT_ACTIVATION
         InstalledRuntimeBootstrapPhase.MODEL_INPUT_CAPTURE -> InstalledIndexerBootstrapPhase.MODEL_INPUT_CAPTURE
-        InstalledRuntimeBootstrapPhase.PROJECT_IMPORT ->
-            InstalledIndexerBootstrapPhase.PROJECT_IMPORT
+        InstalledRuntimeBootstrapPhase.PROJECT_IMPORT -> InstalledIndexerBootstrapPhase.PROJECT_IMPORT
         InstalledRuntimeBootstrapPhase.INDEXING -> InstalledIndexerBootstrapPhase.INDEXING
-        InstalledRuntimeBootstrapPhase.MODEL_CAPTURE ->
-            InstalledIndexerBootstrapPhase.MODEL_CAPTURE
-        InstalledRuntimeBootstrapPhase.RUNTIME_ASSEMBLY ->
-            InstalledIndexerBootstrapPhase.RUNTIME_ASSEMBLY
+        InstalledRuntimeBootstrapPhase.MODEL_CAPTURE -> InstalledIndexerBootstrapPhase.MODEL_CAPTURE
+        InstalledRuntimeBootstrapPhase.RUNTIME_ASSEMBLY -> InstalledIndexerBootstrapPhase.RUNTIME_ASSEMBLY
     }
 
-private fun InstalledIndexerBootstrapPhase.next(): InstalledIndexerBootstrapPhase? = when (this) {
-    InstalledIndexerBootstrapPhase.DISCOVERING_RUNTIME -> InstalledIndexerBootstrapPhase.GRADLE_JVM_SELECTION
-    InstalledIndexerBootstrapPhase.GRADLE_JVM_SELECTION -> InstalledIndexerBootstrapPhase.MODEL_INPUT_CAPTURE
-    InstalledIndexerBootstrapPhase.MODEL_INPUT_CAPTURE -> InstalledIndexerBootstrapPhase.PROJECT_IMPORT
-    InstalledIndexerBootstrapPhase.PROJECT_IMPORT -> InstalledIndexerBootstrapPhase.INDEXING
-    InstalledIndexerBootstrapPhase.INDEXING -> InstalledIndexerBootstrapPhase.MODEL_CAPTURE
-    InstalledIndexerBootstrapPhase.MODEL_CAPTURE -> InstalledIndexerBootstrapPhase.RUNTIME_ASSEMBLY
-    InstalledIndexerBootstrapPhase.RUNTIME_ASSEMBLY ->
-        InstalledIndexerBootstrapPhase.TRANSPORT_ACTIVATION
-    InstalledIndexerBootstrapPhase.TRANSPORT_ACTIVATION -> null
-}
+private fun InstalledIndexerBootstrapPhase.next(): InstalledIndexerBootstrapPhase? =
+    when (this) {
+        InstalledIndexerBootstrapPhase.DISCOVERING_RUNTIME -> InstalledIndexerBootstrapPhase.GRADLE_JVM_SELECTION
+        InstalledIndexerBootstrapPhase.GRADLE_JVM_SELECTION -> InstalledIndexerBootstrapPhase.MODEL_INPUT_CAPTURE
+        InstalledIndexerBootstrapPhase.MODEL_INPUT_CAPTURE -> InstalledIndexerBootstrapPhase.PROJECT_IMPORT
+        InstalledIndexerBootstrapPhase.PROJECT_IMPORT -> InstalledIndexerBootstrapPhase.INDEXING
+        InstalledIndexerBootstrapPhase.INDEXING -> InstalledIndexerBootstrapPhase.MODEL_CAPTURE
+        InstalledIndexerBootstrapPhase.MODEL_CAPTURE -> InstalledIndexerBootstrapPhase.RUNTIME_ASSEMBLY
+        InstalledIndexerBootstrapPhase.RUNTIME_ASSEMBLY -> InstalledIndexerBootstrapPhase.TRANSPORT_ACTIVATION
+        InstalledIndexerBootstrapPhase.TRANSPORT_ACTIVATION -> null
+    }
 
 /** Exhaustive projection into the runtime-owned cross-process bootstrap document facade. */
-internal fun InstalledIndexerBootstrapPhase.runtimePhase(): InstalledRuntimeBootstrapPhase = when (this) {
-    InstalledIndexerBootstrapPhase.DISCOVERING_RUNTIME -> InstalledRuntimeBootstrapPhase.DISCOVERING_RUNTIME
-    InstalledIndexerBootstrapPhase.GRADLE_JVM_SELECTION -> InstalledRuntimeBootstrapPhase.GRADLE_JVM_SELECTION
-    InstalledIndexerBootstrapPhase.MODEL_INPUT_CAPTURE -> InstalledRuntimeBootstrapPhase.MODEL_INPUT_CAPTURE
-    InstalledIndexerBootstrapPhase.PROJECT_IMPORT -> InstalledRuntimeBootstrapPhase.PROJECT_IMPORT
-    InstalledIndexerBootstrapPhase.INDEXING -> InstalledRuntimeBootstrapPhase.INDEXING
-    InstalledIndexerBootstrapPhase.MODEL_CAPTURE -> InstalledRuntimeBootstrapPhase.MODEL_CAPTURE
-    InstalledIndexerBootstrapPhase.RUNTIME_ASSEMBLY -> InstalledRuntimeBootstrapPhase.RUNTIME_ASSEMBLY
-    InstalledIndexerBootstrapPhase.TRANSPORT_ACTIVATION -> InstalledRuntimeBootstrapPhase.TRANSPORT_ACTIVATION
-}
+internal fun InstalledIndexerBootstrapPhase.runtimePhase(): InstalledRuntimeBootstrapPhase =
+    when (this) {
+        InstalledIndexerBootstrapPhase.DISCOVERING_RUNTIME -> InstalledRuntimeBootstrapPhase.DISCOVERING_RUNTIME
+        InstalledIndexerBootstrapPhase.GRADLE_JVM_SELECTION -> InstalledRuntimeBootstrapPhase.GRADLE_JVM_SELECTION
+        InstalledIndexerBootstrapPhase.MODEL_INPUT_CAPTURE -> InstalledRuntimeBootstrapPhase.MODEL_INPUT_CAPTURE
+        InstalledIndexerBootstrapPhase.PROJECT_IMPORT -> InstalledRuntimeBootstrapPhase.PROJECT_IMPORT
+        InstalledIndexerBootstrapPhase.INDEXING -> InstalledRuntimeBootstrapPhase.INDEXING
+        InstalledIndexerBootstrapPhase.MODEL_CAPTURE -> InstalledRuntimeBootstrapPhase.MODEL_CAPTURE
+        InstalledIndexerBootstrapPhase.RUNTIME_ASSEMBLY -> InstalledRuntimeBootstrapPhase.RUNTIME_ASSEMBLY
+        InstalledIndexerBootstrapPhase.TRANSPORT_ACTIVATION -> InstalledRuntimeBootstrapPhase.TRANSPORT_ACTIVATION
+    }

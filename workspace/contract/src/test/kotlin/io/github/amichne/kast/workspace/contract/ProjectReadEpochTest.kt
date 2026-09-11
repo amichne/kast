@@ -14,15 +14,16 @@ class ProjectReadEpochTest {
         assertEquals(ProjectReadEpochRelation.SAME, before.relationTo(source.observeEpoch()))
 
         listOf(
-            FixtureEpochState.stable().copy(projectModel = 2),
-            FixtureEpochState.stable().copy(psi = 2),
-            FixtureEpochState.stable().copy(vfs = 2),
-            FixtureEpochState.stable().copy(rootModel = 2),
-            FixtureEpochState.stable().copy(dumbCycle = 3),
-        ).forEach { moved ->
-            source.result = Refinement.Refined(moved)
-            assertEquals(ProjectReadEpochRelation.MOVED, before.relationTo(source.observeEpoch()))
-        }
+                FixtureEpochState.stable().copy(projectModel = 2),
+                FixtureEpochState.stable().copy(psi = 2),
+                FixtureEpochState.stable().copy(vfs = 2),
+                FixtureEpochState.stable().copy(rootModel = 2),
+                FixtureEpochState.stable().copy(dumbCycle = 3),
+            )
+            .forEach { moved ->
+                source.result = Refinement.Refined(moved)
+                assertEquals(ProjectReadEpochRelation.MOVED, before.relationTo(source.observeEpoch()))
+            }
     }
 
     @Test
@@ -37,36 +38,37 @@ class ProjectReadEpochTest {
 
     @Test
     fun `every finite observation rejection remains exact`() {
-        val failures = listOf(
-            ProjectReadEpochObservationFailure.WrongThread,
-            ProjectReadEpochObservationFailure.ProjectDisposed,
-            ProjectReadEpochObservationFailure.ProjectNotOpen,
-            ProjectReadEpochObservationFailure.ProjectNotInitialized,
-            ProjectReadEpochObservationFailure.ProjectRootUnavailable,
-            ProjectReadEpochObservationFailure.ProjectRootMalformed,
-            ProjectReadEpochObservationFailure.DumbMode,
-            ProjectReadEpochObservationFailure.GradleModelUnavailable,
-            ProjectReadEpochObservationFailure.GradleModelIncomplete,
-            ProjectReadEpochObservationFailure.GradleModelAmbiguous,
-            ProjectReadEpochObservationFailure.GradleRootUnavailable,
-            ProjectReadEpochObservationFailure.GradleRootMalformed,
-            ProjectReadEpochObservationFailure.ImportTimestampsIncoherent,
-            ProjectReadEpochObservationFailure.VfsBatchLimitExceeded,
-            ProjectReadEpochObservationFailure.VfsPathMalformed,
-            ProjectReadEpochObservationFailure.SignalExhausted,
-            ProjectReadEpochObservationFailure.ReadPreempted,
-        ) + ProjectReadEpochObservationStage.entries.map(
-            ProjectReadEpochObservationFailure::ObservationFailed,
-        )
+        val failures =
+            listOf(
+                ProjectReadEpochObservationFailure.WrongThread,
+                ProjectReadEpochObservationFailure.ProjectDisposed,
+                ProjectReadEpochObservationFailure.ProjectNotOpen,
+                ProjectReadEpochObservationFailure.ProjectNotInitialized,
+                ProjectReadEpochObservationFailure.ProjectRootUnavailable,
+                ProjectReadEpochObservationFailure.ProjectRootMalformed,
+                ProjectReadEpochObservationFailure.DumbMode,
+                ProjectReadEpochObservationFailure.GradleModelUnavailable,
+                ProjectReadEpochObservationFailure.GradleModelIncomplete,
+                ProjectReadEpochObservationFailure.GradleModelAmbiguous,
+                ProjectReadEpochObservationFailure.GradleRootUnavailable,
+                ProjectReadEpochObservationFailure.GradleRootMalformed,
+                ProjectReadEpochObservationFailure.ImportTimestampsIncoherent,
+                ProjectReadEpochObservationFailure.VfsBatchLimitExceeded,
+                ProjectReadEpochObservationFailure.VfsPathMalformed,
+                ProjectReadEpochObservationFailure.SignalExhausted,
+                ProjectReadEpochObservationFailure.ReadPreempted,
+            ) + ProjectReadEpochObservationStage.entries.map(ProjectReadEpochObservationFailure::ObservationFailed)
 
         failures.forEach { failure ->
-            val source = FixtureEpochSource(FixtureEpochState.stable()).apply {
-                result = Refinement.Rejected(failure)
-            }
-            val rejected = assertInstanceOf(
-                ProjectReadEpochObservation.Rejected::class.java,
-                source.observe(),
-            )
+            val source =
+                FixtureEpochSource(FixtureEpochState.stable()).apply {
+                    result = Refinement.Rejected(failure)
+                }
+            val rejected =
+                assertInstanceOf(
+                    ProjectReadEpochObservation.Rejected::class.java,
+                    source.observe(),
+                )
             assertEquals(failure, rejected.failure)
         }
     }
@@ -80,33 +82,33 @@ internal data class FixtureEpochState(
     val dumbCycle: Long,
 ) {
     companion object {
-        fun stable() = FixtureEpochState(
-            projectModel = 1,
-            psi = 1,
-            vfs = 1,
-            rootModel = 1,
-            dumbCycle = 1,
-        )
+        fun stable() =
+            FixtureEpochState(
+                projectModel = 1,
+                psi = 1,
+                vfs = 1,
+                rootModel = 1,
+                dumbCycle = 1,
+            )
     }
 }
 
-internal class FixtureEpochSource(
-    initial: FixtureEpochState,
-) {
-    var result: Refinement<FixtureEpochState, ProjectReadEpochObservationFailure> =
-        Refinement.Refined(initial)
+internal class FixtureEpochSource(initial: FixtureEpochState) {
+    var result: Refinement<FixtureEpochState, ProjectReadEpochObservationFailure> = Refinement.Refined(initial)
     var observationCount: Int = 0
         private set
 
-    private val source = ProjectReadEpoch.Source.create {
-        observationCount += 1
-        result
-    }
+    private val source =
+        ProjectReadEpoch.Source.create {
+            observationCount += 1
+            result
+        }
 
     fun observe(): ProjectReadEpochObservation = source.observe()
 
-    fun observeEpoch(): ProjectReadEpoch<*> = when (val observation = source.observe()) {
-        is ProjectReadEpochObservation.Observed -> observation.epoch
-        is ProjectReadEpochObservation.Rejected -> error("unexpected ${observation.failure}")
-    }
+    fun observeEpoch(): ProjectReadEpoch<*> =
+        when (val observation = source.observe()) {
+            is ProjectReadEpochObservation.Observed -> observation.epoch
+            is ProjectReadEpochObservation.Rejected -> error("unexpected ${observation.failure}")
+        }
 }

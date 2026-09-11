@@ -16,31 +16,38 @@ class PublishedBrokerServiceCommandTest {
             val kast = executable(root.resolve("bin/kast"))
             val upstream = executable(root.resolve("upstream/codex.js"))
             val launcher = Files.createSymbolicLink(root.resolve("tools/codex"), upstream)
-            val environment = mapOf(
-                "HOME" to root.toString(),
-                "PATH" to root.resolve("tools").toString(),
-                "CODEX_HOME" to root.resolve("codex").toString(),
-                "KAST_ENABLE_APP_SERVER" to "1",
-            )
-            val command = (BrokerServiceLaunchCommand.resolveCoordinator(kast, root, environment)
-                as BrokerServiceLaunchCommandResolution.Resolved).command
-            Files.createDirectories(command.stateDirectory)
-            val arguments = listOf("/usr/bin/env", "-i") + listOf(
-                "HOME=${command.userHome}",
-                "PATH=${command.executableSearchPath.value}",
-                "JAVA_HOME=${command.javaHome}",
-                "KAST_OPTS=${command.jvmUserHomeOption.value}",
-                "CODEX_HOME=${command.codexHome}",
-            ) + command.host.environment().map { (key, value) -> "$key=$value" } +
-                command.childEnvironment.assignments + listOf(
-                    "KAST_ENABLE_APP_SERVER=1",
-                    "KAST_APP_SERVER_TOOLS=${command.toolSelection.environmentValue}",
-                    "BROKER_SERVICE_IDENTITY=${command.identity.value}",
-                    "BROKER_READINESS_FILE=${command.readinessFile}",
-                    command.kast.toString(),
-                    "broker",
-                    "serve",
+            val environment =
+                mapOf(
+                    "HOME" to root.toString(),
+                    "PATH" to root.resolve("tools").toString(),
+                    "CODEX_HOME" to root.resolve("codex").toString(),
+                    "KAST_ENABLE_APP_SERVER" to "1",
                 )
+            val command =
+                (BrokerServiceLaunchCommand.resolveCoordinator(kast, root, environment)
+                        as BrokerServiceLaunchCommandResolution.Resolved)
+                    .command
+            Files.createDirectories(command.stateDirectory)
+            val arguments =
+                listOf("/usr/bin/env", "-i") +
+                    listOf(
+                        "HOME=${command.userHome}",
+                        "PATH=${command.executableSearchPath.value}",
+                        "JAVA_HOME=${command.javaHome}",
+                        "KAST_OPTS=${command.jvmUserHomeOption.value}",
+                        "CODEX_HOME=${command.codexHome}",
+                    ) +
+                    command.host.environment().map { (key, value) -> "$key=$value" } +
+                    command.childEnvironment.assignments +
+                    listOf(
+                        "KAST_ENABLE_APP_SERVER=1",
+                        "KAST_APP_SERVER_TOOLS=${command.toolSelection.environmentValue}",
+                        "BROKER_SERVICE_IDENTITY=${command.identity.value}",
+                        "BROKER_READINESS_FILE=${command.readinessFile}",
+                        command.kast.toString(),
+                        "broker",
+                        "serve",
+                    )
             Files.writeString(command.stateDirectory.resolve("service.plist"), servicePlist(command, arguments))
 
             assertEquals(launcher, (command.host as BrokerHostSelection.Selected).executable.launcherPath)
@@ -57,30 +64,37 @@ class PublishedBrokerServiceCommandTest {
             listOf("bin", "lib", "share").forEach { Files.createDirectory(root.resolve(it)) }
             val kast = Files.writeString(root.resolve("bin/kast"), "#!/bin/sh\nexit 0\n")
             Files.setPosixFilePermissions(kast, PosixFilePermissions.fromString("rwx------"))
-            val environment = mapOf(
-                "HOME" to root.toString(),
-                "PATH" to "/usr/bin:/bin",
-                "CODEX_HOME" to root.resolve("codex").toString(),
-                "KAST_ENABLE_APP_SERVER" to "0",
-            )
-            val command = (BrokerServiceLaunchCommand.resolveCoordinator(kast, root, environment)
-                as BrokerServiceLaunchCommandResolution.Resolved).command
+            val environment =
+                mapOf(
+                    "HOME" to root.toString(),
+                    "PATH" to "/usr/bin:/bin",
+                    "CODEX_HOME" to root.resolve("codex").toString(),
+                    "KAST_ENABLE_APP_SERVER" to "0",
+                )
+            val command =
+                (BrokerServiceLaunchCommand.resolveCoordinator(kast, root, environment)
+                        as BrokerServiceLaunchCommandResolution.Resolved)
+                    .command
             Files.createDirectories(command.stateDirectory)
-            val arguments = listOf("/usr/bin/env", "-i") + listOf(
-                "HOME=${command.userHome}",
-                "PATH=${command.executableSearchPath.value}",
-                "JAVA_HOME=${command.javaHome}",
-                "KAST_OPTS=${command.jvmUserHomeOption.value}",
-                "CODEX_HOME=${command.codexHome}",
-            ) + command.childEnvironment.assignments + listOf(
-                "KAST_ENABLE_APP_SERVER=0",
-                "KAST_APP_SERVER_TOOLS=${command.toolSelection.environmentValue}",
-                "BROKER_SERVICE_IDENTITY=${command.identity.value}",
-                "BROKER_READINESS_FILE=${command.readinessFile}",
-                command.kast.toString(),
-                "broker",
-                "serve",
-            )
+            val arguments =
+                listOf("/usr/bin/env", "-i") +
+                    listOf(
+                        "HOME=${command.userHome}",
+                        "PATH=${command.executableSearchPath.value}",
+                        "JAVA_HOME=${command.javaHome}",
+                        "KAST_OPTS=${command.jvmUserHomeOption.value}",
+                        "CODEX_HOME=${command.codexHome}",
+                    ) +
+                    command.childEnvironment.assignments +
+                    listOf(
+                        "KAST_ENABLE_APP_SERVER=0",
+                        "KAST_APP_SERVER_TOOLS=${command.toolSelection.environmentValue}",
+                        "BROKER_SERVICE_IDENTITY=${command.identity.value}",
+                        "BROKER_READINESS_FILE=${command.readinessFile}",
+                        command.kast.toString(),
+                        "broker",
+                        "serve",
+                    )
             val plist = command.stateDirectory.resolve("service.plist")
             Files.writeString(plist, servicePlist(command, arguments))
 
@@ -88,11 +102,14 @@ class PublishedBrokerServiceCommandTest {
 
             Files.writeString(
                 plist,
-                servicePlist(command, arguments.map { argument ->
-                    if (argument.startsWith("BROKER_SERVICE_IDENTITY=")) {
-                        "BROKER_SERVICE_IDENTITY=sha256:${"0".repeat(64)}"
-                    } else argument
-                }),
+                servicePlist(
+                    command,
+                    arguments.map { argument ->
+                        if (argument.startsWith("BROKER_SERVICE_IDENTITY=")) {
+                            "BROKER_SERVICE_IDENTITY=sha256:${"0".repeat(64)}"
+                        } else argument
+                    },
+                ),
             )
             assertNull(PublishedBrokerServiceCommand.recover(command))
         } finally {
@@ -106,10 +123,11 @@ class PublishedBrokerServiceCommandTest {
         <plist version="1.0"><dict><key>Label</key><string>${xml(command.serviceLabel.value)}</string>
         <key>ProgramArguments</key><array>${arguments.joinToString("") { "<string>${xml(it)}</string>" }}</array>
         </dict></plist>
-        """.trimIndent()
+        """
+            .trimIndent()
 
-    private fun xml(raw: String): String = raw.replace("&", "&amp;").replace("<", "&lt;")
-        .replace(">", "&gt;").replace("\"", "&quot;")
+    private fun xml(raw: String): String =
+        raw.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
 
     private fun executable(path: Path): Path {
         Files.writeString(path, "#!/bin/sh\nexit 0\n")

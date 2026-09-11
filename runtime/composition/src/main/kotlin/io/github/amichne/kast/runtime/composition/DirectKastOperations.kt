@@ -15,20 +15,21 @@ import io.github.amichne.kast.change.recovery.AddDeclarationRollbackPort
 import io.github.amichne.kast.change.verify.VerifiedMutationOperations
 import io.github.amichne.kast.diagnostic.contract.DiagnosticOperations
 import io.github.amichne.kast.evidence.contract.MutationPlanBinding
-import io.github.amichne.kast.relation.contract.RelationOperations
 import io.github.amichne.kast.query.contract.QueryOperations
 import io.github.amichne.kast.query.service.QueryService
+import io.github.amichne.kast.relation.contract.RelationOperations
+import io.github.amichne.kast.source.contract.SourceReadOperations
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOperations
 import io.github.amichne.kast.symbol.contract.SymbolExactOperations
-import io.github.amichne.kast.source.contract.SourceReadOperations
-import io.github.amichne.kast.traversal.contract.TraversalOperations
 import io.github.amichne.kast.topology.contract.TopologyBuildOperations
-import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
+import io.github.amichne.kast.traversal.contract.TraversalOperations
 import io.github.amichne.kast.workspace.contract.IndexSynchronizationOperations
+import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
 import io.github.amichne.kast.workspace.service.WorkspaceTransitionOwner
 
 /** The four closed intent planners consumed by the single public `change.plan` operation. */
-class ChangePlanningOperations internal constructor(
+class ChangePlanningOperations
+internal constructor(
     val addFile: AddFilePlanOperations,
     val addDeclaration: AddDeclarationPlanOperations,
     val replaceDeclaration: ReplaceDeclarationPlanOperations,
@@ -36,14 +37,14 @@ class ChangePlanningOperations internal constructor(
 )
 
 /** Physical application plus mandatory successor-generation verification for `change.apply`. */
-class VerifiedChangeApplyOperations internal constructor(
+class VerifiedChangeApplyOperations
+internal constructor(
     val apply: AddDeclarationApplyOperations,
     val verify: VerifiedMutationOperations,
     private val transitions: WorkspaceTransitionOwner,
 ) {
     /** Retains one workspace transition from application admission through resulting proof. */
-    internal fun <Value> exclusively(operation: () -> Value): Value =
-        transitions.exclusively(operation)
+    internal fun <Value> exclusively(operation: () -> Value): Value = transitions.exclusively(operation)
 }
 
 /** Direct operation boundary for durable recovery of one admitted mutation binding. */
@@ -51,15 +52,16 @@ fun interface ChangeRecoveryOperations {
     /**
      * Proof transition: `MutationPlanBinding -> AddDeclarationRecoveryOutcome`.
      *
-     * Resolves the exact durable record to prior state, rolled back, or recovery required. The
-     * injected rollback capability is the only outer source-effect boundary.
+     * Resolves the exact durable record to prior state, rolled back, or recovery required. The injected rollback
+     * capability is the only outer source-effect boundary.
      */
     fun recover(binding: MutationPlanBinding): AddDeclarationRecoveryOutcome
 }
 
 /** Exact nominal target service association for the twelve canonical operations. */
 @ConsistentCopyVisibility
-data class DirectKastOperations internal constructor(
+data class DirectKastOperations
+internal constructor(
     val indexSync: IndexSynchronizationOperations,
     val topologyBuild: TopologyBuildOperations,
     val symbolDiscover: SymbolDiscoveryOperations,
@@ -75,14 +77,14 @@ data class DirectKastOperations internal constructor(
 ) {
     companion object {
         /**
-         * Proof transition: `(WorkspaceInspectionOperations, SymbolDiscoveryOperations,
-         * SymbolExactOperations, RelationOperations, TraversalOperations, DiagnosticOperations,
-         * AddDeclarationApplyOperations, VerifiedMutationOperations,
-         * AddDeclarationRecoveryService, AddDeclarationRollbackPort) -> DirectKastOperations`.
+         * Proof transition: `(WorkspaceInspectionOperations, SymbolDiscoveryOperations, SymbolExactOperations,
+         * RelationOperations, TraversalOperations, DiagnosticOperations, AddDeclarationApplyOperations,
+         * VerifiedMutationOperations, AddDeclarationRecoveryService, AddDeclarationRollbackPort) ->
+         * DirectKastOperations`.
          *
-         * Establishes exactly one nominal target service association for every canonical
-         * operation. The four closed change intents share one pure planning boundary; inspection
-         * owns candidate-to-exact refinement; apply owns physical mutation and verification.
+         * Establishes exactly one nominal target service association for every canonical operation. The four closed
+         * change intents share one pure planning boundary; inspection owns candidate-to-exact refinement; apply owns
+         * physical mutation and verification.
          */
         fun assemble(
             workspace: WorkspaceInspectionOperations,
@@ -99,26 +101,28 @@ data class DirectKastOperations internal constructor(
             changeRecovery: AddDeclarationRecoveryService,
             changeRollback: AddDeclarationRollbackPort,
             transitions: WorkspaceTransitionOwner,
-        ): DirectKastOperations = DirectKastOperations(
-            indexSync = indexSync,
-            topologyBuild = topology,
-            symbolDiscover = symbolDiscovery,
-            symbolInspect = symbolExact,
-            sourceRead = sourceRead,
-            relationRead = relation,
-            traversalRun = traversal,
-            queryRun = QueryService(symbolDiscovery, symbolExact, sourceRead, relation),
-            diagnosticCheck = diagnostic,
-            changePlan = ChangePlanningOperations(
-                addFile = PureAddFilePlanningService(),
-                addDeclaration = PureAddDeclarationPlanningService(),
-                replaceDeclaration = PureReplaceDeclarationPlanningService(),
-                renameSymbol = PureRenameSymbolPlanningService(),
-            ),
-            changeApply = VerifiedChangeApplyOperations(changeApply, changeVerify, transitions),
-            changeRecover = { binding ->
-                transitions.exclusively { changeRecovery.recover(binding, changeRollback) }
-            },
-        )
+        ): DirectKastOperations =
+            DirectKastOperations(
+                indexSync = indexSync,
+                topologyBuild = topology,
+                symbolDiscover = symbolDiscovery,
+                symbolInspect = symbolExact,
+                sourceRead = sourceRead,
+                relationRead = relation,
+                traversalRun = traversal,
+                queryRun = QueryService(symbolDiscovery, symbolExact, sourceRead, relation),
+                diagnosticCheck = diagnostic,
+                changePlan =
+                    ChangePlanningOperations(
+                        addFile = PureAddFilePlanningService(),
+                        addDeclaration = PureAddDeclarationPlanningService(),
+                        replaceDeclaration = PureReplaceDeclarationPlanningService(),
+                        renameSymbol = PureRenameSymbolPlanningService(),
+                    ),
+                changeApply = VerifiedChangeApplyOperations(changeApply, changeVerify, transitions),
+                changeRecover = { binding ->
+                    transitions.exclusively { changeRecovery.recover(binding, changeRollback) }
+                },
+            )
     }
 }

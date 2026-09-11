@@ -51,18 +51,16 @@ class KernelPrimitivesTest {
 
     @Test
     fun `semantic outcomes retain operation and generation evidence`() {
-        val evidence = EvidenceEnvelope(
-            operation = OperationId.parse("symbol.discover").refinedValue(),
-            generation = EvidenceGeneration.parse(7).refinedValue(),
-            payload = listOf("io.github.Example"),
-        )
+        val evidence =
+            EvidenceEnvelope(
+                operation = OperationId.parse("symbol.discover").refinedValue(),
+                generation = EvidenceGeneration.parse(7).refinedValue(),
+                payload = listOf("io.github.Example"),
+            )
 
-        val complete: OperationOutcome<List<String>, String, String> =
-            OperationOutcome.Complete(evidence)
-        val qualified: OperationOutcome<List<String>, String, String> =
-            OperationOutcome.Qualified(evidence, "bounded")
-        val rejected: OperationOutcome<List<String>, String, String> =
-            OperationOutcome.Rejected("not-ready")
+        val complete: OperationOutcome<List<String>, String, String> = OperationOutcome.Complete(evidence)
+        val qualified: OperationOutcome<List<String>, String, String> = OperationOutcome.Qualified(evidence, "bounded")
+        val rejected: OperationOutcome<List<String>, String, String> = OperationOutcome.Rejected("not-ready")
 
         assertEquals("symbol.discover", complete.evidence().operation.value)
         assertEquals(EvidenceBasis.Published(EvidenceGeneration.parse(7).refinedValue()), qualified.evidence().basis)
@@ -73,24 +71,28 @@ class KernelPrimitivesTest {
         )
     }
 
-    private fun <Strong, Failure> Refinement<Strong, Failure>.refinedValue(): Strong = when (this) {
-        is Refinement.Refined -> value
-        is Refinement.Rejected -> error("Expected refined value, got $failure")
-    }
+    private fun <Strong, Failure> Refinement<Strong, Failure>.refinedValue(): Strong =
+        when (this) {
+            is Refinement.Refined -> value
+            is Refinement.Rejected -> error("Expected refined value, got $failure")
+        }
 
-    private fun <Strong, Failure> Refinement<Strong, Failure>.rejectedFailure(): Failure = when (this) {
-        is Refinement.Refined -> error("Expected rejection, got $value")
-        is Refinement.Rejected -> failure
-    }
+    private fun <Strong, Failure> Refinement<Strong, Failure>.rejectedFailure(): Failure =
+        when (this) {
+            is Refinement.Refined -> error("Expected rejection, got $value")
+            is Refinement.Rejected -> failure
+        }
 
-    private fun <Payload, Qualification, Rejection> OperationOutcome<Payload, Qualification, Rejection>.evidence(): EvidenceEnvelope<Payload> =
+    private fun <Payload, Qualification, Rejection> OperationOutcome<Payload, Qualification, Rejection>.evidence():
+        EvidenceEnvelope<Payload> =
         when (this) {
             is OperationOutcome.Complete -> evidence
             is OperationOutcome.Qualified -> evidence
             is OperationOutcome.Rejected -> error("Rejected outcomes have no evidence: $reason")
         }
 
-    private fun <Payload, Qualification, Rejection> OperationOutcome<Payload, Qualification, Rejection>.rejectionReason(): Rejection =
+    private fun <Payload, Qualification, Rejection> OperationOutcome<Payload, Qualification, Rejection>
+        .rejectionReason(): Rejection =
         when (this) {
             is OperationOutcome.Complete -> error("Complete outcomes are not rejected")
             is OperationOutcome.Qualified -> error("Qualified outcomes are not rejected")

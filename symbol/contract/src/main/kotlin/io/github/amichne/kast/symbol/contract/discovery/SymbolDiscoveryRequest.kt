@@ -31,45 +31,38 @@ enum class SymbolDiscoveryPatternFailure {
 }
 
 @JvmInline
-value class SymbolDiscoveryPattern private constructor(
-    val value: String,
-) {
+value class SymbolDiscoveryPattern private constructor(val value: String) {
     companion object {
         /**
-         * Proof transition:
-         * String to Refinement<SymbolDiscoveryPattern, SymbolDiscoveryPatternFailure>.
+         * Proof transition: String to Refinement<SymbolDiscoveryPattern, SymbolDiscoveryPatternFailure>.
          *
          * Establishes a non-blank, bounded IntelliJ discovery pattern without control characters.
-         * [SymbolDiscoveryPatternFailure] is the closed expected failure. Raw text may be extracted
-         * only by the request-local native matcher, provider, or indexed-text boundary.
+         * [SymbolDiscoveryPatternFailure] is the closed expected failure. Raw text may be extracted only by the
+         * request-local native matcher, provider, or indexed-text boundary.
          */
-        fun parse(raw: String): Refinement<SymbolDiscoveryPattern, SymbolDiscoveryPatternFailure> = when {
-            raw.isBlank() -> Refinement.Rejected(SymbolDiscoveryPatternFailure.BLANK)
-            raw.length > MAX_DISCOVERY_PATTERN_LENGTH ->
-                Refinement.Rejected(SymbolDiscoveryPatternFailure.TOO_LONG)
-            raw.any(Char::isISOControl) ->
-                Refinement.Rejected(SymbolDiscoveryPatternFailure.CONTROL_CHARACTER)
-            else -> Refinement.Refined(SymbolDiscoveryPattern(raw))
-        }
+        fun parse(raw: String): Refinement<SymbolDiscoveryPattern, SymbolDiscoveryPatternFailure> =
+            when {
+                raw.isBlank() -> Refinement.Rejected(SymbolDiscoveryPatternFailure.BLANK)
+                raw.length > MAX_DISCOVERY_PATTERN_LENGTH -> Refinement.Rejected(SymbolDiscoveryPatternFailure.TOO_LONG)
+                raw.any(Char::isISOControl) -> Refinement.Rejected(SymbolDiscoveryPatternFailure.CONTROL_CHARACTER)
+                else -> Refinement.Refined(SymbolDiscoveryPattern(raw))
+            }
     }
 }
 
 enum class SymbolDiscoveryByteLimitFailure {
-    NOT_POSITIVE,
+    NOT_POSITIVE
 }
 
 @JvmInline
-value class SymbolDiscoveryByteLimit private constructor(
-    val value: Long,
-) {
+value class SymbolDiscoveryByteLimit private constructor(val value: Long) {
     companion object {
         /**
-         * Proof transition:
-         * Long to Refinement<SymbolDiscoveryByteLimit, SymbolDiscoveryByteLimitFailure>.
+         * Proof transition: Long to Refinement<SymbolDiscoveryByteLimit, SymbolDiscoveryByteLimitFailure>.
          *
-         * Establishes a finite, strictly positive byte bound for the canonical detached candidate
-         * projection. [SymbolDiscoveryByteLimitFailure] is the closed expected failure. Raw bytes
-         * may be extracted only by the request-local bounded projection collector.
+         * Establishes a finite, strictly positive byte bound for the canonical detached candidate projection.
+         * [SymbolDiscoveryByteLimitFailure] is the closed expected failure. Raw bytes may be extracted only by the
+         * request-local bounded projection collector.
          */
         fun parse(raw: Long): Refinement<SymbolDiscoveryByteLimit, SymbolDiscoveryByteLimitFailure> =
             if (raw > 0L) {
@@ -95,24 +88,24 @@ sealed interface SymbolDiscoveryTarget {
         val pattern: SymbolDiscoveryPattern,
         val match: SymbolDiscoveryMatch,
     ) : ConstrainedSymbolDiscoveryTarget {
-        val resultKind: SymbolDiscoveryKind = when (kind) {
-            SymbolNameDiscoveryKind.FILE -> SymbolDiscoveryKind.FILE
-            SymbolNameDiscoveryKind.CLASS -> SymbolDiscoveryKind.CLASS
-            SymbolNameDiscoveryKind.SYMBOL -> SymbolDiscoveryKind.SYMBOL
-        }
+        val resultKind: SymbolDiscoveryKind =
+            when (kind) {
+                SymbolNameDiscoveryKind.FILE -> SymbolDiscoveryKind.FILE
+                SymbolNameDiscoveryKind.CLASS -> SymbolDiscoveryKind.CLASS
+                SymbolNameDiscoveryKind.SYMBOL -> SymbolDiscoveryKind.SYMBOL
+            }
 
         override fun admits(candidate: SymbolDiscoveryKind): Boolean = candidate == resultKind
     }
 
     /** Explicit scoped enumeration; unlike [Name], it carries no text query. */
-    data class All(
-        val kind: SymbolNameDiscoveryKind,
-    ) : ConstrainedSymbolDiscoveryTarget {
-        val resultKind: SymbolDiscoveryKind = when (kind) {
-            SymbolNameDiscoveryKind.FILE -> SymbolDiscoveryKind.FILE
-            SymbolNameDiscoveryKind.CLASS -> SymbolDiscoveryKind.CLASS
-            SymbolNameDiscoveryKind.SYMBOL -> SymbolDiscoveryKind.SYMBOL
-        }
+    data class All(val kind: SymbolNameDiscoveryKind) : ConstrainedSymbolDiscoveryTarget {
+        val resultKind: SymbolDiscoveryKind =
+            when (kind) {
+                SymbolNameDiscoveryKind.FILE -> SymbolDiscoveryKind.FILE
+                SymbolNameDiscoveryKind.CLASS -> SymbolDiscoveryKind.CLASS
+                SymbolNameDiscoveryKind.SYMBOL -> SymbolDiscoveryKind.SYMBOL
+            }
 
         override fun admits(candidate: SymbolDiscoveryKind): Boolean = candidate == resultKind
     }
@@ -124,11 +117,8 @@ sealed interface SymbolDiscoveryTarget {
         override fun admits(candidate: SymbolDiscoveryKind): Boolean = candidate.isDeclaration()
     }
 
-    data class Text(
-        val pattern: SymbolDiscoveryPattern,
-    ) : SupplementalSymbolDiscoveryTarget {
-        override fun admits(candidate: SymbolDiscoveryKind): Boolean =
-            candidate == SymbolDiscoveryKind.TEXT
+    data class Text(val pattern: SymbolDiscoveryPattern) : SupplementalSymbolDiscoveryTarget {
+        override fun admits(candidate: SymbolDiscoveryKind): Boolean = candidate == SymbolDiscoveryKind.TEXT
     }
 }
 
@@ -152,21 +142,17 @@ enum class SymbolDiscoveryDirectoryFailure {
 
 /** Canonical workspace-relative directory restriction evaluated before candidate budget use. */
 @JvmInline
-value class SymbolDiscoveryDirectory private constructor(
-    val value: String,
-) {
+value class SymbolDiscoveryDirectory private constructor(val value: String) {
     companion object {
-        fun parse(
-            raw: String,
-        ): Refinement<SymbolDiscoveryDirectory, SymbolDiscoveryDirectoryFailure> = when {
-            raw.isBlank() -> Refinement.Rejected(SymbolDiscoveryDirectoryFailure.BLANK)
-            raw.startsWith('/') -> Refinement.Rejected(SymbolDiscoveryDirectoryFailure.ABSOLUTE)
-            raw.any(Char::isISOControl) ->
-                Refinement.Rejected(SymbolDiscoveryDirectoryFailure.CONTROL_CHARACTER)
-            raw != "." && raw.split('/').any { it.isBlank() || it == "." || it == ".." } ->
-                Refinement.Rejected(SymbolDiscoveryDirectoryFailure.NON_CANONICAL)
-            else -> Refinement.Refined(SymbolDiscoveryDirectory(raw))
-        }
+        fun parse(raw: String): Refinement<SymbolDiscoveryDirectory, SymbolDiscoveryDirectoryFailure> =
+            when {
+                raw.isBlank() -> Refinement.Rejected(SymbolDiscoveryDirectoryFailure.BLANK)
+                raw.startsWith('/') -> Refinement.Rejected(SymbolDiscoveryDirectoryFailure.ABSOLUTE)
+                raw.any(Char::isISOControl) -> Refinement.Rejected(SymbolDiscoveryDirectoryFailure.CONTROL_CHARACTER)
+                raw != "." && raw.split('/').any { it.isBlank() || it == "." || it == ".." } ->
+                    Refinement.Rejected(SymbolDiscoveryDirectoryFailure.NON_CANONICAL)
+                else -> Refinement.Refined(SymbolDiscoveryDirectory(raw))
+            }
     }
 }
 
@@ -177,20 +163,17 @@ enum class SymbolDiscoveryPackageFailure {
 
 /** Canonical dotted package restriction established from declaration PSI, not file spelling. */
 @JvmInline
-value class SymbolDiscoveryPackage private constructor(
-    val value: String,
-) {
+value class SymbolDiscoveryPackage private constructor(val value: String) {
     companion object {
         private val segment = Regex("[A-Za-z_][A-Za-z0-9_]*")
 
-        fun parse(
-            raw: String,
-        ): Refinement<SymbolDiscoveryPackage, SymbolDiscoveryPackageFailure> = when {
-            raw.isBlank() -> Refinement.Rejected(SymbolDiscoveryPackageFailure.BLANK)
-            raw.split('.').any { !segment.matches(it) } ->
-                Refinement.Rejected(SymbolDiscoveryPackageFailure.INVALID_SEGMENT)
-            else -> Refinement.Refined(SymbolDiscoveryPackage(raw))
-        }
+        fun parse(raw: String): Refinement<SymbolDiscoveryPackage, SymbolDiscoveryPackageFailure> =
+            when {
+                raw.isBlank() -> Refinement.Rejected(SymbolDiscoveryPackageFailure.BLANK)
+                raw.split('.').any { !segment.matches(it) } ->
+                    Refinement.Rejected(SymbolDiscoveryPackageFailure.INVALID_SEGMENT)
+                else -> Refinement.Refined(SymbolDiscoveryPackage(raw))
+            }
     }
 }
 
@@ -205,12 +188,10 @@ data class SymbolDiscoveryPackageConstraint(
 )
 
 /** Non-empty compiler declaration-kind restriction applied before candidate work accounting. */
-class SymbolDiscoveryDeclarationKinds private constructor(
-    val values: Set<CompilerSymbolKind>,
-) {
+class SymbolDiscoveryDeclarationKinds private constructor(val values: Set<CompilerSymbolKind>) {
     companion object {
         fun from(
-            raw: Set<CompilerSymbolKind>,
+            raw: Set<CompilerSymbolKind>
         ): Refinement<SymbolDiscoveryDeclarationKinds, SymbolDiscoveryDeclarationKindsFailure> =
             if (raw.isEmpty()) {
                 Refinement.Rejected(SymbolDiscoveryDeclarationKindsFailure.EMPTY)
@@ -219,13 +200,14 @@ class SymbolDiscoveryDeclarationKinds private constructor(
             }
     }
 
-    override fun equals(other: Any?): Boolean =
-        other is SymbolDiscoveryDeclarationKinds && values == other.values
+    override fun equals(other: Any?): Boolean = other is SymbolDiscoveryDeclarationKinds && values == other.values
 
     override fun hashCode(): Int = values.hashCode()
 }
 
-enum class SymbolDiscoveryDeclarationKindsFailure { EMPTY }
+enum class SymbolDiscoveryDeclarationKindsFailure {
+    EMPTY
+}
 
 /** Intersected discovery restrictions applied inside the compiled IntelliJ scope. */
 data class SymbolDiscoveryConstraints(
@@ -239,7 +221,8 @@ data class SymbolDiscoveryConstraints(
     }
 }
 
-class SymbolDiscoveryRequest private constructor(
+class SymbolDiscoveryRequest
+private constructor(
     val scope: SymbolSearchScopeRequest,
     val target: SymbolDiscoveryTarget,
     val budget: SymbolDiscoveryBudget,
@@ -257,12 +240,13 @@ class SymbolDiscoveryRequest private constructor(
             scope: SymbolSearchScopeRequest,
             target: SupplementalSymbolDiscoveryTarget,
             budget: SymbolDiscoveryBudget,
-        ): SymbolDiscoveryRequest = SymbolDiscoveryRequest(
-            scope,
-            target,
-            budget,
-            SymbolDiscoveryConstraints.None,
-        )
+        ): SymbolDiscoveryRequest =
+            SymbolDiscoveryRequest(
+                scope,
+                target,
+                budget,
+                SymbolDiscoveryConstraints.None,
+            )
     }
 
     override fun equals(other: Any?): Boolean =
@@ -283,31 +267,33 @@ class SymbolDiscoveryRequest private constructor(
         "SymbolDiscoveryRequest(scope=$scope, target=$target, budget=$budget, constraints=$constraints)"
 }
 
-private fun SymbolDiscoveryKind.isDeclaration(): Boolean = when (this) {
-    SymbolDiscoveryKind.CLASS,
-    SymbolDiscoveryKind.SYMBOL,
-        -> true
-    SymbolDiscoveryKind.FILE,
-    SymbolDiscoveryKind.TEXT,
-        -> false
-}
+private fun SymbolDiscoveryKind.isDeclaration(): Boolean =
+    when (this) {
+        SymbolDiscoveryKind.CLASS,
+        SymbolDiscoveryKind.SYMBOL -> true
+        SymbolDiscoveryKind.FILE,
+        SymbolDiscoveryKind.TEXT -> false
+    }
 
 /** Stable contract projection; unrestricted selectors preserve their historic fingerprint bytes. */
-fun SymbolDiscoveryConstraints.fingerprintFields(): List<String> = if (this == SymbolDiscoveryConstraints.None) emptyList() else buildList {
-    add("discovery-constraints-v1")
-    add(directory?.directory?.value ?: "")
-    add(directory?.containment?.name ?: "")
-    add(packageName?.packageName?.value ?: "")
-    add(packageName?.containment?.name ?: "")
-    val kinds = declarationKinds?.values?.map { it.name }?.sorted().orEmpty()
-    add(kinds.size.toString())
-    addAll(kinds)
-    when (val selected = sourceSets) {
-        SymbolDiscoverySourceSets.All -> add("all-source-sets")
-        is SymbolDiscoverySourceSets.Exact -> {
-            add("exact-source-sets")
-            add(selected.values.size.toString())
-            addAll(selected.values.map { it.value }.sorted())
+fun SymbolDiscoveryConstraints.fingerprintFields(): List<String> =
+    if (this == SymbolDiscoveryConstraints.None) emptyList()
+    else
+        buildList {
+            add("discovery-constraints-v1")
+            add(directory?.directory?.value ?: "")
+            add(directory?.containment?.name ?: "")
+            add(packageName?.packageName?.value ?: "")
+            add(packageName?.containment?.name ?: "")
+            val kinds = declarationKinds?.values?.map { it.name }?.sorted().orEmpty()
+            add(kinds.size.toString())
+            addAll(kinds)
+            when (val selected = sourceSets) {
+                SymbolDiscoverySourceSets.All -> add("all-source-sets")
+                is SymbolDiscoverySourceSets.Exact -> {
+                    add("exact-source-sets")
+                    add(selected.values.size.toString())
+                    addAll(selected.values.map { it.value }.sorted())
+                }
+            }
         }
-    }
-}

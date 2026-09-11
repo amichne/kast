@@ -20,7 +20,8 @@ enum class TraversalRecordFailure {
 
 /** One exact relation fact at its deterministic breadth-first traversal depth. */
 @ConsistentCopyVisibility
-data class TraversalRecord private constructor(
+data class TraversalRecord
+private constructor(
     val origin: RelationEndpointFingerprint,
     val depth: TraversalDepth,
     val fact: RelationFact,
@@ -37,12 +38,12 @@ data class TraversalRecord private constructor(
 
     companion object {
         /**
-         * Proof transition: `(TraversalPlan, origin, TraversalDepth, RelationFact) ->
-         * Refinement<TraversalRecord, TraversalRecordFailure>`.
+         * Proof transition: `(TraversalPlan, origin, TraversalDepth, RelationFact) -> Refinement<TraversalRecord,
+         * TraversalRecordFailure>`.
          *
-         * Establishes the plan's exact subject, meaning, root, generation, scope, hop depth, and
-         * one compiler-grounded related endpoint. [TraversalRecordFailure] is the closed expected
-         * failure. Raw relation facts may enter only from the module-private one-hop reader.
+         * Establishes the plan's exact subject, meaning, root, generation, scope, hop depth, and one compiler-grounded
+         * related endpoint. [TraversalRecordFailure] is the closed expected failure. Raw relation facts may enter only
+         * from the module-private one-hop reader.
          */
         fun create(
             plan: TraversalPlan,
@@ -65,16 +66,16 @@ data class TraversalRecord private constructor(
             if (depth.value > plan.budget.depth.value) {
                 return Refinement.Rejected(TraversalRecordFailure.DEPTH_EXCEEDS_PLAN)
             }
-            val related = when (plan.meaning) {
-                RelationMeaning.Callees -> fact.target
-                RelationMeaning.References,
-                RelationMeaning.Callers,
-                RelationMeaning.Implementations,
-                RelationMeaning.Inheritors,
-                RelationMeaning.Overrides,
-                RelationMeaning.TypeUses,
-                    -> fact.source
-            }
+            val related =
+                when (plan.meaning) {
+                    RelationMeaning.Callees -> fact.target
+                    RelationMeaning.References,
+                    RelationMeaning.Callers,
+                    RelationMeaning.Implementations,
+                    RelationMeaning.Inheritors,
+                    RelationMeaning.Overrides,
+                    RelationMeaning.TypeUses -> fact.source
+                }
             return if (related is RelationEndpoint.Resolved) {
                 Refinement.Refined(TraversalRecord(origin, depth, fact, related))
             } else {
@@ -96,20 +97,17 @@ enum class TraversalPageFailure {
     ENCODED_BYTE_COUNT_MISMATCH,
 }
 
-@JvmInline
-value class TraversalByteCount internal constructor(val value: Long)
+@JvmInline value class TraversalByteCount internal constructor(val value: Long)
 
-@JvmInline
-value class TraversalWorkCount internal constructor(val value: Long)
+@JvmInline value class TraversalWorkCount internal constructor(val value: Long)
 
-@JvmInline
-value class TraversalElapsedMillis internal constructor(val value: Long)
+@JvmInline value class TraversalElapsedMillis internal constructor(val value: Long)
 
-@JvmInline
-value class TraversalFrontierCount internal constructor(val value: Int)
+@JvmInline value class TraversalFrontierCount internal constructor(val value: Int)
 
 @ConsistentCopyVisibility
-data class TraversalPage private constructor(
+data class TraversalPage
+private constructor(
     val plan: TraversalPlan,
     val records: List<TraversalRecord>,
     val encodedBytes: TraversalByteCount,
@@ -119,13 +117,12 @@ data class TraversalPage private constructor(
 ) {
     companion object {
         /**
-         * Proof transition: `(TraversalPlan, List<TraversalRecord>, raw measures) ->
-         * Refinement<TraversalPage, TraversalPageFailure>`.
+         * Proof transition: `(TraversalPlan, List<TraversalRecord>, raw measures) -> Refinement<TraversalPage,
+         * TraversalPageFailure>`.
          *
-         * Establishes deterministic unique records and non-negative exact byte/work/time/frontier
-         * measures inside every aggregate request bound. [TraversalPageFailure] is the closed
-         * expected failure. Raw measures may enter only from pure traversal accounting or
-         * continuation transport.
+         * Establishes deterministic unique records and non-negative exact byte/work/time/frontier measures inside every
+         * aggregate request bound. [TraversalPageFailure] is the closed expected failure. Raw measures may enter only
+         * from pure traversal accounting or continuation transport.
          */
         fun fromBoundary(
             plan: TraversalPlan,
@@ -135,10 +132,7 @@ data class TraversalPage private constructor(
             elapsedMillis: Long,
             expandedFrontier: Int,
         ): Refinement<TraversalPage, TraversalPageFailure> {
-            if (
-                encodedBytes < 0L || examinedWorkUnits < 0L || elapsedMillis < 0L ||
-                expandedFrontier < 0
-            ) {
+            if (encodedBytes < 0L || examinedWorkUnits < 0L || elapsedMillis < 0L || expandedFrontier < 0) {
                 return Refinement.Rejected(TraversalPageFailure.NEGATIVE_MEASURE)
             }
             if (records != records.sorted()) {
@@ -176,7 +170,7 @@ data class TraversalPage private constructor(
                     TraversalWorkCount(examinedWorkUnits),
                     TraversalElapsedMillis(elapsedMillis),
                     TraversalFrontierCount(expandedFrontier),
-                ),
+                )
             )
         }
     }
@@ -205,79 +199,73 @@ sealed interface TraversalQualification {
     val limitations: Set<TraversalLimitation>
     val relationLimitations: Set<RelationLimitation>
 
-    class Resumable internal constructor(
+    class Resumable
+    internal constructor(
         override val limitations: Set<TraversalLimitation>,
         override val relationLimitations: Set<RelationLimitation>,
         val continuation: TraversalContinuation,
     ) : TraversalQualification
 
-    class TerminalIncomplete internal constructor(
+    class TerminalIncomplete
+    internal constructor(
         override val limitations: Set<TraversalLimitation>,
         override val relationLimitations: Set<RelationLimitation>,
     ) : TraversalQualification
 
     companion object {
         /**
-         * Proof transition: `(TraversalPage, limitations, relation limitations,
-         * TraversalContinuation) -> Refinement<TraversalQualification,
-         * TraversalQualificationFailure>`.
+         * Proof transition: `(TraversalPage, limitations, relation limitations, TraversalContinuation) ->
+         * Refinement<TraversalQualification, TraversalQualificationFailure>`.
          *
-         * Establishes non-empty ordered qualification reasons, exact one-hop limitations when
-         * applicable, and continuation identity equal to the page plan.
-         * [TraversalQualificationFailure] is the closed expected failure. Raw limitation
-         * collections may enter only from the pure traversal engine or transport.
+         * Establishes non-empty ordered qualification reasons, exact one-hop limitations when applicable, and
+         * continuation identity equal to the page plan. [TraversalQualificationFailure] is the closed expected failure.
+         * Raw limitation collections may enter only from the pure traversal engine or transport.
          */
         fun resumable(
             page: TraversalPage,
             limitations: Set<TraversalLimitation>,
             relationLimitations: Set<RelationLimitation>,
             continuation: TraversalContinuation,
-        ): Refinement<Resumable, TraversalQualificationFailure> = when (
-            val admitted = admitTraversalLimitations(limitations, relationLimitations)
-        ) {
-            is Refinement.Rejected -> admitted
-            is Refinement.Refined -> if (
-                TraversalLimitation.DEPTH_LIMIT_REACHED in admitted.value.first
-            ) {
-                Refinement.Rejected(
-                    TraversalQualificationFailure.TERMINAL_LIMITATION_RESUMABLE,
-                )
-            } else if (continuation.identity != page.plan.identity) {
-                Refinement.Rejected(TraversalQualificationFailure.CONTINUATION_MISMATCH)
-            } else {
-                Refinement.Refined(
-                    Resumable(
-                        admitted.value.first,
-                        admitted.value.second,
-                        continuation,
-                    ),
-                )
+        ): Refinement<Resumable, TraversalQualificationFailure> =
+            when (val admitted = admitTraversalLimitations(limitations, relationLimitations)) {
+                is Refinement.Rejected -> admitted
+                is Refinement.Refined ->
+                    if (TraversalLimitation.DEPTH_LIMIT_REACHED in admitted.value.first) {
+                        Refinement.Rejected(TraversalQualificationFailure.TERMINAL_LIMITATION_RESUMABLE)
+                    } else if (continuation.identity != page.plan.identity) {
+                        Refinement.Rejected(TraversalQualificationFailure.CONTINUATION_MISMATCH)
+                    } else {
+                        Refinement.Refined(
+                            Resumable(
+                                admitted.value.first,
+                                admitted.value.second,
+                                continuation,
+                            )
+                        )
+                    }
             }
-        }
 
         fun terminalIncomplete(
             limitations: Set<TraversalLimitation>,
             relationLimitations: Set<RelationLimitation>,
-        ): Refinement<TerminalIncomplete, TraversalQualificationFailure> = when (
-            val admitted = admitTraversalLimitations(limitations, relationLimitations)
-        ) {
-            is Refinement.Rejected -> admitted
-            is Refinement.Refined -> if (
-                TraversalLimitation.ONE_HOP_INCOMPLETE !in admitted.value.first &&
-                TraversalLimitation.DEPTH_LIMIT_REACHED !in admitted.value.first
-            ) {
-                Refinement.Rejected(
-                    TraversalQualificationFailure.TERMINAL_WITHOUT_TERMINAL_LIMITATION,
-                )
-            } else {
-                Refinement.Refined(
-                    TerminalIncomplete(
-                        admitted.value.first,
-                        admitted.value.second,
-                    ),
-                )
+        ): Refinement<TerminalIncomplete, TraversalQualificationFailure> =
+            when (val admitted = admitTraversalLimitations(limitations, relationLimitations)) {
+                is Refinement.Rejected -> admitted
+                is Refinement.Refined ->
+                    if (
+                        TraversalLimitation.ONE_HOP_INCOMPLETE !in admitted.value.first &&
+                            TraversalLimitation.DEPTH_LIMIT_REACHED !in admitted.value.first
+                    ) {
+                        Refinement.Rejected(TraversalQualificationFailure.TERMINAL_WITHOUT_TERMINAL_LIMITATION)
+                    } else {
+                        Refinement.Refined(
+                            TerminalIncomplete(
+                                admitted.value.first,
+                                admitted.value.second,
+                            )
+                        )
+                    }
             }
-        }
     }
 }
 
@@ -287,44 +275,48 @@ private fun admitTraversalLimitations(
 ): Refinement<
     Pair<Set<TraversalLimitation>, Set<RelationLimitation>>,
     TraversalQualificationFailure,
-    > = when {
-    limitations.isEmpty() ->
-        Refinement.Rejected(TraversalQualificationFailure.EMPTY_LIMITATIONS)
-    TraversalLimitation.ONE_HOP_INCOMPLETE in limitations && relationLimitations.isEmpty() ->
-        Refinement.Rejected(TraversalQualificationFailure.MISSING_RELATION_LIMITATION)
-    TraversalLimitation.ONE_HOP_INCOMPLETE !in limitations && relationLimitations.isNotEmpty() ->
-        Refinement.Rejected(TraversalQualificationFailure.UNEXPECTED_RELATION_LIMITATION)
-    else -> Refinement.Refined(
-        limitations.toSortedSet(compareBy { it.ordinal }).toSet() to
-            relationLimitations.toSortedSet(compareBy { it.ordinal }).toSet(),
-    )
-}
+> =
+    when {
+        limitations.isEmpty() -> Refinement.Rejected(TraversalQualificationFailure.EMPTY_LIMITATIONS)
+        TraversalLimitation.ONE_HOP_INCOMPLETE in limitations && relationLimitations.isEmpty() ->
+            Refinement.Rejected(TraversalQualificationFailure.MISSING_RELATION_LIMITATION)
+        TraversalLimitation.ONE_HOP_INCOMPLETE !in limitations && relationLimitations.isNotEmpty() ->
+            Refinement.Rejected(TraversalQualificationFailure.UNEXPECTED_RELATION_LIMITATION)
+        else ->
+            Refinement.Refined(
+                limitations.toSortedSet(compareBy { it.ordinal }).toSet() to
+                    relationLimitations.toSortedSet(compareBy { it.ordinal }).toSet()
+            )
+    }
 
-@JvmInline
-value class TraversalExactRecordCount internal constructor(val value: Int)
+@JvmInline value class TraversalExactRecordCount internal constructor(val value: Int)
 
 @ConsistentCopyVisibility
-data class TraversalCompleteCoverage internal constructor(
-    val exactRecordCount: TraversalExactRecordCount,
-)
+data class TraversalCompleteCoverage internal constructor(val exactRecordCount: TraversalExactRecordCount)
 
 sealed interface TraversalRejection {
     data class OneHopRejected(val reason: RelationReadRejection) : TraversalRejection
+
     data object RequiredEvidenceUnavailable : TraversalRejection
+
     data object RequiredEvidenceStale : TraversalRejection
+
     data object ReaderContractViolation : TraversalRejection
+
     data object TraversalContractViolation : TraversalRejection
 }
 
 sealed interface TraversalResult {
     @ConsistentCopyVisibility
-    data class Complete internal constructor(
+    data class Complete
+    internal constructor(
         val page: TraversalPage,
         val coverage: TraversalCompleteCoverage,
     ) : TraversalResult
 
     @ConsistentCopyVisibility
-    data class Qualified internal constructor(
+    data class Qualified
+    internal constructor(
         val page: TraversalPage,
         val qualification: TraversalQualification,
     ) : TraversalResult
@@ -333,55 +325,58 @@ sealed interface TraversalResult {
 
     companion object {
         /**
-         * Proof transition: `TraversalPage + exhausted deterministic frontier ->
-         * TraversalResult.Complete`.
+         * Proof transition: `TraversalPage + exhausted deterministic frontier -> TraversalResult.Complete`.
          *
-         * Establishes exact record count after every one-hop page and the traversal frontier are
-         * terminal. Raw provider state is not permitted at this boundary.
+         * Establishes exact record count after every one-hop page and the traversal frontier are terminal. Raw provider
+         * state is not permitted at this boundary.
          */
-        fun complete(page: TraversalPage): Complete = Complete(
-            page,
-            TraversalCompleteCoverage(TraversalExactRecordCount(page.records.size)),
-        )
+        fun complete(page: TraversalPage): Complete =
+            Complete(
+                page,
+                TraversalCompleteCoverage(TraversalExactRecordCount(page.records.size)),
+            )
 
         /**
-         * Proof transition: `(TraversalPage, limitations, relation limitations,
-         * TraversalContinuation) -> Refinement<TraversalResult.Qualified,
-         * TraversalQualificationFailure>`.
+         * Proof transition: `(TraversalPage, limitations, relation limitations, TraversalContinuation) ->
+         * Refinement<TraversalResult.Qualified, TraversalQualificationFailure>`.
          *
-         * Establishes a bounded partial traversal that cannot represent complete exhaustion and
-         * retains exact deterministic resume state. [TraversalQualificationFailure] is the closed
-         * expected failure. Raw limitations may enter only from the pure engine or transport.
+         * Establishes a bounded partial traversal that cannot represent complete exhaustion and retains exact
+         * deterministic resume state. [TraversalQualificationFailure] is the closed expected failure. Raw limitations
+         * may enter only from the pure engine or transport.
          */
         fun qualifiedResumable(
             page: TraversalPage,
             limitations: Set<TraversalLimitation>,
             relationLimitations: Set<RelationLimitation>,
             continuation: TraversalContinuation,
-        ): Refinement<Qualified, TraversalQualificationFailure> = when (
-            val qualification = TraversalQualification.resumable(
-                page,
-                limitations,
-                relationLimitations,
-                continuation,
-            )
-        ) {
-            is Refinement.Refined -> Refinement.Refined(Qualified(page, qualification.value))
-            is Refinement.Rejected -> qualification
-        }
+        ): Refinement<Qualified, TraversalQualificationFailure> =
+            when (
+                val qualification =
+                    TraversalQualification.resumable(
+                        page,
+                        limitations,
+                        relationLimitations,
+                        continuation,
+                    )
+            ) {
+                is Refinement.Refined -> Refinement.Refined(Qualified(page, qualification.value))
+                is Refinement.Rejected -> qualification
+            }
 
         fun qualifiedTerminal(
             page: TraversalPage,
             limitations: Set<TraversalLimitation>,
             relationLimitations: Set<RelationLimitation>,
-        ): Refinement<Qualified, TraversalQualificationFailure> = when (
-            val qualification = TraversalQualification.terminalIncomplete(
-                limitations,
-                relationLimitations,
-            )
-        ) {
-            is Refinement.Refined -> Refinement.Refined(Qualified(page, qualification.value))
-            is Refinement.Rejected -> qualification
-        }
+        ): Refinement<Qualified, TraversalQualificationFailure> =
+            when (
+                val qualification =
+                    TraversalQualification.terminalIncomplete(
+                        limitations,
+                        relationLimitations,
+                    )
+            ) {
+                is Refinement.Refined -> Refinement.Refined(Qualified(page, qualification.value))
+                is Refinement.Rejected -> qualification
+            }
     }
 }

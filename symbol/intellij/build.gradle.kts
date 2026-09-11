@@ -20,33 +20,39 @@ val symbolIdeaDistribution: Configuration by configurations.creating {
     isCanBeResolved = true
 }
 
-private val extractedIdeaDistributionDirectory = objects.directoryProperty().apply {
-    set(file(gradle.gradleUserHomeDir.resolve("kast/symbol-intellij-idea-distributions/$ideaDistributionVersion")))
-}
+private val extractedIdeaDistributionDirectory =
+    objects.directoryProperty().apply {
+        set(file(gradle.gradleUserHomeDir.resolve("kast/symbol-intellij-idea-distributions/$ideaDistributionVersion")))
+    }
 
-val extractSymbolIdeaDistribution by tasks.registering(ExtractIdeaDistributionTask::class) {
-    archives.from(symbolIdeaDistribution)
-    ideaVersion.set(ideaDistributionVersion)
-    outputDirectory.set(extractedIdeaDistributionDirectory)
-}
+val extractSymbolIdeaDistribution by
+    tasks.registering(ExtractIdeaDistributionTask::class) {
+        archives.from(symbolIdeaDistribution)
+        ideaVersion.set(ideaDistributionVersion)
+        outputDirectory.set(extractedIdeaDistributionDirectory)
+    }
 
-private val kotlinPluginLibs: ConfigurableFileCollection = files(
-    extractedIdeaDistributionDirectory.map { directory ->
-        fileTree(directory) {
-            include("**/plugins/Kotlin/lib/**/*.jar")
-            exclude("**/plugins/Kotlin/lib/jps/**")
-            exclude("**/plugins/Kotlin/lib/kotlinc/lib/kotlin-compiler.jar")
-        }
-    },
-).builtBy(extractSymbolIdeaDistribution)
+private val kotlinPluginLibs: ConfigurableFileCollection =
+    files(
+            extractedIdeaDistributionDirectory.map { directory ->
+                fileTree(directory) {
+                    include("**/plugins/Kotlin/lib/**/*.jar")
+                    exclude("**/plugins/Kotlin/lib/jps/**")
+                    exclude("**/plugins/Kotlin/lib/kotlinc/lib/kotlin-compiler.jar")
+                }
+            }
+        )
+        .builtBy(extractSymbolIdeaDistribution)
 
-private val javaPluginLibs: ConfigurableFileCollection = files(
-    extractedIdeaDistributionDirectory.map { directory ->
-        fileTree(directory) {
-            include("**/plugins/java/lib/**/*.jar")
-        }
-    },
-).builtBy(extractSymbolIdeaDistribution)
+private val javaPluginLibs: ConfigurableFileCollection =
+    files(
+            extractedIdeaDistributionDirectory.map { directory ->
+                fileTree(directory) {
+                    include("**/plugins/java/lib/**/*.jar")
+                }
+            }
+        )
+        .builtBy(extractSymbolIdeaDistribution)
 
 dependencies {
     implementation(project(":symbol:contract"))

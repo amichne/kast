@@ -3,14 +3,12 @@ package io.github.amichne.kast.workspace.intellij.read
 import io.github.amichne.kast.protocol.contract.AdmittedIdeHostCompatibility
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityAdmission
 
-internal val DETACHED_FIXTURE_COMPATIBILITY: AdmittedIdeHostCompatibility = when (
-    val admitted = FIXTURE_COMPATIBILITY_POLICY.admit(FIXTURE_COMPATIBILITY)
-) {
-    is IdeHostCompatibilityAdmission.Admitted -> admitted.compatibility
-    is IdeHostCompatibilityAdmission.Rejected -> error(
-        "invalid detached-model compatibility fixture: ${admitted.failure}",
-    )
-}
+internal val DETACHED_FIXTURE_COMPATIBILITY: AdmittedIdeHostCompatibility =
+    when (val admitted = FIXTURE_COMPATIBILITY_POLICY.admit(FIXTURE_COMPATIBILITY)) {
+        is IdeHostCompatibilityAdmission.Admitted -> admitted.compatibility
+        is IdeHostCompatibilityAdmission.Rejected ->
+            error("invalid detached-model compatibility fixture: ${admitted.failure}")
+    }
 
 internal fun detachedModelBoundary(
     disposed: Boolean = false,
@@ -18,13 +16,14 @@ internal fun detachedModelBoundary(
     projectRoot: String? = FIXTURE_ROOT.value,
     gradleModelComplete: Boolean = true,
     modules: List<DetachedModuleBoundary> = listOf(detachedModuleBoundary()),
-): DetachedModelBoundary = DetachedModelBoundary(
-    disposed = disposed,
-    smart = smart,
-    projectRoot = projectRoot,
-    gradleModelComplete = gradleModelComplete,
-    modules = modules,
-)
+): DetachedModelBoundary =
+    DetachedModelBoundary(
+        disposed = disposed,
+        smart = smart,
+        projectRoot = projectRoot,
+        gradleModelComplete = gradleModelComplete,
+        modules = modules,
+    )
 
 internal fun detachedModuleBoundary(
     index: Int = 0,
@@ -34,32 +33,32 @@ internal fun detachedModuleBoundary(
     gradleBuildRoot: String? = FIXTURE_ROOT.value,
     gradleProjectRoot: String? = "${FIXTURE_ROOT.value}/module$index",
     gradleProjectIdentity: String? = ":module$index",
-    sourceRoots: List<DetachedSourceRootBoundary> = listOf(
-        detachedSourceRootBoundary("module$index/src/main/kotlin"),
-    ),
+    sourceRoots: List<DetachedSourceRootBoundary> = listOf(detachedSourceRootBoundary("module$index/src/main/kotlin")),
     sdk: DetachedSdkBoundary? = detachedSdkBoundary(),
     classpath: List<DetachedClasspathBoundary> = listOf(detachedClasspathBoundary(index)),
-): DetachedModuleBoundary = DetachedModuleBoundary(
-    disposed = disposed,
-    name = name,
-    gradleOwned = gradleOwned,
-    gradleBuildRoot = gradleBuildRoot,
-    gradleProjectRoot = gradleProjectRoot,
-    gradleProjectIdentity = gradleProjectIdentity,
-    sourceRoots = sourceRoots,
-    sdk = sdk,
-    classpath = classpath,
-)
+): DetachedModuleBoundary =
+    DetachedModuleBoundary(
+        disposed = disposed,
+        name = name,
+        gradleOwned = gradleOwned,
+        gradleBuildRoot = gradleBuildRoot,
+        gradleProjectRoot = gradleProjectRoot,
+        gradleProjectIdentity = gradleProjectIdentity,
+        sourceRoots = sourceRoots,
+        sdk = sdk,
+        classpath = classpath,
+    )
 
 internal fun detachedSourceRootBoundary(
     relativePath: String,
     kind: DetachedSourceRootKind = DetachedSourceRootKind.PRODUCTION,
     provenance: DetachedSourceRootProvenance = DetachedSourceRootProvenance.AUTHORED,
-): DetachedSourceRootBoundary = DetachedSourceRootBoundary(
-    path = "${FIXTURE_ROOT.value}/$relativePath",
-    kind = kind,
-    provenance = provenance,
-)
+): DetachedSourceRootBoundary =
+    DetachedSourceRootBoundary(
+        path = "${FIXTURE_ROOT.value}/$relativePath",
+        kind = kind,
+        provenance = provenance,
+    )
 
 internal fun detachedSdkBoundary(
     name: String = "Fixture JDK 21",
@@ -72,15 +71,15 @@ internal fun detachedClasspathBoundary(
     url: String = "file:///workspace/kast/.fixture/classpath-$index.jar",
 ): DetachedClasspathBoundary = DetachedClasspathBoundary(url)
 
-internal fun captureDetachedFixture(
-    observation: DetachedModelObservation,
-): DetachedModelCapture = DetachedIdeWorkspaceModel.admit(
-    FIXTURE_ROOT,
-    DETACHED_FIXTURE_COMPATIBILITY,
-    observation,
-)
+internal fun captureDetachedFixture(observation: DetachedModelObservation): DetachedModelCapture =
+    DetachedIdeWorkspaceModel.admit(
+        FIXTURE_ROOT,
+        DETACHED_FIXTURE_COMPATIBILITY,
+        observation,
+    )
 
-internal val EXPECTED_DETACHED_MODEL_REPORT = """
+internal val EXPECTED_DETACHED_MODEL_REPORT =
+    """
     {
         "schemaVersion": 1,
         "authority": "OPEN_PROJECT",
@@ -125,4 +124,5 @@ internal val EXPECTED_DETACHED_MODEL_REPORT = """
         "edtSemanticWorkCount": 0,
         "productionEpochFieldCount": 0
     }
-""".trimIndent() + "\n"
+    """
+        .trimIndent() + "\n"

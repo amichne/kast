@@ -12,6 +12,8 @@ import io.github.amichne.kast.appserver.query.PublicQueryContract
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.Validation
 import io.github.amichne.kast.protocol.registry.CanonicalAgentToolDefinitions
+import java.nio.file.Files
+import java.nio.file.Path
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -20,15 +22,14 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Files
-import java.nio.file.Path
 
 class KastPublicQueryProviderTest {
     @Test
     fun `provider sends normalized public grammar without preparing lifecycle`(@TempDir root: Path) = runTest {
         val executor = RecordingExecutor(capability())
         val broker = broker(root, executor)
-        val result = broker.dispatch(request(root, """{"type":"QUERY","from":{"type":"SEARCH","query":"Order"},"select":[]}"""))
+        val result =
+            broker.dispatch(request(root, """{"type":"QUERY","from":{"type":"SEARCH","query":"Order"},"select":[]}"""))
         assertTrue(result is BrokerDispatch.Completed)
         val calls = executor.requests.filter { it.arguments == listOf("query", "run") }
         assertEquals(1, calls.size)
@@ -46,9 +47,10 @@ class KastPublicQueryProviderTest {
         val executor = RecordingExecutor(capability())
         val broker = broker(root, executor)
         listOf(
-            """{"type":"QUERY","from":{"type":"ALL"},"execution":{"kind":"exhaustive"}}""",
-            """{"type":"QUERY","from":{"type":"REFS","refs":["candidate:v2:example"]}}""",
-        ).forEach { input -> assertTrue(broker.dispatch(request(root, input)) is BrokerDispatch.Rejected) }
+                """{"type":"QUERY","from":{"type":"ALL"},"execution":{"kind":"exhaustive"}}""",
+                """{"type":"QUERY","from":{"type":"REFS","refs":["candidate:v2:example"]}}""",
+            )
+            .forEach { input -> assertTrue(broker.dispatch(request(root, input)) is BrokerDispatch.Rejected) }
         assertEquals(0, executor.requests.count { it.arguments == listOf("query", "run") })
     }
 
@@ -66,9 +68,13 @@ class KastPublicQueryProviderTest {
     private suspend fun broker(root: Path, executor: RecordingExecutor): Broker {
         val qualified = KastProviderQualifier.qualify(options(root, executor))
         assertTrue(qualified is KastProviderQualification.Qualified)
-        return when (val result = Broker.create(
-            listOf((qualified as KastProviderQualification.Qualified).registration), BrokerLimits.defaults(),
-        )) {
+        return when (
+            val result =
+                Broker.create(
+                    listOf((qualified as KastProviderQualification.Qualified).registration),
+                    BrokerLimits.defaults(),
+                )
+        ) {
             is Validation.Validated -> result.value
             is Validation.Rejected -> error("Rejected test broker")
         }
@@ -81,28 +87,34 @@ class KastPublicQueryProviderTest {
         return KastProviderOptions.admit(executable, root.toRealPath(), executor).refined()
     }
 
-    private fun request(root: Path, input: String): BrokerDispatchRequest = BrokerDispatchRequest(
-        ToolAddress(ProviderNamespace.admit("kast").refined(), ToolName.admit("query").refined()),
-        Json.parseToJsonElement(input),
-        BrokerInvocationContext.admit("query-thread", "query-turn", "query-call", root.toRealPath()).refined(),
-    )
+    private fun request(root: Path, input: String): BrokerDispatchRequest =
+        BrokerDispatchRequest(
+            ToolAddress(ProviderNamespace.admit("kast").refined(), ToolName.admit("query").refined()),
+            Json.parseToJsonElement(input),
+            BrokerInvocationContext.admit("query-thread", "query-turn", "query-call", root.toRealPath()).refined(),
+        )
 
     private class RecordingExecutor(private val schema: String) : BrokerProcessExecutor {
         val requests = mutableListOf<BrokerProcessRequest>()
+
         override suspend fun execute(request: BrokerProcessRequest): BrokerProcessExecution {
             requests += request
             return when (request.arguments) {
                 listOf("--version") -> BrokerProcessExecution.Completed(0, "kast 9.9.9\n", "")
                 listOf("--schema") -> BrokerProcessExecution.Completed(0, schema, "")
-                listOf("query", "run") -> BrokerProcessExecution.Completed(
-                    0, """{"operation":"query.run","status":"complete","items":[],"failures":[]}""", "",
-                )
+                listOf("query", "run") ->
+                    BrokerProcessExecution.Completed(
+                        0,
+                        """{"operation":"query.run","status":"complete","items":[],"failures":[]}""",
+                        "",
+                    )
                 else -> error("Unexpected subprocess: ${request.arguments}")
             }
         }
     }
 
-    private fun capability(input: JsonObject = PublicQueryContract.parameters): String = """
+    private fun capability(input: JsonObject = PublicQueryContract.parameters): String =
+        """
         {"schemaVersion":1,"serverProjection":{"schemaVersion":9,"namespace":"kast",
         "hostedBootstrap":{"schemaVersion":1,"policy":${JsonPrimitive(CanonicalAgentToolDefinitions.policy.text)},
         "tools":[{"operationId":"query.run","name":"query",
@@ -114,10 +126,12 @@ class KastPublicQueryProviderTest {
             "required":["status","document"],"additionalProperties":false}}]},
         "cliInvocations":{"schemaVersion":2,"operations":[{"operationId":"query.run",
         "cliUsage":"query run < request.json","invocation":{"type":"CLI","command":["query","run"]}}]}}}
-    """.trimIndent()
+    """
+            .trimIndent()
 
-    private fun <T, E> Refinement<T, E>.refined(): T = when (this) {
-        is Refinement.Refined -> value
-        is Refinement.Rejected -> error("Rejected test fixture: $failure")
-    }
+    private fun <T, E> Refinement<T, E>.refined(): T =
+        when (this) {
+            is Refinement.Refined -> value
+            is Refinement.Rejected -> error("Rejected test fixture: $failure")
+        }
 }

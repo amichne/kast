@@ -14,7 +14,8 @@ class OperationRegistryArtifactTest {
         )
         assertEquals(
             listOf("add-declaration"),
-            OperationRegistryArtifact.from(registry).entries
+            OperationRegistryArtifact.from(registry)
+                .entries
                 .single { it.operationId == CanonicalOperationDefinitions.changePlan.id }
                 .hostedIntentIds,
         )

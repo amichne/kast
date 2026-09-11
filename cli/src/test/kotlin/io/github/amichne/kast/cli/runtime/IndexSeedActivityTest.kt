@@ -1,13 +1,13 @@
 package io.github.amichne.kast.cli
 
+import java.io.ByteArrayOutputStream
+import java.io.PrintStream
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Test
-import java.io.ByteArrayOutputStream
-import java.io.PrintStream
 
 class IndexSeedActivityTest {
     @Test
@@ -25,14 +25,17 @@ class IndexSeedActivityTest {
                 IndexSeedActivity.Rejected(
                     IndexSeedStage.COPY,
                     IndexSeedFailure.CopyFailure,
-                ),
+                )
             ),
         )
 
-        val documents = bytes.toString(Charsets.UTF_8).lineSequence()
-            .filter(String::isNotBlank)
-            .map { line -> Json.parseToJsonElement(line).jsonObject }
-            .toList()
+        val documents =
+            bytes
+                .toString(Charsets.UTF_8)
+                .lineSequence()
+                .filter(String::isNotBlank)
+                .map { line -> Json.parseToJsonElement(line).jsonObject }
+                .toList()
         assertEquals(
             listOf("started", "rejected"),
             documents.map { document -> document.getValue("outcome").jsonPrimitive.content },

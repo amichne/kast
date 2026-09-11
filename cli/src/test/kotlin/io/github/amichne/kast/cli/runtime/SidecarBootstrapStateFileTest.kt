@@ -5,20 +5,20 @@ import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBoo
 import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapPhase
 import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapState
 import io.github.amichne.kast.kernel.Refinement
+import java.nio.file.Files
+import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Files
-import java.nio.file.Path
 
 class SidecarBootstrapStateFileTest {
     @Test
     fun `passive reader preserves phase and refuses oversized or redirected evidence`(@TempDir temporary: Path) {
         val path = temporary.toRealPath().resolve("bootstrap-state")
-        val attempt = (SemanticRuntimeBootstrapAttemptId.admit(
-            "123e4567-e89b-42d3-a456-426614174000",
-        ) as Refinement.Refined).value
+        val attempt =
+            (SemanticRuntimeBootstrapAttemptId.admit("123e4567-e89b-42d3-a456-426614174000") as Refinement.Refined)
+                .value
         val state = SemanticRuntimeBootstrapState.Starting(attempt, SemanticRuntimeBootstrapPhase.INDEXING)
         val encoded = SemanticRuntimeBootstrapCodec.encode(state)
         Files.writeString(path, encoded)

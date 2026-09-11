@@ -18,37 +18,26 @@ enum class SqliteMutationRecoveryJournalOpenFailure {
 }
 
 @JvmInline
-internal value class SqliteMutationRecoveryDatabase private constructor(
-    val path: Path,
-) {
+internal value class SqliteMutationRecoveryDatabase private constructor(val path: Path) {
     companion object {
         /**
          * Proof transition: `Path -> Refinement<SqliteMutationRecoveryDatabase,
          * SqliteMutationRecoveryJournalOpenFailure>`.
          *
-         * Establishes a normalized absolute, non-symlink database target beneath an existing real
-         * directory, with any existing target a regular file. The closed expected failure is
-         * [SqliteMutationRecoveryJournalOpenFailure]. Raw path extraction is permitted only at the
-         * JDBC connection boundary.
+         * Establishes a normalized absolute, non-symlink database target beneath an existing real directory, with any
+         * existing target a regular file. The closed expected failure is [SqliteMutationRecoveryJournalOpenFailure].
+         * Raw path extraction is permitted only at the JDBC connection boundary.
          */
-        fun admit(
-            raw: Path,
-        ): Refinement<SqliteMutationRecoveryDatabase, SqliteMutationRecoveryJournalOpenFailure> =
+        fun admit(raw: Path): Refinement<SqliteMutationRecoveryDatabase, SqliteMutationRecoveryJournalOpenFailure> =
             when {
-                !raw.isAbsolute || raw.normalize() != raw -> Refinement.Rejected(
-                    SqliteMutationRecoveryJournalOpenFailure.NOT_CANONICAL_ABSOLUTE,
-                )
+                !raw.isAbsolute || raw.normalize() != raw ->
+                    Refinement.Rejected(SqliteMutationRecoveryJournalOpenFailure.NOT_CANONICAL_ABSOLUTE)
                 raw.parent == null || !Files.isDirectory(raw.parent, LinkOption.NOFOLLOW_LINKS) ->
-                    Refinement.Rejected(
-                        SqliteMutationRecoveryJournalOpenFailure.PARENT_NOT_DIRECTORY,
-                    )
-                Files.isSymbolicLink(raw) -> Refinement.Rejected(
-                    SqliteMutationRecoveryJournalOpenFailure.SYMLINK_NOT_ALLOWED,
-                )
-                Files.exists(raw, LinkOption.NOFOLLOW_LINKS) &&
-                !Files.isRegularFile(raw, LinkOption.NOFOLLOW_LINKS) -> Refinement.Rejected(
-                    SqliteMutationRecoveryJournalOpenFailure.EXISTING_PATH_NOT_REGULAR_FILE,
-                )
+                    Refinement.Rejected(SqliteMutationRecoveryJournalOpenFailure.PARENT_NOT_DIRECTORY)
+                Files.isSymbolicLink(raw) ->
+                    Refinement.Rejected(SqliteMutationRecoveryJournalOpenFailure.SYMLINK_NOT_ALLOWED)
+                Files.exists(raw, LinkOption.NOFOLLOW_LINKS) && !Files.isRegularFile(raw, LinkOption.NOFOLLOW_LINKS) ->
+                    Refinement.Rejected(SqliteMutationRecoveryJournalOpenFailure.EXISTING_PATH_NOT_REGULAR_FILE)
                 else -> Refinement.Refined(SqliteMutationRecoveryDatabase(raw))
             }
     }
@@ -77,14 +66,12 @@ internal sealed interface InitializedSqliteMutationRecoveryConnections {
 }
 
 private class RetainedInitializedSqliteMutationRecoveryConnections(
-    private val connections: SqliteMutationRecoveryConnections,
+    private val connections: SqliteMutationRecoveryConnections
 ) : InitializedSqliteMutationRecoveryConnections {
     override fun <T> use(block: (Connection) -> T): T = connections.use(block)
 }
 
-internal class SqliteMutationRecoveryConnections(
-    private val database: SqliteMutationRecoveryDatabase,
-) {
+internal class SqliteMutationRecoveryConnections(private val database: SqliteMutationRecoveryDatabase) {
     fun <T> use(block: (Connection) -> T): T {
         ensureSqliteDriver()
         return DriverManager.getConnection("jdbc:sqlite:${database.path}").use { connection ->
@@ -125,7 +112,7 @@ internal class SqliteMutationRecoveryConnections(
                         (stage = 'RECOVERY_REQUIRED' AND state_version = 2 AND
                             recovery_requirement = 'ROLLBACK_REJECTED')
                     )
-                ) WITHOUT ROWID""",
+                ) WITHOUT ROWID"""
             )
             statement.execute(
                 """CREATE TABLE IF NOT EXISTS mutation_recovery_planned_write (
@@ -136,7 +123,7 @@ internal class SqliteMutationRecoveryConnections(
                     preimage_base64 TEXT NOT NULL,
                     PRIMARY KEY(plan_binding, ordinal),
                     UNIQUE(plan_binding, source_path)
-                ) WITHOUT ROWID""",
+                ) WITHOUT ROWID"""
             )
             statement.execute(
                 """CREATE TABLE IF NOT EXISTS mutation_recovery_applied_write (
@@ -145,7 +132,7 @@ internal class SqliteMutationRecoveryConnections(
                     source_path TEXT NOT NULL,
                     PRIMARY KEY(plan_binding, ordinal),
                     UNIQUE(plan_binding, source_path)
-                ) WITHOUT ROWID""",
+                ) WITHOUT ROWID"""
             )
         }
     }
@@ -153,15 +140,18 @@ internal class SqliteMutationRecoveryConnections(
 
 private fun ensureSqliteDriver() {
     if (Collections.list(DriverManager.getDrivers()).any(::acceptsSqlite)) return
-    val driverClass = Class.forName(
-        "org.sqlite.JDBC",
-        true,
-        SqliteMutationRecoveryConnections::class.java.classLoader,
-    )
+    val driverClass =
+        Class.forName(
+            "org.sqlite.JDBC",
+            true,
+            SqliteMutationRecoveryConnections::class.java.classLoader,
+        )
     if (!Collections.list(DriverManager.getDrivers()).any(::acceptsSqlite)) {
         DriverManager.registerDriver(driverClass.getDeclaredConstructor().newInstance() as Driver)
     }
 }
 
-private fun acceptsSqlite(driver: Driver): Boolean =
-    runCatching { driver.acceptsURL("jdbc:sqlite::memory:") }.getOrDefault(false)
+private fun acceptsSqlite(driver: Driver): Boolean = runCatching {
+    driver.acceptsURL("jdbc:sqlite::memory:")
+}
+    .getOrDefault(false)

@@ -10,9 +10,8 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class RuntimeStartupProgressTest {
-    private val attempt = (SemanticRuntimeBootstrapAttemptId.admit(
-        "123e4567-e89b-42d3-a456-426614174000",
-    ) as Refinement.Refined).value
+    private val attempt =
+        (SemanticRuntimeBootstrapAttemptId.admit("123e4567-e89b-42d3-a456-426614174000") as Refinement.Refined).value
 
     @Test
     fun `terminal progress reports all phases elapsed time and throttled heartbeat`() {
@@ -37,7 +36,9 @@ class RuntimeStartupProgressTest {
         val machineLines = mutableListOf<String>()
         val machine = TerminalRuntimeStartupProgress(false, { 0L }, machineLines::add)
         machine.discoveringRuntime()
-        SemanticRuntimeBootstrapPhase.entries.forEach { machine.publish(SemanticRuntimeBootstrapState.Starting(attempt, it)) }
+        SemanticRuntimeBootstrapPhase.entries.forEach {
+            machine.publish(SemanticRuntimeBootstrapState.Starting(attempt, it))
+        }
         machine.publish(SemanticRuntimeBootstrapState.Ready(attempt))
         assertEquals(emptyList<String>(), machineLines)
 
@@ -57,14 +58,21 @@ class RuntimeStartupProgressTest {
 
     @Test
     fun `every finite bootstrap rejection names its failed phase and next action`() {
-        SemanticRuntimeBootstrapFailure.entries.filter { it != SemanticRuntimeBootstrapFailure.MODEL_INPUT_REJECTED }.forEach { cause ->
-            val lines = mutableListOf<String>()
-            TerminalRuntimeStartupProgress(true, { 0L }, lines::add).publish(
-                SemanticRuntimeBootstrapState.Rejected(attempt, cause, SemanticRuntimeBootstrapPhase.GRADLE_JVM_SELECTION),
-            )
-            assertTrue(lines.single().contains("rejected during selecting Gradle JVM"))
-            assertTrue(lines.single().contains("cause=${cause.wireName}; next: "))
-            assertTrue(lines.single().length < 400)
-        }
+        SemanticRuntimeBootstrapFailure.entries
+            .filter { it != SemanticRuntimeBootstrapFailure.MODEL_INPUT_REJECTED }
+            .forEach { cause ->
+                val lines = mutableListOf<String>()
+                TerminalRuntimeStartupProgress(true, { 0L }, lines::add)
+                    .publish(
+                        SemanticRuntimeBootstrapState.Rejected(
+                            attempt,
+                            cause,
+                            SemanticRuntimeBootstrapPhase.GRADLE_JVM_SELECTION,
+                        )
+                    )
+                assertTrue(lines.single().contains("rejected during selecting Gradle JVM"))
+                assertTrue(lines.single().contains("cause=${cause.wireName}; next: "))
+                assertTrue(lines.single().length < 400)
+            }
     }
 }

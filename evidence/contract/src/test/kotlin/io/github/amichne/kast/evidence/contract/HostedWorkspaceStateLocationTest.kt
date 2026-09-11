@@ -12,14 +12,18 @@ class HostedWorkspaceStateLocationTest {
     @Test
     fun `exact roots receive isolated durable database locations`() {
         val userState = KastUserStateRoot.parse("/var/lib/kast").refined()
-        val first = HostedWorkspaceStateLocation.locate(
-            userState,
-            canonical("/workspace/first"),
-        ).refined()
-        val second = HostedWorkspaceStateLocation.locate(
-            userState,
-            canonical("/workspace/second"),
-        ).refined()
+        val first =
+            HostedWorkspaceStateLocation.locate(
+                    userState,
+                    canonical("/workspace/first"),
+                )
+                .refined()
+        val second =
+            HostedWorkspaceStateLocation.locate(
+                    userState,
+                    canonical("/workspace/second"),
+                )
+                .refined()
 
         assertNotEquals(first.topologyDatabase, second.topologyDatabase)
         assertNotEquals(first.mutationDatabase, second.mutationDatabase)
@@ -32,20 +36,22 @@ class HostedWorkspaceStateLocationTest {
     @Test
     fun `non canonical user state roots fail closed`() {
         listOf(
-            "relative" to KastUserStateRootFailure.NOT_ABSOLUTE,
-            "/var/../tmp" to KastUserStateRootFailure.NOT_NORMALIZED,
-            "/var//tmp" to KastUserStateRootFailure.NOT_NORMALIZED,
-        ).forEach { (raw, expected) ->
-            val result = KastUserStateRoot.parse(raw)
-            assertEquals(expected, (result as Refinement.Rejected).failure)
-        }
+                "relative" to KastUserStateRootFailure.NOT_ABSOLUTE,
+                "/var/../tmp" to KastUserStateRootFailure.NOT_NORMALIZED,
+                "/var//tmp" to KastUserStateRootFailure.NOT_NORMALIZED,
+            )
+            .forEach { (raw, expected) ->
+                val result = KastUserStateRoot.parse(raw)
+                assertEquals(expected, (result as Refinement.Rejected).failure)
+            }
     }
 
     private fun canonical(raw: String): CanonicalWorkspaceRoot =
         CanonicalWorkspaceRoot.fromCanonicalPath(Path.of(raw)).refined()
 
-    private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value = when (this) {
-        is Refinement.Refined -> value
-        is Refinement.Rejected -> error(failure.toString())
-    }
+    private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value =
+        when (this) {
+            is Refinement.Refined -> value
+            is Refinement.Rejected -> error(failure.toString())
+        }
 }

@@ -28,40 +28,42 @@ data class WorkspaceResourceActivity(
     val indexing: WorkspaceResourceCount,
     val longOperations: WorkspaceResourceCount,
 ) {
-    fun active(kind: WorkspaceExpensiveWork): WorkspaceResourceCount = when (kind) {
-        WorkspaceExpensiveWork.RUNTIME_START -> runtimeStarts
-        WorkspaceExpensiveWork.PROJECT_IMPORT -> imports
-        WorkspaceExpensiveWork.WORKSPACE_TRANSITION -> transitions
-        WorkspaceExpensiveWork.INDEXING -> indexing
-        WorkspaceExpensiveWork.LONG_OPERATION -> longOperations
-    }
+    fun active(kind: WorkspaceExpensiveWork): WorkspaceResourceCount =
+        when (kind) {
+            WorkspaceExpensiveWork.RUNTIME_START -> runtimeStarts
+            WorkspaceExpensiveWork.PROJECT_IMPORT -> imports
+            WorkspaceExpensiveWork.WORKSPACE_TRANSITION -> transitions
+            WorkspaceExpensiveWork.INDEXING -> indexing
+            WorkspaceExpensiveWork.LONG_OPERATION -> longOperations
+        }
 
     /**
-     * Proof transition:
-     * `WorkspaceResourceActivity + WorkspaceExpensiveWork + WorkspaceResourceCount`
-     * `-> WorkspaceResourceActivity`.
+     * Proof transition: `WorkspaceResourceActivity + WorkspaceExpensiveWork + WorkspaceResourceCount` `->
+     * WorkspaceResourceActivity`.
      *
      * Replaces exactly one kind's already-refined active count without changing other observations.
      */
     fun withActive(
         kind: WorkspaceExpensiveWork,
         count: WorkspaceResourceCount,
-    ): WorkspaceResourceActivity = when (kind) {
-        WorkspaceExpensiveWork.RUNTIME_START -> copy(runtimeStarts = count)
-        WorkspaceExpensiveWork.PROJECT_IMPORT -> copy(imports = count)
-        WorkspaceExpensiveWork.WORKSPACE_TRANSITION -> copy(transitions = count)
-        WorkspaceExpensiveWork.INDEXING -> copy(indexing = count)
-        WorkspaceExpensiveWork.LONG_OPERATION -> copy(longOperations = count)
-    }
+    ): WorkspaceResourceActivity =
+        when (kind) {
+            WorkspaceExpensiveWork.RUNTIME_START -> copy(runtimeStarts = count)
+            WorkspaceExpensiveWork.PROJECT_IMPORT -> copy(imports = count)
+            WorkspaceExpensiveWork.WORKSPACE_TRANSITION -> copy(transitions = count)
+            WorkspaceExpensiveWork.INDEXING -> copy(indexing = count)
+            WorkspaceExpensiveWork.LONG_OPERATION -> copy(longOperations = count)
+        }
 
     companion object {
-        fun none(): WorkspaceResourceActivity = WorkspaceResourceActivity(
-            runtimeStarts = WorkspaceResourceCount.none(),
-            imports = WorkspaceResourceCount.none(),
-            transitions = WorkspaceResourceCount.none(),
-            indexing = WorkspaceResourceCount.none(),
-            longOperations = WorkspaceResourceCount.none(),
-        )
+        fun none(): WorkspaceResourceActivity =
+            WorkspaceResourceActivity(
+                runtimeStarts = WorkspaceResourceCount.none(),
+                imports = WorkspaceResourceCount.none(),
+                transitions = WorkspaceResourceCount.none(),
+                indexing = WorkspaceResourceCount.none(),
+                longOperations = WorkspaceResourceCount.none(),
+            )
     }
 }
 
@@ -74,12 +76,11 @@ data class WorkspaceResourceObservation(
 
 fun interface WorkspaceResourceObservationAuthority {
     /**
-     * Proof transition:
-     * `WorkspaceResourceObservationAuthority -> WorkspaceResourceObservation`.
+     * Proof transition: `WorkspaceResourceObservationAuthority -> WorkspaceResourceObservation`.
      *
-     * Establishes one detached heap, EDT, and external active-resource observation. Raw runtime
-     * memory, liveness, transition, indexing, and operation counters remain inside the physical
-     * adapter. Controller-owned initiations must not be counted by the adapter.
+     * Establishes one detached heap, EDT, and external active-resource observation. Raw runtime memory, liveness,
+     * transition, indexing, and operation counters remain inside the physical adapter. Controller-owned initiations
+     * must not be counted by the adapter.
      */
     fun observe(): WorkspaceResourceObservation
 }
@@ -90,28 +91,20 @@ sealed interface WorkspaceResourceBlocker {
         val threshold: WorkspaceCriticalHeapPercent,
     ) : WorkspaceResourceBlocker
 
-    data class EdtUnavailable(
-        val observation: WorkspaceEdtLiveness,
-    ) : WorkspaceResourceBlocker
+    data class EdtUnavailable(val observation: WorkspaceEdtLiveness) : WorkspaceResourceBlocker
 
     data class Capacity(
         val kind: WorkspaceExpensiveWork,
         val limit: WorkspaceConcurrencyLimit,
     ) : WorkspaceResourceBlocker
 
-    data class QueueFull(
-        val limit: WorkspaceQueueLimit,
-    ) : WorkspaceResourceBlocker
+    data class QueueFull(val limit: WorkspaceQueueLimit) : WorkspaceResourceBlocker
 
-    data class WaitTimedOut(
-        val timeout: WorkspaceAdmissionWaitMillis,
-    ) : WorkspaceResourceBlocker
+    data class WaitTimedOut(val timeout: WorkspaceAdmissionWaitMillis) : WorkspaceResourceBlocker
 
     data object WaitInterrupted : WorkspaceResourceBlocker
 
-    data class InitiationFailed(
-        val kind: WorkspaceExpensiveWork,
-    ) : WorkspaceResourceBlocker
+    data class InitiationFailed(val kind: WorkspaceExpensiveWork) : WorkspaceResourceBlocker
 }
 
 enum class WorkspaceResourceAdmissionAction {
@@ -123,9 +116,7 @@ enum class WorkspaceResourceAdmissionAction {
 }
 
 @JvmInline
-value class WorkspaceResourceDurationNanos private constructor(
-    val nanoseconds: Long,
-) {
+value class WorkspaceResourceDurationNanos private constructor(val nanoseconds: Long) {
     fun plus(other: WorkspaceResourceDurationNanos): WorkspaceResourceDurationNanos =
         WorkspaceResourceDurationNanos(Math.addExact(nanoseconds, other.nanoseconds))
 
@@ -139,8 +130,7 @@ value class WorkspaceResourceDurationNanos private constructor(
         fun elapsed(
             startedAt: Long,
             finishedAt: Long,
-        ): WorkspaceResourceDurationNanos =
-            WorkspaceResourceDurationNanos((finishedAt - startedAt).coerceAtLeast(0L))
+        ): WorkspaceResourceDurationNanos = WorkspaceResourceDurationNanos((finishedAt - startedAt).coerceAtLeast(0L))
     }
 }
 
@@ -153,17 +143,13 @@ sealed interface WorkspaceResourceInitiationResult {
     val timing: WorkspaceResourceAdmissionTiming
     val action: WorkspaceResourceAdmissionAction
 
-    data class Initiated(
-        override val timing: WorkspaceResourceAdmissionTiming,
-    ) : WorkspaceResourceInitiationResult {
+    data class Initiated(override val timing: WorkspaceResourceAdmissionTiming) : WorkspaceResourceInitiationResult {
         override val action: WorkspaceResourceAdmissionAction = WorkspaceResourceAdmissionAction.START
     }
 
-    data class ReusedExactRoot(
-        override val timing: WorkspaceResourceAdmissionTiming,
-    ) : WorkspaceResourceInitiationResult {
-        override val action: WorkspaceResourceAdmissionAction =
-            WorkspaceResourceAdmissionAction.REUSE_EXACT_ROOT
+    data class ReusedExactRoot(override val timing: WorkspaceResourceAdmissionTiming) :
+        WorkspaceResourceInitiationResult {
+        override val action: WorkspaceResourceAdmissionAction = WorkspaceResourceAdmissionAction.REUSE_EXACT_ROOT
     }
 
     data class Rejected(

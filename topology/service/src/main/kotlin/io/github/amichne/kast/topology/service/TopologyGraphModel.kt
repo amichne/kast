@@ -13,6 +13,7 @@ import io.github.amichne.kast.workspace.contract.WorkspaceSourceSetName
 
 internal sealed interface TopologyGraphOpen {
     data class Opened(val graph: TopologyGraph) : TopologyGraphOpen
+
     data class Rejected(val failure: TopologySnapshotReadFailure) : TopologyGraphOpen
 }
 
@@ -27,7 +28,7 @@ internal interface TopologyVisit {
 }
 
 internal enum class TopologyHopDepthFailure {
-    OVERFLOW,
+    OVERFLOW
 }
 
 @JvmInline
@@ -37,11 +38,10 @@ internal value class TopologyHopDepth private constructor(val value: Int) {
     }
 
     /**
-     * Proof transition: `TopologyHopDepth -> Refinement<TopologyHopDepth,
-     * TopologyHopDepthFailure>`.
+     * Proof transition: `TopologyHopDepth -> Refinement<TopologyHopDepth, TopologyHopDepthFailure>`.
      *
-     * Establishes the next representable internal graph hop. [TopologyHopDepthFailure] is the
-     * closed expected overflow state. Raw depth extraction is permitted only in tests.
+     * Establishes the next representable internal graph hop. [TopologyHopDepthFailure] is the closed expected overflow
+     * state. Raw depth extraction is permitted only in tests.
      */
     fun next(): Refinement<TopologyHopDepth, TopologyHopDepthFailure> =
         if (value == Int.MAX_VALUE) Refinement.Rejected(TopologyHopDepthFailure.OVERFLOW)
@@ -54,7 +54,9 @@ internal interface TopologyTraversal {
 
 internal sealed interface TopologyGraphTraversal {
     data class Traversed(val result: TopologyTraversal) : TopologyGraphTraversal
+
     data object UnknownStart : TopologyGraphTraversal
+
     data object DepthOverflow : TopologyGraphTraversal
 }
 
@@ -65,7 +67,9 @@ internal interface TopologyPath {
 
 internal sealed interface TopologyReachability {
     data class Reachable(val path: TopologyPath) : TopologyReachability
+
     data object Unreachable : TopologyReachability
+
     data object UnknownEndpoint : TopologyReachability
 }
 
@@ -96,7 +100,9 @@ internal enum class TopologyQuotientLevel {
 
 internal sealed interface TopologyQuotientNode {
     data class File(val path: WorkspaceSourcePath) : TopologyQuotientNode
+
     data class Project(val project: GradleProjectIdentity) : TopologyQuotientNode
+
     data class SourceSet(
         val project: GradleProjectIdentity,
         val sourceSet: WorkspaceSourceSetName,

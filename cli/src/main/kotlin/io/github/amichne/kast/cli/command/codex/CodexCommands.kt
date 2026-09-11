@@ -14,38 +14,40 @@ internal fun codexCommandGroup(): LocalCommandFamily {
     return LocalCommandFamily(cli, listOf(cli, desktop))
 }
 
-private class CodexCommand : LocalKastCommand(
-    "codex",
-    CliProductCommand.CODEX_CLI,
-) {
+private class CodexCommand :
+    LocalKastCommand(
+        "codex",
+        CliProductCommand.CODEX_CLI,
+    ) {
     override val invokeWithoutSubcommand: Boolean = true
     override val printHelpOnEmptyArgs: Boolean = false
 
     override fun help(context: Context): String =
-        """Use the qualified Kast tool catalog from a Codex host.
+        """
+        Use the qualified Kast tool catalog from a Codex host.
 
-           Diagnostics: the active installation writes App Server output to
-           state/broker/<installation-id>/service.log and the complete resolved launch
-           settings to state/broker/<installation-id>/launch-environment. Set
-           KAST_DEBUG=1 to also stream bounded
-           launch diagnostics to the calling process on stderr.
-        """.trimIndent()
+                   Diagnostics: the active installation writes App Server output to
+                   state/broker/<installation-id>/service.log and the complete resolved launch
+                   settings to state/broker/<installation-id>/launch-environment. Set
+                   KAST_DEBUG=1 to also stream bounded
+                   launch diagnostics to the calling process on stderr.
+        """
+            .trimIndent()
 
-    override fun resolveAction() = if (currentContext.invokedSubcommand == null) {
-        CliActionResolution.Selected(CliAction.Local.CodexCli)
-    } else {
-        io.github.amichne.kast.cli.command.CliNodeResolution.NoAction
-    }
+    override fun resolveAction() =
+        if (currentContext.invokedSubcommand == null) {
+            CliActionResolution.Selected(CliAction.Local.CodexCli)
+        } else {
+            io.github.amichne.kast.cli.command.CliNodeResolution.NoAction
+        }
 }
 
-private data object CodexDesktopCommand : LocalKastCommand(
-    "desktop",
-    CliProductCommand.CODEX_DESKTOP,
-) {
-    override fun help(context: Context): String =
-        "Attach Codex Desktop to Kast's persistent App Server."
+private data object CodexDesktopCommand :
+    LocalKastCommand(
+        "desktop",
+        CliProductCommand.CODEX_DESKTOP,
+    ) {
+    override fun help(context: Context): String = "Attach Codex Desktop to Kast's persistent App Server."
 
-    override fun resolveAction(): CliActionResolution = CliActionResolution.Selected(
-        CliAction.Local.CodexDesktop,
-    )
+    override fun resolveAction(): CliActionResolution = CliActionResolution.Selected(CliAction.Local.CodexDesktop)
 }

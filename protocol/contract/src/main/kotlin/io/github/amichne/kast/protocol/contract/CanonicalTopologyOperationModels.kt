@@ -1,12 +1,10 @@
 package io.github.amichne.kast.protocol.contract
 
+import io.github.amichne.kast.kernel.EvidenceGeneration
 import kotlinx.serialization.Serializable
 
-import io.github.amichne.kast.kernel.EvidenceGeneration
-
 /** Explicit request for the one generation-bound repository-topology build. */
-@Serializable
-data object TopologyBuildRequest : OperationRequest
+@Serializable data object TopologyBuildRequest : OperationRequest
 
 enum class TopologyBuildStatus {
     PUBLISHED,
@@ -14,35 +12,31 @@ enum class TopologyBuildStatus {
 }
 
 enum class TopologyBuildDigestFailure {
-    INVALID_SHA256,
+    INVALID_SHA256
 }
 
 /** Exact lowercase SHA-256 identity of one successful topology generation. */
 @JvmInline
-value class TopologyBuildDigest private constructor(
-    val value: String,
-) {
+value class TopologyBuildDigest private constructor(val value: String) {
     companion object {
         /**
-         * Proof transition: `String -> Refinement<TopologyBuildDigest,
-         * TopologyBuildDigestFailure>`.
+         * Proof transition: `String -> Refinement<TopologyBuildDigest, TopologyBuildDigestFailure>`.
          *
-         * Establishes the exact 64-character lowercase SHA-256 form used by a successful public
-         * topology build. [TopologyBuildDigestFailure] is the closed expected failure. Raw digest
-         * text may enter only from topology composition or the generated wire boundary.
+         * Establishes the exact 64-character lowercase SHA-256 form used by a successful public topology build.
+         * [TopologyBuildDigestFailure] is the closed expected failure. Raw digest text may enter only from topology
+         * composition or the generated wire boundary.
          */
         fun parse(
-            raw: String,
+            raw: String
         ): io.github.amichne.kast.kernel.Refinement<
             TopologyBuildDigest,
             TopologyBuildDigestFailure,
-        > = if (raw.length == 64 && raw.all { it in '0'..'9' || it in 'a'..'f' }) {
-            io.github.amichne.kast.kernel.Refinement.Refined(TopologyBuildDigest(raw))
-        } else {
-            io.github.amichne.kast.kernel.Refinement.Rejected(
-                TopologyBuildDigestFailure.INVALID_SHA256,
-            )
-        }
+        > =
+            if (raw.length == 64 && raw.all { it in '0'..'9' || it in 'a'..'f' }) {
+                io.github.amichne.kast.kernel.Refinement.Refined(TopologyBuildDigest(raw))
+            } else {
+                io.github.amichne.kast.kernel.Refinement.Rejected(TopologyBuildDigestFailure.INVALID_SHA256)
+            }
     }
 }
 
@@ -55,7 +49,7 @@ data class TopologyBuildResult(
 
 /** Reserved progress state; synchronous canonical execution never returns qualified topology. */
 enum class TopologyBuildQualification : OperationQualification {
-    PROGRESS_UNAVAILABLE,
+    PROGRESS_UNAVAILABLE
 }
 
 enum class TopologySnapshotRejection {
@@ -109,25 +103,23 @@ enum class TopologyCoverageProjectionRejection {
 /** Closed public projection retaining the exact expected topology build failure. */
 sealed interface TopologyBuildRejection : OperationRejection {
     data object WorkspaceNotReady : TopologyBuildRejection
-    data class SnapshotUnavailable(
-        val failure: TopologySnapshotRejection,
-    ) : TopologyBuildRejection
-    data class EnumerationFailed(
-        val failure: TopologyEnumerationRejection,
-    ) : TopologyBuildRejection
+
+    data class SnapshotUnavailable(val failure: TopologySnapshotRejection) : TopologyBuildRejection
+
+    data class EnumerationFailed(val failure: TopologyEnumerationRejection) : TopologyBuildRejection
+
     data class ExtractionFailed(
         val file: ProtocolText,
         val failure: TopologyExtractionRejection,
     ) : TopologyBuildRejection
+
     data object ExtractionContractViolation : TopologyBuildRejection
-    data class CoverageIncomplete(
-        val failure: TopologyCoverageFailure,
-    ) : TopologyBuildRejection
-    data class CoverageProjectionFailed(
-        val failure: TopologyCoverageProjectionRejection,
-    ) : TopologyBuildRejection
+
+    data class CoverageIncomplete(val failure: TopologyCoverageFailure) : TopologyBuildRejection
+
+    data class CoverageProjectionFailed(val failure: TopologyCoverageProjectionRejection) : TopologyBuildRejection
+
     data object WorkspaceMoved : TopologyBuildRejection
-    data class PublicationFailed(
-        val failure: TopologyPublicationRejection,
-    ) : TopologyBuildRejection
+
+    data class PublicationFailed(val failure: TopologyPublicationRejection) : TopologyBuildRejection
 }

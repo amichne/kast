@@ -11,9 +11,7 @@ class IndexerBootstrapReporterTest {
     @Test
     fun `runtime observations publish monotonic starting progress and readiness`() {
         val observed = mutableListOf<InstalledIndexerBootstrapState>()
-        val reporter = InstalledIndexerBootstrapReporter(
-            InstalledIndexerBootstrapStateSink(observed::add),
-        )
+        val reporter = InstalledIndexerBootstrapReporter(InstalledIndexerBootstrapStateSink(observed::add))
 
         reporter.observe(InstalledRuntimeBootstrapPhase.GRADLE_JVM_SELECTION)
         reporter.observe(InstalledRuntimeBootstrapPhase.MODEL_INPUT_CAPTURE)
@@ -35,8 +33,7 @@ class IndexerBootstrapReporterTest {
                 InstalledIndexerBootstrapPhase.RUNTIME_ASSEMBLY,
                 InstalledIndexerBootstrapPhase.TRANSPORT_ACTIVATION,
             ),
-            observed.filterIsInstance<InstalledIndexerBootstrapState.Starting>()
-                .map { it.phase },
+            observed.filterIsInstance<InstalledIndexerBootstrapState.Starting>().map { it.phase },
         )
         assertInstanceOf(
             InstalledIndexerBootstrapState.Ready::class.java,
@@ -47,25 +44,23 @@ class IndexerBootstrapReporterTest {
     @Test
     fun `runtime rejection publishes the active phase with the exact finite failure set`() {
         val observed = mutableListOf<InstalledIndexerBootstrapState>()
-        val reporter = InstalledIndexerBootstrapReporter(
-            InstalledIndexerBootstrapStateSink(observed::add),
-        )
+        val reporter = InstalledIndexerBootstrapReporter(InstalledIndexerBootstrapStateSink(observed::add))
         reporter.observe(InstalledRuntimeBootstrapPhase.GRADLE_JVM_SELECTION)
         reporter.observe(InstalledRuntimeBootstrapPhase.MODEL_INPUT_CAPTURE)
         reporter.observe(InstalledRuntimeBootstrapPhase.PROJECT_IMPORT)
         reporter.observe(InstalledRuntimeBootstrapPhase.INDEXING)
-        val failures = setOf<InstalledKastRuntimeFailure>(
-            InstalledKastRuntimeFailure.WorkspaceRoot(
-                InstalledWorkspaceRootFailure.SETTINGS_MARKER_UNAVAILABLE,
-            ),
-        )
+        val failures =
+            setOf<InstalledKastRuntimeFailure>(
+                InstalledKastRuntimeFailure.WorkspaceRoot(InstalledWorkspaceRootFailure.SETTINGS_MARKER_UNAVAILABLE)
+            )
 
         reporter.rejectRuntime(failures)
 
-        val rejected = assertInstanceOf(
-            InstalledIndexerBootstrapState.Rejected::class.java,
-            observed.last(),
-        )
+        val rejected =
+            assertInstanceOf(
+                InstalledIndexerBootstrapState.Rejected::class.java,
+                observed.last(),
+            )
         assertEquals(InstalledIndexerBootstrapPhase.INDEXING, rejected.phase)
         assertEquals(
             InstalledIndexerBootstrapTerminalFailure.Runtime(failures),
@@ -76,21 +71,17 @@ class IndexerBootstrapReporterTest {
     @Test
     fun `empty runtime failure and early readiness fail closed without false state`() {
         val observed = mutableListOf<InstalledIndexerBootstrapState>()
-        val reporter = InstalledIndexerBootstrapReporter(
-            InstalledIndexerBootstrapStateSink(observed::add),
-        )
+        val reporter = InstalledIndexerBootstrapReporter(InstalledIndexerBootstrapStateSink(observed::add))
 
         assertEquals(
-            InstalledIndexerBootstrapReport.Rejected(
-                InstalledIndexerBootstrapReportFailure.EmptyRuntimeFailureSet,
-            ),
+            InstalledIndexerBootstrapReport.Rejected(InstalledIndexerBootstrapReportFailure.EmptyRuntimeFailureSet),
             reporter.rejectRuntime(emptySet()),
         )
         assertEquals(
             InstalledIndexerBootstrapReport.Rejected(
                 InstalledIndexerBootstrapReportFailure.Advance(
-                    InstalledIndexerBootstrapAdvanceFailure.PHASE_OUT_OF_ORDER,
-                ),
+                    InstalledIndexerBootstrapAdvanceFailure.PHASE_OUT_OF_ORDER
+                )
             ),
             reporter.ready(),
         )

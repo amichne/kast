@@ -24,8 +24,9 @@ enum class PublicQueryInputFailure {
     CANONICAL_SYNTAX_REJECTED,
 }
 
-/** Public syntax authority, independent of the hosting provider.
- * Validation establishes syntax, not workspace/read-authority/compiler authority.
+/**
+ * Public syntax authority, independent of the hosting provider. Validation establishes syntax, not
+ * workspace/read-authority/compiler authority.
  */
 object PublicQueryContract {
     val parameters: JsonObject by lazy { resource("query.parameters.json") }
@@ -57,13 +58,16 @@ object PublicQueryContract {
 
     private fun resource(name: String): JsonObject =
         requireNotNull(javaClass.getResourceAsStream(name)) {
-            "Missing packaged public query schema: $name"
-        }.bufferedReader(Charsets.UTF_8).use { Json.parseToJsonElement(it.readText()).jsonObject }
+                "Missing packaged public query schema: $name"
+            }
+            .bufferedReader(Charsets.UTF_8)
+            .use { Json.parseToJsonElement(it.readText()).jsonObject }
 }
 
 /** Syntax proof, not a compiler selector or a workspace capability. No unchecked constructor or copy. */
 @kotlinx.serialization.Serializable(with = PublicQueryRequestSerializer::class)
-class AdmittedPublicQuery private constructor(
+class AdmittedPublicQuery
+private constructor(
     val canonicalRequest: QueryRunRequest,
     internal val syntax: PublicQueryDocument,
 ) : io.github.amichne.kast.protocol.contract.OperationRequest {
@@ -73,9 +77,11 @@ class AdmittedPublicQuery private constructor(
                 return Refinement.Rejected(PublicQueryInputFailure.SCHEMA_MISMATCH)
             }
             return try {
-                val syntax = PublicQueryContract.json.decodeFromJsonElement(
-                    PublicQueryDocument.serializer(), raw.element,
-                )
+                val syntax =
+                    PublicQueryContract.json.decodeFromJsonElement(
+                        PublicQueryDocument.serializer(),
+                        raw.element,
+                    )
                 val request = syntax.toCanonicalQuery()
                 // Retain the canonical syntax proof (including the engine's UTF-16 name bound).
                 // Workspace, read authority and compiler reference admission still belong to execution.
@@ -93,8 +99,7 @@ object PublicQueryRequestSerializer : KSerializer<AdmittedPublicQuery> {
     override val descriptor: SerialDescriptor = PublicQueryDocument.serializer().descriptor
 
     override fun deserialize(decoder: Decoder): AdmittedPublicQuery {
-        val input = decoder as? JsonDecoder
-            ?: throw SerializationException("Public query requests require JSON")
+        val input = decoder as? JsonDecoder ?: throw SerializationException("Public query requests require JSON")
         return when (val admission = PublicQueryContract.admit(input.decodeJsonElement())) {
             is Refinement.Refined -> admission.value
             is Refinement.Rejected -> throw SerializationException("Public query rejected: ${admission.failure}")
@@ -102,9 +107,7 @@ object PublicQueryRequestSerializer : KSerializer<AdmittedPublicQuery> {
     }
 
     override fun serialize(encoder: Encoder, value: AdmittedPublicQuery) {
-        val output = encoder as? JsonEncoder
-            ?: throw SerializationException("Public query requests require JSON")
+        val output = encoder as? JsonEncoder ?: throw SerializationException("Public query requests require JSON")
         output.encodeJsonElement(PublicQueryContract.encode(value))
     }
 }
-

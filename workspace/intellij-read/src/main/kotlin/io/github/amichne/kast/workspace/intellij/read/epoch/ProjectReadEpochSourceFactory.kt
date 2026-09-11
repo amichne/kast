@@ -12,12 +12,11 @@ internal sealed interface ExistingProjectReadEpochSourceInstallationFailure {
 
 internal fun interface ExistingProjectReadEpochSourceFactory {
     /**
-     * Proof transition: `(Project, CanonicalWorkspaceRoot) ->
-     * Refinement<ProjectReadEpoch.Source<*>,
+     * Proof transition: `(Project, CanonicalWorkspaceRoot) -> Refinement<ProjectReadEpoch.Source<*>,
      * ExistingProjectReadEpochSourceInstallationFailure>`.
      *
-     * Establishes one source identity retained for the admitted Project/runtime or closes a
-     * disposal race. Raw Project and listener construction remain in `:workspace:intellij-read`.
+     * Establishes one source identity retained for the admitted Project/runtime or closes a disposal race. Raw Project
+     * and listener construction remain in `:workspace:intellij-read`.
      */
     fun create(
         project: Project,

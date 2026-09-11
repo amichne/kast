@@ -3,11 +3,11 @@
 package io.github.amichne.kast.protocol.contract
 
 import io.github.amichne.kast.kernel.Refinement
+import java.nio.file.InvalidPathException
+import java.nio.file.Path
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
-import java.nio.file.InvalidPathException
-import java.nio.file.Path
 
 /** Closed public mutation intent; no generic edit variant exists. */
 @Serializable
@@ -42,10 +42,7 @@ sealed interface ChangeIntentDocument {
     ) : ChangeIntentDocument
 }
 
-@Serializable
-data class ChangePlanRequest(
-    val intent: ChangeIntentDocument,
-) : OperationRequest
+@Serializable data class ChangePlanRequest(val intent: ChangeIntentDocument) : OperationRequest
 
 enum class ChangeFilePreviewKind {
     ADD,
@@ -70,11 +67,12 @@ value class ChangePreviewPath private constructor(val value: String) {
             if (raw.any(Char::isISOControl)) {
                 return Refinement.Rejected(ChangePreviewPathFailure.CONTROL_CHARACTER)
             }
-            val path = try {
-                Path.of(raw)
-            } catch (_: InvalidPathException) {
-                return Refinement.Rejected(ChangePreviewPathFailure.INVALID)
-            }
+            val path =
+                try {
+                    Path.of(raw)
+                } catch (_: InvalidPathException) {
+                    return Refinement.Rejected(ChangePreviewPathFailure.INVALID)
+                }
             if (path.isAbsolute) return Refinement.Rejected(ChangePreviewPathFailure.ABSOLUTE)
             if (path.any { segment -> segment.toString() == ".." }) {
                 return Refinement.Rejected(ChangePreviewPathFailure.ESCAPES_WORKSPACE)
@@ -98,15 +96,16 @@ value class ChangePreviewDiff private constructor(val value: String) {
     companion object {
         private const val MAXIMUM_UTF8_BYTES = 512 * 1024
 
-        fun parse(raw: String): Refinement<ChangePreviewDiff, ChangePreviewDiffFailure> = when {
-            raw.isBlank() -> Refinement.Rejected(ChangePreviewDiffFailure.BLANK)
-            raw.toByteArray(Charsets.UTF_8).size > MAXIMUM_UTF8_BYTES ->
-                Refinement.Rejected(ChangePreviewDiffFailure.TOO_LARGE)
-            raw.any { character ->
-                character.isISOControl() && character !in setOf('\n', '\t')
-            } -> Refinement.Rejected(ChangePreviewDiffFailure.CONTROL_CHARACTER)
-            else -> Refinement.Refined(ChangePreviewDiff(raw))
-        }
+        fun parse(raw: String): Refinement<ChangePreviewDiff, ChangePreviewDiffFailure> =
+            when {
+                raw.isBlank() -> Refinement.Rejected(ChangePreviewDiffFailure.BLANK)
+                raw.toByteArray(Charsets.UTF_8).size > MAXIMUM_UTF8_BYTES ->
+                    Refinement.Rejected(ChangePreviewDiffFailure.TOO_LARGE)
+                raw.any { character ->
+                    character.isISOControl() && character !in setOf('\n', '\t')
+                } -> Refinement.Rejected(ChangePreviewDiffFailure.CONTROL_CHARACTER)
+                else -> Refinement.Refined(ChangePreviewDiff(raw))
+            }
     }
 }
 
@@ -126,22 +125,20 @@ enum class ChangeFilePreviewSetFailure {
 class ChangeFilePreviewSet private constructor(entries: List<ChangeFilePreview>) {
     val entries: List<ChangeFilePreview> = entries.toList()
 
-    override fun equals(other: Any?): Boolean =
-        other is ChangeFilePreviewSet && entries == other.entries
+    override fun equals(other: Any?): Boolean = other is ChangeFilePreviewSet && entries == other.entries
 
     override fun hashCode(): Int = entries.hashCode()
 
     override fun toString(): String = "ChangeFilePreviewSet(entries=$entries)"
 
     companion object {
-        fun admit(
-            entries: List<ChangeFilePreview>,
-        ): Refinement<ChangeFilePreviewSet, ChangeFilePreviewSetFailure> = when {
-            entries.isEmpty() -> Refinement.Rejected(ChangeFilePreviewSetFailure.EMPTY)
-            entries.map { it.path }.distinct().size != entries.size ->
-                Refinement.Rejected(ChangeFilePreviewSetFailure.DUPLICATE_PATH)
-            else -> Refinement.Refined(ChangeFilePreviewSet(entries))
-        }
+        fun admit(entries: List<ChangeFilePreview>): Refinement<ChangeFilePreviewSet, ChangeFilePreviewSetFailure> =
+            when {
+                entries.isEmpty() -> Refinement.Rejected(ChangeFilePreviewSetFailure.EMPTY)
+                entries.map { it.path }.distinct().size != entries.size ->
+                    Refinement.Rejected(ChangeFilePreviewSetFailure.DUPLICATE_PATH)
+                else -> Refinement.Refined(ChangeFilePreviewSet(entries))
+            }
     }
 }
 
@@ -151,7 +148,7 @@ data class ChangePlanResult(
 ) : OperationResult
 
 enum class ChangePlanQualification : OperationQualification {
-    OPTIONAL_EVIDENCE_INCOMPLETE,
+    OPTIONAL_EVIDENCE_INCOMPLETE
 }
 
 enum class ChangePlanRejection : OperationRejection {
@@ -166,10 +163,7 @@ enum class ChangePlanRejection : OperationRejection {
     INTENT_REJECTED,
 }
 
-@Serializable
-data class ChangeApplyRequest(
-    val planIdentity: ProtocolText,
-) : OperationRequest
+@Serializable data class ChangeApplyRequest(val planIdentity: ProtocolText) : OperationRequest
 
 data class ChangeApplyResult(
     val receiptIdentity: ProtocolText,
@@ -177,7 +171,7 @@ data class ChangeApplyResult(
 ) : OperationResult
 
 enum class ChangeApplyQualification : OperationQualification {
-    RECOVERY_REQUIRED,
+    RECOVERY_REQUIRED
 }
 
 enum class ChangeApplyRejection : OperationRejection {
@@ -194,14 +188,9 @@ enum class ChangeApplyRejection : OperationRejection {
     SEMANTIC_DELTA_REJECTED,
 }
 
-@Serializable
-data class ChangeRecoverRequest(
-    val planIdentity: ProtocolText,
-) : OperationRequest
+@Serializable data class ChangeRecoverRequest(val planIdentity: ProtocolText) : OperationRequest
 
-data class ChangeRecoverResult(
-    val state: ChangeRecoveryDocumentState,
-) : OperationResult
+data class ChangeRecoverResult(val state: ChangeRecoveryDocumentState) : OperationResult
 
 enum class ChangeRecoveryDocumentState {
     PRIOR_STATE,
@@ -210,7 +199,7 @@ enum class ChangeRecoveryDocumentState {
 }
 
 enum class ChangeRecoverQualification : OperationQualification {
-    MANUAL_RECOVERY_REQUIRED,
+    MANUAL_RECOVERY_REQUIRED
 }
 
 enum class ChangeRecoverRejection : OperationRejection {

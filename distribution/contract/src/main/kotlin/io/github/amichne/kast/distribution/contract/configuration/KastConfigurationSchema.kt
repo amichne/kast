@@ -14,9 +14,16 @@ data class ConfigurationSchemaDocument(
 )
 
 object KastConfigurationSchema {
-    val document: ConfigurationSchemaDocument get() = ConfigurationSchemaDocument(parameters = KastConfigurationCatalogue.declarations)
-    val encoded: String get() = json.encodeToString(ConfigurationSchemaDocument.serializer(), document) + "\n"
-    private val json = Json { encodeDefaults = true; explicitNulls = true }
+    val document: ConfigurationSchemaDocument
+        get() = ConfigurationSchemaDocument(parameters = KastConfigurationCatalogue.declarations)
+
+    val encoded: String
+        get() = json.encodeToString(ConfigurationSchemaDocument.serializer(), document) + "\n"
+
+    private val json = Json {
+        encodeDefaults = true
+        explicitNulls = true
+    }
 
     @JvmStatic
     fun main(arguments: Array<String>) {

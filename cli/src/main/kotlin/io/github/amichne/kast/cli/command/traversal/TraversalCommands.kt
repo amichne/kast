@@ -13,15 +13,16 @@ internal fun traversalCommandGroup(
     preparers: CanonicalCliRequestPreparers,
     requestInput: CliRequestDocumentInput,
 ): CommandFamily {
-    val run = SemanticKastCommand(
-        name = "run",
-        operation = CanonicalOperation.TRAVERSAL_RUN,
-        schemaUsage = "traversal run < request.json",
-        description = "Run one traversal from a canonical JSON request on standard input.",
-        serializer = TraversalRunRequest.serializer(),
-        requestInput = requestInput,
-        preparer = preparers.traversalRun,
-    )
+    val run =
+        SemanticKastCommand(
+            name = "run",
+            operation = CanonicalOperation.TRAVERSAL_RUN,
+            schemaUsage = "traversal run < request.json",
+            description = "Run one traversal from a canonical JSON request on standard input.",
+            serializer = TraversalRunRequest.serializer(),
+            requestInput = requestInput,
+            preparer = preparers.traversalRun,
+        )
     return CommandFamily(
         KastCommandGroup("traversal", "Traverse exact semantic relations.").subcommands(run),
         listOf(run),

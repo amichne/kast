@@ -1,7 +1,5 @@
 package io.github.amichne.kast.symbol.intellij
 
-import io.github.amichne.kast.kernel.ReadLimits
-import io.github.amichne.kast.kernel.ReadLimitParameter
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
@@ -13,6 +11,8 @@ import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.PsiSearchHelper
 import com.intellij.psi.search.UsageSearchContext
 import com.intellij.psi.util.PsiUtilCore
+import io.github.amichne.kast.kernel.ReadLimitParameter
+import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBatch
@@ -27,9 +27,9 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTimings
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryWorkCount
+import java.nio.file.Path
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
-import java.nio.file.Path
 
 internal class IntellijSupplementalDiscoveryQuery(
     private val project: Project,
@@ -38,12 +38,11 @@ internal class IntellijSupplementalDiscoveryQuery(
     private val limits: ReadLimits = ReadLimits.Default,
 ) {
     /**
-     * Proof transition: `CompiledIntellijSearchScope + SymbolDiscoveryRequest ->
-     * IntellijNativeDiscoveryExecution`.
+     * Proof transition: `CompiledIntellijSearchScope + SymbolDiscoveryRequest -> IntellijNativeDiscoveryExecution`.
      *
-     * Establishes bounded location or indexed-text evidence under one compiled
-     * scope and semantic authority. Expected partial coverage remains a closed discovery
-     * qualification. Live PSI, VFS, and search helpers remain request-local.
+     * Establishes bounded location or indexed-text evidence under one compiled scope and semantic authority. Expected
+     * partial coverage remains a closed discovery qualification. Live PSI, VFS, and search helpers remain
+     * request-local.
      */
     fun discover(
         compiledScope: CompiledIntellijSearchScope,
@@ -52,17 +51,15 @@ internal class IntellijSupplementalDiscoveryQuery(
         val collector = SupplementalCollector(request, environmentState, clock)
         when (val target = request.target) {
             is SymbolDiscoveryTarget.All,
-            is SymbolDiscoveryTarget.Name,
-                ->
-                return IntellijNativeDiscoveryExecution.Rejected(
-                    IntellijNativeDiscoveryRejection.INTERNAL_INVARIANT,
-                )
+            is SymbolDiscoveryTarget.Name ->
+                return IntellijNativeDiscoveryExecution.Rejected(IntellijNativeDiscoveryRejection.INTERNAL_INVARIANT)
             is SymbolDiscoveryTarget.Location -> {
-                val file = project.findPsiFile(
-                    request.scope.lease.workspaceRoot.value,
-                    target.file.value,
-                    compiledScope.nativeScope,
-                ) ?: return collector.unsupported()
+                val file =
+                    project.findPsiFile(
+                        request.scope.lease.workspaceRoot.value,
+                        target.file.value,
+                        compiledScope.nativeScope,
+                    ) ?: return collector.unsupported()
                 file.declarationAt(target.offset.value)?.let { declaration ->
                     collector.accept(declaration.candidate(request))
                 }
@@ -74,13 +71,14 @@ internal class IntellijSupplementalDiscoveryQuery(
                     observe = collector::observe,
                     qualify = collector::qualify,
                     process = { accept ->
-                        PsiSearchHelper.getInstance(project).processElementsWithWord(
-                            { element, offset -> accept(element, offset) },
-                            compiledScope.nativeScope,
-                            target.pattern.value,
-                            UsageSearchContext.ANY,
-                            true,
-                        )
+                        PsiSearchHelper.getInstance(project)
+                            .processElementsWithWord(
+                                { element, offset -> accept(element, offset) },
+                                compiledScope.nativeScope,
+                                target.pattern.value,
+                                UsageSearchContext.ANY,
+                                true,
+                            )
                     },
                     project = { element, offset -> collector.acceptText(element, offset, target.pattern.value) },
                 )
@@ -117,7 +115,10 @@ internal fun collectTextDiscoveryOccurrences(
     var stopped = false
     val exhausted = process { element, offset ->
         when {
-            !observe() -> { stopped = true; false }
+            !observe() -> {
+                stopped = true
+                false
+            }
             pending.size.toLong() >= nativeLimit -> {
                 stopped = true
                 qualify(SymbolDiscoveryQualification.WORK_LIMIT_REACHED)
@@ -147,13 +148,14 @@ private class SupplementalCollector(
     private var workUnits = 0L
     private var halted = false
 
-    fun accept(candidate: Refinement<SymbolDiscoveryCandidate, *>): Boolean = when (candidate) {
-        is Refinement.Refined -> accept(candidate.value)
-        is Refinement.Rejected -> {
-            qualifications += SymbolDiscoveryQualification.UNSUPPORTED_ITEM
-            true
+    fun accept(candidate: Refinement<SymbolDiscoveryCandidate, *>): Boolean =
+        when (candidate) {
+            is Refinement.Refined -> accept(candidate.value)
+            is Refinement.Rejected -> {
+                qualifications += SymbolDiscoveryQualification.UNSUPPORTED_ITEM
+                true
+            }
         }
-    }
 
     fun acceptText(
         element: PsiElement,
@@ -172,7 +174,7 @@ private class SupplementalCollector(
                 file.url,
                 start,
                 start + query.length,
-            ),
+            )
         )
     }
 
@@ -233,47 +235,47 @@ private class SupplementalCollector(
 
     fun finish(): IntellijNativeDiscoveryExecution {
         val ordered = candidates.sorted()
-        val batch = when (
-            val created = SymbolDiscoveryBatch.create(
-                request,
-                ordered,
-                encodedBytes.byteCount(),
-                workUnits.workCount(),
-                SymbolDiscoveryTimings(
-                    (clock.now() - startedAt).coerceAtLeast(0L).elapsedCount(),
-                    0L.elapsedCount(),
-                ),
-            )
-        ) {
-            is Refinement.Refined -> created.value
-            is Refinement.Rejected -> return IntellijNativeDiscoveryExecution.Rejected(
-                IntellijNativeDiscoveryRejection.INTERNAL_INVARIANT,
-            )
-        }
-        val outcome = if (qualifications.isEmpty()) {
-            SymbolDiscoveryOutcome.Complete(batch)
-        } else {
-            val admitted = SymbolDiscoveryQualifications.from(qualifications)
-            val values = (admitted as? Refinement.Refined)?.value
-                ?: return IntellijNativeDiscoveryExecution.Rejected(
-                    IntellijNativeDiscoveryRejection.INTERNAL_INVARIANT,
-                )
-            SymbolDiscoveryOutcome.Qualified(batch, values)
-        }
+        val batch =
+            when (
+                val created =
+                    SymbolDiscoveryBatch.create(
+                        request,
+                        ordered,
+                        encodedBytes.byteCount(),
+                        workUnits.workCount(),
+                        SymbolDiscoveryTimings(
+                            (clock.now() - startedAt).coerceAtLeast(0L).elapsedCount(),
+                            0L.elapsedCount(),
+                        ),
+                    )
+            ) {
+                is Refinement.Refined -> created.value
+                is Refinement.Rejected ->
+                    return IntellijNativeDiscoveryExecution.Rejected(
+                        IntellijNativeDiscoveryRejection.INTERNAL_INVARIANT
+                    )
+            }
+        val outcome =
+            if (qualifications.isEmpty()) {
+                SymbolDiscoveryOutcome.Complete(batch)
+            } else {
+                val admitted = SymbolDiscoveryQualifications.from(qualifications)
+                val values =
+                    (admitted as? Refinement.Refined)?.value
+                        ?: return IntellijNativeDiscoveryExecution.Rejected(
+                            IntellijNativeDiscoveryRejection.INTERNAL_INVARIANT
+                        )
+                SymbolDiscoveryOutcome.Qualified(batch, values)
+            }
         return IntellijNativeDiscoveryExecution.Produced(outcome)
     }
 }
 
 private fun PsiFile.declarationAt(offset: Int): KtNamedDeclaration? =
-    generateSequence(findElementAt(offset)) { it.parent }
-        .filterIsInstance<KtNamedDeclaration>()
-        .firstOrNull()
+    generateSequence(findElementAt(offset)) { it.parent }.filterIsInstance<KtNamedDeclaration>().firstOrNull()
 
-private fun KtNamedDeclaration.candidate(
-    request: SymbolDiscoveryRequest,
-): Refinement<SymbolDiscoveryCandidate, *> {
-    val file = containingFile?.virtualFile
-        ?: return Refinement.Rejected(Unit)
+private fun KtNamedDeclaration.candidate(request: SymbolDiscoveryRequest): Refinement<SymbolDiscoveryCandidate, *> {
+    val file = containingFile?.virtualFile ?: return Refinement.Rejected(Unit)
     return SymbolDiscoveryCandidate.fromBoundary(
         discoveryKind(),
         name.orEmpty(),
@@ -284,10 +286,11 @@ private fun KtNamedDeclaration.candidate(
     )
 }
 
-private fun KtNamedDeclaration.discoveryKind(): SymbolDiscoveryKind = when (this) {
-    is KtClassOrObject -> SymbolDiscoveryKind.CLASS
-    else -> SymbolDiscoveryKind.SYMBOL
-}
+private fun KtNamedDeclaration.discoveryKind(): SymbolDiscoveryKind =
+    when (this) {
+        is KtClassOrObject -> SymbolDiscoveryKind.CLASS
+        else -> SymbolDiscoveryKind.SYMBOL
+    }
 
 private fun VirtualFile.nioPath(): Path? = runCatching { Path.of(path) }.getOrNull()
 

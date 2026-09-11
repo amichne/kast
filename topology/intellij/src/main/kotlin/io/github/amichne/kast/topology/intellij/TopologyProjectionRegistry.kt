@@ -13,7 +13,8 @@ import io.github.amichne.kast.topology.contract.TopologyWorkspaceIdentity
 import java.nio.file.Path
 
 /** Exact content-identified candidate generation authorized to share detached projections. */
-internal data class TopologyProjectionRegistryKey internal constructor(
+internal data class TopologyProjectionRegistryKey
+internal constructor(
     val workspace: TopologyWorkspaceIdentity,
     val files: List<TopologySourceFile>,
 ) {
@@ -21,10 +22,10 @@ internal data class TopologyProjectionRegistryKey internal constructor(
         /**
          * Proof transition: `TopologyCandidateSet -> TopologyProjectionRegistryKey`.
          *
-         * Preserves the exact workspace identity, canonical file ownership, and content hashes
-         * that authorize reuse of detached compiler projections. Separately enumerated but equal
-         * evidence therefore resolves to the same source-generation key; changed evidence cannot.
-         * Raw candidate extraction remains at the admitted-root enumerator boundary.
+         * Preserves the exact workspace identity, canonical file ownership, and content hashes that authorize reuse of
+         * detached compiler projections. Separately enumerated but equal evidence therefore resolves to the same
+         * source-generation key; changed evidence cannot. Raw candidate extraction remains at the admitted-root
+         * enumerator boundary.
          */
         fun from(candidates: TopologyCandidateSet): TopologyProjectionRegistryKey =
             TopologyProjectionRegistryKey(candidates.workspace, candidates.files)
@@ -32,7 +33,8 @@ internal data class TopologyProjectionRegistryKey internal constructor(
 }
 
 /** Detached compiler symbols projected once for one exact candidate generation. */
-internal class TopologyProjectionRegistry private constructor(
+internal class TopologyProjectionRegistry
+private constructor(
     val key: TopologyProjectionRegistryKey,
     private val symbolsByLocation: Map<TopologyDeclarationLocation, TopologySymbol>,
     private val filesByAbsolutePath: Map<Path, TopologySourceFile>,
@@ -40,39 +42,38 @@ internal class TopologyProjectionRegistry private constructor(
     /**
      * Proof transition: `(TopologySourceFile, Int, Int) -> TopologyRegistryCandidateLookup`.
      *
-     * Found provides an unproven registry candidate for the exact admitted declaration range;
-     * Unavailable closes unsupported declarations and Rejected closes an invalid range.
-     * Raw PSI offsets may enter only from the request-local IntelliJ extraction boundary.
+     * Found provides an unproven registry candidate for the exact admitted declaration range; Unavailable closes
+     * unsupported declarations and Rejected closes an invalid range. Raw PSI offsets may enter only from the
+     * request-local IntelliJ extraction boundary.
      */
     fun candidateAt(
         file: TopologySourceFile,
         rawStartInclusive: Int,
         rawEndExclusive: Int,
     ): TopologyRegistryCandidateLookup {
-        val range = when (
-            val parsed = ExactDeclarationTextRange.parse(rawStartInclusive, rawEndExclusive)
-        ) {
-            is Refinement.Refined -> parsed.value
-            is Refinement.Rejected -> return TopologyRegistryCandidateLookup.Rejected
-        }
+        val range =
+            when (val parsed = ExactDeclarationTextRange.parse(rawStartInclusive, rawEndExclusive)) {
+                is Refinement.Refined -> parsed.value
+                is Refinement.Rejected -> return TopologyRegistryCandidateLookup.Rejected
+            }
         return Candidate.at(this, file, range)
     }
 
     /**
      * Proof transition: `Path -> TopologyRegistryFileLookup`.
      *
-     * Found establishes the exact admitted content-identified file for one absolute PSI path;
-     * Unavailable closes paths outside this candidate generation. Raw PSI paths may enter only
-     * from the request-local IntelliJ extraction boundary.
+     * Found establishes the exact admitted content-identified file for one absolute PSI path; Unavailable closes paths
+     * outside this candidate generation. Raw PSI paths may enter only from the request-local IntelliJ extraction
+     * boundary.
      */
     fun fileAt(path: Path): TopologyRegistryFileLookup {
         val file = filesByAbsolutePath[path.toAbsolutePath().normalize()]
-        return if (file == null) TopologyRegistryFileLookup.Unavailable
-        else TopologyRegistryFileLookup.Found(file)
+        return if (file == null) TopologyRegistryFileLookup.Unavailable else TopologyRegistryFileLookup.Found(file)
     }
 
     /** A registry-owned location to reload, not proof that a live target denotes it. */
-    class Candidate private constructor(
+    class Candidate
+    private constructor(
         val key: TopologyProjectionRegistryKey,
         val symbol: TopologySymbol,
     ) {
@@ -82,8 +83,9 @@ internal class TopologyProjectionRegistry private constructor(
                 file: TopologySourceFile,
                 range: ExactDeclarationTextRange,
             ): TopologyRegistryCandidateLookup {
-                val symbol = registry.symbolsByLocation[TopologyDeclarationLocation(file, range)]
-                    ?: return TopologyRegistryCandidateLookup.Unavailable
+                val symbol =
+                    registry.symbolsByLocation[TopologyDeclarationLocation(file, range)]
+                        ?: return TopologyRegistryCandidateLookup.Unavailable
                 return TopologyRegistryCandidateLookup.Found(Candidate(registry.key, symbol))
             }
         }
@@ -94,34 +96,29 @@ internal class TopologyProjectionRegistry private constructor(
          * Proof transition: `(TopologyProjectionRegistryKey, List<TopologySymbol>) ->
          * Refinement<TopologyProjectionRegistry, TopologyProjectionRegistryFailure>`.
          *
-         * Establishes exact declaration-location and absolute-file lookup capabilities for one
-         * candidate-set identity without overwriting symbols at a duplicate declaration location.
-         * [TopologyProjectionRegistryFailure] is the closed expected failure. Raw path extraction
-         * remains inside this IntelliJ adapter.
+         * Establishes exact declaration-location and absolute-file lookup capabilities for one candidate-set identity
+         * without overwriting symbols at a duplicate declaration location. [TopologyProjectionRegistryFailure] is the
+         * closed expected failure. Raw path extraction remains inside this IntelliJ adapter.
          */
         fun from(
             key: TopologyProjectionRegistryKey,
             symbols: List<TopologySymbol>,
         ): Refinement<TopologyProjectionRegistry, TopologyProjectionRegistryFailure> {
             if (symbols.any { it.file !in key.files }) {
-                return Refinement.Rejected(
-                    TopologyProjectionRegistryFailure.SYMBOL_OUTSIDE_CANDIDATE_SET,
-                )
+                return Refinement.Rejected(TopologyProjectionRegistryFailure.SYMBOL_OUTSIDE_CANDIDATE_SET)
             }
             val symbolGroups = symbols.groupBy { symbol ->
                 TopologyDeclarationLocation(symbol.file, symbol.evidence.range)
             }
             if (symbolGroups.any { it.value.size > 1 }) {
-                return Refinement.Rejected(
-                    TopologyProjectionRegistryFailure.DUPLICATE_DECLARATION_LOCATION,
-                )
+                return Refinement.Rejected(TopologyProjectionRegistryFailure.DUPLICATE_DECLARATION_LOCATION)
             }
             return Refinement.Refined(
                 TopologyProjectionRegistry(
                     key,
                     symbolGroups.mapValues { it.value.single() },
                     filesByAbsolutePath(key),
-                ),
+                )
             )
         }
 
@@ -137,12 +134,15 @@ internal enum class TopologyProjectionRegistryFailure {
 
 internal sealed interface TopologyRegistryCandidateLookup {
     data class Found(val candidate: TopologyProjectionRegistry.Candidate) : TopologyRegistryCandidateLookup
+
     data object Unavailable : TopologyRegistryCandidateLookup
+
     data object Rejected : TopologyRegistryCandidateLookup
 }
 
 internal sealed interface TopologyRegistryFileLookup {
     data class Found(val file: TopologySourceFile) : TopologyRegistryFileLookup
+
     data object Unavailable : TopologyRegistryFileLookup
 }
 
@@ -156,21 +156,21 @@ internal data class TopologyIdentitySource(
 /** Closed result of independently binding one live K2 target to a registry declaration. */
 internal sealed interface TopologyIdentityResolution {
     data class Matched(val binding: ProvenTopologyBinding) : TopologyIdentityResolution
-    data class Mismatched(
-        val evidence: TopologyIdentityMismatchEvidence,
-    ) : TopologyIdentityResolution
+
+    data class Mismatched(val evidence: TopologyIdentityMismatchEvidence) : TopologyIdentityResolution
+
     data class LoadFailed(
         val file: TopologySourceFile,
         val failure: TopologyFileExtractionFailure,
     ) : TopologyIdentityResolution
+
     data object Unsupported : TopologyIdentityResolution
+
     data object Rejected : TopologyIdentityResolution
 }
 
 internal sealed interface TopologyProjectionRegistryResolution {
-    data class Ready(
-        val registry: TopologyProjectionRegistry,
-    ) : TopologyProjectionRegistryResolution
+    data class Ready(val registry: TopologyProjectionRegistry) : TopologyProjectionRegistryResolution
 
     data class Rejected(
         val file: TopologySourceFile,
@@ -183,12 +183,11 @@ internal class TopologyProjectionRegistryCache {
     private var state: TopologyProjectionRegistryState = TopologyProjectionRegistryState.Empty
 
     /**
-     * Proof transition: `(TopologyProjectionRegistryKey, registry builder) ->
-     * TopologyProjectionRegistryResolution`.
+     * Proof transition: `(TopologyProjectionRegistryKey, registry builder) -> TopologyProjectionRegistryResolution`.
      *
-     * Ready establishes that one exact candidate generation shares one detached registry.
-     * Rejected preserves the exact failing candidate and closed [TopologyFileExtractionFailure]. A
-     * changed key cannot consume prior evidence, and no live Project, PSI, or K2 value is retained.
+     * Ready establishes that one exact candidate generation shares one detached registry. Rejected preserves the exact
+     * failing candidate and closed [TopologyFileExtractionFailure]. A changed key cannot consume prior evidence, and no
+     * live Project, PSI, or K2 value is retained.
      */
     @Synchronized
     fun resolve(
@@ -196,9 +195,10 @@ internal class TopologyProjectionRegistryCache {
         build: () -> TopologyProjectionRegistryResolution,
     ): TopologyProjectionRegistryResolution {
         when (val current = state) {
-            is TopologyProjectionRegistryState.Ready -> if (current.registry.key == key) {
-                return TopologyProjectionRegistryResolution.Ready(current.registry)
-            }
+            is TopologyProjectionRegistryState.Ready ->
+                if (current.registry.key == key) {
+                    return TopologyProjectionRegistryResolution.Ready(current.registry)
+                }
             TopologyProjectionRegistryState.Empty -> Unit
         }
         return when (val built = build()) {
@@ -214,8 +214,8 @@ internal class TopologyProjectionRegistryCache {
 /**
  * Retains detached per-file outcomes for the last exact content generation.
  *
- * Native binding failures are stable evidence for that generation. VFS mismatch and document
- * readiness failures remain outside the cache so a refresh or document recovery can be observed.
+ * Native binding failures are stable evidence for that generation. VFS mismatch and document readiness failures remain
+ * outside the cache so a refresh or document recovery can be observed.
  */
 internal class TopologyReadEpochCache {
     private var state: TopologyReadEpochState = TopologyReadEpochState.Empty
@@ -226,23 +226,28 @@ internal class TopologyReadEpochCache {
         file: TopologySourceFile,
         build: () -> TopologyFileExtraction,
     ): TopologyReadEpochResolution {
-        val epoch = when (val current = state) {
-            is TopologyReadEpochState.Active -> if (current.key == key) {
-                current
-            } else {
-                TopologyReadEpochState.Active(key).also { state = it }
+        val epoch =
+            when (val current = state) {
+                is TopologyReadEpochState.Active ->
+                    if (current.key == key) {
+                        current
+                    } else {
+                        TopologyReadEpochState.Active(key).also { state = it }
+                    }
+                TopologyReadEpochState.Empty -> TopologyReadEpochState.Active(key).also { state = it }
             }
-            TopologyReadEpochState.Empty -> TopologyReadEpochState.Active(key).also { state = it }
+        epoch.outcomes[file]?.let {
+            return TopologyReadEpochResolution.Reused(it)
         }
-        epoch.outcomes[file]?.let { return TopologyReadEpochResolution.Reused(it) }
         val outcome = build()
         if (
             outcome !is TopologyFileExtraction.Failed ||
-            outcome.failure !in setOf(
-                TopologyFileExtractionFailure.VFS_CONTENT_MISMATCH,
-                TopologyFileExtractionFailure.DOCUMENT_DIRTY,
-                TopologyFileExtractionFailure.PSI_DOCUMENT_UNCOMMITTED,
-            )
+                outcome.failure !in
+                    setOf(
+                        TopologyFileExtractionFailure.VFS_CONTENT_MISMATCH,
+                        TopologyFileExtractionFailure.DOCUMENT_DIRTY,
+                        TopologyFileExtractionFailure.PSI_DOCUMENT_UNCOMMITTED,
+                    )
         ) {
             epoch.outcomes[file] = outcome
         }
@@ -254,13 +259,9 @@ internal class TopologyReadEpochCache {
 internal sealed interface TopologyReadEpochResolution {
     val extraction: TopologyFileExtraction
 
-    data class Computed(
-        override val extraction: TopologyFileExtraction,
-    ) : TopologyReadEpochResolution
+    data class Computed(override val extraction: TopologyFileExtraction) : TopologyReadEpochResolution
 
-    data class Reused(
-        override val extraction: TopologyFileExtraction,
-    ) : TopologyReadEpochResolution
+    data class Reused(override val extraction: TopologyFileExtraction) : TopologyReadEpochResolution
 }
 
 private data class TopologyDeclarationLocation(
@@ -268,20 +269,15 @@ private data class TopologyDeclarationLocation(
     val range: ExactDeclarationTextRange,
 )
 
-private fun filesByAbsolutePath(
-    key: TopologyProjectionRegistryKey,
-): Map<Path, TopologySourceFile> = key.files.associateBy { file ->
-    Path.of(key.workspace.lease.workspaceRoot.value)
-        .resolve(file.path.value)
-        .toAbsolutePath()
-        .normalize()
-}
+private fun filesByAbsolutePath(key: TopologyProjectionRegistryKey): Map<Path, TopologySourceFile> =
+    key.files.associateBy { file ->
+        Path.of(key.workspace.lease.workspaceRoot.value).resolve(file.path.value).toAbsolutePath().normalize()
+    }
 
 private sealed interface TopologyProjectionRegistryState {
     data object Empty : TopologyProjectionRegistryState
-    data class Ready(
-        val registry: TopologyProjectionRegistry,
-    ) : TopologyProjectionRegistryState
+
+    data class Ready(val registry: TopologyProjectionRegistry) : TopologyProjectionRegistryState
 }
 
 private sealed interface TopologyReadEpochState {

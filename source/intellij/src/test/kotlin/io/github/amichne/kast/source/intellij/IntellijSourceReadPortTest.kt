@@ -55,25 +55,30 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class IntellijSourceReadPortTest {
-    private val text = """/** documentation */
+    private val text =
+        """
+        |/** documentation */
         |@Deprecated("sample")
         |public fun subject(): Int = 1
-        |""".trimMargin()
+        |"""
+            .trimMargin()
 
     @Test
     fun `exact symbol capture returns complete declaration text and reusable source selector`() {
         val fixture = fixture()
-        val port = IntellijSourceReadPort(
-            IntellijSourceReadAccess { context, selector ->
-                IntellijSourceReadAccessResult.Captured(
-                    IntellijCommittedSourceCapture.create(
-                        context,
-                        fixture.revalidated,
-                        text,
-                    ).refined(),
-                )
-            },
-        )
+        val port =
+            IntellijSourceReadPort(
+                IntellijSourceReadAccess { context, selector ->
+                    IntellijSourceReadAccessResult.Captured(
+                        IntellijCommittedSourceCapture.create(
+                                context,
+                                fixture.revalidated,
+                                text,
+                            )
+                            .refined()
+                    )
+                }
+            )
 
         val result = runSuspend { port.read(fixture.context, request(fixture.selector, 65_536)) }
         val complete = result as SourceReadResult.Complete
@@ -88,17 +93,19 @@ class IntellijSourceReadPortTest {
     @Test
     fun `byte bound qualifies without emitting a misleading source fragment`() {
         val fixture = fixture()
-        val port = IntellijSourceReadPort(
-            IntellijSourceReadAccess { context, _ ->
-                IntellijSourceReadAccessResult.Captured(
-                    IntellijCommittedSourceCapture.create(
-                        context,
-                        fixture.revalidated,
-                        text,
-                    ).refined(),
-                )
-            },
-        )
+        val port =
+            IntellijSourceReadPort(
+                IntellijSourceReadAccess { context, _ ->
+                    IntellijSourceReadAccessResult.Captured(
+                        IntellijCommittedSourceCapture.create(
+                                context,
+                                fixture.revalidated,
+                                text,
+                            )
+                            .refined()
+                    )
+                }
+            )
 
         val result = runSuspend { port.read(fixture.context, request(fixture.selector, 8)) }
         val qualified = result as SourceReadResult.Qualified
@@ -116,18 +123,15 @@ class IntellijSourceReadPortTest {
     @Test
     fun `native anchor rejection remains closed public source read rejection`() {
         val fixture = fixture()
-        val port = IntellijSourceReadPort(
-            IntellijSourceReadAccess { _, _ ->
-                IntellijSourceReadAccessResult.Rejected(
-                    IntellijSourceReadRejection.DOCUMENT_DIRTY,
-                )
-            },
-        )
+        val port =
+            IntellijSourceReadPort(
+                IntellijSourceReadAccess { _, _ ->
+                    IntellijSourceReadAccessResult.Rejected(IntellijSourceReadRejection.DOCUMENT_DIRTY)
+                }
+            )
 
         assertEquals(
-            SourceReadResult.Rejected(
-                io.github.amichne.kast.source.contract.SourceReadRejection.DOCUMENT_DIRTY,
-            ),
+            SourceReadResult.Rejected(io.github.amichne.kast.source.contract.SourceReadRejection.DOCUMENT_DIRTY),
             runSuspend { port.read(fixture.context, request(fixture.selector, 65_536)) },
         )
     }
@@ -145,63 +149,71 @@ class IntellijSourceReadPortTest {
 
     private fun fixture(): Fixture {
         val lease = SemanticReadLease(root(), EvidenceGeneration.parse(42).refined())
-        val candidate = SymbolDiscoveryCandidate.fromBoundary(
-            SymbolDiscoveryKind.SYMBOL,
-            "subject",
-            lease,
-            Path.of("/workspace/src/Subject.kt"),
-            "file:///workspace/src/Subject.kt",
-            0,
-        ).refined()
-        val discoveryRequest = SymbolDiscoveryRequest(
-            SymbolSearchScopeRequest(
-                lease,
-                SymbolSearchScope.Workspace(
-                    SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
-                    SymbolGeneratedSourcePolicy.INCLUDE,
-                    SymbolLibraryPolicy.EXCLUDE,
+        val candidate =
+            SymbolDiscoveryCandidate.fromBoundary(
+                    SymbolDiscoveryKind.SYMBOL,
+                    "subject",
+                    lease,
+                    Path.of("/workspace/src/Subject.kt"),
+                    "file:///workspace/src/Subject.kt",
+                    0,
+                )
+                .refined()
+        val discoveryRequest =
+            SymbolDiscoveryRequest(
+                SymbolSearchScopeRequest(
+                    lease,
+                    SymbolSearchScope.Workspace(
+                        SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
+                        SymbolGeneratedSourcePolicy.INCLUDE,
+                        SymbolLibraryPolicy.EXCLUDE,
+                    ),
                 ),
-            ),
-            SymbolDiscoveryTarget.Name(
-                SymbolNameDiscoveryKind.SYMBOL,
-                SymbolDiscoveryPattern.parse("subject").refined(),
-                SymbolDiscoveryMatch.EXACT_NAME,
-            ),
-            SymbolDiscoveryBudget(
-                ResourceBudget(
-                    ResultLimit.parse(1).refined(),
-                    WorkUnitLimit.parse(10).refined(),
-                    ElapsedTimeLimitMillis.parse(1_000).refined(),
+                SymbolDiscoveryTarget.Name(
+                    SymbolNameDiscoveryKind.SYMBOL,
+                    SymbolDiscoveryPattern.parse("subject").refined(),
+                    SymbolDiscoveryMatch.EXACT_NAME,
                 ),
-                SymbolDiscoveryByteLimit.parse(10_000).refined(),
-            ),
-        )
-        val batch = SymbolDiscoveryBatch.create(
-            discoveryRequest,
-            listOf(candidate),
-            SymbolDiscoveryByteCount.parse(candidate.projectedUtf8Size().value).refined(),
-            SymbolDiscoveryWorkCount.parse(1).refined(),
-            SymbolDiscoveryTimings(
-                SymbolDiscoveryElapsedNanoseconds.parse(1).refined(),
-                SymbolDiscoveryElapsedNanoseconds.parse(1).refined(),
-            ),
-        ).refined()
+                SymbolDiscoveryBudget(
+                    ResourceBudget(
+                        ResultLimit.parse(1).refined(),
+                        WorkUnitLimit.parse(10).refined(),
+                        ElapsedTimeLimitMillis.parse(1_000).refined(),
+                    ),
+                    SymbolDiscoveryByteLimit.parse(10_000).refined(),
+                ),
+            )
+        val batch =
+            SymbolDiscoveryBatch.create(
+                    discoveryRequest,
+                    listOf(candidate),
+                    SymbolDiscoveryByteCount.parse(candidate.projectedUtf8Size().value).refined(),
+                    SymbolDiscoveryWorkCount.parse(1).refined(),
+                    SymbolDiscoveryTimings(
+                        SymbolDiscoveryElapsedNanoseconds.parse(1).refined(),
+                        SymbolDiscoveryElapsedNanoseconds.parse(1).refined(),
+                    ),
+                )
+                .refined()
         val selection = SymbolDiscoverySelection.select(batch, 0).refined()
-        val evidence = CompilerGroundedSymbolEvidence.fromBoundary(
-            candidate.location.file,
-            0,
-            text.length,
-            "subject",
-            "sample.subject",
-            CompilerSymbolKind.FUNCTION,
-            CanonicalCompilerSignature.function(
-                "sample.subject",
-                null,
-                emptyList(),
-                emptyList(),
-                0,
-            ).refined(),
-        ).refined()
+        val evidence =
+            CompilerGroundedSymbolEvidence.fromBoundary(
+                    candidate.location.file,
+                    0,
+                    text.length,
+                    "subject",
+                    "sample.subject",
+                    CompilerSymbolKind.FUNCTION,
+                    CanonicalCompilerSignature.function(
+                            "sample.subject",
+                            null,
+                            emptyList(),
+                            emptyList(),
+                            0,
+                        )
+                        .refined(),
+                )
+                .refined()
         val selector = SymbolSelector.issue(selection, evidence).refined()
         return Fixture(
             selector,
@@ -216,20 +228,22 @@ class IntellijSourceReadPortTest {
     private fun root(): CanonicalWorkspaceRoot =
         CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined()
 
-    private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value = when (this) {
-        is Refinement.Refined -> value
-        is Refinement.Rejected -> error("Expected refined value, got $failure")
-    }
+    private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value =
+        when (this) {
+            is Refinement.Refined -> value
+            is Refinement.Rejected -> error("Expected refined value, got $failure")
+        }
 
     private fun <Value> runSuspend(block: suspend () -> Value): Value {
         var completion: Result<Value>? = null
         block.startCoroutine(
             object : Continuation<Value> {
                 override val context = EmptyCoroutineContext
+
                 override fun resumeWith(result: Result<Value>) {
                     completion = result
                 }
-            },
+            }
         )
         return checkNotNull(completion).getOrThrow()
     }

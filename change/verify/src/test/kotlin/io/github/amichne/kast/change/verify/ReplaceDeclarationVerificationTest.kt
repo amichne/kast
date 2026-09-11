@@ -12,9 +12,7 @@ class ReplaceDeclarationVerificationTest {
 
     @Test
     fun `exact resulting declaration proof is required for verified receipt`() {
-        val result = service(fixture.replaceDeclarationEvidence(applied)).verify(
-            fixture.request(plan, applied),
-        )
+        val result = service(fixture.replaceDeclarationEvidence(applied)).verify(fixture.request(plan, applied))
 
         val verified = assertInstanceOf(VerifiedMutationResult.Verified::class.java, result)
         assertEquals(plan.planId, verified.receipt.planId)
@@ -23,28 +21,28 @@ class ReplaceDeclarationVerificationTest {
 
     @Test
     fun `different resulting declaration rejects replacement proof`() {
-        val result = service(
-            fixture.replaceDeclarationEvidence(applied, "fun service(): Int = 2"),
-        ).verify(fixture.request(plan, applied))
+        val result =
+            service(fixture.replaceDeclarationEvidence(applied, "fun service(): Int = 2"))
+                .verify(fixture.request(plan, applied))
 
-        val rejected = assertInstanceOf(
-            VerifiedMutationResult.RejectedAfterObservation::class.java,
-            result,
-        )
+        val rejected =
+            assertInstanceOf(
+                VerifiedMutationResult.RejectedAfterObservation::class.java,
+                result,
+            )
         assertEquals(
             setOf(ReplaceDeclarationProofFailure.REPLACEMENT_DECLARATION_MISMATCH),
             rejected.failures,
         )
     }
 
-    private fun service(
-        evidence: ReplaceDeclarationVerificationEvidence,
-    ): VerifiedMutationService = VerifiedMutationService(
-        ResultingGenerationPublisher {
-            ResultingGenerationPublication.Published(fixture.resultingWorkspace)
-        },
-        ChangeVerificationObserver {
-            ChangeVerificationObservation.Observed(evidence)
-        },
-    )
+    private fun service(evidence: ReplaceDeclarationVerificationEvidence): VerifiedMutationService =
+        VerifiedMutationService(
+            ResultingGenerationPublisher {
+                ResultingGenerationPublication.Published(fixture.resultingWorkspace)
+            },
+            ChangeVerificationObserver {
+                ChangeVerificationObservation.Observed(evidence)
+            },
+        )
 }

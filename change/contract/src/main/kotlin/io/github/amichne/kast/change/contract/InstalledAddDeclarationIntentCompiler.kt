@@ -19,10 +19,9 @@ enum class InstalledAddDeclarationIntentFailure {
 }
 
 sealed interface InstalledAddDeclarationIntentCompilation {
-    data class Compiled(val intent: InstalledAddDeclarationIntent) :
-        InstalledAddDeclarationIntentCompilation
-    data class Rejected(val failure: InstalledAddDeclarationIntentFailure) :
-        InstalledAddDeclarationIntentCompilation
+    data class Compiled(val intent: InstalledAddDeclarationIntent) : InstalledAddDeclarationIntentCompilation
+
+    data class Rejected(val failure: InstalledAddDeclarationIntentFailure) : InstalledAddDeclarationIntentCompilation
 }
 
 fun interface InstalledAddDeclarationIntentCompiler {

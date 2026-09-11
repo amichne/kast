@@ -1,8 +1,8 @@
 package io.github.amichne.kast.appserver.core
 
+import java.io.PrintStream
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
-import java.io.PrintStream
 
 internal enum class BrokerInvocationCompletion {
     COMPLETED,
@@ -37,20 +37,15 @@ internal fun interface BrokerInvocationActivitySink {
     fun publish(activity: BrokerInvocationActivity): BrokerInvocationActivityPublication
 
     data object Disabled : BrokerInvocationActivitySink {
-        override fun publish(
-            activity: BrokerInvocationActivity,
-        ): BrokerInvocationActivityPublication = BrokerInvocationActivityPublication.SKIPPED
+        override fun publish(activity: BrokerInvocationActivity): BrokerInvocationActivityPublication =
+            BrokerInvocationActivityPublication.SKIPPED
     }
 }
 
 /** Synchronized JSON-line projection for the launchd-owned broker service log. */
-internal class JsonLineBrokerInvocationActivitySink(
-    private val output: PrintStream,
-) : BrokerInvocationActivitySink {
+internal class JsonLineBrokerInvocationActivitySink(private val output: PrintStream) : BrokerInvocationActivitySink {
     @Synchronized
-    override fun publish(
-        activity: BrokerInvocationActivity,
-    ): BrokerInvocationActivityPublication {
+    override fun publish(activity: BrokerInvocationActivity): BrokerInvocationActivityPublication {
         val document = buildJsonObject {
             put("component", "kast-broker")
             put(

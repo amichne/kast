@@ -12,13 +12,16 @@ class RenameSymbolApplyTest {
 
     @Test
     fun `exact rename changes only compiler-grounded occurrences`() {
-        val admitted = assertInstanceOf(
-            Refinement.Refined::class.java,
-            MutationAdmissionService().admit(
-                fixture.request(plan = plan),
-                fixture.observed(),
-            ),
-        ).value as AdmittedMutation
+        val admitted =
+            assertInstanceOf(
+                    Refinement.Refined::class.java,
+                    MutationAdmissionService()
+                        .admit(
+                            fixture.request(plan = plan),
+                            fixture.observed(),
+                        ),
+                )
+                .value as AdmittedMutation
 
         assertEquals(
             "package sample\n\nfun renamedService(): Int = 0\n",
@@ -30,13 +33,15 @@ class RenameSymbolApplyTest {
 
     @Test
     fun `stale generation cannot acquire rename mutation authority`() {
-        val result = MutationAdmissionService().admit(
-            fixture.request(
-                plan = plan,
-                current = fixture.workspace(generationValue = 12L, sourceState = "state-12"),
-            ),
-            fixture.observed(),
-        ) as Refinement.Rejected
+        val result =
+            MutationAdmissionService()
+                .admit(
+                    fixture.request(
+                        plan = plan,
+                        current = fixture.workspace(generationValue = 12L, sourceState = "state-12"),
+                    ),
+                    fixture.observed(),
+                ) as Refinement.Rejected
 
         assertEquals(MutationAdmissionFailure.STALE_GENERATION, result.failure)
     }

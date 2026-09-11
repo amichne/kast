@@ -9,40 +9,28 @@ enum class CanonicalWorkspaceRootFailure {
     NOT_NORMALIZED,
 }
 
-/**
- * Detached identity of the exact canonical workspace root admitted by a physical workspace
- * adapter.
- */
+/** Detached identity of the exact canonical workspace root admitted by a physical workspace adapter. */
 @JvmInline
-value class CanonicalWorkspaceRoot private constructor(
-    val value: String,
-) {
+value class CanonicalWorkspaceRoot private constructor(val value: String) {
     companion object {
         /**
-         * Proof transition:
-         * `Path -> Refinement<CanonicalWorkspaceRoot, CanonicalWorkspaceRootFailure>`.
+         * Proof transition: `Path -> Refinement<CanonicalWorkspaceRoot, CanonicalWorkspaceRootFailure>`.
          *
-         * Establishes that the already physically canonicalized adapter path is absolute and
-         * lexically normalized before retaining it as detached text. [CanonicalWorkspaceRootFailure]
-         * is the closed expected failure. Raw root text may be extracted only at a physical
-         * workspace adapter boundary.
+         * Establishes that the already physically canonicalized adapter path is absolute and lexically normalized
+         * before retaining it as detached text. [CanonicalWorkspaceRootFailure] is the closed expected failure. Raw
+         * root text may be extracted only at a physical workspace adapter boundary.
          */
-        fun fromCanonicalPath(
-            path: Path,
-        ): Refinement<CanonicalWorkspaceRoot, CanonicalWorkspaceRootFailure> = when {
-            !path.isAbsolute ->
-                Refinement.Rejected(CanonicalWorkspaceRootFailure.NOT_ABSOLUTE)
-            path.normalize() != path ->
-                Refinement.Rejected(CanonicalWorkspaceRootFailure.NOT_NORMALIZED)
-            else ->
-                Refinement.Refined(CanonicalWorkspaceRoot(path.toString()))
-        }
+        fun fromCanonicalPath(path: Path): Refinement<CanonicalWorkspaceRoot, CanonicalWorkspaceRootFailure> =
+            when {
+                !path.isAbsolute -> Refinement.Rejected(CanonicalWorkspaceRootFailure.NOT_ABSOLUTE)
+                path.normalize() != path -> Refinement.Rejected(CanonicalWorkspaceRootFailure.NOT_NORMALIZED)
+                else -> Refinement.Refined(CanonicalWorkspaceRoot(path.toString()))
+            }
     }
 }
 
 /**
- * Detached proof that a semantic read was admitted for one exact canonical root and one published
- * evidence generation.
+ * Detached proof that a semantic read was admitted for one exact canonical root and one published evidence generation.
  */
 data class SemanticReadLease(
     override val workspaceRoot: CanonicalWorkspaceRoot,
@@ -52,21 +40,19 @@ data class SemanticReadLease(
 /**
  * Exact in-process serialization boundary shared by source invalidation and workspace publication.
  *
- * The capability is deliberately concrete and identity-bearing: participants that must exclude
- * one another receive the same instance rather than independently synchronizing on unrelated
- * objects.
+ * The capability is deliberately concrete and identity-bearing: participants that must exclude one another receive the
+ * same instance rather than independently synchronizing on unrelated objects.
  */
 class WorkspacePublicationSerialization {
-    fun <Value> serialized(operation: () -> Value): Value = synchronized(this) {
-        operation()
-    }
+    fun <Value> serialized(operation: () -> Value): Value =
+        synchronized(this) {
+            operation()
+        }
 }
 
 /** Closed result of attempting an effect while one semantic lease remains current. */
 sealed interface SemanticReadLeaseUse<out Value> {
-    data class Completed<Value>(
-        val value: Value,
-    ) : SemanticReadLeaseUse<Value>
+    data class Completed<Value>(val value: Value) : SemanticReadLeaseUse<Value>
 
     data object Moved : SemanticReadLeaseUse<Nothing>
 }
@@ -76,9 +62,9 @@ interface SemanticReadLeaseGuard {
     /**
      * Proof transition: `(SemanticReadLease, () -> Value) -> SemanticReadLeaseUse<Value>`.
      *
-     * A completed result establishes that [operation] ran while the exact canonical root and
-     * evidence generation remained the coordinator's current ready publication. [Moved] proves
-     * the operation did not run. Raw lifecycle state remains inside the workspace coordinator.
+     * A completed result establishes that [operation] ran while the exact canonical root and evidence generation
+     * remained the coordinator's current ready publication. [Moved] proves the operation did not run. Raw lifecycle
+     * state remains inside the workspace coordinator.
      */
     fun <Value> whileCurrent(
         expected: SemanticReadLease,

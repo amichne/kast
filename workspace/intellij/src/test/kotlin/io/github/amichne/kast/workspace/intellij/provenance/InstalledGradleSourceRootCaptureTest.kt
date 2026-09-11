@@ -23,6 +23,8 @@ import io.github.amichne.kast.workspace.intellij.provenance.GradleSourceRootProd
 import io.github.amichne.kast.workspace.intellij.provenance.InstalledGradleSourceRootCapture
 import io.github.amichne.kast.workspace.intellij.provenance.InstalledGradleSourceRootCaptureFailure
 import io.github.amichne.kast.workspace.intellij.provenance.sourceRootBoundaries
+import java.nio.file.Files
+import java.nio.file.Path
 import org.jetbrains.plugins.gradle.model.data.GradleSourceSetData
 import org.jetbrains.plugins.gradle.util.GradleConstants
 import org.jetbrains.plugins.gradle.util.gradlePath
@@ -30,12 +32,9 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertInstanceOf
 import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Files
-import java.nio.file.Path
 
 class InstalledGradleSourceRootCaptureTest {
-    @TempDir
-    lateinit var workspaceDirectory: Path
+    @TempDir lateinit var workspaceDirectory: Path
 
     @Test
     fun `malformed linked build path is a closed source-root rejection`() {
@@ -58,45 +57,53 @@ class InstalledGradleSourceRootCaptureTest {
         val generatedRoot = workspacePath.resolve("src/producer-owned")
         Files.createDirectories(generatedRoot)
         val nodes = fixtureGradleNodes(workspace, workspace)
-        val contentRoot = ContentRootData(GradleConstants.SYSTEM_ID, workspace).apply {
-            storePath(ExternalSystemSourceType.SOURCE, generatedRoot.toString())
-        }
+        val contentRoot =
+            ContentRootData(GradleConstants.SYSTEM_ID, workspace).apply {
+                storePath(ExternalSystemSourceType.SOURCE, generatedRoot.toString())
+            }
         nodes.sourceSet.createChild(ProjectKeys.CONTENT_ROOT, contentRoot)
         nodes.module.createChild(
             GRADLE_SOURCE_ROOT_PRODUCER_IMPORT_KEY,
             GradleSourceRootProducerImport.Captured(
                 listOf(
                     GradleSourceRootProducerEvidence(
-                        identity = GradleSourceRootProducerIdentity(
-                            projectDirectory = workspacePath.toFile(),
-                            projectPath = ":",
-                            sourceSetName = "main",
-                            sourceRoot = generatedRoot.toFile(),
-                            role = GradleSourceRootProducerRole.CODE,
-                        ),
+                        identity =
+                            GradleSourceRootProducerIdentity(
+                                projectDirectory = workspacePath.toFile(),
+                                projectPath = ":",
+                                sourceSetName = "main",
+                                sourceRoot = generatedRoot.toFile(),
+                                role = GradleSourceRootProducerRole.CODE,
+                            ),
                         provenance = GradleSourceRootProducerProvenance.GENERATED,
-                    ),
-                ),
+                    )
+                )
             ),
         )
-        val capture = assertInstanceOf<InstalledGradleSourceRootCapture.Captured>(
-            FixtureExternalProjectInfo(nodes.project, workspace).sourceRootBoundaries(),
-        )
-        val root = when (val admitted = CanonicalWorkspaceRoot.fromCanonicalPath(workspacePath)) {
-            is Refinement.Refined -> admitted.value
-            is Refinement.Rejected -> error(admitted.failure)
-        }
+        val capture =
+            assertInstanceOf<InstalledGradleSourceRootCapture.Captured>(
+                FixtureExternalProjectInfo(nodes.project, workspace).sourceRootBoundaries()
+            )
+        val root =
+            when (val admitted = CanonicalWorkspaceRoot.fromCanonicalPath(workspacePath)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> error(admitted.failure)
+            }
 
-        val scope = WorkspaceSearchScopeModel.compile(
-            root,
-            ImportedWorkspaceModelState.COMPLETE,
-            capture.boundaries,
-        )
+        val scope =
+            WorkspaceSearchScopeModel.compile(
+                root,
+                ImportedWorkspaceModelState.COMPLETE,
+                capture.boundaries,
+            )
 
         assertEquals(
             WorkspaceSourceRootProvenance.GENERATED,
             assertInstanceOf<WorkspaceSearchScopeModelCompilation.Compiled>(scope)
-                .model.sourceRoots.single().provenance,
+                .model
+                .sourceRoots
+                .single()
+                .provenance,
         )
     }
 
@@ -106,37 +113,40 @@ class InstalledGradleSourceRootCaptureTest {
         val projectPath = workspacePath.resolve("library")
         val sourceRoot = projectPath.resolve("src/main/java")
         Files.createDirectories(sourceRoot)
-        val nodes = fixtureGradleNodes(
-            workspace = workspacePath.toString(),
-            linkedBuildRoot = projectPath.toString(),
-            gradleProjectPath = ":library",
-        )
-        val contentRoot = ContentRootData(GradleConstants.SYSTEM_ID, projectPath.toString()).apply {
-            storePath(ExternalSystemSourceType.SOURCE, sourceRoot.toString())
-        }
+        val nodes =
+            fixtureGradleNodes(
+                workspace = workspacePath.toString(),
+                linkedBuildRoot = projectPath.toString(),
+                gradleProjectPath = ":library",
+            )
+        val contentRoot =
+            ContentRootData(GradleConstants.SYSTEM_ID, projectPath.toString()).apply {
+                storePath(ExternalSystemSourceType.SOURCE, sourceRoot.toString())
+            }
         nodes.sourceSet.createChild(ProjectKeys.CONTENT_ROOT, contentRoot)
         nodes.module.createChild(
             GRADLE_SOURCE_ROOT_PRODUCER_IMPORT_KEY,
             GradleSourceRootProducerImport.Captured(
                 listOf(
                     GradleSourceRootProducerEvidence(
-                        identity = GradleSourceRootProducerIdentity(
-                            projectDirectory = projectPath.toFile(),
-                            projectPath = ":library",
-                            sourceSetName = "main",
-                            sourceRoot = sourceRoot.toFile(),
-                            role = GradleSourceRootProducerRole.CODE,
-                        ),
+                        identity =
+                            GradleSourceRootProducerIdentity(
+                                projectDirectory = projectPath.toFile(),
+                                projectPath = ":library",
+                                sourceSetName = "main",
+                                sourceRoot = sourceRoot.toFile(),
+                                role = GradleSourceRootProducerRole.CODE,
+                            ),
                         provenance = GradleSourceRootProducerProvenance.AUTHORED,
-                    ),
-                ),
+                    )
+                )
             ),
         )
 
-        val capture = assertInstanceOf<InstalledGradleSourceRootCapture.Captured>(
-            FixtureExternalProjectInfo(nodes.project, workspacePath.toString())
-                .sourceRootBoundaries(),
-        )
+        val capture =
+            assertInstanceOf<InstalledGradleSourceRootCapture.Captured>(
+                FixtureExternalProjectInfo(nodes.project, workspacePath.toString()).sourceRootBoundaries()
+            )
 
         assertEquals(
             WorkspaceSourceRootProvenance.AUTHORED,
@@ -150,35 +160,39 @@ class InstalledGradleSourceRootCaptureTest {
         gradleProjectPath: String = ":",
     ): FixtureGradleNodes {
         val sourceSetPath = if (gradleProjectPath == ":") ":main" else "$gradleProjectPath:main"
-        val projectData = ProjectData(
-            GradleConstants.SYSTEM_ID,
-            "fixture",
-            workspace,
-            workspace,
-        )
-        val projectNode = DataNode(ProjectKeys.PROJECT, projectData, null)
-        val moduleData = ModuleData(
-            gradleProjectPath,
-            GradleConstants.SYSTEM_ID,
-            "fixture-module-type",
-            "fixture",
-            workspace,
-            workspace,
-        ).apply {
-            gradlePath = gradleProjectPath
-        }
-        val moduleNode = projectNode.createChild(ProjectKeys.MODULE, moduleData)
-        val sourceSetNode = moduleNode.createChild(
-            GradleSourceSetData.KEY,
-            GradleSourceSetData(
-                sourceSetPath,
-                "fixture-source-set-type",
-                sourceSetPath,
-                "fixture.main",
+        val projectData =
+            ProjectData(
+                GradleConstants.SYSTEM_ID,
+                "fixture",
                 workspace,
-                linkedBuildRoot,
-            ),
-        )
+                workspace,
+            )
+        val projectNode = DataNode(ProjectKeys.PROJECT, projectData, null)
+        val moduleData =
+            ModuleData(
+                    gradleProjectPath,
+                    GradleConstants.SYSTEM_ID,
+                    "fixture-module-type",
+                    "fixture",
+                    workspace,
+                    workspace,
+                )
+                .apply {
+                    gradlePath = gradleProjectPath
+                }
+        val moduleNode = projectNode.createChild(ProjectKeys.MODULE, moduleData)
+        val sourceSetNode =
+            moduleNode.createChild(
+                GradleSourceSetData.KEY,
+                GradleSourceSetData(
+                    sourceSetPath,
+                    "fixture-source-set-type",
+                    sourceSetPath,
+                    "fixture.main",
+                    workspace,
+                    linkedBuildRoot,
+                ),
+            )
         return FixtureGradleNodes(projectNode, moduleNode, sourceSetNode)
     }
 

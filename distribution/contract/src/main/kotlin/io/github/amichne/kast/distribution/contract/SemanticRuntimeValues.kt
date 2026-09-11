@@ -16,9 +16,9 @@ value class SemanticRuntimeId private constructor(val value: String) {
         /**
          * Proof transition: `String -> Refinement<SemanticRuntimeId, SemanticRuntimeFailure>`.
          *
-         * Establishes a canonical lowercase SHA-256 runtime identity. The closed expected failure
-         * is [SemanticRuntimeFailure.MANIFEST_INVALID]. Raw text may leave only for endpoint,
-         * store-path, wire, and metadata projection boundaries.
+         * Establishes a canonical lowercase SHA-256 runtime identity. The closed expected failure is
+         * [SemanticRuntimeFailure.MANIFEST_INVALID]. Raw text may leave only for endpoint, store-path, wire, and
+         * metadata projection boundaries.
          */
         fun parse(raw: String): Refinement<SemanticRuntimeId, SemanticRuntimeFailure> =
             if (SHA256_PATTERN.matches(raw)) {
@@ -30,15 +30,18 @@ value class SemanticRuntimeId private constructor(val value: String) {
         /**
          * Proof transition: `canonical identity material -> SemanticRuntimeId`.
          *
-         * Establishes the SHA-256 identity of the complete admitted compatibility and artifact
-         * tuple. Raw identity material is permitted only inside manifest admission.
+         * Establishes the SHA-256 identity of the complete admitted compatibility and artifact tuple. Raw identity
+         * material is permitted only inside manifest admission.
          */
-        internal fun derive(identityMaterial: String): SemanticRuntimeId = SemanticRuntimeId(
-            "sha256:" + HexFormat.of().formatHex(
-                MessageDigest.getInstance("SHA-256")
-                    .digest(identityMaterial.toByteArray(StandardCharsets.UTF_8)),
-            ),
-        )
+        internal fun derive(identityMaterial: String): SemanticRuntimeId =
+            SemanticRuntimeId(
+                "sha256:" +
+                    HexFormat.of()
+                        .formatHex(
+                            MessageDigest.getInstance("SHA-256")
+                                .digest(identityMaterial.toByteArray(StandardCharsets.UTF_8))
+                        )
+            )
     }
 }
 
@@ -50,8 +53,8 @@ value class RuntimeDigest private constructor(val value: String) {
          * Proof transition: `String -> Refinement<RuntimeDigest, SemanticRuntimeFailure>`.
          *
          * Establishes a canonical lowercase SHA-256 digest. The closed expected failure is
-         * [SemanticRuntimeFailure.MANIFEST_INVALID]. Raw text may leave only at digest comparison
-         * and metadata projection boundaries.
+         * [SemanticRuntimeFailure.MANIFEST_INVALID]. Raw text may leave only at digest comparison and metadata
+         * projection boundaries.
          */
         fun parse(raw: String): Refinement<RuntimeDigest, SemanticRuntimeFailure> =
             if (SHA256_PATTERN.matches(raw)) {
@@ -69,16 +72,17 @@ value class RuntimeLayoutEntry private constructor(val value: String) {
         /**
          * Proof transition: `String -> Refinement<RuntimeLayoutEntry, SemanticRuntimeFailure>`.
          *
-         * Establishes a normalized, relative, non-escaping archive entry. The closed expected
-         * failure is [SemanticRuntimeFailure.MANIFEST_INVALID]. Raw text may leave only at archive
-         * and installed-layout filesystem boundaries.
+         * Establishes a normalized, relative, non-escaping archive entry. The closed expected failure is
+         * [SemanticRuntimeFailure.MANIFEST_INVALID]. Raw text may leave only at archive and installed-layout filesystem
+         * boundaries.
          */
         fun parse(raw: String): Refinement<RuntimeLayoutEntry, SemanticRuntimeFailure> {
             val normalized = raw.removeSuffix("/")
             return if (
-                normalized.isNotBlank() && SAFE_ENTRY_PATTERN.matches(raw) &&
-                !raw.startsWith('/') &&
-                normalized.split('/').none { it.isBlank() || it == "." || it == ".." }
+                normalized.isNotBlank() &&
+                    SAFE_ENTRY_PATTERN.matches(raw) &&
+                    !raw.startsWith('/') &&
+                    normalized.split('/').none { it.isBlank() || it == "." || it == ".." }
             ) {
                 Refinement.Refined(RuntimeLayoutEntry(raw))
             } else {
@@ -94,9 +98,8 @@ value class RuntimeProductVersion private constructor(val value: String) {
         /**
          * Proof transition: `String -> Refinement<RuntimeProductVersion, SemanticRuntimeFailure>`.
          *
-         * Establishes one bounded compatibility token. [SemanticRuntimeFailure.MANIFEST_INVALID]
-         * is the closed expected failure. Raw text is permitted only at manifest admission and
-         * local version projection.
+         * Establishes one bounded compatibility token. [SemanticRuntimeFailure.MANIFEST_INVALID] is the closed expected
+         * failure. Raw text is permitted only at manifest admission and local version projection.
          */
         fun parse(raw: String): Refinement<RuntimeProductVersion, SemanticRuntimeFailure> =
             if (COMPATIBILITY_ID_PATTERN.matches(raw)) {
@@ -114,8 +117,8 @@ value class IntellijBuildIdentity private constructor(val value: String) {
          * Proof transition: `String -> Refinement<IntellijBuildIdentity, SemanticRuntimeFailure>`.
          *
          * Establishes one bounded IntelliJ build token. The closed expected failure is
-         * [SemanticRuntimeFailure.MANIFEST_INVALID]. Raw text is permitted only at manifest and
-         * runtime-identity projection boundaries.
+         * [SemanticRuntimeFailure.MANIFEST_INVALID]. Raw text is permitted only at manifest and runtime-identity
+         * projection boundaries.
          */
         fun parse(raw: String): Refinement<IntellijBuildIdentity, SemanticRuntimeFailure> =
             if (COMPATIBILITY_ID_PATTERN.matches(raw)) {
@@ -130,12 +133,11 @@ value class IntellijBuildIdentity private constructor(val value: String) {
 value class KotlinPluginBuildIdentity private constructor(val value: String) {
     companion object {
         /**
-         * Proof transition: `String -> Refinement<KotlinPluginBuildIdentity,
-         * SemanticRuntimeFailure>`.
+         * Proof transition: `String -> Refinement<KotlinPluginBuildIdentity, SemanticRuntimeFailure>`.
          *
          * Establishes one bounded Kotlin plugin build token. The closed expected failure is
-         * [SemanticRuntimeFailure.MANIFEST_INVALID]. Raw text is permitted only at manifest and
-         * runtime-identity projection boundaries.
+         * [SemanticRuntimeFailure.MANIFEST_INVALID]. Raw text is permitted only at manifest and runtime-identity
+         * projection boundaries.
          */
         fun parse(raw: String): Refinement<KotlinPluginBuildIdentity, SemanticRuntimeFailure> =
             if (COMPATIBILITY_ID_PATTERN.matches(raw)) {
@@ -150,12 +152,11 @@ value class KotlinPluginBuildIdentity private constructor(val value: String) {
 value class RuntimeWireSchemaIdentity private constructor(val value: String) {
     companion object {
         /**
-         * Proof transition: `String -> Refinement<RuntimeWireSchemaIdentity,
-         * SemanticRuntimeFailure>`.
+         * Proof transition: `String -> Refinement<RuntimeWireSchemaIdentity, SemanticRuntimeFailure>`.
          *
          * Establishes one bounded global wire-schema token. The closed expected failure is
-         * [SemanticRuntimeFailure.MANIFEST_INVALID]. Raw text is permitted only at manifest,
-         * identity, and schema projection boundaries.
+         * [SemanticRuntimeFailure.MANIFEST_INVALID]. Raw text is permitted only at manifest, identity, and schema
+         * projection boundaries.
          */
         fun parse(raw: String): Refinement<RuntimeWireSchemaIdentity, SemanticRuntimeFailure> =
             if (COMPATIBILITY_ID_PATTERN.matches(raw)) {
@@ -172,9 +173,9 @@ value class RuntimeArchiveSize private constructor(val bytes: Long) {
         /**
          * Proof transition: `Long -> Refinement<RuntimeArchiveSize, SemanticRuntimeFailure>`.
          *
-         * Establishes a strictly positive expected archive byte count. The closed expected failure
-         * is [SemanticRuntimeFailure.MANIFEST_INVALID]. Raw bytes may leave only for acquisition
-         * and expansion-bound comparisons.
+         * Establishes a strictly positive expected archive byte count. The closed expected failure is
+         * [SemanticRuntimeFailure.MANIFEST_INVALID]. Raw bytes may leave only for acquisition and expansion-bound
+         * comparisons.
          */
         fun parse(raw: Long): Refinement<RuntimeArchiveSize, SemanticRuntimeFailure> =
             if (raw > 0) {
@@ -186,8 +187,12 @@ value class RuntimeArchiveSize private constructor(val bytes: Long) {
 }
 
 /** Canonical manifest JSON produced only from an admitted manifest document. */
-@JvmInline
-value class CanonicalRuntimeManifestJson internal constructor(val value: String)
+@JvmInline value class CanonicalRuntimeManifestJson internal constructor(val value: String)
 
-enum class RuntimePlatform(val wireValue: String) { MACOS("macos") }
-enum class RuntimeArchitecture(val wireValue: String) { AARCH64("aarch64") }
+enum class RuntimePlatform(val wireValue: String) {
+    MACOS("macos")
+}
+
+enum class RuntimeArchitecture(val wireValue: String) {
+    AARCH64("aarch64")
+}

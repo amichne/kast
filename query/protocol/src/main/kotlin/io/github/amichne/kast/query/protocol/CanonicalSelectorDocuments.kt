@@ -94,8 +94,7 @@ internal data class LiveSelectorAuthorityDocument(
     val version: Int,
 )
 
-@Serializable
-internal data class SelectorConstraintPathDocument(val value: String, val containment: String)
+@Serializable internal data class SelectorConstraintPathDocument(val value: String, val containment: String)
 
 @Serializable
 internal data class SelectorConstraintsDocument(

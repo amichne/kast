@@ -7,6 +7,13 @@ import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBoo
 import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapFailure
 import io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapState
 import io.github.amichne.kast.kernel.Refinement
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.attribute.PosixFilePermissions
+import java.time.Duration
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertNotEquals
@@ -15,13 +22,6 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.EnabledOnOs
 import org.junit.jupiter.api.condition.OS
 import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Files
-import java.nio.file.Path
-import java.nio.file.attribute.PosixFilePermissions
-import java.time.Duration
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicReference
 
 class RuntimeProcessSessionTest {
     @Test
@@ -31,19 +31,26 @@ class RuntimeProcessSessionTest {
         val context = launchContext(temporary)
         val selectedAttempt = attempt("123e4567-e89b-42d3-a456-42661417400a")
         val query = RuntimeBootstrapProcessQuery.from(endpoint, executable(temporary), context)
-        val exactArguments = listOf(
-            "io.github.amichne.kast.indexer.KastIndexerMainKt",
-            "--workspace-root=${endpoint.root.path}",
-            "--socket-path=${endpoint.socketPath}",
-            "--runtime-id=${endpoint.runtimeId.value}",
-            "--bootstrap-state-path=${query.bootstrapState}",
-            "--max-heap-mib=${query.maxHeap.mebibytes}",
-            "--bootstrap-attempt-id=${selectedAttempt.value}",
-        )
-        val wrapper = ProcessBuilder(
-            listOf("/bin/sh", "-c", "/bin/sh -c 'while :; do sleep 1; done' \"\$@\" & wait", "kast-indexer-wrapper") +
-                exactArguments,
-        ).start()
+        val exactArguments =
+            listOf(
+                "io.github.amichne.kast.indexer.KastIndexerMainKt",
+                "--workspace-root=${endpoint.root.path}",
+                "--socket-path=${endpoint.socketPath}",
+                "--runtime-id=${endpoint.runtimeId.value}",
+                "--bootstrap-state-path=${query.bootstrapState}",
+                "--max-heap-mib=${query.maxHeap.mebibytes}",
+                "--bootstrap-attempt-id=${selectedAttempt.value}",
+            )
+        val wrapper =
+            ProcessBuilder(
+                    listOf(
+                        "/bin/sh",
+                        "-c",
+                        "/bin/sh -c 'while :; do sleep 1; done' \"\$@\" & wait",
+                        "kast-indexer-wrapper",
+                    ) + exactArguments
+                )
+                .start()
         try {
             var child: ProcessHandle? = null
             repeat(100) {
@@ -63,33 +70,61 @@ class RuntimeProcessSessionTest {
         }
     }
 
-    @Test fun `bootstrap process authority retains admitted heap reservation`(@TempDir temporary: Path) {
-        val heap = (io.github.amichne.kast.distribution.contract.IndexerHeapSize.parse("2g") as Refinement.Refined).value
-        val query = RuntimeBootstrapProcessQuery.from(endpoint(temporary), executable(temporary), launchContext(temporary, heap = heap))
+    @Test
+    fun `bootstrap process authority retains admitted heap reservation`(@TempDir temporary: Path) {
+        val heap =
+            (io.github.amichne.kast.distribution.contract.IndexerHeapSize.parse("2g") as Refinement.Refined).value
+        val query =
+            RuntimeBootstrapProcessQuery.from(
+                endpoint(temporary),
+                executable(temporary),
+                launchContext(temporary, heap = heap),
+            )
         assertEquals(heap, query.maxHeap, "bootstrap process query erased selected heap reservation")
     }
 
     @Test
     fun `saved sidecar settings survive launchd without unrelated ambient values`(@TempDir temporary: Path) {
         val root = temporary.toRealPath()
-        val settings = (io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration.resolve(
-            io.github.amichne.kast.distribution.contract.configuration.ConfigurationSources(
-                environment = mapOf("FIXTURE_SELECTED" to "selected-value", "FIXTURE_UNRELATED" to "must-not-forward"),
-                savedInstallation = listOf("KAST_IDE_CONFIG_HOME" to root.toString(), "KAST_GRADLE_IMPORT_VARIABLES" to "FIXTURE_SELECTED"),
-            ),
-        ) as Refinement.Refined).value
+        val settings =
+            (io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration.resolve(
+                    io.github.amichne.kast.distribution.contract.configuration.ConfigurationSources(
+                        environment =
+                            mapOf("FIXTURE_SELECTED" to "selected-value", "FIXTURE_UNRELATED" to "must-not-forward"),
+                        savedInstallation =
+                            listOf(
+                                "KAST_IDE_CONFIG_HOME" to root.toString(),
+                                "KAST_GRADLE_IMPORT_VARIABLES" to "FIXTURE_SELECTED",
+                            ),
+                    )
+                ) as Refinement.Refined)
+                .value
         val inputs = SidecarEnvironmentInputs.from(settings)
         val endpoint = endpoint(temporary)
-        val command = (IndexerLaunchCommand.create(executable(temporary), endpoint.root, endpoint,
-            launchContext(temporary, inputs), attempt()) as IndexerLaunchCommandConstruction.Created).command
+        val command =
+            (IndexerLaunchCommand.create(
+                    executable(temporary),
+                    endpoint.root,
+                    endpoint,
+                    launchContext(temporary, inputs),
+                    attempt(),
+                ) as IndexerLaunchCommandConstruction.Created)
+                .command
         var submission: List<String> = emptyList()
-        val session = MacOsRuntimeProcessSession.from(endpoint, LaunchctlInvoker { arguments, _ ->
-            when (arguments[1]) {
-                "list" -> LaunchctlInvocation.Absent
-                "submit" -> { submission = arguments; LaunchctlInvocation.Completed }
-                else -> error("unexpected fixture operation")
-            }
-        })
+        val session =
+            MacOsRuntimeProcessSession.from(
+                endpoint,
+                LaunchctlInvoker { arguments, _ ->
+                    when (arguments[1]) {
+                        "list" -> LaunchctlInvocation.Absent
+                        "submit" -> {
+                            submission = arguments
+                            LaunchctlInvocation.Completed
+                        }
+                        else -> error("unexpected fixture operation")
+                    }
+                },
+            )
         assertInstanceOf(RuntimeProcessStart.Started::class.java, session.start(command))
         assertTrue("KAST_IDE_CONFIG_HOME=$root" in submission, submission.toString())
         assertTrue("FIXTURE_SELECTED=selected-value" in submission, submission.toString())
@@ -100,18 +135,24 @@ class RuntimeProcessSessionTest {
     fun `ready progress requires endpoint reachability as well as owned ready document`(@TempDir temporary: Path) {
         val endpoint = endpoint(temporary)
         val observed = mutableListOf<SemanticRuntimeBootstrapState>()
-        val demander = ExactRootProcessRuntimeDemander(
-            executable = executable(temporary),
-            launchContext = launchContext(temporary),
-            processStarter = RuntimeProcessStarter { command ->
-                writeBootstrap(command.bootstrapState, SemanticRuntimeBootstrapState.Ready(command.bootstrapAttemptId))
-                RuntimeProcessStart.Started(
-                    AcceptedRuntimeStartupSession { RuntimeSessionObservation.Absent }, command.bootstrapAttemptId,
-                )
-            },
-            endpointProbe = RuntimeEndpointProbe { RuntimeEndpointReachability.Unreachable },
-            progress = RuntimeStartupProgressSink(observed::add),
-        )
+        val demander =
+            ExactRootProcessRuntimeDemander(
+                executable = executable(temporary),
+                launchContext = launchContext(temporary),
+                processStarter =
+                    RuntimeProcessStarter { command ->
+                        writeBootstrap(
+                            command.bootstrapState,
+                            SemanticRuntimeBootstrapState.Ready(command.bootstrapAttemptId),
+                        )
+                        RuntimeProcessStart.Started(
+                            AcceptedRuntimeStartupSession { RuntimeSessionObservation.Absent },
+                            command.bootstrapAttemptId,
+                        )
+                    },
+                endpointProbe = RuntimeEndpointProbe { RuntimeEndpointReachability.Unreachable },
+                progress = RuntimeStartupProgressSink(observed::add),
+            )
         assertEquals(
             RuntimeAdmission.Rejected(RuntimeAdmissionFailure.SessionEndedBeforeReady),
             demander.demand(endpoint.root, endpoint),
@@ -120,9 +161,7 @@ class RuntimeProcessSessionTest {
     }
 
     @Test
-    fun `reachable starting attempt waits without launching a duplicate child`(
-        @TempDir temporary: Path,
-    ) {
+    fun `reachable starting attempt waits without launching a duplicate child`(@TempDir temporary: Path) {
         val endpoint = endpoint(temporary)
         val context = launchContext(temporary)
         val runningAttempt = attempt("123e4567-e89b-42d3-a456-426614174001")
@@ -132,30 +171,34 @@ class RuntimeProcessSessionTest {
         )
         var probes = 0
         var starts = 0
-        val demander = ExactRootProcessRuntimeDemander(
-            executable = executable(temporary),
-            launchContext = context,
-            processStarter = RuntimeProcessStarter {
-                starts += 1
-                error("reachable Starting must not launch another child")
-            },
-            endpointProbe = RuntimeEndpointProbe {
-                probes += 1
-                if (probes == 2) {
-                    writeBootstrap(
-                        context.cacheRoot.resolve(SEMANTIC_RUNTIME_BOOTSTRAP_FILE_NAME),
-                        SemanticRuntimeBootstrapState.Ready(runningAttempt),
-                    )
-                }
-                RuntimeEndpointReachability.Reachable
-            },
-            bootstrapProcessAuthority = RuntimeBootstrapProcessAuthority {
-                RuntimeBootstrapProcessObservation.Owned(
-                    runningAttempt,
-                    AcceptedRuntimeStartupSession { RuntimeSessionObservation.Present },
-                )
-            },
-        )
+        val demander =
+            ExactRootProcessRuntimeDemander(
+                executable = executable(temporary),
+                launchContext = context,
+                processStarter =
+                    RuntimeProcessStarter {
+                        starts += 1
+                        error("reachable Starting must not launch another child")
+                    },
+                endpointProbe =
+                    RuntimeEndpointProbe {
+                        probes += 1
+                        if (probes == 2) {
+                            writeBootstrap(
+                                context.cacheRoot.resolve(SEMANTIC_RUNTIME_BOOTSTRAP_FILE_NAME),
+                                SemanticRuntimeBootstrapState.Ready(runningAttempt),
+                            )
+                        }
+                        RuntimeEndpointReachability.Reachable
+                    },
+                bootstrapProcessAuthority =
+                    RuntimeBootstrapProcessAuthority {
+                        RuntimeBootstrapProcessObservation.Owned(
+                            runningAttempt,
+                            AcceptedRuntimeStartupSession { RuntimeSessionObservation.Present },
+                        )
+                    },
+            )
 
         assertEquals(RuntimeAdmission.Ready(endpoint), demander.demand(endpoint.root, endpoint))
         assertEquals(0, starts)
@@ -163,9 +206,7 @@ class RuntimeProcessSessionTest {
     }
 
     @Test
-    fun `detached exact attempt is joined after cli exit without refreshing or relaunching`(
-        @TempDir temporary: Path,
-    ) {
+    fun `detached exact attempt is joined after cli exit without refreshing or relaunching`(@TempDir temporary: Path) {
         val endpoint = endpoint(temporary)
         val context = launchContext(temporary)
         val runningAttempt = attempt("123e4567-e89b-42d3-a456-426614174009")
@@ -179,32 +220,36 @@ class RuntimeProcessSessionTest {
         )
         var probes = 0
         var starts = 0
-        val demander = ExactRootProcessRuntimeDemander(
-            executable = executable(temporary),
-            launchContext = context,
-            processStarter = RuntimeProcessStarter {
-                starts += 1
-                error("a detached exact attempt must be joined")
-            },
-            endpointProbe = RuntimeEndpointProbe {
-                probes += 1
-                if (probes == 2) {
-                    writeBootstrap(
-                        context.cacheRoot.resolve(SEMANTIC_RUNTIME_BOOTSTRAP_FILE_NAME),
-                        SemanticRuntimeBootstrapState.Ready(runningAttempt),
-                    )
-                    RuntimeEndpointReachability.Reachable
-                } else {
-                    RuntimeEndpointReachability.Unreachable
-                }
-            },
-            bootstrapProcessAuthority = RuntimeBootstrapProcessAuthority {
-                RuntimeBootstrapProcessObservation.Owned(
-                    runningAttempt,
-                    AcceptedRuntimeStartupSession { RuntimeSessionObservation.Present },
-                )
-            },
-        )
+        val demander =
+            ExactRootProcessRuntimeDemander(
+                executable = executable(temporary),
+                launchContext = context,
+                processStarter =
+                    RuntimeProcessStarter {
+                        starts += 1
+                        error("a detached exact attempt must be joined")
+                    },
+                endpointProbe =
+                    RuntimeEndpointProbe {
+                        probes += 1
+                        if (probes == 2) {
+                            writeBootstrap(
+                                context.cacheRoot.resolve(SEMANTIC_RUNTIME_BOOTSTRAP_FILE_NAME),
+                                SemanticRuntimeBootstrapState.Ready(runningAttempt),
+                            )
+                            RuntimeEndpointReachability.Reachable
+                        } else {
+                            RuntimeEndpointReachability.Unreachable
+                        }
+                    },
+                bootstrapProcessAuthority =
+                    RuntimeBootstrapProcessAuthority {
+                        RuntimeBootstrapProcessObservation.Owned(
+                            runningAttempt,
+                            AcceptedRuntimeStartupSession { RuntimeSessionObservation.Present },
+                        )
+                    },
+            )
 
         assertEquals(RuntimeAdmission.Ready(endpoint), demander.demand(endpoint.root, endpoint))
         assertEquals(0, starts)
@@ -215,9 +260,7 @@ class RuntimeProcessSessionTest {
     }
 
     @Test
-    fun `uncorrelated existing session fails closed without adopting a stale document`(
-        @TempDir temporary: Path,
-    ) {
+    fun `uncorrelated existing session fails closed without adopting a stale document`(@TempDir temporary: Path) {
         val endpoint = endpoint(temporary)
         val context = launchContext(temporary)
         writeBootstrap(
@@ -227,16 +270,18 @@ class RuntimeProcessSessionTest {
                 SemanticRuntimeBootstrapFailure.PROJECT_JVM_UNAVAILABLE,
             ),
         )
-        val demander = ExactRootProcessRuntimeDemander(
-            executable = executable(temporary),
-            launchContext = context,
-            processStarter = RuntimeProcessStarter {
-                RuntimeProcessStart.ExistingSession(
-                    AcceptedRuntimeStartupSession { RuntimeSessionObservation.Present },
-                )
-            },
-            endpointProbe = RuntimeEndpointProbe { RuntimeEndpointReachability.Unreachable },
-        )
+        val demander =
+            ExactRootProcessRuntimeDemander(
+                executable = executable(temporary),
+                launchContext = context,
+                processStarter =
+                    RuntimeProcessStarter {
+                        RuntimeProcessStart.ExistingSession(
+                            AcceptedRuntimeStartupSession { RuntimeSessionObservation.Present }
+                        )
+                    },
+                endpointProbe = RuntimeEndpointProbe { RuntimeEndpointReachability.Unreachable },
+            )
 
         assertEquals(
             RuntimeAdmission.Rejected(RuntimeAdmissionFailure.BootstrapAttemptUnavailable),
@@ -245,25 +290,26 @@ class RuntimeProcessSessionTest {
     }
 
     @Test
-    fun `accepted session ending before reachability is a finite startup failure`(
-        @TempDir temporary: Path,
-    ) {
+    fun `accepted session ending before reachability is a finite startup failure`(@TempDir temporary: Path) {
         val endpoint = endpoint(temporary)
         var probes = 0
-        val demander = ExactRootProcessRuntimeDemander(
-            executable = executable(temporary),
-            launchContext = launchContext(temporary),
-            processStarter = RuntimeProcessStarter { command ->
-                RuntimeProcessStart.Started(
-                    AcceptedRuntimeStartupSession { RuntimeSessionObservation.Absent },
-                    command.bootstrapAttemptId,
-                )
-            },
-            endpointProbe = RuntimeEndpointProbe {
-                probes += 1
-                RuntimeEndpointReachability.Unreachable
-            },
-        )
+        val demander =
+            ExactRootProcessRuntimeDemander(
+                executable = executable(temporary),
+                launchContext = launchContext(temporary),
+                processStarter =
+                    RuntimeProcessStarter { command ->
+                        RuntimeProcessStart.Started(
+                            AcceptedRuntimeStartupSession { RuntimeSessionObservation.Absent },
+                            command.bootstrapAttemptId,
+                        )
+                    },
+                endpointProbe =
+                    RuntimeEndpointProbe {
+                        probes += 1
+                        RuntimeEndpointReachability.Unreachable
+                    },
+            )
 
         assertEquals(
             RuntimeAdmission.Rejected(RuntimeAdmissionFailure.SessionEndedBeforeReady),
@@ -273,29 +319,29 @@ class RuntimeProcessSessionTest {
     }
 
     @Test
-    fun `sidecar bootstrap rejection survives session exit as the exact runtime failure`(
-        @TempDir temporary: Path,
-    ) {
+    fun `sidecar bootstrap rejection survives session exit as the exact runtime failure`(@TempDir temporary: Path) {
         val endpoint = endpoint(temporary)
         val expected = SemanticRuntimeBootstrapFailure.PROJECT_JVM_UNAVAILABLE
-        val demander = ExactRootProcessRuntimeDemander(
-            executable = executable(temporary),
-            launchContext = launchContext(temporary),
-            processStarter = RuntimeProcessStarter { command ->
-                writeBootstrap(
-                    command.bootstrapState,
-                    SemanticRuntimeBootstrapState.Rejected(
-                        command.bootstrapAttemptId,
-                        expected,
-                    ),
-                )
-                RuntimeProcessStart.Started(
-                    AcceptedRuntimeStartupSession { RuntimeSessionObservation.Absent },
-                    command.bootstrapAttemptId,
-                )
-            },
-            endpointProbe = RuntimeEndpointProbe { RuntimeEndpointReachability.Unreachable },
-        )
+        val demander =
+            ExactRootProcessRuntimeDemander(
+                executable = executable(temporary),
+                launchContext = launchContext(temporary),
+                processStarter =
+                    RuntimeProcessStarter { command ->
+                        writeBootstrap(
+                            command.bootstrapState,
+                            SemanticRuntimeBootstrapState.Rejected(
+                                command.bootstrapAttemptId,
+                                expected,
+                            ),
+                        )
+                        RuntimeProcessStart.Started(
+                            AcceptedRuntimeStartupSession { RuntimeSessionObservation.Absent },
+                            command.bootstrapAttemptId,
+                        )
+                    },
+                endpointProbe = RuntimeEndpointProbe { RuntimeEndpointReachability.Unreachable },
+            )
 
         val admission = demander.demand(endpoint.root, endpoint)
 
@@ -308,24 +354,25 @@ class RuntimeProcessSessionTest {
     }
 
     @Test
-    fun `startup session observation failure and interruption remain distinct`(
-        @TempDir temporary: Path,
-    ) {
+    fun `startup session observation failure and interruption remain distinct`(@TempDir temporary: Path) {
         val endpoint = endpoint(temporary)
         fun demand(observation: RuntimeSessionObservation): RuntimeAdmission =
             ExactRootProcessRuntimeDemander(
-                executable = executable(temporary),
-                launchContext = launchContext(temporary),
-                processStarter = RuntimeProcessStarter { command ->
-                    RuntimeProcessStart.Started(
-                        AcceptedRuntimeStartupSession { observation },
-                        command.bootstrapAttemptId,
-                    )
-                },
-                endpointProbe = RuntimeEndpointProbe {
-                    RuntimeEndpointReachability.Unreachable
-                },
-            ).demand(endpoint.root, endpoint)
+                    executable = executable(temporary),
+                    launchContext = launchContext(temporary),
+                    processStarter =
+                        RuntimeProcessStarter { command ->
+                            RuntimeProcessStart.Started(
+                                AcceptedRuntimeStartupSession { observation },
+                                command.bootstrapAttemptId,
+                            )
+                        },
+                    endpointProbe =
+                        RuntimeEndpointProbe {
+                            RuntimeEndpointReachability.Unreachable
+                        },
+                )
+                .demand(endpoint.root, endpoint)
 
         assertEquals(
             RuntimeAdmission.Rejected(RuntimeAdmissionFailure.ProcessObservationFailed),
@@ -338,37 +385,38 @@ class RuntimeProcessSessionTest {
     }
 
     @Test
-    fun `interrupting a newly owned cold bootstrap retires its sidecar session`(
-        @TempDir temporary: Path,
-    ) {
+    fun `interrupting a newly owned cold bootstrap retires its sidecar session`(@TempDir temporary: Path) {
         val endpoint = endpoint(temporary)
         val observed = CountDownLatch(1)
         val retired = AtomicBoolean(false)
         val result = AtomicReference<RuntimeAdmission>()
-        val session = MacOsRuntimeProcessSession.from(
-            endpoint,
-            LaunchctlInvoker { arguments, _ ->
-                when (arguments[1]) {
-                    "list" -> {
-                        observed.countDown()
-                        LaunchctlInvocation.Completed
+        val session =
+            MacOsRuntimeProcessSession.from(
+                endpoint,
+                LaunchctlInvoker { arguments, _ ->
+                    when (arguments[1]) {
+                        "list" -> {
+                            observed.countDown()
+                            LaunchctlInvocation.Completed
+                        }
+                        "remove" -> {
+                            retired.set(true)
+                            LaunchctlInvocation.Completed
+                        }
+                        else -> error("unexpected launchctl operation: ${arguments[1]}")
                     }
-                    "remove" -> {
-                        retired.set(true)
-                        LaunchctlInvocation.Completed
-                    }
-                    else -> error("unexpected launchctl operation: ${arguments[1]}")
-                }
-            },
-        )
-        val demander = ExactRootProcessRuntimeDemander(
-            executable = executable(temporary),
-            launchContext = launchContext(temporary),
-            processStarter = RuntimeProcessStarter { command ->
-                RuntimeProcessStart.Started(session, command.bootstrapAttemptId)
-            },
-            endpointProbe = RuntimeEndpointProbe { RuntimeEndpointReachability.Unreachable },
-        )
+                },
+            )
+        val demander =
+            ExactRootProcessRuntimeDemander(
+                executable = executable(temporary),
+                launchContext = launchContext(temporary),
+                processStarter =
+                    RuntimeProcessStarter { command ->
+                        RuntimeProcessStart.Started(session, command.bootstrapAttemptId)
+                    },
+                endpointProbe = RuntimeEndpointProbe { RuntimeEndpointReachability.Unreachable },
+            )
         val demandThread = Thread {
             result.set(demander.demand(endpoint.root, endpoint))
         }
@@ -386,48 +434,44 @@ class RuntimeProcessSessionTest {
     }
 
     @Test
-    fun `existing exact launchd session is accepted without duplicate submission`(
-        @TempDir temporary: Path,
-    ) {
+    fun `existing exact launchd session is accepted without duplicate submission`(@TempDir temporary: Path) {
         val endpoint = endpoint(temporary)
         val invocations = mutableListOf<String>()
-        val session = MacOsRuntimeProcessSession.from(
-            endpoint,
-            LaunchctlInvoker { arguments, _ ->
-                invocations += arguments[1]
-                LaunchctlInvocation.Completed
-            },
-        )
+        val session =
+            MacOsRuntimeProcessSession.from(
+                endpoint,
+                LaunchctlInvoker { arguments, _ ->
+                    invocations += arguments[1]
+                    LaunchctlInvocation.Completed
+                },
+            )
 
         assertEquals(
-            RuntimeProcessStart.ExistingSession(
-                session,
-            ),
+            RuntimeProcessStart.ExistingSession(session),
             session.start(command(temporary, endpoint)),
         )
         assertEquals(listOf("list"), invocations)
     }
 
     @Test
-    fun `launchd starts from an empty environment before applying the JBR allowlist`(
-        @TempDir temporary: Path,
-    ) {
+    fun `launchd starts from an empty environment before applying the JBR allowlist`(@TempDir temporary: Path) {
         val endpoint = endpoint(temporary)
         var submission: List<String>? = null
         val command = command(temporary, endpoint)
-        val session = MacOsRuntimeProcessSession.from(
-            endpoint,
-            LaunchctlInvoker { arguments, _ ->
-                when (arguments[1]) {
-                    "list" -> LaunchctlInvocation.Absent
-                    "submit" -> {
-                        submission = arguments
-                        LaunchctlInvocation.Completed
+        val session =
+            MacOsRuntimeProcessSession.from(
+                endpoint,
+                LaunchctlInvoker { arguments, _ ->
+                    when (arguments[1]) {
+                        "list" -> LaunchctlInvocation.Absent
+                        "submit" -> {
+                            submission = arguments
+                            LaunchctlInvocation.Completed
+                        }
+                        else -> error("unexpected launchctl operation")
                     }
-                    else -> error("unexpected launchctl operation")
-                }
-            },
-        )
+                },
+            )
 
         assertInstanceOf(RuntimeProcessStart.Started::class.java, session.start(command))
         assertEquals(listOf("--max-heap-mib=8192"), submission.orEmpty().filter { it.startsWith("--max-heap-mib=") })
@@ -440,17 +484,16 @@ class RuntimeProcessSessionTest {
     }
 
     @Test
-    fun `JBR environment rejection survives to the runtime admission boundary`(
-        @TempDir temporary: Path,
-    ) {
+    fun `JBR environment rejection survives to the runtime admission boundary`(@TempDir temporary: Path) {
         val endpoint = endpoint(temporary)
         val failure = RuntimeProcessStartFailure.IdeaJbrUnavailable
-        val demander = ExactRootProcessRuntimeDemander(
-            executable = executable(temporary),
-            launchContext = launchContext(temporary),
-            processStarter = RuntimeProcessStarter { RuntimeProcessStart.Rejected(failure) },
-            endpointProbe = RuntimeEndpointProbe { RuntimeEndpointReachability.Unreachable },
-        )
+        val demander =
+            ExactRootProcessRuntimeDemander(
+                executable = executable(temporary),
+                launchContext = launchContext(temporary),
+                processStarter = RuntimeProcessStarter { RuntimeProcessStart.Rejected(failure) },
+                endpointProbe = RuntimeEndpointProbe { RuntimeEndpointReachability.Unreachable },
+            )
 
         val admission = demander.demand(endpoint.root, endpoint)
 
@@ -465,85 +508,82 @@ class RuntimeProcessSessionTest {
     }
 
     @Test
-    fun `session that wins a rejected submission race is accepted`(
-        @TempDir temporary: Path,
-    ) {
+    fun `session that wins a rejected submission race is accepted`(@TempDir temporary: Path) {
         val endpoint = endpoint(temporary)
         val invocations = mutableListOf<String>()
         var observations = 0
-        val session = MacOsRuntimeProcessSession.from(
-            endpoint,
-            LaunchctlInvoker { arguments, _ ->
-                val operation = arguments[1]
-                invocations += operation
-                when (operation) {
-                    "list" -> if (observations++ == 0) {
-                        LaunchctlInvocation.Absent
-                    } else {
-                        LaunchctlInvocation.Completed
+        val session =
+            MacOsRuntimeProcessSession.from(
+                endpoint,
+                LaunchctlInvoker { arguments, _ ->
+                    val operation = arguments[1]
+                    invocations += operation
+                    when (operation) {
+                        "list" ->
+                            if (observations++ == 0) {
+                                LaunchctlInvocation.Absent
+                            } else {
+                                LaunchctlInvocation.Completed
+                            }
+                        "submit" -> LaunchctlInvocation.Rejected
+                        else -> error("unexpected launchctl operation: $operation")
                     }
-                    "submit" -> LaunchctlInvocation.Rejected
-                    else -> error("unexpected launchctl operation: $operation")
-                }
-            },
-        )
+                },
+            )
 
         assertEquals(
-            RuntimeProcessStart.ExistingSession(
-                session,
-            ),
+            RuntimeProcessStart.ExistingSession(session),
             session.start(command(temporary, endpoint)),
         )
         assertEquals(listOf("list", "submit", "list"), invocations)
     }
 
     @Test
-    fun `unproven and interrupted launchd observations remain closed start failures`(
-        @TempDir temporary: Path,
-    ) {
+    fun `unproven and interrupted launchd observations remain closed start failures`(@TempDir temporary: Path) {
         val endpoint = endpoint(temporary)
         val command = command(temporary, endpoint)
-        val rejected = MacOsRuntimeProcessSession.from(
-            endpoint,
-            LaunchctlInvoker { _, _ -> LaunchctlInvocation.Rejected },
-        )
-        val interrupted = MacOsRuntimeProcessSession.from(
-            endpoint,
-            LaunchctlInvoker { _, _ -> LaunchctlInvocation.Interrupted },
-        )
+        val rejected =
+            MacOsRuntimeProcessSession.from(
+                endpoint,
+                LaunchctlInvoker { _, _ -> LaunchctlInvocation.Rejected },
+            )
+        val interrupted =
+            MacOsRuntimeProcessSession.from(
+                endpoint,
+                LaunchctlInvoker { _, _ -> LaunchctlInvocation.Interrupted },
+            )
 
         assertTrue(rejected.start(command) is RuntimeProcessStart.Rejected)
         assertEquals(RuntimeProcessStart.Interrupted, interrupted.start(command))
     }
 
     @Test
-    fun `launchd label remains owned until its exact session is retired`(
-        @TempDir temporary: Path,
-    ) {
+    fun `launchd label remains owned until its exact session is retired`(@TempDir temporary: Path) {
         val endpoint = endpoint(temporary)
         var retired = false
-        val processSession = object : RuntimeProcessSession {
-            override fun observe(): RuntimeSessionObservation =
-                RuntimeSessionObservation.Present
+        val processSession =
+            object : RuntimeProcessSession {
+                override fun observe(): RuntimeSessionObservation = RuntimeSessionObservation.Present
 
-            override fun retire(
-                present: RuntimeSessionObservation.Present,
-            ): RuntimeSessionRetirement = when (present) {
-                RuntimeSessionObservation.Present -> {
-                    retired = true
-                    RuntimeSessionRetirement.Retired
-                }
+                override fun retire(present: RuntimeSessionObservation.Present): RuntimeSessionRetirement =
+                    when (present) {
+                        RuntimeSessionObservation.Present -> {
+                            retired = true
+                            RuntimeSessionRetirement.Retired
+                        }
+                    }
             }
-        }
-        val authority = ExactRuntimeProcessAuthority(
-            processSearch = RuntimeProcessSearch { RuntimeProcessSearchResult.None },
-            processSessions = RuntimeProcessSessionResolver { processSession },
-        )
+        val authority =
+            ExactRuntimeProcessAuthority(
+                processSearch = RuntimeProcessSearch { RuntimeProcessSearchResult.None },
+                processSessions = RuntimeProcessSessionResolver { processSession },
+            )
 
-        val owned = assertInstanceOf(
-            RuntimeProcessObservation.Owned::class.java,
-            authority.observe(endpoint),
-        )
+        val owned =
+            assertInstanceOf(
+                RuntimeProcessObservation.Owned::class.java,
+                authority.observe(endpoint),
+            )
 
         assertEquals(RuntimeProcessTermination.Terminated, owned.process.terminate())
         assertTrue(retired, "stop must remove the owned launchd label before marker retirement")
@@ -551,9 +591,7 @@ class RuntimeProcessSessionTest {
 
     @Test
     @EnabledOnOs(OS.MAC)
-    fun `direct launch starts an observable child without a launchd service`(
-        @TempDir temporary: Path,
-    ) {
+    fun `direct launch starts an observable child without a launchd service`(@TempDir temporary: Path) {
         val endpoint = endpoint(temporary)
         val pidFile = endpoint.socketPath.resolveSibling("${endpoint.socketPath.fileName}.pid")
         val serviceFile = endpoint.socketPath.resolveSibling("${endpoint.socketPath.fileName}.service")
@@ -563,7 +601,12 @@ class RuntimeProcessSessionTest {
         assertEquals(command(temporary, endpoint).bootstrapAttemptId, accepted.attemptId)
         awaitFile(pidFile)
         awaitFile(serviceFile)
-        assertEquals(listOf("--max-heap-mib=8192"), Files.readAllLines(endpoint.socketPath.resolveSibling("${endpoint.socketPath.fileName}.arguments")).filter { it.startsWith("--max-heap-mib=") })
+        assertEquals(
+            listOf("--max-heap-mib=8192"),
+            Files.readAllLines(endpoint.socketPath.resolveSibling("${endpoint.socketPath.fileName}.arguments")).filter {
+                it.startsWith("--max-heap-mib=")
+            },
+        )
         val process = ProcessHandle.of(Files.readString(pidFile).trim().toLong()).orElseThrow()
 
         try {
@@ -578,20 +621,21 @@ class RuntimeProcessSessionTest {
 
     @Test
     @EnabledOnOs(OS.MAC)
-    fun `direct launch survives the initiating terminal hangup`(
-        @TempDir temporary: Path,
-    ) {
+    fun `direct launch survives the initiating terminal hangup`(@TempDir temporary: Path) {
         val endpoint = endpoint(temporary)
         val pidFile = endpoint.socketPath.resolveSibling("${endpoint.socketPath.fileName}.pid")
-        val serviceFile = endpoint.socketPath.resolveSibling(
-            "${endpoint.socketPath.fileName}.service",
-        )
+        val serviceFile = endpoint.socketPath.resolveSibling("${endpoint.socketPath.fileName}.service")
 
         val start = JdkRuntimeProcessStarter.start(command(temporary, endpoint))
         val accepted = assertInstanceOf(RuntimeProcessStart.Started::class.java, start)
         awaitFile(pidFile)
         awaitFile(serviceFile)
-        assertEquals(listOf("--max-heap-mib=8192"), Files.readAllLines(endpoint.socketPath.resolveSibling("${endpoint.socketPath.fileName}.arguments")).filter { it.startsWith("--max-heap-mib=") })
+        assertEquals(
+            listOf("--max-heap-mib=8192"),
+            Files.readAllLines(endpoint.socketPath.resolveSibling("${endpoint.socketPath.fileName}.arguments")).filter {
+                it.startsWith("--max-heap-mib=")
+            },
+        )
         val process = ProcessHandle.of(Files.readString(pidFile).trim().toLong()).orElseThrow()
 
         try {
@@ -612,9 +656,7 @@ class RuntimeProcessSessionTest {
 
     @Test
     @EnabledOnOs(OS.MAC)
-    fun `launchd opt-in leaves the initiating caller process group`(
-        @TempDir temporary: Path,
-    ) {
+    fun `launchd opt-in leaves the initiating caller process group`(@TempDir temporary: Path) {
         val endpoint = endpoint(temporary)
         val pidFile = endpoint.socketPath.resolveSibling("${endpoint.socketPath.fileName}.pid")
         val serviceFile = endpoint.socketPath.resolveSibling("${endpoint.socketPath.fileName}.service")
@@ -622,12 +664,15 @@ class RuntimeProcessSessionTest {
         val session = command.processSession
 
         val start = LaunchdRuntimeProcessStarter.start(command)
-        check(
-            start is RuntimeProcessStart.Started
-        ) { "runtime process did not start: $start" }
+        check(start is RuntimeProcessStart.Started) { "runtime process did not start: $start" }
         awaitFile(pidFile)
         awaitFile(serviceFile)
-        assertEquals(listOf("--max-heap-mib=8192"), Files.readAllLines(endpoint.socketPath.resolveSibling("${endpoint.socketPath.fileName}.arguments")).filter { it.startsWith("--max-heap-mib=") })
+        assertEquals(
+            listOf("--max-heap-mib=8192"),
+            Files.readAllLines(endpoint.socketPath.resolveSibling("${endpoint.socketPath.fileName}.arguments")).filter {
+                it.startsWith("--max-heap-mib=")
+            },
+        )
         val process = ProcessHandle.of(Files.readString(pidFile).trim().toLong()).orElseThrow()
 
         try {
@@ -649,26 +694,19 @@ class RuntimeProcessSessionTest {
 
     @Test
     @EnabledOnOs(OS.MAC)
-    fun `non terminal status from failed child still retires its launchd session`(
-        @TempDir temporary: Path,
-    ) {
+    fun `non terminal status from failed child still retires its launchd session`(@TempDir temporary: Path) {
         val endpoint = endpoint(temporary)
         val serviceFile = endpoint.socketPath.resolveSibling("${endpoint.socketPath.fileName}.failed-service")
         val session = MacOsRuntimeProcessSession.from(endpoint)
         val command = failingCommand(temporary, endpoint, serviceFile)
         val start = session.start(command)
-        check(
-            start is RuntimeProcessStart.Started
-        ) { "runtime process did not start: $start" }
+        check(start is RuntimeProcessStart.Started) { "runtime process did not start: $start" }
         awaitFile(serviceFile)
 
         try {
             val deadline = System.nanoTime() + Duration.ofSeconds(10).toNanos()
             var observation = session.observe()
-            while (
-                observation == RuntimeSessionObservation.Present &&
-                System.nanoTime() < deadline
-            ) {
+            while (observation == RuntimeSessionObservation.Present && System.nanoTime() < deadline) {
                 Thread.sleep(25)
                 observation = session.observe()
             }
@@ -688,19 +726,17 @@ class RuntimeProcessSessionTest {
     private fun endpoint(temporary: Path): RuntimeEndpoint {
         val rootPath = Files.createDirectory(temporary.resolve("workspace"))
         Files.writeString(rootPath.resolve("settings.gradle.kts"), "rootProject.name = \"fixture\"")
-        val root = when (val discovery = FilesystemCanonicalRootDiscovery.discover(rootPath)) {
-            is CanonicalRootDiscovery.Discovered -> discovery.root
-            is CanonicalRootDiscovery.Rejected -> error(discovery.failure)
-        }
-        val runtimeId = when (
-            val parsed = SemanticRuntimeId.parse("sha256:${"a".repeat(64)}")
-        ) {
-            is Refinement.Refined -> parsed.value
-            is Refinement.Rejected -> error(parsed.failure)
-        }
-        return when (
-            val resolution = RuntimeEndpoint.at(root, runtimeId, temporary.resolve("runtime.sock"))
-        ) {
+        val root =
+            when (val discovery = FilesystemCanonicalRootDiscovery.discover(rootPath)) {
+                is CanonicalRootDiscovery.Discovered -> discovery.root
+                is CanonicalRootDiscovery.Rejected -> error(discovery.failure)
+            }
+        val runtimeId =
+            when (val parsed = SemanticRuntimeId.parse("sha256:${"a".repeat(64)}")) {
+                is Refinement.Refined -> parsed.value
+                is Refinement.Rejected -> error(parsed.failure)
+            }
+        return when (val resolution = RuntimeEndpoint.at(root, runtimeId, temporary.resolve("runtime.sock"))) {
             is RuntimeEndpointResolution.Resolved -> resolution.endpoint
             is RuntimeEndpointResolution.Rejected -> error(resolution.failure)
         }
@@ -710,21 +746,22 @@ class RuntimeProcessSessionTest {
         val executable = temporary.resolve(INDEXER_FIXTURE_NAME)
         Files.writeString(
             executable,
-            """#!/bin/bash
-                |set -euo pipefail
-                |socket_path=""
-                |for argument in "${'$'}@"; do
-                |  case "${'$'}argument" in
-                |    --socket-path=*) socket_path="${'$'}{argument#--socket-path=}" ;;
-                |  esac
-                |done
-                |printf '%s\n' "${'$'}@" > "${'$'}{socket_path}.arguments"
-                |printf '%s\n' "${'$'}${'$'}" > "${'$'}{socket_path}.pid"
-                |printf '%s\n' "${'$'}{XPC_SERVICE_NAME:-}" > "${'$'}{socket_path}.service"
-                |trap 'exit 0' TERM INT
-                |while true; do /bin/sleep 1; done
-                |
-            """.trimMargin(),
+            """
+            |#!/bin/bash
+            |set -euo pipefail
+            |socket_path=""
+            |for argument in "${'$'}@"; do
+            |  case "${'$'}argument" in
+            |    --socket-path=*) socket_path="${'$'}{argument#--socket-path=}" ;;
+            |  esac
+            |done
+            |printf '%s\n' "${'$'}@" > "${'$'}{socket_path}.arguments"
+            |printf '%s\n' "${'$'}${'$'}" > "${'$'}{socket_path}.pid"
+            |printf '%s\n' "${'$'}{XPC_SERVICE_NAME:-}" > "${'$'}{socket_path}.service"
+            |trap 'exit 0' TERM INT
+            |while true; do /bin/sleep 1; done
+            |"""
+                .trimMargin(),
         )
         Files.setPosixFilePermissions(executable, PosixFilePermissions.fromString("rwx------"))
         return when (val admission = IndexerExecutable.admit(executable)) {
@@ -736,18 +773,20 @@ class RuntimeProcessSessionTest {
     private fun command(
         temporary: Path,
         endpoint: RuntimeEndpoint,
-    ): IndexerLaunchCommand = when (
-        val construction = IndexerLaunchCommand.create(
-            executable(temporary),
-            endpoint.root,
-            endpoint,
-            launchContext(temporary),
-            attempt(),
-        )
-    ) {
-        is IndexerLaunchCommandConstruction.Created -> construction.command
-        is IndexerLaunchCommandConstruction.Rejected -> error(construction.failure)
-    }
+    ): IndexerLaunchCommand =
+        when (
+            val construction =
+                IndexerLaunchCommand.create(
+                    executable(temporary),
+                    endpoint.root,
+                    endpoint,
+                    launchContext(temporary),
+                    attempt(),
+                )
+        ) {
+            is IndexerLaunchCommandConstruction.Created -> construction.command
+            is IndexerLaunchCommandConstruction.Rejected -> error(construction.failure)
+        }
 
     private fun failingCommand(
         temporary: Path,
@@ -763,61 +802,74 @@ class RuntimeProcessSessionTest {
                 |printf '%s\n' 'fixture-startup-rejected' >&2
                 |exit 64
                 |
-            """.trimMargin(),
+            """
+                .trimMargin(),
         )
         Files.setPosixFilePermissions(executable, PosixFilePermissions.fromString("rwx------"))
-        val admitted = when (val admission = IndexerExecutable.admit(executable)) {
-            is Refinement.Refined -> admission.value
-            is Refinement.Rejected -> error(admission.failure)
-        }
-        return when (val construction = IndexerLaunchCommand.create(
-            admitted,
-            endpoint.root,
-            endpoint,
-            launchContext(temporary),
-            attempt(),
-        )) {
+        val admitted =
+            when (val admission = IndexerExecutable.admit(executable)) {
+                is Refinement.Refined -> admission.value
+                is Refinement.Rejected -> error(admission.failure)
+            }
+        return when (
+            val construction =
+                IndexerLaunchCommand.create(
+                    admitted,
+                    endpoint.root,
+                    endpoint,
+                    launchContext(temporary),
+                    attempt(),
+                )
+        ) {
             is IndexerLaunchCommandConstruction.Created -> construction.command
             is IndexerLaunchCommandConstruction.Rejected -> error(construction.failure)
         }
     }
 
-    private fun launchContext(temporary: Path, inputs: SidecarEnvironmentInputs = SidecarEnvironmentInputs.Empty, heap: io.github.amichne.kast.distribution.contract.IndexerHeapSize = (io.github.amichne.kast.distribution.contract.IndexerHeapSize.parse("8g") as Refinement.Refined).value): SidecarLaunchContext {
+    private fun launchContext(
+        temporary: Path,
+        inputs: SidecarEnvironmentInputs = SidecarEnvironmentInputs.Empty,
+        heap: io.github.amichne.kast.distribution.contract.IndexerHeapSize =
+            (io.github.amichne.kast.distribution.contract.IndexerHeapSize.parse("8g") as Refinement.Refined).value,
+    ): SidecarLaunchContext {
         val ideaHome = Files.createDirectories(temporary.resolve("idea-home")).toRealPath()
-        val java = Files.createDirectories(
-            ideaHome.resolve("jbr/Contents/Home/bin"),
-        ).resolve("java")
+        val java = Files.createDirectories(ideaHome.resolve("jbr/Contents/Home/bin")).resolve("java")
         if (Files.notExists(java)) Files.createFile(java)
         java.toFile().setExecutable(true)
-        val pair = SupportedIdeRuntimePair.admit(
-            "262.9437.185",
-            "262.9437.185-IJ",
-        ).let { (it as SupportedIdeRuntimePairAdmission.Admitted).pair }
-        val identity = IdeRuntimeIdentity.admit(
-            pair,
-            IdeRuntimeIdentityCandidate(
-                pair.ideaBuild,
-                pair.kotlinPluginBuild,
-                "jbr-25.0.3+9-b508.16-aarch64",
-                "sha256:${"a".repeat(64)}",
-            ),
-        ).let { (it as IdeRuntimeIdentityAdmission.Admitted).identity }
+        val pair =
+            SupportedIdeRuntimePair.admit(
+                    "262.9437.185",
+                    "262.9437.185-IJ",
+                )
+                .let { (it as SupportedIdeRuntimePairAdmission.Admitted).pair }
+        val identity =
+            IdeRuntimeIdentity.admit(
+                    pair,
+                    IdeRuntimeIdentityCandidate(
+                        pair.ideaBuild,
+                        pair.kotlinPluginBuild,
+                        "jbr-25.0.3+9-b508.16-aarch64",
+                        "sha256:${"a".repeat(64)}",
+                    ),
+                )
+                .let { (it as IdeRuntimeIdentityAdmission.Admitted).identity }
         val state = Files.createDirectories(temporary.resolve("sidecar-state")).toRealPath()
         val system = Files.createDirectories(state.resolve("system")).toRealPath()
         val config = Files.createDirectories(state.resolve("config")).toRealPath()
         val log = Files.createDirectories(state.resolve("log")).toRealPath()
         val plugins = Files.createDirectories(temporary.resolve("private-plugins")).toRealPath()
         return SidecarLaunchContext.admit(
-            InstalledIdeRuntime(ideaHome, java.toRealPath(), identity),
-            state,
-            system,
-            config,
-            log,
-            plugins,
-            maxHeap = heap,
-            importEnvironment = (inputs.importEnvironment() as Refinement.Refined).value,
-            sidecarEnvironment = inputs,
-        ).let { (it as SidecarLaunchContextAdmission.Admitted).context }
+                InstalledIdeRuntime(ideaHome, java.toRealPath(), identity),
+                state,
+                system,
+                config,
+                log,
+                plugins,
+                maxHeap = heap,
+                importEnvironment = (inputs.importEnvironment() as Refinement.Refined).value,
+                sidecarEnvironment = inputs,
+            )
+            .let { (it as SidecarLaunchContextAdmission.Admitted).context }
     }
 
     private fun awaitFile(path: Path) {
@@ -828,32 +880,25 @@ class RuntimeProcessSessionTest {
         }
     }
 
-    private fun attempt(
-        raw: String = "123e4567-e89b-42d3-a456-426614174000",
-    ): SemanticRuntimeBootstrapAttemptId = when (
-        val admission = SemanticRuntimeBootstrapAttemptId.admit(raw)
-    ) {
-        is Refinement.Refined -> admission.value
-        is Refinement.Rejected -> error(admission.failure)
-    }
+    private fun attempt(raw: String = "123e4567-e89b-42d3-a456-426614174000"): SemanticRuntimeBootstrapAttemptId =
+        when (val admission = SemanticRuntimeBootstrapAttemptId.admit(raw)) {
+            is Refinement.Refined -> admission.value
+            is Refinement.Rejected -> error(admission.failure)
+        }
 
     private fun writeBootstrap(path: Path, state: SemanticRuntimeBootstrapState) {
         Files.writeString(path, SemanticRuntimeBootstrapCodec.encode(state))
     }
 
     private fun processGroup(pid: Long): Long {
-        val process = ProcessBuilder("/bin/ps", "-o", "pgid=", "-p", pid.toString())
-            .redirectErrorStream(true)
-            .start()
+        val process = ProcessBuilder("/bin/ps", "-o", "pgid=", "-p", pid.toString()).redirectErrorStream(true).start()
         val output = process.inputReader().readText().trim()
         check(process.waitFor() == 0) { "could not inspect process group for $pid: $output" }
         return output.toLong()
     }
 
     private fun signalHangup(pid: Long) {
-        val process = ProcessBuilder("/bin/kill", "-HUP", pid.toString())
-            .redirectErrorStream(true)
-            .start()
+        val process = ProcessBuilder("/bin/kill", "-HUP", pid.toString()).redirectErrorStream(true).start()
         val output = process.inputReader().readText().trim()
         check(process.waitFor() == 0) { "could not hang up process $pid: $output" }
     }

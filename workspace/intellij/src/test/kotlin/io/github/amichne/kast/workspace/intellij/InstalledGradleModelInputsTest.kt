@@ -1,19 +1,19 @@
 package io.github.amichne.kast.workspace.intellij
 
-import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.distribution.contract.bootstrap.ModelInputFailureReason
+import io.github.amichne.kast.kernel.Refinement
+import java.nio.file.Files
+import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Files
-import java.nio.file.Path
 
 class InstalledGradleModelInputsTest {
     @Test
     fun `unchanged inputs retain imported authority and ordinary source changes do not invalidate it`(
-        @TempDir temporary: Path,
+        @TempDir temporary: Path
     ) {
         val root = temporary.toRealPath()
         write(root, "build.gradle.kts", "plugins {}")
@@ -24,9 +24,7 @@ class InstalledGradleModelInputsTest {
     }
 
     @Test
-    fun `Kotlin tool state inside build logic does not invalidate imported authority`(
-        @TempDir temporary: Path,
-    ) {
+    fun `Kotlin tool state inside build logic does not invalidate imported authority`(@TempDir temporary: Path) {
         val root = temporary.toRealPath()
         val source = write(root, "build-logic/src/main/kotlin/Convention.kt", "class Convention")
         val inputs = capture(root)
@@ -40,14 +38,19 @@ class InstalledGradleModelInputsTest {
 
     @Test
     fun `changed deleted and newly added conventional model inputs reject the original import`(
-        @TempDir temporary: Path,
+        @TempDir temporary: Path
     ) {
-        val names = listOf(
-            "settings.gradle.kts", "library/build.gradle", "gradle.properties",
-            "gradle/libs.versions.toml", "gradle/gradle-daemon-jvm.properties",
-            "gradle/wrapper/gradle-wrapper.properties", "buildSrc/src/main/kotlin/Conventions.kt",
-            "build-logic/conventions/src/main/kotlin/Plugin.kt",
-        )
+        val names =
+            listOf(
+                "settings.gradle.kts",
+                "library/build.gradle",
+                "gradle.properties",
+                "gradle/libs.versions.toml",
+                "gradle/gradle-daemon-jvm.properties",
+                "gradle/wrapper/gradle-wrapper.properties",
+                "buildSrc/src/main/kotlin/Conventions.kt",
+                "build-logic/conventions/src/main/kotlin/Plugin.kt",
+            )
         for ((index, name) in names.withIndex()) {
             val root = Files.createDirectories(temporary.resolve(index.toString())).toRealPath()
             val original = capture(root)
@@ -139,7 +142,10 @@ class InstalledGradleModelInputsTest {
         }
         val rejected = failure(result) as InstalledGradleModelCaptureFailure.ModelInputRejected
         assertEquals(ModelInputFailureReason.TARGET_MISSING, rejected.failure.reason)
-        assertEquals(InstalledIntellijWorkspaceOpening.ModelInputRejected(rejected.failure), rejected.workspaceOpening())
+        assertEquals(
+            InstalledIntellijWorkspaceOpening.ModelInputRejected(rejected.failure),
+            rejected.workspaceOpening(),
+        )
     }
 
     @Test
@@ -253,7 +259,8 @@ class InstalledGradleModelInputsTest {
     }
 
     private fun assertInputFailure(root: Path, reason: ModelInputFailureReason, logical: String? = null) {
-        val rejected = failure(InstalledGradleModelInputs.capture(root)) as InstalledGradleModelCaptureFailure.ModelInputRejected
+        val rejected =
+            failure(InstalledGradleModelInputs.capture(root)) as InstalledGradleModelCaptureFailure.ModelInputRejected
         assertEquals(reason, rejected.failure.reason)
         if (logical != null) assertEquals(logical, rejected.failure.path.value)
     }

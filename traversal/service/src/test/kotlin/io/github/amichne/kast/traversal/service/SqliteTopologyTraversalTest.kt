@@ -4,13 +4,12 @@ import io.github.amichne.kast.evidence.sqlite.SqliteTopologyRelationCompiler
 import io.github.amichne.kast.evidence.sqlite.SqliteTopologyRelationCompilerOpening
 import io.github.amichne.kast.evidence.sqlite.SqliteTopologySnapshotStore
 import io.github.amichne.kast.evidence.sqlite.SqliteTopologySnapshotStoreOpening
-import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.service.RelationService
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity
 import io.github.amichne.kast.symbol.contract.SymbolDescription
 import io.github.amichne.kast.symbol.contract.SymbolSelector
-import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.topology.contract.CompleteTopologyFile
 import io.github.amichne.kast.topology.contract.CompleteTopologyGeneration
 import io.github.amichne.kast.topology.contract.PublishedTopologySnapshot
@@ -34,19 +33,18 @@ import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceContentHash
 import io.github.amichne.kast.workspace.contract.WorkspaceSourcePath
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertInstanceOf
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.startCoroutine
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
 
 class SqliteTopologyTraversalTest {
-    @TempDir
-    lateinit var tempDir: Path
+    @TempDir lateinit var tempDir: Path
 
     @Test
     fun `public multi hop traversal reads restarted SQLite topology without K2`() {
@@ -58,22 +56,26 @@ class SqliteTopologyTraversalTest {
         val generation = generation(workspace, listOf(a, b, c))
         val database = tempDir.resolve("topology.sqlite")
         val first = store(database)
-        val snapshot = assertInstanceOf(
-            TopologyPublicationResult.Published::class.java,
-            first.publish(generation),
-        ).snapshot
+        val snapshot =
+            assertInstanceOf(
+                    TopologyPublicationResult.Published::class.java,
+                    first.publish(generation),
+                )
+                .snapshot
 
         val reopened = store(database)
         val contentReads = CountingTopologySnapshotContentReader(reopened)
         val current = WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(workspace) }
-        val relations = RelationService(
-            current,
-            topologyRelationCompiler(snapshot, contentReads),
-        )
-        val result = assertInstanceOf(
-            TraversalResult.Complete::class.java,
-            runSuspend { traversalOperations(relations).run(traversalFixture.plan(a)) },
-        )
+        val relations =
+            RelationService(
+                current,
+                topologyRelationCompiler(snapshot, contentReads),
+            )
+        val result =
+            assertInstanceOf(
+                TraversalResult.Complete::class.java,
+                runSuspend { traversalOperations(relations).run(traversalFixture.plan(a)) },
+            )
 
         assertEquals(2, result.coverage.exactRecordCount.value)
         assertEquals(
@@ -86,31 +88,36 @@ class SqliteTopologyTraversalTest {
     @Test
     fun `exact selector location distinguishes duplicate compiler identities`() {
         val traversalFixture = TraversalTestFixture()
-        val sharedSignature = CanonicalCompilerSignature.function(
-            "sample.shared",
-            null,
-            emptyList(),
-            emptyList(),
-            0,
-        ).refined()
+        val sharedSignature =
+            CanonicalCompilerSignature.function(
+                    "sample.shared",
+                    null,
+                    emptyList(),
+                    emptyList(),
+                    0,
+                )
+                .refined()
         val a = traversalFixture.selector("a", 10, sharedSignature)
         val b = traversalFixture.selector("b", 20, sharedSignature)
         val c = traversalFixture.selector("c", 30)
         val workspace = workspace(traversalFixture, sourceRoot())
         val generation = generation(workspace, listOf(a, b, c))
         val database = tempDir.resolve("duplicate-identity-topology.sqlite")
-        val snapshot = assertInstanceOf(
-            TopologyPublicationResult.Published::class.java,
-            store(database).publish(generation),
-        ).snapshot
+        val snapshot =
+            assertInstanceOf(
+                    TopologyPublicationResult.Published::class.java,
+                    store(database).publish(generation),
+                )
+                .snapshot
 
         val current = WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(workspace) }
         val reopened = store(database)
         val relations = RelationService(current, topologyRelationCompiler(snapshot, reopened))
-        val result = assertInstanceOf(
-            TraversalResult.Complete::class.java,
-            runSuspend { traversalOperations(relations).run(traversalFixture.plan(a)) },
-        )
+        val result =
+            assertInstanceOf(
+                TraversalResult.Complete::class.java,
+                runSuspend { traversalOperations(relations).run(traversalFixture.plan(a)) },
+            )
 
         assertEquals(listOf("b", "c"), result.page.records.map { it.related.name.value })
     }
@@ -124,24 +131,35 @@ class SqliteTopologyTraversalTest {
         val workspace = workspace(fixture, sourceRoot())
         val generation = generation(workspace, listOf(a, b, c))
         val store = store(tempDir.resolve("scoped-topology.sqlite"))
-        val snapshot = assertInstanceOf(TopologyPublicationResult.Published::class.java, store.publish(generation)).snapshot
-        val constrained = SymbolSelector.issue(
-            a.lease,
-            a.scope,
-            generation.symbols.first { it.evidence.name == a.name }.evidence,
-            io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints(
-                null, null,
-                sourceSets = io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceSets.Exact.from(setOf(
-                    io.github.amichne.kast.workspace.contract.WorkspaceSourceSetName.parse("main").refined(),
-                )).refined(),
-            ),
-        )
-        val request = io.github.amichne.kast.relation.contract.RelationRequest.start(
-            constrained, io.github.amichne.kast.relation.contract.RelationMeaning.Callees, fixture.relationBudget(),
-        )
+        val snapshot =
+            assertInstanceOf(TopologyPublicationResult.Published::class.java, store.publish(generation)).snapshot
+        val constrained =
+            SymbolSelector.issue(
+                a.lease,
+                a.scope,
+                generation.symbols.first { it.evidence.name == a.name }.evidence,
+                io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints(
+                    null,
+                    null,
+                    sourceSets =
+                        io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceSets.Exact.from(
+                                setOf(
+                                    io.github.amichne.kast.workspace.contract.WorkspaceSourceSetName.parse("main")
+                                        .refined()
+                                )
+                            )
+                            .refined(),
+                ),
+            )
+        val request =
+            io.github.amichne.kast.relation.contract.RelationRequest.start(
+                constrained,
+                io.github.amichne.kast.relation.contract.RelationMeaning.Callees,
+                fixture.relationBudget(),
+            )
         assertEquals(
             io.github.amichne.kast.relation.contract.RelationCompilation.Rejected(
-                io.github.amichne.kast.relation.contract.RelationCompilerRejection.SCOPE_REJECTED,
+                io.github.amichne.kast.relation.contract.RelationCompilerRejection.SCOPE_REJECTED
             ),
             runSuspend { topologyRelationCompiler(snapshot, store).read(request) },
         )
@@ -155,50 +173,55 @@ class SqliteTopologyTraversalTest {
         val files = selectors.associateWith { selector ->
             val path = (selector.file.stableValue.removePrefix("/workspace/"))
             TopologySourceFile.admit(
-                workspace,
-                root,
-                WorkspaceSourcePath.parse(path).refined(),
-                WorkspaceSourceContentHash.parse(
-                    selector.name.value.first().toString().repeat(64),
-                ).refined(),
-            ).refined()
+                    workspace,
+                    root,
+                    WorkspaceSourcePath.parse(path).refined(),
+                    WorkspaceSourceContentHash.parse(selector.name.value.first().toString().repeat(64)).refined(),
+                )
+                .refined()
         }
         val symbols = files.mapValues { (selector, file) -> topologySymbol(file, selector) }
-        val edges = listOf(
-            topologyEdge(symbols, selectors[0], selectors[1]),
-            topologyEdge(symbols, selectors[1], selectors[2]),
-        )
+        val edges =
+            listOf(
+                topologyEdge(symbols, selectors[0], selectors[1]),
+                topologyEdge(symbols, selectors[1], selectors[2]),
+            )
         val complete = files.map { (selector, file) ->
             CompleteTopologyFile.admit(
-                file,
-                listOf(symbols.getValue(selector)),
-                edges.filter { it.source == symbols.getValue(selector) },
-            ).refined()
+                    file,
+                    listOf(symbols.getValue(selector)),
+                    edges.filter { it.source == symbols.getValue(selector) },
+                )
+                .refined()
         }
         return CompleteTopologyGeneration.admit(
-            workspace,
-            files.values.toList(),
-            complete,
-        ).refined()
+                workspace,
+                files.values.toList(),
+                complete,
+            )
+            .refined()
     }
 
     private fun topologySymbol(
         file: TopologySourceFile,
         selector: SymbolSelector,
     ): TopologySymbol {
-        val qualified = when (val identity = selector.qualifiedIdentity) {
-            is ExactDeclarationQualifiedIdentity.Available -> identity.value
-            ExactDeclarationQualifiedIdentity.Unavailable -> null
-        }
-        val evidence = CompilerGroundedSymbolEvidence.fromBoundary(
-            selector.file,
-            selector.range.startInclusive,
-            selector.range.endExclusive,
-            selector.name.value,
-            qualified,
-            selector.kind,
-            SymbolDescription.from(selector).signature,
-        ).refined()
+        val qualified =
+            when (val identity = selector.qualifiedIdentity) {
+                is ExactDeclarationQualifiedIdentity.Available -> identity.value
+                ExactDeclarationQualifiedIdentity.Unavailable -> null
+            }
+        val evidence =
+            CompilerGroundedSymbolEvidence.fromBoundary(
+                    selector.file,
+                    selector.range.startInclusive,
+                    selector.range.endExclusive,
+                    selector.name.value,
+                    qualified,
+                    selector.kind,
+                    SymbolDescription.from(selector).signature,
+                )
+                .refined()
         return TopologySymbol.admit(file, evidence).refined()
     }
 
@@ -206,39 +229,45 @@ class SqliteTopologyTraversalTest {
         symbols: Map<SymbolSelector, TopologySymbol>,
         source: SymbolSelector,
         target: SymbolSelector,
-    ): TopologyEdge = TopologyEdge.fromBoundary(
-        TopologyEdgeKind.CALL,
-        symbols.getValue(source),
-        symbols.getValue(target),
-        source.range.startInclusive,
-        source.range.startInclusive + 1,
-    ).refined()
+    ): TopologyEdge =
+        TopologyEdge.fromBoundary(
+                TopologyEdgeKind.CALL,
+                symbols.getValue(source),
+                symbols.getValue(target),
+                source.range.startInclusive,
+                source.range.startInclusive + 1,
+            )
+            .refined()
 
     private fun workspace(fixture: TraversalTestFixture, root: SourceRoot): PublishedWorkspace {
-        val candidate = WorkspaceCandidate(
-            fixture.lease.workspaceRoot,
-            WorkspaceStateIdentity.parse("sqlite-traversal-state").refined(),
-        )
+        val candidate =
+            WorkspaceCandidate(
+                fixture.lease.workspaceRoot,
+                WorkspaceStateIdentity.parse("sqlite-traversal-state").refined(),
+            )
         return PublishedWorkspace.publish(
             ReconciledWorkspace.admit(
-                candidate,
-                WorkspaceEvidenceKind.entries.toSet(),
-                listOf(root),
-            ).refined(),
+                    candidate,
+                    WorkspaceEvidenceKind.entries.toSet(),
+                    listOf(root),
+                )
+                .refined(),
             fixture.lease.generation,
         )
     }
 
-    private fun sourceRoot(): SourceRoot = SourceRoot.admit(
-        GradleSourceRootEvidence(
-            "root.main",
-            ".",
-            ":",
-            "main",
-            "src",
-            SourceRootProvenance.Authored,
-        ),
-    ).refined()
+    private fun sourceRoot(): SourceRoot =
+        SourceRoot.admit(
+                GradleSourceRootEvidence(
+                    "root.main",
+                    ".",
+                    ":",
+                    "main",
+                    "src",
+                    SourceRootProvenance.Authored,
+                )
+            )
+            .refined()
 
     private fun store(path: Path): SqliteTopologySnapshotStore {
         Files.createDirectories(path.parent)
@@ -251,30 +280,29 @@ class SqliteTopologyTraversalTest {
     private fun topologyRelationCompiler(
         snapshot: PublishedTopologySnapshot,
         reader: TopologySnapshotContentReader,
-    ): SqliteTopologyRelationCompiler = when (
-        val opened = SqliteTopologyRelationCompiler.open(snapshot, reader)
-    ) {
-        is SqliteTopologyRelationCompilerOpening.Opened -> opened.compiler
-        is SqliteTopologyRelationCompilerOpening.Rejected -> error(opened.failure)
-    }
+    ): SqliteTopologyRelationCompiler =
+        when (val opened = SqliteTopologyRelationCompiler.open(snapshot, reader)) {
+            is SqliteTopologyRelationCompilerOpening.Opened -> opened.compiler
+            is SqliteTopologyRelationCompilerOpening.Rejected -> error(opened.failure)
+        }
 
     private fun <Value> runSuspend(block: suspend () -> Value): Value {
         var outcome: Result<Value>? = null
         block.startCoroutine(
             object : Continuation<Value> {
                 override val context = EmptyCoroutineContext
+
                 override fun resumeWith(result: Result<Value>) {
                     outcome = result
                 }
-            },
+            }
         )
         return checkNotNull(outcome).getOrThrow()
     }
 }
 
-private class CountingTopologySnapshotContentReader(
-    private val delegate: TopologySnapshotContentReader,
-) : TopologySnapshotContentReader {
+private class CountingTopologySnapshotContentReader(private val delegate: TopologySnapshotContentReader) :
+    TopologySnapshotContentReader {
     var count: Int = 0
         private set
 

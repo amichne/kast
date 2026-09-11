@@ -1,8 +1,8 @@
 package io.github.amichne.kast.cli
 
+import java.io.PrintStream
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
-import java.io.PrintStream
 
 /** Ordered, bounded effect stages for one optional IntelliJ index seed. */
 enum class IndexSeedStage {
@@ -22,13 +22,9 @@ enum class IndexSeedStage {
 sealed interface IndexSeedActivity {
     val stage: IndexSeedStage
 
-    data class Started(
-        override val stage: IndexSeedStage,
-    ) : IndexSeedActivity
+    data class Started(override val stage: IndexSeedStage) : IndexSeedActivity
 
-    data class Completed(
-        override val stage: IndexSeedStage,
-    ) : IndexSeedActivity
+    data class Completed(override val stage: IndexSeedStage) : IndexSeedActivity
 
     data class Rejected(
         override val stage: IndexSeedStage,
@@ -52,9 +48,7 @@ fun interface IndexSeedActivitySink {
 }
 
 /** Synchronized structured progress for a foreground `kast start --seed-from-idea`. */
-class JsonLineIndexSeedActivitySink(
-    private val output: PrintStream,
-) : IndexSeedActivitySink {
+class JsonLineIndexSeedActivitySink(private val output: PrintStream) : IndexSeedActivitySink {
     @Synchronized
     override fun publish(activity: IndexSeedActivity): IndexSeedActivityPublication {
         val document = buildJsonObject {
@@ -84,14 +78,15 @@ class JsonLineIndexSeedActivitySink(
 
 private fun IndexSeedStage.wireName(): String = name.lowercase().replace('_', '-')
 
-private fun IndexSeedFailure.activityReason(): String = when (this) {
-    is IndexSeedFailure.Incompatibility -> "incompatibility"
-    IndexSeedFailure.Ambiguity -> "ambiguity"
-    IndexSeedFailure.MissingInstallation -> "missing-installation"
-    IndexSeedFailure.RunningSourceIde -> "running-source-ide"
-    IndexSeedFailure.ConsentAbsent -> "consent-absent"
-    IndexSeedFailure.UnsupportedFilesystem -> "unsupported-filesystem"
-    IndexSeedFailure.SourceMutation -> "source-mutation"
-    IndexSeedFailure.CopyFailure -> "copy-failure"
-    IndexSeedFailure.ValidationFailure -> "validation-failure"
-}
+private fun IndexSeedFailure.activityReason(): String =
+    when (this) {
+        is IndexSeedFailure.Incompatibility -> "incompatibility"
+        IndexSeedFailure.Ambiguity -> "ambiguity"
+        IndexSeedFailure.MissingInstallation -> "missing-installation"
+        IndexSeedFailure.RunningSourceIde -> "running-source-ide"
+        IndexSeedFailure.ConsentAbsent -> "consent-absent"
+        IndexSeedFailure.UnsupportedFilesystem -> "unsupported-filesystem"
+        IndexSeedFailure.SourceMutation -> "source-mutation"
+        IndexSeedFailure.CopyFailure -> "copy-failure"
+        IndexSeedFailure.ValidationFailure -> "validation-failure"
+    }

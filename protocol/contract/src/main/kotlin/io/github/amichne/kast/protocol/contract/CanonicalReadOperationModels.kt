@@ -1,6 +1,9 @@
 package io.github.amichne.kast.protocol.contract
 
 import io.github.amichne.kast.kernel.Refinement
+import java.nio.charset.CharacterCodingException
+import java.security.MessageDigest
+import java.util.Base64
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -9,9 +12,6 @@ import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
-import java.nio.charset.CharacterCodingException
-import java.security.MessageDigest
-import java.util.Base64
 
 private const val MAX_PROTOCOL_TEXT_LENGTH = 1_048_576
 private const val MAX_PROTOCOL_ITEMS = 1_000
@@ -25,32 +25,30 @@ enum class ProtocolTextFailure {
 /** One non-blank, bounded text atom admitted at the public transport boundary. */
 @JvmInline
 @Serializable(with = ProtocolTextSerializer::class)
-value class ProtocolText private constructor(
-    val value: String,
-) {
+value class ProtocolText private constructor(val value: String) {
     companion object {
         /**
          * Proof transition: `String -> Refinement<ProtocolText, ProtocolTextFailure>`.
          *
-         * Establishes non-blank bounded public text. [ProtocolTextFailure] is the closed expected
-         * failure. Raw text may be extracted only by CLI presentation or a domain-specific
-         * composition adapter.
+         * Establishes non-blank bounded public text. [ProtocolTextFailure] is the closed expected failure. Raw text may
+         * be extracted only by CLI presentation or a domain-specific composition adapter.
          */
-        fun parse(raw: String): Refinement<ProtocolText, ProtocolTextFailure> = when {
-            raw.isBlank() -> Refinement.Rejected(ProtocolTextFailure.BLANK)
-            raw.length > MAX_PROTOCOL_TEXT_LENGTH ->
-                Refinement.Rejected(ProtocolTextFailure.TOO_LONG)
-            else -> Refinement.Refined(ProtocolText(raw))
-        }
+        fun parse(raw: String): Refinement<ProtocolText, ProtocolTextFailure> =
+            when {
+                raw.isBlank() -> Refinement.Rejected(ProtocolTextFailure.BLANK)
+                raw.length > MAX_PROTOCOL_TEXT_LENGTH -> Refinement.Rejected(ProtocolTextFailure.TOO_LONG)
+                else -> Refinement.Refined(ProtocolText(raw))
+            }
     }
 }
 
-internal object ProtocolTextSerializer : RefiningStringSerializer<ProtocolText>(
-    serialName = "io.github.amichne.kast.protocol.contract.ProtocolText",
-    minimumLength = 1,
-    maximumLength = MAX_PROTOCOL_TEXT_LENGTH,
-    pattern = "[\\s\\S]*\\S[\\s\\S]*",
-) {
+internal object ProtocolTextSerializer :
+    RefiningStringSerializer<ProtocolText>(
+        serialName = "io.github.amichne.kast.protocol.contract.ProtocolText",
+        minimumLength = 1,
+        maximumLength = MAX_PROTOCOL_TEXT_LENGTH,
+        pattern = "[\\s\\S]*\\S[\\s\\S]*",
+    ) {
     override fun raw(value: ProtocolText): String = value.value
 
     override fun refine(raw: String): Refinement<ProtocolText, *> = ProtocolText.parse(raw)
@@ -64,56 +62,50 @@ enum class ProtocolCountFailure {
 /** One positive, bounded public request count. */
 @JvmInline
 @Serializable(with = ProtocolCountSerializer::class)
-value class ProtocolCount private constructor(
-    val value: Int,
-) {
+value class ProtocolCount private constructor(val value: Int) {
     companion object {
         /**
          * Proof transition: `Int -> Refinement<ProtocolCount, ProtocolCountFailure>`.
          *
-         * Establishes a positive count no greater than the public protocol maximum.
-         * [ProtocolCountFailure] is the closed expected failure. Raw extraction is permitted only
-         * at resource-budget composition.
+         * Establishes a positive count no greater than the public protocol maximum. [ProtocolCountFailure] is the
+         * closed expected failure. Raw extraction is permitted only at resource-budget composition.
          */
-        fun parse(raw: Int): Refinement<ProtocolCount, ProtocolCountFailure> = when {
-            raw < 1 -> Refinement.Rejected(ProtocolCountFailure.NOT_POSITIVE)
-            raw > MAX_PROTOCOL_COUNT -> Refinement.Rejected(ProtocolCountFailure.TOO_LARGE)
-            else -> Refinement.Refined(ProtocolCount(raw))
-        }
+        fun parse(raw: Int): Refinement<ProtocolCount, ProtocolCountFailure> =
+            when {
+                raw < 1 -> Refinement.Rejected(ProtocolCountFailure.NOT_POSITIVE)
+                raw > MAX_PROTOCOL_COUNT -> Refinement.Rejected(ProtocolCountFailure.TOO_LARGE)
+                else -> Refinement.Refined(ProtocolCount(raw))
+            }
     }
 }
 
-internal object ProtocolCountSerializer : RefiningIntSerializer<ProtocolCount>(
-    serialName = "io.github.amichne.kast.protocol.contract.ProtocolCount",
-    minimum = 1,
-    maximum = MAX_PROTOCOL_COUNT.toLong(),
-) {
+internal object ProtocolCountSerializer :
+    RefiningIntSerializer<ProtocolCount>(
+        serialName = "io.github.amichne.kast.protocol.contract.ProtocolCount",
+        minimum = 1,
+        maximum = MAX_PROTOCOL_COUNT.toLong(),
+    ) {
     override fun raw(value: ProtocolCount): Int = value.value
 
     override fun refine(raw: Int): Refinement<ProtocolCount, *> = ProtocolCount.parse(raw)
 }
 
 enum class ProtocolCollectionFailure {
-    TOO_LARGE,
+    TOO_LARGE
 }
 
 /** An immutable public collection proven to remain within the transport result bound. */
 @Serializable(with = BoundedProtocolListSerializer::class)
-class BoundedProtocolList<Value> private constructor(
-    val values: List<Value>,
-) {
+class BoundedProtocolList<Value> private constructor(val values: List<Value>) {
     companion object {
         /**
-         * Proof transition: `List<Value> -> Refinement<BoundedProtocolList<Value>,
-         * ProtocolCollectionFailure>`.
+         * Proof transition: `List<Value> -> Refinement<BoundedProtocolList<Value>, ProtocolCollectionFailure>`.
          *
-         * Establishes an immutable collection containing at most 1,000 values.
-         * [ProtocolCollectionFailure] is the closed expected failure. The list may be extracted
-         * only by wire serialization or an operation-specific presentation boundary.
+         * Establishes an immutable collection containing at most 1,000 values. [ProtocolCollectionFailure] is the
+         * closed expected failure. The list may be extracted only by wire serialization or an operation-specific
+         * presentation boundary.
          */
-        fun <Value> create(
-            values: List<Value>,
-        ): Refinement<BoundedProtocolList<Value>, ProtocolCollectionFailure> =
+        fun <Value> create(values: List<Value>): Refinement<BoundedProtocolList<Value>, ProtocolCollectionFailure> =
             if (values.size > MAX_PROTOCOL_ITEMS) {
                 Refinement.Rejected(ProtocolCollectionFailure.TOO_LARGE)
             } else {
@@ -121,67 +113,53 @@ class BoundedProtocolList<Value> private constructor(
             }
     }
 
-    override fun equals(other: Any?): Boolean =
-        other is BoundedProtocolList<*> && values == other.values
+    override fun equals(other: Any?): Boolean = other is BoundedProtocolList<*> && values == other.values
 
     override fun hashCode(): Int = values.hashCode()
 
     override fun toString(): String = "BoundedProtocolList(values=$values)"
 }
 
-class BoundedProtocolListSerializer<Value>(
-    elementSerializer: KSerializer<Value>,
-) : KSerializer<BoundedProtocolList<Value>> {
+class BoundedProtocolListSerializer<Value>(elementSerializer: KSerializer<Value>) :
+    KSerializer<BoundedProtocolList<Value>> {
     private val delegate = ListSerializer(elementSerializer)
 
-    override val descriptor: SerialDescriptor = annotatedDescriptor(
-        delegate.descriptor,
-        ProtocolCollectionConstraint(maximumItems = MAX_PROTOCOL_ITEMS),
-    )
+    override val descriptor: SerialDescriptor =
+        annotatedDescriptor(
+            delegate.descriptor,
+            ProtocolCollectionConstraint(maximumItems = MAX_PROTOCOL_ITEMS),
+        )
 
     override fun serialize(encoder: Encoder, value: BoundedProtocolList<Value>) {
         delegate.serialize(encoder, value.values)
     }
 
-    override fun deserialize(decoder: Decoder): BoundedProtocolList<Value> = when (
-        val refinement = BoundedProtocolList.create(delegate.deserialize(decoder))
-    ) {
-        is Refinement.Refined -> refinement.value
-        is Refinement.Rejected -> throw SerializationException(
-            "${descriptor.serialName} rejected ${refinement.failure}",
-        )
-    }
+    override fun deserialize(decoder: Decoder): BoundedProtocolList<Value> =
+        when (val refinement = BoundedProtocolList.create(delegate.deserialize(decoder))) {
+            is Refinement.Refined -> refinement.value
+            is Refinement.Rejected ->
+                throw SerializationException("${descriptor.serialName} rejected ${refinement.failure}")
+        }
 }
 
 @Serializable
 enum class RelationKindDocument {
-    @SerialName("references")
-    REFERENCES,
-    @SerialName("callers")
-    CALLERS,
-    @SerialName("callees")
-    CALLEES,
-    @SerialName("implementations")
-    IMPLEMENTATIONS,
-    @SerialName("inheritors")
-    INHERITORS,
-    @SerialName("overrides")
-    OVERRIDES,
-    @SerialName("type_uses")
-    TYPE_USES,
+    @SerialName("references") REFERENCES,
+    @SerialName("callers") CALLERS,
+    @SerialName("callees") CALLEES,
+    @SerialName("implementations") IMPLEMENTATIONS,
+    @SerialName("inheritors") INHERITORS,
+    @SerialName("overrides") OVERRIDES,
+    @SerialName("type_uses") TYPE_USES,
 }
 
 @Serializable
 sealed interface RelationReadPositionDocument {
-    @Serializable
-    @SerialName("start")
-    data object Start : RelationReadPositionDocument
+    @Serializable @SerialName("start") data object Start : RelationReadPositionDocument
 
     @Serializable
     @SerialName("resume")
-    data class Resume(
-        val continuation: RelationContinuationDocument,
-    ) : RelationReadPositionDocument
+    data class Resume(val continuation: RelationContinuationDocument) : RelationReadPositionDocument
 }
 
 @Serializable
@@ -192,9 +170,7 @@ data class RelationReadRequest(
     val position: RelationReadPositionDocument = RelationReadPositionDocument.Start,
 ) : OperationRequest
 
-data class RelationReadResult(
-    val relations: BoundedProtocolList<RelationFactDocument>,
-) : OperationResult
+data class RelationReadResult(val relations: BoundedProtocolList<RelationFactDocument>) : OperationResult
 
 enum class RelationProvenanceDocument {
     K2_AUTHORED_SOURCE,
@@ -203,7 +179,7 @@ enum class RelationProvenanceDocument {
 }
 
 enum class RelationFactCoverageDocument {
-    EXACT_COMPILER_CONFIRMED,
+    EXACT_COMPILER_CONFIRMED
 }
 
 data class RelationOccurrenceDocument(
@@ -235,15 +211,13 @@ enum class RelationLimitationDocument {
 }
 
 enum class RelationKnownMinimumDocumentFailure {
-    NEGATIVE,
+    NEGATIVE
 }
 
 @JvmInline
 value class RelationKnownMinimumDocument private constructor(val value: Int) {
     companion object {
-        fun parse(
-            raw: Int,
-        ): Refinement<RelationKnownMinimumDocument, RelationKnownMinimumDocumentFailure> =
+        fun parse(raw: Int): Refinement<RelationKnownMinimumDocument, RelationKnownMinimumDocumentFailure> =
             if (raw < 0) {
                 Refinement.Rejected(RelationKnownMinimumDocumentFailure.NEGATIVE)
             } else {
@@ -263,61 +237,46 @@ enum class RelationContinuationDocumentFailure {
 @Serializable(with = RelationContinuationDocumentSerializer::class)
 value class RelationContinuationDocument private constructor(val value: String) {
     companion object {
-        fun parse(
-            raw: String,
-        ): Refinement<RelationContinuationDocument, RelationContinuationDocumentFailure> {
+        fun parse(raw: String): Refinement<RelationContinuationDocument, RelationContinuationDocumentFailure> {
             val parts = raw.split(':')
             if (parts.firstOrNull() != RELATION_CONTINUATION_TOKEN_FAMILY) {
-                return Refinement.Rejected(
-                    RelationContinuationDocumentFailure.UNKNOWN_TOKEN_FAMILY,
-                )
+                return Refinement.Rejected(RelationContinuationDocumentFailure.UNKNOWN_TOKEN_FAMILY)
             }
             if (
                 parts.size != RELATION_CONTINUATION_TOKEN_PART_COUNT ||
-                parts[1] !in setOf(RELATION_CONTINUATION_TOKEN_VERSION, "v2")
+                    parts[1] !in setOf(RELATION_CONTINUATION_TOKEN_VERSION, "v2")
             ) {
-                return Refinement.Rejected(
-                    RelationContinuationDocumentFailure.INVALID_TOKEN_STRUCTURE,
-                )
+                return Refinement.Rejected(RelationContinuationDocumentFailure.INVALID_TOKEN_STRUCTURE)
             }
-            val payload = try {
-                Base64.getUrlDecoder().decode(parts[2])
-            } catch (_: IllegalArgumentException) {
-                return Refinement.Rejected(
-                    RelationContinuationDocumentFailure.INVALID_PAYLOAD_ENCODING,
-                )
-            }
-            if (
-                payload.isEmpty() ||
-                Base64.getUrlEncoder().withoutPadding().encodeToString(payload) != parts[2]
-            ) {
-                return Refinement.Rejected(
-                    RelationContinuationDocumentFailure.INVALID_PAYLOAD_ENCODING,
-                )
+            val payload =
+                try {
+                    Base64.getUrlDecoder().decode(parts[2])
+                } catch (_: IllegalArgumentException) {
+                    return Refinement.Rejected(RelationContinuationDocumentFailure.INVALID_PAYLOAD_ENCODING)
+                }
+            if (payload.isEmpty() || Base64.getUrlEncoder().withoutPadding().encodeToString(payload) != parts[2]) {
+                return Refinement.Rejected(RelationContinuationDocumentFailure.INVALID_PAYLOAD_ENCODING)
             }
             try {
                 payload.decodeToString(throwOnInvalidSequence = true)
             } catch (_: CharacterCodingException) {
-                return Refinement.Rejected(
-                    RelationContinuationDocumentFailure.INVALID_PAYLOAD_ENCODING,
-                )
+                return Refinement.Rejected(RelationContinuationDocumentFailure.INVALID_PAYLOAD_ENCODING)
             }
             if (parts[3] != relationContinuationSha256(payload)) {
-                return Refinement.Rejected(
-                    RelationContinuationDocumentFailure.PAYLOAD_DIGEST_MISMATCH,
-                )
+                return Refinement.Rejected(RelationContinuationDocumentFailure.PAYLOAD_DIGEST_MISMATCH)
             }
             return Refinement.Refined(RelationContinuationDocument(raw))
         }
     }
 }
 
-internal object RelationContinuationDocumentSerializer : RefiningStringSerializer<RelationContinuationDocument>(
-    serialName = "io.github.amichne.kast.protocol.contract.RelationContinuationDocument",
-    minimumLength = 1,
-    maximumLength = MAX_PROTOCOL_TEXT_LENGTH,
-    pattern = "^relation-continuation:v1:",
-) {
+internal object RelationContinuationDocumentSerializer :
+    RefiningStringSerializer<RelationContinuationDocument>(
+        serialName = "io.github.amichne.kast.protocol.contract.RelationContinuationDocument",
+        minimumLength = 1,
+        maximumLength = MAX_PROTOCOL_TEXT_LENGTH,
+        pattern = "^relation-continuation:v1:",
+    ) {
     override fun raw(value: RelationContinuationDocument): String = value.value
 
     override fun refine(raw: String): Refinement<RelationContinuationDocument, *> =
@@ -335,14 +294,16 @@ sealed interface RelationReadQualification : OperationQualification {
     val limitations: List<RelationLimitationDocument>
 
     @ConsistentCopyVisibility
-    data class Resumable internal constructor(
+    data class Resumable
+    internal constructor(
         override val knownMinimum: RelationKnownMinimumDocument,
         override val limitations: List<RelationLimitationDocument>,
         val continuation: RelationContinuationDocument,
     ) : RelationReadQualification
 
     @ConsistentCopyVisibility
-    data class TerminalIncomplete internal constructor(
+    data class TerminalIncomplete
+    internal constructor(
         override val knownMinimum: RelationKnownMinimumDocument,
         override val limitations: List<RelationLimitationDocument>,
     ) : RelationReadQualification
@@ -354,9 +315,7 @@ sealed interface RelationReadQualification : OperationQualification {
             continuation: RelationContinuationDocument,
         ): Refinement<Resumable, RelationReadQualificationFailure> =
             when (val admitted = admitRelationLimitations(limitations)) {
-                is Refinement.Refined -> Refinement.Refined(
-                    Resumable(knownMinimum, admitted.value, continuation),
-                )
+                is Refinement.Refined -> Refinement.Refined(Resumable(knownMinimum, admitted.value, continuation))
                 is Refinement.Rejected -> admitted
             }
 
@@ -365,23 +324,21 @@ sealed interface RelationReadQualification : OperationQualification {
             limitations: List<RelationLimitationDocument>,
         ): Refinement<TerminalIncomplete, RelationReadQualificationFailure> =
             when (val admitted = admitRelationLimitations(limitations)) {
-                is Refinement.Refined -> Refinement.Refined(
-                    TerminalIncomplete(knownMinimum, admitted.value),
-                )
+                is Refinement.Refined -> Refinement.Refined(TerminalIncomplete(knownMinimum, admitted.value))
                 is Refinement.Rejected -> admitted
             }
     }
 }
 
 private fun admitRelationLimitations(
-    limitations: List<RelationLimitationDocument>,
-): Refinement<List<RelationLimitationDocument>, RelationReadQualificationFailure> = when {
-    limitations.isEmpty() ->
-        Refinement.Rejected(RelationReadQualificationFailure.EMPTY_LIMITATIONS)
-    limitations != limitations.distinct().sortedBy { it.ordinal } ->
-        Refinement.Rejected(RelationReadQualificationFailure.NON_CANONICAL_LIMITATIONS)
-    else -> Refinement.Refined(java.util.List.copyOf(limitations))
-}
+    limitations: List<RelationLimitationDocument>
+): Refinement<List<RelationLimitationDocument>, RelationReadQualificationFailure> =
+    when {
+        limitations.isEmpty() -> Refinement.Rejected(RelationReadQualificationFailure.EMPTY_LIMITATIONS)
+        limitations != limitations.distinct().sortedBy { it.ordinal } ->
+            Refinement.Rejected(RelationReadQualificationFailure.NON_CANONICAL_LIMITATIONS)
+        else -> Refinement.Refined(java.util.List.copyOf(limitations))
+    }
 
 private fun relationContinuationSha256(bytes: ByteArray): String =
     MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { byte ->
@@ -409,15 +366,11 @@ enum class RelationReadRejection : OperationRejection {
 
 @Serializable
 sealed interface TraversalRunPositionDocument {
-    @Serializable
-    @SerialName("start")
-    data object Start : TraversalRunPositionDocument
+    @Serializable @SerialName("start") data object Start : TraversalRunPositionDocument
 
     @Serializable
     @SerialName("resume")
-    data class Resume(
-        val continuation: TraversalContinuationDocument,
-    ) : TraversalRunPositionDocument
+    data class Resume(val continuation: TraversalContinuationDocument) : TraversalRunPositionDocument
 }
 
 @Serializable
@@ -436,13 +389,11 @@ data class TraversalRunResult(
 ) : OperationResult
 
 enum class TraversalDepthDocumentFailure {
-    NEGATIVE,
+    NEGATIVE
 }
 
 @JvmInline
-value class TraversalDepthDocument private constructor(
-    val value: Int,
-) {
+value class TraversalDepthDocument private constructor(val value: Int) {
     companion object {
         fun parse(raw: Int): Refinement<TraversalDepthDocument, TraversalDepthDocumentFailure> =
             if (raw < 0) {
@@ -480,66 +431,49 @@ enum class TraversalContinuationDocumentFailure {
 @Serializable(with = TraversalContinuationDocumentSerializer::class)
 value class TraversalContinuationDocument private constructor(val value: String) {
     companion object {
-        fun parse(
-            raw: String,
-        ): Refinement<TraversalContinuationDocument, TraversalContinuationDocumentFailure> {
+        fun parse(raw: String): Refinement<TraversalContinuationDocument, TraversalContinuationDocumentFailure> {
             val parts = raw.split(':')
             if (parts.firstOrNull() != TRAVERSAL_CONTINUATION_TOKEN_FAMILY) {
-                return Refinement.Rejected(
-                    TraversalContinuationDocumentFailure.UNKNOWN_TOKEN_FAMILY,
-                )
+                return Refinement.Rejected(TraversalContinuationDocumentFailure.UNKNOWN_TOKEN_FAMILY)
             }
             if (
                 parts.size != TRAVERSAL_CONTINUATION_TOKEN_PART_COUNT ||
-                parts[1] !in setOf(TRAVERSAL_CONTINUATION_TOKEN_VERSION, "v2")
+                    parts[1] !in setOf(TRAVERSAL_CONTINUATION_TOKEN_VERSION, "v2")
             ) {
-                return Refinement.Rejected(
-                    TraversalContinuationDocumentFailure.INVALID_TOKEN_STRUCTURE,
-                )
+                return Refinement.Rejected(TraversalContinuationDocumentFailure.INVALID_TOKEN_STRUCTURE)
             }
-            val payload = try {
-                Base64.getUrlDecoder().decode(parts[2])
-            } catch (_: IllegalArgumentException) {
-                return Refinement.Rejected(
-                    TraversalContinuationDocumentFailure.INVALID_PAYLOAD_ENCODING,
-                )
-            }
-            if (
-                payload.isEmpty() ||
-                Base64.getUrlEncoder().withoutPadding().encodeToString(payload) != parts[2]
-            ) {
-                return Refinement.Rejected(
-                    TraversalContinuationDocumentFailure.INVALID_PAYLOAD_ENCODING,
-                )
+            val payload =
+                try {
+                    Base64.getUrlDecoder().decode(parts[2])
+                } catch (_: IllegalArgumentException) {
+                    return Refinement.Rejected(TraversalContinuationDocumentFailure.INVALID_PAYLOAD_ENCODING)
+                }
+            if (payload.isEmpty() || Base64.getUrlEncoder().withoutPadding().encodeToString(payload) != parts[2]) {
+                return Refinement.Rejected(TraversalContinuationDocumentFailure.INVALID_PAYLOAD_ENCODING)
             }
             try {
                 payload.decodeToString(throwOnInvalidSequence = true)
             } catch (_: CharacterCodingException) {
-                return Refinement.Rejected(
-                    TraversalContinuationDocumentFailure.INVALID_PAYLOAD_ENCODING,
-                )
+                return Refinement.Rejected(TraversalContinuationDocumentFailure.INVALID_PAYLOAD_ENCODING)
             }
             if (parts[3] != traversalContinuationSha256(payload)) {
-                return Refinement.Rejected(
-                    TraversalContinuationDocumentFailure.PAYLOAD_DIGEST_MISMATCH,
-                )
+                return Refinement.Rejected(TraversalContinuationDocumentFailure.PAYLOAD_DIGEST_MISMATCH)
             }
             if (raw.length > MAX_PROTOCOL_TEXT_LENGTH) {
-                return Refinement.Rejected(
-                    TraversalContinuationDocumentFailure.INVALID_TOKEN_STRUCTURE,
-                )
+                return Refinement.Rejected(TraversalContinuationDocumentFailure.INVALID_TOKEN_STRUCTURE)
             }
             return Refinement.Refined(TraversalContinuationDocument(raw))
         }
     }
 }
 
-internal object TraversalContinuationDocumentSerializer : RefiningStringSerializer<TraversalContinuationDocument>(
-    serialName = "io.github.amichne.kast.protocol.contract.TraversalContinuationDocument",
-    minimumLength = 1,
-    maximumLength = MAX_PROTOCOL_TEXT_LENGTH,
-    pattern = "^traversal-continuation:v1:",
-) {
+internal object TraversalContinuationDocumentSerializer :
+    RefiningStringSerializer<TraversalContinuationDocument>(
+        serialName = "io.github.amichne.kast.protocol.contract.TraversalContinuationDocument",
+        minimumLength = 1,
+        maximumLength = MAX_PROTOCOL_TEXT_LENGTH,
+        pattern = "^traversal-continuation:v1:",
+    ) {
     override fun raw(value: TraversalContinuationDocument): String = value.value
 
     override fun refine(raw: String): Refinement<TraversalContinuationDocument, *> =
@@ -562,14 +496,16 @@ sealed interface TraversalRunQualification : OperationQualification {
     val relationLimitations: List<RelationLimitationDocument>
 
     @ConsistentCopyVisibility
-    data class Resumable internal constructor(
+    data class Resumable
+    internal constructor(
         override val limitations: List<TraversalLimitationDocument>,
         override val relationLimitations: List<RelationLimitationDocument>,
         val continuation: TraversalContinuationDocument,
     ) : TraversalRunQualification
 
     @ConsistentCopyVisibility
-    data class TerminalIncomplete internal constructor(
+    data class TerminalIncomplete
+    internal constructor(
         override val limitations: List<TraversalLimitationDocument>,
         override val relationLimitations: List<RelationLimitationDocument>,
     ) : TraversalRunQualification
@@ -581,17 +517,12 @@ sealed interface TraversalRunQualification : OperationQualification {
             continuation: TraversalContinuationDocument,
         ): Refinement<Resumable, TraversalRunQualificationFailure> =
             when (val admitted = admitTraversalLimitations(limitations, relationLimitations)) {
-                is Refinement.Refined -> if (
-                    TraversalLimitationDocument.DEPTH_LIMIT_REACHED in admitted.value.first
-                ) {
-                    Refinement.Rejected(
-                        TraversalRunQualificationFailure.TERMINAL_LIMITATION_RESUMABLE,
-                    )
-                } else {
-                    Refinement.Refined(
-                        Resumable(admitted.value.first, admitted.value.second, continuation),
-                    )
-                }
+                is Refinement.Refined ->
+                    if (TraversalLimitationDocument.DEPTH_LIMIT_REACHED in admitted.value.first) {
+                        Refinement.Rejected(TraversalRunQualificationFailure.TERMINAL_LIMITATION_RESUMABLE)
+                    } else {
+                        Refinement.Refined(Resumable(admitted.value.first, admitted.value.second, continuation))
+                    }
                 is Refinement.Rejected -> admitted
             }
 
@@ -600,18 +531,15 @@ sealed interface TraversalRunQualification : OperationQualification {
             relationLimitations: List<RelationLimitationDocument>,
         ): Refinement<TerminalIncomplete, TraversalRunQualificationFailure> =
             when (val admitted = admitTraversalLimitations(limitations, relationLimitations)) {
-                is Refinement.Refined -> if (
-                    TraversalLimitationDocument.ONE_HOP_INCOMPLETE !in admitted.value.first &&
-                    TraversalLimitationDocument.DEPTH_LIMIT_REACHED !in admitted.value.first
-                ) {
-                    Refinement.Rejected(
-                        TraversalRunQualificationFailure.TERMINAL_WITHOUT_TERMINAL_LIMITATION,
-                    )
-                } else {
-                    Refinement.Refined(
-                        TerminalIncomplete(admitted.value.first, admitted.value.second),
-                    )
-                }
+                is Refinement.Refined ->
+                    if (
+                        TraversalLimitationDocument.ONE_HOP_INCOMPLETE !in admitted.value.first &&
+                            TraversalLimitationDocument.DEPTH_LIMIT_REACHED !in admitted.value.first
+                    ) {
+                        Refinement.Rejected(TraversalRunQualificationFailure.TERMINAL_WITHOUT_TERMINAL_LIMITATION)
+                    } else {
+                        Refinement.Refined(TerminalIncomplete(admitted.value.first, admitted.value.second))
+                    }
                 is Refinement.Rejected -> admitted
             }
     }
@@ -623,34 +551,24 @@ private fun admitTraversalLimitations(
 ): Refinement<
     Pair<List<TraversalLimitationDocument>, List<RelationLimitationDocument>>,
     TraversalRunQualificationFailure,
-    > {
+> {
     if (limitations.isEmpty()) {
         return Refinement.Rejected(TraversalRunQualificationFailure.EMPTY_LIMITATIONS)
     }
     if (limitations != limitations.distinct().sortedBy { it.ordinal }) {
-        return Refinement.Rejected(
-            TraversalRunQualificationFailure.NON_CANONICAL_LIMITATIONS,
-        )
+        return Refinement.Rejected(TraversalRunQualificationFailure.NON_CANONICAL_LIMITATIONS)
     }
     if (relationLimitations != relationLimitations.distinct().sortedBy { it.ordinal }) {
-        return Refinement.Rejected(
-            TraversalRunQualificationFailure.NON_CANONICAL_RELATION_LIMITATIONS,
-        )
+        return Refinement.Rejected(TraversalRunQualificationFailure.NON_CANONICAL_RELATION_LIMITATIONS)
     }
     val oneHopIncomplete = TraversalLimitationDocument.ONE_HOP_INCOMPLETE in limitations
     if (oneHopIncomplete && relationLimitations.isEmpty()) {
-        return Refinement.Rejected(
-            TraversalRunQualificationFailure.MISSING_RELATION_LIMITATIONS,
-        )
+        return Refinement.Rejected(TraversalRunQualificationFailure.MISSING_RELATION_LIMITATIONS)
     }
     if (!oneHopIncomplete && relationLimitations.isNotEmpty()) {
-        return Refinement.Rejected(
-            TraversalRunQualificationFailure.UNEXPECTED_RELATION_LIMITATIONS,
-        )
+        return Refinement.Rejected(TraversalRunQualificationFailure.UNEXPECTED_RELATION_LIMITATIONS)
     }
-    return Refinement.Refined(
-        java.util.List.copyOf(limitations) to java.util.List.copyOf(relationLimitations),
-    )
+    return Refinement.Refined(java.util.List.copyOf(limitations) to java.util.List.copyOf(relationLimitations))
 }
 
 private fun traversalContinuationSha256(bytes: ByteArray): String =
@@ -683,9 +601,7 @@ data class DiagnosticCheckRequest(
     val limit: ProtocolCount,
 ) : OperationRequest
 
-data class DiagnosticCheckResult(
-    val diagnostics: BoundedProtocolList<DiagnosticDocument>,
-) : OperationResult
+data class DiagnosticCheckResult(val diagnostics: BoundedProtocolList<DiagnosticDocument>) : OperationResult
 
 enum class DiagnosticSeverityDocument {
     ERROR,
@@ -694,11 +610,12 @@ enum class DiagnosticSeverityDocument {
 }
 
 enum class DiagnosticRangeDocumentFailure {
-    END_BEFORE_START,
+    END_BEFORE_START
 }
 
 @ConsistentCopyVisibility
-data class DiagnosticRangeDocument private constructor(
+data class DiagnosticRangeDocument
+private constructor(
     val startInclusive: ProtocolOffset,
     val endExclusive: ProtocolOffset,
 ) {
@@ -730,15 +647,13 @@ data class DiagnosticDocument(
 )
 
 enum class DiagnosticKnownCountDocumentFailure {
-    NEGATIVE,
+    NEGATIVE
 }
 
 @JvmInline
 value class DiagnosticKnownCountDocument private constructor(val value: Int) {
     companion object {
-        fun parse(
-            raw: Int,
-        ): Refinement<DiagnosticKnownCountDocument, DiagnosticKnownCountDocumentFailure> =
+        fun parse(raw: Int): Refinement<DiagnosticKnownCountDocument, DiagnosticKnownCountDocumentFailure> =
             if (raw < 0) {
                 Refinement.Rejected(DiagnosticKnownCountDocumentFailure.NEGATIVE)
             } else {
@@ -771,7 +686,8 @@ enum class DiagnosticCheckQualificationFailure {
 
 /** Exact diagnostic coverage, truncation state, and every file-specific limitation. */
 @ConsistentCopyVisibility
-data class DiagnosticCheckQualification private constructor(
+data class DiagnosticCheckQualification
+private constructor(
     val knownDiagnosticCount: DiagnosticKnownCountDocument,
     val resultLimitReached: Boolean,
     val analyzedFiles: List<ProtocolText>,
@@ -788,23 +704,18 @@ data class DiagnosticCheckQualification private constructor(
                 return Refinement.Rejected(DiagnosticCheckQualificationFailure.COMPLETE)
             }
             if (analyzedFiles != analyzedFiles.distinct().sortedBy(ProtocolText::value)) {
-                return Refinement.Rejected(
-                    DiagnosticCheckQualificationFailure.NON_CANONICAL_ANALYZED_FILES,
-                )
+                return Refinement.Rejected(DiagnosticCheckQualificationFailure.NON_CANONICAL_ANALYZED_FILES)
             }
-            val canonicalLimitations = limitations.distinct().sortedWith(
-                compareBy<DiagnosticLimitationDocument>({ it.file.value }, { it.reason.ordinal }),
-            )
+            val canonicalLimitations =
+                limitations
+                    .distinct()
+                    .sortedWith(compareBy<DiagnosticLimitationDocument>({ it.file.value }, { it.reason.ordinal }))
             if (limitations != canonicalLimitations) {
-                return Refinement.Rejected(
-                    DiagnosticCheckQualificationFailure.NON_CANONICAL_LIMITATIONS,
-                )
+                return Refinement.Rejected(DiagnosticCheckQualificationFailure.NON_CANONICAL_LIMITATIONS)
             }
             val analyzed = analyzedFiles.toSet()
             if (limitations.any { it.file in analyzed }) {
-                return Refinement.Rejected(
-                    DiagnosticCheckQualificationFailure.ANALYZED_LIMITED_OVERLAP,
-                )
+                return Refinement.Rejected(DiagnosticCheckQualificationFailure.ANALYZED_LIMITED_OVERLAP)
             }
             return Refinement.Refined(
                 DiagnosticCheckQualification(
@@ -812,7 +723,7 @@ data class DiagnosticCheckQualification private constructor(
                     resultLimitReached,
                     java.util.List.copyOf(analyzedFiles),
                     java.util.List.copyOf(limitations),
-                ),
+                )
             )
         }
     }

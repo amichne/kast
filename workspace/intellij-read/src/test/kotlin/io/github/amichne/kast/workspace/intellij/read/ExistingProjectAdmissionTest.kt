@@ -13,9 +13,7 @@ class ExistingProjectAdmissionTest {
     @Test
     fun `epoch source installation closes a disposal race`() {
         assertEquals(
-            Refinement.Rejected(
-                ExistingProjectReadEpochSourceInstallationFailure.ProjectDisposed,
-            ),
+            Refinement.Rejected(ExistingProjectReadEpochSourceInstallationFailure.ProjectDisposed),
             LiveProjectReadEpochSourceFactory.create(disposedProject(), FIXTURE_ROOT),
         )
     }
@@ -29,19 +27,21 @@ class ExistingProjectAdmissionTest {
             FIXTURE_EPOCH_SOURCE_FACTORY.create(project, root)
         }
 
-        val admitted = when (
-            val result = AdmittedIdeProject.admitObserved(
-                opaqueProject(),
-                FIXTURE_ROOT,
-                FIXTURE_COMPATIBILITY,
-                FIXTURE_COMPATIBILITY_POLICY,
-                observation,
-                epochSourceFactory,
-            )
-        ) {
-            is ExistingProjectAdmission.Admitted -> result.project
-            is ExistingProjectAdmission.Rejected -> fail("exact fixture rejected: ${result.failure}")
-        }
+        val admitted =
+            when (
+                val result =
+                    AdmittedIdeProject.admitObserved(
+                        opaqueProject(),
+                        FIXTURE_ROOT,
+                        FIXTURE_COMPATIBILITY,
+                        FIXTURE_COMPATIBILITY_POLICY,
+                        observation,
+                        epochSourceFactory,
+                    )
+            ) {
+                is ExistingProjectAdmission.Admitted -> result.project
+                is ExistingProjectAdmission.Rejected -> fail("exact fixture rejected: ${result.failure}")
+            }
 
         assertEquals(FIXTURE_ROOT, admitted.canonicalRoot)
         assertEquals(FIXTURE_COMPATIBILITY.ideBuild, admitted.compatibility.ideBuild.value)
@@ -60,13 +60,14 @@ class ExistingProjectAdmissionTest {
     fun `validation observes the exact policy without an epoch source factory`() {
         val observation = RecordingProjectObservation()
 
-        val validation = ExistingProjectValidation.validateObserved(
-            opaqueProject(),
-            FIXTURE_ROOT,
-            FIXTURE_COMPATIBILITY,
-            FIXTURE_COMPATIBILITY_POLICY,
-            observation,
-        )
+        val validation =
+            ExistingProjectValidation.validateObserved(
+                opaqueProject(),
+                FIXTURE_ROOT,
+                FIXTURE_COMPATIBILITY,
+                FIXTURE_COMPATIBILITY_POLICY,
+                observation,
+            )
 
         assertEquals(ExistingProjectValidation.Validated, validation)
         assertEquals(ExistingProjectObservationStage.entries, observation.observedStages)
@@ -78,43 +79,50 @@ class ExistingProjectAdmissionTest {
         val session = AdmittedIdeProjectSession()
         var admissionAttempts = 0
         var epochSourceInstallations = 0
-        val admissions = ExistingProjectAdmissionOperations {
-                candidateProject, expectedRoot, compatibilityCandidate, compatibilityPolicy ->
-            admissionAttempts += 1
-            AdmittedIdeProject.admitObserved(
+        val admissions =
+            ExistingProjectAdmissionOperations {
                 candidateProject,
                 expectedRoot,
                 compatibilityCandidate,
-                compatibilityPolicy,
-                RecordingProjectObservation(),
-                ExistingProjectReadEpochSourceFactory { sourceProject, sourceRoot ->
-                    epochSourceInstallations += 1
-                    FIXTURE_EPOCH_SOURCE_FACTORY.create(sourceProject, sourceRoot)
-                },
-            )
-        }
+                compatibilityPolicy ->
+                admissionAttempts += 1
+                AdmittedIdeProject.admitObserved(
+                    candidateProject,
+                    expectedRoot,
+                    compatibilityCandidate,
+                    compatibilityPolicy,
+                    RecordingProjectObservation(),
+                    ExistingProjectReadEpochSourceFactory { sourceProject, sourceRoot ->
+                        epochSourceInstallations += 1
+                        FIXTURE_EPOCH_SOURCE_FACTORY.create(sourceProject, sourceRoot)
+                    },
+                )
+            }
 
-        val first = session.admitUsing(
-            project,
-            FIXTURE_ROOT,
-            FIXTURE_COMPATIBILITY,
-            FIXTURE_COMPATIBILITY_POLICY,
-            admissions,
-        ) as ExistingProjectAdmission.Admitted
-        val repeated = session.admitUsing(
-            project,
-            FIXTURE_ROOT,
-            FIXTURE_COMPATIBILITY,
-            FIXTURE_COMPATIBILITY_POLICY,
-            admissions,
-        ) as ExistingProjectAdmission.Admitted
-        val mismatched = session.admitUsing(
-            project,
-            OTHER_FIXTURE_ROOT,
-            FIXTURE_COMPATIBILITY,
-            FIXTURE_COMPATIBILITY_POLICY,
-            admissions,
-        )
+        val first =
+            session.admitUsing(
+                project,
+                FIXTURE_ROOT,
+                FIXTURE_COMPATIBILITY,
+                FIXTURE_COMPATIBILITY_POLICY,
+                admissions,
+            ) as ExistingProjectAdmission.Admitted
+        val repeated =
+            session.admitUsing(
+                project,
+                FIXTURE_ROOT,
+                FIXTURE_COMPATIBILITY,
+                FIXTURE_COMPATIBILITY_POLICY,
+                admissions,
+            ) as ExistingProjectAdmission.Admitted
+        val mismatched =
+            session.admitUsing(
+                project,
+                OTHER_FIXTURE_ROOT,
+                FIXTURE_COMPATIBILITY,
+                FIXTURE_COMPATIBILITY_POLICY,
+                admissions,
+            )
 
         assertSame(first.project, repeated.project)
         assertEquals(1, admissionAttempts)
@@ -151,8 +159,8 @@ class ExistingProjectAdmissionTest {
                         ExistingProjectPathMatch.EXACT,
                         ExistingProjectStructureState.READY,
                         ExistingProjectImportState.CURRENT,
-                    ),
-                ),
+                    )
+                )
             ),
         )
     }
@@ -160,7 +168,9 @@ class ExistingProjectAdmissionTest {
     @Test
     fun `the admitted value exposes no public live Project member`() {
         val exposedTypes = buildList {
-            AdmittedIdeProject::class.java.declaredMethods
+            AdmittedIdeProject::class
+                .java
+                .declaredMethods
                 .filter { method ->
                     Modifier.isPublic(method.modifiers) && !Modifier.isStatic(method.modifiers)
                 }
@@ -171,7 +181,9 @@ class ExistingProjectAdmissionTest {
             AdmittedIdeProject::class.java.constructors.forEach { constructor ->
                 addAll(constructor.parameterTypes)
             }
-            AdmittedIdeProject::class.java.fields
+            AdmittedIdeProject::class
+                .java
+                .fields
                 .filterNot { field -> Modifier.isStatic(field.modifiers) }
                 .forEach { field -> add(field.type) }
         }
@@ -181,5 +193,4 @@ class ExistingProjectAdmissionTest {
             "AdmittedIdeProject exposed a public live Project member: $exposedTypes",
         )
     }
-
 }

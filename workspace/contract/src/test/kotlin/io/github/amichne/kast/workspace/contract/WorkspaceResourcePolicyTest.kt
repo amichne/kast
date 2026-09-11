@@ -8,13 +8,14 @@ import org.junit.jupiter.api.Test
 class WorkspaceResourcePolicyTest {
     @Test
     fun `validated policy maps one exact limit to every expensive kind`() {
-        val policy = policy(
-            runtimeStarts = 1,
-            imports = 2,
-            transitions = 3,
-            indexing = 4,
-            longOperations = 5,
-        )
+        val policy =
+            policy(
+                runtimeStarts = 1,
+                imports = 2,
+                transitions = 3,
+                indexing = 4,
+                longOperations = 5,
+            )
 
         assertEquals(1, policy.limitFor(WorkspaceExpensiveWork.RUNTIME_START).value)
         assertEquals(2, policy.limitFor(WorkspaceExpensiveWork.PROJECT_IMPORT).value)
@@ -26,24 +27,26 @@ class WorkspaceResourcePolicyTest {
 
     @Test
     fun `resource observations preserve independent active states`() {
-        val activity = WorkspaceResourceActivity(
-            runtimeStarts = count(1),
-            imports = count(2),
-            transitions = count(3),
-            indexing = count(4),
-            longOperations = count(5),
-        )
+        val activity =
+            WorkspaceResourceActivity(
+                runtimeStarts = count(1),
+                imports = count(2),
+                transitions = count(3),
+                indexing = count(4),
+                longOperations = count(5),
+            )
         assertEquals(1, activity.active(WorkspaceExpensiveWork.RUNTIME_START).value)
         assertEquals(2, activity.active(WorkspaceExpensiveWork.PROJECT_IMPORT).value)
         assertEquals(3, activity.active(WorkspaceExpensiveWork.WORKSPACE_TRANSITION).value)
         assertEquals(4, activity.active(WorkspaceExpensiveWork.INDEXING).value)
         assertEquals(5, activity.active(WorkspaceExpensiveWork.LONG_OPERATION).value)
 
-        val observation = WorkspaceResourceObservation(
-            heap = WorkspaceHeapUtilizationPercent.parse(89).refined(),
-            edt = WorkspaceEdtLiveness.Live,
-            activity = activity,
-        )
+        val observation =
+            WorkspaceResourceObservation(
+                heap = WorkspaceHeapUtilizationPercent.parse(89).refined(),
+                edt = WorkspaceEdtLiveness.Live,
+                activity = activity,
+            )
         assertEquals(89, observation.heap.value)
         assertEquals(WorkspaceEdtLiveness.Live, observation.edt)
     }
@@ -86,27 +89,29 @@ class WorkspaceResourcePolicyTest {
         transitions: Int,
         indexing: Int,
         longOperations: Int,
-    ): WorkspaceResourcePolicy = WorkspaceResourcePolicy(
-        runtimeStarts = WorkspaceConcurrencyLimit.parse(runtimeStarts).refined(),
-        imports = WorkspaceConcurrencyLimit.parse(imports).refined(),
-        transitions = WorkspaceConcurrencyLimit.parse(transitions).refined(),
-        indexing = WorkspaceConcurrencyLimit.parse(indexing).refined(),
-        longOperations = WorkspaceConcurrencyLimit.parse(longOperations).refined(),
-        queuedWaiters = WorkspaceQueueLimit.parse(8).refined(),
-        waitTimeout = WorkspaceAdmissionWaitMillis.parse(1_000L).refined(),
-        criticalHeap = WorkspaceCriticalHeapPercent.parse(90).refined(),
-    )
+    ): WorkspaceResourcePolicy =
+        WorkspaceResourcePolicy(
+            runtimeStarts = WorkspaceConcurrencyLimit.parse(runtimeStarts).refined(),
+            imports = WorkspaceConcurrencyLimit.parse(imports).refined(),
+            transitions = WorkspaceConcurrencyLimit.parse(transitions).refined(),
+            indexing = WorkspaceConcurrencyLimit.parse(indexing).refined(),
+            longOperations = WorkspaceConcurrencyLimit.parse(longOperations).refined(),
+            queuedWaiters = WorkspaceQueueLimit.parse(8).refined(),
+            waitTimeout = WorkspaceAdmissionWaitMillis.parse(1_000L).refined(),
+            criticalHeap = WorkspaceCriticalHeapPercent.parse(90).refined(),
+        )
 
-    private fun count(value: Int): WorkspaceResourceCount =
-        WorkspaceResourceCount.parse(value).refined()
+    private fun count(value: Int): WorkspaceResourceCount = WorkspaceResourceCount.parse(value).refined()
 
-    private fun <Strong, Failure> Refinement<Strong, Failure>.refined(): Strong = when (this) {
-        is Refinement.Refined -> value
-        is Refinement.Rejected -> error(failure.toString())
-    }
+    private fun <Strong, Failure> Refinement<Strong, Failure>.refined(): Strong =
+        when (this) {
+            is Refinement.Refined -> value
+            is Refinement.Rejected -> error(failure.toString())
+        }
 
-    private fun <Strong, Failure> Refinement<Strong, Failure>.rejected(): Failure = when (this) {
-        is Refinement.Refined -> error(value.toString())
-        is Refinement.Rejected -> failure
-    }
+    private fun <Strong, Failure> Refinement<Strong, Failure>.rejected(): Failure =
+        when (this) {
+            is Refinement.Refined -> error(value.toString())
+            is Refinement.Rejected -> failure
+        }
 }

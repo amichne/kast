@@ -15,26 +15,23 @@ import io.github.amichne.kast.protocol.contract.RelationOccurrenceDocument
 import io.github.amichne.kast.protocol.contract.RelationProvenanceDocument
 import io.github.amichne.kast.protocol.contract.RelationReadResult
 import io.github.amichne.kast.protocol.contract.SourceRangeDocument
-import io.github.amichne.kast.protocol.contract.SymbolInspectResult
-import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverResult
-import io.github.amichne.kast.protocol.contract.SymbolDiscoverTargetDocument
 import io.github.amichne.kast.protocol.contract.SymbolDiscoveryDocument
 import io.github.amichne.kast.protocol.contract.SymbolDiscoveryKindDocument
 import io.github.amichne.kast.protocol.contract.SymbolDiscoveryMatchDocument
 import io.github.amichne.kast.protocol.contract.SymbolDocument
+import io.github.amichne.kast.protocol.contract.SymbolInspectResult
 import io.github.amichne.kast.protocol.contract.SymbolKindDocument
 import io.github.amichne.kast.protocol.contract.SymbolNameKindDocument
 import io.github.amichne.kast.protocol.contract.SymbolQualifiedIdentityDocument
-import io.github.amichne.kast.protocol.contract.SymbolTextScopeDocument
-import io.github.amichne.kast.protocol.contract.TraversalRunResult
 import io.github.amichne.kast.protocol.contract.TraversalDepthDocument
 import io.github.amichne.kast.protocol.contract.TraversalRecordDocument
+import io.github.amichne.kast.protocol.contract.TraversalRunResult
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-@Serializable
-internal data class SymbolDiscoverResultWireDocument(val items: List<SymbolDiscoveryWireDocument>)
+@Serializable internal data class SymbolDiscoverResultWireDocument(val items: List<SymbolDiscoveryWireDocument>)
+
 @Serializable
 internal sealed interface SymbolDiscoveryWireDocument {
     @Serializable
@@ -44,6 +41,7 @@ internal sealed interface SymbolDiscoveryWireDocument {
         val name: String,
         val file: String,
     ) : SymbolDiscoveryWireDocument
+
     @Serializable
     @SerialName("declaration")
     data class Declaration(
@@ -53,6 +51,7 @@ internal sealed interface SymbolDiscoveryWireDocument {
         val file: String,
         val offset: Int,
     ) : SymbolDiscoveryWireDocument
+
     @Serializable
     @SerialName("text-match")
     data class TextMatch(
@@ -62,10 +61,11 @@ internal sealed interface SymbolDiscoveryWireDocument {
         val range: SourceRangeWireDocument,
     ) : SymbolDiscoveryWireDocument
 }
-@Serializable
-internal data class SymbolInspectResultWireDocument(val symbol: SymbolWireDocument)
-@Serializable
-internal data class RelationReadResultWireDocument(val relations: List<RelationFactWireDocument>)
+
+@Serializable internal data class SymbolInspectResultWireDocument(val symbol: SymbolWireDocument)
+
+@Serializable internal data class RelationReadResultWireDocument(val relations: List<RelationFactWireDocument>)
+
 @Serializable
 internal data class TraversalRunResultWireDocument(
     val snapshotRoot: String,
@@ -98,7 +98,7 @@ internal enum class RelationProvenanceWireDocument {
 
 @Serializable
 internal enum class RelationFactCoverageWireDocument {
-    @SerialName("exact-compiler-confirmed") EXACT_COMPILER_CONFIRMED,
+    @SerialName("exact-compiler-confirmed") EXACT_COMPILER_CONFIRMED
 }
 
 @Serializable
@@ -147,43 +147,35 @@ internal sealed interface CompilerSignatureWireDocument {
 
     @Serializable
     @SerialName("type-alias")
-    data class TypeAlias(
-        val qualifiedIdentity: String,
-    ) : CompilerSignatureWireDocument
+    data class TypeAlias(val qualifiedIdentity: String) : CompilerSignatureWireDocument
 
     @Serializable
     @SerialName("class-like")
-    data class ClassLike(
-        val qualifiedIdentity: String,
-    ) : CompilerSignatureWireDocument
+    data class ClassLike(val qualifiedIdentity: String) : CompilerSignatureWireDocument
 }
 
 @Serializable
 internal sealed interface CompilerReceiverWireDocument {
-    @Serializable
-    @SerialName("absent")
-    data object Absent : CompilerReceiverWireDocument
+    @Serializable @SerialName("absent") data object Absent : CompilerReceiverWireDocument
 
-    @Serializable
-    @SerialName("present")
-    data class Present(
-        val compilerType: String,
-    ) : CompilerReceiverWireDocument
+    @Serializable @SerialName("present") data class Present(val compilerType: String) : CompilerReceiverWireDocument
 }
 
-@Serializable
-internal data class SourceRangeWireDocument(val startInclusive: Int, val endExclusive: Int)
+@Serializable internal data class SourceRangeWireDocument(val startInclusive: Int, val endExclusive: Int)
+
 @Serializable
 internal enum class SymbolCategoryWireDocument {
     @SerialName("file") FILE,
     @SerialName("class") CLASS,
     @SerialName("symbol") SYMBOL,
 }
+
 @Serializable
 internal enum class SymbolDiscoveryMatchWireDocument {
     @SerialName("fuzzy") FUZZY,
     @SerialName("exact-name") EXACT_NAME,
 }
+
 @Serializable
 internal enum class SymbolKindWireDocument {
     @SerialName("classlike") CLASSLIKE,
@@ -192,89 +184,98 @@ internal enum class SymbolKindWireDocument {
     @SerialName("property") PROPERTY,
     @SerialName("type-alias") TYPE_ALIAS,
 }
+
 internal fun SymbolDiscoverResult.toSymbolWireDocument() =
     SymbolDiscoverResultWireDocument(items.values.map { it.toWireDocument() })
 
 /**
- * Proof transition: `SymbolDiscoverResultWireDocument ->
- * WireDocumentConversion<SymbolDiscoverResult>`. Establishes refined, bounded discovery evidence;
- * raw item fields are extracted only at this wire boundary.
+ * Proof transition: `SymbolDiscoverResultWireDocument -> WireDocumentConversion<SymbolDiscoverResult>`. Establishes
+ * refined, bounded discovery evidence; raw item fields are extracted only at this wire boundary.
  */
-internal fun SymbolDiscoverResultWireDocument.toContract():
-    WireDocumentConversion<SymbolDiscoverResult> = items.convertEach { it.toContract() }
-    .flatMapConverted { values -> values.toBoundedList() }
-    .mapConverted(::SymbolDiscoverResult)
+internal fun SymbolDiscoverResultWireDocument.toContract(): WireDocumentConversion<SymbolDiscoverResult> =
+    items
+        .convertEach { it.toContract() }
+        .flatMapConverted { values -> values.toBoundedList() }
+        .mapConverted(::SymbolDiscoverResult)
 
-private fun SymbolDiscoveryDocument.toWireDocument(): SymbolDiscoveryWireDocument = when (this) {
-    is SymbolDiscoveryDocument.File -> SymbolDiscoveryWireDocument.File(
-        candidateSelector.value,
-        name.value,
-        file.value,
-    )
-    is SymbolDiscoveryDocument.Declaration -> SymbolDiscoveryWireDocument.Declaration(
-        candidateSelector.value,
-        kind.toWireDocument(),
-        name.value,
-        file.value,
-        offset.value,
-    )
-    is SymbolDiscoveryDocument.TextMatch -> SymbolDiscoveryWireDocument.TextMatch(
-        candidateSelector.value,
-        query.value,
-        file.value,
-        range.toWireDocument(),
-    )
-}
+private fun SymbolDiscoveryDocument.toWireDocument(): SymbolDiscoveryWireDocument =
+    when (this) {
+        is SymbolDiscoveryDocument.File ->
+            SymbolDiscoveryWireDocument.File(
+                candidateSelector.value,
+                name.value,
+                file.value,
+            )
+        is SymbolDiscoveryDocument.Declaration ->
+            SymbolDiscoveryWireDocument.Declaration(
+                candidateSelector.value,
+                kind.toWireDocument(),
+                name.value,
+                file.value,
+                offset.value,
+            )
+        is SymbolDiscoveryDocument.TextMatch ->
+            SymbolDiscoveryWireDocument.TextMatch(
+                candidateSelector.value,
+                query.value,
+                file.value,
+                range.toWireDocument(),
+            )
+    }
 
 /**
- * Proof transition: `SymbolDiscoveryWireDocument ->
- * WireDocumentConversion<SymbolDiscoveryDocument>`. Establishes one closed evidence variant with
- * refined fields; raw evidence primitives exist only at this wire boundary.
+ * Proof transition: `SymbolDiscoveryWireDocument -> WireDocumentConversion<SymbolDiscoveryDocument>`. Establishes one
+ * closed evidence variant with refined fields; raw evidence primitives exist only at this wire boundary.
  */
 private fun SymbolDiscoveryWireDocument.toContract(): WireDocumentConversion<SymbolDiscoveryDocument> =
     when (this) {
-    is SymbolDiscoveryWireDocument.File -> combineConverted(
-        candidateSelector.toProtocolText(),
-        name.toProtocolText(),
-        file.toProtocolText(),
-    ) { selector, name, file -> SymbolDiscoveryDocument.File(selector, name, file) }
-    is SymbolDiscoveryWireDocument.Declaration -> combineConverted(
-        candidateSelector.toProtocolText(),
-        name.toProtocolText(),
-        file.toProtocolText(),
-        offset.toProtocolOffset(),
-    ) { selector, name, file, offset ->
-        SymbolDiscoveryDocument.Declaration(selector, kind.toDiscoveryKind(), name, file, offset)
+        is SymbolDiscoveryWireDocument.File ->
+            combineConverted(
+                candidateSelector.toProtocolText(),
+                name.toProtocolText(),
+                file.toProtocolText(),
+            ) { selector, name, file ->
+                SymbolDiscoveryDocument.File(selector, name, file)
+            }
+        is SymbolDiscoveryWireDocument.Declaration ->
+            combineConverted(
+                candidateSelector.toProtocolText(),
+                name.toProtocolText(),
+                file.toProtocolText(),
+                offset.toProtocolOffset(),
+            ) { selector, name, file, offset ->
+                SymbolDiscoveryDocument.Declaration(selector, kind.toDiscoveryKind(), name, file, offset)
+            }
+        is SymbolDiscoveryWireDocument.TextMatch ->
+            combineConverted(
+                candidateSelector.toProtocolText(),
+                query.toProtocolText(),
+                file.toProtocolText(),
+                range.toContract(),
+            ) { selector, query, file, range ->
+                SymbolDiscoveryDocument.TextMatch(selector, query, file, range)
+            }
     }
-    is SymbolDiscoveryWireDocument.TextMatch -> combineConverted(
-        candidateSelector.toProtocolText(),
-        query.toProtocolText(),
-        file.toProtocolText(),
-        range.toContract(),
-    ) { selector, query, file, range ->
-        SymbolDiscoveryDocument.TextMatch(selector, query, file, range)
-    }
-}
 
-internal fun SymbolInspectResult.toSymbolWireDocument() =
-    SymbolInspectResultWireDocument(symbol.toWireDocument())
+internal fun SymbolInspectResult.toSymbolWireDocument() = SymbolInspectResultWireDocument(symbol.toWireDocument())
+
 /**
- * `SymbolInspectResultWireDocument -> SymbolInspectResult` establishes one exact symbol;
- * invalid raw fields become `WireFailure.InvalidPayload` at this wire boundary.
+ * `SymbolInspectResultWireDocument -> SymbolInspectResult` establishes one exact symbol; invalid raw fields become
+ * `WireFailure.InvalidPayload` at this wire boundary.
  */
-internal fun SymbolInspectResultWireDocument.toContract():
-    WireDocumentConversion<SymbolInspectResult> = symbol.toContract().mapConverted(
-    ::SymbolInspectResult,
-)
+internal fun SymbolInspectResultWireDocument.toContract(): WireDocumentConversion<SymbolInspectResult> =
+    symbol.toContract().mapConverted(::SymbolInspectResult)
 
 internal fun RelationReadResult.toSymbolWireDocument() =
     RelationReadResultWireDocument(relations.values.map { it.toWireDocument() })
+
 /**
- * `RelationReadResultWireDocument -> RelationReadResult` establishes a bounded exact-symbol list;
- * invalid raw fields become `WireFailure.InvalidPayload` at this wire boundary.
+ * `RelationReadResultWireDocument -> RelationReadResult` establishes a bounded exact-symbol list; invalid raw fields
+ * become `WireFailure.InvalidPayload` at this wire boundary.
  */
 internal fun RelationReadResultWireDocument.toContract(): WireDocumentConversion<RelationReadResult> =
-    relations.convertEach { it.toContract() }
+    relations
+        .convertEach { it.toContract() }
         .flatMapConverted { values -> values.toBoundedList() }
         .mapConverted(::RelationReadResult)
 
@@ -283,15 +284,15 @@ internal fun TraversalRunResult.toSymbolWireDocument() =
         snapshotRoot = snapshotRoot.value,
         records = records.values.map { it.toWireDocument() },
     )
+
 /**
- * `TraversalRunResultWireDocument -> TraversalRunResult` establishes a bounded exact-symbol list;
- * invalid raw fields become `WireFailure.InvalidPayload` at this wire boundary.
+ * `TraversalRunResultWireDocument -> TraversalRunResult` establishes a bounded exact-symbol list; invalid raw fields
+ * become `WireFailure.InvalidPayload` at this wire boundary.
  */
 internal fun TraversalRunResultWireDocument.toContract(): WireDocumentConversion<TraversalRunResult> =
     combineConverted(
         snapshotRoot.toProtocolText(),
-        records.convertEach { it.toContract() }
-            .flatMapConverted { values -> values.toBoundedList() },
+        records.convertEach { it.toContract() }.flatMapConverted { values -> values.toBoundedList() },
         ::TraversalRunResult,
     )
 
@@ -300,11 +301,12 @@ internal fun RelationFactDocument.toWireDocument(): RelationFactWireDocument =
         meaning = meaning.toRelationWireDocument(),
         source = source.toWireDocument(),
         target = target.toWireDocument(),
-        occurrence = RelationOccurrenceWireDocument(
-            occurrence.candidateSelector.value,
-            occurrence.file.value,
-            occurrence.range.toWireDocument(),
-        ),
+        occurrence =
+            RelationOccurrenceWireDocument(
+                occurrence.candidateSelector.value,
+                occurrence.file.value,
+                occurrence.range.toWireDocument(),
+            ),
         provenance = provenance.toWireDocument(),
         coverage = coverage.toWireDocument(),
     )
@@ -325,13 +327,13 @@ internal fun RelationFactWireDocument.toContract(): WireDocumentConversion<Relat
         )
     }
 
-private fun RelationOccurrenceWireDocument.toContract():
-    WireDocumentConversion<RelationOccurrenceDocument> = combineConverted(
-    candidateSelector.toProtocolText(),
-    file.toProtocolText(),
-    range.toContract(),
-    ::RelationOccurrenceDocument,
-)
+private fun RelationOccurrenceWireDocument.toContract(): WireDocumentConversion<RelationOccurrenceDocument> =
+    combineConverted(
+        candidateSelector.toProtocolText(),
+        file.toProtocolText(),
+        range.toContract(),
+        ::RelationOccurrenceDocument,
+    )
 
 private fun TraversalRecordDocument.toWireDocument(): TraversalRecordWireDocument =
     TraversalRecordWireDocument(depth.value, relation.toWireDocument())
@@ -343,45 +345,49 @@ private fun TraversalRecordWireDocument.toContract(): WireDocumentConversion<Tra
         ::TraversalRecordDocument,
     )
 
-private fun SymbolDocument.toWireDocument() = SymbolWireDocument(
-    selector.value,
-    kind.toWireDocument(),
-    name.value,
-    when (val identity = qualifiedIdentity) {
-        is SymbolQualifiedIdentityDocument.Available -> identity.value.value
-        SymbolQualifiedIdentityDocument.Unavailable -> null
-    },
-    file.value,
-    range.toWireDocument(),
-    compilerEvidence.toWireDocument(),
-)
+private fun SymbolDocument.toWireDocument() =
+    SymbolWireDocument(
+        selector.value,
+        kind.toWireDocument(),
+        name.value,
+        when (val identity = qualifiedIdentity) {
+            is SymbolQualifiedIdentityDocument.Available -> identity.value.value
+            SymbolQualifiedIdentityDocument.Unavailable -> null
+        },
+        file.value,
+        range.toWireDocument(),
+        compilerEvidence.toWireDocument(),
+    )
+
 /**
- * Proof transition: `SymbolWireDocument -> WireDocumentConversion<SymbolDocument>`. Establishes an
- * exact symbol with a closed qualified-identity state and valid range; raw symbol primitives exist
- * only at this wire boundary.
+ * Proof transition: `SymbolWireDocument -> WireDocumentConversion<SymbolDocument>`. Establishes an exact symbol with a
+ * closed qualified-identity state and valid range; raw symbol primitives exist only at this wire boundary.
  */
 private fun SymbolWireDocument.toContract(): WireDocumentConversion<SymbolDocument> =
     combineConverted(
-        selector.toProtocolText(),
-        name.toProtocolText(),
-        qualifiedIdentity.toQualifiedIdentity(),
-        file.toProtocolText(),
-        range.toContract(),
-    ) { selector, name, qualifiedIdentity, file, range ->
-        AdmittedSymbolFields(selector, name, qualifiedIdentity, file, range)
-    }.flatMapConverted { fields ->
-        compilerEvidence.toContract().mapConverted { evidence ->
-            SymbolDocument.create(
-                fields.selector,
-                kind.toContract(),
-                fields.name,
-                fields.qualifiedIdentity,
-                fields.file,
-                fields.range,
-                evidence,
-            ).toWireDocumentConversion()
+            selector.toProtocolText(),
+            name.toProtocolText(),
+            qualifiedIdentity.toQualifiedIdentity(),
+            file.toProtocolText(),
+            range.toContract(),
+        ) { selector, name, qualifiedIdentity, file, range ->
+            AdmittedSymbolFields(selector, name, qualifiedIdentity, file, range)
         }
-    }.flattenConverted()
+        .flatMapConverted { fields ->
+            compilerEvidence.toContract().mapConverted { evidence ->
+                SymbolDocument.create(
+                        fields.selector,
+                        kind.toContract(),
+                        fields.name,
+                        fields.qualifiedIdentity,
+                        fields.file,
+                        fields.range,
+                        evidence,
+                    )
+                    .toWireDocumentConversion()
+            }
+        }
+        .flattenConverted()
 
 private data class AdmittedSymbolFields(
     val selector: ProtocolText,
@@ -394,156 +400,161 @@ private data class AdmittedSymbolFields(
 internal fun CompilerSymbolEvidenceDocument.toWireDocument(): CompilerSymbolEvidenceWireDocument =
     CompilerSymbolEvidenceWireDocument(identity.value, signature.toWireDocument())
 
-internal fun CompilerSymbolEvidenceWireDocument.toContract():
-    WireDocumentConversion<CompilerSymbolEvidenceDocument> = combineConverted(
-    identity.toProtocolText(),
-    signature.toContract(),
-) { identity, signature -> identity to signature }
-    .flatMapConverted { (identity, signature) ->
-        CompilerSymbolEvidenceDocument.restore(identity, signature).toWireDocumentConversion()
+internal fun CompilerSymbolEvidenceWireDocument.toContract(): WireDocumentConversion<CompilerSymbolEvidenceDocument> =
+    combineConverted(
+            identity.toProtocolText(),
+            signature.toContract(),
+        ) { identity, signature ->
+            identity to signature
+        }
+        .flatMapConverted { (identity, signature) ->
+            CompilerSymbolEvidenceDocument.restore(identity, signature).toWireDocumentConversion()
+        }
+
+internal fun CompilerSignatureDocument.toWireDocument(): CompilerSignatureWireDocument =
+    when (this) {
+        is CompilerSignatureDocument.Function ->
+            CompilerSignatureWireDocument.Function(
+                qualifiedIdentity.value,
+                receiver.toWireDocument(),
+                contextReceivers.values.map(ProtocolText::value),
+                valueParameters.values.map(ProtocolText::value),
+                typeParameterCount.value,
+            )
+        is CompilerSignatureDocument.Property ->
+            CompilerSignatureWireDocument.Property(
+                qualifiedIdentity.value,
+                receiver.toWireDocument(),
+                contextReceivers.values.map(ProtocolText::value),
+                returnType.value,
+            )
+        is CompilerSignatureDocument.TypeAlias -> CompilerSignatureWireDocument.TypeAlias(qualifiedIdentity.value)
+        is CompilerSignatureDocument.ClassLike -> CompilerSignatureWireDocument.ClassLike(qualifiedIdentity.value)
     }
 
-internal fun CompilerSignatureDocument.toWireDocument(): CompilerSignatureWireDocument = when (this) {
-    is CompilerSignatureDocument.Function -> CompilerSignatureWireDocument.Function(
-        qualifiedIdentity.value,
-        receiver.toWireDocument(),
-        contextReceivers.values.map(ProtocolText::value),
-        valueParameters.values.map(ProtocolText::value),
-        typeParameterCount.value,
-    )
-    is CompilerSignatureDocument.Property -> CompilerSignatureWireDocument.Property(
-        qualifiedIdentity.value,
-        receiver.toWireDocument(),
-        contextReceivers.values.map(ProtocolText::value),
-        returnType.value,
-    )
-    is CompilerSignatureDocument.TypeAlias ->
-        CompilerSignatureWireDocument.TypeAlias(qualifiedIdentity.value)
-    is CompilerSignatureDocument.ClassLike ->
-        CompilerSignatureWireDocument.ClassLike(qualifiedIdentity.value)
-}
+internal fun CompilerSignatureWireDocument.toContract(): WireDocumentConversion<CompilerSignatureDocument> =
+    when (this) {
+        is CompilerSignatureWireDocument.Function ->
+            combineConverted(
+                qualifiedIdentity.toProtocolText(),
+                receiver.toContract(),
+                contextReceivers.toProtocolTextList(),
+                valueParameters.toProtocolTextList(),
+                CompilerTypeParameterCountDocument.parse(typeParameterCount).toWireDocumentConversion(),
+            ) { qualified, receiver, contexts, parameters, typeParameters ->
+                CompilerSignatureDocument.Function(
+                    qualified,
+                    receiver,
+                    contexts,
+                    parameters,
+                    typeParameters,
+                )
+            }
+        is CompilerSignatureWireDocument.Property ->
+            combineConverted(
+                qualifiedIdentity.toProtocolText(),
+                receiver.toContract(),
+                contextReceivers.toProtocolTextList(),
+                returnType.toProtocolText(),
+            ) { qualified, receiver, contextReceivers, returnType ->
+                CompilerSignatureDocument.Property(
+                    qualified,
+                    receiver,
+                    contextReceivers,
+                    returnType,
+                )
+            }
+        is CompilerSignatureWireDocument.TypeAlias ->
+            qualifiedIdentity.toProtocolText().mapConverted {
+                CompilerSignatureDocument.TypeAlias(it)
+            }
+        is CompilerSignatureWireDocument.ClassLike ->
+            qualifiedIdentity.toProtocolText().mapConverted {
+                CompilerSignatureDocument.ClassLike(it)
+            }
+    }
 
-internal fun CompilerSignatureWireDocument.toContract():
-    WireDocumentConversion<CompilerSignatureDocument> = when (this) {
-    is CompilerSignatureWireDocument.Function -> combineConverted(
-        qualifiedIdentity.toProtocolText(),
-        receiver.toContract(),
-        contextReceivers.toProtocolTextList(),
-        valueParameters.toProtocolTextList(),
-        CompilerTypeParameterCountDocument.parse(typeParameterCount).toWireDocumentConversion(),
-    ) { qualified, receiver, contexts, parameters, typeParameters ->
-        CompilerSignatureDocument.Function(
-            qualified,
-            receiver,
-            contexts,
-            parameters,
-            typeParameters,
-        )
+private fun CompilerReceiverDocument.toWireDocument(): CompilerReceiverWireDocument =
+    when (this) {
+        CompilerReceiverDocument.Absent -> CompilerReceiverWireDocument.Absent
+        is CompilerReceiverDocument.Present -> CompilerReceiverWireDocument.Present(compilerType.value)
     }
-    is CompilerSignatureWireDocument.Property -> combineConverted(
-        qualifiedIdentity.toProtocolText(),
-        receiver.toContract(),
-        contextReceivers.toProtocolTextList(),
-        returnType.toProtocolText(),
-    ) { qualified, receiver, contextReceivers, returnType ->
-        CompilerSignatureDocument.Property(
-            qualified,
-            receiver,
-            contextReceivers,
-            returnType,
-        )
-    }
-    is CompilerSignatureWireDocument.TypeAlias -> qualifiedIdentity.toProtocolText().mapConverted {
-        CompilerSignatureDocument.TypeAlias(it)
-    }
-    is CompilerSignatureWireDocument.ClassLike -> qualifiedIdentity.toProtocolText().mapConverted {
-        CompilerSignatureDocument.ClassLike(it)
-    }
-}
 
-private fun CompilerReceiverDocument.toWireDocument(): CompilerReceiverWireDocument = when (this) {
-    CompilerReceiverDocument.Absent -> CompilerReceiverWireDocument.Absent
-    is CompilerReceiverDocument.Present ->
-        CompilerReceiverWireDocument.Present(compilerType.value)
-}
-
-private fun CompilerReceiverWireDocument.toContract():
-    WireDocumentConversion<CompilerReceiverDocument> = when (this) {
-    CompilerReceiverWireDocument.Absent ->
-        WireDocumentConversion.Converted(CompilerReceiverDocument.Absent)
-    is CompilerReceiverWireDocument.Present -> compilerType.toProtocolText().mapConverted {
-        CompilerReceiverDocument.Present(it)
+private fun CompilerReceiverWireDocument.toContract(): WireDocumentConversion<CompilerReceiverDocument> =
+    when (this) {
+        CompilerReceiverWireDocument.Absent -> WireDocumentConversion.Converted(CompilerReceiverDocument.Absent)
+        is CompilerReceiverWireDocument.Present ->
+            compilerType.toProtocolText().mapConverted {
+                CompilerReceiverDocument.Present(it)
+            }
     }
-}
 
-private fun List<String>.toProtocolTextList():
-    WireDocumentConversion<BoundedProtocolList<ProtocolText>> = convertEach(String::toProtocolText)
-    .flatMapConverted { values -> values.toBoundedList() }
+private fun List<String>.toProtocolTextList(): WireDocumentConversion<BoundedProtocolList<ProtocolText>> =
+    convertEach(String::toProtocolText).flatMapConverted { values -> values.toBoundedList() }
 
 /**
- * `String? -> WireDocumentConversion<SymbolQualifiedIdentityDocument>` establishes explicit
- * absence or refined text; [WireDocumentConversion.Rejected] closes invalid raw wire text.
+ * `String? -> WireDocumentConversion<SymbolQualifiedIdentityDocument>` establishes explicit absence or refined text;
+ * [WireDocumentConversion.Rejected] closes invalid raw wire text.
  */
 private fun String?.toQualifiedIdentity(): WireDocumentConversion<SymbolQualifiedIdentityDocument> =
     when (this) {
         null -> WireDocumentConversion.Converted(SymbolQualifiedIdentityDocument.Unavailable)
-        else -> toProtocolText().mapConverted { value ->
-            SymbolQualifiedIdentityDocument.Available(value)
-        }
+        else ->
+            toProtocolText().mapConverted { value ->
+                SymbolQualifiedIdentityDocument.Available(value)
+            }
     }
 
-internal fun SourceRangeDocument.toWireDocument() =
-    SourceRangeWireDocument(startInclusive.value, endExclusive.value)
+internal fun SourceRangeDocument.toWireDocument() = SourceRangeWireDocument(startInclusive.value, endExclusive.value)
+
 /**
- * Proof transition: `SourceRangeWireDocument -> WireDocumentConversion<SourceRangeDocument>`.
- * Establishes non-negative, ordered offsets; [WireDocumentConversion.Rejected] is the closed
- * expected failure and raw offsets exist only at this wire boundary.
+ * Proof transition: `SourceRangeWireDocument -> WireDocumentConversion<SourceRangeDocument>`. Establishes non-negative,
+ * ordered offsets; [WireDocumentConversion.Rejected] is the closed expected failure and raw offsets exist only at this
+ * wire boundary.
  */
 internal fun SourceRangeWireDocument.toContract(): WireDocumentConversion<SourceRangeDocument> =
     combineConverted(startInclusive.toProtocolOffset(), endExclusive.toProtocolOffset()) { start, end ->
-        start to end
-    }.flatMapConverted { (start, end) ->
-        SourceRangeDocument.create(start, end).toWireDocumentConversion()
+            start to end
+        }
+        .flatMapConverted { (start, end) ->
+            SourceRangeDocument.create(start, end).toWireDocumentConversion()
+        }
+
+private fun RelationKindDocument.toRelationWireDocument(): RelationKindWireDocument =
+    when (this) {
+        RelationKindDocument.REFERENCES -> RelationKindWireDocument.REFERENCES
+        RelationKindDocument.CALLERS -> RelationKindWireDocument.CALLERS
+        RelationKindDocument.CALLEES -> RelationKindWireDocument.CALLEES
+        RelationKindDocument.IMPLEMENTATIONS -> RelationKindWireDocument.IMPLEMENTATIONS
+        RelationKindDocument.INHERITORS -> RelationKindWireDocument.INHERITORS
+        RelationKindDocument.OVERRIDES -> RelationKindWireDocument.OVERRIDES
+        RelationKindDocument.TYPE_USES -> RelationKindWireDocument.TYPE_USES
     }
 
-private fun RelationKindDocument.toRelationWireDocument(): RelationKindWireDocument = when (this) {
-    RelationKindDocument.REFERENCES -> RelationKindWireDocument.REFERENCES
-    RelationKindDocument.CALLERS -> RelationKindWireDocument.CALLERS
-    RelationKindDocument.CALLEES -> RelationKindWireDocument.CALLEES
-    RelationKindDocument.IMPLEMENTATIONS -> RelationKindWireDocument.IMPLEMENTATIONS
-    RelationKindDocument.INHERITORS -> RelationKindWireDocument.INHERITORS
-    RelationKindDocument.OVERRIDES -> RelationKindWireDocument.OVERRIDES
-    RelationKindDocument.TYPE_USES -> RelationKindWireDocument.TYPE_USES
-}
-
-private fun RelationKindWireDocument.toRelationContract(): RelationKindDocument = when (this) {
-    RelationKindWireDocument.REFERENCES -> RelationKindDocument.REFERENCES
-    RelationKindWireDocument.CALLERS -> RelationKindDocument.CALLERS
-    RelationKindWireDocument.CALLEES -> RelationKindDocument.CALLEES
-    RelationKindWireDocument.IMPLEMENTATIONS -> RelationKindDocument.IMPLEMENTATIONS
-    RelationKindWireDocument.INHERITORS -> RelationKindDocument.INHERITORS
-    RelationKindWireDocument.OVERRIDES -> RelationKindDocument.OVERRIDES
-    RelationKindWireDocument.TYPE_USES -> RelationKindDocument.TYPE_USES
-}
+private fun RelationKindWireDocument.toRelationContract(): RelationKindDocument =
+    when (this) {
+        RelationKindWireDocument.REFERENCES -> RelationKindDocument.REFERENCES
+        RelationKindWireDocument.CALLERS -> RelationKindDocument.CALLERS
+        RelationKindWireDocument.CALLEES -> RelationKindDocument.CALLEES
+        RelationKindWireDocument.IMPLEMENTATIONS -> RelationKindDocument.IMPLEMENTATIONS
+        RelationKindWireDocument.INHERITORS -> RelationKindDocument.INHERITORS
+        RelationKindWireDocument.OVERRIDES -> RelationKindDocument.OVERRIDES
+        RelationKindWireDocument.TYPE_USES -> RelationKindDocument.TYPE_USES
+    }
 
 private fun RelationProvenanceDocument.toWireDocument(): RelationProvenanceWireDocument =
     when (this) {
-        RelationProvenanceDocument.K2_AUTHORED_SOURCE ->
-            RelationProvenanceWireDocument.K2_AUTHORED_SOURCE
-        RelationProvenanceDocument.K2_GENERATED_SOURCE ->
-            RelationProvenanceWireDocument.K2_GENERATED_SOURCE
-        RelationProvenanceDocument.K2_PROJECT_LIBRARY ->
-            RelationProvenanceWireDocument.K2_PROJECT_LIBRARY
+        RelationProvenanceDocument.K2_AUTHORED_SOURCE -> RelationProvenanceWireDocument.K2_AUTHORED_SOURCE
+        RelationProvenanceDocument.K2_GENERATED_SOURCE -> RelationProvenanceWireDocument.K2_GENERATED_SOURCE
+        RelationProvenanceDocument.K2_PROJECT_LIBRARY -> RelationProvenanceWireDocument.K2_PROJECT_LIBRARY
     }
 
-private fun RelationProvenanceWireDocument.toContract(): RelationProvenanceDocument = when (this) {
-    RelationProvenanceWireDocument.K2_AUTHORED_SOURCE ->
-        RelationProvenanceDocument.K2_AUTHORED_SOURCE
-    RelationProvenanceWireDocument.K2_GENERATED_SOURCE ->
-        RelationProvenanceDocument.K2_GENERATED_SOURCE
-    RelationProvenanceWireDocument.K2_PROJECT_LIBRARY ->
-        RelationProvenanceDocument.K2_PROJECT_LIBRARY
-}
+private fun RelationProvenanceWireDocument.toContract(): RelationProvenanceDocument =
+    when (this) {
+        RelationProvenanceWireDocument.K2_AUTHORED_SOURCE -> RelationProvenanceDocument.K2_AUTHORED_SOURCE
+        RelationProvenanceWireDocument.K2_GENERATED_SOURCE -> RelationProvenanceDocument.K2_GENERATED_SOURCE
+        RelationProvenanceWireDocument.K2_PROJECT_LIBRARY -> RelationProvenanceDocument.K2_PROJECT_LIBRARY
+    }
 
 private fun RelationFactCoverageDocument.toWireDocument(): RelationFactCoverageWireDocument =
     when (this) {
@@ -557,67 +568,75 @@ private fun RelationFactCoverageWireDocument.toContract(): RelationFactCoverageD
             RelationFactCoverageDocument.EXACT_COMPILER_CONFIRMED
     }
 
-private fun SymbolNameKindDocument.toWireDocument() = when (this) {
-    SymbolNameKindDocument.FILE -> SymbolCategoryWireDocument.FILE
-    SymbolNameKindDocument.CLASS -> SymbolCategoryWireDocument.CLASS
-    SymbolNameKindDocument.SYMBOL -> SymbolCategoryWireDocument.SYMBOL
-}
+private fun SymbolNameKindDocument.toWireDocument() =
+    when (this) {
+        SymbolNameKindDocument.FILE -> SymbolCategoryWireDocument.FILE
+        SymbolNameKindDocument.CLASS -> SymbolCategoryWireDocument.CLASS
+        SymbolNameKindDocument.SYMBOL -> SymbolCategoryWireDocument.SYMBOL
+    }
 
-private fun SymbolCategoryWireDocument.toNameKind() = when (this) {
-    SymbolCategoryWireDocument.FILE -> SymbolNameKindDocument.FILE
-    SymbolCategoryWireDocument.CLASS -> SymbolNameKindDocument.CLASS
-    SymbolCategoryWireDocument.SYMBOL -> SymbolNameKindDocument.SYMBOL
-}
+private fun SymbolCategoryWireDocument.toNameKind() =
+    when (this) {
+        SymbolCategoryWireDocument.FILE -> SymbolNameKindDocument.FILE
+        SymbolCategoryWireDocument.CLASS -> SymbolNameKindDocument.CLASS
+        SymbolCategoryWireDocument.SYMBOL -> SymbolNameKindDocument.SYMBOL
+    }
 
-internal fun SymbolDiscoveryKindDocument.toWireDocument() = when (this) {
-    SymbolDiscoveryKindDocument.FILE -> SymbolCategoryWireDocument.FILE
-    SymbolDiscoveryKindDocument.CLASS -> SymbolCategoryWireDocument.CLASS
-    SymbolDiscoveryKindDocument.SYMBOL -> SymbolCategoryWireDocument.SYMBOL
-}
+internal fun SymbolDiscoveryKindDocument.toWireDocument() =
+    when (this) {
+        SymbolDiscoveryKindDocument.FILE -> SymbolCategoryWireDocument.FILE
+        SymbolDiscoveryKindDocument.CLASS -> SymbolCategoryWireDocument.CLASS
+        SymbolDiscoveryKindDocument.SYMBOL -> SymbolCategoryWireDocument.SYMBOL
+    }
 
-internal fun SymbolCategoryWireDocument.toDiscoveryKind() = when (this) {
-    SymbolCategoryWireDocument.FILE -> SymbolDiscoveryKindDocument.FILE
-    SymbolCategoryWireDocument.CLASS -> SymbolDiscoveryKindDocument.CLASS
-    SymbolCategoryWireDocument.SYMBOL -> SymbolDiscoveryKindDocument.SYMBOL
-}
+internal fun SymbolCategoryWireDocument.toDiscoveryKind() =
+    when (this) {
+        SymbolCategoryWireDocument.FILE -> SymbolDiscoveryKindDocument.FILE
+        SymbolCategoryWireDocument.CLASS -> SymbolDiscoveryKindDocument.CLASS
+        SymbolCategoryWireDocument.SYMBOL -> SymbolDiscoveryKindDocument.SYMBOL
+    }
 
-internal fun SymbolDiscoveryMatchDocument.toWireDocument() = when (this) {
-    SymbolDiscoveryMatchDocument.FUZZY -> SymbolDiscoveryMatchWireDocument.FUZZY
-    SymbolDiscoveryMatchDocument.EXACT_NAME -> SymbolDiscoveryMatchWireDocument.EXACT_NAME
-}
+internal fun SymbolDiscoveryMatchDocument.toWireDocument() =
+    when (this) {
+        SymbolDiscoveryMatchDocument.FUZZY -> SymbolDiscoveryMatchWireDocument.FUZZY
+        SymbolDiscoveryMatchDocument.EXACT_NAME -> SymbolDiscoveryMatchWireDocument.EXACT_NAME
+    }
 
-internal fun SymbolDiscoveryMatchWireDocument.toContract() = when (this) {
-    SymbolDiscoveryMatchWireDocument.FUZZY -> SymbolDiscoveryMatchDocument.FUZZY
-    SymbolDiscoveryMatchWireDocument.EXACT_NAME -> SymbolDiscoveryMatchDocument.EXACT_NAME
-}
+internal fun SymbolDiscoveryMatchWireDocument.toContract() =
+    when (this) {
+        SymbolDiscoveryMatchWireDocument.FUZZY -> SymbolDiscoveryMatchDocument.FUZZY
+        SymbolDiscoveryMatchWireDocument.EXACT_NAME -> SymbolDiscoveryMatchDocument.EXACT_NAME
+    }
 
-internal fun SymbolKindDocument.toWireDocument() = when (this) {
-    SymbolKindDocument.CLASSLIKE -> SymbolKindWireDocument.CLASSLIKE
-    SymbolKindDocument.CONSTRUCTOR -> SymbolKindWireDocument.CONSTRUCTOR
-    SymbolKindDocument.FUNCTION -> SymbolKindWireDocument.FUNCTION
-    SymbolKindDocument.PROPERTY -> SymbolKindWireDocument.PROPERTY
-    SymbolKindDocument.TYPE_ALIAS -> SymbolKindWireDocument.TYPE_ALIAS
-}
+internal fun SymbolKindDocument.toWireDocument() =
+    when (this) {
+        SymbolKindDocument.CLASSLIKE -> SymbolKindWireDocument.CLASSLIKE
+        SymbolKindDocument.CONSTRUCTOR -> SymbolKindWireDocument.CONSTRUCTOR
+        SymbolKindDocument.FUNCTION -> SymbolKindWireDocument.FUNCTION
+        SymbolKindDocument.PROPERTY -> SymbolKindWireDocument.PROPERTY
+        SymbolKindDocument.TYPE_ALIAS -> SymbolKindWireDocument.TYPE_ALIAS
+    }
 
-internal fun SymbolKindWireDocument.toContract() = when (this) {
-    SymbolKindWireDocument.CLASSLIKE -> SymbolKindDocument.CLASSLIKE
-    SymbolKindWireDocument.CONSTRUCTOR -> SymbolKindDocument.CONSTRUCTOR
-    SymbolKindWireDocument.FUNCTION -> SymbolKindDocument.FUNCTION
-    SymbolKindWireDocument.PROPERTY -> SymbolKindDocument.PROPERTY
-    SymbolKindWireDocument.TYPE_ALIAS -> SymbolKindDocument.TYPE_ALIAS
-}
+internal fun SymbolKindWireDocument.toContract() =
+    when (this) {
+        SymbolKindWireDocument.CLASSLIKE -> SymbolKindDocument.CLASSLIKE
+        SymbolKindWireDocument.CONSTRUCTOR -> SymbolKindDocument.CONSTRUCTOR
+        SymbolKindWireDocument.FUNCTION -> SymbolKindDocument.FUNCTION
+        SymbolKindWireDocument.PROPERTY -> SymbolKindDocument.PROPERTY
+        SymbolKindWireDocument.TYPE_ALIAS -> SymbolKindDocument.TYPE_ALIAS
+    }
 
 /** `String -> WireDocumentConversion<ProtocolText>`; closes invalid text at the wire boundary. */
-private fun String.toProtocolText(): WireDocumentConversion<ProtocolText> = ProtocolText.parse(this)
-    .toWireDocumentConversion()
+private fun String.toProtocolText(): WireDocumentConversion<ProtocolText> =
+    ProtocolText.parse(this).toWireDocumentConversion()
 
 /** `Int -> WireDocumentConversion<ProtocolCount>`; closes invalid counts at the wire boundary. */
-private fun Int.toProtocolCount(): WireDocumentConversion<ProtocolCount> = ProtocolCount.parse(this)
-    .toWireDocumentConversion()
+private fun Int.toProtocolCount(): WireDocumentConversion<ProtocolCount> =
+    ProtocolCount.parse(this).toWireDocumentConversion()
 
 /** `Int -> WireDocumentConversion<ProtocolOffset>`; closes invalid offsets at the wire boundary. */
-private fun Int.toProtocolOffset(): WireDocumentConversion<ProtocolOffset> = ProtocolOffset.parse(this)
-    .toWireDocumentConversion()
+private fun Int.toProtocolOffset(): WireDocumentConversion<ProtocolOffset> =
+    ProtocolOffset.parse(this).toWireDocumentConversion()
 
 /** `List<Value> -> WireDocumentConversion<BoundedProtocolList<Value>>`; proves the wire bound. */
 private fun <Value> List<Value>.toBoundedList(): WireDocumentConversion<BoundedProtocolList<Value>> =

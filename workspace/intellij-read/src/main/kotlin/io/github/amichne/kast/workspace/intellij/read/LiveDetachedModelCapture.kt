@@ -1,7 +1,5 @@
 package io.github.amichne.kast.workspace.intellij.read
 
-import io.github.amichne.kast.kernel.ReadLimits
-import io.github.amichne.kast.kernel.ReadLimitParameter
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.application.readAction
@@ -20,12 +18,14 @@ import com.intellij.openapi.vfs.StandardFileSystems
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.util.Processor
+import io.github.amichne.kast.kernel.ReadLimitParameter
+import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
-import org.jetbrains.jps.model.java.JavaResourceRootType
 import org.jetbrains.jps.model.java.JavaResourceRootProperties
-import org.jetbrains.jps.model.java.JavaSourceRootType
+import org.jetbrains.jps.model.java.JavaResourceRootType
 import org.jetbrains.jps.model.java.JavaSourceRootProperties
+import org.jetbrains.jps.model.java.JavaSourceRootType
 
 /** Live IDEA 262 adapter for one bounded detached-model observation. */
 internal class LiveDetachedModelCapture private constructor(private val limits: ReadLimits) {
@@ -33,25 +33,34 @@ internal class LiveDetachedModelCapture private constructor(private val limits: 
         internal fun observeLocalSourceRootPath(url: String): Refinement<String, DetachedModelCaptureFailure> =
             LiveDetachedModelCapture(ReadLimits.Default).observeLocalSourceRootPath(url)
 
-        fun observe(project: Project, expectedRoot: CanonicalWorkspaceRoot, limits: ReadLimits = ReadLimits.Default): DetachedModelObservation =
-            LiveDetachedModelCapture(limits).capture(project, expectedRoot)
-        suspend fun observeAsync(project: Project, expectedRoot: CanonicalWorkspaceRoot, limits: ReadLimits = ReadLimits.Default): DetachedModelObservation =
-            LiveDetachedModelCapture(limits).captureAsync(project, expectedRoot)
+        fun observe(
+            project: Project,
+            expectedRoot: CanonicalWorkspaceRoot,
+            limits: ReadLimits = ReadLimits.Default,
+        ): DetachedModelObservation = LiveDetachedModelCapture(limits).capture(project, expectedRoot)
+
+        suspend fun observeAsync(
+            project: Project,
+            expectedRoot: CanonicalWorkspaceRoot,
+            limits: ReadLimits = ReadLimits.Default,
+        ): DetachedModelObservation = LiveDetachedModelCapture(limits).captureAsync(project, expectedRoot)
     }
 
     private sealed interface LiveModuleObservation {
         data class Captured(val module: DetachedModuleBoundary) : LiveModuleObservation
+
         data object Aggregator : LiveModuleObservation
+
         data class Rejected(val failure: DetachedModelCaptureFailure) : LiveModuleObservation
     }
 
     /**
      * Proof transition: `(Project, CanonicalWorkspaceRoot) -> DetachedModelObservation`.
      *
-     * Establishes the same complete detached cached-model observation as [observe] while using
-     * IntelliJ's suspending write-priority read primitive. The caller thread never blocks waiting
-     * for a read action; lifecycle, model, and observation failures remain finite
-     * [DetachedModelCaptureFailure]. Raw Project values remain inside [observeInsideRead].
+     * Establishes the same complete detached cached-model observation as [observe] while using IntelliJ's suspending
+     * write-priority read primitive. The caller thread never blocks waiting for a read action; lifecycle, model, and
+     * observation failures remain finite [DetachedModelCaptureFailure]. Raw Project values remain inside
+     * [observeInsideRead].
      */
     private suspend fun captureAsync(
         project: Project,
@@ -74,11 +83,10 @@ internal class LiveDetachedModelCapture private constructor(private val limits: 
     /**
      * Proof transition: `(Project, CanonicalWorkspaceRoot) -> DetachedModelObservation`.
      *
-     * Establishes a primitive-only, bounded observation inside one IDEA 262
-     * `ReadAction.computeCancellable`, or a closed [DetachedModelCaptureFailure]. The live
-     * [Project] and every derived platform object remain inside this adapter boundary. The exact
-     * `CannotReadException` preemption subtype becomes finite `READ_PREEMPTED` data; all other
-     * [ProcessCanceledException] instances remain cancellation and are rethrown.
+     * Establishes a primitive-only, bounded observation inside one IDEA 262 `ReadAction.computeCancellable`, or a
+     * closed [DetachedModelCaptureFailure]. The live [Project] and every derived platform object remain inside this
+     * adapter boundary. The exact `CannotReadException` preemption subtype becomes finite `READ_PREEMPTED` data; all
+     * other [ProcessCanceledException] instances remain cancellation and are rethrown.
      */
     @Suppress("IncorrectCancellationExceptionHandling")
     private fun capture(
@@ -102,11 +110,10 @@ internal class LiveDetachedModelCapture private constructor(private val limits: 
     }
 
     /**
-     * Proof transition: `(Project, CanonicalWorkspaceRoot) -> DetachedModelObservation` while the
-     * cancellable read is held. Establishes current lifecycle, exact root, cached Gradle
-     * completeness, and bounded primitive module observations. The closed expected failure is
-     * [DetachedModelCaptureFailure]. Raw Project values may be extracted only inside this live
-     * IDEA 262 adapter.
+     * Proof transition: `(Project, CanonicalWorkspaceRoot) -> DetachedModelObservation` while the cancellable read is
+     * held. Establishes current lifecycle, exact root, cached Gradle completeness, and bounded primitive module
+     * observations. The closed expected failure is [DetachedModelCaptureFailure]. Raw Project values may be extracted
+     * only inside this live IDEA 262 adapter.
      */
     private fun observeInsideRead(
         project: Project,
@@ -121,20 +128,15 @@ internal class LiveDetachedModelCapture private constructor(private val limits: 
         if (DumbService.isDumb(project)) return rejected(DetachedModelCaptureFailure.PROJECT_DUMB)
         when (observeCanonicalPath(project.basePath, expectedRoot)) {
             ExistingProjectPathMatch.EXACT -> Unit
-            ExistingProjectPathMatch.MISMATCH -> return rejected(
-                DetachedModelCaptureFailure.ROOT_MISMATCH,
-            )
-            ExistingProjectPathMatch.UNAVAILABLE -> return rejected(
-                DetachedModelCaptureFailure.ROOT_UNAVAILABLE,
-            )
+            ExistingProjectPathMatch.MISMATCH -> return rejected(DetachedModelCaptureFailure.ROOT_MISMATCH)
+            ExistingProjectPathMatch.UNAVAILABLE -> return rejected(DetachedModelCaptureFailure.ROOT_UNAVAILABLE)
         }
         when (val gradleModel = observeGradleModel(project, expectedRoot)) {
             is Refinement.Rejected -> return rejected(gradleModel.failure)
-            is Refinement.Refined -> if (
-                gradleModel.value != ExistingProjectGradleModelState.COMPLETE
-            ) {
-                return rejected(DetachedModelCaptureFailure.GRADLE_MODEL_INCOMPLETE)
-            }
+            is Refinement.Refined ->
+                if (gradleModel.value != ExistingProjectGradleModelState.COMPLETE) {
+                    return rejected(DetachedModelCaptureFailure.GRADLE_MODEL_INCOMPLETE)
+                }
         }
         val liveModules = ModuleManager.getInstance(project).modules
         if (liveModules.isEmpty()) return rejected(DetachedModelCaptureFailure.NO_MODULES)
@@ -157,41 +159,42 @@ internal class LiveDetachedModelCapture private constructor(private val limits: 
                 projectRoot = project.basePath,
                 gradleModelComplete = true,
                 modules = modules,
-            ),
+            )
         )
     }
 
     /**
-     * Proof transition: `(Project, CanonicalWorkspaceRoot) ->
-     * Refinement<ExistingProjectGradleModelState, DetachedModelCaptureFailure>`. Establishes a
-     * bounded classification of cached exact-root Gradle model evidence without import or repair.
-     * The closed expected failure is [DetachedModelCaptureFailure]. Raw Gradle values may be
+     * Proof transition: `(Project, CanonicalWorkspaceRoot) -> Refinement<ExistingProjectGradleModelState,
+     * DetachedModelCaptureFailure>`. Establishes a bounded classification of cached exact-root Gradle model evidence
+     * without import or repair. The closed expected failure is [DetachedModelCaptureFailure]. Raw Gradle values may be
      * extracted only inside this live cached-model adapter.
      */
     private fun observeGradleModel(
         project: Project,
         expectedRoot: CanonicalWorkspaceRoot,
     ): Refinement<ExistingProjectGradleModelState, DetachedModelCaptureFailure> {
-        val infos = ProjectDataManager.getInstance()
-            .getExternalProjectsData(project, ProjectSystemId("GRADLE"))
+        val infos = ProjectDataManager.getInstance().getExternalProjectsData(project, ProjectSystemId("GRADLE"))
         if (infos.size > limits[ReadLimitParameter.MODEL_CACHED_GRADLE_MODELS].value) {
             return Refinement.Rejected(DetachedModelCaptureFailure.TOO_MANY_GRADLE_MODELS)
         }
         val observations = ArrayList<ExistingProjectGradleModelObservation>(infos.size)
         for (info in infos) {
             ProgressManager.checkCanceled()
-            observations += ExistingProjectGradleModelObservation(
-                pathMatch = observeCanonicalPath(info.externalProjectPath, expectedRoot),
-                structure = if (info.externalProjectStructure?.isReady == true) {
-                    ExistingProjectStructureState.READY
-                } else {
-                    ExistingProjectStructureState.INCOMPLETE
-                },
-                importState = observeImportState(
-                    info.lastSuccessfulImportTimestamp,
-                    info.lastImportTimestamp,
-                ),
-            )
+            observations +=
+                ExistingProjectGradleModelObservation(
+                    pathMatch = observeCanonicalPath(info.externalProjectPath, expectedRoot),
+                    structure =
+                        if (info.externalProjectStructure?.isReady == true) {
+                            ExistingProjectStructureState.READY
+                        } else {
+                            ExistingProjectStructureState.INCOMPLETE
+                        },
+                    importState =
+                        observeImportState(
+                            info.lastSuccessfulImportTimestamp,
+                            info.lastImportTimestamp,
+                        ),
+                )
         }
         return Refinement.Refined(classifyCachedGradleModel(observations))
     }
@@ -199,33 +202,33 @@ internal class LiveDetachedModelCapture private constructor(private val limits: 
     /**
      * Proof transition: `Module -> LiveModuleObservation`.
      *
-     * Establishes either one bounded primitive source-bearing module, one closed Gradle aggregator
-     * exclusion, or finite [DetachedModelCaptureFailure]. Raw IntelliJ module objects may be
-     * extracted only inside this live adapter.
+     * Establishes either one bounded primitive source-bearing module, one closed Gradle aggregator exclusion, or finite
+     * [DetachedModelCaptureFailure]. Raw IntelliJ module objects may be extracted only inside this live adapter.
      */
-    private fun observeModule(
-        module: Module,
-    ): LiveModuleObservation {
+    private fun observeModule(module: Module): LiveModuleObservation {
         if (module.isDisposed) {
             return LiveModuleObservation.Rejected(DetachedModelCaptureFailure.MODULE_DISPOSED)
         }
         val rootManager = ModuleRootManager.getInstance(module)
-        val sourceRoots = when (val observed = observeSourceRoots(rootManager)) {
-            is Refinement.Refined -> observed.value
-            is Refinement.Rejected -> return LiveModuleObservation.Rejected(observed.failure)
-        }
+        val sourceRoots =
+            when (val observed = observeSourceRoots(rootManager)) {
+                is Refinement.Refined -> observed.value
+                is Refinement.Rejected -> return LiveModuleObservation.Rejected(observed.failure)
+            }
         if (sourceRoots.isEmpty()) return LiveModuleObservation.Aggregator
-        val classpath = when (val observed = observeClasspath(rootManager)) {
-            is Refinement.Refined -> observed.value
-            is Refinement.Rejected -> return LiveModuleObservation.Rejected(observed.failure)
-        }
-        val sdk = rootManager.sdk?.let { liveSdk ->
-            DetachedSdkBoundary(
-                name = liveSdk.name,
-                type = liveSdk.sdkType.name,
-                version = liveSdk.versionString,
-            )
-        }
+        val classpath =
+            when (val observed = observeClasspath(rootManager)) {
+                is Refinement.Refined -> observed.value
+                is Refinement.Rejected -> return LiveModuleObservation.Rejected(observed.failure)
+            }
+        val sdk =
+            rootManager.sdk?.let { liveSdk ->
+                DetachedSdkBoundary(
+                    name = liveSdk.name,
+                    type = liveSdk.sdkType.name,
+                    version = liveSdk.versionString,
+                )
+            }
         return LiveModuleObservation.Captured(
             DetachedModuleBoundary(
                 disposed = false,
@@ -237,18 +240,18 @@ internal class LiveDetachedModelCapture private constructor(private val limits: 
                 sourceRoots = sourceRoots,
                 sdk = sdk,
                 classpath = classpath,
-            ),
+            )
         )
     }
 
     /**
      * Proof transition: `ModuleRootManager -> Refinement<List<DetachedSourceRootBoundary>,
-     * DetachedModelCaptureFailure>`. Establishes an explicitly bounded primitive root list. The
-     * closed expected failure is [DetachedModelCaptureFailure]. Raw source folders and their
-     * platform-owned URLs may be extracted only inside this live adapter.
+     * DetachedModelCaptureFailure>`. Establishes an explicitly bounded primitive root list. The closed expected failure
+     * is [DetachedModelCaptureFailure]. Raw source folders and their platform-owned URLs may be extracted only inside
+     * this live adapter.
      */
     private fun observeSourceRoots(
-        rootManager: ModuleRootManager,
+        rootManager: ModuleRootManager
     ): Refinement<List<DetachedSourceRootBoundary>, DetachedModelCaptureFailure> {
         val entries = rootManager.contentEntries
         if (entries.size > limits[ReadLimitParameter.MODEL_SOURCE_ROOTS_PER_MODULE].value) {
@@ -262,45 +265,46 @@ internal class LiveDetachedModelCapture private constructor(private val limits: 
                 if (roots.size == limits[ReadLimitParameter.MODEL_SOURCE_ROOTS_PER_MODULE].value) {
                     return Refinement.Rejected(DetachedModelCaptureFailure.TOO_MANY_SOURCE_ROOTS)
                 }
-                val path = when (val observed = observeLocalSourceRootPath(folder.url)) {
-                    is Refinement.Refined -> observed.value
-                    is Refinement.Rejected -> return observed
-                }
-                roots += DetachedSourceRootBoundary(
-                    path = path,
-                    kind = when (folder.rootType) {
-                        JavaSourceRootType.SOURCE -> DetachedSourceRootKind.PRODUCTION
-                        JavaSourceRootType.TEST_SOURCE -> DetachedSourceRootKind.TEST
-                        JavaResourceRootType.RESOURCE -> DetachedSourceRootKind.RESOURCE
-                        JavaResourceRootType.TEST_RESOURCE -> DetachedSourceRootKind.TEST_RESOURCE
-                        else -> null
-                    },
-                    provenance = when (val properties = folder.jpsElement.properties) {
-                        is JavaSourceRootProperties -> properties.isForGeneratedSources
-                        is JavaResourceRootProperties -> properties.isForGeneratedSources
-                        else -> null
-                    }?.let { generated ->
-                        if (generated) {
-                            DetachedSourceRootProvenance.GENERATED
-                        } else {
-                            DetachedSourceRootProvenance.AUTHORED
-                        }
-                    },
-                )
+                val path =
+                    when (val observed = observeLocalSourceRootPath(folder.url)) {
+                        is Refinement.Refined -> observed.value
+                        is Refinement.Rejected -> return observed
+                    }
+                roots +=
+                    DetachedSourceRootBoundary(
+                        path = path,
+                        kind =
+                            when (folder.rootType) {
+                                JavaSourceRootType.SOURCE -> DetachedSourceRootKind.PRODUCTION
+                                JavaSourceRootType.TEST_SOURCE -> DetachedSourceRootKind.TEST
+                                JavaResourceRootType.RESOURCE -> DetachedSourceRootKind.RESOURCE
+                                JavaResourceRootType.TEST_RESOURCE -> DetachedSourceRootKind.TEST_RESOURCE
+                                else -> null
+                            },
+                        provenance =
+                            when (val properties = folder.jpsElement.properties) {
+                                is JavaSourceRootProperties -> properties.isForGeneratedSources
+                                is JavaResourceRootProperties -> properties.isForGeneratedSources
+                                else -> null
+                            }?.let { generated ->
+                                if (generated) {
+                                    DetachedSourceRootProvenance.GENERATED
+                                } else {
+                                    DetachedSourceRootProvenance.AUTHORED
+                                }
+                            },
+                    )
             }
         }
         return Refinement.Refined(roots)
     }
 
     /**
-     * Proof transition: `SourceFolder.url -> Refinement<String,
-     * DetachedModelCaptureFailure>`. Establishes a local VFS path observation without requiring
-     * the source root to exist or materialize as a `VirtualFile`. Absolute normalized syntax and
-     * workspace containment remain the responsibility of detached-model path refinement.
+     * Proof transition: `SourceFolder.url -> Refinement<String, DetachedModelCaptureFailure>`. Establishes a local VFS
+     * path observation without requiring the source root to exist or materialize as a `VirtualFile`. Absolute
+     * normalized syntax and workspace containment remain the responsibility of detached-model path refinement.
      */
-    internal fun observeLocalSourceRootPath(
-        url: String,
-    ): Refinement<String, DetachedModelCaptureFailure> {
+    internal fun observeLocalSourceRootPath(url: String): Refinement<String, DetachedModelCaptureFailure> {
         if (VirtualFileManager.extractProtocol(url) != StandardFileSystems.FILE_PROTOCOL) {
             return Refinement.Rejected(DetachedModelCaptureFailure.INVALID_SOURCE_ROOT)
         }
@@ -309,39 +313,38 @@ internal class LiveDetachedModelCapture private constructor(private val limits: 
 
     /**
      * Proof transition: `ModuleRootManager -> Refinement<List<DetachedClasspathBoundary>,
-     * DetachedModelCaptureFailure>`. Establishes an explicitly bounded primitive classpath-URL
-     * list without retaining order entries or virtual files. IDEA 262 exposes a stoppable
-     * order-entry processor but exposes each entry's roots as one array; this consumes only those
-     * per-entry arrays and stops both loops immediately upon observing the 513th root.
-     * [DetachedModelCaptureFailure] is the closed expected failure. Raw order entries and virtual
-     * files may be extracted only inside this live adapter.
+     * DetachedModelCaptureFailure>`. Establishes an explicitly bounded primitive classpath-URL list without retaining
+     * order entries or virtual files. IDEA 262 exposes a stoppable order-entry processor but exposes each entry's roots
+     * as one array; this consumes only those per-entry arrays and stops both loops immediately upon observing the 513th
+     * root. [DetachedModelCaptureFailure] is the closed expected failure. Raw order entries and virtual files may be
+     * extracted only inside this live adapter.
      */
     private fun observeClasspath(
-        rootManager: ModuleRootManager,
+        rootManager: ModuleRootManager
     ): Refinement<List<DetachedClasspathBoundary>, DetachedModelCaptureFailure> {
-        val entries = ArrayList<DetachedClasspathBoundary>(
-            limits[ReadLimitParameter.MODEL_CLASSPATH_ENTRIES_PER_MODULE].value,
-        )
+        val entries =
+            ArrayList<DetachedClasspathBoundary>(limits[ReadLimitParameter.MODEL_CLASSPATH_ENTRIES_PER_MODULE].value)
         var traversal = ClasspathTraversal.OPEN
-        rootManager.orderEntries().forEach(
-            Processor { orderEntry ->
-                ProgressManager.checkCanceled()
-                for (root in orderEntry.getFiles(OrderRootType.CLASSES)) {
+        rootManager
+            .orderEntries()
+            .forEach(
+                Processor { orderEntry ->
                     ProgressManager.checkCanceled()
-                    if (entries.size == limits[ReadLimitParameter.MODEL_CLASSPATH_ENTRIES_PER_MODULE].value) {
-                        traversal = ClasspathTraversal.LIMIT_EXCEEDED
-                        break
+                    for (root in orderEntry.getFiles(OrderRootType.CLASSES)) {
+                        ProgressManager.checkCanceled()
+                        if (entries.size == limits[ReadLimitParameter.MODEL_CLASSPATH_ENTRIES_PER_MODULE].value) {
+                            traversal = ClasspathTraversal.LIMIT_EXCEEDED
+                            break
+                        }
+                        entries += DetachedClasspathBoundary(root.url)
                     }
-                    entries += DetachedClasspathBoundary(root.url)
+                    traversal == ClasspathTraversal.OPEN
                 }
-                traversal == ClasspathTraversal.OPEN
-            },
-        )
+            )
         return when (traversal) {
             ClasspathTraversal.OPEN -> Refinement.Refined(entries)
-            ClasspathTraversal.LIMIT_EXCEEDED -> Refinement.Rejected(
-                DetachedModelCaptureFailure.TOO_MANY_CLASSPATH_ENTRIES,
-            )
+            ClasspathTraversal.LIMIT_EXCEEDED ->
+                Refinement.Rejected(DetachedModelCaptureFailure.TOO_MANY_CLASSPATH_ENTRIES)
         }
     }
 

@@ -23,17 +23,14 @@ enum class OpenTelemetryFileForwardingFailure {
 }
 
 sealed interface OpenTelemetryFileForwardingOpening {
-    data class Opened(
-        val forwarding: OpenTelemetryFileForwarding,
-    ) : OpenTelemetryFileForwardingOpening
+    data class Opened(val forwarding: OpenTelemetryFileForwarding) : OpenTelemetryFileForwardingOpening
 
-    data class Rejected(
-        val failure: OpenTelemetryFileForwardingFailure,
-    ) : OpenTelemetryFileForwardingOpening
+    data class Rejected(val failure: OpenTelemetryFileForwardingFailure) : OpenTelemetryFileForwardingOpening
 }
 
 /** One admitted per-socket OTLP JSON-lines destination and its non-blocking trace adapter. */
-class OpenTelemetryFileForwarding private constructor(
+class OpenTelemetryFileForwarding
+private constructor(
     val output: KastTelemetryFileOutput,
     val observability: KastObservability,
     private val provider: SdkTracerProvider,
@@ -42,126 +39,111 @@ class OpenTelemetryFileForwarding private constructor(
         /**
          * Proof transition: `KastTelemetryFileOutput -> OpenTelemetryFileForwardingOpening`.
          *
-         * Establishes a private, non-symlinked destination before constructing an SDK whose
-         * batch processor exports immutable completed spans off the operation thread. Directory
-         * and file failures remain finite data; SDK and filesystem values stay inside this adapter
-         * boundary.
+         * Establishes a private, non-symlinked destination before constructing an SDK whose batch processor exports
+         * immutable completed spans off the operation thread. Directory and file failures remain finite data; SDK and
+         * filesystem values stay inside this adapter boundary.
          */
         fun open(output: KastTelemetryFileOutput): OpenTelemetryFileForwardingOpening {
             val directory = Path.of(output.directoryPathText)
             when (admitDirectory(directory)) {
                 FileDestinationAdmission.Admitted -> Unit
-                FileDestinationAdmission.Rejected -> return rejected(
-                    OpenTelemetryFileForwardingFailure.DIRECTORY_UNAVAILABLE,
-                )
+                FileDestinationAdmission.Rejected ->
+                    return rejected(OpenTelemetryFileForwardingFailure.DIRECTORY_UNAVAILABLE)
             }
             val traceFile = Path.of(output.traceFilePathText)
             when (admitTraceFile(traceFile)) {
                 FileDestinationAdmission.Admitted -> Unit
-                FileDestinationAdmission.Rejected -> return rejected(
-                    OpenTelemetryFileForwardingFailure.TRACE_FILE_UNAVAILABLE,
-                )
+                FileDestinationAdmission.Rejected ->
+                    return rejected(OpenTelemetryFileForwardingFailure.TRACE_FILE_UNAVAILABLE)
             }
-            val stream = try {
-                Files.newOutputStream(
-                    traceFile,
-                    StandardOpenOption.WRITE,
-                    StandardOpenOption.APPEND,
-                    LinkOption.NOFOLLOW_LINKS,
+            val stream =
+                try {
+                    Files.newOutputStream(
+                        traceFile,
+                        StandardOpenOption.WRITE,
+                        StandardOpenOption.APPEND,
+                        LinkOption.NOFOLLOW_LINKS,
+                    )
+                } catch (_: IOException) {
+                    return rejected(OpenTelemetryFileForwardingFailure.TRACE_FILE_UNAVAILABLE)
+                } catch (_: SecurityException) {
+                    return rejected(OpenTelemetryFileForwardingFailure.TRACE_FILE_UNAVAILABLE)
+                }
+            val exporter =
+                ClosingSpanExporter(
+                    OtlpStdoutSpanExporter.builder().setOutput(stream).setWrapperJsonObject(true).build(),
+                    stream,
                 )
-            } catch (_: IOException) {
-                return rejected(OpenTelemetryFileForwardingFailure.TRACE_FILE_UNAVAILABLE)
-            } catch (_: SecurityException) {
-                return rejected(OpenTelemetryFileForwardingFailure.TRACE_FILE_UNAVAILABLE)
-            }
-            val exporter = ClosingSpanExporter(
-                OtlpStdoutSpanExporter.builder()
-                    .setOutput(stream)
-                    .setWrapperJsonObject(true)
-                    .build(),
-                stream,
-            )
-            val provider = SdkTracerProvider.builder()
-                .addSpanProcessor(BatchSpanProcessor.builder(exporter).build())
-                .build()
-            val openTelemetry = OpenTelemetrySdk.builder()
-                .setTracerProvider(provider)
-                .build()
+            val provider =
+                SdkTracerProvider.builder().addSpanProcessor(BatchSpanProcessor.builder(exporter).build()).build()
+            val openTelemetry = OpenTelemetrySdk.builder().setTracerProvider(provider).build()
             return OpenTelemetryFileForwardingOpening.Opened(
                 OpenTelemetryFileForwarding(
                     output,
                     OpenTelemetryKastObservability.create(openTelemetry),
                     provider,
-                ),
-            )
-        }
-
-        private fun admitDirectory(path: Path): FileDestinationAdmission = try {
-            if (Files.exists(path, LinkOption.NOFOLLOW_LINKS)) {
-                if (
-                    !Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS) ||
-                    Files.isSymbolicLink(path)
-                ) {
-                    return FileDestinationAdmission.Rejected
-                }
-            } else {
-                Files.createDirectory(
-                    path,
-                    PosixFilePermissions.asFileAttribute(
-                        PosixFilePermissions.fromString("rwx------"),
-                    ),
                 )
-            }
-            Files.setPosixFilePermissions(
-                path,
-                PosixFilePermissions.fromString("rwx------"),
             )
-            FileDestinationAdmission.Admitted
-        } catch (_: IOException) {
-            FileDestinationAdmission.Rejected
-        } catch (_: SecurityException) {
-            FileDestinationAdmission.Rejected
-        } catch (_: UnsupportedOperationException) {
-            FileDestinationAdmission.Rejected
         }
 
-        private fun admitTraceFile(path: Path): FileDestinationAdmission = try {
-            if (Files.exists(path, LinkOption.NOFOLLOW_LINKS)) {
-                if (
-                    !Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS) ||
-                    Files.isSymbolicLink(path)
-                ) {
-                    return FileDestinationAdmission.Rejected
+        private fun admitDirectory(path: Path): FileDestinationAdmission =
+            try {
+                if (Files.exists(path, LinkOption.NOFOLLOW_LINKS)) {
+                    if (!Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS) || Files.isSymbolicLink(path)) {
+                        return FileDestinationAdmission.Rejected
+                    }
+                } else {
+                    Files.createDirectory(
+                        path,
+                        PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------")),
+                    )
                 }
-            } else {
-                Files.newByteChannel(
+                Files.setPosixFilePermissions(
                     path,
-                    setOf(
-                        StandardOpenOption.CREATE_NEW,
-                        StandardOpenOption.WRITE,
-                        LinkOption.NOFOLLOW_LINKS,
-                    ),
-                    PosixFilePermissions.asFileAttribute(
-                        PosixFilePermissions.fromString("rw-------"),
-                    ),
-                ).use { }
+                    PosixFilePermissions.fromString("rwx------"),
+                )
+                FileDestinationAdmission.Admitted
+            } catch (_: IOException) {
+                FileDestinationAdmission.Rejected
+            } catch (_: SecurityException) {
+                FileDestinationAdmission.Rejected
+            } catch (_: UnsupportedOperationException) {
+                FileDestinationAdmission.Rejected
             }
-            Files.setPosixFilePermissions(
-                path,
-                PosixFilePermissions.fromString("rw-------"),
-            )
-            FileDestinationAdmission.Admitted
-        } catch (_: IOException) {
-            FileDestinationAdmission.Rejected
-        } catch (_: SecurityException) {
-            FileDestinationAdmission.Rejected
-        } catch (_: UnsupportedOperationException) {
-            FileDestinationAdmission.Rejected
-        }
 
-        private fun rejected(
-            failure: OpenTelemetryFileForwardingFailure,
-        ) = OpenTelemetryFileForwardingOpening.Rejected(failure)
+        private fun admitTraceFile(path: Path): FileDestinationAdmission =
+            try {
+                if (Files.exists(path, LinkOption.NOFOLLOW_LINKS)) {
+                    if (!Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS) || Files.isSymbolicLink(path)) {
+                        return FileDestinationAdmission.Rejected
+                    }
+                } else {
+                    Files.newByteChannel(
+                            path,
+                            setOf(
+                                StandardOpenOption.CREATE_NEW,
+                                StandardOpenOption.WRITE,
+                                LinkOption.NOFOLLOW_LINKS,
+                            ),
+                            PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")),
+                        )
+                        .use {}
+                }
+                Files.setPosixFilePermissions(
+                    path,
+                    PosixFilePermissions.fromString("rw-------"),
+                )
+                FileDestinationAdmission.Admitted
+            } catch (_: IOException) {
+                FileDestinationAdmission.Rejected
+            } catch (_: SecurityException) {
+                FileDestinationAdmission.Rejected
+            } catch (_: UnsupportedOperationException) {
+                FileDestinationAdmission.Rejected
+            }
+
+        private fun rejected(failure: OpenTelemetryFileForwardingFailure) =
+            OpenTelemetryFileForwardingOpening.Rejected(failure)
     }
 
     internal fun forceFlush(): CompletableResultCode = provider.forceFlush()
@@ -175,23 +157,23 @@ private enum class FileDestinationAdmission {
 }
 
 /**
- * Uses the pinned SDK's experimental OTLP JSON writer behind a Kast-owned stable boundary.
- * Migration owner: runtime/telemetry. Its emitted file shape is verified before dependency updates.
+ * Uses the pinned SDK's experimental OTLP JSON writer behind a Kast-owned stable boundary. Migration owner:
+ * runtime/telemetry. Its emitted file shape is verified before dependency updates.
  */
 private class ClosingSpanExporter(
     private val delegate: SpanExporter,
     private val output: OutputStream,
 ) : SpanExporter {
-    override fun export(spans: MutableCollection<SpanData>): CompletableResultCode =
-        delegate.export(spans)
+    override fun export(spans: MutableCollection<SpanData>): CompletableResultCode = delegate.export(spans)
 
     override fun flush(): CompletableResultCode = delegate.flush()
 
-    override fun shutdown(): CompletableResultCode = delegate.shutdown().whenComplete {
-        try {
-            output.close()
-        } catch (_: IOException) {
-            // The completed operation remains true when teardown can no longer write telemetry.
+    override fun shutdown(): CompletableResultCode =
+        delegate.shutdown().whenComplete {
+            try {
+                output.close()
+            } catch (_: IOException) {
+                // The completed operation remains true when teardown can no longer write telemetry.
+            }
         }
-    }
 }

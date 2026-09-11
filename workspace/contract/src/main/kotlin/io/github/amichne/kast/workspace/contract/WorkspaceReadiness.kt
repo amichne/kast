@@ -7,8 +7,11 @@ fun interface WorkspaceSourceObservationOperations {
 
 sealed interface WorkspaceSourceObservation {
     data class Observed(val identity: WorkspaceStateIdentity) : WorkspaceSourceObservation
+
     data object ModelInputsChanged : WorkspaceSourceObservation
+
     data object ModelInputsUnavailable : WorkspaceSourceObservation
+
     data object Unavailable : WorkspaceSourceObservation
 }
 
@@ -20,6 +23,7 @@ fun interface WorkspaceReadinessOperations {
 /** Historical publication authorizes refreshing admitted roots, never a semantic read. */
 sealed interface WorkspaceRefreshBasis {
     data class Available(val publication: PublishedWorkspace) : WorkspaceRefreshBasis
+
     data object Unavailable : WorkspaceRefreshBasis
 }
 

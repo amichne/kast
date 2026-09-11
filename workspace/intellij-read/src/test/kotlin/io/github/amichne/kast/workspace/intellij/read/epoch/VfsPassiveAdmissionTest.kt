@@ -12,9 +12,7 @@ class VfsPassiveAdmissionTest {
         val admittedProject = admittedFreshnessProject(source)
         val expectedEpoch = source.observeEpoch()
 
-        val capability = admittedFreshnessCapability(
-            admittedProject.admitVfsPassiveRead(expectedEpoch),
-        )
+        val capability = admittedFreshnessCapability(admittedProject.admitVfsPassiveRead(expectedEpoch))
 
         assertEquals(FIXTURE_ROOT, capability.canonicalRoot)
         assertEquals(

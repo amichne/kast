@@ -24,6 +24,9 @@ class WorkspaceRegistrationCommandTest {
         assertTrue(Files.isRegularFile(installation.resolve("config/workspaces.json")))
         assertFalse(Files.exists(installation.resolve("state")))
         assertFalse(Files.exists(home.resolve("Library")))
-        assertEquals(document, (manager.execute(AppServerAction.Register, workspace) as AppServerManagementResult.Completed).document)
+        assertEquals(
+            document,
+            (manager.execute(AppServerAction.Register, workspace) as AppServerManagementResult.Completed).document,
+        )
     }
 }

@@ -1,8 +1,8 @@
 package io.github.amichne.kast.change.contract
 
 import io.github.amichne.kast.kernel.Refinement
-import kotlinx.serialization.Serializable
 import java.nio.file.Path
+import kotlinx.serialization.Serializable
 
 enum class AddDeclarationSourceOwnerFailure {
     SOURCE_ROOT_NOT_CANONICAL,
@@ -15,7 +15,8 @@ enum class AddDeclarationSourceOwnerFailure {
 
 @Serializable
 @ConsistentCopyVisibility
-data class AddDeclarationSourceOwner private constructor(
+data class AddDeclarationSourceOwner
+private constructor(
     val sourceRoot: String,
     val ideaModuleName: String,
     val gradleBuildRoot: String,
@@ -24,13 +25,12 @@ data class AddDeclarationSourceOwner private constructor(
 ) {
     companion object {
         /**
-         * Proof transition:
-         * String owner fields to Refinement of AddDeclarationSourceOwner or
+         * Proof transition: String owner fields to Refinement of AddDeclarationSourceOwner or
          * AddDeclarationSourceOwnerFailure.
          *
          * Establishes exact canonical source-root provenance for one imported Gradle source set.
-         * AddDeclarationSourceOwnerFailure is the closed expected failure. Raw owner strings may
-         * be extracted only by a physical project-model adapter.
+         * AddDeclarationSourceOwnerFailure is the closed expected failure. Raw owner strings may be extracted only by a
+         * physical project-model adapter.
          */
         fun admit(
             sourceRoot: String,
@@ -39,10 +39,12 @@ data class AddDeclarationSourceOwner private constructor(
             gradleProjectPath: String,
             sourceSetName: String,
         ): Refinement<AddDeclarationSourceOwner, AddDeclarationSourceOwnerFailure> {
-            val source = canonicalAbsolutePath(sourceRoot)
-                         ?: return Refinement.Rejected(AddDeclarationSourceOwnerFailure.SOURCE_ROOT_NOT_CANONICAL)
-            val build = canonicalAbsolutePath(gradleBuildRoot)
-                        ?: return Refinement.Rejected(AddDeclarationSourceOwnerFailure.BUILD_ROOT_NOT_CANONICAL)
+            val source =
+                canonicalAbsolutePath(sourceRoot)
+                    ?: return Refinement.Rejected(AddDeclarationSourceOwnerFailure.SOURCE_ROOT_NOT_CANONICAL)
+            val build =
+                canonicalAbsolutePath(gradleBuildRoot)
+                    ?: return Refinement.Rejected(AddDeclarationSourceOwnerFailure.BUILD_ROOT_NOT_CANONICAL)
             if (source == build || !source.startsWith(build)) {
                 return Refinement.Rejected(AddDeclarationSourceOwnerFailure.SOURCE_ROOT_OUTSIDE_BUILD)
             }
@@ -52,7 +54,9 @@ data class AddDeclarationSourceOwner private constructor(
             if (!absoluteGradleProjectPath(gradleProjectPath)) {
                 return Refinement.Rejected(AddDeclarationSourceOwnerFailure.GRADLE_PROJECT_PATH_INVALID)
             }
-            if (!canonicalName(sourceSetName) || '/' in sourceSetName || '\\' in sourceSetName || ':' in sourceSetName) {
+            if (
+                !canonicalName(sourceSetName) || '/' in sourceSetName || '\\' in sourceSetName || ':' in sourceSetName
+            ) {
                 return Refinement.Rejected(AddDeclarationSourceOwnerFailure.SOURCE_SET_NAME_INVALID)
             }
             return Refinement.Refined(
@@ -62,7 +66,7 @@ data class AddDeclarationSourceOwner private constructor(
                     gradleBuildRoot = gradleBuildRoot,
                     gradleProjectPath = gradleProjectPath,
                     sourceSetName = sourceSetName,
-                ),
+                )
             )
         }
     }
@@ -75,7 +79,8 @@ enum class AddDeclarationTargetCapabilityFailure {
 
 @Serializable
 @ConsistentCopyVisibility
-data class AddDeclarationTargetCapability private constructor(
+data class AddDeclarationTargetCapability
+private constructor(
     val workspaceRoot: AddDeclarationWorkspaceRoot,
     val targetPath: AddDeclarationTargetPath,
     val expectedCurrentSha256: AddDeclarationSha256,
@@ -83,14 +88,12 @@ data class AddDeclarationTargetCapability private constructor(
 ) {
     companion object {
         /**
-         * Proof transition:
-         * AddDeclarationIntent and AddDeclarationSourceOwner to Refinement of
+         * Proof transition: AddDeclarationIntent and AddDeclarationSourceOwner to Refinement of
          * AddDeclarationTargetCapability or AddDeclarationTargetCapabilityFailure.
          *
-         * Establishes that the exact target is owned by the proven authored source root inside the
-         * admitted workspace and retains its expected preimage identity.
-         * AddDeclarationTargetCapabilityFailure is the closed expected failure. Raw paths may be
-         * extracted only by the physical planning adapter.
+         * Establishes that the exact target is owned by the proven authored source root inside the admitted workspace
+         * and retains its expected preimage identity. AddDeclarationTargetCapabilityFailure is the closed expected
+         * failure. Raw paths may be extracted only by the physical planning adapter.
          */
         fun admit(
             intent: AddDeclarationIntent,
@@ -111,7 +114,7 @@ data class AddDeclarationTargetCapability private constructor(
                     targetPath = intent.targetPath,
                     expectedCurrentSha256 = intent.expectedCurrentSha256,
                     owner = owner,
-                ),
+                )
             )
         }
     }
@@ -119,11 +122,14 @@ data class AddDeclarationTargetCapability private constructor(
 
 private fun canonicalAbsolutePath(raw: String): Path? = runCatching {
     Path.of(raw).takeIf { path -> path.isAbsolute && path.normalize().toString() == raw }
-}.getOrNull()
+}
+    .getOrNull()
 
-private fun canonicalName(raw: String): Boolean =
-    raw.isNotBlank() && raw == raw.trim() && raw.none(Char::isISOControl)
+private fun canonicalName(raw: String): Boolean = raw.isNotBlank() && raw == raw.trim() && raw.none(Char::isISOControl)
 
 private fun absoluteGradleProjectPath(raw: String): Boolean =
-    raw.startsWith(':') && '/' !in raw && '\\' !in raw && raw.none(Char::isISOControl) &&
-    (raw == ":" || (!raw.endsWith(':') && raw.drop(1).split(':').all(String::isNotBlank)))
+    raw.startsWith(':') &&
+        '/' !in raw &&
+        '\\' !in raw &&
+        raw.none(Char::isISOControl) &&
+        (raw == ":" || (!raw.endsWith(':') && raw.drop(1).split(':').all(String::isNotBlank)))

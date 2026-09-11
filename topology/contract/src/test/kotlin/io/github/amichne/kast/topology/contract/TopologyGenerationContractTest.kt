@@ -2,8 +2,8 @@ package io.github.amichne.kast.topology.contract
 
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
+import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
@@ -17,10 +17,10 @@ import io.github.amichne.kast.workspace.contract.WorkspaceEvidenceKind
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceContentHash
 import io.github.amichne.kast.workspace.contract.WorkspaceSourcePath
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
+import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
-import java.nio.file.Path
 
 class TopologyGenerationContractTest {
     @Test
@@ -32,16 +32,20 @@ class TopologyGenerationContractTest {
         val firstComplete = CompleteTopologyFile.admit(first, emptyList(), emptyList()).refined()
         val secondComplete = CompleteTopologyFile.admit(second, emptyList(), emptyList()).refined()
 
-        val generation = CompleteTopologyGeneration.admit(
-            workspace,
-            listOf(second, first),
-            listOf(firstComplete, secondComplete),
-        ).refined()
-        val repeated = CompleteTopologyGeneration.admit(
-            workspace,
-            listOf(first, second),
-            listOf(secondComplete, firstComplete),
-        ).refined()
+        val generation =
+            CompleteTopologyGeneration.admit(
+                    workspace,
+                    listOf(second, first),
+                    listOf(firstComplete, secondComplete),
+                )
+                .refined()
+        val repeated =
+            CompleteTopologyGeneration.admit(
+                    workspace,
+                    listOf(first, second),
+                    listOf(secondComplete, firstComplete),
+                )
+                .refined()
 
         assertEquals(listOf(first, second), generation.files.map(CompleteTopologyFile::file))
         assertEquals(workspace.readLease, generation.identity.lease)
@@ -58,16 +62,18 @@ class TopologyGenerationContractTest {
         val second = sourceFile(workspace, root, "alpha/src/main/kotlin/Beta.kt", 'b')
         val firstComplete = CompleteTopologyFile.admit(first, emptyList(), emptyList()).refined()
 
-        val rejected = CompleteTopologyGeneration.admit(
-            workspace,
-            listOf(first, second),
-            listOf(firstComplete),
-        )
+        val rejected =
+            CompleteTopologyGeneration.admit(
+                workspace,
+                listOf(first, second),
+                listOf(firstComplete),
+            )
 
-        val failure = when (rejected) {
-            is Refinement.Refined -> error("missing coverage unexpectedly admitted")
-            is Refinement.Rejected -> rejected.failure
-        }
+        val failure =
+            when (rejected) {
+                is Refinement.Refined -> error("missing coverage unexpectedly admitted")
+                is Refinement.Rejected -> rejected.failure
+            }
         assertEquals(setOf(second.path), failure.missing)
         assertEquals(emptySet<WorkspaceSourcePath>(), failure.unexpected)
     }
@@ -92,22 +98,26 @@ class TopologyGenerationContractTest {
         val root = sourceRoot()
         val candidate = sourceFile(workspace, root, "alpha/src/main/kotlin/Alpha.kt", 'a')
         val foreign = sourceFile(workspace, root, "alpha/src/main/kotlin/Alpha.kt", 'b')
-        val foreignComplete = CompleteTopologyFile.admit(
-            foreign,
-            emptyList(),
-            emptyList(),
-        ).refined()
+        val foreignComplete =
+            CompleteTopologyFile.admit(
+                    foreign,
+                    emptyList(),
+                    emptyList(),
+                )
+                .refined()
 
-        val rejected = CompleteTopologyGeneration.admit(
-            workspace,
-            listOf(candidate),
-            listOf(foreignComplete),
-        )
+        val rejected =
+            CompleteTopologyGeneration.admit(
+                workspace,
+                listOf(candidate),
+                listOf(foreignComplete),
+            )
 
-        val failure = when (rejected) {
-            is Refinement.Refined -> error("foreign candidate evidence unexpectedly admitted")
-            is Refinement.Rejected -> rejected.failure
-        }
+        val failure =
+            when (rejected) {
+                is Refinement.Refined -> error("foreign candidate evidence unexpectedly admitted")
+                is Refinement.Rejected -> rejected.failure
+            }
         val mismatch = failure.candidateEvidenceMismatches.single()
         assertEquals(candidate, mismatch.candidate)
         assertEquals(foreign, mismatch.completed)
@@ -121,22 +131,28 @@ class TopologyGenerationContractTest {
         val second = sourceFile(workspace, root, "alpha/src/main/kotlin/Second.kt", 'b')
         val firstSymbol = symbol(first, "shared", 0)
         val secondSymbol = symbol(second, "shared", 20)
-        val firstComplete = CompleteTopologyFile.admit(
-            first,
-            listOf(firstSymbol),
-            emptyList(),
-        ).refined()
-        val secondComplete = CompleteTopologyFile.admit(
-            second,
-            listOf(secondSymbol),
-            emptyList(),
-        ).refined()
+        val firstComplete =
+            CompleteTopologyFile.admit(
+                    first,
+                    listOf(firstSymbol),
+                    emptyList(),
+                )
+                .refined()
+        val secondComplete =
+            CompleteTopologyFile.admit(
+                    second,
+                    listOf(secondSymbol),
+                    emptyList(),
+                )
+                .refined()
 
-        val generation = CompleteTopologyGeneration.admit(
-            workspace,
-            listOf(first, second),
-            listOf(firstComplete, secondComplete),
-        ).refined()
+        val generation =
+            CompleteTopologyGeneration.admit(
+                    workspace,
+                    listOf(first, second),
+                    listOf(firstComplete, secondComplete),
+                )
+                .refined()
 
         assertEquals(2, generation.symbols.size)
         assertEquals(
@@ -153,25 +169,29 @@ class TopologyGenerationContractTest {
         val file = sourceFile(workspace, root, "alpha/src/main/kotlin/Alpha.kt", 'a')
         val indexed = symbol(file, "alpha", 0)
         val contradictory = symbol(file, "bravo", 0)
-        val edge = TopologyEdge.fromBoundary(
-            TopologyEdgeKind.REFERENCE,
-            contradictory,
-            indexed,
-            0,
-            1,
-        ).refined()
+        val edge =
+            TopologyEdge.fromBoundary(
+                    TopologyEdgeKind.REFERENCE,
+                    contradictory,
+                    indexed,
+                    0,
+                    1,
+                )
+                .refined()
         val complete = CompleteTopologyFile.admit(file, listOf(indexed), listOf(edge)).refined()
 
-        val rejected = CompleteTopologyGeneration.admit(
-            workspace,
-            listOf(file),
-            listOf(complete),
-        )
+        val rejected =
+            CompleteTopologyGeneration.admit(
+                workspace,
+                listOf(file),
+                listOf(complete),
+            )
 
-        val failure = when (rejected) {
-            is Refinement.Refined -> error("contradictory edge endpoint unexpectedly admitted")
-            is Refinement.Rejected -> rejected.failure
-        }
+        val failure =
+            when (rejected) {
+                is Refinement.Refined -> error("contradictory edge endpoint unexpectedly admitted")
+                is Refinement.Rejected -> rejected.failure
+            }
         assertEquals(setOf(contradictory), failure.mismatchedEdgeEndpoints)
     }
 
@@ -183,16 +203,19 @@ class TopologyGenerationContractTest {
         val alpha = symbol(file, "alpha", 0)
         val bravo = symbol(file, "bravo", 0)
 
-        val rejected = CompleteTopologyFile.admit(
-            file,
-            listOf(alpha, bravo),
-            emptyList(),
-        )
+        val rejected =
+            CompleteTopologyFile.admit(
+                file,
+                listOf(alpha, bravo),
+                emptyList(),
+            )
 
-        val failure = assertInstanceOf(
-            Refinement.Rejected::class.java,
-            rejected,
-        ).failure
+        val failure =
+            assertInstanceOf(
+                    Refinement.Rejected::class.java,
+                    rejected,
+                )
+                .failure
         assertEquals(setOf(CompleteTopologyFileFailure.DUPLICATE_SYMBOL_IDENTITY), failure)
     }
 
@@ -202,26 +225,31 @@ class TopologyGenerationContractTest {
         start: Int,
     ): TopologySymbol {
         val absolute = Path.of(file.workspace.lease.workspaceRoot.value).resolve(file.path.value)
-        val fileIdentity = SymbolDiscoveryFileIdentity.fromBoundary(
-            file.workspace.lease.workspaceRoot,
-            absolute,
-            absolute.toUri().toString(),
-        ).refined()
-        val evidence = CompilerGroundedSymbolEvidence.fromBoundary(
-            fileIdentity,
-            start,
-            start + name.length,
-            name,
-            "sample.shared",
-            CompilerSymbolKind.FUNCTION,
-            CanonicalCompilerSignature.function(
-                "sample.shared",
-                null,
-                emptyList(),
-                emptyList(),
-                0,
-            ).refined(),
-        ).refined()
+        val fileIdentity =
+            SymbolDiscoveryFileIdentity.fromBoundary(
+                    file.workspace.lease.workspaceRoot,
+                    absolute,
+                    absolute.toUri().toString(),
+                )
+                .refined()
+        val evidence =
+            CompilerGroundedSymbolEvidence.fromBoundary(
+                    fileIdentity,
+                    start,
+                    start + name.length,
+                    name,
+                    "sample.shared",
+                    CompilerSymbolKind.FUNCTION,
+                    CanonicalCompilerSignature.function(
+                            "sample.shared",
+                            null,
+                            emptyList(),
+                            emptyList(),
+                            0,
+                        )
+                        .refined(),
+                )
+                .refined()
         return TopologySymbol.admit(file, evidence).refined()
     }
 
@@ -230,39 +258,47 @@ class TopologyGenerationContractTest {
         sourceRoot: SourceRoot,
         path: String,
         hashDigit: Char,
-    ): TopologySourceFile = TopologySourceFile.admit(
-        workspace,
-        sourceRoot,
-        WorkspaceSourcePath.parse(path).refined(),
-        WorkspaceSourceContentHash.parse(hashDigit.toString().repeat(64)).refined(),
-    ).refined()
+    ): TopologySourceFile =
+        TopologySourceFile.admit(
+                workspace,
+                sourceRoot,
+                WorkspaceSourcePath.parse(path).refined(),
+                WorkspaceSourceContentHash.parse(hashDigit.toString().repeat(64)).refined(),
+            )
+            .refined()
 
     private fun workspace(): PublishedWorkspace {
-        val candidate = WorkspaceCandidate(
-            CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined(),
-            WorkspaceStateIdentity.parse("workspace-state").refined(),
-        )
-        val reconciled = ReconciledWorkspace.admit(
-            candidate,
-            WorkspaceEvidenceKind.entries.toSet(),
-            listOf(sourceRoot()),
-        ).refined()
+        val candidate =
+            WorkspaceCandidate(
+                CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined(),
+                WorkspaceStateIdentity.parse("workspace-state").refined(),
+            )
+        val reconciled =
+            ReconciledWorkspace.admit(
+                    candidate,
+                    WorkspaceEvidenceKind.entries.toSet(),
+                    listOf(sourceRoot()),
+                )
+                .refined()
         return PublishedWorkspace.publish(reconciled, EvidenceGeneration.parse(7).refined())
     }
 
-    private fun sourceRoot(): SourceRoot = SourceRoot.admit(
-        GradleSourceRootEvidence(
-            ideaModuleName = "alpha.main",
-            workspaceRelativeBuildRoot = ".",
-            gradleProjectPath = ":alpha",
-            sourceSetName = "main",
-            workspaceRelativeSourceRoot = "alpha/src/main/kotlin",
-            provenance = SourceRootProvenance.Authored,
-        ),
-    ).refined()
+    private fun sourceRoot(): SourceRoot =
+        SourceRoot.admit(
+                GradleSourceRootEvidence(
+                    ideaModuleName = "alpha.main",
+                    workspaceRelativeBuildRoot = ".",
+                    gradleProjectPath = ":alpha",
+                    sourceSetName = "main",
+                    workspaceRelativeSourceRoot = "alpha/src/main/kotlin",
+                    provenance = SourceRootProvenance.Authored,
+                )
+            )
+            .refined()
 
-    private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value = when (this) {
-        is Refinement.Refined -> value
-        is Refinement.Rejected -> error(failure.toString())
-    }
+    private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value =
+        when (this) {
+            is Refinement.Refined -> value
+            is Refinement.Rejected -> error(failure.toString())
+        }
 }

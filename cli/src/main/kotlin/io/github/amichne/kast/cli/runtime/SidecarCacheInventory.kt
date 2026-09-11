@@ -6,7 +6,8 @@ import java.nio.file.Path
 
 /** An identity receipt, independent of whether its derived cache state is usable. */
 @ConsistentCopyVisibility
-data class RootSidecarCacheReference internal constructor(
+data class RootSidecarCacheReference
+internal constructor(
     val cacheIdentity: String,
     val semanticRuntimeId: SemanticRuntimeId,
     val cacheRoot: Path,
@@ -14,7 +15,8 @@ data class RootSidecarCacheReference internal constructor(
 )
 
 /** All admitted non-quarantined identities for one physical workspace, not a selected cache. */
-class RootSidecarCacheInventory internal constructor(
+class RootSidecarCacheInventory
+internal constructor(
     val root: Path,
     caches: List<RootSidecarCacheReference>,
 ) {
@@ -32,7 +34,8 @@ class RootSidecarCacheInventory internal constructor(
 }
 
 /** Only successful exact-owner termination can construct the input to cache quarantine. */
-class StoppedSidecarCaches private constructor(
+class StoppedSidecarCaches
+private constructor(
     val inventory: RootSidecarCacheInventory,
     removed: Set<RuntimeEndpointArtifact>,
 ) {
@@ -40,9 +43,9 @@ class StoppedSidecarCaches private constructor(
 
     companion object {
         /**
-         * Inventory -> exact endpoints -> stopped inventory. Every endpoint is admitted before
-         * any stop; every stop succeeds before the filesystem owner receives quarantine authority.
-         * The caller holds the root startup lock through this transition and quarantine.
+         * Inventory -> exact endpoints -> stopped inventory. Every endpoint is admitted before any stop; every stop
+         * succeeds before the filesystem owner receives quarantine authority. The caller holds the root startup lock
+         * through this transition and quarantine.
          */
         fun stopAll(
             inventory: RootSidecarCacheInventory,
@@ -54,9 +57,14 @@ class StoppedSidecarCaches private constructor(
             }
             val endpoints = linkedSetOf(base)
             for (cache in inventory.caches) {
-                when (val resolved = base.forSidecarCache(
-                    cache.cacheIdentity, cache.semanticRuntimeId, cache.cacheRoot,
-                )) {
+                when (
+                    val resolved =
+                        base.forSidecarCache(
+                            cache.cacheIdentity,
+                            cache.semanticRuntimeId,
+                            cache.cacheRoot,
+                        )
+                ) {
                     is RuntimeEndpointResolution.Resolved -> endpoints += resolved.endpoint
                     is RuntimeEndpointResolution.Rejected ->
                         return Refinement.Rejected(RuntimeAdmissionFailure.EndpointUnavailable)
@@ -66,9 +74,8 @@ class StoppedSidecarCaches private constructor(
             for (endpoint in endpoints) {
                 when (val stopped = lifecycle.stop(endpoint)) {
                     is RuntimeStopResult.Stopped -> removed += stopped.removed
-                    is RuntimeStopResult.Rejected -> return Refinement.Rejected(
-                        RuntimeAdmissionFailure.StopRejected(stopped.failure),
-                    )
+                    is RuntimeStopResult.Rejected ->
+                        return Refinement.Rejected(RuntimeAdmissionFailure.StopRejected(stopped.failure))
                 }
             }
             return Refinement.Refined(StoppedSidecarCaches(inventory, removed))

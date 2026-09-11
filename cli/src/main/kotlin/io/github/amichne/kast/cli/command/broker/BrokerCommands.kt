@@ -17,19 +17,19 @@ internal fun brokerCommandGroup(): LocalCommandFamily {
     )
 }
 
-private class BrokerCommand : KastCommandGroup(
-    "broker",
-    "Host the persistent Codex tool broker from the installed Kotlin product.",
-)
+private class BrokerCommand :
+    KastCommandGroup(
+        "broker",
+        "Host the persistent Codex tool broker from the installed Kotlin product.",
+    )
 
-private data object BrokerServeCommand : LocalKastCommand(
-    "serve",
-    CliProductCommand.BROKER_SERVE,
-) {
+private data object BrokerServeCommand :
+    LocalKastCommand(
+        "serve",
+        CliProductCommand.BROKER_SERVE,
+    ) {
     override fun help(context: Context): String =
         "Serve the typed broker through Codex's local App Server control socket."
 
-    override fun resolveAction(): CliActionResolution = CliActionResolution.Selected(
-        CliAction.Local.BrokerServe,
-    )
+    override fun resolveAction(): CliActionResolution = CliActionResolution.Selected(CliAction.Local.BrokerServe)
 }

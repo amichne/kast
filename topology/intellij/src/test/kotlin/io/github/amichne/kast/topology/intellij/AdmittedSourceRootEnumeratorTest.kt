@@ -13,11 +13,6 @@ import io.github.amichne.kast.workspace.contract.SourceRootProvenance
 import io.github.amichne.kast.workspace.contract.WorkspaceCandidate
 import io.github.amichne.kast.workspace.contract.WorkspaceEvidenceKind
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertInstanceOf
-import org.junit.jupiter.api.Assertions.assertThrows
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.io.TempDir
 import java.io.IOException
 import java.io.UncheckedIOException
 import java.nio.file.Files
@@ -27,10 +22,14 @@ import java.util.Spliterators
 import java.util.concurrent.CancellationException
 import java.util.stream.Stream
 import java.util.stream.StreamSupport
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
 
 class AdmittedSourceRootEnumeratorTest {
-    @TempDir
-    lateinit var tempDir: Path
+    @TempDir lateinit var tempDir: Path
 
     @Test
     fun `enumeration reads only Kotlin files below admitted multi project source roots`() {
@@ -38,16 +37,18 @@ class AdmittedSourceRootEnumeratorTest {
         write("beta/src/main/kotlin/sample/Beta.kts", "package sample\nclass Beta")
         write("alpha/src/main/java/sample/Ignored.java", "class Ignored {}")
         write("outside/Hidden.kt", "class Hidden")
-        val workspace = workspace(
-            sourceRoot("alpha.main", ":alpha", "alpha/src/main/kotlin"),
-            sourceRoot("beta.main", ":beta", "beta/src/main/kotlin"),
-            sourceRoot("gamma.main", ":gamma", "gamma/src/main/kotlin"),
-        )
+        val workspace =
+            workspace(
+                sourceRoot("alpha.main", ":alpha", "alpha/src/main/kotlin"),
+                sourceRoot("beta.main", ":beta", "beta/src/main/kotlin"),
+                sourceRoot("gamma.main", ":gamma", "gamma/src/main/kotlin"),
+            )
 
-        val result = assertInstanceOf(
-            TopologyCandidateEnumeration.Complete::class.java,
-            AdmittedSourceRootEnumerator().enumerate(workspace),
-        )
+        val result =
+            assertInstanceOf(
+                TopologyCandidateEnumeration.Complete::class.java,
+                AdmittedSourceRootEnumerator().enumerate(workspace),
+            )
 
         assertEquals(
             listOf(
@@ -62,19 +63,20 @@ class AdmittedSourceRootEnumeratorTest {
     @Test
     fun `overlapping admitted owners fail closed instead of selecting one`() {
         write("src/main/kotlin/Shared.kt", "class Shared")
-        val workspace = workspace(
-            sourceRoot("root.main", ":", "src/main/kotlin"),
-            sourceRoot("shared.main", ":shared", "src/main/kotlin"),
-        )
+        val workspace =
+            workspace(
+                sourceRoot("root.main", ":", "src/main/kotlin"),
+                sourceRoot("shared.main", ":shared", "src/main/kotlin"),
+            )
 
-        val result = assertInstanceOf(
-            TopologyCandidateEnumeration.Rejected::class.java,
-            AdmittedSourceRootEnumerator().enumerate(workspace),
-        )
+        val result =
+            assertInstanceOf(
+                TopologyCandidateEnumeration.Rejected::class.java,
+                AdmittedSourceRootEnumerator().enumerate(workspace),
+            )
 
         assertEquals(
-            io.github.amichne.kast.topology.contract.TopologyCandidateEnumerationFailure
-                .AMBIGUOUS_SOURCE_ROOT_OWNER,
+            io.github.amichne.kast.topology.contract.TopologyCandidateEnumerationFailure.AMBIGUOUS_SOURCE_ROOT_OWNER,
             result.failure,
         )
     }
@@ -85,10 +87,11 @@ class AdmittedSourceRootEnumeratorTest {
         val workspace = workspace(sourceRoot("root.main", ":", "src/main/kotlin"))
         val enumerator = AdmittedSourceRootEnumerator { root -> lazyFailureAfter(root) }
 
-        val result = assertInstanceOf(
-            TopologyCandidateEnumeration.Rejected::class.java,
-            enumerator.enumerate(workspace),
-        )
+        val result =
+            assertInstanceOf(
+                TopologyCandidateEnumeration.Rejected::class.java,
+                enumerator.enumerate(workspace),
+            )
 
         assertEquals(TopologyCandidateEnumerationFailure.SOURCE_CONTENT_UNAVAILABLE, result.failure)
     }
@@ -111,17 +114,19 @@ class AdmittedSourceRootEnumeratorTest {
     }
 
     private fun lazyFailureAfter(first: Path): Stream<Path> {
-        val paths = object : Iterator<Path> {
-            private var emitted = false
+        val paths =
+            object : Iterator<Path> {
+                private var emitted = false
 
-            override fun hasNext(): Boolean = if (emitted) {
-                throw UncheckedIOException(IOException("injected lazy traversal failure"))
-            } else {
-                true
+                override fun hasNext(): Boolean =
+                    if (emitted) {
+                        throw UncheckedIOException(IOException("injected lazy traversal failure"))
+                    } else {
+                        true
+                    }
+
+                override fun next(): Path = first.also { emitted = true }
             }
-
-            override fun next(): Path = first.also { emitted = true }
-        }
         return StreamSupport.stream(
             Spliterators.spliteratorUnknownSize(paths, Spliterator.ORDERED),
             false,
@@ -130,34 +135,38 @@ class AdmittedSourceRootEnumeratorTest {
 
     private fun workspace(vararg roots: SourceRoot): PublishedWorkspace {
         val canonical = tempDir.toRealPath()
-        val candidate = WorkspaceCandidate(
-            CanonicalWorkspaceRoot.fromCanonicalPath(canonical).refined(),
-            WorkspaceStateIdentity.parse("enumeration-state").refined(),
-        )
+        val candidate =
+            WorkspaceCandidate(
+                CanonicalWorkspaceRoot.fromCanonicalPath(canonical).refined(),
+                WorkspaceStateIdentity.parse("enumeration-state").refined(),
+            )
         return PublishedWorkspace.publish(
             ReconciledWorkspace.admit(
-                candidate,
-                WorkspaceEvidenceKind.entries.toSet(),
-                roots.toList(),
-            ).refined(),
+                    candidate,
+                    WorkspaceEvidenceKind.entries.toSet(),
+                    roots.toList(),
+                )
+                .refined(),
             EvidenceGeneration.parse(9).refined(),
         )
     }
 
     private fun sourceRoot(module: String, project: String, location: String): SourceRoot =
         SourceRoot.admit(
-            GradleSourceRootEvidence(
-                module,
-                ".",
-                project,
-                "main",
-                location,
-                SourceRootProvenance.Authored,
-            ),
-        ).refined()
+                GradleSourceRootEvidence(
+                    module,
+                    ".",
+                    project,
+                    "main",
+                    location,
+                    SourceRootProvenance.Authored,
+                )
+            )
+            .refined()
 
-    private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value = when (this) {
-        is Refinement.Refined -> value
-        is Refinement.Rejected -> error(failure.toString())
-    }
+    private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value =
+        when (this) {
+            is Refinement.Refined -> value
+            is Refinement.Rejected -> error(failure.toString())
+        }
 }

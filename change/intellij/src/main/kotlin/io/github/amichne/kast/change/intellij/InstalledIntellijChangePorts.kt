@@ -28,6 +28,8 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.workspace.contract.CanonicalSemanticProjectRoot
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
+import java.nio.file.Path
+import java.util.concurrent.ConcurrentHashMap
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtDeclaration
 import org.jetbrains.kotlin.psi.KtFile
@@ -36,11 +38,10 @@ import org.jetbrains.kotlin.psi.KtObjectDeclaration
 import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtPsiFactory
 import org.jetbrains.kotlin.psi.KtTypeAlias
-import java.nio.file.Path
-import java.util.concurrent.ConcurrentHashMap
 
 /** Installed exact-root source, recovery, and AddDeclaration intent capabilities. */
-class InstalledIntellijChangePorts private constructor(
+class InstalledIntellijChangePorts
+private constructor(
     val sourceObserver: AddDeclarationSourceObserver,
     val sourceWriter: AddDeclarationSourceWriter,
     val sourceRollback: AddDeclarationSourceRollback,
@@ -51,16 +52,14 @@ class InstalledIntellijChangePorts private constructor(
         /**
          * Proof transition: `CanonicalSemanticProjectRoot -> InstalledIntellijChangePorts`.
          *
-         * Establishes request-local physical and compiler ports that locate only the live exact
-         * root. Normal writes retain their [MutationAuthority] solely so a matching durable
-         * applied-write record can invoke recovery. Missing or moved projects remain closed port
-         * failures; no live IntelliJ object escapes a call.
+         * Establishes request-local physical and compiler ports that locate only the live exact root. Normal writes
+         * retain their [MutationAuthority] solely so a matching durable applied-write record can invoke recovery.
+         * Missing or moved projects remain closed port failures; no live IntelliJ object escapes a call.
          */
         fun create(projectRoot: CanonicalSemanticProjectRoot): InstalledIntellijChangePorts {
             val root = projectRoot.workspaceRoot
             val authorities = ConcurrentHashMap<String, MutationAuthority>()
-            fun adapter(): IntellijChangeSourceAdapter? = exactProject(projectRoot)
-                ?.let(::IntellijChangeSourceAdapter)
+            fun adapter(): IntellijChangeSourceAdapter? = exactProject(projectRoot)?.let(::IntellijChangeSourceAdapter)
             return InstalledIntellijChangePorts(
                 sourceObserver = { source ->
                     adapter()?.observe(source) ?: unavailableObservation()
@@ -73,10 +72,9 @@ class InstalledIntellijChangePorts private constructor(
                     adapter()?.rollback(authority, record) ?: unavailableRollback()
                 },
                 recoveryRollback = recovery@{ record ->
-                    val authority = authorities[record.binding.value]
-                                    ?: return@recovery unavailableRollback()
-                    adapter()?.rollback(authority, record) ?: unavailableRollback()
-                },
+                        val authority = authorities[record.binding.value] ?: return@recovery unavailableRollback()
+                        adapter()?.rollback(authority, record) ?: unavailableRollback()
+                    },
                 intentCompiler = { selector, raw ->
                     compileIntent(projectRoot, root, selector, raw)
                 },
@@ -91,9 +89,7 @@ private fun compileIntent(
     selector: SymbolSelector,
     rawDeclaration: String,
 ): InstalledAddDeclarationIntentCompilation {
-    val project = exactProject(projectRoot) ?: return rejected(
-        InstalledAddDeclarationIntentFailure.PROJECT_UNAVAILABLE,
-    )
+    val project = exactProject(projectRoot) ?: return rejected(InstalledAddDeclarationIntentFailure.PROJECT_UNAVAILABLE)
     return compileIntent(project, root, selector, rawDeclaration)
 }
 
@@ -103,27 +99,29 @@ internal fun compileIntent(
     selector: SymbolSelector,
     rawDeclaration: String,
 ): InstalledAddDeclarationIntentCompilation {
-    val published = when (val admission = selector.lease.requirePublished()) {
-        is Refinement.Refined -> admission.value
-        is Refinement.Rejected -> return rejected(InstalledAddDeclarationIntentFailure.GENERATION_MOVED)
-    }
+    val published =
+        when (val admission = selector.lease.requirePublished()) {
+            is Refinement.Refined -> admission.value
+            is Refinement.Rejected -> return rejected(InstalledAddDeclarationIntentFailure.GENERATION_MOVED)
+        }
     if (published.workspaceRoot != root) {
         return rejected(InstalledAddDeclarationIntentFailure.GENERATION_MOVED)
     }
-    val declaration = when (val parsed = AddDeclarationSourceText.parse(rawDeclaration)) {
-        is Refinement.Refined -> parsed.value
-        is Refinement.Rejected -> return rejected(
-            InstalledAddDeclarationIntentFailure.DECLARATION_REJECTED,
-        )
-    }
+    val declaration =
+        when (val parsed = AddDeclarationSourceText.parse(rawDeclaration)) {
+            is Refinement.Refined -> parsed.value
+            is Refinement.Rejected -> return rejected(InstalledAddDeclarationIntentFailure.DECLARATION_REJECTED)
+        }
     return try {
         ProgressManager.checkCanceled()
         if (DumbService.getInstance(project).isDumb) {
             rejected(InstalledAddDeclarationIntentFailure.GENERATION_MOVED)
         } else {
             ReadAction.nonBlocking<InstalledAddDeclarationIntentCompilation> {
-                compileIntentRead(project, selector, declaration)
-            }.inSmartMode(project).executeSynchronously()
+                    compileIntentRead(project, selector, declaration)
+                }
+                .inSmartMode(project)
+                .executeSynchronously()
         }
     } catch (cancellation: ProcessCanceledException) {
         throw cancellation
@@ -137,76 +135,82 @@ private fun compileIntentRead(
     selector: SymbolSelector,
     declaration: AddDeclarationSourceText,
 ): InstalledAddDeclarationIntentCompilation {
-    val source = selector.file as? SymbolDiscoveryFileIdentity.Workspace
-                 ?: return rejected(InstalledAddDeclarationIntentFailure.TARGET_UNAVAILABLE)
-    val file = LocalFileSystem.getInstance().findFileByNioFile(Path.of(source.path.value))
-               ?: return rejected(InstalledAddDeclarationIntentFailure.TARGET_UNAVAILABLE)
+    val source =
+        selector.file as? SymbolDiscoveryFileIdentity.Workspace
+            ?: return rejected(InstalledAddDeclarationIntentFailure.TARGET_UNAVAILABLE)
+    val file =
+        LocalFileSystem.getInstance().findFileByNioFile(Path.of(source.path.value))
+            ?: return rejected(InstalledAddDeclarationIntentFailure.TARGET_UNAVAILABLE)
     if (!file.isValid) return rejected(InstalledAddDeclarationIntentFailure.TARGET_UNAVAILABLE)
-    val target = PsiManager.getInstance(project).findFile(file) as? KtFile
-                 ?: return rejected(InstalledAddDeclarationIntentFailure.TARGET_NOT_KOTLIN)
-    val anchors = target.declarations.filter { candidate ->
-        candidate.textRange.startOffset == selector.range.startInclusive &&
-        candidate.textRange.endOffset == selector.range.endExclusive
-    }
+    val target =
+        PsiManager.getInstance(project).findFile(file) as? KtFile
+            ?: return rejected(InstalledAddDeclarationIntentFailure.TARGET_NOT_KOTLIN)
+    val anchors =
+        target.declarations.filter { candidate ->
+            candidate.textRange.startOffset == selector.range.startInclusive &&
+                candidate.textRange.endOffset == selector.range.endExclusive
+        }
     if (anchors.size != 1) return rejected(InstalledAddDeclarationIntentFailure.TARGET_MOVED)
-    val parsed = try {
-        KtPsiFactory(project, false).createDeclaration<KtDeclaration>(declaration.value)
-    } catch (_: Exception) {
-        return rejected(InstalledAddDeclarationIntentFailure.DECLARATION_REJECTED)
-    }
+    val parsed =
+        try {
+            KtPsiFactory(project, false).createDeclaration<KtDeclaration>(declaration.value)
+        } catch (_: Exception) {
+            return rejected(InstalledAddDeclarationIntentFailure.DECLARATION_REJECTED)
+        }
     if (PsiTreeUtil.hasErrorElements(parsed)) {
         return rejected(InstalledAddDeclarationIntentFailure.DECLARATION_REJECTED)
     }
-    val name = parsed.name
-               ?: return rejected(InstalledAddDeclarationIntentFailure.COMPILER_IDENTITY_UNAVAILABLE)
-    val kind = parsed.addDeclarationKind()
-               ?: return rejected(InstalledAddDeclarationIntentFailure.DECLARATION_REJECTED)
-    val delta = when (val admitted = ExpectedAddDeclarationDelta.admit(
-        target.packageFqName.asString(),
-        name,
-        kind,
-    )) {
-        is Refinement.Refined -> admitted.value
-        is Refinement.Rejected -> return rejected(
-            InstalledAddDeclarationIntentFailure.COMPILER_IDENTITY_UNAVAILABLE,
-        )
-    }
-    return InstalledAddDeclarationIntentCompilation.Compiled(
-        InstalledAddDeclarationIntent(declaration, delta),
-    )
+    val name = parsed.name ?: return rejected(InstalledAddDeclarationIntentFailure.COMPILER_IDENTITY_UNAVAILABLE)
+    val kind = parsed.addDeclarationKind() ?: return rejected(InstalledAddDeclarationIntentFailure.DECLARATION_REJECTED)
+    val delta =
+        when (
+            val admitted =
+                ExpectedAddDeclarationDelta.admit(
+                    target.packageFqName.asString(),
+                    name,
+                    kind,
+                )
+        ) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected ->
+                return rejected(InstalledAddDeclarationIntentFailure.COMPILER_IDENTITY_UNAVAILABLE)
+        }
+    return InstalledAddDeclarationIntentCompilation.Compiled(InstalledAddDeclarationIntent(declaration, delta))
 }
 
-private fun KtDeclaration.addDeclarationKind(): AddDeclarationKind? = when (this) {
-    is KtClass -> when {
-        isInterface() -> AddDeclarationKind.INTERFACE
-        isEnum() -> AddDeclarationKind.ENUM_CLASS
-        isAnnotation() -> AddDeclarationKind.ANNOTATION_CLASS
-        else -> AddDeclarationKind.CLASS
+private fun KtDeclaration.addDeclarationKind(): AddDeclarationKind? =
+    when (this) {
+        is KtClass ->
+            when {
+                isInterface() -> AddDeclarationKind.INTERFACE
+                isEnum() -> AddDeclarationKind.ENUM_CLASS
+                isAnnotation() -> AddDeclarationKind.ANNOTATION_CLASS
+                else -> AddDeclarationKind.CLASS
+            }
+        is KtObjectDeclaration -> AddDeclarationKind.OBJECT
+        is KtNamedFunction -> AddDeclarationKind.FUNCTION
+        is KtProperty -> AddDeclarationKind.PROPERTY
+        is KtTypeAlias -> AddDeclarationKind.TYPE_ALIAS
+        else -> null
     }
-    is KtObjectDeclaration -> AddDeclarationKind.OBJECT
-    is KtNamedFunction -> AddDeclarationKind.FUNCTION
-    is KtProperty -> AddDeclarationKind.PROPERTY
-    is KtTypeAlias -> AddDeclarationKind.TYPE_ALIAS
-    else -> null
-}
 
 private fun exactProject(root: CanonicalSemanticProjectRoot): Project? =
     ProjectManager.getInstance().openProjects.singleOrNull { project ->
-        !project.isDisposed && project.basePath?.let(Path::of)?.toAbsolutePath()?.normalize()
-            ?.toString() == root.value
+        !project.isDisposed && project.basePath?.let(Path::of)?.toAbsolutePath()?.normalize()?.toString() == root.value
     }
 
-private fun rejected(
-    failure: InstalledAddDeclarationIntentFailure,
-): InstalledAddDeclarationIntentCompilation = InstalledAddDeclarationIntentCompilation.Rejected(
-    failure,
-)
+private fun rejected(failure: InstalledAddDeclarationIntentFailure): InstalledAddDeclarationIntentCompilation =
+    InstalledAddDeclarationIntentCompilation.Rejected(failure)
 
-internal fun unavailableObservation() = io.github.amichne.kast.change.apply.SourceObservationResult
-    .Rejected(io.github.amichne.kast.change.apply.SourceObservationFailure.TARGET_INVALIDATED)
+internal fun unavailableObservation() =
+    io.github.amichne.kast.change.apply.SourceObservationResult.Rejected(
+        io.github.amichne.kast.change.apply.SourceObservationFailure.TARGET_INVALIDATED
+    )
 
-internal fun unavailableWrite() = io.github.amichne.kast.change.apply.SourceWriteResult
-    .RejectedBeforeMutation(io.github.amichne.kast.change.apply.SourceWriteFailure.TARGET_INVALIDATED)
+internal fun unavailableWrite() =
+    io.github.amichne.kast.change.apply.SourceWriteResult.RejectedBeforeMutation(
+        io.github.amichne.kast.change.apply.SourceWriteFailure.TARGET_INVALIDATED
+    )
 
-internal fun unavailableRollback(): AddDeclarationRollbackResult = AddDeclarationRollbackResult
-    .Rejected(AddDeclarationRollbackFailure.TARGET_UNAVAILABLE)
+internal fun unavailableRollback(): AddDeclarationRollbackResult =
+    AddDeclarationRollbackResult.Rejected(AddDeclarationRollbackFailure.TARGET_UNAVAILABLE)

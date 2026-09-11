@@ -24,14 +24,17 @@ import java.util.concurrent.CancellationException
 /**
  * Single event-driven owner of canonical workspace reconciliation and publication.
  *
- * Candidate work occurs outside the state lock. The final currency check and persistence
- * transaction share one critical section, so observers see either the withdrawn reconciliation
- * state or the complete new [WorkspaceRuntimeState.Ready] value, never a mixed publication.
+ * Candidate work occurs outside the state lock. The final currency check and persistence transaction share one critical
+ * section, so observers see either the withdrawn reconciliation state or the complete new [WorkspaceRuntimeState.Ready]
+ * value, never a mixed publication.
  */
 class WorkspacePublicationCoordinator(
     private val reconciliation: WorkspaceReconciliationPort,
     private val publication: WorkspacePublicationTransaction,
-) : WorkspaceInspectionOperations, WorkspaceInvalidationSink, SemanticReadLeaseGuard,
+) :
+    WorkspaceInspectionOperations,
+    WorkspaceInvalidationSink,
+    SemanticReadLeaseGuard,
     io.github.amichne.kast.workspace.contract.WorkspaceRefreshBasisOperations {
     val transitions = WorkspaceTransitionOwner()
     private val lock = Any()
@@ -40,6 +43,7 @@ class WorkspacePublicationCoordinator(
 
     override fun refreshBasis(): io.github.amichne.kast.workspace.contract.WorkspaceRefreshBasis =
         synchronized(lock) { lastPublication }
+
     private val pendingSignals = linkedSetOf(WorkspaceSignal.InitialProjectModel)
     private var observedRevision = WorkspaceEventRevision.initial()
     private var runtimeState: WorkspaceRuntimeState = WorkspaceRuntimeState.Starting
@@ -49,105 +53,122 @@ class WorkspacePublicationCoordinator(
     override fun <Value> whileCurrent(
         expected: SemanticReadLease,
         operation: () -> Value,
-    ): SemanticReadLeaseUse<Value> = synchronized(lock) {
-        val current = (runtimeState as? WorkspaceRuntimeState.Ready)?.workspace?.readLease
-        if (current == expected) {
-            SemanticReadLeaseUse.Completed(operation())
-        } else {
-            SemanticReadLeaseUse.Moved
+    ): SemanticReadLeaseUse<Value> =
+        synchronized(lock) {
+            val current = (runtimeState as? WorkspaceRuntimeState.Ready)?.workspace?.readLease
+            if (current == expected) {
+                SemanticReadLeaseUse.Completed(operation())
+            } else {
+                SemanticReadLeaseUse.Moved
+            }
         }
-    }
 
     override fun observe(signal: WorkspaceSignal) {
         synchronized(lock) {
             observedRevision = observedRevision.next()
             pendingSignals += signal
-            runtimeState = when (runtimeState) {
-                WorkspaceRuntimeState.Absent -> WorkspaceRuntimeState.Absent
-                WorkspaceRuntimeState.Stopping -> WorkspaceRuntimeState.Stopping
-                WorkspaceRuntimeState.Starting,
-                WorkspaceRuntimeState.Reconciling,
-                is WorkspaceRuntimeState.Ready,
-                is WorkspaceRuntimeState.Blocked,
-                    -> WorkspaceRuntimeState.Reconciling
-            }
+            runtimeState =
+                when (runtimeState) {
+                    WorkspaceRuntimeState.Absent -> WorkspaceRuntimeState.Absent
+                    WorkspaceRuntimeState.Stopping -> WorkspaceRuntimeState.Stopping
+                    WorkspaceRuntimeState.Starting,
+                    WorkspaceRuntimeState.Reconciling,
+                    is WorkspaceRuntimeState.Ready,
+                    is WorkspaceRuntimeState.Blocked -> WorkspaceRuntimeState.Reconciling
+                }
         }
     }
 
     /**
      * Transition: pending workspace events to one atomic publication or a closed terminal result.
      *
-     * The method captures before and after reconciliation. Any event or candidate movement
-     * invalidates the pass before publication, while expected adapter and storage failures become
-     * finite [WorkspacePublicationRun.Blocked] data.
+     * The method captures before and after reconciliation. Any event or candidate movement invalidates the pass before
+     * publication, while expected adapter and storage failures become finite [WorkspacePublicationRun.Blocked] data.
      */
     fun reconcile(): WorkspacePublicationRun = transitions.exclusively { reconcileExclusively() }
 
     private fun reconcileExclusively(): WorkspacePublicationRun {
-        val cycle = when (val beginning = beginCycle()) {
-            CycleBeginning.NoWork -> return WorkspacePublicationRun.NoWork
-            is CycleBeginning.Started -> beginning.cycle
-        }
-        val before = when (val captured = reconciliation.capture(cycle.signals)) {
-            is WorkspaceCandidateCapture.Captured -> captured.candidate
-            is WorkspaceCandidateCapture.Rejected -> return block(cycle, captured.blocker)
-        }
+        val cycle =
+            when (val beginning = beginCycle()) {
+                CycleBeginning.NoWork -> return WorkspacePublicationRun.NoWork
+                is CycleBeginning.Started -> beginning.cycle
+            }
+        val before =
+            when (val captured = reconciliation.capture(cycle.signals)) {
+                is WorkspaceCandidateCapture.Captured -> captured.candidate
+                is WorkspaceCandidateCapture.Rejected -> return block(cycle, captured.blocker)
+            }
         if (currency(cycle) == CycleCurrency.Invalidated) {
             return WorkspacePublicationRun.Invalidated
         }
-        val open = when (val opening = publication.begin()) {
-            is WorkspacePublicationOpening.Opened -> opening.publication
-            is WorkspacePublicationOpening.Rejected -> return block(
-                cycle,
-                WorkspacePublicationBlocker.PublicationUnavailable,
-            )
-        }
-        val reconciled = when (val result = discardOnCancellation({ publication.discard(open) }) {
-            reconciliation.reconcile(before)
-        }) {
-            is WorkspaceCandidateReconciliation.Reconciled -> result.workspace
-            is WorkspaceCandidateReconciliation.Rejected -> {
-                return discardThenBlock(open, cycle, result.blocker)
+        val open =
+            when (val opening = publication.begin()) {
+                is WorkspacePublicationOpening.Opened -> opening.publication
+                is WorkspacePublicationOpening.Rejected ->
+                    return block(
+                        cycle,
+                        WorkspacePublicationBlocker.PublicationUnavailable,
+                    )
             }
-        }
+        val reconciled =
+            when (
+                val result =
+                    discardOnCancellation({ publication.discard(open) }) {
+                        reconciliation.reconcile(before)
+                    }
+            ) {
+                is WorkspaceCandidateReconciliation.Reconciled -> result.workspace
+                is WorkspaceCandidateReconciliation.Rejected -> {
+                    return discardThenBlock(open, cycle, result.blocker)
+                }
+            }
         if (reconciled.candidate != before) return discardThenMove(open)
         if (currency(cycle) == CycleCurrency.Invalidated) {
             return discardThenInvalidate(open)
         }
-        val after = when (val captured = discardOnCancellation({ publication.discard(open) }) {
-            reconciliation.capture(cycle.signals)
-        }) {
-            is WorkspaceCandidateCapture.Captured -> captured.candidate
-            is WorkspaceCandidateCapture.Rejected -> {
-                return discardThenBlock(open, cycle, captured.blocker)
+        val after =
+            when (
+                val captured =
+                    discardOnCancellation({ publication.discard(open) }) {
+                        reconciliation.capture(cycle.signals)
+                    }
+            ) {
+                is WorkspaceCandidateCapture.Captured -> captured.candidate
+                is WorkspaceCandidateCapture.Rejected -> {
+                    return discardThenBlock(open, cycle, captured.blocker)
+                }
             }
-        }
         if (before != after) return discardThenMove(open)
-        val prepared = when (val preparation = discardOnCancellation({ publication.discard(open) }) {
-            publication.prepare(open, reconciled)
-        }) {
-            is WorkspacePublicationPreparation.Prepared -> preparation.publication
-            is WorkspacePublicationPreparation.Rejected -> {
-                return discardThenBlock(
-                    open,
-                    cycle,
-                    WorkspacePublicationBlocker.PublicationUnavailable,
-                )
+        val prepared =
+            when (
+                val preparation =
+                    discardOnCancellation({ publication.discard(open) }) {
+                        publication.prepare(open, reconciled)
+                    }
+            ) {
+                is WorkspacePublicationPreparation.Prepared -> preparation.publication
+                is WorkspacePublicationPreparation.Rejected -> {
+                    return discardThenBlock(
+                        open,
+                        cycle,
+                        WorkspacePublicationBlocker.PublicationUnavailable,
+                    )
+                }
             }
-        }
         return commitIfCurrent(cycle, prepared)
     }
 
     /**
      * Proof transition: `SemanticReadLease -> ResultingWorkspacePublicationResult`.
      *
-     * Establishes that reconciliation begins only from the exact currently published lease and
-     * returns only a same-root, strictly newer complete publication. Expected stale, unavailable,
-     * invalidated, blocked, or invalid-result states are closed by
-     * [ResultingWorkspacePublicationFailure]. Raw workspace effects remain in the injected ports.
+     * Establishes that reconciliation begins only from the exact currently published lease and returns only a
+     * same-root, strictly newer complete publication. Expected stale, unavailable, invalidated, blocked, or
+     * invalid-result states are closed by [ResultingWorkspacePublicationFailure]. Raw workspace effects remain in the
+     * injected ports.
      */
-    fun reconcileAfter(prior: SemanticReadLease): ResultingWorkspacePublicationResult =
-        transitions.exclusively { reconcileAfterExclusively(prior) }
+    fun reconcileAfter(prior: SemanticReadLease): ResultingWorkspacePublicationResult = transitions.exclusively {
+        reconcileAfterExclusively(prior)
+    }
 
     private fun reconcileAfterExclusively(prior: SemanticReadLease): ResultingWorkspacePublicationResult {
         when (val beginning = beginResultingCycle(prior)) {
@@ -158,41 +179,50 @@ class WorkspacePublicationCoordinator(
         return when (val run = reconcile()) {
             is WorkspacePublicationRun.Published -> resultingPublication(prior, run.workspace)
             is WorkspacePublicationRun.Unchanged -> resultingPublication(prior, run.workspace)
-            WorkspacePublicationRun.NoWork -> ResultingWorkspacePublicationResult.Rejected(
-                ResultingWorkspacePublicationFailure.NoPublication,
-            )
-            WorkspacePublicationRun.Invalidated -> ResultingWorkspacePublicationResult.Rejected(
-                ResultingWorkspacePublicationFailure.Invalidated,
-            )
-            is WorkspacePublicationRun.Blocked -> ResultingWorkspacePublicationResult.Rejected(
-                ResultingWorkspacePublicationFailure.Blocked(run.blocker),
-            )
+            WorkspacePublicationRun.NoWork ->
+                ResultingWorkspacePublicationResult.Rejected(ResultingWorkspacePublicationFailure.NoPublication)
+            WorkspacePublicationRun.Invalidated ->
+                ResultingWorkspacePublicationResult.Rejected(ResultingWorkspacePublicationFailure.Invalidated)
+            is WorkspacePublicationRun.Blocked ->
+                ResultingWorkspacePublicationResult.Rejected(ResultingWorkspacePublicationFailure.Blocked(run.blocker))
         }
     }
 
     /**
-     * Starts one source-observation cycle from the exact current publication after a physical
-     * index refresh. Unlike mutation verification, an unchanged semantic publication is valid.
+     * Starts one source-observation cycle from the exact current publication after a physical index refresh. Unlike
+     * mutation verification, an unchanged semantic publication is valid.
      */
     fun reconcileAfterIndexRefresh(
-        prior: io.github.amichne.kast.workspace.contract.PublishedWorkspace,
+        prior: io.github.amichne.kast.workspace.contract.PublishedWorkspace
     ): WorkspacePublicationRun = transitions.exclusively {
-        val admitted = synchronized(lock) {
-            when (runtimeState) {
-                is WorkspaceRuntimeState.Ready -> beginResultingCycle(prior.readLease)
-                WorkspaceRuntimeState.Reconciling, is WorkspaceRuntimeState.Blocked -> when (val basis = lastPublication) {
-                    is io.github.amichne.kast.workspace.contract.WorkspaceRefreshBasis.Available ->
-                        if (basis.publication.readLease == prior.readLease) {
-                            pendingSignals += WorkspaceSignal.RecoveryAudit
-                            ResultingCycleBeginning.Started
-                        } else ResultingCycleBeginning.Rejected(ResultingWorkspacePublicationFailure.CurrentPublicationUnavailable)
-                    io.github.amichne.kast.workspace.contract.WorkspaceRefreshBasis.Unavailable ->
-                        ResultingCycleBeginning.Rejected(ResultingWorkspacePublicationFailure.CurrentPublicationUnavailable)
+        val admitted =
+            synchronized(lock) {
+                when (runtimeState) {
+                    is WorkspaceRuntimeState.Ready -> beginResultingCycle(prior.readLease)
+                    WorkspaceRuntimeState.Reconciling,
+                    is WorkspaceRuntimeState.Blocked ->
+                        when (val basis = lastPublication) {
+                            is io.github.amichne.kast.workspace.contract.WorkspaceRefreshBasis.Available ->
+                                if (basis.publication.readLease == prior.readLease) {
+                                    pendingSignals += WorkspaceSignal.RecoveryAudit
+                                    ResultingCycleBeginning.Started
+                                } else
+                                    ResultingCycleBeginning.Rejected(
+                                        ResultingWorkspacePublicationFailure.CurrentPublicationUnavailable
+                                    )
+                            io.github.amichne.kast.workspace.contract.WorkspaceRefreshBasis.Unavailable ->
+                                ResultingCycleBeginning.Rejected(
+                                    ResultingWorkspacePublicationFailure.CurrentPublicationUnavailable
+                                )
+                        }
+                    WorkspaceRuntimeState.Starting,
+                    WorkspaceRuntimeState.Absent,
+                    WorkspaceRuntimeState.Stopping ->
+                        ResultingCycleBeginning.Rejected(
+                            ResultingWorkspacePublicationFailure.CurrentPublicationUnavailable
+                        )
                 }
-                WorkspaceRuntimeState.Starting, WorkspaceRuntimeState.Absent, WorkspaceRuntimeState.Stopping ->
-                    ResultingCycleBeginning.Rejected(ResultingWorkspacePublicationFailure.CurrentPublicationUnavailable)
             }
-        }
         when (admitted) {
             ResultingCycleBeginning.Started -> reconcile()
             is ResultingCycleBeginning.Rejected -> WorkspacePublicationRun.Invalidated
@@ -202,163 +232,168 @@ class WorkspacePublicationCoordinator(
     private fun resultingPublication(
         prior: SemanticReadLease,
         workspace: io.github.amichne.kast.workspace.contract.PublishedWorkspace,
-    ): ResultingWorkspacePublicationResult = when (
-        val admitted = ResultingWorkspacePublication.admit(prior, workspace)
-    ) {
-        is io.github.amichne.kast.kernel.Refinement.Refined ->
-            ResultingWorkspacePublicationResult.Published(admitted.value)
-        is io.github.amichne.kast.kernel.Refinement.Rejected ->
-            ResultingWorkspacePublicationResult.Rejected(
-                ResultingWorkspacePublicationFailure.InvalidResult(admitted.failure),
-            )
-    }
-
-    private fun beginResultingCycle(prior: SemanticReadLease): ResultingCycleBeginning = synchronized(lock) {
-        when (val current = runtimeState) {
-            is WorkspaceRuntimeState.Ready -> if (current.workspace.readLease == prior) {
-                observedRevision = observedRevision.next()
-                pendingSignals += WorkspaceSignal.Source
-                runtimeState = WorkspaceRuntimeState.Reconciling
-                ResultingCycleBeginning.Started
-            } else {
-                ResultingCycleBeginning.Rejected(
-                    ResultingWorkspacePublicationFailure.PriorPublicationMismatch(
-                        prior,
-                        current.workspace.readLease,
-                    ),
+    ): ResultingWorkspacePublicationResult =
+        when (val admitted = ResultingWorkspacePublication.admit(prior, workspace)) {
+            is io.github.amichne.kast.kernel.Refinement.Refined ->
+                ResultingWorkspacePublicationResult.Published(admitted.value)
+            is io.github.amichne.kast.kernel.Refinement.Rejected ->
+                ResultingWorkspacePublicationResult.Rejected(
+                    ResultingWorkspacePublicationFailure.InvalidResult(admitted.failure)
                 )
-            }
-            WorkspaceRuntimeState.Absent,
-            WorkspaceRuntimeState.Starting,
-            WorkspaceRuntimeState.Reconciling,
-            is WorkspaceRuntimeState.Blocked,
-            WorkspaceRuntimeState.Stopping,
-                -> ResultingCycleBeginning.Rejected(
-                ResultingWorkspacePublicationFailure.CurrentPublicationUnavailable,
-            )
         }
-    }
 
-    private fun beginCycle(): CycleBeginning = synchronized(lock) {
-        when (runtimeState) {
-            WorkspaceRuntimeState.Absent,
-            WorkspaceRuntimeState.Stopping,
-            is WorkspaceRuntimeState.Ready,
-                -> CycleBeginning.NoWork
-            WorkspaceRuntimeState.Starting,
-            WorkspaceRuntimeState.Reconciling,
-            is WorkspaceRuntimeState.Blocked,
-                -> {
-                val cycle = PublicationCycle(
-                    revision = observedRevision,
-                    signals = pendingSignals.toSet(),
-                )
-                pendingSignals.clear()
-                runtimeState = WorkspaceRuntimeState.Reconciling
-                CycleBeginning.Started(cycle)
+    private fun beginResultingCycle(prior: SemanticReadLease): ResultingCycleBeginning =
+        synchronized(lock) {
+            when (val current = runtimeState) {
+                is WorkspaceRuntimeState.Ready ->
+                    if (current.workspace.readLease == prior) {
+                        observedRevision = observedRevision.next()
+                        pendingSignals += WorkspaceSignal.Source
+                        runtimeState = WorkspaceRuntimeState.Reconciling
+                        ResultingCycleBeginning.Started
+                    } else {
+                        ResultingCycleBeginning.Rejected(
+                            ResultingWorkspacePublicationFailure.PriorPublicationMismatch(
+                                prior,
+                                current.workspace.readLease,
+                            )
+                        )
+                    }
+                WorkspaceRuntimeState.Absent,
+                WorkspaceRuntimeState.Starting,
+                WorkspaceRuntimeState.Reconciling,
+                is WorkspaceRuntimeState.Blocked,
+                WorkspaceRuntimeState.Stopping ->
+                    ResultingCycleBeginning.Rejected(ResultingWorkspacePublicationFailure.CurrentPublicationUnavailable)
             }
         }
-    }
+
+    private fun beginCycle(): CycleBeginning =
+        synchronized(lock) {
+            when (runtimeState) {
+                WorkspaceRuntimeState.Absent,
+                WorkspaceRuntimeState.Stopping,
+                is WorkspaceRuntimeState.Ready -> CycleBeginning.NoWork
+                WorkspaceRuntimeState.Starting,
+                WorkspaceRuntimeState.Reconciling,
+                is WorkspaceRuntimeState.Blocked -> {
+                    val cycle =
+                        PublicationCycle(
+                            revision = observedRevision,
+                            signals = pendingSignals.toSet(),
+                        )
+                    pendingSignals.clear()
+                    runtimeState = WorkspaceRuntimeState.Reconciling
+                    CycleBeginning.Started(cycle)
+                }
+            }
+        }
 
     private fun commitIfCurrent(
         cycle: PublicationCycle,
         prepared: PreparedCanonicalWorkspacePublication,
-    ): WorkspacePublicationRun = synchronized(lock) {
-        if (currencyLocked(cycle) == CycleCurrency.Invalidated) {
-            return@synchronized discardPreparedThen(
-                prepared,
-                WorkspacePublicationRun.Invalidated,
-            )
-        }
-        val result = discardOnCancellation({ publication.discard(prepared) }) {
-            publication.commit(prepared)
-        }
-        if (currencyLocked(cycle) == CycleCurrency.Invalidated) {
-            return@synchronized discardPreparedThen(
-                prepared,
-                WorkspacePublicationRun.Invalidated,
-            )
-        }
-        when (result) {
-            is WorkspacePublicationResult.Advanced -> {
-                lastPublication = io.github.amichne.kast.workspace.contract.WorkspaceRefreshBasis.Available(result.workspace)
-                runtimeState = WorkspaceRuntimeState.Ready(result.workspace)
-                WorkspacePublicationRun.Published(result.workspace)
+    ): WorkspacePublicationRun =
+        synchronized(lock) {
+            if (currencyLocked(cycle) == CycleCurrency.Invalidated) {
+                return@synchronized discardPreparedThen(
+                    prepared,
+                    WorkspacePublicationRun.Invalidated,
+                )
             }
-            is WorkspacePublicationResult.Unchanged -> {
-                lastPublication = io.github.amichne.kast.workspace.contract.WorkspaceRefreshBasis.Available(result.workspace)
-                runtimeState = WorkspaceRuntimeState.Ready(result.workspace)
-                WorkspacePublicationRun.Unchanged(result.workspace)
+            val result =
+                discardOnCancellation({ publication.discard(prepared) }) {
+                    publication.commit(prepared)
+                }
+            if (currencyLocked(cycle) == CycleCurrency.Invalidated) {
+                return@synchronized discardPreparedThen(
+                    prepared,
+                    WorkspacePublicationRun.Invalidated,
+                )
             }
-            is WorkspacePublicationResult.Rejected -> {
-                val blocker = WorkspacePublicationBlocker.PublicationUnavailable
-                discardPreparedThen(prepared, WorkspacePublicationRun.Blocked(blocker))
+            when (result) {
+                is WorkspacePublicationResult.Advanced -> {
+                    lastPublication =
+                        io.github.amichne.kast.workspace.contract.WorkspaceRefreshBasis.Available(result.workspace)
+                    runtimeState = WorkspaceRuntimeState.Ready(result.workspace)
+                    WorkspacePublicationRun.Published(result.workspace)
+                }
+                is WorkspacePublicationResult.Unchanged -> {
+                    lastPublication =
+                        io.github.amichne.kast.workspace.contract.WorkspaceRefreshBasis.Available(result.workspace)
+                    runtimeState = WorkspaceRuntimeState.Ready(result.workspace)
+                    WorkspacePublicationRun.Unchanged(result.workspace)
+                }
+                is WorkspacePublicationResult.Rejected -> {
+                    val blocker = WorkspacePublicationBlocker.PublicationUnavailable
+                    discardPreparedThen(prepared, WorkspacePublicationRun.Blocked(blocker))
+                }
             }
         }
-    }
 
     private fun discardThenBlock(
         open: OpenCanonicalWorkspacePublication,
         cycle: PublicationCycle,
         blocker: WorkspacePublicationBlocker,
-    ): WorkspacePublicationRun = when (publication.discard(open)) {
-        WorkspacePublicationDiscard.Discarded -> block(cycle, blocker)
-        is WorkspacePublicationDiscard.Rejected -> forcePublicationBlock()
-    }
+    ): WorkspacePublicationRun =
+        when (publication.discard(open)) {
+            WorkspacePublicationDiscard.Discarded -> block(cycle, blocker)
+            is WorkspacePublicationDiscard.Rejected -> forcePublicationBlock()
+        }
 
-    private fun discardThenMove(
-        open: OpenCanonicalWorkspacePublication,
-    ): WorkspacePublicationRun = when (publication.discard(open)) {
-        WorkspacePublicationDiscard.Discarded -> moved()
-        is WorkspacePublicationDiscard.Rejected -> forcePublicationBlock()
-    }
+    private fun discardThenMove(open: OpenCanonicalWorkspacePublication): WorkspacePublicationRun =
+        when (publication.discard(open)) {
+            WorkspacePublicationDiscard.Discarded -> moved()
+            is WorkspacePublicationDiscard.Rejected -> forcePublicationBlock()
+        }
 
-    private fun discardThenInvalidate(
-        open: OpenCanonicalWorkspacePublication,
-    ): WorkspacePublicationRun = when (publication.discard(open)) {
-        WorkspacePublicationDiscard.Discarded -> WorkspacePublicationRun.Invalidated
-        is WorkspacePublicationDiscard.Rejected -> forcePublicationBlock()
-    }
+    private fun discardThenInvalidate(open: OpenCanonicalWorkspacePublication): WorkspacePublicationRun =
+        when (publication.discard(open)) {
+            WorkspacePublicationDiscard.Discarded -> WorkspacePublicationRun.Invalidated
+            is WorkspacePublicationDiscard.Rejected -> forcePublicationBlock()
+        }
 
     private fun discardPreparedThen(
         prepared: PreparedCanonicalWorkspacePublication,
         success: WorkspacePublicationRun,
-    ): WorkspacePublicationRun = when (publication.discard(prepared)) {
-        WorkspacePublicationDiscard.Discarded -> {
-            if (success is WorkspacePublicationRun.Blocked) {
-                runtimeState = WorkspaceRuntimeState.Blocked(success.blocker)
+    ): WorkspacePublicationRun =
+        when (publication.discard(prepared)) {
+            WorkspacePublicationDiscard.Discarded -> {
+                if (success is WorkspacePublicationRun.Blocked) {
+                    runtimeState = WorkspaceRuntimeState.Blocked(success.blocker)
+                }
+                success
             }
-            success
+            is WorkspacePublicationDiscard.Rejected -> forcePublicationBlockLocked()
         }
-        is WorkspacePublicationDiscard.Rejected -> forcePublicationBlockLocked()
-    }
 
-    private fun forcePublicationBlock(): WorkspacePublicationRun = synchronized(lock) {
-        forcePublicationBlockLocked()
-    }
+    private fun forcePublicationBlock(): WorkspacePublicationRun =
+        synchronized(lock) {
+            forcePublicationBlockLocked()
+        }
 
     /**
-     * Disposes the capability owned by the interrupted effect exactly once. Disposal rejection
-     * withdraws publication authority; disposal exceptions remain attached to the original
-     * cancellation. Normal rejection paths retain their existing explicit disposal ownership.
+     * Disposes the capability owned by the interrupted effect exactly once. Disposal rejection withdraws publication
+     * authority; disposal exceptions remain attached to the original cancellation. Normal rejection paths retain their
+     * existing explicit disposal ownership.
      */
     private fun <Value> discardOnCancellation(
         discard: () -> WorkspacePublicationDiscard,
         operation: () -> Value,
-    ): Value = try {
-        operation()
-    } catch (cancelled: CancellationException) {
+    ): Value =
         try {
-            when (discard()) {
-                WorkspacePublicationDiscard.Discarded -> Unit
-                is WorkspacePublicationDiscard.Rejected -> forcePublicationBlock()
+            operation()
+        } catch (cancelled: CancellationException) {
+            try {
+                when (discard()) {
+                    WorkspacePublicationDiscard.Discarded -> Unit
+                    is WorkspacePublicationDiscard.Rejected -> forcePublicationBlock()
+                }
+            } catch (cleanupFailure: Throwable) {
+                if (cleanupFailure !== cancelled) cancelled.addSuppressed(cleanupFailure)
+                forcePublicationBlock()
             }
-        } catch (cleanupFailure: Throwable) {
-            if (cleanupFailure !== cancelled) cancelled.addSuppressed(cleanupFailure)
-            forcePublicationBlock()
+            throw cancelled
         }
-        throw cancelled
-    }
 
     private fun forcePublicationBlockLocked(): WorkspacePublicationRun.Blocked {
         val blocker = WorkspacePublicationBlocker.PublicationUnavailable
@@ -369,15 +404,16 @@ class WorkspacePublicationCoordinator(
     private fun block(
         cycle: PublicationCycle,
         blocker: WorkspacePublicationBlocker,
-    ): WorkspacePublicationRun = synchronized(lock) {
-        when (currencyLocked(cycle)) {
-            CycleCurrency.Current -> {
-                runtimeState = WorkspaceRuntimeState.Blocked(blocker)
-                WorkspacePublicationRun.Blocked(blocker)
+    ): WorkspacePublicationRun =
+        synchronized(lock) {
+            when (currencyLocked(cycle)) {
+                CycleCurrency.Current -> {
+                    runtimeState = WorkspaceRuntimeState.Blocked(blocker)
+                    WorkspacePublicationRun.Blocked(blocker)
+                }
+                CycleCurrency.Invalidated -> WorkspacePublicationRun.Invalidated
             }
-            CycleCurrency.Invalidated -> WorkspacePublicationRun.Invalidated
         }
-    }
 
     private fun moved(): WorkspacePublicationRun = synchronized(lock, ::movedLocked)
 
@@ -388,9 +424,10 @@ class WorkspacePublicationCoordinator(
         return WorkspacePublicationRun.Invalidated
     }
 
-    private fun currency(cycle: PublicationCycle): CycleCurrency = synchronized(lock) {
-        currencyLocked(cycle)
-    }
+    private fun currency(cycle: PublicationCycle): CycleCurrency =
+        synchronized(lock) {
+            currencyLocked(cycle)
+        }
 
     private fun currencyLocked(cycle: PublicationCycle): CycleCurrency =
         if (observedRevision == cycle.revision && pendingSignals.isEmpty()) {
@@ -407,9 +444,7 @@ private data class PublicationCycle(
 )
 
 @JvmInline
-private value class WorkspaceEventRevision private constructor(
-    private val value: Long,
-) {
+private value class WorkspaceEventRevision private constructor(private val value: Long) {
     fun next(): WorkspaceEventRevision = WorkspaceEventRevision(Math.addExact(value, 1L))
 
     companion object {
@@ -420,9 +455,7 @@ private value class WorkspaceEventRevision private constructor(
 private sealed interface CycleBeginning {
     data object NoWork : CycleBeginning
 
-    data class Started(
-        val cycle: PublicationCycle,
-    ) : CycleBeginning
+    data class Started(val cycle: PublicationCycle) : CycleBeginning
 }
 
 private enum class CycleCurrency {
@@ -433,7 +466,5 @@ private enum class CycleCurrency {
 private sealed interface ResultingCycleBeginning {
     data object Started : ResultingCycleBeginning
 
-    data class Rejected(
-        val failure: ResultingWorkspacePublicationFailure,
-    ) : ResultingCycleBeginning
+    data class Rejected(val failure: ResultingWorkspacePublicationFailure) : ResultingCycleBeginning
 }

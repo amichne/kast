@@ -1,8 +1,6 @@
 package io.github.amichne.kast.diagnostic.contract
 
-data class DiagnosticCheckRequest(
-    val scope: DiagnosticScope,
-)
+data class DiagnosticCheckRequest(val scope: DiagnosticScope)
 
 enum class DiagnosticReadRejection {
     WORKSPACE_NOT_READY,
@@ -24,9 +22,7 @@ sealed interface DiagnosticCheckResult {
         val coverage: DiagnosticIncompleteCoverage,
     ) : DiagnosticCheckResult
 
-    data class Rejected(
-        val reason: DiagnosticReadRejection,
-    ) : DiagnosticCheckResult
+    data class Rejected(val reason: DiagnosticReadRejection) : DiagnosticCheckResult
 }
 
 /** Public operation contract for `diagnostic.check`. */
@@ -34,9 +30,9 @@ fun interface DiagnosticOperations {
     /**
      * Proof transition: `DiagnosticCheckRequest -> DiagnosticCheckResult`.
      *
-     * Complete or qualified output establishes detached compiler diagnostics for the request's
-     * exact scope and semantic generation. [DiagnosticReadRejection] is the closed expected
-     * failure. Raw compiler and workspace observation remain behind service ports.
+     * Complete or qualified output establishes detached compiler diagnostics for the request's exact scope and semantic
+     * generation. [DiagnosticReadRejection] is the closed expected failure. Raw compiler and workspace observation
+     * remain behind service ports.
      */
     suspend fun check(request: DiagnosticCheckRequest): DiagnosticCheckResult
 }

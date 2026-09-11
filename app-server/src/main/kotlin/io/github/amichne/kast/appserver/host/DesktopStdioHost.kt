@@ -10,6 +10,13 @@ import io.github.amichne.kast.appserver.runtime.BrokerUpstreamConnectionAdmissio
 import io.github.amichne.kast.appserver.runtime.BrokerUpstreamConnector
 import io.github.amichne.kast.appserver.runtime.BrokerUpstreamFrame
 import io.github.amichne.kast.appserver.runtime.BrokerUpstreamSend
+import java.io.ByteArrayOutputStream
+import java.io.IOException
+import java.io.InputStream
+import java.io.OutputStream
+import java.nio.ByteBuffer
+import java.nio.charset.CodingErrorAction
+import java.nio.charset.StandardCharsets
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -19,13 +26,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withTimeout
-import java.io.ByteArrayOutputStream
-import java.io.IOException
-import java.io.InputStream
-import java.io.OutputStream
-import java.nio.ByteBuffer
-import java.nio.charset.CodingErrorAction
-import java.nio.charset.StandardCharsets
 
 /** JSONL stdio façade used when Codex Desktop starts `kast-codex` in the App Server role. */
 internal class DesktopStdioHost(
@@ -33,69 +33,64 @@ internal class DesktopStdioHost(
     private val output: OutputStream,
     private val connector: BrokerUpstreamConnector,
     private val maximumMessageBytes: Int,
-    private val shutdownHooks: CodexIntegrationShutdownHooks =
-        JvmCodexIntegrationShutdownHooks,
+    private val shutdownHooks: CodexIntegrationShutdownHooks = JvmCodexIntegrationShutdownHooks,
     private val shutdownTimeoutMillis: Long = DEFAULT_SHUTDOWN_TIMEOUT_MILLIS,
 ) : CodexIntegrationHost {
-    override suspend fun run(
-        closeIntegration: suspend () -> Unit,
-    ): CodexIntegrationRun {
+    override suspend fun run(closeIntegration: suspend () -> Unit): CodexIntegrationRun {
         if (maximumMessageBytes <= 0) {
             return rejectAfterClosing(
                 CodexIntegrationFailure.STDIO_REJECTED,
                 closeIntegration,
             )
         }
-        val connection = when (val admission = connector.connect()) {
-            is BrokerUpstreamConnectionAdmission.Connected -> admission.connection
-            BrokerUpstreamConnectionAdmission.Rejected -> {
-                return rejectAfterClosing(
-                    CodexIntegrationFailure.HOST_TRANSPORT_REJECTED,
-                    closeIntegration,
-                )
+        val connection =
+            when (val admission = connector.connect()) {
+                is BrokerUpstreamConnectionAdmission.Connected -> admission.connection
+                BrokerUpstreamConnectionAdmission.Rejected -> {
+                    return rejectAfterClosing(
+                        CodexIntegrationFailure.HOST_TRANSPORT_REJECTED,
+                        closeIntegration,
+                    )
+                }
             }
-        }
-        val lifetime = OwnedDesktopStdioIntegration(
-            connection,
-            closeIntegration,
-            shutdownTimeoutMillis,
-        )
+        val lifetime =
+            OwnedDesktopStdioIntegration(
+                connection,
+                closeIntegration,
+                shutdownTimeoutMillis,
+            )
         val hook = Thread({ lifetime.close() }, "kast-codex-stdio-shutdown")
         var hookRegistered = false
         return try {
-            val result = try {
-                shutdownHooks.register(hook)
-                hookRegistered = true
-                bridge(connection)
-            } catch (_: InterruptedException) {
-                Thread.currentThread().interrupt()
-                CodexIntegrationRun.Rejected(CodexIntegrationFailure.INTERRUPTED)
-            } catch (_: IllegalStateException) {
-                CodexIntegrationRun.Rejected(CodexIntegrationFailure.SHUTDOWN_REJECTED)
-            } catch (_: SecurityException) {
-                CodexIntegrationRun.Rejected(CodexIntegrationFailure.SHUTDOWN_REJECTED)
-            }
-            val closed = when (lifetime.close()) {
-                DesktopStdioShutdown.COMPLETED -> result
-                DesktopStdioShutdown.CONNECTION_REJECTED,
-                DesktopStdioShutdown.CONNECTION_TIMED_OUT,
-                DesktopStdioShutdown.SERVER_TIMED_OUT,
-                DesktopStdioShutdown.FAILED,
-                    -> CodexIntegrationRun.Rejected(
-                        CodexIntegrationFailure.SHUTDOWN_REJECTED,
-                    )
-            }
+            val result =
+                try {
+                    shutdownHooks.register(hook)
+                    hookRegistered = true
+                    bridge(connection)
+                } catch (_: InterruptedException) {
+                    Thread.currentThread().interrupt()
+                    CodexIntegrationRun.Rejected(CodexIntegrationFailure.INTERRUPTED)
+                } catch (_: IllegalStateException) {
+                    CodexIntegrationRun.Rejected(CodexIntegrationFailure.SHUTDOWN_REJECTED)
+                } catch (_: SecurityException) {
+                    CodexIntegrationRun.Rejected(CodexIntegrationFailure.SHUTDOWN_REJECTED)
+                }
+            val closed =
+                when (lifetime.close()) {
+                    DesktopStdioShutdown.COMPLETED -> result
+                    DesktopStdioShutdown.CONNECTION_REJECTED,
+                    DesktopStdioShutdown.CONNECTION_TIMED_OUT,
+                    DesktopStdioShutdown.SERVER_TIMED_OUT,
+                    DesktopStdioShutdown.FAILED ->
+                        CodexIntegrationRun.Rejected(CodexIntegrationFailure.SHUTDOWN_REJECTED)
+                }
             if (hookRegistered) {
                 try {
                     shutdownHooks.remove(hook)
                 } catch (_: IllegalStateException) {
-                    return CodexIntegrationRun.Rejected(
-                        CodexIntegrationFailure.SHUTDOWN_REJECTED,
-                    )
+                    return CodexIntegrationRun.Rejected(CodexIntegrationFailure.SHUTDOWN_REJECTED)
                 } catch (_: SecurityException) {
-                    return CodexIntegrationRun.Rejected(
-                        CodexIntegrationFailure.SHUTDOWN_REJECTED,
-                    )
+                    return CodexIntegrationRun.Rejected(CodexIntegrationFailure.SHUTDOWN_REJECTED)
                 }
                 hookRegistered = false
             }
@@ -120,76 +115,70 @@ internal class DesktopStdioHost(
     private suspend fun rejectAfterClosing(
         failure: CodexIntegrationFailure,
         closeIntegration: suspend () -> Unit,
-    ): CodexIntegrationRun = try {
-        withTimeout(shutdownTimeoutMillis) { closeIntegration() }
-        CodexIntegrationRun.Rejected(failure)
-    } catch (_: Exception) {
-        CodexIntegrationRun.Rejected(CodexIntegrationFailure.SHUTDOWN_REJECTED)
-    }
+    ): CodexIntegrationRun =
+        try {
+            withTimeout(shutdownTimeoutMillis) { closeIntegration() }
+            CodexIntegrationRun.Rejected(failure)
+        } catch (_: Exception) {
+            CodexIntegrationRun.Rejected(CodexIntegrationFailure.SHUTDOWN_REJECTED)
+        }
 
     private companion object {
         val DEFAULT_SHUTDOWN_TIMEOUT_MILLIS = BrokerOperationalLimits.desktopShutdown.value
     }
 
-    private suspend fun bridge(
-        connection: BrokerUpstreamConnection,
-    ): CodexIntegrationRun = coroutineScope {
+    private suspend fun bridge(connection: BrokerUpstreamConnection): CodexIntegrationRun = coroutineScope {
         val downstream = async(Dispatchers.IO) { pumpDownstream(connection) }
         val upstream = async(Dispatchers.IO) { pumpUpstream(connection) }
-        val result = try {
-            select {
-                downstream.onAwait { completion -> completion.integrationRun() }
-                upstream.onAwait { completion -> completion.integrationRun() }
-            }
-        } finally {
+        val result =
             try {
-                input.close()
-            } catch (_: IOException) {
-                // Pump completion already owns the closed stdio outcome.
-            } catch (_: SecurityException) {
-                // Pump completion already owns the closed stdio outcome.
+                select {
+                    downstream.onAwait { completion -> completion.integrationRun() }
+                    upstream.onAwait { completion -> completion.integrationRun() }
+                }
+            } finally {
+                try {
+                    input.close()
+                } catch (_: IOException) {
+                    // Pump completion already owns the closed stdio outcome.
+                } catch (_: SecurityException) {
+                    // Pump completion already owns the closed stdio outcome.
+                }
+                downstream.cancelAndJoin()
+                upstream.cancelAndJoin()
             }
-            downstream.cancelAndJoin()
-            upstream.cancelAndJoin()
-        }
         result
     }
 
-    private suspend fun pumpDownstream(
-        connection: BrokerUpstreamConnection,
-    ): StdioPumpCompletion {
+    private suspend fun pumpDownstream(connection: BrokerUpstreamConnection): StdioPumpCompletion {
         while (true) {
             when (val line = runInterruptible { readBoundedLine(input, maximumMessageBytes) }) {
-                is BoundedJsonLine.Read -> if (
-                    connection.send(line.value) != BrokerUpstreamSend.SENT
-                ) {
-                    return StdioPumpCompletion.UpstreamRejected
-                }
+                is BoundedJsonLine.Read ->
+                    if (connection.send(line.value) != BrokerUpstreamSend.SENT) {
+                        return StdioPumpCompletion.UpstreamRejected
+                    }
                 BoundedJsonLine.Closed -> return StdioPumpCompletion.ParentClosed
                 BoundedJsonLine.Rejected -> return StdioPumpCompletion.StdioRejected
             }
         }
     }
 
-    private suspend fun pumpUpstream(
-        connection: BrokerUpstreamConnection,
-    ): StdioPumpCompletion {
+    private suspend fun pumpUpstream(connection: BrokerUpstreamConnection): StdioPumpCompletion {
         while (true) {
             when (val frame = connection.receive()) {
-                is BrokerUpstreamFrame.Text -> if (!writeJsonLine(frame.message)) {
-                    return StdioPumpCompletion.StdioRejected
-                }
+                is BrokerUpstreamFrame.Text ->
+                    if (!writeJsonLine(frame.message)) {
+                        return StdioPumpCompletion.StdioRejected
+                    }
                 BrokerUpstreamFrame.Closed,
-                BrokerUpstreamFrame.Rejected,
-                    -> return StdioPumpCompletion.UpstreamRejected
+                BrokerUpstreamFrame.Rejected -> return StdioPumpCompletion.UpstreamRejected
             }
         }
     }
 
     private suspend fun writeJsonLine(message: String): Boolean = runInterruptible {
         if (
-            '\n' in message || '\r' in message ||
-            message.toByteArray(StandardCharsets.UTF_8).size > maximumMessageBytes
+            '\n' in message || '\r' in message || message.toByteArray(StandardCharsets.UTF_8).size > maximumMessageBytes
         ) {
             return@runInterruptible false
         }
@@ -208,23 +197,24 @@ internal class DesktopStdioHost(
 
 private sealed interface StdioPumpCompletion {
     data object ParentClosed : StdioPumpCompletion
+
     data object UpstreamRejected : StdioPumpCompletion
+
     data object StdioRejected : StdioPumpCompletion
 }
 
-private fun StdioPumpCompletion.integrationRun(): CodexIntegrationRun = when (this) {
-    StdioPumpCompletion.ParentClosed -> CodexIntegrationRun.Completed(0)
-    StdioPumpCompletion.UpstreamRejected -> CodexIntegrationRun.Rejected(
-        CodexIntegrationFailure.UPSTREAM_EXITED,
-    )
-    StdioPumpCompletion.StdioRejected -> CodexIntegrationRun.Rejected(
-        CodexIntegrationFailure.STDIO_REJECTED,
-    )
-}
+private fun StdioPumpCompletion.integrationRun(): CodexIntegrationRun =
+    when (this) {
+        StdioPumpCompletion.ParentClosed -> CodexIntegrationRun.Completed(0)
+        StdioPumpCompletion.UpstreamRejected -> CodexIntegrationRun.Rejected(CodexIntegrationFailure.UPSTREAM_EXITED)
+        StdioPumpCompletion.StdioRejected -> CodexIntegrationRun.Rejected(CodexIntegrationFailure.STDIO_REJECTED)
+    }
 
 private sealed interface BoundedJsonLine {
     data class Read(val value: String) : BoundedJsonLine
+
     data object Closed : BoundedJsonLine
+
     data object Rejected : BoundedJsonLine
 }
 
@@ -236,23 +226,26 @@ private fun readBoundedLine(
     return try {
         while (true) {
             when (val next = input.read()) {
-                -1 -> return if (bytes.size() == 0) {
-                    BoundedJsonLine.Closed
-                } else {
-                    BoundedJsonLine.Rejected
-                }
-                '\n'.code -> {
-                    val framed = bytes.toByteArray().let { value ->
-                        if (value.lastOrNull() == '\r'.code.toByte()) {
-                            value.copyOf(value.size - 1)
-                        } else {
-                            value
-                        }
+                -1 ->
+                    return if (bytes.size() == 0) {
+                        BoundedJsonLine.Closed
+                    } else {
+                        BoundedJsonLine.Rejected
                     }
+                '\n'.code -> {
+                    val framed =
+                        bytes.toByteArray().let { value ->
+                            if (value.lastOrNull() == '\r'.code.toByte()) {
+                                value.copyOf(value.size - 1)
+                            } else {
+                                value
+                            }
+                        }
                     if (framed.isEmpty()) return BoundedJsonLine.Rejected
-                    val decoder = StandardCharsets.UTF_8.newDecoder()
-                        .onMalformedInput(CodingErrorAction.REPORT)
-                        .onUnmappableCharacter(CodingErrorAction.REPORT)
+                    val decoder =
+                        StandardCharsets.UTF_8.newDecoder()
+                            .onMalformedInput(CodingErrorAction.REPORT)
+                            .onUnmappableCharacter(CodingErrorAction.REPORT)
                     return BoundedJsonLine.Read(decoder.decode(ByteBuffer.wrap(framed)).toString())
                 }
                 else -> {
@@ -261,8 +254,7 @@ private fun readBoundedLine(
                 }
             }
         }
-        @Suppress("UNREACHABLE_CODE")
-        BoundedJsonLine.Rejected
+        @Suppress("UNREACHABLE_CODE") BoundedJsonLine.Rejected
     } catch (_: IOException) {
         BoundedJsonLine.Rejected
     } catch (_: IllegalArgumentException) {
@@ -286,6 +278,7 @@ private class OwnedDesktopStdioIntegration(
 ) {
     private sealed interface State {
         data object Open : State
+
         data class Released(val result: DesktopStdioShutdown) : State
     }
 

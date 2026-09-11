@@ -17,7 +17,10 @@ class HostedQueryLifetimeTest {
     @Test
     fun `foreign endpoint and concurrent requests cannot invoke analysis`() {
         val lifetime = HostedQueryLifetime()
-        assertEquals(HostedQueryAdmission.Rejected(HostedQueryFailure.WRONG_ENDPOINT), lifetime.begin(HostedQueryLifetime().endpoint))
+        assertEquals(
+            HostedQueryAdmission.Rejected(HostedQueryFailure.WRONG_ENDPOINT),
+            lifetime.begin(HostedQueryLifetime().endpoint),
+        )
         val admitted = lifetime.begin(lifetime.endpoint) as HostedQueryAdmission.Admitted
         assertEquals(HostedQueryAdmission.Rejected(HostedQueryFailure.BUSY), lifetime.begin(lifetime.endpoint))
         assertEquals(HostedQueryCompletion.Published, lifetime.complete(admitted.permit))

@@ -8,28 +8,24 @@ import io.github.amichne.kast.runtime.composition.InstalledKastRuntimeFailure
 import io.github.amichne.kast.runtime.composition.InstalledRuntimeAssemblyFailure
 import io.github.amichne.kast.runtime.composition.InstalledRuntimeWorkspaceFailure
 import io.github.amichne.kast.workspace.intellij.InstalledIntellijWorkspaceFailure
-import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
 
 class IndexerBootstrapStatePublisherTest {
-    @TempDir
-    lateinit var temporary: Path
+    @TempDir lateinit var temporary: Path
 
     @Test
     fun `admitted path and attempt cannot be retargeted and terminal state cannot resurrect`() {
         val document = temporary.toRealPath().resolve("bootstrap-state")
-        val other = temporary.toRealPath().resolve("other").also(Files::createDirectory)
-            .resolve("bootstrap-state")
+        val other = temporary.toRealPath().resolve("other").also(Files::createDirectory).resolve("bootstrap-state")
         withProperties(document, ATTEMPT) {
-            val publisher = (
-                IndexerBootstrapStatePublisher.admit() as
-                    IndexerBootstrapStatePublisherAdmission.Admitted
-                ).publisher
+            val publisher =
+                (IndexerBootstrapStatePublisher.admit() as IndexerBootstrapStatePublisherAdmission.Admitted).publisher
             System.setProperty(PATH_PROPERTY, other.toString())
             System.setProperty(ATTEMPT_PROPERTY, OTHER_ATTEMPT)
 
@@ -50,7 +46,7 @@ class IndexerBootstrapStatePublisherTest {
                     SemanticRuntimeBootstrapState.Rejected(
                         attemptId(ATTEMPT),
                         SemanticRuntimeBootstrapFailure.PROJECT_JVM_UNAVAILABLE,
-                    ),
+                    )
                 ),
                 SemanticRuntimeBootstrapCodec.decode(Files.readString(document).trim()),
             )
@@ -64,29 +60,45 @@ class IndexerBootstrapStatePublisherTest {
         withProperties(document, ATTEMPT) {
             val events = mutableListOf<IndexerBootstrapProgressEvidence>()
             val logged = mutableListOf<String>()
-            val publisher = (IndexerBootstrapStatePublisher.admit(
-                IndexerBootstrapDocumentSink { logged.add(it.boundaryValue()) },
-                events::add,
-            ) as IndexerBootstrapStatePublisherAdmission.Admitted).publisher
+            val publisher =
+                (IndexerBootstrapStatePublisher.admit(
+                        IndexerBootstrapDocumentSink { logged.add(it.boundaryValue()) },
+                        events::add,
+                    ) as IndexerBootstrapStatePublisherAdmission.Admitted)
+                    .publisher
             assertEquals(IndexerBootstrapStatePublication.PUBLISHED, publisher.publishStarting())
             assertEquals(IndexerBootstrapStatePublication.REJECTED, publisher.publishReady())
-            assertEquals(IndexerBootstrapStatePublication.REJECTED, publisher.publishProgress(
-                io.github.amichne.kast.runtime.composition.InstalledRuntimeBootstrapPhase.INDEXING,
-            ))
+            assertEquals(
+                IndexerBootstrapStatePublication.REJECTED,
+                publisher.publishProgress(
+                    io.github.amichne.kast.runtime.composition.InstalledRuntimeBootstrapPhase.INDEXING
+                ),
+            )
             io.github.amichne.kast.runtime.composition.InstalledRuntimeBootstrapPhase.entries.forEach { phase ->
                 assertEquals(IndexerBootstrapStatePublication.PUBLISHED, publisher.publishProgress(phase))
-                val state = (SemanticRuntimeBootstrapCodec.decode(Files.readString(document)) as Refinement.Refined).value
-                    as SemanticRuntimeBootstrapState.Starting
+                val state =
+                    (SemanticRuntimeBootstrapCodec.decode(Files.readString(document)) as Refinement.Refined).value
+                        as SemanticRuntimeBootstrapState.Starting
                 assertEquals(phase.name, state.phase.name)
                 assertEquals(attemptId(ATTEMPT), state.attemptId)
             }
-            assertEquals(IndexerBootstrapStatePublication.PUBLISHED, publisher.publishTerminalFailure(
-                io.github.amichne.kast.runtime.composition.semanticbootstrap.InstalledSemanticRuntimeBootstrapTerminalFailure.TRANSPORT_ACTIVATION,
-            ))
-            val rejection = (SemanticRuntimeBootstrapCodec.decode(Files.readString(document)) as Refinement.Refined).value
-                as SemanticRuntimeBootstrapState.Rejected
+            assertEquals(
+                IndexerBootstrapStatePublication.PUBLISHED,
+                publisher.publishTerminalFailure(
+                    io.github.amichne.kast.runtime.composition.semanticbootstrap
+                        .InstalledSemanticRuntimeBootstrapTerminalFailure
+                        .TRANSPORT_ACTIVATION
+                ),
+            )
+            val rejection =
+                (SemanticRuntimeBootstrapCodec.decode(Files.readString(document)) as Refinement.Refined).value
+                    as SemanticRuntimeBootstrapState.Rejected
             assertEquals(SemanticRuntimeBootstrapFailure.TRANSPORT_ACTIVATION_FAILED, rejection.failure)
-            assertEquals(io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapPhase.TRANSPORT_ACTIVATION, rejection.phase)
+            assertEquals(
+                io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapPhase
+                    .TRANSPORT_ACTIVATION,
+                rejection.phase,
+            )
             assertEquals(IndexerBootstrapStatePublication.REJECTED, publisher.publishReady())
             assertEquals(9, logged.size)
             assertEquals(IndexerBootstrapProgressOutcome.OUT_OF_ORDER, events.first().outcome)
@@ -103,9 +115,7 @@ class IndexerBootstrapStatePublisherTest {
     fun `root path is a finite path rejection`() {
         withProperties(Path.of("/"), ATTEMPT) {
             assertEquals(
-                IndexerBootstrapStatePublisherAdmission.Rejected(
-                    IndexerBootstrapStatePublisherFailure.PATH_REJECTED,
-                ),
+                IndexerBootstrapStatePublisherAdmission.Rejected(IndexerBootstrapStatePublisherFailure.PATH_REJECTED),
                 IndexerBootstrapStatePublisher.admit(),
             )
         }
@@ -115,14 +125,15 @@ class IndexerBootstrapStatePublisherTest {
         InstalledKastRuntimeFailure.Assembly(
             InstalledRuntimeAssemblyFailure.WorkspacePublication(
                 InstalledRuntimeWorkspaceFailure.IntellijBootstrap(
-                    InstalledIntellijWorkspaceFailure.PROJECT_JVM_UNAVAILABLE,
-                ),
-            ),
+                    InstalledIntellijWorkspaceFailure.PROJECT_JVM_UNAVAILABLE
+                )
+            )
         )
 
     private fun attemptId(raw: String) =
-        (io.github.amichne.kast.distribution.contract.bootstrap
-            .SemanticRuntimeBootstrapAttemptId.admit(raw) as Refinement.Refined).value
+        (io.github.amichne.kast.distribution.contract.bootstrap.SemanticRuntimeBootstrapAttemptId.admit(raw)
+                as Refinement.Refined)
+            .value
 
     private fun withProperties(
         path: Path,

@@ -28,266 +28,280 @@ import io.github.amichne.kast.protocol.contract.DiagnosticCheckQualification
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRejection
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRequest
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckResult
-import io.github.amichne.kast.protocol.contract.OperationQualification
-import io.github.amichne.kast.protocol.contract.OperationRejection
-import io.github.amichne.kast.protocol.contract.OperationRequest
-import io.github.amichne.kast.protocol.contract.OperationResult
-import io.github.amichne.kast.protocol.contract.OperationTypeBinding
 import io.github.amichne.kast.protocol.contract.IndexSyncCapability
 import io.github.amichne.kast.protocol.contract.IndexSyncQualification
 import io.github.amichne.kast.protocol.contract.IndexSyncRejection
 import io.github.amichne.kast.protocol.contract.IndexSyncRequest
 import io.github.amichne.kast.protocol.contract.IndexSyncResult
-import io.github.amichne.kast.protocol.contract.RelationReadCapability
-import io.github.amichne.kast.protocol.contract.RelationReadQualification
-import io.github.amichne.kast.protocol.contract.RelationReadRejection
-import io.github.amichne.kast.protocol.contract.RelationReadRequest
-import io.github.amichne.kast.protocol.contract.RelationReadResult
+import io.github.amichne.kast.protocol.contract.OperationQualification
+import io.github.amichne.kast.protocol.contract.OperationRejection
+import io.github.amichne.kast.protocol.contract.OperationRequest
+import io.github.amichne.kast.protocol.contract.OperationResult
+import io.github.amichne.kast.protocol.contract.OperationTypeBinding
 import io.github.amichne.kast.protocol.contract.QueryRunCapability
 import io.github.amichne.kast.protocol.contract.QueryRunQualification
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.QueryRunResult
+import io.github.amichne.kast.protocol.contract.RelationReadCapability
+import io.github.amichne.kast.protocol.contract.RelationReadQualification
+import io.github.amichne.kast.protocol.contract.RelationReadRejection
+import io.github.amichne.kast.protocol.contract.RelationReadRequest
+import io.github.amichne.kast.protocol.contract.RelationReadResult
 import io.github.amichne.kast.protocol.contract.SchemaIdentity
 import io.github.amichne.kast.protocol.contract.SourceReadCapability
 import io.github.amichne.kast.protocol.contract.SourceReadQualification
 import io.github.amichne.kast.protocol.contract.SourceReadRejection
 import io.github.amichne.kast.protocol.contract.SourceReadRequest
 import io.github.amichne.kast.protocol.contract.SourceReadResult
-import io.github.amichne.kast.protocol.contract.SymbolInspectCapability
-import io.github.amichne.kast.protocol.contract.SymbolInspectQualification
-import io.github.amichne.kast.protocol.contract.SymbolInspectRejection
-import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
-import io.github.amichne.kast.protocol.contract.SymbolInspectResult
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverCapability
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRejection
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverResult
-import io.github.amichne.kast.protocol.contract.TraversalRunCapability
-import io.github.amichne.kast.protocol.contract.TraversalRunQualification
-import io.github.amichne.kast.protocol.contract.TraversalRunRejection
-import io.github.amichne.kast.protocol.contract.TraversalRunRequest
-import io.github.amichne.kast.protocol.contract.TraversalRunResult
+import io.github.amichne.kast.protocol.contract.SymbolInspectCapability
+import io.github.amichne.kast.protocol.contract.SymbolInspectQualification
+import io.github.amichne.kast.protocol.contract.SymbolInspectRejection
+import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
+import io.github.amichne.kast.protocol.contract.SymbolInspectResult
 import io.github.amichne.kast.protocol.contract.TopologyBuildCapability
 import io.github.amichne.kast.protocol.contract.TopologyBuildQualification
 import io.github.amichne.kast.protocol.contract.TopologyBuildRejection
 import io.github.amichne.kast.protocol.contract.TopologyBuildRequest
 import io.github.amichne.kast.protocol.contract.TopologyBuildResult
+import io.github.amichne.kast.protocol.contract.TraversalRunCapability
+import io.github.amichne.kast.protocol.contract.TraversalRunQualification
+import io.github.amichne.kast.protocol.contract.TraversalRunRejection
+import io.github.amichne.kast.protocol.contract.TraversalRunRequest
+import io.github.amichne.kast.protocol.contract.TraversalRunResult
 import kotlin.reflect.KClass
 
 /** Sole metadata catalog for canonical operations and their explicit publication authority. */
 object CanonicalOperationDefinitions {
-    val indexSync = definition(
-        CanonicalOperation.INDEX_SYNC,
-        IndexSyncRequest::class,
-        IndexSyncResult::class,
-        IndexSyncQualification::class,
-        IndexSyncRejection::class,
-        IndexSyncCapability::class,
-        OperationLane.REGISTERED_LONG_WORK,
-        OperationEffect.INTELLIJ_READ_AND_PERSISTENCE_WRITE,
-        OperationCost.PHYSICAL_EFFECT,
-        OperationScope.WORKSPACE,
-        CompletenessPolicy.COMPLETE_REQUIRED,
-        HostedExposure.INTERNAL_ONLY,
-    )
+    val indexSync =
+        definition(
+            CanonicalOperation.INDEX_SYNC,
+            IndexSyncRequest::class,
+            IndexSyncResult::class,
+            IndexSyncQualification::class,
+            IndexSyncRejection::class,
+            IndexSyncCapability::class,
+            OperationLane.REGISTERED_LONG_WORK,
+            OperationEffect.INTELLIJ_READ_AND_PERSISTENCE_WRITE,
+            OperationCost.PHYSICAL_EFFECT,
+            OperationScope.WORKSPACE,
+            CompletenessPolicy.COMPLETE_REQUIRED,
+            HostedExposure.INTERNAL_ONLY,
+        )
 
-    val topologyBuild = definition(
-        CanonicalOperation.TOPOLOGY_BUILD,
-        TopologyBuildRequest::class,
-        TopologyBuildResult::class,
-        TopologyBuildQualification::class,
-        TopologyBuildRejection::class,
-        TopologyBuildCapability::class,
-        OperationLane.REGISTERED_LONG_WORK,
-        OperationEffect.INTELLIJ_READ_AND_PERSISTENCE_WRITE,
-        OperationCost.PHYSICAL_EFFECT,
-        OperationScope.WORKSPACE,
-        CompletenessPolicy.COMPLETE_REQUIRED,
-        HostedExposure.INTERNAL_ONLY,
-        schema = schema("kast.topology.build.v2"),
-    )
+    val topologyBuild =
+        definition(
+            CanonicalOperation.TOPOLOGY_BUILD,
+            TopologyBuildRequest::class,
+            TopologyBuildResult::class,
+            TopologyBuildQualification::class,
+            TopologyBuildRejection::class,
+            TopologyBuildCapability::class,
+            OperationLane.REGISTERED_LONG_WORK,
+            OperationEffect.INTELLIJ_READ_AND_PERSISTENCE_WRITE,
+            OperationCost.PHYSICAL_EFFECT,
+            OperationScope.WORKSPACE,
+            CompletenessPolicy.COMPLETE_REQUIRED,
+            HostedExposure.INTERNAL_ONLY,
+            schema = schema("kast.topology.build.v2"),
+        )
 
-    val symbolDiscover = definition(
-        CanonicalOperation.SYMBOL_DISCOVER,
-        SymbolDiscoverRequest::class,
-        SymbolDiscoverResult::class,
-        SymbolDiscoverQualification::class,
-        SymbolDiscoverRejection::class,
-        SymbolDiscoverCapability::class,
-        OperationLane.INDEX_LOOKUP,
-        OperationEffect.INTELLIJ_READ,
-        OperationCost.BOUNDED_READ,
-        OperationScope.WORKSPACE,
-        CompletenessPolicy.QUALIFIED_ALLOWED,
-        HostedExposure.PUBLIC,
-        schema = schema("kast.symbol.discover.v3"),
-    )
+    val symbolDiscover =
+        definition(
+            CanonicalOperation.SYMBOL_DISCOVER,
+            SymbolDiscoverRequest::class,
+            SymbolDiscoverResult::class,
+            SymbolDiscoverQualification::class,
+            SymbolDiscoverRejection::class,
+            SymbolDiscoverCapability::class,
+            OperationLane.INDEX_LOOKUP,
+            OperationEffect.INTELLIJ_READ,
+            OperationCost.BOUNDED_READ,
+            OperationScope.WORKSPACE,
+            CompletenessPolicy.QUALIFIED_ALLOWED,
+            HostedExposure.PUBLIC,
+            schema = schema("kast.symbol.discover.v3"),
+        )
 
-    val symbolInspect = definition(
-        CanonicalOperation.SYMBOL_INSPECT,
-        SymbolInspectRequest::class,
-        SymbolInspectResult::class,
-        SymbolInspectQualification::class,
-        SymbolInspectRejection::class,
-        SymbolInspectCapability::class,
-        OperationLane.SCOPED_SEMANTIC_READ,
-        OperationEffect.INTELLIJ_READ,
-        OperationCost.BOUNDED_READ,
-        OperationScope.SYMBOL,
-        CompletenessPolicy.COMPLETE_REQUIRED,
-        HostedExposure.PUBLIC,
-        schema = schema("kast.symbol.inspect.v3"),
-    )
+    val symbolInspect =
+        definition(
+            CanonicalOperation.SYMBOL_INSPECT,
+            SymbolInspectRequest::class,
+            SymbolInspectResult::class,
+            SymbolInspectQualification::class,
+            SymbolInspectRejection::class,
+            SymbolInspectCapability::class,
+            OperationLane.SCOPED_SEMANTIC_READ,
+            OperationEffect.INTELLIJ_READ,
+            OperationCost.BOUNDED_READ,
+            OperationScope.SYMBOL,
+            CompletenessPolicy.COMPLETE_REQUIRED,
+            HostedExposure.PUBLIC,
+            schema = schema("kast.symbol.inspect.v3"),
+        )
 
-    val sourceRead = definition(
-        CanonicalOperation.SOURCE_READ,
-        SourceReadRequest::class,
-        SourceReadResult::class,
-        SourceReadQualification::class,
-        SourceReadRejection::class,
-        SourceReadCapability::class,
-        OperationLane.SCOPED_SEMANTIC_READ,
-        OperationEffect.INTELLIJ_READ,
-        OperationCost.BOUNDED_READ,
-        OperationScope.SOURCE,
-        CompletenessPolicy.QUALIFIED_ALLOWED,
-        HostedExposure.PUBLIC,
-        schema = schema("kast.source.read.v4"),
-    )
+    val sourceRead =
+        definition(
+            CanonicalOperation.SOURCE_READ,
+            SourceReadRequest::class,
+            SourceReadResult::class,
+            SourceReadQualification::class,
+            SourceReadRejection::class,
+            SourceReadCapability::class,
+            OperationLane.SCOPED_SEMANTIC_READ,
+            OperationEffect.INTELLIJ_READ,
+            OperationCost.BOUNDED_READ,
+            OperationScope.SOURCE,
+            CompletenessPolicy.QUALIFIED_ALLOWED,
+            HostedExposure.PUBLIC,
+            schema = schema("kast.source.read.v4"),
+        )
 
-    val relationRead = definition(
-        CanonicalOperation.RELATION_READ,
-        RelationReadRequest::class,
-        RelationReadResult::class,
-        RelationReadQualification::class,
-        RelationReadRejection::class,
-        RelationReadCapability::class,
-        OperationLane.BOUNDED_RELATION_READ,
-        OperationEffect.INTELLIJ_READ,
-        OperationCost.BOUNDED_READ,
-        OperationScope.SYMBOL,
-        CompletenessPolicy.QUALIFIED_ALLOWED,
-        HostedExposure.PUBLIC,
-        schema = schema("kast.relation.read.v3"),
-    )
+    val relationRead =
+        definition(
+            CanonicalOperation.RELATION_READ,
+            RelationReadRequest::class,
+            RelationReadResult::class,
+            RelationReadQualification::class,
+            RelationReadRejection::class,
+            RelationReadCapability::class,
+            OperationLane.BOUNDED_RELATION_READ,
+            OperationEffect.INTELLIJ_READ,
+            OperationCost.BOUNDED_READ,
+            OperationScope.SYMBOL,
+            CompletenessPolicy.QUALIFIED_ALLOWED,
+            HostedExposure.PUBLIC,
+            schema = schema("kast.relation.read.v3"),
+        )
 
-    val traversalRun = definition(
-        CanonicalOperation.TRAVERSAL_RUN,
-        TraversalRunRequest::class,
-        TraversalRunResult::class,
-        TraversalRunQualification::class,
-        TraversalRunRejection::class,
-        TraversalRunCapability::class,
-        OperationLane.REGISTERED_LONG_WORK,
-        OperationEffect.NONE,
-        OperationCost.BOUNDED_READ,
-        OperationScope.SYMBOL,
-        CompletenessPolicy.QUALIFIED_ALLOWED,
-        HostedExposure.PUBLIC,
-        schema = schema("kast.traversal.run.v3"),
-    )
+    val traversalRun =
+        definition(
+            CanonicalOperation.TRAVERSAL_RUN,
+            TraversalRunRequest::class,
+            TraversalRunResult::class,
+            TraversalRunQualification::class,
+            TraversalRunRejection::class,
+            TraversalRunCapability::class,
+            OperationLane.REGISTERED_LONG_WORK,
+            OperationEffect.NONE,
+            OperationCost.BOUNDED_READ,
+            OperationScope.SYMBOL,
+            CompletenessPolicy.QUALIFIED_ALLOWED,
+            HostedExposure.PUBLIC,
+            schema = schema("kast.traversal.run.v3"),
+        )
 
-    val queryRun = definition(
-        CanonicalOperation.QUERY_RUN,
-        QueryRunRequest::class,
-        QueryRunResult::class,
-        QueryRunQualification::class,
-        QueryRunRejection::class,
-        QueryRunCapability::class,
-        OperationLane.SCOPED_SEMANTIC_READ,
-        OperationEffect.INTELLIJ_READ,
-        OperationCost.BOUNDED_READ,
-        OperationScope.WORKSPACE,
-        CompletenessPolicy.QUALIFIED_ALLOWED,
-        HostedExposure.PUBLIC,
-        schema = schema("kast.query.run.v2"),
-    )
+    val queryRun =
+        definition(
+            CanonicalOperation.QUERY_RUN,
+            QueryRunRequest::class,
+            QueryRunResult::class,
+            QueryRunQualification::class,
+            QueryRunRejection::class,
+            QueryRunCapability::class,
+            OperationLane.SCOPED_SEMANTIC_READ,
+            OperationEffect.INTELLIJ_READ,
+            OperationCost.BOUNDED_READ,
+            OperationScope.WORKSPACE,
+            CompletenessPolicy.QUALIFIED_ALLOWED,
+            HostedExposure.PUBLIC,
+            schema = schema("kast.query.run.v2"),
+        )
 
-    val diagnosticCheck = definition(
-        CanonicalOperation.DIAGNOSTIC_CHECK,
-        DiagnosticCheckRequest::class,
-        DiagnosticCheckResult::class,
-        DiagnosticCheckQualification::class,
-        DiagnosticCheckRejection::class,
-        DiagnosticCheckCapability::class,
-        OperationLane.SCOPED_SEMANTIC_READ,
-        OperationEffect.INTELLIJ_READ,
-        OperationCost.BOUNDED_READ,
-        OperationScope.PROJECT,
-        CompletenessPolicy.QUALIFIED_ALLOWED,
-        HostedExposure.PUBLIC,
-        schema = schema("kast.diagnostic.check.v3"),
-    )
+    val diagnosticCheck =
+        definition(
+            CanonicalOperation.DIAGNOSTIC_CHECK,
+            DiagnosticCheckRequest::class,
+            DiagnosticCheckResult::class,
+            DiagnosticCheckQualification::class,
+            DiagnosticCheckRejection::class,
+            DiagnosticCheckCapability::class,
+            OperationLane.SCOPED_SEMANTIC_READ,
+            OperationEffect.INTELLIJ_READ,
+            OperationCost.BOUNDED_READ,
+            OperationScope.PROJECT,
+            CompletenessPolicy.QUALIFIED_ALLOWED,
+            HostedExposure.PUBLIC,
+            schema = schema("kast.diagnostic.check.v3"),
+        )
 
-    val changePlan = definition(
-        CanonicalOperation.CHANGE_PLAN,
-        ChangePlanRequest::class,
-        ChangePlanResult::class,
-        ChangePlanQualification::class,
-        ChangePlanRejection::class,
-        ChangePlanCapability::class,
-        OperationLane.DERIVED_WRITE,
-        OperationEffect.NONE,
-        OperationCost.BOUNDED_READ,
-        OperationScope.SYMBOL,
-        CompletenessPolicy.COMPLETE_REQUIRED,
-        HostedExposure.PUBLIC,
-        hostedVariants = HostedVariants.Intents(setOf(HostedChangeIntent.ADD_DECLARATION)),
-    )
+    val changePlan =
+        definition(
+            CanonicalOperation.CHANGE_PLAN,
+            ChangePlanRequest::class,
+            ChangePlanResult::class,
+            ChangePlanQualification::class,
+            ChangePlanRejection::class,
+            ChangePlanCapability::class,
+            OperationLane.DERIVED_WRITE,
+            OperationEffect.NONE,
+            OperationCost.BOUNDED_READ,
+            OperationScope.SYMBOL,
+            CompletenessPolicy.COMPLETE_REQUIRED,
+            HostedExposure.PUBLIC,
+            hostedVariants = HostedVariants.Intents(setOf(HostedChangeIntent.ADD_DECLARATION)),
+        )
 
-    val changeApply = definition(
-        CanonicalOperation.CHANGE_APPLY,
-        ChangeApplyRequest::class,
-        ChangeApplyResult::class,
-        ChangeApplyQualification::class,
-        ChangeApplyRejection::class,
-        ChangeApplyCapability::class,
-        OperationLane.SOURCE_WRITE,
-        OperationEffect.INTELLIJ_WRITE,
-        OperationCost.PHYSICAL_EFFECT,
-        OperationScope.FILE,
-        CompletenessPolicy.COMPLETE_REQUIRED,
-        HostedExposure.PUBLIC,
-    )
+    val changeApply =
+        definition(
+            CanonicalOperation.CHANGE_APPLY,
+            ChangeApplyRequest::class,
+            ChangeApplyResult::class,
+            ChangeApplyQualification::class,
+            ChangeApplyRejection::class,
+            ChangeApplyCapability::class,
+            OperationLane.SOURCE_WRITE,
+            OperationEffect.INTELLIJ_WRITE,
+            OperationCost.PHYSICAL_EFFECT,
+            OperationScope.FILE,
+            CompletenessPolicy.COMPLETE_REQUIRED,
+            HostedExposure.PUBLIC,
+        )
 
-    val changeRecover = definition(
-        CanonicalOperation.CHANGE_RECOVER,
-        ChangeRecoverRequest::class,
-        ChangeRecoverResult::class,
-        ChangeRecoverQualification::class,
-        ChangeRecoverRejection::class,
-        ChangeRecoverCapability::class,
-        OperationLane.SOURCE_WRITE,
-        OperationEffect.INTELLIJ_WRITE,
-        OperationCost.PHYSICAL_EFFECT,
-        OperationScope.FILE,
-        CompletenessPolicy.COMPLETE_REQUIRED,
-        HostedExposure.PUBLIC,
-    )
+    val changeRecover =
+        definition(
+            CanonicalOperation.CHANGE_RECOVER,
+            ChangeRecoverRequest::class,
+            ChangeRecoverResult::class,
+            ChangeRecoverQualification::class,
+            ChangeRecoverRejection::class,
+            ChangeRecoverCapability::class,
+            OperationLane.SOURCE_WRITE,
+            OperationEffect.INTELLIJ_WRITE,
+            OperationCost.PHYSICAL_EFFECT,
+            OperationScope.FILE,
+            CompletenessPolicy.COMPLETE_REQUIRED,
+            HostedExposure.PUBLIC,
+        )
 
-    val all: List<OperationDefinition<*, *, *, *, *>> = listOf(
-        indexSync,
-        topologyBuild,
-        queryRun,
-        symbolDiscover,
-        symbolInspect,
-        sourceRead,
-        relationRead,
-        traversalRun,
-        diagnosticCheck,
-        changePlan,
-        changeApply,
-        changeRecover,
-    )
+    val all: List<OperationDefinition<*, *, *, *, *>> =
+        listOf(
+            indexSync,
+            topologyBuild,
+            queryRun,
+            symbolDiscover,
+            symbolInspect,
+            sourceRead,
+            relationRead,
+            traversalRun,
+            diagnosticCheck,
+            changePlan,
+            changeApply,
+            changeRecover,
+        )
 
     /** The one immutable production registry proven exact over [all]. */
-    val registry: OperationRegistry = when (val construction = OperationRegistry.create(all)) {
-        is OperationRegistryConstruction.Created -> construction.registry
-        is OperationRegistryConstruction.Rejected ->
-            error("Invalid canonical operation registry: ${construction.failures}")
-    }
+    val registry: OperationRegistry =
+        when (val construction = OperationRegistry.create(all)) {
+            is OperationRegistryConstruction.Created -> construction.registry
+            is OperationRegistryConstruction.Rejected ->
+                error("Invalid canonical operation registry: ${construction.failures}")
+        }
 
     private fun <
         Request : OperationRequest,
@@ -295,7 +309,7 @@ object CanonicalOperationDefinitions {
         Qualification : OperationQualification,
         Rejection : OperationRejection,
         Capability : CapabilityMarker,
-        > definition(
+    > definition(
         operation: CanonicalOperation,
         requestType: KClass<Request>,
         resultType: KClass<Result>,
@@ -313,13 +327,14 @@ object CanonicalOperationDefinitions {
     ): OperationDefinition<Request, Result, Capability, Qualification, Rejection> =
         OperationDefinition(
             operation = operation,
-            types = OperationTypeBinding(
-                requestType = requestType,
-                resultType = resultType,
-                qualificationType = qualificationType,
-                rejectionType = rejectionType,
-                schema = schema,
-            ),
+            types =
+                OperationTypeBinding(
+                    requestType = requestType,
+                    resultType = resultType,
+                    qualificationType = qualificationType,
+                    rejectionType = rejectionType,
+                    schema = schema,
+                ),
             requiredCapability = capability(operation),
             capabilityType = capabilityType,
             lane = lane,
@@ -337,14 +352,16 @@ object CanonicalOperationDefinitions {
 
     private fun schema(raw: String): SchemaIdentity = refined(SchemaIdentity.parse(raw))
 
-    private fun standardBudget(): ResourceBudget = ResourceBudget(
-        resultLimit = refined(ResultLimit.parse(250)),
-        workUnitLimit = refined(WorkUnitLimit.parse(10_000)),
-        elapsedTimeLimit = refined(ElapsedTimeLimitMillis.parse(5_000)),
-    )
+    private fun standardBudget(): ResourceBudget =
+        ResourceBudget(
+            resultLimit = refined(ResultLimit.parse(250)),
+            workUnitLimit = refined(WorkUnitLimit.parse(10_000)),
+            elapsedTimeLimit = refined(ElapsedTimeLimitMillis.parse(5_000)),
+        )
 
-    private fun <Strong, Failure> refined(value: Refinement<Strong, Failure>): Strong = when (value) {
-        is Refinement.Refined -> value.value
-        is Refinement.Rejected -> error("Invalid compile-time canonical operation metadata")
-    }
+    private fun <Strong, Failure> refined(value: Refinement<Strong, Failure>): Strong =
+        when (value) {
+            is Refinement.Refined -> value.value
+            is Refinement.Rejected -> error("Invalid compile-time canonical operation metadata")
+        }
 }

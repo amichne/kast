@@ -5,9 +5,7 @@ import io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFail
 import io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationStage
 import java.nio.file.Path
 
-internal class EpochFixtureRoot private constructor(
-    private val path: Path,
-) {
+internal class EpochFixtureRoot private constructor(private val path: Path) {
     fun contains(candidate: Path): Boolean = candidate.startsWith(path)
 
     companion object {
@@ -31,9 +29,7 @@ internal sealed interface EpochVfsObservedEvent {
     }
 }
 
-internal class EpochVfsMetadataCounter(
-    private val root: EpochFixtureRoot,
-) {
+internal class EpochVfsMetadataCounter(private val root: EpochFixtureRoot) {
     var value: Long = 0
         private set
 
@@ -42,7 +38,10 @@ internal class EpochVfsMetadataCounter(
     }
 }
 
-private enum class GradleRootIdentity { EXACT_ROOT, MOVED_ROOT }
+private enum class GradleRootIdentity {
+    EXACT_ROOT,
+    MOVED_ROOT,
+}
 
 private data class EpochFixtureSample(
     val projectCounter: Long,
@@ -58,10 +57,11 @@ private data class EpochFixtureSample(
     fun movedSignalsFrom(before: EpochFixtureSample): List<EpochSignalCategory> = buildList {
         if (
             projectCounter != before.projectCounter ||
-            gradleRoot != before.gradleRoot ||
-            lastImportTimestamp != before.lastImportTimestamp ||
-            lastSuccessfulImportTimestamp != before.lastSuccessfulImportTimestamp
-        ) add(EpochSignalCategory.PROJECT_MODEL)
+                gradleRoot != before.gradleRoot ||
+                lastImportTimestamp != before.lastImportTimestamp ||
+                lastSuccessfulImportTimestamp != before.lastSuccessfulImportTimestamp
+        )
+            add(EpochSignalCategory.PROJECT_MODEL)
         if (psiModificationCount != before.psiModificationCount) add(EpochSignalCategory.PSI)
         if (rootFilteredVfsChangeCount != before.rootFilteredVfsChangeCount) {
             add(EpochSignalCategory.VFS)
@@ -69,15 +69,11 @@ private data class EpochFixtureSample(
         if (rootModelModificationCount != before.rootModelModificationCount) {
             add(EpochSignalCategory.ROOT_MODEL)
         }
-        if (
-            dumbModeModificationCount != before.dumbModeModificationCount ||
-            dumbModeState != before.dumbModeState
-        ) add(EpochSignalCategory.DUMB_MODE)
+        if (dumbModeModificationCount != before.dumbModeModificationCount || dumbModeState != before.dumbModeState)
+            add(EpochSignalCategory.DUMB_MODE)
     }
 
-    fun projectModelTransitionsFrom(
-        before: EpochFixtureSample,
-    ): List<EpochProjectModelTransition> = buildList {
+    fun projectModelTransitionsFrom(before: EpochFixtureSample): List<EpochProjectModelTransition> = buildList {
         val rootChanged = gradleRoot != before.gradleRoot
         val importStarted =
             lastImportTimestamp > before.lastImportTimestamp &&
@@ -104,11 +100,12 @@ private data class EpochFixtureCase(
 
 internal fun characterizeEpochCase(caseId: EpochCaseId): EpochCaseDocument {
     val fixture = fixtureCase(caseId)
-    val relation = if (fixture.after == fixture.before) {
-        EpochSampleRelation.UNCHANGED
-    } else {
-        EpochSampleRelation.CHANGED
-    }
+    val relation =
+        if (fixture.after == fixture.before) {
+            EpochSampleRelation.UNCHANGED
+        } else {
+            EpochSampleRelation.CHANGED
+        }
     return EpochCaseDocument(
         caseId = caseId,
         sampleCount = 2,
@@ -122,121 +119,126 @@ internal fun characterizeEpochCase(caseId: EpochCaseId): EpochCaseDocument {
     )
 }
 
-internal fun canonicalEpochSignals(): List<EpochSignalDocument> = listOf(
-    EpochSignalDocument(
-        EpochSignalCategory.PROJECT_MODEL,
-        listOf(
-            "WorkspaceModelTopics.CHANGED",
-            "ExternalProjectInfo.lastImportTimestamp+lastSuccessfulImportTimestamp",
+internal fun canonicalEpochSignals(): List<EpochSignalDocument> =
+    listOf(
+        EpochSignalDocument(
+            EpochSignalCategory.PROJECT_MODEL,
+            listOf(
+                "WorkspaceModelTopics.CHANGED",
+                "ExternalProjectInfo.lastImportTimestamp+lastSuccessfulImportTimestamp",
+            ),
+            "projectCounter+exactRootImportTimestamps",
+            "projectCounterOrExactRootImportTimestampChanged",
         ),
-        "projectCounter+exactRootImportTimestamps",
-        "projectCounterOrExactRootImportTimestampChanged",
-    ),
-    EpochSignalDocument(
-        EpochSignalCategory.PSI,
-        listOf("PsiModificationTracker.modificationCount"),
-        "modificationCount",
-        "modificationCountChanged",
-    ),
-    EpochSignalDocument(
-        EpochSignalCategory.VFS,
-        listOf("VirtualFileManager.VFS_CHANGES"),
-        "rootFilteredChangeCounter",
-        "rootFilteredChangeCounterChanged",
-    ),
-    EpochSignalDocument(
-        EpochSignalCategory.ROOT_MODEL,
-        listOf("ProjectRootModificationTracker.modificationCount"),
-        "modificationCount",
-        "modificationCountChanged",
-    ),
-    EpochSignalDocument(
-        EpochSignalCategory.DUMB_MODE,
-        listOf("DumbService.modificationTracker", "DumbService.isDumb"),
-        "modificationCount+isDumb",
-        "modificationCountOrDumbStateChanged",
-    ),
-)
+        EpochSignalDocument(
+            EpochSignalCategory.PSI,
+            listOf("PsiModificationTracker.modificationCount"),
+            "modificationCount",
+            "modificationCountChanged",
+        ),
+        EpochSignalDocument(
+            EpochSignalCategory.VFS,
+            listOf("VirtualFileManager.VFS_CHANGES"),
+            "rootFilteredChangeCounter",
+            "rootFilteredChangeCounterChanged",
+        ),
+        EpochSignalDocument(
+            EpochSignalCategory.ROOT_MODEL,
+            listOf("ProjectRootModificationTracker.modificationCount"),
+            "modificationCount",
+            "modificationCountChanged",
+        ),
+        EpochSignalDocument(
+            EpochSignalCategory.DUMB_MODE,
+            listOf("DumbService.modificationTracker", "DumbService.isDumb"),
+            "modificationCount+isDumb",
+            "modificationCountOrDumbStateChanged",
+        ),
+    )
 
-internal fun canonicalEpochCases(): List<EpochCaseDocument> = listOf(
-    epochCase(EpochCaseId.STABLE, emptyList(), relation = EpochSampleRelation.UNCHANGED),
-    epochCase(
-        EpochCaseId.WORKSPACE_MODEL_MOVEMENT,
-        listOf(EpochSignalCategory.PROJECT_MODEL),
-        projectTransitions = listOf(EpochProjectModelTransition.WORKSPACE_MODEL_CHANGED),
-    ),
-    epochCase(
-        EpochCaseId.GRADLE_IMPORT_STARTED,
-        listOf(EpochSignalCategory.PROJECT_MODEL),
-        projectTransitions = listOf(EpochProjectModelTransition.GRADLE_IMPORT_STARTED),
-    ),
-    epochCase(
-        EpochCaseId.GRADLE_IMPORT_COMPLETED,
-        listOf(EpochSignalCategory.PROJECT_MODEL),
-        projectTransitions = listOf(EpochProjectModelTransition.GRADLE_IMPORT_COMPLETED),
-    ),
-    epochCase(
-        EpochCaseId.GRADLE_ROOT_MOVEMENT,
-        listOf(EpochSignalCategory.PROJECT_MODEL),
-        projectTransitions = listOf(EpochProjectModelTransition.GRADLE_ROOT_CHANGED),
-    ),
-    epochCase(EpochCaseId.PSI_MOVEMENT, listOf(EpochSignalCategory.PSI)),
-    epochCase(EpochCaseId.VFS_MOVEMENT, listOf(EpochSignalCategory.VFS)),
-    epochCase(EpochCaseId.ROOT_MODEL_MOVEMENT, listOf(EpochSignalCategory.ROOT_MODEL)),
-    epochCase(
-        EpochCaseId.SMART_DUMB_SMART,
-        listOf(EpochSignalCategory.DUMB_MODE),
-        dumbTransitions = dumbRoundTrip(),
-    ),
-    epochCase(
-        EpochCaseId.COMBINED_MOVEMENT,
-        EpochSignalCategory.entries,
-        projectTransitions = listOf(EpochProjectModelTransition.WORKSPACE_MODEL_CHANGED),
-        dumbTransitions = dumbRoundTrip(),
-    ),
-    epochCase(
-        EpochCaseId.VFS_EVENT_STORM,
-        listOf(EpochSignalCategory.VFS),
-        vfsEventCount = 1_000,
-    ),
-)
+internal fun canonicalEpochCases(): List<EpochCaseDocument> =
+    listOf(
+        epochCase(EpochCaseId.STABLE, emptyList(), relation = EpochSampleRelation.UNCHANGED),
+        epochCase(
+            EpochCaseId.WORKSPACE_MODEL_MOVEMENT,
+            listOf(EpochSignalCategory.PROJECT_MODEL),
+            projectTransitions = listOf(EpochProjectModelTransition.WORKSPACE_MODEL_CHANGED),
+        ),
+        epochCase(
+            EpochCaseId.GRADLE_IMPORT_STARTED,
+            listOf(EpochSignalCategory.PROJECT_MODEL),
+            projectTransitions = listOf(EpochProjectModelTransition.GRADLE_IMPORT_STARTED),
+        ),
+        epochCase(
+            EpochCaseId.GRADLE_IMPORT_COMPLETED,
+            listOf(EpochSignalCategory.PROJECT_MODEL),
+            projectTransitions = listOf(EpochProjectModelTransition.GRADLE_IMPORT_COMPLETED),
+        ),
+        epochCase(
+            EpochCaseId.GRADLE_ROOT_MOVEMENT,
+            listOf(EpochSignalCategory.PROJECT_MODEL),
+            projectTransitions = listOf(EpochProjectModelTransition.GRADLE_ROOT_CHANGED),
+        ),
+        epochCase(EpochCaseId.PSI_MOVEMENT, listOf(EpochSignalCategory.PSI)),
+        epochCase(EpochCaseId.VFS_MOVEMENT, listOf(EpochSignalCategory.VFS)),
+        epochCase(EpochCaseId.ROOT_MODEL_MOVEMENT, listOf(EpochSignalCategory.ROOT_MODEL)),
+        epochCase(
+            EpochCaseId.SMART_DUMB_SMART,
+            listOf(EpochSignalCategory.DUMB_MODE),
+            dumbTransitions = dumbRoundTrip(),
+        ),
+        epochCase(
+            EpochCaseId.COMBINED_MOVEMENT,
+            EpochSignalCategory.entries,
+            projectTransitions = listOf(EpochProjectModelTransition.WORKSPACE_MODEL_CHANGED),
+            dumbTransitions = dumbRoundTrip(),
+        ),
+        epochCase(
+            EpochCaseId.VFS_EVENT_STORM,
+            listOf(EpochSignalCategory.VFS),
+            vfsEventCount = 1_000,
+        ),
+    )
 
 private fun fixtureCase(caseId: EpochCaseId): EpochFixtureCase {
     val base = FIXTURE_SAMPLE
-    val before = if (caseId == EpochCaseId.GRADLE_IMPORT_COMPLETED) {
-        base.copy(lastImportTimestamp = 11, lastSuccessfulImportTimestamp = 10)
-    } else {
-        base
-    }
-    val after = when (caseId) {
-        EpochCaseId.STABLE -> before
-        EpochCaseId.WORKSPACE_MODEL_MOVEMENT -> before.copy(projectCounter = 2)
-        EpochCaseId.GRADLE_IMPORT_STARTED -> before.copy(lastImportTimestamp = 11)
-        EpochCaseId.GRADLE_IMPORT_COMPLETED -> before.copy(lastSuccessfulImportTimestamp = 11)
-        EpochCaseId.GRADLE_ROOT_MOVEMENT -> before.copy(
-            projectCounter = 2,
-            gradleRoot = GradleRootIdentity.MOVED_ROOT,
-        )
-        EpochCaseId.PSI_MOVEMENT -> before.copy(psiModificationCount = 2)
-        EpochCaseId.VFS_MOVEMENT -> before.copy(rootFilteredVfsChangeCount = 2)
-        EpochCaseId.ROOT_MODEL_MOVEMENT -> before.copy(rootModelModificationCount = 2)
-        EpochCaseId.SMART_DUMB_SMART -> before.copy(dumbModeModificationCount = 3)
-        EpochCaseId.COMBINED_MOVEMENT -> before.copy(
-            projectCounter = 2,
-            psiModificationCount = 2,
-            rootFilteredVfsChangeCount = 2,
-            rootModelModificationCount = 2,
-            dumbModeModificationCount = 3,
-        )
-        EpochCaseId.VFS_EVENT_STORM -> before.copy(rootFilteredVfsChangeCount = 1_001)
-    }
-    val timeline = if (
-        caseId == EpochCaseId.SMART_DUMB_SMART || caseId == EpochCaseId.COMBINED_MOVEMENT
-    ) {
-        listOf(EpochDumbModeState.SMART, EpochDumbModeState.DUMB, EpochDumbModeState.SMART)
-    } else {
-        listOf(before.dumbModeState, after.dumbModeState)
-    }
+    val before =
+        if (caseId == EpochCaseId.GRADLE_IMPORT_COMPLETED) {
+            base.copy(lastImportTimestamp = 11, lastSuccessfulImportTimestamp = 10)
+        } else {
+            base
+        }
+    val after =
+        when (caseId) {
+            EpochCaseId.STABLE -> before
+            EpochCaseId.WORKSPACE_MODEL_MOVEMENT -> before.copy(projectCounter = 2)
+            EpochCaseId.GRADLE_IMPORT_STARTED -> before.copy(lastImportTimestamp = 11)
+            EpochCaseId.GRADLE_IMPORT_COMPLETED -> before.copy(lastSuccessfulImportTimestamp = 11)
+            EpochCaseId.GRADLE_ROOT_MOVEMENT ->
+                before.copy(
+                    projectCounter = 2,
+                    gradleRoot = GradleRootIdentity.MOVED_ROOT,
+                )
+            EpochCaseId.PSI_MOVEMENT -> before.copy(psiModificationCount = 2)
+            EpochCaseId.VFS_MOVEMENT -> before.copy(rootFilteredVfsChangeCount = 2)
+            EpochCaseId.ROOT_MODEL_MOVEMENT -> before.copy(rootModelModificationCount = 2)
+            EpochCaseId.SMART_DUMB_SMART -> before.copy(dumbModeModificationCount = 3)
+            EpochCaseId.COMBINED_MOVEMENT ->
+                before.copy(
+                    projectCounter = 2,
+                    psiModificationCount = 2,
+                    rootFilteredVfsChangeCount = 2,
+                    rootModelModificationCount = 2,
+                    dumbModeModificationCount = 3,
+                )
+            EpochCaseId.VFS_EVENT_STORM -> before.copy(rootFilteredVfsChangeCount = 1_001)
+        }
+    val timeline =
+        if (caseId == EpochCaseId.SMART_DUMB_SMART || caseId == EpochCaseId.COMBINED_MOVEMENT) {
+            listOf(EpochDumbModeState.SMART, EpochDumbModeState.DUMB, EpochDumbModeState.SMART)
+        } else {
+            listOf(before.dumbModeState, after.dumbModeState)
+        }
     return EpochFixtureCase(
         before,
         after,
@@ -252,45 +254,46 @@ private fun epochCase(
     relation: EpochSampleRelation = EpochSampleRelation.CHANGED,
     dumbTransitions: List<EpochDumbModeTransition> = emptyList(),
     vfsEventCount: Int = 0,
-) = EpochCaseDocument(
-    caseId,
-    2,
-    movedSignals,
-    projectTransitions,
-    listOf(EpochDumbModeState.SMART, EpochDumbModeState.SMART),
-    dumbTransitions,
-    vfsEventCount,
-    relation,
-    relation,
-)
+) =
+    EpochCaseDocument(
+        caseId,
+        2,
+        movedSignals,
+        projectTransitions,
+        listOf(EpochDumbModeState.SMART, EpochDumbModeState.SMART),
+        dumbTransitions,
+        vfsEventCount,
+        relation,
+        relation,
+    )
 
 private fun List<EpochDumbModeState>.observedTransitions(): List<EpochDumbModeTransition> =
     zipWithNext().mapNotNull { (before, after) ->
         when (before to after) {
-            EpochDumbModeState.SMART to EpochDumbModeState.DUMB ->
-                EpochDumbModeTransition.SMART_TO_DUMB
-            EpochDumbModeState.DUMB to EpochDumbModeState.SMART ->
-                EpochDumbModeTransition.DUMB_TO_SMART
+            EpochDumbModeState.SMART to EpochDumbModeState.DUMB -> EpochDumbModeTransition.SMART_TO_DUMB
+            EpochDumbModeState.DUMB to EpochDumbModeState.SMART -> EpochDumbModeTransition.DUMB_TO_SMART
             else -> null
         }
     }
 
-private fun dumbRoundTrip() = listOf(
-    EpochDumbModeTransition.SMART_TO_DUMB,
-    EpochDumbModeTransition.DUMB_TO_SMART,
-)
+private fun dumbRoundTrip() =
+    listOf(
+        EpochDumbModeTransition.SMART_TO_DUMB,
+        EpochDumbModeTransition.DUMB_TO_SMART,
+    )
 
-private val FIXTURE_SAMPLE = EpochFixtureSample(
-    projectCounter = 1,
-    gradleRoot = GradleRootIdentity.EXACT_ROOT,
-    lastImportTimestamp = 10,
-    lastSuccessfulImportTimestamp = 10,
-    psiModificationCount = 1,
-    rootFilteredVfsChangeCount = 1,
-    rootModelModificationCount = 1,
-    dumbModeModificationCount = 1,
-    dumbModeState = EpochDumbModeState.SMART,
-)
+private val FIXTURE_SAMPLE =
+    EpochFixtureSample(
+        projectCounter = 1,
+        gradleRoot = GradleRootIdentity.EXACT_ROOT,
+        lastImportTimestamp = 10,
+        lastSuccessfulImportTimestamp = 10,
+        psiModificationCount = 1,
+        rootFilteredVfsChangeCount = 1,
+        rootModelModificationCount = 1,
+        dumbModeModificationCount = 1,
+        dumbModeState = EpochDumbModeState.SMART,
+    )
 
 internal class RecordingProjectReadEpochPlatform : ProjectReadEpochPlatformPort {
     var disposed = false
@@ -311,23 +314,29 @@ internal class RecordingProjectReadEpochPlatform : ProjectReadEpochPlatformPort 
     }
 
     override fun isDisposed(): Boolean = read(ProjectReadEpochObservationStage.DISPOSAL, disposed)
+
     override fun isOpen(): Boolean = read(ProjectReadEpochObservationStage.OPEN, open)
-    override fun isInitialized(): Boolean =
-        read(ProjectReadEpochObservationStage.INITIALIZATION, initialized)
-    override fun isDumb(): Boolean = read(
-        ProjectReadEpochObservationStage.DUMB_MODE,
-        if (dumbStates.isEmpty()) false else dumbStates.removeFirst(),
-    )
+
+    override fun isInitialized(): Boolean = read(ProjectReadEpochObservationStage.INITIALIZATION, initialized)
+
+    override fun isDumb(): Boolean =
+        read(
+            ProjectReadEpochObservationStage.DUMB_MODE,
+            if (dumbStates.isEmpty()) false else dumbStates.removeFirst(),
+        )
+
     override fun root(): String? = read(ProjectReadEpochObservationStage.PROJECT_ROOT, projectRoot)
+
     override fun gradleModel(
-        projectRoot: ProjectEpochRootIdentity,
+        projectRoot: ProjectEpochRootIdentity
     ): Refinement<ObservedEpochGradleModel, ProjectReadEpochObservationFailure> =
         read(ProjectReadEpochObservationStage.PROJECT_MODEL, gradle)
+
     override fun psiModificationCount(): Long = read(ProjectReadEpochObservationStage.PSI, psi)
-    override fun rootModelModificationCount(): Long =
-        read(ProjectReadEpochObservationStage.ROOT_MODEL, rootModel)
-    override fun dumbModeModificationCount(): Long =
-        read(ProjectReadEpochObservationStage.DUMB_MODE, dumbCycle)
+
+    override fun rootModelModificationCount(): Long = read(ProjectReadEpochObservationStage.ROOT_MODEL, rootModel)
+
+    override fun dumbModeModificationCount(): Long = read(ProjectReadEpochObservationStage.DUMB_MODE, dumbCycle)
 
     private fun <Value> read(stage: ProjectReadEpochObservationStage, value: Value): Value {
         if (throwAt == stage) error("fixture $stage failure")
@@ -344,8 +353,9 @@ internal class RecordingProjectReadEpochExecution(
         probeFailure?.let { throw it }
         return dispatchThread
     }
+
     override fun compute(
-        read: () -> Refinement<ProjectReadEpochState, ProjectReadEpochObservationFailure>,
+        read: () -> Refinement<ProjectReadEpochState, ProjectReadEpochObservationFailure>
     ): Refinement<ProjectReadEpochState, ProjectReadEpochObservationFailure> {
         failure?.let { throw it }
         return read()

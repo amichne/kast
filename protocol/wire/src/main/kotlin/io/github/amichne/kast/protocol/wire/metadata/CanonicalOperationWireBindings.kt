@@ -19,21 +19,21 @@ private data class OperationRegistryOperationDocument(
 
 /** Sole generated serializer binding catalog for the twelve production operation definitions. */
 object CanonicalOperationWireBindings {
-    val operationRegistryDocument: String = wireJson.encodeToString(
-        OperationRegistryDocument.serializer(),
-        OperationRegistryDocument(
-            schemaVersion = 2,
-            operations = OperationRegistryArtifact.from(CanonicalOperationDefinitions.registry)
-                .entries
-                .map { entry ->
-                    OperationRegistryOperationDocument(
-                        operationId = entry.operationId.value,
-                        hostedExposure = entry.hostedExposure.name.lowercase(),
-                        intents = entry.hostedIntentIds,
-                    )
-                },
-        )
-    ) + "\n"
+    val operationRegistryDocument: String =
+        wireJson.encodeToString(
+            OperationRegistryDocument.serializer(),
+            OperationRegistryDocument(
+                schemaVersion = 2,
+                operations =
+                    OperationRegistryArtifact.from(CanonicalOperationDefinitions.registry).entries.map { entry ->
+                        OperationRegistryOperationDocument(
+                            operationId = entry.operationId.value,
+                            hostedExposure = entry.hostedExposure.name.lowercase(),
+                            intents = entry.hostedIntentIds,
+                        )
+                    },
+            ),
+        ) + "\n"
 
     /** Prints the generated registry document for the Gradle-owned resource boundary. */
     @JvmStatic
@@ -42,135 +42,149 @@ object CanonicalOperationWireBindings {
         print(operationRegistryDocument)
     }
 
-    val indexSync = OperationWireBinding(
-        CanonicalOperationDefinitions.indexSync,
-        GeneratedOperationSerializers(
-            CanonicalIndexSerializers.request,
-            CanonicalIndexSerializers.result,
-            CanonicalIndexSerializers.qualification,
-            CanonicalIndexSerializers.rejection,
-        ),
-    )
-    val topologyBuild = OperationWireBinding(
-        CanonicalOperationDefinitions.topologyBuild,
-        GeneratedOperationSerializers(
-            CanonicalTopologySerializers.request,
-            CanonicalTopologySerializers.result,
-            CanonicalTopologySerializers.qualification,
-            CanonicalTopologySerializers.rejection,
-        ),
-    )
-    val symbolDiscover = OperationWireBinding(
-        CanonicalOperationDefinitions.symbolDiscover,
-        GeneratedOperationSerializers(
-            CanonicalReadSerializers.symbolDiscoverRequest,
-            CanonicalReadSerializers.symbolDiscoverResult,
-            CanonicalReadSerializers.symbolDiscoverQualification,
-            CanonicalReadSerializers.symbolDiscoverRejection,
-        ),
-    )
-    val symbolInspect = OperationWireBinding(
-        CanonicalOperationDefinitions.symbolInspect,
-        GeneratedOperationSerializers(
-            CanonicalReadSerializers.symbolInspectRequest,
-            CanonicalReadSerializers.symbolInspectResult,
-            CanonicalReadSerializers.symbolInspectQualification,
-            CanonicalReadSerializers.symbolInspectRejection,
-        ),
-    )
-    val sourceRead = OperationWireBinding(
-        CanonicalOperationDefinitions.sourceRead,
-        GeneratedOperationSerializers(
-            CanonicalSourceReadSerializers.request,
-            CanonicalSourceReadSerializers.result,
-            CanonicalSourceReadSerializers.qualification,
-            CanonicalSourceReadSerializers.rejection,
-        ),
-    )
-    val relationRead = OperationWireBinding(
-        CanonicalOperationDefinitions.relationRead,
-        GeneratedOperationSerializers(
-            CanonicalReadSerializers.relationReadRequest,
-            CanonicalReadSerializers.relationReadResult,
-            CanonicalReadSerializers.relationReadQualification,
-            CanonicalReadSerializers.relationReadRejection,
-        ),
-    )
-    val traversalRun = OperationWireBinding(
-        CanonicalOperationDefinitions.traversalRun,
-        GeneratedOperationSerializers(
-            CanonicalReadSerializers.traversalRunRequest,
-            CanonicalReadSerializers.traversalRunResult,
-            CanonicalReadSerializers.traversalRunQualification,
-            CanonicalReadSerializers.traversalRunRejection,
-        ),
-    )
-    val queryRun = OperationWireBinding(
-        CanonicalOperationDefinitions.queryRun,
-        GeneratedOperationSerializers(
-            CanonicalQuerySerializers.request,
-            CanonicalQuerySerializers.result,
-            CanonicalQuerySerializers.qualification,
-            CanonicalQuerySerializers.rejection,
-        ),
-    )
-    val diagnosticCheck = OperationWireBinding(
-        CanonicalOperationDefinitions.diagnosticCheck,
-        GeneratedOperationSerializers(
-            CanonicalReadSerializers.diagnosticCheckRequest,
-            CanonicalReadSerializers.diagnosticCheckResult,
-            CanonicalReadSerializers.diagnosticCheckQualification,
-            CanonicalReadSerializers.diagnosticCheckRejection,
-        ),
-    )
-    val changePlan = OperationWireBinding(
-        CanonicalOperationDefinitions.changePlan,
-        GeneratedOperationSerializers(
-            CanonicalChangeSerializers.changePlanRequest,
-            CanonicalChangeSerializers.changePlanResult,
-            CanonicalChangeSerializers.changePlanQualification,
-            CanonicalChangeSerializers.changePlanRejection,
-        ),
-    )
-    val changeApply = OperationWireBinding(
-        CanonicalOperationDefinitions.changeApply,
-        GeneratedOperationSerializers(
-            CanonicalChangeSerializers.changeApplyRequest,
-            CanonicalChangeSerializers.changeApplyResult,
-            CanonicalChangeSerializers.changeApplyQualification,
-            CanonicalChangeSerializers.changeApplyRejection,
-        ),
-    )
-    val changeRecover = OperationWireBinding(
-        CanonicalOperationDefinitions.changeRecover,
-        GeneratedOperationSerializers(
-            CanonicalChangeSerializers.changeRecoverRequest,
-            CanonicalChangeSerializers.changeRecoverResult,
-            CanonicalChangeSerializers.changeRecoverQualification,
-            CanonicalChangeSerializers.changeRecoverRejection,
-        ),
-    )
-
-    internal val table: OperationWireTable = when (
-        val construction = OperationWireTable.create(
-            listOf(
-                indexSync,
-                topologyBuild,
-                queryRun,
-                symbolDiscover,
-                symbolInspect,
-                sourceRead,
-                relationRead,
-                traversalRun,
-                diagnosticCheck,
-                changePlan,
-                changeApply,
-                changeRecover,
+    val indexSync =
+        OperationWireBinding(
+            CanonicalOperationDefinitions.indexSync,
+            GeneratedOperationSerializers(
+                CanonicalIndexSerializers.request,
+                CanonicalIndexSerializers.result,
+                CanonicalIndexSerializers.qualification,
+                CanonicalIndexSerializers.rejection,
             ),
         )
-    ) {
-        is OperationWireTableConstruction.Created -> construction.table
-        is OperationWireTableConstruction.Rejected ->
-            error("Invalid generated canonical operation serializer table: ${construction.failures}")
-    }
+    val topologyBuild =
+        OperationWireBinding(
+            CanonicalOperationDefinitions.topologyBuild,
+            GeneratedOperationSerializers(
+                CanonicalTopologySerializers.request,
+                CanonicalTopologySerializers.result,
+                CanonicalTopologySerializers.qualification,
+                CanonicalTopologySerializers.rejection,
+            ),
+        )
+    val symbolDiscover =
+        OperationWireBinding(
+            CanonicalOperationDefinitions.symbolDiscover,
+            GeneratedOperationSerializers(
+                CanonicalReadSerializers.symbolDiscoverRequest,
+                CanonicalReadSerializers.symbolDiscoverResult,
+                CanonicalReadSerializers.symbolDiscoverQualification,
+                CanonicalReadSerializers.symbolDiscoverRejection,
+            ),
+        )
+    val symbolInspect =
+        OperationWireBinding(
+            CanonicalOperationDefinitions.symbolInspect,
+            GeneratedOperationSerializers(
+                CanonicalReadSerializers.symbolInspectRequest,
+                CanonicalReadSerializers.symbolInspectResult,
+                CanonicalReadSerializers.symbolInspectQualification,
+                CanonicalReadSerializers.symbolInspectRejection,
+            ),
+        )
+    val sourceRead =
+        OperationWireBinding(
+            CanonicalOperationDefinitions.sourceRead,
+            GeneratedOperationSerializers(
+                CanonicalSourceReadSerializers.request,
+                CanonicalSourceReadSerializers.result,
+                CanonicalSourceReadSerializers.qualification,
+                CanonicalSourceReadSerializers.rejection,
+            ),
+        )
+    val relationRead =
+        OperationWireBinding(
+            CanonicalOperationDefinitions.relationRead,
+            GeneratedOperationSerializers(
+                CanonicalReadSerializers.relationReadRequest,
+                CanonicalReadSerializers.relationReadResult,
+                CanonicalReadSerializers.relationReadQualification,
+                CanonicalReadSerializers.relationReadRejection,
+            ),
+        )
+    val traversalRun =
+        OperationWireBinding(
+            CanonicalOperationDefinitions.traversalRun,
+            GeneratedOperationSerializers(
+                CanonicalReadSerializers.traversalRunRequest,
+                CanonicalReadSerializers.traversalRunResult,
+                CanonicalReadSerializers.traversalRunQualification,
+                CanonicalReadSerializers.traversalRunRejection,
+            ),
+        )
+    val queryRun =
+        OperationWireBinding(
+            CanonicalOperationDefinitions.queryRun,
+            GeneratedOperationSerializers(
+                CanonicalQuerySerializers.request,
+                CanonicalQuerySerializers.result,
+                CanonicalQuerySerializers.qualification,
+                CanonicalQuerySerializers.rejection,
+            ),
+        )
+    val diagnosticCheck =
+        OperationWireBinding(
+            CanonicalOperationDefinitions.diagnosticCheck,
+            GeneratedOperationSerializers(
+                CanonicalReadSerializers.diagnosticCheckRequest,
+                CanonicalReadSerializers.diagnosticCheckResult,
+                CanonicalReadSerializers.diagnosticCheckQualification,
+                CanonicalReadSerializers.diagnosticCheckRejection,
+            ),
+        )
+    val changePlan =
+        OperationWireBinding(
+            CanonicalOperationDefinitions.changePlan,
+            GeneratedOperationSerializers(
+                CanonicalChangeSerializers.changePlanRequest,
+                CanonicalChangeSerializers.changePlanResult,
+                CanonicalChangeSerializers.changePlanQualification,
+                CanonicalChangeSerializers.changePlanRejection,
+            ),
+        )
+    val changeApply =
+        OperationWireBinding(
+            CanonicalOperationDefinitions.changeApply,
+            GeneratedOperationSerializers(
+                CanonicalChangeSerializers.changeApplyRequest,
+                CanonicalChangeSerializers.changeApplyResult,
+                CanonicalChangeSerializers.changeApplyQualification,
+                CanonicalChangeSerializers.changeApplyRejection,
+            ),
+        )
+    val changeRecover =
+        OperationWireBinding(
+            CanonicalOperationDefinitions.changeRecover,
+            GeneratedOperationSerializers(
+                CanonicalChangeSerializers.changeRecoverRequest,
+                CanonicalChangeSerializers.changeRecoverResult,
+                CanonicalChangeSerializers.changeRecoverQualification,
+                CanonicalChangeSerializers.changeRecoverRejection,
+            ),
+        )
+
+    internal val table: OperationWireTable =
+        when (
+            val construction =
+                OperationWireTable.create(
+                    listOf(
+                        indexSync,
+                        topologyBuild,
+                        queryRun,
+                        symbolDiscover,
+                        symbolInspect,
+                        sourceRead,
+                        relationRead,
+                        traversalRun,
+                        diagnosticCheck,
+                        changePlan,
+                        changeApply,
+                        changeRecover,
+                    )
+                )
+        ) {
+            is OperationWireTableConstruction.Created -> construction.table
+            is OperationWireTableConstruction.Rejected ->
+                error("Invalid generated canonical operation serializer table: ${construction.failures}")
+        }
 }

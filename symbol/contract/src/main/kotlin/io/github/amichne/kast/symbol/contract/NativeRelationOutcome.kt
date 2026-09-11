@@ -3,25 +3,19 @@ package io.github.amichne.kast.symbol.contract
 import io.github.amichne.kast.kernel.Refinement
 
 enum class NativeRelationMeasureFailure {
-    NEGATIVE,
+    NEGATIVE
 }
 
 @JvmInline
-value class NativeRelationByteCount private constructor(
-    val value: Long,
-) {
+value class NativeRelationByteCount private constructor(val value: Long) {
     companion object {
         /**
-         * Proof transition:
-         * Long to Refinement<NativeRelationByteCount, NativeRelationMeasureFailure>.
+         * Proof transition: Long to Refinement<NativeRelationByteCount, NativeRelationMeasureFailure>.
          *
-         * Establishes a non-negative canonical fact-projection byte count.
-         * [NativeRelationMeasureFailure] is the closed expected failure. Raw counts may be
-         * extracted only at bounded projection, metrics, or transport boundaries.
+         * Establishes a non-negative canonical fact-projection byte count. [NativeRelationMeasureFailure] is the closed
+         * expected failure. Raw counts may be extracted only at bounded projection, metrics, or transport boundaries.
          */
-        fun parse(
-            raw: Long,
-        ): Refinement<NativeRelationByteCount, NativeRelationMeasureFailure> =
+        fun parse(raw: Long): Refinement<NativeRelationByteCount, NativeRelationMeasureFailure> =
             if (raw >= 0L) {
                 Refinement.Refined(NativeRelationByteCount(raw))
             } else {
@@ -31,21 +25,15 @@ value class NativeRelationByteCount private constructor(
 }
 
 @JvmInline
-value class NativeRelationWorkCount private constructor(
-    val value: Long,
-) {
+value class NativeRelationWorkCount private constructor(val value: Long) {
     companion object {
         /**
-         * Proof transition:
-         * Long to Refinement<NativeRelationWorkCount, NativeRelationMeasureFailure>.
+         * Proof transition: Long to Refinement<NativeRelationWorkCount, NativeRelationMeasureFailure>.
          *
-         * Establishes a non-negative count of native relation items examined.
-         * [NativeRelationMeasureFailure] is the closed expected failure. Raw counts may be
-         * extracted only at native query, metrics, or transport boundaries.
+         * Establishes a non-negative count of native relation items examined. [NativeRelationMeasureFailure] is the
+         * closed expected failure. Raw counts may be extracted only at native query, metrics, or transport boundaries.
          */
-        fun parse(
-            raw: Long,
-        ): Refinement<NativeRelationWorkCount, NativeRelationMeasureFailure> =
+        fun parse(raw: Long): Refinement<NativeRelationWorkCount, NativeRelationMeasureFailure> =
             if (raw >= 0L) {
                 Refinement.Refined(NativeRelationWorkCount(raw))
             } else {
@@ -55,21 +43,15 @@ value class NativeRelationWorkCount private constructor(
 }
 
 @JvmInline
-value class NativeRelationElapsedNanoseconds private constructor(
-    val value: Long,
-) {
+value class NativeRelationElapsedNanoseconds private constructor(val value: Long) {
     companion object {
         /**
-         * Proof transition:
-         * Long to Refinement<NativeRelationElapsedNanoseconds, NativeRelationMeasureFailure>.
+         * Proof transition: Long to Refinement<NativeRelationElapsedNanoseconds, NativeRelationMeasureFailure>.
          *
-         * Establishes a non-negative monotonic elapsed duration.
-         * [NativeRelationMeasureFailure] is the closed expected failure. Raw durations may be
-         * extracted only at native timing, metrics, or transport boundaries.
+         * Establishes a non-negative monotonic elapsed duration. [NativeRelationMeasureFailure] is the closed expected
+         * failure. Raw durations may be extracted only at native timing, metrics, or transport boundaries.
          */
-        fun parse(
-            raw: Long,
-        ): Refinement<NativeRelationElapsedNanoseconds, NativeRelationMeasureFailure> =
+        fun parse(raw: Long): Refinement<NativeRelationElapsedNanoseconds, NativeRelationMeasureFailure> =
             if (raw >= 0L) {
                 Refinement.Refined(NativeRelationElapsedNanoseconds(raw))
             } else {
@@ -93,7 +75,8 @@ enum class NativeRelationBatchFailure {
 }
 
 @ConsistentCopyVisibility
-data class NativeRelationBatch private constructor(
+data class NativeRelationBatch
+private constructor(
     val request: NativeRelationRequest,
     val facts: List<NativeRelationFact>,
     val encodedBytes: NativeRelationByteCount,
@@ -102,14 +85,13 @@ data class NativeRelationBatch private constructor(
 ) {
     companion object {
         /**
-         * Proof transition:
-         * NativeRelationRequest + facts + measures to
-         * Refinement<NativeRelationBatch, NativeRelationBatchFailure>.
+         * Proof transition: NativeRelationRequest + facts + measures to Refinement<NativeRelationBatch,
+         * NativeRelationBatchFailure>.
          *
-         * Establishes that every fact retains the exact request selector and family, facts are
-         * unique and deterministically ordered, and the batch fits the record and canonical byte
-         * limits. [NativeRelationBatchFailure] is the closed expected failure. Lists and raw
-         * measures may be extracted only at bounded native projection or transport boundaries.
+         * Establishes that every fact retains the exact request selector and family, facts are unique and
+         * deterministically ordered, and the batch fits the record and canonical byte limits.
+         * [NativeRelationBatchFailure] is the closed expected failure. Lists and raw measures may be extracted only at
+         * bounded native projection or transport boundaries.
          */
         fun create(
             request: NativeRelationRequest,
@@ -134,9 +116,7 @@ data class NativeRelationBatch private constructor(
                 return Refinement.Rejected(NativeRelationBatchFailure.NON_DETERMINISTIC_ORDER)
             }
             if (facts.sumOf { it.projectedUtf8Size().value } != encodedBytes.value) {
-                return Refinement.Rejected(
-                    NativeRelationBatchFailure.ENCODED_BYTE_COUNT_MISMATCH,
-                )
+                return Refinement.Rejected(NativeRelationBatchFailure.ENCODED_BYTE_COUNT_MISMATCH)
             }
             return Refinement.Refined(
                 NativeRelationBatch(
@@ -145,7 +125,7 @@ data class NativeRelationBatch private constructor(
                     encodedBytes,
                     examinedWorkUnits,
                     timings,
-                ),
+                )
             )
         }
     }
@@ -164,59 +144,46 @@ enum class NativeRelationLimitation {
 }
 
 enum class NativeRelationLimitationsFailure {
-    EMPTY,
+    EMPTY
 }
 
-class NativeRelationLimitations private constructor(
-    val values: Set<NativeRelationLimitation>,
-) {
+class NativeRelationLimitations private constructor(val values: Set<NativeRelationLimitation>) {
     companion object {
         /**
-         * Proof transition:
-         * Set<NativeRelationLimitation> to
-         * Refinement<NativeRelationLimitations, NativeRelationLimitationsFailure>.
+         * Proof transition: Set<NativeRelationLimitation> to Refinement<NativeRelationLimitations,
+         * NativeRelationLimitationsFailure>.
          *
-         * Establishes a non-empty canonical closed limitation set.
-         * [NativeRelationLimitationsFailure] is the closed expected failure. Raw sets may be
-         * extracted only at native provider and transport boundaries.
+         * Establishes a non-empty canonical closed limitation set. [NativeRelationLimitationsFailure] is the closed
+         * expected failure. Raw sets may be extracted only at native provider and transport boundaries.
          */
         fun from(
-            raw: Set<NativeRelationLimitation>,
+            raw: Set<NativeRelationLimitation>
         ): Refinement<NativeRelationLimitations, NativeRelationLimitationsFailure> =
             if (raw.isEmpty()) {
                 Refinement.Rejected(NativeRelationLimitationsFailure.EMPTY)
             } else {
-                Refinement.Refined(
-                    NativeRelationLimitations(
-                        raw.toSortedSet(compareBy { it.ordinal }).toSet(),
-                    ),
-                )
+                Refinement.Refined(NativeRelationLimitations(raw.toSortedSet(compareBy { it.ordinal }).toSet()))
             }
     }
 
-    override fun equals(other: Any?): Boolean =
-        other is NativeRelationLimitations && values == other.values
+    override fun equals(other: Any?): Boolean = other is NativeRelationLimitations && values == other.values
 
     override fun hashCode(): Int = values.hashCode()
 }
 
-@JvmInline
-value class NativeRelationExactCount internal constructor(
-    val value: Int,
-)
+@JvmInline value class NativeRelationExactCount internal constructor(val value: Int)
 
-@JvmInline
-value class NativeRelationKnownMinimumCount internal constructor(
-    val value: Int,
-)
+@JvmInline value class NativeRelationKnownMinimumCount internal constructor(val value: Int)
 
 sealed interface NativeRelationOutcome {
-    class Complete internal constructor(
+    class Complete
+    internal constructor(
         val batch: NativeRelationBatch,
         val exactCount: NativeRelationExactCount,
     ) : NativeRelationOutcome
 
-    class Qualified internal constructor(
+    class Qualified
+    internal constructor(
         val batch: NativeRelationBatch,
         val knownMinimumCount: NativeRelationKnownMinimumCount,
         val limitations: NativeRelationLimitations,
@@ -224,24 +191,20 @@ sealed interface NativeRelationOutcome {
 
     companion object {
         /**
-         * Proof transition:
-         * terminal NativeRelationBatch to NativeRelationOutcome.Complete.
+         * Proof transition: terminal NativeRelationBatch to NativeRelationOutcome.Complete.
          *
-         * Establishes exact cardinality equal to the terminal batch size. Only a native provider
-         * that proved terminal enumeration may call this transition.
+         * Establishes exact cardinality equal to the terminal batch size. Only a native provider that proved terminal
+         * enumeration may call this transition.
          */
-        fun complete(
-            batch: NativeRelationBatch,
-        ): Complete = Complete(batch, NativeRelationExactCount(batch.facts.size))
+        fun complete(batch: NativeRelationBatch): Complete = Complete(batch, NativeRelationExactCount(batch.facts.size))
 
         /**
-         * Proof transition:
-         * NativeRelationBatch + non-empty limitations to
-         * Refinement<NativeRelationOutcome.Qualified, NativeRelationLimitationsFailure>.
+         * Proof transition: NativeRelationBatch + non-empty limitations to Refinement<NativeRelationOutcome.Qualified,
+         * NativeRelationLimitationsFailure>.
          *
-         * Establishes known-minimum cardinality equal to the retained batch size without claiming
-         * absence beyond incomplete coverage. [NativeRelationLimitationsFailure] is the closed
-         * expected failure. Only bounded native query and transport boundaries may inspect counts.
+         * Establishes known-minimum cardinality equal to the retained batch size without claiming absence beyond
+         * incomplete coverage. [NativeRelationLimitationsFailure] is the closed expected failure. Only bounded native
+         * query and transport boundaries may inspect counts.
          */
         fun qualified(
             batch: NativeRelationBatch,
@@ -254,7 +217,7 @@ sealed interface NativeRelationOutcome {
                             batch,
                             NativeRelationKnownMinimumCount(batch.facts.size),
                             refined.value,
-                        ),
+                        )
                     )
                 is Refinement.Rejected -> refined
             }

@@ -14,16 +14,16 @@ import kotlinx.serialization.json.JsonPrimitive
 
 /** Build entry point for the generated public callable reference. */
 internal object MintlifyCallableReference {
-    val document: CliJsonDocument get() {
-        val commandSurface = when (
-            val construction = CliCommandGraphFactory.create(canonicalCliRequestPreparers())
-        ) {
-            is CliCommandGraphConstruction.Created -> construction.factory.surface
-            is CliCommandGraphConstruction.Rejected ->
-                error("Canonical CLI command graph rejected: ${construction.failures}")
+    val document: CliJsonDocument
+        get() {
+            val commandSurface =
+                when (val construction = CliCommandGraphFactory.create(canonicalCliRequestPreparers())) {
+                    is CliCommandGraphConstruction.Created -> construction.factory.surface
+                    is CliCommandGraphConstruction.Rejected ->
+                        error("Canonical CLI command graph rejected: ${construction.failures}")
+                }
+            return mintlifyCallableReference(commandSurface)
         }
-        return mintlifyCallableReference(commandSurface)
-    }
 
     @JvmStatic
     fun main(arguments: Array<String>) {
@@ -35,37 +35,39 @@ internal object MintlifyCallableReference {
 /**
  * Proof transition: `CliCommandSurface -> CliJsonDocument`.
  *
- * Projects the installed public callable bindings into a documentation-only OpenAPI document.
- * The synthetic paths identify callable pages; they do not describe an HTTP transport, so this
- * document deliberately has no `servers` declaration and disables Mintlify's playground.
+ * Projects the installed public callable bindings into a documentation-only OpenAPI document. The synthetic paths
+ * identify callable pages; they do not describe an HTTP transport, so this document deliberately has no `servers`
+ * declaration and disables Mintlify's playground.
  */
-internal fun mintlifyCallableReference(
-    commandSurface: CliCommandSurface,
-): CliJsonDocument {
+internal fun mintlifyCallableReference(commandSurface: CliCommandSurface): CliJsonDocument {
     val bindings = installedServerBindings(commandSurface)
-    val components = bindings.flatMap { binding ->
-        listOf(
-            binding.requestComponentName().value to
-                binding.tool.inputSchema.rebaseLocalDefinitions(binding.requestComponentName()),
-            binding.responseComponentName().value to
-                binding.tool.outputSchema.rebaseLocalDefinitions(binding.responseComponentName()),
-        )
-    }.toMap(linkedMapOf())
+    val components =
+        bindings
+            .flatMap { binding ->
+                listOf(
+                    binding.requestComponentName().value to
+                        binding.tool.inputSchema.rebaseLocalDefinitions(binding.requestComponentName()),
+                    binding.responseComponentName().value to
+                        binding.tool.outputSchema.rebaseLocalDefinitions(binding.responseComponentName()),
+                )
+            }
+            .toMap(linkedMapOf())
     return mintlifyCallableReferenceFactory.create(
         MintlifyCallableReferenceDocument(
             openapi = "3.1.0",
-            info = MintlifyCallableInfoDocument(
-                title = "Kast callable reference",
-                version = "1",
-                description = "Public compiler-grounded Kast callables invoked through the Kast CLI.",
-            ),
-            paths = bindings.associateTo(linkedMapOf()) { binding ->
-                "/callables/${binding.tool.name}" to MintlifyCallablePathDocument(
-                    post = binding.operationDocument(),
-                )
-            },
+            info =
+                MintlifyCallableInfoDocument(
+                    title = "Kast callable reference",
+                    version = "1",
+                    description = "Public compiler-grounded Kast callables invoked through the Kast CLI.",
+                ),
+            paths =
+                bindings.associateTo(linkedMapOf()) { binding ->
+                    "/callables/${binding.tool.name}" to
+                        MintlifyCallablePathDocument(post = binding.operationDocument())
+                },
             components = MintlifyCallableComponentsDocument(components),
-        ),
+        )
     )
 }
 
@@ -73,46 +75,55 @@ private fun InstalledServerBinding.operationDocument(): MintlifyCallableOperatio
     MintlifyCallableOperationDocument(
         operationId = tool.operationId,
         summary = tool.name.replace('_', ' '),
-        description = "${tool.description}\n\nThis callable is not an HTTP endpoint. " +
-            "Invoke it with the Kast CLI command shown in the example.",
-        requestBody = MintlifyCallableRequestBodyDocument(
-            required = true,
-            content = mapOf(
-                "application/json" to MintlifyCallableMediaTypeDocument(
-                    schema = MintlifyCallableSchemaReference.component(requestComponentName()),
-                ),
-            ),
-        ),
-        responses = mapOf(
-            "200" to MintlifyCallableResponseDocument(
-                description = "Canonical Kast process outcome.",
-                content = mapOf(
-                    "application/json" to MintlifyCallableMediaTypeDocument(
-                        schema = MintlifyCallableSchemaReference.component(responseComponentName()),
+        description =
+            "${tool.description}\n\nThis callable is not an HTTP endpoint. " +
+                "Invoke it with the Kast CLI command shown in the example.",
+        requestBody =
+            MintlifyCallableRequestBodyDocument(
+                required = true,
+                content =
+                    mapOf(
+                        "application/json" to
+                            MintlifyCallableMediaTypeDocument(
+                                schema = MintlifyCallableSchemaReference.component(requestComponentName())
+                            )
                     ),
-                ),
             ),
-        ),
-        mint = MintlifyCallableMintDocument(
-            metadata = MintlifyCallablePageMetadataDocument(
-                playground = MintlifyCallablePlayground.NONE,
+        responses =
+            mapOf(
+                "200" to
+                    MintlifyCallableResponseDocument(
+                        description = "Canonical Kast process outcome.",
+                        content =
+                            mapOf(
+                                "application/json" to
+                                    MintlifyCallableMediaTypeDocument(
+                                        schema = MintlifyCallableSchemaReference.component(responseComponentName())
+                                    )
+                            ),
+                    )
             ),
-        ),
-        kast = MintlifyCallableKastMetadataDocument(
-            operation = operation.id.value,
-            effect = tool.effect,
-            approvalPolicy = tool.approvalPolicy,
-            deferLoading = tool.deferLoading,
-            executionBudget = tool.executionBudget,
-            cliUsage = invocation.cliUsage,
-        ),
-        codeSamples = listOf(
-            MintlifyCallableCodeSampleDocument(
-                lang = "bash",
-                label = "Invoke with Kast",
-                source = "kast ${invocation.invocation.command.joinToString(" ")} < request.json",
+        mint =
+            MintlifyCallableMintDocument(
+                metadata = MintlifyCallablePageMetadataDocument(playground = MintlifyCallablePlayground.NONE)
             ),
-        ),
+        kast =
+            MintlifyCallableKastMetadataDocument(
+                operation = operation.id.value,
+                effect = tool.effect,
+                approvalPolicy = tool.approvalPolicy,
+                deferLoading = tool.deferLoading,
+                executionBudget = tool.executionBudget,
+                cliUsage = invocation.cliUsage,
+            ),
+        codeSamples =
+            listOf(
+                MintlifyCallableCodeSampleDocument(
+                    lang = "bash",
+                    label = "Invoke with Kast",
+                    source = "kast ${invocation.invocation.command.joinToString(" ")} < request.json",
+                )
+            ),
     )
 
 private fun InstalledServerBinding.requestComponentName(): MintlifyCallableComponentName =
@@ -122,26 +133,26 @@ private fun InstalledServerBinding.responseComponentName(): MintlifyCallableComp
     MintlifyCallableComponentName.response(operation)
 
 /** Rebinds one schema resource's document-local definitions after OpenAPI component embedding. */
-private fun JsonElement.rebaseLocalDefinitions(
-    componentName: MintlifyCallableComponentName,
-): JsonElement = when (this) {
-    is JsonArray -> JsonArray(map { element -> element.rebaseLocalDefinitions(componentName) })
-    is JsonObject -> JsonObject(mapValues { (name, value) ->
-        if (
-            name == "\$ref" &&
-            value is JsonPrimitive &&
-            value.isString &&
-            value.content.startsWith("#/\$defs/")
-        ) {
-            JsonPrimitive(
-                "#/components/schemas/${componentName.value}/${value.content.removePrefix("#/")}",
+private fun JsonElement.rebaseLocalDefinitions(componentName: MintlifyCallableComponentName): JsonElement =
+    when (this) {
+        is JsonArray -> JsonArray(map { element -> element.rebaseLocalDefinitions(componentName) })
+        is JsonObject ->
+            JsonObject(
+                mapValues { (name, value) ->
+                    if (
+                        name == "\$ref" &&
+                            value is JsonPrimitive &&
+                            value.isString &&
+                            value.content.startsWith("#/\$defs/")
+                    ) {
+                        JsonPrimitive("#/components/schemas/${componentName.value}/${value.content.removePrefix("#/")}")
+                    } else {
+                        value.rebaseLocalDefinitions(componentName)
+                    }
+                }
             )
-        } else {
-            value.rebaseLocalDefinitions(componentName)
-        }
-    })
-    else -> this
-}
+        else -> this
+    }
 
 /** One OpenAPI component identity derived only from a canonical operation and schema role. */
 @JvmInline
@@ -170,10 +181,7 @@ private data class MintlifyCallableInfoDocument(
     val description: String,
 )
 
-@Serializable
-private data class MintlifyCallablePathDocument(
-    val post: MintlifyCallableOperationDocument,
-)
+@Serializable private data class MintlifyCallablePathDocument(val post: MintlifyCallableOperationDocument)
 
 @Serializable
 private data class MintlifyCallableOperationDocument(
@@ -199,43 +207,25 @@ private data class MintlifyCallableResponseDocument(
     val content: Map<String, MintlifyCallableMediaTypeDocument>,
 )
 
-@Serializable
-private data class MintlifyCallableMediaTypeDocument(
-    val schema: MintlifyCallableSchemaReference,
-)
+@Serializable private data class MintlifyCallableMediaTypeDocument(val schema: MintlifyCallableSchemaReference)
 
 @Serializable
-private data class MintlifyCallableSchemaReference private constructor(
-    @SerialName("\$ref") val reference: String,
-) {
+private data class MintlifyCallableSchemaReference private constructor(@SerialName("\$ref") val reference: String) {
     companion object {
-        fun component(
-            componentName: MintlifyCallableComponentName,
-        ): MintlifyCallableSchemaReference = MintlifyCallableSchemaReference(
-            "#/components/schemas/${componentName.value}",
-        )
+        fun component(componentName: MintlifyCallableComponentName): MintlifyCallableSchemaReference =
+            MintlifyCallableSchemaReference("#/components/schemas/${componentName.value}")
     }
 }
 
-@Serializable
-private data class MintlifyCallableComponentsDocument(
-    val schemas: Map<String, JsonElement>,
-)
+@Serializable private data class MintlifyCallableComponentsDocument(val schemas: Map<String, JsonElement>)
 
-@Serializable
-private data class MintlifyCallableMintDocument(
-    val metadata: MintlifyCallablePageMetadataDocument,
-)
+@Serializable private data class MintlifyCallableMintDocument(val metadata: MintlifyCallablePageMetadataDocument)
 
-@Serializable
-private data class MintlifyCallablePageMetadataDocument(
-    val playground: MintlifyCallablePlayground,
-)
+@Serializable private data class MintlifyCallablePageMetadataDocument(val playground: MintlifyCallablePlayground)
 
 @Serializable
 private enum class MintlifyCallablePlayground {
-    @SerialName("none")
-    NONE,
+    @SerialName("none") NONE
 }
 
 @Serializable
@@ -255,5 +245,4 @@ private data class MintlifyCallableCodeSampleDocument(
     val source: String,
 )
 
-private val mintlifyCallableReferenceFactory =
-    CliJsonDocument.generated(MintlifyCallableReferenceDocument.serializer())
+private val mintlifyCallableReferenceFactory = CliJsonDocument.generated(MintlifyCallableReferenceDocument.serializer())

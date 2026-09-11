@@ -3,6 +3,7 @@ package io.github.amichne.kast.runtime.composition.protocol
 import io.github.amichne.kast.change.apply.AddDeclarationApplyFailure
 import io.github.amichne.kast.change.apply.AddDeclarationApplyResult
 import io.github.amichne.kast.change.apply.AppliedUnverified
+import io.github.amichne.kast.change.apply.ChangeApplyRequest as DomainChangeApplyRequest
 import io.github.amichne.kast.change.apply.MutationAdmissionFailure
 import io.github.amichne.kast.change.apply.RequestedMutationWriteScope
 import io.github.amichne.kast.change.apply.SourceObservationFailure
@@ -10,17 +11,17 @@ import io.github.amichne.kast.change.apply.SourceWriteFailure
 import io.github.amichne.kast.change.recovery.AddDeclarationRecoveryOutcome
 import io.github.amichne.kast.change.verify.AddDeclarationProofFailure
 import io.github.amichne.kast.change.verify.AddFileProofFailure
+import io.github.amichne.kast.change.verify.ChangeApplicationIssuance
+import io.github.amichne.kast.change.verify.ChangePlanIdentity
+import io.github.amichne.kast.change.verify.ChangePlanLookup
 import io.github.amichne.kast.change.verify.ChangeProofFailure
+import io.github.amichne.kast.change.verify.ChangeReceiptIssuance
+import io.github.amichne.kast.change.verify.DurableChangeAuthority
 import io.github.amichne.kast.change.verify.RenameSymbolProofFailure
 import io.github.amichne.kast.change.verify.ReplaceDeclarationProofFailure
 import io.github.amichne.kast.change.verify.VerifiedMutationBeforePublicationFailure
 import io.github.amichne.kast.change.verify.VerifiedMutationRequest
 import io.github.amichne.kast.change.verify.VerifiedMutationResult
-import io.github.amichne.kast.change.verify.ChangeApplicationIssuance
-import io.github.amichne.kast.change.verify.ChangePlanIdentity
-import io.github.amichne.kast.change.verify.ChangePlanLookup
-import io.github.amichne.kast.change.verify.ChangeReceiptIssuance
-import io.github.amichne.kast.change.verify.DurableChangeAuthority
 import io.github.amichne.kast.evidence.contract.MutationPlanBinding
 import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.OperationOutcome
@@ -40,52 +41,52 @@ import io.github.amichne.kast.runtime.composition.VerifiedChangeApplyOperations
 import io.github.amichne.kast.runtime.server.OperationHandler
 import io.github.amichne.kast.workspace.contract.WorkspaceInspectionOperations
 import io.github.amichne.kast.workspace.contract.WorkspaceRuntimeState
-import io.github.amichne.kast.change.apply.ChangeApplyRequest as DomainChangeApplyRequest
 
 internal class CanonicalChangeApplyHandler(
     private val workspace: WorkspaceInspectionOperations,
     private val operations: VerifiedChangeApplyOperations,
     private val authority: DurableChangeAuthority,
-) : OperationHandler<
-    ChangeApplyRequest,
-    ChangeApplyResult,
-    ChangeApplyQualification,
-    ChangeApplyRejection,
-    > {
-    override suspend fun execute(request: ChangeApplyRequest): OperationOutcome<
+) :
+    OperationHandler<
+        ChangeApplyRequest,
         ChangeApplyResult,
         ChangeApplyQualification,
         ChangeApplyRejection,
-        > = operations.exclusively { executeExclusively(request) }
+    > {
+    override suspend fun execute(
+        request: ChangeApplyRequest
+    ): OperationOutcome<
+        ChangeApplyResult,
+        ChangeApplyQualification,
+        ChangeApplyRejection,
+    > = operations.exclusively { executeExclusively(request) }
 
     private fun executeExclusively(
-        request: ChangeApplyRequest,
+        request: ChangeApplyRequest
     ): OperationOutcome<ChangeApplyResult, ChangeApplyQualification, ChangeApplyRejection> {
-        val identity = ChangePlanIdentity.parse(request.planIdentity.value)
-            ?: return OperationOutcome.Rejected(ChangeApplyRejection.PLAN_NOT_FOUND)
-        val plan = when (val lookup = authority.loadPlan(identity)) {
-            is ChangePlanLookup.Found -> lookup.plan
-            ChangePlanLookup.Missing ->
-                return OperationOutcome.Rejected(ChangeApplyRejection.PLAN_NOT_FOUND)
-            is ChangePlanLookup.Rejected ->
-                return OperationOutcome.Rejected(ChangeApplyRejection.RECOVERY_REQUIRED)
-        }
-        val ready = when (val state = workspace.inspect()) {
-            is WorkspaceRuntimeState.Ready -> state.workspace
-            else -> return OperationOutcome.Rejected(ChangeApplyRejection.GENERATION_STALE)
-        }
-        val writeScope = RequestedMutationWriteScope(
-            ready.root,
-            plan.writes.entries.mapTo(linkedSetOf()) { it.source },
-        )
-        return when (val result = operations.apply.apply(
-            DomainChangeApplyRequest(plan, ready, writeScope),
-        )) {
+        val identity =
+            ChangePlanIdentity.parse(request.planIdentity.value)
+                ?: return OperationOutcome.Rejected(ChangeApplyRejection.PLAN_NOT_FOUND)
+        val plan =
+            when (val lookup = authority.loadPlan(identity)) {
+                is ChangePlanLookup.Found -> lookup.plan
+                ChangePlanLookup.Missing -> return OperationOutcome.Rejected(ChangeApplyRejection.PLAN_NOT_FOUND)
+                is ChangePlanLookup.Rejected -> return OperationOutcome.Rejected(ChangeApplyRejection.RECOVERY_REQUIRED)
+            }
+        val ready =
+            when (val state = workspace.inspect()) {
+                is WorkspaceRuntimeState.Ready -> state.workspace
+                else -> return OperationOutcome.Rejected(ChangeApplyRejection.GENERATION_STALE)
+            }
+        val writeScope =
+            RequestedMutationWriteScope(
+                ready.root,
+                plan.writes.entries.mapTo(linkedSetOf()) { it.source },
+            )
+        return when (val result = operations.apply.apply(DomainChangeApplyRequest(plan, ready, writeScope))) {
             is AppliedUnverified -> verify(result, plan)
-            is AddDeclarationApplyResult.Rejected ->
-                OperationOutcome.Rejected(result.failure.protocolRejection())
-            is AddDeclarationApplyResult.RolledBack ->
-                OperationOutcome.Rejected(ChangeApplyRejection.ROLLED_BACK)
+            is AddDeclarationApplyResult.Rejected -> OperationOutcome.Rejected(result.failure.protocolRejection())
+            is AddDeclarationApplyResult.RolledBack -> OperationOutcome.Rejected(ChangeApplyRejection.ROLLED_BACK)
             is AddDeclarationApplyResult.RecoveryRequired ->
                 OperationOutcome.Rejected(ChangeApplyRejection.RECOVERY_REQUIRED)
         }
@@ -96,28 +97,25 @@ internal class CanonicalChangeApplyHandler(
         plan: io.github.amichne.kast.change.contract.ChangePlan,
     ): OperationOutcome<ChangeApplyResult, ChangeApplyQualification, ChangeApplyRejection> =
         when (val issued = authority.issueApplication(plan, result)) {
-            is ChangeApplicationIssuance.Issued -> when (
-                val verification = operations.verify.verify(VerifiedMutationRequest(plan, result))
-            ) {
-                is VerifiedMutationResult.Verified -> complete(verification, plan)
-                is VerifiedMutationResult.RejectedBeforePublication -> OperationOutcome.Rejected(
-                    when (verification.failure) {
-                        is VerifiedMutationBeforePublicationFailure.Admission ->
-                            ChangeApplyRejection.OBLIGATION_FAILED
-                        is VerifiedMutationBeforePublicationFailure.Publication ->
-                            ChangeApplyRejection.RESULTING_GENERATION_UNAVAILABLE
-                    },
-                )
-                is VerifiedMutationResult.RejectedAfterPublication,
-                is VerifiedMutationResult.RejectedAfterResultingWorkspace,
-                    -> OperationOutcome.Rejected(
-                        ChangeApplyRejection.RESULTING_GENERATION_UNAVAILABLE,
-                    )
-                is VerifiedMutationResult.RejectedAfterObservation ->
-                    OperationOutcome.Rejected(verification.failures.protocolRejection())
-            }
-            is ChangeApplicationIssuance.Rejected ->
-                OperationOutcome.Rejected(ChangeApplyRejection.RECOVERY_REQUIRED)
+            is ChangeApplicationIssuance.Issued ->
+                when (val verification = operations.verify.verify(VerifiedMutationRequest(plan, result))) {
+                    is VerifiedMutationResult.Verified -> complete(verification, plan)
+                    is VerifiedMutationResult.RejectedBeforePublication ->
+                        OperationOutcome.Rejected(
+                            when (verification.failure) {
+                                is VerifiedMutationBeforePublicationFailure.Admission ->
+                                    ChangeApplyRejection.OBLIGATION_FAILED
+                                is VerifiedMutationBeforePublicationFailure.Publication ->
+                                    ChangeApplyRejection.RESULTING_GENERATION_UNAVAILABLE
+                            }
+                        )
+                    is VerifiedMutationResult.RejectedAfterPublication,
+                    is VerifiedMutationResult.RejectedAfterResultingWorkspace ->
+                        OperationOutcome.Rejected(ChangeApplyRejection.RESULTING_GENERATION_UNAVAILABLE)
+                    is VerifiedMutationResult.RejectedAfterObservation ->
+                        OperationOutcome.Rejected(verification.failures.protocolRejection())
+                }
+            is ChangeApplicationIssuance.Rejected -> OperationOutcome.Rejected(ChangeApplyRejection.RECOVERY_REQUIRED)
         }
 
     private fun complete(
@@ -125,59 +123,65 @@ internal class CanonicalChangeApplyHandler(
         plan: io.github.amichne.kast.change.contract.ChangePlan,
     ): OperationOutcome<ChangeApplyResult, ChangeApplyQualification, ChangeApplyRejection> =
         when (val issued = authority.issueReceipt(result.receipt)) {
-            is ChangeReceiptIssuance.Issued -> OperationOutcome.Complete(
-                EvidenceEnvelope(
-                    CanonicalOperation.CHANGE_APPLY.id,
-                    result.receipt.resultingWorkspace.generation,
-                    ChangeApplyResult(issued.identity.protocolText(), plan.protocolPreview()),
-                ),
-            )
-            is ChangeReceiptIssuance.Rejected ->
-                OperationOutcome.Rejected(ChangeApplyRejection.OBLIGATION_FAILED)
+            is ChangeReceiptIssuance.Issued ->
+                OperationOutcome.Complete(
+                    EvidenceEnvelope(
+                        CanonicalOperation.CHANGE_APPLY.id,
+                        result.receipt.resultingWorkspace.generation,
+                        ChangeApplyResult(issued.identity.protocolText(), plan.protocolPreview()),
+                    )
+                )
+            is ChangeReceiptIssuance.Rejected -> OperationOutcome.Rejected(ChangeApplyRejection.OBLIGATION_FAILED)
         }
 }
 
 internal class CanonicalChangeRecoverHandler(
     private val operations: ChangeRecoveryOperations,
     private val authority: DurableChangeAuthority,
-) : OperationHandler<
-    ChangeRecoverRequest,
-    ChangeRecoverResult,
-    ChangeRecoverQualification,
-    ChangeRecoverRejection,
-    > {
-    override suspend fun execute(request: ChangeRecoverRequest): OperationOutcome<
+) :
+    OperationHandler<
+        ChangeRecoverRequest,
         ChangeRecoverResult,
         ChangeRecoverQualification,
         ChangeRecoverRejection,
-        > {
-        val identity = ChangePlanIdentity.parse(request.planIdentity.value)
-            ?: return OperationOutcome.Rejected(ChangeRecoverRejection.PLAN_NOT_FOUND)
-        val plan = when (val lookup = authority.loadPlan(identity)) {
-            is ChangePlanLookup.Found -> lookup.plan
-            ChangePlanLookup.Missing ->
-                return OperationOutcome.Rejected(ChangeRecoverRejection.PLAN_NOT_FOUND)
-            is ChangePlanLookup.Rejected ->
-                return OperationOutcome.Rejected(ChangeRecoverRejection.RECOVERY_FAILED)
-        }
-        val binding = when (val parsed = MutationPlanBinding.parse(plan.planId.value)) {
-            is Refinement.Refined -> parsed.value
-            is Refinement.Rejected ->
-                return OperationOutcome.Rejected(ChangeRecoverRejection.RECOVERY_FAILED)
-        }
+    > {
+    override suspend fun execute(
+        request: ChangeRecoverRequest
+    ): OperationOutcome<
+        ChangeRecoverResult,
+        ChangeRecoverQualification,
+        ChangeRecoverRejection,
+    > {
+        val identity =
+            ChangePlanIdentity.parse(request.planIdentity.value)
+                ?: return OperationOutcome.Rejected(ChangeRecoverRejection.PLAN_NOT_FOUND)
+        val plan =
+            when (val lookup = authority.loadPlan(identity)) {
+                is ChangePlanLookup.Found -> lookup.plan
+                ChangePlanLookup.Missing -> return OperationOutcome.Rejected(ChangeRecoverRejection.PLAN_NOT_FOUND)
+                is ChangePlanLookup.Rejected -> return OperationOutcome.Rejected(ChangeRecoverRejection.RECOVERY_FAILED)
+            }
+        val binding =
+            when (val parsed = MutationPlanBinding.parse(plan.planId.value)) {
+                is Refinement.Refined -> parsed.value
+                is Refinement.Rejected -> return OperationOutcome.Rejected(ChangeRecoverRejection.RECOVERY_FAILED)
+            }
         return when (operations.recover(binding)) {
-            is AddDeclarationRecoveryOutcome.PriorState -> complete(
-                plan,
-                ChangeRecoveryDocumentState.PRIOR_STATE,
-            )
-            is AddDeclarationRecoveryOutcome.RolledBack -> complete(
-                plan,
-                ChangeRecoveryDocumentState.ROLLED_BACK,
-            )
-            is AddDeclarationRecoveryOutcome.RecoveryRequired -> OperationOutcome.Qualified(
-                envelope(plan, ChangeRecoveryDocumentState.RECOVERY_REQUIRED),
-                ChangeRecoverQualification.MANUAL_RECOVERY_REQUIRED,
-            )
+            is AddDeclarationRecoveryOutcome.PriorState ->
+                complete(
+                    plan,
+                    ChangeRecoveryDocumentState.PRIOR_STATE,
+                )
+            is AddDeclarationRecoveryOutcome.RolledBack ->
+                complete(
+                    plan,
+                    ChangeRecoveryDocumentState.ROLLED_BACK,
+                )
+            is AddDeclarationRecoveryOutcome.RecoveryRequired ->
+                OperationOutcome.Qualified(
+                    envelope(plan, ChangeRecoveryDocumentState.RECOVERY_REQUIRED),
+                    ChangeRecoverQualification.MANUAL_RECOVERY_REQUIRED,
+                )
         }
     }
 
@@ -190,88 +194,87 @@ internal class CanonicalChangeRecoverHandler(
     private fun envelope(
         plan: io.github.amichne.kast.change.contract.ChangePlan,
         state: ChangeRecoveryDocumentState,
-    ): EvidenceEnvelope<ChangeRecoverResult> = EvidenceEnvelope(
-        CanonicalOperation.CHANGE_RECOVER.id,
-        plan.priorLease.generation,
-        ChangeRecoverResult(state),
-    )
+    ): EvidenceEnvelope<ChangeRecoverResult> =
+        EvidenceEnvelope(
+            CanonicalOperation.CHANGE_RECOVER.id,
+            plan.priorLease.generation,
+            ChangeRecoverResult(state),
+        )
 }
 
 private fun io.github.amichne.kast.change.verify.ChangeReceiptIdentity.protocolText():
     io.github.amichne.kast.protocol.contract.ProtocolText = protocolText(value)
 
-private fun protocolText(value: String): io.github.amichne.kast.protocol.contract.ProtocolText = when (
-    val parsed = io.github.amichne.kast.protocol.contract.ProtocolText.parse(value)
-) {
-    is Refinement.Refined -> parsed.value
-    is Refinement.Rejected -> error("canonical durable change identity is protocol text")
-}
-
-private fun AddDeclarationApplyFailure.protocolRejection(): ChangeApplyRejection = when (this) {
-    is AddDeclarationApplyFailure.Observation -> when (failure) {
-        SourceObservationFailure.DUMB_MODE -> ChangeApplyRejection.GENERATION_STALE
-        SourceObservationFailure.TARGET_NOT_FOUND,
-        SourceObservationFailure.TARGET_INVALIDATED,
-        SourceObservationFailure.SOURCE_BYTES_UNAVAILABLE,
-        SourceObservationFailure.INVALID_SOURCE_CONTENT,
-            -> ChangeApplyRejection.CONTENT_CHANGED
-        SourceObservationFailure.TARGET_NOT_KOTLIN,
-        SourceObservationFailure.DOCUMENT_UNAVAILABLE,
-            -> ChangeApplyRejection.WRITE_SCOPE_REJECTED
+private fun protocolText(value: String): io.github.amichne.kast.protocol.contract.ProtocolText =
+    when (val parsed = io.github.amichne.kast.protocol.contract.ProtocolText.parse(value)) {
+        is Refinement.Refined -> parsed.value
+        is Refinement.Rejected -> error("canonical durable change identity is protocol text")
     }
-    is AddDeclarationApplyFailure.Admission -> when (failure) {
-        MutationAdmissionFailure.WRONG_ROOT -> ChangeApplyRejection.ROOT_MISMATCH
-        MutationAdmissionFailure.STALE_GENERATION,
-        MutationAdmissionFailure.STALE_SOURCE_STATE,
-            -> ChangeApplyRejection.GENERATION_STALE
-        MutationAdmissionFailure.SOURCE_CONTENT_CHANGED,
-        MutationAdmissionFailure.MUTATION_PREIMAGE_MISMATCH,
-        MutationAdmissionFailure.SOURCE_PRECONDITION_MISMATCH,
-            -> ChangeApplyRejection.CONTENT_CHANGED
-        else -> ChangeApplyRejection.WRITE_SCOPE_REJECTED
+
+private fun AddDeclarationApplyFailure.protocolRejection(): ChangeApplyRejection =
+    when (this) {
+        is AddDeclarationApplyFailure.Observation ->
+            when (failure) {
+                SourceObservationFailure.DUMB_MODE -> ChangeApplyRejection.GENERATION_STALE
+                SourceObservationFailure.TARGET_NOT_FOUND,
+                SourceObservationFailure.TARGET_INVALIDATED,
+                SourceObservationFailure.SOURCE_BYTES_UNAVAILABLE,
+                SourceObservationFailure.INVALID_SOURCE_CONTENT -> ChangeApplyRejection.CONTENT_CHANGED
+                SourceObservationFailure.TARGET_NOT_KOTLIN,
+                SourceObservationFailure.DOCUMENT_UNAVAILABLE -> ChangeApplyRejection.WRITE_SCOPE_REJECTED
+            }
+        is AddDeclarationApplyFailure.Admission ->
+            when (failure) {
+                MutationAdmissionFailure.WRONG_ROOT -> ChangeApplyRejection.ROOT_MISMATCH
+                MutationAdmissionFailure.STALE_GENERATION,
+                MutationAdmissionFailure.STALE_SOURCE_STATE -> ChangeApplyRejection.GENERATION_STALE
+                MutationAdmissionFailure.SOURCE_CONTENT_CHANGED,
+                MutationAdmissionFailure.MUTATION_PREIMAGE_MISMATCH,
+                MutationAdmissionFailure.SOURCE_PRECONDITION_MISMATCH -> ChangeApplyRejection.CONTENT_CHANGED
+                else -> ChangeApplyRejection.WRITE_SCOPE_REJECTED
+            }
+        is AddDeclarationApplyFailure.RecoveryPreparation,
+        is AddDeclarationApplyFailure.RecoveryEvidence -> ChangeApplyRejection.RECOVERY_REQUIRED
+        is AddDeclarationApplyFailure.Write ->
+            when (failure) {
+                SourceWriteFailure.DUMB_MODE -> ChangeApplyRejection.GENERATION_STALE
+                SourceWriteFailure.PREIMAGE_CHANGED -> ChangeApplyRejection.CONTENT_CHANGED
+                SourceWriteFailure.DURABILITY_REJECTED,
+                SourceWriteFailure.ROLLBACK_FAILED,
+                SourceWriteFailure.SAVE_FAILED,
+                SourceWriteFailure.OBSERVATION_FAILED -> ChangeApplyRejection.RECOVERY_REQUIRED
+                else -> ChangeApplyRejection.WRITE_SCOPE_REJECTED
+            }
     }
-    is AddDeclarationApplyFailure.RecoveryPreparation,
-    is AddDeclarationApplyFailure.RecoveryEvidence,
-        -> ChangeApplyRejection.RECOVERY_REQUIRED
-    is AddDeclarationApplyFailure.Write -> when (failure) {
-        SourceWriteFailure.DUMB_MODE -> ChangeApplyRejection.GENERATION_STALE
-        SourceWriteFailure.PREIMAGE_CHANGED -> ChangeApplyRejection.CONTENT_CHANGED
-        SourceWriteFailure.DURABILITY_REJECTED,
-        SourceWriteFailure.ROLLBACK_FAILED,
-        SourceWriteFailure.SAVE_FAILED,
-        SourceWriteFailure.OBSERVATION_FAILED,
-            -> ChangeApplyRejection.RECOVERY_REQUIRED
-        else -> ChangeApplyRejection.WRITE_SCOPE_REJECTED
+
+private fun Set<ChangeProofFailure>.protocolRejection(): ChangeApplyRejection =
+    when {
+        any { it.isDiagnosticRegression() } -> ChangeApplyRejection.DIAGNOSTIC_REGRESSION
+        any { it.isSemanticDeltaRejection() } -> ChangeApplyRejection.SEMANTIC_DELTA_REJECTED
+        else -> ChangeApplyRejection.OBLIGATION_FAILED
     }
-}
 
-private fun Set<ChangeProofFailure>.protocolRejection(): ChangeApplyRejection = when {
-    any { it.isDiagnosticRegression() } -> ChangeApplyRejection.DIAGNOSTIC_REGRESSION
-    any { it.isSemanticDeltaRejection() } -> ChangeApplyRejection.SEMANTIC_DELTA_REJECTED
-    else -> ChangeApplyRejection.OBLIGATION_FAILED
-}
+private fun ChangeProofFailure.isDiagnosticRegression(): Boolean =
+    when (this) {
+        AddDeclarationProofFailure.COMPILER_DIAGNOSTICS_REJECTED,
+        AddFileProofFailure.COMPILER_DIAGNOSTICS_REJECTED,
+        RenameSymbolProofFailure.COMPILER_DIAGNOSTICS_REJECTED,
+        ReplaceDeclarationProofFailure.COMPILER_DIAGNOSTICS_REJECTED -> true
+        else -> false
+    }
 
-private fun ChangeProofFailure.isDiagnosticRegression(): Boolean = when (this) {
-    AddDeclarationProofFailure.COMPILER_DIAGNOSTICS_REJECTED,
-    AddFileProofFailure.COMPILER_DIAGNOSTICS_REJECTED,
-    RenameSymbolProofFailure.COMPILER_DIAGNOSTICS_REJECTED,
-    ReplaceDeclarationProofFailure.COMPILER_DIAGNOSTICS_REJECTED,
-        -> true
-    else -> false
-}
-
-private fun ChangeProofFailure.isSemanticDeltaRejection(): Boolean = when (this) {
-    AddDeclarationProofFailure.SEMANTIC_DELTA_REJECTED,
-    AddDeclarationProofFailure.RELATION_DELTA_REJECTED,
-    AddFileProofFailure.FILE_IDENTITY_MISMATCH,
-    RenameSymbolProofFailure.OLD_NAME_MISMATCH,
-    RenameSymbolProofFailure.NEW_NAME_MISMATCH,
-    RenameSymbolProofFailure.OLD_DECLARATION_REMAINS,
-    RenameSymbolProofFailure.NEW_DECLARATION_NOT_UNIQUE,
-    RenameSymbolProofFailure.OLD_REFERENCE_REMAINS,
-    RenameSymbolProofFailure.RENAMED_REFERENCE_COUNT_MISMATCH,
-    ReplaceDeclarationProofFailure.REPLACEMENT_DECLARATION_MISMATCH,
-    ReplaceDeclarationProofFailure.REPLACEMENT_RANGE_MISMATCH,
-        -> true
-    else -> false
-}
+private fun ChangeProofFailure.isSemanticDeltaRejection(): Boolean =
+    when (this) {
+        AddDeclarationProofFailure.SEMANTIC_DELTA_REJECTED,
+        AddDeclarationProofFailure.RELATION_DELTA_REJECTED,
+        AddFileProofFailure.FILE_IDENTITY_MISMATCH,
+        RenameSymbolProofFailure.OLD_NAME_MISMATCH,
+        RenameSymbolProofFailure.NEW_NAME_MISMATCH,
+        RenameSymbolProofFailure.OLD_DECLARATION_REMAINS,
+        RenameSymbolProofFailure.NEW_DECLARATION_NOT_UNIQUE,
+        RenameSymbolProofFailure.OLD_REFERENCE_REMAINS,
+        RenameSymbolProofFailure.RENAMED_REFERENCE_COUNT_MISMATCH,
+        ReplaceDeclarationProofFailure.REPLACEMENT_DECLARATION_MISMATCH,
+        ReplaceDeclarationProofFailure.REPLACEMENT_RANGE_MISMATCH -> true
+        else -> false
+    }

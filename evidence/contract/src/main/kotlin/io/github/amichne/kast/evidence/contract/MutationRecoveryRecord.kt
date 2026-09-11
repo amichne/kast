@@ -9,27 +9,19 @@ enum class MutationRecoveryStage {
     RECOVERY_REQUIRED,
 }
 
-@JvmInline
-value class MutationRecoveryStateVersion internal constructor(
-    val value: Int,
-)
+@JvmInline value class MutationRecoveryStateVersion internal constructor(val value: Int)
 
-@JvmInline
-value class MutationRecoveryRecordDigest internal constructor(
-    val value: String,
-)
+@JvmInline value class MutationRecoveryRecordDigest internal constructor(val value: String)
 
 enum class RecoveryRequirement {
-    ROLLBACK_REJECTED,
+    ROLLBACK_REJECTED
 }
 
 enum class MutationRecoveryRecordFailure {
-    APPLIED_WRITE_SET_MISMATCH,
+    APPLIED_WRITE_SET_MISMATCH
 }
 
-/**
- * Closed durable recovery states bound transitively to exact plan and pre-write evidence.
- */
+/** Closed durable recovery states bound transitively to exact plan and pre-write evidence. */
 sealed interface MutationRecoveryRecord {
     val preparation: MutationRecoveryPreparation
     val stage: MutationRecoveryStage
@@ -39,7 +31,8 @@ sealed interface MutationRecoveryRecord {
     val binding: MutationPlanBinding
         get() = preparation.binding
 
-    class PreWriteDurable internal constructor(
+    class PreWriteDurable
+    internal constructor(
         override val preparation: MutationRecoveryPreparation,
         override val digest: MutationRecoveryRecordDigest,
     ) : MutationRecoveryRecord {
@@ -47,7 +40,8 @@ sealed interface MutationRecoveryRecord {
         override val version: MutationRecoveryStateVersion = MutationRecoveryStateVersion(0)
     }
 
-    class AppliedWritesDurable internal constructor(
+    class AppliedWritesDurable
+    internal constructor(
         val priorDigest: MutationRecoveryRecordDigest,
         override val preparation: MutationRecoveryPreparation,
         val appliedWrites: AppliedRecoveryWriteSet,
@@ -62,7 +56,8 @@ sealed interface MutationRecoveryRecord {
         val appliedWrites: AppliedRecoveryWriteSet
     }
 
-    class RolledBack internal constructor(
+    class RolledBack
+    internal constructor(
         override val priorDigest: MutationRecoveryRecordDigest,
         override val preparation: MutationRecoveryPreparation,
         override val appliedWrites: AppliedRecoveryWriteSet,
@@ -72,7 +67,8 @@ sealed interface MutationRecoveryRecord {
         override val version: MutationRecoveryStateVersion = MutationRecoveryStateVersion(2)
     }
 
-    class RecoveryRequired internal constructor(
+    class RecoveryRequired
+    internal constructor(
         override val priorDigest: MutationRecoveryRecordDigest,
         override val preparation: MutationRecoveryPreparation,
         override val appliedWrites: AppliedRecoveryWriteSet,
@@ -87,9 +83,9 @@ sealed interface MutationRecoveryRecord {
         /**
          * Proof transition: `MutationRecoveryPreparation -> PreWriteDurable`.
          *
-         * Establishes version-zero state whose digest binds the exact plan and every byte-exact
-         * preimage. There is no expected failure because the input is already admitted. Raw state
-         * extraction is permitted only at the SQLite boundary.
+         * Establishes version-zero state whose digest binds the exact plan and every byte-exact preimage. There is no
+         * expected failure because the input is already admitted. Raw state extraction is permitted only at the SQLite
+         * boundary.
          */
         fun prepare(preparation: MutationRecoveryPreparation): PreWriteDurable =
             PreWriteDurable(
@@ -98,24 +94,23 @@ sealed interface MutationRecoveryRecord {
             )
 
         /**
-         * Proof transition: `(PreWriteDurable, AppliedRecoveryWriteSet) -> Refinement<
-         * AppliedWritesDurable, MutationRecoveryRecordFailure>`.
+         * Proof transition: `(PreWriteDurable, AppliedRecoveryWriteSet) -> Refinement< AppliedWritesDurable,
+         * MutationRecoveryRecordFailure>`.
          *
          * Establishes a version-one applied set chained to exact durable pre-write evidence.
-         * [MutationRecoveryRecordFailure] is the closed expected failure. Raw state extraction is
-         * permitted only at the SQLite boundary.
+         * [MutationRecoveryRecordFailure] is the closed expected failure. Raw state extraction is permitted only at the
+         * SQLite boundary.
          */
         fun recordApplied(
             prior: PreWriteDurable,
             appliedWrites: AppliedRecoveryWriteSet,
         ): Refinement<AppliedWritesDurable, MutationRecoveryRecordFailure> {
-            if (appliedWrites.sources.any { source ->
+            if (
+                appliedWrites.sources.any { source ->
                     prior.preparation.plannedWrites.none { write -> write.source == source }
                 }
             ) {
-                return Refinement.Rejected(
-                    MutationRecoveryRecordFailure.APPLIED_WRITE_SET_MISMATCH,
-                )
+                return Refinement.Rejected(MutationRecoveryRecordFailure.APPLIED_WRITE_SET_MISMATCH)
             }
             return Refinement.Refined(
                 AppliedWritesDurable(
@@ -128,52 +123,53 @@ sealed interface MutationRecoveryRecord {
                         appliedWrites.sources,
                         prior.digest,
                     ),
-                ),
+                )
             )
         }
 
         /**
          * Proof transition: `AppliedWritesDurable -> RolledBack`.
          *
-         * Establishes a terminal version-two rollback record chained to the exact applied set.
-         * There is no expected failure because physical rollback success is already carried by
-         * the caller. Raw state extraction is permitted only at the SQLite boundary.
+         * Establishes a terminal version-two rollback record chained to the exact applied set. There is no expected
+         * failure because physical rollback success is already carried by the caller. Raw state extraction is permitted
+         * only at the SQLite boundary.
          */
-        fun rolledBack(prior: AppliedWritesDurable): RolledBack = RolledBack(
-            prior.digest,
-            prior.preparation,
-            prior.appliedWrites,
-            digest(
-                prior.preparation,
-                MutationRecoveryStage.ROLLED_BACK,
-                prior.appliedWrites.sources,
+        fun rolledBack(prior: AppliedWritesDurable): RolledBack =
+            RolledBack(
                 prior.digest,
-            ),
-        )
+                prior.preparation,
+                prior.appliedWrites,
+                digest(
+                    prior.preparation,
+                    MutationRecoveryStage.ROLLED_BACK,
+                    prior.appliedWrites.sources,
+                    prior.digest,
+                ),
+            )
 
         /**
          * Proof transition: `(AppliedWritesDurable, RecoveryRequirement) -> RecoveryRequired`.
          *
-         * Establishes a terminal version-two unresolved recovery record chained to the exact
-         * applied set and finite reason. There is no expected failure. Raw state extraction is
-         * permitted only at the SQLite boundary.
+         * Establishes a terminal version-two unresolved recovery record chained to the exact applied set and finite
+         * reason. There is no expected failure. Raw state extraction is permitted only at the SQLite boundary.
          */
         fun recoveryRequired(
             prior: AppliedWritesDurable,
             requirement: RecoveryRequirement,
-        ): RecoveryRequired = RecoveryRequired(
-            prior.digest,
-            prior.preparation,
-            prior.appliedWrites,
-            requirement,
-            digest(
-                prior.preparation,
-                MutationRecoveryStage.RECOVERY_REQUIRED,
-                prior.appliedWrites.sources,
+        ): RecoveryRequired =
+            RecoveryRequired(
                 prior.digest,
-                RecoveryDigestRequirement.Present(requirement),
-            ),
-        )
+                prior.preparation,
+                prior.appliedWrites,
+                requirement,
+                digest(
+                    prior.preparation,
+                    MutationRecoveryStage.RECOVERY_REQUIRED,
+                    prior.appliedWrites.sources,
+                    prior.digest,
+                    RecoveryDigestRequirement.Present(requirement),
+                ),
+            )
 
         private fun digest(
             preparation: MutationRecoveryPreparation,
@@ -196,7 +192,7 @@ sealed interface MutationRecoveryRecord {
                     when (requirement) {
                         RecoveryDigestRequirement.Absent -> ""
                         is RecoveryDigestRequirement.Present -> requirement.value.name
-                    },
+                    }
                 )
             }
             return MutationRecoveryRecordDigest(sha256(canonical.toByteArray()))
@@ -206,5 +202,6 @@ sealed interface MutationRecoveryRecord {
 
 private sealed interface RecoveryDigestRequirement {
     data object Absent : RecoveryDigestRequirement
+
     data class Present(val value: RecoveryRequirement) : RecoveryDigestRequirement
 }

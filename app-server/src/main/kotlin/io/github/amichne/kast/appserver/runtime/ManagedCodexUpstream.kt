@@ -14,11 +14,6 @@ import io.ktor.websocket.Frame
 import io.ktor.websocket.close
 import io.ktor.websocket.readText
 import io.ktor.websocket.send
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
@@ -26,6 +21,11 @@ import java.nio.file.attribute.PosixFilePermissions
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 internal data class ManagedCodexUpstreamOptions(
     val executable: UpstreamCodexExecutable,
@@ -46,12 +46,15 @@ internal data class CodexAppServerProcessRequest(
 
 internal interface CodexAppServerProcess {
     val pid: Long
+
     fun isAlive(): Boolean
+
     suspend fun close()
 }
 
 internal sealed interface CodexAppServerProcessAdmission {
     data class Started(val process: CodexAppServerProcess) : CodexAppServerProcessAdmission
+
     data object Rejected : CodexAppServerProcessAdmission
 }
 
@@ -71,12 +74,17 @@ internal enum class ManagedCodexUpstreamFailure {
 
 internal sealed interface ManagedCodexUpstreamStart {
     data class Started(val upstream: ManagedCodexUpstream) : ManagedCodexUpstreamStart
+
     data class Rejected(val failure: ManagedCodexUpstreamFailure) : ManagedCodexUpstreamStart
 }
 
-internal enum class ManagedCodexUpstreamTermination { CLOSED, PROCESS_EXITED }
+internal enum class ManagedCodexUpstreamTermination {
+    CLOSED,
+    PROCESS_EXITED,
+}
 
-internal class ManagedCodexUpstream private constructor(
+internal class ManagedCodexUpstream
+private constructor(
     private val process: CodexAppServerProcess,
     private val privateSocket: BrokerSocketPath,
     private val maximumMessageBytes: Int,
@@ -88,13 +96,15 @@ internal class ManagedCodexUpstream private constructor(
 
     override suspend fun connect(): BrokerUpstreamConnectionAdmission {
         if (closed.get() || !process.isAlive()) return BrokerUpstreamConnectionAdmission.Rejected
-        val connected = connectCodexUnixWebSocket(
-            privateSocket.path,
-            maximumMessageBytes,
-            connectionTimeoutMillis,
-        )
-        val connection = (connected as? BrokerUpstreamConnectionAdmission.Connected)?.connection
-            ?: return BrokerUpstreamConnectionAdmission.Rejected
+        val connected =
+            connectCodexUnixWebSocket(
+                privateSocket.path,
+                maximumMessageBytes,
+                connectionTimeoutMillis,
+            )
+        val connection =
+            (connected as? BrokerUpstreamConnectionAdmission.Connected)?.connection
+                ?: return BrokerUpstreamConnectionAdmission.Rejected
         lateinit var managed: ManagedUpstreamConnection
         managed = ManagedUpstreamConnection(connection) { connections.remove(managed) }
         connections.add(managed)
@@ -124,38 +134,35 @@ internal class ManagedCodexUpstream private constructor(
     companion object {
         internal suspend fun start(options: ManagedCodexUpstreamOptions): ManagedCodexUpstreamStart {
             if (
-                options.maximumMessageBytes <= 0 || options.startupTimeoutMillis <= 0 ||
-                !options.codexHome.isAbsolute || options.codexHome.normalize() != options.codexHome ||
-                !Files.isDirectory(options.codexHome)
+                options.maximumMessageBytes <= 0 ||
+                    options.startupTimeoutMillis <= 0 ||
+                    !options.codexHome.isAbsolute ||
+                    options.codexHome.normalize() != options.codexHome ||
+                    !Files.isDirectory(options.codexHome)
             ) {
                 return rejected(ManagedCodexUpstreamFailure.INVALID_OPTIONS)
             }
             when (UnixSocketPathOwnership.prepare(options.privateSocket)) {
                 UnixSocketPathPreparation.PREPARED -> Unit
-                UnixSocketPathPreparation.OWNED -> return rejected(
-                    ManagedCodexUpstreamFailure.SOCKET_PATH_OWNED,
-                )
+                UnixSocketPathPreparation.OWNED -> return rejected(ManagedCodexUpstreamFailure.SOCKET_PATH_OWNED)
                 UnixSocketPathPreparation.REJECTED,
-                UnixSocketPathPreparation.PARENT_REJECTED,
-                    -> return rejected(ManagedCodexUpstreamFailure.SOCKET_PATH_REJECTED)
+                UnixSocketPathPreparation.PARENT_REJECTED ->
+                    return rejected(ManagedCodexUpstreamFailure.SOCKET_PATH_REJECTED)
             }
-            val request = CodexAppServerProcessRequest(
-                executable = options.executable,
-                arguments = options.appServerArguments.withOwnedTransport(
-                    "unix://${options.privateSocket.path}",
-                ),
-                environment = mapOf("CODEX_HOME" to options.codexHome.toString()),
-                socket = options.privateSocket.path,
-            )
-            val process = when (val admission = options.launcher.launch(request)) {
-                is CodexAppServerProcessAdmission.Started -> admission.process
-                CodexAppServerProcessAdmission.Rejected -> return rejected(
-                    ManagedCodexUpstreamFailure.PROCESS_START_REJECTED,
+            val request =
+                CodexAppServerProcessRequest(
+                    executable = options.executable,
+                    arguments = options.appServerArguments.withOwnedTransport("unix://${options.privateSocket.path}"),
+                    environment = mapOf("CODEX_HOME" to options.codexHome.toString()),
+                    socket = options.privateSocket.path,
                 )
-            }
-            val deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(
-                options.startupTimeoutMillis,
-            )
+            val process =
+                when (val admission = options.launcher.launch(request)) {
+                    is CodexAppServerProcessAdmission.Started -> admission.process
+                    CodexAppServerProcessAdmission.Rejected ->
+                        return rejected(ManagedCodexUpstreamFailure.PROCESS_START_REJECTED)
+                }
+            val deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(options.startupTimeoutMillis)
             try {
                 while (System.nanoTime() < deadline && process.isAlive()) {
                     if (options.privateSocket.revalidate() is io.github.amichne.kast.kernel.Validation.Rejected) {
@@ -164,17 +171,18 @@ internal class ManagedCodexUpstream private constructor(
                     }
                     val remainingNanos = deadline - System.nanoTime()
                     if (remainingNanos <= 0) break
-                    val remainingMillis = maxOf(
-                        1L,
-                        TimeUnit.NANOSECONDS.toMillis(remainingNanos),
-                    )
-                    val probe = connectCodexUnixWebSocket(
-                        options.privateSocket.path,
-                        options.maximumMessageBytes,
-                        remainingMillis,
-                    )
-                    val connection = (probe as? BrokerUpstreamConnectionAdmission.Connected)
-                        ?.connection
+                    val remainingMillis =
+                        maxOf(
+                            1L,
+                            TimeUnit.NANOSECONDS.toMillis(remainingNanos),
+                        )
+                    val probe =
+                        connectCodexUnixWebSocket(
+                            options.privateSocket.path,
+                            options.maximumMessageBytes,
+                            remainingMillis,
+                        )
+                    val connection = (probe as? BrokerUpstreamConnectionAdmission.Connected)?.connection
                     if (connection != null) {
                         connection.close()
                         Files.setPosixFilePermissions(
@@ -193,7 +201,7 @@ internal class ManagedCodexUpstream private constructor(
                                 options.maximumMessageBytes,
                                 options.startupTimeoutMillis,
                                 owned,
-                            ),
+                            )
                         )
                     }
                     delay(minOf(PROCESS_HEALTH_POLL_MILLIS, remainingMillis))
@@ -216,9 +224,8 @@ internal class ManagedCodexUpstream private constructor(
             return rejected(ManagedCodexUpstreamFailure.STARTUP_TIMED_OUT)
         }
 
-        private fun rejected(
-            failure: ManagedCodexUpstreamFailure,
-        ): ManagedCodexUpstreamStart.Rejected = ManagedCodexUpstreamStart.Rejected(failure)
+        private fun rejected(failure: ManagedCodexUpstreamFailure): ManagedCodexUpstreamStart.Rejected =
+            ManagedCodexUpstreamStart.Rejected(failure)
 
         private val PROCESS_HEALTH_POLL_MILLIS = BrokerOperationalLimits.upstreamHealthPoll.value
     }
@@ -244,7 +251,10 @@ private class ManagedUpstreamConnection(
     }
 }
 
-internal enum class BrokerControlRoute(val path: String) { CODEX("/"), RUNTIME("/kast-runtime") }
+internal enum class BrokerControlRoute(val path: String) {
+    CODEX("/"),
+    RUNTIME("/kast-runtime"),
+}
 
 internal suspend fun connectCodexUnixWebSocket(
     socket: Path,
@@ -252,19 +262,19 @@ internal suspend fun connectCodexUnixWebSocket(
     timeoutMillis: Long,
     route: BrokerControlRoute = BrokerControlRoute.CODEX,
 ): BrokerUpstreamConnectionAdmission {
-    val client = HttpClient(CIO) {
-        install(WebSockets) { maxFrameSize = maximumMessageBytes.toLong() }
-    }
+    val client =
+        HttpClient(CIO) {
+            install(WebSockets) { maxFrameSize = maximumMessageBytes.toLong() }
+        }
     return try {
-        val session = withTimeoutOrNull(timeoutMillis) {
-            client.webSocketSession {
-                url("ws://localhost${route.path}")
-                unixSocket(socket.toString())
-            }
-        } ?: return BrokerUpstreamConnectionAdmission.Rejected.also { client.close() }
-        BrokerUpstreamConnectionAdmission.Connected(
-            KtorCodexUpstreamConnection(client, session, maximumMessageBytes),
-        )
+        val session =
+            withTimeoutOrNull(timeoutMillis) {
+                client.webSocketSession {
+                    url("ws://localhost${route.path}")
+                    unixSocket(socket.toString())
+                }
+            } ?: return BrokerUpstreamConnectionAdmission.Rejected.also { client.close() }
+        BrokerUpstreamConnectionAdmission.Connected(KtorCodexUpstreamConnection(client, session, maximumMessageBytes))
     } catch (cancelled: CancellationException) {
         client.close()
         throw cancelled
@@ -281,37 +291,40 @@ private class KtorCodexUpstreamConnection(
 ) : BrokerUpstreamConnection {
     private val closed = AtomicBoolean(false)
 
-    override suspend fun send(message: String): BrokerUpstreamSend = try {
-        if (message.toByteArray(Charsets.UTF_8).size > maximumMessageBytes) {
-            BrokerUpstreamSend.REJECTED
-        } else {
-            session.send(message)
-            BrokerUpstreamSend.SENT
-        }
-    } catch (cancelled: CancellationException) {
-        throw cancelled
-    } catch (_: Exception) {
-        BrokerUpstreamSend.REJECTED
-    }
-
-    override suspend fun receive(): BrokerUpstreamFrame = try {
-        when (val frame = session.incoming.receiveCatching().getOrNull()) {
-            is Frame.Text -> {
-                val message = frame.readText()
-                if (message.toByteArray(Charsets.UTF_8).size <= maximumMessageBytes) {
-                    BrokerUpstreamFrame.Text(message)
-                } else {
-                    BrokerUpstreamFrame.Rejected
-                }
+    override suspend fun send(message: String): BrokerUpstreamSend =
+        try {
+            if (message.toByteArray(Charsets.UTF_8).size > maximumMessageBytes) {
+                BrokerUpstreamSend.REJECTED
+            } else {
+                session.send(message)
+                BrokerUpstreamSend.SENT
             }
-            null, is Frame.Close -> BrokerUpstreamFrame.Closed
-            else -> BrokerUpstreamFrame.Rejected
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            BrokerUpstreamSend.REJECTED
         }
-    } catch (cancelled: CancellationException) {
-        throw cancelled
-    } catch (_: Exception) {
-        BrokerUpstreamFrame.Rejected
-    }
+
+    override suspend fun receive(): BrokerUpstreamFrame =
+        try {
+            when (val frame = session.incoming.receiveCatching().getOrNull()) {
+                is Frame.Text -> {
+                    val message = frame.readText()
+                    if (message.toByteArray(Charsets.UTF_8).size <= maximumMessageBytes) {
+                        BrokerUpstreamFrame.Text(message)
+                    } else {
+                        BrokerUpstreamFrame.Rejected
+                    }
+                }
+                null,
+                is Frame.Close -> BrokerUpstreamFrame.Closed
+                else -> BrokerUpstreamFrame.Rejected
+            }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            BrokerUpstreamFrame.Rejected
+        }
 
     override suspend fun close() {
         if (!closed.compareAndSet(false, true)) return
@@ -324,47 +337,46 @@ private class KtorCodexUpstreamConnection(
 }
 
 private object JdkCodexAppServerProcessLauncher : CodexAppServerProcessLauncher {
-    override suspend fun launch(
-        request: CodexAppServerProcessRequest,
-    ): CodexAppServerProcessAdmission = withContext(Dispatchers.IO) {
-        val process = try {
-            ProcessBuilder(
-                listOf(request.executable.path.toString()) + request.arguments,
-            )
-                .redirectInput(ProcessBuilder.Redirect.from(NULL_DEVICE.toFile()))
-                .redirectOutput(ProcessBuilder.Redirect.to(NULL_DEVICE.toFile()))
-                .redirectError(ProcessBuilder.Redirect.INHERIT)
-                .also { builder -> builder.environment().putAll(request.environment) }
-                .start()
-        } catch (_: IOException) {
-            return@withContext CodexAppServerProcessAdmission.Rejected
-        } catch (_: SecurityException) {
-            return@withContext CodexAppServerProcessAdmission.Rejected
+    override suspend fun launch(request: CodexAppServerProcessRequest): CodexAppServerProcessAdmission =
+        withContext(Dispatchers.IO) {
+            val process =
+                try {
+                    ProcessBuilder(listOf(request.executable.path.toString()) + request.arguments)
+                        .redirectInput(ProcessBuilder.Redirect.from(NULL_DEVICE.toFile()))
+                        .redirectOutput(ProcessBuilder.Redirect.to(NULL_DEVICE.toFile()))
+                        .redirectError(ProcessBuilder.Redirect.INHERIT)
+                        .also { builder -> builder.environment().putAll(request.environment) }
+                        .start()
+                } catch (_: IOException) {
+                    return@withContext CodexAppServerProcessAdmission.Rejected
+                } catch (_: SecurityException) {
+                    return@withContext CodexAppServerProcessAdmission.Rejected
+                }
+            CodexAppServerProcessAdmission.Started(JdkCodexAppServerProcess(process))
         }
-        CodexAppServerProcessAdmission.Started(JdkCodexAppServerProcess(process))
-    }
 
     private val NULL_DEVICE = Path.of("/dev/null")
 }
 
-private class JdkCodexAppServerProcess(
-    private val process: Process,
-) : CodexAppServerProcess {
+private class JdkCodexAppServerProcess(private val process: Process) : CodexAppServerProcess {
     override val pid: Long = process.pid()
 
     override fun isAlive(): Boolean = process.isAlive
 
-    override suspend fun close() = withContext(Dispatchers.IO) {
-        if (!process.isAlive) return@withContext
-        process.destroy()
-        try {
-            if (!process.waitFor(BrokerOperationalLimits.upstreamProcessRetirementWait.value, TimeUnit.MILLISECONDS)) {
+    override suspend fun close() =
+        withContext(Dispatchers.IO) {
+            if (!process.isAlive) return@withContext
+            process.destroy()
+            try {
+                if (
+                    !process.waitFor(BrokerOperationalLimits.upstreamProcessRetirementWait.value, TimeUnit.MILLISECONDS)
+                ) {
+                    process.destroyForcibly()
+                    process.waitFor(BrokerOperationalLimits.upstreamProcessRetirementWait.value, TimeUnit.MILLISECONDS)
+                }
+            } catch (_: InterruptedException) {
                 process.destroyForcibly()
-                process.waitFor(BrokerOperationalLimits.upstreamProcessRetirementWait.value, TimeUnit.MILLISECONDS)
+                Thread.currentThread().interrupt()
             }
-        } catch (_: InterruptedException) {
-            process.destroyForcibly()
-            Thread.currentThread().interrupt()
         }
-    }
 }

@@ -14,9 +14,7 @@ enum class ManagedInstallationTreeKind(val directoryName: String) {
 }
 
 /** An exact destructive-recovery tree proven to belong to one physical installation. */
-class ManagedInstallationOwnedTree private constructor(
-    private val path: Path,
-) {
+class ManagedInstallationOwnedTree private constructor(private val path: Path) {
     companion object {
         fun admit(
             installationDirectory: Path,
@@ -28,14 +26,15 @@ class ManagedInstallationOwnedTree private constructor(
             if (!installation.isAbsolute || !tree.isAbsolute || tree != installation.resolve(kind.directoryName)) {
                 return ManagedInstallationOwnedTreeAdmission.Rejected
             }
-            val physicalInstallation = try {
-                if (Files.isSymbolicLink(installation)) return ManagedInstallationOwnedTreeAdmission.Rejected
-                installation.toRealPath()
-            } catch (_: IOException) {
-                return ManagedInstallationOwnedTreeAdmission.Rejected
-            } catch (_: SecurityException) {
-                return ManagedInstallationOwnedTreeAdmission.Rejected
-            }
+            val physicalInstallation =
+                try {
+                    if (Files.isSymbolicLink(installation)) return ManagedInstallationOwnedTreeAdmission.Rejected
+                    installation.toRealPath()
+                } catch (_: IOException) {
+                    return ManagedInstallationOwnedTreeAdmission.Rejected
+                } catch (_: SecurityException) {
+                    return ManagedInstallationOwnedTreeAdmission.Rejected
+                }
             return if (physicalInstallation == installation) {
                 ManagedInstallationOwnedTreeAdmission.Admitted(ManagedInstallationOwnedTree(tree))
             } else {
@@ -44,19 +43,19 @@ class ManagedInstallationOwnedTree private constructor(
         }
     }
 
-    fun delete(): ManagedInstallationOwnedTreeDeletion = try {
-        when {
-            Files.notExists(path, LinkOption.NOFOLLOW_LINKS) -> Unit
-            Files.isSymbolicLink(path) || !Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS) ->
-                Files.delete(path)
-            else -> Files.walkFileTree(path, DeletingVisitor)
+    fun delete(): ManagedInstallationOwnedTreeDeletion =
+        try {
+            when {
+                Files.notExists(path, LinkOption.NOFOLLOW_LINKS) -> Unit
+                Files.isSymbolicLink(path) || !Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS) -> Files.delete(path)
+                else -> Files.walkFileTree(path, DeletingVisitor)
+            }
+            ManagedInstallationOwnedTreeDeletion.Deleted
+        } catch (_: IOException) {
+            ManagedInstallationOwnedTreeDeletion.Rejected
+        } catch (_: SecurityException) {
+            ManagedInstallationOwnedTreeDeletion.Rejected
         }
-        ManagedInstallationOwnedTreeDeletion.Deleted
-    } catch (_: IOException) {
-        ManagedInstallationOwnedTreeDeletion.Rejected
-    } catch (_: SecurityException) {
-        ManagedInstallationOwnedTreeDeletion.Rejected
-    }
 
     private object DeletingVisitor : SimpleFileVisitor<Path>() {
         override fun visitFile(file: Path, attributes: BasicFileAttributes): FileVisitResult {
@@ -74,7 +73,11 @@ class ManagedInstallationOwnedTree private constructor(
 
 sealed interface ManagedInstallationOwnedTreeAdmission {
     data class Admitted(val tree: ManagedInstallationOwnedTree) : ManagedInstallationOwnedTreeAdmission
+
     data object Rejected : ManagedInstallationOwnedTreeAdmission
 }
 
-enum class ManagedInstallationOwnedTreeDeletion { Deleted, Rejected }
+enum class ManagedInstallationOwnedTreeDeletion {
+    Deleted,
+    Rejected,
+}

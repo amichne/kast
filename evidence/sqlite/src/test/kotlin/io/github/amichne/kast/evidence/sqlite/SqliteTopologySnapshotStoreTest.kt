@@ -28,36 +28,42 @@ import io.github.amichne.kast.workspace.contract.WorkspaceEvidenceKind
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceContentHash
 import io.github.amichne.kast.workspace.contract.WorkspaceSourcePath
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
+import java.nio.file.Files
+import java.nio.file.Path
+import java.sql.DriverManager
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Files
-import java.nio.file.Path
-import java.sql.DriverManager
 
 class SqliteTopologySnapshotStoreTest {
-    @TempDir
-    lateinit var tempDir: Path
+    @TempDir lateinit var tempDir: Path
+
     @Test
     fun `exact symbols and edges survive store restart`() {
         val generation = generation(workspace("state-a", 7), "a", "b")
         val path = databasePath("restart")
         val first = store(path)
-        val published = assertInstanceOf(
-            TopologyPublicationResult.Published::class.java,
-            first.publish(generation),
-        ).snapshot
+        val published =
+            assertInstanceOf(
+                    TopologyPublicationResult.Published::class.java,
+                    first.publish(generation),
+                )
+                .snapshot
 
         val reopened = store(path)
-        val eligible = assertInstanceOf(
-            TopologySnapshotEligibility.Eligible::class.java,
-            reopened.eligible(generation.identity),
-        ).snapshot
-        val content = assertInstanceOf(
-            TopologySnapshotContentRead.Loaded::class.java,
-            reopened.read(eligible),
-        ).content
+        val eligible =
+            assertInstanceOf(
+                    TopologySnapshotEligibility.Eligible::class.java,
+                    reopened.eligible(generation.identity),
+                )
+                .snapshot
+        val content =
+            assertInstanceOf(
+                    TopologySnapshotContentRead.Loaded::class.java,
+                    reopened.read(eligible),
+                )
+                .content
 
         assertEquals(published.identity, eligible.identity)
         assertEquals(published.manifest, eligible.manifest)
@@ -97,31 +103,39 @@ class SqliteTopologySnapshotStoreTest {
         val targetFile = sourceFile(workspace, root, "src/main/kotlin/Target.kt", "b")
         val source = symbol(sourceFile, "shared", "sample.Shared", 0, 12)
         val target = symbol(targetFile, "shared", "sample.Shared", 20, 32)
-        val edge = TopologyEdge.fromBoundary(
-            TopologyEdgeKind.CALL,
-            source,
-            target,
-            6,
-            12,
-        ).refined()
-        val generation = CompleteTopologyGeneration.admit(
-            workspace,
-            listOf(sourceFile, targetFile),
-            listOf(
-                CompleteTopologyFile.admit(sourceFile, listOf(source), listOf(edge)).refined(),
-                CompleteTopologyFile.admit(targetFile, listOf(target), emptyList()).refined(),
-            ),
-        ).refined()
+        val edge =
+            TopologyEdge.fromBoundary(
+                    TopologyEdgeKind.CALL,
+                    source,
+                    target,
+                    6,
+                    12,
+                )
+                .refined()
+        val generation =
+            CompleteTopologyGeneration.admit(
+                    workspace,
+                    listOf(sourceFile, targetFile),
+                    listOf(
+                        CompleteTopologyFile.admit(sourceFile, listOf(source), listOf(edge)).refined(),
+                        CompleteTopologyFile.admit(targetFile, listOf(target), emptyList()).refined(),
+                    ),
+                )
+                .refined()
         val path = databasePath("duplicate-identity")
-        val published = assertInstanceOf(
-            TopologyPublicationResult.Published::class.java,
-            store(path).publish(generation),
-        ).snapshot
+        val published =
+            assertInstanceOf(
+                    TopologyPublicationResult.Published::class.java,
+                    store(path).publish(generation),
+                )
+                .snapshot
 
-        val content = assertInstanceOf(
-            TopologySnapshotContentRead.Loaded::class.java,
-            store(path).read(published),
-        ).content
+        val content =
+            assertInstanceOf(
+                    TopologySnapshotContentRead.Loaded::class.java,
+                    store(path).read(published),
+                )
+                .content
 
         assertEquals(2, content.symbols.size)
         assertEquals(
@@ -136,18 +150,21 @@ class SqliteTopologySnapshotStoreTest {
     fun `different workspace identity makes prior snapshot stale without deleting it`() {
         val first = generation(workspace("state-a", 7), "a", "b")
         val store = store(databasePath("stale"))
-        val published = assertInstanceOf(
-            TopologyPublicationResult.Published::class.java,
-            store.publish(first),
-        ).snapshot
+        val published =
+            assertInstanceOf(
+                    TopologyPublicationResult.Published::class.java,
+                    store.publish(first),
+                )
+                .snapshot
         val moved = TopologyWorkspaceIdentity.from(workspace("state-b", 8))
 
         assertEquals(
             published,
             assertInstanceOf(
-                TopologySnapshotEligibility.Stale::class.java,
-                store.eligible(moved),
-            ).latest,
+                    TopologySnapshotEligibility.Stale::class.java,
+                    store.eligible(moved),
+                )
+                .latest,
         )
         assertInstanceOf(
             TopologySnapshotEligibility.Eligible::class.java,
@@ -161,13 +178,16 @@ class SqliteTopologySnapshotStoreTest {
         val second = generation(workspace("state-b", 8), "c", "d")
         val path = databasePath("rollback")
         val initial = store(path)
-        val prior = assertInstanceOf(
-            TopologyPublicationResult.Published::class.java,
-            initial.publish(first),
-        ).snapshot
-        val failing = faultInjectingStore(path) { point ->
-            if (point == SqliteTopologyFaultPoint.BEFORE_COMMIT) error("injected failure")
-        }
+        val prior =
+            assertInstanceOf(
+                    TopologyPublicationResult.Published::class.java,
+                    initial.publish(first),
+                )
+                .snapshot
+        val failing =
+            faultInjectingStore(path) { point ->
+                if (point == SqliteTopologyFaultPoint.BEFORE_COMMIT) error("injected failure")
+            }
 
         assertInstanceOf(
             TopologyPublicationResult.Rejected::class.java,
@@ -177,16 +197,19 @@ class SqliteTopologySnapshotStoreTest {
         assertEquals(
             prior.manifest,
             assertInstanceOf(
-                TopologySnapshotEligibility.Eligible::class.java,
-                reopened.eligible(first.identity),
-            ).snapshot.manifest,
+                    TopologySnapshotEligibility.Eligible::class.java,
+                    reopened.eligible(first.identity),
+                )
+                .snapshot
+                .manifest,
         )
         assertEquals(
             prior,
             assertInstanceOf(
-                TopologySnapshotEligibility.Stale::class.java,
-                reopened.eligible(second.identity),
-            ).latest,
+                    TopologySnapshotEligibility.Stale::class.java,
+                    reopened.eligible(second.identity),
+                )
+                .latest,
         )
     }
 
@@ -205,10 +228,11 @@ class SqliteTopologySnapshotStoreTest {
             }
         }
 
-        val rejected = assertInstanceOf(
-            TopologySnapshotEligibility.Rejected::class.java,
-            store.eligible(generation.identity),
-        )
+        val rejected =
+            assertInstanceOf(
+                TopologySnapshotEligibility.Rejected::class.java,
+                store.eligible(generation.identity),
+            )
 
         assertEquals(TopologySnapshotReadFailure.CORRUPT_SNAPSHOT, rejected.failure)
     }
@@ -217,15 +241,18 @@ class SqliteTopologySnapshotStoreTest {
     fun `row reconstruction returns typed corruption instead of throwing`() {
         val generation = generation(workspace("state-a", 7), "a", "b")
         val path = databasePath("typed-corruption")
-        val published = assertInstanceOf(
-            TopologyPublicationResult.Published::class.java,
-            store(path).publish(generation),
-        ).snapshot
+        val published =
+            assertInstanceOf(
+                    TopologyPublicationResult.Published::class.java,
+                    store(path).publish(generation),
+                )
+                .snapshot
         mutate(path, "UPDATE topology_symbol_v3 SET symbol_name = ''")
 
-        val reconstruction = DriverManager.getConnection("jdbc:sqlite:$path").use { connection ->
-            connection.readTopologyContent(published)
-        }
+        val reconstruction =
+            DriverManager.getConnection("jdbc:sqlite:$path").use { connection ->
+                connection.readTopologyContent(published)
+            }
 
         assertEquals(
             TopologySnapshotContentRead.Rejected(TopologySnapshotReadFailure.CORRUPT_SNAPSHOT),
@@ -290,28 +317,35 @@ class SqliteTopologySnapshotStoreTest {
         val targetFile = sourceFile(workspace, root, "src/main/kotlin/Target.kt", targetHash)
         val source = symbol(sourceFile, "Source", "sample.Source", 0, 12)
         val target = symbol(targetFile, "Target", "sample.Target", 0, 12)
-        val edge = TopologyEdge.fromBoundary(
-            TopologyEdgeKind.CALL,
-            source,
-            target,
-            6,
-            12,
-        ).refined()
-        val sourceComplete = CompleteTopologyFile.admit(
-            sourceFile,
-            listOf(source),
-            listOf(edge),
-        ).refined()
-        val targetComplete = CompleteTopologyFile.admit(
-            targetFile,
-            listOf(target),
-            emptyList(),
-        ).refined()
+        val edge =
+            TopologyEdge.fromBoundary(
+                    TopologyEdgeKind.CALL,
+                    source,
+                    target,
+                    6,
+                    12,
+                )
+                .refined()
+        val sourceComplete =
+            CompleteTopologyFile.admit(
+                    sourceFile,
+                    listOf(source),
+                    listOf(edge),
+                )
+                .refined()
+        val targetComplete =
+            CompleteTopologyFile.admit(
+                    targetFile,
+                    listOf(target),
+                    emptyList(),
+                )
+                .refined()
         return CompleteTopologyGeneration.admit(
-            workspace,
-            listOf(sourceFile, targetFile),
-            listOf(sourceComplete, targetComplete),
-        ).refined()
+                workspace,
+                listOf(sourceFile, targetFile),
+                listOf(sourceComplete, targetComplete),
+            )
+            .refined()
     }
 
     private fun symbol(
@@ -322,20 +356,24 @@ class SqliteTopologySnapshotStoreTest {
         end: Int,
     ): TopologySymbol {
         val absolute = Path.of(file.workspace.lease.workspaceRoot.value).resolve(file.path.value)
-        val fileIdentity = SymbolDiscoveryFileIdentity.fromBoundary(
-            file.workspace.lease.workspaceRoot,
-            absolute,
-            absolute.toUri().toString(),
-        ).refined()
-        val evidence = CompilerGroundedSymbolEvidence.fromBoundary(
-            fileIdentity,
-            start,
-            end,
-            name,
-            identity,
-            CompilerSymbolKind.CLASSLIKE,
-            CanonicalCompilerSignature.classLike(identity).refined(),
-        ).refined()
+        val fileIdentity =
+            SymbolDiscoveryFileIdentity.fromBoundary(
+                    file.workspace.lease.workspaceRoot,
+                    absolute,
+                    absolute.toUri().toString(),
+                )
+                .refined()
+        val evidence =
+            CompilerGroundedSymbolEvidence.fromBoundary(
+                    fileIdentity,
+                    start,
+                    end,
+                    name,
+                    identity,
+                    CompilerSymbolKind.CLASSLIKE,
+                    CanonicalCompilerSignature.classLike(identity).refined(),
+                )
+                .refined()
         return TopologySymbol.admit(file, evidence).refined()
     }
 
@@ -344,33 +382,40 @@ class SqliteTopologySnapshotStoreTest {
         sourceRoot: SourceRoot,
         path: String,
         hash: String,
-    ): TopologySourceFile = TopologySourceFile.admit(
-        workspace,
-        sourceRoot,
-        WorkspaceSourcePath.parse(path).refined(),
-        WorkspaceSourceContentHash.parse(hash.repeat(64)).refined(),
-    ).refined()
+    ): TopologySourceFile =
+        TopologySourceFile.admit(
+                workspace,
+                sourceRoot,
+                WorkspaceSourcePath.parse(path).refined(),
+                WorkspaceSourceContentHash.parse(hash.repeat(64)).refined(),
+            )
+            .refined()
 
     private fun workspace(state: String, generation: Long): PublishedWorkspace {
-        val root = SourceRoot.admit(
-            GradleSourceRootEvidence(
-                "root.main",
-                ".",
-                ":",
-                "main",
-                "src/main/kotlin",
-                SourceRootProvenance.Authored,
-            ),
-        ).refined()
-        val candidate = WorkspaceCandidate(
-            CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined(),
-            WorkspaceStateIdentity.parse(state).refined(),
-        )
-        val reconciled = ReconciledWorkspace.admit(
-            candidate,
-            WorkspaceEvidenceKind.entries.toSet(),
-            listOf(root),
-        ).refined()
+        val root =
+            SourceRoot.admit(
+                    GradleSourceRootEvidence(
+                        "root.main",
+                        ".",
+                        ":",
+                        "main",
+                        "src/main/kotlin",
+                        SourceRootProvenance.Authored,
+                    )
+                )
+                .refined()
+        val candidate =
+            WorkspaceCandidate(
+                CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined(),
+                WorkspaceStateIdentity.parse(state).refined(),
+            )
+        val reconciled =
+            ReconciledWorkspace.admit(
+                    candidate,
+                    WorkspaceEvidenceKind.entries.toSet(),
+                    listOf(root),
+                )
+                .refined()
         return PublishedWorkspace.publish(
             reconciled,
             EvidenceGeneration.parse(generation).refined(),
@@ -387,32 +432,32 @@ class SqliteTopologySnapshotStoreTest {
     }
 
     private fun assertCorrupt(eligibility: TopologySnapshotEligibility) {
-        val rejected = assertInstanceOf(
-            TopologySnapshotEligibility.Rejected::class.java,
-            eligibility,
-        )
+        val rejected =
+            assertInstanceOf(
+                TopologySnapshotEligibility.Rejected::class.java,
+                eligibility,
+            )
         assertEquals(TopologySnapshotReadFailure.CORRUPT_SNAPSHOT, rejected.failure)
     }
 
-    private fun store(path: Path): SqliteTopologySnapshotStore = when (
-        val opened = SqliteTopologySnapshotStore.open(path)
-    ) {
-        is SqliteTopologySnapshotStoreOpening.Opened -> opened.store
-        is SqliteTopologySnapshotStoreOpening.Rejected -> error(opened.failure)
-    }
+    private fun store(path: Path): SqliteTopologySnapshotStore =
+        when (val opened = SqliteTopologySnapshotStore.open(path)) {
+            is SqliteTopologySnapshotStoreOpening.Opened -> opened.store
+            is SqliteTopologySnapshotStoreOpening.Rejected -> error(opened.failure)
+        }
 
     private fun faultInjectingStore(
         path: Path,
         inject: SqliteTopologyFaultInjector,
-    ): SqliteTopologySnapshotStore = when (
-        val opened = SqliteTopologySnapshotStore.open(path, inject)
-    ) {
-        is SqliteTopologySnapshotStoreOpening.Opened -> opened.store
-        is SqliteTopologySnapshotStoreOpening.Rejected -> error(opened.failure)
-    }
+    ): SqliteTopologySnapshotStore =
+        when (val opened = SqliteTopologySnapshotStore.open(path, inject)) {
+            is SqliteTopologySnapshotStoreOpening.Opened -> opened.store
+            is SqliteTopologySnapshotStoreOpening.Rejected -> error(opened.failure)
+        }
 
-    private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value = when (this) {
-        is Refinement.Refined -> value
-        is Refinement.Rejected -> error(failure.toString())
-    }
+    private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value =
+        when (this) {
+            is Refinement.Refined -> value
+            is Refinement.Rejected -> error(failure.toString())
+        }
 }

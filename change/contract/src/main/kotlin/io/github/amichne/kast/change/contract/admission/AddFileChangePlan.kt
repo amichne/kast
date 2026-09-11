@@ -18,26 +18,20 @@ enum class KotlinFileSourceTextFailure {
 
 /** Complete Kotlin file source admitted before semantic parsing by the IntelliJ boundary. */
 @JvmInline
-value class KotlinFileSourceText private constructor(
-    val value: String,
-) {
+value class KotlinFileSourceText private constructor(val value: String) {
     companion object {
         /**
-         * Proof transition: `String -> Refinement<KotlinFileSourceText,
-         * KotlinFileSourceTextFailure>`.
+         * Proof transition: `String -> Refinement<KotlinFileSourceText, KotlinFileSourceTextFailure>`.
          *
-         * Establishes non-empty, NUL-free whole-file text with a final line terminator.
-         * [KotlinFileSourceTextFailure] is the closed expected failure. Raw text may enter only at
-         * the change-intent boundary and leave only at the authority-bound IntelliJ file-creation
-         * boundary.
+         * Establishes non-empty, NUL-free whole-file text with a final line terminator. [KotlinFileSourceTextFailure]
+         * is the closed expected failure. Raw text may enter only at the change-intent boundary and leave only at the
+         * authority-bound IntelliJ file-creation boundary.
          */
         fun parse(raw: String): Refinement<KotlinFileSourceText, KotlinFileSourceTextFailure> =
             when {
                 raw.isEmpty() -> Refinement.Rejected(KotlinFileSourceTextFailure.EMPTY)
                 '\u0000' in raw -> Refinement.Rejected(KotlinFileSourceTextFailure.NUL_CHARACTER)
-                !raw.endsWith('\n') -> Refinement.Rejected(
-                    KotlinFileSourceTextFailure.MISSING_FINAL_NEWLINE,
-                )
+                !raw.endsWith('\n') -> Refinement.Rejected(KotlinFileSourceTextFailure.MISSING_FINAL_NEWLINE)
                 else -> Refinement.Refined(KotlinFileSourceText(raw))
             }
     }
@@ -59,7 +53,8 @@ enum class AddFileTargetAdmissionFailure {
 }
 
 /** Exact authored source-root location eligible for absent-file admission during apply. */
-class CreatableKotlinFileTarget private constructor(
+class CreatableKotlinFileTarget
+private constructor(
     val lease: SemanticReadLease,
     val workspaceState: WorkspaceStateIdentity,
     val file: SymbolDiscoveryFileIdentity.Workspace,
@@ -67,16 +62,16 @@ class CreatableKotlinFileTarget private constructor(
 ) {
     companion object {
         /**
-         * Proof transition: `AddFileTargetObservation -> Refinement<
-         * CreatableKotlinFileTarget, AddFileTargetAdmissionFailure>`.
+         * Proof transition: `AddFileTargetObservation -> Refinement< CreatableKotlinFileTarget,
+         * AddFileTargetAdmissionFailure>`.
          *
-         * Establishes a canonical `.kt` path strictly inside one uniquely owned authored Gradle
-         * source root at the published generation. [AddFileTargetAdmissionFailure] closes escaped,
-         * ambiguous, generated, unknown, or wrongly owned locations. Physical absence remains an
-         * apply-boundary proof and raw path extraction is permitted only there.
+         * Establishes a canonical `.kt` path strictly inside one uniquely owned authored Gradle source root at the
+         * published generation. [AddFileTargetAdmissionFailure] closes escaped, ambiguous, generated, unknown, or
+         * wrongly owned locations. Physical absence remains an apply-boundary proof and raw path extraction is
+         * permitted only there.
          */
         fun admit(
-            observation: AddFileTargetObservation,
+            observation: AddFileTargetObservation
         ): Refinement<CreatableKotlinFileTarget, AddFileTargetAdmissionFailure> {
             val target = Path.of(observation.file.path.value)
             if (!target.fileName.toString().endsWith(".kt")) {
@@ -87,10 +82,13 @@ class CreatableKotlinFileTarget private constructor(
             if (target == workspacePath || !target.startsWith(workspacePath)) {
                 return Refinement.Rejected(AddFileTargetAdmissionFailure.ESCAPED_TARGET)
             }
-            val containing = workspace.sourceRoots.filter { root ->
-                val sourcePath = workspacePath.resolve(root.location.value).normalize()
-                target != sourcePath && target.startsWith(sourcePath)
-            }.distinct()
+            val containing =
+                workspace.sourceRoots
+                    .filter { root ->
+                        val sourcePath = workspacePath.resolve(root.location.value).normalize()
+                        target != sourcePath && target.startsWith(sourcePath)
+                    }
+                    .distinct()
             if (containing.isEmpty()) {
                 return Refinement.Rejected(AddFileTargetAdmissionFailure.ESCAPED_TARGET)
             }
@@ -103,12 +101,10 @@ class CreatableKotlinFileTarget private constructor(
             }
             when (sourceRoot.provenance) {
                 SourceRootProvenance.Authored -> Unit
-                SourceRootProvenance.Generated -> return Refinement.Rejected(
-                    AddFileTargetAdmissionFailure.GENERATED_SOURCE_ROOT,
-                )
-                is SourceRootProvenance.Unknown -> return Refinement.Rejected(
-                    AddFileTargetAdmissionFailure.UNKNOWN_SOURCE_ROOT,
-                )
+                SourceRootProvenance.Generated ->
+                    return Refinement.Rejected(AddFileTargetAdmissionFailure.GENERATED_SOURCE_ROOT)
+                is SourceRootProvenance.Unknown ->
+                    return Refinement.Rejected(AddFileTargetAdmissionFailure.UNKNOWN_SOURCE_ROOT)
             }
             return Refinement.Refined(
                 CreatableKotlinFileTarget(
@@ -116,7 +112,7 @@ class CreatableKotlinFileTarget private constructor(
                     workspace.sourceState,
                     observation.file,
                     sourceRoot,
-                ),
+                )
             )
         }
     }
@@ -140,7 +136,8 @@ enum class AddFileObligation : ChangeVerificationObligation {
 }
 
 /** Pure deterministic AddFile plan. */
-class AddFileChangePlan private constructor(
+class AddFileChangePlan
+private constructor(
     override val planId: ChangePlanId,
     override val intent: ChangeIntent.AddFile,
     val target: CreatableKotlinFileTarget,
@@ -154,21 +151,21 @@ class AddFileChangePlan private constructor(
         /**
          * Proof transition: `AddFilePlanRequest -> AddFileChangePlan`.
          *
-         * Establishes a deterministic detached singleton plan from an absent precondition to the
-         * exact whole-file Kotlin postimage and exhaustive AddFile obligations. There is no
-         * expected failure because both request members already carry their invariants. Raw file
-         * text may leave only after separate mutation admission.
+         * Establishes a deterministic detached singleton plan from an absent precondition to the exact whole-file
+         * Kotlin postimage and exhaustive AddFile obligations. There is no expected failure because both request
+         * members already carry their invariants. Raw file text may leave only after separate mutation admission.
          */
         fun issue(request: AddFilePlanRequest): AddFileChangePlan {
             val intent = ChangeIntent.AddFile(request.target, request.content)
-            val writes = PlannedMutationWriteSet.singleton(
-                PlannedMutationWrite(
-                    request.target.file,
-                    request.target.sourceRoot,
-                    PlannedSourcePrecondition.Absent,
-                    listOf(SourceTextMutation.CreateFile(request.content)),
-                ),
-            )
+            val writes =
+                PlannedMutationWriteSet.singleton(
+                    PlannedMutationWrite(
+                        request.target.file,
+                        request.target.sourceRoot,
+                        PlannedSourcePrecondition.Absent,
+                        listOf(SourceTextMutation.CreateFile(request.content)),
+                    )
+                )
             val canonical = buildString {
                 appendPlanningField("ADD_FILE")
                 appendPlanningField(request.target.lease.workspaceRoot.value)
@@ -193,17 +190,15 @@ class AddFileChangePlan private constructor(
 }
 
 sealed interface AddFilePlanResult {
-    data class Planned(
-        val plan: AddFileChangePlan,
-    ) : AddFilePlanResult
+    data class Planned(val plan: AddFileChangePlan) : AddFilePlanResult
 }
 
 fun interface AddFilePlanOperations {
     /**
      * Proof transition: `AddFilePlanRequest -> AddFilePlanResult`.
      *
-     * Planned carries one deterministic semantic file-creation plan. No source-write or platform
-     * capability crosses this pure planning boundary.
+     * Planned carries one deterministic semantic file-creation plan. No source-write or platform capability crosses
+     * this pure planning boundary.
      */
     fun plan(request: AddFilePlanRequest): AddFilePlanResult
 }

@@ -1,15 +1,15 @@
 package io.github.amichne.kast.runtime.telemetry
 
-import io.github.amichne.kast.kernel.KastTopologyBindingFailure
-import io.github.amichne.kast.kernel.KastObservability
 import io.github.amichne.kast.kernel.KastChangeVerificationOutcome
+import io.github.amichne.kast.kernel.KastObservability
 import io.github.amichne.kast.kernel.KastSpanCompletion
 import io.github.amichne.kast.kernel.KastSpanCount
+import io.github.amichne.kast.kernel.KastSpanEvent
 import io.github.amichne.kast.kernel.KastSpanFailure
 import io.github.amichne.kast.kernel.KastSpanMeasurement
 import io.github.amichne.kast.kernel.KastSpanName
 import io.github.amichne.kast.kernel.KastSpanObservation
-import io.github.amichne.kast.kernel.KastSpanEvent
+import io.github.amichne.kast.kernel.KastTopologyBindingFailure
 import io.github.amichne.kast.kernel.KastTopologyCacheDisposition
 import io.github.amichne.kast.kernel.KastTopologyIdentityStage
 import io.github.amichne.kast.kernel.KastTopologySourceRange
@@ -22,12 +22,12 @@ import io.opentelemetry.sdk.trace.SdkTracerProvider
 import io.opentelemetry.sdk.trace.data.SpanData
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor
 import io.opentelemetry.sdk.trace.export.SpanExporter
+import java.util.concurrent.CopyOnWriteArrayList
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
-import java.util.concurrent.CopyOnWriteArrayList
 
 class OpenTelemetryKastObservabilityTest {
     @Test
@@ -38,10 +38,16 @@ class OpenTelemetryKastObservabilityTest {
         assertEquals(KastChangeVerificationOutcome.entries.size, capture.spans.size)
         capture.spans.zip(KastChangeVerificationOutcome.entries).forEach { (span, outcome) ->
             assertEquals("kast.change.verification", span.name)
-            assertEquals(outcome.name.lowercase(), span.attributes.get(AttributeKey.stringKey("kast.change.verification.outcome")))
+            assertEquals(
+                outcome.name.lowercase(),
+                span.attributes.get(AttributeKey.stringKey("kast.change.verification.outcome")),
+            )
             assertEquals(1, span.attributes.size())
             assertEquals(emptyList<io.opentelemetry.sdk.trace.data.EventData>(), span.events)
-            assertEquals(if (outcome == KastChangeVerificationOutcome.VERIFIED) StatusCode.UNSET else StatusCode.ERROR, span.status.statusCode)
+            assertEquals(
+                if (outcome == KastChangeVerificationOutcome.VERIFIED) StatusCode.UNSET else StatusCode.ERROR,
+                span.status.statusCode,
+            )
         }
     }
 
@@ -49,19 +55,29 @@ class OpenTelemetryKastObservabilityTest {
     fun `workspace observations export finite readiness and refresh outcomes without payloads`() {
         val capture = CapturingExporter()
         val telemetry = telemetry(capture)
-        io.github.amichne.kast.kernel.KastWorkspaceReadinessOutcome.entries.forEach(telemetry::observeWorkspaceReadiness)
+        io.github.amichne.kast.kernel.KastWorkspaceReadinessOutcome.entries.forEach(
+            telemetry::observeWorkspaceReadiness
+        )
         io.github.amichne.kast.kernel.KastWorkspaceRefreshOutcome.entries.forEach(telemetry::observeWorkspaceRefresh)
-        assertEquals(io.github.amichne.kast.kernel.KastWorkspaceReadinessOutcome.entries.size +
-            io.github.amichne.kast.kernel.KastWorkspaceRefreshOutcome.entries.size, capture.spans.size)
+        assertEquals(
+            io.github.amichne.kast.kernel.KastWorkspaceReadinessOutcome.entries.size +
+                io.github.amichne.kast.kernel.KastWorkspaceRefreshOutcome.entries.size,
+            capture.spans.size,
+        )
         capture.spans.forEach { span ->
             assertEquals(1, span.attributes.size())
             assertEquals(emptyList<io.opentelemetry.sdk.trace.data.EventData>(), span.events)
         }
         val readiness = capture.spans.filter { it.name == "kast.workspace.readiness" }
-        assertEquals(io.github.amichne.kast.kernel.KastWorkspaceReadinessOutcome.entries.map { it.name.lowercase() },
-            readiness.map { it.attributes.get(AttributeKey.stringKey("kast.workspace.readiness.outcome")) })
+        assertEquals(
+            io.github.amichne.kast.kernel.KastWorkspaceReadinessOutcome.entries.map { it.name.lowercase() },
+            readiness.map { it.attributes.get(AttributeKey.stringKey("kast.workspace.readiness.outcome")) },
+        )
         val refresh = capture.spans.filter { it.name == "kast.workspace.refresh" }
-        assertEquals(listOf("completed", "rejected", "interrupted"), refresh.map { it.attributes.get(AttributeKey.stringKey("kast.workspace.refresh.outcome")) })
+        assertEquals(
+            listOf("completed", "rejected", "interrupted"),
+            refresh.map { it.attributes.get(AttributeKey.stringKey("kast.workspace.refresh.outcome")) },
+        )
         assertEquals(listOf(StatusCode.UNSET, StatusCode.ERROR, StatusCode.ERROR), refresh.map { it.status.statusCode })
     }
 
@@ -69,24 +85,23 @@ class OpenTelemetryKastObservabilityTest {
     fun `compiler identity mismatch exports one structured diagnostic event`() = runTest {
         val capture = CapturingExporter()
         val telemetry = telemetry(capture)
-        val event = KastSpanEvent.TopologyIdentityMismatch(
-            stage = KastTopologyIdentityStage.REFERENCE_TARGET,
-            cacheDisposition = KastTopologyCacheDisposition.COMPUTED,
-            sourceFile = "events/EventConsumer.kt",
-            sourceOccurrence = KastTopologySourceRange(41, 54),
-            targetFile = "events/Event.kt",
-            targetDeclaration = KastTopologySourceRange(8, 31),
-            reason = KastTopologyBindingFailure.DECLARATION_MISMATCH,
-        )
+        val event =
+            KastSpanEvent.TopologyIdentityMismatch(
+                stage = KastTopologyIdentityStage.REFERENCE_TARGET,
+                cacheDisposition = KastTopologyCacheDisposition.COMPUTED,
+                sourceFile = "events/EventConsumer.kt",
+                sourceOccurrence = KastTopologySourceRange(41, 54),
+                targetFile = "events/Event.kt",
+                targetDeclaration = KastTopologySourceRange(8, 31),
+                reason = KastTopologyBindingFailure.DECLARATION_MISMATCH,
+            )
 
         telemetry.inSpan(KastSpanName.TOPOLOGY_EXTRACTION) { span ->
             span.observe(
                 KastSpanObservation(
-                    completion = KastSpanCompletion.Rejected(
-                        KastSpanFailure.TOPOLOGY_EXTRACTION,
-                    ),
+                    completion = KastSpanCompletion.Rejected(KastSpanFailure.TOPOLOGY_EXTRACTION),
                     events = setOf(event),
-                ),
+                )
             )
         }
 
@@ -95,57 +110,39 @@ class OpenTelemetryKastObservabilityTest {
         assertEquals("kast.topology.identity.mismatch", mismatch.name)
         assertEquals(
             "reference_target",
-            mismatch.attributes.get(
-                AttributeKey.stringKey("io.github.amichne.kast.topology.identity.stage"),
-            ),
+            mismatch.attributes.get(AttributeKey.stringKey("io.github.amichne.kast.topology.identity.stage")),
         )
         assertEquals(
             "computed",
-            mismatch.attributes.get(
-                AttributeKey.stringKey("io.github.amichne.kast.topology.cache.disposition"),
-            ),
+            mismatch.attributes.get(AttributeKey.stringKey("io.github.amichne.kast.topology.cache.disposition")),
         )
         assertEquals(
             "events/EventConsumer.kt",
-            mismatch.attributes.get(
-                AttributeKey.stringKey("io.github.amichne.kast.source.file"),
-            ),
+            mismatch.attributes.get(AttributeKey.stringKey("io.github.amichne.kast.source.file")),
         )
         assertEquals(
             41L,
-            mismatch.attributes.get(
-                AttributeKey.longKey("io.github.amichne.kast.source.occurrence.start"),
-            ),
+            mismatch.attributes.get(AttributeKey.longKey("io.github.amichne.kast.source.occurrence.start")),
         )
         assertEquals(
             54L,
-            mismatch.attributes.get(
-                AttributeKey.longKey("io.github.amichne.kast.source.occurrence.end"),
-            ),
+            mismatch.attributes.get(AttributeKey.longKey("io.github.amichne.kast.source.occurrence.end")),
         )
         assertEquals(
             "events/Event.kt",
-            mismatch.attributes.get(
-                AttributeKey.stringKey("io.github.amichne.kast.target.file"),
-            ),
+            mismatch.attributes.get(AttributeKey.stringKey("io.github.amichne.kast.target.file")),
         )
         assertEquals(
             8L,
-            mismatch.attributes.get(
-                AttributeKey.longKey("io.github.amichne.kast.target.declaration.start"),
-            ),
+            mismatch.attributes.get(AttributeKey.longKey("io.github.amichne.kast.target.declaration.start")),
         )
         assertEquals(
             31L,
-            mismatch.attributes.get(
-                AttributeKey.longKey("io.github.amichne.kast.target.declaration.end"),
-            ),
+            mismatch.attributes.get(AttributeKey.longKey("io.github.amichne.kast.target.declaration.end")),
         )
         assertEquals(
             "declaration_mismatch",
-            mismatch.attributes.get(
-                AttributeKey.stringKey("io.github.amichne.kast.topology.binding.reason"),
-            ),
+            mismatch.attributes.get(AttributeKey.stringKey("io.github.amichne.kast.topology.binding.reason")),
         )
         assertEquals(9, mismatch.attributes.size())
         assertEquals(StatusCode.UNSET, span.status.statusCode)
@@ -166,14 +163,10 @@ class OpenTelemetryKastObservabilityTest {
                             KastSpanMeasurement.FileCount(KastSpanCount.parse(3).refined()),
                             KastSpanMeasurement.WorkUnitCount(KastSpanCount.parse(8).refined()),
                         ),
-                    ),
+                    )
                 )
             }
-            root.observe(
-                KastSpanObservation(
-                    KastSpanCompletion.Rejected(KastSpanFailure.TOPOLOGY_EXTRACTION),
-                ),
-            )
+            root.observe(KastSpanObservation(KastSpanCompletion.Rejected(KastSpanFailure.TOPOLOGY_EXTRACTION)))
         }
 
         val root = capture.spans.single { it.name == "kast.topology.build" }
@@ -229,12 +222,8 @@ class OpenTelemetryKastObservabilityTest {
     }
 
     private fun telemetry(exporter: SpanExporter): KastObservability {
-        val provider = SdkTracerProvider.builder()
-            .addSpanProcessor(SimpleSpanProcessor.create(exporter))
-            .build()
-        val openTelemetry: OpenTelemetry = OpenTelemetrySdk.builder()
-            .setTracerProvider(provider)
-            .build()
+        val provider = SdkTracerProvider.builder().addSpanProcessor(SimpleSpanProcessor.create(exporter)).build()
+        val openTelemetry: OpenTelemetry = OpenTelemetrySdk.builder().setTracerProvider(provider).build()
         return OpenTelemetryKastObservability.create(openTelemetry)
     }
 

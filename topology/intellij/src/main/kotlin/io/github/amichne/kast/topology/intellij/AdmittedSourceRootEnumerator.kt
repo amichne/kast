@@ -20,8 +20,7 @@ import java.util.stream.Stream
 
 /** Filesystem effect that opens one lazy, closeable walk below an admitted source root. */
 internal fun interface TopologySourceTreeWalker {
-    @Throws(IOException::class)
-    fun walk(root: Path): Stream<Path>
+    @Throws(IOException::class) fun walk(root: Path): Stream<Path>
 }
 
 private data object InstalledTopologySourceTreeWalker : TopologySourceTreeWalker {
@@ -31,21 +30,19 @@ private data object InstalledTopologySourceTreeWalker : TopologySourceTreeWalker
 /**
  * Physical candidate enumerator whose only search authorities are published source roots.
  *
- * It never receives a Gradle model, module index, repository scanner, import trigger, or project
- * root walk capability. Each content digest is detached before admission.
+ * It never receives a Gradle model, module index, repository scanner, import trigger, or project root walk capability.
+ * Each content digest is detached before admission.
  */
-class AdmittedSourceRootEnumerator internal constructor(
-    private val sourceTreeWalker: TopologySourceTreeWalker,
-) : TopologyCandidateEnumerator {
+class AdmittedSourceRootEnumerator internal constructor(private val sourceTreeWalker: TopologySourceTreeWalker) :
+    TopologyCandidateEnumerator {
     constructor() : this(InstalledTopologySourceTreeWalker)
 
     /**
      * Proof transition: `PublishedWorkspace -> TopologyCandidateEnumeration`.
      *
-     * Complete establishes exactly the regular `.kt` and `.kts` files found beneath the
-     * publication's typed source roots, with unique ownership and SHA-256 content identity.
-     * [TopologyCandidateEnumerationFailure] is the closed expected failure. Raw filesystem paths
-     * and bytes are consumed only in this physical adapter.
+     * Complete establishes exactly the regular `.kt` and `.kts` files found beneath the publication's typed source
+     * roots, with unique ownership and SHA-256 content identity. [TopologyCandidateEnumerationFailure] is the closed
+     * expected failure. Raw filesystem paths and bytes are consumed only in this physical adapter.
      */
     override fun enumerate(workspace: PublishedWorkspace): TopologyCandidateEnumeration {
         val workspaceRoot = Path.of(workspace.root.value)
@@ -63,15 +60,18 @@ class AdmittedSourceRootEnumerator internal constructor(
                     return rejected(TopologyCandidateEnumerationFailure.SOURCE_ROOT_UNAVAILABLE)
                 }
                 sourceTreeWalker.walk(physicalRoot).use { paths ->
-                    paths.filter { path ->
-                        Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS) && path.isKotlinSource()
-                    }.forEach { path ->
-                        boundaries += EnumeratedSource(
-                            sourceRoot,
-                            workspaceRoot.relativize(path).normalize(),
-                            Files.readAllBytes(path),
-                        )
-                    }
+                    paths
+                        .filter { path ->
+                            Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS) && path.isKotlinSource()
+                        }
+                        .forEach { path ->
+                            boundaries +=
+                                EnumeratedSource(
+                                    sourceRoot,
+                                    workspaceRoot.relativize(path).normalize(),
+                                    Files.readAllBytes(path),
+                                )
+                        }
                 }
             }
         } catch (_: IOException) {
@@ -92,8 +92,7 @@ class AdmittedSourceRootEnumerator internal constructor(
         }
         return when (val candidates = TopologyCandidateSet.admit(workspace, files)) {
             is Refinement.Refined -> TopologyCandidateEnumeration.Complete(candidates.value)
-            is Refinement.Rejected ->
-                rejected(TopologyCandidateEnumerationFailure.CANDIDATE_REJECTED)
+            is Refinement.Rejected -> rejected(TopologyCandidateEnumerationFailure.CANDIDATE_REJECTED)
         }
     }
 }
@@ -104,28 +103,28 @@ private data class EnumeratedSource(
     val content: ByteArray,
 ) {
     /**
-     * Proof transition: `(EnumeratedSource, PublishedWorkspace) ->
-     * Refinement<TopologySourceFile, TopologyCandidateEnumerationFailure>`.
+     * Proof transition: `(EnumeratedSource, PublishedWorkspace) -> Refinement<TopologySourceFile,
+     * TopologyCandidateEnumerationFailure>`.
      *
-     * The refined file carries parsed workspace-relative path and content-hash evidence bound to
-     * its published source root. [TopologyCandidateEnumerationFailure] is the closed expected
-     * failure. Raw path text and bytes are extracted only by this filesystem adapter.
+     * The refined file carries parsed workspace-relative path and content-hash evidence bound to its published source
+     * root. [TopologyCandidateEnumerationFailure] is the closed expected failure. Raw path text and bytes are extracted
+     * only by this filesystem adapter.
      */
-    fun admit(
-        workspace: PublishedWorkspace,
-    ): Refinement<TopologySourceFile, TopologyCandidateEnumerationFailure> {
-        val path = when (val parsed = WorkspaceSourcePath.parse(relativePath.toString())) {
-            is Refinement.Refined -> parsed.value
-            is Refinement.Rejected -> return candidateRejected()
-        }
-        val digest = MessageDigest.getInstance("SHA-256").digest(content)
-            .joinToString("") { byte ->
+    fun admit(workspace: PublishedWorkspace): Refinement<TopologySourceFile, TopologyCandidateEnumerationFailure> {
+        val path =
+            when (val parsed = WorkspaceSourcePath.parse(relativePath.toString())) {
+                is Refinement.Refined -> parsed.value
+                is Refinement.Rejected -> return candidateRejected()
+            }
+        val digest =
+            MessageDigest.getInstance("SHA-256").digest(content).joinToString("") { byte ->
                 (byte.toInt() and 0xff).toString(16).padStart(2, '0')
             }
-        val hash = when (val parsed = WorkspaceSourceContentHash.parse(digest)) {
-            is Refinement.Refined -> parsed.value
-            is Refinement.Rejected -> return candidateRejected()
-        }
+        val hash =
+            when (val parsed = WorkspaceSourceContentHash.parse(digest)) {
+                is Refinement.Refined -> parsed.value
+                is Refinement.Rejected -> return candidateRejected()
+            }
         return when (val admitted = TopologySourceFile.admit(workspace, sourceRoot, path, hash)) {
             is Refinement.Refined -> Refinement.Refined(admitted.value)
             is Refinement.Rejected -> candidateRejected()
@@ -141,6 +140,5 @@ private fun Path.isKotlinSource(): Boolean {
     return name.endsWith(".kt") || name.endsWith(".kts")
 }
 
-private fun rejected(
-    failure: TopologyCandidateEnumerationFailure,
-): TopologyCandidateEnumeration.Rejected = TopologyCandidateEnumeration.Rejected(failure)
+private fun rejected(failure: TopologyCandidateEnumerationFailure): TopologyCandidateEnumeration.Rejected =
+    TopologyCandidateEnumeration.Rejected(failure)

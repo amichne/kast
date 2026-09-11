@@ -18,19 +18,20 @@ internal enum class InstalledGlobalSdkSynchronization {
 internal suspend fun synchronizeInstalledGlobalSdkModel(
     synchronize: suspend () -> Unit = {
         GlobalWorkspaceModel.getInstanceAsync(LocalEelMachine).awaitSynchronizationWithJpsModel()
-    },
-): InstalledGlobalSdkSynchronization = try {
-    withTimeout(30_000L) { synchronize() }
-    InstalledGlobalSdkSynchronization.SYNCHRONIZED
-} catch (_: TimeoutCancellationException) {
-    InstalledGlobalSdkSynchronization.TIMED_OUT
-} catch (failure: CancellationException) {
-    throw failure
-} catch (_: LinkageError) {
-    InstalledGlobalSdkSynchronization.PLATFORM_LINKAGE_INVALID
-} catch (_: RuntimeException) {
-    InstalledGlobalSdkSynchronization.PLATFORM_UNAVAILABLE
-}
+    }
+): InstalledGlobalSdkSynchronization =
+    try {
+        withTimeout(30_000L) { synchronize() }
+        InstalledGlobalSdkSynchronization.SYNCHRONIZED
+    } catch (_: TimeoutCancellationException) {
+        InstalledGlobalSdkSynchronization.TIMED_OUT
+    } catch (failure: CancellationException) {
+        throw failure
+    } catch (_: LinkageError) {
+        InstalledGlobalSdkSynchronization.PLATFORM_LINKAGE_INVALID
+    } catch (_: RuntimeException) {
+        InstalledGlobalSdkSynchronization.PLATFORM_UNAVAILABLE
+    }
 
 internal fun InstalledGlobalSdkSynchronization.observe() {
     Logger.getInstance("io.github.amichne.kast.projectSdk")

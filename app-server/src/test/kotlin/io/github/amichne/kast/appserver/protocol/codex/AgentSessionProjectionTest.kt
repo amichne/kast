@@ -2,8 +2,8 @@ package io.github.amichne.kast.appserver.protocol.codex
 
 import io.github.amichne.kast.appserver.core.AgentSessionBootstrap
 import io.github.amichne.kast.appserver.core.AgentSessionBootstrapQualification
-import io.github.amichne.kast.appserver.core.HostedToolDefinition
 import io.github.amichne.kast.appserver.core.HostedToolCatalogFailure
+import io.github.amichne.kast.appserver.core.HostedToolDefinition
 import io.github.amichne.kast.appserver.core.ToolName
 import io.github.amichne.kast.appserver.host.admission.CodexHostMode
 import io.github.amichne.kast.appserver.protocol.copilot.toCopilotFixtureProjection
@@ -54,9 +54,7 @@ class AgentSessionProjectionTest {
         val qualified = agentSessionBootstrapFixture()
 
         assertEquals(
-            AgentSessionBootstrapQualification.Rejected(
-                HostedToolCatalogFailure.ADVERTISED_ROUTE_MISSING,
-            ),
+            AgentSessionBootstrapQualification.Rejected(HostedToolCatalogFailure.ADVERTISED_ROUTE_MISSING),
             AgentSessionBootstrap.qualify(
                 definitions = qualified.tools.definitions,
                 policy = qualified.policy,
@@ -68,38 +66,42 @@ class AgentSessionProjectionTest {
 
 internal fun agentSessionBootstrapFixture(): AgentSessionBootstrap {
     val metadata = CanonicalAgentToolDefinitions.symbolLookup
-    val schema = when (
-        val compilation = NetworkntJsonSchemaCompiler.compile(
-            Json.parseToJsonElement(
-                """{"type":"object","additionalProperties":false,"properties":{}}""",
-            ).jsonObject,
-        )
-    ) {
-        is Refinement.Refined -> compilation.value
-        is Refinement.Rejected -> error(compilation.failure)
-    }
-    val route = when (val admission = ToolName.admit(metadata.name.value)) {
-        is Refinement.Refined -> admission.value
-        is Refinement.Rejected -> error(admission.failure)
-    }
+    val schema =
+        when (
+            val compilation =
+                NetworkntJsonSchemaCompiler.compile(
+                    Json.parseToJsonElement("""{"type":"object","additionalProperties":false,"properties":{}}""")
+                        .jsonObject
+                )
+        ) {
+            is Refinement.Refined -> compilation.value
+            is Refinement.Rejected -> error(compilation.failure)
+        }
+    val route =
+        when (val admission = ToolName.admit(metadata.name.value)) {
+            is Refinement.Refined -> admission.value
+            is Refinement.Rejected -> error(admission.failure)
+        }
     return when (
-        val qualification = AgentSessionBootstrap.qualify(
-            definitions = listOf(
-                HostedToolDefinition(
-                    operation = metadata.operation.operation,
-                    name = metadata.name,
-                    description = metadata.description,
-                    inputSchema = schema,
-                    outputSchema = schema,
-                    effect = metadata.operation.effect,
-                    approval = metadata.approval,
-                    executionBudget = metadata.operation.executionBudget,
-                    loading = metadata.loading,
-                ),
-            ),
-            policy = CanonicalAgentToolDefinitions.policy,
-            executableRoutes = setOf(route),
-        )
+        val qualification =
+            AgentSessionBootstrap.qualify(
+                definitions =
+                    listOf(
+                        HostedToolDefinition(
+                            operation = metadata.operation.operation,
+                            name = metadata.name,
+                            description = metadata.description,
+                            inputSchema = schema,
+                            outputSchema = schema,
+                            effect = metadata.operation.effect,
+                            approval = metadata.approval,
+                            executionBudget = metadata.operation.executionBudget,
+                            loading = metadata.loading,
+                        )
+                    ),
+                policy = CanonicalAgentToolDefinitions.policy,
+                executableRoutes = setOf(route),
+            )
     ) {
         is AgentSessionBootstrapQualification.Qualified -> qualification.bootstrap
         is AgentSessionBootstrapQualification.Rejected -> error(qualification.failure)

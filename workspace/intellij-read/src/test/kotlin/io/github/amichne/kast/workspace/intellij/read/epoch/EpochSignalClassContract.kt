@@ -6,22 +6,30 @@ import java.security.MessageDigest
 
 internal sealed interface EpochClassContractFailure {
     data class ResourceRejected(val resource: String) : EpochClassContractFailure
+
     data class MissingMember(val member: EpochMemberReference) : EpochClassContractFailure
+
     data class ForbiddenMember(val member: EpochMemberReference) : EpochClassContractFailure
+
     data class MissingClassReference(val className: String) : EpochClassContractFailure
+
     data object WorkspaceListenerDescriptorMissing : EpochClassContractFailure
+
     data class MemberSetMismatch(
         val resource: String,
         val expected: Set<EpochMemberReference>,
         val observed: Set<EpochMemberReference>,
     ) : EpochClassContractFailure
+
     data class ClassFingerprintMismatch(
         val resource: String,
         val expected: String,
         val observed: String,
     ) : EpochClassContractFailure
 }
+
 internal data class EpochMemberReference(val owner: String, val name: String)
+
 internal object EpochSignalClassContract {
     fun verify(): List<EpochClassContractFailure> {
         val admitted = RESOURCES.associateWith(::readClassView)
@@ -67,10 +75,11 @@ internal object EpochSignalClassContract {
                 add(EpochClassContractFailure.MissingMember(missing))
             }
             PRODUCTION_REQUIRED_CLASS_REFERENCES.filterNot { className ->
-                combined.utf8.any { value -> className in value }
-            }.forEach { missing ->
-                add(EpochClassContractFailure.MissingClassReference(missing))
-            }
+                    combined.utf8.any { value -> className in value }
+                }
+                .forEach { missing ->
+                    add(EpochClassContractFailure.MissingClassReference(missing))
+                }
             combined.members.filter(::rejectsProductionMember).forEach { forbidden ->
                 add(EpochClassContractFailure.ForbiddenMember(forbidden))
             }
@@ -88,7 +97,7 @@ internal object EpochSignalClassContract {
                             resource,
                             expected,
                             observed,
-                        ),
+                        )
                     )
                 }
             }
@@ -99,11 +108,14 @@ internal object EpochSignalClassContract {
         val stream = javaClass.classLoader.getResourceAsStream(resource) ?: return null
         return try {
             val bytes = stream.use { it.readBytes() }
-            DataInputStream(bytes.inputStream()).use(::parseConstantPool)?.copy(
-                fingerprint = MessageDigest.getInstance("SHA-256")
-                    .digest(bytes)
-                    .joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) },
-            )
+            DataInputStream(bytes.inputStream())
+                .use(::parseConstantPool)
+                ?.copy(
+                    fingerprint =
+                        MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { byte ->
+                            "%02x".format(byte.toInt() and 0xff)
+                        }
+                )
         } catch (_: IOException) {
             null
         } catch (_: IllegalArgumentException) {
@@ -122,35 +134,50 @@ internal object EpochSignalClassContract {
         while (index < entries.size) {
             when (input.readUnsignedByte()) {
                 1 -> entries[index] = ConstantPoolEntry.Utf8(input.readUTF())
-                3, 4 -> input.skipBytes(4).also { entries[index] = ConstantPoolEntry.Other }
-                5, 6 -> {
+                3,
+                4 -> input.skipBytes(4).also { entries[index] = ConstantPoolEntry.Other }
+                5,
+                6 -> {
                     input.skipBytes(8)
                     entries[index] = ConstantPoolEntry.Other
                     index += 1
                 }
                 7 -> entries[index] = ConstantPoolEntry.ClassName(input.readUnsignedShort())
-                8, 16, 19, 20 ->
-                    input.skipBytes(2).also { entries[index] = ConstantPoolEntry.Other }
-                9, 10, 11 -> entries[index] = ConstantPoolEntry.Member(
-                    input.readUnsignedShort(),
-                    input.readUnsignedShort(),
-                )
-                12 -> entries[index] = ConstantPoolEntry.NameAndType(
-                    input.readUnsignedShort(),
-                    input.readUnsignedShort(),
-                )
-                17, 18 -> input.skipBytes(4).also { entries[index] = ConstantPoolEntry.Other }
+                8,
+                16,
+                19,
+                20 -> input.skipBytes(2).also { entries[index] = ConstantPoolEntry.Other }
+                9,
+                10,
+                11 ->
+                    entries[index] =
+                        ConstantPoolEntry.Member(
+                            input.readUnsignedShort(),
+                            input.readUnsignedShort(),
+                        )
+                12 ->
+                    entries[index] =
+                        ConstantPoolEntry.NameAndType(
+                            input.readUnsignedShort(),
+                            input.readUnsignedShort(),
+                        )
+                17,
+                18 -> input.skipBytes(4).also { entries[index] = ConstantPoolEntry.Other }
                 15 -> input.skipBytes(3).also { entries[index] = ConstantPoolEntry.Other }
                 else -> return null
             }
             index += 1
         }
         fun utf8(at: Int) = (entries[at] as ConstantPoolEntry.Utf8).value
-        val members = entries.filterIsInstance<ConstantPoolEntry.Member>().map { member ->
-            val owner = entries[member.ownerIndex] as ConstantPoolEntry.ClassName
-            val name = entries[member.nameAndTypeIndex] as ConstantPoolEntry.NameAndType
-            EpochMemberReference(utf8(owner.nameIndex), utf8(name.nameIndex))
-        }.toSet()
+        val members =
+            entries
+                .filterIsInstance<ConstantPoolEntry.Member>()
+                .map { member ->
+                    val owner = entries[member.ownerIndex] as ConstantPoolEntry.ClassName
+                    val name = entries[member.nameAndTypeIndex] as ConstantPoolEntry.NameAndType
+                    EpochMemberReference(utf8(owner.nameIndex), utf8(name.nameIndex))
+                }
+                .toSet()
         return ConstantPoolView(
             entries.filterIsInstance<ConstantPoolEntry.Utf8>().mapTo(linkedSetOf()) { it.value },
             members,
@@ -158,100 +185,106 @@ internal object EpochSignalClassContract {
         )
     }
 
-    private val REQUIRED_MEMBERS = setOf(
-        member("com/intellij/platform/backend/workspace/WorkspaceModelTopics", "CHANGED"),
-        member("com/intellij/openapi/vfs/VirtualFileManager", "VFS_CHANGES"),
-        member("com/intellij/util/messages/MessageBusConnection", "subscribe"),
-        member(EXTERNAL_PROJECT_INFO, "getLastImportTimestamp"),
-        member(EXTERNAL_PROJECT_INFO, "getLastSuccessfulImportTimestamp"),
-        member("com/intellij/psi/util/PsiModificationTracker", "getModificationCount"),
-        member("com/intellij/openapi/roots/ProjectRootModificationTracker", "getModificationCount"),
-        member("com/intellij/openapi/project/DumbService", "getModificationTracker"),
-        member("com/intellij/openapi/project/DumbService", "isDumb"),
-        member(VFS_EVENT, "getPath"),
-        member(VFS_MOVE_EVENT, "getOldPath"),
-        member(VFS_MOVE_EVENT, "getNewPath"),
-        member(VFS_PROPERTY_EVENT, "isRename"),
-        member(VFS_PROPERTY_EVENT, "getOldPath"),
-        member(VFS_PROPERTY_EVENT, "getNewPath"),
-        member(LOCAL + "EpochVfsMetadataCounter", "recordEvents"),
-    )
-
-    private val EXPECTED_MEMBERS = mapOf(
-        CONTRACT_RESOURCE to setOf(
-            member("java/lang/Object", "<init>"),
-            member(INTRINSICS, "checkNotNullParameter"),
-            member("com/intellij/openapi/project/Project", "getMessageBus"),
-            member("com/intellij/util/messages/MessageBus", "connect"),
+    private val REQUIRED_MEMBERS =
+        setOf(
             member("com/intellij/platform/backend/workspace/WorkspaceModelTopics", "CHANGED"),
-            member("com/intellij/util/messages/MessageBusConnection", "subscribe"),
             member("com/intellij/openapi/vfs/VirtualFileManager", "VFS_CHANGES"),
-            member(INTRINSICS, "checkNotNullExpressionValue"),
-            member(LOCAL + "EpochSignalApiContract\$RootFilteredVfsSignal", "<init>"),
-            member("com/intellij/openapi/project/DumbService", "Companion"),
-            member("com/intellij/openapi/project/DumbService\$Companion", "getInstance"),
+            member("com/intellij/util/messages/MessageBusConnection", "subscribe"),
             member(EXTERNAL_PROJECT_INFO, "getLastImportTimestamp"),
             member(EXTERNAL_PROJECT_INFO, "getLastSuccessfulImportTimestamp"),
-            member("com/intellij/psi/util/PsiModificationTracker", "getInstance"),
             member("com/intellij/psi/util/PsiModificationTracker", "getModificationCount"),
-            member("com/intellij/openapi/roots/ProjectRootModificationTracker", "getInstance"),
             member("com/intellij/openapi/roots/ProjectRootModificationTracker", "getModificationCount"),
             member("com/intellij/openapi/project/DumbService", "getModificationTracker"),
-            member("com/intellij/openapi/util/ModificationTracker", "getModificationCount"),
             member("com/intellij/openapi/project/DumbService", "isDumb"),
-            member(LOCAL + "EpochSignalApiContract", "<init>"),
-            member(LOCAL + "EpochSignalApiContract", "INSTANCE"),
-        ),
-        LISTENER_RESOURCE to setOf(
-            member(INTRINSICS, "checkNotNullParameter"),
-            member("java/lang/Object", "<init>"),
-            member(LOCAL + "EpochSignalApiContract\$RootFilteredVfsSignal", "counter"),
-            member("kotlin/collections/CollectionsKt", "collectionSizeOrDefault"),
-            member("java/util/ArrayList", "<init>"),
-            member("java/lang/Iterable", "iterator"),
-            member("java/util/Iterator", "hasNext"),
-            member("java/util/Iterator", "next"),
-            member(LOCAL + "EpochSignalApiContract\$RootFilteredVfsSignal", "observeEvent"),
-            member("java/util/Collection", "add"),
-            member(LOCAL + "EpochVfsMetadataCounter", "recordEvents"),
+            member(VFS_EVENT, "getPath"),
             member(VFS_MOVE_EVENT, "getOldPath"),
-            member("java/nio/file/Path", "of"),
-            member(INTRINSICS, "checkNotNullExpressionValue"),
             member(VFS_MOVE_EVENT, "getNewPath"),
-            member(LOCAL + "EpochVfsObservedEvent\$Move", "<init>"),
             member(VFS_PROPERTY_EVENT, "isRename"),
             member(VFS_PROPERTY_EVENT, "getOldPath"),
             member(VFS_PROPERTY_EVENT, "getNewPath"),
-            member(LOCAL + "EpochVfsObservedEvent\$Rename", "<init>"),
-            member(VFS_PROPERTY_EVENT, "getPath"),
-            member(LOCAL + "EpochVfsObservedEvent\$Change", "<init>"),
-            member(VFS_EVENT, "getPath"),
-        ),
-        COUNTER_RESOURCE to setOf(
-            member(INTRINSICS, "checkNotNullParameter"),
-            member("java/lang/Object", "<init>"),
-            member(LOCAL + "EpochVfsMetadataCounter", "root"),
-            member(LOCAL + "EpochVfsMetadataCounter", "value"),
-            member("java/util/Collection", "isEmpty"),
-            member("java/lang/Iterable", "iterator"),
-            member("java/util/Iterator", "hasNext"),
-            member("java/util/Iterator", "next"),
-            member(LOCAL + "EpochVfsObservedEvent", "getPaths"),
-            member(LOCAL + "EpochFixtureRoot", "contains"),
-        ),
-        ROOT_RESOURCE to setOf(
-            member("java/lang/Object", "<init>"),
-            member(LOCAL + "EpochFixtureRoot", "path"),
-            member(INTRINSICS, "checkNotNullParameter"),
-            member("java/nio/file/Path", "startsWith"),
-            member(LOCAL + "EpochFixtureRoot", "KAST"),
-            member(LOCAL + "EpochFixtureRoot\$Companion", "<init>"),
-            member(LOCAL + "EpochFixtureRoot", "Companion"),
-            member("java/nio/file/Path", "of"),
-            member(INTRINSICS, "checkNotNullExpressionValue"),
-            member(LOCAL + "EpochFixtureRoot", "<init>"),
-        ),
-    )
+            member(LOCAL + "EpochVfsMetadataCounter", "recordEvents"),
+        )
+
+    private val EXPECTED_MEMBERS =
+        mapOf(
+            CONTRACT_RESOURCE to
+                setOf(
+                    member("java/lang/Object", "<init>"),
+                    member(INTRINSICS, "checkNotNullParameter"),
+                    member("com/intellij/openapi/project/Project", "getMessageBus"),
+                    member("com/intellij/util/messages/MessageBus", "connect"),
+                    member("com/intellij/platform/backend/workspace/WorkspaceModelTopics", "CHANGED"),
+                    member("com/intellij/util/messages/MessageBusConnection", "subscribe"),
+                    member("com/intellij/openapi/vfs/VirtualFileManager", "VFS_CHANGES"),
+                    member(INTRINSICS, "checkNotNullExpressionValue"),
+                    member(LOCAL + "EpochSignalApiContract\$RootFilteredVfsSignal", "<init>"),
+                    member("com/intellij/openapi/project/DumbService", "Companion"),
+                    member("com/intellij/openapi/project/DumbService\$Companion", "getInstance"),
+                    member(EXTERNAL_PROJECT_INFO, "getLastImportTimestamp"),
+                    member(EXTERNAL_PROJECT_INFO, "getLastSuccessfulImportTimestamp"),
+                    member("com/intellij/psi/util/PsiModificationTracker", "getInstance"),
+                    member("com/intellij/psi/util/PsiModificationTracker", "getModificationCount"),
+                    member("com/intellij/openapi/roots/ProjectRootModificationTracker", "getInstance"),
+                    member("com/intellij/openapi/roots/ProjectRootModificationTracker", "getModificationCount"),
+                    member("com/intellij/openapi/project/DumbService", "getModificationTracker"),
+                    member("com/intellij/openapi/util/ModificationTracker", "getModificationCount"),
+                    member("com/intellij/openapi/project/DumbService", "isDumb"),
+                    member(LOCAL + "EpochSignalApiContract", "<init>"),
+                    member(LOCAL + "EpochSignalApiContract", "INSTANCE"),
+                ),
+            LISTENER_RESOURCE to
+                setOf(
+                    member(INTRINSICS, "checkNotNullParameter"),
+                    member("java/lang/Object", "<init>"),
+                    member(LOCAL + "EpochSignalApiContract\$RootFilteredVfsSignal", "counter"),
+                    member("kotlin/collections/CollectionsKt", "collectionSizeOrDefault"),
+                    member("java/util/ArrayList", "<init>"),
+                    member("java/lang/Iterable", "iterator"),
+                    member("java/util/Iterator", "hasNext"),
+                    member("java/util/Iterator", "next"),
+                    member(LOCAL + "EpochSignalApiContract\$RootFilteredVfsSignal", "observeEvent"),
+                    member("java/util/Collection", "add"),
+                    member(LOCAL + "EpochVfsMetadataCounter", "recordEvents"),
+                    member(VFS_MOVE_EVENT, "getOldPath"),
+                    member("java/nio/file/Path", "of"),
+                    member(INTRINSICS, "checkNotNullExpressionValue"),
+                    member(VFS_MOVE_EVENT, "getNewPath"),
+                    member(LOCAL + "EpochVfsObservedEvent\$Move", "<init>"),
+                    member(VFS_PROPERTY_EVENT, "isRename"),
+                    member(VFS_PROPERTY_EVENT, "getOldPath"),
+                    member(VFS_PROPERTY_EVENT, "getNewPath"),
+                    member(LOCAL + "EpochVfsObservedEvent\$Rename", "<init>"),
+                    member(VFS_PROPERTY_EVENT, "getPath"),
+                    member(LOCAL + "EpochVfsObservedEvent\$Change", "<init>"),
+                    member(VFS_EVENT, "getPath"),
+                ),
+            COUNTER_RESOURCE to
+                setOf(
+                    member(INTRINSICS, "checkNotNullParameter"),
+                    member("java/lang/Object", "<init>"),
+                    member(LOCAL + "EpochVfsMetadataCounter", "root"),
+                    member(LOCAL + "EpochVfsMetadataCounter", "value"),
+                    member("java/util/Collection", "isEmpty"),
+                    member("java/lang/Iterable", "iterator"),
+                    member("java/util/Iterator", "hasNext"),
+                    member("java/util/Iterator", "next"),
+                    member(LOCAL + "EpochVfsObservedEvent", "getPaths"),
+                    member(LOCAL + "EpochFixtureRoot", "contains"),
+                ),
+            ROOT_RESOURCE to
+                setOf(
+                    member("java/lang/Object", "<init>"),
+                    member(LOCAL + "EpochFixtureRoot", "path"),
+                    member(INTRINSICS, "checkNotNullParameter"),
+                    member("java/nio/file/Path", "startsWith"),
+                    member(LOCAL + "EpochFixtureRoot", "KAST"),
+                    member(LOCAL + "EpochFixtureRoot\$Companion", "<init>"),
+                    member(LOCAL + "EpochFixtureRoot", "Companion"),
+                    member("java/nio/file/Path", "of"),
+                    member(INTRINSICS, "checkNotNullExpressionValue"),
+                    member(LOCAL + "EpochFixtureRoot", "<init>"),
+                ),
+        )
 
     private fun member(owner: String, name: String) = EpochMemberReference(owner, name)
 
@@ -260,97 +293,134 @@ internal object EpochSignalClassContract {
         return when {
             member.owner == "com/intellij/openapi/vfs/VirtualFileManager" &&
                 (name.contains("refresh") || member.name in CONSTANT_ZERO_VFS_METHODS) -> true
-            member.owner == "com/intellij/openapi/vfs/LocalFileSystem" &&
-                name.contains("refresh") -> true
+            member.owner == "com/intellij/openapi/vfs/LocalFileSystem" && name.contains("refresh") -> true
             member.owner == "com/intellij/openapi/vfs/VirtualFile" && name == "getchildren" -> true
             member.owner in setOf("com/intellij/openapi/vfs/VfsUtil", "com/intellij/openapi/vfs/VfsUtilCore") &&
-                name in setOf("iteratechildrenrecursively", "visitchildrenrecursively", "processfilesrecursively") -> true
+                name in setOf("iteratechildrenrecursively", "visitchildrenrecursively", "processfilesrecursively") ->
+                true
             member.owner.startsWith("com/intellij/openapi/externalSystem/") &&
                 FORBIDDEN_EXTERNAL_SYSTEM_VERBS.any(name::startsWith) -> true
             member.owner == "com/intellij/openapi/application/Application" &&
                 member.name in setOf("invokeLater", "runReadAction") -> true
-            member.owner == "java/nio/file/Files" &&
-                FORBIDDEN_FILE_VERBS.any(name::startsWith) -> true
+            member.owner == "java/nio/file/Files" && FORBIDDEN_FILE_VERBS.any(name::startsWith) -> true
             member.owner == "java/lang/Thread" && member.name in setOf("start", "sleep") -> true
             member.owner == "java/lang/Object" && member.name == "wait" -> true
             member.owner == "java/util/concurrent/Future" && member.name == "get" -> true
-            member.owner == "java/util/concurrent/CompletableFuture" &&
-                member.name in setOf("get", "join") -> true
+            member.owner == "java/util/concurrent/CompletableFuture" && member.name in setOf("get", "join") -> true
             member.owner.startsWith("java/util/concurrent/Executors") -> true
             member.owner.startsWith("kotlinx/coroutines/") && name == "runblocking" -> true
             else -> false
         }
     }
 
-    private val EXPECTED_CLASS_FINGERPRINTS = mapOf(
-        LISTENER_RESOURCE to "7d95b24dfbff62a9791e2fa782c6ea9ac0e98f3601a9f2d07a486926c7b3b435",
-        RENAME_RESOURCE to "93ff8114661d50fc676cf85bb084d808b2b79f0b7f94ad16f2ad8f26c1b8f34c",
-    )
+    private val EXPECTED_CLASS_FINGERPRINTS =
+        mapOf(
+            LISTENER_RESOURCE to "72abfb5e747f8a8abd13b0fcd57d7aa5fb2b28cd65cb6d795d2a9474654cecc5",
+            RENAME_RESOURCE to "bfaa93ce7cba93eed5734f44e2cccb6b971731fd23f2aad708260c3e8cd2c1d4",
+        )
 
-    private val PRODUCTION_REQUIRED_MEMBERS = setOf(
-        member("com/intellij/openapi/application/Application", "isDispatchThread"), member("com/intellij/openapi/application/ReadAction", "computeCancellable"),
-        member("com/intellij/openapi/progress/ProgressManager", "checkCanceled"), member("com/intellij/openapi/project/Project", "isDisposed"),
-        member("com/intellij/openapi/project/Project", "isOpen"), member("com/intellij/openapi/project/Project", "isInitialized"),
-        member("com/intellij/openapi/project/Project", "getBasePath"), member("com/intellij/platform/backend/workspace/WorkspaceModelTopics", "CHANGED"),
-        member("com/intellij/openapi/vfs/VirtualFileManager", "VFS_CHANGES"), member("com/intellij/util/messages/MessageBusConnection", "subscribe"),
-        member(EXTERNAL_PROJECT_INFO, "getExternalProjectPath"), member(EXTERNAL_PROJECT_INFO, "getLastImportTimestamp"),
-        member(EXTERNAL_PROJECT_INFO, "getLastSuccessfulImportTimestamp"), member("com/intellij/psi/util/PsiModificationTracker", "getModificationCount"),
-        member("com/intellij/openapi/roots/ProjectRootModificationTracker", "getModificationCount"), member("com/intellij/openapi/project/DumbService", "getModificationTracker"),
-        member("com/intellij/openapi/project/DumbService", "isDumb"), member(VFS_MOVE_EVENT, "getOldPath"), member(VFS_MOVE_EVENT, "getNewPath"),
-        member(VFS_PROPERTY_EVENT, "getOldPath"), member(VFS_PROPERTY_EVENT, "getNewPath"),
-        member(LOCAL + "ProjectReadEpochObservationKt", "observeProjectReadEpochVfsBatch"), member(LOCAL + "ProjectReadEpochState\$Companion", "admit"),
-    )
+    private val PRODUCTION_REQUIRED_MEMBERS =
+        setOf(
+            member("com/intellij/openapi/application/Application", "isDispatchThread"),
+            member("com/intellij/openapi/application/ReadAction", "computeCancellable"),
+            member("com/intellij/openapi/progress/ProgressManager", "checkCanceled"),
+            member("com/intellij/openapi/project/Project", "isDisposed"),
+            member("com/intellij/openapi/project/Project", "isOpen"),
+            member("com/intellij/openapi/project/Project", "isInitialized"),
+            member("com/intellij/openapi/project/Project", "getBasePath"),
+            member("com/intellij/platform/backend/workspace/WorkspaceModelTopics", "CHANGED"),
+            member("com/intellij/openapi/vfs/VirtualFileManager", "VFS_CHANGES"),
+            member("com/intellij/util/messages/MessageBusConnection", "subscribe"),
+            member(EXTERNAL_PROJECT_INFO, "getExternalProjectPath"),
+            member(EXTERNAL_PROJECT_INFO, "getLastImportTimestamp"),
+            member(EXTERNAL_PROJECT_INFO, "getLastSuccessfulImportTimestamp"),
+            member("com/intellij/psi/util/PsiModificationTracker", "getModificationCount"),
+            member("com/intellij/openapi/roots/ProjectRootModificationTracker", "getModificationCount"),
+            member("com/intellij/openapi/project/DumbService", "getModificationTracker"),
+            member("com/intellij/openapi/project/DumbService", "isDumb"),
+            member(VFS_MOVE_EVENT, "getOldPath"),
+            member(VFS_MOVE_EVENT, "getNewPath"),
+            member(VFS_PROPERTY_EVENT, "getOldPath"),
+            member(VFS_PROPERTY_EVENT, "getNewPath"),
+            member(LOCAL + "ProjectReadEpochObservationKt", "observeProjectReadEpochVfsBatch"),
+            member(LOCAL + "ProjectReadEpochState\$Companion", "admit"),
+        )
 
-    private val PRODUCTION_REQUIRED_CLASS_REFERENCES = setOf(
-        "com/intellij/openapi/application/ReadAction\$CannotReadException",
-        "com/intellij/openapi/progress/ProcessCanceledException",
-        "com/intellij/platform/backend/workspace/WorkspaceModelChangeListener",
-        "com/intellij/openapi/vfs/newvfs/BulkFileListener",
-    )
+    private val PRODUCTION_REQUIRED_CLASS_REFERENCES =
+        setOf(
+            "com/intellij/openapi/application/ReadAction\$CannotReadException",
+            "com/intellij/openapi/progress/ProcessCanceledException",
+            "com/intellij/platform/backend/workspace/WorkspaceModelChangeListener",
+            "com/intellij/openapi/vfs/newvfs/BulkFileListener",
+        )
 
-    private val PRODUCTION_FINGERPRINTS = mapOf(
-        PRODUCTION_FACTORY_RESOURCE to "42e1eea33e9b673edec1a16630d6e0952e8cbb0fd9414d325f02372ad603496b",
-        PRODUCTION_WORKSPACE_LISTENER_RESOURCE to "f3ed3bdaca0829208c374c0c3c96a84807072912cff6b68f4342b5055416d082",
-        PRODUCTION_VFS_LISTENER_RESOURCE to "24b50e9b8d2f1ec37cbb96f00cda84b8c2a194fb14cbc5c416a600e5ad4b52c5",
-        PRODUCTION_REFINEMENT_RESOURCE to "13f0222ac7d90611a2c7840269c7efb732ccbf1459969216936f18a3ea7ec564",
-    )
+    private val PRODUCTION_FINGERPRINTS =
+        mapOf(
+            PRODUCTION_FACTORY_RESOURCE to "602b29270941146ad5272ddf5b3914faba55ed1fbe53725f183f0c6329a4b5d9",
+            PRODUCTION_WORKSPACE_LISTENER_RESOURCE to
+                "69338081879a99e579acdbc102bb7e8614feefb9cc462d377bfbc4c02020b130",
+            PRODUCTION_VFS_LISTENER_RESOURCE to "079c89c14a5818ce28cbc2c2c1330af759f1ed3b30b2cbbeeef04b520c168c56",
+            PRODUCTION_REFINEMENT_RESOURCE to "76162d327aa6eb497d109e45c75328fb8be9c661ec95567008ad0e293cf62eb3",
+        )
 
-    private val PRODUCTION_LISTENER_MEMBERS: Map<String, Set<EpochMemberReference>> = mapOf(
-        PRODUCTION_WORKSPACE_LISTENER_RESOURCE to setOf(
-            member(LOCAL + "LiveProjectReadEpochSourceFactory\$createOwned\$1", "\$projectModelCounter"), member("java/lang/Object", "<init>"),
-            member(INTRINSICS, "checkNotNullParameter"), member(LOCAL + "ProjectReadEpochMetadataCounter", "advance"),
-            member("com/intellij/platform/backend/workspace/WorkspaceModelChangeListener", "beforeChanged"),
-        ),
-        PRODUCTION_VFS_LISTENER_RESOURCE to setOf(
-            // Retained immutable configuration only; the exact IntelliJ listener surface is unchanged.
-            member(LOCAL + "RootFilteredProjectEpochVfsListener", "limits"),
-            member(LOCAL + "RootFilteredProjectEpochVfsListener", "<init>"),
-            member("io/github/amichne/kast/kernel/ReadLimits", "Companion"),
-            member("io/github/amichne/kast/kernel/ReadLimits\$Companion", "getDefault"),
-            member("io/github/amichne/kast/kernel/ReadLimitParameter", "EPOCH_VFS_EVENTS"),
-            member("io/github/amichne/kast/kernel/ReadLimits", "get"),
-            member("io/github/amichne/kast/kernel/ReadLimitValue", "getValue"),
-            member(INTRINSICS, "checkNotNullParameter"), member("java/lang/Object", "<init>"),
-            member(LOCAL + "RootFilteredProjectEpochVfsListener", "root"), member(LOCAL + "RootFilteredProjectEpochVfsListener", "counter"),
-            member("java/util/List", "size"), member("io/github/amichne/kast/workspace/contract/ProjectReadEpochObservationFailure\$VfsBatchLimitExceeded", "INSTANCE"),
-            member(LOCAL + "ProjectReadEpochMetadataCounter", "reject"), member("java/util/ArrayList", "<init>"),
-            member("java/util/List", "iterator"), member("java/util/Iterator", "hasNext"), member("java/util/Iterator", "next"),
-            member(VFS_MOVE_EVENT, "getOldPath"), member(VFS_MOVE_EVENT, "getNewPath"), member(INTRINSICS, "checkNotNullExpressionValue"),
-            member(LOCAL + "ProjectReadEpochVfsEvent\$Move", "<init>"), member(VFS_PROPERTY_EVENT, "isRename"),
-            member(VFS_PROPERTY_EVENT, "getOldPath"), member(VFS_PROPERTY_EVENT, "getNewPath"),
-            member(LOCAL + "ProjectReadEpochVfsEvent\$Rename", "<init>"), member(VFS_PROPERTY_EVENT, "getPath"),
-            member(LOCAL + "ProjectReadEpochVfsEvent\$Change", "<init>"), member(VFS_EVENT, "getPath"),
-            member("java/util/Collection", "add"), member(LOCAL + "ProjectReadEpochObservationKt", "observeProjectReadEpochVfsBatch"),
-            member(LOCAL + "ProjectReadEpochVfsBatchObservation\$OutsideRoot", "INSTANCE"), member(INTRINSICS, "areEqual"),
-            member(LOCAL + "ProjectReadEpochVfsBatchObservation\$TouchesRoot", "INSTANCE"), member(LOCAL + "ProjectReadEpochMetadataCounter", "advance"),
-            member(LOCAL + "ProjectReadEpochVfsBatchObservation\$Rejected", "getFailure"), member("kotlin/NoWhenBranchMatchedException", "<init>"),
-        ),
-    )
+    private val PRODUCTION_LISTENER_MEMBERS: Map<String, Set<EpochMemberReference>> =
+        mapOf(
+            PRODUCTION_WORKSPACE_LISTENER_RESOURCE to
+                setOf(
+                    member(LOCAL + "LiveProjectReadEpochSourceFactory\$createOwned\$1", "\$projectModelCounter"),
+                    member("java/lang/Object", "<init>"),
+                    member(INTRINSICS, "checkNotNullParameter"),
+                    member(LOCAL + "ProjectReadEpochMetadataCounter", "advance"),
+                    member("com/intellij/platform/backend/workspace/WorkspaceModelChangeListener", "beforeChanged"),
+                ),
+            PRODUCTION_VFS_LISTENER_RESOURCE to
+                setOf(
+                    // Retained immutable configuration only; the exact IntelliJ listener surface is unchanged.
+                    member(LOCAL + "RootFilteredProjectEpochVfsListener", "limits"),
+                    member(LOCAL + "RootFilteredProjectEpochVfsListener", "<init>"),
+                    member("io/github/amichne/kast/kernel/ReadLimits", "Companion"),
+                    member("io/github/amichne/kast/kernel/ReadLimits\$Companion", "getDefault"),
+                    member("io/github/amichne/kast/kernel/ReadLimitParameter", "EPOCH_VFS_EVENTS"),
+                    member("io/github/amichne/kast/kernel/ReadLimits", "get"),
+                    member("io/github/amichne/kast/kernel/ReadLimitValue", "getValue"),
+                    member(INTRINSICS, "checkNotNullParameter"),
+                    member("java/lang/Object", "<init>"),
+                    member(LOCAL + "RootFilteredProjectEpochVfsListener", "root"),
+                    member(LOCAL + "RootFilteredProjectEpochVfsListener", "counter"),
+                    member("java/util/List", "size"),
+                    member(
+                        "io/github/amichne/kast/workspace/contract/ProjectReadEpochObservationFailure\$VfsBatchLimitExceeded",
+                        "INSTANCE",
+                    ),
+                    member(LOCAL + "ProjectReadEpochMetadataCounter", "reject"),
+                    member("java/util/ArrayList", "<init>"),
+                    member("java/util/List", "iterator"),
+                    member("java/util/Iterator", "hasNext"),
+                    member("java/util/Iterator", "next"),
+                    member(VFS_MOVE_EVENT, "getOldPath"),
+                    member(VFS_MOVE_EVENT, "getNewPath"),
+                    member(INTRINSICS, "checkNotNullExpressionValue"),
+                    member(LOCAL + "ProjectReadEpochVfsEvent\$Move", "<init>"),
+                    member(VFS_PROPERTY_EVENT, "isRename"),
+                    member(VFS_PROPERTY_EVENT, "getOldPath"),
+                    member(VFS_PROPERTY_EVENT, "getNewPath"),
+                    member(LOCAL + "ProjectReadEpochVfsEvent\$Rename", "<init>"),
+                    member(VFS_PROPERTY_EVENT, "getPath"),
+                    member(LOCAL + "ProjectReadEpochVfsEvent\$Change", "<init>"),
+                    member(VFS_EVENT, "getPath"),
+                    member("java/util/Collection", "add"),
+                    member(LOCAL + "ProjectReadEpochObservationKt", "observeProjectReadEpochVfsBatch"),
+                    member(LOCAL + "ProjectReadEpochVfsBatchObservation\$OutsideRoot", "INSTANCE"),
+                    member(INTRINSICS, "areEqual"),
+                    member(LOCAL + "ProjectReadEpochVfsBatchObservation\$TouchesRoot", "INSTANCE"),
+                    member(LOCAL + "ProjectReadEpochMetadataCounter", "advance"),
+                    member(LOCAL + "ProjectReadEpochVfsBatchObservation\$Rejected", "getFailure"),
+                    member("kotlin/NoWhenBranchMatchedException", "<init>"),
+                ),
+        )
 
-    private val CONSTANT_ZERO_VFS_METHODS =
-        setOf("getModificationCount", "getStructureModificationCount")
-    private val FORBIDDEN_EXTERNAL_SYSTEM_VERBS =
-        setOf("refresh", "link", "import", "update", "prepare")
+    private val CONSTANT_ZERO_VFS_METHODS = setOf("getModificationCount", "getStructureModificationCount")
+    private val FORBIDDEN_EXTERNAL_SYSTEM_VERBS = setOf("refresh", "link", "import", "update", "prepare")
     private val FORBIDDEN_FILE_VERBS = setOf("walk", "read", "newinputstream")
 
     private const val LOCAL = "io/github/amichne/kast/workspace/intellij/read/"
@@ -359,7 +429,8 @@ internal object EpochSignalClassContract {
     private const val VFS_EVENT = "com/intellij/openapi/vfs/newvfs/events/VFileEvent"
     private const val VFS_MOVE_EVENT = "com/intellij/openapi/vfs/newvfs/events/VFileMoveEvent"
     private const val VFS_PROPERTY_EVENT = "com/intellij/openapi/vfs/newvfs/events/VFilePropertyChangeEvent"
-    private const val WORKSPACE_LISTENER_DESCRIPTOR = "Lcom/intellij/platform/backend/workspace/WorkspaceModelChangeListener;"
+    private const val WORKSPACE_LISTENER_DESCRIPTOR =
+        "Lcom/intellij/platform/backend/workspace/WorkspaceModelChangeListener;"
     private const val CONTRACT_RESOURCE = LOCAL + "EpochSignalApiContract.class"
     private const val LISTENER_RESOURCE = LOCAL + "EpochSignalApiContract\$RootFilteredVfsSignal.class"
     private const val COUNTER_RESOURCE = LOCAL + "EpochVfsMetadataCounter.class"
@@ -369,16 +440,18 @@ internal object EpochSignalClassContract {
     private const val PRODUCTION_FACTORY_RESOURCE = LOCAL + "LiveProjectReadEpochSourceFactory.class"
     private const val PRODUCTION_PLATFORM_RESOURCE = LOCAL + "LiveProjectReadEpochPlatformPort.class"
     private const val PRODUCTION_EXECUTION_RESOURCE = LOCAL + "IdeaProjectReadEpochExecution.class"
-    private const val PRODUCTION_WORKSPACE_LISTENER_RESOURCE = LOCAL + "LiveProjectReadEpochSourceFactory\$createOwned\$1.class"
+    private const val PRODUCTION_WORKSPACE_LISTENER_RESOURCE =
+        LOCAL + "LiveProjectReadEpochSourceFactory\$createOwned\$1.class"
     private const val PRODUCTION_VFS_LISTENER_RESOURCE = LOCAL + "RootFilteredProjectEpochVfsListener.class"
     private const val PRODUCTION_REFINEMENT_RESOURCE = LOCAL + "ProjectReadEpochObservationKt.class"
-    private val RESOURCES = listOf(
-        CONTRACT_RESOURCE,
-        LISTENER_RESOURCE,
-        COUNTER_RESOURCE,
-        ROOT_RESOURCE,
-        RENAME_RESOURCE,
-    )
+    private val RESOURCES =
+        listOf(
+            CONTRACT_RESOURCE,
+            LISTENER_RESOURCE,
+            COUNTER_RESOURCE,
+            ROOT_RESOURCE,
+            RENAME_RESOURCE,
+        )
     private val PRODUCTION_RESOURCES = productionEpochResources()
 }
 
@@ -387,14 +460,17 @@ private data class ConstantPoolView(
     val members: Set<EpochMemberReference>,
     val fingerprint: String,
 ) {
-    operator fun plus(other: ConstantPoolView) =
-        ConstantPoolView(utf8 + other.utf8, members + other.members, "")
+    operator fun plus(other: ConstantPoolView) = ConstantPoolView(utf8 + other.utf8, members + other.members, "")
 }
 
 private sealed interface ConstantPoolEntry {
     data class Utf8(val value: String) : ConstantPoolEntry
+
     data class ClassName(val nameIndex: Int) : ConstantPoolEntry
+
     data class NameAndType(val nameIndex: Int, val descriptorIndex: Int) : ConstantPoolEntry
+
     data class Member(val ownerIndex: Int, val nameAndTypeIndex: Int) : ConstantPoolEntry
+
     data object Other : ConstantPoolEntry
 }

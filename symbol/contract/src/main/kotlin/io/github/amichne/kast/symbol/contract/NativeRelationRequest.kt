@@ -13,25 +13,20 @@ enum class NativeRelationFamily {
 }
 
 enum class NativeRelationByteLimitFailure {
-    NOT_POSITIVE,
+    NOT_POSITIVE
 }
 
 @JvmInline
-value class NativeRelationByteLimit private constructor(
-    val value: Long,
-) {
+value class NativeRelationByteLimit private constructor(val value: Long) {
     companion object {
         /**
-         * Proof transition:
-         * Long to Refinement<NativeRelationByteLimit, NativeRelationByteLimitFailure>.
+         * Proof transition: Long to Refinement<NativeRelationByteLimit, NativeRelationByteLimitFailure>.
          *
-         * Establishes a positive upper bound for detached relation-result bytes.
-         * [NativeRelationByteLimitFailure] is the closed expected failure. Raw byte limits may be
-         * extracted only by the bounded native collector or transport admission boundary.
+         * Establishes a positive upper bound for detached relation-result bytes. [NativeRelationByteLimitFailure] is
+         * the closed expected failure. Raw byte limits may be extracted only by the bounded native collector or
+         * transport admission boundary.
          */
-        fun parse(
-            raw: Long,
-        ): Refinement<NativeRelationByteLimit, NativeRelationByteLimitFailure> =
+        fun parse(raw: Long): Refinement<NativeRelationByteLimit, NativeRelationByteLimitFailure> =
             if (raw > 0L) {
                 Refinement.Refined(NativeRelationByteLimit(raw))
             } else {
@@ -46,8 +41,8 @@ data class NativeRelationBudget(
 )
 
 /**
- * Generation/scope-bound one-hop relation request. The exact selector is the only subject input;
- * callers cannot supply another scope, raw name, FQN, file, offset, depth, or traversal state.
+ * Generation/scope-bound one-hop relation request. The exact selector is the only subject input; callers cannot supply
+ * another scope, raw name, FQN, file, offset, depth, or traversal state.
  */
 data class NativeRelationRequest(
     val selector: ExactDeclarationSelector,

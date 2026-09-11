@@ -61,37 +61,36 @@ class IdeEndpointLocationTest {
         )
     }
 
-    private fun directory(raw: String): IdeEndpointSocketDirectory = when (
-        val parsed = IdeEndpointSocketDirectory.parse(raw)
-    ) {
-        is Refinement.Refined -> parsed.value
-        is Refinement.Rejected -> error("directory rejected: ${parsed.failure}")
-    }
+    private fun directory(raw: String): IdeEndpointSocketDirectory =
+        when (val parsed = IdeEndpointSocketDirectory.parse(raw)) {
+            is Refinement.Refined -> parsed.value
+            is Refinement.Rejected -> error("directory rejected: ${parsed.failure}")
+        }
 
-    private fun root(raw: String): IdeEndpointCanonicalRoot = when (
-        val parsed = IdeEndpointCanonicalRoot.parse(raw)
-    ) {
-        is Refinement.Refined -> parsed.value
-        is Refinement.Rejected -> error("root rejected: ${parsed.failure}")
-    }
+    private fun root(raw: String): IdeEndpointCanonicalRoot =
+        when (val parsed = IdeEndpointCanonicalRoot.parse(raw)) {
+            is Refinement.Refined -> parsed.value
+            is Refinement.Rejected -> error("root rejected: ${parsed.failure}")
+        }
 
-    private fun rejectedDirectory(raw: String): IdeEndpointSocketDirectoryFailure = when (
-        val parsed = IdeEndpointSocketDirectory.parse(raw)
-    ) {
-        is Refinement.Refined -> error("directory unexpectedly admitted: ${parsed.value}")
-        is Refinement.Rejected -> parsed.failure
-    }
+    private fun rejectedDirectory(raw: String): IdeEndpointSocketDirectoryFailure =
+        when (val parsed = IdeEndpointSocketDirectory.parse(raw)) {
+            is Refinement.Refined -> error("directory unexpectedly admitted: ${parsed.value}")
+            is Refinement.Rejected -> parsed.failure
+        }
 
     private fun location(
         directory: IdeEndpointSocketDirectory,
         root: IdeEndpointCanonicalRoot,
-    ): IdeEndpointLocation = when (val located = IdeEndpointLocation.locate(directory, root)) {
-        is Refinement.Refined -> located.value
-        is Refinement.Rejected -> error("location rejected: ${located.failure}")
-    }
+    ): IdeEndpointLocation =
+        when (val located = IdeEndpointLocation.locate(directory, root)) {
+            is Refinement.Refined -> located.value
+            is Refinement.Rejected -> error("location rejected: ${located.failure}")
+        }
 
-    private fun epoch(raw: Long): IdeRuntimeEpoch = when (val parsed = IdeRuntimeEpoch.parse(raw)) {
-        is Refinement.Refined -> parsed.value
-        is Refinement.Rejected -> error("epoch rejected: ${parsed.failure}")
-    }
+    private fun epoch(raw: Long): IdeRuntimeEpoch =
+        when (val parsed = IdeRuntimeEpoch.parse(raw)) {
+            is Refinement.Refined -> parsed.value
+            is Refinement.Rejected -> error("epoch rejected: ${parsed.failure}")
+        }
 }

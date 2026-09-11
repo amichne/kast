@@ -15,6 +15,7 @@ internal enum class IndexerCacheState(val wireName: String) {
 
 internal sealed interface IndexerCacheStatePublication {
     data object Published : IndexerCacheStatePublication
+
     data object Rejected : IndexerCacheStatePublication
 }
 
@@ -23,42 +24,40 @@ internal object IndexerCacheStatePublisher {
     private const val PROPERTY = "kast.cache.state.path"
 
     fun publish(state: IndexerCacheState): IndexerCacheStatePublication {
-        val raw = System.getProperty(PROPERTY)
-            ?: return IndexerCacheStatePublication.Rejected
-        val path = try {
-            Path.of(raw)
-        } catch (_: RuntimeException) {
-            return IndexerCacheStatePublication.Rejected
-        }
+        val raw = System.getProperty(PROPERTY) ?: return IndexerCacheStatePublication.Rejected
+        val path =
+            try {
+                Path.of(raw)
+            } catch (_: RuntimeException) {
+                return IndexerCacheStatePublication.Rejected
+            }
         if (
             !path.isAbsolute ||
-            path.normalize() != path ||
-            path.fileName.toString() != "cache-state" ||
-            Files.isSymbolicLink(path)
+                path.normalize() != path ||
+                path.fileName.toString() != "cache-state" ||
+                Files.isSymbolicLink(path)
         ) {
             return IndexerCacheStatePublication.Rejected
         }
-        val parent = try {
-            path.parent?.toRealPath()
-        } catch (_: IOException) {
-            return IndexerCacheStatePublication.Rejected
-        } catch (_: SecurityException) {
-            return IndexerCacheStatePublication.Rejected
-        }
-        if (
-            parent == null ||
-            parent != path.parent ||
-            !Files.isDirectory(parent, LinkOption.NOFOLLOW_LINKS)
-        ) {
+        val parent =
+            try {
+                path.parent?.toRealPath()
+            } catch (_: IOException) {
+                return IndexerCacheStatePublication.Rejected
+            } catch (_: SecurityException) {
+                return IndexerCacheStatePublication.Rejected
+            }
+        if (parent == null || parent != path.parent || !Files.isDirectory(parent, LinkOption.NOFOLLOW_LINKS)) {
             return IndexerCacheStatePublication.Rejected
         }
-        val staging = try {
-            Files.createTempFile(parent, ".cache-state-", ".partial")
-        } catch (_: IOException) {
-            return IndexerCacheStatePublication.Rejected
-        } catch (_: SecurityException) {
-            return IndexerCacheStatePublication.Rejected
-        }
+        val staging =
+            try {
+                Files.createTempFile(parent, ".cache-state-", ".partial")
+            } catch (_: IOException) {
+                return IndexerCacheStatePublication.Rejected
+            } catch (_: SecurityException) {
+                return IndexerCacheStatePublication.Rejected
+            }
         return try {
             Files.writeString(staging, state.wireName + "\n")
             Files.move(

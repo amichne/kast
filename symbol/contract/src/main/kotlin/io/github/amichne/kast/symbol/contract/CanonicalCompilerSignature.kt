@@ -27,50 +27,37 @@ enum class CanonicalCompilerSignatureFailure {
 }
 
 /** Canonical, compiler-owned qualified declaration identity. */
-@JvmInline
-value class CanonicalCompilerQualifiedIdentity internal constructor(
-    val value: String,
-)
+@JvmInline value class CanonicalCompilerQualifiedIdentity internal constructor(val value: String)
 
 /** Canonical K2 type rendering with insignificant whitespace removed. */
-@JvmInline
-value class CanonicalCompilerType internal constructor(
-    val value: String,
-)
+@JvmInline value class CanonicalCompilerType internal constructor(val value: String)
 
 /** Proven non-negative count of type parameters in a compiler function signature. */
-@JvmInline
-value class CanonicalTypeParameterCount internal constructor(
-    val value: Int,
-)
+@JvmInline value class CanonicalTypeParameterCount internal constructor(val value: Int)
 
 /** Closed receiver state retained from a native compiler function signature. */
 sealed interface CanonicalCompilerReceiver {
     data object Absent : CanonicalCompilerReceiver
 
-    data class Present(
-        val type: CanonicalCompilerType,
-    ) : CanonicalCompilerReceiver
+    data class Present(val type: CanonicalCompilerType) : CanonicalCompilerReceiver
 }
 
 /** Versioned canonical encoding used only at persistence and transport boundaries. */
-@JvmInline
-value class CanonicalCompilerSignatureEncoding internal constructor(
-    val value: String,
-)
+@JvmInline value class CanonicalCompilerSignatureEncoding internal constructor(val value: String)
 
 /**
  * Structured, unambiguous native compiler signature owned by the symbol contract.
  *
- * Each variant retains the compiler facts from which [CompilerSymbolIdentity] is derived. The
- * The canonical framing remains `canonical-signature-v1`; receiver-complete properties use the
- * closed `property-v2` kind so legacy receiver-less property encodings fail closed.
+ * Each variant retains the compiler facts from which [CompilerSymbolIdentity] is derived. The The canonical framing
+ * remains `canonical-signature-v1`; receiver-complete properties use the closed `property-v2` kind so legacy
+ * receiver-less property encodings fail closed.
  */
 sealed interface CanonicalCompilerSignature {
     val qualifiedIdentity: CanonicalCompilerQualifiedIdentity
 
     @ConsistentCopyVisibility
-    data class Function internal constructor(
+    data class Function
+    internal constructor(
         override val qualifiedIdentity: CanonicalCompilerQualifiedIdentity,
         val receiver: CanonicalCompilerReceiver,
         val contextReceivers: List<CanonicalCompilerType>,
@@ -79,20 +66,19 @@ sealed interface CanonicalCompilerSignature {
     ) : CanonicalCompilerSignature
 
     @ConsistentCopyVisibility
-    data class Property internal constructor(
+    data class Property
+    internal constructor(
         override val qualifiedIdentity: CanonicalCompilerQualifiedIdentity,
         val receiver: CanonicalCompilerReceiver,
         val contextReceivers: List<CanonicalCompilerType>,
         val returnType: CanonicalCompilerType,
     ) : CanonicalCompilerSignature
 
-    data class TypeAlias internal constructor(
-        override val qualifiedIdentity: CanonicalCompilerQualifiedIdentity,
-    ) : CanonicalCompilerSignature
+    data class TypeAlias internal constructor(override val qualifiedIdentity: CanonicalCompilerQualifiedIdentity) :
+        CanonicalCompilerSignature
 
-    data class ClassLike internal constructor(
-        override val qualifiedIdentity: CanonicalCompilerQualifiedIdentity,
-    ) : CanonicalCompilerSignature
+    data class ClassLike internal constructor(override val qualifiedIdentity: CanonicalCompilerQualifiedIdentity) :
+        CanonicalCompilerSignature
 
     /** Explicit projection for a persistence or transport boundary. */
     fun canonicalEncoding(): CanonicalCompilerSignatureEncoding =
@@ -100,8 +86,8 @@ sealed interface CanonicalCompilerSignature {
 
     companion object {
         /**
-         * Establishes a structured function signature with a non-blank qualified identity,
-         * canonical receiver and parameter types, and a non-negative type-parameter count.
+         * Establishes a structured function signature with a non-blank qualified identity, canonical receiver and
+         * parameter types, and a non-negative type-parameter count.
          */
         fun function(
             rawQualifiedIdentity: String,
@@ -110,31 +96,26 @@ sealed interface CanonicalCompilerSignature {
             rawValueParameterTypes: List<String>,
             rawTypeParameterCount: Int,
         ): Refinement<CanonicalCompilerSignature, CanonicalCompilerSignatureFailure> {
-            val qualifiedIdentity = canonicalQualifiedIdentity(rawQualifiedIdentity)
-                ?: return Refinement.Rejected(
-                    CanonicalCompilerSignatureFailure.INVALID_QUALIFIED_IDENTITY,
-                )
-            val receiver = when (rawReceiverType) {
-                null -> CanonicalCompilerReceiver.Absent
-                else -> CanonicalCompilerReceiver.Present(
-                    canonicalType(rawReceiverType)
-                        ?: return Refinement.Rejected(
-                            CanonicalCompilerSignatureFailure.INVALID_RECEIVER_TYPE,
-                        ),
-                )
-            }
-            val contextReceiverTypes = rawContextReceiverTypes.canonicalTypes()
-                ?: return Refinement.Rejected(
-                    CanonicalCompilerSignatureFailure.INVALID_CONTEXT_RECEIVER_TYPE,
-                )
-            val valueParameterTypes = rawValueParameterTypes.canonicalTypes()
-                ?: return Refinement.Rejected(
-                    CanonicalCompilerSignatureFailure.INVALID_VALUE_PARAMETER_TYPE,
-                )
+            val qualifiedIdentity =
+                canonicalQualifiedIdentity(rawQualifiedIdentity)
+                    ?: return Refinement.Rejected(CanonicalCompilerSignatureFailure.INVALID_QUALIFIED_IDENTITY)
+            val receiver =
+                when (rawReceiverType) {
+                    null -> CanonicalCompilerReceiver.Absent
+                    else ->
+                        CanonicalCompilerReceiver.Present(
+                            canonicalType(rawReceiverType)
+                                ?: return Refinement.Rejected(CanonicalCompilerSignatureFailure.INVALID_RECEIVER_TYPE)
+                        )
+                }
+            val contextReceiverTypes =
+                rawContextReceiverTypes.canonicalTypes()
+                    ?: return Refinement.Rejected(CanonicalCompilerSignatureFailure.INVALID_CONTEXT_RECEIVER_TYPE)
+            val valueParameterTypes =
+                rawValueParameterTypes.canonicalTypes()
+                    ?: return Refinement.Rejected(CanonicalCompilerSignatureFailure.INVALID_VALUE_PARAMETER_TYPE)
             if (rawTypeParameterCount < 0) {
-                return Refinement.Rejected(
-                    CanonicalCompilerSignatureFailure.INVALID_TYPE_PARAMETER_COUNT,
-                )
+                return Refinement.Rejected(CanonicalCompilerSignatureFailure.INVALID_TYPE_PARAMETER_COUNT)
             }
             return Refinement.Refined(
                 Function(
@@ -143,14 +124,13 @@ sealed interface CanonicalCompilerSignature {
                     contextReceivers = contextReceiverTypes,
                     valueParameters = valueParameterTypes,
                     typeParameterCount = CanonicalTypeParameterCount(rawTypeParameterCount),
-                ),
+                )
             )
         }
 
         /**
-         * Establishes a structured property signature with canonical extension/context receivers
-         * and return type. Receiver proof is part of identity so same-name extension properties
-         * cannot collide.
+         * Establishes a structured property signature with canonical extension/context receivers and return type.
+         * Receiver proof is part of identity so same-name extension properties cannot collide.
          */
         fun property(
             rawQualifiedIdentity: String,
@@ -158,96 +138,83 @@ sealed interface CanonicalCompilerSignature {
             rawContextReceiverTypes: List<String>,
             rawReturnType: String,
         ): Refinement<CanonicalCompilerSignature, CanonicalCompilerSignatureFailure> {
-            val qualifiedIdentity = canonicalQualifiedIdentity(rawQualifiedIdentity)
-                ?: return Refinement.Rejected(
-                    CanonicalCompilerSignatureFailure.INVALID_QUALIFIED_IDENTITY,
-                )
-            val receiver = when (rawReceiverType) {
-                null -> CanonicalCompilerReceiver.Absent
-                else -> CanonicalCompilerReceiver.Present(
-                    canonicalType(rawReceiverType)
-                        ?: return Refinement.Rejected(
-                            CanonicalCompilerSignatureFailure.INVALID_RECEIVER_TYPE,
-                        ),
-                )
-            }
-            val contextReceivers = rawContextReceiverTypes.canonicalTypes()
-                ?: return Refinement.Rejected(
-                    CanonicalCompilerSignatureFailure.INVALID_CONTEXT_RECEIVER_TYPE,
-                )
-            val returnType = canonicalType(rawReturnType)
-                ?: return Refinement.Rejected(
-                    CanonicalCompilerSignatureFailure.INVALID_RETURN_TYPE,
-                )
-            return Refinement.Refined(
-                Property(qualifiedIdentity, receiver, contextReceivers, returnType),
-            )
+            val qualifiedIdentity =
+                canonicalQualifiedIdentity(rawQualifiedIdentity)
+                    ?: return Refinement.Rejected(CanonicalCompilerSignatureFailure.INVALID_QUALIFIED_IDENTITY)
+            val receiver =
+                when (rawReceiverType) {
+                    null -> CanonicalCompilerReceiver.Absent
+                    else ->
+                        CanonicalCompilerReceiver.Present(
+                            canonicalType(rawReceiverType)
+                                ?: return Refinement.Rejected(CanonicalCompilerSignatureFailure.INVALID_RECEIVER_TYPE)
+                        )
+                }
+            val contextReceivers =
+                rawContextReceiverTypes.canonicalTypes()
+                    ?: return Refinement.Rejected(CanonicalCompilerSignatureFailure.INVALID_CONTEXT_RECEIVER_TYPE)
+            val returnType =
+                canonicalType(rawReturnType)
+                    ?: return Refinement.Rejected(CanonicalCompilerSignatureFailure.INVALID_RETURN_TYPE)
+            return Refinement.Refined(Property(qualifiedIdentity, receiver, contextReceivers, returnType))
         }
 
         /** Establishes a structured type-alias signature with a non-blank qualified identity. */
         fun typeAlias(
-            rawQualifiedIdentity: String,
+            rawQualifiedIdentity: String
         ): Refinement<CanonicalCompilerSignature, CanonicalCompilerSignatureFailure> =
             when (val qualifiedIdentity = canonicalQualifiedIdentity(rawQualifiedIdentity)) {
-                null -> Refinement.Rejected(
-                    CanonicalCompilerSignatureFailure.INVALID_QUALIFIED_IDENTITY,
-                )
+                null -> Refinement.Rejected(CanonicalCompilerSignatureFailure.INVALID_QUALIFIED_IDENTITY)
                 else -> Refinement.Refined(TypeAlias(qualifiedIdentity))
             }
 
         /** Establishes a structured class-like signature with a non-blank qualified identity. */
         fun classLike(
-            rawQualifiedIdentity: String,
+            rawQualifiedIdentity: String
         ): Refinement<CanonicalCompilerSignature, CanonicalCompilerSignatureFailure> =
             when (val qualifiedIdentity = canonicalQualifiedIdentity(rawQualifiedIdentity)) {
-                null -> Refinement.Rejected(
-                    CanonicalCompilerSignatureFailure.INVALID_QUALIFIED_IDENTITY,
-                )
+                null -> Refinement.Rejected(CanonicalCompilerSignatureFailure.INVALID_QUALIFIED_IDENTITY)
                 else -> Refinement.Refined(ClassLike(qualifiedIdentity))
             }
 
         /**
-         * Restores only exact `canonical-signature-v1` encodings. Unsupported, malformed, or
-         * non-canonical encodings fail closed as finite data.
+         * Restores only exact `canonical-signature-v1` encodings. Unsupported, malformed, or non-canonical encodings
+         * fail closed as finite data.
          */
         fun restoreCanonicalEncoding(
-            raw: String,
+            raw: String
         ): Refinement<CanonicalCompilerSignature, CanonicalCompilerSignatureFailure> {
-            val fields = decodeCanonicalFields(raw)
-                ?: return Refinement.Rejected(
-                    CanonicalCompilerSignatureFailure.INVALID_CANONICAL_ENCODING,
-                )
+            val fields =
+                decodeCanonicalFields(raw)
+                    ?: return Refinement.Rejected(CanonicalCompilerSignatureFailure.INVALID_CANONICAL_ENCODING)
             if (fields.firstOrNull() != CANONICAL_SIGNATURE_VERSION) {
-                return Refinement.Rejected(
-                    CanonicalCompilerSignatureFailure.UNSUPPORTED_CANONICAL_VERSION,
-                )
+                return Refinement.Rejected(CanonicalCompilerSignatureFailure.UNSUPPORTED_CANONICAL_VERSION)
             }
             val cursor = CanonicalFieldCursor(fields.drop(1))
-            val restored = when (cursor.next()) {
-                FUNCTION_SIGNATURE_KIND -> restoreFunction(cursor)
-                PROPERTY_SIGNATURE_KIND -> restoreProperty(cursor)
-                TYPE_ALIAS_SIGNATURE_KIND -> restoreTypeAlias(cursor)
-                CLASS_LIKE_SIGNATURE_KIND -> restoreClassLike(cursor)
-                else -> Refinement.Rejected(
-                    CanonicalCompilerSignatureFailure.UNSUPPORTED_SIGNATURE_KIND,
-                )
-            }
+            val restored =
+                when (cursor.next()) {
+                    FUNCTION_SIGNATURE_KIND -> restoreFunction(cursor)
+                    PROPERTY_SIGNATURE_KIND -> restoreProperty(cursor)
+                    TYPE_ALIAS_SIGNATURE_KIND -> restoreTypeAlias(cursor)
+                    CLASS_LIKE_SIGNATURE_KIND -> restoreClassLike(cursor)
+                    else -> Refinement.Rejected(CanonicalCompilerSignatureFailure.UNSUPPORTED_SIGNATURE_KIND)
+                }
             return restored.requireExactEncoding(raw, cursor)
         }
 
         private fun restoreFunction(
-            cursor: CanonicalFieldCursor,
+            cursor: CanonicalFieldCursor
         ): Refinement<CanonicalCompilerSignature, CanonicalCompilerSignatureFailure> {
             val qualifiedIdentity = cursor.next() ?: return invalidCanonicalEncoding()
-            val receiverType = when (cursor.next()) {
-                RECEIVER_ABSENT -> null
-                RECEIVER_PRESENT -> cursor.next() ?: return invalidCanonicalEncoding()
-                else -> return invalidCanonicalEncoding()
-            }
+            val receiverType =
+                when (cursor.next()) {
+                    RECEIVER_ABSENT -> null
+                    RECEIVER_PRESENT -> cursor.next() ?: return invalidCanonicalEncoding()
+                    else -> return invalidCanonicalEncoding()
+                }
             val contextReceivers = cursor.nextValues() ?: return invalidCanonicalEncoding()
             val valueParameters = cursor.nextValues() ?: return invalidCanonicalEncoding()
-            val typeParameterCount = cursor.next()?.toIntOrNull()
-                ?: return invalidCanonicalEncoding()
+            val typeParameterCount = cursor.next()?.toIntOrNull() ?: return invalidCanonicalEncoding()
             return function(
                 rawQualifiedIdentity = qualifiedIdentity,
                 rawReceiverType = receiverType,
@@ -258,14 +225,15 @@ sealed interface CanonicalCompilerSignature {
         }
 
         private fun restoreProperty(
-            cursor: CanonicalFieldCursor,
+            cursor: CanonicalFieldCursor
         ): Refinement<CanonicalCompilerSignature, CanonicalCompilerSignatureFailure> {
             val qualifiedIdentity = cursor.next() ?: return invalidCanonicalEncoding()
-            val receiverType = when (cursor.next()) {
-                RECEIVER_ABSENT -> null
-                RECEIVER_PRESENT -> cursor.next() ?: return invalidCanonicalEncoding()
-                else -> return invalidCanonicalEncoding()
-            }
+            val receiverType =
+                when (cursor.next()) {
+                    RECEIVER_ABSENT -> null
+                    RECEIVER_PRESENT -> cursor.next() ?: return invalidCanonicalEncoding()
+                    else -> return invalidCanonicalEncoding()
+                }
             val contextReceivers = cursor.nextValues() ?: return invalidCanonicalEncoding()
             val returnType = cursor.next() ?: return invalidCanonicalEncoding()
             return property(
@@ -277,14 +245,14 @@ sealed interface CanonicalCompilerSignature {
         }
 
         private fun restoreTypeAlias(
-            cursor: CanonicalFieldCursor,
+            cursor: CanonicalFieldCursor
         ): Refinement<CanonicalCompilerSignature, CanonicalCompilerSignatureFailure> {
             val qualifiedIdentity = cursor.next() ?: return invalidCanonicalEncoding()
             return typeAlias(qualifiedIdentity)
         }
 
         private fun restoreClassLike(
-            cursor: CanonicalFieldCursor,
+            cursor: CanonicalFieldCursor
         ): Refinement<CanonicalCompilerSignature, CanonicalCompilerSignatureFailure> {
             val qualifiedIdentity = cursor.next() ?: return invalidCanonicalEncoding()
             return classLike(qualifiedIdentity)
@@ -297,13 +265,14 @@ sealed interface CanonicalCompilerSignature {
 
 /** Derives a stable identity without discarding the structured compiler signature. */
 fun CompilerSymbolIdentity.Companion.fromCanonicalSignature(
-    signature: CanonicalCompilerSignature,
+    signature: CanonicalCompilerSignature
 ): CompilerSymbolIdentity {
-    val digest = MessageDigest.getInstance("SHA-256")
-        .digest(signature.canonicalEncoding().value.toByteArray(StandardCharsets.UTF_8))
-        .joinToString(separator = "") { byte ->
-            (byte.toInt() and 0xff).toString(HEX_RADIX).padStart(2, '0')
-        }
+    val digest =
+        MessageDigest.getInstance("SHA-256")
+            .digest(signature.canonicalEncoding().value.toByteArray(StandardCharsets.UTF_8))
+            .joinToString(separator = "") { byte ->
+                (byte.toInt() and 0xff).toString(HEX_RADIX).padStart(2, '0')
+            }
     return when (val identity = CompilerSymbolIdentity.parse(CANONICAL_IDENTITY_PREFIX + digest)) {
         is Refinement.Refined -> identity.value
         is Refinement.Rejected -> error("SHA-256 projection is a canonical compiler identity")
@@ -354,20 +323,18 @@ private fun CanonicalCompilerSignature.encodeCanonicalSignature(): String = buil
 private fun Refinement<CanonicalCompilerSignature, CanonicalCompilerSignatureFailure>.requireExactEncoding(
     raw: String,
     cursor: CanonicalFieldCursor,
-): Refinement<CanonicalCompilerSignature, CanonicalCompilerSignatureFailure> = when (this) {
-    is Refinement.Rejected -> this
-    is Refinement.Refined -> if (
-        cursor.isExhausted && value.canonicalEncoding().value == raw
-    ) {
-        this
-    } else {
-        Refinement.Rejected(CanonicalCompilerSignatureFailure.INVALID_CANONICAL_ENCODING)
+): Refinement<CanonicalCompilerSignature, CanonicalCompilerSignatureFailure> =
+    when (this) {
+        is Refinement.Rejected -> this
+        is Refinement.Refined ->
+            if (cursor.isExhausted && value.canonicalEncoding().value == raw) {
+                this
+            } else {
+                Refinement.Rejected(CanonicalCompilerSignatureFailure.INVALID_CANONICAL_ENCODING)
+            }
     }
-}
 
-private class CanonicalFieldCursor(
-    private val fields: List<String>,
-) {
+private class CanonicalFieldCursor(private val fields: List<String>) {
     private var index: Int = 0
 
     val isExhausted: Boolean
@@ -393,9 +360,8 @@ private fun decodeCanonicalFields(raw: String): List<String>? {
             offset += 1
         }
         if (offset == lengthStart || offset >= bytes.size) return null
-        val length = String(bytes, lengthStart, offset - lengthStart, StandardCharsets.US_ASCII)
-            .toIntOrNull()
-            ?: return null
+        val length =
+            String(bytes, lengthStart, offset - lengthStart, StandardCharsets.US_ASCII).toIntOrNull() ?: return null
         offset += 1
         if (length > bytes.size - offset) return null
         val fieldBytes = bytes.copyOfRange(offset, offset + length)
@@ -408,13 +374,11 @@ private fun decodeCanonicalFields(raw: String): List<String>? {
 }
 
 private fun canonicalQualifiedIdentity(raw: String): CanonicalCompilerQualifiedIdentity? =
-    raw.takeIf { it.isNotBlank() && it.none(Char::isISOControl) }
-        ?.let(::CanonicalCompilerQualifiedIdentity)
+    raw.takeIf { it.isNotBlank() && it.none(Char::isISOControl) }?.let(::CanonicalCompilerQualifiedIdentity)
 
 private fun canonicalType(raw: String): CanonicalCompilerType? {
     val canonical = raw.filterNot(Char::isWhitespace)
-    return canonical.takeIf { it.isNotBlank() && it.none(Char::isISOControl) }
-        ?.let(::CanonicalCompilerType)
+    return canonical.takeIf { it.isNotBlank() && it.none(Char::isISOControl) }?.let(::CanonicalCompilerType)
 }
 
 private fun List<String>.canonicalTypes(): List<CanonicalCompilerType>? {

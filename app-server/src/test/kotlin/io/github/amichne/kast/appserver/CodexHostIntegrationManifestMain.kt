@@ -1,12 +1,6 @@
 package io.github.amichne.kast.appserver
 
 import io.github.amichne.kast.appserver.host.admission.CodexHostMode
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.*
-import kotlinx.serialization.Transient
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
@@ -14,6 +8,12 @@ import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
 import java.util.HexFormat
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.*
 
 /** Produces one deterministic receipt for the host projections and their executable proof graph. */
 internal object CodexHostIntegrationManifestMain {
@@ -30,54 +30,61 @@ internal object CodexHostIntegrationManifestMain {
         }
         val installed = installedReceipt.readInstalledReceipt()
         val source = GitSourceSnapshot.capture(repository)
-        val document = CodexHostIntegrationManifest(
-            desktopDiscovery = installed.desktopDiscovery,
-            desktopStartupArguments = installed.desktopStartupArguments,
-            sourceRevision = source.revision,
-            sourceTreeSha256 = source.treeDigest,
-            catalogProjectionSha256 = installed.catalogProjectionSha256,
-            kastContractSha256 = installed.kastContractSha256,
-            catalogToolNames = installed.catalogToolNames,
-            protocolAuthority = ProtocolAuthorityEvidence(
-                codexVersion = installed.codexVersion,
-                schemaSha256 = installed.codexProtocolSha256,
-            ),
-            privateService = installed.privateService,
-            installedArtifacts = InstalledArtifactEvidence(
-                kast = installed.kastExecutableSha256,
-                kastCodexFacade = installed.kastFacadeSha256,
-                codex = installed.codexExecutableSha256,
-            ),
-            hostModes = CodexHostMode.entries.map(HostModeManifestEntry::from),
-            installedCommands = listOf(
-                "kast codex",
-                "kast codex desktop",
-                "kast-codex",
-                "kast-codex app-server",
-            ),
-            dependencyProofs = listOf(
-                DependencyProof("HOST-01", "CodexHostInvocationTest"),
-                DependencyProof("HOST-02", "KastCodexMainLifecycleTest"),
-                DependencyProof("HOST-03", "DesktopStdioHostTest"),
-                DependencyProof("HOST-04", "ManagedCodexUpstreamTest"),
-                DependencyProof("HOST-05", "CodexProtocolAdapterTest"),
-                DependencyProof("HOST-06", "CodexObserverReplayTest"),
-                DependencyProof("HOST-07", "InstalledCodexClientLauncherTest"),
-                DependencyProof(
-                    "HOST-08",
-                    "installedCodexHostTest private coordinator + stdio attachment",
-                ),
-                DependencyProof("HOST-09", "AgentSessionProjectionTest"),
-            ),
-            proofCommands = listOf(
-                "./gradlew :app-server:test :cli:test :cli:nativeTest",
-                "./gradlew installedProductTest",
-                "./gradlew installedCodexHostTest",
-                "./gradlew verifyKastArchitecture",
-                "./gradlew :app-server:generateCodexHostIntegrationManifest",
-            ).map(ProofCommand::from),
-            installedAcceptanceSha256 = sha256(Files.readAllBytes(installedReceipt)),
-        )
+        val document =
+            CodexHostIntegrationManifest(
+                desktopDiscovery = installed.desktopDiscovery,
+                desktopStartupArguments = installed.desktopStartupArguments,
+                sourceRevision = source.revision,
+                sourceTreeSha256 = source.treeDigest,
+                catalogProjectionSha256 = installed.catalogProjectionSha256,
+                kastContractSha256 = installed.kastContractSha256,
+                catalogToolNames = installed.catalogToolNames,
+                protocolAuthority =
+                    ProtocolAuthorityEvidence(
+                        codexVersion = installed.codexVersion,
+                        schemaSha256 = installed.codexProtocolSha256,
+                    ),
+                privateService = installed.privateService,
+                installedArtifacts =
+                    InstalledArtifactEvidence(
+                        kast = installed.kastExecutableSha256,
+                        kastCodexFacade = installed.kastFacadeSha256,
+                        codex = installed.codexExecutableSha256,
+                    ),
+                hostModes = CodexHostMode.entries.map(HostModeManifestEntry::from),
+                installedCommands =
+                    listOf(
+                        "kast codex",
+                        "kast codex desktop",
+                        "kast-codex",
+                        "kast-codex app-server",
+                    ),
+                dependencyProofs =
+                    listOf(
+                        DependencyProof("HOST-01", "CodexHostInvocationTest"),
+                        DependencyProof("HOST-02", "KastCodexMainLifecycleTest"),
+                        DependencyProof("HOST-03", "DesktopStdioHostTest"),
+                        DependencyProof("HOST-04", "ManagedCodexUpstreamTest"),
+                        DependencyProof("HOST-05", "CodexProtocolAdapterTest"),
+                        DependencyProof("HOST-06", "CodexObserverReplayTest"),
+                        DependencyProof("HOST-07", "InstalledCodexClientLauncherTest"),
+                        DependencyProof(
+                            "HOST-08",
+                            "installedCodexHostTest private coordinator + stdio attachment",
+                        ),
+                        DependencyProof("HOST-09", "AgentSessionProjectionTest"),
+                    ),
+                proofCommands =
+                    listOf(
+                            "./gradlew :app-server:test :cli:test :cli:nativeTest",
+                            "./gradlew installedProductTest",
+                            "./gradlew installedCodexHostTest",
+                            "./gradlew verifyKastArchitecture",
+                            "./gradlew :app-server:generateCodexHostIntegrationManifest",
+                        )
+                        .map(ProofCommand::from),
+                installedAcceptanceSha256 = sha256(Files.readAllBytes(installedReceipt)),
+            )
         Files.createDirectories(output.parent)
         val temporary = output.resolveSibling("${output.fileName}.tmp")
         Files.writeString(temporary, manifestJson.encodeToString(document) + "\n")
@@ -99,15 +106,15 @@ private val manifestJson = Json {
     explicitNulls = false
 }
 
-private fun Path.readInstalledReceipt(): InstalledCodexHostAcceptanceReceipt = try {
-    manifestJson.decodeFromString(Files.readString(this))
-} catch (failure: RuntimeException) {
-    throw IllegalArgumentException("Installed acceptance receipt is invalid", failure)
-}
+private fun Path.readInstalledReceipt(): InstalledCodexHostAcceptanceReceipt =
+    try {
+        manifestJson.decodeFromString(Files.readString(this))
+    } catch (failure: RuntimeException) {
+        throw IllegalArgumentException("Installed acceptance receipt is invalid", failure)
+    }
 
-private fun sha256(bytes: ByteArray): Sha256Digest = Sha256Digest(
-    "sha256:" + HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes)),
-)
+private fun sha256(bytes: ByteArray): Sha256Digest =
+    Sha256Digest("sha256:" + HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes)))
 
 @Serializable
 private data class InstalledCodexHostAcceptanceReceipt(
@@ -155,19 +162,56 @@ private data class InstalledPrivateServiceReceipt(
 ) {
     init {
         require(socketPath.value.endsWith("/state/run/c.sock")) { "Private coordinator socket is invalid" }
-        require(statusEvidence.value.endsWith("/status-frontend_prepared.json")) { "Prepared status evidence is absent" }
+        require(statusEvidence.value.endsWith("/status-frontend_prepared.json")) {
+            "Prepared status evidence is absent"
+        }
     }
 }
 
-@Serializable private enum class OrdinaryDaemonObservation { ABSENT }
-@Serializable private enum class PrivateServicePhase { FRONTEND_PREPARED }
-@Serializable private enum class ReadyEvidence { @SerialName("ready") READY }
-@Serializable private enum class UnobservedEvidence { @SerialName("unobserved") UNOBSERVED }
-@Serializable private enum class UnqualifiedEvidence { @SerialName("unqualified") UNQUALIFIED }
-@Serializable private enum class PreparedEvidence { @SerialName("prepared") PREPARED }
-@Serializable private enum class MatchedEvidence { @SerialName("matched") MATCHED }
-@Serializable private enum class RegisteredEvidence { @SerialName("registered") REGISTERED }
-@Serializable private enum class StatusOperation { @SerialName("app-server.status") STATUS }
+@Serializable
+private enum class OrdinaryDaemonObservation {
+    ABSENT
+}
+
+@Serializable
+private enum class PrivateServicePhase {
+    FRONTEND_PREPARED
+}
+
+@Serializable
+private enum class ReadyEvidence {
+    @SerialName("ready") READY
+}
+
+@Serializable
+private enum class UnobservedEvidence {
+    @SerialName("unobserved") UNOBSERVED
+}
+
+@Serializable
+private enum class UnqualifiedEvidence {
+    @SerialName("unqualified") UNQUALIFIED
+}
+
+@Serializable
+private enum class PreparedEvidence {
+    @SerialName("prepared") PREPARED
+}
+
+@Serializable
+private enum class MatchedEvidence {
+    @SerialName("matched") MATCHED
+}
+
+@Serializable
+private enum class RegisteredEvidence {
+    @SerialName("registered") REGISTERED
+}
+
+@Serializable
+private enum class StatusOperation {
+    @SerialName("app-server.status") STATUS
+}
 
 @Serializable
 private data class PrivateServiceStatus(
@@ -192,71 +236,99 @@ private data class PrivateServiceStatus(
 
 @Serializable
 private data class PrivateCoordinatorStatus(val state: ReadyEvidence, val observation: JsonObject) {
-    @Transient private val admitted: CoordinatorStatusSnapshot = when (val result = CoordinatorStatusSnapshot.admit(observation)) {
-        is Refinement.Refined -> result.value
-        is Refinement.Rejected -> throw IllegalArgumentException("Coordinator status is invalid")
+    @Transient
+    private val admitted: CoordinatorStatusSnapshot =
+        when (val result = CoordinatorStatusSnapshot.admit(observation)) {
+            is Refinement.Refined -> result.value
+            is Refinement.Rejected -> throw IllegalArgumentException("Coordinator status is invalid")
+        }
+
+    init {
+        require(admitted.hostAttachment == CoordinatorHostAttachment.PREPARED) {
+            "Coordinator did not retain prepared frontend"
+        }
     }
-    init { require(admitted.hostAttachment == CoordinatorHostAttachment.PREPARED) { "Coordinator did not retain prepared frontend" } }
 }
 
 @Serializable private data class PrivateServiceOwnership(val state: ReadyEvidence, val ownership: MatchedEvidence)
+
 @Serializable private data class PrivateHostStatus(val attachment: PreparedEvidence, val desktop: UnqualifiedEvidence)
-@Serializable private data class PrivateRegisteredWorkspace(val root: EvidencePath, val workspaceId: String) {
+
+@Serializable
+private data class PrivateRegisteredWorkspace(val root: EvidencePath, val workspaceId: String) {
     init {
-        val expected = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(root.value.toByteArray(StandardCharsets.UTF_8)))
+        val expected =
+            HexFormat.of()
+                .formatHex(MessageDigest.getInstance("SHA-256").digest(root.value.toByteArray(StandardCharsets.UTF_8)))
         require(workspaceId == expected) { "Workspace identity does not match canonical root" }
     }
 }
-@Serializable private data class PrivateRegistryStatus(val state: RegisteredEvidence, val revision: Long, val count: Int, val workspaces: List<PrivateRegisteredWorkspace>) {
+
+@Serializable
+private data class PrivateRegistryStatus(
+    val state: RegisteredEvidence,
+    val revision: Long,
+    val count: Int,
+    val workspaces: List<PrivateRegisteredWorkspace>,
+) {
     init {
-        require(revision > 0 && count in 1..CoordinatorStatusProtocol.maximumWorkers && count == workspaces.size) { "Registry observation is inconsistent" }
+        require(revision > 0 && count in 1..CoordinatorStatusProtocol.maximumWorkers && count == workspaces.size) {
+            "Registry observation is inconsistent"
+        }
         require(workspaces.map { it.workspaceId }.distinct().size == count) { "Registry contains duplicate identities" }
     }
 }
-@JvmInline @Serializable private value class EvidencePath(val value: String) {
+
+@JvmInline
+@Serializable
+private value class EvidencePath(val value: String) {
     init {
         val path = Path.of(value)
-        require(path.isAbsolute && path.normalize().toString() == value) { "Evidence path is not canonical absolute syntax" }
+        require(path.isAbsolute && path.normalize().toString() == value) {
+            "Evidence path is not canonical absolute syntax"
+        }
     }
 }
 
 @Serializable
 private enum class InstalledAcceptanceTask {
-    @SerialName("HOST-08")
-    HOST_08,
+    @SerialName("HOST-08") HOST_08
 }
 
 @Serializable
 private enum class CompletionOutcome {
-    COMPLETE,
+    COMPLETE
 }
 
 @Serializable
 private enum class ParentClosure {
-    CLEAN,
+    CLEAN
 }
 
 @Serializable
 private enum class StdoutProtocol {
-    JSONL_ONLY,
+    JSONL_ONLY
 }
 
 @Serializable
 private enum class ValidationOutcome {
-    VALIDATED,
+    VALIDATED
 }
 
 @Serializable
 private enum class FacadeRole {
-    @SerialName("app-server-stdio")
-    APP_SERVER_STDIO,
+    @SerialName("app-server-stdio") APP_SERVER_STDIO
 }
 
 @Serializable
-private enum class DesktopQualification { UNQUALIFIED }
+private enum class DesktopQualification {
+    UNQUALIFIED
+}
 
 @Serializable
-private enum class DesktopDiscovery { NOT_REQUIRED }
+private enum class DesktopDiscovery {
+    NOT_REQUIRED
+}
 
 @Serializable
 private data class CodexHostIntegrationManifest(
@@ -286,14 +358,12 @@ private data class CodexHostIntegrationManifest(
 
 @Serializable
 private enum class IntegrationTask {
-    @SerialName("HOST-10")
-    HOST_10,
+    @SerialName("HOST-10") HOST_10
 }
 
 @Serializable
 private enum class CatalogAuthority {
-    @SerialName("AgentSessionBootstrap")
-    AGENT_SESSION_BOOTSTRAP,
+    @SerialName("AgentSessionBootstrap") AGENT_SESSION_BOOTSTRAP
 }
 
 @Serializable
@@ -305,8 +375,7 @@ private data class ProtocolAuthorityEvidence(
 
 @Serializable
 private enum class ProtocolAuthorityKind {
-    @SerialName("installed-codex-generated-json-schema")
-    INSTALLED_CODEX_GENERATED_JSON_SCHEMA,
+    @SerialName("installed-codex-generated-json-schema") INSTALLED_CODEX_GENERATED_JSON_SCHEMA
 }
 
 @Serializable
@@ -318,11 +387,8 @@ private data class InstalledArtifactEvidence(
 
 @Serializable
 private enum class HostModeEvidence {
-    @SerialName("CLI_REMOTE_CLIENT")
-    CLI_REMOTE_CLIENT,
-
-    @SerialName("APP_SERVER_STDIO")
-    APP_SERVER_STDIO,
+    @SerialName("CLI_REMOTE_CLIENT") CLI_REMOTE_CLIENT,
+    @SerialName("APP_SERVER_STDIO") APP_SERVER_STDIO,
 }
 
 @Serializable
@@ -331,26 +397,26 @@ private data class HostModeManifestEntry(
     val transport: HostTransportEvidence,
 ) {
     companion object {
-        fun from(mode: CodexHostMode): HostModeManifestEntry = when (mode) {
-            CodexHostMode.CLI_REMOTE_CLIENT -> HostModeManifestEntry(
-                HostModeEvidence.CLI_REMOTE_CLIENT,
-                HostTransportEvidence.BROKER_UDS_CODEX_REMOTE,
-            )
-            CodexHostMode.APP_SERVER_STDIO -> HostModeManifestEntry(
-                HostModeEvidence.APP_SERVER_STDIO,
-                HostTransportEvidence.JSONL_STDIO_BROKER_UDS,
-            )
-        }
+        fun from(mode: CodexHostMode): HostModeManifestEntry =
+            when (mode) {
+                CodexHostMode.CLI_REMOTE_CLIENT ->
+                    HostModeManifestEntry(
+                        HostModeEvidence.CLI_REMOTE_CLIENT,
+                        HostTransportEvidence.BROKER_UDS_CODEX_REMOTE,
+                    )
+                CodexHostMode.APP_SERVER_STDIO ->
+                    HostModeManifestEntry(
+                        HostModeEvidence.APP_SERVER_STDIO,
+                        HostTransportEvidence.JSONL_STDIO_BROKER_UDS,
+                    )
+            }
     }
 }
 
 @Serializable
 private enum class HostTransportEvidence {
-    @SerialName("broker-uds-codex-remote")
-    BROKER_UDS_CODEX_REMOTE,
-
-    @SerialName("jsonl-stdio-broker-uds")
-    JSONL_STDIO_BROKER_UDS,
+    @SerialName("broker-uds-codex-remote") BROKER_UDS_CODEX_REMOTE,
+    @SerialName("jsonl-stdio-broker-uds") JSONL_STDIO_BROKER_UDS,
 }
 
 @Serializable
@@ -365,10 +431,11 @@ private data class ProofCommand(
     val sha256: Sha256Digest,
 ) {
     companion object {
-        fun from(command: String): ProofCommand = ProofCommand(
-            command = command,
-            sha256 = sha256(command.toByteArray(StandardCharsets.UTF_8)),
-        )
+        fun from(command: String): ProofCommand =
+            ProofCommand(
+                command = command,
+                sha256 = sha256(command.toByteArray(StandardCharsets.UTF_8)),
+            )
     }
 }
 
@@ -394,19 +461,20 @@ private data class GitSourceSnapshot(
 ) {
     companion object {
         fun capture(repository: Path): GitSourceSnapshot {
-            val revision = executeGit(repository, "rev-parse", "HEAD")
-                .toString(StandardCharsets.UTF_8).trim()
+            val revision = executeGit(repository, "rev-parse", "HEAD").toString(StandardCharsets.UTF_8).trim()
             val admittedRevision = GitRevision(revision)
-            val paths = executeGit(
-                repository,
-                "ls-files",
-                "-co",
-                "--exclude-standard",
-                "-z",
-            ).toString(StandardCharsets.UTF_8)
-                .split('\u0000')
-                .filter(String::isNotEmpty)
-                .sorted()
+            val paths =
+                executeGit(
+                        repository,
+                        "ls-files",
+                        "-co",
+                        "--exclude-standard",
+                        "-z",
+                    )
+                    .toString(StandardCharsets.UTF_8)
+                    .split('\u0000')
+                    .filter(String::isNotEmpty)
+                    .sorted()
             val digest = MessageDigest.getInstance("SHA-256")
             paths.forEach { relative ->
                 val path = repository.resolve(relative).normalize()
@@ -434,10 +502,11 @@ private data class GitSourceSnapshot(
         }
 
         private fun executeGit(repository: Path, vararg arguments: String): ByteArray {
-            val process = ProcessBuilder(listOf("git") + arguments)
-                .directory(repository.toFile())
-                .redirectError(ProcessBuilder.Redirect.INHERIT)
-                .start()
+            val process =
+                ProcessBuilder(listOf("git") + arguments)
+                    .directory(repository.toFile())
+                    .redirectError(ProcessBuilder.Redirect.INHERIT)
+                    .start()
             val output = process.inputStream.readAllBytes()
             require(process.waitFor() == 0) { "Git source evidence was unavailable" }
             return output

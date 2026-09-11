@@ -5,26 +5,28 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.topology.contract.TopologyFileExtractionFailure
 import io.github.amichne.kast.workspace.contract.CanonicalSemanticProjectRoot
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
+import java.lang.reflect.Proxy
+import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import java.lang.reflect.Proxy
-import java.nio.file.Path
 
 class ExactTopologyProjectResolutionTest {
     @Test
     fun `malformed project base path is closed project unavailable data`(@TempDir root: Path) {
-        val resolution = resolveExactTopologyProject(
-            canonicalRoot(root),
-            listOf(project("\u0000")),
-        )
+        val resolution =
+            resolveExactTopologyProject(
+                canonicalRoot(root),
+                listOf(project("\u0000")),
+            )
 
-        val rejected = assertInstanceOf(
-            ExactTopologyProjectResolution.Rejected::class.java,
-            resolution,
-        )
+        val rejected =
+            assertInstanceOf(
+                ExactTopologyProjectResolution.Rejected::class.java,
+                resolution,
+            )
         assertEquals(TopologyFileExtractionFailure.PROJECT_UNAVAILABLE, rejected.failure)
     }
 
@@ -33,42 +35,45 @@ class ExactTopologyProjectResolutionTest {
         val canonical = root.toRealPath()
         val project = project(canonical.toString())
 
-        val found = assertInstanceOf(
-            ExactTopologyProjectResolution.Found::class.java,
-            resolveExactTopologyProject(canonicalRoot(canonical), listOf(project)),
-        )
+        val found =
+            assertInstanceOf(
+                ExactTopologyProjectResolution.Found::class.java,
+                resolveExactTopologyProject(canonicalRoot(canonical), listOf(project)),
+            )
 
         assertSame(project, found.project)
     }
 
-    private fun canonicalRoot(path: Path): CanonicalSemanticProjectRoot = when (
-        val admitted = CanonicalSemanticProjectRoot.fromCanonicalPath(
-            workspaceRoot(),
-            path.toRealPath(),
-        )
-    ) {
-        is Refinement.Refined -> admitted.value
-        is Refinement.Rejected -> error(admitted.failure)
-    }
-
-    private fun workspaceRoot(): CanonicalWorkspaceRoot = when (
-        val admitted = CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace"))
-    ) {
-        is Refinement.Refined -> admitted.value
-        is Refinement.Rejected -> error(admitted.failure)
-    }
-
-    private fun project(basePath: String): Project = Proxy.newProxyInstance(
-        Project::class.java.classLoader,
-        arrayOf(Project::class.java),
-    ) { proxy, method, arguments ->
-        when (method.name) {
-            "getBasePath" -> basePath
-            "isDisposed" -> false
-            "toString" -> "project($basePath)"
-            "hashCode" -> System.identityHashCode(proxy)
-            "equals" -> proxy === arguments?.singleOrNull()
-            else -> null
+    private fun canonicalRoot(path: Path): CanonicalSemanticProjectRoot =
+        when (
+            val admitted =
+                CanonicalSemanticProjectRoot.fromCanonicalPath(
+                    workspaceRoot(),
+                    path.toRealPath(),
+                )
+        ) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected -> error(admitted.failure)
         }
-    } as Project
+
+    private fun workspaceRoot(): CanonicalWorkspaceRoot =
+        when (val admitted = CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace"))) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected -> error(admitted.failure)
+        }
+
+    private fun project(basePath: String): Project =
+        Proxy.newProxyInstance(
+            Project::class.java.classLoader,
+            arrayOf(Project::class.java),
+        ) { proxy, method, arguments ->
+            when (method.name) {
+                "getBasePath" -> basePath
+                "isDisposed" -> false
+                "toString" -> "project($basePath)"
+                "hashCode" -> System.identityHashCode(proxy)
+                "equals" -> proxy === arguments?.singleOrNull()
+                else -> null
+            }
+        } as Project
 }

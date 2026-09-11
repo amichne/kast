@@ -4,16 +4,15 @@ import io.github.amichne.kast.evidence.contract.MutationRecoveryEvidenceFailure
 import io.github.amichne.kast.evidence.contract.MutationRecoveryLoadResult
 import io.github.amichne.kast.evidence.contract.MutationRecoveryPersistResult
 import io.github.amichne.kast.evidence.contract.MutationRecoveryRecord
+import java.nio.file.Path
+import java.sql.DriverManager
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Path
-import java.sql.DriverManager
 
 class SqliteMutationRecoveryJournalTest {
-    @TempDir
-    lateinit var temporaryDirectory: Path
+    @TempDir lateinit var temporaryDirectory: Path
 
     @Test
     fun `pre-write applied set and terminal recovery survive reopen with exact plan binding`() {
@@ -25,10 +24,12 @@ class SqliteMutationRecoveryJournalTest {
         assertDurable(first.recordApplied(fixture.prepared, fixture.applied), fixture.applied)
         assertDurable(first.recordTerminal(fixture.applied, fixture.rolledBack), fixture.rolledBack)
 
-        val loaded = assertInstanceOf(
-            MutationRecoveryLoadResult.Found::class.java,
-            open(database).load(fixture.binding),
-        ).record
+        val loaded =
+            assertInstanceOf(
+                    MutationRecoveryLoadResult.Found::class.java,
+                    open(database).load(fixture.binding),
+                )
+                .record
         assertInstanceOf(MutationRecoveryRecord.RolledBack::class.java, loaded)
         assertEquals(fixture.rolledBack.digest, loaded.digest)
         assertEquals(fixture.binding, loaded.binding)
@@ -67,9 +68,8 @@ class SqliteMutationRecoveryJournalTest {
         val database = temporaryDirectory.resolve("tampered.db")
         assertDurable(open(database).prepare(fixture.prepared), fixture.prepared)
         DriverManager.getConnection("jdbc:sqlite:$database").use { connection ->
-            connection.prepareStatement(
-                "UPDATE mutation_recovery SET record_digest = ? WHERE plan_binding = ?",
-            ).use { statement ->
+            connection.prepareStatement("UPDATE mutation_recovery SET record_digest = ? WHERE plan_binding = ?").use {
+                statement ->
                 statement.setString(1, "0".repeat(64))
                 statement.setString(2, fixture.binding.value)
                 statement.executeUpdate()
@@ -90,14 +90,12 @@ class SqliteMutationRecoveryJournalTest {
         val baseline = open(database)
         when (point) {
             MutationRecoveryFaultPoint.AFTER_PREPARE_WRITE,
-            MutationRecoveryFaultPoint.AFTER_PREPARE_COMMIT,
-                -> Unit
+            MutationRecoveryFaultPoint.AFTER_PREPARE_COMMIT -> Unit
             MutationRecoveryFaultPoint.AFTER_APPLIED_WRITE,
-            MutationRecoveryFaultPoint.AFTER_APPLIED_COMMIT,
-                -> assertDurable(baseline.prepare(fixture.prepared), fixture.prepared)
+            MutationRecoveryFaultPoint.AFTER_APPLIED_COMMIT ->
+                assertDurable(baseline.prepare(fixture.prepared), fixture.prepared)
             MutationRecoveryFaultPoint.AFTER_TERMINAL_WRITE,
-            MutationRecoveryFaultPoint.AFTER_TERMINAL_COMMIT,
-                -> {
+            MutationRecoveryFaultPoint.AFTER_TERMINAL_COMMIT -> {
                 assertDurable(baseline.prepare(fixture.prepared), fixture.prepared)
                 assertDurable(
                     baseline.recordApplied(fixture.prepared, fixture.applied),
@@ -105,54 +103,56 @@ class SqliteMutationRecoveryJournalTest {
                 )
             }
         }
-        val crashing = open(database) { observed ->
-            if (observed == point) throw SimulatedCrash()
-        }
+        val crashing =
+            open(database) { observed ->
+                if (observed == point) throw SimulatedCrash()
+            }
         try {
             when (point) {
                 MutationRecoveryFaultPoint.AFTER_PREPARE_WRITE,
-                MutationRecoveryFaultPoint.AFTER_PREPARE_COMMIT,
-                    -> crashing.prepare(fixture.prepared)
+                MutationRecoveryFaultPoint.AFTER_PREPARE_COMMIT -> crashing.prepare(fixture.prepared)
                 MutationRecoveryFaultPoint.AFTER_APPLIED_WRITE,
-                MutationRecoveryFaultPoint.AFTER_APPLIED_COMMIT,
-                    -> crashing.recordApplied(fixture.prepared, fixture.applied)
+                MutationRecoveryFaultPoint.AFTER_APPLIED_COMMIT ->
+                    crashing.recordApplied(fixture.prepared, fixture.applied)
                 MutationRecoveryFaultPoint.AFTER_TERMINAL_WRITE,
-                MutationRecoveryFaultPoint.AFTER_TERMINAL_COMMIT,
-                    -> crashing.recordTerminal(fixture.applied, fixture.rolledBack)
+                MutationRecoveryFaultPoint.AFTER_TERMINAL_COMMIT ->
+                    crashing.recordTerminal(fixture.applied, fixture.rolledBack)
             }
         } catch (_: SimulatedCrash) {
             // Simulates abrupt process loss at one exact adapter boundary.
         }
         val reopened = open(database)
         val loaded = reopened.load(fixture.binding)
-        val resolved = when (loaded) {
-            is MutationRecoveryLoadResult.Found -> when (val record = loaded.record) {
-                is MutationRecoveryRecord.AppliedWritesDurable -> {
-                    assertDurable(
-                        reopened.recordTerminal(record, fixture.recoveryRequired),
-                        fixture.recoveryRequired,
-                    )
-                    reopened.load(fixture.binding)
-                }
-                is MutationRecoveryRecord.PreWriteDurable,
-                is MutationRecoveryRecord.RolledBack,
-                is MutationRecoveryRecord.RecoveryRequired,
-                    -> loaded
+        val resolved =
+            when (loaded) {
+                is MutationRecoveryLoadResult.Found ->
+                    when (val record = loaded.record) {
+                        is MutationRecoveryRecord.AppliedWritesDurable -> {
+                            assertDurable(
+                                reopened.recordTerminal(record, fixture.recoveryRequired),
+                                fixture.recoveryRequired,
+                            )
+                            reopened.load(fixture.binding)
+                        }
+                        is MutationRecoveryRecord.PreWriteDurable,
+                        is MutationRecoveryRecord.RolledBack,
+                        is MutationRecoveryRecord.RecoveryRequired -> loaded
+                    }
+                is MutationRecoveryLoadResult.Absent,
+                is MutationRecoveryLoadResult.Rejected -> loaded
             }
-            is MutationRecoveryLoadResult.Absent,
-            is MutationRecoveryLoadResult.Rejected,
-                -> loaded
-        }
         return CrashObservation(resolved)
     }
 
     private fun open(
         database: Path,
         injector: MutationRecoveryFaultInjector = MutationRecoveryFaultInjector.Disabled,
-    ): SqliteMutationRecoveryJournal = assertInstanceOf(
-        SqliteMutationRecoveryJournalOpenResult.Opened::class.java,
-        SqliteMutationRecoveryJournal.open(database, injector),
-    ).journal
+    ): SqliteMutationRecoveryJournal =
+        assertInstanceOf(
+                SqliteMutationRecoveryJournalOpenResult.Opened::class.java,
+                SqliteMutationRecoveryJournal.open(database, injector),
+            )
+            .journal
 
     private fun assertDurable(
         result: MutationRecoveryPersistResult<MutationRecoveryRecord>,

@@ -16,7 +16,8 @@ internal object KastObserverFixtures {
             }]
           }
         }
-        """.trimIndent()
+        """
+            .trimIndent()
 
     val changeApply =
         """
@@ -33,7 +34,8 @@ internal object KastObserverFixtures {
             }]
           }
         }
-        """.trimIndent()
+        """
+            .trimIndent()
 
     val changeRecover =
         """
@@ -45,7 +47,8 @@ internal object KastObserverFixtures {
             "state": "rolled-back"
           }
         }
-        """.trimIndent()
+        """
+            .trimIndent()
 
     val diagnosticCheck =
         """
@@ -66,7 +69,8 @@ internal object KastObserverFixtures {
             }]
           }
         }
-        """.trimIndent()
+        """
+            .trimIndent()
 
     val symbolDiscovery =
         """
@@ -85,7 +89,8 @@ internal object KastObserverFixtures {
             }]
           }
         }
-        """.trimIndent()
+        """
+            .trimIndent()
 
     val symbolInspection =
         """
@@ -111,7 +116,8 @@ internal object KastObserverFixtures {
             }
           }
         }
-        """.trimIndent()
+        """
+            .trimIndent()
 
     val sourceRead =
         """
@@ -147,7 +153,8 @@ internal object KastObserverFixtures {
             }
           }
         }
-        """.trimIndent()
+        """
+            .trimIndent()
 
     val semanticQuery =
         """
@@ -228,7 +235,8 @@ internal object KastObserverFixtures {
             ]
           }
         }
-        """.trimIndent()
+        """
+            .trimIndent()
 
     val impactAnalysis =
         """
@@ -307,5 +315,6 @@ internal object KastObserverFixtures {
             }
           }
         }
-        """.trimIndent()
+        """
+            .trimIndent()
 }

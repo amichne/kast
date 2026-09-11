@@ -13,15 +13,16 @@ internal fun topologyCommandGroup(
     preparers: CanonicalCliRequestPreparers,
     requestInput: CliRequestDocumentInput,
 ): CommandFamily {
-    val build = SemanticKastCommand(
-        name = "build",
-        operation = CanonicalOperation.TOPOLOGY_BUILD,
-        schemaUsage = "topology build < request.json",
-        description = "Build topology from a canonical JSON request on standard input.",
-        serializer = TopologyBuildRequest.serializer(),
-        requestInput = requestInput,
-        preparer = preparers.topologyBuild,
-    )
+    val build =
+        SemanticKastCommand(
+            name = "build",
+            operation = CanonicalOperation.TOPOLOGY_BUILD,
+            schemaUsage = "topology build < request.json",
+            description = "Build topology from a canonical JSON request on standard input.",
+            serializer = TopologyBuildRequest.serializer(),
+            requestInput = requestInput,
+            preparer = preparers.topologyBuild,
+        )
     return CommandFamily(
         KastCommandGroup("topology", "Build semantic topology.").subcommands(build),
         listOf(build),

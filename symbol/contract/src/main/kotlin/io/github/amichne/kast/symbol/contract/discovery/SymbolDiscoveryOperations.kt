@@ -10,13 +10,9 @@ enum class SymbolCompilerRejection {
 
 /** Closed output of one bounded scope-compiled symbol query. */
 sealed interface SymbolCompilation {
-    data class Compiled(
-        val outcome: SymbolDiscoveryOutcome,
-    ) : SymbolCompilation
+    data class Compiled(val outcome: SymbolDiscoveryOutcome) : SymbolCompilation
 
-    data class Rejected(
-        val reason: SymbolCompilerRejection,
-    ) : SymbolCompilation
+    data class Rejected(val reason: SymbolCompilerRejection) : SymbolCompilation
 }
 
 /** Host-neutral boundary implemented by one native scope compiler and index adapter. */
@@ -24,9 +20,9 @@ fun interface SymbolCompilerPort {
     /**
      * Proof transition: `SymbolDiscoveryRequest -> SymbolCompilation`.
      *
-     * A compiled result establishes scope-first bounded index work and detached candidates bound
-     * to the request lease. [SymbolCompilerRejection] is the closed expected failure. Native
-     * project, scope, index, VFS, and PSI values may exist only inside the implementation call.
+     * A compiled result establishes scope-first bounded index work and detached candidates bound to the request lease.
+     * [SymbolCompilerRejection] is the closed expected failure. Native project, scope, index, VFS, and PSI values may
+     * exist only inside the implementation call.
      */
     suspend fun compile(request: SymbolDiscoveryRequest): SymbolCompilation
 }
@@ -43,13 +39,9 @@ enum class SymbolDiscoveryRejection {
 
 /** Closed public result of `symbol.discover`. */
 sealed interface SymbolDiscoveryResult {
-    data class Discovered(
-        val outcome: SymbolDiscoveryOutcome,
-    ) : SymbolDiscoveryResult
+    data class Discovered(val outcome: SymbolDiscoveryOutcome) : SymbolDiscoveryResult
 
-    data class Rejected(
-        val reason: SymbolDiscoveryRejection,
-    ) : SymbolDiscoveryResult
+    data class Rejected(val reason: SymbolDiscoveryRejection) : SymbolDiscoveryResult
 }
 
 /** Public operation boundary for `symbol.discover`. */
@@ -57,9 +49,9 @@ fun interface SymbolDiscoveryOperations {
     /**
      * Proof transition: `SymbolDiscoveryRequest -> SymbolDiscoveryResult`.
      *
-     * A discovered result establishes current-generation admission plus bounded, detached,
-     * scope-compiled candidates. [SymbolDiscoveryRejection] is the closed expected failure. Raw
-     * transport values may enter only before the typed request is constructed.
+     * A discovered result establishes current-generation admission plus bounded, detached, scope-compiled candidates.
+     * [SymbolDiscoveryRejection] is the closed expected failure. Raw transport values may enter only before the typed
+     * request is constructed.
      */
     suspend fun discover(request: SymbolDiscoveryRequest): SymbolDiscoveryResult
 }

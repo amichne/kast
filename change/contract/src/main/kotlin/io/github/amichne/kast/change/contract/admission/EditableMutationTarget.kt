@@ -41,10 +41,11 @@ enum class MutationTargetAdmissionFailure {
 /**
  * Exact authored declaration capability eligible to enter later mutation planning.
  *
- * This value carries proof only about the target. It provides no filesystem, document, PSI,
- * persistence, or source-write operation.
+ * This value carries proof only about the target. It provides no filesystem, document, PSI, persistence, or
+ * source-write operation.
  */
-class EditableMutationTarget private constructor(
+class EditableMutationTarget
+private constructor(
     val lease: SemanticReadLease,
     val workspaceState: WorkspaceStateIdentity,
     val file: SymbolDiscoveryFileIdentity.Workspace,
@@ -70,22 +71,22 @@ class EditableMutationTarget private constructor(
             if (selector.lease != lease || selector.file != file) {
                 return Refinement.Rejected(MutationTargetAdmissionFailure.STALE_STATE)
             }
-            val targetPath = runCatching { Path.of(file.path.value) }.getOrNull()
-                ?: return Refinement.Rejected(MutationTargetAdmissionFailure.ESCAPED_TARGET)
-            val rootPath = runCatching { Path.of(lease.workspaceRoot.value) }.getOrNull()
-                ?: return Refinement.Rejected(MutationTargetAdmissionFailure.ESCAPED_TARGET)
+            val targetPath =
+                runCatching { Path.of(file.path.value) }.getOrNull()
+                    ?: return Refinement.Rejected(MutationTargetAdmissionFailure.ESCAPED_TARGET)
+            val rootPath =
+                runCatching { Path.of(lease.workspaceRoot.value) }.getOrNull()
+                    ?: return Refinement.Rejected(MutationTargetAdmissionFailure.ESCAPED_TARGET)
             val sourcePath = rootPath.resolve(sourceRoot.location.value).normalize()
             if (targetPath == sourcePath || !targetPath.startsWith(sourcePath)) {
                 return Refinement.Rejected(MutationTargetAdmissionFailure.ESCAPED_TARGET)
             }
             when (sourceRoot.provenance) {
                 SourceRootProvenance.Authored -> Unit
-                SourceRootProvenance.Generated -> return Refinement.Rejected(
-                    MutationTargetAdmissionFailure.GENERATED_SOURCE_ROOT,
-                )
-                is SourceRootProvenance.Unknown -> return Refinement.Rejected(
-                    MutationTargetAdmissionFailure.UNKNOWN_SOURCE_ROOT,
-                )
+                SourceRootProvenance.Generated ->
+                    return Refinement.Rejected(MutationTargetAdmissionFailure.GENERATED_SOURCE_ROOT)
+                is SourceRootProvenance.Unknown ->
+                    return Refinement.Rejected(MutationTargetAdmissionFailure.UNKNOWN_SOURCE_ROOT)
             }
             return Refinement.Refined(
                 EditableMutationTarget(
@@ -95,7 +96,7 @@ class EditableMutationTarget private constructor(
                     content,
                     sourceRoot,
                     selector,
-                ),
+                )
             )
         }
 
@@ -103,40 +104,40 @@ class EditableMutationTarget private constructor(
          * Proof transition: `MutationTargetObservation -> Refinement<EditableMutationTarget,
          * MutationTargetAdmissionFailure>`.
          *
-         * Establishes that one compiler-grounded declaration and exact content observation share
-         * the published root and generation, lie strictly within one uniquely owned authored
-         * Gradle source root, and match the required owner. [MutationTargetAdmissionFailure] is the
-         * closed expected failure. Detached paths are interpreted only inside this pure admission
-         * transition; raw source access is permitted only at a later physical observation or
+         * Establishes that one compiler-grounded declaration and exact content observation share the published root and
+         * generation, lie strictly within one uniquely owned authored Gradle source root, and match the required owner.
+         * [MutationTargetAdmissionFailure] is the closed expected failure. Detached paths are interpreted only inside
+         * this pure admission transition; raw source access is permitted only at a later physical observation or
          * source-write boundary that consumes the returned capability.
          */
         fun admit(
-            observation: MutationTargetObservation,
+            observation: MutationTargetObservation
         ): Refinement<EditableMutationTarget, MutationTargetAdmissionFailure> {
             val workspace = observation.workspace
             val selector = observation.selector
             val state = observation.observedState
             if (
                 selector.lease != workspace.readLease ||
-                state.lease != workspace.readLease ||
-                state.file != selector.file
+                    state.lease != workspace.readLease ||
+                    state.file != selector.file
             ) {
                 return Refinement.Rejected(MutationTargetAdmissionFailure.STALE_STATE)
             }
-            val file = when (val selectedFile = selector.file) {
-                is SymbolDiscoveryFileIdentity.Workspace -> selectedFile
-                is SymbolDiscoveryFileIdentity.External -> return Refinement.Rejected(
-                    MutationTargetAdmissionFailure.ESCAPED_TARGET,
-                )
-            }
+            val file =
+                when (val selectedFile = selector.file) {
+                    is SymbolDiscoveryFileIdentity.Workspace -> selectedFile
+                    is SymbolDiscoveryFileIdentity.External ->
+                        return Refinement.Rejected(MutationTargetAdmissionFailure.ESCAPED_TARGET)
+                }
             val targetPath = Path.of(file.path.value)
             val workspacePath = Path.of(workspace.root.value)
-            val containingRoots = workspace.sourceRoots
-                .filter { sourceRoot ->
-                    val sourcePath = workspacePath.resolve(sourceRoot.location.value).normalize()
-                    targetPath != sourcePath && targetPath.startsWith(sourcePath)
-                }
-                .distinct()
+            val containingRoots =
+                workspace.sourceRoots
+                    .filter { sourceRoot ->
+                        val sourcePath = workspacePath.resolve(sourceRoot.location.value).normalize()
+                        targetPath != sourcePath && targetPath.startsWith(sourcePath)
+                    }
+                    .distinct()
             if (containingRoots.isEmpty()) {
                 return Refinement.Rejected(MutationTargetAdmissionFailure.ESCAPED_TARGET)
             }
@@ -149,12 +150,10 @@ class EditableMutationTarget private constructor(
             }
             when (sourceRoot.provenance) {
                 SourceRootProvenance.Authored -> Unit
-                SourceRootProvenance.Generated -> return Refinement.Rejected(
-                    MutationTargetAdmissionFailure.GENERATED_SOURCE_ROOT,
-                )
-                is SourceRootProvenance.Unknown -> return Refinement.Rejected(
-                    MutationTargetAdmissionFailure.UNKNOWN_SOURCE_ROOT,
-                )
+                SourceRootProvenance.Generated ->
+                    return Refinement.Rejected(MutationTargetAdmissionFailure.GENERATED_SOURCE_ROOT)
+                is SourceRootProvenance.Unknown ->
+                    return Refinement.Rejected(MutationTargetAdmissionFailure.UNKNOWN_SOURCE_ROOT)
             }
             return Refinement.Refined(
                 EditableMutationTarget(
@@ -164,7 +163,7 @@ class EditableMutationTarget private constructor(
                     content = state.content,
                     sourceRoot = sourceRoot,
                     selector = selector,
-                ),
+                )
             )
         }
     }

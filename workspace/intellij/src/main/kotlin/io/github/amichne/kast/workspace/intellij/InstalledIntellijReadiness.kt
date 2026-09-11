@@ -17,17 +17,20 @@ import java.util.concurrent.TimeUnit
 internal sealed interface InstalledIndexingReadiness {
     data object Ready : InstalledIndexingReadiness
 
-    data class Rejected(
-        val failure: InstalledIndexingReadinessFailure,
-    ) : InstalledIndexingReadiness
+    data class Rejected(val failure: InstalledIndexingReadinessFailure) : InstalledIndexingReadiness
 }
 
 internal sealed interface InstalledIndexingReadinessFailure {
     data object Interrupted : InstalledIndexingReadinessFailure
+
     data object ProjectDisposed : InstalledIndexingReadinessFailure
+
     data object PlatformObservationUnavailable : InstalledIndexingReadinessFailure
+
     data object PlatformLinkageInvalid : InstalledIndexingReadinessFailure
+
     data object ModuleMaterializationUnavailable : InstalledIndexingReadinessFailure
+
     data object IndexingTimedOut : InstalledIndexingReadinessFailure
 }
 
@@ -35,24 +38,19 @@ internal sealed interface InstalledIndexingReadinessFailure {
 internal sealed interface InstalledIndexingPlatformObservation<out Value> {
     data class Observed<Value>(val value: Value) : InstalledIndexingPlatformObservation<Value>
 
-    data class Rejected(
-        val failure: InstalledIndexingReadinessFailure,
-    ) : InstalledIndexingPlatformObservation<Nothing>
+    data class Rejected(val failure: InstalledIndexingReadinessFailure) : InstalledIndexingPlatformObservation<Nothing>
 }
 
 internal fun <Value> observeInstalledIndexingPlatform(
-    operation: () -> Value,
-): InstalledIndexingPlatformObservation<Value> = try {
-    InstalledIndexingPlatformObservation.Observed(operation())
-} catch (_: LinkageError) {
-    InstalledIndexingPlatformObservation.Rejected(
-        InstalledIndexingReadinessFailure.PlatformLinkageInvalid,
-    )
-} catch (_: RuntimeException) {
-    InstalledIndexingPlatformObservation.Rejected(
-        InstalledIndexingReadinessFailure.PlatformObservationUnavailable,
-    )
-}
+    operation: () -> Value
+): InstalledIndexingPlatformObservation<Value> =
+    try {
+        InstalledIndexingPlatformObservation.Observed(operation())
+    } catch (_: LinkageError) {
+        InstalledIndexingPlatformObservation.Rejected(InstalledIndexingReadinessFailure.PlatformLinkageInvalid)
+    } catch (_: RuntimeException) {
+        InstalledIndexingPlatformObservation.Rejected(InstalledIndexingReadinessFailure.PlatformObservationUnavailable)
+    }
 
 internal data class InstalledIndexingObservation(
     val smart: Boolean,
@@ -65,16 +63,16 @@ internal data class InstalledIndexingObservation(
 
 /** Monotonic IntelliJ roots-model evidence covering module SDK and language-level updates. */
 @JvmInline
-internal value class InstalledProjectRootsRevision(
-    val value: Long,
-) {
+internal value class InstalledProjectRootsRevision(val value: Long) {
     init {
         require(value >= 0L)
     }
-
 }
 
-internal enum class InstalledIndexingStability { WAITING, STABLE }
+internal enum class InstalledIndexingStability {
+    WAITING,
+    STABLE,
+}
 
 internal enum class InstalledModuleContinuityAction {
     AVAILABLE,
@@ -86,14 +84,12 @@ internal enum class InstalledModuleContinuityAction {
 /**
  * Refines live module observations into one finite recovery allowance.
  *
- * IDEA may apply its persisted JPS model after a completed Gradle import during a warm start. For
- * projects without checked-in JPS files, that delayed replacement temporarily removes the imported
- * module. One exact-workspace rematerialization is admitted. Failure to restore it within [grace],
- * or any later loss of the restored proof, fails closed.
+ * IDEA may apply its persisted JPS model after a completed Gradle import during a warm start. For projects without
+ * checked-in JPS files, that delayed replacement temporarily removes the imported module. One exact-workspace
+ * rematerialization is admitted. Failure to restore it within [grace], or any later loss of the restored proof, fails
+ * closed.
  */
-internal class InstalledModuleContinuity(
-    private val grace: Duration,
-) {
+internal class InstalledModuleContinuity(private val grace: Duration) {
     private val graceNanos = grace.toNanos().also { nanos -> require(nanos > 0) }
     private var state: ModuleContinuityState = ModuleContinuityState.AvailableBeforeRecovery
 
@@ -112,13 +108,12 @@ internal class InstalledModuleContinuity(
                 state = ModuleContinuityState.RecoveryRequested(monotonicNanos)
                 InstalledModuleContinuityAction.REMATERIALIZE
             }
-            is ModuleContinuityState.RecoveryRequested -> if (
-                monotonicNanos - current.requestedAtNanos >= graceNanos
-            ) {
-                InstalledModuleContinuityAction.FAILED
-            } else {
-                InstalledModuleContinuityAction.WAITING
-            }
+            is ModuleContinuityState.RecoveryRequested ->
+                if (monotonicNanos - current.requestedAtNanos >= graceNanos) {
+                    InstalledModuleContinuityAction.FAILED
+                } else {
+                    InstalledModuleContinuityAction.WAITING
+                }
             ModuleContinuityState.Restored -> InstalledModuleContinuityAction.FAILED
         }
     }
@@ -127,9 +122,7 @@ internal class InstalledModuleContinuity(
 private sealed interface ModuleContinuityState {
     data object AvailableBeforeRecovery : ModuleContinuityState
 
-    data class RecoveryRequested(
-        val requestedAtNanos: Long,
-    ) : ModuleContinuityState
+    data class RecoveryRequested(val requestedAtNanos: Long) : ModuleContinuityState
 
     data object Restored : ModuleContinuityState
 }
@@ -137,16 +130,13 @@ private sealed interface ModuleContinuityState {
 /**
  * Refines repeated platform observations into a continuous smart, non-executing scanner interval.
  *
- * IDEA 2026.2 derives its public running flag from the presence of a queued task before the task is
- * taken for execution. It may retain both flags after explicitly skipping that task. The queued
- * marker remains diagnostic evidence, while `running && !queued` proves that the current task was
- * taken from the queue and is executing. An executing scanner, scanner revision change, or project
- * roots revision change resets this proof. The roots revision covers Gradle-owned module SDK and
- * language-level writes without requiring those SDKs to equal the sidecar JBR.
+ * IDEA 2026.2 derives its public running flag from the presence of a queued task before the task is taken for
+ * execution. It may retain both flags after explicitly skipping that task. The queued marker remains diagnostic
+ * evidence, while `running && !queued` proves that the current task was taken from the queue and is executing. An
+ * executing scanner, scanner revision change, or project roots revision change resets this proof. The roots revision
+ * covers Gradle-owned module SDK and language-level writes without requiring those SDKs to equal the sidecar JBR.
  */
-internal class InstalledIndexingQuiescence(
-    required: Duration,
-) {
+internal class InstalledIndexingQuiescence(required: Duration) {
     private val requiredNanos = required.toNanos().also { nanos -> require(nanos > 0) }
     private var state: IndexingQuiescenceState = IndexingQuiescenceState.Unstable
 
@@ -155,25 +145,22 @@ internal class InstalledIndexingQuiescence(
         monotonicNanos: Long,
     ): InstalledIndexingStability {
         val scannerExecuting = observation.scannerRunning && !observation.scannerQueued
-        if (
-            !observation.smart ||
-            scannerExecuting ||
-            !observation.modulesReady
-        ) {
+        if (!observation.smart || scannerExecuting || !observation.modulesReady) {
             state = IndexingQuiescenceState.Unstable
             return InstalledIndexingStability.WAITING
         }
         val current = state
         if (
             current !is IndexingQuiescenceState.Candidate ||
-            current.scannerRevision != observation.scannerRevision ||
-            current.projectRootsRevision != observation.projectRootsRevision
+                current.scannerRevision != observation.scannerRevision ||
+                current.projectRootsRevision != observation.projectRootsRevision
         ) {
-            state = IndexingQuiescenceState.Candidate(
-                monotonicNanos,
-                observation.scannerRevision,
-                observation.projectRootsRevision,
-            )
+            state =
+                IndexingQuiescenceState.Candidate(
+                    monotonicNanos,
+                    observation.scannerRevision,
+                    observation.projectRootsRevision,
+                )
             return InstalledIndexingStability.WAITING
         }
         return if (monotonicNanos - current.sinceNanos >= requiredNanos) {
@@ -225,72 +212,73 @@ internal fun interface InstalledModuleRematerializer {
 }
 
 /**
- * Proof transition: `Project + InstalledModuleRematerializer ->
- * InstalledIndexingReadiness`.
+ * Proof transition: `Project + InstalledModuleRematerializer -> InstalledIndexingReadiness`.
  *
- * [InstalledIndexingReadiness.Ready] establishes a continuous smart, scanner-idle interval with at
- * least one live IntelliJ module while the imported roots model remains unchanged after Gradle
- * model and SDK writes. [InstalledIndexingReadiness.Rejected] retains interruption, timeout,
- * disposal, module-materialization, and platform-observation failures. Live indexing and module
- * state remains inside this bootstrap boundary.
+ * [InstalledIndexingReadiness.Ready] establishes a continuous smart, scanner-idle interval with at least one live
+ * IntelliJ module while the imported roots model remains unchanged after Gradle model and SDK writes.
+ * [InstalledIndexingReadiness.Rejected] retains interruption, timeout, disposal, module-materialization, and
+ * platform-observation failures. Live indexing and module state remains inside this bootstrap boundary.
  */
 internal fun awaitInstalledIndexingQuiescence(
     project: Project,
     moduleRematerializer: InstalledModuleRematerializer,
 ): InstalledIndexingReadiness {
-    val services = when (val observed = observeInstalledIndexingPlatform {
-        InstalledIndexingServices(
-            DumbService.getInstance(project),
-            UnindexedFilesScannerExecutor.getInstance(project),
-        )
-    }) {
-        is InstalledIndexingPlatformObservation.Observed -> observed.value
-        is InstalledIndexingPlatformObservation.Rejected -> return indexingRejected(
-            observed.failure,
-        )
-    }
+    val services =
+        when (
+            val observed = observeInstalledIndexingPlatform {
+                InstalledIndexingServices(
+                    DumbService.getInstance(project),
+                    UnindexedFilesScannerExecutor.getInstance(project),
+                )
+            }
+        ) {
+            is InstalledIndexingPlatformObservation.Observed -> observed.value
+            is InstalledIndexingPlatformObservation.Rejected -> return indexingRejected(observed.failure)
+        }
     val deadline = System.nanoTime() + TimeUnit.MINUTES.toNanos(READINESS_TIMEOUT_MINUTES)
     val quiescence = InstalledIndexingQuiescence(Duration.ofMillis(QUIESCENCE_MILLIS))
     val moduleContinuity = InstalledModuleContinuity(Duration.ofMillis(MODULE_RECOVERY_GRACE_MILLIS))
     var previousObservation: InstalledIndexingObservation? = null
     while (true) {
-        if (project.isDisposed) return indexingRejected(
-            InstalledIndexingReadinessFailure.ProjectDisposed,
-        )
+        if (project.isDisposed) return indexingRejected(InstalledIndexingReadinessFailure.ProjectDisposed)
         if (System.nanoTime() >= deadline) {
             return indexingRejected(
                 when {
                     previousObservation?.modulesReady == false ->
                         InstalledIndexingReadinessFailure.ModuleMaterializationUnavailable
                     else -> InstalledIndexingReadinessFailure.IndexingTimedOut
-                },
+                }
             )
         }
-        val observation = when (val observed = observeInstalledIndexingPlatform {
-            val moduleObservation = ReadAction.nonBlocking<InstalledModuleObservation> {
-                val modules = ModuleManager.getInstance(project).modules
-                    .filterNot { module -> module.isDisposed }
-                InstalledModuleObservation(
-                    modulesReady = modules.isNotEmpty(),
-                    projectRootsRevision = InstalledProjectRootsRevision(
-                        ProjectRootManager.getInstance(project).modificationCount,
-                    ),
-                )
-            }.executeSynchronously()
-            InstalledIndexingObservation(
-                smart = !services.dumbService.isDumb,
-                scannerRunning = services.scanner.isRunning.value,
-                scannerQueued = services.scanner.hasQueuedTasks,
-                scannerRevision = services.scanner.modificationTracker.modificationCount,
-                projectRootsRevision = moduleObservation.projectRootsRevision,
-                modulesReady = moduleObservation.modulesReady,
-            )
-        }) {
-            is InstalledIndexingPlatformObservation.Observed -> observed.value
-            is InstalledIndexingPlatformObservation.Rejected -> return indexingRejected(
-                observed.failure,
-            )
-        }
+        val observation =
+            when (
+                val observed = observeInstalledIndexingPlatform {
+                    val moduleObservation =
+                        ReadAction.nonBlocking<InstalledModuleObservation> {
+                                val modules =
+                                    ModuleManager.getInstance(project).modules.filterNot { module -> module.isDisposed }
+                                InstalledModuleObservation(
+                                    modulesReady = modules.isNotEmpty(),
+                                    projectRootsRevision =
+                                        InstalledProjectRootsRevision(
+                                            ProjectRootManager.getInstance(project).modificationCount
+                                        ),
+                                )
+                            }
+                            .executeSynchronously()
+                    InstalledIndexingObservation(
+                        smart = !services.dumbService.isDumb,
+                        scannerRunning = services.scanner.isRunning.value,
+                        scannerQueued = services.scanner.hasQueuedTasks,
+                        scannerRevision = services.scanner.modificationTracker.modificationCount,
+                        projectRootsRevision = moduleObservation.projectRootsRevision,
+                        modulesReady = moduleObservation.modulesReady,
+                    )
+                }
+            ) {
+                is InstalledIndexingPlatformObservation.Observed -> observed.value
+                is InstalledIndexingPlatformObservation.Rejected -> return indexingRejected(observed.failure)
+            }
         if (observation != previousObservation) {
             READINESS_LOG.info("Kast indexing readiness observation: $observation")
             previousObservation = observation
@@ -306,19 +294,15 @@ internal fun awaitInstalledIndexingQuiescence(
             InstalledModuleContinuityAction.REMATERIALIZE -> {
                 when (moduleRematerializer.rematerialize()) {
                     InstalledModuleMaterialization.AVAILABLE,
-                    InstalledModuleMaterialization.IMPORTED,
-                        -> Unit
+                    InstalledModuleMaterialization.IMPORTED -> Unit
                     InstalledModuleMaterialization.UNAVAILABLE,
-                    InstalledModuleMaterialization.FAILED,
-                        -> return indexingRejected(
-                            InstalledIndexingReadinessFailure.ModuleMaterializationUnavailable,
-                        )
+                    InstalledModuleMaterialization.FAILED ->
+                        return indexingRejected(InstalledIndexingReadinessFailure.ModuleMaterializationUnavailable)
                 }
             }
             InstalledModuleContinuityAction.WAITING -> Unit
-            InstalledModuleContinuityAction.FAILED -> return indexingRejected(
-                InstalledIndexingReadinessFailure.ModuleMaterializationUnavailable,
-            )
+            InstalledModuleContinuityAction.FAILED ->
+                return indexingRejected(InstalledIndexingReadinessFailure.ModuleMaterializationUnavailable)
         }
         try {
             Thread.sleep(POLL_MILLIS)
@@ -329,9 +313,8 @@ internal fun awaitInstalledIndexingQuiescence(
     }
 }
 
-private fun indexingRejected(
-    failure: InstalledIndexingReadinessFailure,
-): InstalledIndexingReadiness.Rejected = InstalledIndexingReadiness.Rejected(failure)
+private fun indexingRejected(failure: InstalledIndexingReadinessFailure): InstalledIndexingReadiness.Rejected =
+    InstalledIndexingReadiness.Rejected(failure)
 
 private data class InstalledModuleObservation(
     val modulesReady: Boolean,
@@ -347,11 +330,10 @@ private data class InstalledIndexingServices(
  * Proof transition: `InstalledModuleAvailability + Path + InstalledExternalProjectsReader +
  * InstalledExternalProjectImporter -> InstalledModuleMaterialization`.
  *
- * [InstalledModuleMaterialization.AVAILABLE] and [InstalledModuleMaterialization.IMPORTED]
- * establish at least one live module or one imported exact-workspace project structure.
- * [InstalledModuleMaterialization.FAILED] closes module observation failure, external-project data
- * lookup failure, malformed external project paths, and platform import failure. Raw IntelliJ
- * project data and `String -> Path` extraction are permitted only inside this bootstrap boundary.
+ * [InstalledModuleMaterialization.AVAILABLE] and [InstalledModuleMaterialization.IMPORTED] establish at least one live
+ * module or one imported exact-workspace project structure. [InstalledModuleMaterialization.FAILED] closes module
+ * observation failure, external-project data lookup failure, malformed external project paths, and platform import
+ * failure. Raw IntelliJ project data and `String -> Path` extraction are permitted only inside this bootstrap boundary.
  */
 internal fun materializeImportedModules(
     moduleAvailability: InstalledModuleAvailability,
@@ -363,26 +345,24 @@ internal fun materializeImportedModules(
         InstalledModuleAvailability.AVAILABLE -> InstalledModuleMaterialization.AVAILABLE
         InstalledModuleAvailability.FAILED -> InstalledModuleMaterialization.FAILED
         InstalledModuleAvailability.UNAVAILABLE -> {
-            val exactStructure = try {
-                val normalizedWorkspace = workspaceRoot.toAbsolutePath().normalize()
-                externalProjects.read()
-                    .filter { info ->
-                        Path.of(info.externalProjectPath)
-                            .toAbsolutePath()
-                            .normalize() == normalizedWorkspace
-                    }
-                    .singleOrNull()
-                    ?.externalProjectStructure
-            } catch (_: RuntimeException) {
-                return InstalledModuleMaterialization.FAILED
-            } ?: return InstalledModuleMaterialization.UNAVAILABLE
+            val exactStructure =
+                try {
+                    val normalizedWorkspace = workspaceRoot.toAbsolutePath().normalize()
+                    externalProjects
+                        .read()
+                        .filter { info ->
+                            Path.of(info.externalProjectPath).toAbsolutePath().normalize() == normalizedWorkspace
+                        }
+                        .singleOrNull()
+                        ?.externalProjectStructure
+                } catch (_: RuntimeException) {
+                    return InstalledModuleMaterialization.FAILED
+                } ?: return InstalledModuleMaterialization.UNAVAILABLE
 
             try {
                 when (importer.import(exactStructure)) {
-                    InstalledExternalProjectImport.IMPORTED ->
-                        InstalledModuleMaterialization.IMPORTED
-                    InstalledExternalProjectImport.FAILED ->
-                        InstalledModuleMaterialization.FAILED
+                    InstalledExternalProjectImport.IMPORTED -> InstalledModuleMaterialization.IMPORTED
+                    InstalledExternalProjectImport.FAILED -> InstalledModuleMaterialization.FAILED
                 }
             } catch (_: RuntimeException) {
                 InstalledModuleMaterialization.FAILED
