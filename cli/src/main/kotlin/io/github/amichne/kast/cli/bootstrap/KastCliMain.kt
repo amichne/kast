@@ -77,6 +77,7 @@ fun main(args: Array<String>) {
                     environment,
                 ),
                 CliRequestDocumentInput.Deferred(::readCanonicalRequestInput),
+                io.github.amichne.kast.cli.ide.FilesystemBrokerTrustRegistrar(Path.of(System.getProperty("user.home"))),
             )
         } else
             when (val installation = InstallationCliInspection.inspect(args.toList(), environment)) {

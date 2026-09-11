@@ -2,10 +2,12 @@ package io.github.amichne.kast.cli.ide
 
 import io.github.amichne.kast.cli.CanonicalRoot
 import io.github.amichne.kast.cli.CliJsonDocument
+import io.github.amichne.kast.cli.HostedRuntimeDemand
 import io.github.amichne.kast.cli.PreparedCliRequest
 import io.github.amichne.kast.cli.ProjectedCliOutcome
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.contract.ChangeIntentDocument
 
 enum class ExistingIdeFailure {
     CONFIGURATION_REJECTED,
@@ -18,6 +20,8 @@ enum class ExistingIdeFailure {
     TRANSPORT_REJECTED,
     SCHEMA_UNAVAILABLE,
     OPERATION_UNSUPPORTED,
+    APPROVAL_REQUIRED,
+    APPROVAL_REJECTED,
 }
 
 class ExistingIdeClassName private constructor(val value: String) {
@@ -39,6 +43,33 @@ sealed interface ExistingIdeOperation {
     data class Classes(val name: ExistingIdeClassName) : ExistingIdeOperation
 
     data class Supertype(val name: ExistingIdeQualifiedClassName) : ExistingIdeOperation
+
+    class Plan private constructor(val request: PreparedCliRequest) : ExistingIdeOperation {
+        companion object {
+            fun admit(request: PreparedCliRequest): Refinement<Plan, ExistingIdeFailure> =
+                when (val demand = request.hostedDemand) {
+                    is HostedRuntimeDemand.ChangePlan ->
+                        if (
+                            request.operation == CanonicalOperation.CHANGE_PLAN &&
+                                demand.intent is ChangeIntentDocument.AddDeclaration
+                        ) {
+                            Refinement.Refined(Plan(request))
+                        } else Refinement.Rejected(ExistingIdeFailure.OPERATION_UNSUPPORTED)
+                    else -> Refinement.Rejected(ExistingIdeFailure.OPERATION_UNSUPPORTED)
+                }
+        }
+    }
+
+    class ApprovalPreparation
+    internal constructor(val kind: HostedMutationOperation, val identity: HostedPlanIdentity) : ExistingIdeOperation
+
+    class ApprovedMutation
+    internal constructor(
+        val request: PreparedCliRequest,
+        val kind: HostedMutationOperation,
+        val identity: HostedPlanIdentity,
+        val assertion: HostedApprovalAssertion,
+    ) : ExistingIdeOperation
 
     class Read
     private constructor(

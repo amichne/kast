@@ -78,6 +78,26 @@ class ExistingIdeSocketClient(private val home: Path, private val limits: ReadLi
                         put("type", "DIRECT_SUPERTYPE")
                         put("qualifiedName", operation.name.value)
                     }
+                    is ExistingIdeOperation.Plan -> {
+                        put("type", "CHANGE_PLAN")
+                        put("document", operation.request.document)
+                    }
+                    is ExistingIdeOperation.ApprovalPreparation -> {
+                        put("type", "CHANGE_APPROVAL_PREPARE")
+                        put(
+                            "document",
+                            buildJsonObject {
+                                put("operation", operation.kind.name)
+                                put("planIdentity", operation.identity.value)
+                            }
+                                .toString(),
+                        )
+                    }
+                    is ExistingIdeOperation.ApprovedMutation -> {
+                        put("type", operation.kind.name)
+                        put("document", operation.request.document)
+                        put("approval", operation.assertion.value)
+                    }
                     is ExistingIdeOperation.Read -> {
                         put("type", operation.kind.name)
                         put("document", operation.request.document)
@@ -177,6 +197,7 @@ internal object ExistingIdeDocuments {
                 val node = read.value
                 if (
                     node.path("type").asString() == "KAST_IDE_ENDPOINT" &&
+                        node.path("protocol").asInt() == 3 &&
                         node.path("root").asString() == root.path.toString() &&
                         node.path("socket").asString() == socket.toString()
                 )
@@ -220,6 +241,61 @@ internal object ExistingIdeDocuments {
         }
         if (operation == ExistingIdeOperation.Status)
             return ExistingIdeExchange.Rejected(ExistingIdeFailure.RESPONSE_REJECTED)
+        if (operation is ExistingIdeOperation.ApprovalPreparation) {
+            return when (val admitted = admitHostedApprovalChallenge(raw, root, descriptor, operation)) {
+                is Refinement.Refined -> received(admitted.value)
+                is Refinement.Rejected -> {
+                    val rejection = read(raw, "hosted-query.schema.json")
+                    if (rejection is Refinement.Refined && rejection.value.path("outcome").asString() == "rejected")
+                        hostRejected(rejection.value.toString())
+                    else ExistingIdeExchange.Rejected(admitted.failure)
+                }
+            }
+        }
+        if (operation is ExistingIdeOperation.Plan || operation is ExistingIdeOperation.ApprovedMutation) {
+            val document = raw.toString(Charsets.UTF_8)
+            val request =
+                when (operation) {
+                    is ExistingIdeOperation.Plan -> operation.request
+                    is ExistingIdeOperation.ApprovedMutation -> operation.request
+                    else -> return ExistingIdeExchange.Rejected(ExistingIdeFailure.OPERATION_UNSUPPORTED)
+                }
+            val decoded =
+                when (operation) {
+                    is ExistingIdeOperation.Plan -> CanonicalOperationWireBindings.changePlan.decodeOutcome(document)
+                    is ExistingIdeOperation.ApprovedMutation ->
+                        when (operation.kind) {
+                            HostedMutationOperation.CHANGE_APPLY ->
+                                CanonicalOperationWireBindings.changeApply.decodeOutcome(document)
+                            HostedMutationOperation.CHANGE_RECOVER ->
+                                CanonicalOperationWireBindings.changeRecover.decodeOutcome(document)
+                        }
+                    else -> return ExistingIdeExchange.Rejected(ExistingIdeFailure.OPERATION_UNSUPPORTED)
+                }
+            val admitted =
+                when (decoded) {
+                    is WireDecoding.Rejected -> Refinement.Rejected(ExistingIdeFailure.RESPONSE_REJECTED)
+                    is WireDecoding.Decoded ->
+                        when (val outcome = decoded.value) {
+                            is OperationOutcome.Complete -> admitLiveEvidence(outcome.evidence.basis, root, descriptor)
+                            is OperationOutcome.Qualified -> admitLiveEvidence(outcome.evidence.basis, root, descriptor)
+                            is OperationOutcome.Rejected -> Refinement.Refined(Unit)
+                        }
+                }
+            if (admitted is Refinement.Rejected) {
+                val rejection = read(raw, "hosted-query.schema.json")
+                return if (
+                    rejection is Refinement.Refined && rejection.value.path("outcome").asString() == "rejected"
+                ) {
+                    hostRejected(rejection.value.toString())
+                } else ExistingIdeExchange.Rejected(admitted.failure)
+            }
+            return when (val completed = request.complete(document)) {
+                is CliProjectionCompletion.Completed -> ExistingIdeExchange.Semantic(completed.outcome)
+                is CliProjectionCompletion.Rejected ->
+                    ExistingIdeExchange.Rejected(ExistingIdeFailure.RESPONSE_REJECTED)
+            }
+        }
         if (operation is ExistingIdeOperation.Read) {
             val document = raw.toString(Charsets.UTF_8)
             when (val admitted = operation.kind.admitOutcome(document, root, descriptor)) {

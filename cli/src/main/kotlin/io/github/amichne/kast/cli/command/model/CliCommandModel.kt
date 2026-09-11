@@ -43,6 +43,7 @@ enum class CliProductCommand(
     INDEX_CLASSES("index classes <name> [--root <path>]", CliLocalExposure.PUBLIC),
     INDEX_SUPERTYPE("index supertype <qualified-name> [--root <path>]", CliLocalExposure.PUBLIC),
     INDEX_COMPLETION("index generate-completion <shell>", CliLocalExposure.PUBLIC),
+    IDE_TRUST_BROKER("ide trust-broker", CliLocalExposure.PUBLIC),
     IDE_STATUS("ide status [--root <path>]", CliLocalExposure.PUBLIC),
     IDE_CLASSES("ide classes <name> [--root <path>]", CliLocalExposure.PUBLIC),
     IDE_SUPERTYPE("ide supertype <qualified-name> [--root <path>]", CliLocalExposure.PUBLIC),
@@ -75,6 +76,8 @@ sealed interface CliAction {
         data object CodexCli : Local
 
         data object CodexDesktop : Local
+
+        data object TrustBroker : Local
 
         data class ExistingIde(
             val operation: io.github.amichne.kast.cli.ide.ExistingIdeOperation,

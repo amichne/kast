@@ -44,6 +44,10 @@ class ExistingIdeSocketTest {
                             "RELATION_READ",
                             "TRAVERSAL_RUN",
                             "DIAGNOSTIC_CHECK",
+                            "CHANGE_PLAN",
+                            "CHANGE_APPROVAL_PREPARE",
+                            "CHANGE_APPLY",
+                            "CHANGE_RECOVER",
                         )
                         .map(::JsonPrimitive)
                 )
@@ -51,7 +55,7 @@ class ExistingIdeSocketTest {
                 directory.resolve("endpoint.json"),
                 buildJsonObject {
                     put("type", "KAST_IDE_ENDPOINT")
-                    put("protocol", 2)
+                    put("protocol", 3)
                     put("host", "00000000-0000-0000-0000-000000000001")
                     put("querySchema", "kast.query.run.v2")
                     put("root", home.toString())
@@ -67,7 +71,7 @@ class ExistingIdeSocketTest {
                     server.bind(UnixDomainSocketAddress.of(socket))
                     val response = buildJsonObject {
                         put("type", "KAST_IDE_HOST")
-                        put("protocol", 2)
+                        put("protocol", 3)
                         put("host", "00000000-0000-0000-0000-000000000001")
                         put("querySchema", "kast.query.run.v2")
                         put("root", home.toString())

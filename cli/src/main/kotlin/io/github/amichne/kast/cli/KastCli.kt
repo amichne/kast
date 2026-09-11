@@ -123,6 +123,7 @@ class KastCli(
                 }
             CliAction.Local.CodexCli -> launchCodex(CodexClientLaunch.Cli)
             CliAction.Local.CodexDesktop -> launchCodex(CodexClientLaunch.Desktop)
+            CliAction.Local.TrustBroker -> boundaryExit(CliBoundaryExitStatus.RUNTIME, "ide-trust-unavailable")
             is CliAction.Local.ExistingIde ->
                 io.github.amichne.kast.cli.ide.executeExistingIdeAction(action, start, rootDiscovery, existingIdeClient)
             is CliAction.Semantic -> executeSemantic(action.request, start)
