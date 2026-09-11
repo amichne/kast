@@ -154,6 +154,8 @@ private class ProbeWorker(private val project: Project, private val sandbox: Pro
     }
 
     override fun executeNative(request: ProbeRequest): ProbeExecution {
+        if (request.command in setOf(ProbeCommand.RESTORE_SAVED, ProbeCommand.UNDO_PRODUCTION_CHANGE))
+            return executeSavedMutation(request)
         var result: ProbeExecution = ProbeExecution.Rejected(ProbeFailure.NATIVE_UNAVAILABLE)
         ApplicationManager.getApplication()
             .invokeAndWait(
@@ -163,6 +165,20 @@ private class ProbeWorker(private val project: Project, private val sandbox: Pro
                 ModalityState.nonModal(),
             )
         return result
+    }
+
+    private fun executeSavedMutation(request: ProbeRequest): ProbeExecution {
+        var prepared: ProbeSavePreparation =
+            ProbeSavePreparation.Resolved(ProbeExecution.Rejected(ProbeFailure.NATIVE_UNAVAILABLE))
+        ApplicationManager.getApplication()
+            .invokeAndWait(
+                { prepared = NativeFixtureProbeExecution(project, sandbox, controls).prepareSavedMutation(request) },
+                ModalityState.nonModal(),
+            )
+        return when (val result = prepared) {
+            is ProbeSavePreparation.Resolved -> result.result
+            is ProbeSavePreparation.Pending -> result.save.complete()
+        }
     }
 
     override fun awaitReadiness(request: ProbeRequest): ProbeExecution =

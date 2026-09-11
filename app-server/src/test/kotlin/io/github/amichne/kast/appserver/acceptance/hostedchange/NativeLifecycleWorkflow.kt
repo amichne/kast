@@ -23,9 +23,12 @@ internal class NativeLifecycleWorkflow(
     suspend fun run(peer: NativeChangePeer, preimage: ByteArray, postimage: ByteArray): NativeChangePeer {
         concurrentSamePlan(peer, preimage, postimage)
         val replacement = postSaveInterruption(peer, preimage, postimage)
-        unloadWithPendingApproval(replacement)
+        val beforeUnload = unloadWithPendingApproval(replacement)
+        val retained = session.replaceBrokerAfterUncertainInvocation(beforeUnload)
         controls.restart()
-        return replacement
+        val fresh = session.connect()
+        session.requireRetained(retained)
+        return fresh
     }
 
     private suspend fun concurrentSamePlan(peer: NativeChangePeer, preimage: ByteArray, postimage: ByteArray) {
@@ -122,18 +125,20 @@ internal class NativeLifecycleWorkflow(
         return replacement
     }
 
-    suspend fun unloadWithPendingApproval(peer: NativeChangePeer) {
+    suspend fun unloadWithPendingApproval(peer: NativeChangePeer): NativeBrokerStoreSnapshot {
         val before = Files.readAllBytes(source)
         val found = NativeChangeRead(peer).searchClass()
         val reference = (found["items"] as JsonArray).single().jsonObject.textAt("symbol_ref")
         val planned = peer.call("change_plan", nativePlanArguments(reference, "fun acceptanceUnloaded() = value"))
         demand(!planned.rejected(), NativeFailure.PROVIDER_REJECTED)
         val arguments = buildJsonObject { put("planIdentity", planned.document().textAt("planIdentity")) }
+        val beforeUnload = session.captureSettledStores()
         val rejected =
             peer.call("change_apply", arguments, beforeApproval = { controls.unloadProduction(sha256(before)) })
         demand(rejected.rejected(), NativeFailure.EXPECTED_REJECTION_MISSING)
         unchanged(before)
         evidence.record("plugin-unload-retires-pending-approval", NativeCaseOutcome.PASSED)
+        return beforeUnload
     }
 
     private suspend fun plan(peer: NativeChangePeer): JsonObject {

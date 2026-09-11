@@ -85,6 +85,19 @@ private constructor(
 
     fun requireRetained(snapshot: NativeBrokerStoreSnapshot) = snapshot.requireRecordsRetained(privateDirectory)
 
+    fun captureSettledStores(): NativeBrokerStoreSnapshot =
+        NativeBrokerStoreSnapshot.capture(privateDirectory, NativeBrokerRetentionExpectation.SETTLED)
+
+    suspend fun replaceBrokerAfterUncertainInvocation(previous: NativeBrokerStoreSnapshot): NativeBrokerStoreSnapshot {
+        hub.close()
+        val retained = NativeBrokerStoreSnapshot.capture(privateDirectory)
+        retained.requireNewUncertainInvocationSince(previous)
+        hub = reopenHub()
+        retained.requireUnchanged(privateDirectory)
+        NativeBrokerStoreSnapshot.capture(privateDirectory).requireNewUncertainInvocationSince(previous)
+        return retained
+    }
+
     suspend fun close() = hub.close()
 
     companion object {

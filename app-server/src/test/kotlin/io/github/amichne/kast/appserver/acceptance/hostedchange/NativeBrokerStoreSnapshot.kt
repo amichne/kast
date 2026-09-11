@@ -26,6 +26,18 @@ private constructor(
         demand(retainedRecords.all { (key, value) -> current[key] == value }, NativeFailure.RESULT_SHAPE_REJECTED)
     }
 
+    fun requireNewUncertainInvocationSince(previous: NativeBrokerStoreSnapshot) {
+        demand(
+            previous.retainedRecords.all { (key, value) -> retainedRecords[key] == value },
+            NativeFailure.RESULT_SHAPE_REJECTED,
+        )
+        val added = retainedRecords.filterKeys { it !in previous.retainedRecords }
+        demand(
+            added.size == 1 && added.values.single().phase == InvocationPhase.UNCERTAIN,
+            NativeFailure.RESULT_SHAPE_REJECTED,
+        )
+    }
+
     companion object {
         fun capture(
             directory: Path,

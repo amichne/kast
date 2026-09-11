@@ -11,6 +11,7 @@ import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.util.PsiTreeUtil
 import java.nio.ByteBuffer
@@ -32,9 +33,57 @@ internal class NativeFixtureProbeExecution(
     private val gate: ProbeSandbox,
     private val controls: NativeFixtureProbeControls,
 ) {
+    fun prepareSavedMutation(request: ProbeRequest): ProbeSavePreparation =
+        try {
+            when {
+                request.command !in setOf(ProbeCommand.RESTORE_SAVED, ProbeCommand.UNDO_PRODUCTION_CHANGE) ->
+                    ProbeSavePreparation.Resolved(ProbeExecution.Rejected(ProbeFailure.UNKNOWN_COMMAND))
+                !gate.valid(project) ->
+                    ProbeSavePreparation.Resolved(ProbeExecution.Rejected(ProbeFailure.SANDBOX_REJECTED))
+                else ->
+                    when (val loaded = load(request)) {
+                        is ProbeResult.Rejected ->
+                            ProbeSavePreparation.Resolved(ProbeExecution.Rejected(loaded.failure))
+                        is ProbeResult.Accepted -> prepareLoadedSave(loaded.value, request)
+                    }
+            }
+        } catch (cancelled: ProcessCanceledException) {
+            throw cancelled
+        } catch (_: Exception) {
+            ProbeSavePreparation.Resolved(ProbeExecution.EffectUncertain(ProbeFailure.NATIVE_UNAVAILABLE))
+        }
+
+    private fun prepareLoadedSave(target: ProbeTarget, request: ProbeRequest): ProbeSavePreparation {
+        when (val admission = validate(target, request)) {
+            is ProbeResult.Accepted -> Unit
+            is ProbeResult.Rejected -> return ProbeSavePreparation.Resolved(ProbeExecution.Rejected(admission.failure))
+        }
+        if (!gate.valid(project))
+            return ProbeSavePreparation.Resolved(ProbeExecution.Rejected(ProbeFailure.SANDBOX_REJECTED))
+        when (val mutated = mutate(target, request)) {
+            is ProbeResult.Accepted -> Unit
+            is ProbeResult.Rejected ->
+                return ProbeSavePreparation.Resolved(ProbeExecution.EffectUncertain(mutated.failure))
+        }
+        val document =
+            when (val observed = documentEvidence(target)) {
+                is ProbeResult.Accepted -> observed.value
+                is ProbeResult.Rejected ->
+                    return ProbeSavePreparation.Resolved(ProbeExecution.EffectUncertain(observed.failure))
+            }
+        val expected =
+            if (request.command == ProbeCommand.UNDO_PRODUCTION_CHANGE) request.images.preimage
+            else request.expectedCurrentSaved
+        return ProbeSavePreparation.Pending(
+            ProbePendingSave(file = target.file, path = target.path, expected = expected, document = document)
+        )
+    }
+
     fun execute(request: ProbeRequest): ProbeExecution =
         try {
-            if (!gate.valid(project)) ProbeExecution.Rejected(ProbeFailure.SANDBOX_REJECTED)
+            if (request.command in setOf(ProbeCommand.RESTORE_SAVED, ProbeCommand.UNDO_PRODUCTION_CHANGE))
+                ProbeExecution.Rejected(ProbeFailure.UNKNOWN_COMMAND)
+            else if (!gate.valid(project)) ProbeExecution.Rejected(ProbeFailure.SANDBOX_REJECTED)
             else
                 when (val loaded = load(request)) {
                     is ProbeResult.Rejected -> ProbeExecution.Rejected(loaded.failure)
@@ -189,7 +238,7 @@ internal class NativeFixtureProbeExecution(
                 it is com.intellij.openapi.fileEditor.TextEditor && it.editor === editor
             } ?: return ProbeResult.Rejected(ProbeFailure.TARGET_UNAVAILABLE)
         return ProbeResult.Accepted(
-            ProbeTarget(path = path, document = document, editor = fileEditor, savedText = text)
+            ProbeTarget(path = path, file = file, document = document, editor = fileEditor, savedText = text)
         )
     }
 
@@ -243,6 +292,13 @@ internal class NativeFixtureProbeExecution(
                 is ProbeResult.Accepted -> observed.value
                 is ProbeResult.Rejected -> return observed
             }
+        return when (val document = documentEvidence(target)) {
+            is ProbeResult.Accepted -> ProbeResult.Accepted(document.value.withSaved(ProbeDigest.observe(bytes)))
+            is ProbeResult.Rejected -> document
+        }
+    }
+
+    private fun documentEvidence(target: ProbeTarget): ProbeResult<ProbeDocumentEvidence> {
         val state = documentState(target.document)
         val committed = PsiDocumentManager.getInstance(project).isCommitted(target.document)
         val psi =
@@ -252,8 +308,7 @@ internal class NativeFixtureProbeExecution(
         if (psi != null && !collect(psi.declarations, "", declarations))
             return ProbeResult.Rejected(ProbeFailure.PSI_LIMIT_EXCEEDED)
         return ProbeResult.Accepted(
-            ProbeEvidence(
-                saved = ProbeDigest.observe(bytes),
+            ProbeDocumentEvidence(
                 document = digest(target.document.text),
                 documentState = state,
                 syntax =
@@ -284,7 +339,13 @@ internal class NativeFixtureProbeExecution(
         )
 }
 
-private data class ProbeTarget(val path: Path, val document: Document, val editor: FileEditor, val savedText: String)
+private data class ProbeTarget(
+    val path: Path,
+    val file: VirtualFile,
+    val document: Document,
+    val editor: FileEditor,
+    val savedText: String,
+)
 
 private fun digest(text: String): ProbeDigest = ProbeDigest.observe(text.toByteArray(StandardCharsets.UTF_8))
 

@@ -98,6 +98,48 @@ class NativeBrokerReplacementTest {
         assertThrows(NativeRejected::class.java) { retained.requireUnchanged(root) }
     }
 
+    @Test
+    fun `unload replacement proves the new invocation remains uncertain despite older uncertain records`(
+        @TempDir root: Path
+    ) {
+        stores(root, InvocationPhase.UNCERTAIN)
+        val beforeUnload = NativeBrokerStoreSnapshot.capture(root)
+        assertThrows(NativeRejected::class.java) { beforeUnload.requireNewUncertainInvocationSince(beforeUnload) }
+        val unloadKey = InvocationFence.digest("unload-call")
+        val afterUnload =
+            journal(InvocationPhase.UNCERTAIN)
+                .copy(
+                    records =
+                        journal(InvocationPhase.UNCERTAIN).records + (unloadKey to record(InvocationPhase.UNCERTAIN))
+                )
+        Files.writeString(root.resolve("invocations.json"), Json.encodeToString(afterUnload))
+        val retained = NativeBrokerStoreSnapshot.capture(root)
+        retained.requireNewUncertainInvocationSince(beforeUnload)
+        val reopened = InvocationFence(root.resolve("invocations.json"))
+        assertEquals(InvocationAdmission.Admitted, reopened.initialization())
+        assertEquals(
+            InvocationAdmission.Rejected(InvocationFenceFailure.OUTCOME_UNCERTAIN),
+            reopened.admit("unload-call", "c".repeat(64)),
+        )
+        retained.requireUnchanged(root)
+        NativeBrokerStoreSnapshot.capture(root).requireNewUncertainInvocationSince(beforeUnload)
+        for (phase in listOf(InvocationPhase.COMPLETED, InvocationPhase.STARTED)) {
+            Files.writeString(
+                root.resolve("invocations.json"),
+                Json.encodeToString(afterUnload.copy(records = afterUnload.records + (unloadKey to record(phase)))),
+            )
+            assertThrows(NativeRejected::class.java) {
+                NativeBrokerStoreSnapshot.capture(root).requireNewUncertainInvocationSince(beforeUnload)
+            }
+        }
+        val extra =
+            afterUnload.copy(records = afterUnload.records + ("d".repeat(64) to record(InvocationPhase.UNCERTAIN)))
+        Files.writeString(root.resolve("invocations.json"), Json.encodeToString(extra))
+        assertThrows(NativeRejected::class.java) {
+            NativeBrokerStoreSnapshot.capture(root).requireNewUncertainInvocationSince(beforeUnload)
+        }
+    }
+
     private fun stores(root: Path, phase: InvocationPhase) {
         Files.writeString(root.resolve("invocations.json"), Json.encodeToString(journal(phase)))
         Files.writeString(root.resolve("threads.json"), Json.encodeToString(EmptyThreadCatalog(2, emptyList())))
