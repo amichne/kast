@@ -28,6 +28,8 @@ code_sources:
   - path: change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/LiveMutationAuthority.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangePlanning.kt
   - path: change/intellij/src/main/kotlin/io/github/amichne/kast/change/intellij/LiveWriteObservation.kt
+  - path: change/intellij/src/main/kotlin/io/github/amichne/kast/change/intellij/LiveIntellijDocumentSession.kt
+  - path: change/intellij/src/main/kotlin/io/github/amichne/kast/change/intellij/PhysicalWriteCompletion.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeApprovals.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeApply.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeVerification.kt
@@ -77,8 +79,12 @@ that proof and the approved write set. A pre-write observation guards the
 IntelliJ write command; the adapter receives only the admitted single-file effect.
 Durable pre-write and applied records retain recovery evidence across effects.
 
-The physical postimage refinement emits a typed success or finite rejection
-cause without source content, paths, or approval payloads.
+The IDE save can enqueue an asynchronous VFS write. Before reading the physical
+postimage, the adapter calls the pinned platform's per-file
+`ManagingFS.flushPendingUpdates(file)` outside EDT. A failed completion prevents
+physical observation. Completion and exact postimage refinement emit typed
+success or finite rejection causes without source content, paths, or approval
+payloads. Document save flags alone do not prove physical write completion.
 
 A successful source write is not completion. Apply reacquires a live read,
 re-observes compiler identity, diagnostics, relation/traversal obligations and

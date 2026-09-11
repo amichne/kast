@@ -10,6 +10,7 @@ import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.vfs.newvfs.ManagingFS
 import com.intellij.psi.PsiDocumentManager
 import io.github.amichne.kast.change.apply.SourceWriteFailure
 import io.github.amichne.kast.kernel.Refinement
@@ -152,6 +153,28 @@ internal class LiveIntellijDocumentSession(
         }
 
     override fun observe(): IntellijPhysicalSourceObservation =
+        observeCompletedPhysicalWrite(
+            complete = ::completePhysicalWrite,
+            observe = ::readPhysicalPostimage,
+            emit = ::logPhysicalWriteCompletion,
+        )
+
+    /** VFS saves may be asynchronous; direct filesystem reads require the per-file completion barrier. */
+    private fun completePhysicalWrite(): IntellijSessionStepResult =
+        try {
+            if (ApplicationManager.getApplication().isDispatchThread) {
+                IntellijSessionStepResult.Rejected(SourceWriteFailure.OBSERVATION_FAILED)
+            } else {
+                ManagingFS.getInstance().flushPendingUpdates(prepared.file)
+                IntellijSessionStepResult.Completed
+            }
+        } catch (cancellation: ProcessCanceledException) {
+            throw cancellation
+        } catch (_: Exception) {
+            IntellijSessionStepResult.Rejected(SourceWriteFailure.OBSERVATION_FAILED)
+        }
+
+    private fun readPhysicalPostimage(): IntellijPhysicalSourceObservation =
         try {
             IntellijPhysicalSourceObservation.Observed(
                 Files.newInputStream(Path.of(input.sourcePath)).use {
