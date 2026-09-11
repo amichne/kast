@@ -42,8 +42,6 @@ import java.security.MessageDigest
 import java.util.HexFormat
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
@@ -526,8 +524,16 @@ internal class KastRuntime(private val options: KastProviderOptions) {
                 is Refinement.Refined -> encoded.value
                 is Refinement.Rejected -> return ProviderCall.Rejected(ProviderFailureCode.UNEXPECTED_FAILURE)
             }
+        val invocationTransport =
+            when (val admitted = KastInvocationTransport.prepare(tool, arguments, context)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return ProviderCall.Rejected(admitted.failure)
+            }
         val requestInput =
-            when (val admission = BrokerProcessInput.Document.admit(arguments.toString(), options.readLimits)) {
+            when (
+                val admission =
+                    BrokerProcessInput.Document.admit(invocationTransport.document.toString(), options.readLimits)
+            ) {
                 is Refinement.Refined -> admission.value
                 is Refinement.Rejected -> return ProviderCall.Rejected(ProviderFailureCode.UNEXPECTED_FAILURE)
             }
@@ -535,19 +541,20 @@ internal class KastRuntime(private val options: KastProviderOptions) {
             when (
                 val admission =
                     BrokerProcessRequest.admit(
-                        options.executable,
-                        tool.command,
-                        context.workingDirectory,
-                        options.readLimits[ReadLimitParameter.PROVIDER_OUTPUT_BYTES].value,
-                        options.readLimits[
-                                when (tool.executionBudget) {
-                                    OperationExecutionBudget.SEMANTIC_READ ->
-                                        ReadLimitParameter.PROVIDER_INVOCATION_MILLIS
-                                    OperationExecutionBudget.GRAPH_BUILD ->
-                                        ReadLimitParameter.PROVIDER_GRAPH_INVOCATION_MILLIS
-                                }]
-                            .value
-                            .toLong(),
+                        executable = options.executable,
+                        arguments = invocationTransport.command,
+                        workingDirectory = context.workingDirectory,
+                        maximumOutputBytes = options.readLimits[ReadLimitParameter.PROVIDER_OUTPUT_BYTES].value,
+                        timeoutMillis =
+                            options.readLimits[
+                                    when (tool.executionBudget) {
+                                        OperationExecutionBudget.SEMANTIC_READ ->
+                                            ReadLimitParameter.PROVIDER_INVOCATION_MILLIS
+                                        OperationExecutionBudget.GRAPH_BUILD ->
+                                            ReadLimitParameter.PROVIDER_GRAPH_INVOCATION_MILLIS
+                                    }]
+                                .value
+                                .toLong(),
                         input = requestInput,
                         limits = options.readLimits,
                     )
@@ -670,74 +677,3 @@ internal data class KastInvocationOutput(
     val success: Boolean,
     val observerDirectory: CanonicalBrokerDirectory,
 )
-
-@Serializable
-private data class KastCapabilityBoundary(
-    val schemaVersion: Int,
-    val serverProjection: KastServerProjectionBoundary,
-)
-
-@Serializable
-private data class KastServerProjectionBoundary(
-    val schemaVersion: Int,
-    val namespace: String,
-    val hostedBootstrap: KastHostedBootstrapBoundary,
-    val cliInvocations: KastCliInvocationsBoundary,
-)
-
-@Serializable
-private data class KastHostedBootstrapBoundary(
-    val schemaVersion: Int,
-    val policy: String,
-    val tools: List<KastHostedToolBoundary>,
-)
-
-@Serializable
-private data class KastHostedToolBoundary(
-    val operationId: String,
-    val name: String,
-    val description: String,
-    val deferLoading: Boolean,
-    val effect: String,
-    val approvalPolicy: KastApprovalPolicy,
-    val executionBudget: KastExecutionBudgetBoundary,
-    val inputSchema: JsonElement,
-    val outputSchema: JsonElement,
-)
-
-@Serializable
-private data class KastCliInvocationsBoundary(
-    val schemaVersion: Int,
-    val operations: List<KastCliOperationInvocationBoundary>,
-)
-
-@Serializable
-private data class KastCliOperationInvocationBoundary(
-    val toolName: String,
-    val operationId: String,
-    val cliUsage: String,
-    val invocation: KastCliInvocationBoundary,
-)
-
-@Serializable
-private data class KastExecutionBudgetBoundary(
-    val readinessMillis: Long,
-    val operationMillis: Long,
-)
-
-@Serializable
-internal enum class KastApprovalPolicy {
-    @SerialName("none") NONE,
-    @SerialName("explicit") EXPLICIT,
-}
-
-@Serializable
-private data class KastCliInvocationBoundary(
-    val type: KastInvocationType,
-    val command: List<String>,
-)
-
-@Serializable
-private enum class KastInvocationType {
-    CLI
-}

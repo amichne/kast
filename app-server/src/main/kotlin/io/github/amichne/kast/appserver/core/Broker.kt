@@ -20,8 +20,6 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonArray
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
 
 internal enum class ToolLoading {
     EAGER,
@@ -71,6 +69,8 @@ internal enum class ProviderFailureCode {
     KAST_CONTRACT_CHANGED,
     KAST_ARGUMENT_NOT_SCALAR,
     MALFORMED_KAST_OUTPUT,
+    APPROVAL_REQUIRED,
+    APPROVAL_BINDING_REJECTED,
     GRADLE_WRAPPER_UNAVAILABLE;
 
     val value: String
@@ -490,46 +490,3 @@ private fun interface TypedToolRoute<Runtime> {
         acquire: suspend () -> ProviderStartup<Runtime>,
     ): BrokerDispatch
 }
-
-private fun ProviderDefinition.identityDocument(): JsonObject = buildJsonObject {
-    put("namespace", namespace.value)
-    put("providerVersion", version.value)
-    put(
-        "tools",
-        buildJsonArray {
-            toolDocuments.sortedBy(ProviderToolDocument::name).forEach { tool ->
-                add(
-                    buildJsonObject {
-                        put("name", tool.name.value)
-                        put("description", tool.description.value)
-                        put("loading", tool.loading.name.lowercase())
-                        put("inputSchema", tool.inputSchema.document)
-                        put("outputSchema", tool.outputSchema.document)
-                    }
-                )
-            }
-        },
-    )
-}
-
-private fun ProviderDefinition.catalogNamespace(): CatalogNamespace =
-    CatalogNamespace(
-        name = namespace,
-        description =
-            ToolDescription.admit("Typed read-only tools provided by ${namespace.value}.").let { refinement ->
-                when (refinement) {
-                    is io.github.amichne.kast.kernel.Refinement.Refined -> refinement.value
-                    is io.github.amichne.kast.kernel.Refinement.Rejected ->
-                        error("Static catalog description violated its construction proof")
-                }
-            },
-        tools =
-            toolDocuments.sortedBy(ProviderToolDocument::name).map { tool ->
-                CatalogTool(
-                    tool.name,
-                    tool.description,
-                    tool.loading,
-                    tool.inputSchema.document,
-                )
-            },
-    )

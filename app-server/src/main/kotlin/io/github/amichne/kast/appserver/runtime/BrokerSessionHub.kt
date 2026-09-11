@@ -23,6 +23,22 @@ internal class BrokerSessionHub(
     private val sessions = ConcurrentHashMap<ClientConnectionId, Session>()
     val tasks = SharedTaskSessions()
     private val activity = SessionActivityJournal(options.sessionActivitySink)
+    private val planApprovals =
+        BrokerPlanApprovals(
+            tasks = tasks,
+            contracts = options.contracts,
+            gateway = options.planApprovalGateway,
+            delivery =
+                BrokerPlanApprovalDelivery(
+                    send = { client, message ->
+                        sessions[client]?.emitApproval(message) ?: PlanApprovalSend.UNAVAILABLE
+                    }
+                ),
+            publish = activity::publish,
+            waitMillis = options.planApprovalWaitMillis,
+        )
+    private val approvedExecutions = BrokerApprovedExecutions(scope, planApprovals)
+    private val planAdmission = BrokerPlanApprovalAdmission(options, approvedExecutions)
 
     private data class InvocationRecord(val fingerprint: String, val result: CompletableDeferred<ProtocolRouting>)
 
@@ -51,22 +67,6 @@ internal class BrokerSessionHub(
     )
 
     private val serverRequests = ConcurrentHashMap<String, ServerRequest>()
-
-    private data class InvocationIdentity(
-        val thread: io.github.amichne.kast.appserver.core.BrokerThreadId,
-        val turn: io.github.amichne.kast.appserver.core.BrokerTurnId,
-        val call: io.github.amichne.kast.appserver.core.BrokerCallId,
-    ) {
-        fun persistenceKey(): String =
-            JsonArray(listOf(thread.value, turn.value, call.value).map(::JsonPrimitive)).toString()
-    }
-
-    private enum class Handshake {
-        RESPONSE_PENDING,
-        INITIALIZED_PENDING,
-        READY,
-        CLOSED,
-    }
 
     inner class Session
     internal constructor(
@@ -174,7 +174,7 @@ internal class BrokerSessionHub(
                     )
                     return
                 }
-                if (method !in READ_METHODS && method != null) {
+                if (method !in BrokerSessionMethodPolicy.readMethods && method != null) {
                     val admission = tasks.authorize(thread, id)
                     if (admission is ControlResult.Rejected) {
                         emit(rejection(doc, admission.failure.name))
@@ -184,6 +184,14 @@ internal class BrokerSessionHub(
                 }
             }
             if (method == null) {
+                when (val approvalReply = planApprovals.respond(id, doc)) {
+                    BrokerPlanApprovalReply.Unowned -> Unit
+                    BrokerPlanApprovalReply.Handled -> return
+                    is BrokerPlanApprovalReply.Rejected -> {
+                        emit(rejection(doc, approvalReply.failure.name))
+                        return
+                    }
+                }
                 val key = doc["id"]?.toString() ?: return close()
                 val pending = serverRequests[key]
                 if (pending != null) {
@@ -208,6 +216,7 @@ internal class BrokerSessionHub(
                 // Schema validation above and shared-task authorization precede cancellation.
                 val turn = params?.text("turnId")?.let(io.github.amichne.kast.appserver.core.BrokerTurnId::admit)
                 if (turn != null && tasks.authorize(thread, id) == ControlResult.Accepted) {
+                    approvedExecutions.cancel(thread, turn)
                     when (val bound = adapter.boundWorkspace(thread)) {
                         is io.github.amichne.kast.kernel.Refinement.Refined ->
                             workspaceExecution.cancel(bound.value.id, thread, turn)
@@ -218,16 +227,12 @@ internal class BrokerSessionHub(
                     }
                 }
             }
-            if (
-                routing is ProtocolRouting.ForwardUpstream &&
-                    thread != null &&
-                    tasks.contains(thread) &&
-                    method != null &&
-                    method !in READ_METHODS
-            ) {
-                val requestKey = doc["id"]?.toString() ?: return close()
-                tasks.pending(thread, requestKey)
-                controlCommands[requestKey] = thread to method
+            if (routing is ProtocolRouting.ForwardUpstream && thread != null && method != null) {
+                if (tasks.contains(thread) && method !in BrokerSessionMethodPolicy.readMethods) {
+                    val requestKey = doc["id"]?.toString() ?: return close()
+                    tasks.pending(thread, requestKey)
+                    controlCommands[requestKey] = thread to method
+                }
             }
             route(routing)
         }
@@ -293,79 +298,97 @@ internal class BrokerSessionHub(
                                         ProtocolRouting.ReplyUpstream(toolFailure(doc, bound.failure.name))
                                     )
                                 )
-                            is io.github.amichne.kast.kernel.Refinement.Refined ->
-                                workspaceExecution.submit(
-                                    WorkspaceExecutionIdentity(
-                                        bound.value.id,
-                                        id,
-                                        identity.thread,
-                                        identity.turn,
-                                        identity.call,
-                                    ),
-                                    interactionLimit,
-                                ) {
-                                    val identityKey = identity.persistenceKey()
-                                    val admitted = fence.admit(identityKey, fingerprint)
-                                    activity.publish(
-                                        SessionActivity(
-                                            id,
-                                            SessionStage.INVOCATION,
-                                            if (admitted is InvocationAdmission.Admitted) SessionOutcome.STARTED
-                                            else SessionOutcome.REJECTED,
-                                        )
-                                    )
-                                    if (admitted is InvocationAdmission.Rejected) {
-                                        ProtocolRouting.ReplyUpstream(
-                                            toolFailure(doc, admitted.failure.name),
-                                            if (admitted.failure == InvocationFenceFailure.OUTCOME_UNCERTAIN)
-                                                io.github.amichne.kast.appserver.protocol.codex.InvocationCertainty
-                                                    .UNCERTAIN
-                                            else
-                                                io.github.amichne.kast.appserver.protocol.codex.InvocationCertainty
-                                                    .KNOWN,
-                                        )
-                                    } else
-                                        try {
-                                            val dispatched = adapter.fromUpstream(message)
-                                            currentCoroutineContext().ensureActive()
-                                            val phase =
-                                                if (
-                                                    dispatched is ProtocolRouting.ReplyUpstream &&
-                                                        dispatched.certainty ==
-                                                            io.github.amichne.kast.appserver.protocol.codex
-                                                                .InvocationCertainty
-                                                                .KNOWN
-                                                )
-                                                    InvocationPhase.COMPLETED
-                                                else InvocationPhase.UNCERTAIN
-                                            val completed = fence.finish(identityKey, phase)
+                            is io.github.amichne.kast.kernel.Refinement.Refined -> {
+                                val submit: (BrokerInvocationApproval) -> Deferred<WorkspaceExecutionResult> =
+                                    { approval ->
+                                        workspaceExecution.submit(
+                                            WorkspaceExecutionIdentity(
+                                                bound.value.id,
+                                                id,
+                                                identity.thread,
+                                                identity.turn,
+                                                identity.call,
+                                            ),
+                                            interactionLimit,
+                                        ) {
+                                            val identityKey = identity.persistenceKey()
+                                            val admitted = fence.admit(identityKey, fingerprint)
                                             activity.publish(
                                                 SessionActivity(
                                                     id,
                                                     SessionStage.INVOCATION,
-                                                    if (
-                                                        completed is InvocationAdmission.Rejected ||
-                                                            phase == InvocationPhase.UNCERTAIN
-                                                    )
-                                                        SessionOutcome.UNCERTAIN
-                                                    else SessionOutcome.COMPLETED,
+                                                    if (admitted is InvocationAdmission.Admitted) SessionOutcome.STARTED
+                                                    else SessionOutcome.REJECTED,
                                                 )
                                             )
-                                            if (completed is InvocationAdmission.Rejected)
+                                            if (admitted is InvocationAdmission.Rejected) {
                                                 ProtocolRouting.ReplyUpstream(
-                                                    toolFailure(doc, "OUTCOME_UNCERTAIN"),
-                                                    io.github.amichne.kast.appserver.protocol.codex.InvocationCertainty
-                                                        .UNCERTAIN,
+                                                    toolFailure(doc, admitted.failure.name),
+                                                    if (admitted.failure == InvocationFenceFailure.OUTCOME_UNCERTAIN)
+                                                        io.github.amichne.kast.appserver.protocol.codex
+                                                            .InvocationCertainty
+                                                            .UNCERTAIN
+                                                    else
+                                                        io.github.amichne.kast.appserver.protocol.codex
+                                                            .InvocationCertainty
+                                                            .KNOWN,
                                                 )
-                                            else dispatched
-                                        } catch (failure: Exception) {
-                                            fence.finish(identityKey, InvocationPhase.UNCERTAIN)
-                                            activity.publish(
-                                                SessionActivity(id, SessionStage.INVOCATION, SessionOutcome.UNCERTAIN)
-                                            )
-                                            throw failure
+                                            } else
+                                                try {
+                                                    val dispatched = adapter.fromUpstream(message, approval)
+                                                    currentCoroutineContext().ensureActive()
+                                                    val phase =
+                                                        if (
+                                                            dispatched is ProtocolRouting.ReplyUpstream &&
+                                                                dispatched.certainty ==
+                                                                    io.github.amichne.kast.appserver.protocol.codex
+                                                                        .InvocationCertainty
+                                                                        .KNOWN
+                                                        )
+                                                            InvocationPhase.COMPLETED
+                                                        else InvocationPhase.UNCERTAIN
+                                                    val completed = fence.finish(identityKey, phase)
+                                                    activity.publish(
+                                                        SessionActivity(
+                                                            id,
+                                                            SessionStage.INVOCATION,
+                                                            if (
+                                                                completed is InvocationAdmission.Rejected ||
+                                                                    phase == InvocationPhase.UNCERTAIN
+                                                            )
+                                                                SessionOutcome.UNCERTAIN
+                                                            else SessionOutcome.COMPLETED,
+                                                        )
+                                                    )
+                                                    if (completed is InvocationAdmission.Rejected)
+                                                        ProtocolRouting.ReplyUpstream(
+                                                            toolFailure(doc, "OUTCOME_UNCERTAIN"),
+                                                            io.github.amichne.kast.appserver.protocol.codex
+                                                                .InvocationCertainty
+                                                                .UNCERTAIN,
+                                                        )
+                                                    else dispatched
+                                                } catch (failure: Exception) {
+                                                    fence.finish(identityKey, InvocationPhase.UNCERTAIN)
+                                                    activity.publish(
+                                                        SessionActivity(
+                                                            id,
+                                                            SessionStage.INVOCATION,
+                                                            SessionOutcome.UNCERTAIN,
+                                                        )
+                                                    )
+                                                    throw failure
+                                                }
                                         }
-                                }
+                                    }
+                                planAdmission.submit(
+                                    id = id,
+                                    binding = WorkspaceInvocationBinding(bound.value, identity),
+                                    params = params,
+                                    document = doc,
+                                    submit = submit,
+                                )
+                            }
                         }
                     else null
                 calls.incrementAndGet()
@@ -412,7 +435,8 @@ internal class BrokerSessionHub(
             }
             if (method != null && doc.containsKey("id")) {
                 val recipientId =
-                    if (method in APPROVAL_METHODS && thread != null && tasks.contains(thread)) tasks.controller(thread)
+                    if (method in BrokerSessionMethodPolicy.approvalMethods && thread != null && tasks.contains(thread))
+                        tasks.controller(thread)
                     else id
                 val recipient = recipientId?.let(sessions::get)
                 if (recipient == null || !recipient.attached) {
@@ -576,9 +600,13 @@ internal class BrokerSessionHub(
             if (attached && output.trySend(message).isFailure) output.close()
         }
 
+        internal fun emitApproval(message: String): PlanApprovalSend =
+            if (attached && output.trySend(message).isSuccess) PlanApprovalSend.SENT else PlanApprovalSend.UNAVAILABLE
+
         suspend fun detach() = transitions.withLock {
             activity.publish(SessionActivity(id, SessionStage.SUBSCRIPTION, SessionOutcome.DETACHED))
             attached = false
+            planApprovals.disconnect(id)
             output.close()
             serverRequests.entries
                 .filter { it.value.recipient == id && it.value.phase == RequestPhase.AWAITING_CLIENT }
@@ -599,6 +627,7 @@ internal class BrokerSessionHub(
 
         suspend fun close() {
             if (!retired.compareAndSet(false, true)) return
+            approvedExecutions.retire(id)
             activity.publish(SessionActivity(id, SessionStage.TRANSPORT, SessionOutcome.RETIRED))
             serverRequests.entries
                 .filter { it.value.source == this }
@@ -796,61 +825,9 @@ internal class BrokerSessionHub(
     }
         .toString()
 
-    private fun toolFailure(doc: JsonObject, reason: String) = buildJsonObject {
-        put("id", doc["id"] ?: JsonNull)
-        put(
-            "result",
-            buildJsonObject {
-                put("success", false)
-                put(
-                    "contentItems",
-                    buildJsonArray {
-                        add(
-                            buildJsonObject {
-                                put("type", "inputText")
-                                put(
-                                    "text",
-                                    buildJsonObject {
-                                        put("status", "rejected")
-                                        put("failure", reason)
-                                    }
-                                        .toString(),
-                                )
-                            }
-                        )
-                    },
-                )
-            },
-        )
-    }
-        .toString()
-
     private fun withResponseId(result: ProtocolRouting, id: JsonElement?): ProtocolRouting =
         if (result is ProtocolRouting.ReplyUpstream && id != null) {
             val doc = parse(result.message)
             if (doc == null) result else result.copy(message = JsonObject(doc + ("id" to id)).toString())
         } else result
-
-    private companion object {
-        val APPROVAL_METHODS =
-            setOf(
-                "item/commandExecution/requestApproval",
-                "item/fileChange/requestApproval",
-                "item/permissions/requestApproval",
-                "item/tool/requestUserInput",
-                "mcpServer/elicitation/request",
-                "execCommandApproval",
-                "applyPatchApproval",
-            )
-        val READ_METHODS =
-            setOf(
-                "thread/read",
-                "thread/resume",
-                "thread/fork",
-                "thread/unsubscribe",
-                "thread/items/list",
-                "thread/turns/list",
-                "thread/goal/get",
-            )
-    }
 }

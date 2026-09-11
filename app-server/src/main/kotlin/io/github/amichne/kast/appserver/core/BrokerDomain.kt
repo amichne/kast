@@ -90,6 +90,7 @@ internal enum class BrokerInvocationContextFailure {
     INVALID_TURN_ID,
     INVALID_CALL_ID,
     WORKING_DIRECTORY_REJECTED,
+    APPROVAL_CONTEXT_MISMATCH,
 }
 
 @JvmInline
@@ -138,6 +139,7 @@ private constructor(
     val turnId: BrokerTurnId,
     val callId: BrokerCallId,
     val workingDirectory: CanonicalBrokerDirectory,
+    val approval: io.github.amichne.kast.appserver.runtime.BrokerInvocationApproval,
 ) {
     val invocationId: String
         get() = JsonArray(listOf(threadId.value, turnId.value, callId.value).map(::JsonPrimitive)).toString()
@@ -148,6 +150,8 @@ private constructor(
             turnId: String,
             callId: String,
             workingDirectory: Path,
+            approval: io.github.amichne.kast.appserver.runtime.BrokerInvocationApproval =
+                io.github.amichne.kast.appserver.runtime.BrokerInvocationApproval.Absent,
         ): Refinement<BrokerInvocationContext, BrokerInvocationContextFailure> {
             val admittedThread =
                 BrokerThreadId.admit(threadId)
@@ -159,14 +163,20 @@ private constructor(
             val admittedDirectory =
                 CanonicalBrokerDirectory.admit(workingDirectory)
                     ?: return Refinement.Rejected(BrokerInvocationContextFailure.WORKING_DIRECTORY_REJECTED)
-            return Refinement.Refined(
+            val context =
                 BrokerInvocationContext(
-                    admittedThread,
-                    admittedTurn,
-                    admittedCall,
-                    admittedDirectory,
+                    threadId = admittedThread,
+                    turnId = admittedTurn,
+                    callId = admittedCall,
+                    workingDirectory = admittedDirectory,
+                    approval = approval,
                 )
+            if (
+                approval is io.github.amichne.kast.appserver.runtime.BrokerInvocationApproval.Granted &&
+                    !approval.grant.matchesInvocation(context)
             )
+                return Refinement.Rejected(BrokerInvocationContextFailure.APPROVAL_CONTEXT_MISMATCH)
+            return Refinement.Refined(context)
         }
     }
 }

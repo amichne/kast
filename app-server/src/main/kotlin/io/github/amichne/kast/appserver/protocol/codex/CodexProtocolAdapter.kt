@@ -169,7 +169,11 @@ internal class CodexProtocolAdapter(
         }
     }
 
-    internal suspend fun fromUpstream(message: String): ProtocolRouting {
+    internal suspend fun fromUpstream(
+        message: String,
+        approval: io.github.amichne.kast.appserver.runtime.BrokerInvocationApproval =
+            io.github.amichne.kast.appserver.runtime.BrokerInvocationApproval.Absent,
+    ): ProtocolRouting {
         val document = parseObject(message) ?: return ProtocolRouting.Close(ProtocolCloseFailure.MalformedUpstream)
         val envelope = UpstreamEnvelope.classify(document)
         if (envelope is UpstreamEnvelope.Response) {
@@ -243,10 +247,11 @@ internal class CodexProtocolAdapter(
             when (
                 val admission =
                     BrokerInvocationContext.admit(
-                        threadId,
-                        turnId,
-                        callId,
-                        binding.workspace.root.path,
+                        threadId = threadId,
+                        turnId = turnId,
+                        callId = callId,
+                        workingDirectory = binding.workspace.root.path,
+                        approval = approval,
                     )
             ) {
                 is Refinement.Refined -> admission.value
@@ -1006,42 +1011,4 @@ internal class CodexProtocolAdapter(
             is Refinement.Refined -> value.value
             is Refinement.Rejected -> null
         }
-}
-
-private sealed interface UpstreamEnvelope {
-    data class Request(val method: String, val id: RpcId?) : UpstreamEnvelope
-
-    data class Response(val id: RpcId) : UpstreamEnvelope
-
-    data object Other : UpstreamEnvelope
-
-    companion object {
-        fun classify(document: JsonObject): UpstreamEnvelope {
-            val method = document.string("method")
-            if (method != null) return Request(method, RpcId.admit(document["id"]))
-            val id = RpcId.admit(document["id"])
-            return if (id != null && (document.containsKey("result") || document.containsKey("error"))) {
-                Response(id)
-            } else {
-                Other
-            }
-        }
-
-        private fun JsonObject.string(name: String): String? = (get(name) as? JsonPrimitive)?.contentOrNull
-    }
-}
-
-private class RpcId
-private constructor(
-    val value: JsonPrimitive,
-    val key: String,
-) {
-    companion object {
-        fun admit(candidate: JsonElement?): RpcId? {
-            val primitive = candidate as? JsonPrimitive ?: return null
-            if (primitive.isString) return RpcId(primitive, "string:${primitive.content}")
-            val numeric = primitive.content.toBigDecimalOrNull() ?: return null
-            return RpcId(primitive, "number:${numeric.toPlainString()}")
-        }
-    }
 }

@@ -15,50 +15,6 @@ import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
-internal enum class CodexOwnedSchema(val fileName: String) {
-    DYNAMIC_TOOL_CALL_PARAMS("DynamicToolCallParams.json"),
-    DYNAMIC_TOOL_CALL_RESPONSE("DynamicToolCallResponse.json"),
-    INITIALIZE_PARAMS("InitializeParams.json"),
-    ITEM_COMPLETED_NOTIFICATION("ItemCompletedNotification.json"),
-    ITEM_STARTED_NOTIFICATION("ItemStartedNotification.json"),
-    REVIEW_START_PARAMS("ReviewStartParams.json"),
-    REVIEW_START_RESPONSE("ReviewStartResponse.json"),
-    THREAD_FORK_PARAMS("ThreadForkParams.json"),
-    THREAD_FORK_RESPONSE("ThreadForkResponse.json"),
-    THREAD_ITEMS_LIST_PARAMS("ThreadItemsListParams.json"),
-    THREAD_ITEMS_LIST_RESPONSE("ThreadItemsListResponse.json"),
-    THREAD_LIST_PARAMS("ThreadListParams.json"),
-    THREAD_LIST_RESPONSE("ThreadListResponse.json"),
-    THREAD_METADATA_UPDATE_PARAMS("ThreadMetadataUpdateParams.json"),
-    THREAD_METADATA_UPDATE_RESPONSE("ThreadMetadataUpdateResponse.json"),
-    THREAD_QUEUE_START_PARAMS("ThreadQueueStartParams.json"),
-    THREAD_QUEUE_START_RESPONSE("ThreadQueueStartResponse.json"),
-    THREAD_READ_PARAMS("ThreadReadParams.json"),
-    THREAD_READ_RESPONSE("ThreadReadResponse.json"),
-    THREAD_RESUME_PARAMS("ThreadResumeParams.json"),
-    THREAD_RESUME_RESPONSE("ThreadResumeResponse.json"),
-    THREAD_REVERT_PARAMS("ThreadRevertParams.json"),
-    THREAD_REVERT_RESPONSE("ThreadRevertResponse.json"),
-    THREAD_ROLLBACK_PARAMS("ThreadRollbackParams.json"),
-    THREAD_ROLLBACK_RESPONSE("ThreadRollbackResponse.json"),
-    THREAD_SEARCH_PARAMS("ThreadSearchParams.json"),
-    THREAD_SEARCH_RESPONSE("ThreadSearchResponse.json"),
-    THREAD_START_PARAMS("ThreadStartParams.json"),
-    THREAD_START_RESPONSE("ThreadStartResponse.json"),
-    THREAD_STARTED_NOTIFICATION("ThreadStartedNotification.json"),
-    THREAD_TIMELINE_LIST_PARAMS("ThreadTimelineListParams.json"),
-    THREAD_TIMELINE_LIST_RESPONSE("ThreadTimelineListResponse.json"),
-    THREAD_TURNS_LIST_PARAMS("ThreadTurnsListParams.json"),
-    THREAD_TURNS_LIST_RESPONSE("ThreadTurnsListResponse.json"),
-    THREAD_UNARCHIVE_PARAMS("ThreadUnarchiveParams.json"),
-    THREAD_UNARCHIVE_RESPONSE("ThreadUnarchiveResponse.json"),
-    TURN_COMPLETED_NOTIFICATION("TurnCompletedNotification.json"),
-    TURN_INTERRUPT_PARAMS("TurnInterruptParams.json"),
-    TURN_STARTED_NOTIFICATION("TurnStartedNotification.json"),
-    TURN_START_PARAMS("TurnStartParams.json"),
-    TURN_START_RESPONSE("TurnStartResponse.json"),
-}
-
 internal sealed interface CodexProtocolContractFailure {
     data class Missing(val schema: CodexOwnedSchema) : CodexProtocolContractFailure
 
@@ -67,6 +23,8 @@ internal sealed interface CodexProtocolContractFailure {
     data object InitializeMutationIncompatible : CodexProtocolContractFailure
 
     data class ToolCallProjectionIncompatible(val schema: CodexOwnedSchema) : CodexProtocolContractFailure
+
+    data class PlanApprovalIncompatible(val schema: CodexOwnedSchema) : CodexProtocolContractFailure
 }
 
 /** Compiled, complete set of installed Codex schemas for every broker-owned protocol shape. */
@@ -95,6 +53,12 @@ private constructor(private val contracts: Map<CodexOwnedSchema, CompiledJsonSch
                 }
             }
             val initialize = compiled[CodexOwnedSchema.INITIALIZE_PARAMS]
+            if (failures.isEmpty()) {
+                CodexPlanApprovalProjection.qualificationWitnesses().forEach { (schema, witness) ->
+                    if (compiled.getValue(schema).admit(witness) !is Validation.Validated)
+                        failures += CodexProtocolContractFailure.PlanApprovalIncompatible(schema)
+                }
+            }
             if (failures.isEmpty() && initialize?.admit(INITIALIZE_MUTATION_WITNESS) !is Validation.Validated) {
                 failures += CodexProtocolContractFailure.InitializeMutationIncompatible
             }
