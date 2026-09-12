@@ -7,6 +7,8 @@ import kotlinx.serialization.json.Json
 internal data class InstalledKnowledgeInput(
     val productVersion: String,
     val sourceRevision: String,
+    val declarationEvidence: String,
+    val declarationLimitations: List<String>,
     val modules: List<InstalledKnowledgeModuleInput>,
     val guides: List<InstalledKnowledgeGuideInput>,
     val declarations: List<InstalledKnowledgeDeclarationInput>,
@@ -146,6 +148,8 @@ internal object InstalledKnowledgeProjection {
             InstalledKnowledgeManifest(
                 productVersion = input.productVersion,
                 sourceRevision = input.sourceRevision,
+                declarationEvidence = input.declarationEvidence,
+                declarationLimitations = input.declarationLimitations.sorted(),
                 modules = moduleDescriptors,
             ),
         ) + "\n"
