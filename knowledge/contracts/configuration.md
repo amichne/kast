@@ -4,14 +4,16 @@ title: Installation configuration
 description: Every external configuration input has declared ownership, parsing, defaults, and projection before it can affect a managed runtime.
 resource: file://distribution/contract
 tags: [configuration, distribution, installation]
-timestamp: 2026-09-10T00:00:00Z
+timestamp: 2026-09-12T00:00:00Z
 code_sources:
   - path: kernel/src/main/kotlin/io/github/amichne/kast/kernel/ReadLimits.kt
     symbols: [ReadLimits, ReadLimitParameter]
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeReadConfiguration.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/HostedReadConfiguration.kt
-  - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationSchema.kt
-    symbols: [KastConfigurationSchema]
+  - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationSchemaDocument.kt
+    symbols: [ConfigurationSchemaDocument]
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/configuration/InstalledConfigurationSchema.kt
+    symbols: [InstalledConfigurationSchema]
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/configuration/SavedConfigurationIngress.kt
     symbols: [SavedConfigurationIngress]
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt
@@ -30,3 +32,5 @@ Two checked artifacts enforce the boundary: [configuration-schema.json](../../pa
 See [distribution](../modules/distribution.md).
 
 The `KAST_READ_*` declarations retain parameter identity, admitted values and provenance across model/epoch capture, semantic budgets, native collection, source paging, diagnostic scope enumeration, transport and provider execution. [Configuration instructions](../../docs/hosted-read-configuration.md) explain activation and paired bounds. Default request diagnostics include the effective policy.
+
+`ConfigurationSchemaDocument` defines the shared document. The CLI-owned `InstalledConfigurationSchema` is the sole catalogue generator and includes operational limits from protocol, broker, installation, and CLI owners.

@@ -4,7 +4,7 @@ title: Verified module architecture
 description: Gradle verifies module roles, dependencies, exports, and scoped agent guidance before projecting module knowledge.
 resource: file://settings.gradle.kts
 tags: [kotlin, gradle, architecture]
-timestamp: 2026-09-11T00:00:00Z
+timestamp: 2026-09-12T00:00:00Z
 code_sources:
   - path: docs/reviews/live-semantic-read-acceptance.md
   - path: build-logic/src/main/kotlin/kast.kotlin-library.gradle.kts
@@ -17,6 +17,9 @@ code_sources:
   - path: build-logic/src/main/kotlin/kast.architecture.gradle.kts
   - path: build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt
     symbols: [KastCleanSlateModules]
+  - path: build-logic/src/main/kotlin/support/architecture/validation/ModulePolicyValidator.kt
+    symbols: [ModuleRoleConvention, ValidatedModulePolicy]
+  - path: build-logic/src/main/kotlin/support/architecture/policy/JvmEffectRules.kt
   - path: build-logic/src/main/kotlin/support/architecture/knowledge/ModuleKnowledgeProjection.kt
     symbols: [ModuleKnowledgeProjection, ModuleKnowledgeDocument]
   - path: change/protocol/build.gradle.kts
@@ -30,6 +33,8 @@ code_sources:
 The root [settings](../../settings.gradle.kts) declares the active Gradle projects. The [architecture plugin](../../build-logic/src/main/kotlin/kast.architecture.gradle.kts) observes their production dependencies, exported dependencies, compiled classes, and role conventions before verification.
 
 `generateKastModuleKnowledge` consumes accepted architecture evidence. Its output records the source revision, policy, observed edges, tracked `AGENTS.md` content hashes, and the governing guide set for each module. Generated build output is verification evidence, not a checked-in source of truth.
+
+Every module role requires its matching Gradle convention. Validated module policy retains that convention directly; there is no unmarked host role or exemption from effect classification.
 
 ## Ownership shape
 

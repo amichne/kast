@@ -19,8 +19,6 @@ import kotlinx.serialization.Transient
 
 @JvmInline value class ChangePlanningEvidenceFingerprint internal constructor(val value: String)
 
-typealias AddDeclarationEvidenceFingerprint = ChangePlanningEvidenceFingerprint
-
 /**
  * Complete, normalized detached evidence for one exact editable target.
  *

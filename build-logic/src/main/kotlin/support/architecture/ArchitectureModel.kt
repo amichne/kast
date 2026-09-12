@@ -9,7 +9,6 @@ enum class ModuleLifecycle {
 }
 
 enum class ModuleRole {
-    LEGACY_HOST,
     KERNEL,
     CONTRACT,
     SPI,

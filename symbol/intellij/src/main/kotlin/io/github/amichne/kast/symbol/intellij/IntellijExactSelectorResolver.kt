@@ -1,18 +1,12 @@
 package io.github.amichne.kast.symbol.intellij
 
-import com.intellij.openapi.application.readAction
 import com.intellij.openapi.progress.ProcessCanceledException
-import com.intellij.openapi.progress.ProgressManager
-import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.IndexNotReadyException
-import com.intellij.openapi.project.Project
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.ExactDeclarationSelector
 import io.github.amichne.kast.symbol.contract.RevalidatedExactDeclaration
 import io.github.amichne.kast.symbol.contract.SymbolDiscoverySelection
-import io.github.amichne.kast.symbol.contract.SymbolSearchScopeRequest
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
-import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
 import java.util.concurrent.CancellationException
 
 internal enum class IntellijExactSelectorRejection {
@@ -177,90 +171,6 @@ internal class IntellijExactSelectorQuery(
                 IntellijExactSelectorEnvironmentAdmission.Rejected(IntellijExactSelectorRejection.PROJECT_DISPOSED)
         }
     }
-}
-
-internal class IntellijExactSelectorResolver(
-    private val scopeQuery: IntellijSearchScopeQueryAdapter = IntellijSearchScopeQueryAdapter()
-) {
-    /**
-     * Proof transition: Project + current SemanticReadAuthority + SymbolDiscoverySelection +
-     * WorkspaceSearchScopeModelCompilation to IntellijExactSelectorResolution.
-     *
-     * Establishes that the selected root and authority are still current, then compiles the original discovery scope
-     * before one restartable, write-priority IntelliJ read issues an exact selector. Root/generation, scope,
-     * environment, and native lookup failures are closed by [IntellijExactSelectorResolution]. Platform cancellation
-     * propagates through [readAction].
-     */
-    suspend fun resolve(
-        project: Project,
-        currentLease: SemanticReadAuthority,
-        selection: SymbolDiscoverySelection,
-        modelCompilation: WorkspaceSearchScopeModelCompilation,
-    ): IntellijExactSelectorResolution {
-        when (val admission = admitExactSelectorLease(selection.lease, currentLease)) {
-            IntellijExactSelectorLeaseAdmission.Admitted -> Unit
-            is IntellijExactSelectorLeaseAdmission.Rejected ->
-                return IntellijExactSelectorResolution.Rejected(admission.reason)
-        }
-        return readAction {
-            val query = project.query()
-            exactSelectorResolutionFromScoped(
-                scopeQuery.execute(
-                    project = project,
-                    request = SymbolSearchScopeRequest(selection.lease, selection.scope),
-                    modelCompilation = modelCompilation,
-                ) { compiledScope ->
-                    query.resolve(compiledScope, selection)
-                }
-            )
-        }
-    }
-
-    /**
-     * Proof transition: Project + current SemanticReadAuthority + ExactDeclarationSelector +
-     * WorkspaceSearchScopeModelCompilation to IntellijExactSelectorRevalidation.
-     *
-     * Establishes current root/authority admission and identical native declaration evidence under the selector's
-     * original compiled scope. Root/generation, scope, environment, movement, and lookup failures are closed by
-     * [IntellijExactSelectorRevalidation]. Platform cancellation propagates through [readAction].
-     */
-    suspend fun revalidate(
-        project: Project,
-        currentLease: SemanticReadAuthority,
-        selector: ExactDeclarationSelector,
-        modelCompilation: WorkspaceSearchScopeModelCompilation,
-    ): IntellijExactSelectorRevalidation {
-        when (val admission = admitExactSelectorLease(selector.lease, currentLease)) {
-            IntellijExactSelectorLeaseAdmission.Admitted -> Unit
-            is IntellijExactSelectorLeaseAdmission.Rejected ->
-                return IntellijExactSelectorRevalidation.Rejected(admission.reason)
-        }
-        return readAction {
-            val query = project.query()
-            exactSelectorRevalidationFromScoped(
-                scopeQuery.execute(
-                    project = project,
-                    request = SymbolSearchScopeRequest(selector.lease, selector.scope),
-                    modelCompilation = modelCompilation,
-                ) { compiledScope ->
-                    query.revalidate(compiledScope, selector)
-                }
-            )
-        }
-    }
-
-    private fun Project.query(): IntellijExactSelectorQuery =
-        IntellijExactSelectorQuery(
-            lookup = IntellijPsiExactDeclarationLookup(this),
-            environmentState = {
-                when {
-                    isDisposed -> IntellijDiscoveryEnvironmentState.DISPOSED
-                    DumbService.isDumb(this) -> IntellijDiscoveryEnvironmentState.DUMB
-                    else -> IntellijDiscoveryEnvironmentState.READY
-                }
-            },
-            cancellationCheck = ProgressManager::checkCanceled,
-        )
 }
 
 /**
