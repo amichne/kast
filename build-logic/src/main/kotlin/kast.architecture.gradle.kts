@@ -1,6 +1,8 @@
 import conventions.GenerateKnowledgeDocsTask
+import conventions.jsoncontracts.KnowledgeDocsRequest
 import org.gradle.api.artifacts.ProjectDependency
 import org.gradle.api.tasks.SourceSetContainer
+import org.gradle.api.tasks.Sync
 import support.architecture.ArchitectureObservationParser
 import support.architecture.ModuleRoleConvention
 import support.architecture.gradle.GenerateKastModuleKnowledgeTask
@@ -27,12 +29,32 @@ val trackedAgentGuidePaths = providers.exec {
         .sorted()
 }
 
-val sourceRevision = providers.gradleProperty("kastSourceRevision").orElse(
+val currentSourceRevision = providers.gradleProperty("kastSourceRevision").orElse(
     providers.exec {
         workingDir(layout.projectDirectory)
         commandLine("git", "rev-parse", "HEAD")
     }.standardOutput.asText.map(String::trim)
 )
+
+val generateKastDocumentation = tasks.register<GenerateKnowledgeDocsTask>("generateKastDocumentation") {
+    group = "distribution"
+    description = "Extracts detached public Kotlin declarations and KDoc with isolated PSI syntax evidence."
+    repositoryDirectory.set(layout.projectDirectory)
+    outputFile.set(layout.buildDirectory.file("generated/knowledge/kotlin-docs.json"))
+}
+
+// Reuse the root build's already-isolated compiler/parser configuration without adding compiler PSI to Gradle's
+// own plugin classloader. The configuration is created by the root build script after this convention is applied.
+configurations.matching { it.name == "jsonContractParser" }.all { parser ->
+    generateKastDocumentation.configure {
+        parserClasspath.from(
+            files(
+                KnowledgeDocsRequest::class.java.protectionDomain.codeSource.location,
+                parser,
+            )
+        )
+    }
+}
 
 tasks.register<GenerateKastModuleKnowledgeTask>("generateKastModuleKnowledge") {
     group = "distribution"
@@ -65,18 +87,27 @@ tasks.register<GenerateKastModuleKnowledgeTask>("generateKastModuleKnowledge") {
     dependsOn(verifyKastArchitecture)
 }
 
-tasks.register<GenerateInstalledKnowledgeTask>("generateInstalledKnowledgeBundle") {
+val generateInstalledKnowledgeBundle = tasks.register<GenerateInstalledKnowledgeTask>("generateInstalledKnowledgeBundle") {
     group = "distribution"
     description = "Joins verified module guidance with detached public Kotlin declaration documentation."
     productVersion.set(providers.provider { project.version.toString() })
-    sourceRevision.set(sourceRevision)
+    sourceRevision.set(currentSourceRevision)
     moduleProjectPaths.set(verifyKastArchitecture.flatMap { it.observedProjectPaths })
     agentGuidePaths.set(trackedAgentGuidePaths)
     agentGuideFiles.from(trackedAgentGuidePaths)
     repositoryDirectory.set(layout.projectDirectory)
-    documentationFile.set(layout.buildDirectory.file("generated/knowledge/kotlin-docs.json"))
+    documentationFile.set(generateKastDocumentation.flatMap { it.outputFile })
     outputDirectory.set(layout.buildDirectory.dir("generated/installed-knowledge"))
-    dependsOn(verifyKastArchitecture, "generateKastDocumentation")
+    dependsOn(verifyKastArchitecture, generateKastDocumentation)
+}
+
+// The existing control product is the distribution owner. Augment it lazily when the root build registers its Sync
+// task rather than creating another installation path.
+tasks.withType<Sync>().matching { it.name == "stageKastControlProduct" }.configureEach {
+    dependsOn(generateInstalledKnowledgeBundle)
+    from(generateInstalledKnowledgeBundle.flatMap { it.outputDirectory }) {
+        into("share/kast/knowledge")
+    }
 }
 
 subprojects {
@@ -104,7 +135,7 @@ subprojects {
                     )
                     dependsOn(tasks.named(sourceSet.classesTaskName))
                 }
-                rootProject.tasks.withType<GenerateKnowledgeDocsTask>().configureEach {
+                generateKastDocumentation.configure {
                     sourceFiles.from(
                         sourceSetProvider.map { production ->
                             production.allSource.matching { include("**/*.kt") }
