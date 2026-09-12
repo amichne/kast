@@ -18,6 +18,7 @@ data class KnowledgeDocsRequest(
 @Serializable
 data class KnowledgeDeclarationDocument(
     val sourcePath: String,
+    val declarationPath: String,
     val kind: String,
     val name: String,
     val signature: String,
@@ -67,6 +68,7 @@ object KnowledgeDocsMain {
                             declarations +=
                                 KnowledgeDeclarationDocument(
                                     sourcePath = sourcePath,
+                                    declarationPath = declaration.declarationPath,
                                     kind = declaration.kind,
                                     name = declaration.name,
                                     signature = declaration.signature,
@@ -83,7 +85,7 @@ object KnowledgeDocsMain {
                 declarations = declarations.sortedWith(
                     compareBy(
                         KnowledgeDeclarationDocument::sourcePath,
-                        KnowledgeDeclarationDocument::name,
+                        KnowledgeDeclarationDocument::declarationPath,
                         KnowledgeDeclarationDocument::signature,
                     ),
                 ),
