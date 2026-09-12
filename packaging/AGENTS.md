@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-11 | hash: 28f4fb8dfd0c -->
+<!-- generated: 2026-09-12 | hash: 3eeac0a5a7b6 -->
 
 # packaging
 
@@ -14,6 +14,7 @@ Implements installer support, installed-product acceptance, configuration ingres
 - [installed_acceptance_product.py](installed_acceptance_product.py) - acceptance product model.
 - [run-installed-product.py](run-installed-product.py) - installed-product runner.
 - [install-local.sh](install-local.sh) and [install-checkout.sh](install-checkout.sh) - packaging shell boundaries.
+- [test-installer-entrypoint.py](test-installer-entrypoint.py) - public remote-installer command contract.
 - [test-installed-product.sh](test-installed-product.sh) - installed product acceptance entry.
 - [run-hosted-change-acceptance.py](run-hosted-change-acceptance.py) - staged broker, CLI, and plugin change workflow in a private native IDE.
 - [hosted_read_regression.py](hosted_read_regression.py) - native CLI/provider read regression and bounded continuation checks.
