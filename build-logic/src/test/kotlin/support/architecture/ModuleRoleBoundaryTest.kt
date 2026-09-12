@@ -12,6 +12,19 @@ import java.nio.file.Path
 
 class ModuleRoleBoundaryTest {
     @Test
+    fun `the shipped module graph has no isolated importer or curated index runtime`() {
+        val retired = setOf(
+            ModuleId.INDEXER, ModuleId.RUNTIME_COMPOSITION, ModuleId.RUNTIME_SERVER, ModuleId.RUNTIME_TELEMETRY,
+            ModuleId.WORKSPACE_SERVICE, ModuleId.WORKSPACE_INTELLIJ,
+            ModuleId.TOPOLOGY_CONTRACT, ModuleId.TOPOLOGY_BUILD, ModuleId.TOPOLOGY_SERVICE, ModuleId.TOPOLOGY_INTELLIJ,
+        )
+        val modules = KastArchitecturePolicy.definition().modules.filter { it.lifecycle == ModuleLifecycle.ACTIVE }
+        assertTrue(modules.none { it.id in retired }, "Isolated runtime modules must be retired")
+        assertTrue(modules.none { module -> module.allowedProjectDependencies.any { it in retired } })
+        assertTrue(modules.any { it.id == ModuleId.RUNTIME_HOSTED })
+    }
+
+    @Test
     fun `every module role carries convention and cost proof`() {
         val architecture = assertInstanceOf<ArchitecturePolicyValidation.Valid>(
             KastArchitecturePolicy.validate(),
