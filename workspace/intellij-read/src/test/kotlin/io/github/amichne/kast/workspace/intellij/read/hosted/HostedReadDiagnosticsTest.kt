@@ -10,6 +10,42 @@ import org.junit.jupiter.api.Test
 
 class HostedReadDiagnosticsTest {
     @Test
+    fun `semantic evaluation classification survives transaction completion and typed receipt encoding`() =
+        kotlinx.coroutines.test.runTest {
+            for (expected in
+                listOf(
+                    HostedEvaluationOutcome.COMPLETE,
+                    HostedEvaluationOutcome.QUALIFIED,
+                    HostedEvaluationOutcome.REJECTED,
+                )) {
+                val receipts = mutableListOf<HostedReadDiagnosticReceipt>()
+                val executor =
+                    HostedQueryExecutor(backgroundScope) { limits ->
+                        HostedReadDiagnostics({ testScheduler.currentTime * 1_000_000 }, limits, receipts::add)
+                    }
+                val result =
+                    executor.execute(executor.endpoint, outcome = { HostedDiagnosticOutcome.Evaluated(expected) }) {
+                        progress ->
+                        runHostedReadTransaction(progress, { io.github.amichne.kast.kernel.Refinement.Refined(Unit) }) {
+                            7
+                        }
+                    }
+                assertTrue(result is HostedExecution.Completed)
+                assertEquals(HostedDiagnosticOutcome.Evaluated(expected), receipts.single().outcome)
+                val document =
+                    kotlinx.serialization.json.Json.parseToJsonElement(receipts.single().encode())
+                        as kotlinx.serialization.json.JsonObject
+                assertEquals(kotlinx.serialization.json.JsonPrimitive(3), document.getValue("schemaVersion"))
+                val outcome = document.getValue("outcome") as kotlinx.serialization.json.JsonObject
+                assertEquals(setOf("type", "outcome"), outcome.keys)
+                assertEquals(kotlinx.serialization.json.JsonPrimitive("evaluated"), outcome.getValue("type"))
+                assertEquals(kotlinx.serialization.json.JsonPrimitive(expected.name), outcome.getValue("outcome"))
+                executor.retire()
+                executor.drain()
+            }
+        }
+
+    @Test
     fun `unexpected failures retain bounded adapter frames without throwable payloads`() {
         val limits =
             (io.github.amichne.kast.kernel.ReadLimits.resolve(

@@ -12,7 +12,6 @@ import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ChangePlanRejection
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
-import io.github.amichne.kast.protocol.wire.WireEncoding
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryService
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedSemanticReadResult
 import java.nio.file.Path
@@ -22,7 +21,7 @@ internal suspend fun planHostedChange(
     project: Project,
     query: HostedQueryService,
     request: HostedRequest.PlanChange,
-): String {
+): HostedResponse {
     val plans =
         when (val opened = openHostedPlans(request)) {
             is Refinement.Refined -> opened.value
@@ -51,12 +50,7 @@ internal suspend fun planHostedChange(
                 },
             plans = plans,
         )
-    return when (
-        val encoded = CanonicalOperationWireBindings.changePlan.encodeOutcome(protocol.execute(request.request))
-    ) {
-        is WireEncoding.Encoded -> encoded.document
-        is WireEncoding.Rejected -> HostedRequests.rejected(HostedEndpointFailure.RESPONSE_REJECTED)
-    }
+    return HostedResponse.Canonical.encode(CanonicalOperationWireBindings.changePlan, protocol.execute(request.request))
 }
 
 private fun openHostedPlans(
@@ -86,8 +80,5 @@ private fun openHostedPlans(
     return Refinement.Refined(plans)
 }
 
-private fun rejectedHostedPlan(failure: ChangePlanRejection): String =
-    when (val encoded = CanonicalOperationWireBindings.changePlan.encodeOutcome(OperationOutcome.Rejected(failure))) {
-        is WireEncoding.Encoded -> encoded.document
-        is WireEncoding.Rejected -> HostedRequests.rejected(HostedEndpointFailure.RESPONSE_REJECTED)
-    }
+private fun rejectedHostedPlan(failure: ChangePlanRejection): HostedResponse =
+    HostedResponse.Canonical.encode(CanonicalOperationWireBindings.changePlan, OperationOutcome.Rejected(failure))

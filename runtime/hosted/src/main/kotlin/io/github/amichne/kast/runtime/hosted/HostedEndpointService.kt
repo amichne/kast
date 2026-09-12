@@ -1,6 +1,5 @@
 package io.github.amichne.kast.runtime.hosted
 
-import com.google.gson.Gson
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.diagnostic.Logger
@@ -15,6 +14,9 @@ import io.github.amichne.kast.workspace.intellij.read.hosted.HostedSemanticReadR
 import java.nio.channels.Channels
 import java.nio.file.Path
 import kotlinx.coroutines.*
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 internal enum class HostedEndpointStage {
     BIND,
@@ -28,12 +30,32 @@ internal enum class HostedEndpointStage {
 internal enum class HostedEndpointOutcome {
     STARTED,
     COMPLETED,
+    QUALIFIED,
     REJECTED,
     CANCELLED,
 }
 
 internal fun interface HostedEndpointObserver {
     fun observe(stage: HostedEndpointStage, outcome: HostedEndpointOutcome)
+
+    fun responded(response: HostedResponse) {
+        when (response) {
+            is HostedResponse.Rejected -> rejected(HostedEndpointStage.REQUEST, response.failure)
+            else ->
+                observe(
+                    HostedEndpointStage.REQUEST,
+                    when (response.outcome) {
+                        io.github.amichne.kast.workspace.intellij.read.hosted.HostedEvaluationOutcome.EVALUATED,
+                        io.github.amichne.kast.workspace.intellij.read.hosted.HostedEvaluationOutcome.COMPLETE ->
+                            HostedEndpointOutcome.COMPLETED
+                        io.github.amichne.kast.workspace.intellij.read.hosted.HostedEvaluationOutcome.QUALIFIED ->
+                            HostedEndpointOutcome.QUALIFIED
+                        io.github.amichne.kast.workspace.intellij.read.hosted.HostedEvaluationOutcome.REJECTED ->
+                            HostedEndpointOutcome.REJECTED
+                    },
+                )
+        }
+    }
 
     fun rejected(stage: HostedEndpointStage, failure: HostedEndpointFailure) {
         observe(stage, HostedEndpointOutcome.REJECTED)
@@ -128,7 +150,7 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
                             ) {
                                 is HostedPeerDispatch.Completed -> result.response
                                 is HostedPeerDispatch.Rejected ->
-                                    HostedRequests.rejected(
+                                    HostedResponse.Rejected(
                                         when (result.termination) {
                                             HostedPeerTermination.DISCONNECTED -> HostedEndpointFailure.IO_UNAVAILABLE
                                             HostedPeerTermination.EXTRA_INPUT -> HostedEndpointFailure.INVALID_REQUEST
@@ -162,42 +184,49 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
         request: HostedRequest,
         continuations: io.github.amichne.kast.source.intellij.IntellijSourceReadContinuations,
         limits: io.github.amichne.kast.kernel.ReadLimits,
-    ): String {
+    ): HostedResponse {
         if (request.root != root) {
-            observer.rejected(HostedEndpointStage.REQUEST, HostedEndpointFailure.WRONG_ROOT)
-            return HostedRequests.rejected(HostedEndpointFailure.WRONG_ROOT)
+            return HostedResponse.Rejected(HostedEndpointFailure.WRONG_ROOT)
         }
         return when (request) {
             is HostedRequest.PrepareApproval -> changes.prepare(request)
             is HostedRequest.ApplyChange -> changes.apply(request)
             is HostedRequest.RecoverChange -> changes.recover(request)
             is HostedRequest.Describe ->
-                Gson()
-                    .toJson(
-                        mapOf(
-                            "type" to "KAST_IDE_HOST",
-                            "protocol" to HostedEndpointCapabilities.protocol,
-                            "root" to root.value,
-                            "hostPid" to ProcessHandle.current().pid(),
-                            "indexAuthority" to "existing_ide_kotlin_stub_index",
-                            "host" to query.hostLifetime.value.toString(),
-                            "querySchema" to HostedReadCapabilities.querySchema,
-                            "operations" to HostedEndpointCapabilities.operations,
+                HostedResponse.Completed(
+                    Json { encodeDefaults = true }
+                        .encodeToString(
+                            HostedDescriptionDocument(
+                                root = root.value,
+                                hostPid = ProcessHandle.current().pid(),
+                                host = query.hostLifetime.value.toString(),
+                                querySchema = HostedReadCapabilities.querySchema,
+                                operations = HostedEndpointCapabilities.operations,
+                            )
                         )
-                    )
-            is HostedRequest.Classes -> HostedQueryWire.encode(query.lookup(query.endpoint, request.lookup), limits)
-            is HostedRequest.Supertype -> HostedQueryWire.encode(query.query(query.endpoint, request.selection))
+                )
+            is HostedRequest.Classes ->
+                when (val result = query.lookup(query.endpoint, request.lookup)) {
+                    is io.github.amichne.kast.workspace.intellij.read.hosted.HostedIndexResult.Rejected ->
+                        HostedResponse.ReadRejected(result.failure, result.stage)
+                    is io.github.amichne.kast.workspace.intellij.read.hosted.HostedIndexResult.Published ->
+                        HostedResponse.Completed(HostedQueryWire.encode(result, limits))
+                }
+            is HostedRequest.Supertype ->
+                when (val result = query.query(query.endpoint, request.selection)) {
+                    is HostedQueryResult.Rejected -> HostedResponse.ReadRejected(result.failure, result.stage)
+                    is HostedQueryResult.Published -> HostedResponse.Completed(HostedQueryWire.encode(result))
+                }
             is HostedRequest.PlanChange -> planHostedChange(project, query, request)
             is HostedRequest.Read ->
                 when (
                     val result =
-                        query.read(query.endpoint, root) { context ->
+                        query.read(query.endpoint, root, outcome = { it.outcome }) { context ->
                             evaluateHostedCanonicalQuery(project, context, request, continuations)
                         }
                 ) {
                     is HostedSemanticReadResult.Completed -> result.value
-                    is HostedSemanticReadResult.Rejected ->
-                        HostedQueryWire.encode(HostedQueryResult.Rejected(result.failure, result.stage))
+                    is HostedSemanticReadResult.Rejected -> HostedResponse.ReadRejected(result.failure, result.stage)
                 }
         }
     }
@@ -214,3 +243,15 @@ class HostedEndpointStartup : ProjectActivity {
         project.getService(HostedEndpointService::class.java)
     }
 }
+
+@Serializable
+private data class HostedDescriptionDocument(
+    val root: String,
+    val hostPid: Long,
+    val host: String,
+    val querySchema: String,
+    val operations: List<String>,
+    val type: String = "KAST_IDE_HOST",
+    val protocol: Int = HostedEndpointCapabilities.protocol,
+    val indexAuthority: String = "existing_ide_kotlin_stub_index",
+)

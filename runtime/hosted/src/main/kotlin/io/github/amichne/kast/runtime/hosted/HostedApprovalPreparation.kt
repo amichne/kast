@@ -1,6 +1,5 @@
 package io.github.amichne.kast.runtime.hosted
 
-import com.google.gson.Gson
 import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonToken
 import io.github.amichne.kast.change.apply.LiveChangeEffect
@@ -11,6 +10,9 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.IdeReadHostLifetime
 import java.io.StringReader
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 internal fun decodeHostedApprovalPreparation(
     root: CanonicalWorkspaceRoot,
@@ -46,26 +48,26 @@ internal fun prepareHostedApprovalResponse(
     effect: LiveChangeEffect,
     owner: IdeReadHostLifetime,
     approvals: HostedChangeApprovals,
-): String {
+): HostedResponse {
     val challenge =
         when (val prepared = approvals.prepare(plan, effect)) {
             is Refinement.Refined -> prepared.value
-            is Refinement.Rejected -> return HostedRequests.rejected(HostedEndpointFailure.APPROVAL_UNAVAILABLE)
+            is Refinement.Rejected -> return HostedResponse.Rejected(HostedEndpointFailure.APPROVAL_UNAVAILABLE)
         }
     val preview = plan.protocolPreview().entries.single()
-    return Gson()
-        .toJson(
-            linkedMapOf(
-                "version" to 1,
-                "operation" to effect.name,
-                "root" to plan.basis.observation.reference.workspaceRoot.value,
-                "host" to owner.value.toString(),
-                "planId" to plan.planId.value,
-                "challenge" to challenge.value,
-                "preview" to
-                    linkedMapOf(
-                        "path" to preview.path.value,
-                        "diff" to
+    return HostedResponse.Completed(
+        Json.encodeToString(
+            HostedApprovalDocument(
+                version = 1,
+                operation = effect.name,
+                root = plan.basis.observation.reference.workspaceRoot.value,
+                host = owner.value.toString(),
+                planId = plan.planId.value,
+                challenge = challenge.value,
+                preview =
+                    HostedApprovalPreviewDocument(
+                        path = preview.path.value,
+                        diff =
                             when (effect) {
                                 LiveChangeEffect.CHANGE_APPLY -> preview.diff.value
                                 LiveChangeEffect.CHANGE_RECOVER ->
@@ -75,4 +77,18 @@ internal fun prepareHostedApprovalResponse(
                     ),
             )
         )
+    )
 }
+
+@Serializable
+private data class HostedApprovalDocument(
+    val version: Int,
+    val operation: String,
+    val root: String,
+    val host: String,
+    val planId: String,
+    val challenge: String,
+    val preview: HostedApprovalPreviewDocument,
+)
+
+@Serializable private data class HostedApprovalPreviewDocument(val path: String, val diff: String)

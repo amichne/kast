@@ -1,6 +1,5 @@
 package io.github.amichne.kast.runtime.hosted
 
-import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonToken
@@ -34,6 +33,9 @@ import java.io.OutputStream
 import java.nio.ByteBuffer
 import java.nio.charset.CodingErrorAction
 import java.nio.file.Path
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 enum class HostedEndpointFailure {
     INVALID_REQUEST,
@@ -260,8 +262,10 @@ internal object HostedRequests {
             is WireDecoding.Rejected -> Refinement.Rejected(HostedEndpointFailure.INVALID_REQUEST)
         }
 
-    fun rejected(failure: HostedEndpointFailure): String =
-        Gson().toJson(mapOf("type" to "HOST_REJECTED", "failure" to failure.name))
+    fun rejected(failure: HostedEndpointFailure): String = Json {
+        encodeDefaults = true
+    }
+        .encodeToString(HostedEndpointRejectionDocument(failure))
 }
 
 /** Four-byte network-order length followed by bounded strict UTF-8 JSON; no line ambiguity. */
@@ -310,3 +314,9 @@ internal object HostedFrames {
 }
 
 private const val MAX_HOSTED_ASSERTION_LENGTH = 16384
+
+@Serializable
+private data class HostedEndpointRejectionDocument(
+    val failure: HostedEndpointFailure,
+    val type: String = "HOST_REJECTED",
+)

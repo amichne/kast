@@ -9,16 +9,12 @@ import io.github.amichne.kast.change.protocol.protocolPreview
 import io.github.amichne.kast.change.verify.LiveAddDeclarationVerificationPorts
 import io.github.amichne.kast.change.verify.LiveChangeReceiptIssuance
 import io.github.amichne.kast.change.verify.VerifiedLiveAddDeclarationReceipt
-import io.github.amichne.kast.diagnostic.intellij.ProjectBoundIntellijDiagnosticPorts
-import io.github.amichne.kast.diagnostic.service.DiagnosticService
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ChangeApplyRecoveryReason
 import io.github.amichne.kast.protocol.contract.ChangeApplyResult
 import io.github.amichne.kast.protocol.contract.ChangeApplyUnverifiedReason
-import io.github.amichne.kast.relation.intellij.ProjectBoundIntellijRelationPort
-import io.github.amichne.kast.relation.service.RelationService
 import io.github.amichne.kast.traversal.service.traversalOperations
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryService
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedSemanticReadContext
@@ -84,29 +80,10 @@ private fun verificationPorts(
     project: Project,
     context: HostedSemanticReadContext,
 ): LiveAddDeclarationVerificationPorts {
-    val relations =
-        RelationService(
-            context.validation,
-            ProjectBoundIntellijRelationPort.create(
-                project = project,
-                authority = context.authority,
-                model = context.model,
-                fileAdmission = context.sourceFiles,
-                observation = context.observation,
-                limits = context.limits,
-            ),
-        )
-    val diagnostics =
-        ProjectBoundIntellijDiagnosticPorts.create(
-            project = project,
-            authority = context.authority,
-            model = context.model,
-            fileAdmission = context.sourceFiles,
-            limits = context.limits,
-        )
+    val services = HostedSemanticServices(project, context)
     return LiveAddDeclarationVerificationPorts(
-        relations,
-        traversalOperations(relations),
-        DiagnosticService(context.validation, diagnostics.compiler),
+        services.relations,
+        traversalOperations(services.relations),
+        services.diagnostics,
     )
 }

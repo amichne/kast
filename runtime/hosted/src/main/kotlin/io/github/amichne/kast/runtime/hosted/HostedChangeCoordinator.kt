@@ -9,7 +9,6 @@ import io.github.amichne.kast.change.contract.LiveAddDeclarationChangePlan
 import io.github.amichne.kast.change.contract.LiveChangePlanLookup
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
-import io.github.amichne.kast.protocol.wire.WireEncoding
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryService
 import java.nio.file.Path
@@ -23,7 +22,7 @@ internal class HostedChangeCoordinator(private val project: Project, private val
     private val approvals =
         HostedChangeApprovals(query.hostLifetime) { loadHostedApprovalKey(Path.of(System.getProperty("user.home"))) }
 
-    fun prepare(request: HostedRequest.PrepareApproval): String =
+    fun prepare(request: HostedRequest.PrepareApproval): HostedResponse =
         when (val loaded = load(request.root, request.identity)) {
             is Refinement.Refined ->
                 prepareHostedApprovalResponse(
@@ -32,10 +31,10 @@ internal class HostedChangeCoordinator(private val project: Project, private val
                     owner = query.hostLifetime,
                     approvals = approvals,
                 )
-            is Refinement.Rejected -> HostedRequests.rejected(loaded.failure)
+            is Refinement.Rejected -> HostedResponse.Rejected(loaded.failure)
         }
 
-    suspend fun apply(request: HostedRequest.ApplyChange): String = mutations.withLock {
+    suspend fun apply(request: HostedRequest.ApplyChange): HostedResponse = mutations.withLock {
         val context =
             when (
                 val admitted =
@@ -47,7 +46,7 @@ internal class HostedChangeCoordinator(private val project: Project, private val
                     )
             ) {
                 is Refinement.Refined -> admitted.value
-                is Refinement.Rejected -> return@withLock HostedRequests.rejected(admitted.failure)
+                is Refinement.Rejected -> return@withLock HostedResponse.Rejected(admitted.failure)
             }
         val result =
             applyHostedChange(
@@ -57,10 +56,10 @@ internal class HostedChangeCoordinator(private val project: Project, private val
                 plan = context.loaded.plan,
                 approval = context.approval,
             )
-        encode(CanonicalOperationWireBindings.changeApply.encodeOutcome(result))
+        HostedResponse.Canonical.encode(CanonicalOperationWireBindings.changeApply, result)
     }
 
-    suspend fun recover(request: HostedRequest.RecoverChange): String = mutations.withLock {
+    suspend fun recover(request: HostedRequest.RecoverChange): HostedResponse = mutations.withLock {
         val context =
             when (
                 val admitted =
@@ -72,7 +71,7 @@ internal class HostedChangeCoordinator(private val project: Project, private val
                     )
             ) {
                 is Refinement.Refined -> admitted.value
-                is Refinement.Rejected -> return@withLock HostedRequests.rejected(admitted.failure)
+                is Refinement.Rejected -> return@withLock HostedResponse.Rejected(admitted.failure)
             }
         val result =
             recoverHostedChange(
@@ -82,7 +81,7 @@ internal class HostedChangeCoordinator(private val project: Project, private val
                 plan = context.loaded.plan,
                 approval = context.approval,
             )
-        encode(CanonicalOperationWireBindings.changeRecover.encodeOutcome(result))
+        HostedResponse.Canonical.encode(CanonicalOperationWireBindings.changeRecover, result)
     }
 
     private fun admit(
@@ -135,10 +134,4 @@ internal class HostedChangeCoordinator(private val project: Project, private val
     private data class LoadedHostedChange(val plan: LiveAddDeclarationChangePlan, val resources: HostedChangeResources)
 
     private data class ApprovedHostedChange(val loaded: LoadedHostedChange, val approval: VerifiedLivePlanApproval)
-
-    private fun encode(result: WireEncoding): String =
-        when (result) {
-            is WireEncoding.Encoded -> result.document
-            is WireEncoding.Rejected -> HostedRequests.rejected(HostedEndpointFailure.RESPONSE_REJECTED)
-        }
 }

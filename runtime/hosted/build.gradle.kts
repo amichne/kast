@@ -2,6 +2,7 @@ import java.security.MessageDigest
 
 plugins {
     id("kast.kotlin-library")
+    alias(libs.plugins.kotlin.serialization)
     id("kast.role.ide-host")
 }
 
