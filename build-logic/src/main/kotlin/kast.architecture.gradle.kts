@@ -44,15 +44,19 @@ val generateKastDocumentation = tasks.register<GenerateKnowledgeDocsTask>("gener
 }
 
 // Reuse the root build's already-isolated compiler/parser configuration without adding compiler PSI to Gradle's
-// own plugin classloader. The configuration is created by the root build script after this convention is applied.
-configurations.matching { it.name == "jsonContractParser" }.all { parser ->
-    generateKastDocumentation.configure {
-        parserClasspath.from(
-            files(
-                KnowledgeDocsRequest::class.java.protectionDomain.codeSource.location,
-                parser,
+// own plugin classloader. The root build creates the configuration after this convention is applied, so configureEach
+// must observe future configurations as well as existing ones.
+configurations.configureEach {
+    if (name == "jsonContractParser") {
+        val parser = this
+        generateKastDocumentation.configure {
+            parserClasspath.from(
+                files(
+                    KnowledgeDocsRequest::class.java.protectionDomain.codeSource.location,
+                    parser,
+                )
             )
-        )
+        }
     }
 }
 
