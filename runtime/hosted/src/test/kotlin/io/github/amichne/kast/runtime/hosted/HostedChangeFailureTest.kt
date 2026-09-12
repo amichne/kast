@@ -31,6 +31,11 @@ class HostedChangeFailureTest {
         val schema =
             SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12)
                 .getSchema(checkNotNull(javaClass.getResource("/ide-hosted/hosted-endpoint.schema.json")).readText())
+        for (failure in HostedEndpointFailure.entries) {
+            val document = HostedResponse.Rejected(failure).document
+            assertTrue(schema.validate(document, InputFormat.JSON).isEmpty(), document)
+            assertEquals(setOf("type", "failure"), Json.parseToJsonElement(document).jsonObject.keys)
+        }
         val failures: List<HostedChangeFailure> =
             KastUserStateRootFailure.entries.map(HostedChangeFailure::StateRoot) +
                 HostedWorkspaceStateLocationFailure.entries.map(HostedChangeFailure::Location) +
@@ -38,9 +43,7 @@ class HostedChangeFailureTest {
                 LiveChangePlanStoreFailure.entries.map(HostedChangeFailure::Plans) +
                 LiveChangePlanStoreFailure.entries.map(HostedChangeFailure::PlanLookup) +
                 LiveChangeReceiptStoreFailure.entries.map(HostedChangeFailure::Receipts) +
-                HostedEndpointFailure.entries
-                    .filter { it != HostedEndpointFailure.CHANGE_STORAGE_REJECTED }
-                    .map(HostedChangeFailure::Endpoint) +
+                HostedEndpointFailure.entries.map(HostedChangeFailure::Endpoint) +
                 HostedChangeFailure.PlanMissing
         for (failure in failures) {
             val document = HostedResponse.ChangeRejected(failure).document

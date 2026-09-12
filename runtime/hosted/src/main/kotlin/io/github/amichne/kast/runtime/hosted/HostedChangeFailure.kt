@@ -104,14 +104,30 @@ internal fun <Value> Refinement<Value, HostedChangeFailure>.observed(
     )
 }
 
+/** Outbound wire fields are derived together from the retained failure. */
 @Serializable
-internal data class HostedChangeRejectionDocument(
-    val detail: HostedChangeFailure,
-    val failure: HostedEndpointFailure =
-        when (detail) {
-            is HostedChangeFailure.Endpoint -> detail.cause
-            HostedChangeFailure.PlanMissing -> HostedEndpointFailure.INVALID_REQUEST
-            else -> HostedEndpointFailure.CHANGE_STORAGE_REJECTED
-        },
-    val type: String = "HOST_REJECTED",
-)
+internal class HostedChangeRejectionDocument(val detail: HostedChangeFailure) {
+    val failure: HostedChangeRejectionCode = HostedChangeRejectionCode.from(detail)
+    val type: String = "HOST_REJECTED"
+}
+
+/** Only a finite admitted failure can create this scalar wire projection. */
+@JvmInline
+@Serializable
+internal value class HostedChangeRejectionCode private constructor(private val value: String) {
+    companion object {
+        fun from(detail: HostedChangeFailure): HostedChangeRejectionCode =
+            HostedChangeRejectionCode(
+                when (detail) {
+                    is HostedChangeFailure.Endpoint -> detail.cause.name
+                    HostedChangeFailure.PlanMissing -> HostedEndpointFailure.INVALID_REQUEST.name
+                    is HostedChangeFailure.StateRoot,
+                    is HostedChangeFailure.Location,
+                    is HostedChangeFailure.Database,
+                    is HostedChangeFailure.Plans,
+                    is HostedChangeFailure.Receipts,
+                    is HostedChangeFailure.PlanLookup -> "CHANGE_STORAGE_REJECTED"
+                }
+            )
+    }
+}

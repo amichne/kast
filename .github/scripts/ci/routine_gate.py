@@ -14,7 +14,8 @@ QUALIFICATION = frozenset({
     ":hostedChangeAcceptance",
 })
 REQUIRED = frozenset({
-    ":productBuildGate", ":cli:test", ":cli:nativeTest", ":app-server:test", ":indexer:test",
+    ":productBuildGate", ":cli:test", ":cli:nativeTest", ":app-server:test",
+    ":runtime:hosted:test", ":workspace:intellij-read:test", ":query:protocol:test", ":evidence:sqlite:test",
     ":verifyKastArchitecture", ":verifyConfigurationIngress", ":installedProductTest",
     ":testCheckoutInstaller", ":installationLifecycleTest", ":installerRemovalTest",
     ":localInstallationTest", ":isolatedAcceptanceEnvironmentTest", ":acceptanceIdeaInputTest",

@@ -38,7 +38,6 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 enum class HostedEndpointFailure {
-    CHANGE_STORAGE_REJECTED,
     INVALID_REQUEST,
     REQUEST_TOO_LARGE,
     REQUEST_INCOMPLETE,

@@ -18,6 +18,8 @@ import io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryWire
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
+private val HOSTED_RESPONSE_JSON = Json { encodeDefaults = true }
+
 /** An encoded response retains its original outcome until the connection has finished writing. */
 internal sealed interface HostedResponse {
     val document: String
@@ -33,7 +35,7 @@ internal sealed interface HostedResponse {
     }
 
     class ChangeRejected(val failure: HostedChangeFailure) : HostedResponse {
-        override val document = Json { encodeDefaults = true }.encodeToString(HostedChangeRejectionDocument(failure))
+        override val document = HOSTED_RESPONSE_JSON.encodeToString(HostedChangeRejectionDocument(failure))
         override val outcome = HostedEvaluationOutcome.REJECTED
     }
 
