@@ -9,21 +9,14 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 @Serializable
-data class KnowledgeSourceInput(
-    val projectPath: String,
-    val sourcePath: String,
-)
-
-@Serializable
 data class KnowledgeDocsRequest(
     val repositoryRoot: String,
-    val sources: List<KnowledgeSourceInput>,
+    val sources: List<String>,
     val output: String,
 )
 
 @Serializable
 data class KnowledgeDeclarationDocument(
-    val projectPath: String,
     val sourcePath: String,
     val kind: String,
     val name: String,
@@ -33,7 +26,6 @@ data class KnowledgeDeclarationDocument(
 
 @Serializable
 data class KnowledgeDocsFailure(
-    val projectPath: String,
     val sourcePath: String,
     val reason: String,
 )
@@ -56,17 +48,17 @@ object KnowledgeDocsMain {
         val declarations = mutableListOf<KnowledgeDeclarationDocument>()
         val failures = mutableListOf<KnowledgeDocsFailure>()
         KotlinDocumentationScanner().use { scanner ->
-            request.sources.sortedWith(compareBy({ it.projectPath }, { it.sourcePath })).forEach { source ->
-                val path = root.resolve(source.sourcePath).normalize()
-                if (!path.startsWith(root) || !source.sourcePath.endsWith(".kt")) {
-                    failures += KnowledgeDocsFailure(source.projectPath, source.sourcePath, "unsupported-source")
+            request.sources.sorted().forEach { sourcePath ->
+                val path = root.resolve(sourcePath).normalize()
+                if (!path.startsWith(root) || !sourcePath.endsWith(".kt")) {
+                    failures += KnowledgeDocsFailure(sourcePath, "unsupported-source")
                     return@forEach
                 }
                 val content =
                     try {
                         Files.readString(path)
                     } catch (_: IOException) {
-                        failures += KnowledgeDocsFailure(source.projectPath, source.sourcePath, "unreadable-source")
+                        failures += KnowledgeDocsFailure(sourcePath, "unreadable-source")
                         return@forEach
                     }
                 when (val scan = scanner.scan(path.fileName.toString(), content)) {
@@ -74,8 +66,7 @@ object KnowledgeDocsMain {
                         scan.declarations.forEach { declaration ->
                             declarations +=
                                 KnowledgeDeclarationDocument(
-                                    projectPath = source.projectPath,
-                                    sourcePath = source.sourcePath,
+                                    sourcePath = sourcePath,
                                     kind = declaration.kind,
                                     name = declaration.name,
                                     signature = declaration.signature,
@@ -83,7 +74,7 @@ object KnowledgeDocsMain {
                                 )
                         }
                     is KotlinDocumentationScan.Rejected ->
-                        failures += KnowledgeDocsFailure(source.projectPath, source.sourcePath, scan.reason)
+                        failures += KnowledgeDocsFailure(sourcePath, scan.reason)
                 }
             }
         }
@@ -91,13 +82,12 @@ object KnowledgeDocsMain {
             KnowledgeDocsDocument(
                 declarations = declarations.sortedWith(
                     compareBy(
-                        KnowledgeDeclarationDocument::projectPath,
                         KnowledgeDeclarationDocument::sourcePath,
                         KnowledgeDeclarationDocument::name,
                         KnowledgeDeclarationDocument::signature,
                     ),
                 ),
-                failures = failures.sortedWith(compareBy({ it.projectPath }, { it.sourcePath }, { it.reason })),
+                failures = failures.sortedWith(compareBy({ it.sourcePath }, { it.reason })),
             )
         val output = Path.of(request.output)
         Files.createDirectories(output.parent)
