@@ -12,6 +12,9 @@ import io.github.amichne.kast.cli.command.CliCommandFailure
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
 import io.github.amichne.kast.cli.command.CliCommandParsing
 import io.github.amichne.kast.cli.command.CliRequestDocumentInput
+import io.github.amichne.kast.cli.knowledge.KnowledgeLookup
+import io.github.amichne.kast.cli.knowledge.KnowledgeReader
+import io.github.amichne.kast.cli.knowledge.UnavailableKnowledgeReader
 import io.github.amichne.kast.cli.projection.CliBoundaryDocuments
 import io.github.amichne.kast.cli.projection.CliLocalMetadata
 import io.github.amichne.kast.cli.projection.ProductInspectionDocuments
@@ -27,6 +30,7 @@ class KastCli(
         io.github.amichne.kast.appserver.UnavailableAppServerManager,
     private val brokerServerRunner: BrokerServerRunner = UnavailableBrokerServerRunner,
     private val codexClientLauncher: CodexClientLauncher = UnavailableCodexClientLauncher,
+    private val knowledgeReader: KnowledgeReader = UnavailableKnowledgeReader,
     private val existingIdeClient: io.github.amichne.kast.cli.ide.ExistingIdeClient =
         io.github.amichne.kast.cli.ide.ExistingIdeClient { _, _ ->
             io.github.amichne.kast.cli.ide.ExistingIdeExchange.Rejected(
@@ -80,6 +84,15 @@ class KastCli(
             CliAction.Local.Inspect,
             CliAction.Local.ProductInspect ->
                 CliExit.Complete(ProductInspectionDocuments.complete(productVersion, rootDiscovery.discover(start)))
+            is CliAction.Local.Knowledge ->
+                when (val lookup = knowledgeReader.lookup(action.selection)) {
+                    is KnowledgeLookup.Complete -> CliExit.Complete(lookup.document)
+                    is KnowledgeLookup.Rejected ->
+                        boundaryExit(
+                            CliBoundaryExitStatus.RUNTIME,
+                            "knowledge-${lookup.failure.name.lowercase().replace('_', '-')}",
+                        )
+                }
             is CliAction.Local.AppServer ->
                 when (val result = appServerManager.execute(action.action, start)) {
                     is io.github.amichne.kast.appserver.AppServerManagementResult.Completed ->
