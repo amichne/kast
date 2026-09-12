@@ -92,6 +92,7 @@ abstract class GenerateInstalledKnowledgeTask : DefaultTask() {
                     declarationLimitations =
                         listOf(
                             "KOTLIN_SOURCE_ONLY",
+                            "NAMED_DECLARATIONS_ONLY",
                             "NO_TYPE_RESOLUTION",
                             "NO_INHERITED_DOCUMENTATION",
                         ),
