@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "outcome": "rejected",
+  "failure": "NAMED_SOURCE_SCOPE_REJECTED",
+  "detail": {
+    "cause": "IDE_ROOT_UNMAPPED",
+    "reason": "SOURCE_FOLDER_UNAVAILABLE",
+    "module": {
+      "value": "app.main",
+      "truncated": false
+    },
+    "root": {
+      "value": "file:///workspace/app/src/main/kotlin",
+      "truncated": false
+    }
+  },
+  "stage": "MODEL_CAPTURE"
+}

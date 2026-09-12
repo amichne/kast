@@ -1,6 +1,7 @@
 package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.appserver.query.PublicToolContract
+import io.github.amichne.kast.cli.bootstrap.HostedRejectionSchemas
 import io.github.amichne.kast.cli.command.CliCommandSurface
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ChangeApplyRequest
@@ -24,15 +25,14 @@ import io.github.amichne.kast.protocol.registry.HostedToolLoading
 import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
@@ -326,6 +326,17 @@ private fun JsonObject.withLocalOutputDefinitions(): JsonObject {
         when (value) {
             is JsonArray -> JsonArray(value.map { rewrite(it) })
             is JsonObject -> {
+                val reference = value["\$ref"]?.jsonPrimitive?.content
+                if (reference != null) {
+                    require(reference.startsWith("#/\$defs/")) {
+                        "Expected a local output schema reference: $reference"
+                    }
+                    val referencedName = reference.removePrefix("#/\$defs/")
+                    require(referencedName in reusableServerOutputSchemas) {
+                        "Missing output schema definition: $reference"
+                    }
+                    if (used.add(referencedName)) pending.addLast(referencedName)
+                }
                 val name = if (allowReference) names[value] else null
                 if (name == null) {
                     JsonObject(value.mapValues { (_, child) -> rewrite(child) })
@@ -348,59 +359,42 @@ private fun JsonObject.withLocalOutputDefinitions(): JsonObject {
 // Names are stable schema addresses; every referenced definition retains the exact existing shape.
 private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
     linkedMapOf(
-        "liveReadEvidence" to liveReadEvidenceSchema(),
-        "hostedEndpointRejection" to hostedEndpointRejectionSchema,
-        "hostedReadRejection" to hostedReadRejectionSchema,
-        "queryResultItem" to queryResultItemSchema(),
-        "queryItemFailure" to queryItemFailureSchema(),
-        "symbol" to symbolSchema(),
-        "symbolDiscovery" to symbolDiscoverySchema(),
-        "relationFact" to relationFactSchema(),
-        "publishedSourceSnapshot" to sourceSnapshotSchema(ServerReadEvidenceShape.PUBLISHED),
-        "liveSourceSnapshot" to sourceSnapshotSchema(ServerReadEvidenceShape.LIVE),
-        "sourceSelection" to sourceSelectionSchema(),
-        "sourceRegion" to sourceRegionSchema(),
-        "sourceEntity" to sourceEntitySchema(),
-        "sourceTextProjection" to sourceTextProjectionSchema(),
-        "publishedTraversalGraph" to normalizedTraversalGraphSchema(ServerReadEvidenceShape.PUBLISHED),
-        "liveTraversalGraph" to normalizedTraversalGraphSchema(ServerReadEvidenceShape.LIVE),
-        "diagnostic" to diagnosticSchema(),
-        "gradleJvmObservation" to gradleJvmSelectionObservationSchema(),
-        "gradleJvmReport" to gradleJvmSelectionReportSchema(),
-        "gradleJvmCandidate" to gradleJvmCandidateSchema(),
-        "gradleJvmOutcome" to gradleJvmSelectionOutcomeSchema(),
-    )
+            "liveReadEvidence" to liveReadEvidenceSchema(),
+            "hostedEndpointRejection" to HostedRejectionSchemas.endpoint,
+            "hostedReadRejection" to HostedRejectionSchemas.read,
+            "queryResultItem" to queryResultItemSchema(),
+            "queryItemFailure" to queryItemFailureSchema(),
+            "symbol" to symbolSchema(),
+            "symbolDiscovery" to symbolDiscoverySchema(),
+            "relationFact" to relationFactSchema(),
+            "publishedSourceSnapshot" to sourceSnapshotSchema(ServerReadEvidenceShape.PUBLISHED),
+            "liveSourceSnapshot" to sourceSnapshotSchema(ServerReadEvidenceShape.LIVE),
+            "sourceSelection" to sourceSelectionSchema(),
+            "sourceRegion" to sourceRegionSchema(),
+            "sourceEntity" to sourceEntitySchema(),
+            "sourceTextProjection" to sourceTextProjectionSchema(),
+            "publishedTraversalGraph" to normalizedTraversalGraphSchema(ServerReadEvidenceShape.PUBLISHED),
+            "liveTraversalGraph" to normalizedTraversalGraphSchema(ServerReadEvidenceShape.LIVE),
+            "diagnostic" to diagnosticSchema(),
+            "gradleJvmObservation" to gradleJvmSelectionObservationSchema(),
+            "gradleJvmReport" to gradleJvmSelectionReportSchema(),
+            "gradleJvmCandidate" to gradleJvmCandidateSchema(),
+            "gradleJvmOutcome" to gradleJvmSelectionOutcomeSchema(),
+        )
+        .apply {
+            for ((name, definition) in HostedRejectionSchemas.readDefinitions) {
+                check(name !in this) { "Duplicate hosted output schema definition: $name" }
+                put(name, definition.jsonObject)
+            }
+        }
 }
 
 private fun operationProcessDocumentSchema(operation: CanonicalOperation): JsonObject =
     if (operation.supportsLiveEvidence()) {
-        unionSchema(operationDocumentSchema(operation), hostedEndpointRejectionSchema, hostedReadRejectionSchema)
+        unionSchema(operationDocumentSchema(operation), HostedRejectionSchemas.endpoint, HostedRejectionSchemas.read)
     } else {
         operationDocumentSchema(operation)
     }
-
-// Reuse only the packaged rejection branches. Legacy hosted demo successes are not canonical reads.
-private val hostedEndpointRejectionSchema: JsonObject by lazy {
-    packagedHostedSchema("hosted-endpoint").getValue("\$defs").jsonObject.getValue("rejected").jsonObject
-}
-
-private val hostedReadRejectionSchema: JsonObject by lazy {
-    packagedHostedSchema("hosted-query")
-        .getValue("oneOf")
-        .jsonArray
-        .single { variant ->
-            variant.jsonObject.getValue("properties").jsonObject.getValue("outcome").jsonObject["const"] ==
-                JsonPrimitive("rejected")
-        }
-        .jsonObject
-}
-
-private fun packagedHostedSchema(name: String): JsonObject =
-    requireNotNull(CanonicalOperation::class.java.getResourceAsStream("/ide-hosted/$name.schema.json")) {
-            "Missing packaged hosted schema: $name"
-        }
-        .bufferedReader()
-        .use { Json.parseToJsonElement(it.readText()).jsonObject }
 
 private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject =
     when (operation) {

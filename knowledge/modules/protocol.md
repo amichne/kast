@@ -21,6 +21,7 @@ code_sources:
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalSourceReadOperationModels.kt
   - path: protocol/contract/src/main/resources/ide-hosted/hosted-endpoint.schema.json
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/HostedRejectionSchemas.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastProvider.kt
   - path: query/protocol/build.gradle.kts
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalChangeOperationModels.kt
@@ -56,6 +57,9 @@ change planning, approval preparation, apply and recovery. Version-2 endpoint
 descriptors reject. `change.apply.v3` distinguishes `Verified`,
 `AppliedUnverified` and `RecoveryRequired`; only the first carries a receipt.
 Qualified effects retain their finite reason and exact plan identity.
+Hosted rejection schemas retain their transitive definitions when embedded in
+installed output schemas, preserving bounded module/root evidence for selected-build
+source-scope failures.
 The earlier provider-qualified CLI schema document was 290,635 bytes, below its
 524,288-byte qualification cap. Hosted read admission now also has a closed
 `CONFIGURATION_REJECTED` outcome; canonical semantic outcome schemas retain their existing identities. Schema compatibility and native execution remain

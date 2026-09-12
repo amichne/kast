@@ -21,6 +21,7 @@ code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexSessionProjection.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/tool/PublicToolCommands.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/HostedRejectionSchemas.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/projection/CanonicalQueryCliDocuments.kt
   - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolContractTest.kt
 ---
@@ -50,6 +51,10 @@ and exact-symbol evidence and documents the closed signature variants, nullable
 projections, and compiler-rendered type-string boundary.
 
 `MintlifyCallableReference` derives the OpenAPI reference from installed bindings.
+`HostedRejectionSchemas` retains each packaged rejection branch and its referenced
+definitions. Installed output composition includes the transitive definitions,
+including bounded selected-build module/root failure evidence, before documentation
+projection; it rejects missing or colliding schema definitions.
 It promotes document-local definitions into tool-qualified `components.schemas`
 addresses and labels variants from their existing discriminants, marking outcomes
 that require live evidence with a distinct label. Schema-model
