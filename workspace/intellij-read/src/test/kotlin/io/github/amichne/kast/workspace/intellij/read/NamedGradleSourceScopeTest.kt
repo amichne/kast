@@ -40,13 +40,16 @@ class NamedGradleSourceScopeTest {
             listOf(
                 ide(main),
                 IdeCodeSourceRoot(
-                    Path.of("/workspace/code/nested"),
-                    WorkspaceSourceRootKind.PRODUCTION,
-                    WorkspaceSourceRootProvenance.AUTHORED,
+                    path = Path.of("/workspace/code/nested"),
+                    kind = WorkspaceSourceRootKind.PRODUCTION,
+                    provenance = WorkspaceSourceRootProvenance.AUTHORED,
+                    evidence = evidence(Path.of("/workspace/code/nested")),
                 ),
             )
         assertEquals(
-            NamedGradleSourceScopeFailure.IDE_ROOT_UNMAPPED,
+            NamedGradleSourceScopeFailure.RootMapping(
+                IdeRootMappingFailure.GradleOwnerMissing(evidence(Path.of("/workspace/code/nested")))
+            ),
             NamedGradleSourceScope.admit(root, NamedGradleModelObservation.Captured(listOf(main)), roots).failure(),
         )
     }
@@ -85,7 +88,13 @@ class NamedGradleSourceScopeTest {
     fun `inconsistent IDE and imported root classifications reject`() {
         val rootObservation = ide(main).copy(provenance = WorkspaceSourceRootProvenance.GENERATED)
         assertEquals(
-            NamedGradleSourceScopeFailure.IDE_ROOT_INCOHERENT,
+            NamedGradleSourceScopeFailure.RootMapping(
+                IdeRootMappingFailure.RootClassificationMismatch(
+                    rootObservation.evidence,
+                    CodeSourceRootClassification(rootObservation.kind, rootObservation.provenance),
+                    CodeSourceRootClassification(main.sourceKind, main.provenance),
+                )
+            ),
             NamedGradleSourceScope.admit(
                     root,
                     NamedGradleModelObservation.Captured(listOf(main)),
@@ -126,10 +135,14 @@ class NamedGradleSourceScopeTest {
 
     private fun ide(entry: WorkspaceSourceRootBoundary) =
         IdeCodeSourceRoot(
-            entry.sourceRoot,
-            entry.sourceKind,
-            entry.provenance,
+            path = entry.sourceRoot,
+            kind = entry.sourceKind,
+            provenance = entry.provenance,
+            evidence = evidence(entry.sourceRoot),
         )
+
+    private fun evidence(path: Path) =
+        IdeSourceRootEvidence(BoundedModuleName.observe("module"), BoundedSourceRootIdentity.observe("file://$path"))
 
     private fun names(vararg values: String) =
         SymbolDiscoverySourceSets.Exact.from(values.map { WorkspaceSourceSetName.parse(it).value() }.toSet()).value()

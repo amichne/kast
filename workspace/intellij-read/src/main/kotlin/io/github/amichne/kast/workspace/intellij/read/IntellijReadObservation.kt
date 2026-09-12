@@ -7,6 +7,8 @@ import io.github.amichne.kast.kernel.ReadLimits
 enum class IntellijReadCounter {
     IMPORTED_PROJECTS,
     IDEA_MODULES,
+    SELECTED_GRADLE_MODULES,
+    FOREIGN_GRADLE_MODULES,
     SOURCE_ROOTS,
     NAMES_VISITED,
     NAMES_MATCHED,

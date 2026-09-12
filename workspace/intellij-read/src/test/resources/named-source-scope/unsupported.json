@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "outcome": "rejected",
+  "failure": "NAMED_SOURCE_SCOPE_REJECTED",
+  "detail": {
+    "cause": "IDE_ROOT_INCOHERENT",
+    "reason": "UNSUPPORTED_ROOT_TYPE",
+    "module": {
+      "value": "app.main",
+      "truncated": false
+    },
+    "root": {
+      "value": "file:///workspace/app/src/main/kotlin",
+      "truncated": false
+    }
+  },
+  "stage": "MODEL_CAPTURE"
+}

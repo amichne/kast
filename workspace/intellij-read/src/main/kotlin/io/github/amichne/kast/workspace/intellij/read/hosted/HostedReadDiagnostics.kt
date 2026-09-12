@@ -1,11 +1,16 @@
 package io.github.amichne.kast.workspace.intellij.read.hosted
 
 import com.google.gson.Gson
+import com.google.gson.JsonParser
 import com.intellij.openapi.diagnostic.Logger
 import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.workspace.intellij.read.*
 import java.util.UUID
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.JsonElement
 
 /** Counts are saturated rather than allocating one event per declaration. */
 internal class HostedReadDiagnostics(
@@ -153,9 +158,9 @@ internal fun hostedReadDiagnostics(limits: ReadLimits = ReadLimits.Default): Hos
     HostedReadDiagnostics(System::nanoTime, limits) { receipt ->
         val outcome =
             when (val result = receipt.outcome) {
-                HostedDiagnosticOutcome.Completed -> mapOf("type" to "completed")
+                HostedDiagnosticOutcome.Completed -> HostedDiagnosticOutcomeDocument.Completed
                 is HostedDiagnosticOutcome.Rejected ->
-                    mapOf("type" to "rejected", "failure" to result.failure.code(), "detail" to result.failure.detail())
+                    HostedDiagnosticOutcomeDocument.Rejected(result.failure.code(), result.failure.detail())
             }
         Logger.getInstance(HostedReadDiagnostics::class.java)
             .info(
@@ -200,9 +205,23 @@ internal fun hostedReadDiagnostics(limits: ReadLimits = ReadLimits.Default): Hos
                                     },
                                 "counters" to receipt.counters,
                                 "terminations" to receipt.terminations,
-                                "outcome" to outcome,
+                                "outcome" to
+                                    JsonParser.parseString(
+                                        diagnosticOutcomeJson.encodeToString<HostedDiagnosticOutcomeDocument>(outcome)
+                                    ),
                                 "unexpectedFailures" to receipt.unexpectedFailures,
                             )
                         )
             )
     }
+
+private val diagnosticOutcomeJson = kotlinx.serialization.json.Json { classDiscriminator = "type" }
+
+@Serializable
+internal sealed interface HostedDiagnosticOutcomeDocument {
+    @Serializable @SerialName("completed") data object Completed : HostedDiagnosticOutcomeDocument
+
+    @Serializable
+    @SerialName("rejected")
+    data class Rejected(val failure: String, val detail: JsonElement) : HostedDiagnosticOutcomeDocument
+}

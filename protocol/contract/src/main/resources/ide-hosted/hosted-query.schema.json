@@ -92,6 +92,9 @@
                 "type": "string",
                 "maxLength": 128
               }
+            },
+            {
+              "$ref": "#/$defs/namedSourceScopeFailure"
             }
           ]
         },
@@ -351,6 +354,179 @@
           "const": "cached_source_folder_flag"
         }
       }
+    },
+    "moduleIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "value",
+        "truncated"
+      ],
+      "properties": {
+        "value": {
+          "type": "string",
+          "maxLength": 512
+        },
+        "truncated": {
+          "type": "boolean"
+        }
+      }
+    },
+    "sourceRootIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "value",
+        "truncated"
+      ],
+      "properties": {
+        "value": {
+          "type": "string",
+          "maxLength": 8192
+        },
+        "truncated": {
+          "type": "boolean"
+        }
+      }
+    },
+    "rootClassification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "provenance"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "PRODUCTION",
+            "TEST",
+            "UNKNOWN"
+          ]
+        },
+        "provenance": {
+          "enum": [
+            "AUTHORED",
+            "GENERATED",
+            "UNKNOWN"
+          ]
+        }
+      }
+    },
+    "namedSourceScopeFailure": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "cause",
+            "module",
+            "root",
+            "reason"
+          ],
+          "properties": {
+            "cause": {
+              "const": "IDE_ROOT_UNMAPPED"
+            },
+            "module": {
+              "$ref": "#/$defs/moduleIdentity"
+            },
+            "root": {
+              "$ref": "#/$defs/sourceRootIdentity"
+            },
+            "reason": {
+              "enum": [
+                "SOURCE_FOLDER_UNAVAILABLE",
+                "SOURCE_FOLDER_OBSERVATION_FAILED",
+                "GRADLE_OWNER_MISSING"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "cause",
+            "module",
+            "root",
+            "reason"
+          ],
+          "properties": {
+            "cause": {
+              "const": "IDE_ROOT_INCOHERENT"
+            },
+            "module": {
+              "$ref": "#/$defs/moduleIdentity"
+            },
+            "root": {
+              "$ref": "#/$defs/sourceRootIdentity"
+            },
+            "reason": {
+              "enum": [
+                "UNSUPPORTED_ROOT_TYPE",
+                "SOURCE_PROPERTIES_UNAVAILABLE"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "cause",
+            "module",
+            "root",
+            "ide",
+            "gradle"
+          ],
+          "properties": {
+            "cause": {
+              "const": "ROOT_CLASSIFICATION_MISMATCH"
+            },
+            "module": {
+              "$ref": "#/$defs/moduleIdentity"
+            },
+            "root": {
+              "$ref": "#/$defs/sourceRootIdentity"
+            },
+            "ide": {
+              "$ref": "#/$defs/rootClassification"
+            },
+            "gradle": {
+              "$ref": "#/$defs/rootClassification"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "cause",
+            "module",
+            "reason"
+          ],
+          "properties": {
+            "cause": {
+              "const": "OWNER_UNAVAILABLE"
+            },
+            "module": {
+              "$ref": "#/$defs/moduleIdentity"
+            },
+            "reason": {
+              "enum": [
+                "GRADLE_OWNER_UNAVAILABLE",
+                "BUILD_ROOT_UNAVAILABLE",
+                "BUILD_ROOT_MALFORMED",
+                "MODULE_IDENTITY_MALFORMED",
+                "PROJECT_PATH_UNAVAILABLE",
+                "PROJECT_PATH_MALFORMED",
+                "CACHED_PROJECT_UNAVAILABLE"
+              ]
+            }
+          }
+        }
+      ]
     }
   }
 }

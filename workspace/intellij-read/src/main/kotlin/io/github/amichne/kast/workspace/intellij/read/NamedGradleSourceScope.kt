@@ -10,6 +10,7 @@ internal data class IdeCodeSourceRoot(
     val path: Path,
     val kind: WorkspaceSourceRootKind,
     val provenance: WorkspaceSourceRootProvenance,
+    val evidence: IdeSourceRootEvidence,
 )
 
 internal sealed interface NamedGradleModelObservation {
@@ -24,7 +25,10 @@ internal sealed interface NamedGradleModelObservation {
 sealed interface NamedGradleSourceScopeFailure {
     data object MODEL_UNAVAILABLE : NamedGradleSourceScopeFailure
 
-    data object IDE_ROOT_UNMAPPED : NamedGradleSourceScopeFailure
+    data class RootMapping(val cause: IdeRootMappingFailure) : NamedGradleSourceScopeFailure
+
+    data class ModuleOwnership(val module: BoundedModuleName, val cause: GradleModuleOwnershipFailure) :
+        NamedGradleSourceScopeFailure
 
     data object IDE_ROOT_INCOHERENT : NamedGradleSourceScopeFailure
 
@@ -102,12 +106,9 @@ private constructor(
                     is WorkspaceSearchScopeModelCompilation.Rejected ->
                         return rejected(NamedGradleSourceScopeFailure.ModelRejected(compiled))
                 }
-            for (ide in ideRoots) {
-                val owners = model.sourceRoots.filter { Path.of(it.sourceRoot.value) == ide.path }
-                if (owners.isEmpty()) return rejected(NamedGradleSourceScopeFailure.IDE_ROOT_UNMAPPED)
-                if (owners.any { it.sourceKind != ide.kind || it.provenance != ide.provenance }) {
-                    return rejected(NamedGradleSourceScopeFailure.IDE_ROOT_INCOHERENT)
-                }
+            when (val consistent = checkIdeRoots(model, ideRoots)) {
+                is Refinement.Rejected -> return consistent
+                is Refinement.Refined -> Unit
             }
             if (
                 captured.excludedRoots.any {
@@ -119,6 +120,34 @@ private constructor(
             return Refinement.Refined(
                 NamedGradleSourceScope(model, ideRoots.map { it.path }.toSet(), captured.excludedRoots.toSet())
             )
+        }
+
+        private fun checkIdeRoots(
+            model: WorkspaceSearchScopeModel,
+            ideRoots: List<IdeCodeSourceRoot>,
+        ): Refinement<Unit, NamedGradleSourceScopeFailure> {
+            for (ide in ideRoots) {
+                val owners = model.sourceRoots.filter { Path.of(it.sourceRoot.value) == ide.path }
+                if (owners.isEmpty())
+                    return rejected(
+                        NamedGradleSourceScopeFailure.RootMapping(
+                            IdeRootMappingFailure.GradleOwnerMissing(ide.evidence)
+                        )
+                    )
+                val mismatch = owners.firstOrNull { it.sourceKind != ide.kind || it.provenance != ide.provenance }
+                if (mismatch != null) {
+                    return rejected(
+                        NamedGradleSourceScopeFailure.RootMapping(
+                            IdeRootMappingFailure.RootClassificationMismatch(
+                                ide.evidence,
+                                CodeSourceRootClassification(ide.kind, ide.provenance),
+                                CodeSourceRootClassification(mismatch.sourceKind, mismatch.provenance),
+                            )
+                        )
+                    )
+                }
+            }
+            return Refinement.Refined(Unit)
         }
 
         private fun rejected(failure: NamedGradleSourceScopeFailure) = Refinement.Rejected(failure)
