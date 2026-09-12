@@ -100,7 +100,7 @@ internal class InstalledKnowledgeReader(private val root: Path) : KnowledgeReade
         }
         val items =
             matches.sortedWith(
-                compareBy<ScoredKnowledgeItem>({ it.score }, { it.item.name.lowercase() }, { it.item.resource })
+                compareBy<ScoredKnowledgeItem>({ it.score }, { it.item.declarationPath.lowercase() }, { it.item.resource })
             ).take(MAX_RESULTS).map(ScoredKnowledgeItem::item)
         return KnowledgeLookup.Complete(
             searchFactory.create(
@@ -181,12 +181,13 @@ internal class InstalledKnowledgeReader(private val root: Path) : KnowledgeReade
         declaration: KnowledgeDeclarationDescriptor,
     ): ScoredKnowledgeItem? {
         val name = declaration.name.lowercase()
+        val declarationPath = declaration.declarationPath.lowercase()
         val summary = declaration.summary.lowercase()
         val module = projectPath.lowercase()
         val score = when {
-            name == query -> 0
-            name.startsWith(query) -> 1
-            query in name -> 2
+            name == query || declarationPath == query -> 0
+            name.startsWith(query) || declarationPath.startsWith(query) -> 1
+            query in name || query in declarationPath -> 2
             query in summary -> 3
             query in module -> 4
             else -> return null
@@ -196,6 +197,7 @@ internal class InstalledKnowledgeReader(private val root: Path) : KnowledgeReade
             KnowledgeSearchItem(
                 kind = declaration.kind,
                 name = declaration.name,
+                declarationPath = declaration.declarationPath,
                 module = projectPath,
                 summary = declaration.summary,
                 resource = declaration.resource,
@@ -250,6 +252,7 @@ private data class KnowledgeGuideReference(
 @Serializable
 private data class KnowledgeDeclarationDescriptor(
     val id: String,
+    val declarationPath: String,
     val name: String,
     val kind: String,
     val summary: String,
@@ -270,6 +273,7 @@ private data class KnowledgeSearchDocument(
 private data class KnowledgeSearchItem(
     val kind: String,
     val name: String,
+    val declarationPath: String,
     val module: String,
     val summary: String,
     val resource: String,
