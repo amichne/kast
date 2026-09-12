@@ -7,6 +7,8 @@ internal data class InstalledKnowledgeManifest(
     val schemaVersion: Int = 1,
     val productVersion: String,
     val sourceRevision: String,
+    val declarationEvidence: String,
+    val declarationLimitations: List<String>,
     val modules: List<InstalledKnowledgeModuleDescriptor>,
 )
 
