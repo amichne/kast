@@ -1,6 +1,5 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.cli.projection.ProductInspectionDocuments
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
@@ -9,28 +8,26 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
 class SavedConfigurationAdmissionTest {
     @Test
-    fun `bare installed entry point reports every saved configuration rejection as complete passive evidence`(
-        @TempDir temporary: Path
-    ) {
+    fun `bare installed entry point fails closed on every saved configuration rejection`(@TempDir temporary: Path) {
         val root = workspace(temporary)
-        for ((marker, expected) in rejectionMarkers) {
+        for ((marker, _) in rejectionMarkers) {
             val result = launch(temporary, root, "io.github.amichne.kast.cli.KastCliMainKt", marker)
 
-            assertEquals(0, result.exitCode, result.stderr)
-            assertEquals("", result.stderr)
-            val document = Json.parseToJsonElement(result.stdout).jsonObject
-            assertEquals("inspect", document.getValue("operation").jsonPrimitive.content)
-            assertEquals("complete", document.getValue("status").jsonPrimitive.content)
-            assertEquals("unobserved", document.getValue("runtime").jsonPrimitive.content)
-            assertEquals("saved-configuration-$expected", document.getValue("blockingReason").jsonPrimitive.content)
-            assertEquals(root.toRealPath().toString(), document.getValue("root").jsonPrimitive.content)
+            assertEquals(9, result.exitCode, result.stderr)
+            assertEquals("", result.stdout)
+            val document = Json.parseToJsonElement(result.stderr).jsonObject
+            assertEquals("rejected", document.getValue("status").jsonPrimitive.content)
+            assertEquals("bootstrap", document.getValue("boundary").jsonPrimitive.content)
+            assertEquals(
+                "configuration-saved_configuration_rejected",
+                document.getValue("reason").jsonPrimitive.content,
+            )
             assertFalse(Files.exists(temporary.resolve("runtime")))
             assertFalse(Files.exists(temporary.resolve("cache")))
         }
@@ -94,32 +91,6 @@ class SavedConfigurationAdmissionTest {
             assertEquals("kast-codex: configuration-rejected", result.stderr.trim())
             assertFalse(Files.exists(temporary.resolve("runtime")))
             assertFalse(Files.exists(temporary.resolve("cache")))
-        }
-    }
-
-    @Test
-    fun `invalid cache authority remains complete blocking evidence in passive document`(@TempDir temporary: Path) {
-        val root = workspace(temporary)
-        for (rawPath in listOf("", "relative/cache", "\u0000")) {
-            val rejected =
-                assertInstanceOf(
-                    InstalledSidecarCacheRootAdmission.Rejected::class.java,
-                    InstalledSidecarCacheRoot.admit(rawPath, temporary),
-                )
-            val exit =
-                CliExit.Complete(
-                    ProductInspectionDocuments.blocked(
-                        root,
-                        InstalledCompositionFailure.SidecarCacheRootRejected(rejected.failure),
-                    )
-                )
-
-            assertEquals(0, exit.code)
-            val document = Json.parseToJsonElement(exit.document.value).jsonObject
-            assertEquals("inspect", document.getValue("operation").jsonPrimitive.content)
-            assertEquals("complete", document.getValue("status").jsonPrimitive.content)
-            assertEquals("cache-root-invalid_path", document.getValue("blockingReason").jsonPrimitive.content)
-            assertEquals("unobserved", document.getValue("runtime").jsonPrimitive.content)
         }
     }
 

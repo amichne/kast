@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-11 | hash: cb7b0326cfae -->
+<!-- generated: 2026-09-12 | hash: d2eb199966be -->
 
 # query
 
@@ -32,4 +32,4 @@ Models and executes multi-stage semantic queries while retaining scope, budgets,
 
 - Start with the [repository knowledge](../knowledge/modules/semantic-reads.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
 
-- Begin with `QueryPlan`, then trace each step through `QueryService` into symbol, relation, traversal, or topology operations.
+- Begin with `QueryPlan`, then trace each step through `QueryService` into symbol, source, relation, or traversal operations.

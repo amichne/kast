@@ -4,7 +4,7 @@ title: Public intent tools
 description: Schema-bound search and diagnostics presentations lower into existing canonical operations without transferring compiler authority.
 resource: file://app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json
 tags: [tools, query, protocol, agents]
-timestamp: 2026-09-11T00:00:00Z
+timestamp: 2026-09-12T00:00:00Z
 code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/MintlifyCallableReference.kt
   - path: cli/src/test/kotlin/io/github/amichne/kast/cli/MintlifyCallableReferenceTest.kt
@@ -21,6 +21,9 @@ code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexSessionProjection.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/tool/PublicToolCommands.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalReadOperationModels.kt
+    symbols: [RelationContinuationDocument]
+  - path: cli/src/test/kotlin/io/github/amichne/kast/cli/LiveReadOutputSchemaTest.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/HostedRejectionSchemas.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/projection/CanonicalQueryCliDocuments.kt
   - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolContractTest.kt
@@ -65,3 +68,9 @@ display titles. Synthetic callable paths remain documentation routes, with no
 HTTP server or interactive playground advertised. Full-width contract pages keep
 the generated fields visible without synthesized response examples; invocation
 commands render as Bash blocks in the page content.
+
+`semantic_query` advertises both published `v1` and live `v2` relation
+continuations in its resume input and qualified output. Both schemas use
+`RelationContinuationDocument.TOKEN_PATTERN`; the production codec preserves
+the authority's version. The [query protocol](../modules/query-protocol.md)
+retains the stronger continuation ownership checks after structural admission.

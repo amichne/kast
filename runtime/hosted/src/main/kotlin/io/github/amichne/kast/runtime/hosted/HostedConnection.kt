@@ -17,7 +17,7 @@ internal suspend fun serveHostedConnection(
     output: OutputStream,
     observer: HostedEndpointObserver,
     limits: ReadLimits = ReadLimits.Default,
-    dispatch: suspend (HostedRequest) -> String,
+    dispatch: suspend (HostedRequest) -> HostedResponse,
 ) {
     observer.observe(HostedEndpointStage.REQUEST, HostedEndpointOutcome.STARTED)
     try {
@@ -29,10 +29,12 @@ internal suspend fun serveHostedConnection(
                 }
             val response =
                 when (request) {
-                    is Refinement.Rejected -> HostedRequests.rejected(request.failure)
+                    is Refinement.Rejected -> HostedResponse.Rejected(request.failure)
                     is Refinement.Refined -> dispatch(request.value)
                 }
-            when (val written = runInterruptible(Dispatchers.IO) { HostedFrames.write(output, response, limits) }) {
+            when (
+                val written = runInterruptible(Dispatchers.IO) { HostedFrames.write(output, response.document, limits) }
+            ) {
                 is Refinement.Refined -> Unit
                 is Refinement.Rejected -> {
                     observer.rejected(HostedEndpointStage.REQUEST, written.failure)
@@ -42,10 +44,7 @@ internal suspend fun serveHostedConnection(
                     return@withTimeout
                 }
             }
-            when (request) {
-                is Refinement.Refined -> observer.observe(HostedEndpointStage.REQUEST, HostedEndpointOutcome.COMPLETED)
-                is Refinement.Rejected -> observer.rejected(HostedEndpointStage.REQUEST, request.failure)
-            }
+            observer.responded(response)
         }
     } catch (_: TimeoutCancellationException) {
         observer.rejected(HostedEndpointStage.REQUEST, HostedEndpointFailure.DEADLINE_EXCEEDED)

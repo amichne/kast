@@ -32,12 +32,12 @@ internal object KastQueryModules {
     )
 
     /**
-     * Adds the query family and grants only runtime composition the corresponding construction
+     * Adds the query family and grants only the hosted plugin the corresponding construction
      * dependencies. No other existing module gains query authority implicitly.
      */
     fun integrate(base: List<ModulePolicy>): List<ModulePolicy> =
         base.map { module ->
-            if (module.id == ModuleId.RUNTIME_COMPOSITION) {
+            if (module.id == ModuleId.RUNTIME_HOSTED) {
                 module.copy(
                     allowedProjectDependencies = module.allowedProjectDependencies +
                         setOf(ModuleId.QUERY_CONTRACT, ModuleId.QUERY_SERVICE),

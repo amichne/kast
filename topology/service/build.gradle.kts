@@ -11,5 +11,5 @@ base {
 
 dependencies {
     implementation(project(":topology:contract"))
-    testImplementation(project(":evidence:sqlite"))
+    testImplementation(project(":evidence:topology-sqlite"))
 }

@@ -49,8 +49,8 @@ kast app-server status
 ```
 
 Bare `kast` is passive: it does not start, repair, or synchronize the runtime.
-Keep its repository root, runtime identity, host/JBR observation, bootstrap state,
-and any `bootstrap.correctiveAction`. App Server status adds exact paths for
+Keep its product version, semantic authority and repository-root observation.
+Run `kast ide status` to inspect the existing project endpoint. App Server status adds exact paths for
 `serviceLog`, `launchEnvironment`, `savedConfiguration`, and `workspaceRegistry`.
 
 If startup itself fails, `kast codex` writes a finite reason to stderr.
@@ -92,8 +92,8 @@ If startup itself fails, `kast codex` writes a finite reason to stderr.
 
 ## Advanced runtime maintenance
 
-These controls concern installation state or the isolated sidecar. They are not
-prerequisites for an ordinary search in an open IDEA project.
+These controls concern the installation-owned broker. IDEA owns the project,
+Gradle import and semantic index lifecycle.
 
 <AccordionGroup>
   <Accordion title="Repair installation-owned broker state">
@@ -107,55 +107,21 @@ prerequisites for an ordinary search in an open IDEA project.
 
     This retires the active installation's launchd label, deletes its runtime,
     cache, broker and workspace-registry state, then re-enrolls the workspace and
-    starts clean. It discards cached indexes and durable invocation evidence.
+    starts clean. It discards broker invocation evidence; it does not rebuild IDEA indexes.
     Do not use it as recovery for an uncertain source change whose records must
     be retained. It does not follow symlinks inside the owned state tree.
   </Accordion>
-  <Accordion title="Gradle model input links reject">
-Kast admits conventional Gradle model inputs through symbolic links when each
-link resolves inside the canonical workspace. File contents, stored link targets,
-resolved entry kinds, and selected descendants beneath directory aliases are
-retained separately. Retargeting a link invalidates the imported model even if
-the new target has identical content. Two logical aliases remain distinct inputs.
-
-Capture failures report `capturing-model-inputs` with `bootstrap.evidence.input.path`
-and a finite `reason`: `OUTSIDE_WORKSPACE`, `LINK_CYCLE`, `TARGET_MISSING`,
-`UNREADABLE`, or `UNSUPPORTED`. Correct that repository input and run `kast start`
-again. Kast does not materialize links or delete dangling inputs. The previously
-selected Gradle JVM remains recorded in the bootstrap report. A JVM property
-input can reject earlier during `selecting-gradle-jvm`, before a selected JVM
-has been established.
+  <Accordion title="A change store rejects">
+    Keep the complete `HOST_REJECTED.detail` value. Database admission, plan
+    storage, receipt storage and plan lookup are distinct stages. `CORRUPT_RECORD`
+    and `VERSION_UNSUPPORTED` are preserved rather than reported as generic I/O.
+    Retain the durable records and the exact plan identity when investigating.
   </Accordion>
-  <Accordion title="An isolated sidecar runs out of heap">
-Set one maximum heap for the next IntelliJ sidecar launch:
-
-```console
-KAST_INDEXER_MAX_HEAP=8g kast start
-```
-
-Accepted values are positive integral lowercase `m` (MiB) or `g` (GiB), with a
-minimum of `256m`. The default remains `1536m`; the initial heap remains `256m`.
-Blank values, fractions, missing units, negative values, and overflow reject
-before the sidecar launches. The maximum admitted value is `2147483647m`.
-
-For a persistent setting, add `KAST_INDEXER_MAX_HEAP=8g` to
-`${XDG_CONFIG_HOME:-$HOME/.config}/kast/environment`. Values are literal.
-An explicitly present process environment value takes precedence, including an
-invalid value, which rejects instead of falling back. Duplicate saved records
-reject. The installer preserves this setting during upgrades.
-
-A running sidecar keeps its existing heap. Run `kast stop`, then start with the
-new setting. Changing heap does not change semantic cache identity or require
-rebuilding or reseeding caches. This setting controls Kast's isolated IntelliJ
-sidecar; Gradle daemon memory and the interactive IDEA heap have separate settings.
-Ambient `JAVA_OPTS`, `_JAVA_OPTIONS`, `JAVA_TOOL_OPTIONS`, and `JDK_JAVA_OPTIONS`
-remain excluded from the sidecar launch.
-
-The private cache's `log/startup.log` contains a `kast-indexer-heap` record with
-`requestedMaxHeapMiB` and JVM-observed `observedMaxHeapBytes`. Use that record to
-confirm the active process heap; current caller configuration cannot change a
-running JVM. A higher cap addresses a memory limit but does not establish the
-cause of memory pressure or guarantee that every workload fits.
+  <Accordion title="A retired start or stop command rejects">
+    Kast no longer launches a second IntelliJ workspace. Open the repository in
+    IDEA with the Kast plugin, finish import and indexing, save edited files,
+    and inspect `kast ide status`. Configure IDEA's own memory and Gradle settings
+    through that host when diagnosing an import or indexing problem.
   </Accordion>
 </AccordionGroup>
 

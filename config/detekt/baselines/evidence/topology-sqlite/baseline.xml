@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CognitiveComplexMethod:SqliteTopologyRelationCompiler.kt:SqliteTopologyRelationCompiler$private fun page: RelationCompilation</ID>
+    <ID>CognitiveComplexMethod:SqliteTopologySnapshotStore.kt:SqliteTopologySnapshotStore$override fun eligible: TopologySnapshotEligibility</ID>
+    <ID>CognitiveComplexMethod:SqliteTopologySnapshotStore.kt:SqliteTopologySnapshotStore$override fun publish: TopologyPublicationResult</ID>
+    <ID>CyclomaticComplexMethod:SqliteTopologyRelationCompiler.kt:SqliteTopologyRelationCompiler$private fun page: RelationCompilation</ID>
+    <ID>InvalidPackageDeclaration:SqliteTopologyContentWriter.kt:package io.github.amichne.kast.evidence.sqlite</ID>
+    <ID>InvalidPackageDeclaration:SqliteTopologyRelationCompiler.kt:package io.github.amichne.kast.evidence.sqlite</ID>
+    <ID>InvalidPackageDeclaration:SqliteTopologyRows.kt:package io.github.amichne.kast.evidence.sqlite</ID>
+    <ID>InvalidPackageDeclaration:SqliteTopologySchema.kt:package io.github.amichne.kast.evidence.sqlite</ID>
+    <ID>InvalidPackageDeclaration:SqliteTopologySnapshotStore.kt:package io.github.amichne.kast.evidence.sqlite</ID>
+    <ID>LargeClass:SqliteTopologySnapshotStoreTest.kt:SqliteTopologySnapshotStoreTest</ID>
+    <ID>LongMethod:SqliteTopologyRelationCompiler.kt:SqliteTopologyRelationCompiler$override suspend fun read: RelationCompilation</ID>
+    <ID>LongMethod:SqliteTopologyRelationCompiler.kt:SqliteTopologyRelationCompiler$private fun page: RelationCompilation</ID>
+    <ID>LongMethod:SqliteTopologySchema.kt:internal fun initializeTopologySchema</ID>
+    <ID>LongMethod:SqliteTopologySnapshotStore.kt:SqliteTopologySnapshotStore$override fun publish: TopologyPublicationResult</ID>
+    <ID>MagicNumber:SqliteTopologyContentWriter.kt:3</ID>
+    <ID>MagicNumber:SqliteTopologyContentWriter.kt:4</ID>
+    <ID>MagicNumber:SqliteTopologyContentWriter.kt:5</ID>
+    <ID>MagicNumber:SqliteTopologyContentWriter.kt:6</ID>
+    <ID>MagicNumber:SqliteTopologyContentWriter.kt:7</ID>
+    <ID>MagicNumber:SqliteTopologyContentWriter.kt:8</ID>
+    <ID>MagicNumber:SqliteTopologyContentWriter.kt:9</ID>
+    <ID>MagicNumber:SqliteTopologyRows.kt:3</ID>
+    <ID>MagicNumber:SqliteTopologyRows.kt:4</ID>
+    <ID>MagicNumber:SqliteTopologyRows.kt:5</ID>
+    <ID>MagicNumber:SqliteTopologyRows.kt:6</ID>
+    <ID>MagicNumber:SqliteTopologyRows.kt:7</ID>
+    <ID>NestedBlockDepth:SqliteTopologySnapshotStore.kt:SqliteTopologySnapshotStore$override fun eligible: TopologySnapshotEligibility</ID>
+    <ID>NestedBlockDepth:SqliteTopologySnapshotStore.kt:SqliteTopologySnapshotStore$override fun publish: TopologyPublicationResult</ID>
+    <ID>TooGenericExceptionCaught:SqliteTopologySnapshotStore.kt:SqliteTopologySnapshotStore$failure: Exception</ID>
+    <ID>TooGenericExceptionCaught:SqliteTopologySnapshotStore.kt:SqliteTopologySnapshotStore.Companion$failure: Exception</ID>
+  </CurrentIssues>
+</SmellBaseline>

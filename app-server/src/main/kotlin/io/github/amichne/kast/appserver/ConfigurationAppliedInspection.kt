@@ -1,7 +1,5 @@
 package io.github.amichne.kast.appserver
 
-import io.github.amichne.kast.appserver.core.CanonicalBrokerDirectory
-import io.github.amichne.kast.appserver.runtime.WorkerReservationPhase
 import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
 import java.nio.file.Path
 import kotlinx.serialization.SerialName
@@ -91,7 +89,7 @@ object InstalledConfigurationAppliedInspection {
                     return unobserved(AppliedConfigurationUnavailable.OWNER_REJECTED)
             }
         val snapshot =
-            when (val observed = InstalledWorkerClient(kast, userHome, environment).status(command)) {
+            when (val observed = InstalledCoordinatorClient(kast).status(command)) {
                 is CoordinatorStatusRead.Observed -> observed.snapshot
                 is CoordinatorStatusRead.Rejected ->
                     return unobserved(
@@ -99,6 +97,7 @@ object InstalledConfigurationAppliedInspection {
                             WorkerControlFailure.UNAVAILABLE,
                             WorkerControlFailure.DEADLINE_EXCEEDED ->
                                 AppliedConfigurationUnavailable.COORDINATOR_UNAVAILABLE
+                            WorkerControlFailure.ISOLATED_RUNTIME_RETIRED,
                             WorkerControlFailure.INVALID_REQUEST,
                             WorkerControlFailure.IDENTITY_REJECTED,
                             WorkerControlFailure.SERVICE_IDENTITY_REJECTED,
@@ -121,41 +120,13 @@ object InstalledConfigurationAppliedInspection {
         val evidence: ConfigurationAcknowledgementEvidence
         if (workspace == null) {
             scope = AppliedConfigurationScope.INSTALLATION
-            desiredIdentity = workerLaunchConfigurationIdentity(desired)
+            desiredIdentity = coordinatorConfigurationIdentity(desired)
             acknowledgedIdentity = snapshot.configurationIdentity
             evidence = ConfigurationAcknowledgementEvidence.Coordinator
         } else {
-            val physical =
-                try {
-                    workspace.toRealPath()
-                } catch (_: java.io.IOException) {
-                    return unobserved(AppliedConfigurationUnavailable.OWNER_REJECTED)
-                }
-            if (physical != workspace) return unobserved(AppliedConfigurationUnavailable.OWNER_REJECTED)
-            val canonical =
-                CanonicalBrokerDirectory.admit(physical)
-                    ?: return unobserved(AppliedConfigurationUnavailable.OWNER_REJECTED)
-            val identity = BrokerWorkspaceId.derive(canonical)
-            val worker =
-                snapshot.workers.singleOrNull { it.workspaceId == identity.value }
-                    ?: return unobserved(AppliedConfigurationUnavailable.WORKER_UNOBSERVED)
-            scope = AppliedConfigurationScope.WORKSPACE
-            desiredIdentity = workerConfigurationIdentity(desired)
-            acknowledgedIdentity =
-                worker.configurationIdentity
-                    ?: return unobserved(AppliedConfigurationUnavailable.CONFIGURATION_UNOBSERVED)
-            val requestedHeap =
-                worker.requestedHeapMiB ?: return unobserved(AppliedConfigurationUnavailable.CONFIGURATION_UNOBSERVED)
-            val phase =
-                when (WorkerReservationPhase.valueOf(worker.phase)) {
-                    WorkerReservationPhase.RESERVED -> AppliedWorkerPhase.RESERVED
-                    WorkerReservationPhase.STARTING -> AppliedWorkerPhase.STARTING
-                    WorkerReservationPhase.READY -> AppliedWorkerPhase.READY
-                    WorkerReservationPhase.QUARANTINED_STARTUP -> AppliedWorkerPhase.QUARANTINED_STARTUP
-                    WorkerReservationPhase.QUARANTINED_RUNTIME -> AppliedWorkerPhase.QUARANTINED_RUNTIME
-                }
-            evidence = ConfigurationAcknowledgementEvidence.Worker(phase, requestedHeap)
+            return unobserved(AppliedConfigurationUnavailable.WORKER_UNOBSERVED)
         }
+
         return if (desiredIdentity == acknowledgedIdentity)
             AppliedConfigurationInspection.Acknowledged(
                 scope,

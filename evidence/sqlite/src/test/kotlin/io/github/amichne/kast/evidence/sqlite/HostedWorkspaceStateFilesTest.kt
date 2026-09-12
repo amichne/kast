@@ -14,23 +14,21 @@ class HostedWorkspaceStateFilesTest {
     @TempDir lateinit var temporary: Path
 
     @Test
-    fun `typed location creates durable parents and opens both SQLite stores`() {
+    fun `typed location creates durable parents and opens mutation storage without constructing a topology index`() {
         val state =
             HostedWorkspaceStateLocation.locate(
-                    KastUserStateRoot.parse(temporary.toString()).refined(),
+                    KastUserStateRoot.parse(temporary.toRealPath().toString()).refined(),
                     CanonicalWorkspaceRoot.fromCanonicalPath(temporary.resolve("workspace")).refined(),
                 )
                 .refined()
 
         assertInstanceOf(
-            SqliteTopologySnapshotStoreOpening.Opened::class.java,
-            SqliteTopologySnapshotStore.open(state.topologyDatabase),
-        )
-        assertInstanceOf(
             SqliteMutationRecoveryJournalOpenResult.Opened::class.java,
             SqliteMutationRecoveryJournal.open(state.mutationDatabase),
         )
-        assertTrue(Path.of(state.topologyDatabase.valueAtSqliteBoundary()).toFile().isFile)
+        org.junit.jupiter.api.Assertions.assertFalse(
+            Path.of(state.topologyDatabase.valueAtSqliteBoundary()).toFile().exists()
+        )
         assertTrue(Path.of(state.mutationDatabase.valueAtSqliteBoundary()).toFile().isFile)
     }
 

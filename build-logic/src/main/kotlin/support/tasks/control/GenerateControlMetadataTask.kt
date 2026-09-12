@@ -25,11 +25,7 @@ import java.util.HexFormat
 abstract class GenerateControlMetadataTask : DefaultTask() {
     @get:InputFile
     @get:PathSensitive(PathSensitivity.NONE)
-    abstract val runtimeArchive: RegularFileProperty
-
-    @get:InputDirectory
-    @get:PathSensitive(PathSensitivity.RELATIVE)
-    abstract val runtimeDirectory: DirectoryProperty
+    abstract val pluginArchive: RegularFileProperty
 
     @get:InputFile
     @get:PathSensitive(PathSensitivity.NONE)
@@ -49,8 +45,6 @@ abstract class GenerateControlMetadataTask : DefaultTask() {
     abstract val ideaBuild: Property<String>
     @get:Input
     abstract val kotlinPluginBuild: Property<String>
-    @get:Input
-    abstract val runtimeBaseUrl: Property<String>
 
     @get:OutputDirectory
     abstract val outputDirectory: DirectoryProperty
@@ -60,52 +54,14 @@ abstract class GenerateControlMetadataTask : DefaultTask() {
         val output = outputDirectory.get().asFile
         output.deleteRecursively()
         output.resolve("licenses").mkdirs()
-        val archive = runtimeArchive.get().asFile
-        val archiveDigest = sha256(archive.readBytes())
-        val pluginDigest = privateExtensionSha256(
-            runtimeDirectory.get().asFile.toPath().resolve("private-plugins/kast-indexer"),
-        )
-        val wireSchemaId = CanonicalWireSchema.identity
-        val identityMaterial = listOf(
-            "macos",
-            "aarch64",
-            ideaBuild.get(),
-            kotlinPluginBuild.get(),
-            pluginDigest,
-            wireSchemaId,
-            archiveDigest,
-        ).joinToString("\n")
-        val runtimeId = sha256(identityMaterial.toByteArray(StandardCharsets.UTF_8))
-        val baseUrl = runtimeBaseUrl.get().trimEnd('/')
-        val manifest = SemanticRuntimeDocument(
-            schemaVersion = 1,
-            runtimeId = runtimeId,
-            productVersion = productVersion.get(),
-            platform = "macos",
-            architecture = "aarch64",
-            ideaBuild = ideaBuild.get(),
-            kotlinPluginBuild = kotlinPluginBuild.get(),
-            kastPluginSha256 = pluginDigest,
-            wireSchemaId = wireSchemaId,
-            archive = SemanticRuntimeArchiveDocument(
-                fileName = archive.name,
-                url = "$baseUrl/${archive.name}",
-                sha256 = archiveDigest,
-                bytes = archive.length(),
+        val archive = pluginArchive.get().asFile
+        output.resolve("ide-host.json").writeText(controlMetadataJson.encodeToString(
+            HostedPluginDocument.serializer(), HostedPluginDocument(
+                schemaVersion = 1, productVersion = productVersion.get(), execution = "existing_ide",
+                ideaBuild = ideaBuild.get(), kotlinPluginBuild = kotlinPluginBuild.get(),
+                fileName = archive.name, sha256 = sha256(archive.readBytes()), bytes = archive.length(),
             ),
-            layout = SemanticRuntimeLayoutDocument(
-                executable = "kast-indexer",
-                requiredEntries = listOf(
-                    "kast-indexer",
-                    "runtime-libs/",
-                    "private-plugins/kast-indexer/",
-                ),
-                executableEntries = listOf("kast-indexer"),
-            ),
-        )
-        output.resolve("semantic-runtime.json").writeText(
-            controlMetadataJson.encodeToString(SemanticRuntimeDocument.serializer(), manifest),
-        )
+        ))
         operationRegistryFile.get().asFile.copyTo(output.resolve("operation-registry.json"))
         configurationCatalogueFile.get().asFile.copyTo(output.resolve("configuration-schema.json"))
         output.resolve("wire-schema.json").writeBytes(CanonicalWireSchema.encodedBytes())
@@ -116,71 +72,12 @@ abstract class GenerateControlMetadataTask : DefaultTask() {
         MessageDigest.getInstance("SHA-256").digest(bytes),
     )
 
-    private fun privateExtensionSha256(extensionRoot: Path): String {
-        check(Files.isDirectory(extensionRoot)) {
-            "semantic runtime has no private Kast extension directory"
-        }
-        val payloadFiles = Files.walk(extensionRoot).use { paths ->
-            paths.iterator().asSequence()
-                .filter(Files::isRegularFile)
-                .map { path ->
-                    extensionRoot.relativize(path)
-                        .map(Path::toString)
-                        .joinToString("/") to path
-                }
-                .sortedBy(Pair<String, Path>::first)
-                .toList()
-        }
-        check(payloadFiles.isNotEmpty()) {
-            "semantic runtime has no private Kast extension files"
-        }
-        val digest = MessageDigest.getInstance("SHA-256")
-        payloadFiles.forEach { (relativePath, payloadFile) ->
-            val relativePathBytes = relativePath.toByteArray(StandardCharsets.UTF_8)
-            digest.update(ByteBuffer.allocate(Int.SIZE_BYTES).putInt(relativePathBytes.size).array())
-            digest.update(relativePathBytes)
-            digest.update(ByteBuffer.allocate(Long.SIZE_BYTES).putLong(Files.size(payloadFile)).array())
-            Files.newInputStream(payloadFile).use { input ->
-                val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-                while (true) {
-                    val read = input.read(buffer)
-                    if (read < 0) break
-                    digest.update(buffer, 0, read)
-                }
-            }
-        }
-        return "sha256:" + HexFormat.of().formatHex(digest.digest())
-    }
 }
 
 @Serializable
-internal data class SemanticRuntimeDocument(
-    val schemaVersion: Int,
-    val runtimeId: String,
-    val productVersion: String,
-    val platform: String,
-    val architecture: String,
-    val ideaBuild: String,
-    val kotlinPluginBuild: String,
-    val kastPluginSha256: String,
-    val wireSchemaId: String,
-    val archive: SemanticRuntimeArchiveDocument,
-    val layout: SemanticRuntimeLayoutDocument,
-)
-
-@Serializable
-internal data class SemanticRuntimeArchiveDocument(
-    val fileName: String,
-    val url: String,
-    val sha256: String,
-    val bytes: Long,
-)
-
-@Serializable
-internal data class SemanticRuntimeLayoutDocument(
-    val executable: String,
-    val requiredEntries: List<String>,
-    val executableEntries: List<String>,
+internal data class HostedPluginDocument(
+    val schemaVersion: Int, val productVersion: String, val execution: String, val ideaBuild: String,
+    val kotlinPluginBuild: String, val fileName: String, val sha256: String, val bytes: Long,
 )
 
 @Serializable

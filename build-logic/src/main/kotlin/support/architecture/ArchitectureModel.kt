@@ -100,6 +100,7 @@ enum class ModuleId(val projectPath: String) {
     CHANGE_INTELLIJ(":change:intellij"),
     EVIDENCE_CONTRACT(":evidence:contract"),
     EVIDENCE_SQLITE(":evidence:sqlite"),
+    EVIDENCE_TOPOLOGY_SQLITE(":evidence:topology-sqlite"),
     RUNTIME_SERVER(":runtime:server"),
     RUNTIME_HOSTED(":runtime:hosted"),
     RUNTIME_TELEMETRY(":runtime:telemetry"),

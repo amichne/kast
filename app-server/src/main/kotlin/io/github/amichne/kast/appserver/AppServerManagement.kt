@@ -247,7 +247,7 @@ class InstalledAppServerManager(
         command: BrokerServiceLaunchCommand,
         registry: WorkspaceEnrollmentStore,
     ): AppServerManagementResult {
-        val observed = runBlocking { InstalledWorkerClient(kast, userHome, environment).status(command) }
+        val observed = runBlocking { InstalledCoordinatorClient(kast).status(command) }
         val service =
             when (observed) {
                 is CoordinatorStatusRead.Observed -> PassiveServiceState.READY
@@ -255,6 +255,7 @@ class InstalledAppServerManager(
                     when (observed.failure) {
                         WorkerControlFailure.UNAVAILABLE,
                         WorkerControlFailure.DEADLINE_EXCEEDED -> PassiveServiceState.UNAVAILABLE
+                        WorkerControlFailure.ISOLATED_RUNTIME_RETIRED,
                         WorkerControlFailure.INVALID_REQUEST,
                         WorkerControlFailure.IDENTITY_REJECTED,
                         WorkerControlFailure.SERVICE_IDENTITY_REJECTED,
@@ -446,11 +447,4 @@ class InstalledAppServerManager(
         )
 
     private fun reject(failure: AppServerManagementFailure) = AppServerManagementResult.Rejected(failure)
-}
-
-/** Passive observation does not confer authorization to start or attach a host. */
-private enum class PassiveServiceState {
-    READY,
-    UNAVAILABLE,
-    REJECTED,
 }

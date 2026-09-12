@@ -38,10 +38,7 @@ class AppServerStatusTest {
                     WorkspaceEnrollmentStore(root.resolve("config/workspaces.json")).enroll(workspace)
                         is Refinement.Refined
                 )
-                val running =
-                    (InstalledCoordinator.start(options, InstalledWorkerEffects.Unavailable)
-                            as InstalledCoordinatorStart.Started)
-                        .coordinator
+                val running = (InstalledCoordinator.start(options) as InstalledCoordinatorStart.Started).coordinator
                 try {
                     val result =
                         InstalledAppServerManager(kast, root, emptyMap()).execute(AppServerAction.Status, workspace)
@@ -121,10 +118,7 @@ class AppServerStatusTest {
                             "BROKER_READINESS_FILE" to command.readinessFile.toString(),
                         )
                 val options = (InstalledCoordinatorConfiguration.admit(kast, root, launch) as Refinement.Refined).value
-                val running =
-                    (InstalledCoordinator.start(options, InstalledWorkerEffects.Unavailable)
-                            as InstalledCoordinatorStart.Started)
-                        .coordinator
+                val running = (InstalledCoordinator.start(options) as InstalledCoordinatorStart.Started).coordinator
                 try {
                     val acknowledged =
                         InstalledConfigurationAppliedInspection.read(kast, root, environment, command.configuration)

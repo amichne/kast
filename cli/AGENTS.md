@@ -1,11 +1,11 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-11 | hash: 2049f84fbcd2 -->
+<!-- generated: 2026-09-12 | hash: c2305ce71ae7 -->
 
 # cli
 
 ## Purpose
 
-Defines Kast's human-facing command graph, installed configuration and lifecycle workflows, and canonical output projections.
+Defines Kast's human-facing command graph, installed configuration and installation workflows, and canonical output projections.
 
 ## Key Files
 
@@ -40,3 +40,5 @@ Defines Kast's human-facing command graph, installed configuration and lifecycle
 
 - For parsing or command ownership, start with `CliCommandGraph` and the owning command package.
 - For output compatibility, start in `projection` and follow to `protocol/wire`.
+
+- Semantic operations require an existing IDE endpoint. Bare inspection is passive; retired `start` and `stop` commands fail closed.

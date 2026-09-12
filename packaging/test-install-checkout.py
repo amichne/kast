@@ -52,7 +52,6 @@ echo build >> "$TEST_LOG"
 for arg in "$@"; do case "$arg" in -Pversion=*) version=${arg#*=} ;; esac; done
 mkdir -p build/distributions
 touch "build/distributions/kast-control-v$version-macos-aarch64.tar.gz"
-touch "build/distributions/kast-semantic-runtime-$version-macos-aarch64.zip"
 for arg in "$@"; do
   if [[ $arg == :runtime:hosted:hostedPlugin ]]; then
     mkdir -p runtime/hosted/build/distributions
@@ -108,7 +107,7 @@ first=$PATH
 source "$1"
 [[ $PATH == "$first" && $KAST_ENABLE_APP_SERVER == 0 && $KAST_ENABLE_LAUNCHD == 0 ]] || exit 2
 physical=$(cd "$KAST_INSTALL_ROOT/current" && pwd -P)
-[[ $KAST_RUNTIME_DIRECTORY == "$physical/state/run" && $KAST_CACHE_ROOT == "$physical/state/cache" && $KAST_RUNTIME_STORE == "$physical/runtime-payloads" ]] || exit 3
+[[ $KAST_RUNTIME_DIRECTORY == "$physical/state/run" && -z ${KAST_CACHE_ROOT:-} && -z ${KAST_RUNTIME_STORE:-} ]] || exit 3
 kast 'argument with spaces'
 '''
             checked = subprocess.run(
@@ -183,9 +182,6 @@ class BootstrapInstallTest(IsolatedInstallerTest):
         self.version = "1.2.3"
         self.assets = self.root / "assets"
         self.assets.mkdir()
-        self.runtime = self.assets / f"kast-semantic-runtime-{self.version}-macos-aarch64.zip"
-        with zipfile.ZipFile(self.runtime, "w") as archive:
-            archive.writestr("kast-indexer", "fixture")
         self.plugin = self.assets / f"kast-ide-hosted-v{self.version}-idea-262.zip"
         self.write_plugin("262.*")
 
@@ -194,8 +190,8 @@ class BootstrapInstallTest(IsolatedInstallerTest):
         self.write_script(product / "bin/kast", '''#!/bin/bash
 python3 - <<'PYTHON'
 import json, os
-keys = ["KAST_INSTALL_CONTROL_ROOT", "KAST_INSTALL_CONTROL_SHA256", "KAST_INSTALL_RUNTIME_ARCHIVE",
-        "KAST_INSTALL_RUNTIME_SHA256", "KAST_INSTALL_VERSION", "KAST_INSTALL_IDEA_HOME",
+keys = ["KAST_INSTALL_CONTROL_ROOT", "KAST_INSTALL_CONTROL_SHA256", "KAST_INSTALL_HOSTED_PLUGIN_ARCHIVE",
+        "KAST_INSTALL_HOSTED_PLUGIN_SHA256", "KAST_INSTALL_VERSION", "KAST_INSTALL_IDEA_HOME",
         "KAST_INSTALL_JAVA_HOME", "KAST_INSTALL_ROOT", "KAST_BIN_DIR", "KAST_INSTALL_MODE"]
 with open(os.environ["TEST_LOG"], "w") as output:
     json.dump({**{key: os.environ[key] for key in keys}, "KAST_APP_SERVER_TOOLS": os.environ.get("KAST_APP_SERVER_TOOLS")}, output)
@@ -204,7 +200,7 @@ PYTHON
         self.control = self.assets / f"kast-control-v{self.version}-macos-aarch64.tar.gz"
         with tarfile.open(self.control, "w:gz") as archive:
             archive.add(product / "bin", arcname="bin")
-        for asset in (self.control, self.runtime, self.plugin):
+        for asset in (self.control, self.plugin):
             asset.with_name(asset.name + ".sha256").write_text(
                 f"{hashlib.sha256(asset.read_bytes()).hexdigest()}  {asset.name}\n",
             )
@@ -243,7 +239,7 @@ PYTHON
         self.assertEqual(self.version, contract["KAST_INSTALL_VERSION"])
         self.assertEqual("plan", contract["KAST_INSTALL_MODE"])
         self.assertEqual(hashlib.sha256(self.control.read_bytes()).hexdigest(), contract["KAST_INSTALL_CONTROL_SHA256"])
-        self.assertEqual(hashlib.sha256(self.runtime.read_bytes()).hexdigest(), contract["KAST_INSTALL_RUNTIME_SHA256"])
+        self.assertEqual(hashlib.sha256(self.plugin.read_bytes()).hexdigest(), contract["KAST_INSTALL_HOSTED_PLUGIN_SHA256"])
         self.assertEqual(str(self.idea), contract["KAST_INSTALL_IDEA_HOME"])
         self.assertFalse((self.root / "Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins").exists())
 
@@ -318,7 +314,7 @@ PYTHON
         self.assertFalse((self.root / "Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins").exists())
 
     def test_checksum_rejection_precedes_staged_installer(self):
-        self.runtime.with_name(self.runtime.name + ".sha256").write_text(f"{'0' * 64}  {self.runtime.name}\n")
+        self.plugin.with_name(self.plugin.name + ".sha256").write_text(f"{'0' * 64}  {self.plugin.name}\n")
         result = self.run_installer()
         self.assertNotEqual(0, result.returncode)
         self.assertFalse((self.root / "calls").exists())

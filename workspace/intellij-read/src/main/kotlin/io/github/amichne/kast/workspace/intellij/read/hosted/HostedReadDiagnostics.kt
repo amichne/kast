@@ -1,7 +1,5 @@
 package io.github.amichne.kast.workspace.intellij.read.hosted
 
-import com.google.gson.Gson
-import com.google.gson.JsonParser
 import com.intellij.openapi.diagnostic.Logger
 import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
@@ -99,18 +97,21 @@ internal class HostedReadDiagnostics(
     }
 }
 
+@Serializable
 internal data class HostedReadStageDuration(
     val stage: HostedQueryStage,
     val startedNanos: Long,
     val durationNanos: Long,
 )
 
+@Serializable
 internal data class HostedNativeCount(
     val counter: IntellijReadCounter,
     val contributor: IntellijReadContributor,
     val count: Long,
 )
 
+@Serializable
 internal data class HostedNativeTermination(
     val reason: IntellijReadTermination,
     val contributor: IntellijReadContributor,
@@ -123,6 +124,8 @@ internal sealed interface HostedSemanticEntry {
 }
 
 internal sealed interface HostedDiagnosticOutcome {
+    data class Evaluated(val outcome: HostedEvaluationOutcome) : HostedDiagnosticOutcome
+
     data object Completed : HostedDiagnosticOutcome
 
     data class Rejected(val failure: HostedQueryFailure) : HostedDiagnosticOutcome
@@ -153,75 +156,123 @@ internal data class HostedReadDiagnosticReceipt(
     val limits: ReadLimits,
 )
 
+/** A completed read transaction and its evaluator's semantic classification are distinct facts. */
+enum class HostedEvaluationOutcome {
+    EVALUATED,
+    COMPLETE,
+    QUALIFIED,
+    REJECTED,
+}
+
 /** Default evidence at the hosted native boundary; one bounded record after drainage. */
 internal fun hostedReadDiagnostics(limits: ReadLimits = ReadLimits.Default): HostedReadDiagnostics =
     HostedReadDiagnostics(System::nanoTime, limits) { receipt ->
-        val outcome =
-            when (val result = receipt.outcome) {
-                HostedDiagnosticOutcome.Completed -> HostedDiagnosticOutcomeDocument.Completed
-                is HostedDiagnosticOutcome.Rejected ->
-                    HostedDiagnosticOutcomeDocument.Rejected(result.failure.code(), result.failure.detail())
-            }
-        Logger.getInstance(HostedReadDiagnostics::class.java)
-            .info(
-                "kast_semantic_read " +
-                    Gson()
-                        .toJson(
-                            mapOf(
-                                "schemaVersion" to 2,
-                                "limits" to
-                                    receipt.limits.values.map {
-                                        mapOf(
-                                            "parameter" to it.parameter.name,
-                                            "value" to it.value,
-                                            "unit" to it.parameter.unit.name,
-                                            "source" to it.source.name,
-                                        )
-                                    },
-                                "pid" to ProcessHandle.current().pid(),
-                                "readId" to receipt.readId,
-                                "correlation" to
-                                    when (val value = receipt.correlation) {
-                                        HostedReadCorrelation.Unbound -> mapOf("type" to "unbound")
-                                        is HostedReadCorrelation.HostObserved ->
-                                            mapOf("type" to "host-observed", "host" to value.host.value.toString())
-                                        is HostedReadCorrelation.Bound ->
-                                            mapOf(
-                                                "type" to "bound",
-                                                "host" to value.host.value.toString(),
-                                                "epoch" to value.epoch.value,
-                                            )
-                                    },
-                                "durationNanos" to receipt.durationNanos,
-                                "stages" to receipt.stages,
-                                "semanticEntry" to
-                                    when (val entry = receipt.semanticEntry) {
-                                        HostedSemanticEntry.NotEntered -> mapOf("type" to "not-entered")
-                                        is HostedSemanticEntry.Entered ->
-                                            mapOf(
-                                                "type" to "entered",
-                                                "remainingDeadlineNanos" to entry.remainingDeadlineNanos,
-                                            )
-                                    },
-                                "counters" to receipt.counters,
-                                "terminations" to receipt.terminations,
-                                "outcome" to
-                                    JsonParser.parseString(
-                                        diagnosticOutcomeJson.encodeToString<HostedDiagnosticOutcomeDocument>(outcome)
-                                    ),
-                                "unexpectedFailures" to receipt.unexpectedFailures,
-                            )
-                        )
-            )
+        Logger.getInstance(HostedReadDiagnostics::class.java).info("kast_semantic_read " + receipt.encode())
     }
 
-private val diagnosticOutcomeJson = kotlinx.serialization.json.Json { classDiscriminator = "type" }
+internal fun HostedReadDiagnosticReceipt.encode(): String =
+    diagnosticOutcomeJson.encodeToString(
+        HostedReadDiagnosticDocument(
+            schemaVersion = 3,
+            limits =
+                limits.values.map {
+                    HostedLimitDocument(it.parameter.name, it.value, it.parameter.unit.name, it.source.name)
+                },
+            pid = ProcessHandle.current().pid(),
+            readId = readId.toString(),
+            correlation =
+                when (val value = correlation) {
+                    HostedReadCorrelation.Unbound -> HostedCorrelationDocument.Unbound
+                    is HostedReadCorrelation.HostObserved ->
+                        HostedCorrelationDocument.HostObserved(value.host.value.toString())
+                    is HostedReadCorrelation.Bound ->
+                        HostedCorrelationDocument.Bound(value.host.value.toString(), value.epoch.value)
+                },
+            durationNanos = durationNanos,
+            stages = stages,
+            semanticEntry =
+                when (val value = semanticEntry) {
+                    HostedSemanticEntry.NotEntered -> HostedEntryDocument.NotEntered
+                    is HostedSemanticEntry.Entered -> HostedEntryDocument.Entered(value.remainingDeadlineNanos)
+                },
+            counters = counters,
+            terminations = terminations,
+            outcome =
+                when (val value = outcome) {
+                    HostedDiagnosticOutcome.Completed -> HostedDiagnosticOutcomeDocument.Completed
+                    is HostedDiagnosticOutcome.Evaluated -> HostedDiagnosticOutcomeDocument.Evaluated(value.outcome)
+                    is HostedDiagnosticOutcome.Rejected ->
+                        HostedDiagnosticOutcomeDocument.Rejected(value.failure.code(), value.failure.detail())
+                },
+            unexpectedFailures =
+                unexpectedFailures.map {
+                    HostedUnexpectedFailureDocument(it.stage, it.kind, it.exceptionType, it.adapterFrames)
+                },
+        )
+    )
+
+private val diagnosticOutcomeJson =
+    kotlinx.serialization.json.Json {
+        classDiscriminator = "type"
+        encodeDefaults = true
+    }
+
+@Serializable
+private data class HostedReadDiagnosticDocument(
+    val schemaVersion: Int,
+    val limits: List<HostedLimitDocument>,
+    val pid: Long,
+    val readId: String,
+    val correlation: HostedCorrelationDocument,
+    val durationNanos: Long,
+    val stages: List<HostedReadStageDuration>,
+    val semanticEntry: HostedEntryDocument,
+    val counters: List<HostedNativeCount>,
+    val terminations: List<HostedNativeTermination>,
+    val outcome: HostedDiagnosticOutcomeDocument,
+    val unexpectedFailures: List<HostedUnexpectedFailureDocument>,
+)
+
+@Serializable
+private data class HostedLimitDocument(val parameter: String, val value: Int, val unit: String, val source: String)
+
+@Serializable
+private data class HostedUnexpectedFailureDocument(
+    val stage: IntellijReadStage,
+    val kind: IntellijReadUnexpectedKind,
+    val exceptionType: String,
+    val adapterFrames: List<String>,
+)
+
+@Serializable
+private sealed interface HostedCorrelationDocument {
+    @Serializable @SerialName("unbound") data object Unbound : HostedCorrelationDocument
+
+    @Serializable @SerialName("host-observed") data class HostObserved(val host: String) : HostedCorrelationDocument
+
+    @Serializable @SerialName("bound") data class Bound(val host: String, val epoch: Long) : HostedCorrelationDocument
+}
+
+@Serializable
+private sealed interface HostedEntryDocument {
+    @Serializable @SerialName("not-entered") data object NotEntered : HostedEntryDocument
+
+    @Serializable @SerialName("entered") data class Entered(val remainingDeadlineNanos: Long) : HostedEntryDocument
+}
 
 @Serializable
 internal sealed interface HostedDiagnosticOutcomeDocument {
     @Serializable @SerialName("completed") data object Completed : HostedDiagnosticOutcomeDocument
 
     @Serializable
+    @SerialName("evaluated")
+    data class Evaluated(val outcome: HostedEvaluationOutcome) : HostedDiagnosticOutcomeDocument
+
+    @Serializable
     @SerialName("rejected")
-    data class Rejected(val failure: String, val detail: JsonElement) : HostedDiagnosticOutcomeDocument
+    data class Rejected(
+        val failure: String,
+        /** Hosted failure detail is the existing schema-defined union of finite codes and structured causes. */
+        val detail: JsonElement,
+    ) : HostedDiagnosticOutcomeDocument
 }

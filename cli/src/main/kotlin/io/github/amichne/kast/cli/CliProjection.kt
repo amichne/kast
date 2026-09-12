@@ -59,7 +59,7 @@ class TypedCliProjection<
         return CliProjectionPreparation.Prepared(
             PreparedCliRequest(
                 wireBinding.operation,
-                hostedDemand(wireBinding.operation, request),
+                hostedEffect(wireBinding.operation, request),
                 requestDocument,
             ) { response ->
                 when (val decoded = wireBinding.decodeOutcome(response)) {
@@ -81,7 +81,7 @@ class TypedCliProjection<
 class PreparedCliRequest
 internal constructor(
     val operation: CanonicalOperation,
-    val hostedDemand: HostedRuntimeDemand,
+    val hostedEffect: HostedRequestEffect,
     val document: String,
     private val completion: (String) -> CliProjectionCompletion,
 ) {
@@ -95,14 +95,14 @@ internal constructor(
     fun complete(response: String): CliProjectionCompletion = completion(response)
 }
 
-private fun hostedDemand(
+private fun hostedEffect(
     operation: CanonicalOperation,
     request: OperationRequest,
-): HostedRuntimeDemand =
+): HostedRequestEffect =
     if (operation == CanonicalOperation.CHANGE_PLAN && request is ChangePlanRequest) {
-        HostedRuntimeDemand.ChangePlan(request.intent)
+        HostedRequestEffect.ChangePlan(request.intent)
     } else {
-        HostedRuntimeDemand.Operation(operation)
+        HostedRequestEffect.Operation(operation)
     }
 
 sealed interface CliProjectionPreparation {

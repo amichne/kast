@@ -37,11 +37,11 @@ sealed interface ArchitecturePolicyFailure {
 
     data class FeatureContractDependsOnRegistry(val featureContract: ModuleId) : ArchitecturePolicyFailure
 
-    data object MissingRuntimeComposition : ArchitecturePolicyFailure
+    data object MissingHostedRuntime : ArchitecturePolicyFailure
 
     data class UnexpectedCompositionOwner(val module: ModuleId) : ArchitecturePolicyFailure
 
-    data class InvalidRuntimeCompositionDependencies(
+    data class InvalidHostedRuntimeDependencies(
         val missing: Set<ModuleId>,
         val unexpected: Set<ModuleId>,
     ) : ArchitecturePolicyFailure

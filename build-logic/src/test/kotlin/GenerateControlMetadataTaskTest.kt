@@ -1,139 +1,53 @@
 import org.gradle.testfixtures.ProjectBuilder
-import org.junit.jupiter.api.Assertions.assertArrayEquals
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertNotEquals
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import support.tasks.GenerateControlMetadataTask
-import support.tasks.SemanticRuntimeDocument
-import support.tasks.controlMetadataJson
 import java.nio.file.Files
 import java.nio.file.Path
+import java.security.MessageDigest
+import java.util.HexFormat
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.*
 
 class GenerateControlMetadataTaskTest {
-    @TempDir
-    lateinit var temporaryDirectory: Path
+    @TempDir lateinit var directory: Path
 
     @Test
-    fun `operation registry input is copied byte for byte`() {
-        val runtimeArchive = write("runtime.zip", "runtime")
-        val runtimeDirectory = temporaryDirectory.resolve("runtime")
-        val pluginJar = runtimeDirectory.resolve(
-            "private-plugins/kast-indexer/lib/indexer-fixture-plugin.jar",
-        )
-        Files.createDirectories(pluginJar.parent)
-        Files.writeString(pluginJar, "plugin")
-        val license = write("LICENSE", "license\n")
-        val registry = write(
-            "operation-registry.json",
-            "{\"schemaVersion\":1,\"operationIds\":[\"workspace.inspect\"]}\n",
-        )
-        val output = temporaryDirectory.resolve("generated")
-        val project = ProjectBuilder.builder().withProjectDir(temporaryDirectory.toFile()).build()
-        val task = project.tasks.register(
-            "generateControlMetadataUnderTest",
-            GenerateControlMetadataTask::class.java,
-        ).get().apply {
-            this.runtimeArchive.set(runtimeArchive.toFile())
-            this.runtimeDirectory.set(runtimeDirectory.toFile())
-            this.licenseFile.set(license.toFile())
-            this.operationRegistryFile.set(registry.toFile())
-            this.configurationCatalogueFile.set(write("configuration-schema.json", "{\"parameters\":[{\"key\":\"KAST_INDEXER_MAX_HEAP\"}]}\n").toFile())
-            productVersion.set("1.0.\"quoted\\build")
-            ideaBuild.set("262")
-            kotlinPluginBuild.set("262.9437.185-IJ")
-            runtimeBaseUrl.set("https://example.test/runtime")
-            outputDirectory.set(output.toFile())
-        }
-
-        task.generate()
-
-        assertArrayEquals(
-            Files.readAllBytes(registry),
-            Files.readAllBytes(output.resolve("operation-registry.json")),
-        )
-        assertArrayEquals(
-            Files.readAllBytes(task.configurationCatalogueFile.get().asFile.toPath()),
-            Files.readAllBytes(output.resolve("configuration-schema.json")),
-        )
-        val runtime = controlMetadataJson.decodeFromString(
-            SemanticRuntimeDocument.serializer(),
-            Files.readString(output.resolve("semantic-runtime.json")),
-        )
-        assertEquals("1.0.\"quoted\\build", runtime.productVersion)
-        assertEquals("262", runtime.ideaBuild)
-        assertEquals("262.9437.185-IJ", runtime.kotlinPluginBuild)
-        assertEquals(
-            listOf(
-                "kast-indexer",
-                "runtime-libs/",
-                "private-plugins/kast-indexer/",
-            ),
-            runtime.layout.requiredEntries,
-        )
-    }
-
-    @Test
-    fun `Kast payload digest covers every private extension file`() {
-        val runtimeArchive = write("runtime.zip", "runtime")
-        val runtimeDirectory = temporaryDirectory.resolve("runtime")
-        writeRuntimeFile(
-            runtimeDirectory,
-            "private-plugins/kast-indexer/lib/indexer-fixture-plugin.jar",
-            "indexer",
-        )
-        val changeAdapter = writeRuntimeFile(
-            runtimeDirectory,
-            "private-plugins/kast-indexer/lib/change-intellij.jar",
-            "change-v1",
-        )
-        val output = temporaryDirectory.resolve("generated")
-        val project = ProjectBuilder.builder().withProjectDir(temporaryDirectory.toFile()).build()
-        val task = project.tasks.register(
-            "generatePayloadIdentityUnderTest",
-            GenerateControlMetadataTask::class.java,
-        ).get().apply {
-            this.runtimeArchive.set(runtimeArchive.toFile())
-            this.runtimeDirectory.set(runtimeDirectory.toFile())
-            this.licenseFile.set(write("LICENSE", "license\n").toFile())
-            this.operationRegistryFile.set(
-                write("operation-registry.json", "{\"schemaVersion\":1}").toFile(),
-            )
-            this.configurationCatalogueFile.set(write("configuration-schema.json", "{\"parameters\":[]}").toFile())
+    fun `control metadata binds the actual hosted plugin and copies authoritative schemas`() {
+        val plugin = write("kast-ide-hosted.zip", "complete-plugin-archive")
+        val registry = write("registry.json", Json.encodeToString(RegistryFixture(1, listOf("query.run"))))
+        val catalogue = write("catalogue.json", Json.encodeToString(CatalogueFixture(emptyList())))
+        val output = directory.resolve("generated")
+        val project = ProjectBuilder.builder().withProjectDir(directory.toFile()).build()
+        val task = project.tasks.register("metadata", GenerateControlMetadataTask::class.java).get().apply {
+            pluginArchive.set(plugin.toFile())
+            licenseFile.set(write("LICENSE", "license").toFile())
+            operationRegistryFile.set(registry.toFile())
+            configurationCatalogueFile.set(catalogue.toFile())
             productVersion.set("1.0.0")
             ideaBuild.set("262.9437.185")
             kotlinPluginBuild.set("262.9437.185-IJ")
-            runtimeBaseUrl.set("https://example.test/runtime")
             outputDirectory.set(output.toFile())
         }
-
         task.generate()
-        val firstDigest = generatedRuntime(output).kastPluginSha256
-
-        Files.writeString(changeAdapter, "change-v2")
+        val manifest = Json.parseToJsonElement(Files.readString(output.resolve("ide-host.json"))).jsonObject
+        assertEquals(setOf("schemaVersion", "productVersion", "execution", "ideaBuild", "kotlinPluginBuild", "fileName", "sha256", "bytes"), manifest.keys)
+        assertEquals(JsonPrimitive("existing_ide"), manifest["execution"])
+        assertEquals(JsonPrimitive("kast-ide-hosted.zip"), manifest["fileName"])
+        val expectedDigest = "sha256:" + HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(plugin)))
+        assertEquals(JsonPrimitive(expectedDigest), manifest["sha256"])
+        assertEquals(JsonPrimitive(Files.size(plugin)), manifest["bytes"])
+        assertFalse(Files.exists(output.resolve("semantic-runtime.json")))
+        assertArrayEquals(Files.readAllBytes(registry), Files.readAllBytes(output.resolve("operation-registry.json")))
+        assertArrayEquals(Files.readAllBytes(catalogue), Files.readAllBytes(output.resolve("configuration-schema.json")))
+        Files.writeString(plugin, "changed-plugin-archive")
         task.generate()
-
-        assertNotEquals(firstDigest, generatedRuntime(output).kastPluginSha256)
+        val changed = Json.parseToJsonElement(Files.readString(output.resolve("ide-host.json"))).jsonObject
+        assertNotEquals(manifest["sha256"], changed["sha256"])
     }
-
-    private fun generatedRuntime(output: Path): SemanticRuntimeDocument =
-        controlMetadataJson.decodeFromString(
-            SemanticRuntimeDocument.serializer(),
-            Files.readString(output.resolve("semantic-runtime.json")),
-        )
-
-    private fun writeRuntimeFile(
-        runtimeDirectory: Path,
-        relative: String,
-        content: String,
-    ): Path = runtimeDirectory.resolve(relative).also { path ->
-        Files.createDirectories(path.parent)
-        Files.writeString(path, content)
-    }
-
-    private fun write(relative: String, content: String): Path =
-        temporaryDirectory.resolve(relative).also { path ->
-            Files.createDirectories(path.parent)
-            Files.writeString(path, content)
-        }
+    private fun write(name: String, content: String): Path = directory.resolve(name).also { Files.writeString(it, content) }
+    @Serializable private data class RegistryFixture(val schemaVersion: Int, val operationIds: List<String>)
+    @Serializable private data class CatalogueFixture(val parameters: List<String>)
 }

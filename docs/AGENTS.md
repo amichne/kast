@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-11 | hash: e4e2a9470a19 -->
+<!-- generated: 2026-09-12 | hash: 84e34b1b2d26 -->
 
 # docs
 

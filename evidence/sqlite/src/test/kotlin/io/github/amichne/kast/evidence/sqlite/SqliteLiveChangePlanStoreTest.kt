@@ -180,12 +180,19 @@ class SqliteLiveChangePlanStoreTest {
     fun `opening live storage preserves legacy plan rows and durable recovery records`() {
         val location = location()
         val legacy =
-            assertInstanceOf<SqliteHostedMutationAuthorityOpenResult.Opened>(
-                SqliteDurableChangeAuthority.openHosted(location)
+            assertInstanceOf<SqliteMutationRecoveryJournalOpenResult.Opened>(
+                SqliteMutationRecoveryJournal.open(location)
             )
         val recovery = MutationRecoveryEvidenceFixture()
-        assertInstanceOf<MutationRecoveryPersistResult.Durable<*>>(legacy.recoveryJournal.prepare(recovery.prepared))
+        assertInstanceOf<MutationRecoveryPersistResult.Durable<*>>(legacy.journal.prepare(recovery.prepared))
         database(location) { connection ->
+            connection.createStatement().use {
+                it.execute(
+                    """CREATE TABLE hosted_change_plan(
+                        identity TEXT PRIMARY KEY, plan_id TEXT, document TEXT, document_sha256 TEXT
+                    )"""
+                )
+            }
             connection
                 .prepareStatement(
                     "INSERT INTO hosted_change_plan(identity, plan_id, document, document_sha256) VALUES (?, ?, ?, ?)"
@@ -201,15 +208,13 @@ class SqliteLiveChangePlanStoreTest {
 
         assertInstanceOf<LiveChangePlanIssuance.Issued>(open(location).issuePlan(fixture()))
         val reopened =
-            assertInstanceOf<SqliteHostedMutationAuthorityOpenResult.Opened>(
-                SqliteDurableChangeAuthority.openHosted(location)
+            assertInstanceOf<SqliteMutationRecoveryJournalOpenResult.Opened>(
+                SqliteMutationRecoveryJournal.open(location)
             )
 
         assertEquals(
             recovery.prepared.digest,
-            assertInstanceOf<MutationRecoveryLoadResult.Found>(reopened.recoveryJournal.load(recovery.binding))
-                .record
-                .digest,
+            assertInstanceOf<MutationRecoveryLoadResult.Found>(reopened.journal.load(recovery.binding)).record.digest,
         )
         assertEquals(
             "legacy-record-preserved",
@@ -226,7 +231,7 @@ class SqliteLiveChangePlanStoreTest {
 
     private fun location(): MutationDatabaseLocation =
         HostedWorkspaceStateLocation.locate(
-                KastUserStateRoot.parse(temporary.toString()).refined(),
+                KastUserStateRoot.parse(temporary.toRealPath().toString()).refined(),
                 CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined(),
             )
             .refined()

@@ -4,7 +4,6 @@ import io.github.amichne.kast.cli.command.CliAction
 import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
 import io.github.amichne.kast.cli.command.CliCommandParsing
-import io.github.amichne.kast.cli.command.CliLifecycleCommand
 import io.github.amichne.kast.cli.command.CliProductCommand
 import io.github.amichne.kast.cli.command.CliRequestDocumentInput
 import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
@@ -127,22 +126,12 @@ class CliBoundaryContractTest {
     }
 
     @Test
-    fun `exactly two local lifecycle commands are admitted without semantic arguments`() {
-        val commands =
-            mapOf(
-                "start" to CliLifecycleCommand.START,
-                "stop" to CliLifecycleCommand.STOP,
-            )
-
+    fun `retired lifecycle commands have no public grammar or semantic arguments`() {
         val factory = commandGraphFactory()
-        commands.forEach { (argument, command) ->
-            val parsed = factory.parse(listOf(argument))
-            assertTrue(parsed is CliCommandParsing.Parsed)
-            val action = (parsed as CliCommandParsing.Parsed).action
-            assertTrue(action is CliAction.Lifecycle)
-            assertEquals(command, (action as CliAction.Lifecycle).command)
-        }
-        assertEquals(setOf("start", "stop"), factory.surface.lifecycleCommands.map { it.command }.toSet())
+        for (command in listOf("start", "stop")) assertTrue(
+            factory.parse(listOf(command)) is CliCommandParsing.Rejected
+        )
+        assertEquals(emptySet<String>(), factory.surface.lifecycleCommands.map { it.command }.toSet())
         listOf(listOf("status"), listOf("product", "inspect"), listOf("index", "sync"), listOf("topology", "build"))
             .forEach {
                 assertTrue(factory.parse(it) is CliCommandParsing.Rejected, it.toString())

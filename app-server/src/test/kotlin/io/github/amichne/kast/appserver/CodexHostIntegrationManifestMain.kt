@@ -272,7 +272,7 @@ private data class PrivateRegistryStatus(
     val workspaces: List<PrivateRegisteredWorkspace>,
 ) {
     init {
-        require(revision > 0 && count in 1..CoordinatorStatusProtocol.maximumWorkers && count == workspaces.size) {
+        require(revision > 0 && count in 1..10_000 && count == workspaces.size) {
             "Registry observation is inconsistent"
         }
         require(workspaces.map { it.workspaceId }.distinct().size == count) { "Registry contains duplicate identities" }

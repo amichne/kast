@@ -32,9 +32,7 @@ class LocalInstallationTest(unittest.TestCase):
             (product / 'share/kast').mkdir(parents=True)
             (product / 'bin/kast').write_text('#!/bin/sh\nexit 0\n')
             (product / 'bin/kast').chmod(0o755)
-            (product / 'share/kast/semantic-runtime.json').write_text(json.dumps({'productVersion': '1.2.3'}))
-            runtime = root / 'kast-semantic-runtime-1.2.3-macos-aarch64.zip'
-            runtime.write_text('fixture archive')
+            (product / 'share/kast/ide-host.json').write_text(json.dumps({'productVersion': '1.2.3'}))
             plugin = root / 'kast-ide-hosted-v1.2.3-idea-262.zip'
             plugin.write_text('fixture plugin')
             prefix = root / 'prefix'
@@ -46,7 +44,7 @@ class LocalInstallationTest(unittest.TestCase):
                 markers.append(marker)
             env = {'PATH': '/usr/bin:/bin', 'HOME': str(root), 'TMPDIR': str(root),
                    'KAST_LOCAL_PREFIX': str(prefix), 'KAST_LOCAL_CONTROL_PRODUCT': str(product),
-                   'KAST_LOCAL_RUNTIME_ARCHIVE': str(runtime), 'KAST_LOCAL_HOSTED_PLUGIN_ARCHIVE': str(plugin), 'KAST_LOCAL_JAVA_EXECUTABLE': '/usr/bin/true',
+                   'KAST_LOCAL_HOSTED_PLUGIN_ARCHIVE': str(plugin), 'KAST_LOCAL_JAVA_EXECUTABLE': '/usr/bin/true',
                    'KAST_LOCAL_JAVA_HOME': str(root)}
             result = subprocess.run(['bash', str(script)], env=env, text=True, capture_output=True)
             self.assertEqual(0, result.returncode, result.stderr)

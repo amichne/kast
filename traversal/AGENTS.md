@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-11 | hash: 040393c2bd3c -->
+<!-- generated: 2026-09-12 | hash: 72df15c7422e -->
 
 # traversal
 
@@ -28,4 +28,4 @@ Defines bounded multi-hop traversal plans/results and executes them over relatio
 
 - Start with the [repository knowledge](../knowledge/modules/semantic-reads.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
 
-- Start with plan bounds and continuation state, then follow relation reads into `relation` or topology-backed handlers in `runtime/composition`.
+- Start with plan bounds and continuation state, then follow relation reads into `relation` and hosted request admission in `query/protocol`.

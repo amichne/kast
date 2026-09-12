@@ -56,11 +56,12 @@ class HostedApprovalPreparationTest {
         val response =
             Json.parseToJsonElement(
                     prepareHostedApprovalResponse(
-                        plan = fixture.plan,
-                        effect = LiveChangeEffect.CHANGE_RECOVER,
-                        owner = fixture.owner,
-                        approvals = approvals,
-                    )
+                            plan = fixture.plan,
+                            effect = LiveChangeEffect.CHANGE_RECOVER,
+                            owner = fixture.owner,
+                            approvals = approvals,
+                        )
+                        .document
                 )
                 .jsonObject
         assertEquals(JsonPrimitive("CHANGE_RECOVER"), response["operation"])
@@ -75,11 +76,12 @@ class HostedApprovalPreparationTest {
         val response =
             Json.parseToJsonElement(
                     prepareHostedApprovalResponse(
-                        plan = fixture.plan,
-                        effect = LiveChangeEffect.CHANGE_APPLY,
-                        owner = fixture.owner,
-                        approvals = approvals,
-                    )
+                            plan = fixture.plan,
+                            effect = LiveChangeEffect.CHANGE_APPLY,
+                            owner = fixture.owner,
+                            approvals = approvals,
+                        )
+                        .document
                 )
                 .jsonObject
         assertEquals(setOf("version", "operation", "root", "host", "planId", "challenge", "preview"), response.keys)

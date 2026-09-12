@@ -55,9 +55,9 @@ trap 'exit 143' TERM
 version="0.$(date -u +%Y%m%d).$(date -u +%H%M%S | sed 's/^0*//;s/^$/0/')"
 base_url="https://github.com/amichne/kast/releases/download"
 printf 'kast-install: building checkout %s (%s)\n' "$checkout" "$version" >&2
-KAST_RUNTIME_BASE_URL="$base_url/v$version" "$checkout/gradlew" --console=plain \
-  "-Pversion=$version" "-PhostedIdeaHome=$idea_home" assembleKastControlDist assembleKastSemanticRuntimeDist :runtime:hosted:hostedPlugin >&2
-for name in "kast-control-v$version-macos-aarch64.tar.gz" "kast-semantic-runtime-$version-macos-aarch64.zip"; do
+"$checkout/gradlew" --console=plain \
+  "-Pversion=$version" "-PhostedIdeaHome=$idea_home" assembleKastControlDist :runtime:hosted:hostedPlugin >&2
+for name in "kast-control-v$version-macos-aarch64.tar.gz"; do
   cp "$checkout/build/distributions/$name" "$scratch/$name"
   (cd "$scratch" && shasum -a 256 "$name" > "$name.sha256")
 done
@@ -87,12 +87,12 @@ KAST_INSTALL_ASSETS_DIRECTORY="$scratch" \
 if [[ $mode == session ]]; then
   physical_release=$(CDPATH='' cd -- "$KAST_INSTALL_ROOT/current" && pwd -P)
   case "$physical_release" in "$KAST_INSTALL_ROOT/versions/"*) ;; *) echo 'kast-install: session release ownership rejected' >&2; exit 1 ;; esac
-  export KAST_RUNTIME_STORE="$physical_release/runtime-payloads" KAST_RUNTIME_DIRECTORY="$physical_release/state/run"
-  export KAST_CACHE_ROOT="$physical_release/state/cache"
+  export KAST_RUNTIME_DIRECTORY="$physical_release/state/run"
   activation="$session_root/activate.sh"
   {
     printf '# Source in Bash or Zsh. Session files remain available until explicitly removed.\n'
-    for key in KAST_INSTALL_ROOT KAST_BIN_DIR KAST_RUNTIME_STORE KAST_RUNTIME_DIRECTORY KAST_CACHE_ROOT KAST_ENABLE_LAUNCHD KAST_ENABLE_APP_SERVER; do
+    printf 'unset KAST_RUNTIME_STORE KAST_CACHE_ROOT\n'
+    for key in KAST_INSTALL_ROOT KAST_BIN_DIR KAST_RUNTIME_DIRECTORY KAST_ENABLE_LAUNCHD KAST_ENABLE_APP_SERVER; do
       printf 'export %s=%s\n' "$key" "$(quote "${!key}")"
     done
     printf 'export KAST_SESSION_ROOT=%s\n' "$(quote "$session_root")"

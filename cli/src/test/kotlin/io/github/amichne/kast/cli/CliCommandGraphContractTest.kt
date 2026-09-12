@@ -162,21 +162,6 @@ class CliCommandGraphContractTest {
                     boundaryTouched()
                     error("root discovery must not run")
                 },
-            endpointLocator =
-                RuntimeEndpointLocator {
-                    boundaryTouched()
-                    error("endpoint lookup must not run")
-                },
-            runtimeDemander =
-                RuntimeDemander { _, _ ->
-                    boundaryTouched()
-                    error("runtime demand must not run")
-                },
-            wireClient =
-                WireClient { _, _ ->
-                    boundaryTouched()
-                    error("wire exchange must not run")
-                },
             localMetadata =
                 when (
                     val admitted =
@@ -188,12 +173,10 @@ class CliCommandGraphContractTest {
                     is CliLocalMetadataAdmission.Admitted -> admitted.metadata
                     is CliLocalMetadataAdmission.Rejected -> error("metadata: ${admitted.failure}")
                 },
-            lifecycle = ExactRootRuntimeLifecycle(),
-            productInspector =
-                ProductInspector {
-                    boundaryTouched()
-                    error("product inspection must not run")
-                },
+            productVersion =
+                (io.github.amichne.kast.protocol.contract.KastPluginVersion.parse("1.2.3")
+                        as io.github.amichne.kast.kernel.Refinement.Refined)
+                    .value,
         )
 
     private fun commandGraphFactory(): CliCommandGraphFactory =
