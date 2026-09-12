@@ -1,3 +1,15 @@
+import conventions.jsoncontracts.KnowledgeDocsRequest
+import conventions.jsoncontracts.KnowledgeDocsDocument
+import conventions.jsoncontracts.KnowledgeDocsFailureCode
+import conventions.jsoncontracts.extractKnowledgeDocs
+import conventions.jsoncontracts.knowledgeDocsJson
+import java.nio.file.Files
+import java.nio.file.Path
+import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.io.TempDir
 import conventions.jsoncontracts.KotlinDocumentationScan
 import conventions.jsoncontracts.KotlinDocumentationScanner
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -6,6 +18,8 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class KotlinDocumentationScannerTest {
+    @TempDir lateinit var root: Path
+
     @Test
     fun `nested declaration identity distinguishes identical member signatures`() {
         val declarations = scan(
@@ -111,6 +125,35 @@ class KotlinDocumentationScannerTest {
         val declarations = scan("fun duplicate() = Unit\nfun duplicate() = Unit")
         assertEquals(2, declarations.size)
     }
+
+    @Test
+    fun `extraction serializes explicit complete evidence without failure fields`() {
+        Files.writeString(root.resolve("Example.kt"), "/** Example docs. */ class Example")
+        val result = extractKnowledgeDocs(request(listOf("Example.kt")))
+        val complete = assertInstanceOf(KnowledgeDocsDocument.Complete::class.java, result)
+        assertEquals("Example docs.", complete.declarations.single().documentation)
+        val encoded = knowledgeDocsJson.encodeToJsonElement<KnowledgeDocsDocument>(result).jsonObject
+        assertEquals(setOf("status", "schemaVersion", "evidence", "declarations"), encoded.keys)
+        assertEquals("complete", encoded.getValue("status").jsonPrimitive.content)
+        assertEquals("1", encoded.getValue("schemaVersion").jsonPrimitive.content)
+        assertEquals("KOTLIN_PSI_SYNTAX", encoded.getValue("evidence").jsonPrimitive.content)
+    }
+
+    @Test
+    fun `extraction retains finite failures without publishing partial declarations`() {
+        Files.writeString(root.resolve("Example.kt"), "class Example")
+        Files.writeString(root.resolve("Invalid.kt"), "class {")
+        Files.createSymbolicLink(root.resolve("Linked.kt"), root.resolve("Example.kt"))
+        val result = extractKnowledgeDocs(request(listOf("Example.kt", "Missing.kt", "Invalid.kt", "Linked.kt", "Java.java")))
+        val rejected = assertInstanceOf(KnowledgeDocsDocument.Rejected::class.java, result)
+        assertEquals(KnowledgeDocsFailureCode.entries.toSet(), rejected.failures.map { it.reason }.toSet())
+        val encoded = knowledgeDocsJson.encodeToJsonElement<KnowledgeDocsDocument>(result).jsonObject
+        assertEquals(setOf("status", "schemaVersion", "failures"), encoded.keys)
+        assertEquals("rejected", encoded.getValue("status").jsonPrimitive.content)
+    }
+
+    private fun request(sources: List<String>) =
+        KnowledgeDocsRequest(root.toRealPath().toString(), sources, root.resolve("output.json").toString())
 
     private fun scan(source: String) =
         KotlinDocumentationScanner().use { scanner ->

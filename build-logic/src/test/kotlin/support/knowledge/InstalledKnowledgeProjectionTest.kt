@@ -1,5 +1,9 @@
 package support.knowledge
 
+import conventions.jsoncontracts.KnowledgeDeclarationKind
+import conventions.jsoncontracts.KnowledgeDeclarationEvidence
+import conventions.jsoncontracts.KnowledgeDeclarationLimitation
+
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -14,8 +18,8 @@ class InstalledKnowledgeProjectionTest {
             InstalledKnowledgeInput(
                 productVersion = "1.0.0",
                 sourceRevision = "0123456789012345678901234567890123456789",
-                declarationEvidence = "KOTLIN_PSI_SYNTAX",
-                declarationLimitations = listOf("NO_TYPE_RESOLUTION"),
+                declarationEvidence = KnowledgeDeclarationEvidence.KOTLIN_PSI_SYNTAX,
+                declarationLimitations = listOf(KnowledgeDeclarationLimitation.NO_TYPE_RESOLUTION),
                 modules = listOf(
                     InstalledKnowledgeModuleInput(":kernel", "kernel", listOf("AGENTS.md", "kernel/AGENTS.md")),
                 ),
@@ -29,7 +33,7 @@ class InstalledKnowledgeProjectionTest {
                         projectPath = ":kernel",
                         sourcePath = "kernel/src/main/kotlin/example/Outcome.kt",
                         declarationPath = "Outcome",
-                        kind = "interface",
+                        kind = KnowledgeDeclarationKind.INTERFACE,
                         name = "Outcome",
                         signature = "sealed interface Outcome<out T>",
                         documentation = documentation,
@@ -61,7 +65,7 @@ class InstalledKnowledgeProjectionTest {
             projectPath = ":kernel",
             sourcePath = "kernel/src/main/kotlin/example/Owners.kt",
             declarationPath = "First.read",
-            kind = "function",
+            kind = KnowledgeDeclarationKind.FUNCTION,
             name = "read",
             signature = "fun read(): String",
             documentation = "Read.",
@@ -71,7 +75,7 @@ class InstalledKnowledgeProjectionTest {
             InstalledKnowledgeInput(
                 productVersion = "1.0.0",
                 sourceRevision = "0123456789012345678901234567890123456789",
-                declarationEvidence = "KOTLIN_PSI_SYNTAX",
+                declarationEvidence = KnowledgeDeclarationEvidence.KOTLIN_PSI_SYNTAX,
                 declarationLimitations = emptyList(),
                 modules = listOf(InstalledKnowledgeModuleInput(":kernel", "kernel", listOf("AGENTS.md"))),
                 guides = listOf(InstalledKnowledgeGuideInput("AGENTS.md", ".", "root")),
@@ -89,7 +93,7 @@ class InstalledKnowledgeProjectionTest {
             InstalledKnowledgeInput(
                 productVersion = "1.0.0",
                 sourceRevision = "0123456789012345678901234567890123456789",
-                declarationEvidence = "KOTLIN_PSI_SYNTAX",
+                declarationEvidence = KnowledgeDeclarationEvidence.KOTLIN_PSI_SYNTAX,
                 declarationLimitations = emptyList(),
                 modules = emptyList(),
                 guides = emptyList(),
@@ -98,7 +102,7 @@ class InstalledKnowledgeProjectionTest {
                         projectPath = ":unknown",
                         sourcePath = "x.kt",
                         declarationPath = "X",
-                        kind = "class",
+                        kind = KnowledgeDeclarationKind.CLASS,
                         name = "X",
                         signature = "class X",
                         documentation = "X",

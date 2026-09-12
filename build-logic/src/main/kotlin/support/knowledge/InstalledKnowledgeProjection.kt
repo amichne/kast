@@ -1,5 +1,9 @@
 package support.knowledge
 
+import conventions.jsoncontracts.KnowledgeDeclarationKind
+import conventions.jsoncontracts.KnowledgeDeclarationEvidence
+import conventions.jsoncontracts.KnowledgeDeclarationLimitation
+
 import java.security.MessageDigest
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -7,8 +11,8 @@ import kotlinx.serialization.json.Json
 internal data class InstalledKnowledgeInput(
     val productVersion: String,
     val sourceRevision: String,
-    val declarationEvidence: String,
-    val declarationLimitations: List<String>,
+    val declarationEvidence: KnowledgeDeclarationEvidence,
+    val declarationLimitations: List<KnowledgeDeclarationLimitation>,
     val modules: List<InstalledKnowledgeModuleInput>,
     val guides: List<InstalledKnowledgeGuideInput>,
     val declarations: List<InstalledKnowledgeDeclarationInput>,
@@ -30,7 +34,7 @@ internal data class InstalledKnowledgeDeclarationInput(
     val projectPath: String,
     val sourcePath: String,
     val declarationPath: String,
-    val kind: String,
+    val kind: KnowledgeDeclarationKind,
     val name: String,
     val signature: String,
     val documentation: String,
@@ -165,7 +169,7 @@ internal object InstalledKnowledgeProjection {
     private fun declarationId(declaration: InstalledKnowledgeDeclarationInput): String =
         sha256(
             "${declaration.projectPath}\u0000${declaration.sourcePath}\u0000${declaration.declarationPath}" +
-                "\u0000${declaration.kind}\u0000${declaration.signature}"
+                "\u0000${declaration.kind.wireName()}\u0000${declaration.signature}"
         ).removePrefix("sha256:")
 
     private fun moduleResource(projectPath: String): String =
@@ -185,4 +189,9 @@ internal object InstalledKnowledgeProjection {
     private fun sha256(value: String): String =
         "sha256:" + MessageDigest.getInstance("SHA-256").digest(value.encodeToByteArray())
             .joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
+}
+
+private fun KnowledgeDeclarationKind.wireName(): String = when (this) {
+    KnowledgeDeclarationKind.ENUM_ENTRY -> "enum-entry"
+    else -> name.lowercase()
 }

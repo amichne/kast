@@ -10,7 +10,8 @@ import org.jetbrains.kotlin.com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.KtClass
-import org.jetbrains.kotlin.psi.KtClassOrObject
+import org.jetbrains.kotlin.psi.KtClassBody
+import org.jetbrains.kotlin.psi.KtEnumEntry
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtNamedFunction
@@ -23,7 +24,7 @@ import org.jetbrains.kotlin.psi.KtTypeAlias
 /** Detached syntactic documentation extracted from one parsed Kotlin declaration. */
 data class KotlinDocumentedDeclaration(
     val declarationPath: String,
-    val kind: String,
+    val kind: KnowledgeDeclarationKind,
     val name: String,
     val signature: String,
     val documentation: String,
@@ -31,7 +32,7 @@ data class KotlinDocumentedDeclaration(
 
 sealed interface KotlinDocumentationScan {
     data class Accepted(val declarations: List<KotlinDocumentedDeclaration>) : KotlinDocumentationScan
-    data class Rejected(val reason: String) : KotlinDocumentationScan
+    data class Rejected(val reason: KnowledgeDocsFailureCode) : KotlinDocumentationScan
 }
 
 /**
@@ -56,56 +57,76 @@ class KotlinDocumentationScanner : AutoCloseable {
     fun scan(fileName: String, content: String): KotlinDocumentationScan {
         val file = factory.createFile(fileName, content)
         if (PsiTreeUtil.findChildOfType(file, PsiErrorElement::class.java) != null) {
-            return KotlinDocumentationScan.Rejected("invalid-kotlin")
+            return KotlinDocumentationScan.Rejected(KnowledgeDocsFailureCode.INVALID_KOTLIN)
         }
         val declarations = mutableListOf<KotlinDocumentedDeclaration>()
         file.accept(
             object : KtTreeVisitorVoid() {
                 override fun visitNamedDeclaration(declaration: KtNamedDeclaration) {
-                    if (declaration.isKnowledgeDeclaration()) {
-                        declarations += declaration.detach()
+                    val header = declaration.knowledgeHeader()
+                    if (header != null && declaration.isPubliclyReachable()) {
+                        declarations += declaration.detach(header)
                     }
                     super.visitNamedDeclaration(declaration)
                 }
             },
         )
         return KotlinDocumentationScan.Accepted(
-            declarations.distinct().sortedWith(compareBy({ it.declarationPath }, { it.kind }, { it.signature })),
+            declarations.sortedWith(compareBy({ it.declarationPath }, { it.kind }, { it.signature })),
         )
     }
 
     override fun close() = Disposer.dispose(disposable)
 }
 
-private fun KtNamedDeclaration.isKnowledgeDeclaration(): Boolean =
-    name != null &&
-        (this is KtClassOrObject || this is KtNamedFunction || this is KtProperty || this is KtTypeAlias) &&
-        !hasModifier(KtTokens.PRIVATE_KEYWORD) &&
-        !hasModifier(KtTokens.INTERNAL_KEYWORD) &&
-        !hasHiddenOwner() &&
-        !isLocalDeclaration()
-
-private fun KtNamedDeclaration.hasHiddenOwner(): Boolean =
-    generateSequence(parent) { it.parent }
-        .takeWhile { it !is KtFile }
-        .filterIsInstance<KtNamedDeclaration>()
-        .any { owner ->
-            owner.hasModifier(KtTokens.PRIVATE_KEYWORD) || owner.hasModifier(KtTokens.INTERNAL_KEYWORD)
+private fun KtNamedDeclaration.isPubliclyReachable(): Boolean =
+    name != null && !hasModifier(KtTokens.PRIVATE_KEYWORD) && !hasModifier(KtTokens.INTERNAL_KEYWORD) &&
+        when (val container = parent) {
+            is KtFile -> true
+            is KtClassBody -> (container.parent as? KtNamedDeclaration)?.isPubliclyReachable() == true
+            else -> false
         }
 
-private fun KtNamedDeclaration.isLocalDeclaration(): Boolean =
-    generateSequence(parent) { it.parent }
-        .takeWhile { it !is KtFile }
-        .any { it is KtNamedFunction }
+private data class KnowledgeHeader(val kind: KnowledgeDeclarationKind, val endOffset: Int)
 
-private fun KtNamedDeclaration.detach(): KotlinDocumentedDeclaration =
-    KotlinDocumentedDeclaration(
+private fun KtNamedDeclaration.knowledgeHeader(): KnowledgeHeader? = when (this) {
+    is KtEnumEntry -> KnowledgeHeader(KnowledgeDeclarationKind.ENUM_ENTRY, body?.textRange?.startOffset ?: textRange.endOffset)
+    is KtClass -> KnowledgeHeader(
+        when {
+            isInterface() -> KnowledgeDeclarationKind.INTERFACE
+            isEnum() -> KnowledgeDeclarationKind.ENUM
+            isAnnotation() -> KnowledgeDeclarationKind.ANNOTATION
+            else -> KnowledgeDeclarationKind.CLASS
+        },
+        body?.textRange?.startOffset ?: textRange.endOffset,
+    )
+    is KtObjectDeclaration -> KnowledgeHeader(KnowledgeDeclarationKind.OBJECT, body?.textRange?.startOffset ?: textRange.endOffset)
+    is KtNamedFunction -> KnowledgeHeader(
+        KnowledgeDeclarationKind.FUNCTION,
+        equalsToken?.textRange?.startOffset ?: bodyExpression?.textRange?.startOffset ?: textRange.endOffset,
+    )
+    is KtProperty -> KnowledgeHeader(
+        if (isVar) KnowledgeDeclarationKind.VARIABLE else KnowledgeDeclarationKind.PROPERTY,
+        listOfNotNull(equalsToken, delegate, getter, setter).minOfOrNull { it.textRange.startOffset } ?: textRange.endOffset,
+    )
+    is KtTypeAlias -> KnowledgeHeader(KnowledgeDeclarationKind.TYPEALIAS, textRange.endOffset)
+    else -> null
+}
+
+private fun KtNamedDeclaration.detach(header: KnowledgeHeader): KotlinDocumentedDeclaration {
+    val signature = text.substring(0, header.endOffset - textRange.startOffset)
+    val documentationRange = docComment?.textRange
+    return KotlinDocumentedDeclaration(
         declarationPath = syntacticPath(),
-        kind = declarationKind(),
+        kind = header.kind,
         name = requireNotNull(name),
-        signature = declarationSignature(),
+        signature = if (documentationRange == null) signature.trim() else signature.removeRange(
+            documentationRange.startOffset - textRange.startOffset,
+            documentationRange.endOffset - textRange.startOffset,
+        ).trim(),
         documentation = renderKDoc(docComment?.text.orEmpty()),
     )
+}
 
 private fun KtNamedDeclaration.syntacticPath(): String =
     (
@@ -116,64 +137,6 @@ private fun KtNamedDeclaration.syntacticPath(): String =
             .toList()
             .asReversed() + requireNotNull(name)
     ).joinToString(".")
-
-private fun KtNamedDeclaration.declarationKind(): String =
-    when (this) {
-        is KtObjectDeclaration -> "object"
-        is KtClass ->
-            when {
-                isInterface() -> "interface"
-                isEnum() -> "enum"
-                isAnnotation() -> "annotation"
-                else -> "class"
-            }
-        is KtNamedFunction -> "function"
-        is KtProperty -> if (isVar) "variable" else "property"
-        is KtTypeAlias -> "typealias"
-        else -> error("unsupported documented declaration ${this::class.simpleName}")
-    }
-
-private fun KtNamedDeclaration.declarationSignature(): String =
-    when (this) {
-        is KtClassOrObject -> buildString {
-            append(modifierPrefix())
-            append(declarationKind()).append(' ').append(requireNotNull(name))
-            typeParameterList?.text?.let { append(it) }
-            if (this@declarationSignature is KtClass) {
-                primaryConstructor?.valueParameterList?.text?.let { append(it) }
-            }
-            if (superTypeListEntries.isNotEmpty()) {
-                append(" : ")
-                append(superTypeListEntries.joinToString(", ") { it.text })
-            }
-        }
-        is KtNamedFunction -> buildString {
-            append(modifierPrefix())
-            append("fun ")
-            typeParameterList?.text?.let { append(it).append(' ') }
-            receiverTypeReference?.text?.let { append(it).append('.') }
-            append(requireNotNull(name))
-            append(valueParameterList?.text ?: "()")
-            typeReference?.text?.let { append(": ").append(it) }
-        }
-        is KtProperty -> buildString {
-            append(modifierPrefix())
-            append(if (isVar) "var " else "val ")
-            receiverTypeReference?.text?.let { append(it).append('.') }
-            append(requireNotNull(name))
-            typeReference?.text?.let { append(": ").append(it) }
-        }
-        is KtTypeAlias -> buildString {
-            append(modifierPrefix())
-            append("typealias ").append(requireNotNull(name))
-            typeParameterList?.text?.let { append(it) }
-            getTypeReference()?.text?.let { append(" = ").append(it) }
-        }
-        else -> error("unsupported documented declaration ${this::class.simpleName}")
-    }.replace(Regex("\\s+"), " ").trim()
-
-private fun KtNamedDeclaration.modifierPrefix(): String =
-    modifierList?.text?.trim()?.takeIf(String::isNotEmpty)?.let { "$it " }.orEmpty()
 
 private fun renderKDoc(raw: String): String {
     if (raw.isBlank()) return ""

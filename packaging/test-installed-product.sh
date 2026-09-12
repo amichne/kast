@@ -32,7 +32,12 @@ with zipfile.ZipFile(plugin) as archive:
     assert not any(any(token in name for token in ('indexer', 'topology-', 'runtime-composition', 'workspace-service', 'idea-home')) for name in names)
 with tarfile.open(sys.argv[3]) as archive:
     names = archive.getnames()
-    assert not any(any(token in name for token in ('semantic-runtime', 'kast-indexer', 'topology-', 'runtime-composition', 'workspace-service')) for name in names)
+    forbidden_runtime = ('semantic-runtime', 'kast-indexer', 'topology-', 'runtime-composition', 'workspace-service')
+    for member in archive.getmembers():
+        if member.name.startswith('share/kast/knowledge/'):
+            assert member.isdir() or (member.isfile() and member.name.endswith('.json')), member.name
+        else:
+            assert not any(token in member.name for token in forbidden_runtime), member.name
     assert any(name.endswith('/share/kast/knowledge/manifest.json') or name == 'share/kast/knowledge/manifest.json' for name in names), names
 CHECK
 mkdir -p "$fixture/repo"

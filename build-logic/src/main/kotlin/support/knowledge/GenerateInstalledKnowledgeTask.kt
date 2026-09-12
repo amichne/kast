@@ -1,6 +1,8 @@
 package support.knowledge
 
 import conventions.jsoncontracts.KnowledgeDocsDocument
+import conventions.jsoncontracts.KnowledgeDeclarationLimitation
+import conventions.jsoncontracts.knowledgeDocsJson
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
@@ -49,12 +51,13 @@ abstract class GenerateInstalledKnowledgeTask : DefaultTask() {
         if (!Regex("[0-9a-f]{40}").matches(revision)) {
             throw GradleException("Installed knowledge requires an exact 40-character source revision")
         }
-        val docs =
-            JSON.decodeFromString<KnowledgeDocsDocument>(
-                Files.readString(documentationFile.get().asFile.toPath())
+        val docs = when (val document = knowledgeDocsJson.decodeFromString<KnowledgeDocsDocument>(
+            Files.readString(documentationFile.get().asFile.toPath())
+        )) {
+            is KnowledgeDocsDocument.Complete -> document
+            is KnowledgeDocsDocument.Rejected -> throw GradleException(
+                "Installed knowledge input contains documentation extraction failures: ${document.failures}"
             )
-        if (docs.failures.isNotEmpty()) {
-            throw GradleException("Installed knowledge input contains documentation extraction failures: ${docs.failures}")
         }
         val guides = readGuides(root)
         val modules =
@@ -91,10 +94,10 @@ abstract class GenerateInstalledKnowledgeTask : DefaultTask() {
                     declarationEvidence = docs.evidence,
                     declarationLimitations =
                         listOf(
-                            "KOTLIN_SOURCE_ONLY",
-                            "NAMED_DECLARATIONS_ONLY",
-                            "NO_TYPE_RESOLUTION",
-                            "NO_INHERITED_DOCUMENTATION",
+                            KnowledgeDeclarationLimitation.KOTLIN_SOURCE_ONLY,
+                            KnowledgeDeclarationLimitation.NAMED_DECLARATIONS_ONLY,
+                            KnowledgeDeclarationLimitation.NO_TYPE_RESOLUTION,
+                            KnowledgeDeclarationLimitation.NO_INHERITED_DOCUMENTATION,
                         ),
                     modules = modules,
                     guides = guides,
