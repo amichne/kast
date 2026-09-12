@@ -2,6 +2,10 @@
 
 ## 2026-09-11
 
+- Kept the aggregate, type-resolved Detekt proof as the module quality gate and
+  removed duplicate production/test task dependencies. A build-logic fixture
+  now rejects any return to multiple Detekt executions in one module `check`.
+
 - Reorganized the public docs into task guides, tool contracts, and operations.
   Added response decoding, symbol/signature guidance, and generated model pages.
   The callable projection promotes local schema definitions and labels variants
