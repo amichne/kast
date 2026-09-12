@@ -177,10 +177,20 @@ private fun KtNamedDeclaration.modifierPrefix(): String =
 
 private fun renderKDoc(raw: String): String {
     if (raw.isBlank()) return ""
-    return raw.lineSequence()
-        .map { line -> line.trim().removePrefix("/**").removeSuffix("*/").trim().removePrefix("*").trimStart() }
-        .dropWhile(String::isBlank)
-        .toList()
+    val lines = raw.lines()
+    return lines.mapIndexed { index, source ->
+        var line = source.trimStart()
+        if (index == 0) {
+            line = line.removePrefix("/**")
+            if (line.startsWith(' ')) line = line.drop(1)
+        }
+        if (index == lines.lastIndex) line = line.removeSuffix("*/").trimEnd()
+        if (line.startsWith('*')) {
+            line = line.drop(1)
+            if (line.startsWith(' ')) line = line.drop(1)
+        }
+        line
+    }.dropWhile(String::isBlank)
         .dropLastWhile(String::isBlank)
         .joinToString("\n")
 }
