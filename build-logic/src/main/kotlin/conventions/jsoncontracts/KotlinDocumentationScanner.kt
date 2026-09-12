@@ -78,10 +78,10 @@ class KotlinDocumentationScanner : AutoCloseable {
 
 private fun KtNamedDeclaration.isKnowledgeDeclaration(): Boolean =
     name != null &&
-        this is KtClassOrObject || this is KtNamedFunction || this is KtProperty || this is KtTypeAlias &&
-            !hasModifier(KtTokens.PRIVATE_KEYWORD) &&
-            !hasModifier(KtTokens.INTERNAL_KEYWORD) &&
-            !isLocalDeclaration()
+        (this is KtClassOrObject || this is KtNamedFunction || this is KtProperty || this is KtTypeAlias) &&
+        !hasModifier(KtTokens.PRIVATE_KEYWORD) &&
+        !hasModifier(KtTokens.INTERNAL_KEYWORD) &&
+        !isLocalDeclaration()
 
 private fun KtNamedDeclaration.isLocalDeclaration(): Boolean =
     generateSequence(parent) { it.parent }
@@ -115,7 +115,7 @@ private fun KtNamedDeclaration.declarationKind(): String =
 private fun KtNamedDeclaration.declarationSignature(): String =
     when (this) {
         is KtClassOrObject -> buildString {
-            appendModifiers()
+            append(modifierPrefix())
             append(declarationKind()).append(' ').append(requireNotNull(name))
             typeParameterList?.text?.let { append(it) }
             if (this@declarationSignature is KtClass) {
@@ -127,7 +127,7 @@ private fun KtNamedDeclaration.declarationSignature(): String =
             }
         }
         is KtNamedFunction -> buildString {
-            appendModifiers()
+            append(modifierPrefix())
             append("fun ")
             typeParameterList?.text?.let { append(it).append(' ') }
             receiverTypeReference?.text?.let { append(it).append('.') }
@@ -136,14 +136,14 @@ private fun KtNamedDeclaration.declarationSignature(): String =
             typeReference?.text?.let { append(": ").append(it) }
         }
         is KtProperty -> buildString {
-            appendModifiers()
+            append(modifierPrefix())
             append(if (isVar) "var " else "val ")
             receiverTypeReference?.text?.let { append(it).append('.') }
             append(requireNotNull(name))
             typeReference?.text?.let { append(": ").append(it) }
         }
         is KtTypeAlias -> buildString {
-            appendModifiers()
+            append(modifierPrefix())
             append("typealias ").append(requireNotNull(name))
             typeParameterList?.text?.let { append(it) }
             getTypeReference()?.text?.let { append(" = ").append(it) }
@@ -151,24 +151,8 @@ private fun KtNamedDeclaration.declarationSignature(): String =
         else -> error("unsupported documented declaration ${this::class.simpleName}")
     }.replace(Regex("\\s+"), " ").trim()
 
-private fun StringBuilder.appendModifiers() {
-    val declaration = currentDeclaration.get() ?: return
-    declaration.modifierList?.text?.trim()?.takeIf(String::isNotEmpty)?.let { append(it).append(' ') }
-}
-
-private val currentDeclaration = ThreadLocal<KtNamedDeclaration?>()
-
-private inline fun <T> KtNamedDeclaration.withCurrent(block: () -> T): T {
-    val previous = currentDeclaration.get()
-    currentDeclaration.set(this)
-    return try {
-        block()
-    } finally {
-        currentDeclaration.set(previous)
-    }
-}
-
-private fun KtNamedDeclaration.declarationSignatureWithModifiers(): String = withCurrent { declarationSignature() }
+private fun KtNamedDeclaration.modifierPrefix(): String =
+    modifierList?.text?.trim()?.takeIf(String::isNotEmpty)?.let { "$it " }.orEmpty()
 
 private fun renderKDoc(raw: String): String {
     if (raw.isBlank()) return ""
