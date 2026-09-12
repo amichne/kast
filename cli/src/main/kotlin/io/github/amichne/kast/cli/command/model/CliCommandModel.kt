@@ -38,6 +38,7 @@ enum class CliProductCommand(
     BROKER_SERVE("broker serve"),
     CODEX_CLI("codex", CliLocalExposure.PUBLIC),
     CODEX_DESKTOP("codex desktop", CliLocalExposure.PUBLIC),
+    KNOWLEDGE("knowledge <query-or-resource>", CliLocalExposure.PUBLIC),
     INDEX_STATUS("index status [--root <path>]", CliLocalExposure.PUBLIC),
     INDEX_CLASSES("index classes <name> [--root <path>]", CliLocalExposure.PUBLIC),
     INDEX_SUPERTYPE("index supertype <qualified-name> [--root <path>]", CliLocalExposure.PUBLIC),
@@ -67,6 +68,8 @@ sealed interface CliAction {
         data object Inspect : Local
 
         data object ProductInspect : Local
+
+        data class Knowledge(val selection: io.github.amichne.kast.cli.knowledge.KnowledgeSelection) : Local
 
         data class AppServer(val action: io.github.amichne.kast.appserver.AppServerAction) : Local
 
