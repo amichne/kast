@@ -1,5 +1,12 @@
 # Knowledge-base update log
 
+## 2026-09-12
+
+- Removed the unused architecture host exemption; every role now retains a required
+  convention. Retired unregistered build tasks, unused adapter wrappers and runtime
+  paths, and obsolete aliases. The [configuration contract](contracts/configuration.md)
+  now routes to the shared document and the CLI-owned catalogue generator.
+
 ## 2026-09-11
 
 - Kept the aggregate, type-resolved Detekt proof as the module quality gate and

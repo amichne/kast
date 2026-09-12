@@ -12,7 +12,6 @@ Models complete workspace graph generations, extracts compiler-backed topology, 
 - [contract/src/main/kotlin/io/github/amichne/kast/topology/contract/CompleteTopologyGeneration.kt](contract/src/main/kotlin/io/github/amichne/kast/topology/contract/CompleteTopologyGeneration.kt) - complete-generation proof.
 - [contract/src/main/kotlin/io/github/amichne/kast/topology/contract/TopologyWorkspaceIdentity.kt](contract/src/main/kotlin/io/github/amichne/kast/topology/contract/TopologyWorkspaceIdentity.kt) - workspace binding.
 - [build/src/main/kotlin/io/github/amichne/kast/topology/build/TopologyBuildService.kt](build/src/main/kotlin/io/github/amichne/kast/topology/build/TopologyBuildService.kt) - build orchestration.
-- [build/src/main/kotlin/io/github/amichne/kast/topology/build/VerifiedTopologyDeltaPublication.kt](build/src/main/kotlin/io/github/amichne/kast/topology/build/VerifiedTopologyDeltaPublication.kt) - verified publication.
 - [service/src/main/kotlin/io/github/amichne/kast/topology/service/TopologyGraphService.kt](service/src/main/kotlin/io/github/amichne/kast/topology/service/TopologyGraphService.kt) - graph service.
 - [intellij/src/main/kotlin/io/github/amichne/kast/topology/intellij/InstalledIntellijTopologyExtractor.kt](intellij/src/main/kotlin/io/github/amichne/kast/topology/intellij/InstalledIntellijTopologyExtractor.kt) - hosted extraction.
 

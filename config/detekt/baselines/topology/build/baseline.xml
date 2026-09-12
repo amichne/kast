@@ -6,11 +6,9 @@
     <ID>CognitiveComplexMethod:TopologyBuildService.kt:TopologyBuildService$private suspend fun publishCompleteGeneration: TopologyBuildResult</ID>
     <ID>CognitiveComplexMethod:TopologyGenerationReuse.kt:internal fun rebindUnchangedTopologyGeneration: TopologyGenerationReuse</ID>
     <ID>CognitiveComplexMethod:TopologyGenerationReuse.kt:internal fun rebindVerifiedSingletonChange: VerifiedTopologyGenerationReuse</ID>
-    <ID>CognitiveComplexMethod:VerifiedTopologyDeltaPublication.kt:VerifiedTopologyDeltaPublicationService$override suspend fun publish: VerifiedTopologyDeltaPublication</ID>
     <ID>CyclomaticComplexMethod:TopologyBuildService.kt:TopologyBuildService$private suspend fun buildAuthorized: TopologyBuildResult</ID>
     <ID>CyclomaticComplexMethod:TopologyGenerationReuse.kt:internal fun rebindUnchangedTopologyGeneration: TopologyGenerationReuse</ID>
     <ID>CyclomaticComplexMethod:TopologyGenerationReuse.kt:internal fun rebindVerifiedSingletonChange: VerifiedTopologyGenerationReuse</ID>
-    <ID>CyclomaticComplexMethod:VerifiedTopologyDeltaPublication.kt:VerifiedTopologyDeltaPublicationService$override suspend fun publish: VerifiedTopologyDeltaPublication</ID>
     <ID>LargeClass:TopologyBuildServiceTest.kt:TopologyBuildServiceTest</ID>
     <ID>LongMethod:TopologyBuildRetentionTest.kt:private fun retentionFixture: RetentionFixture</ID>
     <ID>LongMethod:TopologyBuildService.kt:TopologyBuildService$private suspend fun buildAuthorized: TopologyBuildResult</ID>
@@ -20,6 +18,5 @@
     <ID>LongMethod:TopologyGenerationReuse.kt:internal fun rebindVerifiedSingletonChange: VerifiedTopologyGenerationReuse</ID>
     <ID>LongMethod:TopologyGenerationReuseTest.kt:TopologyGenerationReuseTest$@Test fun `stale rebound preserves exact endpoints that share compiler identity`</ID>
     <ID>LongMethod:TopologyGenerationReuseTest.kt:TopologyGenerationReuseTest$@Test fun `verified singleton source change re-extracts changed file and rebinds incoming edges`</ID>
-    <ID>LongMethod:VerifiedTopologyDeltaPublication.kt:VerifiedTopologyDeltaPublicationService$override suspend fun publish: VerifiedTopologyDeltaPublication</ID>
   </CurrentIssues>
 </SmellBaseline>

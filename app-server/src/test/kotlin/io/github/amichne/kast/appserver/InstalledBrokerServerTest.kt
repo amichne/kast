@@ -158,7 +158,7 @@ class InstalledBrokerServerTest {
     }
 
     @Test
-    fun `all installed clients share the version owned socket namespace`(@TempDir temporary: Path) {
+    fun `installed clients use the version owned socket namespace`(@TempDir temporary: Path) {
         val home = Path.of("/private/tmp/kast-host-" + UUID.randomUUID().toString().take(8))
         Files.createDirectory(home)
         try {
@@ -166,19 +166,12 @@ class InstalledBrokerServerTest {
             val kast = executable(Files.createDirectories(user.resolve("bin")).resolve("kast"))
             val codex = executable(user.resolve("codex"))
             val environment = mapOf("CODEX_HOME" to home.toString(), "CODEX_EXECUTABLE" to codex.toString())
-            fun options(transport: BrokerClientTransport) =
-                (InstalledBrokerServerConfiguration.admit(
-                        kast,
-                        user,
-                        environment,
-                        clientTransport = transport,
-                    ) as InstalledBrokerServerConfiguration.Configured)
+            val options =
+                (InstalledBrokerServerConfiguration.admit(kast, user, environment)
+                        as InstalledBrokerServerConfiguration.Configured)
                     .options
-            val legacy = options(BrokerClientTransport.LEGACY_CONTROL)
-            val integration = options(BrokerClientTransport.INTEGRATION_OWNED)
-            assertEquals(legacy.publicSocket, integration.publicSocket)
-            assertEquals(legacy.upstreamOptions.privateSocket, integration.upstreamOptions.privateSocket)
-            assertEquals(user.resolve("state/run/c.sock"), integration.publicSocket.physicalPath)
+            assertEquals(user.resolve("state/run/c.sock"), options.publicSocket.physicalPath)
+            assertEquals(user.resolve("state/run/u.sock"), options.upstreamOptions.privateSocket.physicalPath)
         } finally {
             retireOwnedTree(home)
         }

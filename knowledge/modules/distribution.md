@@ -4,10 +4,12 @@ title: Distribution and packaging
 description: Typed configuration and runtime identity contracts constrain managed installation effects, release assembly, and acceptance harnesses.
 resource: file://distribution
 tags: [distribution, configuration, packaging, release]
-timestamp: 2026-09-11T00:00:00Z
+timestamp: 2026-09-12T00:00:00Z
 code_sources:
-  - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationSchema.kt
-    symbols: [KastConfigurationSchema]
+  - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationSchemaDocument.kt
+    symbols: [ConfigurationSchemaDocument]
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/configuration/InstalledConfigurationSchema.kt
+    symbols: [InstalledConfigurationSchema]
   - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedInstallationOwnedTree.kt
     symbols: [ManagedInstallationOwnedTree]
   - path: packaging/configuration-schema.json
@@ -29,3 +31,5 @@ Installation child processes emit `kast_installation` records by default with a 
 The staged Kotlin installer selects default tools directly from the canonical agent catalog. The shell bootstrap preserves an explicit selection and supplies no copied default list. Explicit selections must contain current, unique tool names; installation retains their admitted definitions in canonical catalog order before writing configuration.
 
 Read [configuration](../contracts/configuration.md) for ingress and ownership rules.
+
+`ConfigurationSchemaDocument` defines the shared document. The CLI-owned `InstalledConfigurationSchema` is the sole catalogue generator and includes operational limits from protocol, broker, installation, and CLI owners.

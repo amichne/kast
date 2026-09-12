@@ -10,7 +10,7 @@ Defines installation/runtime configuration contracts, safe managed filesystem re
 ## Key Files
 
 - [contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/SemanticRuntimeContract.kt](contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/SemanticRuntimeContract.kt) - semantic runtime contract.
-- [contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationSchema.kt](contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationSchema.kt) - configuration model.
+- [contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationSchemaDocument.kt](contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationSchemaDocument.kt) - configuration model.
 - [contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/IndexerHeapSize.kt](contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/IndexerHeapSize.kt) - admitted heap sizing.
 - [managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedInstallationOwnedTree.kt](managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedInstallationOwnedTree.kt) - owned installation tree.
 - [managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/SafeRuntimeArchive.kt](managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/SafeRuntimeArchive.kt) - archive admission and extraction.

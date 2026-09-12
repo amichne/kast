@@ -67,11 +67,6 @@ internal enum class InstalledBrokerServerConfigurationFailure {
     APP_SERVER_DISABLED,
 }
 
-internal enum class BrokerClientTransport {
-    LEGACY_CONTROL,
-    INTEGRATION_OWNED,
-}
-
 internal sealed interface InstalledBrokerServerConfiguration {
     data class Configured(val options: InstalledBrokerServerOptions) : InstalledBrokerServerConfiguration
 
@@ -84,7 +79,6 @@ internal sealed interface InstalledBrokerServerConfiguration {
             environment: Map<String, String>,
             processExecutor: BrokerProcessExecutor = JdkBrokerProcessExecutor,
             launcher: CodexAppServerProcessLauncher? = null,
-            clientTransport: BrokerClientTransport = BrokerClientTransport.LEGACY_CONTROL,
             appServerArguments: CodexAppServerArguments = CodexAppServerArguments.sharedService(),
         ): InstalledBrokerServerConfiguration {
             val canonicalUserHome =

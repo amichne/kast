@@ -113,7 +113,7 @@ internal fun captureInstalledGradleModel(
     modelInputs: InstalledGradleModelInputs,
 ): Refinement<InstalledGradleModelCapture, InstalledGradleModelCaptureFailure> =
     modelInputs.observeCurrent { currentInputs ->
-        ReadAction.compute<
+        ReadAction.computeBlocking<
             Refinement<InstalledGradleModelCapture, InstalledGradleModelCaptureFailure>,
             RuntimeException,
         > model@{
