@@ -16,6 +16,7 @@ import io.github.amichne.kast.cli.command.broker.brokerCommandGroup
 import io.github.amichne.kast.cli.command.change.changeCommandGroup
 import io.github.amichne.kast.cli.command.codex.codexCommandGroup
 import io.github.amichne.kast.cli.command.diagnostic.diagnosticCommandGroup
+import io.github.amichne.kast.cli.command.knowledge.knowledgeCommandFamily
 import io.github.amichne.kast.cli.command.lifecycle.lifecycleCommands
 import io.github.amichne.kast.cli.command.product.productCommandGroup
 import io.github.amichne.kast.cli.command.query.queryCommandGroup
@@ -368,7 +369,7 @@ private class KastRootCommand : KastCommand("kast") {
     }
 
     override fun help(context: Context): String =
-        "Query the existing IDEA index with index commands; inspect and change a workspace through its Kast plugin."
+        "Query installed knowledge or the existing IDEA index; inspect and change a workspace through its Kast plugin."
 
     override fun helpEpilog(context: Context): String =
         "Semantic results are one JSON document on stdout. Diagnostics are one JSON document on stderr. Use kast config --help for configuration inspection."
@@ -395,6 +396,7 @@ private fun canonicalGraph(
 ): CliCommandGraph {
     val tools = io.github.amichne.kast.cli.command.tool.publicToolCommands(preparers, requestInput)
     val product = productCommandGroup()
+    val knowledge = knowledgeCommandFamily()
     val appServer = io.github.amichne.kast.cli.command.appserver.appServerCommandGroup()
     val broker = brokerCommandGroup()
     val codex = codexCommandGroup()
@@ -416,7 +418,7 @@ private fun canonicalGraph(
         }
     val semantic = families.flatMap(CommandFamily::semanticCommands)
     val localFamilies =
-        listOf(product, broker, codex, hostedIndex, ide)
+        listOf(product, knowledge, broker, codex, hostedIndex, ide)
             .map { family ->
                 val commands = family.commands.filter { it.command.exposure == CliLocalExposure.PUBLIC }
                 val root =
