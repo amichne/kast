@@ -115,6 +115,28 @@ class LiveReadOutputSchemaTest {
         assertRejects(CanonicalOperation.TOPOLOGY_BUILD, hosted)
     }
 
+    @Test
+    fun `named source root rejection retains standalone referenced definitions`() {
+        val hosted =
+            Json.parseToJsonElement(
+                    requireNotNull(javaClass.getResource("/live-read-schema/named-source-rejection.json")).readText()
+                )
+                .jsonObject
+        val detail = hosted.getValue("detail").jsonObject
+        val operations =
+            completeDocuments(live).map { it.first } +
+                listOf(
+                    CanonicalOperation.CHANGE_PLAN,
+                    CanonicalOperation.CHANGE_APPLY,
+                    CanonicalOperation.CHANGE_RECOVER,
+                )
+        for (operation in operations) {
+            assertAdmits(operation, hosted)
+            assertRejects(operation, hosted.with("detail", detail.with("module", JsonNull)))
+            assertRejects(operation, hosted.with("detail", detail.with("reason", JsonPrimitive("UNKNOWN_REASON"))))
+        }
+    }
+
     private fun completeDocuments(basis: EvidenceBasis): List<Pair<CanonicalOperation, JsonObject>> =
         listOf(
             CanonicalOperation.QUERY_RUN to

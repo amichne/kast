@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "outcome": "rejected",
+  "failure": "NAMED_SOURCE_SCOPE_REJECTED",
+  "detail": {
+    "cause": "ROOT_CLASSIFICATION_MISMATCH",
+    "module": {
+      "value": "app.main",
+      "truncated": false
+    },
+    "root": {
+      "value": "file:///workspace/app/src/main/kotlin",
+      "truncated": false
+    },
+    "ide": {
+      "kind": "TEST",
+      "provenance": "GENERATED"
+    },
+    "gradle": {
+      "kind": "PRODUCTION",
+      "provenance": "AUTHORED"
+    }
+  },
+  "stage": "MODEL_CAPTURE"
+}

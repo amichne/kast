@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "outcome": "rejected",
+  "failure": "NAMED_SOURCE_SCOPE_REJECTED",
+  "detail": {
+    "cause": "OWNER_UNAVAILABLE",
+    "module": {
+      "value": "app.main",
+      "truncated": false
+    },
+    "reason": "BUILD_ROOT_UNAVAILABLE"
+  },
+  "stage": "MODEL_CAPTURE"
+}

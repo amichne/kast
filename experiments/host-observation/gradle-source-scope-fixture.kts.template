@@ -1,0 +1,67 @@
+// Test-only root-model mutation in the runner's private IDE and imported composite project.
+// No production plugin replacement, synchronization, or module hiding occurs here.
+enum class GradleScopeFixturePhase { OBSERVE, FOREIGN_BAD_ROOT, SELECTED_BAD_ROOT }
+enum class GradleScopeFixtureResult { VERIFIED }
+
+run {
+    val input = java.nio.file.Path.of(String(java.util.Base64.getDecoder().decode("@INPUT_BASE64@"), Charsets.UTF_8))
+    val lines = java.nio.file.Files.readAllLines(input)
+    check(lines.size == 2)
+    val root = java.nio.file.Path.of(lines[0]).toRealPath()
+    val phase = GradleScopeFixturePhase.valueOf(lines[1])
+    check(java.nio.file.Path.of(System.getProperty("idea.config.path")).toRealPath() == root.parent.resolve("ide/config"))
+    val project = com.intellij.openapi.project.ProjectManager.getInstance().openProjects.single { it.basePath == root.toString() }
+    val app = com.intellij.openapi.application.ApplicationManager.getApplication()
+    val gradle = com.intellij.ide.plugins.PluginManagerCore.getPlugin(com.intellij.openapi.extensions.PluginId.getId("org.jetbrains.plugins.gradle"))!!
+    val cacheClass = gradle.pluginClassLoader!!.loadClass("org.jetbrains.plugins.gradle.service.project.data.ExternalProjectDataCache")
+    val cache = cacheClass.getMethod("getInstance", com.intellij.openapi.project.Project::class.java).invoke(null, project)
+    val imported = checkNotNull(cacheClass.getMethod("getRootExternalProject", String::class.java).invoke(cache, root.toString()))
+    fun buildFor(directory: java.nio.file.Path): java.nio.file.Path {
+        val pending = java.util.ArrayDeque<Pair<Any, java.nio.file.Path>>()
+        pending.add(imported to root)
+        val owners = mutableListOf<java.nio.file.Path>()
+        var count = 0
+        while (pending.isNotEmpty()) {
+            check(++count <= 256)
+            val (node, inherited) = pending.removeFirst()
+            val projectDir = (node.javaClass.getMethod("getProjectDir").invoke(node) as java.io.File).toPath().toRealPath()
+            val build = if (node.javaClass.getMethod("getPath").invoke(node) == ":") projectDir else inherited
+            if (projectDir == directory) owners.add(build)
+            val children = node.javaClass.getMethod("getChildProjects").invoke(node) as Map<*, *>
+            children.values.forEach { pending.add(checkNotNull(it) to build) }
+        }
+        return owners.single()
+    }
+    fun moduleFor(build: java.nio.file.Path, directory: java.nio.file.Path): com.intellij.openapi.module.Module =
+        com.intellij.openapi.module.ModuleManager.getInstance(project).modules.filter { module ->
+            com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil.isExternalSystemAwareModule("GRADLE", module) &&
+                com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil.getExternalRootProjectPath(module)?.let { java.nio.file.Path.of(it).toRealPath() } == root &&
+                buildFor(directory) == build &&
+                com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil.getExternalProjectPath(module)?.let { java.nio.file.Path.of(it).toRealPath() } == directory &&
+                com.intellij.openapi.roots.ModuleRootManager.getInstance(module).contentEntries.any { entry -> entry.sourceFolders.any { it.rootType == org.jetbrains.jps.model.java.JavaSourceRootType.SOURCE } }
+        }.single()
+    app.invokeAndWait {
+        com.intellij.openapi.application.WriteAction.run<RuntimeException> {
+            val selected = moduleFor(root, root.resolve("app"))
+            val foreign = moduleFor(root.resolve("build-logic"), root.resolve("build-logic/plugins"))
+            check(selected !== foreign)
+            if (phase != GradleScopeFixturePhase.OBSERVE) {
+                val module = if (phase == GradleScopeFixturePhase.FOREIGN_BAD_ROOT) foreign else selected
+                val manager = com.intellij.openapi.roots.ModuleRootManager.getInstance(module)
+                val model = manager.modifiableModel
+                try {
+                    val entry = model.contentEntries.single { it.sourceFolders.any { folder -> folder.rootType == org.jetbrains.jps.model.java.JavaSourceRootType.SOURCE } }
+                    val url = entry.url + "/kast-unavailable-source-root"
+                    check(entry.sourceFolders.none { it.url == url })
+                    val folder = entry.addSourceFolder(url, false)
+                    check(folder.file == null)
+                    model.commit()
+                    check(manager.contentEntries.flatMap { it.sourceFolders.toList() }.single { it.url == url }.file == null)
+                } finally {
+                    if (!model.isDisposed) model.dispose()
+                }
+            }
+        }
+    }
+    java.nio.file.Files.writeString(input.resolveSibling(input.fileName.toString() + ".result"), GradleScopeFixtureResult.VERIFIED.name, java.nio.file.StandardOpenOption.CREATE_NEW)
+}

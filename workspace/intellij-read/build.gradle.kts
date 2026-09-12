@@ -80,6 +80,7 @@ dependencies {
     compileOnly(kotlinPluginLibraries)
     compileOnly(extractedIdeaFiles { include("**/plugins/java/lib/**/*.jar") })
     compileOnly(extractedIdeaFiles { include("**/plugins/gradle*/lib/**/*.jar") })
+    testImplementation(extractedIdeaFiles { include("**/plugins/gradle*/lib/**/*.jar") })
     testImplementation(ideaLibraries)
     testImplementation(kotlinPluginLibraries)
     testImplementation(catalog.findLibrary("serialization-json").get())

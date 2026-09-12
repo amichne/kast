@@ -8,6 +8,11 @@ import io.github.amichne.kast.protocol.contract.CompilerSignatureDocument
 import io.github.amichne.kast.protocol.contract.CompilerSymbolEvidenceDocument
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.workspace.intellij.read.ExistingProjectAdmissionFailure
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.encodeToJsonElement
 
 /** Detached transport projection. Encoding may only run after the service has released its reads. */
 object HostedQueryWire {
@@ -53,18 +58,18 @@ object HostedQueryWire {
         }
 
     fun encode(result: HostedQueryResult): String =
-        Gson()
-            .toJson(
-                when (result) {
-                    is HostedQueryResult.Rejected ->
-                        mapOf(
-                            "schemaVersion" to 1,
-                            "outcome" to "rejected",
-                            "failure" to result.failure.code(),
-                            "detail" to result.failure.detail(),
-                            "stage" to result.stage.name,
-                        )
-                    is HostedQueryResult.Published ->
+        when (result) {
+            is HostedQueryResult.Rejected ->
+                hostedFailureJson.encodeToString(
+                    HostedQueryRejectionDocument(
+                        failure = result.failure.code(),
+                        detail = result.failure.detail(),
+                        stage = result.stage.name,
+                    )
+                )
+            is HostedQueryResult.Published ->
+                Gson()
+                    .toJson(
                         mapOf(
                             "schemaVersion" to 1,
                             "outcome" to "published",
@@ -82,9 +87,19 @@ object HostedQueryWire {
                             "supertype" to result.publication.relation.supertype.document(),
                             "inheritor" to result.publication.relation.inheritor.document(),
                         )
-                }
-            )
+                    )
+        }
 }
+
+@Serializable
+internal data class HostedQueryRejectionDocument(
+    val failure: String,
+    /** The schema-defined diagnostic union is a string, typed object, or finite enum list. */
+    val detail: JsonElement,
+    val stage: String,
+    val schemaVersion: Int = 1,
+    val outcome: String = "rejected",
+)
 
 private fun HostedCompilerDeclaration.document(): Map<String, Any> {
     // Reuse the canonical wire proof, including its identity/signature agreement check.
@@ -157,154 +172,150 @@ internal fun HostedQueryFailure.code(): String =
     }
 
 /** Closed, bounded diagnostic data; never exception text or compiler/source objects. */
-internal fun HostedQueryFailure.detail(): Any =
+internal fun HostedQueryFailure.detail(): JsonElement =
     when (this) {
         is HostedQueryFailure.Configuration ->
             when (val failure = cause) {
-                io.github.amichne.kast.kernel.ReadLimitFailure.UnknownParameter -> mapOf("cause" to "UNKNOWN_PARAMETER")
+                io.github.amichne.kast.kernel.ReadLimitFailure.UnknownParameter ->
+                    Json.encodeToJsonElement(CauseDetail("UNKNOWN_PARAMETER"))
                 is io.github.amichne.kast.kernel.ReadLimitFailure.InvalidValue ->
-                    mapOf("cause" to failure.kind.name, "parameter" to failure.parameter.environmentKey)
+                    Json.encodeToJsonElement(ParameterDetail(failure.kind.name, failure.parameter.environmentKey))
                 is io.github.amichne.kast.kernel.ReadLimitFailure.InconsistentBounds ->
-                    mapOf(
-                        "cause" to "INCONSISTENT_BOUNDS",
-                        "inner" to failure.inner.environmentKey,
-                        "outer" to failure.outer.environmentKey,
+                    Json.encodeToJsonElement(
+                        BoundsDetail("INCONSISTENT_BOUNDS", failure.inner.environmentKey, failure.outer.environmentKey)
                     )
             }
-        is HostedQueryFailure.Platform -> mapOf("cause" to cause.name)
-        is HostedQueryFailure.ModelCapture -> cause.failures.map { it.name }
-        is HostedQueryFailure.ProjectAdmission ->
-            when (val failure = cause) {
-                ExistingProjectAdmissionFailure.ProjectDisposed -> "PROJECT_DISPOSED"
-                ExistingProjectAdmissionFailure.ProjectNotOpen -> "PROJECT_NOT_OPEN"
-                ExistingProjectAdmissionFailure.ProjectNotInitialized -> "PROJECT_NOT_INITIALIZED"
-                ExistingProjectAdmissionFailure.ProjectRootUnavailable -> "PROJECT_ROOT_UNAVAILABLE"
-                ExistingProjectAdmissionFailure.ProjectRootMismatch -> "PROJECT_ROOT_MISMATCH"
-                ExistingProjectAdmissionFailure.GradleModelUnavailable -> "GRADLE_MODEL_UNAVAILABLE"
-                ExistingProjectAdmissionFailure.GradleModelIncomplete -> "GRADLE_MODEL_INCOMPLETE"
-                ExistingProjectAdmissionFailure.DumbMode -> "DUMB_MODE"
-                ExistingProjectAdmissionFailure.K2Unavailable -> "K2_UNAVAILABLE"
-                ExistingProjectAdmissionFailure.HostIdentityUnavailable -> "HOST_IDENTITY_UNAVAILABLE"
-                ExistingProjectAdmissionFailure.RetainedAuthorityMismatch -> "RETAINED_AUTHORITY_MISMATCH"
-                is ExistingProjectAdmissionFailure.HostIncompatible ->
-                    mapOf(
-                        "stage" to "HOST_COMPATIBILITY",
-                        "field" to
-                            when (val cause = failure.cause) {
-                                is io.github.amichne.kast.protocol.contract.IdeHostCompatibilityFailure.Malformed ->
-                                    cause.field.name
-                                is io.github.amichne.kast.protocol.contract.IdeHostCompatibilityFailure.Mismatch ->
-                                    cause.mismatch.field.name
-                                is io.github.amichne.kast.protocol.contract.IdeHostCompatibilityFailure.UnknownCapability,
-                                is io.github.amichne.kast.protocol.contract.IdeHostCompatibilityFailure.UnsupportedCapability,
-                                is io.github.amichne.kast.protocol.contract.IdeHostCompatibilityFailure.DuplicateCapability ->
-                                    "CAPABILITIES"
-                            },
-                    )
-                is ExistingProjectAdmissionFailure.ObservationFailed -> mapOf("stage" to failure.stage.name)
-            }
+        is HostedQueryFailure.Platform -> Json.encodeToJsonElement(CauseDetail(cause.name))
+        is HostedQueryFailure.ModelCapture -> Json.encodeToJsonElement(cause.failures.map { it.name })
+        is HostedQueryFailure.ProjectAdmission -> cause.detail()
         // These closed causes contain only repository-owned enum/object variants, never platform data.
         is HostedQueryFailure.ReadEpoch -> cause.wireCause()
         is HostedQueryFailure.Freshness -> cause.wireCause()
-        is HostedQueryFailure.LiveAuthority -> cause.name
+        is HostedQueryFailure.LiveAuthority -> Json.encodeToJsonElement(cause.name)
         is HostedQueryFailure.NamedSourceScope -> cause.wireCause()
-        else -> emptyMap<String, String>()
+        else -> Json.encodeToJsonElement(EmptyDetail())
     }
 
-private fun io.github.amichne.kast.workspace.intellij.read.NamedGradleSourceScopeFailure.wireCause(): Any =
-    when (this) {
-        io.github.amichne.kast.workspace.intellij.read.NamedGradleSourceScopeFailure.MODEL_UNAVAILABLE ->
-            "MODEL_UNAVAILABLE"
-        io.github.amichne.kast.workspace.intellij.read.NamedGradleSourceScopeFailure.IDE_ROOT_UNMAPPED ->
-            "IDE_ROOT_UNMAPPED"
-        io.github.amichne.kast.workspace.intellij.read.NamedGradleSourceScopeFailure.IDE_ROOT_INCOHERENT ->
-            "IDE_ROOT_INCOHERENT"
-        io.github.amichne.kast.workspace.intellij.read.NamedGradleSourceScopeFailure.OWNER_UNAVAILABLE ->
-            "OWNER_UNAVAILABLE"
-        io.github.amichne.kast.workspace.intellij.read.NamedGradleSourceScopeFailure.CAPTURE_LIMIT -> "CAPTURE_LIMIT"
-        io.github.amichne.kast.workspace.intellij.read.NamedGradleSourceScopeFailure.PROJECT_UNAVAILABLE ->
-            "PROJECT_UNAVAILABLE"
-        io.github.amichne.kast.workspace.intellij.read.NamedGradleSourceScopeFailure.INDEXING -> "INDEXING"
-        is io.github.amichne.kast.workspace.intellij.read.NamedGradleSourceScopeFailure.ModelRejected ->
-            "MODEL_REJECTED"
-        is io.github.amichne.kast.workspace.intellij.read.NamedGradleSourceScopeFailure.ObservationFailed ->
-            mapOf("stage" to stage.name)
+private fun ExistingProjectAdmissionFailure.detail(): JsonElement =
+    when (val failure = this) {
+        ExistingProjectAdmissionFailure.ProjectDisposed -> Json.encodeToJsonElement("PROJECT_DISPOSED")
+        ExistingProjectAdmissionFailure.ProjectNotOpen -> Json.encodeToJsonElement("PROJECT_NOT_OPEN")
+        ExistingProjectAdmissionFailure.ProjectNotInitialized -> Json.encodeToJsonElement("PROJECT_NOT_INITIALIZED")
+        ExistingProjectAdmissionFailure.ProjectRootUnavailable -> Json.encodeToJsonElement("PROJECT_ROOT_UNAVAILABLE")
+        ExistingProjectAdmissionFailure.ProjectRootMismatch -> Json.encodeToJsonElement("PROJECT_ROOT_MISMATCH")
+        ExistingProjectAdmissionFailure.GradleModelUnavailable -> Json.encodeToJsonElement("GRADLE_MODEL_UNAVAILABLE")
+        ExistingProjectAdmissionFailure.GradleModelIncomplete -> Json.encodeToJsonElement("GRADLE_MODEL_INCOMPLETE")
+        ExistingProjectAdmissionFailure.DumbMode -> Json.encodeToJsonElement("DUMB_MODE")
+        ExistingProjectAdmissionFailure.K2Unavailable -> Json.encodeToJsonElement("K2_UNAVAILABLE")
+        ExistingProjectAdmissionFailure.HostIdentityUnavailable -> Json.encodeToJsonElement("HOST_IDENTITY_UNAVAILABLE")
+        ExistingProjectAdmissionFailure.RetainedAuthorityMismatch ->
+            Json.encodeToJsonElement("RETAINED_AUTHORITY_MISMATCH")
+        is ExistingProjectAdmissionFailure.HostIncompatible ->
+            Json.encodeToJsonElement(
+                CompatibilityDetail(
+                    stage = "HOST_COMPATIBILITY",
+                    field =
+                        when (val cause = failure.cause) {
+                            is io.github.amichne.kast.protocol.contract.IdeHostCompatibilityFailure.Malformed ->
+                                cause.field.name
+                            is io.github.amichne.kast.protocol.contract.IdeHostCompatibilityFailure.Mismatch ->
+                                cause.mismatch.field.name
+                            is io.github.amichne.kast.protocol.contract.IdeHostCompatibilityFailure.UnknownCapability,
+                            is io.github.amichne.kast.protocol.contract.IdeHostCompatibilityFailure.UnsupportedCapability,
+                            is io.github.amichne.kast.protocol.contract.IdeHostCompatibilityFailure.DuplicateCapability ->
+                                "CAPABILITIES"
+                        },
+                )
+            )
+        is ExistingProjectAdmissionFailure.ObservationFailed ->
+            Json.encodeToJsonElement(StageDetail(failure.stage.name))
     }
 
-private fun io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFailure.wireCause(): Any =
+private fun io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFailure.wireCause(): JsonElement =
     when (this) {
-        io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFailure.WrongThread -> "WRONG_THREAD"
+        io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFailure.WrongThread ->
+            Json.encodeToJsonElement("WRONG_THREAD")
         io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFailure.ProjectDisposed ->
-            "PROJECT_DISPOSED"
+            Json.encodeToJsonElement("PROJECT_DISPOSED")
         io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFailure.ProjectNotOpen ->
-            "PROJECT_NOT_OPEN"
+            Json.encodeToJsonElement("PROJECT_NOT_OPEN")
         io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFailure.ProjectNotInitialized ->
-            "PROJECT_NOT_INITIALIZED"
+            Json.encodeToJsonElement("PROJECT_NOT_INITIALIZED")
         io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFailure.ProjectRootUnavailable ->
-            "PROJECT_ROOT_UNAVAILABLE"
+            Json.encodeToJsonElement("PROJECT_ROOT_UNAVAILABLE")
         io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFailure.ProjectRootMalformed ->
-            "PROJECT_ROOT_MALFORMED"
-        io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFailure.DumbMode -> "DUMB_MODE"
+            Json.encodeToJsonElement("PROJECT_ROOT_MALFORMED")
+        io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFailure.DumbMode ->
+            Json.encodeToJsonElement("DUMB_MODE")
         io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFailure.GradleModelUnavailable ->
-            "GRADLE_MODEL_UNAVAILABLE"
+            Json.encodeToJsonElement("GRADLE_MODEL_UNAVAILABLE")
         io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFailure.GradleModelIncomplete ->
-            "GRADLE_MODEL_INCOMPLETE"
+            Json.encodeToJsonElement("GRADLE_MODEL_INCOMPLETE")
         io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFailure.GradleModelAmbiguous ->
-            "GRADLE_MODEL_AMBIGUOUS"
+            Json.encodeToJsonElement("GRADLE_MODEL_AMBIGUOUS")
         io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFailure.GradleRootUnavailable ->
-            "GRADLE_ROOT_UNAVAILABLE"
+            Json.encodeToJsonElement("GRADLE_ROOT_UNAVAILABLE")
         io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFailure.GradleRootMalformed ->
-            "GRADLE_ROOT_MALFORMED"
+            Json.encodeToJsonElement("GRADLE_ROOT_MALFORMED")
         io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFailure.ImportTimestampsIncoherent ->
-            "IMPORT_TIMESTAMPS_INCOHERENT"
+            Json.encodeToJsonElement("IMPORT_TIMESTAMPS_INCOHERENT")
         io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFailure.VfsBatchLimitExceeded ->
-            "VFS_BATCH_LIMIT_EXCEEDED"
+            Json.encodeToJsonElement("VFS_BATCH_LIMIT_EXCEEDED")
         io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFailure.VfsPathMalformed ->
-            "VFS_PATH_MALFORMED"
+            Json.encodeToJsonElement("VFS_PATH_MALFORMED")
         io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFailure.SignalExhausted ->
-            "SIGNAL_EXHAUSTED"
-        io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFailure.ReadPreempted -> "READ_PREEMPTED"
+            Json.encodeToJsonElement("SIGNAL_EXHAUSTED")
+        io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFailure.ReadPreempted ->
+            Json.encodeToJsonElement("READ_PREEMPTED")
         is io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFailure.ObservationFailed ->
-            mapOf("cause" to "OBSERVATION_FAILED", "stage" to stage.name)
+            Json.encodeToJsonElement(ObservationDetail("OBSERVATION_FAILED", stage.name))
     }
 
-private fun io.github.amichne.kast.workspace.contract.VfsPassiveReadAdmissionFailure.wireCause(): Any =
+private fun io.github.amichne.kast.workspace.contract.VfsPassiveReadAdmissionFailure.wireCause(): JsonElement =
     when (this) {
-        io.github.amichne.kast.workspace.contract.VfsPassiveReadAdmissionFailure.ProjectDisposed -> "PROJECT_DISPOSED"
-        io.github.amichne.kast.workspace.contract.VfsPassiveReadAdmissionFailure.DumbMode -> "DUMB_MODE"
-        io.github.amichne.kast.workspace.contract.VfsPassiveReadAdmissionFailure.Moved -> "MOVED"
-        io.github.amichne.kast.workspace.contract.VfsPassiveReadAdmissionFailure.Incomparable -> "INCOMPARABLE"
+        io.github.amichne.kast.workspace.contract.VfsPassiveReadAdmissionFailure.ProjectDisposed ->
+            Json.encodeToJsonElement("PROJECT_DISPOSED")
+        io.github.amichne.kast.workspace.contract.VfsPassiveReadAdmissionFailure.DumbMode ->
+            Json.encodeToJsonElement("DUMB_MODE")
+        io.github.amichne.kast.workspace.contract.VfsPassiveReadAdmissionFailure.Moved ->
+            Json.encodeToJsonElement("MOVED")
+        io.github.amichne.kast.workspace.contract.VfsPassiveReadAdmissionFailure.Incomparable ->
+            Json.encodeToJsonElement("INCOMPARABLE")
         is io.github.amichne.kast.workspace.contract.VfsPassiveReadAdmissionFailure.Unavailable -> cause.wireCause()
     }
 
-private fun io.github.amichne.kast.workspace.contract.VfsPassiveReadUnavailableCause.wireCause(): Any =
+private fun io.github.amichne.kast.workspace.contract.VfsPassiveReadUnavailableCause.wireCause(): JsonElement =
     when (this) {
-        io.github.amichne.kast.workspace.contract.VfsPassiveReadUnavailableCause.WrongThread -> "WRONG_THREAD"
-        io.github.amichne.kast.workspace.contract.VfsPassiveReadUnavailableCause.ProjectNotOpen -> "PROJECT_NOT_OPEN"
+        io.github.amichne.kast.workspace.contract.VfsPassiveReadUnavailableCause.WrongThread ->
+            Json.encodeToJsonElement("WRONG_THREAD")
+        io.github.amichne.kast.workspace.contract.VfsPassiveReadUnavailableCause.ProjectNotOpen ->
+            Json.encodeToJsonElement("PROJECT_NOT_OPEN")
         io.github.amichne.kast.workspace.contract.VfsPassiveReadUnavailableCause.ProjectNotInitialized ->
-            "PROJECT_NOT_INITIALIZED"
+            Json.encodeToJsonElement("PROJECT_NOT_INITIALIZED")
         io.github.amichne.kast.workspace.contract.VfsPassiveReadUnavailableCause.ProjectRootUnavailable ->
-            "PROJECT_ROOT_UNAVAILABLE"
+            Json.encodeToJsonElement("PROJECT_ROOT_UNAVAILABLE")
         io.github.amichne.kast.workspace.contract.VfsPassiveReadUnavailableCause.ProjectRootMalformed ->
-            "PROJECT_ROOT_MALFORMED"
+            Json.encodeToJsonElement("PROJECT_ROOT_MALFORMED")
         io.github.amichne.kast.workspace.contract.VfsPassiveReadUnavailableCause.GradleModelUnavailable ->
-            "GRADLE_MODEL_UNAVAILABLE"
+            Json.encodeToJsonElement("GRADLE_MODEL_UNAVAILABLE")
         io.github.amichne.kast.workspace.contract.VfsPassiveReadUnavailableCause.GradleModelIncomplete ->
-            "GRADLE_MODEL_INCOMPLETE"
+            Json.encodeToJsonElement("GRADLE_MODEL_INCOMPLETE")
         io.github.amichne.kast.workspace.contract.VfsPassiveReadUnavailableCause.GradleModelAmbiguous ->
-            "GRADLE_MODEL_AMBIGUOUS"
+            Json.encodeToJsonElement("GRADLE_MODEL_AMBIGUOUS")
         io.github.amichne.kast.workspace.contract.VfsPassiveReadUnavailableCause.GradleRootUnavailable ->
-            "GRADLE_ROOT_UNAVAILABLE"
+            Json.encodeToJsonElement("GRADLE_ROOT_UNAVAILABLE")
         io.github.amichne.kast.workspace.contract.VfsPassiveReadUnavailableCause.GradleRootMalformed ->
-            "GRADLE_ROOT_MALFORMED"
+            Json.encodeToJsonElement("GRADLE_ROOT_MALFORMED")
         io.github.amichne.kast.workspace.contract.VfsPassiveReadUnavailableCause.ImportTimestampsIncoherent ->
-            "IMPORT_TIMESTAMPS_INCOHERENT"
+            Json.encodeToJsonElement("IMPORT_TIMESTAMPS_INCOHERENT")
         io.github.amichne.kast.workspace.contract.VfsPassiveReadUnavailableCause.VfsBatchLimitExceeded ->
-            "VFS_BATCH_LIMIT_EXCEEDED"
+            Json.encodeToJsonElement("VFS_BATCH_LIMIT_EXCEEDED")
         io.github.amichne.kast.workspace.contract.VfsPassiveReadUnavailableCause.VfsPathMalformed ->
-            "VFS_PATH_MALFORMED"
-        io.github.amichne.kast.workspace.contract.VfsPassiveReadUnavailableCause.SignalExhausted -> "SIGNAL_EXHAUSTED"
-        io.github.amichne.kast.workspace.contract.VfsPassiveReadUnavailableCause.ReadPreempted -> "READ_PREEMPTED"
+            Json.encodeToJsonElement("VFS_PATH_MALFORMED")
+        io.github.amichne.kast.workspace.contract.VfsPassiveReadUnavailableCause.SignalExhausted ->
+            Json.encodeToJsonElement("SIGNAL_EXHAUSTED")
+        io.github.amichne.kast.workspace.contract.VfsPassiveReadUnavailableCause.ReadPreempted ->
+            Json.encodeToJsonElement("READ_PREEMPTED")
         is io.github.amichne.kast.workspace.contract.VfsPassiveReadUnavailableCause.ObservationFailed ->
-            mapOf("cause" to "OBSERVATION_FAILED", "stage" to stage.name)
+            Json.encodeToJsonElement(ObservationDetail("OBSERVATION_FAILED", stage.name))
     }

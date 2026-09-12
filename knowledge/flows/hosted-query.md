@@ -64,6 +64,14 @@ code_sources:
   - path: workspace/intellij-read/build.gradle.kts
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/NamedGradleSourceScope.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/LiveNamedGradleSourceScopeCapture.kt
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/GradleBuildProjectIndex.kt
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/SelectedGradleBuild.kt
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/NamedGradleModuleScopeCapture.kt
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/LiveSelectedGradleModuleRoots.kt
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IdeRootMappingFailure.kt
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/NamedSourceScopeFailureDocument.kt
+  - path: packaging/run-gradle-source-scope-acceptance.py
+  - path: experiments/host-observation/gradle-source-scope-fixture.kts.template
   - path: experiments/host-observation/run_hosted_query.py
   - path: experiments/host-observation/hosted-query.kts.template
   - path: experiments/host-observation/hosted-plugin-unload.kts.template
@@ -91,11 +99,45 @@ importing Gradle, or starting an isolated worker.
 
 The ordinary-query scope gate has a separate project-bound capture for exact
 imported Gradle names. It reads `ExternalProjectDataCache` and joins explicit
-`ExternalSourceSet.name` facts with the current IDE source folders. Missing or
-inconsistent ownership rejects before name filtering. Most-specific roots win,
+`ExternalSourceSet.name` facts with the current IDE source folders. One read admits
+one Gradle build. Module Gradle awareness and normalized external build identity
+are checked before source/resource folders. A different external build root is
+excluded without inspecting its project or source roots.
+
+Composite imports can report the outer import root for every module. The cached
+`ExternalProject` hierarchy retains build-local project paths: each `path == ":"`
+node starts a build authority at that project's directory. `GradleBuildProjectIndex`
+retains that authority through child projects and resolves the module's external
+project directory before admitting `AdmittedSelectedBuildModule`. Included build
+projects cannot become selected-build owners merely because they share an import
+root. No directory names or filesystem containment establish build ownership.
+
+Only admitted modules reach `LiveSelectedGradleModuleRoots`; foreign roots cannot
+contribute entries, exclusions, root-budget usage, or mapping failures. Missing
+ownership still rejects. Selected-build unavailable folders, unsupported kinds,
+missing cached owners, and classification mismatches still reject with bounded
+module/root evidence. The hosted failure DTO and diagnostic outcome preserve that
+evidence, including explicit truncation and both sides of classification mismatches.
+Separate selected/foreign module counters describe successful admission decisions.
+
+Missing or inconsistent ownership rejects before name filtering. Most-specific roots win,
 including generated, excluded and resource roots; an unknown nested source-folder
 kind rejects rather than inheriting an allowed parent. This gate performs no import
 or sync.
+
+The native Gradle ownership fixture imports a composite project in a private IDEA
+profile, finds `NativeChangeTarget` through exact `symbol.discover`, then adds an
+unavailable source folder to the included build and repeats the successful search.
+It adds the equivalent folder to the selected build and requires a rejection with
+module/root identity that validates against the hosted schema. Run it after
+`:runtime:hosted:hostedPlugin`, with a new report path:
+
+```sh
+uv run --with jsonschema==4.26.0 python packaging/run-gradle-source-scope-acceptance.py \
+  --idea-home /path/to/pinned/idea/home \
+  --plugin /path/to/hosted-plugin.zip \
+  --report build/reports/gradle-source-scope/native.json
+```
 
 The symbol scope compiler retains a typed `IntellijScopePopulation`. After valid
 owner and source/generated-policy roots have been established, an exact source-set
