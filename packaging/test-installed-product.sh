@@ -11,7 +11,7 @@ report_directory="${10}"
 fail() { printf 'installed-product: %s\n' "$*" >&2; exit 1; }
 kast="$product_root/bin/kast"
 [[ -x "$kast" && -f "$control_archive" && -f "$plugin_archive" ]] || fail 'release inputs missing'
-for resource in operation-registry.json wire-schema.json ide-host.json; do
+for resource in operation-registry.json wire-schema.json ide-host.json knowledge/manifest.json; do
   [[ -f "$product_root/share/kast/$resource" ]] || fail "missing resource: $resource"
 done
 [[ ! -e "$product_root/share/kast/semantic-runtime.json" ]] || fail 'retired manifest shipped'
@@ -31,7 +31,9 @@ with zipfile.ZipFile(plugin) as archive:
     assert any('/lib/kast-ide-hosted-' in name and name.endswith('.jar') for name in names)
     assert not any(any(token in name for token in ('indexer', 'topology-', 'runtime-composition', 'workspace-service', 'idea-home')) for name in names)
 with tarfile.open(sys.argv[3]) as archive:
-    assert not any(any(token in name for token in ('semantic-runtime', 'kast-indexer', 'topology-', 'runtime-composition', 'workspace-service')) for name in archive.getnames())
+    names = archive.getnames()
+    assert not any(any(token in name for token in ('semantic-runtime', 'kast-indexer', 'topology-', 'runtime-composition', 'workspace-service')) for name in names)
+    assert any(name.endswith('/share/kast/knowledge/manifest.json') or name == 'share/kast/knowledge/manifest.json' for name in names), names
 CHECK
 mkdir -p "$fixture/repo"
 printf 'rootProject.name = "installed-product"\n' > "$fixture/repo/settings.gradle.kts"
@@ -49,6 +51,7 @@ registry = json.loads(Path(sys.argv[2]).read_text())
 assert document["operationRegistry"] == registry, document
 assert document["cliProjection"]["commands"], document
 assert document["cliProjection"]["localCommands"] == [
+    "knowledge <query-or-resource>",
     "codex", "codex desktop",
     "index status [--root <path>]", "index classes <name> [--root <path>]",
     "index supertype <qualified-name> [--root <path>]", "index generate-completion <shell>",
@@ -86,12 +89,37 @@ assert all("invocation" not in tool and "cliUsage" not in tool for tool in boots
 PY
 
 help="$(env "${command_environment[@]}" "$kast" --help)"
-for command in tool symbol source relation traversal diagnostic change codex index ide; do
+for command in tool symbol source relation traversal diagnostic change knowledge codex index ide; do
   grep -Eq "^  ${command}[[:space:]]" <<<"$help" || fail "missing command: $command"
 done
 for command in start stop topology; do
   if grep -Eq "^  ${command}[[:space:]]" <<<"$help"; then fail "retired command is public: $command"; fi
 done
+
+mkdir -p "$fixture/unrelated"
+knowledge_search="$(cd "$fixture/unrelated" && env "${command_environment[@]}" "$kast" knowledge KastCli)"
+knowledge_resource="$(python3 - "$knowledge_search" <<'PY'
+import json, sys
+value = json.loads(sys.argv[1])
+assert value['operation'] == 'knowledge' and value['status'] == 'complete', value
+assert value['declarationEvidence'] == 'KOTLIN_PSI_SYNTAX', value
+assert {'KOTLIN_SOURCE_ONLY', 'NO_TYPE_RESOLUTION', 'NO_INHERITED_DOCUMENTATION'} <= set(value['declarationLimitations']), value
+match = next(item for item in value['items'] if item['name'] == 'KastCli')
+assert match['resource'].startswith('modules/') and '/declarations/' in match['resource'], match
+print(match['resource'])
+PY
+)"
+knowledge_card="$(cd "$fixture/unrelated" && env "${command_environment[@]}" "$kast" knowledge "$knowledge_resource")"
+python3 - "$knowledge_card" <<'PY'
+import json, sys
+value = json.loads(sys.argv[1])
+assert value['operation'] == 'knowledge' and value['status'] == 'complete', value
+card = value['document']
+assert card['name'] == 'KastCli' and card['signature'], card
+assert card['sourcePath'].endswith('/KastCli.kt'), card
+assert card['governingGuides'], card
+PY
+
 inspection="$(cd "$fixture/repo" && env "${command_environment[@]}" "$kast")"
 python3 - "$inspection" <<'CHECK'
 import json, sys
@@ -109,6 +137,6 @@ mkdir -p "$report_directory"
 python3 - "$report_directory/topology-installed-product.json" "$version" <<'REPORT'
 import json, sys
 from pathlib import Path
-Path(sys.argv[1]).write_text(json.dumps({'schemaVersion': 2, 'taskId': 'INSTALLED-PRODUCT', 'outcome': 'COMPLETE', 'product': sys.argv[2], 'semanticAuthority': 'EXISTING_IDE', 'isolatedModules': 'ABSENT', 'missingHost': 'REJECTED'}, separators=(',', ':')) + '\n')
+Path(sys.argv[1]).write_text(json.dumps({'schemaVersion': 2, 'taskId': 'INSTALLED-PRODUCT', 'outcome': 'COMPLETE', 'product': sys.argv[2], 'semanticAuthority': 'EXISTING_IDE', 'isolatedModules': 'ABSENT', 'missingHost': 'REJECTED', 'knowledge': 'INSTALLED'}, separators=(',', ':')) + '\n')
 REPORT
-printf 'installed-product: plugin metadata and fail-closed IDE admission passed\n'
+printf 'installed-product: plugin metadata, local knowledge, and fail-closed IDE admission passed\n'
