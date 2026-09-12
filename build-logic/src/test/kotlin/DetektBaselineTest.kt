@@ -2,6 +2,7 @@ import java.nio.file.Path
 import kotlin.io.path.createDirectories
 import kotlin.io.path.writeText
 import org.gradle.testkit.runner.GradleRunner
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -41,5 +42,33 @@ class DetektBaselineTest {
         val added = runner.withArguments("detekt", "--console=plain").buildAndFail()
         assertTrue(added.output.contains("MagicNumber"), added.output)
         assertTrue(added.output.contains("Example.kt:3:"), added.output)
+    }
+
+    @Test
+    fun `quality check schedules one aggregate detekt analysis`() {
+        temporaryDirectory.resolve("settings.gradle").writeText("rootProject.name = 'detekt-check-fixture'\n")
+        temporaryDirectory
+            .resolve("build.gradle")
+            .writeText(
+                """
+                plugins {
+                    id 'org.jetbrains.kotlin.jvm'
+                    id 'kast.kotlin-quality'
+                }
+                repositories { mavenCentral() }
+                """
+                    .trimIndent()
+            )
+
+        val result =
+            GradleRunner.create()
+                .withProjectDir(temporaryDirectory.toFile())
+                .withPluginClasspath()
+                .withArguments("check", "--dry-run", "--console=plain")
+                .build()
+        val detektTasks =
+            result.output.lineSequence().filter { it.matches(Regex("^:detekt(?:Main|Test)? SKIPPED$")) }.toList()
+
+        assertEquals(listOf(":detekt SKIPPED"), detektTasks, result.output)
     }
 }

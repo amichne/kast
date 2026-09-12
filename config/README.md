@@ -1,14 +1,17 @@
 # Kotlin quality baselines
 
-Module `check` runs Spotless, Detekt, and Kotlin file-length checks. Existing
-structural findings are recorded so the gates can reject new debt immediately.
-Formatting has no baseline.
+Module `check` runs Spotless, one aggregate Detekt analysis, and Kotlin file-length
+checks. Detekt 2.0.0-alpha.6 resolves types across every Kotlin source set in that
+aggregate task, so the source-set-specific tasks remain available for focused
+diagnosis and baseline maintenance but are not duplicate `check` dependencies.
+Existing structural findings are recorded so the gates can reject new debt
+immediately. Formatting has no baseline.
 
-`detekt/baselines/<module>/baseline.xml` records native Detekt finding identities.
-The `baseline-main.xml` and `baseline-test.xml` siblings record type-resolved
-source-set findings and take precedence for their corresponding tasks. The
-generic baseline covers the separate `detekt` task. New finding identities fail
-the gate; Detekt does not measure growth inside an already recorded finding.
+`detekt/baselines/<module>/baseline.xml` records finding identities for the
+aggregate `detekt` task used by `check`. The `baseline-main.xml` and
+`baseline-test.xml` siblings record source-set findings and take precedence when
+their corresponding focused tasks are invoked explicitly. New finding identities
+fail the gate; Detekt does not measure growth inside an already recorded finding.
 Remove entries as their findings are resolved. Generating baselines with
 `detektBaseline`, `detektBaselineMain`, or `detektBaselineTest` is an explicit
 debt-policy change, never a routine formatting or CI step.

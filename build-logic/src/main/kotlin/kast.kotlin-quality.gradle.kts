@@ -55,10 +55,9 @@ val checkTestKotlinFileLength by
     }
 
 tasks.named("check") {
+    // Detekt 2.0.0-alpha.6 attaches its aggregate, type-resolved analysis of every source set to check.
     dependsOn(
         "spotlessCheck",
-        "detektMain",
-        "detektTest",
         checkMainKotlinFileLength,
         checkTestKotlinFileLength,
     )
