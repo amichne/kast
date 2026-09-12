@@ -54,10 +54,12 @@ val jsonContractsTest by sourceSets.creating {
 
 kotlin.sourceSets.named(jsonContractsTest.name) {
     kotlin.srcDir("src/test/kotlin")
-    kotlin.include("JsonContractGuardTest.kt")
+    kotlin.include("JsonContractGuardTest.kt", "KotlinDocumentationScannerTest.kt")
 }
 
-kotlin.sourceSets.named("test") { kotlin.exclude("JsonContractGuardTest.kt") }
+kotlin.sourceSets.named("test") {
+    kotlin.exclude("JsonContractGuardTest.kt", "KotlinDocumentationScannerTest.kt")
+}
 
 configurations.named(jsonContractsTest.implementationConfigurationName) {
     extendsFrom(configurations.getByName(jsonContracts.implementationConfigurationName))
