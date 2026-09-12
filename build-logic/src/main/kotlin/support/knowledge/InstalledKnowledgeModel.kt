@@ -46,6 +46,7 @@ internal data class InstalledKnowledgeGuide(
 @Serializable
 internal data class InstalledKnowledgeDeclarationDescriptor(
     val id: String,
+    val declarationPath: String,
     val name: String,
     val kind: String,
     val summary: String,
@@ -58,6 +59,7 @@ internal data class InstalledKnowledgeDeclaration(
     val id: String,
     val projectPath: String,
     val sourcePath: String,
+    val declarationPath: String,
     val kind: String,
     val name: String,
     val signature: String,
