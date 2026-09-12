@@ -12,16 +12,16 @@ import io.github.amichne.kast.cli.command.CliCommandFailure
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
 import io.github.amichne.kast.cli.command.CliCommandParsing
 import io.github.amichne.kast.cli.command.CliRequestDocumentInput
+import io.github.amichne.kast.cli.knowledge.DiscoveringInstalledKnowledgeReader
 import io.github.amichne.kast.cli.knowledge.KnowledgeLookup
 import io.github.amichne.kast.cli.knowledge.KnowledgeReader
-import io.github.amichne.kast.cli.knowledge.UnavailableKnowledgeReader
 import io.github.amichne.kast.cli.projection.CliBoundaryDocuments
 import io.github.amichne.kast.cli.projection.CliLocalMetadata
 import io.github.amichne.kast.cli.projection.ProductInspectionDocuments
 import java.nio.file.Path
 
 /** Pure orchestration of the closed CLI boundaries and their explicit outer effects. */
-class KastCli(
+class KastCli internal constructor(
     private val commandGraphFactory: CliCommandGraphFactory,
     private val rootDiscovery: CanonicalRootDiscoverer,
     private val localMetadata: CliLocalMetadata,
@@ -30,7 +30,7 @@ class KastCli(
         io.github.amichne.kast.appserver.UnavailableAppServerManager,
     private val brokerServerRunner: BrokerServerRunner = UnavailableBrokerServerRunner,
     private val codexClientLauncher: CodexClientLauncher = UnavailableCodexClientLauncher,
-    private val knowledgeReader: KnowledgeReader = UnavailableKnowledgeReader,
+    private val knowledgeReader: KnowledgeReader = DiscoveringInstalledKnowledgeReader,
     private val existingIdeClient: io.github.amichne.kast.cli.ide.ExistingIdeClient =
         io.github.amichne.kast.cli.ide.ExistingIdeClient { _, _ ->
             io.github.amichne.kast.cli.ide.ExistingIdeExchange.Rejected(
