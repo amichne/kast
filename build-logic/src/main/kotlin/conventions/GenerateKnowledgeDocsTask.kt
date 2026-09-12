@@ -29,6 +29,12 @@ abstract class GenerateKnowledgeDocsTask @Inject constructor(private val executi
 
     @TaskAction
     fun generate() {
+        if (parserClasspath.isEmpty) {
+            throw GradleException(
+                "Kast API documentation extraction requires the isolated Kotlin parser classpath; " +
+                    "the owning root build did not provide it."
+            )
+        }
         val root = repositoryDirectory.get().asFile
         val sources =
             sourceFiles.files
@@ -51,7 +57,8 @@ abstract class GenerateKnowledgeDocsTask @Inject constructor(private val executi
         }
         if (result.exitValue != 0) {
             throw GradleException(
-                "Kast API documentation extraction failed. Review ${outputFile.get().asFile}; unsupported or unreadable production source is not silently omitted."
+                "Kast API documentation extraction failed. Review ${outputFile.get().asFile}; " +
+                    "unsupported or unreadable production source is not silently omitted."
             )
         }
     }
