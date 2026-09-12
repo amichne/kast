@@ -67,10 +67,12 @@ explicit host dependencies; a live plan does not acquire worker-start authority.
 ## Formatting and structural checks
 
 `kast.kotlin-library` applies the shared `kast.kotlin-quality` convention.
-Module `check` tasks depend on Spotless, type-resolved Detekt for production
-and test source sets, and file-length checks with 400-line production and
-600-line test limits. The Detekt configuration defines the structural rules.
-These gates are independent of accepted module-dependency evidence.
+Module `check` tasks depend on Spotless, Detekt's aggregate type-resolved
+analysis of every Kotlin source set, and file-length checks with 400-line
+production and 600-line test limits. Source-set-specific Detekt tasks remain
+available for focused diagnosis but are not duplicate `check` dependencies.
+The Detekt configuration defines the structural rules. These gates are
+independent of accepted module-dependency evidence.
 
 Checked-in [baselines](../../config/README.md) admit existing Detekt findings
 and fixed per-file ceilings for oversized files. New Detekt finding identities,

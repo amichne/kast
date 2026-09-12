@@ -27,7 +27,8 @@ class InstallerEntrypointTest(unittest.TestCase):
                 self.assertNotIn("| \\\n  bash", text)
                 for line in text.splitlines():
                     if "raw.githubusercontent.com/amichne/kast" in line:
-                        self.assertTrue(line.startswith(CANONICAL_PREFIX), line)
+                        command = line.lstrip(" \t")
+                        self.assertTrue(command.startswith(CANONICAL_PREFIX), line)
 
     def test_double_dash_delivers_help_to_downloaded_script(self):
         with tempfile.TemporaryDirectory(prefix="kast-installer-entrypoint-") as directory:
