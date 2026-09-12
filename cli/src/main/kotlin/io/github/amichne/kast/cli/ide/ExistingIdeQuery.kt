@@ -2,7 +2,7 @@ package io.github.amichne.kast.cli.ide
 
 import io.github.amichne.kast.cli.CanonicalRoot
 import io.github.amichne.kast.cli.CliJsonDocument
-import io.github.amichne.kast.cli.HostedRuntimeDemand
+import io.github.amichne.kast.cli.HostedRequestEffect
 import io.github.amichne.kast.cli.PreparedCliRequest
 import io.github.amichne.kast.cli.ProjectedCliOutcome
 import io.github.amichne.kast.kernel.Refinement
@@ -51,8 +51,8 @@ sealed interface ExistingIdeOperation {
     class Plan private constructor(override val request: PreparedCliRequest) : Change {
         companion object {
             fun admit(request: PreparedCliRequest): Refinement<Plan, ExistingIdeFailure> =
-                when (val demand = request.hostedDemand) {
-                    is HostedRuntimeDemand.ChangePlan ->
+                when (val demand = request.hostedEffect) {
+                    is HostedRequestEffect.ChangePlan ->
                         if (
                             request.operation == CanonicalOperation.CHANGE_PLAN &&
                                 demand.intent is ChangeIntentDocument.AddDeclaration

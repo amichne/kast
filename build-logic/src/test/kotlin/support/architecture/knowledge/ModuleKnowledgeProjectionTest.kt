@@ -19,7 +19,6 @@ import support.architecture.ModulePolicyValidation
 import support.architecture.ModulePolicyValidator
 import support.architecture.ModuleRole
 import support.architecture.ModuleRoleConventionObservation
-import support.architecture.ModuleRoleConventionRequirement
 import support.architecture.ObservedProjectGraph
 import support.architecture.ProjectDependencyObservation
 import support.architecture.ValidatedArchitecturePolicy
@@ -314,13 +313,9 @@ class ModuleKnowledgeProjectionTest {
     private fun roleConventions(architecture: ValidatedArchitecturePolicy): List<String> =
         architecture.modules.values
             .filter { module -> module.lifecycle == ModuleLifecycle.ACTIVE }
-            .mapNotNull { module ->
-                when (val requirement = module.conventionRequirement) {
-                    ModuleRoleConventionRequirement.UnmarkedLegacy -> null
-                    is ModuleRoleConventionRequirement.Required ->
-                        module.id.projectPath + ArchitectureObservationParser.ROLE_SEPARATOR +
-                            requirement.convention.pluginId
-                }
+            .map { module ->
+                module.id.projectPath + ArchitectureObservationParser.ROLE_SEPARATOR +
+                    module.requiredConvention.pluginId
             }
 
     private companion object {

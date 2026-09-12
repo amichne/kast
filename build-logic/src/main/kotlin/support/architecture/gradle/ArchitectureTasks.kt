@@ -413,12 +413,6 @@ private fun renderViolation(violation: ArchitectureViolation): ArchitectureRepor
         "module" to violation.module.projectPath,
         "expectedPlugin" to violation.expected.pluginId,
     )
-    is ArchitectureViolation.UnexpectedModuleRoleConvention -> finding(
-        "UNEXPECTED_MODULE_ROLE_CONVENTION",
-        violation.module.projectPath,
-        "module" to violation.module.projectPath,
-        "observedPlugin" to violation.observed.pluginId,
-    )
     is ArchitectureViolation.MismatchedModuleRoleConvention -> finding(
         "MISMATCHED_MODULE_ROLE_CONVENTION",
         violation.module.projectPath,

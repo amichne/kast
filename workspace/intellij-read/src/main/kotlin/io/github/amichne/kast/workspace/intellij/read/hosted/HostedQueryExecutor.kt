@@ -42,6 +42,7 @@ internal class HostedQueryExecutor(
     suspend fun <Value> execute(
         endpoint: HostedQueryEndpoint,
         limits: ReadLimits = ReadLimits.Default,
+        outcome: (Value) -> HostedDiagnosticOutcome = ::hostedExecutionOutcome,
         computation: suspend (HostedQueryProgress) -> Value,
     ): HostedExecution<Value> {
         val permit =
@@ -100,12 +101,7 @@ internal class HostedQueryExecutor(
         (progress.diagnostics ?: diagnostics(limits))?.finish(
             when (final) {
                 is HostedExecution.Rejected -> HostedDiagnosticOutcome.Rejected(final.failure)
-                is HostedExecution.Completed ->
-                    when (val value = final.value) {
-                        is HostedSemanticRead.Rejected -> HostedDiagnosticOutcome.Rejected(value.failure)
-                        is HostedReadPreparation.Rejected -> HostedDiagnosticOutcome.Rejected(value.failure)
-                        else -> HostedDiagnosticOutcome.Completed
-                    }
+                is HostedExecution.Completed -> outcome(final.value)
             }
         )
         return final
@@ -158,3 +154,10 @@ internal class HostedQueryProgress(val limits: ReadLimits = ReadLimits.Default) 
         diagnostics?.stage(next)
     }
 }
+
+internal fun hostedExecutionOutcome(value: Any?): HostedDiagnosticOutcome =
+    when (value) {
+        is HostedSemanticRead.Rejected -> HostedDiagnosticOutcome.Rejected(value.failure)
+        is HostedReadPreparation.Rejected -> HostedDiagnosticOutcome.Rejected(value.failure)
+        else -> HostedDiagnosticOutcome.Completed
+    }

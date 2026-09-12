@@ -25,7 +25,7 @@ class TopologySourceRootVfsSynchronizationAuthorityBoundaryTest {
     }
 
     @Test
-    fun `topology IntelliJ is the sole source root synchronization owner`() {
+    fun `source root synchronization belongs only to the retained topology adapter`() {
         val architecture = assertInstanceOf<ArchitecturePolicyValidation.Valid>(
             KastArchitecturePolicy.validate(),
         ).architecture

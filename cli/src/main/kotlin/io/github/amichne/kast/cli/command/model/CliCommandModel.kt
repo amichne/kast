@@ -6,7 +6,6 @@ import io.github.amichne.kast.cli.CliProjectionFailure
 import io.github.amichne.kast.cli.CliProjectionPreparation
 import io.github.amichne.kast.cli.CliRequestPreparer
 import io.github.amichne.kast.cli.PreparedCliRequest
-import io.github.amichne.kast.cli.RuntimeStartupRequest
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.OperationRequest
 import kotlinx.serialization.KSerializer
@@ -55,8 +54,8 @@ enum class CliLifecycleCommand(
     val command: String,
     val exposure: CliLocalExposure = CliLocalExposure.PUBLIC,
 ) {
-    START("start"),
-    STOP("stop"),
+    START("start", CliLocalExposure.INTERNAL),
+    STOP("stop", CliLocalExposure.INTERNAL),
     STATUS("status", CliLocalExposure.INTERNAL),
 }
 
@@ -90,7 +89,7 @@ sealed interface CliAction {
     sealed interface Lifecycle : CliAction {
         val command: CliLifecycleCommand
 
-        data class Start(val startup: RuntimeStartupRequest) : Lifecycle {
+        data object Start : Lifecycle {
             override val command: CliLifecycleCommand = CliLifecycleCommand.START
         }
 

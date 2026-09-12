@@ -7,16 +7,6 @@ import org.junit.jupiter.api.assertInstanceOf
 
 class CliSidecarFilesystemEffectBoundaryTest {
     private val expectedCallers = setOf(
-        JvmClassName("io/github/amichne/kast/cli/ApfsCoWIndexSeedCloner"),
-        JvmClassName("io/github/amichne/kast/cli/FilesystemRootSidecarCacheLifecycle"),
-        JvmClassName("io/github/amichne/kast/cli/FilesystemSidecarCachePreparer"),
-        JvmClassName("io/github/amichne/kast/cli/IndexSeedFilesystemService"),
-        JvmClassName("io/github/amichne/kast/cli/IndexSeedFilesystemServiceKt"),
-        JvmClassName("io/github/amichne/kast/cli/InstalledSidecarRuntimeDemandKt"),
-        JvmClassName("io/github/amichne/kast/cli/PosixRuntimeEndpointArtifacts"),
-        JvmClassName("io/github/amichne/kast/cli/SidecarCacheIdentityFile"),
-        JvmClassName("io/github/amichne/kast/cli/SidecarCacheStateFile"),
-        JvmClassName("io/github/amichne/kast/cli/bootstrap/SidecarBootstrapAttemptLock"),
         JvmClassName("io/github/amichne/kast/cli/ide/FilesystemBrokerTrustRegistrar"),
         JvmClassName("io/github/amichne/kast/cli/installation/InstallationWorkflow"),
         JvmClassName("io/github/amichne/kast/cli/installation/InstallationWorkflow\$copyControl\$1"),

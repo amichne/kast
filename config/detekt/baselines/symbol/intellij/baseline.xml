@@ -3,15 +3,12 @@
   <ManuallySuppressedIssues/>
   <CurrentIssues>
     <ID>CognitiveComplexMethod:IntellijExactNameIndexes.kt:internal fun IntellijNativeDiscoveryQuery.discoverNative: IntellijNativeDiscoveryExecution</ID>
-    <ID>CognitiveComplexMethod:IntellijNativeDiscoveryAdapter.kt:IntellijFastSymbolReadAdapter$suspend fun read: IntellijFastSymbolReadResult&lt;Definition></ID>
     <ID>CognitiveComplexMethod:IntellijNativeDiscoveryQuery.kt:IntellijNativeDiscoveryQuery$fun discover: IntellijNativeDiscoveryExecution</ID>
     <ID>CognitiveComplexMethod:IntellijNativeDiscoveryQuery.kt:IntellijNativeDiscoveryQuery$private fun discoverIndexed: IntellijNativeDiscoveryExecution</ID>
     <ID>CognitiveComplexMethod:IntellijNativeDiscoveryQuery.kt:private fun SymbolDiscoveryConstraints.admit: IntellijDiscoveryItemAdmission</ID>
     <ID>CognitiveComplexMethod:IntellijNativeRelationReadTestFixtures.kt:internal fun fixture: Fixture</ID>
-    <ID>CognitiveComplexMethod:IntellijPsiNativeRelationSearch.kt:IntellijPsiNativeRelationSearch.RelationSearchState$fun references: IntellijNativeRelationSearchResult</ID>
     <ID>CognitiveComplexMethod:IntellijSearchScopeCompiler.kt:IntellijSearchScopeCompiler$internal fun compile: IntellijSearchScopeCompilation</ID>
     <ID>CyclomaticComplexMethod:IntellijExactNameIndexes.kt:internal fun IntellijNativeDiscoveryQuery.discoverNative: IntellijNativeDiscoveryExecution</ID>
-    <ID>CyclomaticComplexMethod:IntellijNativeDiscoveryAdapter.kt:IntellijFastSymbolReadAdapter$suspend fun read: IntellijFastSymbolReadResult&lt;Definition></ID>
     <ID>CyclomaticComplexMethod:IntellijNativeDiscoveryQuery.kt:BoundedNativeDiscoveryCollector$fun accept: Boolean</ID>
     <ID>CyclomaticComplexMethod:IntellijNativeDiscoveryQuery.kt:IntellijNativeDiscoveryQuery$fun discover: IntellijNativeDiscoveryExecution</ID>
     <ID>CyclomaticComplexMethod:IntellijNativeDiscoveryQuery.kt:IntellijNativeDiscoveryQuery$private fun discoverIndexed: IntellijNativeDiscoveryExecution</ID>
@@ -33,31 +30,25 @@
     <ID>LargeClass:IntellijSearchScopeSourceRootPolicyTest.kt:IntellijSearchScopeSourceRootPolicyTest</ID>
     <ID>LongMethod:IntellijExactNameIndexes.kt:internal fun IntellijNativeDiscoveryQuery.discoverNative: IntellijNativeDiscoveryExecution</ID>
     <ID>LongMethod:IntellijKotlinCompilerSymbolLookup.kt:private fun KaSymbol.toCompilerProjection: IntellijCompilerSymbolProjectionResult</ID>
-    <ID>LongMethod:IntellijNativeDiscoveryAdapter.kt:IntellijFastSymbolReadAdapter$suspend fun read: IntellijFastSymbolReadResult&lt;Definition></ID>
     <ID>LongMethod:IntellijNativeDiscoveryQuery.kt:BoundedNativeDiscoveryCollector$fun accept: Boolean</ID>
     <ID>LongMethod:IntellijNativeDiscoveryQuery.kt:IntellijNativeDiscoveryQuery$fun discover: IntellijNativeDiscoveryExecution</ID>
     <ID>LongMethod:IntellijNativeDiscoveryQuery.kt:IntellijNativeDiscoveryQuery$private fun discoverIndexed: IntellijNativeDiscoveryExecution</ID>
     <ID>LongMethod:IntellijNativeDiscoveryQuery.kt:private fun SymbolDiscoveryConstraints.admit: IntellijDiscoveryItemAdmission</ID>
     <ID>LongMethod:IntellijNativeDiscoveryTest.kt:SymbolDiscoveryTest$private fun fixture: Fixture</ID>
     <ID>LongMethod:IntellijNativeDiscoveryTest.kt:SymbolDiscoveryTest$private fun request: SymbolDiscoveryRequest</ID>
-    <ID>LongMethod:IntellijNativeRelationAdapter.kt:IntellijNativeRelationAdapter$suspend fun read: IntellijNativeRelationResult</ID>
     <ID>LongMethod:IntellijNativeRelationReadTestFixtures.kt:internal fun fixture: Fixture</ID>
     <ID>LongMethod:IntellijNativeRelationReadTestFixtures.kt:internal fun selector: ExactDeclarationSelector</ID>
     <ID>LongMethod:IntellijPsiExactDeclarationLookup.kt:IntellijPsiExactDeclarationLookup$internal fun findLive: IntellijLiveExactDeclarationLookupResult</ID>
-    <ID>LongMethod:IntellijPsiRelationFactProjector.kt:IntellijPsiRelationFactProjector$override fun project: Refinement&lt;NativeRelationFact, IntellijRelationProjectionFailure></ID>
     <ID>LongMethod:IntellijSearchScopeCompiler.kt:IntellijSearchScopeCompiler$internal fun compile: IntellijSearchScopeCompilation</ID>
     <ID>LongMethod:IntellijSearchScopeSourceRootPolicyTest.kt:IntellijSearchScopeSourceRootPolicyTest$@Test fun `known absent source-set intersection is empty while policy excluded and unavailable models reject`</ID>
     <ID>LongMethod:IntellijSearchScopeSourceRootPolicyTest.kt:IntellijSearchScopeSourceRootPolicyTest$@Test fun `nested foreign owners cannot inherit a readable parent scope`</ID>
     <ID>LongMethod:IntellijSearchScopeSourceRootPolicyTest.kt:IntellijSearchScopeSourceRootPolicyTest$@Test fun `rejected unavailable or unknown ownership never reaches native query`</ID>
     <ID>LongMethod:IntellijSearchScopeSourceRootPolicyTest.kt:IntellijSearchScopeSourceRootPolicyTest$@Test fun `typed exact module source-set project workspace and library policies compile before query`</ID>
     <ID>LoopWithTooManyJumpStatements:IntellijExactNameIndexes.kt:for</ID>
-    <ID>LoopWithTooManyJumpStatements:IntellijNativeDiscoveryAdapter.kt:IntellijFastSymbolReadAdapter$for</ID>
     <ID>LoopWithTooManyJumpStatements:IntellijNativeDiscoveryQuery.kt:IntellijNativeDiscoveryQuery$for</ID>
-    <ID>MagicNumber:IntellijPsiNativeRelationSearch.kt:IntellijPsiNativeRelationSearch.RelationSearchState$1_000_000L</ID>
     <ID>MatchingDeclarationName:IntellijDiscoveryTiming.kt:IntellijDiscoveryElapsedLimitNanoseconds</ID>
     <ID>MatchingDeclarationName:IntellijNativeDiscoveryTest.kt:SymbolDiscoveryTest</ID>
     <ID>NestedBlockDepth:IntellijNativeDiscoveryQuery.kt:IntellijNativeDiscoveryQuery$fun discover: IntellijNativeDiscoveryExecution</ID>
-    <ID>NestedBlockDepth:IntellijPsiNativeRelationSearch.kt:IntellijPsiNativeRelationSearch.RelationSearchState$fun references: IntellijNativeRelationSearchResult</ID>
     <ID>TooGenericExceptionCaught:IntellijNativeDiscoveryQuery.kt:IntellijNativeDiscoveryQuery$failure: RuntimeException</ID>
     <ID>TooGenericExceptionCaught:IntellijSymbolSelectorResolver.kt:IntellijSymbolSelectorQuery$failure: RuntimeException</ID>
     <ID>WildcardImport:IntellijNativeDiscoveryTest.kt:import io.github.amichne.kast.workspace.contract.*</ID>

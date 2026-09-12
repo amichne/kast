@@ -201,7 +201,7 @@ class ExistingIdeSemanticReadTest {
                 ExistingIdeOperation.Read.admit(
                         PreparedCliRequest(
                             kind.canonical,
-                            HostedRuntimeDemand.Operation(kind.canonical),
+                            HostedRequestEffect.Operation(kind.canonical),
                             "{}",
                         ) {
                             fail("Rejection projected as semantic success")

@@ -3,8 +3,6 @@ package io.github.amichne.kast.cli.installation
 import io.github.amichne.kast.appserver.InstalledWorkspaceRegistryRetention
 import io.github.amichne.kast.appserver.PublishedBrokerServiceCommand
 import io.github.amichne.kast.appserver.WorkspaceRegistryRetention
-import io.github.amichne.kast.distribution.contract.SemanticRuntimeManifest
-import io.github.amichne.kast.distribution.contract.SemanticRuntimeManifestAdmission
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationSource
 import io.github.amichne.kast.distribution.contract.configuration.InstallationOperationalLimits
 import io.github.amichne.kast.distribution.contract.configuration.KastConfigurationCatalogue
@@ -25,14 +23,13 @@ import java.nio.file.attribute.PosixFilePermission
 import java.nio.file.attribute.PosixFilePermissions
 import java.security.MessageDigest
 import java.time.Duration
-import java.util.zip.ZipFile
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 
-private const val MAXIMUM_CONTROL_FILES = 4_096
+internal const val MAXIMUM_CONTROL_FILES = 4_096
 private const val MAXIMUM_CONTROL_BYTES = 1024L * 1024L * 1024L
-private const val MAXIMUM_MANIFEST_BYTES = 1024L * 1024L
+internal const val MAXIMUM_MANIFEST_BYTES = 1024L * 1024L
 
 internal enum class InstallationChildStage {
     PRIOR_ADMISSION,
@@ -113,7 +110,7 @@ internal fun priorServiceRetirementEnvironment(
 internal enum class InstallationFailure {
     REQUEST_REJECTED,
     CONTROL_REJECTED,
-    RUNTIME_REJECTED,
+    PLUGIN_REJECTED,
     IDEA_REJECTED,
     INSTALLATION_ROOT_REJECTED,
     ACTIVATION_LOCK_REJECTED,
@@ -141,19 +138,19 @@ internal data class InstallationReport(
     val semanticVersion: String,
     val installation: String,
     val controlSha256: String,
-    val runtimeSha256: String,
+    val hostedPluginSha256: String,
     val ideaHome: String,
     val changes: List<String>,
 )
 
 @Serializable
 private data class InstallationManifest(
-    val schemaVersion: Int = 1,
+    val schemaVersion: Int = 2,
     val semanticVersion: String,
     val installationRoot: String,
     val payloadIdentity: String,
     val controlSha256: String,
-    val runtimeSha256: String,
+    val hostedPluginSha256: String,
     val codexHome: String,
     val configuration: String,
     val workspaceRegistry: String,
@@ -188,7 +185,7 @@ private data class Retention(
 
 private data class VerifiedInstallationPlan(
     val request: InstallationRequest,
-    val runtimeName: String,
+    val pluginName: String,
     val payloadDigest: Sha256,
     val versionsRoot: Path,
     val targetRoot: Path,
@@ -205,7 +202,7 @@ private data class VerifiedInstallationPlan(
             semanticVersion = request.version.toString(),
             installation = targetRoot.toString(),
             controlSha256 = "sha256:${request.controlDigest.value}",
-            runtimeSha256 = "sha256:${request.runtimeDigest.value}",
+            hostedPluginSha256 = "sha256:${request.pluginDigest.value}",
             ideaHome = request.ideaHome.value.toString(),
             changes =
                 listOf(
@@ -255,33 +252,17 @@ internal object InstallationWorkflow {
         ) {
             return PlanVerification.Rejected(InstallationFailure.CONTROL_REJECTED)
         }
-        if (
-            !regularFile(request.runtimeArchive.value) || digest(request.runtimeArchive.value) != request.runtimeDigest
-        ) {
-            return PlanVerification.Rejected(InstallationFailure.RUNTIME_REJECTED)
+        if (!regularFile(request.pluginArchive.value) || digest(request.pluginArchive.value) != request.pluginDigest) {
+            return PlanVerification.Rejected(InstallationFailure.PLUGIN_REJECTED)
         }
         if (!verifyControlLayout(controlRoot)) return PlanVerification.Rejected(InstallationFailure.CONTROL_REJECTED)
 
-        val manifestPath = controlRoot.resolve("share/kast/semantic-runtime.json")
-        val rawManifest =
-            readBounded(manifestPath, MAXIMUM_MANIFEST_BYTES)
-                ?: return PlanVerification.Rejected(InstallationFailure.CONTROL_REJECTED)
         val manifest =
-            when (val admission = SemanticRuntimeManifest.admit(rawManifest)) {
-                is SemanticRuntimeManifestAdmission.Admitted -> admission.manifest
-                is SemanticRuntimeManifestAdmission.Rejected ->
-                    return PlanVerification.Rejected(InstallationFailure.CONTROL_REJECTED)
+            when (val admitted = admitHostedPluginArtifact(request)) {
+                is io.github.amichne.kast.kernel.Refinement.Refined -> admitted.value
+                is io.github.amichne.kast.kernel.Refinement.Rejected ->
+                    return PlanVerification.Rejected(admitted.failure)
             }
-        if (
-            manifest.productVersion.value != request.version.toString() ||
-                manifest.archive.digest.value != "sha256:${request.runtimeDigest.value}" ||
-                manifest.archive.size.bytes != fileSize(request.runtimeArchive.value) ||
-                manifest.archive.fileName.value != request.runtimeArchive.value.fileName.toString()
-        )
-            return PlanVerification.Rejected(InstallationFailure.RUNTIME_REJECTED)
-        if (!verifyRuntimeArchive(request.runtimeArchive.value, manifest.layout.requiredEntries.map { it.value })) {
-            return PlanVerification.Rejected(InstallationFailure.RUNTIME_REJECTED)
-        }
 
         val idea = request.ideaHome.value
         val java = request.javaHome.value
@@ -295,13 +276,13 @@ internal object InstallationWorkflow {
         )
             return PlanVerification.Rejected(InstallationFailure.IDEA_REJECTED)
 
-        val payload = sha256("${request.controlDigest.value}\n${request.runtimeDigest.value}\n".toByteArray())
+        val payload = sha256("${request.controlDigest.value}\n${request.pluginDigest.value}\n".toByteArray())
         val versions = request.installRoot.value.resolve("versions")
         val target = versions.resolve("${request.version}-${payload.value}")
         return PlanVerification.Verified(
             VerifiedInstallationPlan(
                 request,
-                manifest.archive.fileName.value,
+                manifest.fileName,
                 payload,
                 versions,
                 target,
@@ -388,22 +369,22 @@ internal object InstallationWorkflow {
         val staged = Files.createTempDirectory(plan.versionsRoot, ".install-${plan.request.version}-")
         try {
             copyControl(plan.request.controlRoot.value, staged)
-            val runtimeRoot = Files.createDirectories(staged.resolve("share/kast/runtime"))
+            val pluginRoot = Files.createDirectories(staged.resolve("share/kast/plugins"))
             Files.copy(
-                plan.request.runtimeArchive.value,
-                runtimeRoot.resolve(plan.runtimeName),
+                plan.request.pluginArchive.value,
+                pluginRoot.resolve(plan.pluginName),
                 StandardCopyOption.COPY_ATTRIBUTES,
             )
             Files.writeString(
-                runtimeRoot.resolve("${plan.runtimeName}.sha256"),
-                "${plan.request.runtimeDigest.value}  ${plan.runtimeName}\n",
+                pluginRoot.resolve("${plan.pluginName}.sha256"),
+                "${plan.request.pluginDigest.value}  ${plan.pluginName}\n",
                 StandardOpenOption.CREATE_NEW,
             )
             writeLauncher(plan, staged, "kast")
             if (regularExecutable(staged.resolve("bin/kast-codex"))) writeLauncher(plan, staged, "kast-codex")
             writeConfiguration(plan, staged.resolve("config/environment"))
             Files.writeString(staged.resolve(".kast-control-sha256"), "${plan.request.controlDigest.value}\n")
-            Files.writeString(staged.resolve(".kast-runtime-sha256"), "${plan.request.runtimeDigest.value}\n")
+            Files.writeString(staged.resolve(".kast-plugin-sha256"), "${plan.request.pluginDigest.value}\n")
             writeManifest(plan, staged)
             move(staged, plan.targetRoot)
             return StageResult.Complete
@@ -447,9 +428,7 @@ internal object InstallationWorkflow {
                 .associate { declaration -> declaration.key to checkNotNull(declaration.defaultValue) }
                 .plus(
                     mapOf(
-                        "KAST_RUNTIME_STORE" to target.resolve("runtime-payloads").toString(),
                         "KAST_RUNTIME_DIRECTORY" to target.resolve("state/run").toString(),
-                        "KAST_CACHE_ROOT" to target.resolve("state/cache").toString(),
                         "KAST_ENABLE_LAUNCHD" to request.enableLaunchd.wireValue(),
                         "KAST_ENABLE_APP_SERVER" to request.enableAppServer.wireValue(),
                         "KAST_APP_SERVER_TOOLS" to request.appServerTools.value,
@@ -497,15 +476,10 @@ internal object InstallationWorkflow {
             |  export KAST_SAVED_CONFIGURATION_FAILURE=configuration-selector-conflict
             |fi
             |export KAST_CONFIGURATION_FILE="${'$'}config_file"
-            |runtime_archive="${'$'}installation_root/share/kast/runtime/${plan.runtimeName}"
             |control_executable="${'$'}script_dir/$executable"
-            |[ -x "${'$'}control_executable" ] && [ -f "${'$'}runtime_archive" ] || { printf '%s\n' 'kast: installed payload is incomplete' >&2; exit 1; }
-            |if [ -z "${'$'}{KAST_GRADLE_JAVA_HOME+x}" ] && [ -n "${'$'}{JAVA_HOME:-}" ]; then
-            |  export KAST_GRADLE_JAVA_HOME="${'$'}JAVA_HOME"
-            |fi
+            |[ -x "${'$'}control_executable" ] || { printf '%s\n' 'kast: installed payload is incomplete' >&2; exit 1; }
             |export JAVA=${shellQuote(plan.request.javaHome.value.resolve("bin/java").toString())}
             |export JAVA_HOME=${shellQuote(plan.request.javaHome.value.toString())}
-            |export KAST_RUNTIME_ARCHIVE="${'$'}runtime_archive"
             |unset KAST_SESSION_ROOT
             |exec "${'$'}control_executable" "${'$'}@"
             |
@@ -576,7 +550,7 @@ internal object InstallationWorkflow {
                 installationRoot = plan.targetRoot.toString(),
                 payloadIdentity = "sha256:${plan.payloadDigest.value}",
                 controlSha256 = "sha256:${plan.request.controlDigest.value}",
-                runtimeSha256 = "sha256:${plan.request.runtimeDigest.value}",
+                hostedPluginSha256 = "sha256:${plan.request.pluginDigest.value}",
                 codexHome = plan.request.codexHome.value.toString(),
                 configuration = plan.configuration.toString(),
                 workspaceRegistry = plan.targetRoot.resolve("config/workspaces.json").toString(),
@@ -602,12 +576,12 @@ internal object InstallationWorkflow {
             } catch (_: IllegalArgumentException) {
                 return false
             }
-        return manifest.schemaVersion == 1 &&
+        return manifest.schemaVersion == 2 &&
             manifest.semanticVersion == plan.request.version.toString() &&
             manifest.installationRoot == plan.targetRoot.toString() &&
             manifest.payloadIdentity == "sha256:${plan.payloadDigest.value}" &&
             manifest.controlSha256 == "sha256:${plan.request.controlDigest.value}" &&
-            manifest.runtimeSha256 == "sha256:${plan.request.runtimeDigest.value}" &&
+            manifest.hostedPluginSha256 == "sha256:${plan.request.pluginDigest.value}" &&
             manifest.payloadFiles == payloadFiles(plan.targetRoot)
     }
 
@@ -807,13 +781,6 @@ internal fun secureActivationLock(path: Path): Boolean =
         false
     }
 
-private fun fileSize(path: Path): Long =
-    try {
-        Files.size(path)
-    } catch (_: IOException) {
-        -1
-    }
-
 private fun readBounded(path: Path, limit: Long): String? =
     try {
         if (!regularFile(path) || Files.size(path) > limit) null else Files.readString(path)
@@ -851,14 +818,9 @@ private fun sha256(bytes: ByteArray): Sha256 =
 private fun ByteArray.hex(): String = joinToString("") { byte -> "%02x".format(byte) }
 
 private fun verifyControlLayout(root: Path): Boolean {
-    if (
-        !regularExecutable(root.resolve("bin/kast")) ||
-            !regularFile(root.resolve("share/kast/semantic-runtime.json")) ||
-            !regularFile(root.resolve("share/kast/operation-registry.json")) ||
-            !regularFile(root.resolve("share/kast/wire-schema.json")) ||
-            !regularFile(root.resolve("share/kast/installation-lifecycle.py"))
-    )
-        return false
+    if (!regularExecutable(root.resolve("bin/kast"))) return false
+    val required = listOf("ide-host.json", "operation-registry.json", "wire-schema.json", "installation-lifecycle.py")
+    if (required.any { !regularFile(root.resolve("share/kast/$it")) }) return false
     var files = 0
     var bytes = 0L
     return try {
@@ -881,39 +843,6 @@ private fun verifyControlLayout(root: Path): Boolean {
         false
     }
 }
-
-private fun verifyRuntimeArchive(archive: Path, required: List<String>): Boolean =
-    try {
-        ZipFile(archive.toFile()).use { zip ->
-            val names = mutableSetOf<String>()
-            val entries = zip.entries()
-            while (entries.hasMoreElements()) {
-                if (names.size >= MAXIMUM_CONTROL_FILES) return false
-                val entry = entries.nextElement()
-                val name = entry.name
-                val path = Path.of(name).normalize()
-                if (
-                    name.isBlank() ||
-                        name.startsWith('/') ||
-                        path.isAbsolute ||
-                        path.toString() != name.trimEnd('/') ||
-                        name.split('/').any { it == ".." } ||
-                        name == "idea-home" ||
-                        name.startsWith("idea-home/") ||
-                        name.endsWith("/product-info.json") ||
-                        name.contains("/plugins/Kotlin/") ||
-                        name.contains("/plugins/gradle/")
-                )
-                    return false
-                names += name.trimEnd('/')
-            }
-            required.map { it.trimEnd('/') }.all(names::contains)
-        }
-    } catch (_: IOException) {
-        false
-    } catch (_: RuntimeException) {
-        false
-    }
 
 private fun prepareOwnedDirectory(path: Path): Boolean =
     try {

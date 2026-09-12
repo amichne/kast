@@ -14,5 +14,4 @@ dependencies {
     implementation(project(":traversal:contract"))
     testImplementation(project(":evidence:sqlite"))
     testImplementation(project(":relation:service"))
-    testImplementation(project(":topology:contract"))
 }

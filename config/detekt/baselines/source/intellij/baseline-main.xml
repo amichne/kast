@@ -17,7 +17,6 @@
     <ID>CyclomaticComplexMethod:IntellijSourceReadPort.kt:IntellijSelectedSourceCapture.Companion$fun create: Refinement&lt;IntellijSelectedSourceCapture, IntellijSourceReadRejection></ID>
     <ID>CyclomaticComplexMethod:IntellijSourceReadPort.kt:IntellijSourceReadPort$override suspend fun read: SourceReadResult</ID>
     <ID>CyclomaticComplexMethod:IntellijSourceScopeAdmission.kt:internal fun admitsSourceReadScope: Boolean</ID>
-    <ID>CyclomaticComplexMethod:LiveIntellijSourceRead.kt:LiveIntellijSourceReadAccess$private fun captureInReadAction: IntellijSourceReadAccessResult</ID>
     <ID>CyclomaticComplexMethod:LiveIntellijSourceRead.kt:LiveIntellijSourceRegionAccess$private fun liveDocument: LiveSourceDocumentAdmission</ID>
     <ID>CyclomaticComplexMethod:LiveIntellijSourceRead.kt:NativeSourceEntityEnumerator$private fun visit</ID>
     <ID>CyclomaticComplexMethod:LiveIntellijSourceRead.kt:NativeSourceEntityEnumerator$private fun visitParameter</ID>
@@ -67,7 +66,6 @@
     <ID>NamedArguments:LiveIntellijSourceRead.kt:restore(snapshot.lease, scope, candidate, constraints)</ID>
     <ID>NamedArguments:LiveIntellijSourceRead.kt:select( enumeration.entities.asSequence(), request.entities, cursor, request.entityLimit, limits, )</ID>
     <ID>TooGenericExceptionCaught:LiveIntellijSourceRead.kt:LiveIntellijSourceRegionAccess$failure: RuntimeException</ID>
-    <ID>UnusedPrivateClass:LiveIntellijSourceRead.kt:LiveIntellijSourceReadAccess : IntellijSourceReadAccess</ID>
     <ID>UnusedPrivateFunction:LiveIntellijSourceRead.kt:private fun KtNamedDeclaration.localSourceTarget: SourceEntityTarget</ID>
     <ID>UnusedPrivateProperty:IntellijSourceReadPort.kt:IntellijSourceReadContinuations$private val limits: ReadLimits = ReadLimits.Default</ID>
   </CurrentIssues>

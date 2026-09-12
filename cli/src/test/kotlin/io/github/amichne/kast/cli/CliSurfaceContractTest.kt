@@ -31,7 +31,7 @@ class CliSurfaceContractTest {
                 }
                 .usage,
         )
-        assertEquals(listOf(CliLifecycleCommand.START, CliLifecycleCommand.STOP), surface.lifecycleCommands)
+        assertEquals(emptyList<CliLifecycleCommand>(), surface.lifecycleCommands)
         assertEquals(
             listOf(
                 CliProductCommand.CODEX_CLI,
@@ -69,21 +69,6 @@ class CliSurfaceContractTest {
                         boundaryTouched = true
                         error("root discovery must not run")
                     },
-                endpointLocator =
-                    RuntimeEndpointLocator {
-                        boundaryTouched = true
-                        error("endpoint lookup must not run")
-                    },
-                runtimeDemander =
-                    RuntimeDemander { _, _ ->
-                        boundaryTouched = true
-                        error("runtime demand must not run")
-                    },
-                wireClient =
-                    WireClient { _, _ ->
-                        boundaryTouched = true
-                        error("wire exchange must not run")
-                    },
                 localMetadata =
                     when (
                         val admitted =
@@ -95,12 +80,10 @@ class CliSurfaceContractTest {
                         is CliLocalMetadataAdmission.Admitted -> admitted.metadata
                         is CliLocalMetadataAdmission.Rejected -> error("metadata: ${admitted.failure}")
                     },
-                lifecycle = ExactRootRuntimeLifecycle(),
-                productInspector =
-                    ProductInspector {
-                        boundaryTouched = true
-                        error("product inspection must not run")
-                    },
+                productVersion =
+                    (io.github.amichne.kast.protocol.contract.KastPluginVersion.parse("1.2.3")
+                            as io.github.amichne.kast.kernel.Refinement.Refined)
+                        .value,
             )
 
         val help = cli.execute(listOf("--help"), Path.of("/missing")) as CliExit.Complete
@@ -110,23 +93,21 @@ class CliSurfaceContractTest {
 
         assertFalse(boundaryTouched)
         assertTrue(helpText.contains("Query the existing IDEA index with index commands"))
-        assertTrue(helpText.contains("Show the installed IntelliJ sidecar product version"))
+        assertTrue(helpText.contains("Show the installed IntelliJ plugin product version"))
         assertTrue(helpText.contains("product"))
         assertTrue(helpText.contains("Read exact semantic relations."))
         assertTrue(helpText.contains("Read compiler diagnostics."))
-        assertTrue(helpText.contains("Start the isolated exact-root IntelliJ sidecar."))
-        assertTrue(helpText.contains("Stop only the process proven to own this exact workspace endpoint."))
         assertTrue(helpText.contains("Plan, apply, and recover semantic changes"))
         assertTrue(helpText.contains("Read exact semantic relations"))
         assertTrue(helpText.contains("Read compiler diagnostics"))
         assertTrue(helpText.contains("workspace"))
         assertTrue(helpText.contains("change"))
         listOf(CliLifecycleCommand.START, CliLifecycleCommand.STOP).forEach { command ->
-            assertTrue(helpText.contains(command.command))
+            assertFalse(helpText.lineSequence().any { it.trimStart().startsWith(command.command + " ") })
         }
         assertFalse(helpText.contains(" setup"))
         assertEquals(
-            "kast 1.2.3 (IntelliJ sidecar)",
+            "kast 1.2.3 (IntelliJ plugin)",
             version.document.value,
         )
         assertEquals("{\"schemaVersion\":1}", schema.document.value)

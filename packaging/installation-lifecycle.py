@@ -88,7 +88,7 @@ class Installation:
             raise Rejected(Failure.MANIFEST_REJECTED)
         document = read_json(root / 'installation.json', 65536, Failure.MANIFEST_REJECTED)
         payload = document.get('payloadIdentity', '')
-        if (document.get('schemaVersion') != 1 or document.get('installationRoot') != str(root)
+        if (document.get('schemaVersion') not in {1, 2} or document.get('installationRoot') != str(root)
                 or len(payload) != 71 or not payload.startswith('sha256:')
                 or any(c not in '0123456789abcdef' for c in payload[7:])
                 or root.name != document.get('semanticVersion', '') + '-' + payload[7:]

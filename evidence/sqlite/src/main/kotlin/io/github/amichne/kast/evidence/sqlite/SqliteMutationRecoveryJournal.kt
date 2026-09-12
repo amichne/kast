@@ -217,10 +217,10 @@ private constructor(
         /** Opens one exact-root durable location without exposing a raw path to composition. */
         fun open(location: MutationDatabaseLocation): SqliteMutationRecoveryJournalOpenResult {
             val path =
-                prepareHostedDatabasePath(location.valueAtSqliteBoundary())
-                    ?: return SqliteMutationRecoveryJournalOpenResult.Rejected(
-                        SqliteMutationRecoveryJournalOpenFailure.STORAGE_UNAVAILABLE
-                    )
+                when (val result = admitHostedDatabasePath(location.valueAtSqliteBoundary())) {
+                    is Refinement.Refined -> result.value
+                    is Refinement.Rejected -> return SqliteMutationRecoveryJournalOpenResult.Rejected(result.failure)
+                }
             return open(path)
         }
 

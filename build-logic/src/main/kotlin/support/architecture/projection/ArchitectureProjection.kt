@@ -4,7 +4,6 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import support.architecture.JvmClassName
-import support.architecture.ModuleRoleConventionRequirement
 import support.architecture.ValidatedArchitecturePolicy
 
 internal val architectureProjectionJson = Json {
@@ -39,10 +38,6 @@ internal data class ArchitectureScopedEffectDocument(
 @Serializable
 internal sealed interface ModuleRoleConventionDocument {
     @Serializable
-    @SerialName("UNMARKED_LEGACY")
-    data object UnmarkedLegacy : ModuleRoleConventionDocument
-
-    @Serializable
     @SerialName("REQUIRED")
     data class Required(val pluginId: String) : ModuleRoleConventionDocument
 }
@@ -59,7 +54,7 @@ object ArchitectureProjection {
                     lifecycle = module.lifecycle.name,
                     role = module.role.name,
                     cost = module.cost.name,
-                    roleConvention = module.conventionRequirement.toDocument(),
+                    roleConvention = ModuleRoleConventionDocument.Required(module.requiredConvention.pluginId),
                     allowedProjectDependencies = module.allowedProjectDependencies
                         .map { it.projectPath }
                         .sorted(),
@@ -83,10 +78,4 @@ object ArchitectureProjection {
             document,
         ) + "\n"
     }
-}
-
-private fun ModuleRoleConventionRequirement.toDocument(): ModuleRoleConventionDocument = when (this) {
-    ModuleRoleConventionRequirement.UnmarkedLegacy -> ModuleRoleConventionDocument.UnmarkedLegacy
-    is ModuleRoleConventionRequirement.Required ->
-        ModuleRoleConventionDocument.Required(convention.pluginId)
 }

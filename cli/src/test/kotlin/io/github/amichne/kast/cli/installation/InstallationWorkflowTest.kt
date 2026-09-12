@@ -9,6 +9,9 @@ import java.nio.file.attribute.PosixFilePermissions
 import java.security.MessageDigest
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -91,7 +94,8 @@ class InstallationWorkflowTest {
             InstallationWorkflow.execute(releaseRequest(root, installation, commands, home, codexHome, "1.2.3")),
         )
         val prior = installation.resolve(Files.readSymbolicLink(installation.resolve("current")))
-        val registry = """{"schemaVersion":2,"revision":2,"roots":["$firstWorkspace","$secondWorkspace"]}"""
+        val registry =
+            Json.encodeToString(RegistryFixture(2, 2, listOf(firstWorkspace.toString(), secondWorkspace.toString())))
         Files.writeString(prior.resolve("config/workspaces.json"), registry)
 
         assertInstanceOf(
@@ -169,32 +173,27 @@ class InstallationWorkflowTest {
                 .trimMargin(),
         )
 
-        val runtime = fixture.resolve("kast-semantic-runtime-$version-macos-aarch64.zip")
+        val runtime = fixture.resolve("kast-ide-hosted-$version.zip")
         ZipOutputStream(Files.newOutputStream(runtime)).use { archive ->
-            archive.putNextEntry(ZipEntry("kast-indexer"))
+            archive.putNextEntry(ZipEntry("kast-ide-hosted/lib/kast-ide-hosted.jar"))
             archive.write("fixture".toByteArray())
             archive.closeEntry()
         }
         val runtimeDigest = digest(runtime)
-        val pluginDigest = "sha256:${"1".repeat(64)}"
-        val archiveDigest = "sha256:$runtimeDigest"
-        val runtimeIdentity =
-            digest(
-                listOf(
-                        "macos",
-                        "aarch64",
-                        "261.1",
-                        "2.4.10",
-                        pluginDigest,
-                        "kast-wire-v1",
-                        archiveDigest,
-                    )
-                    .joinToString("\n")
-                    .byteInputStream()
-            )
         Files.writeString(
-            metadata.resolve("semantic-runtime.json"),
-            """{"schemaVersion":1,"runtimeId":"sha256:$runtimeIdentity","productVersion":"$version","platform":"macos","architecture":"aarch64","ideaBuild":"261.1","kotlinPluginBuild":"2.4.10","kastPluginSha256":"$pluginDigest","wireSchemaId":"kast-wire-v1","archive":{"fileName":"${runtime.fileName}","url":"https://example.invalid/${runtime.fileName}","sha256":"$archiveDigest","bytes":${Files.size(runtime)}},"layout":{"executable":"kast-indexer","requiredEntries":["kast-indexer"],"executableEntries":["kast-indexer"]}}""",
+            metadata.resolve("ide-host.json"),
+            Json.encodeToString(
+                PluginFixture(
+                    1,
+                    version,
+                    "existing_ide",
+                    "261.1",
+                    "261.1-IJ",
+                    runtime.fileName.toString(),
+                    "sha256:$runtimeDigest",
+                    Files.size(runtime),
+                )
+            ),
         )
         val controlArchive = Files.writeString(fixture.resolve("control-$version.tar.gz"), "control-$version")
 
@@ -215,8 +214,8 @@ class InstallationWorkflowTest {
                     InstallationEnvironment.CONTROL_ROOT.key to control.toString(),
                     InstallationEnvironment.CONTROL_ARCHIVE.key to controlArchive.toString(),
                     InstallationEnvironment.CONTROL_SHA256.key to digest(controlArchive),
-                    InstallationEnvironment.RUNTIME_ARCHIVE.key to runtime.toString(),
-                    InstallationEnvironment.RUNTIME_SHA256.key to runtimeDigest,
+                    InstallationEnvironment.HOSTED_PLUGIN_ARCHIVE.key to runtime.toString(),
+                    InstallationEnvironment.HOSTED_PLUGIN_SHA256.key to runtimeDigest,
                     InstallationEnvironment.VERSION.key to version,
                     InstallationEnvironment.IDEA_HOME.key to idea.toString(),
                     InstallationEnvironment.JAVA_HOME.key to javaHome.toString(),
@@ -250,3 +249,17 @@ class InstallationWorkflowTest {
         hash.digest().joinToString("") { byte -> "%02x".format(byte) }
     }
 }
+
+@Serializable
+private data class PluginFixture(
+    val schemaVersion: Int,
+    val productVersion: String,
+    val execution: String,
+    val ideaBuild: String,
+    val kotlinPluginBuild: String,
+    val fileName: String,
+    val sha256: String,
+    val bytes: Long,
+)
+
+@Serializable private data class RegistryFixture(val schemaVersion: Int, val revision: Int, val roots: List<String>)

@@ -28,74 +28,6 @@ class ProbeComplete(Exception):
 
 
 class StartupEnvironmentTest(unittest.TestCase):
-    def test_missing_harness_entry_is_rejected_before_creating_worker_environment(self):
-        script = load_script("test-model-input-startup")
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            classpath = root / "classpath"
-            classpath.write_text(str(root / "absent-java-classes"))
-            argv = ["startup", "--product", str(root), "--runtime", str(root / "runtime.zip"),
-                    "--idea-home", str(root), "--harness-classpath-file", str(classpath),
-                    "--report", str(root / "report.json")]
-            with patch.object(sys, "argv", argv), patch.object(script, "AcceptanceEnvironment") as environment:
-                with self.assertRaisesRegex(AssertionError, "missing or relative entries"):
-                    script.main()
-                environment.assert_not_called()
-
-    def test_model_startup_does_not_inherit_home_or_credentials(self):
-        script = load_script("test-model-input-startup")
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            runtime = root / "runtime.zip"
-            runtime.write_bytes(b"fixture runtime")
-            product = root / "product"
-            (product / "bin").mkdir(parents=True)
-            launcher = product / "bin/kast"
-            launcher.write_text("#!/bin/sh\nexit 0\n")
-            launcher.chmod(0o700)
-            metadata = product / "share/kast"
-            metadata.mkdir(parents=True)
-            (metadata / "configuration-schema.json").write_text(json.dumps({"parameters": [
-                {"key": "GRADLE_USER_HOME", "mutability": "USER_SETTING", "sources": ["SAVED_INSTALLATION"]}]}))
-            idea = root / "idea"
-            idea.mkdir()
-            (root / "classpath").write_text(str(Path(sys.executable).resolve()))
-            captured = {}
-            saved = []
-
-            def probe(command, **kwargs):
-                if "start" in command:
-                    captured.update(kwargs["env"])
-                    saved.append(Path(captured["KAST_CONFIGURATION_FILE"]).read_text())
-                    raise ProbeComplete()
-                return subprocess.CompletedProcess(command, 0, "", "")
-
-            argv = ["startup", "--product", str(product), "--runtime", str(runtime),
-                    "--idea-home", str(idea), "--harness-classpath-file", str(root / "classpath"), "--report", str(root / "report.json")]
-            try:
-                with patch.object(sys, "argv", argv), patch.dict(os.environ, {
-                    "HOME": str(root / "live-home"), "CODEX_HOME": str(root / "live-codex"),
-                    "GRADLE_USER_HOME": str(root / "live-gradle"), "OPENAI_API_KEY": "fixture-secret",
-                    "_JAVA_OPTIONS": "-Duser.home=/live-jvm-home", "KAST_INJECTED": "untrusted",
-                }), patch.object(script, "source_provenance", return_value={"sourceHead": "a" * 40, "sourceTreeClean": False}), \
-                        patch.object(script, "stage_versioned_product", side_effect=lambda fixture, source, runtime: fixture.stage_product(source)), \
-                        patch.object(script.subprocess, "run", side_effect=probe):
-                    with self.assertRaises(ProbeComplete):
-                        script.main()
-                self.assertNotEqual(captured["HOME"], str(root / "live-home"))
-                self.assertNotIn("OPENAI_API_KEY", captured)
-                self.assertNotIn("KAST_INJECTED", captured)
-                self.assertIn("GRADLE_USER_HOME=" + captured["GRADLE_USER_HOME"], saved[0],
-                              "lifecycle children must reload the same Gradle home and launch identity")
-                self.assertEqual(Path(captured["KAST_RUNTIME_DIRECTORY"]), Path(captured["HOME"]).parent / "product/state/run")
-                fixture = Path(captured["HOME"]).parent
-                for name in ("HOME", "CODEX_HOME", "GRADLE_USER_HOME", "XDG_CONFIG_HOME", "TMPDIR"):
-                    self.assertTrue(Path(captured[name]).is_relative_to(fixture), name)
-                self.assertIn("-Duser.home=" + captured["HOME"], shlex.split(captured["_JAVA_OPTIONS"]))
-            finally:
-                if captured:
-                    shutil.rmtree(Path(captured["HOME"]).parent)
-
     def test_installed_product_artifact_inputs_never_reach_runtime_environment(self):
         script = load_script("run-installed-product")
         with tempfile.TemporaryDirectory() as temporary:
@@ -108,7 +40,7 @@ class StartupEnvironmentTest(unittest.TestCase):
             control.write_bytes(b"control")
             runtime.write_bytes(b"runtime")
             inputs = {"KAST_INSTALLED_PRODUCT": str(product), "KAST_CONTROL_ARCHIVE": str(control),
-                      "KAST_SEMANTIC_RUNTIME_ARCHIVE": str(runtime), "KAST_INSTALLED_REPORT_DIRECTORY": str(root / "report")}
+                      "KAST_HOSTED_PLUGIN_ARCHIVE": str(runtime), "KAST_INSTALLED_REPORT_DIRECTORY": str(root / "report")}
             captured = {}
             invocation = []
             def probe(command, **kwargs):
@@ -326,15 +258,15 @@ class PrivateEnvironmentTest(unittest.TestCase):
             launcher.chmod(0o755)
             runtime = Path(temporary) / "runtime.zip"
             runtime.write_bytes(b"owned runtime fixture")
-            (source / "share/kast/semantic-runtime.json").write_text(json.dumps({
+            (source / "share/kast/ide-host.json").write_text(json.dumps({
                 "productVersion": "0.36.1-dev", "archive": {"sha256": "sha256:" + hashlib.sha256(runtime.read_bytes()).hexdigest()}}))
             with self.fixture() as fixture:
                 product = stage_versioned_product(fixture, source, runtime)
                 admitted = lifecycle.Installation.admit(str(product))
                 self.assertEqual(admitted.root, product)
                 self.assertEqual(fixture.environment["KAST_RUNTIME_DIRECTORY"], str(product / "state/run"))
-                self.assertEqual(fixture.environment["KAST_CACHE_ROOT"], str(product / "state/cache"))
-                self.assertEqual(fixture.environment["KAST_RUNTIME_STORE"], str(product / "runtime-payloads"))
+                self.assertNotIn("KAST_CACHE_ROOT", fixture.environment)
+                self.assertNotIn("KAST_RUNTIME_STORE", fixture.environment)
                 (product / "bin/kast").write_text("changed payload")
                 with self.assertRaises(lifecycle.Rejected):
                     lifecycle.Installation.admit(str(product))
@@ -351,7 +283,7 @@ class PrivateEnvironmentTest(unittest.TestCase):
             archive = root / "archive"
             archive.write_bytes(b"archive")
             inputs = {"KAST_INSTALLED_PRODUCT": str(product), "KAST_CONTROL_ARCHIVE": str(archive),
-                      "KAST_SEMANTIC_RUNTIME_ARCHIVE": str(archive),
+                      "KAST_HOSTED_PLUGIN_ARCHIVE": str(archive),
                       "KAST_INSTALLED_REPORT_DIRECTORY": str(root / "reports"),
                       "KAST_ENABLE_APP_SERVER": "1", "OPENAI_API_KEY": "fixture-secret"}
 

@@ -115,22 +115,10 @@ private constructor(private val connections: InitializedSqliteMutationRecoveryCo
     }
 
     companion object {
-        fun open(location: MutationDatabaseLocation): SqliteLiveChangeReceiptStoreOpenResult {
-            val path =
-                prepareHostedDatabasePath(location.valueAtSqliteBoundary())
-                    ?: return SqliteLiveChangeReceiptStoreOpenResult.Rejected(
-                        LiveChangeReceiptStoreFailure.STORAGE_UNAVAILABLE
-                    )
-            val database =
-                when (val admitted = SqliteMutationRecoveryDatabase.admit(path)) {
-                    is Refinement.Refined -> admitted.value
-                    is Refinement.Rejected ->
-                        return SqliteLiveChangeReceiptStoreOpenResult.Rejected(
-                            LiveChangeReceiptStoreFailure.STORAGE_UNAVAILABLE
-                        )
-                }
-            return try {
-                val connections = SqliteMutationRecoveryConnections(database).initialize()
+        internal fun retain(
+            connections: InitializedSqliteMutationRecoveryConnections
+        ): SqliteLiveChangeReceiptStoreOpenResult =
+            try {
                 connections.use { connection ->
                     connection.createStatement().use { statement ->
                         statement.execute(
@@ -144,7 +132,32 @@ private constructor(private val connections: InitializedSqliteMutationRecoveryCo
                         )
                     }
                 }
+
                 SqliteLiveChangeReceiptStoreOpenResult.Opened(SqliteLiveChangeReceiptStore(connections))
+            } catch (_: java.sql.SQLException) {
+                SqliteLiveChangeReceiptStoreOpenResult.Rejected(LiveChangeReceiptStoreFailure.STORAGE_UNAVAILABLE)
+            }
+
+        fun open(location: MutationDatabaseLocation): SqliteLiveChangeReceiptStoreOpenResult {
+            val path =
+                when (val result = admitHostedDatabasePath(location.valueAtSqliteBoundary())) {
+                    is Refinement.Refined -> result.value
+                    is Refinement.Rejected ->
+                        return SqliteLiveChangeReceiptStoreOpenResult.Rejected(
+                            LiveChangeReceiptStoreFailure.STORAGE_UNAVAILABLE
+                        )
+                }
+            val database =
+                when (val admitted = SqliteMutationRecoveryDatabase.admit(path)) {
+                    is Refinement.Refined -> admitted.value
+                    is Refinement.Rejected ->
+                        return SqliteLiveChangeReceiptStoreOpenResult.Rejected(
+                            LiveChangeReceiptStoreFailure.STORAGE_UNAVAILABLE
+                        )
+                }
+            return try {
+                val connections = SqliteMutationRecoveryConnections(database).initialize()
+                retain(connections)
             } catch (_: Exception) {
                 SqliteLiveChangeReceiptStoreOpenResult.Rejected(LiveChangeReceiptStoreFailure.STORAGE_UNAVAILABLE)
             }

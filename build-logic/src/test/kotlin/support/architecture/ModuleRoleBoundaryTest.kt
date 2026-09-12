@@ -12,7 +12,19 @@ import java.nio.file.Path
 
 class ModuleRoleBoundaryTest {
     @Test
-    fun `canonical non-legacy roles carry convention and cost proof`() {
+    fun `the shipped module graph has no isolated importer runtime`() {
+        val retired = setOf(
+            ModuleId.INDEXER, ModuleId.RUNTIME_COMPOSITION, ModuleId.RUNTIME_SERVER, ModuleId.RUNTIME_TELEMETRY,
+            ModuleId.WORKSPACE_SERVICE, ModuleId.WORKSPACE_INTELLIJ,
+        )
+        val modules = KastArchitecturePolicy.definition().modules.filter { it.lifecycle == ModuleLifecycle.ACTIVE }
+        assertTrue(modules.none { it.id in retired }, "Isolated runtime modules must be retired")
+        assertTrue(modules.none { module -> module.allowedProjectDependencies.any { it in retired } })
+        assertTrue(modules.any { it.id == ModuleId.RUNTIME_HOSTED })
+    }
+
+    @Test
+    fun `every module role carries convention and cost proof`() {
         val architecture = assertInstanceOf<ArchitecturePolicyValidation.Valid>(
             KastArchitecturePolicy.validate(),
         ).architecture
@@ -35,6 +47,7 @@ class ModuleRoleBoundaryTest {
             ModuleRole.INDEXER_HOST to "kast.role.indexer-host",
         )
 
+        assertEquals(expectedPlugins.keys, ModuleRole.entries.toSet())
         assertEquals(
             expectedPlugins,
             ModuleRoleConvention.entries.associate { it.role to it.pluginId },
@@ -42,8 +55,8 @@ class ModuleRoleBoundaryTest {
         val readModule = architecture.modules.getValue(ModuleId.SYMBOL_INTELLIJ)
         assertEquals(ModuleCost.BOUNDED_READ, readModule.cost)
         assertEquals(
-            ModuleRoleConventionRequirement.Required(ModuleRoleConvention.INTELLIJ_READ),
-            readModule.conventionRequirement,
+            ModuleRoleConvention.INTELLIJ_READ,
+            readModule.requiredConvention,
         )
     }
 

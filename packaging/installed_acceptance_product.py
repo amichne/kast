@@ -15,14 +15,14 @@ def sha256(path):
     return digest.hexdigest()
 
 
-def stage_versioned_product(isolation, source: Path, runtime: Path) -> Path:
+def stage_versioned_product(isolation, source: Path, plugin: Path) -> Path:
     product = isolation.stage_product(source)
-    metadata = json.loads((product / 'share/kast/semantic-runtime.json').read_text())
+    metadata = json.loads((product / 'share/kast/ide-host.json').read_text())
     version = metadata['productVersion']
     if not isinstance(version, str) or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9.-]{0,95}', version):
         raise EnvironmentRejected(EnvironmentFailure.INVALID_INPUT)
-    runtime_digest = sha256(runtime)
-    if metadata['archive']['sha256'] != 'sha256:' + runtime_digest:
+    plugin_digest = sha256(plugin)
+    if metadata['archive']['sha256'] != 'sha256:' + plugin_digest:
         raise EnvironmentRejected(EnvironmentFailure.INVALID_INPUT)
     complete = product / 'bin/kast-complete'
     if not complete.exists():
@@ -39,7 +39,7 @@ def stage_versioned_product(isolation, source: Path, runtime: Path) -> Path:
                     raise EnvironmentRejected(EnvironmentFailure.INVALID_INPUT)
             archive.add(directory, arcname=name)
     control_digest = sha256(control_archive)
-    payload = hashlib.sha256((control_digest + '\n' + runtime_digest + '\n').encode()).hexdigest()
+    payload = hashlib.sha256((control_digest + '\n' + plugin_digest + '\n').encode()).hexdigest()
     versions = isolation.root / 'installation/versions'
     versions.mkdir(parents=True)
     root = versions / (version + '-' + payload)
@@ -63,9 +63,9 @@ def stage_versioned_product(isolation, source: Path, runtime: Path) -> Path:
         {'kind': 'login', 'path': str(Path(isolation.environment['HOME']) / 'Library/LaunchAgents' / (label + '.login.plist')),
          'expectedExecutable': str(root / 'bin/kast'), 'expectedLabel': label + '.login', 'ownership': 'declared-not-observed'},
     ]
-    manifest = {'schemaVersion': 1, 'semanticVersion': version, 'installationRoot': str(root),
+    manifest = {'schemaVersion': 2, 'semanticVersion': version, 'installationRoot': str(root),
         'payloadIdentity': 'sha256:' + payload, 'controlSha256': 'sha256:' + control_digest,
-        'runtimeSha256': 'sha256:' + runtime_digest, 'codexHome': isolation.environment['CODEX_HOME'],
+        'hostedPluginSha256': 'sha256:' + plugin_digest, 'codexHome': isolation.environment['CODEX_HOME'],
         'configuration': str(root / 'config/environment'), 'workspaceRegistry': str(root / 'config/workspaces.json'),
         'stateRoot': str(root / 'state'), 'payloadFiles': inventory, 'externalAnchors': anchors,
         'retention': {'payload': 'until-explicit-uninstall', 'config': 'until-explicit-uninstall',

@@ -3,14 +3,11 @@
   <ManuallySuppressedIssues/>
   <CurrentIssues>
     <ID>CognitiveComplexMethod:IntellijExactNameIndexes.kt:internal fun IntellijNativeDiscoveryQuery.discoverNative: IntellijNativeDiscoveryExecution</ID>
-    <ID>CognitiveComplexMethod:IntellijNativeDiscoveryAdapter.kt:IntellijFastSymbolReadAdapter$suspend fun read: IntellijFastSymbolReadResult&lt;Definition></ID>
     <ID>CognitiveComplexMethod:IntellijNativeDiscoveryQuery.kt:IntellijNativeDiscoveryQuery$fun discover: IntellijNativeDiscoveryExecution</ID>
     <ID>CognitiveComplexMethod:IntellijNativeDiscoveryQuery.kt:IntellijNativeDiscoveryQuery$private fun discoverIndexed: IntellijNativeDiscoveryExecution</ID>
     <ID>CognitiveComplexMethod:IntellijNativeDiscoveryQuery.kt:private fun SymbolDiscoveryConstraints.admit: IntellijDiscoveryItemAdmission</ID>
-    <ID>CognitiveComplexMethod:IntellijPsiNativeRelationSearch.kt:IntellijPsiNativeRelationSearch.RelationSearchState$fun references: IntellijNativeRelationSearchResult</ID>
     <ID>CognitiveComplexMethod:IntellijSearchScopeCompiler.kt:IntellijSearchScopeCompiler$internal fun compile: IntellijSearchScopeCompilation</ID>
     <ID>CyclomaticComplexMethod:IntellijExactNameIndexes.kt:internal fun IntellijNativeDiscoveryQuery.discoverNative: IntellijNativeDiscoveryExecution</ID>
-    <ID>CyclomaticComplexMethod:IntellijNativeDiscoveryAdapter.kt:IntellijFastSymbolReadAdapter$suspend fun read: IntellijFastSymbolReadResult&lt;Definition></ID>
     <ID>CyclomaticComplexMethod:IntellijNativeDiscoveryQuery.kt:BoundedNativeDiscoveryCollector$fun accept: Boolean</ID>
     <ID>CyclomaticComplexMethod:IntellijNativeDiscoveryQuery.kt:IntellijNativeDiscoveryQuery$fun discover: IntellijNativeDiscoveryExecution</ID>
     <ID>CyclomaticComplexMethod:IntellijNativeDiscoveryQuery.kt:IntellijNativeDiscoveryQuery$private fun discoverIndexed: IntellijNativeDiscoveryExecution</ID>
@@ -30,14 +27,11 @@
     <ID>InvalidPackageDeclaration:IntellijSymbolSelectorResolver.kt:package io.github.amichne.kast.symbol.intellij</ID>
     <ID>LongMethod:IntellijExactNameIndexes.kt:internal fun IntellijNativeDiscoveryQuery.discoverNative: IntellijNativeDiscoveryExecution</ID>
     <ID>LongMethod:IntellijKotlinCompilerSymbolLookup.kt:private fun KaSymbol.toCompilerProjection: IntellijCompilerSymbolProjectionResult</ID>
-    <ID>LongMethod:IntellijNativeDiscoveryAdapter.kt:IntellijFastSymbolReadAdapter$suspend fun read: IntellijFastSymbolReadResult&lt;Definition></ID>
     <ID>LongMethod:IntellijNativeDiscoveryQuery.kt:BoundedNativeDiscoveryCollector$fun accept: Boolean</ID>
     <ID>LongMethod:IntellijNativeDiscoveryQuery.kt:IntellijNativeDiscoveryQuery$fun discover: IntellijNativeDiscoveryExecution</ID>
     <ID>LongMethod:IntellijNativeDiscoveryQuery.kt:IntellijNativeDiscoveryQuery$private fun discoverIndexed: IntellijNativeDiscoveryExecution</ID>
     <ID>LongMethod:IntellijNativeDiscoveryQuery.kt:private fun SymbolDiscoveryConstraints.admit: IntellijDiscoveryItemAdmission</ID>
-    <ID>LongMethod:IntellijNativeRelationAdapter.kt:IntellijNativeRelationAdapter$suspend fun read: IntellijNativeRelationResult</ID>
     <ID>LongMethod:IntellijPsiExactDeclarationLookup.kt:IntellijPsiExactDeclarationLookup$internal fun findLive: IntellijLiveExactDeclarationLookupResult</ID>
-    <ID>LongMethod:IntellijPsiRelationFactProjector.kt:IntellijPsiRelationFactProjector$override fun project: Refinement&lt;NativeRelationFact, IntellijRelationProjectionFailure></ID>
     <ID>LongMethod:IntellijSearchScopeCompiler.kt:IntellijSearchScopeCompiler$internal fun compile: IntellijSearchScopeCompilation</ID>
     <ID>LongParameterList:IntellijNativeDiscoveryQuery.kt:BoundedNativeDiscoveryCollector</ID>
     <ID>LongParameterList:IntellijNativeDiscoveryQuery.kt:IntellijNativeDiscoveryQuery</ID>
@@ -48,9 +42,7 @@
     <ID>LongParameterList:IntellijSupplementalDiscoveryQuery.kt:internal fun collectTextDiscoveryOccurrences</ID>
     <ID>LongParameterList:ProjectBoundIntellijSymbolPorts.kt:ProjectBoundIntellijSymbolPorts.Companion$fun create: ProjectBoundIntellijSymbolPorts</ID>
     <ID>LoopWithTooManyJumpStatements:IntellijExactNameIndexes.kt:for</ID>
-    <ID>LoopWithTooManyJumpStatements:IntellijNativeDiscoveryAdapter.kt:IntellijFastSymbolReadAdapter$for</ID>
     <ID>LoopWithTooManyJumpStatements:IntellijNativeDiscoveryQuery.kt:IntellijNativeDiscoveryQuery$for</ID>
-    <ID>MagicNumber:IntellijPsiNativeRelationSearch.kt:IntellijPsiNativeRelationSearch.RelationSearchState$1_000_000L</ID>
     <ID>MatchingDeclarationName:IntellijDiscoveryTiming.kt:IntellijDiscoveryElapsedLimitNanoseconds</ID>
     <ID>MultilineLambdaItParameter:IntellijExactNameIndexes.kt:{ ProgressManager.checkCanceled() files += it files.size.toLong() &lt;= request.budget.resources.workUnitLimit.value }</ID>
     <ID>MultilineLambdaItParameter:IntellijExactNameIndexes.kt:{ ProgressManager.checkCanceled() if (files.size.toLong() >= request.budget.resources.workUnitLimit.value) false else { files += it true } }</ID>
@@ -64,10 +56,8 @@
     <ID>NamedArguments:ProjectBoundIntellijSymbolPorts.kt:ProjectBoundIntellijSymbolPorts.Companion.&lt;no name provided>$describe(project, authority, request, compiledModel)</ID>
     <ID>NamedArguments:ProjectBoundIntellijSymbolPorts.kt:ProjectBoundIntellijSymbolPorts.Companion.&lt;no name provided>$resolve(project, authority, request, compiledModel)</ID>
     <ID>NestedBlockDepth:IntellijNativeDiscoveryQuery.kt:IntellijNativeDiscoveryQuery$fun discover: IntellijNativeDiscoveryExecution</ID>
-    <ID>NestedBlockDepth:IntellijPsiNativeRelationSearch.kt:IntellijPsiNativeRelationSearch.RelationSearchState$fun references: IntellijNativeRelationSearchResult</ID>
     <ID>TooGenericExceptionCaught:IntellijNativeDiscoveryQuery.kt:IntellijNativeDiscoveryQuery$failure: RuntimeException</ID>
     <ID>TooGenericExceptionCaught:IntellijSymbolSelectorResolver.kt:IntellijSymbolSelectorQuery$failure: RuntimeException</ID>
-    <ID>UnusedVariable:IntellijNativeDiscoveryAdapter.kt:IntellijFastSymbolReadAdapter$val target = request.target as? SymbolDiscoveryTarget.Name ?: return@readAction IntellijFastSymbolReadResult.Rejected( IntellijFastSymbolReadRejection.DISCOVERY_REJECTED )</ID>
     <ID>UnusedVariable:IntellijNativeDiscoveryAdapter.kt:IntellijNativeDiscoveryAdapter$val target = request.target</ID>
   </CurrentIssues>
 </SmellBaseline>

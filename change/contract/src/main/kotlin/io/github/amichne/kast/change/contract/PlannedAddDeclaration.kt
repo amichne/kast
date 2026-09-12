@@ -119,8 +119,6 @@ enum class ChangePlanIdFailure {
 
 typealias AddDeclarationPlanId = ChangePlanId
 
-typealias AddDeclarationPlanIdFailure = ChangePlanIdFailure
-
 @Serializable
 @ConsistentCopyVisibility
 data class PlannedAddDeclaration

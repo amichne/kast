@@ -145,11 +145,12 @@ internal class CodexProtocolAdapter(
         io.github.amichne.kast.appserver.WorkspaceEnrollment.ProtocolFixture,
     private val bindingOwner: io.github.amichne.kast.appserver.protocol.ThreadBindingOwner =
         io.github.amichne.kast.appserver.protocol.ThreadBindingOwner.ProtocolFixture,
+    invocationDispatcher: kotlinx.coroutines.CoroutineDispatcher = Dispatchers.Default,
 ) : AutoCloseable {
     private val sessionProjection = sessionBootstrap?.toCodexSessionProjection()
     private val pendingResponses = ConcurrentHashMap<String, PendingResponse>()
     private val activeInvocations = ConcurrentHashMap<String, ActiveInvocation>()
-    private val invocationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val invocationScope = CoroutineScope(SupervisorJob() + invocationDispatcher)
     private val invocationCapacity = Semaphore(broker.limits.inFlightCallsPerConnection)
     private val ownedNamespaces = broker.catalog.namespaces.map { namespace -> namespace.name }.toSet()
 
@@ -337,8 +338,8 @@ internal class CodexProtocolAdapter(
                         is BrokerFailure.Overloaded ->
                             if (failure.limit == BrokerLimit.MAXIMUM_TOOL_RESULT_BYTES) InvocationCertainty.UNCERTAIN
                             else InvocationCertainty.KNOWN
+                        is BrokerFailure.OutputContractRejected -> failure.certainty()
                         is BrokerFailure.ProviderInvocationRejected,
-                        is BrokerFailure.OutputContractRejected,
                         is BrokerFailure.InvocationCancelled -> InvocationCertainty.UNCERTAIN
                     }
                 null -> InvocationCertainty.UNCERTAIN

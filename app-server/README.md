@@ -77,7 +77,7 @@ flowchart LR
   Hub --> Upstream[One private Codex App Server process]
   Hub --> Fence[Durable invocation fence]
   Fence --> Kast[Installed Kast CLI]
-  Kast --> Workspace[Enrolled workspace runtime]
+  Kast --> Workspace[Existing IDEA project plugin]
 ```
 
 Each connection completes its own initialize/initialized exchange and retains its
@@ -163,3 +163,9 @@ They test real Codex discovery and stdio attachment. They do not establish deskt
 UI compatibility. The test resource `kast-schema.json` is the installed Kast
 `--schema` boundary snapshot used to keep protocol tests independent of CLI
 implementation imports.
+
+The coordinator no longer launches or reserves isolated workspace workers. Its
+control route admits only passive, identity-correlated status and rejects legacy
+worker demands. The configured CLI connects semantic operations to the existing
+IDEA plugin; enrollment, sessions, approvals and durable invocation settlement
+remain broker responsibilities.

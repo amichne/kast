@@ -235,7 +235,7 @@ private constructor(
     private val ownedSocket: OwnedUnixSocket,
     private val ownershipLease: UnixSocketOwnershipLease,
     private val frontend: BrokerFrontend,
-    private val runtimeControl: WorkspaceRuntimeControl?,
+    private val runtimeControl: CoordinatorControl?,
 ) {
     internal suspend fun close() {
         try {
@@ -289,7 +289,7 @@ private constructor(
 
         internal suspend fun startCoordinator(
             socket: BrokerSocketPath,
-            runtimeControl: WorkspaceRuntimeControl,
+            runtimeControl: CoordinatorControl,
             frontend: BrokerFrontend,
         ): KtorBrokerServerStart =
             startTransport(
@@ -330,7 +330,7 @@ private constructor(
             maximumConnections: Int,
             maximumMessageBytes: Int,
             frontend: BrokerFrontend,
-            runtimeControl: WorkspaceRuntimeControl?,
+            runtimeControl: CoordinatorControl?,
         ): KtorBrokerServerStart {
             val ownershipLease =
                 when (val acquisition = UnixSocketPathOwnership.acquireLease(socket)) {

@@ -57,7 +57,6 @@ internal object EffectRules {
         val owner = target.owner.internalName
         val name = target.name.value
         if (
-            moduleRole != ModuleRole.LEGACY_HOST &&
             (owner.startsWith("com/intellij/") ||
                 owner.startsWith("org/jetbrains/kotlin/analysis/api/"))
         ) {
@@ -103,7 +102,7 @@ internal object EffectRules {
         if (owner.startsWith("java/sql/") || owner.startsWith("org/sqlite/")) {
             add(ForbiddenEffect.JDBC)
         }
-        if (moduleRole != ModuleRole.LEGACY_HOST && owner.startsWith("org/gradle/")) {
+        if (owner.startsWith("org/gradle/")) {
             add(ForbiddenEffect.GRADLE_PLATFORM)
         }
         val hostedReadEffects = HostedReadForbiddenAuthority.classify(moduleRole, target).let { effects ->
@@ -130,10 +129,10 @@ internal object EffectRules {
         ) {
             add(ForbiddenEffect.WORKSPACE_TRANSITION)
         }
-        if (moduleRole != ModuleRole.LEGACY_HOST && isGraphBuildAuthority(owner, name)) {
+        if (isGraphBuildAuthority(owner, name)) {
             add(ForbiddenEffect.GRAPH_BUILD)
         }
-        if (moduleRole != ModuleRole.LEGACY_HOST && isProcessControlAuthority(owner, name)) {
+        if (isProcessControlAuthority(owner, name)) {
             add(ForbiddenEffect.PROCESS_CONTROL)
         }
         if (

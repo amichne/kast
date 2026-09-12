@@ -156,11 +156,6 @@ sealed interface ArchitectureViolation {
         val expected: ModuleRoleConvention,
     ) : ArchitectureViolation
 
-    data class UnexpectedModuleRoleConvention(
-        val module: ModuleId,
-        val observed: ModuleRoleConvention,
-    ) : ArchitectureViolation
-
     data class MismatchedModuleRoleConvention(
         val module: ModuleId,
         val expected: ModuleRoleConvention,
@@ -225,33 +220,13 @@ sealed interface ArchitectureAdmission {
                 is ModuleRoleConventionObservation.Collected ->
                     observation.modules.mapNotNull { moduleId ->
                         val observed = roleObservation.conventions[moduleId]
-                        when (
-                            val requirement =
-                                policy.modules.getValue(moduleId).conventionRequirement
-                        ) {
-                            ModuleRoleConventionRequirement.UnmarkedLegacy ->
-                                if (observed == null) {
-                                    null
-                                } else {
-                                    ArchitectureViolation.UnexpectedModuleRoleConvention(
-                                        moduleId,
-                                        observed,
-                                    )
-                                }
-                            is ModuleRoleConventionRequirement.Required -> when {
-                                observed == null ->
-                                    ArchitectureViolation.MissingModuleRoleConvention(
-                                        moduleId,
-                                        requirement.convention,
-                                    )
-                                observed != requirement.convention ->
-                                    ArchitectureViolation.MismatchedModuleRoleConvention(
-                                        moduleId,
-                                        requirement.convention,
-                                        observed,
-                                    )
-                                else -> null
-                            }
+                        val required = policy.modules.getValue(moduleId).requiredConvention
+                        when {
+                            observed == null ->
+                                ArchitectureViolation.MissingModuleRoleConvention(moduleId, required)
+                            observed != required ->
+                                ArchitectureViolation.MismatchedModuleRoleConvention(moduleId, required, observed)
+                            else -> null
                         }
                     }
             }

@@ -11,6 +11,8 @@ application {
 }
 
 dependencies {
+    testImplementation(project(":query:protocol"))
+    testImplementation(testFixtures(project(":query:protocol")))
     implementation(libs.json.schema.validator)
     // Preserve the version previously selected by the broker's direct Ktor dependency.
     constraints {

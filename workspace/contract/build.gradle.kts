@@ -1,6 +1,7 @@
 import org.gradle.api.artifacts.VersionCatalogsExtension
 
 plugins {
+    `java-test-fixtures`
     id("kast.kotlin-library")
     id("kast.role.contract")
 }

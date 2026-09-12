@@ -184,7 +184,6 @@
     <ID>NamedArguments:FileThreadCatalogStoreTest.kt:FileThreadCatalogStoreTest$admit("thread-1", digest, child, root, owner)</ID>
     <ID>NamedArguments:FileThreadCatalogStoreTest.kt:FileThreadCatalogStoreTest$admit("thread-1", otherDigest, child, root, owner)</ID>
     <ID>NamedArguments:GradleProviderTest.kt:GradleProviderTest$admit( "thread-1", "turn-1", "call-1", cwd, )</ID>
-    <ID>NamedArguments:InstalledBrokerServerTest.kt:InstalledBrokerServerTest$admit( kast, user, environment, clientTransport = transport, )</ID>
     <ID>NamedArguments:InstalledBrokerServerTest.kt:InstalledBrokerServerTest$admit( kast, userHome, environment, executor, launcher, )</ID>
     <ID>NamedArguments:InstalledBrokerServerTest.kt:InstalledBrokerServerTest$admit( kast, userHome, mapOf( "CODEX_HOME" to codexHome.toString(), "CODEX_EXECUTABLE" to codex.toString(), "BROKER_SERVICE_IDENTITY" to identity, "BROKER_READINESS_FILE" to readiness.toString(), "PATH" to "${codex.parent}:/usr/bin:/bin", ), InstalledProcessExecutor(kast, codex, rejectKastQualification = true), EchoCodexLauncher(), )</ID>
     <ID>NamedArguments:InstalledBrokerServerTest.kt:InstalledBrokerServerTest$admit( kast, userHome, mapOf( "CODEX_HOME" to codexHome.toString(), "CODEX_EXECUTABLE" to codex.toString(), "PATH" to "${codex.parent}:/usr/bin:/bin", ), InstalledProcessExecutor(kast, codex, rejectCodexQualification = true), EchoCodexLauncher(), )</ID>

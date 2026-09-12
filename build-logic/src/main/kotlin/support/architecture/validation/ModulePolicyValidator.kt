@@ -7,7 +7,6 @@ enum class ModuleCost {
     BOUNDED_READ,
     PHYSICAL_EFFECT,
     RUNTIME_ORCHESTRATION,
-    LEGACY,
 }
 
 enum class ModuleRoleConvention(
@@ -32,18 +31,10 @@ enum class ModuleRoleConvention(
     INDEXER_HOST(ModuleRole.INDEXER_HOST, "kast.role.indexer-host"),
 }
 
-sealed interface ModuleRoleConventionRequirement {
-    data object UnmarkedLegacy : ModuleRoleConventionRequirement
-
-    data class Required(
-        val convention: ModuleRoleConvention,
-    ) : ModuleRoleConventionRequirement
-}
-
 internal data class ModuleRoleBoundary(
     val role: ModuleRole,
     val cost: ModuleCost,
-    val conventionRequirement: ModuleRoleConventionRequirement,
+    val requiredConvention: ModuleRoleConvention,
     val allowedDependencyRoles: Set<ModuleRole>,
     val allowedDependencyCosts: Set<ModuleCost>,
     val allowedExportedDependencyRoles: Set<ModuleRole>,
@@ -77,7 +68,7 @@ class ValidatedModulePolicy internal constructor(
     val lifecycle: ModuleLifecycle get() = policy.lifecycle
     val role: ModuleRole get() = boundary.role
     val cost: ModuleCost get() = boundary.cost
-    val conventionRequirement: ModuleRoleConventionRequirement get() = boundary.conventionRequirement
+    val requiredConvention: ModuleRoleConvention get() = boundary.requiredConvention
     val allowedProjectDependencies: Set<ModuleId> get() = policy.allowedProjectDependencies
     val allowedEffects: Set<ForbiddenEffect> get() = policy.allowedEffects
     val allowedScopedEffectCallers: Map<ForbiddenEffect, Set<JvmClassName>>
@@ -190,16 +181,6 @@ internal object KastCleanSlateCrossRoleDependencies {
 
 private object ModuleRoleBoundaries {
     fun forRole(role: ModuleRole): ModuleRoleBoundary = when (role) {
-        ModuleRole.LEGACY_HOST -> ModuleRoleBoundary(
-            role = role,
-            cost = ModuleCost.LEGACY,
-            conventionRequirement = ModuleRoleConventionRequirement.UnmarkedLegacy,
-            allowedDependencyRoles = ModuleRole.entries.toSet(),
-            allowedDependencyCosts = ModuleCost.entries.toSet(),
-            allowedExportedDependencyRoles = ModuleRole.entries.toSet(),
-            allowedEffects = ForbiddenEffect.entries.toSet(),
-            allowedScopedEffects = ForbiddenEffect.entries.toSet(),
-        )
         ModuleRole.KERNEL -> boundary(
             role,
             ModuleCost.HOST_NEUTRAL,
@@ -348,8 +329,8 @@ private object ModuleRoleBoundaries {
             role = role,
             cost = ModuleCost.RUNTIME_ORCHESTRATION,
             convention = ModuleRoleConvention.COMPOSITION,
-            allowedDependencyRoles = ModuleRole.entries.toSet() - ModuleRole.LEGACY_HOST,
-            allowedDependencyCosts = ModuleCost.entries.toSet() - ModuleCost.LEGACY,
+            allowedDependencyRoles = ModuleRole.entries.toSet(),
+            allowedDependencyCosts = ModuleCost.entries.toSet(),
             allowedEffects = emptySet(),
         )
         ModuleRole.APP_SERVER -> boundary(
@@ -397,7 +378,7 @@ private object ModuleRoleBoundaries {
     ): ModuleRoleBoundary = ModuleRoleBoundary(
         role,
         cost,
-        ModuleRoleConventionRequirement.Required(convention),
+        convention,
         allowedDependencyRoles,
         allowedDependencyCosts,
         allowedExportedDependencyRoles,
