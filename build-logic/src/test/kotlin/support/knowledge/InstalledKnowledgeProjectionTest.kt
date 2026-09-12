@@ -1,10 +1,10 @@
 package support.knowledge
 
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertIs
-import kotlin.test.assertTrue
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.Assertions.assertTrue
 
 class InstalledKnowledgeProjectionTest {
     @Test
@@ -39,7 +39,7 @@ class InstalledKnowledgeProjectionTest {
             ),
         )
 
-        val complete = assertIs<InstalledKnowledgeProjectionResult.Complete>(result)
+        val complete = assertInstanceOf(InstalledKnowledgeProjectionResult.Complete::class.java, result)
         val manifest = requireNotNull(complete.files["manifest.json"])
         val module = requireNotNull(complete.files["modules/kernel/index.json"])
         val card = complete.files.entries.single { it.key.contains("/declarations/") }.value
@@ -79,7 +79,7 @@ class InstalledKnowledgeProjectionTest {
             ),
         )
 
-        val complete = assertIs<InstalledKnowledgeProjectionResult.Complete>(result)
+        val complete = assertInstanceOf(InstalledKnowledgeProjectionResult.Complete::class.java, result)
         assertEquals(2, complete.files.keys.count { "/declarations/" in it })
     }
 
@@ -108,7 +108,7 @@ class InstalledKnowledgeProjectionTest {
             ),
         )
 
-        val rejected = assertIs<InstalledKnowledgeProjectionResult.Rejected>(result)
+        val rejected = assertInstanceOf(InstalledKnowledgeProjectionResult.Rejected::class.java, result)
         assertEquals(
             listOf(InstalledKnowledgeProjectionFailure.UnknownDeclarationModule(":unknown", "x.kt")),
             rejected.failures,

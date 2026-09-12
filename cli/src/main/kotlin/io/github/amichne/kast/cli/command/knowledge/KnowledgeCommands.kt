@@ -18,11 +18,12 @@ internal fun knowledgeCommandFamily(): LocalCommandFamily {
 private class KnowledgeCommand : LocalKastCommand("knowledge", CliProductCommand.KNOWLEDGE) {
     private val selection by
         argument(
-            "QUERY_OR_RESOURCE",
-            help = "Declaration/module text to search, or an exact resource path returned by a prior lookup.",
-        ).convert { raw ->
-            KnowledgeSelection.parse(raw) ?: fail("Expected non-blank knowledge input of at most 4096 UTF-8 bytes")
-        }
+                "QUERY_OR_RESOURCE",
+                help = "Declaration/module text to search, or an exact resource path returned by a prior lookup.",
+            )
+            .convert { raw ->
+                KnowledgeSelection.parse(raw) ?: fail("Expected non-blank knowledge input of at most 4096 UTF-8 bytes")
+            }
 
     override fun help(context: Context): String =
         "Search the installed Kast API/guidance bundle, or read one exact returned resource; no workspace or IDE is required."

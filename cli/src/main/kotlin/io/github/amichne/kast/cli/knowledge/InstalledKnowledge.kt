@@ -15,12 +15,14 @@ private const val MAX_RESULTS = 20
 private const val MAX_SELECTION_BYTES = 4096
 
 @JvmInline
-internal value class KnowledgeSelection private constructor(val value: String) {
+value class KnowledgeSelection private constructor(val value: String) {
     companion object {
         fun parse(raw: String): KnowledgeSelection? =
-            raw.trim().takeIf { value ->
-                value.isNotEmpty() && value.encodeToByteArray().size <= MAX_SELECTION_BYTES
-            }?.let(::KnowledgeSelection)
+            raw.trim()
+                .takeIf { value ->
+                    value.isNotEmpty() && value.encodeToByteArray().size <= MAX_SELECTION_BYTES
+                }
+                ?.let(::KnowledgeSelection)
     }
 }
 
@@ -33,6 +35,7 @@ internal enum class KnowledgeLookupFailure {
 
 internal sealed interface KnowledgeLookup {
     data class Complete(val document: CliJsonDocument) : KnowledgeLookup
+
     data class Rejected(val failure: KnowledgeLookupFailure) : KnowledgeLookup
 }
 
@@ -59,10 +62,11 @@ internal object DiscoveringInstalledKnowledgeReader : KnowledgeReader {
             } catch (_: SecurityException) {
                 return KnowledgeLookup.Rejected(KnowledgeLookupFailure.BUNDLE_UNAVAILABLE)
             }
-        val libraryDirectory = codeSource.parent?.takeIf { it.fileName.toString() == "lib" }
-            ?: return KnowledgeLookup.Rejected(KnowledgeLookupFailure.BUNDLE_UNAVAILABLE)
-        val productRoot = libraryDirectory.parent
-            ?: return KnowledgeLookup.Rejected(KnowledgeLookupFailure.BUNDLE_UNAVAILABLE)
+        val libraryDirectory =
+            codeSource.parent?.takeIf { it.fileName.toString() == "lib" }
+                ?: return KnowledgeLookup.Rejected(KnowledgeLookupFailure.BUNDLE_UNAVAILABLE)
+        val productRoot =
+            libraryDirectory.parent ?: return KnowledgeLookup.Rejected(KnowledgeLookupFailure.BUNDLE_UNAVAILABLE)
         val knowledgeRoot = productRoot.resolve("share/kast/knowledge")
         if (Files.isSymbolicLink(knowledgeRoot)) {
             return KnowledgeLookup.Rejected(KnowledgeLookupFailure.BUNDLE_REJECTED)
@@ -92,16 +96,23 @@ internal class InstalledKnowledgeReader(private val root: Path) : KnowledgeReade
         val query = selection.value.lowercase()
         val matches = mutableListOf<ScoredKnowledgeItem>()
         for (module in manifest.modules) {
-            val index = readModule(module.resource)
-                ?: return KnowledgeLookup.Rejected(KnowledgeLookupFailure.BUNDLE_REJECTED)
+            val index =
+                readModule(module.resource) ?: return KnowledgeLookup.Rejected(KnowledgeLookupFailure.BUNDLE_REJECTED)
             for (declaration in index.declarations) {
                 score(query, index.projectPath, declaration)?.let { scored -> matches += scored }
             }
         }
         val items =
-            matches.sortedWith(
-                compareBy<ScoredKnowledgeItem>({ it.score }, { it.item.declarationPath.lowercase() }, { it.item.resource })
-            ).take(MAX_RESULTS).map(ScoredKnowledgeItem::item)
+            matches
+                .sortedWith(
+                    compareBy<ScoredKnowledgeItem>(
+                        { it.score },
+                        { it.item.declarationPath.lowercase() },
+                        { it.item.resource },
+                    )
+                )
+                .take(MAX_RESULTS)
+                .map(ScoredKnowledgeItem::item)
         return KnowledgeLookup.Complete(
             searchFactory.create(
                 KnowledgeSearchDocument(
@@ -124,21 +135,26 @@ internal class InstalledKnowledgeReader(private val root: Path) : KnowledgeReade
         if (!candidate.startsWith(root)) {
             return KnowledgeLookup.Rejected(KnowledgeLookupFailure.RESOURCE_REJECTED)
         }
-        val admitted = admittedRegularFile(candidate)
-            ?: return KnowledgeLookup.Rejected(KnowledgeLookupFailure.RESOURCE_UNAVAILABLE)
-        val text = try {
-            Files.readString(admitted)
-        } catch (_: IOException) {
-            return KnowledgeLookup.Rejected(KnowledgeLookupFailure.RESOURCE_UNAVAILABLE)
-        }
-        val objectValue = try {
-            JSON.parseToJsonElement(text) as? JsonObject
-        } catch (_: SerializationException) {
-            null
-        } catch (_: IllegalArgumentException) {
-            null
-        } ?: return KnowledgeLookup.Rejected(KnowledgeLookupFailure.RESOURCE_REJECTED)
-        return KnowledgeLookup.Complete(resourceFactory.create(KnowledgeResourceDocument(raw, objectValue)))
+        val admitted =
+            admittedRegularFile(candidate)
+                ?: return KnowledgeLookup.Rejected(KnowledgeLookupFailure.RESOURCE_UNAVAILABLE)
+        val text =
+            try {
+                Files.readString(admitted)
+            } catch (_: IOException) {
+                return KnowledgeLookup.Rejected(KnowledgeLookupFailure.RESOURCE_UNAVAILABLE)
+            }
+        val objectValue =
+            try {
+                JSON.parseToJsonElement(text) as? JsonObject
+            } catch (_: SerializationException) {
+                null
+            } catch (_: IllegalArgumentException) {
+                null
+            } ?: return KnowledgeLookup.Rejected(KnowledgeLookupFailure.RESOURCE_REJECTED)
+        return KnowledgeLookup.Complete(
+            resourceFactory.create(KnowledgeResourceDocument(resource = raw, document = objectValue))
+        )
     }
 
     private fun readManifest(): KnowledgeManifestDocument? =
@@ -164,13 +180,14 @@ internal class InstalledKnowledgeReader(private val root: Path) : KnowledgeReade
 
     private fun admittedRegularFile(path: Path): Path? {
         if (Files.isSymbolicLink(path)) return null
-        val physical = try {
-            path.toRealPath()
-        } catch (_: IOException) {
-            return null
-        } catch (_: SecurityException) {
-            return null
-        }
+        val physical =
+            try {
+                path.toRealPath()
+            } catch (_: IOException) {
+                return null
+            } catch (_: SecurityException) {
+                return null
+            }
         if (!physical.startsWith(root)) return null
         return physical.takeIf { Files.isRegularFile(it, LinkOption.NOFOLLOW_LINKS) }
     }
@@ -184,14 +201,15 @@ internal class InstalledKnowledgeReader(private val root: Path) : KnowledgeReade
         val declarationPath = declaration.declarationPath.lowercase()
         val summary = declaration.summary.lowercase()
         val module = projectPath.lowercase()
-        val score = when {
-            name == query || declarationPath == query -> 0
-            name.startsWith(query) || declarationPath.startsWith(query) -> 1
-            query in name || query in declarationPath -> 2
-            query in summary -> 3
-            query in module -> 4
-            else -> return null
-        }
+        val score =
+            when {
+                name == query || declarationPath == query -> 0
+                name.startsWith(query) || declarationPath.startsWith(query) -> 1
+                query in name || query in declarationPath -> 2
+                query in summary -> 3
+                query in module -> 4
+                else -> return null
+            }
         return ScoredKnowledgeItem(
             score,
             KnowledgeSearchItem(
@@ -219,45 +237,6 @@ private fun looksLikeResource(raw: String): Boolean =
     raw == "manifest.json" || raw.startsWith("modules/") || raw.startsWith("guides/")
 
 private data class ScoredKnowledgeItem(val score: Int, val item: KnowledgeSearchItem)
-
-@Serializable
-private data class KnowledgeManifestDocument(
-    val schemaVersion: Int,
-    val productVersion: String,
-    val sourceRevision: String,
-    val declarationEvidence: String,
-    val declarationLimitations: List<String>,
-    val modules: List<KnowledgeModuleDescriptor>,
-)
-
-@Serializable
-private data class KnowledgeModuleDescriptor(val projectPath: String, val resource: String)
-
-@Serializable
-private data class KnowledgeModuleDocument(
-    val schemaVersion: Int,
-    val projectPath: String,
-    val moduleDirectory: String,
-    val governingGuides: List<KnowledgeGuideReference>,
-    val declarations: List<KnowledgeDeclarationDescriptor>,
-)
-
-@Serializable
-private data class KnowledgeGuideReference(
-    val path: String,
-    val sha256: String,
-    val resource: String,
-)
-
-@Serializable
-private data class KnowledgeDeclarationDescriptor(
-    val id: String,
-    val declarationPath: String,
-    val name: String,
-    val kind: String,
-    val summary: String,
-    val resource: String,
-)
 
 @Serializable
 private data class KnowledgeSearchDocument(
