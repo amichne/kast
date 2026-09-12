@@ -31,6 +31,7 @@ internal data class InstalledKnowledgeDeclarationInput(
     val name: String,
     val signature: String,
     val documentation: String,
+    val governingGuidePaths: List<String>,
 )
 
 internal sealed interface InstalledKnowledgeProjectionResult {
@@ -68,11 +69,16 @@ internal object InstalledKnowledgeProjection {
                 failures += InstalledKnowledgeProjectionFailure.UnknownGuide(module.projectPath, guidePath)
             }
         }
-        input.declarations.filterNot { modules.containsKey(it.projectPath) }.forEach { declaration ->
-            failures += InstalledKnowledgeProjectionFailure.UnknownDeclarationModule(
-                declaration.projectPath,
-                declaration.sourcePath,
-            )
+        input.declarations.forEach { declaration ->
+            if (!modules.containsKey(declaration.projectPath)) {
+                failures += InstalledKnowledgeProjectionFailure.UnknownDeclarationModule(
+                    declaration.projectPath,
+                    declaration.sourcePath,
+                )
+            }
+            declaration.governingGuidePaths.filterNot(guides::containsKey).forEach { guidePath ->
+                failures += InstalledKnowledgeProjectionFailure.UnknownGuide(declaration.projectPath, guidePath)
+            }
         }
         val declarationIds = input.declarations.map(::declarationId)
         declarationIds.groupingBy { it }.eachCount().filterValues { it > 1 }.keys.forEach {
@@ -95,7 +101,7 @@ internal object InstalledKnowledgeProjection {
 
         val moduleDescriptors = input.modules.sortedBy { it.projectPath }.map { module ->
             val moduleResource = moduleResource(module.projectPath)
-            val applicableGuides = module.governingGuidePaths.sorted().map { guidePath ->
+            val moduleGuides = module.governingGuidePaths.sorted().map { guidePath ->
                 val guide = requireNotNull(guides[guidePath])
                 InstalledKnowledgeGuideReference(guide.path, sha256(guide.content), guideResource(guide.path))
             }
@@ -104,6 +110,7 @@ internal object InstalledKnowledgeProjection {
                 .map { declaration ->
                     val id = declarationId(declaration)
                     val resource = declarationResource(module.projectPath, id)
+                    val declarationGuides = declaration.governingGuidePaths.sorted().map(::guideResource)
                     files[resource] = json.encodeToString(
                         InstalledKnowledgeDeclaration(
                             id = id,
@@ -113,7 +120,7 @@ internal object InstalledKnowledgeProjection {
                             name = declaration.name,
                             signature = declaration.signature,
                             documentation = declaration.documentation,
-                            governingGuides = applicableGuides.map { it.resource },
+                            governingGuides = declarationGuides,
                         ),
                     ) + "\n"
                     InstalledKnowledgeDeclarationDescriptor(
@@ -128,7 +135,7 @@ internal object InstalledKnowledgeProjection {
                 InstalledKnowledgeModule(
                     projectPath = module.projectPath,
                     moduleDirectory = module.moduleDirectory,
-                    governingGuides = applicableGuides,
+                    governingGuides = moduleGuides,
                     declarations = declarations,
                 ),
             ) + "\n"
@@ -155,7 +162,8 @@ internal object InstalledKnowledgeProjection {
     private fun declarationResource(projectPath: String, id: String): String =
         "modules/${projectPath.removePrefix(":").replace(':', '/')}/declarations/$id.json"
 
-    private fun guideResource(path: String): String = "guides/${path.removeSuffix("AGENTS.md").trimEnd('/').ifEmpty { "root" }}.json"
+    private fun guideResource(path: String): String =
+        "guides/${path.removeSuffix("AGENTS.md").trimEnd('/').ifEmpty { "root" }}.json"
 
     private fun firstParagraph(documentation: String): String =
         documentation.trim().split(Regex("\\n\\s*\\n"), limit = 2).firstOrNull().orEmpty()
@@ -164,5 +172,5 @@ internal object InstalledKnowledgeProjection {
 
     private fun sha256(value: String): String =
         "sha256:" + MessageDigest.getInstance("SHA-256").digest(value.encodeToByteArray())
-            .joinToString("") { byte -> "%02x".format(byte) }
+            .joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
 }
