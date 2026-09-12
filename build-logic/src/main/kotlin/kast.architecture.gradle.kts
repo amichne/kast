@@ -1,9 +1,11 @@
+import conventions.GenerateKnowledgeDocsTask
 import org.gradle.api.artifacts.ProjectDependency
 import org.gradle.api.tasks.SourceSetContainer
 import support.architecture.ArchitectureObservationParser
 import support.architecture.ModuleRoleConvention
 import support.architecture.gradle.GenerateKastModuleKnowledgeTask
 import support.architecture.gradle.VerifyKastArchitectureTask
+import support.knowledge.GenerateInstalledKnowledgeTask
 
 plugins {
     base
@@ -24,6 +26,14 @@ val trackedAgentGuidePaths = providers.exec {
         .filter { path -> path.substringAfterLast('/') == "AGENTS.md" }
         .sorted()
 }
+
+val sourceRevision = providers.gradleProperty("kastSourceRevision").orElse(
+    providers.exec {
+        workingDir(layout.projectDirectory)
+        commandLine("git", "rev-parse", "HEAD")
+    }.standardOutput.asText.map(String::trim)
+)
+
 tasks.register<GenerateKastModuleKnowledgeTask>("generateKastModuleKnowledge") {
     group = "distribution"
     description = "Serializes the verified module architecture and scoped AGENTS.md knowledge."
@@ -55,6 +65,20 @@ tasks.register<GenerateKastModuleKnowledgeTask>("generateKastModuleKnowledge") {
     dependsOn(verifyKastArchitecture)
 }
 
+tasks.register<GenerateInstalledKnowledgeTask>("generateInstalledKnowledgeBundle") {
+    group = "distribution"
+    description = "Joins verified module guidance with detached public Kotlin declaration documentation."
+    productVersion.set(providers.provider { project.version.toString() })
+    sourceRevision.set(sourceRevision)
+    moduleProjectPaths.set(verifyKastArchitecture.flatMap { it.observedProjectPaths })
+    agentGuidePaths.set(trackedAgentGuidePaths)
+    agentGuideFiles.from(trackedAgentGuidePaths)
+    repositoryDirectory.set(layout.projectDirectory)
+    documentationFile.set(layout.buildDirectory.file("generated/knowledge/kotlin-docs.json"))
+    outputDirectory.set(layout.buildDirectory.dir("generated/installed-knowledge"))
+    dependsOn(verifyKastArchitecture, "generateKastDocumentation")
+}
+
 subprojects {
     val modulePath = path
     pluginManager.withPlugin("java") {
@@ -79,6 +103,13 @@ subprojects {
                         },
                     )
                     dependsOn(tasks.named(sourceSet.classesTaskName))
+                }
+                rootProject.tasks.withType<GenerateKnowledgeDocsTask>().configureEach {
+                    sourceFiles.from(
+                        sourceSetProvider.map { production ->
+                            production.allSource.matching { include("**/*.kt") }
+                        }
+                    )
                 }
             }
     }
