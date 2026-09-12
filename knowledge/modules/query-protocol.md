@@ -4,7 +4,7 @@ title: Query protocol
 description: Shared semantic-read admission and projection bind canonical requests and detached references to an authority supplied by the owning host.
 resource: file://query/protocol
 tags: [kotlin, protocol, query, authority]
-timestamp: 2026-09-10T00:00:00Z
+timestamp: 2026-09-12T00:00:00Z
 code_sources:
   - path: query/protocol/build.gradle.kts
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt
@@ -31,6 +31,12 @@ code_sources:
   - path: workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/WorkspaceSearchScopeModel.kt
     symbols: [WorkspaceSearchScopeModel]
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalRelationContinuationCodec.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalReadOperationModels.kt
+    symbols: [RelationContinuationDocument]
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt
+  - path: cli/src/test/kotlin/io/github/amichne/kast/cli/LiveReadOutputSchemaTest.kt
+  - path: runtime/composition/src/test/kotlin/io/github/amichne/kast/runtime/composition/protocol/graph/RelationContinuationCodecTest.kt
+  - path: runtime/composition/src/test/kotlin/io/github/amichne/kast/runtime/composition/protocol/graph/RelationContinuationAuthorityTest.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalTraversalContinuationCodec.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/TraversalContinuationDocument.kt
     symbols: [TraversalContinuationDocument]
@@ -81,7 +87,17 @@ or topology admission. See [source identity](../contracts/source-identity.md),
 [semantic query](../flows/semantic-query.md), and
 [operation outcomes](../contracts/operation-outcomes.md).
 
-Traversal continuations preserve their authority version: published continuations
-use version 1 and live continuations use version 2. Input and output schemas share
-the document token pattern; decoding still checks the version against the
-retained authority and rejects unsupported versions.
+Relation and traversal continuations preserve their authority version: published
+continuations use version 1 and live continuations use version 2. Each document
+owns the accepted-version pattern shared by its input serializer and advertised
+resumable output schema. Structural schema admission does not authenticate a
+continuation. Decoding checks the authority-specific version and revision, while
+owner admission retains subject, relation and scope checks. Terminal-incomplete
+relation output carries no continuation.
+
+Test-only fixtures in `workspace:contract` and `query:protocol` admit a fixed live
+authority through its original owner and provide four ordered relation facts.
+The CLI schema and runtime codec regressions share this fixture: a limit of three
+produces an owner-issued continuation, and resume reaches the fourth fact under
+the unchanged authority without consuming the prefix again. These tests start
+no IntelliJ process and make no native provider-parity claim.

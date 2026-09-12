@@ -4,6 +4,7 @@ import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.appserver.KastToolSelection
 import io.github.amichne.kast.appserver.core.AgentSessionBootstrap
 import io.github.amichne.kast.appserver.core.AgentSessionBootstrapQualification
+import io.github.amichne.kast.appserver.core.BrokerOperationEffect
 import io.github.amichne.kast.appserver.core.BrokerTool
 import io.github.amichne.kast.appserver.core.CanonicalBrokerDirectory
 import io.github.amichne.kast.appserver.core.HostedToolDefinition
@@ -337,6 +338,7 @@ internal object KastProviderQualifier {
             invoke = { runtime, input, context -> runtime.invoke(this, input, context) },
             encode = KastInvocationOutput::document,
             invocationBudget = executionBudget.invocation,
+            effect = BrokerOperationEffect.Canonical(hostedDefinition.effect),
             inputGuidance = { failure ->
                 val guidance =
                     when (failure) {

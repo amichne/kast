@@ -1,7 +1,7 @@
 # Repository-relative Kotlin path<TAB>maximum admitted lines
 app-server/src/main/kotlin/io/github/amichne/kast/appserver/AppServerManagement.kt	456
 app-server/src/main/kotlin/io/github/amichne/kast/appserver/BrokerOperationalLimits.kt	729
-app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledBrokerServer.kt	1039
+app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledBrokerServer.kt	984
 app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledWorkerClient.kt	571
 app-server/src/main/kotlin/io/github/amichne/kast/appserver/MacOsPersistentBrokerServiceHost.kt	1297
 app-server/src/main/kotlin/io/github/amichne/kast/appserver/PersistentBrokerService.kt	572
@@ -25,7 +25,6 @@ app-server/src/test/kotlin/io/github/amichne/kast/appserver/protocol/codex/Codex
 app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/KastProviderTest.kt	931
 app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/BrokerSessionHubTest.kt	782
 change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/MutationAdmission.kt	511
-change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/admission/AddDeclarationPlanningEvidence.kt	407
 cli/src/main/kotlin/io/github/amichne/kast/cli/KastCli.kt	519
 cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledKastCliComposition.kt	927
 cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt	2009
@@ -34,7 +33,7 @@ cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow
 cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/IndexSeedFilesystemService.kt	831
 cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/IndexSeedProtocol.kt	818
 cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/InstalledSidecarRuntimeDemand.kt	680
-cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/RuntimeBoundary.kt	979
+cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/RuntimeBoundary.kt	940
 cli/src/main/kotlin/io/github/amichne/kast/cli/runtime/SidecarCacheLifecycle.kt	676
 cli/src/test/kotlin/io/github/amichne/kast/cli/runtime/InstalledSidecarRuntimeDemanderTest.kt	659
 cli/src/test/kotlin/io/github/amichne/kast/cli/runtime/RuntimeProcessSessionTest.kt	918
@@ -64,9 +63,8 @@ relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij/Relat
 runtime/composition/src/main/kotlin/io/github/amichne/kast/runtime/composition/bootstrap/InstalledKastRuntime.kt	412
 source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceSelectorToken.kt	693
 source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceReadPort.kt	867
-source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/LiveIntellijSourceRead.kt	1474
+source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/LiveIntellijSourceRead.kt	1389
 symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/exact/SymbolSelector.kt	442
-symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijPsiNativeRelationSearch.kt	421
 symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/discovery/IntellijNativeDiscoveryQuery.kt	655
 symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/discovery/IntellijSearchScopeCompiler.kt	404
 symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/IntellijNativeDiscoveryTest.kt	1038

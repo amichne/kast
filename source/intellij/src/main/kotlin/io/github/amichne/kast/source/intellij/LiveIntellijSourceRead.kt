@@ -1167,88 +1167,6 @@ private fun sourceNestingDepth(raw: Int): SourceNestingDepth =
         is Refinement.Rejected -> error("Non-negative structural depth must refine")
     }
 
-private class LiveIntellijSourceReadAccess(private val project: Project) : IntellijSourceReadAccess {
-    override suspend fun capture(
-        context: SourceReadContext,
-        selector: SymbolSelector,
-    ): IntellijSourceReadAccessResult {
-        if (selector.lease.workspaceRoot != context.lease.workspaceRoot) {
-            return rejected(IntellijSourceReadRejection.WORKSPACE_ROOT_MISMATCH)
-        }
-        if (selector.lease != context.lease) {
-            return rejected(IntellijSourceReadRejection.STALE_GENERATION)
-        }
-        if (project.isDisposed) return rejected(IntellijSourceReadRejection.SOURCE_UNAVAILABLE)
-        if (DumbService.isDumb(project)) {
-            return rejected(IntellijSourceReadRejection.COMPILER_ANALYSIS_UNAVAILABLE)
-        }
-        return try {
-            readAction {
-                captureInReadAction(context, selector)
-            }
-        } catch (cancelled: ProcessCanceledException) {
-            throw cancelled
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (_: IndexNotReadyException) {
-            rejected(IntellijSourceReadRejection.COMPILER_ANALYSIS_UNAVAILABLE)
-        } catch (_: RuntimeException) {
-            rejected(IntellijSourceReadRejection.PROVIDER_FAILURE)
-        }
-    }
-
-    private fun captureInReadAction(
-        context: SourceReadContext,
-        selector: SymbolSelector,
-    ): IntellijSourceReadAccessResult {
-        if (project.isDisposed) return rejected(IntellijSourceReadRejection.SOURCE_UNAVAILABLE)
-        if (DumbService.isDumb(project)) {
-            return rejected(IntellijSourceReadRejection.COMPILER_ANALYSIS_UNAVAILABLE)
-        }
-        val fileIdentity =
-            selector.file as? SymbolDiscoveryFileIdentity.Workspace
-                ?: return rejected(IntellijSourceReadRejection.OUTSIDE_SOURCE_SCOPE)
-        val file =
-            VirtualFileManager.getInstance().findFileByNioPath(Path.of(fileIdentity.path.value))?.takeIf { it.isValid }
-                ?: return rejected(IntellijSourceReadRejection.SOURCE_UNAVAILABLE)
-        val documents = FileDocumentManager.getInstance()
-        val document = documents.getDocument(file) ?: return rejected(IntellijSourceReadRejection.SOURCE_UNAVAILABLE)
-        if (documents.isFileModified(file)) {
-            return rejected(IntellijSourceReadRejection.DOCUMENT_DIRTY)
-        }
-        if (!PsiDocumentManager.getInstance(project).isCommitted(document)) {
-            return rejected(IntellijSourceReadRejection.PSI_DOCUMENT_UNCOMMITTED)
-        }
-        val psiFile =
-            PsiManager.getInstance(project).findFile(file) as? KtFile
-                ?: return rejected(IntellijSourceReadRejection.ANCHOR_NOT_FOUND)
-        val declaration =
-            exactDeclaration(psiFile, selector) ?: return rejected(IntellijSourceReadRejection.ANCHOR_NOT_FOUND)
-        val evidence =
-            declaration.compilerEvidence(selector)
-                ?: return rejected(IntellijSourceReadRejection.COMPILER_ANALYSIS_UNAVAILABLE)
-        val revalidated =
-            when (val proof = RevalidatedSymbolSelector.validate(selector, evidence)) {
-                is Refinement.Refined -> proof.value
-                is Refinement.Rejected -> return rejected(IntellijSourceReadRejection.DECLARATION_MOVED_OR_CHANGED)
-            }
-        if (DumbService.isDumb(project)) {
-            return rejected(IntellijSourceReadRejection.COMPILER_ANALYSIS_UNAVAILABLE)
-        }
-        return when (
-            val capture =
-                IntellijCommittedSourceCapture.create(
-                    context,
-                    revalidated,
-                    document.charsSequence.toString(),
-                )
-        ) {
-            is Refinement.Refined -> IntellijSourceReadAccessResult.Captured(capture.value)
-            is Refinement.Rejected -> rejected(capture.failure)
-        }
-    }
-}
-
 private fun exactDeclaration(
     file: KtFile,
     selector: SymbolSelector,
@@ -1466,9 +1384,6 @@ private fun projected(
             SourceCompilerProjectionResult.Projected(SourceCompilerProjection(kind, identity, signature.value))
         is Refinement.Rejected -> SourceCompilerProjectionResult.Rejected
     }
-
-private fun rejected(reason: IntellijSourceReadRejection): IntellijSourceReadAccessResult.Rejected =
-    IntellijSourceReadAccessResult.Rejected(reason)
 
 private fun regionRejected(reason: IntellijSourceReadRejection): IntellijSourceRegionAccessResult.Rejected =
     IntellijSourceRegionAccessResult.Rejected(reason)

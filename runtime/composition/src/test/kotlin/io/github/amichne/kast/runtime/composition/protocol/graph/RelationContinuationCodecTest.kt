@@ -46,12 +46,39 @@ import java.util.Base64
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.startCoroutine
+import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
 class RelationContinuationCodecTest {
+    @Test
+    fun `published and live owner issued pages resume after the exact consumed prefix`() = runTest {
+        for ((fixture, version) in
+            listOf(RelationPagingFixture.published() to "v1", RelationPagingFixture.live() to "v2")) {
+            val first = fixture.page() as OperationOutcome.Qualified
+            val continuation = (first.qualification as RelationReadQualification.Resumable).continuation
+            assertTrue(continuation.value.startsWith("relation-continuation:$version:"))
+            val decoded =
+                (CanonicalRelationContinuationCodec.decode(continuation, fixture.authority)
+                        as CanonicalRelationContinuationDecoding.Decoded)
+                    .continuation
+            assertEquals(3L, decoded.nextProviderCursor.nextPosition.value)
+            assertEquals(continuation, CanonicalRelationContinuationCodec.encode(decoded))
+            val second = fixture.page(RelationReadPositionDocument.Resume(continuation)) as OperationOutcome.Complete
+            assertEquals(3, first.evidence.payload.relations.values.size)
+            assertEquals(1, second.evidence.payload.relations.values.size)
+            assertEquals(
+                listOf(10, 12, 14),
+                first.evidence.payload.relations.values.map { it.occurrence.range.startInclusive.value },
+            )
+            assertEquals(16, second.evidence.payload.relations.values.single().occurrence.range.startInclusive.value)
+            assertEquals(listOf(0L, 1L, 2L, 3L), fixture.consumed)
+        }
+    }
+
     @Test
     fun `self contained continuation round trips and runtime admits resume`(@TempDir temporary: Path) {
         val fixture =

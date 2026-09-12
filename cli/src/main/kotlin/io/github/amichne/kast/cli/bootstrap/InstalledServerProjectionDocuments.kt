@@ -781,7 +781,7 @@ private fun relationQualificationSchema(): JsonObject =
             ServerSchemaProperty(
                 "continuation",
                 patternTextSchema(
-                    "^relation-continuation:v1:",
+                    io.github.amichne.kast.protocol.contract.RelationContinuationDocument.TOKEN_PATTERN,
                     "Self-contained relation continuation.",
                 ),
             ),

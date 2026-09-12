@@ -4,7 +4,7 @@ title: Semantic change lifecycle
 description: A supported semantic intent becomes a source effect only after pure planning and exact preimage admission, then must discharge verification or retain recovery evidence.
 resource: file://change
 tags: [change, mutation, verification, recovery]
-timestamp: 2026-09-11T00:00:00Z
+timestamp: 2026-09-12T00:00:00Z
 code_sources:
   - path: change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/admission/ChangeIntent.kt
     symbols: [ChangeIntent]
@@ -36,6 +36,7 @@ code_sources:
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeRecovery.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceExecution.kt
     symbols: [WorkspaceExecution]
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/SettledOutputRejection.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/HostedPlanApprovalGateway.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexPlanApprovalProjection.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/BrokerTrustEnrollment.kt
@@ -102,6 +103,10 @@ The broker rejects further operations for that workspace, including recovery.
 Replace the broker while retaining its invocation journal and thread store before
 requesting separately approved recovery. The IDE's durable mutation records remain
 authoritative; replacing the broker does not make an attempted plan executable again.
+An output-contract rejection after a possible write remains uncertain even when
+the provider has terminated. The [settled read exception](request-dispatch.md)
+uses canonical non-writing effect metadata and grants no mutation retry or recovery
+authority.
 
 A repeated verified apply returns its stored receipt without another write,
 including when the current IDE owner differs from the historical receipt.

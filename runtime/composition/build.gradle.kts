@@ -4,6 +4,7 @@ plugins {
 }
 
 dependencies {
+    testImplementation(testFixtures(project(":query:protocol")))
     implementation(project(":distribution:contract"))
     implementation(project(":kernel"))
     implementation(project(":protocol:contract"))

@@ -4,7 +4,7 @@ title: Request dispatch
 description: A host request is qualified against the canonical registry, decoded by its wire binding, dispatched through runtime composition, and projected without weakening its semantic outcome.
 resource: file://runtime/server
 tags: [runtime, protocol, dispatch]
-timestamp: 2026-09-11T00:00:00Z
+timestamp: 2026-09-12T00:00:00Z
 code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt
   - path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt
@@ -27,6 +27,12 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeQuery.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeSocketClient.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastProvider.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/core/Broker.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/core/BrokerOperationEffect.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/SettledOutputRejection.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceExecution.kt
+  - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/SettledReadOutputContractTest.kt
+  - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/OutputContractRecoveryPolicyTest.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/schema/JsonSchemaViolationEvidence.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/BrokerFailureDocument.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolAdapter.kt
@@ -103,3 +109,15 @@ of closed schema-keyword and field observations. Unknown fields remain `UNKNOWN`
 validator messages, source values and reference tokens do not enter this evidence.
 Serializable failure DTOs preserve existing failure and correction fields and
 carry these observations as `outputViolationEvidence`.
+
+Kast provider qualification retains the canonical `OperationEffect` in the broker
+tool. After `ProviderCall.Completed`, a schema-invalid result still rejects that
+invocation. If its admitted effect is `NONE` or `INTELLIJ_READ`, the adapter marks
+the invocation's effects known and the workspace lane serves its next request.
+Output validity and semantic success remain separate from this settlement decision.
+
+All writing effects and unknown provider effects retain recovery-required
+handling after output rejection. Provider failures, cancellation, and timeouts
+remain uncertain even for reads; read metadata cannot prove that an execution has
+terminated. Deterministic gates test queued and later calls, mutation without
+replay, independent workspaces, and retirement held across cancellation/deadline.

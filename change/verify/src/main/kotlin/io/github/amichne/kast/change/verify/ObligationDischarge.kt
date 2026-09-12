@@ -46,10 +46,6 @@ class DischargedChangeObligations private constructor(proofs: List<DischargedCha
     }
 }
 
-typealias DischargedAddDeclarationObligation = DischargedChangeObligation
-
-typealias DischargedAddDeclarationObligations = DischargedChangeObligations
-
 private fun ChangeVerificationObligation.proofBasis(): ChangeObligationProofBasis =
     when (this) {
         AddFileObligation.TARGET_ABSENT_AT_G0,

@@ -1,9 +1,15 @@
 package support.architecture.projection
 
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertInstanceOf
+import org.junit.jupiter.api.assertThrows
 import support.architecture.ArchitecturePolicyValidation
 import support.architecture.KastArchitecturePolicy
 
@@ -41,6 +47,28 @@ class ArchitectureProjectionTest {
         assertEquals("BOUNDED_READ", module.cost)
         val convention = assertInstanceOf<ModuleRoleConventionDocument.Required>(module.roleConvention)
         assertEquals("kast.role.intellij-read", convention.pluginId)
+
+        val encodedModules = architectureProjectionJson.parseToJsonElement(
+            ArchitectureProjection.render(architecture),
+        ).jsonObject.getValue("modules").jsonArray
+        encodedModules.forEach { encodedModule ->
+            val encodedConvention = encodedModule.jsonObject.getValue("roleConvention").jsonObject
+            assertEquals(setOf("kind", "pluginId"), encodedConvention.keys)
+            assertEquals("REQUIRED", encodedConvention.getValue("kind").jsonPrimitive.content)
+        }
+    }
+
+    @Test
+    fun `retired unmarked convention cannot decode`() {
+        assertThrows<SerializationException> {
+            architectureProjectionJson.decodeFromString(
+                ModuleRoleConventionDocument.serializer(),
+                architectureProjectionJson.encodeToString(
+                    RetiredConventionFixture.serializer(),
+                    RetiredConventionFixture(kind = "UNMARKED_LEGACY"),
+                ),
+            )
+        }
     }
 
     @Test
@@ -61,4 +89,7 @@ class ArchitectureProjectionTest {
         assertTrue("io/github/amichne/kast/cli/ide/FilesystemBrokerTrustRegistrar" in filesystem.callerClasses)
         assertTrue(filesystem.callerClasses.all { it.startsWith("io/github/amichne/kast/cli/") })
     }
+
+    @Serializable
+    private data class RetiredConventionFixture(val kind: String)
 }

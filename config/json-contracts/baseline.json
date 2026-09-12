@@ -9544,16 +9544,6 @@
     {
       "fingerprint": {
         "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/LiveReadOutputSchemaTest.kt",
-        "scope": "type:LiveReadOutputSchemaTest/fun:validate(18:CanonicalOperation,10:JsonObject)",
-        "kind": "JSON_BUILDER",
-        "sha256": "1c02c23f716f9a0a3a15460f9b13b75cbb5f84652f5db655f14bb951166b088d"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/LiveReadOutputSchemaTest.kt",
         "scope": "type:LiveReadOutputSchemaTest/fun:with(6:String,11:JsonElement)10:JsonObject",
         "kind": "JSON_OBJECT",
         "sha256": "948810b4f4285cc8fff66ff7c878a63869ef51ba16ced34eff950fa4379c443e"

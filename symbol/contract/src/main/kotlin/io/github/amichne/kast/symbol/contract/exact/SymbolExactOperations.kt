@@ -109,6 +109,3 @@ interface SymbolExactOperations {
      */
     suspend fun describe(request: ExactSymbolRequest): SymbolDescriptionResult
 }
-
-/** Canonical public symbol surface; implementations may compose discovery and exact-read owners. */
-interface SymbolOperations : SymbolDiscoveryOperations, SymbolExactOperations
