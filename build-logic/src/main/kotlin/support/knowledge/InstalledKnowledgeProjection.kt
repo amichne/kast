@@ -29,6 +29,7 @@ internal data class InstalledKnowledgeGuideInput(
 internal data class InstalledKnowledgeDeclarationInput(
     val projectPath: String,
     val sourcePath: String,
+    val declarationPath: String,
     val kind: String,
     val name: String,
     val signature: String,
@@ -108,7 +109,7 @@ internal object InstalledKnowledgeProjection {
                 InstalledKnowledgeGuideReference(guide.path, sha256(guide.content), guideResource(guide.path))
             }
             val declarations = input.declarations.filter { it.projectPath == module.projectPath }
-                .sortedWith(compareBy({ it.name }, { it.signature }, { it.sourcePath }))
+                .sortedWith(compareBy({ it.declarationPath }, { it.signature }, { it.sourcePath }))
                 .map { declaration ->
                     val id = declarationId(declaration)
                     val resource = declarationResource(module.projectPath, id)
@@ -118,6 +119,7 @@ internal object InstalledKnowledgeProjection {
                             id = id,
                             projectPath = declaration.projectPath,
                             sourcePath = declaration.sourcePath,
+                            declarationPath = declaration.declarationPath,
                             kind = declaration.kind,
                             name = declaration.name,
                             signature = declaration.signature,
@@ -127,6 +129,7 @@ internal object InstalledKnowledgeProjection {
                     ) + "\n"
                     InstalledKnowledgeDeclarationDescriptor(
                         id = id,
+                        declarationPath = declaration.declarationPath,
                         name = declaration.name,
                         kind = declaration.kind,
                         summary = firstParagraph(declaration.documentation),
@@ -157,8 +160,10 @@ internal object InstalledKnowledgeProjection {
     }
 
     private fun declarationId(declaration: InstalledKnowledgeDeclarationInput): String =
-        sha256("${declaration.projectPath}\u0000${declaration.sourcePath}\u0000${declaration.kind}\u0000${declaration.name}\u0000${declaration.signature}")
-            .removePrefix("sha256:")
+        sha256(
+            "${declaration.projectPath}\u0000${declaration.sourcePath}\u0000${declaration.declarationPath}" +
+                "\u0000${declaration.kind}\u0000${declaration.signature}"
+        ).removePrefix("sha256:")
 
     private fun moduleResource(projectPath: String): String =
         "modules/${projectPath.removePrefix(":").replace(':', '/')}/index.json"
