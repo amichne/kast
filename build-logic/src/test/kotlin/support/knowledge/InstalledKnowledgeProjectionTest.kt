@@ -28,6 +28,7 @@ class InstalledKnowledgeProjectionTest {
                     InstalledKnowledgeDeclarationInput(
                         projectPath = ":kernel",
                         sourcePath = "kernel/src/main/kotlin/example/Outcome.kt",
+                        declarationPath = "Outcome",
                         kind = "interface",
                         name = "Outcome",
                         signature = "sealed interface Outcome<out T>",
@@ -45,12 +46,41 @@ class InstalledKnowledgeProjectionTest {
         assertFalse(module.contains("Detailed contract"))
         assertFalse(module.contains("sealed interface Outcome"))
         assertTrue(module.contains("Caller-facing summary."))
+        assertTrue(module.contains("\"declarationPath\":\"Outcome\""))
         assertTrue(card.contains(documentation.replace("\n", "\\n")))
         assertTrue(card.contains("guides/root.json"))
         assertTrue(card.contains("guides/kernel.json"))
         assertFalse(card.contains("nested guidance"))
         assertTrue(manifest.contains("KOTLIN_PSI_SYNTAX"))
         assertTrue(manifest.contains("NO_TYPE_RESOLUTION"))
+    }
+
+    @Test
+    fun `same signature under different owners has distinct identities`() {
+        val common = InstalledKnowledgeDeclarationInput(
+            projectPath = ":kernel",
+            sourcePath = "kernel/src/main/kotlin/example/Owners.kt",
+            declarationPath = "First.read",
+            kind = "function",
+            name = "read",
+            signature = "fun read(): String",
+            documentation = "Read.",
+            governingGuidePaths = listOf("AGENTS.md"),
+        )
+        val result = InstalledKnowledgeProjection.render(
+            InstalledKnowledgeInput(
+                productVersion = "1.0.0",
+                sourceRevision = "0123456789012345678901234567890123456789",
+                declarationEvidence = "KOTLIN_PSI_SYNTAX",
+                declarationLimitations = emptyList(),
+                modules = listOf(InstalledKnowledgeModuleInput(":kernel", "kernel", listOf("AGENTS.md"))),
+                guides = listOf(InstalledKnowledgeGuideInput("AGENTS.md", ".", "root")),
+                declarations = listOf(common, common.copy(declarationPath = "Second.read")),
+            ),
+        )
+
+        val complete = assertIs<InstalledKnowledgeProjectionResult.Complete>(result)
+        assertEquals(2, complete.files.keys.count { "/declarations/" in it })
     }
 
     @Test
@@ -67,6 +97,7 @@ class InstalledKnowledgeProjectionTest {
                     InstalledKnowledgeDeclarationInput(
                         projectPath = ":unknown",
                         sourcePath = "x.kt",
+                        declarationPath = "X",
                         kind = "class",
                         name = "X",
                         signature = "class X",
