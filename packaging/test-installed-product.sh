@@ -1,73 +1,43 @@
 #!/usr/bin/env bash
 set -euo pipefail
-
-if [[ $# == 0 ]]; then
-  exec python3 "$(dirname "$0")/run-installed-product.py"
-fi
-[[ $# == 10 && "$1" == --isolated-fixture && "$3" == --product && "$5" == --control-archive &&
-   "$7" == --runtime-archive && "$9" == --report-directory ]] || exit 2
+if [[ $# == 0 ]]; then exec python3 "$(dirname "$0")/run-installed-product.py"; fi
+[[ $# == 10 && "$1" == --isolated-fixture && "$3" == --product && "$5" == --control-archive && "$7" == --plugin-archive && "$9" == --report-directory ]] || exit 2
 fixture="$2"
-[[ "$HOME" == "$fixture/home" && "$KAST_RUNTIME_DIRECTORY" == "$fixture/product/state/run" ]] || exit 1
-
-fail() {
-  printf 'installed-product: %s\n' "$*" >&2
-  exit 1
-}
-
-# Artifact paths belong to the harness invocation, never the production process environment.
 product_root="$4"
 control_archive="$6"
-runtime_archive="$8"
+plugin_archive="$8"
 report_directory="${10}"
-kast="${product_root}/bin/kast"
-
-[[ -x "$kast" ]] || fail "staged public command is missing"
-[[ -f "$control_archive" ]] || fail "control archive is missing"
-[[ -f "$runtime_archive" ]] || fail "private sidecar archive is missing"
-for resource in operation-registry.json wire-schema.json semantic-runtime.json; do
-  [[ -f "$product_root/share/kast/$resource" ]] || fail "control resource is missing: $resource"
+[[ "$HOME" == "$fixture/home" && "$KAST_RUNTIME_DIRECTORY" == "$fixture/product/state/run" ]] || exit 1
+fail() { printf 'installed-product: %s\n' "$*" >&2; exit 1; }
+kast="$product_root/bin/kast"
+[[ -x "$kast" && -f "$control_archive" && -f "$plugin_archive" ]] || fail 'release inputs missing'
+for resource in operation-registry.json wire-schema.json ide-host.json; do
+  [[ -f "$product_root/share/kast/$resource" ]] || fail "missing resource: $resource"
 done
-python3 - "$product_root/share/kast/semantic-runtime.json" <<'PY'
-import json
+[[ ! -e "$product_root/share/kast/semantic-runtime.json" ]] || fail 'retired manifest shipped'
+python3 - "$product_root/share/kast/ide-host.json" "$plugin_archive" "$control_archive" <<'CHECK'
+import hashlib, json, sys, tarfile, zipfile
 from pathlib import Path
-import sys
-
-document = json.loads(Path(sys.argv[1]).read_text())
-assert document["ideaBuild"] == "262.10315.125", document
-assert document["kotlinPluginBuild"] == "262.10315.125-IJ", document
-assert document["kastPluginSha256"].startswith("sha256:"), document
-PY
-if find "$product_root" \( -name 'kast-indexer' -o -name 'idea-home' \
-  -o -name 'product-info.json' -o -name 'kast-ide-plugin*' \) -print -quit | grep -q .; then
-  fail "control product contains sidecar, public plugin, or IDEA distribution content"
-fi
-if grep -Eq '(^|/)idea-home/|product-info\.json|kast-ide-plugin' \
-  < <(unzip -Z1 "$runtime_archive"); then
-  fail "private sidecar contains an IDEA distribution or public plugin"
-fi
-grep -Fxq 'kast-indexer' < <(unzip -Z1 "$runtime_archive") ||
-  fail "private sidecar executable is missing"
-grep -Eq '^private-plugins/kast-indexer/lib/.+' < <(unzip -Z1 "$runtime_archive") ||
-  fail "private sidecar extension is missing"
-
-runtime_directory="$KAST_RUNTIME_DIRECTORY"
-runtime_socket_directory="$runtime_directory"
-# The Python owner removes only its exclusive fixture after successful validation.
-# A failed passive check retains evidence, including any unexpected socket state.
+metadata = json.loads(Path(sys.argv[1]).read_text())
+plugin = Path(sys.argv[2])
+assert set(metadata) == {'schemaVersion', 'productVersion', 'execution', 'ideaBuild', 'kotlinPluginBuild', 'fileName', 'sha256', 'bytes'}
+assert metadata['schemaVersion'] == 1 and metadata['execution'] == 'existing_ide'
+assert metadata['kotlinPluginBuild'] == metadata['ideaBuild'] + '-IJ'
+assert metadata['fileName'] == plugin.name and metadata['bytes'] == plugin.stat().st_size
+assert metadata['sha256'] == 'sha256:' + hashlib.sha256(plugin.read_bytes()).hexdigest()
+with zipfile.ZipFile(plugin) as archive:
+    names = archive.namelist()
+    assert all(name.startswith('kast-ide-hosted/') for name in names)
+    assert any('/lib/kast-ide-hosted-' in name and name.endswith('.jar') for name in names)
+    assert not any(any(token in name for token in ('indexer', 'topology-', 'runtime-composition', 'workspace-service', 'idea-home')) for name in names)
+with tarfile.open(sys.argv[3]) as archive:
+    assert not any(any(token in name for token in ('semantic-runtime', 'kast-indexer', 'topology-', 'runtime-composition', 'workspace-service')) for name in archive.getnames())
+CHECK
 mkdir -p "$fixture/repo"
-printf 'rootProject.name = "installed-product"\n' >"$fixture/repo/settings.gradle.kts"
-command_environment=(
-  "HOME=$fixture/home"
-  "JAVA_OPTS=-Duser.home=$fixture/home"
-  "KAST_RUNTIME_ARCHIVE=$runtime_archive"
-  "KAST_RUNTIME_STORE=$product_root/runtime-payloads"
-  "KAST_RUNTIME_DIRECTORY=$runtime_directory"
-  "KAST_CACHE_ROOT=$product_root/state/cache"
-)
-
+printf 'rootProject.name = "installed-product"\n' > "$fixture/repo/settings.gradle.kts"
+command_environment=("HOME=$fixture/home" "JAVA_OPTS=-Duser.home=$fixture/home" "KAST_RUNTIME_DIRECTORY=$KAST_RUNTIME_DIRECTORY")
 version="$(env "${command_environment[@]}" "$kast" --version)"
-[[ "$version" == "kast "*" (IntelliJ sidecar)" ]] ||
-  fail "version does not identify the sidecar product: $version"
+[[ "$version" == "kast "*" (IntelliJ plugin)" ]] || fail "unexpected version: $version"
 schema="$(env "${command_environment[@]}" "$kast" --schema)"
 python3 - "$schema" "$product_root/share/kast/operation-registry.json" <<'PY'
 import json
@@ -116,83 +86,29 @@ assert all("invocation" not in tool and "cliUsage" not in tool for tool in boots
 PY
 
 help="$(env "${command_environment[@]}" "$kast" --help)"
-for command in tool symbol source relation traversal diagnostic change codex index ide start stop; do
-  grep -Eq "^  ${command}[[:space:]]" <<<"$help" || fail "public command is absent: $command"
+for command in tool symbol source relation traversal diagnostic change codex index ide; do
+  grep -Eq "^  ${command}[[:space:]]" <<<"$help" || fail "missing command: $command"
 done
-env "${command_environment[@]}" "$kast" config --help >/dev/null
-tool_help="$(env "${command_environment[@]}" "$kast" tool --help)"
-for command in search_classes search_functions search_declarations check_diagnostics query_symbols; do
-  grep -Eq "^  ${command}[[:space:]]" <<<"$tool_help" || fail "public tool command is absent: $command"
+for command in start stop topology; do
+  if grep -Eq "^  ${command}[[:space:]]" <<<"$help"; then fail "retired command is public: $command"; fi
 done
-for command in product status topology broker; do
-  if grep -Eq "^  ${command}[[:space:]]" <<<"$help"; then
-    fail "retired command is public: $command"
-  fi
-done
-[[ -x "$product_root/bin/kast-codex" ]] || fail "installed integration host is missing"
-
 inspection="$(cd "$fixture/repo" && env "${command_environment[@]}" "$kast")"
-python3 - "$inspection" <<'PY'
-import json
-import sys
-
-document = json.loads(sys.argv[1])
-assert document["operation"] == "inspect", document
-assert document["status"] == "complete", document
-assert document["control"]["execution"] == "isolated-intellij-sidecar", document
-assert document["control"]["runtimeId"].startswith("sha256:"), document
-assert document["workspace"]["type"] == "observed", document
-assert document["workspace"]["cache"]["type"] == "absent", document
-PY
-
-passive_state_manifest() {
-  for path in "$runtime_directory" "$runtime_socket_directory" \
-    "$product_root/runtime-payloads" "$product_root/state/cache"; do
-    [[ ! -e "$path" ]] || find "$path" -print
-  done | LC_ALL=C sort
-}
-before_status_state="$(passive_state_manifest)"
-status="$(cd "$fixture/repo" && env "${command_environment[@]}" "$kast")"
-after_status_state="$(passive_state_manifest)"
-[[ "$before_status_state" == "$after_status_state" ]] ||
-  fail "bare inspection mutated isolated runtime or cache state"
-if pgrep -fl 'io[.]github[.]amichne[.]kast[.]indexer[.]KastIndexerMainKt' \
-  | grep -F -- "$runtime_socket_directory" \
-  | grep -q .; then
-  fail "bare inspection started its isolated sidecar"
-fi
-python3 - "$status" <<'PY'
-import json
-import sys
-
-document = json.loads(sys.argv[1])
-assert document["operation"] == "inspect", document
-assert document["status"] == "complete", document
-assert document["runtime"] == "stopped", document
-assert document["cache"] == {"state": "absent"}, document
-PY
-[[ ! -e "$fixture/home/Library/Application Support/JetBrains" ]] ||
-  fail "metadata or inspection wrote a JetBrains plugin path"
-
+python3 - "$inspection" <<'CHECK'
+import json, sys
+value = json.loads(sys.argv[1])
+assert set(value) == {'operation', 'productVersion', 'semanticAuthority', 'workspace'}
+assert value['operation'] == 'product.inspect' and value['semanticAuthority'] == 'existing_ide'
+assert value['workspace']['type'] == 'resolved'
+CHECK
+for command in start stop; do
+  if (cd "$fixture/repo" && env "${command_environment[@]}" "$kast" "$command" > "$fixture/out" 2> "$fixture/err"); then fail "retired command succeeded: $command"; fi
+done
+if (cd "$fixture/repo" && env "${command_environment[@]}" "$kast" ide status > "$fixture/out" 2> "$fixture/err"); then fail 'missing IDE was treated as ready'; fi
+[[ ! -e "$fixture/home/Library/Application Support/JetBrains" && ! -e "$product_root/runtime-payloads" && ! -e "$product_root/state/cache" ]] || fail 'passive command created IDE or index state'
 mkdir -p "$report_directory"
-python3 - "$report_directory/topology-installed-product.json" "$version" <<'PY'
-import json
+python3 - "$report_directory/topology-installed-product.json" "$version" <<'REPORT'
+import json, sys
 from pathlib import Path
-import sys
-
-document = {
-    "schemaVersion": 1,
-    "taskId": "INSTALLED-PRODUCT",
-    "outcome": "COMPLETE",
-    "product": sys.argv[2],
-    "semanticRuntimeManifest": "PRESENT",
-    "passiveInspection": "SIDECAR_STOPPED",
-    "isolatedIndexerProcessDelta": 0,
-}
-path = Path(sys.argv[1])
-temporary = path.with_suffix(path.suffix + ".tmp")
-temporary.write_text(json.dumps(document, separators=(",", ":")) + "\n")
-temporary.replace(path)
-PY
-
-printf 'installed-product: sidecar metadata and passive lifecycle passed\n'
+Path(sys.argv[1]).write_text(json.dumps({'schemaVersion': 2, 'taskId': 'INSTALLED-PRODUCT', 'outcome': 'COMPLETE', 'product': sys.argv[2], 'semanticAuthority': 'EXISTING_IDE', 'isolatedModules': 'ABSENT', 'missingHost': 'REJECTED'}, separators=(',', ':')) + '\n')
+REPORT
+printf 'installed-product: plugin metadata and fail-closed IDE admission passed\n'

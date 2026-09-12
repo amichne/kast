@@ -53,7 +53,9 @@ jobs:
           gradle-home-cache-includes: |
             caches
             notifications
-            kast/indexer-idea-distributions
+            kast/workspace-intellij-read-idea-distributions
+            kast/symbol-intellij-idea-distributions
+            kast/change-intellij-idea-distributions
 
       - name: Build and verify product
         env:
@@ -70,7 +72,7 @@ jobs:
           name: ci-distributions-${{ github.sha }}
           path: |
             build/distributions/kast-control-*.tar.gz
-            build/distributions/kast-semantic-runtime-*.zip
+            runtime/hosted/build/distributions/kast-ide-hosted-*.zip
           if-no-files-found: error
           compression-level: 0
           retention-days: 7

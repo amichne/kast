@@ -382,7 +382,8 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
             "gradleJvmOutcome" to gradleJvmSelectionOutcomeSchema(),
         )
         .apply {
-            for ((name, definition) in HostedRejectionSchemas.readDefinitions) {
+            for ((name, definition) in
+                HostedRejectionSchemas.readDefinitions.entries + HostedRejectionSchemas.endpointDefinitions.entries) {
                 check(name !in this) { "Duplicate hosted output schema definition: $name" }
                 put(name, definition.jsonObject)
             }
@@ -391,7 +392,11 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
 
 private fun operationProcessDocumentSchema(operation: CanonicalOperation): JsonObject =
     if (operation.supportsLiveEvidence()) {
-        unionSchema(operationDocumentSchema(operation), HostedRejectionSchemas.endpoint, HostedRejectionSchemas.read)
+        unionSchema(
+            operationDocumentSchema(operation),
+            HostedRejectionSchemas.forOperation(operation),
+            HostedRejectionSchemas.read,
+        )
     } else {
         operationDocumentSchema(operation)
     }

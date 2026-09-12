@@ -1,9 +1,0 @@
-<?xml version='1.0' encoding='UTF-8'?>
-<SmellBaseline>
-  <ManuallySuppressedIssues/>
-  <CurrentIssues>
-    <ID>LongMethod:TopologyGraphServiceTest.kt:TopologyGraphServiceTest$@Test fun `all repository graph operations read one restarted SQLite snapshot deterministically`</ID>
-    <ID>NestedBlockDepth:GraphIndex.kt:GraphIndex$fun reachability: TopologyReachability</ID>
-    <ID>NestedBlockDepth:GraphIndex.kt:GraphIndex$fun traverse: TopologyGraphTraversal</ID>
-  </CurrentIssues>
-</SmellBaseline>

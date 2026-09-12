@@ -77,7 +77,7 @@ private constructor(
         /**
          * Proof transition: `String -> CliLocalVersionAdmission`.
          *
-         * Establishes a non-blank product version and the isolated sidecar identity in one admitted text document.
+         * Establishes a non-blank product version and the existing IDE plugin identity in one admitted text document.
          * [CliLocalMetadataFailure] is the closed expected failure. Raw version text is retained only in the returned
          * process document.
          */
@@ -86,7 +86,7 @@ private constructor(
                 productVersion.isBlank() ->
                     CliLocalVersionAdmission.Rejected(CliLocalMetadataFailure.PRODUCT_VERSION_INVALID)
                 else ->
-                    when (val admission = CliTextDocument.admit("kast $productVersion (IntelliJ sidecar)")) {
+                    when (val admission = CliTextDocument.admit("kast $productVersion (IntelliJ plugin)")) {
                         is CliTextDocumentAdmission.Admitted -> CliLocalVersionAdmission.Admitted(admission.document)
                         is CliTextDocumentAdmission.Rejected ->
                             CliLocalVersionAdmission.Rejected(CliLocalMetadataFailure.VERSION_DOCUMENT_INVALID)

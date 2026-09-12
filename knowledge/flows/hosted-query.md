@@ -4,7 +4,7 @@ title: Existing-IDE semantic query
 description: An existing IDEA project owns the default seven canonical reads, with bounded live authority and scoped native CLI/provider acceptance.
 resource: file://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted
 tags: [intellij, kotlin, semantic-query, lifecycle]
-timestamp: 2026-09-11T00:00:00Z
+timestamp: 2026-09-12T00:00:00Z
 code_sources:
   - path: kernel/src/main/kotlin/io/github/amichne/kast/kernel/ReadLimits.kt
   - path: docs/hosted-read-configuration.md
@@ -85,6 +85,8 @@ code_sources:
   - path: experiments/host-observation/qualify_hosted_index.py
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeApply.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedPreWriteObservation.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeFailure.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedResponse.kt
 ---
 
 # Existing-IDE semantic query
@@ -214,7 +216,7 @@ Both endpoints must have uniquely owned supported source folders. Global dirty
 documents, project-uncommitted PSI, indexing, changed stamps, and lost freshness
 reject the request. The response explicitly describes saved IDE content and
 cached source-folder provenance. This request-local snapshot does not establish
-the stronger production [workspace publication](workspace-publication.md).
+the historical [workspace publication](workspace-publication.md).
 
 Semantic objects stay inside the read lifetime. The executor has one active
 permit and a cooperative deadline; cancellation drains before releasing the
@@ -312,3 +314,5 @@ The read policy is immutable per host service and rejects invalid settings. CLI/
 
 
 The new `tool` CLI family lowers the five [public intent tools](../contracts/public-tools.md) into the existing canonical operations before taking this same existing-IDE path. Native semantics and reference authority remain here; tool syntax is not compiler evidence.
+
+The plugin-only runtime retirement removes isolated composition/import and topology publication from the active graph. Earlier acceptance records above remain historical. The shared `HostedSemanticServices` factory now supplies canonical reads, planning and verification inside each admitted read context. Diagnostic schema 3 distinguishes transaction evaluation from complete, qualified and rejected semantic results, retaining bounded stage and termination evidence.

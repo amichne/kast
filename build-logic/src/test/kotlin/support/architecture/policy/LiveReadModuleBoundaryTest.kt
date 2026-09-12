@@ -25,7 +25,7 @@ class LiveReadModuleBoundaryTest {
     }
 
     @Test
-    fun `query protocol stays pure while both runtime owners explicitly construct it`() {
+    fun `query protocol stays pure while the plugin owner explicitly construct it`() {
         val architecture = canonical()
         val protocol = architecture.modules.getValue(ModuleId.QUERY_PROTOCOL)
         assertEquals(ModuleRole.SERVICE, protocol.role)
@@ -37,7 +37,7 @@ class LiveReadModuleBoundaryTest {
         ), protocol.allowedProjectDependencies)
         assertTrue(protocol.allowedEffects.isEmpty())
         assertTrue(protocol.allowedScopedEffectCallers.isEmpty())
-        for (owner in setOf(ModuleId.RUNTIME_COMPOSITION, ModuleId.RUNTIME_HOSTED)) {
+        for (owner in setOf(ModuleId.RUNTIME_HOSTED)) {
             assertTrue(ModuleId.QUERY_PROTOCOL in architecture.modules.getValue(owner).allowedProjectDependencies)
         }
 

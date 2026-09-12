@@ -49,13 +49,7 @@ internal suspend fun evaluateHostedCanonicalQuery(
     val relations = services.relations
     val references = services.references
     return when (request) {
-        is HostedRequest.Query ->
-            HostedResponse.Canonical.encode(
-                CanonicalOperationWireBindings.queryRun,
-                CanonicalQueryProtocol(QueryService(discovery, exact, source, relations), references)
-                    .execute(request.request, context.authority, budgets.hostedQueryBudget),
-                limits = context.limits,
-            )
+        is HostedRequest.Query -> evaluateHostedQuery(services, context, request, continuations)
         is HostedRequest.Discover ->
             HostedResponse.Canonical.encode(
                 CanonicalOperationWireBindings.symbolDiscover,
@@ -90,20 +84,37 @@ internal suspend fun evaluateHostedCanonicalQuery(
                     .execute(request.request, context.authority, budgets.hostedTraversalBudget),
                 limits = context.limits,
             )
-        is HostedRequest.Diagnostic -> {
-            HostedResponse.Canonical.encode(
-                CanonicalOperationWireBindings.diagnosticCheck,
-                CanonicalDiagnosticCheckProtocol(
-                        services.diagnostics,
-                        references,
-                        services.diagnosticPorts.scopes,
-                    )
-                    .execute(request.request, context.authority, budgets.hostedQueryBudget.resources.resultLimit),
-                limits = context.limits,
-            )
-        }
+        is HostedRequest.Diagnostic -> evaluateHostedDiagnostic(services, context, request)
     }
 }
+
+private suspend fun evaluateHostedQuery(
+    services: HostedSemanticServices,
+    context: HostedSemanticReadContext,
+    request: HostedRequest.Query,
+    continuations: IntellijSourceReadContinuations,
+): HostedResponse =
+    HostedResponse.Canonical.encode(
+        CanonicalOperationWireBindings.queryRun,
+        CanonicalQueryProtocol(
+                QueryService(services.discovery, services.exact, services.source(continuations), services.relations),
+                services.references,
+            )
+            .execute(request.request, context.authority, services.budgets.hostedQueryBudget),
+        limits = context.limits,
+    )
+
+private suspend fun evaluateHostedDiagnostic(
+    services: HostedSemanticServices,
+    context: HostedSemanticReadContext,
+    request: HostedRequest.Diagnostic,
+): HostedResponse =
+    HostedResponse.Canonical.encode(
+        CanonicalOperationWireBindings.diagnosticCheck,
+        CanonicalDiagnosticCheckProtocol(services.diagnostics, services.references, services.diagnosticPorts.scopes)
+            .execute(request.request, context.authority, services.budgets.hostedQueryBudget.resources.resultLimit),
+        limits = context.limits,
+    )
 
 /** Budgets are projected only from an admitted, immutable policy. */
 internal class HostedSemanticBudgets(private val limits: ReadLimits) {

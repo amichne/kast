@@ -1,20 +1,14 @@
 ---
 type: Kotlin Module Group
 title: Runtime and process hosts
-description: Runtime composition connects domain operations to adapters, while server, indexer, App Server, and CLI own distinct transport and process responsibilities.
+description: The existing IDEA plugin owns semantic execution; CLI and App Server own installation, transport, sessions and approval.
 resource: file://runtime
 tags: [kotlin, runtime, server, indexer, cli]
-timestamp: 2026-09-11T00:00:00Z
+timestamp: 2026-09-12T00:00:00Z
 code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt
   - path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt
   - path: docs/reviews/live-semantic-read-acceptance.md
-  - path: runtime/server/src/main/kotlin/io/github/amichne/kast/runtime/server/ServerDispatch.kt
-    symbols: [ServerDispatch]
-  - path: runtime/composition/src/main/kotlin/io/github/amichne/kast/runtime/composition/bootstrap/InstalledKastRuntime.kt
-    symbols: [InstalledKastRuntimeConstruction]
-  - path: indexer/src/main/kotlin/io/github/amichne/kast/indexer/KastIndexerMain.kt
-    symbols: [KastIndexerMain]
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledCoordinator.kt
     symbols: [InstalledCoordinator]
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt
@@ -28,7 +22,6 @@ code_sources:
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointProtocol.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedPeerCancellation.kt
     symbols: [HostedPeerTermination, dispatchUntilPeerTermination]
-  - path: runtime/composition/build.gradle.kts
   - path: query/protocol/build.gradle.kts
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeCli.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeSocketClient.kt
@@ -37,64 +30,23 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/ide/IdeCommands.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeCoordinator.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/BrokerTrustEnrollment.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedResponse.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSemanticServices.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/CoordinatorControl.kt
 ---
 
 # Runtime and process hosts
 
-`runtime:composition` constructs the production graph from explicit ports and exports dispatch capability. `runtime:server` decodes and dispatches typed operations. `runtime:telemetry` owns bounded OpenTelemetry/file effects.
+`runtime:hosted` is the sole production semantic host. Its project service uses the already open IDEA project and delegates admission, model capture, and read epochs to `workspace:intellij-read`. IDEA owns imports and incremental indexes. Kast has no isolated indexer, second workspace importer, index-copy path, or retained topology backend in the active Gradle graph.
 
-The indexer runs the semantic runtime inside the admitted IntelliJ environment. The App Server owns persistent coordination, frontend sessions, workspace worker admission, and host protocol projection. The CLI owns human command parsing, configuration ingress, installation workflows, and output projection.
+The plugin archive contains the semantic contracts, services, IntelliJ adapters and durable change stores. Its name binds the product version and IDEA release line. Runtime admission retains exact observed IDEA/Kotlin identities while allowing the configured release-line compatibility policy. The historical [native acceptance review](../../docs/reviews/live-semantic-read-acceptance.md) states the tested baseline; a build or schema check alone does not expand that qualification.
 
-These hosts communicate through protocol and distribution contracts; reachability alone does not establish readiness or semantic authority.
+`HostedSemanticServices` composes request-scoped symbol, source, relation and diagnostic services from one admitted project/read context. Canonical queries, planning and post-write verification share this factory. It does not retain a project read across requests or supply project-opening authority.
 
-`runtime:hosted` is a separate IDEA plugin for existing-project reads and
-approved `AddDeclaration` changes.
-Its release archive carries the Kast release version and IDEA release line in
-its name. The descriptor permits `since-build="262"` through `until-build="262.*"`;
-the public installer validates that line before activation. Runtime admission
-accepts IDEA and bundled Kotlin builds in the baseline's `262` release line while
-retaining their exact observed identities. Product, protocol, registry, schema,
-and capability checks remain exact. This policy accepts patch-build compatibility
-risk; the build baseline and recorded native acceptance remain `262.10315.125`.
-Its project service owns a bounded local socket and delegates saved-content
-semantic reads to `workspace:intellij-read`. It has no project-opening, Gradle
-import, or worker-launch authority and is excluded from isolated runtime
-composition. Its generalized evaluator composition consumes an admitted read
-context, pure semantic services, project-bound adapters, and the shared
-[`query:protocol`](query-protocol.md) module. All seven canonical read handlers
-and their existing-IDE client decoders serve the default semantic command path.
-Peer termination cancels and joins owned work; the semantic executor retains its
-permit until cleanup. See [hosted queries](../flows/hosted-query.md) and the
-[native acceptance review](../../docs/reviews/live-semantic-read-acceptance.md)
-for the final CLI/provider results and their bounded coverage.
+`HostedResponse` retains the original complete, qualified or rejected outcome alongside its encoded document. Encoding and response-size failures retain the original semantic result. The endpoint observer reports semantic classification rather than treating every written frame as completion. [Hosted queries](../flows/hosted-query.md) describes lifetime and cancellation.
 
-The primary `kast index` commands and compatible `kast ide` spelling project
-the same local Clikt implementation before
-isolated-product bootstrap. Its only runtime capability is an existing-IDE
-client; it cannot start a worker. The socket adapter validates the shared
-hosted schemas and exact root/name correlation before producing CLI output.
-IDEA owns incremental index maintenance for this path. The internal `INDEX_SYNC`
-operation remains absent from the public command graph.
+The CLI admits local metadata and broker configuration separately from its existing-IDE semantic route. All canonical reads, public intent tools and supported changes use the plugin. A missing host rejects. Bare `kast` reports the product version, existing-IDE authority and passive root discovery; `kast ide status` observes the project endpoint. Retired `start` and `stop` commands cannot launch a worker.
 
-`selectCliRuntimePath` now also routes `query`, `symbol`, `source`, `relation`,
-`traversal`, and `diagnostic` before installed bootstrap in `KastCliMain`. Their
-seven canonical reads use the admitted existing host and reject a missing host
-without fallback. The provider requires App Server projection version 10, whose
-read schemas preserve published/live evidence and semantic qualification. It
-qualifies and invokes its configured real CLI; manual production provider dispatch
-through the final distribution completed an exact `Child` query with evidence
-matching direct CLI execution. This establishes provider/process invocation,
-while full Codex WebSocket and multi-client acceptance remain separate.
+App Server owns persistent sessions, the invocation journal, controller approvals, provider qualification and workspace lanes. `CoordinatorControl` provides bounded owner-correlated status with zero worker reservations and rejects retired worker demands. Workspace enrollment remains routing data. It grants no importer or worker capability. Provider calls continue through the exact qualified CLI contract.
 
-The `change` command family also enters this existing-IDE route before isolated
-bootstrap. The hosted coordinator persists immutable live plans, verifies
-broker-signed exact-plan approvals and delegates guarded single-file source
-effects to the IntelliJ change adapter. Verification and receipt persistence
-remain distinct from the write. `kast ide trust-broker` is a separate explicit
-local key-enrollment effect; apply never enrolls it automatically.
-
-Read [request dispatch](../flows/request-dispatch.md) for the cross-host path.
-
-Hosted project services retain an immutable read-limit policy admitted from the IDE process environment and JVM properties. The CLI/provider retain the corresponding policy from their configuration boundary, including saved installation values. Invalid configuration rejects before native execution. Default hosted logs include the selected capacities and provenance. See [configuration](../../docs/hosted-read-configuration.md).
-
-The current [public tool contracts](../contracts/public-tools.md) distinguish presentation identity from canonical operation identity. Three ordinary searches and deferred `query_symbols` share `query.run`; `check_diagnostics` shares `diagnostic.check`. Private admission retains each tool's schema identity and typed syntax through its exact CLI binding. The `tool` command family uses the existing-IDE read path. Operation effects, budgets, reference authority and exhaustive outcomes remain with their existing owners.
+Planning stores immutable live plans; applying and recovering require the exact controller-approved plan and current native admission. `kast ide trust-broker` remains the explicit trust-enrollment effect. Read [request dispatch](../flows/request-dispatch.md) and [change lifecycle](../flows/change-lifecycle.md) for the complete boundaries.

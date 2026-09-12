@@ -13,14 +13,12 @@ require_command() {
 
 install_prefix="${KAST_LOCAL_PREFIX:-}"
 control_product="${KAST_LOCAL_CONTROL_PRODUCT:-}"
-runtime_archive="${KAST_LOCAL_RUNTIME_ARCHIVE:-}"
 plugin_archive="${KAST_LOCAL_HOSTED_PLUGIN_ARCHIVE:-}"
 java_executable="${KAST_LOCAL_JAVA_EXECUTABLE:-}"
 java_home="${KAST_LOCAL_JAVA_HOME:-}"
 
 [[ -n "${install_prefix}" ]] || fail "KAST_LOCAL_PREFIX is required"
 [[ -n "${control_product}" ]] || fail "KAST_LOCAL_CONTROL_PRODUCT is required"
-[[ -n "${runtime_archive}" ]] || fail "KAST_LOCAL_RUNTIME_ARCHIVE is required"
 [[ -f "$plugin_archive" && ! -L "$plugin_archive" ]] || fail "KAST_LOCAL_HOSTED_PLUGIN_ARCHIVE must be a regular file"
 [[ -n "${java_executable}" ]] || fail "KAST_LOCAL_JAVA_EXECUTABLE is required"
 [[ -n "${java_home}" ]] || fail "KAST_LOCAL_JAVA_HOME is required"
@@ -34,10 +32,8 @@ esac
   fail "control product is not a directory: ${control_product}"
 [[ -x "${control_product}/bin/kast" ]] ||
   fail "control product has no executable bin/kast"
-[[ -f "${control_product}/share/kast/semantic-runtime.json" ]] ||
-  fail "control product has no semantic runtime manifest"
-[[ -f "${runtime_archive}" && ! -L "${runtime_archive}" ]] ||
-  fail "semantic runtime archive is not a regular file: ${runtime_archive}"
+[[ -f "${control_product}/share/kast/ide-host.json" ]] ||
+  fail "control product has no hosted plugin manifest"
 case "${java_executable}" in
   /*) ;;
   *) fail "Java executable must be absolute: ${java_executable}" ;;
@@ -51,7 +47,7 @@ esac
 
 # Delegate all activation and retirement authority to the release installer.
 # A local numeric version is explicit; the complete payload digest distinguishes rebuilds.
-version="$(python3 - "$control_product/share/kast/semantic-runtime.json" <<'VERSION'
+version="$(python3 - "$control_product/share/kast/ide-host.json" <<'VERSION'
 import json, re, sys
 with open(sys.argv[1]) as stream:
     version = json.load(stream)["productVersion"]
@@ -60,8 +56,6 @@ if re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version) is None:
 print(version)
 VERSION
 )"
-runtime_name="kast-semantic-runtime-${version}-macos-aarch64.zip"
-[[ "${runtime_archive##*/}" == "$runtime_name" ]] || fail "runtime archive and control version differ"
 installer="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd -P)/install.sh"
 [[ -f "$installer" && ! -L "$installer" ]] || fail "versioned installer is unavailable"
 assets="$(mktemp -d "${TMPDIR:-/tmp}/kast-local-assets.XXXXXX")"
@@ -71,11 +65,10 @@ control_name="kast-control-v${version}-macos-aarch64.tar.gz"
 # Name the admitted top-level payloads explicitly; archiving `.` creates a root
 # member that the release installer's traversal-safe extractor correctly rejects.
 tar -czf "$assets/$control_name" -C "$control_product" bin lib share
-cp "$runtime_archive" "$assets/$runtime_name"
 plugin_name="${plugin_archive##*/}"
 case "$plugin_name" in "kast-ide-hosted-v$version-idea-"*.zip) ;; *) fail 'hosted plugin archive and control version differ' ;; esac
 cp "$plugin_archive" "$assets/$plugin_name"
-for name in "$control_name" "$runtime_name" "$plugin_name"; do
+for name in "$control_name" "$plugin_name"; do
   (cd "$assets" && shasum -a 256 "$name" > "$name.sha256")
 done
 KAST_VERSION="$version" \

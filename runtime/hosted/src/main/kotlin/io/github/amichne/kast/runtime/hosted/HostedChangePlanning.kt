@@ -39,11 +39,9 @@ internal suspend fun prepareHostedAddDeclaration(
 ): Refinement<LiveAddDeclarationChangePlan, ChangePlanRejection> {
     val services = HostedSemanticServices(project, context)
     val intent =
-        when (val value = request.intent) {
-            is ChangeIntentDocument.AddDeclaration -> value
-            is ChangeIntentDocument.AddFile,
-            is ChangeIntentDocument.RenameSymbol,
-            is ChangeIntentDocument.ReplaceDeclaration -> return rejected(ChangePlanRejection.UNSUPPORTED_HOSTED_INTENT)
+        when (val admitted = admitAddDeclarationIntent(request)) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected -> return admitted
         }
     val selector =
         when (val restored = restoreHostedChangeTarget(services, context, intent.exactTarget)) {
@@ -87,6 +85,16 @@ internal suspend fun prepareHostedAddDeclaration(
         )
     )
 }
+
+private fun admitAddDeclarationIntent(
+    request: ChangePlanRequest
+): Refinement<ChangeIntentDocument.AddDeclaration, ChangePlanRejection> =
+    when (val intent = request.intent) {
+        is ChangeIntentDocument.AddDeclaration -> Refinement.Refined(intent)
+        is ChangeIntentDocument.AddFile,
+        is ChangeIntentDocument.RenameSymbol,
+        is ChangeIntentDocument.ReplaceDeclaration -> rejected(ChangePlanRejection.UNSUPPORTED_HOSTED_INTENT)
+    }
 
 private fun issueHostedPlan(
     request: LiveAddDeclarationPlanRequest

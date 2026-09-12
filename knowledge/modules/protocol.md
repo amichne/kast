@@ -4,7 +4,7 @@ title: Protocol
 description: Canonical operation contracts are completed by an exact registry and projected into generated wire documents.
 resource: file://protocol
 tags: [kotlin, protocol, serialization]
-timestamp: 2026-09-11T00:00:00Z
+timestamp: 2026-09-12T00:00:00Z
 code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt
   - path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt
@@ -25,6 +25,8 @@ code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastProvider.kt
   - path: query/protocol/build.gradle.kts
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalChangeOperationModels.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeFailure.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedResponse.kt
 ---
 
 # Protocol
@@ -67,3 +69,5 @@ separate evidence: the [acceptance review](../../docs/reviews/live-semantic-read
 records the final default-route CLI matrix and actual provider invocation.
 
 The current [public tool contracts](../contracts/public-tools.md) distinguish presentation identity from canonical operation identity. Three ordinary searches and deferred `query_symbols` share `query.run`; `check_diagnostics` shares `diagnostic.check`. Private admission retains each tool's schema identity and typed syntax through its exact CLI binding. The `tool` command family uses the existing-IDE read path. Operation effects, budgets, reference authority and exhaustive outcomes remain with their existing owners.
+
+The hosted endpoint rejection schema admits bounded, discriminated change-failure detail and rejects unknown causes or contradictory outer failure codes. Runtime encoded-shape tests validate each closed variant against this independently owned schema.

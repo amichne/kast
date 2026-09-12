@@ -203,3 +203,5 @@
 - Added `verifyJsonContracts` to normal checks and the product gate. Its syntax
   ratchet rejects new or changed manual JSON construction against exact reviewed
   allowances; typed serialization and schema checks retain their distinct roles.
+
+- 2026-09-12: Retired isolated semantic hosting, duplicate workspace import/index ownership and topology persistence. Documented the plugin-only release graph, retained historical evidence, shared semantic and SQLite factories, and semantic/storage outcome observability.

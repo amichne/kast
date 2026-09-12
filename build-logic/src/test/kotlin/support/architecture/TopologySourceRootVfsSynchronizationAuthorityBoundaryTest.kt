@@ -25,13 +25,13 @@ class TopologySourceRootVfsSynchronizationAuthorityBoundaryTest {
     }
 
     @Test
-    fun `topology IntelliJ is the sole source root synchronization owner`() {
+    fun `retired source root synchronization has no active owner`() {
         val architecture = assertInstanceOf<ArchitecturePolicyValidation.Valid>(
             KastArchitecturePolicy.validate(),
         ).architecture
 
         assertEquals(
-            setOf(ModuleId.TOPOLOGY_INTELLIJ),
+            emptySet<ModuleId>(),
             architecture.modules.values
                 .filter { ForbiddenEffect.TOPOLOGY_SOURCE_ROOT_VFS_SYNCHRONIZATION in it.allowedEffects }
                 .mapTo(linkedSetOf(), ValidatedModulePolicy::id),

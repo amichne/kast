@@ -147,14 +147,844 @@
             "RESPONSE_REJECTED",
             "RESULT_TOO_LARGE",
             "APPROVAL_UNAVAILABLE",
-            "APPROVAL_REJECTED"
+            "APPROVAL_REJECTED",
+            "CHANGE_STORAGE_REJECTED"
           ]
+        },
+        "detail": {
+          "$ref": "#/$defs/changeFailure"
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "failure": {
+                "enum": [
+                  "CHANGE_STORAGE_REJECTED"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "detail"
+            ],
+            "properties": {
+              "detail": {
+                "properties": {
+                  "type": {
+                    "enum": [
+                      "STATE_ROOT",
+                      "LOCATION",
+                      "DATABASE",
+                      "PLANS",
+                      "RECEIPTS",
+                      "PLAN_LOOKUP"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "detail"
+            ],
+            "properties": {
+              "detail": {
+                "properties": {
+                  "type": {
+                    "enum": [
+                      "PLAN_MISSING"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "failure": {
+                "enum": [
+                  "INVALID_REQUEST"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "detail"
+            ],
+            "properties": {
+              "detail": {
+                "properties": {
+                  "type": {
+                    "enum": [
+                      "STATE_ROOT",
+                      "LOCATION",
+                      "DATABASE",
+                      "PLANS",
+                      "RECEIPTS",
+                      "PLAN_LOOKUP"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "failure": {
+                "enum": [
+                  "CHANGE_STORAGE_REJECTED"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "detail"
+            ],
+            "properties": {
+              "detail": {
+                "properties": {
+                  "type": {
+                    "enum": [
+                      "ENDPOINT"
+                    ]
+                  },
+                  "cause": {
+                    "enum": [
+                      "INVALID_REQUEST"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "failure": {
+                "enum": [
+                  "INVALID_REQUEST"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "detail"
+            ],
+            "properties": {
+              "detail": {
+                "properties": {
+                  "type": {
+                    "enum": [
+                      "ENDPOINT"
+                    ]
+                  },
+                  "cause": {
+                    "enum": [
+                      "REQUEST_TOO_LARGE"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "failure": {
+                "enum": [
+                  "REQUEST_TOO_LARGE"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "detail"
+            ],
+            "properties": {
+              "detail": {
+                "properties": {
+                  "type": {
+                    "enum": [
+                      "ENDPOINT"
+                    ]
+                  },
+                  "cause": {
+                    "enum": [
+                      "REQUEST_INCOMPLETE"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "failure": {
+                "enum": [
+                  "REQUEST_INCOMPLETE"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "detail"
+            ],
+            "properties": {
+              "detail": {
+                "properties": {
+                  "type": {
+                    "enum": [
+                      "ENDPOINT"
+                    ]
+                  },
+                  "cause": {
+                    "enum": [
+                      "IO_UNAVAILABLE"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "failure": {
+                "enum": [
+                  "IO_UNAVAILABLE"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "detail"
+            ],
+            "properties": {
+              "detail": {
+                "properties": {
+                  "type": {
+                    "enum": [
+                      "ENDPOINT"
+                    ]
+                  },
+                  "cause": {
+                    "enum": [
+                      "DEADLINE_EXCEEDED"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "failure": {
+                "enum": [
+                  "DEADLINE_EXCEEDED"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "detail"
+            ],
+            "properties": {
+              "detail": {
+                "properties": {
+                  "type": {
+                    "enum": [
+                      "ENDPOINT"
+                    ]
+                  },
+                  "cause": {
+                    "enum": [
+                      "WRONG_ROOT"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "failure": {
+                "enum": [
+                  "WRONG_ROOT"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "detail"
+            ],
+            "properties": {
+              "detail": {
+                "properties": {
+                  "type": {
+                    "enum": [
+                      "ENDPOINT"
+                    ]
+                  },
+                  "cause": {
+                    "enum": [
+                      "OWNERSHIP_CONFLICT"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "failure": {
+                "enum": [
+                  "OWNERSHIP_CONFLICT"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "detail"
+            ],
+            "properties": {
+              "detail": {
+                "properties": {
+                  "type": {
+                    "enum": [
+                      "ENDPOINT"
+                    ]
+                  },
+                  "cause": {
+                    "enum": [
+                      "DIRECTORY_REJECTED"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "failure": {
+                "enum": [
+                  "DIRECTORY_REJECTED"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "detail"
+            ],
+            "properties": {
+              "detail": {
+                "properties": {
+                  "type": {
+                    "enum": [
+                      "ENDPOINT"
+                    ]
+                  },
+                  "cause": {
+                    "enum": [
+                      "SOCKET_UNAVAILABLE"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "failure": {
+                "enum": [
+                  "SOCKET_UNAVAILABLE"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "detail"
+            ],
+            "properties": {
+              "detail": {
+                "properties": {
+                  "type": {
+                    "enum": [
+                      "ENDPOINT"
+                    ]
+                  },
+                  "cause": {
+                    "enum": [
+                      "PLATFORM_UNAVAILABLE"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "failure": {
+                "enum": [
+                  "PLATFORM_UNAVAILABLE"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "detail"
+            ],
+            "properties": {
+              "detail": {
+                "properties": {
+                  "type": {
+                    "enum": [
+                      "ENDPOINT"
+                    ]
+                  },
+                  "cause": {
+                    "enum": [
+                      "RESPONSE_REJECTED"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "failure": {
+                "enum": [
+                  "RESPONSE_REJECTED"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "detail"
+            ],
+            "properties": {
+              "detail": {
+                "properties": {
+                  "type": {
+                    "enum": [
+                      "ENDPOINT"
+                    ]
+                  },
+                  "cause": {
+                    "enum": [
+                      "RESULT_TOO_LARGE"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "failure": {
+                "enum": [
+                  "RESULT_TOO_LARGE"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "detail"
+            ],
+            "properties": {
+              "detail": {
+                "properties": {
+                  "type": {
+                    "enum": [
+                      "ENDPOINT"
+                    ]
+                  },
+                  "cause": {
+                    "enum": [
+                      "APPROVAL_UNAVAILABLE"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "failure": {
+                "enum": [
+                  "APPROVAL_UNAVAILABLE"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "detail"
+            ],
+            "properties": {
+              "detail": {
+                "properties": {
+                  "type": {
+                    "enum": [
+                      "ENDPOINT"
+                    ]
+                  },
+                  "cause": {
+                    "enum": [
+                      "APPROVAL_REJECTED"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "failure": {
+                "enum": [
+                  "APPROVAL_REJECTED"
+                ]
+              }
+            }
+          }
+        }
+      ]
     },
     "hostLifetime": {
       "type": "string",
       "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "changeFailure": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "cause"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "STATE_ROOT"
+              ]
+            },
+            "cause": {
+              "type": "string",
+              "enum": [
+                "BLANK",
+                "NOT_ABSOLUTE",
+                "NOT_NORMALIZED",
+                "CONTAINS_NUL",
+                "TOO_LONG"
+              ]
+            }
+          },
+          "examples": [
+            {
+              "type": "STATE_ROOT",
+              "cause": "BLANK"
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "cause"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "LOCATION"
+              ]
+            },
+            "cause": {
+              "type": "string",
+              "enum": [
+                "LOCATION_TOO_LONG"
+              ]
+            }
+          },
+          "examples": [
+            {
+              "type": "LOCATION",
+              "cause": "LOCATION_TOO_LONG"
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "cause"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "DATABASE"
+              ]
+            },
+            "cause": {
+              "type": "string",
+              "enum": [
+                "NOT_CANONICAL_ABSOLUTE",
+                "PARENT_NOT_DIRECTORY",
+                "SYMLINK_NOT_ALLOWED",
+                "EXISTING_PATH_NOT_REGULAR_FILE",
+                "STORAGE_UNAVAILABLE"
+              ]
+            }
+          },
+          "examples": [
+            {
+              "type": "DATABASE",
+              "cause": "NOT_CANONICAL_ABSOLUTE"
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "cause"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "PLANS"
+              ]
+            },
+            "cause": {
+              "type": "string",
+              "enum": [
+                "STORAGE_UNAVAILABLE",
+                "IDENTITY_COLLISION",
+                "CORRUPT_RECORD",
+                "VERSION_UNSUPPORTED"
+              ]
+            }
+          },
+          "examples": [
+            {
+              "type": "PLANS",
+              "cause": "STORAGE_UNAVAILABLE"
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "cause"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "RECEIPTS"
+              ]
+            },
+            "cause": {
+              "type": "string",
+              "enum": [
+                "STORAGE_UNAVAILABLE",
+                "IDENTITY_COLLISION",
+                "CORRUPT_RECORD",
+                "VERSION_UNSUPPORTED"
+              ]
+            }
+          },
+          "examples": [
+            {
+              "type": "RECEIPTS",
+              "cause": "STORAGE_UNAVAILABLE"
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "cause"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "PLAN_LOOKUP"
+              ]
+            },
+            "cause": {
+              "type": "string",
+              "enum": [
+                "STORAGE_UNAVAILABLE",
+                "IDENTITY_COLLISION",
+                "CORRUPT_RECORD",
+                "VERSION_UNSUPPORTED"
+              ]
+            }
+          },
+          "examples": [
+            {
+              "type": "PLAN_LOOKUP",
+              "cause": "STORAGE_UNAVAILABLE"
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "PLAN_MISSING"
+              ]
+            }
+          },
+          "examples": [
+            {
+              "type": "PLAN_MISSING"
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "cause"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "ENDPOINT"
+              ]
+            },
+            "cause": {
+              "type": "string",
+              "enum": [
+                "INVALID_REQUEST",
+                "REQUEST_TOO_LARGE",
+                "REQUEST_INCOMPLETE",
+                "IO_UNAVAILABLE",
+                "DEADLINE_EXCEEDED",
+                "WRONG_ROOT",
+                "OWNERSHIP_CONFLICT",
+                "DIRECTORY_REJECTED",
+                "SOCKET_UNAVAILABLE",
+                "PLATFORM_UNAVAILABLE",
+                "RESPONSE_REJECTED",
+                "RESULT_TOO_LARGE",
+                "APPROVAL_UNAVAILABLE",
+                "APPROVAL_REJECTED"
+              ]
+            }
+          },
+          "examples": [
+            {
+              "type": "ENDPOINT",
+              "cause": "INVALID_REQUEST"
+            }
+          ]
+        }
+      ],
+      "discriminator": {
+        "propertyName": "type"
+      },
+      "description": "Bounded change admission failure. No path, source payload or diagnostic text crosses this boundary."
+    },
+    "transportRejected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "failure"
+      ],
+      "properties": {
+        "type": {
+          "const": "HOST_REJECTED"
+        },
+        "failure": {
+          "enum": [
+            "INVALID_REQUEST",
+            "REQUEST_TOO_LARGE",
+            "REQUEST_INCOMPLETE",
+            "IO_UNAVAILABLE",
+            "DEADLINE_EXCEEDED",
+            "WRONG_ROOT",
+            "OWNERSHIP_CONFLICT",
+            "DIRECTORY_REJECTED",
+            "SOCKET_UNAVAILABLE",
+            "PLATFORM_UNAVAILABLE",
+            "RESPONSE_REJECTED",
+            "RESULT_TOO_LARGE",
+            "APPROVAL_UNAVAILABLE",
+            "APPROVAL_REJECTED"
+          ]
+        }
+      }
     }
   }
 }

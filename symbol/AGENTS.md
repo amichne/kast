@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-11 | hash: e9e206c7a991 -->
+<!-- generated: 2026-09-12 | hash: 98455aebbea2 -->
 
 # symbol
 

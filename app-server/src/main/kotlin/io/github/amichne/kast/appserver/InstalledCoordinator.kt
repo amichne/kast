@@ -131,10 +131,7 @@ private constructor(
     }
 
     companion object {
-        suspend fun start(
-            options: InstalledCoordinatorOptions,
-            effects: InstalledWorkerEffects,
-        ): InstalledCoordinatorStart {
+        suspend fun start(options: InstalledCoordinatorOptions): InstalledCoordinatorStart {
             val activity = BrokerStartupActivityPublisher(options.activitySink)
             var stage = BrokerStartupStage.READINESS_ACQUISITION
             activity.started(stage)
@@ -208,15 +205,13 @@ private constructor(
             val control =
                 when (
                     val admission =
-                        WorkspaceRuntimeControl.create(
+                        CoordinatorControl.create(
                             options.installationRoot,
                             owner,
                             generation,
                             options.configuration,
-                            effects,
-                            lifecycle = WorkerControlLifecycle.Installed(options.serviceDirectory.resolve("stopped")),
+                            stoppedMarker = options.serviceDirectory.resolve("stopped"),
                             hostObservation = frontend::observe,
-                            sourceEnvironment = options.environment,
                         )
                 ) {
                     is Refinement.Refined -> admission.value

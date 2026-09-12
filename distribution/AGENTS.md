@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-11 | hash: c3352bddaf38 -->
+<!-- generated: 2026-09-12 | hash: 969a74170b5c -->
 
 # distribution
 
@@ -9,12 +9,12 @@ Defines installation/runtime configuration contracts, safe managed filesystem re
 
 ## Key Files
 
-- [contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/SemanticRuntimeContract.kt](contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/SemanticRuntimeContract.kt) - semantic runtime contract.
+- [contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/SemanticRuntimeContract.kt](contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/SemanticRuntimeContract.kt) - retained compatibility contract; no isolated runtime is shipped.
 - [contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationSchemaDocument.kt](contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationSchemaDocument.kt) - configuration model.
-- [contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/IndexerHeapSize.kt](contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/IndexerHeapSize.kt) - admitted heap sizing.
+- [contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/IndexerHeapSize.kt](contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/IndexerHeapSize.kt) - historical heap input admission.
 - [managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedInstallationOwnedTree.kt](managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedInstallationOwnedTree.kt) - owned installation tree.
-- [managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/SafeRuntimeArchive.kt](managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/SafeRuntimeArchive.kt) - archive admission and extraction.
-- [release/sidecar-release.gradle.kts](release/sidecar-release.gradle.kts) - release assembly wiring.
+- [managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/SafeRuntimeArchive.kt](managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/SafeRuntimeArchive.kt) - retained legacy archive admission.
+- [release/plugin-release.gradle.kts](release/plugin-release.gradle.kts) - control distribution and IDEA plugin release wiring.
 
 ## Subdirectories
 
@@ -25,7 +25,7 @@ Defines installation/runtime configuration contracts, safe managed filesystem re
 ## Entry Points
 
 - Gradle projects: `:distribution:contract`, `:distribution:managed`.
-- Release tasks are applied from `release/sidecar-release.gradle.kts`.
+- Release tasks are applied from `release/plugin-release.gradle.kts`.
 
 ## Navigation Hints
 

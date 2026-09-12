@@ -1,8 +1,8 @@
 ---
 type: Runtime Flow
 title: Request dispatch
-description: A host request is qualified against the canonical registry, decoded by its wire binding, dispatched through runtime composition, and projected without weakening its semantic outcome.
-resource: file://runtime/server
+description: Hosted requests retain canonical outcomes through native evaluation, bounded encoding and host projection.
+resource: file://runtime/hosted
 tags: [runtime, protocol, dispatch]
 timestamp: 2026-09-12T00:00:00Z
 code_sources:
@@ -16,10 +16,6 @@ code_sources:
     symbols: [OperationRegistry]
   - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/OperationWireTable.kt
     symbols: [OperationWireTable]
-  - path: runtime/server/src/main/kotlin/io/github/amichne/kast/runtime/server/ServerDispatch.kt
-    symbols: [ServerDispatch]
-  - path: runtime/composition/src/main/kotlin/io/github/amichne/kast/runtime/composition/KastOperationHandlerFactory.kt
-    symbols: [KastOperationHandlerFactory]
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryReferenceAuthority.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointProtocol.kt
@@ -45,6 +41,9 @@ code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/HostedPlanApprovalGateway.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/HostedChangeCliInput.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/HostedChangeEvidence.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedResponse.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSemanticServices.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeFailure.kt
 ---
 
 # Request dispatch
@@ -53,13 +52,13 @@ code_sources:
 host request
   -> canonical operation lookup
   -> typed wire decoding
-  -> runtime handler selection
+  -> existing-IDE handler selection
   -> domain operation
   -> typed complete / qualified / rejected outcome
   -> host projection
 ```
 
-Registry construction proves that every canonical operation has one definition. Wire-table construction proves that each has one serializer binding. Server dispatch uses those typed bindings; runtime composition supplies the owning domain handler. Host adapters may change presentation, but they must preserve qualification and rejection.
+Registry construction proves that every canonical operation has one definition. Wire-table construction proves that each has one serializer binding. Hosted dispatch uses those typed bindings; `HostedSemanticServices` supplies the request-scoped domain services. Host adapters may change presentation, but they must preserve qualification and rejection.
 
 Canonical semantic-read handlers delegate request admission, reference codecs,
 and outcome projection to [`query:protocol`](../modules/query-protocol.md).
@@ -121,3 +120,5 @@ handling after output rejection. Provider failures, cancellation, and timeouts
 remain uncertain even for reads; read metadata cannot prove that an execution has
 terminated. Deterministic gates test queued and later calls, mutation without
 replay, independent workspaces, and retirement held across cancellation/deadline.
+
+`HostedResponse` carries the original typed semantic outcome beside the encoded document until transport ends. Completion, qualification and rejection have separate endpoint observations. Encoding rejection and size rejection retain the semantic value for diagnosis. Read transaction success alone is `EVALUATED`; the canonical path additionally retains semantic `COMPLETE`, `QUALIFIED` or `REJECTED` evidence. Change-storage failures retain their finite cause in schema-admitted `HOST_REJECTED.detail` and in default bounded storage observations.

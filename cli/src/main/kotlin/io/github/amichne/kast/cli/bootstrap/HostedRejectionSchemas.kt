@@ -9,11 +9,25 @@ import kotlinx.serialization.json.jsonObject
 
 /** Packaged rejection schemas and their definition authority; legacy hosted successes are not canonical reads. */
 internal object HostedRejectionSchemas {
+    private val endpointDocument: JsonObject by lazy { packaged("hosted-endpoint") }
+
     private val readDocument: JsonObject by lazy { packaged("hosted-query") }
 
     val endpoint: JsonObject by lazy {
-        packaged("hosted-endpoint").getValue("\$defs").jsonObject.getValue("rejected").jsonObject
+        endpointDocument.getValue("\$defs").jsonObject.getValue("rejected").jsonObject
     }
+
+    private val transport: JsonObject by lazy {
+        endpointDocument.getValue("\$defs").jsonObject.getValue("transportRejected").jsonObject
+    }
+
+    fun forOperation(operation: CanonicalOperation): JsonObject =
+        when (operation) {
+            CanonicalOperation.CHANGE_PLAN,
+            CanonicalOperation.CHANGE_APPLY,
+            CanonicalOperation.CHANGE_RECOVER -> endpoint
+            else -> transport
+        }
 
     val read: JsonObject by lazy {
         readDocument
@@ -25,6 +39,8 @@ internal object HostedRejectionSchemas {
             }
             .jsonObject
     }
+
+    val endpointDefinitions: JsonObject by lazy { endpointDocument.getValue("\$defs").jsonObject }
 
     val readDefinitions: JsonObject by lazy { readDocument.getValue("\$defs").jsonObject }
 

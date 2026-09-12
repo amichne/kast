@@ -1,6 +1,5 @@
 package io.github.amichne.kast.appserver
 
-import io.github.amichne.kast.appserver.runtime.WorkerReservationPhase
 import io.github.amichne.kast.kernel.Refinement
 import java.util.UUID
 import kotlinx.serialization.Serializable
@@ -76,39 +75,35 @@ internal class CoordinatorStatusSnapshot private constructor(private val observe
 
     fun document(): JsonObject = Json.encodeToJsonElement(observed).jsonObject
 
+    fun belongsTo(
+        owner: io.github.amichne.kast.appserver.protocol.ThreadBindingOwner.Installation,
+        service: BrokerServiceStateDocument.Ready,
+    ): Boolean =
+        observed.installationId == owner.installationId.value &&
+            observed.stateEpoch == owner.stateEpoch.value.toString() &&
+            observed.serviceGeneration == service.serviceInstanceId
+
     companion object {
+        fun decode(raw: String): Refinement<CoordinatorStatusSnapshot, WorkerControlFailure> =
+            try {
+                admit(Json.parseToJsonElement(raw).jsonObject)
+            } catch (_: IllegalArgumentException) {
+                Refinement.Rejected(WorkerControlFailure.INVALID_REQUEST)
+            }
+
         fun admit(document: JsonObject): Refinement<CoordinatorStatusSnapshot, WorkerControlFailure> =
             try {
                 val value = Json.decodeFromJsonElement<CoordinatorStatusDocument>(document)
                 val workers = value.workers
-                var total = 0L
                 val valid =
                     value.installationId.matches(Regex("sha256:[0-9a-f]{64}")) &&
                         canonicalUuid(value.stateEpoch) &&
                         canonicalUuid(value.serviceGeneration) &&
                         value.configurationIdentity.matches(Regex("[0-9a-f]{64}")) &&
-                        value.reservedMiB >= 0 &&
-                        workers.size <= CoordinatorStatusProtocol.maximumWorkers &&
-                        value.starting in 0..workers.size &&
-                        workers.map { it.workspaceId }.distinct().size == workers.size &&
-                        workers.map { it.reservationId }.distinct().size == workers.size &&
-                        workers.all { worker ->
-                            val bounded =
-                                worker.workspaceId.matches(Regex("[0-9a-f]{64}")) &&
-                                    canonicalUuid(worker.reservationId) &&
-                                    WorkerReservationPhase.entries.any { it.name == worker.phase } &&
-                                    worker.reservedMiB >= 0 &&
-                                    worker.reservedMiB <= Long.MAX_VALUE - total &&
-                                    (worker.configurationIdentity == null ||
-                                        worker.configurationIdentity.matches(Regex("[0-9a-f]{64}"))) &&
-                                    (worker.requestedHeapMiB == null ||
-                                        worker.requestedHeapMiB >=
-                                            io.github.amichne.kast.distribution.contract.IndexerHeapSize
-                                                .minimumMebibytes && worker.requestedHeapMiB <= worker.reservedMiB)
-                            if (bounded) total += worker.reservedMiB
-                            bounded
-                        } &&
-                        total == value.reservedMiB
+                        value.reservedMiB == 0L &&
+                        value.starting == 0 &&
+                        workers.isEmpty()
+
                 if (valid) Refinement.Refined(CoordinatorStatusSnapshot(value))
                 else Refinement.Rejected(WorkerControlFailure.IDENTITY_REJECTED)
             } catch (_: Exception) {
@@ -129,36 +124,31 @@ internal class CoordinatorStatusSnapshot private constructor(private val observe
  * their independent small command bound. No environment override widens either bound.
  */
 object CoordinatorStatusProtocol {
-    const val maximumWorkers: Int = io.github.amichne.kast.distribution.contract.configuration.WorkerCountLimit.Maximum
+    const val maximumWorkers: Int = 0
     const val maximumCommandBytes: Int = 16_384
-    val maximumMessageBytes: Int = Json {
+    const val maximumMessageBytes: Int = 16_384
+
+    internal fun encode(
+        installationId: String,
+        stateEpoch: String,
+        serviceGeneration: String,
+        configurationIdentity: String,
+        hostAttachment: CoordinatorHostAttachment,
+    ): String = Json {
         encodeDefaults = true
     }
         .encodeToString(
             CoordinatorStatusDocument.serializer(),
             CoordinatorStatusDocument(
-                status = CoordinatorServiceState.READY,
-                installationId = "sha256:" + "f".repeat(64),
-                stateEpoch = "ffffffff-ffff-ffff-ffff-ffffffffffff",
-                serviceGeneration = "ffffffff-ffff-ffff-ffff-ffffffffffff",
-                configurationIdentity = "f".repeat(64),
-                reservedMiB = Long.MAX_VALUE,
-                starting = maximumWorkers,
-                workers =
-                    List(maximumWorkers) {
-                        CoordinatorWorkerDocument(
-                            workspaceId = "f".repeat(64),
-                            reservationId = "ffffffff-ffff-ffff-ffff-ffffffffffff",
-                            phase = WorkerReservationPhase.entries.maxBy { it.name.length }.name,
-                            reservedMiB = Long.MAX_VALUE,
-                            requestedHeapMiB = Int.MAX_VALUE,
-                            configurationIdentity = "f".repeat(64),
-                            heapObservation = CoordinatorHeapObservation.UNOBSERVED,
-                        )
-                    },
-                hostAttachment = CoordinatorHostAttachment.entries.maxBy { it.name.length },
+                CoordinatorServiceState.READY,
+                installationId,
+                stateEpoch,
+                serviceGeneration,
+                configurationIdentity,
+                0,
+                0,
+                emptyList(),
+                hostAttachment,
             ),
         )
-        .toByteArray(Charsets.UTF_8)
-        .size
 }

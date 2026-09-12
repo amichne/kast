@@ -35,11 +35,11 @@ code_sources:
     symbols: [RelationContinuationDocument]
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt
   - path: cli/src/test/kotlin/io/github/amichne/kast/cli/LiveReadOutputSchemaTest.kt
-  - path: runtime/composition/src/test/kotlin/io/github/amichne/kast/runtime/composition/protocol/graph/RelationContinuationCodecTest.kt
-  - path: runtime/composition/src/test/kotlin/io/github/amichne/kast/runtime/composition/protocol/graph/RelationContinuationAuthorityTest.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalTraversalContinuationCodec.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/TraversalContinuationDocument.kt
     symbols: [TraversalContinuationDocument]
+  - path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/RelationContinuationCodecTest.kt
+  - path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/RelationContinuationAuthorityTest.kt
 ---
 
 # Query protocol
@@ -53,9 +53,7 @@ The owning host supplies the current `SemanticReadAuthority`, operation ports,
 and budgets. `CanonicalQueryProtocol` restores input references, admits the typed
 query plan, executes the supplied `QueryOperations`, and projects complete,
 qualified, or rejected results. The other read protocols use the same reference
-and evidence vocabulary around their domain operations. Runtime composition and
-the existing-IDE host can reuse this boundary without sharing their admission
-effects.
+and evidence vocabulary around their domain operations. The existing-IDE host uses this boundary; historical published-evidence tests exercise the same contracts without granting a production publication owner.
 
 `QueryReferenceAuthority` separates reference issuance and restoration from
 execution authority. Published references retain their generation. Live
@@ -97,7 +95,7 @@ relation output carries no continuation.
 
 Test-only fixtures in `workspace:contract` and `query:protocol` admit a fixed live
 authority through its original owner and provide four ordered relation facts.
-The CLI schema and runtime codec regressions share this fixture: a limit of three
+The CLI schema and query-protocol codec regressions share this fixture: a limit of three
 produces an owner-issued continuation, and resume reaches the fourth fact under
 the unchanged authority without consuming the prefix again. These tests start
 no IntelliJ process and make no native provider-parity claim.

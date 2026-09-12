@@ -1,8 +1,18 @@
 package io.github.amichne.kast.runtime.hosted
 
-import io.github.amichne.kast.kernel.*
-import io.github.amichne.kast.protocol.contract.*
-import io.github.amichne.kast.protocol.wire.*
+import io.github.amichne.kast.kernel.EvidenceEnvelope
+import io.github.amichne.kast.kernel.EvidenceGeneration
+import io.github.amichne.kast.kernel.OperationOutcome
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.BoundedProtocolList
+import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.contract.SymbolDiscoverLimitation
+import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
+import io.github.amichne.kast.protocol.contract.SymbolDiscoverRejection
+import io.github.amichne.kast.protocol.contract.SymbolDiscoverResult
+import io.github.amichne.kast.protocol.contract.SymbolDiscoveryDocument
+import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
+import io.github.amichne.kast.protocol.wire.WireFailure
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedEvaluationOutcome
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -11,8 +21,10 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.Assertions.assertSame
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class HostedConnectionOutcomeTest {

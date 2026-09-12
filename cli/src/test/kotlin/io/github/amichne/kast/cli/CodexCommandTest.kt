@@ -93,25 +93,17 @@ class CodexCommandTest {
         KastCli(
             commandGraphFactory = commandGraphFactory(),
             rootDiscovery = CanonicalRootDiscoverer { error("Codex launch must not discover a root") },
-            endpointLocator = RuntimeEndpointLocator { error("Codex launch must not locate a sidecar") },
-            runtimeDemander =
-                object : RootRuntimeDemander {
-                    override fun demand(
-                        root: CanonicalRoot,
-                        demand: HostedRuntimeDemand,
-                        startup: RuntimeStartupRequest,
-                    ): RuntimeAdmission = error("Codex launch must not demand a sidecar")
-                },
-            wireClient = WireClient { _, _ -> error("Codex launch must not use semantic wire") },
             localMetadata =
                 when (val admitted = CliLocalMetadata.admit("1.2.3", "{\"schemaVersion\":1}")) {
                     is CliLocalMetadataAdmission.Admitted -> admitted.metadata
                     is CliLocalMetadataAdmission.Rejected -> error(admitted.failure)
                 },
-            lifecycle = ExactRootRuntimeLifecycle(),
-            productInspector = ProductInspector { error("Codex launch must not inspect product") },
             appServerManager = appServerManager,
             codexClientLauncher = launcher,
+            productVersion =
+                (io.github.amichne.kast.protocol.contract.KastPluginVersion.parse("1.2.3")
+                        as io.github.amichne.kast.kernel.Refinement.Refined)
+                    .value,
         )
 
     private fun commandGraphFactory(): CliCommandGraphFactory =

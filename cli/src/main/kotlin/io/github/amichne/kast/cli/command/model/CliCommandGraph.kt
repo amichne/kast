@@ -359,7 +359,7 @@ private class KastRootCommand : KastCommand("kast") {
                 )
             }
         }
-        eagerOption("--version", help = "Show the installed IntelliJ sidecar product version") {
+        eagerOption("--version", help = "Show the installed IntelliJ plugin product version") {
             throw CliLocalCommandMessage(CliLocalMetadataCommand.VERSION)
         }
         eagerOption("--schema", help = "Print the installed machine-readable schema") {
@@ -368,7 +368,7 @@ private class KastRootCommand : KastCommand("kast") {
     }
 
     override fun help(context: Context): String =
-        "Query the existing IDEA index with index commands; inspect and change a workspace through the isolated sidecar."
+        "Query the existing IDEA index with index commands; inspect and change a workspace through its Kast plugin."
 
     override fun helpEpilog(context: Context): String =
         "Semantic results are one JSON document on stdout. Diagnostics are one JSON document on stderr. Use kast config --help for configuration inspection."

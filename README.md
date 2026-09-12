@@ -4,8 +4,9 @@ Kast gives coding agents compiler-grounded search over one exact Kotlin
 repository. It resolves declarations and relationships that text search can only
 approximate, while retaining the scope and limits behind each answer.
 
-Developers install Kast and connect it to an agent harness. Kast owns runtime
-readiness, workspace synchronization, and intermediate semantic operations.
+Developers install the Kast IDEA plugin and connect its CLI to an agent harness.
+Kast reads the open project through compiler-backed services; IDEA owns workspace
+import, synchronization and incremental indexes.
 
 [Install and connect Kast](https://kast.michne.com/start/) ·
 [Search with Kast](https://kast.michne.com/search/) ·
@@ -28,9 +29,10 @@ IDEA owns index updates. These commands require no Kast index synchronization,
 separate workspace, copied index storage, or Python runtime. The earlier `kast ide`
 spelling remains available through the same command implementation.
 
-The hosted command runs before isolated-runtime bootstrap. General semantic
-commands and App Server queries retain their existing runtime and publication
-contracts; the hosted class answer explicitly carries its narrower provenance.
+All semantic commands and App Server tools use this existing-IDE authority.
+The shipped graph has no isolated indexer, second Gradle importer, copied index
+storage, or retained topology backend. Durable change plans, recovery journals
+and receipts remain available for approved source changes.
 
 Read the [detailed HTML implementation review](docs/reviews/hosted-indexing.html)
 for the architecture, qualification evidence, and remaining migration work.
@@ -73,12 +75,12 @@ source "$(./install.sh --local session)"
 ```
 
 Both modes build the working tree, including uncommitted changes, and verify
-the matched control and semantic runtime archives. Session mode isolates its
-configuration, caches and sockets and disables persistent services. Repeated
+the matched control and IDEA plugin archives. Session mode isolates its
+configuration and broker sockets and disables persistent services. Repeated
 activation is safe; its temporary files remain under `$KAST_SESSION_ROOT`.
 
 Persistent mode honors `KAST_INSTALL_ROOT` and `KAST_BIN_DIR`, writes a fresh
-release-local runtime configuration, and enables launchd indexer ownership. It
+release-local broker configuration. It
 stops the previous installed App Server before activation and enables the new
 App Server login service for this checkout.
 This requires the App Server's Codex prerequisites. If service enablement fails,
@@ -155,9 +157,14 @@ Kast never turns partial or unknown state into an unqualified answer:
 The harness should keep these outcomes visible. If the integration cannot start
 or a request rejects, follow [Troubleshoot Kast](https://kast.michne.com/troubleshooting/).
 Bare `kast`, run from the repository root, is a passive support command that
-reports local runtime and bootstrap state without starting or repairing it.
+reports the product version, existing-IDE authority and discovered repository
+root. Use `kast ide status` for the actual project endpoint. Retired `kast start`
+and `kast stop` commands reject; IDEA owns the project lifetime.
 
 Hosted semantic reads log bounded diagnostic records to the IDE log by default.
+Records distinguish transaction evaluation, complete answers, qualified answers
+and rejection. Change-storage rejections preserve database, plan, receipt and
+lookup causes in `HOST_REJECTED.detail`, including corrupt and incompatible rows.
 See [read limits and diagnostics](docs/hosted-read-configuration.md) for the 45 tunable settings and activation instructions.
 
 ## Develop Kast
@@ -167,7 +174,7 @@ Development requires Java 25 or newer and the Python version in
 
 ```shell
 ./gradlew build
-./gradlew assembleSidecarRelease
+./gradlew assembleRelease
 ```
 
 The opt-in native change acceptance task stages the matched CLI, broker and

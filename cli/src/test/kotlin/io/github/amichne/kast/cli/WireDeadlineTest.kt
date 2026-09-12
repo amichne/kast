@@ -11,7 +11,6 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.TimeoutException
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
@@ -28,20 +27,14 @@ class WireDeadlineTest {
                 SocketChannel.open(StandardProtocolFamily.UNIX).use { client ->
                     client.connect(UnixDomainSocketAddress.of(socket))
                     server.accept().use { peer ->
-                        val events = mutableListOf<WireRequestActivity>()
                         val limit = (ElapsedTimeLimitMillis.parse(1_000) as Refinement.Refined).value
-                        WireSession(client, limit, WireActivitySink { events.add(it) }).use { session ->
-                            repeat(2) {
-                                assertEquals(WireFrameWrite.Written, WireFrameCodec.write(peer, "{}"))
-                                assertEquals(WireExchange.Received("{}"), session.exchange("{}"))
-                                assertTrue(client.isOpen)
-                            }
-                            assertEquals(
-                                List(2) {
-                                    WireRequestActivity(WireRequestStage.EXCHANGE, WireRequestOutcome.COMPLETED)
-                                },
-                                events,
-                            )
+                        repeat(2) {
+                            val deadline = WireIoDeadline(client, limit)
+                            peer.write(ByteBuffer.wrap(byteArrayOf(42)))
+                            val received = ByteBuffer.allocate(1)
+                            assertEquals(1, client.read(received))
+                            assertEquals(WireRequestOutcome.COMPLETED, deadline.finish())
+                            assertTrue(client.isOpen)
                         }
                     }
                 }
@@ -68,23 +61,9 @@ class WireDeadlineTest {
                     server.accept().use { peer ->
                         if (partial) peer.write(ByteBuffer.wrap(byteArrayOf(0)))
                         val limit = (ElapsedTimeLimitMillis.parse(75) as Refinement.Refined).value
-                        val events = mutableListOf<WireRequestActivity>()
-                        WireSession(client, limit, WireActivitySink { events.add(it) }).use { session ->
-                            val future = executor.submit<WireExchange> { session.exchange("{}") }
-                            val result =
-                                try {
-                                    future.get(2, TimeUnit.SECONDS)
-                                } catch (_: TimeoutException) {
-                                    null
-                                }
-                            assertNotNull(result, "the request did not terminate after its injected elapsed allowance")
-                            assertEquals(WireExchange.Rejected(WireTransportFailure.TIMED_OUT), result)
-                            assertEquals(
-                                listOf(WireRequestActivity(WireRequestStage.EXCHANGE, WireRequestOutcome.TIMED_OUT)),
-                                events,
-                            )
-                            assertFalse(client.isOpen, "expired blocking I/O must close its owned channel")
-                        }
+                        val future = executor.submit<WireRequestOutcome> { readFrameUnderDeadline(client, limit) }
+                        assertEquals(WireRequestOutcome.TIMED_OUT, future.get(2, TimeUnit.SECONDS))
+                        assertFalse(client.isOpen, "expired blocking I/O must close its owned channel")
                     }
                 }
             }
@@ -94,5 +73,16 @@ class WireDeadlineTest {
             Files.deleteIfExists(socket)
             Files.deleteIfExists(root)
         }
+    }
+
+    private fun readFrameUnderDeadline(client: SocketChannel, limit: ElapsedTimeLimitMillis): WireRequestOutcome {
+        val deadline = WireIoDeadline(client, limit)
+        try {
+            val frame = ByteBuffer.allocate(4)
+            while (frame.hasRemaining()) if (client.read(frame) < 0) break
+        } catch (_: java.io.IOException) {
+            // Expiry closes the exact channel to unblock this read.
+        }
+        return deadline.finish()
     }
 }

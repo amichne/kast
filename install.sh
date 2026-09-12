@@ -414,7 +414,6 @@ release="v$version"
 release_url="${KAST_RELEASE_BASE_URL:-https://github.com/$REPOSITORY/releases/download}"
 release_url="${release_url%/}/$release"
 control_name="kast-control-v$version-macos-aarch64.tar.gz"
-runtime_name="kast-semantic-runtime-$version-macos-aarch64.zip"
 plugin_name="kast-ide-hosted-v$version-idea-${idea_build%%.*}.zip"
 temporary_root="$(mktemp -d "${TMPDIR:-/tmp}/kast-install.XXXXXX")"
 temporary_root="$(CDPATH='' cd -- "$temporary_root" && pwd -P)"
@@ -424,12 +423,11 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 
 note "preparing Kast $version"
-for name in "$control_name" "$control_name.sha256" "$runtime_name" "$runtime_name.sha256" \
+for name in "$control_name" "$control_name.sha256" \
   "$plugin_name" "$plugin_name.sha256"; do
   fetch_asset "$name" "$temporary_root/$name"
 done
 control_digest="$(verify_checksum "$temporary_root/$control_name" "$temporary_root/$control_name.sha256" "$control_name")"
-runtime_digest="$(verify_checksum "$temporary_root/$runtime_name" "$temporary_root/$runtime_name.sha256" "$runtime_name")"
 plugin_digest="$(verify_checksum "$temporary_root/$plugin_name" "$temporary_root/$plugin_name.sha256" "$plugin_name")"
 plugin_stage="$temporary_root/hosted-plugin"
 extract_hosted_plugin "$temporary_root/$plugin_name" "$plugin_stage" "$version" "$idea_build"
@@ -440,8 +438,8 @@ extract_control "$temporary_root/$control_name" "$control_root"
 export KAST_INSTALL_CONTROL_ROOT="$control_root"
 export KAST_INSTALL_CONTROL_ARCHIVE="$temporary_root/$control_name"
 export KAST_INSTALL_CONTROL_SHA256="$control_digest"
-export KAST_INSTALL_RUNTIME_ARCHIVE="$temporary_root/$runtime_name"
-export KAST_INSTALL_RUNTIME_SHA256="$runtime_digest"
+export KAST_INSTALL_HOSTED_PLUGIN_ARCHIVE="$temporary_root/$plugin_name"
+export KAST_INSTALL_HOSTED_PLUGIN_SHA256="$plugin_digest"
 export KAST_INSTALL_VERSION="$version"
 export KAST_INSTALL_IDEA_HOME="$idea_home"
 export KAST_INSTALL_JAVA_HOME="$java_home"

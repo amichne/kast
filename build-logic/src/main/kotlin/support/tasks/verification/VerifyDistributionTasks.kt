@@ -49,7 +49,7 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
             "share/kast/operation-registry.json",
             "share/kast/configuration-schema.json",
             "share/kast/wire-schema.json",
-            "share/kast/semantic-runtime.json",
+            "share/kast/ide-host.json",
             "share/kast/licenses/LICENSE",
         )
         check(required.all(entries::contains)) { "control product is missing required entries" }

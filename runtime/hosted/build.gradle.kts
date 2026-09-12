@@ -90,6 +90,7 @@ dependencies {
     implementation(project(":workspace:intellij-read"))
     compileOnly(platform)
     testImplementation(platform)
+    testImplementation(libs.json.schema.validator)
 }
 
 val hostedPlugin by
@@ -122,7 +123,6 @@ val hostedPlugin by
                     "change-intellij-*.jar",
                     "evidence-contract-*.jar",
                     "evidence-sqlite-*.jar",
-                    "topology-contract-*.jar",
                     "sqlite-jdbc-*.jar",
                     "query-contract-*.jar",
                     "query-protocol-*.jar",
