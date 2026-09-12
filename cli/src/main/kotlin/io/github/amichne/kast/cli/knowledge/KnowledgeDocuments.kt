@@ -10,6 +10,7 @@ internal data class KnowledgeManifestDocument(
     val declarationEvidence: String,
     val declarationLimitations: List<String>,
     val modules: List<KnowledgeModuleDescriptor>,
+    val guides: List<KnowledgeGuideReference>,
 )
 
 @Serializable internal data class KnowledgeModuleDescriptor(val projectPath: String, val resource: String)

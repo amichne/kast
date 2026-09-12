@@ -10,6 +10,7 @@ internal data class InstalledKnowledgeManifest(
     val declarationEvidence: String,
     val declarationLimitations: List<String>,
     val modules: List<InstalledKnowledgeModuleDescriptor>,
+    val guides: List<InstalledKnowledgeGuideReference>,
 )
 
 @Serializable

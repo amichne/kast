@@ -154,6 +154,9 @@ internal object InstalledKnowledgeProjection {
                 declarationEvidence = input.declarationEvidence,
                 declarationLimitations = input.declarationLimitations.sorted(),
                 modules = moduleDescriptors,
+                guides = input.guides.sortedBy { it.path }.map { guide ->
+                    InstalledKnowledgeGuideReference(guide.path, sha256(guide.content), guideResource(guide.path))
+                },
             ),
         ) + "\n"
         return InstalledKnowledgeProjectionResult.Complete(files.toSortedMap())

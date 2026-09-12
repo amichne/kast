@@ -20,14 +20,14 @@ class InstalledKnowledgeTest {
 
         val search = assertInstanceOf(KnowledgeLookup.Complete::class.java, reader.lookup(selection("Outcome")))
         assertContains(search.document.value, "\"declarationPath\":\"Outcome\"")
-        assertContains(search.document.value, "modules/kernel/declarations/outcome.json")
+        assertContains(search.document.value, CARD_RESOURCE)
         assertContains(search.document.value, "NO_TYPE_RESOLUTION")
         assertEquals(false, search.document.value.contains("Detailed contract"))
 
         val read =
             assertInstanceOf(
                 KnowledgeLookup.Complete::class.java,
-                reader.lookup(selection("modules/kernel/declarations/outcome.json")),
+                reader.lookup(selection(CARD_RESOURCE)),
             )
         assertContains(read.document.value, "Detailed contract")
         assertContains(read.document.value, "guides/kernel.json")
@@ -59,7 +59,10 @@ class InstalledKnowledgeTest {
     @Test
     fun `module index must retain its manifest ownership`() {
         writeBundle()
-        write("modules/kernel/index.json", read<KnowledgeModuleDocument>("modules/kernel/index.json").copy(projectPath = ":cli"))
+        write(
+            "modules/kernel/index.json",
+            read<KnowledgeModuleDocument>("modules/kernel/index.json").copy(projectPath = ":cli"),
+        )
         assertRejected("Outcome")
         assertRejected("modules/kernel/index.json")
     }
@@ -67,18 +70,18 @@ class InstalledKnowledgeTest {
     @Test
     fun `exact declaration must be listed and match its descriptor`() {
         writeBundle()
-        val card = read<KnowledgeDeclarationDocument>("modules/kernel/declarations/outcome.json")
+        val card = read<KnowledgeDeclarationDocument>(CARD_RESOURCE)
         write("modules/kernel/declarations/unlisted.json", card)
         assertRejected("modules/kernel/declarations/unlisted.json")
-        write("modules/kernel/declarations/outcome.json", card.copy(name = "Unrelated"))
-        assertRejected("modules/kernel/declarations/outcome.json")
+        write(CARD_RESOURCE, card.copy(name = "Unrelated"))
+        assertRejected(CARD_RESOURCE)
     }
 
     @Test
     fun `exact resource must decode its declared contract`() {
         writeBundle()
-        write("modules/kernel/declarations/outcome.json", read<KnowledgeManifestDocument>("manifest.json"))
-        assertRejected("modules/kernel/declarations/outcome.json")
+        write(CARD_RESOURCE, read<KnowledgeManifestDocument>("manifest.json"))
+        assertRejected(CARD_RESOURCE)
     }
 
     @Test
@@ -91,29 +94,34 @@ class InstalledKnowledgeTest {
     @Test
     fun `symbolic link inside the bundle is rejected`() {
         writeBundle()
-        val path = root.resolve("modules/kernel/declarations/outcome.json")
+        val path = root.resolve(CARD_RESOURCE)
         Files.move(path, root.resolve("original.json"))
         Files.createSymbolicLink(path, root.resolve("original.json"))
-        assertRejected("modules/kernel/declarations/outcome.json")
+        assertRejected(CARD_RESOURCE)
     }
 
     @Test
     fun `oversized exact resources reject before producing output`() {
         writeBundle()
-        val card = read<KnowledgeDeclarationDocument>("modules/kernel/declarations/outcome.json")
-        write("modules/kernel/declarations/outcome.json", card.copy(documentation = "x".repeat(8 * 1024 * 1024)))
-        assertRejected("modules/kernel/declarations/outcome.json")
+        val card = read<KnowledgeDeclarationDocument>(CARD_RESOURCE)
+        write(CARD_RESOURCE, card.copy(documentation = "x".repeat(8 * 1024 * 1024)))
+        assertRejected(CARD_RESOURCE)
     }
 
     private fun assertRejected(raw: String) {
-        assertInstanceOf(KnowledgeLookup.Rejected::class.java, InstalledKnowledgeReader(root.toRealPath()).lookup(selection(raw)))
+        assertInstanceOf(
+            KnowledgeLookup.Rejected::class.java,
+            InstalledKnowledgeReader(root.toRealPath()).lookup(selection(raw)),
+        )
     }
 
-    private inline fun <reified T> read(relative: String): T = Json.decodeFromString(Files.readString(root.resolve(relative)))
+    private inline fun <reified T> read(relative: String): T =
+        Json.decodeFromString(Files.readString(root.resolve(relative)))
 
     private fun assertContains(actual: String, expected: String) = assertTrue(expected in actual, actual)
 
-    private fun selection(raw: String): KnowledgeSelection = requireNotNull(KnowledgeSelection.parse(raw))
+    private fun selection(raw: String): KnowledgeSelection =
+        assertInstanceOf(KnowledgeSelectionAdmission.Accepted::class.java, KnowledgeSelection.parse(raw)).selection
 
     private fun writeBundle() {
         write(
@@ -123,10 +131,26 @@ class InstalledKnowledgeTest {
                 "1.0.0",
                 "0123456789012345678901234567890123456789",
                 "KOTLIN_PSI_SYNTAX",
-                listOf("NO_TYPE_RESOLUTION"),
+                listOf(
+                    "KOTLIN_SOURCE_ONLY",
+                    "NAMED_DECLARATIONS_ONLY",
+                    "NO_TYPE_RESOLUTION",
+                    "NO_INHERITED_DOCUMENTATION",
+                ),
                 listOf(KnowledgeModuleDescriptor(":kernel", "modules/kernel/index.json")),
+                listOf(
+                    KnowledgeGuideReference("AGENTS.md", ROOT_HASH, "guides/root.json"),
+                    KnowledgeGuideReference("kernel/AGENTS.md", KERNEL_HASH, "guides/kernel.json"),
+                ),
             ),
         )
+        writeModule()
+        writeCard()
+        write("guides/root.json", KnowledgeGuideDocument(1, "AGENTS.md", ".", ROOT_HASH, "root"))
+        write("guides/kernel.json", KnowledgeGuideDocument(1, "kernel/AGENTS.md", "kernel", KERNEL_HASH, "kernel"))
+    }
+
+    private fun writeModule() {
         write(
             "modules/kernel/index.json",
             KnowledgeModuleDocument(
@@ -134,26 +158,29 @@ class InstalledKnowledgeTest {
                 ":kernel",
                 "kernel",
                 listOf(
-                    KnowledgeGuideReference("AGENTS.md", "sha256:root", "guides/root.json"),
-                    KnowledgeGuideReference("kernel/AGENTS.md", "sha256:kernel", "guides/kernel.json"),
+                    KnowledgeGuideReference("AGENTS.md", ROOT_HASH, "guides/root.json"),
+                    KnowledgeGuideReference("kernel/AGENTS.md", KERNEL_HASH, "guides/kernel.json"),
                 ),
                 listOf(
                     KnowledgeDeclarationDescriptor(
-                        "outcome",
+                        CARD_ID,
                         "Outcome",
                         "Outcome",
                         "interface",
                         "Caller-facing summary.",
-                        "modules/kernel/declarations/outcome.json",
+                        CARD_RESOURCE,
                     )
                 ),
             ),
         )
+    }
+
+    private fun writeCard() {
         write(
-            "modules/kernel/declarations/outcome.json",
+            CARD_RESOURCE,
             KnowledgeDeclarationDocument(
                 1,
-                "outcome",
+                CARD_ID,
                 ":kernel",
                 "kernel/src/main/kotlin/Outcome.kt",
                 "Outcome",
@@ -164,13 +191,18 @@ class InstalledKnowledgeTest {
                 listOf("guides/root.json", "guides/kernel.json"),
             ),
         )
-        write("guides/root.json", KnowledgeGuideDocument(1, "AGENTS.md", ".", "sha256:root", "root"))
-        write("guides/kernel.json", KnowledgeGuideDocument(1, "kernel/AGENTS.md", "kernel", "sha256:kernel", "kernel"))
     }
 
     private inline fun <reified T> write(relative: String, document: T) {
         val path = root.resolve(relative)
         Files.createDirectories(path.parent)
         Files.writeString(path, Json.encodeToString(document))
+    }
+
+    private companion object {
+        const val CARD_ID = "ae18c5b0a973f7970973a26a85561e1253093611dda35aea0e50e0642ec6a130"
+        const val CARD_RESOURCE = "modules/kernel/declarations/$CARD_ID.json"
+        const val ROOT_HASH = "sha256:4813494d137e1631bba301d5acab6e7bb7aa74ce1185d456565ef51d737677b2"
+        const val KERNEL_HASH = "sha256:6923dd1bc0460082c5d55a831908c24a282860b7f1cd6c2b79cf1bc8857c639c"
     }
 }

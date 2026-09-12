@@ -21,7 +21,8 @@ import io.github.amichne.kast.cli.projection.ProductInspectionDocuments
 import java.nio.file.Path
 
 /** Pure orchestration of the closed CLI boundaries and their explicit outer effects. */
-class KastCli internal constructor(
+class KastCli
+internal constructor(
     private val commandGraphFactory: CliCommandGraphFactory,
     private val rootDiscovery: CanonicalRootDiscoverer,
     private val localMetadata: CliLocalMetadata,
@@ -78,21 +79,23 @@ class KastCli internal constructor(
         }
     }
 
+    private fun executeKnowledge(action: CliAction.Local.Knowledge): CliExit =
+        when (val lookup = knowledgeReader.lookup(action.selection)) {
+            is KnowledgeLookup.Complete -> CliExit.Complete(lookup.document)
+            is KnowledgeLookup.Rejected ->
+                boundaryExit(
+                    CliBoundaryExitStatus.RUNTIME,
+                    "knowledge-${lookup.failure.name.lowercase().replace('_', '-')}",
+                )
+        }
+
     private fun executeAction(action: CliAction, start: Path): CliExit =
         when (action) {
             is CliAction.Local.Metadata -> CliExit.Complete(localMetadata.output(action.command))
             CliAction.Local.Inspect,
             CliAction.Local.ProductInspect ->
                 CliExit.Complete(ProductInspectionDocuments.complete(productVersion, rootDiscovery.discover(start)))
-            is CliAction.Local.Knowledge ->
-                when (val lookup = knowledgeReader.lookup(action.selection)) {
-                    is KnowledgeLookup.Complete -> CliExit.Complete(lookup.document)
-                    is KnowledgeLookup.Rejected ->
-                        boundaryExit(
-                            CliBoundaryExitStatus.RUNTIME,
-                            "knowledge-${lookup.failure.name.lowercase().replace('_', '-')}",
-                        )
-                }
+            is CliAction.Local.Knowledge -> executeKnowledge(action)
             is CliAction.Local.AppServer ->
                 when (val result = appServerManager.execute(action.action, start)) {
                     is io.github.amichne.kast.appserver.AppServerManagementResult.Completed ->

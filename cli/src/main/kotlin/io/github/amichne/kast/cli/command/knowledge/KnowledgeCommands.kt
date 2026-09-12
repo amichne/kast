@@ -9,6 +9,7 @@ import io.github.amichne.kast.cli.command.CliProductCommand
 import io.github.amichne.kast.cli.command.LocalCommandFamily
 import io.github.amichne.kast.cli.command.LocalKastCommand
 import io.github.amichne.kast.cli.knowledge.KnowledgeSelection
+import io.github.amichne.kast.cli.knowledge.KnowledgeSelectionAdmission
 
 internal fun knowledgeCommandFamily(): LocalCommandFamily {
     val command = KnowledgeCommand()
@@ -22,7 +23,11 @@ private class KnowledgeCommand : LocalKastCommand("knowledge", CliProductCommand
                 help = "Declaration/module text to search, or an exact resource path returned by a prior lookup.",
             )
             .convert { raw ->
-                KnowledgeSelection.parse(raw) ?: fail("Expected non-blank knowledge input of at most 4096 UTF-8 bytes")
+                when (val admission = KnowledgeSelection.parse(raw)) {
+                    is KnowledgeSelectionAdmission.Accepted -> admission.selection
+                    is KnowledgeSelectionAdmission.Rejected ->
+                        fail("Invalid knowledge selector: ${admission.failure.name.lowercase()}")
+                }
             }
 
     override fun help(context: Context): String =
