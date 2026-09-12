@@ -25,13 +25,13 @@ class TopologySourceRootVfsSynchronizationAuthorityBoundaryTest {
     }
 
     @Test
-    fun `retired source root synchronization has no active owner`() {
+    fun `source root synchronization belongs only to the retained topology adapter`() {
         val architecture = assertInstanceOf<ArchitecturePolicyValidation.Valid>(
             KastArchitecturePolicy.validate(),
         ).architecture
 
         assertEquals(
-            emptySet<ModuleId>(),
+            setOf(ModuleId.TOPOLOGY_INTELLIJ),
             architecture.modules.values
                 .filter { ForbiddenEffect.TOPOLOGY_SOURCE_ROOT_VFS_SYNCHRONIZATION in it.allowedEffects }
                 .mapTo(linkedSetOf(), ValidatedModulePolicy::id),

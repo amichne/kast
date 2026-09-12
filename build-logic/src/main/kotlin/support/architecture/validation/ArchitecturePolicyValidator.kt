@@ -58,7 +58,9 @@ object ArchitecturePolicyValidator {
                 add(ArchitecturePolicyFailure.MissingHostedRuntime)
             } else {
                 val excluded = setOf(ModuleId.APP_SERVER, ModuleId.CLI, ModuleId.RUNTIME_HOSTED,
-                    ModuleId.DISTRIBUTION_CONTRACT, ModuleId.DISTRIBUTION_MANAGED, ModuleId.PROTOCOL_REGISTRY)
+                    ModuleId.DISTRIBUTION_CONTRACT, ModuleId.DISTRIBUTION_MANAGED, ModuleId.PROTOCOL_REGISTRY,
+                    ModuleId.TOPOLOGY_CONTRACT, ModuleId.TOPOLOGY_BUILD, ModuleId.TOPOLOGY_SERVICE,
+                    ModuleId.TOPOLOGY_INTELLIJ, ModuleId.EVIDENCE_TOPOLOGY_SQLITE)
                 val expectedDependencies = definition.modules.filter { it.lifecycle == ModuleLifecycle.ACTIVE }
                     .mapTo(mutableSetOf(), ModulePolicy::id) - excluded
                 val missing = expectedDependencies - composition.allowedProjectDependencies
@@ -101,10 +103,10 @@ object ArchitecturePolicyValidator {
             setOf(ModuleId.WORKSPACE_INTELLIJ_READ),
         ForbiddenEffect.UDS_BIND to setOf(ModuleId.RUNTIME_HOSTED),
         ForbiddenEffect.ENDPOINT_DESCRIPTOR_WRITE to setOf(ModuleId.RUNTIME_HOSTED),
-        ForbiddenEffect.TOPOLOGY_BUILD_AUTHORITY to emptySet(),
+        ForbiddenEffect.TOPOLOGY_BUILD_AUTHORITY to setOf(ModuleId.TOPOLOGY_BUILD),
         ForbiddenEffect.TOPOLOGY_SOURCE_ROOT_VFS_SYNCHRONIZATION to
-            emptySet(),
-        ForbiddenEffect.TOPOLOGY_PUBLICATION to emptySet(),
+            setOf(ModuleId.TOPOLOGY_INTELLIJ),
+        ForbiddenEffect.TOPOLOGY_PUBLICATION to setOf(ModuleId.EVIDENCE_TOPOLOGY_SQLITE),
     )
 
     private fun <T> topologicalOrder(

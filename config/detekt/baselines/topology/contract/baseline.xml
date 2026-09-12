@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ComplexCondition:CompleteTopologyGeneration.kt:CompleteTopologyGeneration.Companion$failure.missing.isNotEmpty() || failure.unexpected.isNotEmpty() || failure.duplicateCandidates.isNotEmpty() || failure.duplicateCompletions.isNotEmpty() || failure.workspaceMismatches.isNotEmpty() || failure.candidateEvidenceMismatches.isNotEmpty() || failure.duplicateSymbols.isNotEmpty() || failure.missingEdgeTargets.isNotEmpty() || failure.mismatchedEdgeEndpoints.isNotEmpty()</ID>
+    <ID>ComplexCondition:TopologySnapshotContent.kt:TopologySnapshotContent.Companion$manifest.digest.value != digest || manifest.cardinalities.files != ordered.size || manifest.cardinalities.symbols != symbols.size || manifest.cardinalities.edges != ordered.sumOf { it.edges.size }</ID>
+    <ID>CyclomaticComplexMethod:CompleteTopologyGeneration.kt:CompleteTopologyGeneration.Companion$fun admit: Refinement&lt;CompleteTopologyGeneration, TopologyGenerationCoverageFailure></ID>
+    <ID>LongMethod:CompleteTopologyGeneration.kt:CompleteTopologyGeneration.Companion$fun admit: Refinement&lt;CompleteTopologyGeneration, TopologyGenerationCoverageFailure></ID>
+    <ID>MagicNumber:CompleteTopologyGeneration.kt:TopologyGenerationDigest.Companion$64</ID>
+  </CurrentIssues>
+</SmellBaseline>

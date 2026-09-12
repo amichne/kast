@@ -20,7 +20,7 @@ Kast is a Kotlin/Gradle system that gives coding agents compiler-grounded search
 - [`protocol/`](protocol/AGENTS.md) - canonical operations, registry definitions, and wire projections.
 - [`workspace/`](workspace/AGENTS.md) - live workspace admission, existing imported-model capture, and read epochs.
 - [`symbol/`](symbol/AGENTS.md), [`source/`](source/AGENTS.md), [`relation/`](relation/AGENTS.md), [`traversal/`](traversal/AGENTS.md), [`query/`](query/AGENTS.md) - semantic read domains.
-- [`evidence/`](evidence/AGENTS.md) - durable live change plans, receipts and mutation recovery; [`topology/`](topology/AGENTS.md) records retired graph ownership.
+- [`evidence/`](evidence/AGENTS.md) - durable live change plans, receipts and mutation recovery; [`topology/`](topology/AGENTS.md) retains the buildable graph implementation for upcoming work.
 - [`diagnostic/`](diagnostic/AGENTS.md) and [`change/`](change/AGENTS.md) - compiler diagnostics and proof-carrying mutation workflows.
 - [`runtime/`](runtime/AGENTS.md) - existing-IDE plugin composition, operation dispatch, and bounded diagnostics.
 - [`indexer/`](indexer/AGENTS.md) - retirement record for the former isolated semantic sidecar.

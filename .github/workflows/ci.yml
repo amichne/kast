@@ -56,6 +56,7 @@ jobs:
             kast/workspace-intellij-read-idea-distributions
             kast/symbol-intellij-idea-distributions
             kast/change-intellij-idea-distributions
+            kast/topology-intellij-kotlin-plugin
 
       - name: Build and verify product
         env:

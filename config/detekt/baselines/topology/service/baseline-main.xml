@@ -1,0 +1,12 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>LongParameterList:GraphIndex.kt:GraphIndex$private fun enumerateCycles</ID>
+    <ID>NamedArguments:GraphIndex.kt:GraphIndex$enumerateCycles( start, startOrdinal, edge.target, visited, pathSymbols, pathEdges, cycles, )</ID>
+    <ID>NamedArguments:GraphIndex.kt:GraphIndex$enumerateCycles( start, startOrdinal, start, linkedSetOf(identity(start)), mutableListOf(start), mutableListOf(), cycles, )</ID>
+    <ID>NestedBlockDepth:GraphIndex.kt:GraphIndex$fun reachability: TopologyReachability</ID>
+    <ID>NestedBlockDepth:GraphIndex.kt:GraphIndex$fun traverse: TopologyGraphTraversal</ID>
+    <ID>UnnecessaryLet:GraphIndex.kt:GraphStrongComponent$let(::identity)</ID>
+  </CurrentIssues>
+</SmellBaseline>

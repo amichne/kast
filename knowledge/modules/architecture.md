@@ -50,7 +50,7 @@ The IntelliJ read adapter also depends on symbol contracts for the existing-IDE
 without introducing an isolated workspace opener or importing implementation
 dependencies from semantic service modules.
 
-`runtime:hosted` is the sole active semantic host. Its declared dependencies include all active semantic contracts, services, read adapters and controlled change adapters. The former composition, server, telemetry, indexer, workspace importer/coordinator and topology modules remain explicit retired policy entries with no dependencies or effects. No active module can acquire a retired owner through its production dependency graph. Project opening, Gradle import, topology build and topology publication have no permitted owner.
+`runtime:hosted` is the sole active semantic host. Its declared dependencies include the semantic contracts, services, read adapters and controlled change adapters used by the plugin. The former composition, server, telemetry, indexer and workspace importer/coordinator remain explicit retired policy entries with no dependencies or effects. No active module can acquire a retired owner through its production dependency graph. Project opening and Gradle import have no permitted owner. The four topology modules and `evidence:topology-sqlite` remain active and buildable for upcoming graph work, outside the plugin, CLI and coordinator dependency graphs. Topology build, bounded source-root synchronization and snapshot publication retain their exclusive owners in these modules.
 
 `change:protocol` similarly owns planning-request lowering and detached previews.
 It depends only on `kernel`, `protocol:contract`, and `change:contract`; the

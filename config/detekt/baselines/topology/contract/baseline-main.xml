@@ -1,0 +1,15 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ComplexCondition:CompleteTopologyGeneration.kt:CompleteTopologyGeneration.Companion$failure.missing.isNotEmpty() || failure.unexpected.isNotEmpty() || failure.duplicateCandidates.isNotEmpty() || failure.duplicateCompletions.isNotEmpty() || failure.workspaceMismatches.isNotEmpty() || failure.candidateEvidenceMismatches.isNotEmpty() || failure.duplicateSymbols.isNotEmpty() || failure.missingEdgeTargets.isNotEmpty() || failure.mismatchedEdgeEndpoints.isNotEmpty()</ID>
+    <ID>ComplexCondition:TopologySnapshotContent.kt:TopologySnapshotContent.Companion$manifest.digest.value != digest || manifest.cardinalities.files != ordered.size || manifest.cardinalities.symbols != symbols.size || manifest.cardinalities.edges != ordered.sumOf { it.edges.size }</ID>
+    <ID>CyclomaticComplexMethod:CompleteTopologyGeneration.kt:CompleteTopologyGeneration.Companion$fun admit: Refinement&lt;CompleteTopologyGeneration, TopologyGenerationCoverageFailure></ID>
+    <ID>LongMethod:CompleteTopologyGeneration.kt:CompleteTopologyGeneration.Companion$fun admit: Refinement&lt;CompleteTopologyGeneration, TopologyGenerationCoverageFailure></ID>
+    <ID>LongParameterList:TopologyFact.kt:TopologyEdge.Companion$fun restore: Refinement&lt;TopologyEdge, TopologyEdgeFailure></ID>
+    <ID>MagicNumber:CompleteTopologyGeneration.kt:TopologyGenerationDigest.Companion$64</ID>
+    <ID>NamedArguments:TopologyFact.kt:TopologyEdge.Companion$TopologyEdge(kind, source, target, range)</ID>
+    <ID>NamedArguments:TopologyFact.kt:TopologyEdge.Companion$restore( kind, source, target, source.file.path, rawStartInclusive, rawEndExclusive, )</ID>
+    <ID>NamedArguments:TopologySourceFile.kt:TopologySourceFile.Companion$restore(TopologyWorkspaceIdentity.from(workspace), sourceRoot, path, contentHash)</ID>
+  </CurrentIssues>
+</SmellBaseline>

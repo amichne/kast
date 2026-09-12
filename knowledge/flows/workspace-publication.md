@@ -20,7 +20,7 @@ code_sources:
 
 Earlier isolated-runtime contracts describe `Dirty -> Settling -> Refreshing -> Reconciling -> Verifying -> Ready`, with a revalidated atomic publication before issuing a generation lease. The lifecycle and generation types remain historical contract vocabulary.
 
-The isolated transition coordinator, importer and topology publication adapters are retired from the active Gradle graph. Production semantic requests instead use the original open IDEA project's live authority. No second importer or persisted topology is started as a read prerequisite.
+The isolated transition coordinator and importer are retired from the active Gradle graph. Topology extraction, graph operations and snapshot publication remain buildable in separate modules for upcoming work. Production semantic requests instead use the original open IDEA project's live authority. No second importer or persisted topology is started as a read prerequisite.
 
 A historical `SemanticReadLease` still carries the canonical root and a published generation. Its guard permits effects only while that proof remains current. A `LiveSemanticReadAuthority` carries a different host/epoch/content identity and cannot enter that guard. Neither wire decoding nor a diagnostic receipt promotes historical evidence into current authority.
 

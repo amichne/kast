@@ -16,6 +16,8 @@ QUALIFICATION = frozenset({
 REQUIRED = frozenset({
     ":productBuildGate", ":cli:test", ":cli:nativeTest", ":app-server:test",
     ":runtime:hosted:test", ":workspace:intellij-read:test", ":query:protocol:test", ":evidence:sqlite:test",
+    ":topology:contract:test", ":topology:build:test", ":topology:service:test", ":topology:intellij:test",
+    ":evidence:topology-sqlite:test",
     ":verifyKastArchitecture", ":verifyConfigurationIngress", ":installedProductTest",
     ":testCheckoutInstaller", ":installationLifecycleTest", ":installerRemovalTest",
     ":localInstallationTest", ":isolatedAcceptanceEnvironmentTest", ":acceptanceIdeaInputTest",

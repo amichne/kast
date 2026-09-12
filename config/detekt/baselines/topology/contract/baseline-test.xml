@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>NamedArguments:TopologyGenerationContractTest.kt:TopologyGenerationContractTest$admit( workspace, sourceRoot, WorkspaceSourcePath.parse(path).refined(), WorkspaceSourceContentHash.parse(hashDigit.toString().repeat(64)).refined(), )</ID>
+    <ID>NamedArguments:TopologyGenerationContractTest.kt:TopologyGenerationContractTest$fromBoundary( TopologyEdgeKind.REFERENCE, contradictory, indexed, 0, 1, )</ID>
+    <ID>NamedArguments:TopologyGenerationContractTest.kt:TopologyGenerationContractTest$fromBoundary( fileIdentity, start, start + name.length, name, "sample.shared", CompilerSymbolKind.FUNCTION, CanonicalCompilerSignature.function( "sample.shared", null, emptyList(), emptyList(), 0, ) .refined(), )</ID>
+    <ID>NamedArguments:TopologyGenerationContractTest.kt:TopologyGenerationContractTest$sourceFile(workspace, root, "alpha/src/main/kotlin/Alpha.kt", 'a')</ID>
+    <ID>NamedArguments:TopologyGenerationContractTest.kt:TopologyGenerationContractTest$sourceFile(workspace, root, "alpha/src/main/kotlin/Alpha.kt", 'b')</ID>
+    <ID>NamedArguments:TopologyGenerationContractTest.kt:TopologyGenerationContractTest$sourceFile(workspace, root, "alpha/src/main/kotlin/Beta.kt", 'b')</ID>
+    <ID>NamedArguments:TopologyGenerationContractTest.kt:TopologyGenerationContractTest$sourceFile(workspace, root, "alpha/src/main/kotlin/First.kt", 'a')</ID>
+    <ID>NamedArguments:TopologyGenerationContractTest.kt:TopologyGenerationContractTest$sourceFile(workspace, root, "alpha/src/main/kotlin/Second.kt", 'b')</ID>
+  </CurrentIssues>
+</SmellBaseline>

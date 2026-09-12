@@ -1,11 +1,11 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-12 | hash: ddfc6e190f6f -->
+<!-- generated: 2026-09-12 | hash: 415a0ae996a1 -->
 
 # evidence
 
 ## Purpose
 
-Retains mutation plans, receipts, and recovery evidence in workspace-bound SQLite stores. Persisted topology and workspace publication implementations are retired.
+Retains mutation plans, receipts, and recovery evidence in workspace-bound SQLite stores. A separate topology SQLite adapter retains complete graph snapshots for upcoming work; workspace publication implementation remains retired.
 
 ## Key Files
 
@@ -20,10 +20,11 @@ Retains mutation plans, receipts, and recovery evidence in workspace-bound SQLit
 
 - `contract` - storage-neutral recovery types and retained historical publication contracts.
 - `sqlite` - mutation persistence and strict database admission.
+- `topology-sqlite` - retained topology publication, snapshot storage, and relation reads; excluded from shipped runtimes.
 
 ## Entry Points
 
-- Gradle projects: `:evidence:contract`, `:evidence:sqlite`.
+- Gradle projects: `:evidence:contract`, `:evidence:sqlite`, `:evidence:topology-sqlite`.
 
 ## Navigation Hints
 

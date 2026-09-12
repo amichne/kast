@@ -23,4 +23,4 @@ through its authority, and published read guards compare it with the canonical
 root. Live IDE reads use `EvidenceBasis.Live` and a separate host/epoch/content
 identity. IDE counters do not become evidence generations.
 
-The production plugin now uses live evidence exclusively. Published-generation types remain for historical contracts and tests; the retired topology and workspace-publication modules issue no new generations in the shipped graph.
+The production plugin now uses live evidence exclusively. Published-generation types remain for historical contracts, tests and the retained topology implementation. Topology publication is outside the shipped runtime graph; the workspace-publication implementation remains retired.

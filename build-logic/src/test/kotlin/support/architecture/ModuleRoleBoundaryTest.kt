@@ -12,11 +12,10 @@ import java.nio.file.Path
 
 class ModuleRoleBoundaryTest {
     @Test
-    fun `the shipped module graph has no isolated importer or curated index runtime`() {
+    fun `the shipped module graph has no isolated importer runtime`() {
         val retired = setOf(
             ModuleId.INDEXER, ModuleId.RUNTIME_COMPOSITION, ModuleId.RUNTIME_SERVER, ModuleId.RUNTIME_TELEMETRY,
             ModuleId.WORKSPACE_SERVICE, ModuleId.WORKSPACE_INTELLIJ,
-            ModuleId.TOPOLOGY_CONTRACT, ModuleId.TOPOLOGY_BUILD, ModuleId.TOPOLOGY_SERVICE, ModuleId.TOPOLOGY_INTELLIJ,
         )
         val modules = KastArchitecturePolicy.definition().modules.filter { it.lifecycle == ModuleLifecycle.ACTIVE }
         assertTrue(modules.none { it.id in retired }, "Isolated runtime modules must be retired")

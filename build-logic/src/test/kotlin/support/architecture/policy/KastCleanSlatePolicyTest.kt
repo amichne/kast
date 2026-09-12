@@ -52,6 +52,7 @@ class KastCleanSlatePolicyTest {
                 ":change:intellij",
                 ":evidence:contract",
                 ":evidence:sqlite",
+                ":evidence:topology-sqlite",
                 ":runtime:server",
                 ":runtime:hosted",
                 ":runtime:telemetry",
@@ -123,6 +124,7 @@ class KastCleanSlatePolicyTest {
         assertEquals(
             mapOf(
                 ForbiddenEffect.INTELLIJ_PLATFORM to setOf(
+                    ModuleId.TOPOLOGY_INTELLIJ,
                     ModuleId.SYMBOL_INTELLIJ,
                     ModuleId.SOURCE_INTELLIJ,
                     ModuleId.RELATION_INTELLIJ,
@@ -143,16 +145,17 @@ class KastCleanSlatePolicyTest {
                     ModuleId.APP_SERVER,
                     ModuleId.DISTRIBUTION_MANAGED,
                     ModuleId.EVIDENCE_SQLITE,
+                    ModuleId.EVIDENCE_TOPOLOGY_SQLITE,
                     ModuleId.CLI,
                     ModuleId.RUNTIME_HOSTED,
                 ),
                 ForbiddenEffect.SOURCE_FILESYSTEM_WRITE to emptySet(),
-                ForbiddenEffect.JDBC to setOf(ModuleId.EVIDENCE_SQLITE),
+                ForbiddenEffect.JDBC to setOf(ModuleId.EVIDENCE_SQLITE, ModuleId.EVIDENCE_TOPOLOGY_SQLITE),
                 ForbiddenEffect.GRADLE_PLATFORM to emptySet(),
                 ForbiddenEffect.GRADLE_IMPORT to emptySet(),
                 ForbiddenEffect.RECURSIVE_VFS_REFRESH to emptySet(),
                 ForbiddenEffect.TOPOLOGY_SOURCE_ROOT_VFS_SYNCHRONIZATION to
-                    emptySet(),
+                    setOf(ModuleId.TOPOLOGY_INTELLIJ),
                 ForbiddenEffect.INDEXING_CYCLE to emptySet(),
                 ForbiddenEffect.REPOSITORY_TRAVERSAL to emptySet(),
                 ForbiddenEffect.PHYSICAL_SOURCE_READ to setOf(ModuleId.RUNTIME_HOSTED),
@@ -166,8 +169,8 @@ class KastCleanSlatePolicyTest {
                 ForbiddenEffect.MUTATION_AUTHORITY to emptySet(),
                 ForbiddenEffect.TOPOLOGY_AUTHORITY to emptySet(),
                 ForbiddenEffect.ISOLATED_RUNTIME to emptySet(),
-                ForbiddenEffect.TOPOLOGY_BUILD_AUTHORITY to emptySet(),
-                ForbiddenEffect.TOPOLOGY_PUBLICATION to emptySet(),
+                ForbiddenEffect.TOPOLOGY_BUILD_AUTHORITY to setOf(ModuleId.TOPOLOGY_BUILD),
+                ForbiddenEffect.TOPOLOGY_PUBLICATION to setOf(ModuleId.EVIDENCE_TOPOLOGY_SQLITE),
             ),
             owners,
         )

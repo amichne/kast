@@ -32,7 +32,9 @@ spelling remains available through the same command implementation.
 All semantic commands and App Server tools use this existing-IDE authority.
 The shipped graph has no isolated indexer, second Gradle importer, copied index
 storage, or retained topology backend. Durable change plans, recovery journals
-and receipts remain available for approved source changes.
+and receipts remain available for approved source changes. The topology contract,
+build, service, IntelliJ extraction, and SQLite implementation remain buildable
+for upcoming graph work, outside the shipped runtime dependencies.
 
 Read the [detailed HTML implementation review](docs/reviews/hosted-indexing.html)
 for the architecture, qualification evidence, and remaining migration work.

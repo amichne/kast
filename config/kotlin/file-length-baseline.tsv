@@ -57,3 +57,6 @@ symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/IntellijN
 traversal/service/src/main/kotlin/io/github/amichne/kast/traversal/service/TraversalService.kt	412
 workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/ExistingProjectAdmission.kt	530
 workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/epoch/LiveProjectReadEpochObservation.kt	432
+topology/build/src/main/kotlin/io/github/amichne/kast/topology/build/TopologyBuildService.kt	552
+topology/intellij/src/main/kotlin/io/github/amichne/kast/topology/intellij/HostedWorkspaceSourceState.kt	524
+topology/intellij/src/main/kotlin/io/github/amichne/kast/topology/intellij/IntellijTopologyFileExtractor.kt	590
