@@ -1,9 +1,13 @@
+import conventions.GenerateKnowledgeDocsTask
+import conventions.jsoncontracts.KnowledgeDocsRequest
 import org.gradle.api.artifacts.ProjectDependency
 import org.gradle.api.tasks.SourceSetContainer
+import org.gradle.api.tasks.Sync
 import support.architecture.ArchitectureObservationParser
 import support.architecture.ModuleRoleConvention
 import support.architecture.gradle.GenerateKastModuleKnowledgeTask
 import support.architecture.gradle.VerifyKastArchitectureTask
+import support.knowledge.GenerateInstalledKnowledgeTask
 
 plugins {
     base
@@ -24,6 +28,38 @@ val trackedAgentGuidePaths = providers.exec {
         .filter { path -> path.substringAfterLast('/') == "AGENTS.md" }
         .sorted()
 }
+
+val currentSourceRevision = providers.gradleProperty("kastSourceRevision").orElse(
+    providers.exec {
+        workingDir(layout.projectDirectory)
+        commandLine("git", "rev-parse", "HEAD")
+    }.standardOutput.asText.map(String::trim)
+)
+
+val generateKastDocumentation = tasks.register<GenerateKnowledgeDocsTask>("generateKastDocumentation") {
+    group = "distribution"
+    description = "Extracts detached public Kotlin declarations and KDoc with isolated PSI syntax evidence."
+    repositoryDirectory.set(layout.projectDirectory)
+    outputFile.set(layout.buildDirectory.file("generated/knowledge/kotlin-docs.json"))
+}
+
+// Reuse the root build's already-isolated compiler/parser configuration without adding compiler PSI to Gradle's
+// own plugin classloader. The root build creates the configuration after this convention is applied, so configureEach
+// must observe future configurations as well as existing ones.
+configurations.configureEach {
+    if (name == "jsonContractParser") {
+        val parser = this
+        generateKastDocumentation.configure {
+            parserClasspath.from(
+                files(
+                    KnowledgeDocsRequest::class.java.protectionDomain.codeSource.location,
+                    parser,
+                )
+            )
+        }
+    }
+}
+
 tasks.register<GenerateKastModuleKnowledgeTask>("generateKastModuleKnowledge") {
     group = "distribution"
     description = "Serializes the verified module architecture and scoped AGENTS.md knowledge."
@@ -55,6 +91,29 @@ tasks.register<GenerateKastModuleKnowledgeTask>("generateKastModuleKnowledge") {
     dependsOn(verifyKastArchitecture)
 }
 
+val generateInstalledKnowledgeBundle = tasks.register<GenerateInstalledKnowledgeTask>("generateInstalledKnowledgeBundle") {
+    group = "distribution"
+    description = "Joins verified module guidance with detached public Kotlin declaration documentation."
+    productVersion.set(providers.provider { project.version.toString() })
+    sourceRevision.set(currentSourceRevision)
+    moduleProjectPaths.set(verifyKastArchitecture.flatMap { it.observedProjectPaths })
+    agentGuidePaths.set(trackedAgentGuidePaths)
+    agentGuideFiles.from(trackedAgentGuidePaths)
+    repositoryDirectory.set(layout.projectDirectory)
+    documentationFile.set(generateKastDocumentation.flatMap { it.outputFile })
+    outputDirectory.set(layout.buildDirectory.dir("generated/installed-knowledge"))
+    dependsOn(verifyKastArchitecture, generateKastDocumentation)
+}
+
+// The existing control product is the distribution owner. Augment it lazily when the root build registers its Sync
+// task rather than creating another installation path.
+tasks.withType<Sync>().matching { it.name == "stageKastControlProduct" }.configureEach {
+    dependsOn(generateInstalledKnowledgeBundle)
+    from(generateInstalledKnowledgeBundle.flatMap { it.outputDirectory }) {
+        into("share/kast/knowledge")
+    }
+}
+
 subprojects {
     val modulePath = path
     pluginManager.withPlugin("java") {
@@ -79,6 +138,13 @@ subprojects {
                         },
                     )
                     dependsOn(tasks.named(sourceSet.classesTaskName))
+                }
+                generateKastDocumentation.configure {
+                    sourceFiles.from(
+                        sourceSetProvider.map { production ->
+                            production.allSource.matching { include("**/*.kt") }
+                        }
+                    )
                 }
             }
     }

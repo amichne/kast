@@ -34,6 +34,7 @@ class CliSurfaceContractTest {
         assertEquals(emptyList<CliLifecycleCommand>(), surface.lifecycleCommands)
         assertEquals(
             listOf(
+                CliProductCommand.KNOWLEDGE,
                 CliProductCommand.CODEX_CLI,
                 CliProductCommand.CODEX_DESKTOP,
                 CliProductCommand.INDEX_STATUS,
@@ -92,7 +93,8 @@ class CliSurfaceContractTest {
         val helpText = help.document.value
 
         assertFalse(boundaryTouched)
-        assertTrue(helpText.contains("Query the existing IDEA index with index commands"))
+        assertTrue(helpText.contains("Query installed knowledge or the existing IDEA index"))
+        assertTrue(helpText.contains("knowledge"))
         assertTrue(helpText.contains("Show the installed IntelliJ plugin product version"))
         assertTrue(helpText.contains("product"))
         assertTrue(helpText.contains("Read exact semantic relations."))

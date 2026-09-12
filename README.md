@@ -39,6 +39,18 @@ for upcoming graph work, outside the shipped runtime dependencies.
 Read the [detailed HTML implementation review](docs/reviews/hosted-indexing.html)
 for the architecture, qualification evidence, and remaining migration work.
 
+## Installed Kast knowledge
+
+`kast knowledge KastCli` searches the installed documentation for Kast's own
+public Kotlin declarations. Pass a returned `resource` to the same command to
+read its declaration header and KDoc. `kast knowledge manifest.json` lists the
+module and guide resources; `kast knowledge guides/root.json` reads the root
+guidance.
+
+These lookups use the installed bundle from any directory, with no checkout,
+open IDE, Gradle invocation or network lookup. Results carry explicit Kotlin PSI
+syntax evidence and its limits. See the [installed knowledge contract](knowledge/contracts/installed-knowledge.md).
+
 ## Install
 
 Kast currently requires:

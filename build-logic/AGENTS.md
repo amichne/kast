@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-12 | hash: 5010c87eb8bc -->
+<!-- generated: 2026-09-12 | hash: 5b9c7d5ab1fc -->
 
 # build-logic
 
@@ -21,6 +21,9 @@ Defines reusable Gradle conventions, module roles, publication behavior, generat
 - [src/main/kotlin/conventions/KotlinFileLengthBaseline.kt](src/main/kotlin/conventions/KotlinFileLengthBaseline.kt) - validated per-file ceilings for existing oversized sources.
 - [src/main/kotlin/conventions/JsonContractVerification.kt](src/main/kotlin/conventions/JsonContractVerification.kt) - JSON syntax guard registration and root verification-gate dependencies.
 - [src/main/kotlin/conventions/VerifyJsonContractsTask.kt](src/main/kotlin/conventions/VerifyJsonContractsTask.kt) - typed scan request and isolated parser process boundary.
+
+- [src/main/kotlin/conventions/GenerateKnowledgeDocsTask.kt](src/main/kotlin/conventions/GenerateKnowledgeDocsTask.kt) - isolated Kotlin PSI documentation extraction.
+- [src/main/kotlin/support/knowledge/GenerateInstalledKnowledgeTask.kt](src/main/kotlin/support/knowledge/GenerateInstalledKnowledgeTask.kt) - bounded installed knowledge generation from verified module ownership and scoped guides.
 
 ## Subdirectories
 

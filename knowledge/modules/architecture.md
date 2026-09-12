@@ -91,3 +91,7 @@ files and `verifyPublicQueryGeneration` checks their exact generator parity.
 ```
 
 Read [runtime and hosts](runtime-hosts.md) for process ownership or [protocol](protocol.md) for operation ownership.
+
+The [installed knowledge contract](../contracts/installed-knowledge.md) describes
+`kast knowledge`, its isolated PSI extraction, verified module ownership and
+scoped guide resources staged with the control product.

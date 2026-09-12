@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-12 | hash: c2305ce71ae7 -->
+<!-- generated: 2026-09-12 | hash: f769f85925fc -->
 
 # cli
 
@@ -19,6 +19,9 @@ Defines Kast's human-facing command graph, installed configuration and installat
 - [src/main/kotlin/io/github/amichne/kast/cli/ide](src/main/kotlin/io/github/amichne/kast/cli/ide) - existing-IDE client, semantic read projection, and hosted change/apply/recovery admission and projection.
 
 - [src/main/kotlin/io/github/amichne/kast/cli/command/tool/PublicToolCommands.kt](src/main/kotlin/io/github/amichne/kast/cli/command/tool/PublicToolCommands.kt) - intent-tool command projection.
+
+- [src/main/kotlin/io/github/amichne/kast/cli/command/knowledge/KnowledgeCommands.kt](src/main/kotlin/io/github/amichne/kast/cli/command/knowledge/KnowledgeCommands.kt) - local installed knowledge selector.
+- [src/main/kotlin/io/github/amichne/kast/cli/knowledge/InstalledKnowledge.kt](src/main/kotlin/io/github/amichne/kast/cli/knowledge/InstalledKnowledge.kt) - shallow search and exact typed resource reads.
 
 ## Subdirectories
 

@@ -2,6 +2,10 @@
 
 ## 2026-09-12
 
+- Added the [installed knowledge contract](contracts/installed-knowledge.md):
+  isolated Kotlin PSI documentation, verified module ownership, scoped guidance,
+  bounded typed resource admission and packaged CLI acceptance.
+
 - Removed the unused architecture host exemption; every role now retains a required
   convention. Retired unregistered build tasks, unused adapter wrappers and runtime
   paths, and obsolete aliases. The [configuration contract](contracts/configuration.md)

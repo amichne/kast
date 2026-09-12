@@ -3,11 +3,8 @@ package io.github.amichne.kast.cli.command
 import com.github.ajalt.clikt.core.CliktError
 import com.github.ajalt.clikt.core.Context
 import com.github.ajalt.clikt.core.PrintHelpMessage
-import com.github.ajalt.clikt.core.PrintMessage
 import com.github.ajalt.clikt.core.UsageError
 import com.github.ajalt.clikt.core.subcommands
-import com.github.ajalt.clikt.output.PlaintextHelpFormatter
-import com.github.ajalt.clikt.parameters.options.eagerOption
 import com.github.ajalt.clikt.parsers.CommandLineParser
 import io.github.amichne.kast.cli.CliProjectionFailure
 import io.github.amichne.kast.cli.CliTextDocument
@@ -16,6 +13,7 @@ import io.github.amichne.kast.cli.command.broker.brokerCommandGroup
 import io.github.amichne.kast.cli.command.change.changeCommandGroup
 import io.github.amichne.kast.cli.command.codex.codexCommandGroup
 import io.github.amichne.kast.cli.command.diagnostic.diagnosticCommandGroup
+import io.github.amichne.kast.cli.command.knowledge.knowledgeCommandFamily
 import io.github.amichne.kast.cli.command.lifecycle.lifecycleCommands
 import io.github.amichne.kast.cli.command.product.productCommandGroup
 import io.github.amichne.kast.cli.command.query.queryCommandGroup
@@ -345,42 +343,6 @@ internal abstract class LifecycleKastCommand(
     val command: CliLifecycleCommand,
 ) : KastCommand(name)
 
-private class KastRootCommand : KastCommand("kast") {
-    override val invokeWithoutSubcommand: Boolean = true
-    override val printHelpOnEmptyArgs: Boolean = false
-
-    init {
-        configureContext {
-            helpFormatter = { context ->
-                PlaintextHelpFormatter(
-                    context,
-                    showDefaultValues = true,
-                    showRequiredTag = true,
-                )
-            }
-        }
-        eagerOption("--version", help = "Show the installed IntelliJ plugin product version") {
-            throw CliLocalCommandMessage(CliLocalMetadataCommand.VERSION)
-        }
-        eagerOption("--schema", help = "Print the installed machine-readable schema") {
-            throw CliLocalCommandMessage(CliLocalMetadataCommand.SCHEMA)
-        }
-    }
-
-    override fun help(context: Context): String =
-        "Query the existing IDEA index with index commands; inspect and change a workspace through its Kast plugin."
-
-    override fun helpEpilog(context: Context): String =
-        "Semantic results are one JSON document on stdout. Diagnostics are one JSON document on stderr. Use kast config --help for configuration inspection."
-
-    override fun resolveAction(): CliNodeResolution =
-        if (currentContext.invokedSubcommand == null) {
-            CliActionResolution.Selected(CliAction.Local.Inspect)
-        } else CliNodeResolution.NoAction
-}
-
-private class CliLocalCommandMessage(val command: CliLocalMetadataCommand) : PrintMessage(command.name.lowercase())
-
 private sealed interface CliCommandSelection {
     data object Empty : CliCommandSelection
 
@@ -395,6 +357,7 @@ private fun canonicalGraph(
 ): CliCommandGraph {
     val tools = io.github.amichne.kast.cli.command.tool.publicToolCommands(preparers, requestInput)
     val product = productCommandGroup()
+    val knowledge = knowledgeCommandFamily()
     val appServer = io.github.amichne.kast.cli.command.appserver.appServerCommandGroup()
     val broker = brokerCommandGroup()
     val codex = codexCommandGroup()
@@ -416,7 +379,7 @@ private fun canonicalGraph(
         }
     val semantic = families.flatMap(CommandFamily::semanticCommands)
     val localFamilies =
-        listOf(product, broker, codex, hostedIndex, ide)
+        listOf(product, knowledge, broker, codex, hostedIndex, ide)
             .map { family ->
                 val commands = family.commands.filter { it.command.exposure == CliLocalExposure.PUBLIC }
                 val root =

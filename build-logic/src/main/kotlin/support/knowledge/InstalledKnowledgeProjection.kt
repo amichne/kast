@@ -1,0 +1,208 @@
+package support.knowledge
+
+import conventions.jsoncontracts.KnowledgeDeclarationKind
+import conventions.jsoncontracts.KnowledgeDeclarationEvidence
+import conventions.jsoncontracts.KnowledgeDeclarationLimitation
+
+import java.security.MessageDigest
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+
+internal data class InstalledKnowledgeInput(
+    val productVersion: String,
+    val sourceRevision: String,
+    val declarationEvidence: KnowledgeDeclarationEvidence,
+    val modules: List<InstalledKnowledgeModuleInput>,
+    val guides: List<InstalledKnowledgeGuideInput>,
+    val declarations: List<InstalledKnowledgeDeclarationInput>,
+)
+
+internal data class InstalledKnowledgeModuleInput(
+    val projectPath: String,
+    val moduleDirectory: String,
+    val governingGuidePaths: List<String>,
+)
+
+internal data class InstalledKnowledgeGuideInput(
+    val path: String,
+    val scopeDirectory: String,
+    val content: String,
+)
+
+internal data class InstalledKnowledgeDeclarationInput(
+    val projectPath: String,
+    val sourcePath: String,
+    val declarationPath: String,
+    val kind: KnowledgeDeclarationKind,
+    val name: String,
+    val signature: String,
+    val documentation: String,
+    val governingGuidePaths: List<String>,
+)
+
+internal sealed interface InstalledKnowledgeProjectionResult {
+    data class Complete(val files: Map<String, String>) : InstalledKnowledgeProjectionResult
+    data class Rejected(val failures: List<InstalledKnowledgeProjectionFailure>) : InstalledKnowledgeProjectionResult
+}
+
+internal sealed interface InstalledKnowledgeProjectionFailure {
+    data object InventoryTooLargeOrEmpty : InstalledKnowledgeProjectionFailure
+    data object MissingRootGuide : InstalledKnowledgeProjectionFailure
+    data class InvalidModule(val projectPath: String) : InstalledKnowledgeProjectionFailure
+    data class InvalidGuide(val path: String) : InstalledKnowledgeProjectionFailure
+    data class InvalidDeclaration(val sourcePath: String) : InstalledKnowledgeProjectionFailure
+    data class IncorrectGuidance(val owner: String) : InstalledKnowledgeProjectionFailure
+    data class DuplicateResource(val resource: String) : InstalledKnowledgeProjectionFailure
+    data class ResourceTooLarge(val resource: String) : InstalledKnowledgeProjectionFailure
+    data class DuplicateModule(val projectPath: String) : InstalledKnowledgeProjectionFailure
+    data class DuplicateGuide(val path: String) : InstalledKnowledgeProjectionFailure
+    data class UnknownGuide(val projectPath: String, val guidePath: String) : InstalledKnowledgeProjectionFailure
+    data class UnknownDeclarationModule(val projectPath: String, val sourcePath: String) : InstalledKnowledgeProjectionFailure
+    data class DuplicateDeclaration(val id: String) : InstalledKnowledgeProjectionFailure
+}
+
+internal object InstalledKnowledgeProjection {
+    private val json = Json {
+        encodeDefaults = true
+        explicitNulls = true
+        prettyPrint = false
+    }
+
+    fun render(input: InstalledKnowledgeInput): InstalledKnowledgeProjectionResult {
+        val failures = mutableListOf<InstalledKnowledgeProjectionFailure>()
+        input.modules.groupingBy { it.projectPath }.eachCount().filterValues { it > 1 }.keys.forEach {
+            failures += InstalledKnowledgeProjectionFailure.DuplicateModule(it)
+        }
+        input.guides.groupingBy { it.path }.eachCount().filterValues { it > 1 }.keys.forEach {
+            failures += InstalledKnowledgeProjectionFailure.DuplicateGuide(it)
+        }
+        val modules = input.modules.associateBy { it.projectPath }
+        val guides = input.guides.associateBy { it.path }
+        input.modules.forEach { module ->
+            module.governingGuidePaths.filterNot(guides::containsKey).forEach { guidePath ->
+                failures += InstalledKnowledgeProjectionFailure.UnknownGuide(module.projectPath, guidePath)
+            }
+        }
+        input.declarations.forEach { declaration ->
+            if (!modules.containsKey(declaration.projectPath)) {
+                failures += InstalledKnowledgeProjectionFailure.UnknownDeclarationModule(
+                    declaration.projectPath,
+                    declaration.sourcePath,
+                )
+            }
+            declaration.governingGuidePaths.filterNot(guides::containsKey).forEach { guidePath ->
+                failures += InstalledKnowledgeProjectionFailure.UnknownGuide(declaration.projectPath, guidePath)
+            }
+        }
+        val declarationIds = input.declarations.map(::declarationId)
+        declarationIds.groupingBy { it }.eachCount().filterValues { it > 1 }.keys.forEach {
+            failures += InstalledKnowledgeProjectionFailure.DuplicateDeclaration(it)
+        }
+        if (failures.isNotEmpty()) return InstalledKnowledgeProjectionResult.Rejected(failures.distinct())
+        failures += validateInstalledKnowledge(input)
+        if (failures.isNotEmpty()) return InstalledKnowledgeProjectionResult.Rejected(failures)
+
+
+        val files = linkedMapOf<String, String>()
+        input.guides.sortedBy { it.path }.forEach { guide ->
+            val resource = installedKnowledgeGuideResource(guide.path)
+            files[resource] = json.encodeToString(
+                InstalledKnowledgeGuide(
+                    path = guide.path,
+                    scopeDirectory = guide.scopeDirectory,
+                    sha256 = sha256(guide.content),
+                    content = guide.content,
+                ),
+            ) + "\n"
+        }
+
+        val moduleDescriptors = input.modules.sortedBy { it.projectPath }.map { module ->
+            val moduleResource = moduleResource(module.projectPath)
+            val moduleGuides = module.governingGuidePaths.sorted().map { guidePath ->
+                val guide = requireNotNull(guides[guidePath])
+                InstalledKnowledgeGuideReference(guide.path, sha256(guide.content), installedKnowledgeGuideResource(guide.path))
+            }
+            val declarations = input.declarations.filter { it.projectPath == module.projectPath }
+                .sortedWith(compareBy({ it.declarationPath }, { it.signature }, { it.sourcePath }))
+                .map { declaration ->
+                    val id = declarationId(declaration)
+                    val resource = declarationResource(module.projectPath, id)
+                    val declarationGuides = declaration.governingGuidePaths.sorted().map(::installedKnowledgeGuideResource)
+                    files[resource] = json.encodeToString(
+                        InstalledKnowledgeDeclaration(
+                            id = id,
+                            projectPath = declaration.projectPath,
+                            sourcePath = declaration.sourcePath,
+                            declarationPath = declaration.declarationPath,
+                            kind = declaration.kind,
+                            name = declaration.name,
+                            signature = declaration.signature,
+                            documentation = declaration.documentation,
+                            governingGuides = declarationGuides,
+                        ),
+                    ) + "\n"
+                    InstalledKnowledgeDeclarationDescriptor(
+                        id = id,
+                        declarationPath = declaration.declarationPath,
+                        name = declaration.name,
+                        kind = declaration.kind,
+                        summary = firstParagraph(declaration.documentation),
+                        resource = resource,
+                    )
+                }
+            files[moduleResource] = json.encodeToString(
+                InstalledKnowledgeModule(
+                    projectPath = module.projectPath,
+                    moduleDirectory = module.moduleDirectory,
+                    governingGuides = moduleGuides,
+                    declarations = declarations,
+                ),
+            ) + "\n"
+            InstalledKnowledgeModuleDescriptor(module.projectPath, moduleResource)
+        }
+
+        files["manifest.json"] = json.encodeToString(
+            InstalledKnowledgeManifest(
+                productVersion = input.productVersion,
+                sourceRevision = input.sourceRevision,
+                declarationEvidence = input.declarationEvidence,
+                declarationLimitations = KnowledgeDeclarationLimitation.entries.sorted(),
+                modules = moduleDescriptors,
+                guides = input.guides.sortedBy { it.path }.map { guide ->
+                    InstalledKnowledgeGuideReference(guide.path, sha256(guide.content), installedKnowledgeGuideResource(guide.path))
+                },
+            ),
+        ) + "\n"
+        val oversized = files.filterValues { it.encodeToByteArray().size > INSTALLED_KNOWLEDGE_MAX_RESOURCE_BYTES }.keys
+        if (oversized.isNotEmpty()) {
+            return InstalledKnowledgeProjectionResult.Rejected(oversized.map(InstalledKnowledgeProjectionFailure::ResourceTooLarge))
+        }
+        return InstalledKnowledgeProjectionResult.Complete(files.toSortedMap())
+    }
+
+    private fun declarationId(declaration: InstalledKnowledgeDeclarationInput): String =
+        sha256(
+            "${declaration.projectPath}\u0000${declaration.sourcePath}\u0000${declaration.declarationPath}" +
+                "\u0000${declaration.kind.wireName()}\u0000${declaration.signature}"
+        ).removePrefix("sha256:")
+
+    private fun moduleResource(projectPath: String): String =
+        "modules/${projectPath.removePrefix(":").replace(':', '/')}/index.json"
+
+    private fun declarationResource(projectPath: String, id: String): String =
+        "modules/${projectPath.removePrefix(":").replace(':', '/')}/declarations/$id.json"
+
+    private fun firstParagraph(documentation: String): String =
+        documentation.trim().split(Regex("\\n\\s*\\n"), limit = 2).firstOrNull().orEmpty()
+            .replace(Regex("\\s+"), " ")
+            .take(240)
+
+    private fun sha256(value: String): String =
+        "sha256:" + MessageDigest.getInstance("SHA-256").digest(value.encodeToByteArray())
+            .joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
+}
+
+private fun KnowledgeDeclarationKind.wireName(): String = when (this) {
+    KnowledgeDeclarationKind.ENUM_ENTRY -> "enum-entry"
+    else -> name.lowercase()
+}

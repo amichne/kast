@@ -50,3 +50,7 @@ The CLI admits local metadata and broker configuration separately from its exist
 App Server owns persistent sessions, the invocation journal, controller approvals, provider qualification and workspace lanes. `CoordinatorControl` provides bounded owner-correlated status with zero worker reservations and rejects retired worker demands. Workspace enrollment remains routing data. It grants no importer or worker capability. Provider calls continue through the exact qualified CLI contract.
 
 Planning stores immutable live plans; applying and recovering require the exact controller-approved plan and current native admission. `kast ide trust-broker` remains the explicit trust-enrollment effect. Read [request dispatch](../flows/request-dispatch.md) and [change lifecycle](../flows/change-lifecycle.md) for the complete boundaries.
+
+The [installed knowledge contract](../contracts/installed-knowledge.md) describes
+`kast knowledge`, its isolated PSI extraction, verified module ownership and
+scoped guide resources staged with the control product.
