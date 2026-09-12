@@ -75,6 +75,7 @@ abstract class GenerateInstalledKnowledgeTask : DefaultTask() {
                 InstalledKnowledgeDeclarationInput(
                     projectPath = module.projectPath,
                     sourcePath = declaration.sourcePath,
+                    declarationPath = declaration.declarationPath,
                     kind = declaration.kind,
                     name = declaration.name,
                     signature = declaration.signature,
