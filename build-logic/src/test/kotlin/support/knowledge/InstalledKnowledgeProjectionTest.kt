@@ -118,4 +118,49 @@ class InstalledKnowledgeProjectionTest {
             rejected.failures,
         )
     }
+    @Test
+    fun `projection is byte deterministic across input order`() {
+        val input = fixture()
+        val first = InstalledKnowledgeProjection.render(input)
+        val second = InstalledKnowledgeProjection.render(input.copy(guides = input.guides.reversed()))
+        assertEquals(first, second)
+    }
+
+    @Test
+    fun `guide resource collisions reject instead of overwriting content`() {
+        val input = fixture()
+        val result = InstalledKnowledgeProjection.render(input.copy(
+            guides = input.guides + InstalledKnowledgeGuideInput("root/AGENTS.md", "root", "collision"),
+        ))
+        assertInstanceOf(InstalledKnowledgeProjectionResult.Rejected::class.java, result)
+    }
+
+    @Test
+    fun `missing governing guidance rejects`() {
+        val input = fixture()
+        val result = InstalledKnowledgeProjection.render(input.copy(
+            modules = input.modules.map { it.copy(governingGuidePaths = emptyList()) },
+        ))
+        assertInstanceOf(InstalledKnowledgeProjectionResult.Rejected::class.java, result)
+    }
+
+    @Test
+    fun `oversized generated resources reject before publication`() {
+        val input = fixture()
+        val result = InstalledKnowledgeProjection.render(input.copy(
+            guides = input.guides.map { it.copy(content = "x".repeat(8 * 1024 * 1024)) },
+        ))
+        assertInstanceOf(InstalledKnowledgeProjectionResult.Rejected::class.java, result)
+    }
+
+    private fun fixture() = InstalledKnowledgeInput(
+        productVersion = "1.0.0",
+        sourceRevision = "0123456789012345678901234567890123456789",
+        declarationEvidence = KnowledgeDeclarationEvidence.KOTLIN_PSI_SYNTAX,
+        declarationLimitations = KnowledgeDeclarationLimitation.entries,
+        modules = listOf(InstalledKnowledgeModuleInput(":kernel", "kernel", listOf("AGENTS.md"))),
+        guides = listOf(InstalledKnowledgeGuideInput("AGENTS.md", ".", "Root guide.")),
+        declarations = emptyList(),
+    )
+
 }
