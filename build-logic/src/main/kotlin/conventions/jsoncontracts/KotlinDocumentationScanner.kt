@@ -22,6 +22,7 @@ import org.jetbrains.kotlin.psi.KtTypeAlias
 
 /** Detached syntactic documentation extracted from one parsed Kotlin declaration. */
 data class KotlinDocumentedDeclaration(
+    val declarationPath: String,
     val kind: String,
     val name: String,
     val signature: String,
@@ -36,8 +37,8 @@ sealed interface KotlinDocumentationScan {
 /**
  * PSI-only Kotlin documentation extractor used by build tooling.
  *
- * This parser deliberately performs no name or type resolution. Its signature is source syntax, not compiler identity;
- * the owning Gradle project and source path remain part of the downstream declaration identity.
+ * This parser deliberately performs no name or type resolution. Its signature and owner path are source syntax, not
+ * compiler identity; the owning Gradle project and source path remain part of the downstream declaration identity.
  */
 class KotlinDocumentationScanner : AutoCloseable {
     private val disposable = Disposer.newDisposable("kast-api-knowledge")
@@ -69,7 +70,7 @@ class KotlinDocumentationScanner : AutoCloseable {
             },
         )
         return KotlinDocumentationScan.Accepted(
-            declarations.distinct().sortedWith(compareBy({ it.name }, { it.kind }, { it.signature })),
+            declarations.distinct().sortedWith(compareBy({ it.declarationPath }, { it.kind }, { it.signature })),
         )
     }
 
@@ -81,7 +82,16 @@ private fun KtNamedDeclaration.isKnowledgeDeclaration(): Boolean =
         (this is KtClassOrObject || this is KtNamedFunction || this is KtProperty || this is KtTypeAlias) &&
         !hasModifier(KtTokens.PRIVATE_KEYWORD) &&
         !hasModifier(KtTokens.INTERNAL_KEYWORD) &&
+        !hasHiddenOwner() &&
         !isLocalDeclaration()
+
+private fun KtNamedDeclaration.hasHiddenOwner(): Boolean =
+    generateSequence(parent) { it.parent }
+        .takeWhile { it !is KtFile }
+        .filterIsInstance<KtNamedDeclaration>()
+        .any { owner ->
+            owner.hasModifier(KtTokens.PRIVATE_KEYWORD) || owner.hasModifier(KtTokens.INTERNAL_KEYWORD)
+        }
 
 private fun KtNamedDeclaration.isLocalDeclaration(): Boolean =
     generateSequence(parent) { it.parent }
@@ -90,11 +100,22 @@ private fun KtNamedDeclaration.isLocalDeclaration(): Boolean =
 
 private fun KtNamedDeclaration.detach(): KotlinDocumentedDeclaration =
     KotlinDocumentedDeclaration(
+        declarationPath = syntacticPath(),
         kind = declarationKind(),
         name = requireNotNull(name),
         signature = declarationSignature(),
         documentation = renderKDoc(docComment?.text.orEmpty()),
     )
+
+private fun KtNamedDeclaration.syntacticPath(): String =
+    (
+        generateSequence(parent) { it.parent }
+            .takeWhile { it !is KtFile }
+            .filterIsInstance<KtNamedDeclaration>()
+            .mapNotNull(KtNamedDeclaration::getName)
+            .toList()
+            .asReversed() + requireNotNull(name)
+    ).joinToString(".")
 
 private fun KtNamedDeclaration.declarationKind(): String =
     when (this) {
