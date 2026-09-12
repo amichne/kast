@@ -42,3 +42,7 @@ Read [configuration](../contracts/configuration.md) for ingress and ownership ru
 `assembleRelease` ships exactly the control tarball and matching hosted-plugin ZIP with checksums. `GenerateControlMetadataTask` derives `ide-host.json` from the actual plugin bytes and build identities; installation verifies the exact name, version, length and digest. No semantic-runtime manifest, isolated indexer payload or topology store is shipped. Installation manifests use schema 2 and `hostedPluginSha256`; lifecycle inspection still admits historical schema-1 records so old owned installations can be retired safely.
 
 Release asset construction, checksums, SBOM inventory, and publication agree on the control and plugin pair. Native acceptance retains private homes and owned processes without creating isolated runtime caches or worker payload stores.
+
+The [installed knowledge contract](../contracts/installed-knowledge.md) describes
+`kast knowledge`, its isolated PSI extraction, verified module ownership and
+scoped guide resources staged with the control product.

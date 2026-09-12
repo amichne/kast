@@ -93,4 +93,15 @@ internal fun knowledgeDeclarationId(card: KnowledgeDeclarationDocument): String 
 internal val KNOWLEDGE_DIGEST = Regex("[0-9a-f]{64}")
 internal val KNOWLEDGE_PROJECT = Regex(":[A-Za-z0-9_-]+(?::[A-Za-z0-9_-]+)*")
 internal val KNOWLEDGE_KINDS =
-    setOf("class", "interface", "enum", "enum-entry", "annotation", "object", "function", "property", "variable", "typealias")
+    setOf(
+        "class",
+        "interface",
+        "enum",
+        "enum-entry",
+        "annotation",
+        "object",
+        "function",
+        "property",
+        "variable",
+        "typealias",
+    )

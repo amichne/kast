@@ -1,14 +1,11 @@
 package support.knowledge
 
 import conventions.jsoncontracts.KnowledgeDocsDocument
-import conventions.jsoncontracts.KnowledgeDeclarationLimitation
 import conventions.jsoncontracts.knowledgeDocsJson
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.json.Json
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.file.ConfigurableFileCollection
@@ -59,22 +56,27 @@ abstract class GenerateInstalledKnowledgeTask : DefaultTask() {
                 "Installed knowledge input contains documentation extraction failures: ${document.failures}"
             )
         }
+        if (docs.schemaVersion != 1) {
+            throw GradleException("Unsupported documentation inventory schema version: ${docs.schemaVersion}")
+        }
         val guides = readGuides(root)
         val modules =
-            moduleProjectPaths.get().distinct().sorted().map { projectPath ->
+            moduleProjectPaths.get().sorted().map { projectPath ->
                 val directory = projectPath.removePrefix(":").replace(':', '/')
                 InstalledKnowledgeModuleInput(
                     projectPath = projectPath,
                     moduleDirectory = directory,
-                    governingGuidePaths = governingGuides(directory + "/", guides),
+                    governingGuidePaths = installedKnowledgeGoverningGuides(directory + "/", guides),
                 )
             }
         val declarations =
             docs.declarations.map { declaration ->
-                val module = owningModule(declaration.sourcePath, modules)
-                    ?: throw GradleException(
-                        "Documentation declaration source is not owned by exactly one verified module: ${declaration.sourcePath}"
+                val module = when (val ownership = installedKnowledgeOwningModule(declaration.sourcePath, modules)) {
+                    is InstalledKnowledgeModuleOwnership.Owned -> ownership.module
+                    is InstalledKnowledgeModuleOwnership.Rejected -> throw GradleException(
+                        "Documentation module ownership rejected: ${ownership.failure} (${declaration.sourcePath})"
                     )
+                }
                 InstalledKnowledgeDeclarationInput(
                     projectPath = module.projectPath,
                     sourcePath = declaration.sourcePath,
@@ -83,7 +85,7 @@ abstract class GenerateInstalledKnowledgeTask : DefaultTask() {
                     name = declaration.name,
                     signature = declaration.signature,
                     documentation = declaration.documentation,
-                    governingGuidePaths = governingGuides(declaration.sourcePath, guides),
+                    governingGuidePaths = installedKnowledgeGoverningGuides(declaration.sourcePath, guides),
                 )
             }
         val result =
@@ -92,13 +94,6 @@ abstract class GenerateInstalledKnowledgeTask : DefaultTask() {
                     productVersion = productVersion.get(),
                     sourceRevision = revision,
                     declarationEvidence = docs.evidence,
-                    declarationLimitations =
-                        listOf(
-                            KnowledgeDeclarationLimitation.KOTLIN_SOURCE_ONLY,
-                            KnowledgeDeclarationLimitation.NAMED_DECLARATIONS_ONLY,
-                            KnowledgeDeclarationLimitation.NO_TYPE_RESOLUTION,
-                            KnowledgeDeclarationLimitation.NO_INHERITED_DOCUMENTATION,
-                        ),
                     modules = modules,
                     guides = guides,
                     declarations = declarations,
@@ -139,25 +134,6 @@ abstract class GenerateInstalledKnowledgeTask : DefaultTask() {
         }
     }
 
-    private fun owningModule(
-        sourcePath: String,
-        modules: List<InstalledKnowledgeModuleInput>,
-    ): InstalledKnowledgeModuleInput? {
-        val candidates =
-            modules.filter { module -> sourcePath.startsWith(module.moduleDirectory.trimEnd('/') + "/") }
-        val longest = candidates.maxOfOrNull { it.moduleDirectory.length } ?: return null
-        return candidates.singleOrNull { it.moduleDirectory.length == longest }
-    }
-
-    private fun governingGuides(
-        sourcePath: String,
-        guides: List<InstalledKnowledgeGuideInput>,
-    ): List<String> =
-        guides.filter { guide ->
-            guide.scopeDirectory == "." || sourcePath.startsWith(guide.scopeDirectory.trimEnd('/') + "/")
-        }.sortedWith(compareBy({ it.scopeDirectory.count { character -> character == '/' } }, { it.path }))
-            .map { it.path }
-
     private fun publish(target: Path, files: Map<String, String>) {
         val parent = target.parent
         Files.createDirectories(parent)
@@ -186,14 +162,6 @@ abstract class GenerateInstalledKnowledgeTask : DefaultTask() {
         if (!Files.exists(root)) return
         Files.walk(root).use { paths ->
             paths.sorted(Comparator.reverseOrder()).forEach(Files::deleteIfExists)
-        }
-    }
-
-    private companion object {
-        val JSON = Json {
-            encodeDefaults = true
-            explicitNulls = true
-            ignoreUnknownKeys = false
         }
     }
 }

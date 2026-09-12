@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-12 | hash: 84e34b1b2d26 -->
+<!-- generated: 2026-09-12 | hash: 7adbf23d11b6 -->
 
 # docs
 
@@ -16,6 +16,8 @@ Contains the public Mintlify documentation source plus scripts and styles for ob
 - [public/change.mdx](public/change.mdx) - controlled change planning, approval, application, and recovery workflow.
 - [public/troubleshooting.mdx](public/troubleshooting.mdx) - support guidance.
 - [render_kast_observer_snapshots.py](render_kast_observer_snapshots.py) - observer snapshot renderer.
+
+- [plans/installed-knowledge-bundle.md](plans/installed-knowledge-bundle.md) - delivered installed knowledge design, evidence limits and verification commands.
 
 ## Subdirectories
 

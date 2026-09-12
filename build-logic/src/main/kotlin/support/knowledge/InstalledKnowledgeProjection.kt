@@ -12,7 +12,6 @@ internal data class InstalledKnowledgeInput(
     val productVersion: String,
     val sourceRevision: String,
     val declarationEvidence: KnowledgeDeclarationEvidence,
-    val declarationLimitations: List<KnowledgeDeclarationLimitation>,
     val modules: List<InstalledKnowledgeModuleInput>,
     val guides: List<InstalledKnowledgeGuideInput>,
     val declarations: List<InstalledKnowledgeDeclarationInput>,
@@ -47,6 +46,14 @@ internal sealed interface InstalledKnowledgeProjectionResult {
 }
 
 internal sealed interface InstalledKnowledgeProjectionFailure {
+    data object InventoryTooLargeOrEmpty : InstalledKnowledgeProjectionFailure
+    data object MissingRootGuide : InstalledKnowledgeProjectionFailure
+    data class InvalidModule(val projectPath: String) : InstalledKnowledgeProjectionFailure
+    data class InvalidGuide(val path: String) : InstalledKnowledgeProjectionFailure
+    data class InvalidDeclaration(val sourcePath: String) : InstalledKnowledgeProjectionFailure
+    data class IncorrectGuidance(val owner: String) : InstalledKnowledgeProjectionFailure
+    data class DuplicateResource(val resource: String) : InstalledKnowledgeProjectionFailure
+    data class ResourceTooLarge(val resource: String) : InstalledKnowledgeProjectionFailure
     data class DuplicateModule(val projectPath: String) : InstalledKnowledgeProjectionFailure
     data class DuplicateGuide(val path: String) : InstalledKnowledgeProjectionFailure
     data class UnknownGuide(val projectPath: String, val guidePath: String) : InstalledKnowledgeProjectionFailure
@@ -92,10 +99,13 @@ internal object InstalledKnowledgeProjection {
             failures += InstalledKnowledgeProjectionFailure.DuplicateDeclaration(it)
         }
         if (failures.isNotEmpty()) return InstalledKnowledgeProjectionResult.Rejected(failures.distinct())
+        failures += validateInstalledKnowledge(input)
+        if (failures.isNotEmpty()) return InstalledKnowledgeProjectionResult.Rejected(failures)
+
 
         val files = linkedMapOf<String, String>()
         input.guides.sortedBy { it.path }.forEach { guide ->
-            val resource = guideResource(guide.path)
+            val resource = installedKnowledgeGuideResource(guide.path)
             files[resource] = json.encodeToString(
                 InstalledKnowledgeGuide(
                     path = guide.path,
@@ -110,14 +120,14 @@ internal object InstalledKnowledgeProjection {
             val moduleResource = moduleResource(module.projectPath)
             val moduleGuides = module.governingGuidePaths.sorted().map { guidePath ->
                 val guide = requireNotNull(guides[guidePath])
-                InstalledKnowledgeGuideReference(guide.path, sha256(guide.content), guideResource(guide.path))
+                InstalledKnowledgeGuideReference(guide.path, sha256(guide.content), installedKnowledgeGuideResource(guide.path))
             }
             val declarations = input.declarations.filter { it.projectPath == module.projectPath }
                 .sortedWith(compareBy({ it.declarationPath }, { it.signature }, { it.sourcePath }))
                 .map { declaration ->
                     val id = declarationId(declaration)
                     val resource = declarationResource(module.projectPath, id)
-                    val declarationGuides = declaration.governingGuidePaths.sorted().map(::guideResource)
+                    val declarationGuides = declaration.governingGuidePaths.sorted().map(::installedKnowledgeGuideResource)
                     files[resource] = json.encodeToString(
                         InstalledKnowledgeDeclaration(
                             id = id,
@@ -156,13 +166,17 @@ internal object InstalledKnowledgeProjection {
                 productVersion = input.productVersion,
                 sourceRevision = input.sourceRevision,
                 declarationEvidence = input.declarationEvidence,
-                declarationLimitations = input.declarationLimitations.sorted(),
+                declarationLimitations = KnowledgeDeclarationLimitation.entries.sorted(),
                 modules = moduleDescriptors,
                 guides = input.guides.sortedBy { it.path }.map { guide ->
-                    InstalledKnowledgeGuideReference(guide.path, sha256(guide.content), guideResource(guide.path))
+                    InstalledKnowledgeGuideReference(guide.path, sha256(guide.content), installedKnowledgeGuideResource(guide.path))
                 },
             ),
         ) + "\n"
+        val oversized = files.filterValues { it.encodeToByteArray().size > INSTALLED_KNOWLEDGE_MAX_RESOURCE_BYTES }.keys
+        if (oversized.isNotEmpty()) {
+            return InstalledKnowledgeProjectionResult.Rejected(oversized.map(InstalledKnowledgeProjectionFailure::ResourceTooLarge))
+        }
         return InstalledKnowledgeProjectionResult.Complete(files.toSortedMap())
     }
 
@@ -177,9 +191,6 @@ internal object InstalledKnowledgeProjection {
 
     private fun declarationResource(projectPath: String, id: String): String =
         "modules/${projectPath.removePrefix(":").replace(':', '/')}/declarations/$id.json"
-
-    private fun guideResource(path: String): String =
-        "guides/${path.removeSuffix("AGENTS.md").trimEnd('/').ifEmpty { "root" }}.json"
 
     private fun firstParagraph(documentation: String): String =
         documentation.trim().split(Regex("\\n\\s*\\n"), limit = 2).firstOrNull().orEmpty()

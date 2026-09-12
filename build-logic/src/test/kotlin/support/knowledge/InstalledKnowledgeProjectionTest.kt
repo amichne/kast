@@ -2,7 +2,6 @@ package support.knowledge
 
 import conventions.jsoncontracts.KnowledgeDeclarationKind
 import conventions.jsoncontracts.KnowledgeDeclarationEvidence
-import conventions.jsoncontracts.KnowledgeDeclarationLimitation
 
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -19,7 +18,6 @@ class InstalledKnowledgeProjectionTest {
                 productVersion = "1.0.0",
                 sourceRevision = "0123456789012345678901234567890123456789",
                 declarationEvidence = KnowledgeDeclarationEvidence.KOTLIN_PSI_SYNTAX,
-                declarationLimitations = listOf(KnowledgeDeclarationLimitation.NO_TYPE_RESOLUTION),
                 modules = listOf(
                     InstalledKnowledgeModuleInput(":kernel", "kernel", listOf("AGENTS.md", "kernel/AGENTS.md")),
                 ),
@@ -76,7 +74,6 @@ class InstalledKnowledgeProjectionTest {
                 productVersion = "1.0.0",
                 sourceRevision = "0123456789012345678901234567890123456789",
                 declarationEvidence = KnowledgeDeclarationEvidence.KOTLIN_PSI_SYNTAX,
-                declarationLimitations = emptyList(),
                 modules = listOf(InstalledKnowledgeModuleInput(":kernel", "kernel", listOf("AGENTS.md"))),
                 guides = listOf(InstalledKnowledgeGuideInput("AGENTS.md", ".", "root")),
                 declarations = listOf(common, common.copy(declarationPath = "Second.read")),
@@ -94,7 +91,6 @@ class InstalledKnowledgeProjectionTest {
                 productVersion = "1.0.0",
                 sourceRevision = "0123456789012345678901234567890123456789",
                 declarationEvidence = KnowledgeDeclarationEvidence.KOTLIN_PSI_SYNTAX,
-                declarationLimitations = emptyList(),
                 modules = emptyList(),
                 guides = emptyList(),
                 declarations = listOf(
@@ -122,7 +118,7 @@ class InstalledKnowledgeProjectionTest {
     fun `projection is byte deterministic across input order`() {
         val input = fixture()
         val first = InstalledKnowledgeProjection.render(input)
-        val second = InstalledKnowledgeProjection.render(input.copy(guides = input.guides.reversed()))
+        val second = InstalledKnowledgeProjection.render(input.copy(guides = input.guides.reversed(), declarations = input.declarations.reversed()))
         assertEquals(first, second)
     }
 
@@ -153,14 +149,38 @@ class InstalledKnowledgeProjectionTest {
         assertInstanceOf(InstalledKnowledgeProjectionResult.Rejected::class.java, result)
     }
 
+    @Test
+    fun `nested guides apply only to the declaration source directory`() {
+        val input = fixture()
+        val guides = input.guides + InstalledKnowledgeGuideInput("kernel/src/main/kotlin/nested/AGENTS.md", "kernel/src/main/kotlin/nested", "Nested")
+        assertEquals(listOf("AGENTS.md", "kernel/AGENTS.md"), installedKnowledgeGoverningGuides("kernel/", guides))
+        assertEquals(
+            listOf("AGENTS.md", "kernel/AGENTS.md", "kernel/src/main/kotlin/nested/AGENTS.md"),
+            installedKnowledgeGoverningGuides("kernel/src/main/kotlin/nested/Example.kt", guides),
+        )
+        assertEquals(listOf("AGENTS.md", "kernel/AGENTS.md"), installedKnowledgeGoverningGuides("kernel/src/main/kotlin/peer/Example.kt", guides))
+        assertInstanceOf(InstalledKnowledgeModuleOwnership.Owned::class.java, installedKnowledgeOwningModule("kernel/src/main/kotlin/Example.kt", input.modules))
+        assertEquals(
+            InstalledKnowledgeModuleOwnership.Rejected(InstalledKnowledgeOwnershipFailure.NO_MODULE),
+            installedKnowledgeOwningModule("outside/Example.kt", input.modules),
+        )
+    }
+
     private fun fixture() = InstalledKnowledgeInput(
         productVersion = "1.0.0",
         sourceRevision = "0123456789012345678901234567890123456789",
         declarationEvidence = KnowledgeDeclarationEvidence.KOTLIN_PSI_SYNTAX,
-        declarationLimitations = KnowledgeDeclarationLimitation.entries,
-        modules = listOf(InstalledKnowledgeModuleInput(":kernel", "kernel", listOf("AGENTS.md"))),
-        guides = listOf(InstalledKnowledgeGuideInput("AGENTS.md", ".", "Root guide.")),
-        declarations = emptyList(),
+        modules = listOf(InstalledKnowledgeModuleInput(":kernel", "kernel", listOf("AGENTS.md", "kernel/AGENTS.md"))),
+        guides = listOf(
+            InstalledKnowledgeGuideInput("AGENTS.md", ".", "Root guide."),
+            InstalledKnowledgeGuideInput("kernel/AGENTS.md", "kernel", "Kernel guide."),
+        ),
+        declarations = listOf("First", "Second").map { name ->
+            InstalledKnowledgeDeclarationInput(
+                ":kernel", "kernel/src/main/kotlin/Example.kt", name, KnowledgeDeclarationKind.CLASS,
+                name, "class $name", "Document $name.", listOf("AGENTS.md", "kernel/AGENTS.md"),
+            )
+        },
     )
 
 }
