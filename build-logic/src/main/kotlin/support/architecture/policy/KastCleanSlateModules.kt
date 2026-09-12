@@ -58,13 +58,7 @@ internal object KastCleanSlateModules {
             ModuleId.SYMBOL_CONTRACT,
             ModuleId.WORKSPACE_CONTRACT,
         ),
-        target(
-            ModuleId.TOPOLOGY_CONTRACT,
-            ModuleRole.CONTRACT,
-            ModuleId.KERNEL,
-            ModuleId.WORKSPACE_CONTRACT,
-            ModuleId.SYMBOL_CONTRACT,
-        ),
+        ModulePolicy(ModuleId.TOPOLOGY_CONTRACT, ModuleLifecycle.RETIRED, ModuleRole.CONTRACT, emptySet(), emptySet()),
         target(
             ModuleId.DIAGNOSTIC_CONTRACT,
             ModuleRole.CONTRACT,
@@ -107,37 +101,8 @@ internal object KastCleanSlateModules {
             ModuleId.PROTOCOL_CONTRACT,
             ModuleId.PROTOCOL_REGISTRY,
         ),
-        target(
-            ModuleId.WORKSPACE_SERVICE,
-            ModuleRole.SERVICE,
-            ModuleId.WORKSPACE_CONTRACT,
-            ModuleId.EVIDENCE_CONTRACT,
-            effects = setOf(ForbiddenEffect.WORKSPACE_TRANSITION),
-        ),
-        target(
-            ModuleId.WORKSPACE_INTELLIJ,
-            ModuleRole.WORKSPACE_ADAPTER,
-            ModuleId.WORKSPACE_CONTRACT,
-            ModuleId.DISTRIBUTION_CONTRACT,
-            ModuleId.DISTRIBUTION_MANAGED, // Private network trust materialization before Gradle import.
-            ModuleId.WORKSPACE_INTELLIJ_READ,
-            effects = setOf(
-                ForbiddenEffect.INTELLIJ_PLATFORM,
-                ForbiddenEffect.GRADLE_PLATFORM,
-                ForbiddenEffect.GRADLE_IMPORT,
-                ForbiddenEffect.GRAPH_BUILD,
-            ),
-            scopedEffects = mapOf(
-                ForbiddenEffect.FILESYSTEM_WRITE to setOf(
-                    JvmClassName(
-                        "io/github/amichne/kast/workspace/intellij/InstalledIndexBootstrap\$Companion",
-                    ),
-                    JvmClassName(
-                        "io/github/amichne/kast/workspace/intellij/InstalledIndexBootstrapKt",
-                    ),
-                ),
-            ),
-        ),
+        ModulePolicy(ModuleId.WORKSPACE_SERVICE, ModuleLifecycle.RETIRED, ModuleRole.SERVICE, emptySet(), emptySet()),
+        ModulePolicy(ModuleId.WORKSPACE_INTELLIJ, ModuleLifecycle.RETIRED, ModuleRole.WORKSPACE_ADAPTER, emptySet(), emptySet()),
         target(
             ModuleId.SYMBOL_SERVICE,
             ModuleRole.SERVICE,
@@ -197,31 +162,9 @@ internal object KastCleanSlateModules {
             ModuleId.TRAVERSAL_CONTRACT,
             ModuleId.RELATION_CONTRACT,
         ),
-        target(
-            ModuleId.TOPOLOGY_BUILD,
-            ModuleRole.SERVICE,
-            ModuleId.TOPOLOGY_CONTRACT,
-            ModuleId.WORKSPACE_CONTRACT,
-            effects = setOf(ForbiddenEffect.TOPOLOGY_BUILD_AUTHORITY),
-        ),
-        target(
-            ModuleId.TOPOLOGY_SERVICE,
-            ModuleRole.SERVICE,
-            ModuleId.TOPOLOGY_CONTRACT,
-        ),
-        target(
-            ModuleId.TOPOLOGY_INTELLIJ,
-            ModuleRole.INTELLIJ_READ_ADAPTER,
-            ModuleId.PROTOCOL_CONTRACT,
-            ModuleId.TOPOLOGY_CONTRACT,
-            ModuleId.WORKSPACE_CONTRACT,
-            ModuleId.WORKSPACE_INTELLIJ_READ,
-            ModuleId.SYMBOL_CONTRACT,
-            effects = setOf(
-                ForbiddenEffect.INTELLIJ_PLATFORM,
-                ForbiddenEffect.TOPOLOGY_SOURCE_ROOT_VFS_SYNCHRONIZATION,
-            ),
-        ),
+        ModulePolicy(ModuleId.TOPOLOGY_BUILD, ModuleLifecycle.RETIRED, ModuleRole.SERVICE, emptySet(), emptySet()),
+        ModulePolicy(ModuleId.TOPOLOGY_SERVICE, ModuleLifecycle.RETIRED, ModuleRole.SERVICE, emptySet(), emptySet()),
+        ModulePolicy(ModuleId.TOPOLOGY_INTELLIJ, ModuleLifecycle.RETIRED, ModuleRole.INTELLIJ_READ_ADAPTER, emptySet(), emptySet()),
         target(
             ModuleId.DIAGNOSTIC_SERVICE,
             ModuleRole.SERVICE,
@@ -296,36 +239,15 @@ internal object KastCleanSlateModules {
             ModuleId.CHANGE_CONTRACT,
             ModuleId.CHANGE_APPLY,
             ModuleId.CHANGE_VERIFY,
-            ModuleId.TOPOLOGY_CONTRACT,
             ModuleId.RELATION_CONTRACT,
             ModuleId.SYMBOL_CONTRACT,
             effects = setOf(
                 ForbiddenEffect.JDBC,
                 ForbiddenEffect.FILESYSTEM_WRITE,
-                ForbiddenEffect.TOPOLOGY_PUBLICATION,
             ),
         ),
-        target(
-            ModuleId.RUNTIME_SERVER,
-            ModuleRole.TRANSPORT,
-            ModuleId.PROTOCOL_CONTRACT,
-            ModuleId.PROTOCOL_REGISTRY,
-            ModuleId.PROTOCOL_WIRE,
-            ModuleId.WORKSPACE_CONTRACT,
-            ModuleId.SYMBOL_CONTRACT,
-            ModuleId.RELATION_CONTRACT,
-            ModuleId.TRAVERSAL_CONTRACT,
-            ModuleId.TOPOLOGY_CONTRACT,
-            ModuleId.DIAGNOSTIC_CONTRACT,
-            ModuleId.CHANGE_CONTRACT,
-        ),
-        target(
-            ModuleId.RUNTIME_TELEMETRY,
-            ModuleRole.FILESYSTEM_WRITE_ADAPTER,
-            ModuleId.KERNEL,
-            ModuleId.PROTOCOL_WIRE,
-            effects = setOf(ForbiddenEffect.FILESYSTEM_WRITE),
-        ),
+        ModulePolicy(ModuleId.RUNTIME_SERVER, ModuleLifecycle.RETIRED, ModuleRole.TRANSPORT, emptySet(), emptySet()),
+        ModulePolicy(ModuleId.RUNTIME_TELEMETRY, ModuleLifecycle.RETIRED, ModuleRole.FILESYSTEM_WRITE_ADAPTER, emptySet(), emptySet()),
         target(
             ModuleId.APP_SERVER,
             ModuleRole.APP_SERVER,
@@ -339,8 +261,6 @@ internal object KastCleanSlateModules {
                     JvmClassName("io/github/amichne/kast/appserver/InstalledAppServerManager"),
                     JvmClassName("io/github/amichne/kast/appserver/BrokerInstallationState"),
                     JvmClassName("io/github/amichne/kast/appserver/InstalledCoordinatorConfiguration"),
-                    JvmClassName("io/github/amichne/kast/appserver/runtime/WorkspaceRuntimeControl"),
-                    JvmClassName("io/github/amichne/kast/appserver/runtime/WorkspaceRuntimeControl\$Companion"),
                     JvmClassName("io/github/amichne/kast/appserver/WorkspaceEnrollmentStore"),
                     JvmClassName("io/github/amichne/kast/appserver/runtime/InvocationFence"),
                     JvmClassName(
@@ -376,19 +296,7 @@ internal object KastCleanSlateModules {
             effects = setOf(ForbiddenEffect.PROCESS_CONTROL),
             scopedEffects = mapOf(
                 ForbiddenEffect.FILESYSTEM_WRITE to setOf(
-                    JvmClassName("io/github/amichne/kast/cli/ApfsCoWIndexSeedCloner"),
                     JvmClassName("io/github/amichne/kast/cli/ide/FilesystemBrokerTrustRegistrar"),
-                    JvmClassName("io/github/amichne/kast/cli/FilesystemRootSidecarCacheLifecycle"),
-                    JvmClassName("io/github/amichne/kast/cli/FilesystemSidecarCachePreparer"),
-                    JvmClassName("io/github/amichne/kast/cli/IndexSeedFilesystemService"),
-                    JvmClassName("io/github/amichne/kast/cli/IndexSeedFilesystemServiceKt"),
-                    JvmClassName("io/github/amichne/kast/cli/InstalledSidecarRuntimeDemandKt"),
-                    JvmClassName("io/github/amichne/kast/cli/PosixRuntimeEndpointArtifacts"),
-                    JvmClassName("io/github/amichne/kast/cli/SidecarCacheIdentityFile"),
-                    JvmClassName("io/github/amichne/kast/cli/SidecarCacheStateFile"),
-                    JvmClassName(
-                        "io/github/amichne/kast/cli/bootstrap/SidecarBootstrapAttemptLock",
-                    ),
                     JvmClassName(
                         "io/github/amichne/kast/cli/installation/InstallationWorkflow",
                     ),
@@ -415,7 +323,7 @@ internal object KastCleanSlateModules {
                 ForbiddenEffect.PROJECT_READ_EPOCH_AUTHORITY,
             ),
         ),
-        runtimeComposition(),
+        ModulePolicy(ModuleId.RUNTIME_COMPOSITION, ModuleLifecycle.RETIRED, ModuleRole.COMPOSITION, emptySet(), emptySet()),
         target(
             ModuleId.RUNTIME_HOSTED,
             ModuleRole.IDE_HOST,
@@ -465,36 +373,8 @@ internal object KastCleanSlateModules {
                 ForbiddenEffect.SOURCE_CONTENT_HASH to setOf(JvmClassName("io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint\$Companion")),
             ),
         ),
-        target(
-            ModuleId.INDEXER,
-            ModuleRole.INDEXER_HOST,
-            ModuleId.RUNTIME_COMPOSITION,
-            ModuleId.PROTOCOL_REGISTRY,
-            ModuleId.DISTRIBUTION_MANAGED, // JSSE bootstrap precedes IntelliJ class loading.
-            ModuleId.DISTRIBUTION_CONTRACT,
-            effects = setOf(
-                ForbiddenEffect.INTELLIJ_PLATFORM,
-                ForbiddenEffect.FILESYSTEM_WRITE,
-                ForbiddenEffect.UDS_BIND,
-                ForbiddenEffect.ENDPOINT_DESCRIPTOR_WRITE,
-            ),
-        ),
+        ModulePolicy(ModuleId.INDEXER, ModuleLifecycle.RETIRED, ModuleRole.INDEXER_HOST, emptySet(), emptySet()),
     )
-
-    private fun runtimeComposition(): ModulePolicy {
-        val excluded = setOf(
-            ModuleId.APP_SERVER,
-            ModuleId.CLI,
-            ModuleId.INDEXER,
-            ModuleId.RUNTIME_COMPOSITION,
-            ModuleId.RUNTIME_HOSTED,
-        )
-        return target(
-            ModuleId.RUNTIME_COMPOSITION,
-            ModuleRole.COMPOSITION,
-            *(targetIds() - excluded).toTypedArray(),
-        )
-    }
 
     private fun target(
         id: ModuleId,
@@ -524,51 +404,4 @@ internal object KastCleanSlateModules {
         allowedEffects = setOf(ForbiddenEffect.INTELLIJ_PLATFORM) + additionalEffects,
     )
 
-    private fun targetIds(): Set<ModuleId> = setOf(
-        ModuleId.KERNEL,
-        ModuleId.QUERY_PROTOCOL,
-        ModuleId.DISTRIBUTION_CONTRACT,
-        ModuleId.DISTRIBUTION_MANAGED,
-        ModuleId.PROTOCOL_CONTRACT,
-        ModuleId.PROTOCOL_REGISTRY,
-        ModuleId.PROTOCOL_WIRE,
-        ModuleId.WORKSPACE_CONTRACT,
-        ModuleId.WORKSPACE_SERVICE,
-        ModuleId.WORKSPACE_INTELLIJ,
-        ModuleId.WORKSPACE_INTELLIJ_READ,
-        ModuleId.SYMBOL_CONTRACT,
-        ModuleId.SYMBOL_SERVICE,
-        ModuleId.SYMBOL_INTELLIJ,
-        ModuleId.SOURCE_CONTRACT,
-        ModuleId.SOURCE_SERVICE,
-        ModuleId.SOURCE_INTELLIJ,
-        ModuleId.RELATION_CONTRACT,
-        ModuleId.RELATION_SERVICE,
-        ModuleId.RELATION_INTELLIJ,
-        ModuleId.TRAVERSAL_CONTRACT,
-        ModuleId.TRAVERSAL_SERVICE,
-        ModuleId.TOPOLOGY_CONTRACT,
-        ModuleId.TOPOLOGY_BUILD,
-        ModuleId.TOPOLOGY_SERVICE,
-        ModuleId.TOPOLOGY_INTELLIJ,
-        ModuleId.DIAGNOSTIC_CONTRACT,
-        ModuleId.DIAGNOSTIC_SERVICE,
-        ModuleId.DIAGNOSTIC_INTELLIJ,
-        ModuleId.CHANGE_CONTRACT,
-        ModuleId.CHANGE_PLAN,
-        ModuleId.CHANGE_PROTOCOL,
-        ModuleId.CHANGE_APPLY,
-        ModuleId.CHANGE_VERIFY,
-        ModuleId.CHANGE_RECOVERY,
-        ModuleId.CHANGE_INTELLIJ,
-        ModuleId.EVIDENCE_CONTRACT,
-        ModuleId.EVIDENCE_SQLITE,
-        ModuleId.RUNTIME_SERVER,
-        ModuleId.RUNTIME_HOSTED,
-        ModuleId.RUNTIME_TELEMETRY,
-        ModuleId.RUNTIME_COMPOSITION,
-        ModuleId.APP_SERVER,
-        ModuleId.CLI,
-        ModuleId.INDEXER,
-    )
 }

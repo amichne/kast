@@ -237,6 +237,8 @@ enum class RelationContinuationDocumentFailure {
 @Serializable(with = RelationContinuationDocumentSerializer::class)
 value class RelationContinuationDocument private constructor(val value: String) {
     companion object {
+        const val TOKEN_PATTERN: String = "^relation-continuation:v[12]:"
+
         fun parse(raw: String): Refinement<RelationContinuationDocument, RelationContinuationDocumentFailure> {
             val parts = raw.split(':')
             if (parts.firstOrNull() != RELATION_CONTINUATION_TOKEN_FAMILY) {
@@ -275,7 +277,7 @@ internal object RelationContinuationDocumentSerializer :
         serialName = "io.github.amichne.kast.protocol.contract.RelationContinuationDocument",
         minimumLength = 1,
         maximumLength = MAX_PROTOCOL_TEXT_LENGTH,
-        pattern = "^relation-continuation:v1:",
+        pattern = RelationContinuationDocument.TOKEN_PATTERN,
     ) {
     override fun raw(value: RelationContinuationDocument): String = value.value
 

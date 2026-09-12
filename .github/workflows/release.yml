@@ -70,7 +70,9 @@ jobs:
           gradle-home-cache-includes: |
             caches
             notifications
-            kast/indexer-idea-distributions
+            kast/workspace-intellij-read-idea-distributions
+            kast/symbol-intellij-idea-distributions
+            kast/change-intellij-idea-distributions
 
       - name: Resolve release version
         id: release_version

@@ -117,22 +117,10 @@ private constructor(private val connections: InitializedSqliteMutationRecoveryCo
         }
 
     companion object {
-        fun open(location: MutationDatabaseLocation): SqliteLiveChangePlanStoreOpenResult {
-            val path =
-                prepareHostedDatabasePath(location.valueAtSqliteBoundary())
-                    ?: return SqliteLiveChangePlanStoreOpenResult.Rejected(
-                        LiveChangePlanStoreFailure.STORAGE_UNAVAILABLE
-                    )
-            val database =
-                when (val admitted = SqliteMutationRecoveryDatabase.admit(path)) {
-                    is Refinement.Refined -> admitted.value
-                    is Refinement.Rejected ->
-                        return SqliteLiveChangePlanStoreOpenResult.Rejected(
-                            LiveChangePlanStoreFailure.STORAGE_UNAVAILABLE
-                        )
-                }
-            return try {
-                val connections = SqliteMutationRecoveryConnections(database).initialize()
+        internal fun retain(
+            connections: InitializedSqliteMutationRecoveryConnections
+        ): SqliteLiveChangePlanStoreOpenResult =
+            try {
                 connections.use { connection ->
                     connection.createStatement().use { statement ->
                         statement.execute(
@@ -152,7 +140,32 @@ private constructor(private val connections: InitializedSqliteMutationRecoveryCo
                         )
                     }
                 }
+
                 SqliteLiveChangePlanStoreOpenResult.Opened(SqliteLiveChangePlanStore(connections))
+            } catch (_: java.sql.SQLException) {
+                SqliteLiveChangePlanStoreOpenResult.Rejected(LiveChangePlanStoreFailure.STORAGE_UNAVAILABLE)
+            }
+
+        fun open(location: MutationDatabaseLocation): SqliteLiveChangePlanStoreOpenResult {
+            val path =
+                when (val result = admitHostedDatabasePath(location.valueAtSqliteBoundary())) {
+                    is Refinement.Refined -> result.value
+                    is Refinement.Rejected ->
+                        return SqliteLiveChangePlanStoreOpenResult.Rejected(
+                            LiveChangePlanStoreFailure.STORAGE_UNAVAILABLE
+                        )
+                }
+            val database =
+                when (val admitted = SqliteMutationRecoveryDatabase.admit(path)) {
+                    is Refinement.Refined -> admitted.value
+                    is Refinement.Rejected ->
+                        return SqliteLiveChangePlanStoreOpenResult.Rejected(
+                            LiveChangePlanStoreFailure.STORAGE_UNAVAILABLE
+                        )
+                }
+            return try {
+                val connections = SqliteMutationRecoveryConnections(database).initialize()
+                retain(connections)
             } catch (_: Exception) {
                 SqliteLiveChangePlanStoreOpenResult.Rejected(LiveChangePlanStoreFailure.STORAGE_UNAVAILABLE)
             }

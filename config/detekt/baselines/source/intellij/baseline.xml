@@ -17,7 +17,6 @@
     <ID>CyclomaticComplexMethod:IntellijSourceReadPort.kt:IntellijSelectedSourceCapture.Companion$fun create: Refinement&lt;IntellijSelectedSourceCapture, IntellijSourceReadRejection></ID>
     <ID>CyclomaticComplexMethod:IntellijSourceReadPort.kt:IntellijSourceReadPort$override suspend fun read: SourceReadResult</ID>
     <ID>CyclomaticComplexMethod:IntellijSourceScopeAdmission.kt:internal fun admitsSourceReadScope: Boolean</ID>
-    <ID>CyclomaticComplexMethod:LiveIntellijSourceRead.kt:LiveIntellijSourceReadAccess$private fun captureInReadAction: IntellijSourceReadAccessResult</ID>
     <ID>CyclomaticComplexMethod:LiveIntellijSourceRead.kt:LiveIntellijSourceRegionAccess$private fun liveDocument: LiveSourceDocumentAdmission</ID>
     <ID>CyclomaticComplexMethod:LiveIntellijSourceRead.kt:NativeSourceEntityEnumerator$private fun visit</ID>
     <ID>CyclomaticComplexMethod:LiveIntellijSourceRead.kt:NativeSourceEntityEnumerator$private fun visitParameter</ID>
@@ -40,6 +39,5 @@
     <ID>LoopWithTooManyJumpStatements:IntellijSourceReadPort.kt:IntellijSourceEntityPage.Companion$while</ID>
     <ID>MatchingDeclarationName:LiveIntellijSourceRead.kt:LiveIntellijSourceRegionAccess : IntellijSourceRegionAccess</ID>
     <ID>TooGenericExceptionCaught:LiveIntellijSourceRead.kt:LiveIntellijSourceRegionAccess$failure: RuntimeException</ID>
-    <ID>UnusedPrivateClass:LiveIntellijSourceRead.kt:LiveIntellijSourceReadAccess : IntellijSourceReadAccess</ID>
   </CurrentIssues>
 </SmellBaseline>

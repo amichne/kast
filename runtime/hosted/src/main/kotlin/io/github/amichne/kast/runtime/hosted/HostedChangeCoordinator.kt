@@ -6,10 +6,8 @@ import io.github.amichne.kast.change.apply.LiveChangeEffect
 import io.github.amichne.kast.change.apply.VerifiedLivePlanApproval
 import io.github.amichne.kast.change.contract.ChangePlanIdentity
 import io.github.amichne.kast.change.contract.LiveAddDeclarationChangePlan
-import io.github.amichne.kast.change.contract.LiveChangePlanLookup
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
-import io.github.amichne.kast.protocol.wire.WireEncoding
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryService
 import java.nio.file.Path
@@ -23,7 +21,7 @@ internal class HostedChangeCoordinator(private val project: Project, private val
     private val approvals =
         HostedChangeApprovals(query.hostLifetime) { loadHostedApprovalKey(Path.of(System.getProperty("user.home"))) }
 
-    fun prepare(request: HostedRequest.PrepareApproval): String =
+    fun prepare(request: HostedRequest.PrepareApproval): HostedResponse =
         when (val loaded = load(request.root, request.identity)) {
             is Refinement.Refined ->
                 prepareHostedApprovalResponse(
@@ -32,10 +30,10 @@ internal class HostedChangeCoordinator(private val project: Project, private val
                     owner = query.hostLifetime,
                     approvals = approvals,
                 )
-            is Refinement.Rejected -> HostedRequests.rejected(loaded.failure)
+            is Refinement.Rejected -> HostedResponse.ChangeRejected(loaded.failure)
         }
 
-    suspend fun apply(request: HostedRequest.ApplyChange): String = mutations.withLock {
+    suspend fun apply(request: HostedRequest.ApplyChange): HostedResponse = mutations.withLock {
         val context =
             when (
                 val admitted =
@@ -47,7 +45,7 @@ internal class HostedChangeCoordinator(private val project: Project, private val
                     )
             ) {
                 is Refinement.Refined -> admitted.value
-                is Refinement.Rejected -> return@withLock HostedRequests.rejected(admitted.failure)
+                is Refinement.Rejected -> return@withLock HostedResponse.ChangeRejected(admitted.failure)
             }
         val result =
             applyHostedChange(
@@ -57,10 +55,10 @@ internal class HostedChangeCoordinator(private val project: Project, private val
                 plan = context.loaded.plan,
                 approval = context.approval,
             )
-        encode(CanonicalOperationWireBindings.changeApply.encodeOutcome(result))
+        HostedResponse.Canonical.encode(CanonicalOperationWireBindings.changeApply, result)
     }
 
-    suspend fun recover(request: HostedRequest.RecoverChange): String = mutations.withLock {
+    suspend fun recover(request: HostedRequest.RecoverChange): HostedResponse = mutations.withLock {
         val context =
             when (
                 val admitted =
@@ -72,7 +70,7 @@ internal class HostedChangeCoordinator(private val project: Project, private val
                     )
             ) {
                 is Refinement.Refined -> admitted.value
-                is Refinement.Rejected -> return@withLock HostedRequests.rejected(admitted.failure)
+                is Refinement.Rejected -> return@withLock HostedResponse.ChangeRejected(admitted.failure)
             }
         val result =
             recoverHostedChange(
@@ -82,7 +80,7 @@ internal class HostedChangeCoordinator(private val project: Project, private val
                 plan = context.loaded.plan,
                 approval = context.approval,
             )
-        encode(CanonicalOperationWireBindings.changeRecover.encodeOutcome(result))
+        HostedResponse.Canonical.encode(CanonicalOperationWireBindings.changeRecover, result)
     }
 
     private fun admit(
@@ -90,9 +88,10 @@ internal class HostedChangeCoordinator(private val project: Project, private val
         identity: String,
         effect: LiveChangeEffect,
         assertion: String,
-    ): Refinement<ApprovedHostedChange, HostedEndpointFailure> {
+    ): Refinement<ApprovedHostedChange, HostedChangeFailure> {
         val parsed =
-            ChangePlanIdentity.parse(identity) ?: return Refinement.Rejected(HostedEndpointFailure.INVALID_REQUEST)
+            ChangePlanIdentity.parse(identity)
+                ?: return Refinement.Rejected(HostedChangeFailure.Endpoint(HostedEndpointFailure.INVALID_REQUEST))
         val loaded =
             when (val result = load(root, parsed)) {
                 is Refinement.Refined -> result.value
@@ -103,7 +102,7 @@ internal class HostedChangeCoordinator(private val project: Project, private val
             is Refinement.Rejected -> {
                 Logger.getInstance(HostedChangeCoordinator::class.java)
                     .info("kast_change stage=APPROVAL outcome=REJECTED failure=${approved.failure}")
-                Refinement.Rejected(HostedEndpointFailure.APPROVAL_REJECTED)
+                Refinement.Rejected(HostedChangeFailure.Endpoint(HostedEndpointFailure.APPROVAL_REJECTED))
             }
         }
     }
@@ -111,20 +110,21 @@ internal class HostedChangeCoordinator(private val project: Project, private val
     private fun load(
         root: CanonicalWorkspaceRoot,
         identity: ChangePlanIdentity,
-    ): Refinement<LoadedHostedChange, HostedEndpointFailure> {
+    ): Refinement<LoadedHostedChange, HostedChangeFailure> {
         val resources =
             when (val opened = HostedChangeResources.open(root)) {
                 is Refinement.Refined -> opened.value
                 is Refinement.Rejected -> return opened
             }
         val plan =
-            when (val loaded = resources.plans.loadPlan(identity)) {
-                is LiveChangePlanLookup.Found -> loaded.plan
-                LiveChangePlanLookup.Missing -> return Refinement.Rejected(HostedEndpointFailure.INVALID_REQUEST)
-                is LiveChangePlanLookup.Rejected -> return Refinement.Rejected(HostedEndpointFailure.IO_UNAVAILABLE)
+            when (
+                val loaded =
+                    admitLoadedHostedPlan(root, resources.plans.loadPlan(identity))
+                        .observed(HostedChangeStorageStage.PLAN_LOOKUP, HostedChangeStorageObserver.Logger)
+            ) {
+                is Refinement.Refined -> loaded.value
+                is Refinement.Rejected -> return loaded
             }
-        if (plan.basis.observation.reference.workspaceRoot != root)
-            return Refinement.Rejected(HostedEndpointFailure.WRONG_ROOT)
         return Refinement.Refined(LoadedHostedChange(plan, resources))
     }
 
@@ -135,10 +135,4 @@ internal class HostedChangeCoordinator(private val project: Project, private val
     private data class LoadedHostedChange(val plan: LiveAddDeclarationChangePlan, val resources: HostedChangeResources)
 
     private data class ApprovedHostedChange(val loaded: LoadedHostedChange, val approval: VerifiedLivePlanApproval)
-
-    private fun encode(result: WireEncoding): String =
-        when (result) {
-            is WireEncoding.Encoded -> result.document
-            is WireEncoding.Rejected -> HostedRequests.rejected(HostedEndpointFailure.RESPONSE_REJECTED)
-        }
 }

@@ -3,19 +3,119 @@ package io.github.amichne.kast.cli
 import com.networknt.schema.InputFormat
 import com.networknt.schema.SchemaRegistry
 import com.networknt.schema.SpecificationVersion
+import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
+import io.github.amichne.kast.cli.command.CliCommandGraphFactory
 import io.github.amichne.kast.cli.projection.CanonicalQueryCliDocuments
 import io.github.amichne.kast.cli.projection.CanonicalReadCliDocuments
 import io.github.amichne.kast.cli.projection.CanonicalSourceReadCliDocuments
 import io.github.amichne.kast.cli.projection.CanonicalSymbolCliDocuments
+import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
 import io.github.amichne.kast.kernel.*
 import io.github.amichne.kast.protocol.contract.*
+import io.github.amichne.kast.query.protocol.RelationPagingFixture
 import java.util.UUID
+import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class LiveReadOutputSchemaTest {
+    @Test
+    fun `owner issued relation continuations satisfy advertised output schemas`() = runTest {
+        for (fixture in listOf(RelationPagingFixture.published(), RelationPagingFixture.live())) {
+            val outcome = fixture.page() as OperationOutcome.Qualified
+            assertAdmits(
+                CanonicalOperation.RELATION_READ,
+                CanonicalReadCliDocuments.projectRelation(outcome).document(),
+            )
+        }
+    }
+
+    @Test
+    fun `owner issued relation continuations satisfy advertised resume input and reach the remaining page`() = runTest {
+        val schema = relationInputSchema()
+        for (fixture in listOf(RelationPagingFixture.published(), RelationPagingFixture.live())) {
+            val first = fixture.page() as OperationOutcome.Qualified
+            val token = (first.qualification as RelationReadQualification.Resumable).continuation
+            val position = RelationReadPositionDocument.Resume(token)
+            val errors = schema.validate(Json.encodeToString(fixture.request(position)), InputFormat.JSON)
+            assertTrue(errors.isEmpty(), "semantic_query rejected its emitted continuation: $errors")
+            val second = fixture.page(position) as OperationOutcome.Complete
+            assertEquals(3, first.evidence.payload.relations.values.size)
+            assertEquals(1, second.evidence.payload.relations.values.size)
+            assertEquals(listOf(0L, 1L, 2L, 3L), fixture.consumed)
+        }
+    }
+
+    @Test
+    fun `relation schemas reject unsupported continuation versions and families`() = runTest {
+        val fixture = RelationPagingFixture.live()
+        val first = fixture.page() as OperationOutcome.Qualified
+        val token = (first.qualification as RelationReadQualification.Resumable).continuation
+        val document = CanonicalReadCliDocuments.projectRelation(first).document()
+        val request = Json.encodeToJsonElement(fixture.request(RelationReadPositionDocument.Resume(token))).jsonObject
+        for (raw in listOf(token.value.replaceFirst(":v2:", ":v3:"), "unsupported-family:v2:payload")) {
+            val invalid = JsonPrimitive(raw)
+            val outputErrors =
+                validate(
+                    CanonicalOperation.RELATION_READ,
+                    document.with(
+                        "qualification",
+                        document.getValue("qualification").jsonObject.with("continuation", invalid),
+                    ),
+                )
+            assertTrue(
+                outputErrors.any {
+                    it.keyword == "pattern" && it.instanceLocation.toString() == "/document/qualification/continuation"
+                },
+                outputErrors.toString(),
+            )
+            val inputErrors =
+                relationInputSchema()
+                    .validate(
+                        request
+                            .with("position", request.getValue("position").jsonObject.with("continuation", invalid))
+                            .toString(),
+                        InputFormat.JSON,
+                    )
+            assertTrue(
+                inputErrors.any {
+                    it.keyword == "pattern" && it.instanceLocation.toString() == "/position/continuation"
+                },
+                inputErrors.toString(),
+            )
+        }
+    }
+
+    private fun relationInputSchema(): com.networknt.schema.Schema {
+        val graph =
+            (CliCommandGraphFactory.create(canonicalCliRequestPreparers()) as CliCommandGraphConstruction.Created)
+                .factory
+        val unusedMetadata = Json.encodeToString(UnusedMetadata)
+        val tool =
+            (installedSchema(
+                    operationRegistry = unusedMetadata,
+                    wireSchema = unusedMetadata,
+                    commandSurface = graph.surface,
+                )
+                    as InstalledSchemaConstruction.Constructed)
+                .document
+                .value
+                .let(Json::parseToJsonElement)
+                .jsonObject
+                .getValue("serverProjection")
+                .jsonObject
+                .getValue("hostedBootstrap")
+                .jsonObject
+                .getValue("tools")
+                .jsonArray
+                .map { it.jsonObject }
+                .single { it.getValue("name").jsonPrimitive.content == "semantic_query" }
+        return schemas.getSchema(tool.getValue("inputSchema").toString())
+    }
+
     private val live =
         EvidenceBasis.Live(
             LiveReadEvidence.create(
@@ -43,6 +143,11 @@ class LiveReadOutputSchemaTest {
         for (basis in listOf(published, live)) for ((operation, document) in qualifiedDocuments(basis)) {
             assertAdmits(operation, document)
             assertEquals(JsonPrimitive("qualified"), document["status"])
+            if (operation == CanonicalOperation.RELATION_READ) {
+                val qualification = document.getValue("qualification").jsonObject
+                assertEquals(JsonPrimitive("terminal_incomplete"), qualification["type"])
+                assertTrue("continuation" !in qualification)
+            }
         }
     }
 
@@ -398,13 +503,19 @@ class LiveReadOutputSchemaTest {
         schemas
             .getSchema(installedServerOutputSchema(operation).toString())
             .validate(
-                buildJsonObject {
-                    put("status", "completed")
-                    put("document", document)
-                }
-                    .toString(),
+                Json.encodeToString(CompletedProviderEnvelope(ProviderStatus.COMPLETED, document)),
                 InputFormat.JSON,
             )
+
+    /** The provider envelope owns a contract-defined dynamic canonical CLI document. */
+    @Serializable private data class CompletedProviderEnvelope(val status: ProviderStatus, val document: JsonObject)
+
+    @Serializable
+    private enum class ProviderStatus {
+        @kotlinx.serialization.SerialName("completed") COMPLETED
+    }
+
+    @Serializable private data object UnusedMetadata
 
     private fun ProjectedCliOutcome.document(): JsonObject =
         when (this) {

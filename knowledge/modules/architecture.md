@@ -4,7 +4,7 @@ title: Verified module architecture
 description: Gradle verifies module roles, dependencies, exports, and scoped agent guidance before projecting module knowledge.
 resource: file://settings.gradle.kts
 tags: [kotlin, gradle, architecture]
-timestamp: 2026-09-11T00:00:00Z
+timestamp: 2026-09-12T00:00:00Z
 code_sources:
   - path: docs/reviews/live-semantic-read-acceptance.md
   - path: build-logic/src/main/kotlin/kast.kotlin-library.gradle.kts
@@ -17,12 +17,15 @@ code_sources:
   - path: build-logic/src/main/kotlin/kast.architecture.gradle.kts
   - path: build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt
     symbols: [KastCleanSlateModules]
+  - path: build-logic/src/main/kotlin/support/architecture/validation/ModulePolicyValidator.kt
+    symbols: [ModuleRoleConvention, ValidatedModulePolicy]
+  - path: build-logic/src/main/kotlin/support/architecture/policy/JvmEffectRules.kt
   - path: build-logic/src/main/kotlin/support/architecture/knowledge/ModuleKnowledgeProjection.kt
     symbols: [ModuleKnowledgeProjection, ModuleKnowledgeDocument]
   - path: change/protocol/build.gradle.kts
   - path: query/protocol/build.gradle.kts
   - path: runtime/hosted/build.gradle.kts
-  - path: runtime/composition/build.gradle.kts
+  - path: build-logic/src/main/kotlin/support/architecture/policy/KastQueryModules.kt
 ---
 
 # Verified module architecture
@@ -31,36 +34,29 @@ The root [settings](../../settings.gradle.kts) declares the active Gradle projec
 
 `generateKastModuleKnowledge` consumes accepted architecture evidence. Its output records the source revision, policy, observed edges, tracked `AGENTS.md` content hashes, and the governing guide set for each module. Generated build output is verification evidence, not a checked-in source of truth.
 
+Every module role requires its matching Gradle convention. Validated module policy retains that convention directly; there is no unmarked host role or exemption from effect classification.
+
 ## Ownership shape
 
 - Contract modules own domain identity and closed outcomes.
 - Service modules own orchestration without platform authority.
 - `query:protocol` has the service role and owns shared semantic-read request admission, reference codecs, and canonical projection using contract dependencies.
 - IntelliJ and filesystem/SQLite modules own explicit effects.
-- Runtime composition connects proven contracts to effectful adapters.
-- Server, indexer, App Server, and CLI modules expose transport and process boundaries.
+- The existing-IDE host connects proven contracts to effectful adapters.
+- App Server and CLI expose broker, installation and transport boundaries.
 
 The IntelliJ read adapter also depends on symbol contracts for the existing-IDE
 [hosted query](../flows/hosted-query.md). This permits detached compiler evidence
 without introducing an isolated workspace opener or importing implementation
 dependencies from semantic service modules.
 
-The separate `runtime:hosted` IDEA host has scoped endpoint-file and socket
-effects. Its declared generalized-query dependencies include pure semantic
-services, project-bound read adapters, and `query:protocol`. Runtime composition
-also uses `query:protocol`, which depends only on contracts. Hosted composition
-is excluded from isolated runtime composition. The workspace read adapter
-remains the admitted project-epoch authority; transport adds no project-opening
-or import permission. These declarations establish capability boundaries;
-[native acceptance](../../docs/reviews/live-semantic-read-acceptance.md) separately
-records the installed plugin and final default-route CLI/provider observations.
+`runtime:hosted` is the sole active semantic host. Its declared dependencies include all active semantic contracts, services, read adapters and controlled change adapters. The former composition, server, telemetry, indexer, workspace importer/coordinator and topology modules remain explicit retired policy entries with no dependencies or effects. No active module can acquire a retired owner through its production dependency graph. Project opening, Gradle import, topology build and topology publication have no permitted owner.
 
 `change:protocol` similarly owns planning-request lowering and detached previews.
 It depends only on `kernel`, `protocol:contract`, and `change:contract`; the
 plan-storage interface is defined in `change:contract`. Its dependency closure
 cannot acquire workspace startup, import, IntelliJ, SQLite, or isolated-runtime
-capabilities. The retained installed adapter supplies published admission. The
-hosted coordinator composes the separate live plan, approval, guarded write,
+capabilities. The hosted coordinator composes the separate live plan, approval, guarded write,
 verification and recovery adapters. Their IntelliJ and SQLite effects remain
 explicit host dependencies; a live plan does not acquire worker-start authority.
 

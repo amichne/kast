@@ -27,39 +27,16 @@ class BrokerServeCommandTest {
                         boundaryTouched = true
                         error("root discovery must not run")
                     },
-                endpointLocator =
-                    RuntimeEndpointLocator {
-                        boundaryTouched = true
-                        error("endpoint lookup must not run")
-                    },
-                runtimeDemander =
-                    object : RootRuntimeDemander {
-                        override fun demand(
-                            root: CanonicalRoot,
-                            demand: HostedRuntimeDemand,
-                            startup: RuntimeStartupRequest,
-                        ): RuntimeAdmission {
-                            boundaryTouched = true
-                            error("runtime demand must not run")
-                        }
-                    },
-                wireClient =
-                    WireClient { _, _ ->
-                        boundaryTouched = true
-                        error("wire exchange must not run")
-                    },
                 localMetadata = metadata(),
-                lifecycle = ExactRootRuntimeLifecycle(),
-                productInspector =
-                    ProductInspector {
-                        boundaryTouched = true
-                        error("product inspection must not run")
-                    },
                 brokerServerRunner =
                     BrokerServerRunner {
                         runnerCalled = true
                         BrokerServerRun.Stopped
                     },
+                productVersion =
+                    (io.github.amichne.kast.protocol.contract.KastPluginVersion.parse("1.2.3")
+                            as io.github.amichne.kast.kernel.Refinement.Refined)
+                        .value,
             )
 
         val exit = cli.execute(listOf("broker", "serve"), Path.of("/missing"))

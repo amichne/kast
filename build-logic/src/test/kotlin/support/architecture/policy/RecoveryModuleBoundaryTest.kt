@@ -40,7 +40,6 @@ class RecoveryModuleBoundaryTest {
             setOf(
                 ForbiddenEffect.JDBC,
                 ForbiddenEffect.FILESYSTEM_WRITE,
-                ForbiddenEffect.TOPOLOGY_PUBLICATION,
             ),
             architecture.modules.getValue(ModuleId.EVIDENCE_SQLITE).allowedEffects,
         )

@@ -26,8 +26,6 @@ val cleanSlateProjects = listOf(
     ":protocol:registry",
     ":protocol:wire",
     ":workspace:contract",
-    ":workspace:service",
-    ":workspace:intellij",
     ":workspace:intellij-read",
     ":symbol:contract",
     ":symbol:service",
@@ -43,10 +41,6 @@ val cleanSlateProjects = listOf(
     ":query:contract",
     ":query:service",
     ":query:protocol",
-    ":topology:contract",
-    ":topology:build",
-    ":topology:service",
-    ":topology:intellij",
     ":diagnostic:contract",
     ":diagnostic:service",
     ":diagnostic:intellij",
@@ -59,13 +53,9 @@ val cleanSlateProjects = listOf(
     ":change:intellij",
     ":evidence:contract",
     ":evidence:sqlite",
-    ":runtime:server",
     ":runtime:hosted",
-    ":runtime:telemetry",
-    ":runtime:composition",
     ":app-server",
     ":cli",
-    ":indexer",
 )
 
 include(*cleanSlateProjects.toTypedArray())

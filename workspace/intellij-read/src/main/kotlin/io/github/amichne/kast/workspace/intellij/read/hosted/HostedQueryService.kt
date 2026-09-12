@@ -60,6 +60,7 @@ private constructor(
     suspend fun <Value> read(
         endpoint: HostedQueryEndpoint,
         root: CanonicalWorkspaceRoot,
+        outcome: (Value) -> HostedEvaluationOutcome = { HostedEvaluationOutcome.EVALUATED },
         evaluate: suspend (HostedSemanticReadContext) -> Value,
     ): HostedSemanticReadResult<Value> {
         if (
@@ -83,7 +84,17 @@ private constructor(
         val session = configured.session
         return when (
             val execution =
-                executor.execute(endpoint, configured.limits) { progress ->
+                executor.execute(
+                    endpoint,
+                    configured.limits,
+                    outcome = { result: HostedSemanticRead<Value> ->
+                        when (result) {
+                            is HostedSemanticRead.Rejected -> HostedDiagnosticOutcome.Rejected(result.failure)
+                            is HostedSemanticRead.Resolved ->
+                                HostedDiagnosticOutcome.Evaluated(outcome(result.evidence))
+                        }
+                    },
+                ) { progress ->
                     progress.diagnostics?.bindHost(hostLifetime)
                     val compatibility =
                         when (val admitted = packagedCompatibility) {

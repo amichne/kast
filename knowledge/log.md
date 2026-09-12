@@ -1,5 +1,21 @@
 # Knowledge-base update log
 
+## 2026-09-12
+
+- Removed the unused architecture host exemption; every role now retains a required
+  convention. Retired unregistered build tasks, unused adapter wrappers and runtime
+  paths, and obsolete aliases. The [configuration contract](contracts/configuration.md)
+  now routes to the shared document and the CLI-owned catalogue generator.
+
+- Aligned relation continuation input and output schemas with the production
+  published `v1` and live `v2` codecs. Shared deterministic paging fixtures cover
+  schema admission, owner-level resume and rejection controls without IntelliJ.
+- Preserved canonical effect metadata through settled broker output rejection.
+  Read-only result failures reject one invocation; possible writes, unknown
+  effects and uncertain termination retain workspace recovery requirements.
+  Gate-controlled regressions preserve bounded violation evidence and prove
+  serialization, retirement, independent workspaces and absence of mutation replay.
+
 ## 2026-09-11
 
 - Kept the aggregate, type-resolved Detekt proof as the module quality gate and
@@ -187,3 +203,5 @@
 - Added `verifyJsonContracts` to normal checks and the product gate. Its syntax
   ratchet rejects new or changed manual JSON construction against exact reviewed
   allowances; typed serialization and schema checks retain their distinct roles.
+
+- 2026-09-12: Retired isolated semantic hosting, duplicate workspace import/index ownership and topology persistence. Documented the plugin-only release graph, retained historical evidence, shared semantic and SQLite factories, and semantic/storage outcome observability.

@@ -12,17 +12,17 @@ internal enum class HostedPeerTermination {
     EXTRA_INPUT,
 }
 
-internal sealed interface HostedPeerDispatch {
-    data class Completed(val response: String) : HostedPeerDispatch
+internal sealed interface HostedPeerDispatch<out Value> {
+    data class Completed<Value>(val response: Value) : HostedPeerDispatch<Value>
 
-    data class Rejected(val termination: HostedPeerTermination) : HostedPeerDispatch
+    data class Rejected(val termination: HostedPeerTermination) : HostedPeerDispatch<Nothing>
 }
 
 /** The request owns both jobs until cancellation cleanup has finished. */
-internal suspend fun dispatchUntilPeerTermination(
+internal suspend fun <Value> dispatchUntilPeerTermination(
     awaitTermination: suspend () -> HostedPeerTermination,
-    dispatch: suspend () -> String,
-): HostedPeerDispatch = coroutineScope {
+    dispatch: suspend () -> Value,
+): HostedPeerDispatch<Value> = coroutineScope {
     val peer = async { awaitTermination() }
     val work = async { dispatch() }
     try {

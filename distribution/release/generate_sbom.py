@@ -84,7 +84,6 @@ def generate(root: Path, directory: Path, version: str, sha: str) -> None:
         raise SbomError("expected exactly one IDEA-release-line hosted plugin")
     names = (
         f"kast-control-v{version}-macos-aarch64.tar.gz",
-        f"kast-semantic-runtime-{version}-macos-aarch64.zip",
         plugins[0].name,
     )
     inputs = {name: digest(directory / name) for name in names}

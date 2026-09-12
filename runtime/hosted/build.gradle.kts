@@ -2,6 +2,7 @@ import java.security.MessageDigest
 
 plugins {
     id("kast.kotlin-library")
+    alias(libs.plugins.kotlin.serialization)
     id("kast.role.ide-host")
 }
 
@@ -89,6 +90,7 @@ dependencies {
     implementation(project(":workspace:intellij-read"))
     compileOnly(platform)
     testImplementation(platform)
+    testImplementation(libs.json.schema.validator)
 }
 
 val hostedPlugin by
@@ -121,7 +123,6 @@ val hostedPlugin by
                     "change-intellij-*.jar",
                     "evidence-contract-*.jar",
                     "evidence-sqlite-*.jar",
-                    "topology-contract-*.jar",
                     "sqlite-jdbc-*.jar",
                     "query-contract-*.jar",
                     "query-protocol-*.jar",

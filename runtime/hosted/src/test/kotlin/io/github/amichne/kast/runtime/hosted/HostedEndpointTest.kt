@@ -108,7 +108,7 @@ class HostedEndpointTest {
             serveHostedConnection(ByteArrayInputStream(admitted.toByteArray()), ByteArrayOutputStream(), observer) {
                 assertTrue(it is HostedRequest.Describe)
                 dispatched++
-                "{}"
+                HostedResponse.Completed("{}")
             }
             assertEquals(1, dispatched)
             assertEquals(

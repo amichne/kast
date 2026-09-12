@@ -58,6 +58,7 @@ class BrokerFailureDocumentTest {
                 address,
                 rejected.failures.size,
                 JsonSchemaViolationEvidence.from(rejected.failures),
+                io.github.amichne.kast.appserver.core.BrokerOperationEffect.Unknown,
             )
         val encoded = Json.encodeToString(BrokerFailureDocument.from(failure))
         val expected =

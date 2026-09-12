@@ -65,7 +65,7 @@ class InstalledCoordinatorTest {
                 }
                 val options =
                     (InstalledCoordinatorConfiguration.admit(kast, root, emptyMap(), sink) as Refinement.Refined).value
-                val start = InstalledCoordinator.start(options, InstalledWorkerEffects.Unavailable)
+                val start = InstalledCoordinator.start(options)
                 assertTrue(start is InstalledCoordinatorStart.Started, start.toString())
                 val running = (start as InstalledCoordinatorStart.Started).coordinator
                 val client = HttpClient(CIO) { install(WebSockets) }

@@ -53,14 +53,14 @@ for another repository or a retired owner. See [Live evidence](/reference/models
 ## Understand broker ownership
 
 The installation-owned coordinator retains service identity, connection
-admission, workspace registration, resource admission, and worker retirement.
+admission, workspace registration, invocation lanes and controller approvals.
 Thread bindings retain workspace and installation owners. Ambiguous roots,
 contradictory thread reuse, stale epochs, and stale service generations reject.
 
-Explicit isolated-runtime workflows use per-workspace IntelliJ sidecars. Their
-startup and resource policies are distinct from ordinary existing-IDE reads.
-Coalesced startup applies only to the same workspace and lifecycle intent;
-conflicting reuse, rebuild, or seed requests reject.
+The shipped runtime contains only the existing-IDE plugin. Coordinator status
+admits zero worker reservations and rejects retired worker-demand messages.
+Workspace enrollment remains routing information and grants no project-opening
+or Gradle-import authority.
 
 <Accordion title="Version-owned state and endpoint cleanup">
   The version root owns configuration, workspace registration, mutable runtime
@@ -77,7 +77,7 @@ conflicting reuse, rebuild, or seed requests reject.
 | Generated contract and schema tests | Request shapes, response variants, invocation bindings, and rejection of invalid values |
 | Focused coordinator and transport tests | Routing, ownership, deadlines, and bounded failure handling |
 | Existing-IDE semantic acceptance | Compiler results in the admitted project, source state, host, and workload tested |
-| Installed multi-workspace acceptance | Separation, reconnection, lifecycle, and cleanup for the specific fixture |
+| Broker workspace-lane tests | Routing separation, settlement and cleanup for the exercised identities |
 | Product build gates | Agreement of the required checks at the tested source revision |
 
 A source implementation is not a passed acceptance run. A small fixture is not a

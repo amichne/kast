@@ -18,13 +18,13 @@ Kast is a Kotlin/Gradle system that gives coding agents compiler-grounded search
 - [`knowledge/`](knowledge/index.md) - checked-in, source-bound architecture, flow, contract, and glossary concepts; start broad repository orientation here.
 - [`kernel/`](kernel/AGENTS.md) - shared outcomes, evidence, validation, budgets, identity, and refinement types.
 - [`protocol/`](protocol/AGENTS.md) - canonical operations, registry definitions, and wire projections.
-- [`workspace/`](workspace/AGENTS.md) - workspace admission, lifecycle, synchronization, IntelliJ import, and read epochs.
+- [`workspace/`](workspace/AGENTS.md) - live workspace admission, existing imported-model capture, and read epochs.
 - [`symbol/`](symbol/AGENTS.md), [`source/`](source/AGENTS.md), [`relation/`](relation/AGENTS.md), [`traversal/`](traversal/AGENTS.md), [`query/`](query/AGENTS.md) - semantic read domains.
-- [`topology/`](topology/AGENTS.md) and [`evidence/`](evidence/AGENTS.md) - graph construction and durable workspace evidence.
+- [`evidence/`](evidence/AGENTS.md) - durable live change plans, receipts and mutation recovery; [`topology/`](topology/AGENTS.md) records retired graph ownership.
 - [`diagnostic/`](diagnostic/AGENTS.md) and [`change/`](change/AGENTS.md) - compiler diagnostics and proof-carrying mutation workflows.
-- [`runtime/`](runtime/AGENTS.md) - composition, operation dispatch, server behavior, and telemetry.
-- [`indexer/`](indexer/AGENTS.md) - IntelliJ-hosted semantic sidecar and transport.
-- [`app-server/`](app-server/AGENTS.md) - persistent coordinator, host adapters, workspace runtimes, and Codex protocol integration.
+- [`runtime/`](runtime/AGENTS.md) - existing-IDE plugin composition, operation dispatch, and bounded diagnostics.
+- [`indexer/`](indexer/AGENTS.md) - retirement record for the former isolated semantic sidecar.
+- [`app-server/`](app-server/AGENTS.md) - persistent coordinator, host adapters, workspace lanes, and Codex protocol integration.
 - [`cli/`](cli/AGENTS.md) - command graph, configuration, projections, and executable bootstrap.
 - [`distribution/`](distribution/AGENTS.md) and [`packaging/`](packaging/AGENTS.md) - installation contracts, managed artifacts, release assembly, and acceptance harnesses.
 - [`build-logic/`](build-logic/AGENTS.md) - Gradle conventions and architecture enforcement.
@@ -33,18 +33,18 @@ Kast is a Kotlin/Gradle system that gives coding agents compiler-grounded search
 ## Entry Points
 
 - Build and tests: `./gradlew build`.
-- Release assembly: `./gradlew assembleSidecarRelease`.
+- Release assembly: `./gradlew assembleRelease`.
 - Local installation: `source "$(./install.sh --local session)"` or `./install.sh --local persistent`.
 - CLI main: `cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt`.
-- Indexer main: `indexer/src/main/kotlin/io/github/amichne/kast/indexer/KastIndexerMain.kt`.
+- Semantic host: `runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt`.
 - Codex/App Server main: `app-server/src/main/kotlin/io/github/amichne/kast/appserver/KastCodexMain.kt`.
 
 ## Navigation Hints
 
 - For repository-wide orientation, start with `knowledge/index.md`, choose one concept, and follow its `code_sources` only when source detail is required.
 - For domain behavior, start in the matching `*/contract`, then read `*/service`, and open `*/intellij` only for platform effects.
-- For an external request, trace `protocol/registry` -> `protocol/wire` -> `runtime/composition` -> the owning domain service.
-- For startup or connectivity, start with `README.md`, then `cli`, `app-server`, `indexer`, and `workspace` in that order.
+- For an external request, trace `protocol/registry` -> `protocol/wire` -> `runtime/hosted` -> the owning domain service.
+- For startup or connectivity, start with `README.md`, then `cli`, `app-server`, `runtime/hosted`, and `workspace/intellij-read` in that order.
 - For installation failures, start with `install.sh`, `distribution`, and `packaging`; use `app-server/docs/compatibility.md` for known Codex integration gates.
 - For architecture violations, start with `build-logic/src/main/kotlin/kast.architecture.gradle.kts` and `build-logic/src/main/kotlin/support/architecture`.
 - For implementation details, do not stop at this map: open the cited source and its focused tests.

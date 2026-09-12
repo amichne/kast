@@ -80,6 +80,7 @@ internal enum class ProviderFailureCode {
 }
 
 internal sealed interface ProviderCall<out Output> {
+    /** The provider's owned execution has settled before its terminal value is returned. */
     data class Completed<Output>(val value: Output) : ProviderCall<Output>
 
     data class Rejected(val code: ProviderFailureCode) : ProviderCall<Nothing>
@@ -101,6 +102,7 @@ internal class BrokerTool<Runtime, Input, Output, InputFailure>(
     internal val encode: (Output) -> JsonElement,
     internal val present: (Output) -> ToolPresentation,
     internal val invocationBudget: ElapsedTimeLimitMillis = OperationExecutionBudget.SEMANTIC_READ.operation,
+    internal val effect: BrokerOperationEffect = BrokerOperationEffect.Unknown,
     internal val inputGuidance:
         (io.github.amichne.kast.appserver.schema.JsonDomainAdmissionFailure<InputFailure>) -> List<ToolDescription> =
         {
@@ -279,6 +281,7 @@ internal sealed interface BrokerFailure {
         val address: ToolAddress,
         val failureCount: Int,
         val violationEvidence: JsonSchemaViolationEvidence,
+        val settledEffect: BrokerOperationEffect,
     ) : BrokerFailure
 
     data class InvocationCancelled(val address: ToolAddress) : BrokerFailure
@@ -480,6 +483,7 @@ private class TypedProviderRoute<Runtime>(
                         address,
                         admission.failures.size,
                         JsonSchemaViolationEvidence.from(admission.failures),
+                        tool.effect,
                     )
                 )
         }

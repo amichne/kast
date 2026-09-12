@@ -5,7 +5,6 @@ import org.gradle.api.tasks.bundling.Tar
 import org.gradle.api.tasks.bundling.Zip
 import support.tasks.GenerateControlMetadataTask
 import support.tasks.VerifyControlDistributionTask
-import support.tasks.VerifySemanticRuntimeDistributionTask
 
 plugins {
     base
@@ -56,40 +55,9 @@ subprojects {
     version = rootProject.version
 }
 
-tasks.register("stageIndexerDist") {
-    group = "distribution"
-    description = "Builds a clean staged indexer tree under indexer/build/portable-dist/indexer."
-    dependsOn(":indexer:syncPortableDist")
-}
-
-tasks.register("buildIndexerPortableZip") {
-    group = "distribution"
-    description = "Builds the versioned portable indexer zip under indexer/build/distributions."
-    dependsOn(":indexer:portableDistZip")
-}
-
 val installedProductDirectory = layout.buildDirectory.dir("installed-product")
-val semanticRuntimeStage = project(":indexer").layout.buildDirectory.dir("portable-dist/indexer")
-val semanticRuntimeArchiveName = "kast-semantic-runtime-${project.version}-macos-aarch64.zip"
-val semanticRuntimeArchive by tasks.registering(Zip::class) {
-    group = "distribution"
-    description = "Builds the small private sidecar payload without an IDEA distribution."
-    dependsOn(":indexer:syncPortableDist")
-    from(semanticRuntimeStage)
-    destinationDirectory.set(layout.buildDirectory.dir("distributions"))
-    archiveFileName.set(semanticRuntimeArchiveName)
-    isPreserveFileTimestamps = false
-    isReproducibleFileOrder = true
-    eachFile {
-        if (relativePath.pathString == "kast-indexer") permissions { unix("755") }
-    }
-}
-
-tasks.register("assembleKastSemanticRuntimeDist") {
-    group = "distribution"
-    description = "Assembles the separately published private sidecar admitted by its matched control."
-    dependsOn(semanticRuntimeArchive)
-}
+evaluationDependsOn(":runtime:hosted")
+val hostedPluginArchive = project(":runtime:hosted").tasks.named<Zip>("hostedPlugin").flatMap(Zip::getArchiveFile)
 
 val generatedControlMetadata = layout.buildDirectory.dir("generated/control-metadata")
 val generatedOperationRegistry = project(":protocol:wire").layout.buildDirectory.file(
@@ -100,27 +68,22 @@ val generatedConfigurationCatalogue = project(":cli").layout.buildDirectory.file
 )
 val generateKastControlMetadata by tasks.registering(GenerateControlMetadataTask::class) {
     group = "distribution"
-    description = "Generates the exact installed-IDE sidecar manifest and public schemas."
-    dependsOn(semanticRuntimeArchive, ":protocol:wire:generateOperationRegistry", ":cli:generateConfigurationCatalogue")
-    runtimeArchive.set(semanticRuntimeArchive.flatMap(Zip::getArchiveFile))
-    runtimeDirectory.set(semanticRuntimeStage)
+    description = "Generates the existing-IDE plugin manifest and public schemas."
+    dependsOn(":runtime:hosted:hostedPlugin", ":protocol:wire:generateOperationRegistry", ":cli:generateConfigurationCatalogue")
+    pluginArchive.set(hostedPluginArchive)
     licenseFile.set(layout.projectDirectory.file("LICENSE"))
     operationRegistryFile.set(generatedOperationRegistry)
     configurationCatalogueFile.set(generatedConfigurationCatalogue)
     productVersion.set(project.version.toString())
     ideaBuild.set(libs.versions.ide.host.build)
     kotlinPluginBuild.set(libs.versions.ide.kotlin.plugin.build)
-    runtimeBaseUrl.set(
-        providers.environmentVariable("KAST_RUNTIME_BASE_URL")
-            .orElse("https://github.com/amichne/kast/releases/download/v${project.version}"),
-    )
     outputDirectory.set(generatedControlMetadata)
 }
 
 val controlProductDirectory = layout.buildDirectory.dir("control-product")
 val stageKastControlProduct by tasks.registering(Sync::class) {
     group = "distribution"
-    description = "Stages the plugin-free sidecar Kast control installation."
+    description = "Stages the Kast control installation for the existing IDE."
     dependsOn(":cli:installDist", generateKastControlMetadata)
     into(controlProductDirectory)
     from(project(":cli").layout.buildDirectory.dir("install/kast")) {
@@ -157,19 +120,12 @@ val verifyKastControlDistLayout by tasks.registering(VerifyControlDistributionTa
     maximumInstalledBytes.set(128L * 1024L * 1024L)
 }
 
-apply(from = "distribution/release/sidecar-release.gradle.kts")
-
-val verifyKastSemanticRuntimeDistLayout by tasks.registering(VerifySemanticRuntimeDistributionTask::class) {
-    group = "verification"
-    description = "Verifies the private sidecar payload contains no IDEA distribution."
-    dependsOn(semanticRuntimeArchive, ":indexer:verifyPortableDistLayout")
-    runtimeDirectory.set(semanticRuntimeStage)
-}
+apply(from = "distribution/release/plugin-release.gradle.kts")
 
 tasks.register("verifyDistributionContent") {
     group = "verification"
     description = "Verifies control/sidecar separation and required artifact layouts."
-    dependsOn(verifyKastControlDistLayout, verifyKastSemanticRuntimeDistLayout)
+    dependsOn(verifyKastControlDistLayout, ":runtime:hosted:hostedPlugin")
 }
 
 val stageInstalledProduct by tasks.registering(Sync::class) {
@@ -209,20 +165,15 @@ tasks.register<Exec>("installLocal") {
     group = "distribution"
     description = "Installs a version-owned Kast product (-Pversion=x.y.z) under ~/.local or -PkastLocalPrefix."
     doNotTrackState("The installed prefix contains live service sockets and is mutated by the versioned installer.")
-    dependsOn(stageKastControlProduct, semanticRuntimeArchive, ":runtime:hosted:hostedPlugin")
+    dependsOn(stageKastControlProduct, ":runtime:hosted:hostedPlugin")
     inputs.dir(controlProductDirectory)
     inputs.file(localHostedPluginArchive)
-    inputs.file(semanticRuntimeArchive.flatMap(Zip::getArchiveFile))
     inputs.files("packaging/install-local.sh", "install.sh")
     inputs.property("localInstallPrefix", localInstallPrefix.map { it.absolutePath })
     inputs.property("localJavaHome", localJavaHome.map { it.absolutePath })
     inputs.property("localJavaExecutable", localJavaExecutable.map { it.absolutePath })
     environment("KAST_LOCAL_PREFIX", localInstallPrefix.get().absolutePath)
     environment("KAST_LOCAL_CONTROL_PRODUCT", controlProductDirectory.get().asFile.absolutePath)
-    environment(
-        "KAST_LOCAL_RUNTIME_ARCHIVE",
-        semanticRuntimeArchive.get().archiveFile.get().asFile.absolutePath,
-    )
     environment("KAST_LOCAL_HOSTED_PLUGIN_ARCHIVE", localHostedPluginArchive.get().asFile.absolutePath)
     providers.gradleProperty("hostedIdeaHome").orNull?.let { environment("KAST_INSTALL_IDEA_HOME", it) }
     environment("KAST_LOCAL_JAVA_HOME", localJavaHome.get().absolutePath)
@@ -232,20 +183,18 @@ tasks.register<Exec>("installLocal") {
 
 val installedProductTest = tasks.register<Exec>("installedProductTest") {
     group = "verification"
-    description = "Executes sidecar metadata and fail-closed demand through the staged product."
-    dependsOn(stageInstalledProduct, semanticRuntimeArchive, assembleKastControlDist)
+    description = "Verifies plugin-only metadata and fail-closed IDE admission through the staged product."
+    dependsOn(stageInstalledProduct, assembleKastControlDist)
     inputs.dir(installedProductDirectory)
     inputs.file(assembleKastControlDist.flatMap(Tar::getArchiveFile))
+    inputs.file(hostedPluginArchive)
     inputs.file(layout.projectDirectory.file("packaging/test-installed-product.sh"))
     inputs.files("packaging/acceptance_environment.py", "packaging/run-installed-product.py")
     outputs.file(layout.buildDirectory.file("reports/installed-product/topology-installed-product.json"))
     outputs.upToDateWhen { false }
     environment("KAST_INSTALLED_PRODUCT", installedProductDirectory.get().asFile.absolutePath)
     environment("KAST_CONTROL_ARCHIVE", assembleKastControlDist.get().archiveFile.get().asFile.absolutePath)
-    environment(
-        "KAST_SEMANTIC_RUNTIME_ARCHIVE",
-        semanticRuntimeArchive.get().archiveFile.get().asFile.absolutePath,
-    )
+    environment("KAST_HOSTED_PLUGIN_ARCHIVE", hostedPluginArchive.get().asFile.absolutePath)
     environment("KAST_PROJECT_ROOT", layout.projectDirectory.asFile.absolutePath)
     environment(
         "KAST_INSTALLED_REPORT_DIRECTORY",
@@ -273,32 +222,6 @@ val installedCodexHostTest = tasks.register<Exec>("installedCodexHostTest") {
     )
 }
 
-val installedTwoWorkspaceTest = tasks.register<Exec>("installedTwoWorkspaceTest") {
-    group = "verification"
-    description = "Runs two independent installed Gradle workers through semantic reconnect, stop and reset."
-    dependsOn(stageInstalledProduct, semanticRuntimeArchive, ":app-server:writeInstalledWorkspaceHarnessClasspath")
-    // Only one expensive fixture; the selected input profile is recorded in its report.
-    inputs.dir(installedProductDirectory)
-    inputs.file(semanticRuntimeArchive.flatMap(Zip::getArchiveFile))
-    inputs.files("packaging/test-model-input-startup.py", "packaging/run-two-workspace-acceptance.py",
-        "packaging/acceptance_idea.py", "packaging/acceptance_environment.py",
-        "packaging/installed_acceptance_product.py", "gradle/wrapper/gradle-wrapper.properties",
-        "gradle/wrapper/gradle-wrapper.jar", "gradlew")
-    val profile = providers.environmentVariable("KAST_ACCEPTANCE_PROFILE").orElse("local-8g")
-    inputs.property("acceptanceProfile", profile)
-    inputs.property("ideaHome", providers.environmentVariable("KAST_ACCEPTANCE_IDEA_HOME").orElse("pinned-download"))
-    outputs.file(layout.buildDirectory.file("reports/installed-product/two-workspace-runtime.json"))
-    outputs.upToDateWhen { false }
-    commandLine("python3", layout.projectDirectory.file("packaging/run-two-workspace-acceptance.py"),
-        "--product", installedProductDirectory.get().asFile.absolutePath,
-        "--runtime", semanticRuntimeArchive.get().archiveFile.get().asFile.absolutePath,
-        "--idea-cache", layout.buildDirectory.dir("acceptance-inputs").get().asFile.absolutePath,
-        "--harness-classpath-file", project(":app-server").layout.buildDirectory.file("acceptance/installed-workspace-harness.classpath").get().asFile.absolutePath,
-        "--profile", profile.get(),
-        "--report", layout.buildDirectory.file("reports/installed-product/two-workspace-runtime.json")
-            .get().asFile.absolutePath)
-}
-
 val testCheckoutInstaller = tasks.register<Exec>("testCheckoutInstaller") {
     group = "verification"
     description = "Verifies checkout and release bootstrap boundaries without touching machine state."
@@ -318,7 +241,7 @@ val isolatedAcceptanceEnvironmentTest = tasks.register<Exec>("isolatedAcceptance
     group = "verification"
     description = "Proves installed fixtures isolate homes, environment, products and owned processes."
     inputs.files("packaging/acceptance_environment.py", "packaging/test-acceptance-environment.py",
-        "packaging/test-model-input-startup.py", "packaging/installed_acceptance_product.py", "packaging/run-installed-product.py")
+        "packaging/installed_acceptance_product.py", "packaging/run-installed-product.py")
     commandLine("python3", layout.projectDirectory.file("packaging/test-acceptance-environment.py"))
 }
 
@@ -331,8 +254,7 @@ val installerRemovalTest = tasks.register<Exec>("installerRemovalTest") {
 val acceptanceIdeaInputTest = tasks.register<Exec>("acceptanceIdeaInputTest") {
     group = "verification"
     description = "Checks exact IDEA input admission without downloading or starting an IDE."
-    inputs.files("packaging/acceptance_idea.py", "packaging/test-acceptance-idea.py",
-        "packaging/run-two-workspace-acceptance.py")
+    inputs.files("packaging/acceptance_idea.py", "packaging/test-acceptance-idea.py")
     commandLine("python3", layout.projectDirectory.file("packaging/test-acceptance-idea.py"))
 }
 
@@ -369,21 +291,13 @@ val productBuildGate by tasks.registering {
 
 tasks.register("runtimeQualification") {
     group = "verification"
-    description = "Explicit installed Codex and two-workspace runtime qualification; excluded from routine CI and release gates."
-    dependsOn(installedCodexHostTest, installedTwoWorkspaceTest, ":app-server:generateCodexHostIntegrationManifest")
-}
-
-installedTwoWorkspaceTest.configure {
-    mustRunAfter("check", isolatedAcceptanceEnvironmentTest, acceptanceIdeaInputTest,
-        installationLifecycleTest, localInstallationTest, installerRemovalTest,
-        installedProductTest, testCheckoutInstaller, installedCodexHostTest,
-        "verifyKastArchitecture")
+    description = "Explicit installed Codex runtime qualification; excluded from routine CI and release gates."
+    dependsOn(installedCodexHostTest, ":app-server:generateCodexHostIntegrationManifest")
 }
 
 subprojects.forEach { owner ->
     owner.plugins.withId("base") {
         productBuildGate.configure { dependsOn(owner.tasks.named("check")) }
-        installedTwoWorkspaceTest.configure { mustRunAfter(owner.tasks.named("check")) }
     }
 }
 

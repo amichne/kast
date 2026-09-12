@@ -1,4 +1,5 @@
 plugins {
+    `java-test-fixtures`
     id("kast.kotlin-serialization")
     id("kast.role.service")
 }
@@ -6,6 +7,10 @@ plugins {
 base.archivesName.set("query-protocol")
 
 dependencies {
+    testFixturesApi(project(":relation:contract"))
+    testFixturesApi(project(":symbol:contract"))
+    testFixturesApi(project(":protocol:contract"))
+    testFixturesApi(testFixtures(project(":workspace:contract")))
     implementation(project(":kernel"))
     implementation(project(":protocol:contract"))
     implementation(project(":query:contract"))

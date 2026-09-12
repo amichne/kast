@@ -67,11 +67,6 @@ internal enum class InstalledBrokerServerConfigurationFailure {
     APP_SERVER_DISABLED,
 }
 
-internal enum class BrokerClientTransport {
-    LEGACY_CONTROL,
-    INTEGRATION_OWNED,
-}
-
 internal sealed interface InstalledBrokerServerConfiguration {
     data class Configured(val options: InstalledBrokerServerOptions) : InstalledBrokerServerConfiguration
 
@@ -84,7 +79,6 @@ internal sealed interface InstalledBrokerServerConfiguration {
             environment: Map<String, String>,
             processExecutor: BrokerProcessExecutor = JdkBrokerProcessExecutor,
             launcher: CodexAppServerProcessLauncher? = null,
-            clientTransport: BrokerClientTransport = BrokerClientTransport.LEGACY_CONTROL,
             appServerArguments: CodexAppServerArguments = CodexAppServerArguments.sharedService(),
         ): InstalledBrokerServerConfiguration {
             val canonicalUserHome =
@@ -633,7 +627,6 @@ class InstalledBrokerServerRunner(
     private val kastExecutable: Path,
     private val userHome: Path,
     private val environment: Map<String, String> = System.getenv(),
-    private val workerEffects: InstalledWorkerEffects = InstalledWorkerEffects.Unavailable,
 ) : BrokerServerRunner {
     override fun serve(): BrokerServerRun {
         val options =
@@ -644,7 +637,7 @@ class InstalledBrokerServerRunner(
         return try {
             runBlocking {
                 val running =
-                    when (val started = InstalledCoordinator.start(options, workerEffects)) {
+                    when (val started = InstalledCoordinator.start(options)) {
                         is InstalledCoordinatorStart.Started -> started.coordinator
                         is InstalledCoordinatorStart.Rejected ->
                             return@runBlocking BrokerServerRun.Rejected(started.failure)

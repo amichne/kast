@@ -4,7 +4,7 @@ title: Semantic change
 description: Supported source changes move through closed intent, pure planning, exact admission, effectful application, verification, and recovery.
 resource: file://change
 tags: [kotlin, mutation, verification, recovery]
-timestamp: 2026-09-11T00:00:00Z
+timestamp: 2026-09-12T00:00:00Z
 code_sources:
   - path: change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/admission/ChangeIntent.kt
     symbols: [ChangeIntent, ChangeVerificationObligation]
@@ -30,6 +30,8 @@ code_sources:
   - path: change/protocol/src/main/kotlin/io/github/amichne/kast/change/protocol/CanonicalLiveChangePlanProtocol.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeCoordinator.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeVerification.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeFailure.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedResponse.kt
 ---
 
 # Semantic change
@@ -70,3 +72,5 @@ preimage for every recorded source. Dirty, unavailable, divergent, duplicate, or
 incomplete observations reject. Legacy empty preimages remain ambiguous because
 the record cannot distinguish an absent file from an existing empty file. The
 default observation port is unavailable, so unobserved records fail closed.
+
+The hosted resource factory retains one initialized SQLite connection source across live plans, attempt history, recovery and receipts. Open and lookup observations retain closed failure causes, including `CORRUPT_RECORD` and `VERSION_UNSUPPORTED`; `HOST_REJECTED.detail` preserves those causes through the shared endpoint schema.

@@ -10,8 +10,8 @@ internal enum class InstallationEnvironment(val key: String) {
     CONTROL_ROOT("KAST_INSTALL_CONTROL_ROOT"),
     CONTROL_ARCHIVE("KAST_INSTALL_CONTROL_ARCHIVE"),
     CONTROL_SHA256("KAST_INSTALL_CONTROL_SHA256"),
-    RUNTIME_ARCHIVE("KAST_INSTALL_RUNTIME_ARCHIVE"),
-    RUNTIME_SHA256("KAST_INSTALL_RUNTIME_SHA256"),
+    HOSTED_PLUGIN_ARCHIVE("KAST_INSTALL_HOSTED_PLUGIN_ARCHIVE"),
+    HOSTED_PLUGIN_SHA256("KAST_INSTALL_HOSTED_PLUGIN_SHA256"),
     VERSION("KAST_INSTALL_VERSION"),
     IDEA_HOME("KAST_INSTALL_IDEA_HOME"),
     JAVA_HOME("KAST_INSTALL_JAVA_HOME"),
@@ -129,8 +129,8 @@ private constructor(
     val controlRoot: InstallationPath,
     val controlArchive: InstallationPath,
     val controlDigest: Sha256,
-    val runtimeArchive: InstallationPath,
-    val runtimeDigest: Sha256,
+    val pluginArchive: InstallationPath,
+    val pluginDigest: Sha256,
     val version: SemanticVersion,
     val ideaHome: InstallationPath,
     val javaHome: InstallationPath,
@@ -196,13 +196,13 @@ private constructor(
                     is Refinement.Refined -> refined.value
                     is Refinement.Rejected -> return refined
                 }
-            val runtimeArchive =
-                when (val refined = path(InstallationEnvironment.RUNTIME_ARCHIVE)) {
+            val pluginArchive =
+                when (val refined = path(InstallationEnvironment.HOSTED_PLUGIN_ARCHIVE)) {
                     is Refinement.Refined -> refined.value
                     is Refinement.Rejected -> return refined
                 }
-            val runtimeDigest =
-                when (val refined = digest(InstallationEnvironment.RUNTIME_SHA256)) {
+            val pluginDigest =
+                when (val refined = digest(InstallationEnvironment.HOSTED_PLUGIN_SHA256)) {
                     is Refinement.Refined -> refined.value
                     is Refinement.Rejected -> return refined
                 }
@@ -291,8 +291,8 @@ private constructor(
                     controlRoot,
                     controlArchive,
                     controlDigest,
-                    runtimeArchive,
-                    runtimeDigest,
+                    pluginArchive,
+                    pluginDigest,
                     version,
                     ideaHome,
                     javaHome,

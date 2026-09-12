@@ -145,9 +145,7 @@ class AcceptanceEnvironment:
             "TMP": str(self.root / "tmp"), "TEMP": str(self.root / "tmp"),
             "_JAVA_OPTIONS": java_options, "JAVA_TOOL_OPTIONS": java_options,
             "LANG": "C.UTF-8", "LC_ALL": "C", "TZ": "UTC",
-            "KAST_RUNTIME_STORE": str(self.root / "store"),
             "KAST_RUNTIME_DIRECTORY": str(self.root / "run"),
-            "KAST_CACHE_ROOT": str(self.root / "cache"),
             "KAST_ENABLE_LAUNCHD": "0", "KAST_ENABLE_APP_SERVER": "0",
         }
         if network is NetworkPolicy.CLOSED_PROXY:
@@ -172,9 +170,7 @@ class AcceptanceEnvironment:
             raise EnvironmentRejected(EnvironmentFailure.INVALID_INPUT)
         self._product = product
         environment = dict(self.environment)
-        environment.update(KAST_RUNTIME_STORE=str(product / "runtime-payloads"),
-                           KAST_RUNTIME_DIRECTORY=str(product / "state/run"),
-                           KAST_CACHE_ROOT=str(product / "state/cache"))
+        environment.update(KAST_RUNTIME_DIRECTORY=str(product / "state/run"))
         self.environment = MappingProxyType(environment)
 
     def spawn(self, command, **kwargs):
