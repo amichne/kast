@@ -9,6 +9,8 @@ Defines canonical operation models, authoritative operation/tool registries, and
 
 ## Key Files
 
+- [CanonicalSourceReadAnchorDocument.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalSourceReadAnchorDocument.kt) - disjoint inline and hosted-handle source anchor admission.
+
 - [contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalOperation.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalOperation.kt) - canonical operation domain.
 - [contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalQueryOperationModels.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalQueryOperationModels.kt) - query operation models.
 - [registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalOperationDefinitions.kt](registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalOperationDefinitions.kt) - authoritative operation catalog.

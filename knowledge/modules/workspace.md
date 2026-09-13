@@ -4,7 +4,7 @@ title: Workspace
 description: Workspace contracts distinguish published leases from original-owner live IDE reads and preserve their separate admission effects.
 resource: file://workspace
 tags: [kotlin, workspace, lifecycle, intellij]
-timestamp: 2026-09-12T00:00:00Z
+timestamp: 2026-09-13T00:00:00Z
 code_sources:
   - path: workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/WorkspaceTransitionState.kt
     symbols: [WorkspaceLifecycle, WorkspaceTransitionSnapshot]
@@ -26,3 +26,5 @@ The active workspace modules are `workspace:contract` and `workspace:intellij-re
 `HostedQueryService` creates and ends a request-scoped context, validates authority before and after evaluation, and drains work before releasing its permit. Semantic objects stay inside the admitted read lifetime. Saved documents, committed PSI and source ownership remain explicit obligations.
 
 Published lease and lifecycle types remain available for historical protocol contracts and tests. Their former `workspace:service` transition coordinator and `workspace:intellij` importer are retired and absent from the build. The retained topology publisher accepts complete generations but is not wired into the production plugin. See [historical publication](../flows/workspace-publication.md) and [existing-IDE reads](../flows/hosted-query.md).
+
+Before evaluation, HostedReadDeadline derives a positive HostedSemanticTimeAllowance from remaining host time with a completion reserve. The context carries that allowance into query and diagnostic-scope budgets. An exhausted allowance rejects before the evaluator starts; final freshness validation and cancellation drainage remain required.

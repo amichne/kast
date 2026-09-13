@@ -4,7 +4,7 @@ title: Source and workspace identity
 description: Semantic reads preserve published or live authority, constrained selectors, coordinates, and source content views without converting IDE stamps into publication identity.
 resource: file://source/contract
 tags: [source, identity, workspace, symbol]
-timestamp: 2026-09-10T00:00:00Z
+timestamp: 2026-09-13T00:00:00Z
 code_sources:
   - path: workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadLease.kt
     symbols: [CanonicalWorkspaceRoot, SemanticReadLease]
@@ -44,6 +44,9 @@ code_sources:
   - path: symbol/contract/src/test/kotlin/io/github/amichne/kast/symbol/contract/SymbolSelectorContractTest.kt
   - path: source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/Utf16Coordinate.kt
     symbols: [Utf16Coordinate]
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/HostedSymbolHandle.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalSourceReadAnchorDocument.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReferenceStore.kt
 ---
 
 # Source and workspace identity
@@ -106,3 +109,5 @@ The proof binds the snapshot, range and semantic candidate to the exact selector
 Direct-child source containment keeps its existing meaning.
 
 See [query protocol](../modules/query-protocol.md), [compiler identity](../glossary/compiler-identity.md), and [workspace publication](../flows/workspace-publication.md).
+
+Hosted version-4 symbol handles carry a canonical SHA-256 lookup identity, not source or compiler authority. The project-owned table retains only detached full tokens for the current live read reference. Lookup must succeed before canonical restoration can validate the current authority. Unknown handles reject as stale; malformed handles reject as malformed. The source-anchor parser admits exact and candidate handles into their disjoint families without claiming lookup or freshness proof.

@@ -4,8 +4,10 @@ title: Existing-IDE semantic query
 description: An existing IDEA project owns the default seven canonical reads, with bounded live authority and scoped native CLI/provider acceptance.
 resource: file://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted
 tags: [intellij, kotlin, semantic-query, lifecycle]
-timestamp: 2026-09-12T00:00:00Z
+timestamp: 2026-09-13T00:00:00Z
 code_sources:
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDeadline.kt
+  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijScopedDeclarationEnumeration.kt
   - path: kernel/src/main/kotlin/io/github/amichne/kast/kernel/ReadLimits.kt
   - path: docs/hosted-read-configuration.md
   - path: experiments/host-observation/reproduce_semantic_queries.py
@@ -308,11 +310,18 @@ the planning epoch or publish a workspace generation.
 
 ## Corrected native discovery and relation expansion
 
-The subsequent [semantic reproduction review](../../docs/reviews/hosted-semantic-reproduction.md) records complete fixture `ALL` queries under unchanged default budgets. Scoped Kotlin file indexes supply declarations directly; exact names retain their direct indexes and fuzzy discovery retains bounded contributors. Constructor properties refine through their generated K2 property symbol. Query `EXPAND` retains the original selected subject while admitting related endpoints in the workspace search boundary. Java references resolve through K2 identity, and explicitly excluded library calls do not make project-only callee coverage incomplete. The earlier acceptance limitations above remain historical evidence.
+The subsequent [semantic reproduction review](../../docs/reviews/hosted-semantic-reproduction.md) records complete fixture `ALL` queries under unchanged default budgets. Scoped Kotlin file indexes supply declarations directly; exact names retain their direct indexes and project-only fuzzy discovery uses the same scoped file enumeration. Constructor properties refine through their generated K2 property symbol. Query `EXPAND` retains the original selected subject while admitting related endpoints in the workspace search boundary. Java references resolve through K2 identity, and explicitly excluded library calls do not make project-only callee coverage incomplete. The earlier acceptance limitations above remain historical evidence.
 
 The read policy is immutable per host service and rejects invalid settings. CLI/provider transport capacities use the same typed parameter catalogue. See [read configuration](../../docs/hosted-read-configuration.md).
 
 
 The new `tool` CLI family lowers the five [public intent tools](../contracts/public-tools.md) into the existing canonical operations before taking this same existing-IDE path. Native semantics and reference authority remain here; tool syntax is not compiler evidence.
 
-The plugin-only runtime retirement removes isolated composition/import from the active build and topology publication from the shipped runtime graph. Topology modules remain buildable for upcoming graph work. Earlier acceptance records above remain historical. The shared `HostedSemanticServices` factory now supplies canonical reads, planning and verification inside each admitted read context. Diagnostic schema 3 distinguishes transaction evaluation from complete, qualified and rejected semantic results, retaining bounded stage and termination evidence.
+The plugin-only runtime retirement removes isolated composition/import from the active build and topology publication from the shipped runtime graph. Topology modules remain buildable for upcoming graph work. Earlier acceptance records above remain historical. The shared `HostedSemanticServices` factory now supplies canonical reads, planning and verification inside each admitted read context. Diagnostic schema 4 distinguishes transaction evaluation from complete, qualified and rejected semantic results, retaining bounded stage and termination evidence.
+
+The host defaults to 4,000 ms and derives positive semantic and diagnostic-scope
+allowances from the time remaining after admission and model capture. A bounded
+completion reserve precedes the hard deadline. Exhaustion rejects before semantic
+evaluation, while a cooperative time-limited query can publish qualified results
+after freshness revalidation. Receipts distinguish configured limits from effective
+allowances. Work that exceeds the hard deadline still cancels and drains.

@@ -211,3 +211,5 @@
 - 2026-09-12: Retired isolated semantic hosting, duplicate workspace import/index ownership and topology persistence. Documented the plugin-only release graph, retained historical evidence, shared semantic and SQLite factories, and semantic/storage outcome observability.
 
 - 2026-09-12: Retained topology contracts, build orchestration, IntelliJ extraction and graph services for upcoming work. Moved topology snapshot persistence to `evidence:topology-sqlite`; dependency checks keep these buildable modules outside the current plugin, CLI and coordinator runtimes.
+
+- 2026-09-13: Bound semantic allowances by remaining hosted deadline with explicit completion reserve and receipt evidence. Prioritize cheap scope/kind constraints, use scoped fuzzy enumeration, and consolidate mixed declaration-family discovery.

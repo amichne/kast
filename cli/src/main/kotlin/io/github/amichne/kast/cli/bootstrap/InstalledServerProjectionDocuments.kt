@@ -585,7 +585,7 @@ private fun queryOutputReferenceSchema(kind: String): JsonObject =
         ServerSchemaProperty(
             "token",
             patternTextSchema(
-                if (kind == "exact-symbol") "^exact:v[23]:" else "^candidate:v[23]:",
+                if (kind == "exact-symbol") "^exact:v[234]:" else "^candidate:v[234]:",
                 "Reusable proof-carrying reference.",
             ),
         ),

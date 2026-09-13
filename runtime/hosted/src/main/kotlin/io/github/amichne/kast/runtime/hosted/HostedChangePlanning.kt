@@ -16,7 +16,6 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ChangeIntentDocument
 import io.github.amichne.kast.protocol.contract.ChangePlanRejection
 import io.github.amichne.kast.protocol.contract.ChangePlanRequest
-import io.github.amichne.kast.query.protocol.CanonicalQueryReferences
 import io.github.amichne.kast.query.protocol.CanonicalSelectorDecoding
 import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationReadResult
@@ -117,7 +116,7 @@ private suspend fun restoreHostedChangeTarget(
     exactTarget: io.github.amichne.kast.protocol.contract.ProtocolText,
 ): Refinement<SymbolSelector, ChangePlanRejection> {
     val restored =
-        when (val result = CanonicalQueryReferences(context.model).restoreExact(exactTarget, context.authority)) {
+        when (val result = services.references.restoreExact(exactTarget, context.authority)) {
             is CanonicalSelectorDecoding.Decoded -> result.value
             is CanonicalSelectorDecoding.Rejected -> return rejected(ChangePlanRejection.EXACT_SYMBOL_REQUIRED)
         }

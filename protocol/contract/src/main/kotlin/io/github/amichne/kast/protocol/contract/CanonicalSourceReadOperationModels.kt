@@ -5,9 +5,6 @@ package io.github.amichne.kast.protocol.contract
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.LiveReadEvidence
 import io.github.amichne.kast.kernel.Refinement
-import java.nio.charset.CharacterCodingException
-import java.security.MessageDigest
-import java.util.Base64
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.KeepGeneratedSerializer
 import kotlinx.serialization.SerialName
@@ -19,81 +16,6 @@ import kotlinx.serialization.encoding.Encoder
 private const val MAX_SOURCE_READ_LINE_COUNT = 1_000
 private const val MAX_SOURCE_READ_ENTITY_LIMIT = 1_000
 private const val MAX_SOURCE_READ_TEXT_LENGTH = 1_048_576
-
-enum class SourceReadAnchorDocumentFailure {
-    UNKNOWN_TOKEN_FAMILY,
-    INVALID_TOKEN_STRUCTURE,
-    INVALID_PAYLOAD_ENCODING,
-    PAYLOAD_DIGEST_MISMATCH,
-}
-
-@Serializable
-sealed interface SourceReadAnchorDocument {
-    @Serializable @SerialName("candidate") data class Candidate(val selector: ProtocolText) : SourceReadAnchorDocument
-
-    @Serializable @SerialName("symbol") data class Symbol(val selector: ProtocolText) : SourceReadAnchorDocument
-
-    @Serializable @SerialName("source") data class Source(val selector: ProtocolText) : SourceReadAnchorDocument
-
-    companion object {
-        /** Refines one opaque selector to its sole disjoint anchor family. */
-        fun admit(selector: ProtocolText): Refinement<SourceReadAnchorDocument, SourceReadAnchorDocumentFailure> {
-            val parts = selector.value.split(':')
-            val family =
-                when {
-                    parts.size == 4 && parts[0] == "candidate" && parts[1] in setOf("v2", "v3") ->
-                        SourceReadAnchorFamily.CANDIDATE
-                    parts.size == 4 && parts[0] == "exact" && parts[1] in setOf("v2", "v3") ->
-                        SourceReadAnchorFamily.SYMBOL
-                    parts.size == 3 && parts[0] in setOf("source-selector-v1", "source-selector-v2") ->
-                        SourceReadAnchorFamily.SOURCE
-                    parts.firstOrNull() in setOf("candidate", "exact", "source-selector-v1", "source-selector-v2") ->
-                        return Refinement.Rejected(SourceReadAnchorDocumentFailure.INVALID_TOKEN_STRUCTURE)
-                    else -> return Refinement.Rejected(SourceReadAnchorDocumentFailure.UNKNOWN_TOKEN_FAMILY)
-                }
-            val payloadIndex = if (family == SourceReadAnchorFamily.SOURCE) 1 else 2
-            val digestIndex = payloadIndex + 1
-            val payload =
-                try {
-                    Base64.getUrlDecoder().decode(parts[payloadIndex])
-                } catch (_: IllegalArgumentException) {
-                    return Refinement.Rejected(SourceReadAnchorDocumentFailure.INVALID_PAYLOAD_ENCODING)
-                }
-            if (
-                payload.isEmpty() ||
-                    Base64.getUrlEncoder().withoutPadding().encodeToString(payload) != parts[payloadIndex]
-            ) {
-                return Refinement.Rejected(SourceReadAnchorDocumentFailure.INVALID_PAYLOAD_ENCODING)
-            }
-            try {
-                payload.decodeToString(throwOnInvalidSequence = true)
-            } catch (_: CharacterCodingException) {
-                return Refinement.Rejected(SourceReadAnchorDocumentFailure.INVALID_PAYLOAD_ENCODING)
-            }
-            if (parts[digestIndex] != sourceReadSha256(payload)) {
-                return Refinement.Rejected(SourceReadAnchorDocumentFailure.PAYLOAD_DIGEST_MISMATCH)
-            }
-            return Refinement.Refined(
-                when (family) {
-                    SourceReadAnchorFamily.CANDIDATE -> Candidate(selector)
-                    SourceReadAnchorFamily.SYMBOL -> Symbol(selector)
-                    SourceReadAnchorFamily.SOURCE -> Source(selector)
-                }
-            )
-        }
-    }
-}
-
-private enum class SourceReadAnchorFamily {
-    CANDIDATE,
-    SYMBOL,
-    SOURCE,
-}
-
-private fun sourceReadSha256(bytes: ByteArray): String =
-    MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { byte ->
-        (byte.toInt() and 0xff).toString(16).padStart(2, '0')
-    }
 
 @Serializable
 enum class SourceBodyKindDocument {

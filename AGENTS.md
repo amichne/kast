@@ -80,6 +80,13 @@ Kast is a Kotlin/Gradle system that gives coding agents compiler-grounded search
 9. Instrument as you investigate.
    When diagnosing an opaque failure requires source-level investigation, progressively make that boundary observable in the same change. Add bounded, structured, typed stage and outcome evidence at the narrowest effect boundary, and test both success and failure signals. Temporary probes may guide diagnosis, but completion replaces them with durable instrumentation. Never record secrets, source payloads, or unbounded data.
 
+## Search Planning
+
+- Apply known, cheap constraints that materially reduce the search space before enumeration, candidate collection, capacity accounting, or compiler refinement. This ordering is a correctness and resource-use requirement.
+- Select the smallest authoritative index and declaration families from exact names, file/directory scope, source ownership, source-set names, and retained kind constraints. Preserve those constraints through downstream operations.
+- Delay constraints requiring stronger evidence only until that evidence is available. Keep package PSI outside native index callbacks; keep compiler refinement after cheap eligibility checks. An excluded container may still contain eligible descendants.
+- Prove the ordering with excluded-input tests: unrelated files, names, or kinds must not exhaust the eligible result capacity. A bounded partial result must retain its qualifications.
+
 ## JSON Contracts
 
 - Serialize types; never hand-assemble fixed contracts. Model fixed JSON requests, responses, notifications, diagnostics, persisted records, qualification witnesses, and valid test fixtures with typed DTOs and the serialization library. In Kotlin, use `@Serializable` data classes, sealed variants, and enums. Do not construct these shapes with JSON builders, maps, string interpolation, or `Any`.

@@ -9,6 +9,8 @@ Composes semantic services inside an existing IntelliJ project and retains typed
 
 ## Key Files
 
+- [HostedReferenceStore.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReferenceStore.kt) - project-owned bounded compact reference lookup.
+
 - [HostedEndpointService.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt) - project endpoint ownership.
 - [HostedSemanticServices.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSemanticServices.kt) - request-scoped semantic service composition.
 - [HostedCanonicalQuery.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt) - bounded canonical read dispatch.

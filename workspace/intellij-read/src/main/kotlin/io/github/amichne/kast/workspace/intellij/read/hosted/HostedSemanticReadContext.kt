@@ -18,6 +18,7 @@ internal constructor(
     val observation: io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation =
         io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation.None,
     val limits: io.github.amichne.kast.kernel.ReadLimits = io.github.amichne.kast.kernel.ReadLimits.Default,
+    val timeAllowance: HostedSemanticTimeAllowance,
     private val freshness: HostedReadFreshness,
 ) {
     private enum class Lifetime {

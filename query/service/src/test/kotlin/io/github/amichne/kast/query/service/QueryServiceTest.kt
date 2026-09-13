@@ -474,7 +474,7 @@ class QueryServiceTest {
         assertEquals(listOf(QueryLimitation.TIME_LIMIT_REACHED), qualified.coverage.limitations)
     }
 
-    private fun service(
+    internal fun service(
         discovery: SymbolDiscoveryOperations = discoveryEmpty(qualified = false),
         exact: SymbolExactOperations = exactOperations {
             error("Exact refinement was not expected")
@@ -504,7 +504,7 @@ class QueryServiceTest {
         SymbolDiscoveryResult.Discovered(SymbolDiscoveryOutcome.Complete(batch(request, listOf(candidate), 1L)))
     }
 
-    private fun discoveryEmpty(qualified: Boolean): SymbolDiscoveryOperations = SymbolDiscoveryOperations { request ->
+    internal fun discoveryEmpty(qualified: Boolean): SymbolDiscoveryOperations = SymbolDiscoveryOperations { request ->
         val batch = batch(request, emptyList(), 0L)
         SymbolDiscoveryResult.Discovered(
             if (qualified) {
@@ -571,7 +571,7 @@ class QueryServiceTest {
         return SymbolSelector.issue(selection, evidence).refined()
     }
 
-    private fun request(
+    internal fun request(
         plan: AdmittedQueryPlan,
         workLimit: Long,
         resultLimit: Int = 8,

@@ -31,6 +31,45 @@ class CanonicalQueryProtocolTest {
         )
 
     @Test
+    fun `host lookup expands the token before canonical authority and kind validation`() {
+        val handle = text("candidate:v4:" + "a".repeat(64))
+        val tokens = mutableMapOf<ProtocolText, ProtocolText>()
+        val transport =
+            object : QueryReferenceTransport {
+                override fun issue(canonical: ProtocolText): ProtocolText {
+                    tokens[handle] = canonical
+                    return handle
+                }
+
+                override fun restore(token: ProtocolText): CanonicalSelectorDecoding<ProtocolText> =
+                    tokens[token]?.let { CanonicalSelectorDecoding.Decoded(it) }
+                        ?: CanonicalSelectorDecoding.Rejected(CanonicalSelectorDecodingFailure.STALE_AUTHORITY)
+            }
+        val references = CanonicalQueryReferences(transport)
+        val file =
+            SymbolDiscoveryFileIdentity.Workspace(
+                CanonicalWorkspaceFilePath.fromCanonicalPath(root, Path.of("/workspace/Subject.kt")).refined()
+            )
+        val issued =
+            (references.issueRangeCandidate(lease, file, 2, 5) as CandidateSelectorTokenIssuance.Issued).selector
+        assertEquals(handle, issued)
+        val restored = (references.restoreCandidate(issued, lease) as CanonicalSelectorDecoding.Decoded).value
+        assertEquals(lease, restored.lease)
+        assertEquals(file, (restored as CandidateSelector.Range).file)
+        val stale = SemanticReadLease(root, EvidenceGeneration.parse(8).refined())
+        assertEquals(
+            CanonicalSelectorDecodingFailure.STALE_AUTHORITY,
+            (references.restoreCandidate(issued, stale) as CanonicalSelectorDecoding.Rejected).failure,
+        )
+        assertTrue(references.restoreExact(issued, lease) is CanonicalSelectorDecoding.Rejected)
+        tokens.clear()
+        assertEquals(
+            CanonicalSelectorDecodingFailure.STALE_AUTHORITY,
+            (references.restoreCandidate(issued, lease) as CanonicalSelectorDecoding.Rejected).failure,
+        )
+    }
+
+    @Test
     fun `host supplied authority and budget reach query execution with exact scope`() = runTest {
         val protocol =
             CanonicalQueryProtocol(

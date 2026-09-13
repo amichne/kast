@@ -15,6 +15,8 @@ Defines canonical workspace identity and read evidence, and admits bounded seman
 - [HostedReadDiagnostics.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDiagnostics.kt) - typed stage and outcome evidence.
 - [DetachedModelCapture.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/DetachedModelCapture.kt) - detached project model capture.
 
+- [HostedReadDeadline.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDeadline.kt) - semantic allowance admission from remaining host time.
+
 ## Subdirectories
 
 - `contract` - roots, identities, readiness and read evidence; historical publication contracts remain for compatibility.

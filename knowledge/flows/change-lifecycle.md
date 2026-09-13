@@ -4,7 +4,7 @@ title: Semantic change lifecycle
 description: A supported semantic intent becomes a source effect only after pure planning and exact preimage admission, then must discharge verification or retain recovery evidence.
 resource: file://change
 tags: [change, mutation, verification, recovery]
-timestamp: 2026-09-12T00:00:00Z
+timestamp: 2026-09-13T00:00:00Z
 code_sources:
   - path: change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/admission/ChangeIntent.kt
     symbols: [ChangeIntent]
@@ -40,6 +40,7 @@ code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/HostedPlanApprovalGateway.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexPlanApprovalProjection.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/BrokerTrustEnrollment.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReferenceStore.kt
 ---
 
 # Semantic change lifecycle
@@ -124,3 +125,5 @@ Change tools are deferred defaults after the installed workflow passed the
 [native acceptance matrix](../../docs/reviews/plugin-native-change-acceptance.md). See
 [semantic change](../modules/change.md), [evidence authority](../glossary/evidence-authority.md)
 and the [App Server compatibility record](../../app-server/docs/compatibility.md).
+
+Hosted change planning restores its exact target through the same project-owned reference transport as semantic reads. A compact handle is expanded and subjected to canonical authority validation before exact description and planning evidence acquisition. Handle lookup does not authorize applying a plan.

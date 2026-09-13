@@ -31,6 +31,8 @@ private constructor(
             model: WorkspaceSearchScopeModel,
             fileAdmission: IntellijSemanticSourceFileAdmission,
             limits: ReadLimits = ReadLimits.Default,
+            scopeTimeLimit: io.github.amichne.kast.kernel.ElapsedTimeLimitMillis =
+                diagnosticScopeBudget(limits).elapsedTimeLimit,
         ): ProjectBoundIntellijDiagnosticPorts {
             fun admits(path: Path): Boolean =
                 model.workspaceRoot == authority.workspaceRoot &&
@@ -67,7 +69,7 @@ private constructor(
                                             project,
                                             authority.workspaceRoot,
                                             query.path,
-                                            diagnosticScopeBudget(limits),
+                                            diagnosticScopeBudget(limits).copy(elapsedTimeLimit = scopeTimeLimit),
                                             limits,
                                         )
                                 ) {

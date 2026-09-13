@@ -189,24 +189,30 @@ object CanonicalAgentToolDefinitions {
                 """
                 Kast provides compiler-grounded Kotlin source intelligence for the current repository.
 
-                Use kast.search_classes for a known class-like name and kast.search_functions for a
-                known function or method name. Use kast.search_declarations for unknown or mixed kinds,
-                properties and type aliases. Exact matching is the default; request fuzzy explicitly.
-                Use kast.check_diagnostics for compiler diagnostics. Use the deferred kast.query_symbols
-                for enumeration, returned symbol references, or ordered filters and relation expansion.
-                Preserve returned symbol references verbatim. Use semantic_query for occurrence facts.
+                Use kast.search_classes for class-like names, kast.search_functions for functions,
+                and kast.search_declarations for mixed kinds, properties or type aliases. Exact
+                matching is default; request fuzzy explicitly. Apply known directory, package,
+                source-set, declaration-kind and exact-name constraints before expensive work.
+                Use kast.check_diagnostics for compiler diagnostics, deferred kast.query_symbols
+                for enumeration and ordered pipelines, and semantic_query for occurrence facts.
+                Preserve returned symbol references verbatim, including compact host handles.
+                Do not decode or reconstruct them; refresh stale handles with a scoped search.
 
-                Semantic reads use the existing IntelliJ project for the current repository and
-                require its saved, indexed source state. An unavailable or unready host rejects the
-                read. Do not invoke lifecycle, index synchronization, or topology preparation as
-                query prerequisites.
+                Reads require the repository's saved, indexed IntelliJ state. An unavailable or
+                unready host rejects. If the user authorized opening or reopening this repository
+                in the IDE, use available session tools and wait for readiness before retrying.
+                Reuse prior authorization. For missing information or authorization, use session
+                elicitation when available; prefer nonblocking requests and continue independent
+                work. A pending or absent reply grants no authorization; defer dependent actions.
+                Opening permission excludes cache invalidation, forced index synchronization,
+                topology preparation and restarting unrelated IDE sessions.
 
-                For changes, pass the returned search reference unchanged to change_plan. Hosted
-                changes support AddDeclaration in one existing authored Kotlin file. Planning does
-                not write source. Review the stored preview; change_apply and change_recover require
-                separate explicit approval of the exact plan. Apply includes semantic verification.
-                Preserve qualified unverified or recovery-required outcomes: a missing response does
-                not prove no write occurred. Use durable recovery without replaying an attempted plan.
+                Pass a returned exact reference unchanged to change_plan. Hosted changes support
+                AddDeclaration in one existing authored Kotlin file. Planning writes no source.
+                Review the stored preview; change_apply and change_recover each require separate
+                explicit approval of the exact plan. Apply includes semantic verification.
+                Preserve qualified unverified and recovery-required outcomes. A missing response
+                does not prove no write occurred; use durable recovery without replaying a plan.
                 """
                     .trimIndent()
             )

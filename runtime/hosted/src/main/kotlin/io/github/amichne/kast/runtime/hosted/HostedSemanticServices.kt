@@ -21,7 +21,7 @@ import io.github.amichne.kast.workspace.intellij.read.hosted.HostedSemanticReadC
 
 /** Ports share one request's admitted authority, model, scope, policy and observation. Never retained across reads. */
 internal class HostedSemanticServices(private val project: Project, private val context: HostedSemanticReadContext) {
-    val budgets = HostedSemanticBudgets(context.limits)
+    val budgets = HostedSemanticBudgets(context.limits, context.timeAllowance)
     private val symbols by lazy {
         ProjectBoundIntellijSymbolPorts.create(
             project,
@@ -46,7 +46,13 @@ internal class HostedSemanticServices(private val project: Project, private val 
                 limits = context.limits,
             ),
         )
-    val references = CanonicalQueryReferences(context.model)
+    val references =
+        CanonicalQueryReferences(
+            context.model,
+            project
+                .getService(HostedReferenceStore::class.java)
+                .transport(context.authority.reference, context.limits, context.observation),
+        )
 
     fun source(continuations: IntellijSourceReadContinuations) =
         SourceReadService(
@@ -77,6 +83,7 @@ internal class HostedSemanticServices(private val project: Project, private val 
             model = context.model,
             fileAdmission = context.sourceFiles,
             limits = context.limits,
+            scopeTimeLimit = context.timeAllowance.diagnosticScope,
         )
     }
     val diagnostics by lazy { DiagnosticService(context.validation, diagnosticPorts.compiler) }

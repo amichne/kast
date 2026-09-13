@@ -1,7 +1,6 @@
 package io.github.amichne.kast.runtime.hosted
 
 import com.intellij.openapi.project.Project
-import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
@@ -94,14 +93,14 @@ private suspend fun evaluateHostedQuery(
     request: HostedRequest.Query,
     continuations: IntellijSourceReadContinuations,
 ): HostedResponse =
-    HostedResponse.Canonical.encode(
-        CanonicalOperationWireBindings.queryRun,
+    encodeHostedQueryResponse(
         CanonicalQueryProtocol(
                 QueryService(services.discovery, services.exact, services.source(continuations), services.relations),
                 services.references,
             )
             .execute(request.request, context.authority, services.budgets.hostedQueryBudget),
         limits = context.limits,
+        observation = context.observation,
     )
 
 private suspend fun evaluateHostedDiagnostic(
@@ -117,13 +116,16 @@ private suspend fun evaluateHostedDiagnostic(
     )
 
 /** Budgets are projected only from an admitted, immutable policy. */
-internal class HostedSemanticBudgets(private val limits: ReadLimits) {
+internal class HostedSemanticBudgets(
+    private val limits: ReadLimits,
+    timeAllowance: io.github.amichne.kast.workspace.intellij.read.hosted.HostedSemanticTimeAllowance,
+) {
     val hostedQueryBudget =
         QueryBudget(
             ResourceBudget(
                 fixed(ResultLimit.parse(limits[ReadLimitParameter.SEMANTIC_RESULTS].value)),
                 fixed(WorkUnitLimit.parse(limits[ReadLimitParameter.SEMANTIC_WORK].value.toLong())),
-                fixed(ElapsedTimeLimitMillis.parse(limits[ReadLimitParameter.SEMANTIC_MILLIS].value.toLong())),
+                timeAllowance.semantic,
             ),
             fixed(QueryByteLimit.parse(limits[ReadLimitParameter.SEMANTIC_RETURNED_BYTES].value.toLong())),
         )

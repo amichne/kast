@@ -4,8 +4,14 @@ title: Semantic read domains
 description: Domain contracts refine discovery into exact compiler identity and compose source, relation, traversal, diagnostics, and queries without erasing evidence.
 resource: file://query
 tags: [kotlin, semantic, query, compiler]
-timestamp: 2026-09-10T00:00:00Z
+timestamp: 2026-09-13T00:00:00Z
 code_sources:
+  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/BoundedNativeDiscoveryCollector.kt
+  - path: symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/ScopedDeclarationDiscoveryTest.kt
+  - path: query/service/src/test/kotlin/io/github/amichne/kast/query/service/QueryDiscoveryPlanningTest.kt
+  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijScopedDeclarationEnumeration.kt
+  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijDiscoveryConstraintAdmission.kt
+  - path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryServiceSupport.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt
   - path: docs/reviews/live-semantic-read-acceptance.md
   - path: symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/ExactDeclarationSelector.kt
@@ -75,7 +81,7 @@ restoration, relation subjects, and relation targets retain this check. Text and
 legacy symbol-relation callbacks collect bounded references before projection;
 collection exhaustion remains qualified rather than complete.
 
-Broad name discovery supplies a cached `IdFilter.getProjectIdFilter` before
+The retained library-inclusive fuzzy and filename contributor paths supply a cached `IdFilter.getProjectIdFilter` before
 contributors enumerate keys. The closed scope library policy selects project
 content for `EXCLUDE` and project-plus-library IDs for `INCLUDE`. The native key
 scan receives this coarse filter before the name cap; it does not prove exact
@@ -123,3 +129,12 @@ Read [semantic query](../flows/semantic-query.md) for execution order and [compi
 Native symbol/relation adapters accept an optional request-local observation capability. Finite counters and termination reasons distinguish name/candidate caps from work/time/result/byte budgets, and unresolved K2 symbols from resolved non-Kotlin PSI or non-Kotlin references. The hosted boundary owns default publication and records effective limits. The [synthetic reproduction report](../../docs/reviews/hosted-semantic-reproduction.md) records the original native causes and the corrected separation of subject selection from workspace expansion.
 
 The corrected scoped `ALL` path enumerates Kotlin declarations through the admitted file-type index without workspace name enumeration. Generated primary-constructor properties retain K2 property identity. Java reference endpoints retain compiler identity, and workspace expansion preserves original subject restrictions separately from destination admission. [Read-limit settings](../../docs/hosted-read-configuration.md) tune operational bounds while default logs preserve stages, outcomes and their effective values.
+
+Search planning applies cheap scope and declaration-family constraints before
+expensive work. Project-only fuzzy declarations share scoped Kotlin-file enumeration
+with `ALL`; mixed declaration families use one symbol discovery request. Exact
+searches invoke only the short-name indexes for requested families. Kind exclusion
+precedes package PSI in candidate admission, and scoped enumeration selects kinds
+before candidate capacity. File-index callbacks end before package inspection;
+excluded class containers remain traversable for eligible members. Qualified
+coverage continues through compiler refinement and final projection.

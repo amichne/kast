@@ -32,44 +32,22 @@ import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 import java.nio.charset.StandardCharsets
 
-internal fun discoveryKinds(syntax: QueryDiscoverySyntax): List<SymbolNameDiscoveryKind> = buildSet {
-    if (CompilerSymbolKind.CLASSLIKE in syntax.declarationKinds.values) {
-        add(SymbolNameDiscoveryKind.CLASS)
-    }
-    if (syntax.declarationKinds.values.any { it != CompilerSymbolKind.CLASSLIKE }) {
-        add(SymbolNameDiscoveryKind.SYMBOL)
-    }
-}
-    .sortedBy { it.ordinal }
+/** SYMBOL already owns every Kotlin declaration family, including classes. */
+internal fun discoveryKinds(syntax: QueryDiscoverySyntax): List<SymbolNameDiscoveryKind> =
+    listOf(
+        if (syntax.declarationKinds.values.toSet() == setOf(CompilerSymbolKind.CLASSLIKE)) SymbolNameDiscoveryKind.CLASS
+        else SymbolNameDiscoveryKind.SYMBOL
+    )
 
-/**
- * A multi-family query must not spend class candidates once through the class index and again through the broad symbol
- * index. Each child request receives only the declaration families it semantically owns.
- */
 internal fun constraints(
     syntax: QueryDiscoverySyntax,
     discoveryKind: SymbolNameDiscoveryKind,
 ): SymbolDiscoveryConstraints {
-    val declarationKinds =
-        when (discoveryKind) {
-            SymbolNameDiscoveryKind.CLASS ->
-                syntax.declarationKinds.values.filterTo(linkedSetOf()) {
-                    it == CompilerSymbolKind.CLASSLIKE
-                }
-            SymbolNameDiscoveryKind.SYMBOL ->
-                syntax.declarationKinds.values.filterTo(linkedSetOf()) {
-                    it != CompilerSymbolKind.CLASSLIKE
-                }
-            SymbolNameDiscoveryKind.FILE -> emptySet()
-        }
-    val admittedKinds = SymbolDiscoveryDeclarationKinds.from(declarationKinds).refined()
+    check(discoveryKind != SymbolNameDiscoveryKind.FILE)
+    val admittedKinds = SymbolDiscoveryDeclarationKinds.from(syntax.declarationKinds.values.toSet()).refined()
     return when (val scope = syntax.scope) {
         QueryScope.Unrestricted ->
-            SymbolDiscoveryConstraints(
-                directory = null,
-                packageName = null,
-                declarationKinds = admittedKinds,
-            )
+            SymbolDiscoveryConstraints(directory = null, packageName = null, declarationKinds = admittedKinds)
         is QueryScope.Restricted ->
             SymbolDiscoveryConstraints(
                 sourceSets = scope.sourceSets,
