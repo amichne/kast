@@ -21,6 +21,7 @@ internal class HostedReadDiagnostics(
     private val counters = linkedMapOf<Pair<IntellijReadCounter, IntellijReadContributor>, Long>()
     private val terminations = linkedSetOf<Pair<IntellijReadTermination, IntellijReadContributor>>()
     private val unexpectedFailures = linkedSetOf<IntellijReadUnexpectedFailure>()
+    private var semanticBudget: HostedSemanticBudgetObservation = HostedSemanticBudgetObservation.NotAdmitted
     private var finished = false
     private var correlation: HostedReadCorrelation = HostedReadCorrelation.Unbound
 
@@ -60,6 +61,11 @@ internal class HostedReadDiagnostics(
     }
 
     @Synchronized
+    fun budget(value: HostedSemanticBudgetObservation) {
+        if (!finished) semanticBudget = value
+    }
+
+    @Synchronized
     fun finish(outcome: HostedDiagnosticOutcome) {
         if (finished) return
         finished = true
@@ -81,6 +87,7 @@ internal class HostedReadDiagnostics(
                                 .coerceAtLeast(0)
                         )
                 },
+                semanticBudget,
                 counters.map { (key, value) -> HostedNativeCount(key.first, key.second, value) },
                 terminations.map { HostedNativeTermination(it.first, it.second) },
                 outcome,
@@ -149,6 +156,7 @@ internal data class HostedReadDiagnosticReceipt(
     val durationNanos: Long,
     val stages: List<HostedReadStageDuration>,
     val semanticEntry: HostedSemanticEntry,
+    val semanticBudget: HostedSemanticBudgetObservation,
     val counters: List<HostedNativeCount>,
     val terminations: List<HostedNativeTermination>,
     val outcome: HostedDiagnosticOutcome,
@@ -173,7 +181,7 @@ internal fun hostedReadDiagnostics(limits: ReadLimits = ReadLimits.Default): Hos
 internal fun HostedReadDiagnosticReceipt.encode(): String =
     diagnosticOutcomeJson.encodeToString(
         HostedReadDiagnosticDocument(
-            schemaVersion = 3,
+            schemaVersion = 4,
             limits =
                 limits.values.map {
                     HostedLimitDocument(it.parameter.name, it.value, it.parameter.unit.name, it.source.name)
@@ -195,6 +203,7 @@ internal fun HostedReadDiagnosticReceipt.encode(): String =
                     HostedSemanticEntry.NotEntered -> HostedEntryDocument.NotEntered
                     is HostedSemanticEntry.Entered -> HostedEntryDocument.Entered(value.remainingDeadlineNanos)
                 },
+            semanticBudget = semanticBudget,
             counters = counters,
             terminations = terminations,
             outcome =
@@ -227,6 +236,7 @@ private data class HostedReadDiagnosticDocument(
     val durationNanos: Long,
     val stages: List<HostedReadStageDuration>,
     val semanticEntry: HostedEntryDocument,
+    val semanticBudget: HostedSemanticBudgetObservation,
     val counters: List<HostedNativeCount>,
     val terminations: List<HostedNativeTermination>,
     val outcome: HostedDiagnosticOutcomeDocument,
@@ -275,4 +285,26 @@ internal sealed interface HostedDiagnosticOutcomeDocument {
         /** Hosted failure detail is the existing schema-defined union of finite codes and structured causes. */
         val detail: JsonElement,
     ) : HostedDiagnosticOutcomeDocument
+}
+
+/** Bounded configured-versus-admitted timing evidence; never includes request content. */
+@Serializable
+internal sealed interface HostedSemanticBudgetObservation {
+    @Serializable @SerialName("not-admitted") data object NotAdmitted : HostedSemanticBudgetObservation
+
+    @Serializable
+    @SerialName("admitted")
+    data class Admitted(
+        val remainingHostMillis: Long,
+        val completionReserveMillis: Long,
+        val semanticMillis: Long,
+        val diagnosticScopeMillis: Long,
+    ) : HostedSemanticBudgetObservation
+
+    @Serializable
+    @SerialName("exhausted")
+    data class Exhausted(
+        val remainingHostMillis: Long,
+        val completionReserveMillis: Long,
+    ) : HostedSemanticBudgetObservation
 }

@@ -79,22 +79,6 @@ import org.junit.jupiter.api.Test
 
 class QueryServiceTest {
     @Test
-    fun `mixed declaration families use one symbol discovery pass with all constraints retained`() = runTest {
-        val kinds = setOf(CompilerSymbolKind.CLASSLIKE, CompilerSymbolKind.FUNCTION, CompilerSymbolKind.PROPERTY, CompilerSymbolKind.TYPE_ALIAS)
-        val syntax = QueryDiscoverySyntax(QueryMatch.All, QueryScope.Unrestricted, QueryDeclarationKinds.from(kinds).refined())
-        val requests = mutableListOf<SymbolDiscoveryRequest>()
-        val service = service(discovery = SymbolDiscoveryOperations { child ->
-            requests += child
-            discoveryEmpty(qualified = false).discover(child)
-        })
-        val plan = QueryPlanCompiler.admit(QueryPlanSyntax(QuerySourceSyntax.Symbols(syntax), emptyList(), QueryOutputSyntax.Symbols(QuerySymbolFields.from(emptySet()).refined()))) as QueryPlanAdmission.Admitted
-        assertTrue(service.run(request(plan.plan, workLimit = 8L)) is QueryExecutionResult.Complete)
-        assertEquals(1, requests.size)
-        assertEquals(SymbolDiscoveryTarget.All(SymbolNameDiscoveryKind.SYMBOL), requests.single().target)
-        assertEquals(kinds, requests.single().constraints.declarationKinds!!.values)
-    }
-
-    @Test
     fun `visibility filters the selected public leaf and private parent rather than descendants`() = runTest {
         val selected = selector(selection())
         for (visibility in listOf(DeclarationVisibility.PUBLIC, DeclarationVisibility.PRIVATE)) {
@@ -490,7 +474,7 @@ class QueryServiceTest {
         assertEquals(listOf(QueryLimitation.TIME_LIMIT_REACHED), qualified.coverage.limitations)
     }
 
-    private fun service(
+    internal fun service(
         discovery: SymbolDiscoveryOperations = discoveryEmpty(qualified = false),
         exact: SymbolExactOperations = exactOperations {
             error("Exact refinement was not expected")
@@ -520,7 +504,7 @@ class QueryServiceTest {
         SymbolDiscoveryResult.Discovered(SymbolDiscoveryOutcome.Complete(batch(request, listOf(candidate), 1L)))
     }
 
-    private fun discoveryEmpty(qualified: Boolean): SymbolDiscoveryOperations = SymbolDiscoveryOperations { request ->
+    internal fun discoveryEmpty(qualified: Boolean): SymbolDiscoveryOperations = SymbolDiscoveryOperations { request ->
         val batch = batch(request, emptyList(), 0L)
         SymbolDiscoveryResult.Discovered(
             if (qualified) {
@@ -587,7 +571,7 @@ class QueryServiceTest {
         return SymbolSelector.issue(selection, evidence).refined()
     }
 
-    private fun request(
+    internal fun request(
         plan: AdmittedQueryPlan,
         workLimit: Long,
         resultLimit: Int = 8,

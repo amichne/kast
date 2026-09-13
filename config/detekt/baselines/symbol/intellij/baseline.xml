@@ -34,7 +34,7 @@
     <ID>LongMethod:IntellijNativeDiscoveryQuery.kt:IntellijNativeDiscoveryQuery$fun discover: IntellijNativeDiscoveryExecution</ID>
     <ID>LongMethod:IntellijNativeDiscoveryQuery.kt:IntellijNativeDiscoveryQuery$private fun discoverIndexed: IntellijNativeDiscoveryExecution</ID>
     <ID>LongMethod:IntellijNativeDiscoveryQuery.kt:private fun SymbolDiscoveryConstraints.admit: IntellijDiscoveryItemAdmission</ID>
-    <ID>LongMethod:IntellijNativeDiscoveryTest.kt:SymbolDiscoveryTest$private fun fixture: Fixture</ID>
+    <ID>LongMethod:IntellijNativeDiscoveryTest.kt:SymbolDiscoveryTest$internal fun fixture: Fixture</ID>
     <ID>LongMethod:IntellijNativeDiscoveryTest.kt:SymbolDiscoveryTest$private fun request: SymbolDiscoveryRequest</ID>
     <ID>LongMethod:IntellijNativeRelationReadTestFixtures.kt:internal fun fixture: Fixture</ID>
     <ID>LongMethod:IntellijNativeRelationReadTestFixtures.kt:internal fun selector: ExactDeclarationSelector</ID>

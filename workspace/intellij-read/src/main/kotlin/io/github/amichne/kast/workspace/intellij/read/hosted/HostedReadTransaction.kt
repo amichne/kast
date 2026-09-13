@@ -6,14 +6,19 @@ import io.github.amichne.kast.kernel.Refinement
 internal suspend fun <Value> runHostedReadTransaction(
     progress: HostedQueryProgress,
     validate: suspend () -> Refinement<Unit, HostedQueryFailure>,
-    evaluate: suspend () -> Value,
+    evaluate: suspend (HostedSemanticTimeAllowance) -> Value,
 ): HostedSemanticRead<Value> {
     when (val admitted = validate()) {
         is Refinement.Rejected -> return HostedSemanticRead.Rejected(admitted.failure)
         is Refinement.Refined -> Unit
     }
     progress.advance(HostedQueryStage.SEMANTIC_READ)
-    val value = evaluate()
+    val allowance =
+        when (val admitted = progress.admitSemanticTime()) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected -> return HostedSemanticRead.Rejected(admitted.failure)
+        }
+    val value = evaluate(allowance)
     progress.advance(HostedQueryStage.CONTENT_REVALIDATION)
     return when (val admitted = validate()) {
         is Refinement.Rejected -> HostedSemanticRead.Rejected(admitted.failure)

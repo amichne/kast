@@ -36,7 +36,7 @@ private constructor(
             HostedQueryService(project, scope, checkpoint)
     }
 
-    private val executor = HostedQueryExecutor(serviceScope, ::hostedReadDiagnostics)
+    private val executor = HostedQueryExecutor(serviceScope, diagnostics = ::hostedReadDiagnostics)
     private val owner = Disposer.newDisposable("Kast hosted query epoch")
     val readConfiguration: Refinement<ReadLimits, ReadLimitFailure> = readHostedConfiguration()
     private val configuredSession =
@@ -150,19 +150,23 @@ private constructor(
                                 )
                         }
                     progress.diagnostics?.bind(authority.reference)
-                    val context =
-                        HostedSemanticReadContext(
-                            authority = authority,
-                            model = sourceScope.model,
-                            sourceFiles = IntellijSemanticSourceFileAdmission(sourceScope::contains),
-                            observation = progress.observation,
-                            limits = progress.limits,
-                            freshness = freshnessOwner.capture(admitted, epoch, authority),
-                        )
-                    try {
-                        runHostedReadTransaction(progress, context::validate) { evaluate(context) }
-                    } finally {
-                        context.end()
+                    val freshnessCheck = freshnessOwner.capture(admitted, epoch, authority)
+                    runHostedReadTransaction(progress, freshnessCheck.current) { timeAllowance ->
+                        val context =
+                            HostedSemanticReadContext(
+                                authority = authority,
+                                model = sourceScope.model,
+                                sourceFiles = IntellijSemanticSourceFileAdmission(sourceScope::contains),
+                                observation = progress.observation,
+                                limits = progress.limits,
+                                timeAllowance = timeAllowance,
+                                freshness = freshnessCheck,
+                            )
+                        try {
+                            evaluate(context)
+                        } finally {
+                            context.end()
+                        }
                     }
                 }
         ) {

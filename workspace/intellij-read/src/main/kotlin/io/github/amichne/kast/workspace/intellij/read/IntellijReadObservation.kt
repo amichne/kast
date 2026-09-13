@@ -24,6 +24,7 @@ enum class IntellijReadCounter {
 enum class IntellijReadContributor {
     NONE,
     EXACT_INDEX,
+    SCOPED_DECLARATIONS,
     KOTLIN_CLASS,
     KOTLIN_CLASS_SYMBOL,
     KOTLIN_FUNCTION_SYMBOL,

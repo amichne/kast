@@ -20,7 +20,7 @@ enum class ReadLimitParameter(val defaultValue: Int, val unit: ReadLimitUnit, va
     EPOCH_VFS_EVENTS(4_096, ReadLimitUnit.COUNT),
     EPOCH_PATH_CHARACTERS(4_096, ReadLimitUnit.CHARACTERS),
     EPOCH_PATH_BYTES(8_192, ReadLimitUnit.BYTES),
-    HOST_QUERY_MILLIS(2_000, ReadLimitUnit.MILLISECONDS),
+    HOST_QUERY_MILLIS(DEFAULT_HOST_QUERY_MILLIS, ReadLimitUnit.MILLISECONDS),
     SEMANTIC_MILLIS(2_000, ReadLimitUnit.MILLISECONDS),
     SEMANTIC_WORK(100_000, ReadLimitUnit.COUNT),
     SEMANTIC_RESULTS(128, ReadLimitUnit.COUNT),
@@ -186,3 +186,5 @@ class ReadLimits private constructor(private val limits: Map<ReadLimitParameter,
         }
     }
 }
+
+private const val DEFAULT_HOST_QUERY_MILLIS = 4_000

@@ -51,7 +51,7 @@ All values are positive decimal integers, up to 2,147,483,646. Transport and pro
 | `EPOCH_VFS_EVENTS` | 4,096 | count |
 | `EPOCH_PATH_CHARACTERS` | 4,096 | characters |
 | `EPOCH_PATH_BYTES` | 8,192 | bytes |
-| `HOST_QUERY_MILLIS` | 2,000 | milliseconds |
+| `HOST_QUERY_MILLIS` | 4,000 | milliseconds |
 | `SEMANTIC_MILLIS` | 2,000 | milliseconds |
 | `SEMANTIC_WORK` | 100,000 | count |
 | `SEMANTIC_RESULTS` | 128 | count |
@@ -95,3 +95,28 @@ Unexpected native exceptions retain only the exception class and bounded Kast ad
 `CONFIGURATION_REJECTED` precedes semantic execution. `MODULE_ADMISSION_LIMIT` occurs during model capture, before the semantic budget starts. `TIME_LIMIT`, `WORK_LIMIT`, `RESULT_LIMIT` and `BYTE_LIMIT` identify different exhausted resources. `LIBRARY_POLICY_EXCLUSION` records an intentionally excluded library target; unresolved project targets still qualify coverage.
 
 The [reproduction guide](../experiments/host-observation/SEMANTIC_REPRODUCTION.md) separates native setup, artifact pinning and replay. Its settings evidence reads the loaded service's admitted policy rather than assuming static defaults. The [review](reviews/hosted-semantic-reproduction.md) retains baseline findings and subsequent fixes separately.
+
+## Deadline admission and search ordering
+
+The host deadline covers admission, model capture, semantic evaluation, freshness
+revalidation and detachment. Its default is 4,000 ms; semantic work retains a
+2,000 ms ceiling. At semantic entry, the host subtracts elapsed request time and
+reserves the smaller of 250 ms or one eighth of the host limit (at least 1 ms)
+for completion. Semantic and diagnostic-scope allowances are each capped by the
+remaining time after that reserve. A nonpositive allowance rejects before the
+evaluator runs. Configured equal limits remain supported through this runtime
+refinement. The hard timer still cancels and drains work that overruns; cooperative
+compiler work is not guaranteed to respond within the completion reserve.
+
+Schema-4 `kast_semantic_read` receipts retain configured limits and an explicit
+`semanticBudget`: `not-admitted`, `admitted` with remaining host time, reserve and
+effective allowances, or `exhausted`. Semantic qualification and host rejection
+remain distinct outcomes.
+
+Project-only fuzzy declaration reads and `ALL` select scoped Kotlin files before
+PSI enumeration. Declaration-kind constraints select eligible indexes or PSI
+families before candidate capacity; exact names retain direct short-name indexes.
+Mixed-family queries use one symbol pass. Package checks run after file-index
+callbacks and before collecting declarations; excluded containers are still
+traversed for eligible members. Library-inclusive fuzzy and filename reads retain
+their contributor path. Returned byte/work/time qualifications remain explicit.

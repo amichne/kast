@@ -31,6 +31,7 @@ internal sealed interface HostedExecution<out Value> {
 /** Owns admission, deadline, cancellation drainage, and the final publication decision. */
 internal class HostedQueryExecutor(
     serviceScope: CoroutineScope,
+    private val clock: () -> Long = System::nanoTime,
     private val diagnostics: (ReadLimits) -> HostedReadDiagnostics? = { null },
 ) {
     private val lifetime = HostedQueryLifetime()
@@ -53,7 +54,7 @@ internal class HostedQueryExecutor(
                     return HostedExecution.Rejected(admission.failure)
                 }
             }
-        val progress = HostedQueryProgress(limits)
+        val progress = HostedQueryProgress(limits, clock)
         val operation = scope.async {
             withTimeout(limits[ReadLimitParameter.HOST_QUERY_MILLIS].value.toLong()) {
                 progress.observe(diagnostics(limits))
@@ -117,7 +118,7 @@ internal class HostedQueryExecutor(
     }
 }
 
-internal const val HOSTED_QUERY_BUDGET_MILLIS = 2_000L
+internal val HOSTED_QUERY_BUDGET_MILLIS = ReadLimits.Default[ReadLimitParameter.HOST_QUERY_MILLIS].value.toLong()
 
 /** Monotone bounded stage evidence for success, rejection, and unexpected platform failure. */
 enum class HostedQueryStage {
@@ -130,7 +131,11 @@ enum class HostedQueryStage {
     RESULT_DETACHED,
 }
 
-internal class HostedQueryProgress(val limits: ReadLimits = ReadLimits.Default) {
+internal class HostedQueryProgress(val limits: ReadLimits = ReadLimits.Default, clock: () -> Long = System::nanoTime) {
+    private val deadline = HostedReadDeadline(limits, clock)
+
+    fun admitSemanticTime() = deadline.admit(diagnostics)
+
     @Volatile
     var diagnostics: HostedReadDiagnostics? = null
         private set

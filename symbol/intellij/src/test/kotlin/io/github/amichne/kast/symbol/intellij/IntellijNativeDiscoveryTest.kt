@@ -699,7 +699,7 @@ class SymbolDiscoveryTest {
         assertEquals(listOf("ZItem"), result.batch().candidates.map { it.name.value })
     }
 
-    private fun fixture(
+    internal fun fixture(
         kind: SymbolNameDiscoveryKind = SymbolNameDiscoveryKind.SYMBOL,
         resultLimit: Int = 10,
         returnedBytes: Long = 10_000L,
@@ -920,7 +920,7 @@ class SymbolDiscoveryTest {
         )
     }
 
-    private data class Fixture(
+    internal data class Fixture(
         val request: SymbolDiscoveryRequest,
         val scope: GlobalSearchScope,
         val compiledScope: CompiledIntellijSearchScope,
@@ -933,7 +933,7 @@ class SymbolDiscoveryTest {
         ): IntellijNativeDiscoveryExecution = query.discover(compiledScope, request, contributors)
     }
 
-    private class FakeContributor(
+    internal class FakeContributor(
         private val names: List<String>,
         private val items: Map<String, List<FakeItem>>,
         private val fail: Boolean,
@@ -1000,7 +1000,7 @@ class SymbolDiscoveryTest {
         ): Array<NavigationItem> = emptyArray()
     }
 
-    private data class FakeItem(
+    internal data class FakeItem(
         val candidateName: String,
         val identity: String = candidateName,
     ) : NavigationItem {

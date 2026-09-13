@@ -16,6 +16,8 @@ Defines symbol discovery and exact declaration identity, provides domain service
 - [service/src/main/kotlin/io/github/amichne/kast/symbol/service/SymbolExactService.kt](service/src/main/kotlin/io/github/amichne/kast/symbol/service/SymbolExactService.kt) - exact lookup orchestration.
 - [intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/exact/IntellijKotlinCompilerSymbolLookup.kt](intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/exact/IntellijKotlinCompilerSymbolLookup.kt) - compiler lookup.
 
+- [intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijScopedDeclarationEnumeration.kt](intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijScopedDeclarationEnumeration.kt) - constraint-first scoped declaration discovery.
+
 ## Subdirectories
 
 - `contract` - exact and discovery identities, requests, facts, and outcomes.

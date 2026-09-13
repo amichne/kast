@@ -16,6 +16,89 @@ import org.junit.jupiter.api.Test
 
 class HostedQueryExecutorTest {
     @Test
+    fun `equal configured deadlines shrink semantic time after capture and retain qualified publication`() = runTest {
+        val limits =
+            (io.github.amichne.kast.kernel.ReadLimits.resolve(mapOf("KAST_READ_HOST_QUERY_MILLIS" to "2000"))
+                    as io.github.amichne.kast.kernel.Refinement.Refined)
+                .value
+        val receipts = mutableListOf<HostedReadDiagnosticReceipt>()
+        val executor =
+            HostedQueryExecutor(backgroundScope, { testScheduler.currentTime * 1_000_000 }) { policy ->
+                HostedReadDiagnostics({ testScheduler.currentTime * 1_000_000 }, policy, receipts::add)
+            }
+        val result =
+            executor.execute(
+                executor.endpoint,
+                limits,
+                outcome = { HostedDiagnosticOutcome.Evaluated(HostedEvaluationOutcome.QUALIFIED) },
+            ) { progress ->
+                progress.advance(HostedQueryStage.MODEL_CAPTURE)
+                delay(318)
+                runHostedReadTransaction(progress, { io.github.amichne.kast.kernel.Refinement.Refined(Unit) }) {
+                    allowance ->
+                    assertEquals(1432, allowance.semantic.value)
+                    delay(allowance.semantic.value + 50)
+                    42
+                }
+            }
+        assertEquals(
+            HostedExecution.Completed(HostedSemanticRead.Resolved(42), HostedQueryStage.RESULT_DETACHED),
+            result,
+        )
+        assertEquals(HostedDiagnosticOutcome.Evaluated(HostedEvaluationOutcome.QUALIFIED), receipts.single().outcome)
+        assertEquals(HostedSemanticBudgetObservation.Admitted(1682, 250, 1432, 1432), receipts.single().semanticBudget)
+        val encoded =
+            kotlinx.serialization.json.Json.parseToJsonElement(receipts.single().encode())
+                as kotlinx.serialization.json.JsonObject
+        val budget = encoded.getValue("semanticBudget") as kotlinx.serialization.json.JsonObject
+        assertEquals(
+            setOf("type", "remainingHostMillis", "completionReserveMillis", "semanticMillis", "diagnosticScopeMillis"),
+            budget.keys,
+        )
+        assertEquals(kotlinx.serialization.json.JsonPrimitive("admitted"), budget.getValue("type"))
+        assertEquals(kotlinx.serialization.json.JsonPrimitive(1432), budget.getValue("semanticMillis"))
+        executor.retire()
+        executor.drain()
+    }
+
+    @Test
+    fun `capture exhausting the semantic allowance rejects before evaluation and records admission failure`() =
+        runTest {
+            val receipts = mutableListOf<HostedReadDiagnosticReceipt>()
+            val executor =
+                HostedQueryExecutor(backgroundScope, { testScheduler.currentTime * 1_000_000 }) { policy ->
+                    HostedReadDiagnostics({ testScheduler.currentTime * 1_000_000 }, policy, receipts::add)
+                }
+            val result =
+                executor.execute(executor.endpoint) { progress ->
+                    delay(3800)
+                    runHostedReadTransaction(progress, { io.github.amichne.kast.kernel.Refinement.Refined(Unit) }) {
+                        error("Exhausted allowance must never invoke the evaluator")
+                    }
+                }
+            assertEquals(
+                HostedExecution.Completed(
+                    HostedSemanticRead.Rejected(HostedQueryFailure.BUDGET_EXCEEDED),
+                    HostedQueryStage.SEMANTIC_READ,
+                ),
+                result,
+            )
+            assertEquals(
+                HostedDiagnosticOutcome.Rejected(HostedQueryFailure.BUDGET_EXCEEDED),
+                receipts.single().outcome,
+            )
+            assertEquals(HostedSemanticBudgetObservation.Exhausted(200, 250), receipts.single().semanticBudget)
+            val encoded =
+                kotlinx.serialization.json.Json.parseToJsonElement(receipts.single().encode())
+                    as kotlinx.serialization.json.JsonObject
+            val budget = encoded.getValue("semanticBudget") as kotlinx.serialization.json.JsonObject
+            assertEquals(setOf("type", "remainingHostMillis", "completionReserveMillis"), budget.keys)
+            assertEquals(kotlinx.serialization.json.JsonPrimitive("exhausted"), budget.getValue("type"))
+            executor.retire()
+            executor.drain()
+        }
+
+    @Test
     fun `success and platform failure preserve the last bounded stage`() = runTest {
         val executor = HostedQueryExecutor(backgroundScope)
         assertEquals(
