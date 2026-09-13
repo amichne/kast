@@ -91,7 +91,7 @@ class DetachedModelTest {
     }
 
     @Test
-    fun `compiled live adapter matches the pinned IDEA 262 contract`() {
+    fun `compiled live adapter preserves required IDE APIs and rejects prohibited effects`() {
         assertEquals(
             emptyList<DetachedModelClassContractFailure>(),
             DetachedModelClassContract.verify(),

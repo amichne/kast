@@ -1,6 +1,6 @@
 package conventions.jsoncontracts
 
-import org.jetbrains.kotlin.K1Deprecation
+import org.jetbrains.kotlin.CoreEnvironmentDeprecation
 import org.jetbrains.kotlin.cli.create
 import org.jetbrains.kotlin.cli.jvm.compiler.EnvironmentConfigFiles
 import org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment
@@ -44,7 +44,7 @@ sealed interface KotlinDocumentationScan {
 class KotlinDocumentationScanner : AutoCloseable {
     private val disposable = Disposer.newDisposable("kast-api-knowledge")
 
-    @OptIn(K1Deprecation::class)
+    @OptIn(CoreEnvironmentDeprecation::class)
     private val environment =
         KotlinCoreEnvironment.createForProduction(
             disposable,

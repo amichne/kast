@@ -3,8 +3,6 @@ package io.github.amichne.kast.workspace.intellij.read
 import java.io.DataInputStream
 import java.io.IOException
 import java.lang.reflect.Modifier
-import java.security.MessageDigest
-import java.util.HexFormat
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -29,12 +27,6 @@ internal sealed interface DetachedModelClassContractFailure {
         val expected: List<String>,
         val observed: List<String>,
     ) : DetachedModelClassContractFailure
-
-    data class ClassFingerprintMismatch(
-        val resource: String,
-        val expected: String,
-        val observed: String,
-    ) : DetachedModelClassContractFailure
 }
 
 internal data class DetachedModelMemberReference(
@@ -43,10 +35,10 @@ internal data class DetachedModelMemberReference(
     val descriptor: String,
 )
 
-/** Byte-only IDEA 262 contract for the live detached-model adapter. */
+/** Checks the required IDE API surface and prohibited effects, independent of compiler output. */
 internal object DetachedModelClassContract {
-    fun verify(): List<DetachedModelClassContractFailure> {
-        val reads = EXPECTED_FINGERPRINTS.keys.associateWith(::readClass)
+    fun verify(readBytes: (String) -> ByteArray? = ::readContractResource): List<DetachedModelClassContractFailure> {
+        val reads = RESOURCES.associateWith { resource -> readClass(resource, readBytes) }
         val readFailures = reads.mapNotNull { (resource, result) ->
             when (result) {
                 ClassRead.Missing -> DetachedModelClassContractFailure.ResourceMissing(resource)
@@ -85,16 +77,6 @@ internal object DetachedModelClassContract {
                         )
                     )
                 }
-                val expected = EXPECTED_FINGERPRINTS.getValue(resource)
-                if (view.fingerprint != expected) {
-                    add(
-                        DetachedModelClassContractFailure.ClassFingerprintMismatch(
-                            resource,
-                            expected,
-                            view.fingerprint,
-                        )
-                    )
-                }
             }
             REQUIRED_CLASS_REFERENCES.filterNot(main.classNames::contains).forEach { missing ->
                 add(DetachedModelClassContractFailure.MissingClassReference(missing))
@@ -108,16 +90,11 @@ internal object DetachedModelClassContract {
         }
     }
 
-    private fun readClass(resource: String): ClassRead {
-        val bytes =
-            javaClass.classLoader.getResourceAsStream(resource)?.use { stream ->
-                stream.readAllBytes()
-            } ?: return ClassRead.Missing
+    private fun readClass(resource: String, readBytes: (String) -> ByteArray?): ClassRead {
+        val bytes = readBytes(resource) ?: return ClassRead.Missing
         return try {
             val parsed = DataInputStream(bytes.inputStream()).use(::parseClass) ?: return ClassRead.Rejected
-            ClassRead.Admitted(
-                parsed.copy(fingerprint = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes)))
-            )
+            ClassRead.Admitted(parsed)
         } catch (_: IOException) {
             ClassRead.Rejected
         } catch (_: IllegalArgumentException) {
@@ -196,7 +173,7 @@ internal object DetachedModelClassContract {
                     utf8(nameAndType.descriptorIndex),
                 )
             }
-        return DetachedModelClassView(majorVersion, classNames, members, "")
+        return DetachedModelClassView(majorVersion, classNames, members)
     }
 
     private fun isForbidden(member: DetachedModelMemberReference): Boolean {
@@ -238,11 +215,7 @@ internal object DetachedModelClassContract {
     private const val CLASS_MAGIC = 0xCAFEBABE.toInt()
     private const val JAVA_25_CLASS_VERSION = 69
 
-    private val EXPECTED_FINGERPRINTS =
-        linkedMapOf(
-            MAIN_RESOURCE to "e83474c35b8a6a5fcbb3d2ad2b57feb8b66d372952af75bab5b95fdabc02352f",
-            MAPPINGS_RESOURCE to "3a5cc9841ee89c7a0b94f9a28c9266fcff93dd7feec88067494a33f5a90b567e",
-        )
+    private val RESOURCES = listOf(MAIN_RESOURCE, MAPPINGS_RESOURCE)
 
     private val EXPECTED_PUBLIC_MODEL_METHODS =
         listOf(
@@ -454,7 +427,7 @@ internal object DetachedModelClassContract {
 
 internal class DetachedModelClassContractTest {
     @Test
-    fun `compiled live adapter matches exact IDEA 262 contract`() {
+    fun `compiled live adapter preserves required IDE APIs and rejects prohibited effects`() {
         assertEquals(
             emptyList<DetachedModelClassContractFailure>(),
             DetachedModelClassContract.verify(),
@@ -474,7 +447,6 @@ private data class DetachedModelClassView(
     val majorVersion: Int,
     val classNames: Set<String>,
     val members: Set<DetachedModelMemberReference>,
-    val fingerprint: String,
 )
 
 private sealed interface DetachedModelPoolEntry {

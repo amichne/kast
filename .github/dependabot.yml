@@ -1,11 +1,84 @@
-# To get started with Dependabot version updates, you'll need to specify which
-# package ecosystems to update and where the package manifests are located.
-# Please see the documentation for all configuration options:
-# https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
-
 version: 2
 updates:
-  - package-ecosystem: "gradle" # See documentation for possible values
-    directory: "/" # Location of package manifests
+  - package-ecosystem: "gradle"
+    directory: "/"
     schedule:
       interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    # Fixtures describe exact admitted environments; update them with their owning tests.
+    exclude-paths:
+      - "fixtures/**"
+      - "experiments/host-observation/semantic-fixture/**"
+    # The IDE distribution and platform artifacts are one qualified host build.
+    # A standalone artifact bump cannot establish that qualification.
+    ignore:
+      - dependency-name: "com.jetbrains.intellij.idea:*"
+      - dependency-name: "com.jetbrains.intellij.platform:*"
+    groups:
+      kotlin-toolchain:
+        patterns:
+          - "org.jetbrains.kotlin:*"
+          - "org.jetbrains.kotlin.*"
+          - "gradle-wrapper"
+      junit:
+        patterns:
+          - "org.junit*"
+      maven-publish:
+        patterns:
+          - "com.vanniktech*"
+      ktor:
+        patterns:
+          - "io.ktor:*"
+      kotlin-libraries:
+        patterns:
+          - "org.jetbrains.kotlinx:*"
+      libraries:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "org.jetbrains.kotlin*"
+          - "gradle-wrapper"
+          - "org.junit*"
+          - "com.vanniktech*"
+          - "io.ktor:*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      actions:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "pip"
+    directory: "/experiments/host-observation"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      host-protocol-tests:
+        patterns:
+          - "*"
