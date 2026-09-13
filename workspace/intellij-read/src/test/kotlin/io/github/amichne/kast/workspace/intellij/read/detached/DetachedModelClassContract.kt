@@ -45,8 +45,8 @@ internal data class DetachedModelMemberReference(
 
 /** Byte-only IDEA 262 contract for the live detached-model adapter. */
 internal object DetachedModelClassContract {
-    fun verify(): List<DetachedModelClassContractFailure> {
-        val reads = EXPECTED_FINGERPRINTS.keys.associateWith(::readClass)
+    fun verify(readBytes: (String) -> ByteArray? = ::readContractResource): List<DetachedModelClassContractFailure> {
+        val reads = EXPECTED_FINGERPRINTS.keys.associateWith { resource -> readClass(resource, readBytes) }
         val readFailures = reads.mapNotNull { (resource, result) ->
             when (result) {
                 ClassRead.Missing -> DetachedModelClassContractFailure.ResourceMissing(resource)
@@ -108,11 +108,8 @@ internal object DetachedModelClassContract {
         }
     }
 
-    private fun readClass(resource: String): ClassRead {
-        val bytes =
-            javaClass.classLoader.getResourceAsStream(resource)?.use { stream ->
-                stream.readAllBytes()
-            } ?: return ClassRead.Missing
+    private fun readClass(resource: String, readBytes: (String) -> ByteArray?): ClassRead {
+        val bytes = readBytes(resource) ?: return ClassRead.Missing
         return try {
             val parsed = DataInputStream(bytes.inputStream()).use(::parseClass) ?: return ClassRead.Rejected
             ClassRead.Admitted(

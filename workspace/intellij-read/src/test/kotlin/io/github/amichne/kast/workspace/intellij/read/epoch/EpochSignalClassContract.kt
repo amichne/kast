@@ -31,8 +31,8 @@ internal sealed interface EpochClassContractFailure {
 internal data class EpochMemberReference(val owner: String, val name: String)
 
 internal object EpochSignalClassContract {
-    fun verify(): List<EpochClassContractFailure> {
-        val admitted = RESOURCES.associateWith(::readClassView)
+    fun verify(readBytes: (String) -> ByteArray? = ::readContractResource): List<EpochClassContractFailure> {
+        val admitted = RESOURCES.associateWith { resource -> readClassView(resource, readBytes) }
         val rejected = admitted.mapNotNull { (resource, result) ->
             if (result == null) EpochClassContractFailure.ResourceRejected(resource) else null
         }
@@ -62,8 +62,8 @@ internal object EpochSignalClassContract {
     }
 
     /** Byte-only all-class contract for the production project-read epoch epoch observer and listener. */
-    fun verifyProductionEpoch(): List<EpochClassContractFailure> {
-        val admitted = PRODUCTION_RESOURCES.associateWith(::readClassView)
+    fun verifyProductionEpoch(readBytes: (String) -> ByteArray? = ::readContractResource): List<EpochClassContractFailure> {
+        val admitted = PRODUCTION_RESOURCES.associateWith { resource -> readClassView(resource, readBytes) }
         val rejected = admitted.mapNotNull { (resource, result) ->
             if (result == null) EpochClassContractFailure.ResourceRejected(resource) else null
         }
@@ -104,10 +104,9 @@ internal object EpochSignalClassContract {
         }
     }
 
-    private fun readClassView(resource: String): ConstantPoolView? {
-        val stream = javaClass.classLoader.getResourceAsStream(resource) ?: return null
+    private fun readClassView(resource: String, readBytes: (String) -> ByteArray?): ConstantPoolView? {
+        val bytes = readBytes(resource) ?: return null
         return try {
-            val bytes = stream.use { it.readBytes() }
             DataInputStream(bytes.inputStream())
                 .use(::parseConstantPool)
                 ?.copy(
