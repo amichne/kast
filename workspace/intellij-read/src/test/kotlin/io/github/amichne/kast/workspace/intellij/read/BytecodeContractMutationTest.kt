@@ -79,17 +79,13 @@ internal class BytecodeContractMutationTest {
         if (bytes == null || !resource.endsWith("/$target")) bytes
         else {
             val classFile = ClassFile.of()
+            val probeResource = BytecodeContractProbe::class.java.name.replace('.', '/') + ".class"
             val probe =
-                classFile
-                    .parse(requireNotNull(readContractResource(LOCAL + "BytecodeContractProbe.class")))
-                    .methods()
-                    .single { it.methodName().stringValue() == methodName }
+                classFile.parse(requireNotNull(readContractResource(probeResource))).methods().single {
+                    it.methodName().stringValue() == methodName
+                }
             classFile.transformClass(classFile.parse(bytes), ClassTransform.endHandler { it.with(probe) })
         }
-    }
-
-    private companion object {
-        const val LOCAL = "io/github/amichne/kast/workspace/intellij/read/"
     }
 }
 

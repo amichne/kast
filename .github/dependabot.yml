@@ -18,10 +18,6 @@ updates:
     # The IDE distribution and platform artifacts are one qualified host build.
     # A standalone artifact bump cannot establish that qualification.
     ignore:
-      # Kotlin 2.4.10 supports the Gradle 9.5 line. Newer Kotlin changes the
-      # qualified adapter bytecode; lift this bound with that qualification.
-      - dependency-name: "gradle-wrapper"
-        versions: ["[9.6,)"]
       - dependency-name: "com.jetbrains.intellij.idea:*"
       - dependency-name: "com.jetbrains.intellij.platform:*"
     groups:
