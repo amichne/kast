@@ -79,6 +79,8 @@ Kast is a Kotlin/Gradle system that gives coding agents compiler-grounded search
    Prefer fewer states, fewer transitions, fewer representations, fewer execution paths, and fewer abstractions. Completion requires mechanical evidence that the intended invariant holds.
 9. Instrument as you investigate.
    When diagnosing an opaque failure requires source-level investigation, progressively make that boundary observable in the same change. Add bounded, structured, typed stage and outcome evidence at the narrowest effect boundary, and test both success and failure signals. Temporary probes may guide diagnosis, but completion replaces them with durable instrumentation. Never record secrets, source payloads, or unbounded data.
+10. Preserve the signal of verification.
+    A check must distinguish violations of a named invariant from changes that preserve it. False positives and false negatives both erode trust and train people to ignore failures. Prefer structured or behavioral evidence. Require exact text, hashes, ordering, names, or inventories only when that exact representation is the contract. For each guard, demonstrate rejection of a meaningful violation and acceptance of a relevant contract-preserving change. Repair noisy checks; do not silence them by regenerating baselines or broadening exceptions.
 
 ## JSON Contracts
 
