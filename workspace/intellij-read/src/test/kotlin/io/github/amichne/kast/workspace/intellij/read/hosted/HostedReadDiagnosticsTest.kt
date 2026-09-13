@@ -106,7 +106,7 @@ class HostedReadDiagnosticsTest {
     }
 
     @Test
-    fun `outer deadline can reject before a later inner budget expires and owner recovers`() = runTest {
+    fun `default deadline preserves semantic work after model capture and owner recovers`() = runTest {
         val receipts = mutableListOf<HostedReadDiagnosticReceipt>()
         val executor =
             HostedQueryExecutor(backgroundScope) {
@@ -123,15 +123,15 @@ class HostedReadDiagnosticsTest {
                 innerCompleted = true
                 42
             }
-        assertFalse(innerCompleted)
+        assertTrue(innerCompleted)
         assertEquals(
-            HostedExecution.Rejected(HostedQueryFailure.BUDGET_EXCEEDED, HostedQueryStage.SEMANTIC_READ),
+            HostedExecution.Completed(42, HostedQueryStage.SEMANTIC_READ),
             result,
         )
         val receipt = receipts.single()
-        assertEquals(HostedSemanticEntry.Entered(1_400_000_000), receipt.semanticEntry)
-        assertEquals(2_000_000_000, receipt.durationNanos)
-        assertEquals(HostedDiagnosticOutcome.Rejected(HostedQueryFailure.BUDGET_EXCEEDED), receipt.outcome)
+        assertEquals(HostedSemanticEntry.Entered(3_400_000_000), receipt.semanticEntry)
+        assertEquals(2_400_000_000, receipt.durationNanos)
+        assertEquals(HostedDiagnosticOutcome.Completed, receipt.outcome)
         assertEquals(HostedExecution.Completed(7), executor.execute(executor.endpoint) { 7 })
         assertEquals(HostedDiagnosticOutcome.Completed, receipts.last().outcome)
         executor.retire()

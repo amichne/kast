@@ -79,6 +79,22 @@ import org.junit.jupiter.api.Test
 
 class QueryServiceTest {
     @Test
+    fun `mixed declaration families use one symbol discovery pass with all constraints retained`() = runTest {
+        val kinds = setOf(CompilerSymbolKind.CLASSLIKE, CompilerSymbolKind.FUNCTION, CompilerSymbolKind.PROPERTY, CompilerSymbolKind.TYPE_ALIAS)
+        val syntax = QueryDiscoverySyntax(QueryMatch.All, QueryScope.Unrestricted, QueryDeclarationKinds.from(kinds).refined())
+        val requests = mutableListOf<SymbolDiscoveryRequest>()
+        val service = service(discovery = SymbolDiscoveryOperations { child ->
+            requests += child
+            discoveryEmpty(qualified = false).discover(child)
+        })
+        val plan = QueryPlanCompiler.admit(QueryPlanSyntax(QuerySourceSyntax.Symbols(syntax), emptyList(), QueryOutputSyntax.Symbols(QuerySymbolFields.from(emptySet()).refined()))) as QueryPlanAdmission.Admitted
+        assertTrue(service.run(request(plan.plan, workLimit = 8L)) is QueryExecutionResult.Complete)
+        assertEquals(1, requests.size)
+        assertEquals(SymbolDiscoveryTarget.All(SymbolNameDiscoveryKind.SYMBOL), requests.single().target)
+        assertEquals(kinds, requests.single().constraints.declarationKinds!!.values)
+    }
+
+    @Test
     fun `visibility filters the selected public leaf and private parent rather than descendants`() = runTest {
         val selected = selector(selection())
         for (visibility in listOf(DeclarationVisibility.PUBLIC, DeclarationVisibility.PRIVATE)) {
