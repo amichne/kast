@@ -9,6 +9,8 @@ Models and executes multi-stage semantic queries while retaining scope, budgets,
 
 ## Key Files
 
+- [QueryReferenceTransport.kt](protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryReferenceTransport.kt) - detached token representation before canonical authority validation.
+
 - [contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPlan.kt](contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPlan.kt) - query plan model.
 - [contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryExecution.kt](contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryExecution.kt) - execution contract.
 - [contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryOperations.kt](contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryOperations.kt) - query capabilities.

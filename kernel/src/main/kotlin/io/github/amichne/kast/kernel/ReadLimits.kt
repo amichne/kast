@@ -34,6 +34,8 @@ enum class ReadLimitParameter(val defaultValue: Int, val unit: ReadLimitUnit, va
     SOURCE_RETURNED_BYTES(49_152, ReadLimitUnit.BYTES),
     TRAVERSAL_DEPTH(16, ReadLimitUnit.COUNT),
     TRAVERSAL_FRONTIER(128, ReadLimitUnit.COUNT),
+    HOST_REFERENCE_ENTRIES(DEFAULT_HOST_REFERENCE_ENTRIES, ReadLimitUnit.COUNT),
+    HOST_REFERENCE_BYTES(DEFAULT_HOST_REFERENCE_BYTES, ReadLimitUnit.BYTES),
     HOST_REQUEST_BYTES(16_384, ReadLimitUnit.BYTES, 256),
     HOST_RESPONSE_BYTES(65_536, ReadLimitUnit.BYTES, 256),
     HOST_DESCRIPTOR_BYTES(16_384, ReadLimitUnit.BYTES, 256),
@@ -188,3 +190,6 @@ class ReadLimits private constructor(private val limits: Map<ReadLimitParameter,
 }
 
 private const val DEFAULT_HOST_QUERY_MILLIS = 4_000
+
+private const val DEFAULT_HOST_REFERENCE_ENTRIES = 16_384
+private const val DEFAULT_HOST_REFERENCE_BYTES = 32 * 1_024 * 1_024

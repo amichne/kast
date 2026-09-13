@@ -4,7 +4,7 @@ title: Query protocol
 description: Shared semantic-read admission and projection bind canonical requests and detached references to an authority supplied by the owning host.
 resource: file://query/protocol
 tags: [kotlin, protocol, query, authority]
-timestamp: 2026-09-12T00:00:00Z
+timestamp: 2026-09-13T00:00:00Z
 code_sources:
   - path: query/protocol/build.gradle.kts
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt
@@ -40,6 +40,8 @@ code_sources:
     symbols: [TraversalContinuationDocument]
   - path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/RelationContinuationCodecTest.kt
   - path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/RelationContinuationAuthorityTest.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryReferenceTransport.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReferenceStore.kt
 ---
 
 # Query protocol
@@ -99,3 +101,5 @@ The CLI schema and query-protocol codec regressions share this fixture: a limit 
 produces an owner-issued continuation, and resume reaches the fourth fact under
 the unchanged authority without consuming the prefix again. These tests start
 no IntelliJ process and make no native provider-parity claim.
+
+`QueryReferenceTransport` separates detached token representation from canonical decoding. Hosted exact and candidate references normally use version-4 handles; lookup restores the full version-2/3 token before the existing authority, scope and evidence checks. Published test composition retains inline transport by default. Source snapshot and continuation tokens keep their existing codecs.

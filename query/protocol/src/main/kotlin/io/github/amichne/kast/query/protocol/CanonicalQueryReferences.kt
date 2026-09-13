@@ -85,26 +85,35 @@ sealed interface RelationSubjectLookup {
 /** Stateless selector transport; live restoration requires the host's current in-process admission. */
 class CanonicalQueryReferences
 private constructor(
+    private val transport: QueryReferenceTransport,
     private val restoreSourceSelector:
-        (SourceSelectorToken, SemanticReadAuthority) -> Refinement<SourceSelector, SourceSelectorTokenFailure>
+        (SourceSelectorToken, SemanticReadAuthority) -> Refinement<SourceSelector, SourceSelectorTokenFailure>,
 ) : QueryReferenceAuthority {
-    constructor() :
-        this({ token, current ->
+    constructor(
+        transport: QueryReferenceTransport = QueryReferenceTransport.Inline
+    ) : this(
+        transport,
+        { token, current ->
             when (current) {
                 is LiveSemanticReadAuthority -> SourceSelectorTokenCodec.decode(token, current)
                 is SemanticReadLease -> SourceSelectorTokenCodec.decode(token)
             }
-        })
+        },
+    )
 
     /** Retains the imported model supplied by the current read owner for modeled source scopes. */
     constructor(
-        model: WorkspaceSearchScopeModel
-    ) : this({ token, current ->
-        when (current) {
-            is LiveSemanticReadAuthority -> SourceSelectorTokenCodec.decode(token, current, model)
-            is SemanticReadLease -> SourceSelectorTokenCodec.decode(token, model)
-        }
-    })
+        model: WorkspaceSearchScopeModel,
+        transport: QueryReferenceTransport = QueryReferenceTransport.Inline,
+    ) : this(
+        transport,
+        { token, current ->
+            when (current) {
+                is LiveSemanticReadAuthority -> SourceSelectorTokenCodec.decode(token, current, model)
+                is SemanticReadLease -> SourceSelectorTokenCodec.decode(token, model)
+            }
+        },
+    )
 
     override fun restoreSource(
         token: SourceSelectorToken,
@@ -122,12 +131,20 @@ private constructor(
     override fun restoreCandidate(
         token: ProtocolText,
         current: SemanticReadAuthority,
-    ): CanonicalSelectorDecoding<CandidateSelector> = CanonicalSelectorCodec.decodeCandidate(token, current)
+    ): CanonicalSelectorDecoding<CandidateSelector> =
+        when (val restored = transport.restore(token)) {
+            is CanonicalSelectorDecoding.Decoded -> CanonicalSelectorCodec.decodeCandidate(restored.value, current)
+            is CanonicalSelectorDecoding.Rejected -> restored
+        }
 
     override fun restoreExact(
         token: ProtocolText,
         current: SemanticReadAuthority,
-    ): CanonicalSelectorDecoding<SymbolSelector> = CanonicalSelectorCodec.decodeExact(token, current)
+    ): CanonicalSelectorDecoding<SymbolSelector> =
+        when (val restored = transport.restore(token)) {
+            is CanonicalSelectorDecoding.Decoded -> CanonicalSelectorCodec.decodeExact(restored.value, current)
+            is CanonicalSelectorDecoding.Rejected -> restored
+        }
 
     /**
      * Proof transition: `SymbolDiscoveryBatch -> CandidateSelectorIssuance`.
@@ -236,7 +253,8 @@ private constructor(
 
     private fun issueCandidate(selector: CandidateSelector): CandidateSelectorTokenIssuance =
         when (val encoded = CanonicalSelectorCodec.encodeCandidate(selector)) {
-            is CanonicalSelectorEncoding.Encoded -> CandidateSelectorTokenIssuance.Issued(encoded.token)
+            is CanonicalSelectorEncoding.Encoded ->
+                CandidateSelectorTokenIssuance.Issued(transport.issue(encoded.token))
             is CanonicalSelectorEncoding.Rejected ->
                 CandidateSelectorTokenIssuance.Rejected(CandidateSelectorTokenIssuanceFailure.TOKEN_REJECTED)
         }
@@ -244,7 +262,7 @@ private constructor(
     /** Issues one self-describing exact selector token. */
     override fun issueExact(selector: SymbolSelector): ExactSelectorIssuance =
         when (val encoded = CanonicalSelectorCodec.encodeExact(selector)) {
-            is CanonicalSelectorEncoding.Encoded -> ExactSelectorIssuance.Issued(encoded.token)
+            is CanonicalSelectorEncoding.Encoded -> ExactSelectorIssuance.Issued(transport.issue(encoded.token))
             is CanonicalSelectorEncoding.Rejected ->
                 ExactSelectorIssuance.Rejected(ExactSelectorIssuanceFailure.TOKEN_REJECTED)
         }

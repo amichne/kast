@@ -93,14 +93,14 @@ private suspend fun evaluateHostedQuery(
     request: HostedRequest.Query,
     continuations: IntellijSourceReadContinuations,
 ): HostedResponse =
-    HostedResponse.Canonical.encode(
-        CanonicalOperationWireBindings.queryRun,
+    encodeHostedQueryResponse(
         CanonicalQueryProtocol(
                 QueryService(services.discovery, services.exact, services.source(continuations), services.relations),
                 services.references,
             )
             .execute(request.request, context.authority, services.budgets.hostedQueryBudget),
         limits = context.limits,
+        observation = context.observation,
     )
 
 private suspend fun evaluateHostedDiagnostic(

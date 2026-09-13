@@ -46,7 +46,13 @@ internal class HostedSemanticServices(private val project: Project, private val 
                 limits = context.limits,
             ),
         )
-    val references = CanonicalQueryReferences(context.model)
+    val references =
+        CanonicalQueryReferences(
+            context.model,
+            project
+                .getService(HostedReferenceStore::class.java)
+                .transport(context.authority.reference, context.limits, context.observation),
+        )
 
     fun source(continuations: IntellijSourceReadContinuations) =
         SourceReadService(

@@ -33,6 +33,8 @@ code_sources:
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedResponse.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSemanticServices.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/CoordinatorControl.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReferenceStore.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryResponse.kt
 ---
 
 # Runtime and process hosts
@@ -56,3 +58,7 @@ The [installed knowledge contract](../contracts/installed-knowledge.md) describe
 scoped guide resources staged with the control product.
 
 HostedSemanticServices projects the context’s admitted time allowance into query and diagnostic-scope budgets; configured capacities remain separately available. Schema-4 receipts retain the effective allowance, remaining host time, completion reserve and finite admission outcome.
+
+`HostedReferenceStore` retains at most 16,384 token entries and 32 MiB of token UTF-8 bytes by default, with typed read-limit overrides. It clears the previous table on an admitted epoch change or project disposal. Repeated references reuse the same handle, and current-epoch handles are never evicted for capacity. When a new entry cannot fit, issuance keeps the valid inline token and records `REFERENCE_INLINE_CAPACITY`. No PSI, source payload, or in-process authority is retained in the table.
+
+`HostedQueryResponse` bounds the actual encoded query bytes. An oversized positive result becomes a qualified prefix carrying `BYTE_LIMIT_REACHED`, all existing limitations, the original proven lower bound, and every item failure. If mandatory evidence alone cannot fit, the response remains rejected.

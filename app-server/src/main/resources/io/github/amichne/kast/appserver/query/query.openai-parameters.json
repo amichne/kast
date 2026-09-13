@@ -34,7 +34,7 @@
     },
     "ExactRef": {
       "type": "string",
-      "pattern": "^exact:v[23]:[\\s\\S]+$",
+      "pattern": "^exact:v[234]:[\\s\\S]+$",
       "description": "Copy items[].ref.token from an exact-symbol result verbatim. This prefix check is syntax only; Kast still validates workspace, read authority and compiler identity."
     },
     "DirectoryPath": {

@@ -4,7 +4,7 @@ title: Public intent tools
 description: Schema-bound search and diagnostics presentations lower into existing canonical operations without transferring compiler authority.
 resource: file://app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json
 tags: [tools, query, protocol, agents]
-timestamp: 2026-09-12T00:00:00Z
+timestamp: 2026-09-13T00:00:00Z
 code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/MintlifyCallableReference.kt
   - path: cli/src/test/kotlin/io/github/amichne/kast/cli/MintlifyCallableReferenceTest.kt
@@ -27,6 +27,8 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/HostedRejectionSchemas.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/projection/CanonicalQueryCliDocuments.kt
   - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolContractTest.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/HostedSymbolHandle.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalSourceReadAnchorDocument.kt
 ---
 
 # Public intent tools
@@ -74,3 +76,13 @@ continuations in its resume input and qualified output. Both schemas use
 `RelationContinuationDocument.TOKEN_PATTERN`; the production codec preserves
 the authority's version. The [query protocol](../modules/query-protocol.md)
 retains the stronger continuation ownership checks after structural admission.
+
+Public exact-reference syntax accepts hosted `exact:v4:` handles alongside legacy `v2` and `v3` tokens. Returned references remain opaque and must be passed back unchanged. The host resolves compact handles before validating authority; source anchors also accept the corresponding candidate handle family.
+
+The published agent policy permits opening or reopening the exact repository in
+IDE tools when the user has already authorized it, followed by saved/indexed
+readiness. Missing authorization or information may use session elicitation;
+nonblocking elicitation allows independent work to continue, but an absent reply
+never authorizes the dependent action. Opening permission does not extend to
+cache invalidation, forced synchronization, topology preparation, or unrelated
+IDE restarts. Exact-plan mutation approvals retain their separate requirements.

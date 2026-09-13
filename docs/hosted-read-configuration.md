@@ -120,3 +120,24 @@ Mixed-family queries use one symbol pass. Package checks run after file-index
 callbacks and before collecting declarations; excluded containers are still
 traversed for eligible members. Library-inclusive fuzzy and filename reads retain
 their contributor path. Returned byte/work/time qualifications remain explicit.
+
+## Compact references and encoded response limits
+
+Hosted exact and candidate references normally return `exact:v4:<digest>` and
+`candidate:v4:<digest>` handles (73 and 77 ASCII characters). Pass them back
+unchanged. The project host looks up the full token and performs the existing
+authority and freshness checks. Source snapshot and continuation tokens retain
+their existing formats.
+
+The table is limited by `KAST_READ_HOST_REFERENCE_ENTRIES` (16,384) and
+`KAST_READ_HOST_REFERENCE_BYTES` (33,554,432 UTF-8 bytes). Entries survive repeated
+reads of the same epoch; an admitted epoch change or project disposal clears
+them. Unknown handles fail as stale. Capacity keeps a valid inline token and
+records `REFERENCE_INLINE_CAPACITY`, without evicting current-epoch handles.
+Bounded counters also record handle issuance, restoration and rejection; logs
+never contain the reference text.
+
+The final query response guard measures actual encoded bytes. Oversized positive
+results retain a qualified prefix, the original proven minimum, every item
+failure, and existing limitations plus `BYTE_LIMIT_REACHED`. If the mandatory
+evidence cannot fit, the response stays rejected.
