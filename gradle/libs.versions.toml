@@ -1,5 +1,5 @@
 [versions]
-kotlin = "2.4.10"
+kotlin = "2.4.20"
 clikt = "5.1.0"
 shadow = "9.4.1"
 vanniktech-maven-publish-plugin = "0.35.0"
