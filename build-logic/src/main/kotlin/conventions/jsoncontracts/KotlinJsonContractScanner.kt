@@ -5,7 +5,7 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
-import org.jetbrains.kotlin.CoreEnvironmentDeprecation
+import org.jetbrains.kotlin.K1Deprecation
 import org.jetbrains.kotlin.cli.create
 import org.jetbrains.kotlin.cli.jvm.compiler.EnvironmentConfigFiles
 import org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment
@@ -41,7 +41,7 @@ internal class KotlinJsonContractScanner : AutoCloseable {
 
     private val disposable = Disposer.newDisposable("kast-json-contracts")
     // The pinned legacy environment supplies PSI parsing only; no K1 semantic analysis is performed.
-    @OptIn(CoreEnvironmentDeprecation::class)
+    @OptIn(K1Deprecation::class)
     private val environment =
         KotlinCoreEnvironment.createForProduction(
             disposable,

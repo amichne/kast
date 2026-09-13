@@ -6,7 +6,7 @@ installs a Git hook, or offers a suppression switch.
 
 The task parses repository Kotlin `.kt` and `.kts` files, including production,
 tests, fixtures, and build logic. It excludes build outputs, `.gradle`, `.kotlin`,
-Git and IDE metadata, `out`, and `node_modules`. Kotlin compiler 2.4.20 supplies
+Git and IDE metadata, `out`, and `node_modules`. Kotlin compiler 2.4.10 supplies
 PSI syntax parsing in a separate JVM and separately compiled source set. Its
 classes never enter the Kotlin Gradle plugin runtime. The pinned legacy parser
 environment is used only to construct PSI; no K1 semantic analysis runs.
