@@ -14,7 +14,10 @@ internal fun readContractResource(resource: String): ByteArray? =
 internal class BytecodeContractMutationTest {
     @Test
     fun `detached contract accepts changed debug metadata`() {
-        assertEquals(emptyList<DetachedModelClassContractFailure>(), DetachedModelClassContract.verify(::withoutSourceFile))
+        assertEquals(
+            emptyList<DetachedModelClassContractFailure>(),
+            DetachedModelClassContract.verify(::withoutSourceFile),
+        )
     }
 
     @Test
@@ -24,7 +27,10 @@ internal class BytecodeContractMutationTest {
 
     @Test
     fun `production epoch accepts changed debug metadata`() {
-        assertEquals(emptyList<EpochClassContractFailure>(), EpochSignalClassContract.verifyProductionEpoch(::withoutSourceFile))
+        assertEquals(
+            emptyList<EpochClassContractFailure>(),
+            EpochSignalClassContract.verifyProductionEpoch(::withoutSourceFile),
+        )
     }
 
     @Test
@@ -37,20 +43,33 @@ internal class BytecodeContractMutationTest {
     fun `detached contract rejects an inserted blocking call`() {
         val read = withProbe("LiveDetachedModelCapture.class", "blockingCall")
         val failures = DetachedModelClassContract.verify(read)
-        assertTrue(failures.any { it is DetachedModelClassContractFailure.ForbiddenMember && it.member.owner == "java/lang/Thread" && it.member.name == "sleep" })
+        assertTrue(
+            failures.any {
+                it is DetachedModelClassContractFailure.ForbiddenMember &&
+                    it.member.owner == "java/lang/Thread" &&
+                    it.member.name == "sleep"
+            }
+        )
     }
 
     @Test
     fun `production epoch rejects an inserted blocking call`() {
         val read = withProbe("RootFilteredProjectEpochVfsListener.class", "blockingCall")
         val failures = EpochSignalClassContract.verifyProductionEpoch(read)
-        assertTrue(failures.any { it is EpochClassContractFailure.ForbiddenMember && it.member.owner == "java/lang/Thread" && it.member.name == "sleep" })
+        assertTrue(
+            failures.any {
+                it is EpochClassContractFailure.ForbiddenMember &&
+                    it.member.owner == "java/lang/Thread" &&
+                    it.member.name == "sleep"
+            }
+        )
     }
 
     private fun withoutSourceFile(resource: String): ByteArray {
         val bytes = requireNotNull(readContractResource(resource))
         val classFile = ClassFile.of()
-        val transformed = classFile.transformClass(classFile.parse(bytes), ClassTransform.dropping { it is SourceFileAttribute })
+        val transformed =
+            classFile.transformClass(classFile.parse(bytes), ClassTransform.dropping { it is SourceFileAttribute })
         assertFalse(bytes.contentEquals(transformed), "Fixture must change the class bytes: $resource")
         return transformed
     }
@@ -60,8 +79,11 @@ internal class BytecodeContractMutationTest {
         if (bytes == null || !resource.endsWith("/$target")) bytes
         else {
             val classFile = ClassFile.of()
-            val probe = classFile.parse(requireNotNull(readContractResource(LOCAL + "BytecodeContractProbe.class")))
-                .methods().single { it.methodName().stringValue() == methodName }
+            val probe =
+                classFile
+                    .parse(requireNotNull(readContractResource(LOCAL + "BytecodeContractProbe.class")))
+                    .methods()
+                    .single { it.methodName().stringValue() == methodName }
             classFile.transformClass(classFile.parse(bytes), ClassTransform.endHandler { it.with(probe) })
         }
     }
