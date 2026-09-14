@@ -119,6 +119,37 @@ class HostedEndpointTest {
         }
 
     @Test
+    fun `twelve simultaneous clients can connect while semantic dispatch is occupied`() {
+        val root = (CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")) as Refinement.Refined).value
+        val directory = Files.createTempDirectory(Path.of("/tmp").toRealPath(), "khe-")
+        val start = java.util.concurrent.CyclicBarrier(12)
+        val clients = java.util.Collections.synchronizedList(mutableListOf<java.nio.channels.SocketChannel>())
+        val executor = java.util.concurrent.Executors.newFixedThreadPool(12)
+        try {
+            (OwnedHostedEndpoint.open(directory, root, host) as Refinement.Refined).value.use { owner ->
+                val attempts = (1..12).map {
+                    executor.submit<Boolean> {
+                        val client = java.nio.channels.SocketChannel.open(java.net.StandardProtocolFamily.UNIX)
+                        clients.add(client)
+                        start.await(5, java.util.concurrent.TimeUnit.SECONDS)
+                        try {
+                            client.connect(java.net.UnixDomainSocketAddress.of(owner.socket))
+                        } catch (_: java.io.IOException) {
+                            false
+                        }
+                    }
+                }
+                assertEquals(12, attempts.count { it.get(5, java.util.concurrent.TimeUnit.SECONDS) })
+            }
+        } finally {
+            clients.forEach { it.close() }
+            executor.shutdownNow()
+            Files.deleteIfExists(directory.resolve("owner.lock"))
+            Files.delete(directory)
+        }
+    }
+
+    @Test
     fun `endpoint ownership excludes contenders and permits reattachment only after retirement`() {
         val root = (CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")) as Refinement.Refined).value
         // Keep the socket path within the platform limit independently of the JUnit temp prefix.
