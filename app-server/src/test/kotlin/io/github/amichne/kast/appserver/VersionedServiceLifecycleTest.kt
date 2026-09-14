@@ -46,6 +46,13 @@ class VersionedServiceLifecycleTest {
         assertEquals("{}", Files.readString(state.resolve("epoch.json")))
     }
 
+    @Test
+    fun `current distribution above historical inventory ceiling is admitted`(@TempDir root: Path) {
+        val installation = product(root.resolve("product"))
+        repeat(4_097) { Files.writeString(installation.resolve("share/resource-$it"), "") }
+        assertTrue(BrokerInstallationState.admit(installation) is Refinement.Refined)
+    }
+
     private fun product(root: Path): Path {
         listOf("bin", "lib", "share").forEach { Files.createDirectories(root.resolve(it)) }
         Files.writeString(root.resolve("lib/control.jar"), "payload")
