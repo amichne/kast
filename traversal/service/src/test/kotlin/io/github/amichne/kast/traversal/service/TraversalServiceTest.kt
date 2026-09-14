@@ -117,7 +117,12 @@ class TraversalServiceTest {
                 val qualified = assertInstanceOf(TraversalResult.Qualified::class.java, result)
                 val resume = assertInstanceOf(TraversalQualification.Resumable::class.java, qualified.qualification)
                 assertEquals(page.progress, resume.continuation.checkpoint.progress)
-                plan = TraversalPlan.resume(a, RelationMeaning.Callees, plan.budget, resume.continuation).refined()
+                plan = TraversalPlan.resume(
+                    selector = a,
+                    meaning = RelationMeaning.Callees,
+                    budget = plan.budget,
+                    continuation = resume.continuation,
+                ).refined()
             } else {
                 assertInstanceOf(TraversalResult.Complete::class.java, result)
             }
@@ -139,7 +144,9 @@ class TraversalServiceTest {
         }
         val ordinary = fixture.plan(a)
         val strategy = TraversalStrategy.BoundedFanOut(ResultLimit.parse(1).refined())
-        val plan = TraversalPlan.start(a, RelationMeaning.Callees, ordinary.budget, strategy).refined()
+        val plan = TraversalPlan.start(
+            selector = a, meaning = RelationMeaning.Callees, budget = ordinary.budget, strategy = strategy,
+        ).refined()
         val result =
             assertInstanceOf(TraversalResult.Qualified::class.java, runSuspend { TraversalService(reader).run(plan) })
         assertEquals(listOf(1, 2), result.page.records.map { it.depth.value })
@@ -165,20 +172,20 @@ class TraversalServiceTest {
         assertInstanceOf(
             Refinement.Rejected::class.java,
             TraversalPlan.resume(
-                a,
-                RelationMeaning.Callees,
-                plan.budget.copy(depth = TraversalDepthLimit.parse(3).refined()),
-                continuation,
+                selector = a,
+                meaning = RelationMeaning.Callees,
+                budget = plan.budget.copy(depth = TraversalDepthLimit.parse(3).refined()),
+                continuation = continuation,
             ),
         )
         assertInstanceOf(
             Refinement.Rejected::class.java,
             TraversalPlan.resume(
-                a,
-                RelationMeaning.Callees,
-                plan.budget,
-                continuation,
-                TraversalStrategy.BoundedFanOut(ResultLimit.parse(1).refined()),
+                selector = a,
+                meaning = RelationMeaning.Callees,
+                budget = plan.budget,
+                continuation = continuation,
+                strategy = TraversalStrategy.BoundedFanOut(ResultLimit.parse(1).refined()),
             ),
         )
     }
@@ -284,19 +291,7 @@ class TraversalServiceTest {
                 runSuspend { TraversalService(referenceReader).run(fixture.plan(a)) },
             )
         val requests = mutableListOf<OneHopRelationRequest>()
-        val reader = OneHopRelationReader { request ->
-            requests += request
-            when (request.node.fingerprint.value) {
-                a.fingerprint.value ->
-                    when (request.position) {
-                        OneHopRelationPosition.Start -> fixture.qualifiedRead(request, listOf(b))
-                        is OneHopRelationPosition.Resume ->
-                            fixture.completeRead(request, listOf(b), occurrenceOffset = 1)
-                    }
-                b.fingerprint.value -> fixture.completeRead(request, listOf(c))
-                else -> fixture.completeRead(request, listOf(a))
-            }
-        }
+        val reader = occurrenceReader(requests)
         val service = TraversalService(reader)
         val limited = fixture.plan(a, aggregateRecords = 1, oneHop = fixture.relationBudget(records = 1))
         val first =
@@ -315,29 +310,18 @@ class TraversalServiceTest {
         assertEquals(1L, first.page.progress.totalEdges)
         assertEquals(first.page.progress, qualification.continuation.checkpoint.progress)
         val resumedPlan =
-            TraversalPlan.resume(a, RelationMeaning.Callees, fixture.plan(a).budget, qualification.continuation)
+            TraversalPlan.resume(
+                selector = a,
+                meaning = RelationMeaning.Callees,
+                budget = fixture.plan(a).budget,
+                continuation = qualification.continuation,
+            )
                 .refined()
         val resumed =
             assertInstanceOf(TraversalResult.Complete::class.java, runSuspend { service.run(resumedPlan) })
         val replay =
             assertInstanceOf(TraversalResult.Complete::class.java, runSuspend { service.run(resumedPlan) })
-        val combined = first.page.records + resumed.page.records
-        assertEquals(reference.page.records.map { it.canonicalProjection() }, combined.map { it.canonicalProjection() })
-        assertEquals(4, combined.size)
-        val rootOccurrences = combined.filter { it.origin.value == a.fingerprint.value }
-        assertEquals(2, rootOccurrences.size)
-        assertEquals(1, rootOccurrences.map { it.related.fingerprint }.distinct().size)
-        assertEquals(2, rootOccurrences.map { it.fact.occurrence }.distinct().size)
-        assertEquals(3, resumed.coverage.exactRecordCount.value)
-        assertEquals(2L, resumed.page.progress.checkpointSequence)
-        assertEquals(4L, resumed.page.progress.totalReads)
-        assertEquals(4L, resumed.page.progress.totalEdges)
-        assertEquals(reference.page.progress.maximumDepthReached, resumed.page.progress.maximumDepthReached)
-        assertTrue(resumed.page.partialExpansions.isEmpty())
-        assertEquals(resumed.page.records.map { it.canonicalProjection() }, replay.page.records.map { it.canonicalProjection() })
-        assertEquals(resumed.page.progress, replay.page.progress)
-        assertEquals(resumed.page.partialExpansions, replay.page.partialExpansions)
-        assertEquals(resumed.coverage, replay.coverage)
+        assertResumedEvidence(reference, first, resumed, replay)
         assertEquals(7, requests.size)
         assertTrue(requests.drop(1).all { it.budget == resumedPlan.budget.oneHop })
     }
@@ -603,6 +587,49 @@ class TraversalServiceTest {
             TraversalResult.Rejected(TraversalRejection.ReaderContractViolation),
             result,
         )
+    }
+
+    private fun occurrenceReader(requests: MutableList<OneHopRelationRequest>): OneHopRelationReader =
+        OneHopRelationReader { request ->
+            requests += request
+            when (request.node.fingerprint.value) {
+                a.fingerprint.value ->
+                    when (request.position) {
+                        OneHopRelationPosition.Start -> fixture.qualifiedRead(request, listOf(b))
+                        is OneHopRelationPosition.Resume ->
+                            fixture.completeRead(request, listOf(b), occurrenceOffset = 1)
+                    }
+                b.fingerprint.value -> fixture.completeRead(request, listOf(c))
+                else -> fixture.completeRead(request, listOf(a))
+            }
+        }
+
+    private fun assertResumedEvidence(
+        reference: TraversalResult.Complete,
+        first: TraversalResult.Qualified,
+        resumed: TraversalResult.Complete,
+        replay: TraversalResult.Complete,
+    ) {
+        val combined = first.page.records + resumed.page.records
+        assertEquals(reference.page.records.map { it.canonicalProjection() }, combined.map { it.canonicalProjection() })
+        assertEquals(4, combined.size)
+        val rootOccurrences = combined.filter { it.origin.value == a.fingerprint.value }
+        assertEquals(2, rootOccurrences.size)
+        assertEquals(1, rootOccurrences.map { it.related.fingerprint }.distinct().size)
+        assertEquals(2, rootOccurrences.map { it.fact.occurrence }.distinct().size)
+        assertEquals(3, resumed.coverage.exactRecordCount.value)
+        assertEquals(2L, resumed.page.progress.checkpointSequence)
+        assertEquals(4L, resumed.page.progress.totalReads)
+        assertEquals(4L, resumed.page.progress.totalEdges)
+        assertEquals(reference.page.progress.maximumDepthReached, resumed.page.progress.maximumDepthReached)
+        assertTrue(resumed.page.partialExpansions.isEmpty())
+        assertEquals(
+            resumed.page.records.map { it.canonicalProjection() },
+            replay.page.records.map { it.canonicalProjection() },
+        )
+        assertEquals(resumed.page.progress, replay.page.progress)
+        assertEquals(resumed.page.partialExpansions, replay.page.partialExpansions)
+        assertEquals(resumed.coverage, replay.coverage)
     }
 
     private fun <T> runSuspend(block: suspend () -> T): T {
