@@ -1,0 +1,1 @@
+{"type":"resumable","knownMinimum":2,"limitations":["result_limit_reached","provider_failure"],"continuation":"relation-output:v1:00000000-0000-0000-0000-000000000001","checkpoint":{"type":"retained_output","token":"relation-output:v1:00000000-0000-0000-0000-000000000001","upstream":"terminal_incomplete"},"next_action":"resume"}

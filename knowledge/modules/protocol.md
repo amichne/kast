@@ -6,9 +6,13 @@ resource: file://protocol
 tags: [kotlin, protocol, serialization]
 timestamp: 2026-09-14T00:00:00Z
 code_sources:
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReadRecoveryAction.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt
   - path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt
   - path: docs/reviews/live-semantic-read-acceptance.md
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/RelationCheckpointDocument.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/RelationReadQualification.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedRelationPreparedCoverage.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalOperation.kt
     symbols: [CanonicalOperation]
   - path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/OperationRegistry.kt
@@ -84,3 +88,16 @@ records the final default-route CLI matrix and actual provider invocation.
 The current [public tool contracts](../contracts/public-tools.md) distinguish presentation identity from canonical operation identity. Three ordinary searches and deferred `query_symbols` share `query.run`; `check_diagnostics` shares `diagnostic.check`. Private admission retains each tool's schema identity and typed syntax through its exact CLI binding. The `tool` command family uses the existing-IDE read path. Operation effects, budgets, reference authority and exhaustive outcomes remain with their existing owners.
 
 The hosted endpoint rejection schema admits bounded, discriminated change-failure detail and rejects unknown causes or contradictory outer failure codes. Runtime encoded-shape tests validate each closed variant against this independently owned schema.
+
+Relation qualifications distinguish an upstream continuation from retained detached
+output. A retained checkpoint preserves whether upstream work is complete, resumable,
+or terminal-incomplete; its only supported next action is draining the output.
+The legacy continuation field is derived from the checkpoint token, and wire
+decoding rejects disagreement between them. Omissions and their finite remediation
+remain unchanged on every fitted page, including the terminal suffix.
+
+`ReadRecoveryAction` derives the rejected read's direction exhaustively from the
+canonical failure, including its admitted wrapper. Wire round trips preserve the
+reason and budget, then CLI projection derives the same action. Installed schemas
+reuse the generated action enum and equal finite-failure evidence definitions to
+retain the unchanged provider qualification byte cap and 4,096-byte headroom.

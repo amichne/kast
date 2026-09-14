@@ -4,8 +4,9 @@ title: Query protocol
 description: Shared semantic-read admission and projection bind canonical requests and detached references to an authority supplied by the owning host.
 resource: file://query/protocol
 tags: [kotlin, protocol, query, authority]
-timestamp: 2026-09-13T00:00:00Z
+timestamp: 2026-09-14T00:00:00Z
 code_sources:
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReadRecoveryAction.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceQualifiedProgressDocument.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceReadOutcomeDocuments.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/SourceProgressProjection.kt
@@ -128,3 +129,15 @@ require an increased execution allowance. A terminal text-withheld explanation
 requires a matching text-byte limitation; other upstream gaps remain finite
 terminal evidence. Source wire admission rejects missing progress, unsupported
 variants and mismatched checkpoint families.
+
+Canonical read failures derive a closed recovery direction from their reason.
+Canonical rejected CLI/tool documents require `next_action` both before and after
+budget admission; an admitted budget report does not change that action. This
+projection does not restore references, consume continuations, or convert a
+rejection into progress.
+See [operation outcomes](../contracts/operation-outcomes.md) for the action contract.
+
+Source continuation admission preserves finite causes before invoking the provider:
+missing, expired, evicted, or retired tokens yield `CONTINUATION_UNAVAILABLE`;
+a changed context yields `SOURCE_SNAPSHOT_MISMATCH`; a changed request yields
+`CONTINUATION_REQUEST_MISMATCH`. Provider contract failures remain distinct.

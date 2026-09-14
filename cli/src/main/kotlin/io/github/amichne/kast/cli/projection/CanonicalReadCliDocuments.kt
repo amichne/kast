@@ -20,8 +20,6 @@ import io.github.amichne.kast.protocol.contract.SourceRangeDocument
 import io.github.amichne.kast.protocol.contract.TraversalRunFailure
 import io.github.amichne.kast.protocol.contract.TraversalRunQualification
 import io.github.amichne.kast.protocol.contract.TraversalRunResult
-import io.github.amichne.kast.protocol.contract.budgetPresence
-import io.github.amichne.kast.protocol.contract.reason
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -62,11 +60,7 @@ internal object CanonicalReadCliDocuments {
                 )
             },
             rejected = { rejection ->
-                canonicalRejectedDocument(
-                    CanonicalOperation.RELATION_READ,
-                    rejection.reason().cliName(),
-                    rejection.budgetPresence(),
-                )
+                canonicalReadRejectedDocument(rejection)
             },
         )
 
@@ -87,14 +81,7 @@ internal object CanonicalReadCliDocuments {
                 ProjectedCliOutcome.Qualified(
                     traversalQualifiedDocument(outcome.evidence.payload, outcome.evidence.basis, outcome.qualification)
                 )
-            is OperationOutcome.Rejected ->
-                ProjectedCliOutcome.Rejected(
-                    canonicalRejectedDocument(
-                        CanonicalOperation.TRAVERSAL_RUN,
-                        outcome.reason.reason().cliName(),
-                        outcome.reason.budgetPresence(),
-                    )
-                )
+            is OperationOutcome.Rejected -> ProjectedCliOutcome.Rejected(canonicalReadRejectedDocument(outcome.reason))
         }
 
     private fun traversalCompleteDocument(
@@ -211,6 +198,8 @@ private sealed interface RelationQualificationCliDocument {
         val knownMinimum: Int,
         val limitations: List<String>,
         val continuation: String,
+        val checkpoint: io.github.amichne.kast.protocol.contract.RelationCheckpointDocument,
+        @SerialName("next_action") val nextAction: io.github.amichne.kast.protocol.contract.ReadResumeActionDocument,
     ) : RelationQualificationCliDocument
 
     @Serializable
@@ -318,6 +307,8 @@ private fun RelationReadQualification.toCliDocument(): RelationQualificationCliD
                 knownMinimum = knownMinimum.value,
                 limitations = limitations.map { it.cliName() },
                 continuation = continuation.value,
+                checkpoint = checkpoint,
+                nextAction = nextAction,
             )
         is RelationReadQualification.TerminalIncomplete ->
             RelationQualificationCliDocument.TerminalIncomplete(

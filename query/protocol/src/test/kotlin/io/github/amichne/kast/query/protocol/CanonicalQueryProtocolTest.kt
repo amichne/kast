@@ -478,28 +478,7 @@ class CanonicalQueryProtocolTest {
 
     @Test
     fun `specialist source admission intersects both host projection caps`() = runTest {
-        val file =
-            SymbolDiscoveryFileIdentity.Workspace(
-                CanonicalWorkspaceFilePath.fromCanonicalPath(
-                        root,
-                        Path.of("/workspace/Subject.kt"),
-                    )
-                    .refined()
-            )
-        val token =
-            (CanonicalSelectorCodec.encodeCandidate(CandidateSelector.restoreFile(lease, file))
-                    as CanonicalSelectorEncoding.Encoded)
-                .token
-        val request =
-            SourceReadRequest(
-                SourceReadAnchorDocument.Candidate(token),
-                SourceRegionSelectionDocument.Anchor,
-                SourceEntitySelectionDocument.None,
-                SourceTextRequestDocument.None,
-                SourceEntityLimitDocument.parse(200).refined(),
-                SourceTextByteLimitDocument.parse(2000).refined(),
-                SourceReadPageDocument.First,
-            )
+        val request = sourceRequest()
         var executed = false
         val operations =
             io.github.amichne.kast.source.contract.SourceReadOperations { read ->
@@ -521,6 +500,46 @@ class CanonicalQueryProtocolTest {
                 )
         assertTrue(executed)
         assertTrue(outcome is OperationOutcome.Rejected)
+    }
+
+    @Test
+    fun `canonical source projection retains every finite domain rejection`() = runTest {
+        val request = sourceRequest()
+        for (reason in io.github.amichne.kast.source.contract.SourceReadRejection.entries) {
+            val rejected =
+                CanonicalSourceReadProtocol(
+                        io.github.amichne.kast.source.contract.SourceReadOperations {
+                            io.github.amichne.kast.source.contract.SourceReadResult.Rejected(reason)
+                        },
+                        CanonicalQueryReferences(),
+                    )
+                    .execute(request, lease, sourceProjectionBudget()) as OperationOutcome.Rejected
+            assertEquals(reason.name, rejected.reason.name)
+        }
+    }
+
+    private fun sourceRequest(): SourceReadRequest {
+        val file =
+            SymbolDiscoveryFileIdentity.Workspace(
+                CanonicalWorkspaceFilePath.fromCanonicalPath(
+                        root,
+                        Path.of("/workspace/Subject.kt"),
+                    )
+                    .refined()
+            )
+        val token =
+            (CanonicalSelectorCodec.encodeCandidate(CandidateSelector.restoreFile(lease, file))
+                    as CanonicalSelectorEncoding.Encoded)
+                .token
+        return SourceReadRequest(
+            SourceReadAnchorDocument.Candidate(token),
+            SourceRegionSelectionDocument.Anchor,
+            SourceEntitySelectionDocument.None,
+            SourceTextRequestDocument.None,
+            SourceEntityLimitDocument.parse(200).refined(),
+            SourceTextByteLimitDocument.parse(2000).refined(),
+            SourceReadPageDocument.First,
+        )
     }
 
     private fun sourceProjectionBudget() =

@@ -359,11 +359,10 @@ class GeneratedCliProjectionTest {
         assertAll(
             {
                 assertEquals(
-                    "{\"type\":\"resumable\",\"knownMinimum\":0," +
-                        "\"limitations\":[\"result-limit-reached\"," +
-                        "\"provider-incomplete\"],\"continuation\":" +
-                        "\"${relationContinuation("cli-projection").value}\"}",
-                    relation.qualification().toString(),
+                    Json.parseToJsonElement(
+                        checkNotNull(javaClass.getResource("/projection/qualified-relation-upstream.json")).readText()
+                    ),
+                    relation.qualification(),
                 )
             },
             {
