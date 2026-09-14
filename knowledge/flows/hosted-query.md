@@ -6,6 +6,14 @@ resource: file://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/
 tags: [intellij, kotlin, semantic-query, lifecycle]
 timestamp: 2026-09-13T00:00:00Z
 code_sources:
+  - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedReadAllowanceIdentityTest.kt
+  - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedContinuationOwnerRetentionTest.kt
+  - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryUnsupportedIdentityTest.kt
+  - path: packaging/hosted_resume_budget_regression.py
+  - path: packaging/test-hosted-resume-budget-regression.py
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCheckpointStore.kt
+  - path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/QueryCheckpointReplayTest.kt
+  - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedRelationReplayTest.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceQualifiedProgressDocument.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceReadOutcomeDocuments.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/SourceProgressProjection.kt
@@ -460,3 +468,62 @@ require an increased execution allowance. A terminal text-withheld explanation
 requires a matching text-byte limitation; other upstream gaps remain finite
 terminal evidence. Source wire admission rejects missing progress, unsupported
 variants and mismatched checkpoint families.
+
+### Hosted continuation retention bounds
+
+Each `HostedQueryContinuations.Active` owns five independently bounded stores:
+query execution checkpoints and query, relation, source and traversal output
+suffixes. For configured entry bound `C` and charged-byte bound `B`, this owner
+can retain at most `5 × C` entries and `5 × B` charged bytes in aggregate.
+`B` is each store's accounting bound, not a measurement of JVM heap usage:
+output stores charge four times encoded request plus outcome bytes; query
+checkpoints charge detached checkpoint accounting plus four times request bytes.
+The separate native source continuation owner and compact reference store have
+their own policies and are outside this five-store sum.
+
+The native source continuation owner expires at age greater than or equal to
+its TTL; its exact-boundary policy is intentionally distinct from the hosted
+stores. Both hosted output and query-checkpoint stores expire when age is strictly
+greater than TTL. An entry remains available at exactly TTL; restore and
+identical reissuance do not renew its creation time. Capacity eviction removes
+the oldest inserted entry even if it was replayed. Owner retirement clears all
+five stores. Tests exercise TTL−1, exact TTL, TTL+1, replay, eviction and clear
+without changing those policies. Retained values are detached identities and
+results; these stores do not retain PSI, K2 sessions or a live project.
+
+The hosted owner identity checks independently increase elapsed-time, work,
+result and byte allowances for all four output stores. Each change restores the
+same detached outcome and reissues the same token. Query checkpoint admission
+also receives each larger grant while retaining the original plan. Query
+matching, source sets, declaration kinds, projection and relationship changes
+reject, as do workspace, published generation, live host lifetime and live epoch
+changes. Absent and empty execution-budget controls normalize alike; omitted
+traversal strategy and explicit breadth-first retain the same semantic choice.
+Query `take` steps and query fanout fields are unsupported and reject at the
+public wire boundary; traversal bounded fanout remains a supported strategy
+whose value participates in continuation identity.
+
+A shared-owner test configures one entry per store, retains five entries
+simultaneously, and verifies that changing the epoch retires all five. This is
+entry-composition and detached-identity evidence. It does not measure heap use
+or replace unchanged-fixture native execution parity for larger grants.
+
+
+The installed resume-budget helper defines twelve bounded cases per surface:
+query, source and relation reads, each with independently larger elapsed-time,
+work, result and byte allowances. It compares complete drains with ordered declarations/source children and full relation occurrence identity against
+an unchanged-fixture baseline, including full relation occurrences and compiler
+evidence, source child order, ranges, snapshots and saved text. Issued upstream
+and retained-output checkpoints keep their distinct request positions and
+compatibility aliases. Each drain admits at most sixteen pages and one thousand
+records, rejects repeated tokens or changed authority/grants, and records only
+finite assertion names and counts. A complete low-grant page requires no invented
+continuation; time/work cases do not claim a deterministic wall-clock cutoff.
+Local Python checks qualify this orchestration and comparison logic. Native
+parity requires invoking the helper through the integrated staged artifact;
+its presence alone is not an installed-product qualification result.
+
+Relation pages retain canonical order within each page. Cross-grant drains
+preserve the full occurrence multiset; changing page boundaries does not promise
+global fingerprint order. A resumable budget stop retains unmeasured work evidence
+until the final complete drain; it never becomes an invented zero omitted count.
