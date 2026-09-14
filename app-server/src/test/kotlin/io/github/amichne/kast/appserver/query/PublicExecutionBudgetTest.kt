@@ -9,8 +9,11 @@ import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetDocument
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.encodeToJsonElement
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
@@ -81,6 +84,53 @@ class PublicExecutionBudgetTest {
             PublicToolContract.admit(PublicToolIdentity.SEARCH_CLASSES, document),
         )
     }
+
+    @Test
+    fun `all query backed facades reject every malformed budget dimension before canonical lowering`() {
+        val refs = (BoundedProtocolList.create(listOf(name)) as Refinement.Refined).value
+        val inputs =
+            listOf(
+                PublicToolIdentity.SEARCH_CLASSES to
+                    json.encodeToJsonElement(PublicToolSearchClasses(name, null, null, budget)),
+                PublicToolIdentity.SEARCH_FUNCTIONS to
+                    json.encodeToJsonElement(PublicToolSearchFunctions(name, null, null, budget)),
+                PublicToolIdentity.SEARCH_DECLARATIONS to
+                    json.encodeToJsonElement(PublicToolSearchDeclarations(name, null, null, null, budget)),
+                PublicToolIdentity.QUERY_SYMBOLS to
+                    json.encodeToJsonElement(
+                        PublicToolQuerySymbols(PublicToolReferenceSource(refs), null, null, null, budget)
+                    ),
+            )
+        val encodedBudget = json.encodeToString(ExecutionBudgetDocument.serializer(), budget)
+        for ((identity, input) in inputs) {
+            assertInstanceOf(Refinement.Refined::class.java, PublicToolContract.admit(identity, input))
+            val oneByte = budget.copy(maxReturnedBytes = (ReturnedByteLimit.parse(1) as Refinement.Refined).value)
+            val small = Json.parseToJsonElement(input.toString().replace(encodedBudget, json.encodeToString(oneByte)))
+            val lowered = PublicToolContract.admit(identity, small) as Refinement.Refined
+            assertEquals(oneByte, (lowered.value.canonical as PublicToolCanonical.Query).request.executionBudget)
+            for (invalid in listOf("0", "-1", "9223372036854775808", "1.5", "\"10\"")) {
+                val scalar = Json.parseToJsonElement(invalid)
+                for (invalidBudget in
+                    listOf(
+                        InvalidPublicBudget(elapsed = scalar),
+                        InvalidPublicBudget(work = scalar),
+                        InvalidPublicBudget(results = scalar),
+                        InvalidPublicBudget(bytes = scalar),
+                    )) {
+                    val malformed =
+                        Json.parseToJsonElement(
+                            input.toString().replace(encodedBudget, Json.encodeToString(invalidBudget))
+                        )
+                    assertInstanceOf(Refinement.Rejected::class.java, PublicToolContract.admit(identity, malformed))
+                }
+            }
+            val unsupported =
+                Json.parseToJsonElement(
+                    input.toString().replace(encodedBudget, Json.encodeToString(UnsupportedPublicBudget(1)))
+                )
+            assertInstanceOf(Refinement.Rejected::class.java, PublicToolContract.admit(identity, unsupported))
+        }
+    }
 }
 
 @Serializable
@@ -100,3 +150,14 @@ private data class InvalidLegacyBudget<T>(
     @kotlinx.serialization.SerialName("execution_budget") val executionBudget: T,
     val type: String = "QUERY",
 )
+
+/** The malformed scalar values exercise the public schema and typed numeric decoder. */
+@Serializable
+private data class InvalidPublicBudget(
+    @SerialName("max_elapsed_ms") val elapsed: JsonElement? = null,
+    @SerialName("max_work_units") val work: JsonElement? = null,
+    @SerialName("max_results") val results: JsonElement? = null,
+    @SerialName("max_returned_bytes") val bytes: JsonElement? = null,
+)
+
+@Serializable private data class UnsupportedPublicBudget(val unsupported: Int)

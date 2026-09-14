@@ -4,8 +4,8 @@ from dataclasses import asdict, dataclass, field, replace
 import unittest
 from types import SimpleNamespace
 
-from hosted_budget_read_regression import (BudgetDeclarationSearch, BudgetSource, BudgetTraversal, ResultsBudget, WorkBudget,
-    graph_records, independent_grant, progress_advances, traversal_checkpoint, _retained_result_replay)
+from hosted_budget_read_regression import (BudgetDeclarationSearch, BudgetSource, BudgetTraversal, ResultsBudget, WorkBudget, ElapsedBudget,
+    graph_records, independent_grant, progress_advances, traversal_checkpoint, _retained_result_replay, _retained_traversal)
 from hosted_source_read_regression import SymbolAnchor
 
 
@@ -166,6 +166,25 @@ class HostedBudgetReadRegressionTest(unittest.TestCase):
         self.assertTrue(all(checks.values()), checks)
         self.assertEqual(5, len(transport.requests))
         self.assertEqual('child', transport.requests[-1]['position']['continuation'])
+
+    def test_elapsed_and_work_low_complete_pages_still_prove_larger_grant_parity(self):
+        graph = Graph((Node(0, 'a', 0), Node(1, 'b', 1)), (Proof(0, 'a'), Proof(1, 'b')), (Edge(0, 1, 'call'),))
+        for low, high, low_grant, high_grant in (
+                (ElapsedBudget(1000), ElapsedBudget(3000),
+                 Grant(max_elapsed_ms=Limit('caller', 1000, effective=1000)),
+                 Grant(max_elapsed_ms=Limit('caller', 3000, effective=3000))),
+                (WorkBudget(100), WorkBudget(100000),
+                 Grant(max_work_units=Limit('caller', 100, effective=100)),
+                 Grant(max_work_units=Limit('caller', 100000, effective=100000)))):
+            transport = DetachedTransport((asdict(DetachedPage(graph, high_grant)), asdict(DetachedPage(graph, low_grant))))
+            recorded = []
+            replay = SimpleNamespace(surface='cli', live='same-authority', transport=transport,
+                seeds={'helper': {'symbol_ref': 'selector'}}, record=lambda *args: recorded.append(args))
+            _retained_traversal(replay, low, high)
+            checks = recorded[0][2]
+            self.assertTrue(all(checks.values()), checks)
+            self.assertTrue(checks['effectiveAllowanceIncreased'])
+            self.assertEqual(2, len(transport.requests))
 
     def test_checkpoint_reader_accepts_upstream_and_retained_without_conflating_them(self):
         for checkpoint in (UpstreamCheckpoint(), RetainedCheckpoint(), RetainedCheckpoint(upstream='resumable')):

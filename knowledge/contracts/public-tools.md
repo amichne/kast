@@ -6,6 +6,7 @@ resource: file://app-server/src/main/resources/io/github/amichne/kast/appserver/
 tags: [tools, query, protocol, agents]
 timestamp: 2026-09-14T00:00:00Z
 code_sources:
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReadRecoveryAction.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceQualifiedProgressDocument.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/CanonicalReadRejectionSchemas.kt
   - path: cli/src/test/kotlin/io/github/amichne/kast/cli/ReadRejectionSchemaParityTest.kt
@@ -134,3 +135,9 @@ Source output derives cursor availability from required qualified progress.
 checkpoints drain detached entities while preserving original upstream coverage.
 Terminal qualifications retain a finite reason and all source limitations. These
 states do not independently override canonical complete/qualified/rejected status.
+
+Canonical rejected query, source, relation and traversal tool documents require the derived
+`next_action` alongside the unchanged finite failure and any admitted budget.
+Unknown or absent actions fail the installed schema. The
+[outcome contract](operation-outcomes.md) defines the six recovery directions;
+action text does not authorize silent reference refresh or an automatic retry.
