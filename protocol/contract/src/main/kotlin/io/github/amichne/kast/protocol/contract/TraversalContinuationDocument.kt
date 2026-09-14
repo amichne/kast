@@ -59,7 +59,7 @@ value class TraversalContinuationDocument private constructor(val value: String)
         }
 
         private fun parseRetainedOutput(
-            raw: String,
+            raw: String
         ): Refinement<TraversalContinuationDocument, TraversalContinuationDocumentFailure> =
             if (Regex(TOKEN_PATTERN).matches(raw)) Refinement.Refined(TraversalContinuationDocument(raw))
             else Refinement.Rejected(TraversalContinuationDocumentFailure.INVALID_TOKEN_STRUCTURE)
