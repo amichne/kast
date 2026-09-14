@@ -47,11 +47,19 @@ class SourceContinuationRetentionTest {
                 owner.admit(fixture.capture.snapshot.context, resumed),
             )
         }
-        now = TimeUnit.MILLISECONDS.toNanos(11)
-        assertEquals(
-            IntellijSourceContinuationAdmission.Rejected,
+        now = 9_999_999L
+        assertEquals(token, owner.issue(fixture.request, fixture.capture, 1).refined())
+        assertInstanceOf(
+            IntellijSourceContinuationAdmission.Admitted::class.java,
             owner.admit(fixture.capture.snapshot.context, resumed),
         )
+        for (age in listOf(10_000_000L, 10_000_001L)) {
+            now = age
+            assertEquals(
+                IntellijSourceContinuationAdmission.Rejected,
+                owner.admit(fixture.capture.snapshot.context, resumed),
+            )
+        }
     }
 
     @Test
