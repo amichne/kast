@@ -42,7 +42,11 @@ private enum class NativeReadProcessStatus {
 }
 
 internal fun validateNativeReadEnvelope(schema: CompiledJsonSchema, envelope: JsonElement): NativeReadResponse =
-    validateNativeReadOutput(schema, envelope)
+    when (val admitted = schema.admit(envelope)) {
+        is Validation.Validated -> NativeReadResponse.ValidationAccepted(admitted.value.schemaDigest.value)
+        is Validation.Rejected ->
+            NativeReadResponse.ValidationRejected(JsonSchemaViolationEvidence.from(admitted.failures).toDocument())
+    }
 
 internal fun validateNativeReadOutput(schema: CompiledJsonSchema, document: JsonElement): NativeReadResponse =
     when (
