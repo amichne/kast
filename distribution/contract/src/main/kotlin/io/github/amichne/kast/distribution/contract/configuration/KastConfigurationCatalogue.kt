@@ -29,6 +29,10 @@ enum class ConfigurationParameter(
     READ_HOST_REFERENCE_BYTES(ReadLimitParameter.HOST_REFERENCE_BYTES),
     READ_HOST_QUERY_MILLIS(ReadLimitParameter.HOST_QUERY_MILLIS),
     READ_SEMANTIC_MILLIS(ReadLimitParameter.SEMANTIC_MILLIS),
+    READ_EXECUTION_MAX_MILLIS(ReadLimitParameter.EXECUTION_MAX_MILLIS),
+    READ_EXECUTION_MAX_WORK(ReadLimitParameter.EXECUTION_MAX_WORK),
+    READ_EXECUTION_MAX_RESULTS(ReadLimitParameter.EXECUTION_MAX_RESULTS),
+    READ_EXECUTION_MAX_RETURNED_BYTES(ReadLimitParameter.EXECUTION_MAX_RETURNED_BYTES),
     READ_SEMANTIC_WORK(ReadLimitParameter.SEMANTIC_WORK),
     READ_SEMANTIC_RESULTS(ReadLimitParameter.SEMANTIC_RESULTS),
     READ_QUERY_CHECKPOINT_BYTES(ReadLimitParameter.QUERY_CHECKPOINT_BYTES),
@@ -51,6 +55,8 @@ enum class ConfigurationParameter(
     READ_HOST_REQUEST_BYTES(ReadLimitParameter.HOST_REQUEST_BYTES),
     READ_HOST_RESPONSE_BYTES(ReadLimitParameter.HOST_RESPONSE_BYTES),
     READ_HOST_DESCRIPTOR_BYTES(ReadLimitParameter.HOST_DESCRIPTOR_BYTES),
+    READ_HOST_ACCEPT_BACKLOG(ReadLimitParameter.HOST_ACCEPT_BACKLOG),
+    READ_HOST_CONNECTIONS(ReadLimitParameter.HOST_CONNECTIONS),
     READ_HOST_CONNECTION_MILLIS(ReadLimitParameter.HOST_CONNECTION_MILLIS),
     READ_CLIENT_EXCHANGE_MILLIS(ReadLimitParameter.CLIENT_EXCHANGE_MILLIS),
     READ_HOST_FILE_CHARACTERS(ReadLimitParameter.HOST_FILE_CHARACTERS),
@@ -539,59 +545,6 @@ enum class ConfigurationParameter(
                 ),
         )
     }
-
-    private fun baseDeclaration(): ConfigurationDeclaration =
-        ConfigurationDeclaration(
-            key,
-            owner,
-            when (this) {
-                RUNTIME_STORE ->
-                    "Verified runtime payload store; defaults to the physical installation runtime-payloads directory."
-                RUNTIME_DIRECTORY -> "Worker socket namespace owned by the physical installation state/run directory."
-                CACHE_ROOT -> "Private sidecar cache; defaults to the physical installation state/cache directory."
-                else -> key.lowercase().replace('_', ' ')
-            },
-            syntax,
-            scope,
-            if (this == INDEXER_MAX_HEAP) "${IndexerHeapSize.Default.mebibytes}m" else defaultValue,
-            when (this) {
-                INDEXER_MAX_HEAP -> "IndexerHeapSize.Default"
-                APP_SERVER_TOOLS -> "CanonicalAgentToolDefinitions.defaultAppServerTools"
-                else -> if (defaultValue == null) "owning boundary; no catalogue fallback" else "declared literal"
-            },
-            when (scope) {
-                ConfigurationScope.INSTALLATION -> ConfigurationBoundary.NEXT_INSTALLATION_ACTIVATION
-                ConfigurationScope.HOST_PROFILE -> ConfigurationBoundary.NEXT_CONNECTION
-                ConfigurationScope.WORKSPACE -> ConfigurationBoundary.NEXT_WORKER_LAUNCH
-                ConfigurationScope.REQUEST -> ConfigurationBoundary.REQUEST
-                ConfigurationScope.BUILD -> ConfigurationBoundary.BUILD
-                ConfigurationScope.TEST -> ConfigurationBoundary.TEST
-            },
-            when (this) {
-                GRADLE_JAVA_HOME,
-                GRADLE_IMPORT_VARIABLES,
-                GRADLE_IMPORT_PATH,
-                GRADLE_USER_HOME,
-                NETWORK_CONFIG,
-                TRUST_DONOR_JAVA_HOME,
-                IDE_CONFIG_HOME -> ConfigurationImpact.MODEL
-                APP_SERVER_TOOLS,
-                CODEX_HOME -> ConfigurationImpact.ROUTING
-                else -> ConfigurationImpact.LAUNCH_ONLY
-            },
-            disclosure,
-            mutability,
-            if (mutability == ConfigurationMutability.DERIVED) listOf(ConfigurationSource.PROCESS_ENVIRONMENT)
-            else
-                listOf(ConfigurationSource.COMMAND_LINE, ConfigurationSource.PROCESS_ENVIRONMENT) +
-                    (if (scope == ConfigurationScope.WORKSPACE) listOf(ConfigurationSource.SAVED_WORKSPACE)
-                    else emptyList()) +
-                    (if (mutability == ConfigurationMutability.USER_SETTING)
-                        listOf(ConfigurationSource.SAVED_INSTALLATION)
-                    else emptyList()) +
-                    ConfigurationSource.DEFAULT,
-            children.sortedBy { it.name },
-        )
 }
 
 object KastConfigurationCatalogue {
