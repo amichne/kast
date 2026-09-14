@@ -76,10 +76,10 @@ class HostedConnectionAdmissionTest {
                         concurrentReads(address)
                     }
                     assertEquals(156, calls.get())
-                    assertReplayObservations(observations)
                 } finally {
                     server.cancelAndJoin()
                 }
+                assertReplayObservations(observations)
             }
         }
     }

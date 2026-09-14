@@ -9,6 +9,11 @@ code_sources:
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCheckpointStore.kt
   - path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/QueryCheckpointReplayTest.kt
   - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedRelationReplayTest.kt
+  - path: packaging/hosted_concurrent_read.py
+  - path: packaging/hosted_peer_probe.py
+  - path: packaging/hosted_transport_observation.py
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedTransportObservation.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceQualifiedProgressDocument.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceReadOutcomeDocuments.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/SourceProgressProjection.kt
@@ -473,3 +478,15 @@ the oldest inserted entry even if it was replayed. Owner retirement clears all
 five stores. Tests exercise TTL−1, exact TTL, TTL+1, replay, eviction and clear
 without changing those policies. Retained values are detached identities and
 results; these stores do not retain PSI, K2 sessions or a live project.
+The installed concurrent-read harness separates 156 semantic first attempts from
+four peer probes: disconnect, malformed input, admission saturation, and fresh
+listener health. Saturation uses the staged configuration catalog and actual
+request-read observations, then requires the finite capacity rejection. The
+endpoint emits `CONNECTION_RELEASE` after releasing the admitted connection's
+permit; the macOS native harness waits on log-change notifications for those
+correlated release records before its single health request. Reports retain
+bounded stage/outcome duration and byte totals, first attempts, and finite witness
+failures without source, responses, descriptors, or connection identities. The
+peer checks establish exact rejection shapes and host authority fields; the full
+finite-failure payload/envelope schema matrix and edited/foreign-authority replay
+remain separate qualification requirements.

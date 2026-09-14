@@ -14,6 +14,8 @@ from unittest.mock import patch
 from contextlib import nullcontext
 from threading import Barrier
 from hosted_concurrent_read import run_concurrent_read_regression
+from hosted_peer_probe import PeerAttempt, PeerCase, PeerFailure, PeerOutcome, TerminalReply
+from hosted_transport_observation import TransportSummary, TransportWitnessFailure, TransportWitnessRejected
 
 from hosted_read_fixture import ReadFixtureRejected, prepare_read_fixture
 from hosted_enum_read_regression import run_enum_read_regression
@@ -227,19 +229,48 @@ class HostedReadRegressionTest(unittest.TestCase):
                 'assertions': {'identity': response['identity'] == case.identity}})
         fixture = SimpleNamespace(oracle={}, workspace=self.workspace)
         live = {'host': 'fixture-host'}
-        for mix_replies in (False, True):
+        for mix_replies, bad_peer, good_observation in ((False, None, True), (True, None, True),
+                (False, PeerCase.SATURATED, True), (False, PeerCase.HEALTH, True), (False, None, False),
+                (False, None, None)):
             rendezvous = Barrier(12)
             def invoke(_surface, _tool, arguments):
                 rendezvous.wait(timeout=5)
                 return {'status': 'complete', 'live': live,
                         'identity': -1 if mix_replies else arguments['identity']}
             transport = SimpleNamespace(invoke=invoke, validate=lambda *_: 'sha256:' + 'a' * 64)
-            with patch('hosted_concurrent_read.blocked_peer', return_value=nullcontext()):
-                report = run_concurrent_read_regression(None, fixture, oracle, transport, live)
+            observed = Mock()
+            observed.completed.return_value = set(range(159))
+            if good_observation is None:
+                observed.await_drained.side_effect = TransportWitnessRejected(TransportWitnessFailure.DEADLINE)
+            observed.summary.return_value = TransportSummary(good_observation, 177, 176, 159, 1 if good_observation else 2, True, [])
+            def probe(_endpoint, case):
+                terminal = TerminalReply.UNOBSERVED if case is PeerCase.DISCONNECTED else TerminalReply.SINGLE
+                return PeerAttempt(case, PeerOutcome.REJECTED if case is bad_peer else PeerOutcome.PASSED,
+                                   terminal, 5, 0, 1, PeerFailure.SHAPE if case is bad_peer else None)
+            with patch('hosted_concurrent_read.admit_peer_endpoint', return_value=object()), \
+                 patch('hosted_concurrent_read.admission_capacity', return_value=(16, 'sha256:' + 'b' * 64)), \
+                 patch('hosted_concurrent_read.NativeTransportWindow', return_value=nullcontext(observed)), \
+                 patch('hosted_concurrent_read.connected_peer', side_effect=lambda _: nullcontext(Mock())), \
+                 patch('hosted_concurrent_read.probe_peer', side_effect=probe):
+                report = run_concurrent_read_regression(SimpleNamespace(root=self.root), fixture, oracle, transport, live)
+            if good_observation is None:
+                self.assertEqual(156, report['firstAttempts'])
+                self.assertEqual(156, report['passedCount'])
+                self.assertEqual(2, report['peerFirstAttempts'])
+                self.assertEqual('rejected', report['outcome'])
+                self.assertEqual('witness_deadline_exceeded', report['qualificationFailure'])
+                self.assertFalse(report['admissionDrained'])
+                self.assertIsNone(report['transportObservation'])
+                continue
+            self.assertEqual([159, 176, 177], [call.args[0] for call in observed.await_drained.call_args_list])
+            self.assertEqual(4, report['peerFirstAttempts'])
+            self.assertEqual(3 if bad_peer else 4, report['peerPassedCount'])
+            self.assertEqual([case.value for case in PeerCase], [row['case'] for row in report['peerAttempts']])
+            self.assertTrue(report['admissionDrained'])
             self.assertEqual(156, report['firstAttempts'])
             self.assertEqual(0, report['serialRetries'])
             self.assertEqual(0 if mix_replies else 156, report['passedCount'])
-            self.assertEqual('rejected' if mix_replies else 'passed', report['outcome'])
+            self.assertEqual('rejected' if mix_replies or bad_peer or not good_observation else 'passed', report['outcome'])
             self.assertEqual(156, len({(row['client'], row['round']) for row in report['attempts']}))
             self.assertNotIn('identity', json.dumps(report))
 
@@ -470,11 +501,11 @@ class HostedReadRegressionTest(unittest.TestCase):
 
 
 def load_tests(loader, tests, _pattern):
-    spec = importlib.util.spec_from_file_location('native_provider_qualification_tests',
-        Path(__file__).with_name('test-native-provider-qualification.py'))
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    tests.addTests(loader.loadTestsFromModule(module))
+    for name in ('test-native-provider-qualification.py', 'test-hosted-peer-probe.py'):
+        spec = importlib.util.spec_from_file_location(name[:-3].replace('-', '_'), Path(__file__).with_name(name))
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        tests.addTests(loader.loadTestsFromModule(module))
     return tests
 
 
