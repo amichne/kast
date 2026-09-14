@@ -29,7 +29,13 @@ import java.util.concurrent.TimeUnit
 internal sealed interface IntellijSourceContinuationAdmission {
     data class Admitted(val cursor: IntellijSourceEntityCursor) : IntellijSourceContinuationAdmission
 
-    data object Rejected : IntellijSourceContinuationAdmission
+    data class Rejected(val reason: IntellijSourceContinuationRejection) : IntellijSourceContinuationAdmission
+}
+
+internal enum class IntellijSourceContinuationRejection {
+    UNAVAILABLE,
+    CONTEXT_MISMATCH,
+    REQUEST_MISMATCH,
 }
 
 /** Project-owned bounded registry. Entries retain detached source identity and scope only. */
@@ -64,13 +70,20 @@ class IntellijSourceReadContinuations(
     @Synchronized
     internal fun admit(context: SourceReadContext, request: SourceReadRequest): IntellijSourceContinuationAdmission {
         expire()
-        if (lifetime == Lifetime.RETIRED) return IntellijSourceContinuationAdmission.Rejected
+        if (lifetime == Lifetime.RETIRED)
+            return IntellijSourceContinuationAdmission.Rejected(IntellijSourceContinuationRejection.UNAVAILABLE)
         return when (val page = request.page) {
             SourceReadPage.First -> IntellijSourceContinuationAdmission.Admitted(IntellijSourceEntityCursor(0))
             is SourceReadPage.Continue -> {
-                val entry = entries[page.continuation]?.proof ?: return IntellijSourceContinuationAdmission.Rejected
-                if (entry.snapshot.context != context || entry.request != request.binding()) {
-                    IntellijSourceContinuationAdmission.Rejected
+                val entry =
+                    entries[page.continuation]?.proof
+                        ?: return IntellijSourceContinuationAdmission.Rejected(
+                            IntellijSourceContinuationRejection.UNAVAILABLE
+                        )
+                if (entry.snapshot.context != context) {
+                    IntellijSourceContinuationAdmission.Rejected(IntellijSourceContinuationRejection.CONTEXT_MISMATCH)
+                } else if (entry.request != request.binding()) {
+                    IntellijSourceContinuationAdmission.Rejected(IntellijSourceContinuationRejection.REQUEST_MISMATCH)
                 } else {
                     IntellijSourceContinuationAdmission.Admitted(
                         IntellijSourceEntityCursor(

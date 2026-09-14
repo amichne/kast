@@ -6,6 +6,9 @@ resource: file://query
 tags: [kotlin, semantic, query, compiler]
 timestamp: 2026-09-14T00:00:00Z
 code_sources:
+  - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceReadContinuations.kt
+  - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceReadPort.kt
+  - path: source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceReadOutcome.kt
   - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijCallableIdentity.kt
   - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijCallableIdentityObservation.kt
   - path: symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/IntellijDiscoveryKindAdmissionTest.kt
@@ -177,3 +180,8 @@ The installed enum fixture checks exact, fuzzy and scoped class searches, both
 CLI and provider surfaces. The scoped fixture retains an explicit 32-work-unit
 grant to qualify enum exclusion before candidate capacity. This does not establish
 the separate source-enumeration compiler-work ordering gate.
+
+Source continuation admission preserves finite causes before invoking the provider:
+missing, expired, evicted, or retired tokens yield `CONTINUATION_UNAVAILABLE`;
+a changed context yields `SOURCE_SNAPSHOT_MISMATCH`; a changed request yields
+`CONTINUATION_REQUEST_MISMATCH`. Provider contract failures remain distinct.

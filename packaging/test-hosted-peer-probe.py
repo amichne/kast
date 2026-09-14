@@ -27,7 +27,8 @@ class RejectionFixture:
 
 @dataclass(frozen=True)
 class ReadyFixture:
-    type: str = 'admission_ready'
+    # HostedReadinessDocument uses @JsonClassDiscriminator("status").
+    status: str = 'admission_ready'
 
 
 @dataclass(frozen=True)
@@ -108,9 +109,35 @@ class PeerProbeTest(unittest.TestCase):
         result = self.probe(PeerCase.HEALTH, self.frame(HostFixture()))
         self.assertEqual(PeerOutcome.PASSED, result.outcome)
         for changed in (HostFixture(root='/foreign'), HostFixture(host='foreign'), HostFixture(protocol=4),
-                        HostFixture(readiness=ReadyFixture(type='unavailable'))):
+                        HostFixture(querySchema='foreign-schema'),
+                        HostFixture(readiness=ReadyFixture(status='unavailable'))):
             result = self.probe(PeerCase.HEALTH, self.frame(changed))
             self.assertEqual(PeerFailure.AUTHORITY, result.failure)
+
+    def test_listener_health_uses_the_encoded_readiness_discriminator_and_rejects_unproven_shapes(self):
+        schema_path = (Path(__file__).resolve().parents[1] / 'protocol/contract/src/main/resources'
+                       / 'ide-hosted/hosted-endpoint.schema.json')
+        ready_schema = json.loads(schema_path.read_text())['$defs']['readiness']['oneOf'][0]
+        readiness = asdict(ReadyFixture())
+        self.assertEqual(set(ready_schema['required']), set(readiness))
+        self.assertEqual(ready_schema['properties']['status']['const'], readiness['status'])
+        result = self.probe(PeerCase.HEALTH, self.frame(HostFixture()))
+        self.assertEqual(PeerOutcome.PASSED, result.outcome)
+        self.assertEqual(TerminalReply.SINGLE, result.terminalReply)
+        self.assertEqual(1, result.attempts)
+        self.peer.sendall.assert_called_once()
+        # Deliberately invalid readiness documents prove that the legacy key, unknown
+        # fields, and missing readiness cannot supply passive admission evidence.
+        for malformed in ({'type': 'admission_ready'}, {'status': 'unknown'},
+                          {'status': 'admission_ready', 'extra': True}, {}, None):
+            with self.subTest(readiness=malformed):
+                document = asdict(HostFixture())
+                document['readiness'] = malformed
+                body = json.dumps(document).encode()
+                rejected = self.probe(PeerCase.HEALTH, struct.pack('>I', len(body)) + body)
+                self.assertEqual(PeerOutcome.REJECTED, rejected.outcome)
+                self.assertEqual(PeerFailure.AUTHORITY, rejected.failure)
+                self.peer.sendall.assert_called_once()
 
     def test_io_and_deadline_failures_remain_finite_without_exception_text(self):
         for failure, expected in ((OSError('private socket'), PeerFailure.IO),
