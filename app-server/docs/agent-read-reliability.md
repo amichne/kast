@@ -237,7 +237,9 @@ Query/search propagation and encoded output fitting have subsequent focused
 checks for public admission, host grants, retained identity, independent output
 limits, full encoded metadata, and preservation of known failures across pages.
 Legacy query null-control rejection remains intact. Schema reuse keeps the full
-provider catalog within its existing byte cap. Source/traversal propagation, stronger closed
+provider catalog within its existing byte cap. Full source/traversal fitting, stronger closed
 completion metadata, remaining resume/native enum tests, installed overload and
 disconnect variants, and the compatibility naming work remain release gates.
 No requirement in R1–R8 is waived by the matrix above.
+
+Commit `f8359fe93` passed the same installed harness after source continuation byte/TTL bounds, installed configuration registration, source/traversal input admission, and cooperative native source accounting. Report `/tmp/kast-agent-read-native-f8359fe93.json` records 116/116 read cases and 156/156 concurrent first attempts with zero retries, plus all native mutation/recovery cases. This remains evidence for that committed matrix. Later source/traversal budget-report projections require their own current-build validation; the remaining specification gates are not waived.

@@ -439,6 +439,7 @@ private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject =
             proofQualifiedOutcomeSchema(
                 operation,
                 sourceReadQualificationSchema(),
+                executionBudgetProperty(),
                 ServerSchemaProperty("snapshot", sourceSnapshotSchema()),
                 ServerSchemaProperty("region", sourceRegionSchema()),
                 ServerSchemaProperty("entities", arraySchema(sourceEntitySchema())),
@@ -449,15 +450,7 @@ private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject =
                 operation,
                 relationQualificationSchema(),
                 ServerSchemaProperty("relations", arraySchema(relationFactSchema())),
-                ServerSchemaProperty(
-                    "execution_budget",
-                    nullableSchema(
-                        generatedRequestSchema(
-                            io.github.amichne.kast.protocol.contract.ExecutionBudgetReport.serializer()
-                        )
-                    ),
-                    required = false,
-                ),
+                executionBudgetProperty(),
                 ServerSchemaProperty("omissions", arraySchema(relationOmissionSchema())),
                 ServerSchemaProperty(
                     "soundness",
@@ -471,6 +464,7 @@ private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject =
             proofQualifiedOutcomeSchema(
                 operation,
                 traversalQualificationSchema(),
+                executionBudgetProperty(),
                 ServerSchemaProperty("graph", normalizedTraversalGraphSchema()),
                 ServerSchemaProperty(
                     "partialExpansions",
@@ -584,13 +578,7 @@ private fun queryRunDocumentSchema(operation: CanonicalOperation): JsonObject =
             operation,
             "complete",
             ServerSchemaProperty("items", arraySchema(queryResultItemSchema())),
-            ServerSchemaProperty(
-                "execution_budget",
-                nullableSchema(
-                    generatedRequestSchema(io.github.amichne.kast.protocol.contract.ExecutionBudgetReport.serializer())
-                ),
-                required = false,
-            ),
+            executionBudgetProperty(),
             ServerSchemaProperty("failures", arraySchema(queryItemFailureSchema())),
         ),
         operationOutcomeVariant(
@@ -605,13 +593,7 @@ private fun queryRunDocumentSchema(operation: CanonicalOperation): JsonObject =
                 queryTerminalReasonSchema(),
             ),
             ServerSchemaProperty("items", arraySchema(queryResultItemSchema())),
-            ServerSchemaProperty(
-                "execution_budget",
-                nullableSchema(
-                    generatedRequestSchema(io.github.amichne.kast.protocol.contract.ExecutionBudgetReport.serializer())
-                ),
-                required = false,
-            ),
+            executionBudgetProperty(),
             ServerSchemaProperty("failures", arraySchema(queryItemFailureSchema())),
             ServerSchemaProperty(
                 "qualification",
@@ -1876,4 +1858,13 @@ private fun relationSchema(): JsonObject =
                 "type-uses",
             ),
         description = "One canonical Kast semantic relation.",
+    )
+
+private fun executionBudgetProperty() =
+    ServerSchemaProperty(
+        "execution_budget",
+        nullableSchema(
+            generatedRequestSchema(io.github.amichne.kast.protocol.contract.ExecutionBudgetReport.serializer())
+        ),
+        required = false,
     )

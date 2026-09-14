@@ -1,3 +1,5 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
 package io.github.amichne.kast.protocol.wire
 
 import io.github.amichne.kast.protocol.contract.SourceDeclarationKindDocument
@@ -13,6 +15,9 @@ internal data class SourceReadResultWireDocument(
     val region: SourceRegionWireDocument,
     val entities: List<SourceEntityWireDocument>,
     val text: SourceTextProjectionWireDocument,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @SerialName("execution_budget")
+    val executionBudget: io.github.amichne.kast.protocol.contract.ExecutionBudgetReport? = null,
 )
 
 @Serializable

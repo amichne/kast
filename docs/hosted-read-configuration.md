@@ -153,7 +153,7 @@ Query continuations retain detached pipeline state and encoded-output suffixes i
 
 ## Per-call execution budgets
 
-`semantic_query`, `query_symbols`, all three `search_*` tools, and `query run`
+`semantic_query`, `impact_analyze`, `source_read`, `query_symbols`, all three `search_*` tools, and `query run`
 accept an optional `execution_budget` object with
 `max_elapsed_ms`, `max_work_units`, `max_results`, and `max_returned_bytes`.
 Supplied numbers must be positive integers. Omitted controls select configured
@@ -166,8 +166,8 @@ apply. Raising a caller allowance cannot extend the configured host or client
 deadline. The admitted time excludes already elapsed model work and reserves
 publication headroom.
 
-Relation result metadata reports the selected default or caller value, operator
-ceiling, effective value, and finite clamping reasons. Work units are examined
+Read result metadata reports the selected default or caller value, operator
+ceiling, effective value, and finite clamping reasons. Relation work units are examined
 semantic relation items; cheap exclusions and replay verification are bounded by
 the provider's candidate and elapsed limits. Result units are occurrence facts,
 so two distinct call sites remain two results. A page-result allowance does not
@@ -188,3 +188,5 @@ These controls are implemented for relation and query/search reads. Traversal an
 source remain part of the unfinished reliability work.
 
 Source entity continuations remain owned by the original project. `SOURCE_CONTINUATIONS` bounds entries, `SOURCE_CONTINUATION_BYTES` bounds charged retention (default 32 MiB), and `SOURCE_CONTINUATION_TTL_MILLIS` bounds token age (default ten minutes). The byte charge conservatively includes detached identity text, scope constraints, and object/container overhead; it is not a heap measurement. The store retains no source text or PSI. Replay preserves the original creation time. Expired or evicted tokens are rejected; reacquire a source selection and start a fresh read. A checkpoint that cannot fit is rejected before issuance.
+
+Source result units are structural entities. Native source work units are visited PSI elements, checked before another unit starts; setup time and final-unit overruns remain charged. Traversal result units are relation records in the graph, and aggregate work/time attenuate each one-hop relation read. Semantic traversal depth remains fixed across resume. Source and traversal now enforce their full encoded byte caps; automatic fitting of safely retained output is still an implementation gate.

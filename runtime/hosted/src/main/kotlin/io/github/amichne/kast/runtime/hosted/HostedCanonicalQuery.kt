@@ -62,16 +62,24 @@ internal suspend fun evaluateHostedCanonicalQuery(
             HostedResponse.Canonical.encode(
                 CanonicalOperationWireBindings.sourceRead,
                 CanonicalSourceReadProtocol(source, references)
-                    .execute(request.request, context.authority, budgets.hostedSourceBudget),
+                    .execute(request.request, context.authority, budgets.hostedSourceBudget)
+                    .withSourceBudget(
+                        io.github.amichne.kast.protocol.contract.ExecutionBudgetReport.from(context.executionBudget)
+                    ),
                 limits = context.limits,
+                maximumBytes = context.executionBudget.returnedBytes.effective,
             )
         is HostedRequest.Relation -> evaluateHostedRelation(project, services, context, request)
         is HostedRequest.Traversal ->
             HostedResponse.Canonical.encode(
                 CanonicalOperationWireBindings.traversalRun,
                 CanonicalTraversalRunProtocol(traversalOperations(relations), references)
-                    .execute(request.request, context.authority, budgets.hostedTraversalBudget),
+                    .execute(request.request, context.authority, budgets.hostedTraversalBudget)
+                    .withTraversalBudget(
+                        io.github.amichne.kast.protocol.contract.ExecutionBudgetReport.from(context.executionBudget)
+                    ),
                 limits = context.limits,
+                maximumBytes = context.executionBudget.returnedBytes.effective,
             )
         is HostedRequest.Diagnostic -> evaluateHostedDiagnostic(services, context, request)
     }

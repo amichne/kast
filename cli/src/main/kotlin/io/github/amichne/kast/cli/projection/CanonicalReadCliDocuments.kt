@@ -17,11 +17,9 @@ import io.github.amichne.kast.protocol.contract.RelationReadQualification
 import io.github.amichne.kast.protocol.contract.RelationReadRejection
 import io.github.amichne.kast.protocol.contract.RelationReadResult
 import io.github.amichne.kast.protocol.contract.SourceRangeDocument
-import io.github.amichne.kast.protocol.contract.TraversalProgressDocument
 import io.github.amichne.kast.protocol.contract.TraversalRunQualification
 import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import io.github.amichne.kast.protocol.contract.TraversalRunResult
-import io.github.amichne.kast.protocol.contract.TraversalStrategyDocument
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -101,6 +99,7 @@ internal object CanonicalReadCliDocuments {
                 TraversalCompleteCliDocument(
                     operation = CanonicalOperation.TRAVERSAL_RUN.id.value,
                     progress = result.progress,
+                    executionBudget = result.executionBudget,
                     partialExpansions = result.partialExpansions.values.map { it.toCliDocument() },
                     strategy = result.strategy,
                     status = "complete",
@@ -124,6 +123,7 @@ internal object CanonicalReadCliDocuments {
                 TraversalQualifiedCliDocument(
                     operation = CanonicalOperation.TRAVERSAL_RUN.id.value,
                     progress = result.progress,
+                    executionBudget = result.executionBudget,
                     partialExpansions = result.partialExpansions.values.map { it.toCliDocument() },
                     strategy = result.strategy,
                     status = "qualified",
@@ -212,45 +212,6 @@ private sealed interface RelationQualificationCliDocument {
         val knownMinimum: Int,
         val limitations: List<String>,
     ) : RelationQualificationCliDocument
-}
-
-@Serializable
-private data class TraversalCompleteCliDocument(
-    val operation: String,
-    val status: String,
-    val graph: NormalizedTraversalGraphCliDocument,
-    val partialExpansions: List<TraversalPartialExpansionCliDocument>,
-    val progress: TraversalProgressDocument,
-    val strategy: TraversalStrategyDocument,
-)
-
-@Serializable
-private data class TraversalQualifiedCliDocument(
-    val operation: String,
-    val status: String,
-    val graph: NormalizedTraversalGraphCliDocument,
-    val partialExpansions: List<TraversalPartialExpansionCliDocument>,
-    val progress: TraversalProgressDocument,
-    val strategy: TraversalStrategyDocument,
-    val qualification: TraversalQualificationCliDocument,
-)
-
-@Serializable
-private sealed interface TraversalQualificationCliDocument {
-    @Serializable
-    @SerialName("resumable")
-    data class Resumable(
-        val limitations: List<String>,
-        val relationLimitations: List<String>,
-        val continuation: String,
-    ) : TraversalQualificationCliDocument
-
-    @Serializable
-    @SerialName("terminal_incomplete")
-    data class TerminalIncomplete(
-        val limitations: List<String>,
-        val relationLimitations: List<String>,
-    ) : TraversalQualificationCliDocument
 }
 
 @Serializable
@@ -358,21 +319,6 @@ private fun RelationReadQualification.toCliDocument(): RelationQualificationCliD
             )
     }
 
-private fun TraversalRunQualification.toCliDocument(): TraversalQualificationCliDocument =
-    when (this) {
-        is TraversalRunQualification.Resumable ->
-            TraversalQualificationCliDocument.Resumable(
-                limitations = limitations.map { it.cliName() },
-                relationLimitations = relationLimitations.map { it.cliName() },
-                continuation = continuation.value,
-            )
-        is TraversalRunQualification.TerminalIncomplete ->
-            TraversalQualificationCliDocument.TerminalIncomplete(
-                limitations = limitations.map { it.cliName() },
-                relationLimitations = relationLimitations.map { it.cliName() },
-            )
-    }
-
 private fun DiagnosticCheckQualification.toCliDocument() =
     DiagnosticQualificationCliDocument(
         knownDiagnosticCount = knownDiagnosticCount.value,
@@ -391,7 +337,5 @@ private fun SourceRangeDocument.toReadCliDocument() = SourceRangeCliDocument(sta
 
 private val relationCompleteFactory = CliJsonDocument.generated(RelationCompleteCliDocument.serializer())
 private val relationQualifiedFactory = CliJsonDocument.generated(RelationQualifiedCliDocument.serializer())
-private val traversalCompleteFactory = CliJsonDocument.generated(TraversalCompleteCliDocument.serializer())
-private val traversalQualifiedFactory = CliJsonDocument.generated(TraversalQualifiedCliDocument.serializer())
 private val diagnosticCompleteFactory = CliJsonDocument.generated(DiagnosticCompleteCliDocument.serializer())
 private val diagnosticQualifiedFactory = CliJsonDocument.generated(DiagnosticQualifiedCliDocument.serializer())

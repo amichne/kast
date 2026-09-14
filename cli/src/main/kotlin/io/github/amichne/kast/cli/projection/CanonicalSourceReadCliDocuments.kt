@@ -1,3 +1,5 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
 package io.github.amichne.kast.cli.projection
 
 import io.github.amichne.kast.cli.CliJsonDocument
@@ -30,6 +32,7 @@ internal object CanonicalSourceReadCliDocuments {
                         region = result.region.toCliDocument(),
                         entities = result.entities.values.map(SourceEntityDocument::toCliDocument),
                         text = result.text.toCliDocument(),
+                        executionBudget = result.executionBudget,
                     )
                 )
             },
@@ -42,6 +45,7 @@ internal object CanonicalSourceReadCliDocuments {
                         region = result.region.toCliDocument(),
                         entities = result.entities.values.map(SourceEntityDocument::toCliDocument),
                         text = result.text.toCliDocument(),
+                        executionBudget = result.executionBudget,
                         qualification = qualification.toCliDocument(),
                     )
                 )
@@ -60,6 +64,9 @@ private data class SourceReadCompleteCliDocument(
     val region: SourceRegionCliDocument,
     val entities: List<SourceEntityCliDocument>,
     val text: SourceTextProjectionCliDocument,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @SerialName("execution_budget")
+    val executionBudget: io.github.amichne.kast.protocol.contract.ExecutionBudgetReport? = null,
 )
 
 @Serializable
@@ -71,6 +78,9 @@ private data class SourceReadQualifiedCliDocument(
     val entities: List<SourceEntityCliDocument>,
     val text: SourceTextProjectionCliDocument,
     val qualification: SourceReadQualificationCliDocument,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @SerialName("execution_budget")
+    val executionBudget: io.github.amichne.kast.protocol.contract.ExecutionBudgetReport? = null,
 )
 
 @Serializable
