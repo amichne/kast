@@ -66,6 +66,17 @@ class HostedChangeAcceptanceTest(unittest.TestCase):
             with self.assertRaises(AcceptanceRejected):
                 admit_harness(path, commit)
 
+    def test_tree_identity_admits_full_knowledge_product_without_truncation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for ordinal in range(2049):
+                (root / f'concept-{ordinal}.md').write_text('sample catalog concept')
+            identity = tree_identity(root)
+            self.assertEqual(2049, identity['fileCount'])
+            self.assertEqual(2049 * len('sample catalog concept'), identity['bytes'])
+            (root / 'concept-2048.md').write_text('updated catalog concept')
+            self.assertNotEqual(identity['sha256'], tree_identity(root)['sha256'])
+
     def test_tree_identity_tracks_content_and_rejects_symlinks(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
