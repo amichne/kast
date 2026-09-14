@@ -8,7 +8,7 @@ from acceptance_idea import digest
 from released_acceptance_product import (ReleaseFailure, ReleaseInputs, ReleaseRejected, ReleasedProduct,
     admit_release_assets, install_release, product_executable)
 from released_payload_identity import verify_control
-from released_session_acceptance import ShellSessionReceipt, inspect_shell_sessions
+from released_session_acceptance import SessionInvocation, ShellSessionReceipt, inspect_shell_sessions, register_owned_workspace
 
 
 @dataclass(frozen=True)
@@ -19,7 +19,8 @@ class ReleasedUpgradeReceipt:
     previousSessions: tuple[ShellSessionReceipt, ...]
     targetSessions: tuple[ShellSessionReceipt, ...]
     previousConfigurationSha256: str
-    previousRegistry: str
+    previousRegistrySha256: str
+    workspaceRegistration: SessionInvocation
     installerEvidence: str
     installerEvidenceSha256: str
     priorAdmission: str = 'COMPLETED'
@@ -44,12 +45,19 @@ def admit_previous_release(repo, assets, version, idea, target: ReleaseInputs):
     return previous
 
 
-def _registry_identity(path):
-    if not path.exists() and not path.is_symlink():
-        return 'absent'
+def _registry_identity(path, workspace):
     if path.resolve() != path or not path.is_file() or path.stat().st_size > 1048576:
         raise ReleaseRejected(ReleaseFailure.UPGRADE)
-    return 'sha256:' + digest(path)
+    try:
+        registry = json.loads(path.read_text())
+        valid = (set(registry) == {'schemaVersion', 'revision', 'roots'} and registry['schemaVersion'] == 2
+                 and type(registry['revision']) is int and registry['revision'] > 0
+                 and registry['roots'] == [str(workspace)])
+    except (ValueError, KeyError, TypeError):
+        valid = False
+    if not valid:
+        raise ReleaseRejected(ReleaseFailure.UPGRADE)
+    return digest(path)
 
 
 def _upgrade_observations(log):
@@ -68,17 +76,18 @@ def _upgrade_observations(log):
                     or event['stage'] in stages):
                 raise ReleaseRejected(ReleaseFailure.UPGRADE)
             stages[event['stage']] = event['outcome']
-    if not {'PRIOR_ADMISSION', 'PRIOR_RETIREMENT', 'CONFIGURATION_VALIDATION', 'COMMAND_QUALIFICATION'} <= stages.keys():
+    if not {'PRIOR_ADMISSION', 'PRIOR_RETIREMENT', 'CONFIGURATION_VALIDATION', 'COMMAND_QUALIFICATION'} == stages.keys():
         raise ReleaseRejected(ReleaseFailure.UPGRADE)
 
 
 def prepare_release_upgrade(isolation, previous, target, idea):
     prior = install_release(isolation, previous, idea)
+    registration = register_owned_workspace(isolation, prior)
     previous_sessions = inspect_shell_sessions(isolation, prior, previous=True)
     prior_root = Path(prior.product)
     configuration = prior_root / 'config/environment'
     configuration_digest = digest(configuration)
-    registry = _registry_identity(prior_root / 'config/workspaces.json')
+    registry = _registry_identity(prior_root / 'config/workspaces.json', isolation.root / 'workspace')
     product_executable(prior_root, isolation.root)
     # Archive only paths just authored and admitted by this fixture; the next install selects the same owned root.
     for name in ('released-assets', 'released-install.private.log', 'released-product-admission.json'):
@@ -91,9 +100,9 @@ def prepare_release_upgrade(isolation, previous, target, idea):
     _upgrade_observations(log)
     if (digest(configuration) != configuration_digest
             or digest(prior_root / 'installation.json') != prior.installationManifestSha256
-            or _registry_identity(Path(installed.product) / 'config/workspaces.json') != registry):
+            or _registry_identity(Path(installed.product) / 'config/workspaces.json', isolation.root / 'workspace') != registry):
         raise ReleaseRejected(ReleaseFailure.UPGRADE)
     verify_control(prior_root, previous.control, json.loads((prior_root / 'installation.json').read_text()))
     target_sessions = inspect_shell_sessions(isolation, installed)
     return ReleasedUpgradeReceipt(prior, installed, target.commit, previous_sessions, target_sessions,
-        configuration_digest, registry, str(log), digest(log))
+        configuration_digest, registry, registration, str(log), digest(log))

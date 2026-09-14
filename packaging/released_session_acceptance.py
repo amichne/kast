@@ -11,6 +11,7 @@ from released_acceptance_product import ReleaseFailure, ReleaseRejected, product
 
 
 class SessionCommand(str, Enum):
+    REGISTER = 'register-owned-workspace'
     RESOLVE = 'resolve-command'
     VERSION = 'version'
     CONFIGURATION = 'saved-configuration'
@@ -66,17 +67,43 @@ def _invoke(isolation, installed, directory, index, command, arguments, environm
     return stdout.decode(), record
 
 
+def _shell_environment(isolation):
+    environment = dict(isolation.environment)
+    environment['PATH'] = str(isolation.root / 'bin') + ':' + environment['PATH']
+    # The wrapper must select saved state without a caller-provided runtime/config selector.
+    environment.pop('KAST_RUNTIME_DIRECTORY', None)
+    environment.pop('KAST_CONFIGURATION_FILE', None)
+    return environment
+
+
+def register_owned_workspace(isolation, installed):
+    """Enrollment is handled before service admission and writes only the owned installation registry."""
+    product_executable(Path(installed.product), isolation.root)
+    directory = isolation.root / 'release-registration'
+    directory.mkdir(mode=0o700)
+    raw, invocation = _invoke(isolation, installed, directory, 0, SessionCommand.REGISTER,
+                              ('app-server', 'register'), _shell_environment(isolation))
+    workspace = str(isolation.root / 'workspace')
+    try:
+        document = json.loads(raw)
+        valid = (set(document) == {'operation', 'workspaceId', 'root', 'revision'}
+                 and document['operation'] == 'app-server.register' and document['root'] == workspace
+                 and document['workspaceId'] == hashlib.sha256(workspace.encode()).hexdigest()
+                 and type(document['revision']) is int and document['revision'] > 0)
+    except (ValueError, KeyError, TypeError):
+        valid = False
+    if not valid:
+        raise SessionRejected(invocation)
+    return invocation
+
+
 def inspect_shell_sessions(isolation, installed, *, previous=False):
     """Two independently launched shells must select the same immutable installed version/configuration."""
     product = Path(installed.product)
     executable = product_executable(product, isolation.root)
     directory = isolation.root / ('previous-release-sessions' if previous else 'release-sessions')
     directory.mkdir(mode=0o700)
-    environment = dict(isolation.environment)
-    environment['PATH'] = str(isolation.root / 'bin') + ':' + environment['PATH']
-    # Prove the installed wrapper selects saved state, with no caller-provided runtime/config selector.
-    environment.pop('KAST_RUNTIME_DIRECTORY', None)
-    environment.pop('KAST_CONFIGURATION_FILE', None)
+    environment = _shell_environment(isolation)
     configuration = product / 'config/environment'
     configuration_digest = digest(configuration)
     receipts = []
