@@ -6,6 +6,7 @@ resource: file://protocol
 tags: [kotlin, protocol, serialization]
 timestamp: 2026-09-14T00:00:00Z
 code_sources:
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReadRecoveryAction.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt
   - path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt
   - path: docs/reviews/live-semantic-read-acceptance.md
@@ -88,3 +89,9 @@ or terminal-incomplete; its only supported next action is draining the output.
 The legacy continuation field is derived from the checkpoint token, and wire
 decoding rejects disagreement between them. Omissions and their finite remediation
 remain unchanged on every fitted page, including the terminal suffix.
+
+`ReadRecoveryAction` derives the rejected read's direction exhaustively from the
+canonical failure, including its admitted wrapper. Wire round trips preserve the
+reason and budget, then CLI projection derives the same action. Installed schemas
+reuse the generated action enum and equal finite-failure evidence definitions to
+retain the unchanged provider qualification byte cap and 4,096-byte headroom.
