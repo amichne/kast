@@ -15,6 +15,7 @@ transcript, proprietary source or private session link is part of the fixtures.
 | Provider coverage | Earlier unsupported inputs disappeared from final-page completeness. | `RelationRetainedCoverageTest` preserves the gap through final resume; omission fixtures distinguish observed page counts from unmeasured inherited coverage. |
 | Tool presentation | A summary plus JSON required ad hoc parsing; early broker failures were plain strings. | Provider and terminal-reply tests decode one JSON document, preserving rejection codes and cancellation uncertainty. Native display schema tests admit structured content only on the supported display boundary. |
 | Readiness | A failed model observation could be confused with permanent semantic failure. | `HostedReadinessTest` observes unavailable then admission-ready state from fresh model evidence without creating semantic read authority during the poll. |
+| Provider startup | Expanded schemas plus JVM startup stderr exceeded the shared qualification output bound. | `InstalledServerProjectionTest` reserves 4 KiB of headroom. Reused definitions preserve all 13 expanded output schemas, and native qualification is explicitly admitted. |
 
 ## Reproduce the focused checks
 
@@ -35,14 +36,16 @@ These deterministic fixtures prove ordering, capacity isolation, identity,
 continuation and encoded-contract behavior. A synthetic imported-model port is
 not a benchmark of a live 200-module IDE import. The readiness seam establishes
 admission state; it does not claim compiler/index readiness or prove desktop
-rendering. The initial native runs reached imported and indexed readiness and
-passed 58 CLI read assertions with unchanged synthetic sources. They rejected
-provider admission before any provider case. Replaying the immutable schema
-command under the isolated JVM environment reproduced an aggregate output-budget
-overflow: schema output alone fit, but schema output plus JVM startup stderr
-exceeded the shared byte bound. This is partial diagnostic evidence, not native
-qualification.
-A corrected immutable fixture run is required below before completion.
+rendering.
+
+Clean native acceptance at `ebca5b094890d0194c50693d82d6d6f28441eedf` used
+immutable copied artifacts and an isolated IDEA `262.10315.125` environment.
+All 116 read assertions passed across CLI and provider surfaces, with synthetic
+sources unchanged during reads. All 30 change, approval and recovery cases
+passed afterward. Both report paths retained admitted provider qualification;
+the run qualified and removed its successful fixture after retiring owned
+processes. The controller was scripted against locally generated Codex schemas.
+This does not qualify stock Codex UI rendering or a live 200-module import.
 
 ## Contract and tuning changes
 
@@ -67,7 +70,7 @@ establish exhaustive coverage or fixed latency for arbitrarily large inputs.
 
 ## Integrated validation
 
-The local `productBuildGate` passed all 544 tasks after the changes, including
+The local `productBuildGate` and knowledge checks passed all 545 tasks after the changes, including
 Kotlin compilation, focused and integration tests, formatting, structural limits,
 architecture, generated public/configuration schemas, JSON contracts, knowledge
 validation and installation acceptance. The host-observation suite used its
