@@ -42,7 +42,8 @@ def prepare_read_fixture(workspace: Path, repo: Path) -> ReadFixture:
     target = workspace / 'src/main/kotlin/Fixture.kt'
     if (not workspace.is_absolute() or workspace.resolve() != workspace
             or workspace.name != 'workspace' or not target.is_file()
-            or any((workspace / name).exists() for name in ('core', 'logging', 'noise0'))):
+            or any((workspace / name).exists() or (workspace / name).is_symlink()
+                   for name in ('core', 'logging', 'noise0', 'src/main/kotlin/ReadEnumMode.kt'))):
         raise ReadFixtureRejected('READ_FIXTURE_OWNERSHIP_REJECTED')
     _admit_prepared_fixture(workspace, target)
     template = repo / 'experiments/host-observation/semantic-fixture'
@@ -60,11 +61,13 @@ def prepare_read_fixture(workspace: Path, repo: Path) -> ReadFixture:
         _digest(workspace / name)
     (workspace / 'settings.gradle.kts').write_text(
         'rootProject.name = "hosted-change-acceptance"\ninclude(":core", ":logging", ":noise0")\n')
+    enum_fixture = workspace / 'src/main/kotlin/ReadEnumMode.kt'
+    shutil.copyfile(template / 'read-reliability/ReadEnumMode.kt', enum_fixture)
     build = workspace / 'build.gradle.kts'
     build.write_text(build.read_text() + '\nsubprojects {\n'
         '    apply(plugin = "org.jetbrains.kotlin.jvm")\n'
         '    repositories { mavenCentral() }\n}\n')
-    files = [target, build, workspace / 'settings.gradle.kts']
+    files = [target, enum_fixture, build, workspace / 'settings.gradle.kts']
     for name in ('core', 'logging'):
         files.extend(path for path in (workspace / name).rglob('*') if path.is_file())
     inventory = tuple(sorted((str(path.relative_to(workspace)), _digest(path)) for path in files))

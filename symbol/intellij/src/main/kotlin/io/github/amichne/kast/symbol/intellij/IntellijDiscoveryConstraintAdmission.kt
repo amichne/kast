@@ -74,7 +74,7 @@ private fun SymbolDiscoveryConstraints.admitDirectory(
     return IntellijDiscoveryItemAdmission.ADMITTED
 }
 
-private fun SymbolDiscoveryConstraints.admitKind(
+internal fun SymbolDiscoveryConstraints.admitKind(
     item: NavigationItem,
     itemCompilerKind: IntellijDiscoveryItemCompilerKind,
 ): IntellijDiscoveryItemAdmission {
@@ -82,6 +82,7 @@ private fun SymbolDiscoveryConstraints.admitKind(
         val kind =
             when (val classified = itemCompilerKind.classify(item)) {
                 is IntellijDiscoveryItemCompilerKindResult.Found -> classified.kind
+                IntellijDiscoveryItemCompilerKindResult.EnumEntry -> return IntellijDiscoveryItemAdmission.FILTERED
                 IntellijDiscoveryItemCompilerKindResult.Unsupported -> return IntellijDiscoveryItemAdmission.UNSUPPORTED
             }
         if (kind !in restriction.values) return IntellijDiscoveryItemAdmission.FILTERED

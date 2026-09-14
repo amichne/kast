@@ -4,8 +4,13 @@ title: Semantic read domains
 description: Domain contracts refine discovery into exact compiler identity and compose source, relation, traversal, diagnostics, and queries without erasing evidence.
 resource: file://query
 tags: [kotlin, semantic, query, compiler]
-timestamp: 2026-09-13T00:00:00Z
+timestamp: 2026-09-14T00:00:00Z
 code_sources:
+  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijCallableIdentity.kt
+  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijCallableIdentityObservation.kt
+  - path: symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/IntellijDiscoveryKindAdmissionTest.kt
+  - path: symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/IntellijCallableIdentityObservationTest.kt
+  - path: packaging/hosted_enum_read_regression.py
   - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/BoundedNativeDiscoveryCollector.kt
   - path: symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/ScopedDeclarationDiscoveryTest.kt
   - path: query/service/src/test/kotlin/io/github/amichne/kast/query/service/QueryDiscoveryPlanningTest.kt
@@ -152,3 +157,17 @@ grant. If scheduling or provider work overruns that grant, traversal retains the
 actual elapsed time and proven facts, stops further reads, and qualifies the
 page with `time-limit-reached`. It resumes only when unfinished work remains;
 an exhausted overrun is terminal. An over-budget page cannot claim completion.
+
+Kotlin enum entries are excluded from supported class candidates before compiler
+refinement. Scoped declaration enumeration still visits their bodies, so excluding
+an entry does not exclude its eligible functions or properties. Compiler callable
+identity retains a native callable ID when available; an enum-body member instead
+requires the compiler-proven anonymous initializer, its enum-entry owner and
+non-special member name. Unsupported or incomplete ownership remains a finite
+rejection. Bounded identity counters and termination reasons distinguish these
+paths without recording source payloads.
+
+The installed enum fixture checks exact, fuzzy and scoped class searches, both
+`act` declarations, and reuse of their exact references and signatures through
+CLI and provider surfaces. Its default-budget run proves these behaviors; it
+does not establish the separate source-enumeration compiler-work ordering gate.
