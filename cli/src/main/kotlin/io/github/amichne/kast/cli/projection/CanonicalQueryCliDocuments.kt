@@ -33,9 +33,10 @@ internal object CanonicalQueryCliDocuments {
                         QueryQualificationCliDocument(
                             qualification.knownMinimum.value,
                             qualification.limitations.map(Enum<*>::cliName),
+                            qualification.progress,
                         ),
-                        result.continuation?.value,
-                        result.terminalReason?.cliName(),
+                        qualification.progress.continuationToken?.value,
+                        qualification.progress.terminalReason?.cliName(),
                         result.executionBudget,
                     )
                 )
@@ -88,6 +89,7 @@ private data class QueryRejectedCliDocument(
 private data class QueryQualificationCliDocument(
     val knownMinimum: Int,
     val limitations: List<String>,
+    val progress: QueryQualifiedProgressDocument,
 )
 
 @Serializable private data class QueryReferenceCliDocument(val kind: String, val token: String)

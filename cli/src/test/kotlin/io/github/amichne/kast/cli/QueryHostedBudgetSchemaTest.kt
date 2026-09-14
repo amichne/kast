@@ -37,12 +37,13 @@ class QueryHostedBudgetSchemaTest {
             val evidence = EvidenceEnvelope(CanonicalOperation.QUERY_RUN.id, fixture.evidence.basis, result)
             val qualified =
                 OperationOutcome.Qualified(
-                    evidence.copy(
-                        payload = result.copy(terminalReason = QueryTerminalReasonDocument.UPSTREAM_INCOMPLETE)
-                    ),
+                    evidence,
                     QueryRunQualification.create(
                             QueryKnownMinimum.parse(0).refined(),
                             listOf(QueryLimitationDocument.WORK_LIMIT_REACHED),
+                            io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument.TerminalIncomplete(
+                                io.github.amichne.kast.protocol.contract.QueryTerminalReasonDocument.UPSTREAM_INCOMPLETE
+                            ),
                         )
                         .refined(),
                 )

@@ -6,6 +6,10 @@ resource: file://query/protocol
 tags: [kotlin, protocol, query, authority]
 timestamp: 2026-09-13T00:00:00Z
 code_sources:
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryRunQualification.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryQualifiedProgressDocument.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryProgressProjection.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryPreparedCoverage.kt
   - path: query/protocol/build.gradle.kts
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt
     symbols: [CanonicalQueryProtocol, evidenceBasis]
@@ -109,3 +113,5 @@ omissions, bounded source samples and a closed remediation. `soundness` describe
 the exact returned facts independently of incomplete enumeration. Traversal
 projection retains cumulative progress and page-local partial node expansions;
 a bounded-fan-out remainder is explicitly unexamined rather than silently absent.
+
+Query qualification owns a mandatory closed progress state: resumable with an upstream checkpoint or retained-output checkpoint, or terminal-incomplete with a finite reason. A retained-output checkpoint reports the original upstream coverage, preserving terminal reasons without asserting that an interrupted scan can resume. Empty upstream pages explicitly require increased execution allowances. Query result payloads cannot carry independent cursor/terminal state; the CLI compatibility fields are derived from qualification. Wire decoding rejects missing progress and noncanonical checkpoint families.

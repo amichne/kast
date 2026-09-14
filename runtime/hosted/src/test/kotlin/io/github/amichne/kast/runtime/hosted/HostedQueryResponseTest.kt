@@ -35,7 +35,8 @@ class HostedQueryResponseTest {
             encodeHostedQueryResponse(original, maximumBytes = maximum) { remaining ->
                 suffix = remaining
                 HostedOutputRetention.Retained(
-                    ProtocolText.parse(HostedQueryContinuations.prefix + "0".repeat(36)).refined()
+                    ProtocolText.parse(HostedQueryContinuations.prefix + "00000000-0000-0000-0000-000000000000")
+                        .refined()
                 )
             }
                 as HostedResponse.Canonical<*, *, *>
@@ -84,7 +85,8 @@ class HostedQueryResponseTest {
             ) { retained ->
                 suffix = retained
                 HostedOutputRetention.Retained(
-                    ProtocolText.parse(HostedQueryContinuations.prefix + "0".repeat(36)).refined()
+                    ProtocolText.parse(HostedQueryContinuations.prefix + "00000000-0000-0000-0000-000000000000")
+                        .refined()
                 )
             }
                 as HostedResponse.Canonical<*, *, *>
@@ -116,6 +118,9 @@ class HostedQueryResponseTest {
             QueryRunQualification.create(
                     QueryKnownMinimum.parse(items.size).refined(),
                     listOf(QueryLimitationDocument.TIME_LIMIT_REACHED),
+                    io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument.TerminalIncomplete(
+                        io.github.amichne.kast.protocol.contract.QueryTerminalReasonDocument.UPSTREAM_INCOMPLETE
+                    ),
                 )
                 .refined()
         val response = encodeWithRetention(OperationOutcome.Qualified(envelope, qualification))
@@ -133,6 +138,7 @@ class HostedQueryResponseTest {
         assertEquals(envelope.basis, semantic.evidence.basis)
         assertEquals(envelope.payload.failures, result.failures)
         assertEquals(40, retained.knownMinimum.value)
+        assertRetainedTerminalCoverage(retained)
         assertEquals(
             listOf(QueryLimitationDocument.BYTE_LIMIT_REACHED, QueryLimitationDocument.TIME_LIMIT_REACHED),
             retained.limitations,
@@ -176,7 +182,8 @@ class HostedQueryResponseTest {
                 encodeHostedQueryResponse(pending) { retained ->
                     remainder = retained
                     HostedOutputRetention.Retained(
-                        ProtocolText.parse(HostedQueryContinuations.prefix + "0".repeat(36)).refined()
+                        ProtocolText.parse(HostedQueryContinuations.prefix + "00000000-0000-0000-0000-000000000000")
+                            .refined()
                     )
                 }
                     as HostedResponse.Canonical<*, *, *>
@@ -186,7 +193,10 @@ class HostedQueryResponseTest {
                 is OperationOutcome.Complete -> observed += (semantic.evidence.payload as QueryRunResult).items.values
                 is OperationOutcome.Qualified -> {
                     val payload = semantic.evidence.payload as QueryRunResult
-                    assertTrue(payload.continuation != null)
+                    assertTrue(
+                        (semantic.qualification as QueryRunQualification).progress
+                            is io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument.Resumable
+                    )
                     observed += payload.items.values
                 }
                 is OperationOutcome.Rejected -> error("Unexpected rejection")
@@ -203,10 +213,24 @@ class HostedQueryResponseTest {
         assertTrue(response is HostedResponse.Oversized)
     }
 
+    private fun assertRetainedTerminalCoverage(retained: QueryRunQualification) {
+        val progress =
+            retained.progress as io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument.Resumable
+        val checkpoint =
+            progress.checkpoint as io.github.amichne.kast.protocol.contract.QueryCheckpointDocument.RetainedOutput
+        assertEquals(
+            io.github.amichne.kast.protocol.contract.QueryPreparedCoverageDocument.TerminalIncomplete(
+                io.github.amichne.kast.protocol.contract.QueryTerminalReasonDocument.UPSTREAM_INCOMPLETE
+            ),
+            checkpoint.upstream,
+        )
+        assertEquals(io.github.amichne.kast.protocol.contract.ReadResumeActionDocument.RESUME, progress.nextAction)
+    }
+
     private fun encodeWithRetention(semantic: HostedQueryOutcome): HostedResponse =
         encodeHostedQueryResponse(semantic) {
             HostedOutputRetention.Retained(
-                ProtocolText.parse(HostedQueryContinuations.prefix + "0".repeat(36)).refined()
+                ProtocolText.parse(HostedQueryContinuations.prefix + "00000000-0000-0000-0000-000000000000").refined()
             )
         }
 

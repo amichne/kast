@@ -177,9 +177,7 @@ class InstalledServerProjectionTest {
                 """{"status":"completed","document":{"operation":"query.run","status":"complete","items":[],""" +
                     """"failures":[]}}"""
             )
-        query
-            .outputSchema()
-            .assertAdmits(requireNotNull(javaClass.getResource("/projection/qualified-query.json")).readText())
+        query.outputSchema().assertAdmits(LiveReadOutputSchemaTest().qualifiedQueryEnvelope())
     }
 
     @Test

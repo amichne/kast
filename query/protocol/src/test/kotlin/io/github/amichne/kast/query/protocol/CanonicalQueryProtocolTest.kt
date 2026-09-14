@@ -66,9 +66,12 @@ class CanonicalQueryProtocolTest {
                 store,
             )
         val first = protocol.execute(request(), lease, budget) as OperationOutcome.Qualified
-        val token = first.evidence.payload.continuation!!
+        val token = first.qualification.progress.continuationToken!!
         assertTrue(token.value.length < 64)
-        assertNull(first.evidence.payload.terminalReason)
+        assertEquals(
+            ReadResumeActionDocument.INCREASE_EXECUTION_BUDGET,
+            (first.qualification.progress as QueryQualifiedProgressDocument.Resumable).nextAction,
+        )
         assertCheckpointBinding(protocol, token)
         assertInstanceOf(
             OperationOutcome.Complete::class.java,

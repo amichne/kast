@@ -362,6 +362,11 @@ class LiveReadOutputSchemaTest {
                             QueryRunQualification.create(
                                     QueryKnownMinimum.parse(0).refined(),
                                     listOf(QueryLimitationDocument.DISCOVERY_INCOMPLETE),
+                                    io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument
+                                        .TerminalIncomplete(
+                                            io.github.amichne.kast.protocol.contract.QueryTerminalReasonDocument
+                                                .UPSTREAM_INCOMPLETE
+                                        ),
                                 )
                                 .refined(),
                         )
@@ -532,6 +537,11 @@ class LiveReadOutputSchemaTest {
     internal fun JsonObject.withSnapshot(operation: CanonicalOperation, snapshot: JsonObject): JsonObject =
         if (operation == CanonicalOperation.SOURCE_READ) with("snapshot", snapshot)
         else with("graph", getValue("graph").jsonObject.with("snapshot", snapshot))
+
+    internal fun qualifiedQueryEnvelope(): String =
+        Json.encodeToString(
+            CompletedProviderEnvelope(ProviderStatus.COMPLETED, qualifiedDocuments(published).first().second)
+        )
 
     internal fun assertAdmits(operation: CanonicalOperation, document: JsonObject) {
         val errors = validate(operation, document)

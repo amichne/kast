@@ -11,18 +11,27 @@ import org.junit.jupiter.api.Test
 
 class CanonicalQueryWireBindingTest {
     @Test
-    fun `continuation and every terminal reason have independent encoded shapes`() {
+    fun `continuation and every terminal reason have independent encoded qualification shapes`() {
         val json = Json { encodeDefaults = true }
-        val token = text("query:v1:sample-catalog-page")
-        val page = QueryRunResult(items = bounded(emptyList()), failures = bounded(emptyList()), continuation = token)
+        val token = text("query:v1:00000000-0000-0000-0000-000000000001")
+        val resumable =
+            qualification(
+                QueryQualifiedProgressDocument.Resumable(
+                    QueryCheckpointDocument.Upstream(token),
+                    ReadResumeActionDocument.INCREASE_EXECUTION_BUDGET,
+                )
+            )
         assertEquals(
             WireValueEncoding.Encoded(
                 json.encodeToJsonElement(
-                    ExpectedQueryPage.serializer(),
-                    ExpectedQueryPage(continuation = token.value),
+                    ExpectedQueryQualification.serializer(),
+                    ExpectedQueryQualification(
+                        progress =
+                            ExpectedQueryProgress.Resumable(ExpectedUpstream(token.value), "increase_execution_budget")
+                    ),
                 )
             ),
-            CanonicalQuerySerializers.result.encode(page, WireValueRole.RESULT),
+            CanonicalQuerySerializers.qualification.encode(resumable, WireValueRole.QUALIFICATION),
         )
         val names =
             mapOf(
@@ -32,24 +41,31 @@ class CanonicalQueryWireBindingTest {
                 QueryTerminalReasonDocument.NO_PROGRESS to "no-progress",
             )
         for ((reason, encoded) in names) {
-            val terminal = page.copy(continuation = null, terminalReason = reason)
             assertEquals(
                 WireValueEncoding.Encoded(
                     json.encodeToJsonElement(
-                        ExpectedQueryPage.serializer(),
-                        ExpectedQueryPage(terminalReason = encoded),
+                        ExpectedQueryQualification.serializer(),
+                        ExpectedQueryQualification(progress = ExpectedQueryProgress.Terminal(encoded)),
                     )
                 ),
-                CanonicalQuerySerializers.result.encode(terminal, WireValueRole.RESULT),
+                CanonicalQuerySerializers.qualification.encode(
+                    qualification(QueryQualifiedProgressDocument.TerminalIncomplete(reason)),
+                    WireValueRole.QUALIFICATION,
+                ),
             )
         }
+    }
+
+    @Test
+    fun `unknown terminal reason cannot become qualified query evidence`() {
+        val json = Json { encodeDefaults = true }
         assertTrue(
-            CanonicalQuerySerializers.result.decode(
+            CanonicalQuerySerializers.qualification.decode(
                 json.encodeToJsonElement(
-                    ExpectedQueryPage.serializer(),
-                    ExpectedQueryPage(terminalReason = "invented"),
+                    ExpectedQueryQualification.serializer(),
+                    ExpectedQueryQualification(progress = ExpectedQueryProgress.Terminal("invented")),
                 ),
-                WireValueRole.RESULT,
+                WireValueRole.QUALIFICATION,
             ) is WireDecoding.Rejected
         )
     }
@@ -161,6 +177,14 @@ class CanonicalQueryWireBindingTest {
         assertTrue(CanonicalOperationWireBindings.queryRun.decodeOutcome(ambiguous) is WireDecoding.Rejected)
     }
 
+    private fun qualification(progress: QueryQualifiedProgressDocument) =
+        QueryRunQualification.create(
+                QueryKnownMinimum.parse(0).refinedValue(),
+                listOf(QueryLimitationDocument.WORK_LIMIT_REACHED),
+                progress,
+            )
+            .refinedValue()
+
     private fun <Value, Failure> Refinement<Value, Failure>.refinedValue(): Value =
         when (this) {
             is Refinement.Refined -> value
@@ -187,9 +211,24 @@ class CanonicalQueryWireBindingTest {
 }
 
 @Serializable
-private data class ExpectedQueryPage(
-    val items: List<String> = emptyList(),
-    val failures: List<String> = emptyList(),
-    val continuation: String? = null,
-    val terminalReason: String? = null,
+private data class ExpectedQueryQualification(
+    val knownMinimum: Int = 0,
+    val limitations: List<String> = listOf("work-limit-reached"),
+    val progress: ExpectedQueryProgress,
 )
+
+@Serializable
+private sealed interface ExpectedQueryProgress {
+    @Serializable
+    @kotlinx.serialization.SerialName("resumable")
+    data class Resumable(
+        val checkpoint: ExpectedUpstream,
+        @kotlinx.serialization.SerialName("next_action") val nextAction: String,
+    ) : ExpectedQueryProgress
+
+    @Serializable
+    @kotlinx.serialization.SerialName("terminal_incomplete")
+    data class Terminal(val reason: String) : ExpectedQueryProgress
+}
+
+@Serializable private data class ExpectedUpstream(val token: String, val type: String = "upstream")

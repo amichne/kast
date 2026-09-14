@@ -9,10 +9,14 @@ import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.ReturnedByteLimit
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.QueryCheckpointDocument
 import io.github.amichne.kast.protocol.contract.QueryKnownMinimum
 import io.github.amichne.kast.protocol.contract.QueryLimitationDocument
+import io.github.amichne.kast.protocol.contract.QueryPreparedCoverageDocument
+import io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument
 import io.github.amichne.kast.protocol.contract.QueryRunQualification
 import io.github.amichne.kast.protocol.contract.QueryRunResult
+import io.github.amichne.kast.protocol.contract.ReadResumeActionDocument
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
@@ -55,8 +59,7 @@ internal fun encodeHostedQueryResponse(
     // Without a continuation owner no prefix may be irreversibly published.
     if (retain == null) return rejection
     val exhausted = queryPageLimitations(limitations, original, size, maximumResults)
-    val fitting =
-        QueryPageEncoding(evidence, QueryRunQualification.create(minimum, exhausted).proven(), limits, maximumBytes)
+    val fitting = QueryPageEncoding(evidence, minimum, exhausted, semantic.preparedCoverage(), limits, maximumBytes)
     val bestCount = largestHostedQueryPrefix(minOf(size - 1, maximumResults.value), fitting::placeholder)
     // An empty prefix cannot advance a byte-bound continuation. Fail with finite rejection instead.
     if (bestCount == 0) return rejection
@@ -78,7 +81,9 @@ private fun queryPageLimitations(
 
 private class QueryPageEncoding(
     val evidence: EvidenceEnvelope<QueryRunResult>,
-    val qualification: QueryRunQualification,
+    val minimum: QueryKnownMinimum,
+    val limitations: List<QueryLimitationDocument>,
+    val upstream: QueryPreparedCoverageDocument,
     val limits: ReadLimits,
     val maximumBytes: ReturnedByteLimit,
 ) {
@@ -91,19 +96,26 @@ private class QueryPageEncoding(
                 evidence.copy(
                     payload =
                         evidence.payload.copy(
-                            items = BoundedProtocolList.create(evidence.payload.items.values.take(count)).proven(),
-                            continuation = token,
-                            terminalReason = null,
+                            items = BoundedProtocolList.create(evidence.payload.items.values.take(count)).proven()
                         )
                 ),
-                qualification,
+                QueryRunQualification.create(
+                        minimum,
+                        limitations,
+                        QueryQualifiedProgressDocument.Resumable(
+                            QueryCheckpointDocument.RetainedOutput(token, upstream),
+                            ReadResumeActionDocument.RESUME,
+                        ),
+                    )
+                    .proven(),
             ),
             limits,
             maximumBytes,
         )
 }
 
-private val QUERY_PLACEHOLDER = ProtocolText.parse(HostedQueryContinuations.prefix + "0".repeat(36)).proven()
+private val QUERY_PLACEHOLDER =
+    ProtocolText.parse(HostedQueryContinuations.prefix + "00000000-0000-0000-0000-000000000000").proven()
 
 private fun HostedQueryOutcome.querySuffix(count: Int): HostedQueryOutcome {
     fun EvidenceEnvelope<QueryRunResult>.suffix() =

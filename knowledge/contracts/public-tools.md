@@ -100,7 +100,7 @@ manufacturing an empty object.
 
 `query_symbols` accepts optional nullable `continuation`; omission or null starts
 a query. It preserves the opaque token through public lowering. Qualified query
-output includes nullable `continuation` and `terminal_reason`, while exact items
+output derives nullable `continuation` and `terminal_reason` from its required closed qualification progress state, while exact items
 include `symbol_id` independently of the retained `symbol_ref` capability.
 Traversal output includes progress, strategy and page-local partial expansions.
 Relation output separates exact returned-fact soundness from bounded provider

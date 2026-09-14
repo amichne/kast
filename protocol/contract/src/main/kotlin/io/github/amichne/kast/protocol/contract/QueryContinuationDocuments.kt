@@ -1,10 +1,14 @@
 package io.github.amichne.kast.protocol.contract
 
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
+@Serializable
 enum class QueryTerminalReasonDocument {
-    UPSTREAM_INCOMPLETE,
-    OUTPUT_ITEM_TOO_LARGE,
-    CHECKPOINT_CAPACITY_EXCEEDED,
-    NO_PROGRESS,
+    @SerialName("upstream-incomplete") UPSTREAM_INCOMPLETE,
+    @SerialName("output-item-too-large") OUTPUT_ITEM_TOO_LARGE,
+    @SerialName("checkpoint-capacity-exceeded") CHECKPOINT_CAPACITY_EXCEEDED,
+    @SerialName("no-progress") NO_PROGRESS,
 }
 
 enum class QueryExecutionRejectionDocument {

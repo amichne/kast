@@ -312,3 +312,23 @@ knowledge checks passed. The native run above predates this final report decoder
 change. Closed query/source completion semantics, traversal encoded fitting,
 remaining installed budget/resume/transport variants, enum-entry native coverage,
 and presentation naming remain release gates.
+
+### Query qualified completion authority
+
+RED `2c7a375b3` reproduced independently supplied continuation/terminal fields in
+query result payloads and qualifications lacking an explicit progress state.
+Qualified progress now owns closed resumable and terminal-incomplete variants.
+Upstream checkpoints and retained output checkpoints are distinct; retained output
+preserves the original upstream coverage, including terminal limitations. The CLI
+compatibility fields are derived from that qualification. A zero-output upstream
+checkpoint explicitly requires an increased execution budget.
+
+The same wire regression passes, including wrong checkpoint families and invalid
+identities. Every closed progress variant validates against the installed output
+schema, with independent encoded-shape assertions and preserved terminal causes in
+hosted page fitting. Full protocol contract/wire, query protocol, hosted runtime,
+CLI and App Server checks passed, together with generated references, JSON,
+architecture and knowledge checks (`/tmp/kast-query-completion-check.log`). Exact
+reference schema reuse keeps the capability document within its unchanged cap and
+headroom. This is local query evidence; source/traversal completion, remaining
+installed matrix cases and presentation naming remain open.

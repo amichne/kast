@@ -372,6 +372,8 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
             "hostedReadRejection" to HostedRejectionSchemas.read,
             "queryResultItem" to queryResultItemSchema(),
             "queryItemFailure" to queryItemFailureSchema(),
+            "queryExactReference" to queryOutputReferenceSchema("exact-symbol"),
+            "queryCandidateReference" to queryOutputReferenceSchema("declaration-candidate"),
             "queryRejection" to queryRejectionSchema(),
             "compilerFunctionSignature" to functionCompilerSignatureSchema(),
             "compilerReceiver" to compilerReceiverSchema(),
@@ -625,6 +627,12 @@ private fun queryTerminalReasonSchema(): JsonObject =
 private fun queryQualificationSchema(): JsonObject =
     objectSchema(
         ServerSchemaProperty("knownMinimum", integerSchema(0, description = "Known returned item count.")),
+        ServerSchemaProperty(
+            "progress",
+            generatedRequestSchema(
+                io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument.serializer()
+            ),
+        ),
         ServerSchemaProperty(
             "limitations",
             nonEmptyArraySchema(
