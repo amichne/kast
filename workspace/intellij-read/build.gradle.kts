@@ -151,3 +151,10 @@ val hostedQueryPlugin by
             }
         }
     }
+
+// The actual encoder is compared with the exact bytes also validated by CLI schema tests.
+tasks.named("test") {
+    inputs
+        .file(rootProject.layout.projectDirectory.file("cli/src/test/resources/hosted-read-failure-encodings.json"))
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+}
