@@ -213,7 +213,7 @@ class PublicToolSchemaTest {
             )
             .forEach { identity ->
                 assertEquals(
-                    setOf("DirectoryScope", "PackageScope"),
+                    setOf("DirectoryScope", "PackageScope", "ExecutionBudget"),
                     PublicToolContract.generationParameters(identity).getValue("\$defs").jsonObject.keys,
                 )
             }

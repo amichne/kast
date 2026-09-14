@@ -14,6 +14,7 @@ internal fun readinessDocument(readiness: ProbeSetupObservation): JsonElement =
             indexing = readiness.after.indexing,
             refreshScanning = readiness.after.refresh.scanning,
             refreshEventProcessing = readiness.after.refresh.processing,
+            generationBeforeRefresh = readiness.beforeRefresh.generation,
             generationBefore = readiness.before.generation,
             generationAfter = readiness.after.generation,
         ),
@@ -36,6 +37,7 @@ private data class ProbeSetupReadinessDocument(
     val indexing: ProbeSetupIndexingState,
     val refreshScanning: ProbeSetupQueueState,
     val refreshEventProcessing: ProbeSetupQueueState,
+    val generationBeforeRefresh: ProbeSetupGeneration,
     val generationBefore: ProbeSetupGeneration,
     val generationAfter: ProbeSetupGeneration,
 )

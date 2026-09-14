@@ -123,6 +123,11 @@ internal class ProbeSetupReadiness(private val project: Project, private val san
                         return ProbeExecution.Rejected(ProbeFailure.DOCUMENT_STATE_REJECTED)
                 else -> return prepared
             }
+            val beforeRefresh =
+                when (val ready = awaitRefreshAdmission(request.command, requirement, deadline)) {
+                    is ProbeResult.Accepted -> ready.value
+                    is ProbeResult.Rejected -> return ProbeExecution.Rejected(ready.failure)
+                }
             when (val refresh = refresh(deadline)) {
                 is ProbeResult.Accepted ->
                     awaitQuiet(
@@ -130,6 +135,7 @@ internal class ProbeSetupReadiness(private val project: Project, private val san
                         deadline = deadline,
                         requirement = requirement,
                         drain = refresh.value,
+                        beforeRefresh = beforeRefresh,
                         observeSource = observeSource,
                     )
                 is ProbeResult.Rejected -> ProbeExecution.Rejected(refresh.failure)
@@ -144,11 +150,26 @@ internal class ProbeSetupReadiness(private val project: Project, private val san
         }
     }
 
+    private fun awaitRefreshAdmission(
+        command: ProbeCommand,
+        requirement: ProbeImportRequirement,
+        deadline: Long,
+    ): ProbeResult<ProbeSetupSample> {
+        while (System.nanoTime() < deadline) {
+            val observed = onEdt(deadline) { sample(command, requirement) }
+            if (observed.status == ProbeSetupStatus.CANDIDATE) return ProbeResult.Accepted(observed)
+            if (disposed.await(SETUP_POLL_MILLIS, TimeUnit.MILLISECONDS))
+                return ProbeResult.Rejected(ProbeFailure.SETUP_CANCELLED)
+        }
+        return ProbeResult.Rejected(timeoutFailure())
+    }
+
     private fun awaitQuiet(
         request: ProbeRequest,
         deadline: Long,
         requirement: ProbeImportRequirement,
         drain: ProbeSetupDrainState,
+        beforeRefresh: ProbeSetupSample,
         observeSource: () -> ProbeExecution,
     ): ProbeExecution {
         var candidate = onEdt(deadline) { sample(request.command, requirement) }
@@ -165,6 +186,7 @@ internal class ProbeSetupReadiness(private val project: Project, private val san
             when (
                 val proof =
                     ProbeSetupObservation.admit(
+                        beforeRefresh = beforeRefresh,
                         before = candidate,
                         after = current,
                         elapsedNanos = now - candidateSince,

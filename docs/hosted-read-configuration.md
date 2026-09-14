@@ -72,6 +72,8 @@ All values are positive decimal integers, up to 2,147,483,646. Transport and pro
 | `HOST_REQUEST_BYTES` | 16,384 | bytes |
 | `HOST_RESPONSE_BYTES` | 65,536 | bytes |
 | `HOST_DESCRIPTOR_BYTES` | 16,384 | bytes |
+| `HOST_ACCEPT_BACKLOG` | 64 | count |
+| `HOST_CONNECTIONS` | 16 | count |
 | `HOST_CONNECTION_MILLIS` | 5,000 | milliseconds |
 | `CLIENT_EXCHANGE_MILLIS` | 6,000 | milliseconds |
 | `HOST_FILE_CHARACTERS` | 262,144 | characters |
@@ -104,7 +106,8 @@ The [reproduction guide](../experiments/host-observation/SEMANTIC_REPRODUCTION.m
 
 The host deadline covers admission, model capture, semantic evaluation, freshness
 revalidation and detachment. Its default is 4,000 ms; semantic work retains a
-2,000 ms ceiling. At semantic entry, the host subtracts elapsed request time and
+2,000 ms default. Caller allowances may raise that default within the operator and
+host limits. At semantic entry, the host subtracts elapsed request time and
 reserves the smaller of 250 ms or one eighth of the host limit (at least 1 ms)
 for completion. Semantic and diagnostic-scope allowances are each capped by the
 remaining time after that reserve. A nonpositive allowance rejects before the
@@ -147,3 +150,43 @@ failure, and existing limitations plus `BYTE_LIMIT_REACHED`. If the mandatory
 evidence cannot fit, the response stays rejected.
 
 Query continuations retain detached pipeline state and encoded-output suffixes in bounded project-owned stores. Each store applies the continuation entry, byte, and TTL limits. A checkpoint must fit `QUERY_CHECKPOINT_BYTES`, which cannot exceed `QUERY_CONTINUATION_BYTES`. Epoch movement and project disposal clear retained state; expired or evicted handles return `continuation-unavailable`. Returned-byte authority covers final items and failures, independently of bounded child-read bytes.
+
+## Per-call execution budgets
+
+`semantic_query`, `impact_analyze`, `source_read`, `query_symbols`, all three `search_*` tools, and `query run`
+accept an optional `execution_budget` object with
+`max_elapsed_ms`, `max_work_units`, `max_results`, and `max_returned_bytes`.
+Supplied numbers must be positive integers. Omitted controls select configured
+defaults. Intent tools also normalize null controls to defaults; the legacy
+`query run` grammar rejects explicit null execution controls. The IDE admits each dimension against the corresponding
+`KAST_READ_EXECUTION_MAX_*` operator ceiling and applicable transport capacity.
+These ceilings default to 2,147,483,646; existing semantic defaults, the 1,000-item
+canonical page capacity, response bytes, and remaining hosted deadline still
+apply. Raising a caller allowance cannot extend the configured host or client
+deadline. The admitted time excludes already elapsed model work and reserves
+publication headroom.
+
+Read result metadata reports the selected default or caller value, operator
+ceiling, effective value, and finite clamping reasons. Relation work units are examined
+semantic relation items; cheap exclusions and replay verification are bounded by
+the provider's candidate and elapsed limits. Result units are occurrence facts,
+so two distinct call sites remain two results. A page-result allowance does not
+change relationship or scope semantics. Byte fitting measures the complete
+canonical response, including this metadata and any cursor.
+
+Hosted output cursors can resume with a changed execution budget and page limit.
+Each resume admits a new grant, while selector, relationship, authority and epoch
+remain bound. Storage capacity and expiry retain their separate operator limits.
+Query result units are emitted declarations; work units retain the query pipeline's
+existing accounting for candidate refinement and child reads. An explicit `take`
+remains part of query semantics. Query output suffixes and pipeline checkpoints
+exclude execution allowances from their request identity. Reissuing the same
+checkpoint reuses its token without renewing expiry; replay is non-consuming.
+Each output page retains
+known item failures, and its full canonical encoding includes the current grant.
+These controls are implemented for relation and query/search reads. Traversal and
+source remain part of the unfinished reliability work.
+
+Source entity continuations remain owned by the original project. `SOURCE_CONTINUATIONS` bounds entries, `SOURCE_CONTINUATION_BYTES` bounds charged retention (default 32 MiB), and `SOURCE_CONTINUATION_TTL_MILLIS` bounds token age (default ten minutes). The byte charge conservatively includes detached identity text, scope constraints, and object/container overhead; it is not a heap measurement. The store retains no source text or PSI. Replay preserves the original creation time. Expired or evicted tokens are rejected; reacquire a source selection and start a fresh read. A checkpoint that cannot fit is rejected before issuance.
+
+Source result units are structural entities. Native source work units are visited PSI elements, checked before another unit starts; setup time and final-unit overruns remain charged. Traversal result units are relation records in the graph, and aggregate work/time attenuate each one-hop relation read. Semantic traversal depth remains fixed across resume. Source and traversal now enforce their full encoded byte caps; automatic fitting of safely retained output is still an implementation gate.

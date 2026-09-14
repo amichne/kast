@@ -1,3 +1,5 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
 package io.github.amichne.kast.protocol.wire
 
 import io.github.amichne.kast.protocol.contract.SourceDeclarationKindDocument
@@ -13,6 +15,9 @@ internal data class SourceReadResultWireDocument(
     val region: SourceRegionWireDocument,
     val entities: List<SourceEntityWireDocument>,
     val text: SourceTextProjectionWireDocument,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @SerialName("execution_budget")
+    val executionBudget: io.github.amichne.kast.protocol.contract.ExecutionBudgetReport? = null,
 )
 
 @Serializable
@@ -158,28 +163,20 @@ internal enum class SourceTextWithheldReasonWireDocument {
 internal data class SourceReadQualificationWireDocument(
     val knownMinimumEntityCount: Int,
     val limitations: List<SourceReadLimitationWireDocument>,
-    val continuation: SourceReadContinuationStateWireDocument,
+    val progress: io.github.amichne.kast.protocol.contract.SourceQualifiedProgressDocument,
 )
 
 @Serializable
 internal enum class SourceReadLimitationWireDocument {
     @SerialName("entity-limit-reached") ENTITY_LIMIT_REACHED,
     @SerialName("text-byte-limit-reached") TEXT_BYTE_LIMIT_REACHED,
+    @SerialName("returned-byte-limit-reached") RETURNED_BYTE_LIMIT_REACHED,
     @SerialName("work-limit-reached") WORK_LIMIT_REACHED,
     @SerialName("time-limit-reached") TIME_LIMIT_REACHED,
     @SerialName("dumb-mode-transition") DUMB_MODE_TRANSITION,
     @SerialName("semantic-resolution-incomplete") SEMANTIC_RESOLUTION_INCOMPLETE,
     @SerialName("unsupported-entity") UNSUPPORTED_ENTITY,
     @SerialName("provider-failure") PROVIDER_FAILURE,
-}
-
-@Serializable
-internal sealed interface SourceReadContinuationStateWireDocument {
-    @Serializable @SerialName("unavailable") data object Unavailable : SourceReadContinuationStateWireDocument
-
-    @Serializable
-    @SerialName("available")
-    data class Available(val continuation: String) : SourceReadContinuationStateWireDocument
 }
 
 @Serializable
@@ -201,6 +198,8 @@ internal enum class SourceReadRejectionWireDocument {
     @SerialName("region-absent") REGION_ABSENT,
     @SerialName("compiler-analysis-unavailable") COMPILER_ANALYSIS_UNAVAILABLE,
     @SerialName("contract-violation") CONTRACT_VIOLATION,
+    @SerialName("continuation-unavailable") CONTINUATION_UNAVAILABLE,
+    @SerialName("continuation-request-mismatch") CONTINUATION_REQUEST_MISMATCH,
 }
 
 @Serializable internal data class SourceLineRangeWireDocument(val startInclusive: Long, val endInclusive: Long)

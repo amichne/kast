@@ -19,9 +19,12 @@ enum class TraversalContinuationDocumentFailure {
 @Serializable(with = TraversalContinuationDocumentSerializer::class)
 value class TraversalContinuationDocument private constructor(val value: String) {
     companion object {
-        const val TOKEN_PATTERN: String = "^traversal-continuation:v[12]:"
+        const val OUTPUT_PREFIX: String = "traversal-output:v1:"
+        const val TOKEN_PATTERN: String =
+            "^(traversal-continuation:v[12]:|traversal-output:v1:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$)"
 
         fun parse(raw: String): Refinement<TraversalContinuationDocument, TraversalContinuationDocumentFailure> {
+            if (raw.startsWith(OUTPUT_PREFIX)) return parseRetainedOutput(raw)
             val parts = raw.split(':')
             if (parts.firstOrNull() != TRAVERSAL_CONTINUATION_TOKEN_FAMILY) {
                 return Refinement.Rejected(TraversalContinuationDocumentFailure.UNKNOWN_TOKEN_FAMILY)
@@ -54,6 +57,12 @@ value class TraversalContinuationDocument private constructor(val value: String)
             }
             return Refinement.Refined(TraversalContinuationDocument(raw))
         }
+
+        private fun parseRetainedOutput(
+            raw: String
+        ): Refinement<TraversalContinuationDocument, TraversalContinuationDocumentFailure> =
+            if (Regex(TOKEN_PATTERN).matches(raw)) Refinement.Refined(TraversalContinuationDocument(raw))
+            else Refinement.Rejected(TraversalContinuationDocumentFailure.INVALID_TOKEN_STRUCTURE)
     }
 }
 

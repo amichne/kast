@@ -45,10 +45,18 @@ class QueryCheckpointStore(
     @Synchronized
     fun issue(request: QueryRunRequest, checkpoint: QueryCheckpoint): QueryCheckpointIssuance {
         expire()
+        val normalized = request.copy(continuation = null, executionBudget = null)
+        entries.entries
+            .firstOrNull { it.value.request == normalized && it.value.checkpoint == checkpoint }
+            ?.let {
+                return QueryCheckpointIssuance.Issued(it.key)
+            }
         val bytes =
             checkpoint.retainedBytes +
-                Json.encodeToString(QueryRunRequest.serializer(), request).toByteArray(Charsets.UTF_8).size.toLong() *
-                    RETAINED_TEXT_FACTOR
+                Json.encodeToString(QueryRunRequest.serializer(), normalized)
+                    .toByteArray(Charsets.UTF_8)
+                    .size
+                    .toLong() * RETAINED_TEXT_FACTOR
         if (capacity < 1 || bytes > maximumBytes) return QueryCheckpointIssuance.CapacityExceeded
         while (entries.size >= capacity || entries.values.sumOf { it.bytes } + bytes > maximumBytes) {
             entries.remove(entries.keys.first())
@@ -60,7 +68,7 @@ class QueryCheckpointStore(
             }
         entries[token] =
             Entry(
-                request = request.copy(continuation = null),
+                request = normalized,
                 checkpoint = checkpoint,
                 createdAt = clock(),
                 bytes = bytes,
@@ -78,7 +86,8 @@ class QueryCheckpointStore(
         val entry = entries[token] ?: return QueryCheckpointRestoration.Unavailable
         if (
             entry.checkpoint.lease != lease ||
-                request.copy(execution = entry.request.execution, continuation = null) != entry.request
+                request.copy(execution = entry.request.execution, continuation = null, executionBudget = null) !=
+                    entry.request
         ) {
             return QueryCheckpointRestoration.Mismatch
         }

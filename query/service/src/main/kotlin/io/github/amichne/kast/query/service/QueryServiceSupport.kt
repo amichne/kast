@@ -61,6 +61,7 @@ internal fun constraints(
 internal fun visibilityRequest(
     symbol: SymbolSelector,
     state: QueryExecutionState,
+    resources: io.github.amichne.kast.kernel.ResourceBudget,
 ): SourceReadRequest =
     SourceReadRequest(
         anchor = SourceReadAnchor.Symbol(symbol),
@@ -80,6 +81,7 @@ internal fun visibilityRequest(
         entityLimit = SourceEntityLimit.parse(1).refined(),
         textByteLimit = SourceTextByteLimit.parse(state.request.budget.returnedBytes.value.coerceAtLeast(1L)).refined(),
         page = SourceReadPage.First,
+        resources = resources,
     )
 
 private fun CompilerSymbolKind.toDeclarationKind(): DeclarationKind =

@@ -72,6 +72,7 @@ class SourceReadContractTest {
                 entityLimit = entityLimit(250),
                 textByteLimit = textByteLimit(65_536),
                 page = SourceReadPage.First,
+                resources = sourceTestResources(),
             )
 
         assertEquals(Containment.DESCENDANTS, entities.containment)
@@ -242,3 +243,10 @@ class SourceReadContractTest {
             is Refinement.Rejected -> failure
         }
 }
+
+private fun sourceTestResources(): io.github.amichne.kast.kernel.ResourceBudget =
+    io.github.amichne.kast.kernel.ResourceBudget(
+        (io.github.amichne.kast.kernel.ResultLimit.parse(1000) as Refinement.Refined).value,
+        (io.github.amichne.kast.kernel.WorkUnitLimit.parse(10000) as Refinement.Refined).value,
+        (io.github.amichne.kast.kernel.ElapsedTimeLimitMillis.parse(2000) as Refinement.Refined).value,
+    )

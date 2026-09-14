@@ -17,6 +17,24 @@ class ProbeSetupObservationTest {
         )
 
     @Test
+    fun refreshBeforeImportCompletionCannotProvePostImportReadiness() {
+        val importing = completed.copy(status = ProbeSetupStatus.IMPORT_PENDING, import = ProbeImportState.IMPORTING)
+        val previous = completed.copy(generation = generation.copy(imports = 0))
+        for (beforeRefresh in listOf(importing, previous)) {
+            assertEquals(
+                ProbeResult.Rejected(ProbeFailure.SETUP_MOVING),
+                ProbeSetupObservation.admit(
+                    beforeRefresh = beforeRefresh,
+                    before = completed,
+                    after = completed,
+                    elapsedNanos = SETUP_QUIET_WINDOW_NANOS,
+                    drain = ProbeSetupDrainState.COMPLETED,
+                ),
+            )
+        }
+    }
+
+    @Test
     fun smartModeWithScheduledWorkDoesNotProveReadiness() {
         assertEquals(
             ProbeSetupIndexingState.SCHEDULED,
@@ -26,6 +44,7 @@ class ProbeSetupObservationTest {
         assertInstanceOf(
             ProbeResult.Rejected::class.java,
             ProbeSetupObservation.admit(
+                beforeRefresh = scheduled,
                 before = scheduled,
                 after = scheduled,
                 elapsedNanos = SETUP_QUIET_WINDOW_NANOS,
@@ -36,6 +55,7 @@ class ProbeSetupObservationTest {
         assertInstanceOf(
             ProbeResult.Rejected::class.java,
             ProbeSetupObservation.admit(
+                beforeRefresh = unavailable,
                 before = unavailable,
                 after = unavailable,
                 elapsedNanos = SETUP_QUIET_WINDOW_NANOS,
@@ -53,6 +73,7 @@ class ProbeSetupObservationTest {
                 assertEquals(
                     ProbeResult.Rejected(ProbeFailure.SETUP_MOVING),
                     ProbeSetupObservation.admit(
+                        beforeRefresh = busy,
                         before = busy,
                         after = busy,
                         elapsedNanos = SETUP_QUIET_WINDOW_NANOS,
@@ -69,6 +90,7 @@ class ProbeSetupObservationTest {
             assertInstanceOf(
                 ProbeResult.Accepted::class.java,
                 ProbeSetupObservation.admit(
+                    beforeRefresh = completed,
                     before = completed,
                     after = completed,
                     elapsedNanos = SETUP_QUIET_WINDOW_NANOS,
@@ -85,6 +107,7 @@ class ProbeSetupObservationTest {
             assertInstanceOf(
                 ProbeResult.Accepted::class.java,
                 ProbeSetupObservation.admit(
+                    beforeRefresh = restored,
                     before = restored,
                     after = restored,
                     elapsedNanos = SETUP_QUIET_WINDOW_NANOS,
@@ -111,6 +134,7 @@ class ProbeSetupObservationTest {
             assertInstanceOf(
                 ProbeResult.Rejected::class.java,
                 ProbeSetupObservation.admit(
+                    beforeRefresh = completed,
                     before = completed,
                     after = completed.copy(generation = changed),
                     elapsedNanos = SETUP_QUIET_WINDOW_NANOS,
@@ -121,6 +145,7 @@ class ProbeSetupObservationTest {
         assertInstanceOf(
             ProbeResult.Rejected::class.java,
             ProbeSetupObservation.admit(
+                beforeRefresh = completed,
                 before = completed,
                 after = completed,
                 elapsedNanos = SETUP_QUIET_WINDOW_NANOS - 1,
@@ -131,6 +156,7 @@ class ProbeSetupObservationTest {
         assertEquals(
             ProbeResult.Rejected(ProbeFailure.SETUP_MOVING),
             ProbeSetupObservation.admit(
+                beforeRefresh = negative,
                 before = negative,
                 after = negative,
                 elapsedNanos = SETUP_QUIET_WINDOW_NANOS,
@@ -146,6 +172,7 @@ class ProbeSetupObservationTest {
             assertInstanceOf(
                 ProbeResult.Rejected::class.java,
                 ProbeSetupObservation.admit(
+                    beforeRefresh = busy,
                     before = busy,
                     after = busy,
                     elapsedNanos = SETUP_QUIET_WINDOW_NANOS,
@@ -164,6 +191,7 @@ class ProbeSetupObservationTest {
             assertInstanceOf(
                 ProbeResult.Rejected::class.java,
                 ProbeSetupObservation.admit(
+                    beforeRefresh = incomplete,
                     before = incomplete,
                     after = incomplete,
                     elapsedNanos = SETUP_QUIET_WINDOW_NANOS,

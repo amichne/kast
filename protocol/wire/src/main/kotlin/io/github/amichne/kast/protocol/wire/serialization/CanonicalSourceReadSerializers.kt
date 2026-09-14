@@ -14,7 +14,6 @@ import io.github.amichne.kast.protocol.contract.SourceEntityLimitDocument
 import io.github.amichne.kast.protocol.contract.SourceEntityTargetDocument
 import io.github.amichne.kast.protocol.contract.SourceLengthDocument
 import io.github.amichne.kast.protocol.contract.SourceNestingDepthDocument
-import io.github.amichne.kast.protocol.contract.SourceReadContinuationStateDocument
 import io.github.amichne.kast.protocol.contract.SourceReadLimitationDocument
 import io.github.amichne.kast.protocol.contract.SourceReadQualification
 import io.github.amichne.kast.protocol.contract.SourceReadRejection
@@ -61,6 +60,7 @@ private fun SourceReadResult.toWireDocument(): SourceReadResultWireDocument =
         region.toWireDocument(),
         entities.values.map(SourceEntityDocument::toWireDocument),
         text.toWireDocument(),
+        executionBudget,
     )
 
 private fun SourceReadResultWireDocument.toContract(): WireDocumentConversion<SourceReadResult> =
@@ -79,6 +79,7 @@ private fun SourceReadResultWireDocument.toContract(): WireDocumentConversion<So
                                     admittedRegion,
                                     boundedEntities,
                                     admittedText,
+                                    executionBudget,
                                 )
                             )
                         }
@@ -385,80 +386,17 @@ private fun SourceReadQualification.toWireDocument(): SourceReadQualificationWir
     SourceReadQualificationWireDocument(
         knownMinimumEntityCount.value,
         limitations.map(SourceReadLimitationDocument::toWireDocument),
-        continuation.toWireDocument(),
+        progress,
     )
 
 private fun SourceReadQualificationWireDocument.toContract(): WireDocumentConversion<SourceReadQualification> =
     knownMinimumEntityCount.sourceEntityCount().flatMapConverted { admittedCount ->
-        val admittedLimitations = limitations.map(SourceReadLimitationWireDocument::toContract)
-        continuation.toContract().flatMapConverted { admittedContinuation ->
-            SourceReadQualification.create(
-                    admittedCount,
-                    admittedLimitations,
-                    admittedContinuation,
-                )
-                .toWireDocumentConversion()
-        }
-    }
-
-private fun SourceReadContinuationStateDocument.toWireDocument(): SourceReadContinuationStateWireDocument =
-    when (this) {
-        SourceReadContinuationStateDocument.Unavailable -> SourceReadContinuationStateWireDocument.Unavailable
-        is SourceReadContinuationStateDocument.Available ->
-            SourceReadContinuationStateWireDocument.Available(continuation.value)
-    }
-
-private fun SourceReadContinuationStateWireDocument.toContract():
-    WireDocumentConversion<SourceReadContinuationStateDocument> =
-    when (this) {
-        SourceReadContinuationStateWireDocument.Unavailable ->
-            WireDocumentConversion.Converted(SourceReadContinuationStateDocument.Unavailable)
-        is SourceReadContinuationStateWireDocument.Available ->
-            continuation.protocolText().mapConverted(SourceReadContinuationStateDocument::Available)
-    }
-
-private fun SourceReadRejection.toWireDocument(): SourceReadRejectionWireDocument =
-    when (this) {
-        SourceReadRejection.WORKSPACE_NOT_READY -> SourceReadRejectionWireDocument.WORKSPACE_NOT_READY
-        SourceReadRejection.WORKSPACE_ROOT_MISMATCH -> SourceReadRejectionWireDocument.WORKSPACE_ROOT_MISMATCH
-        SourceReadRejection.STALE_GENERATION -> SourceReadRejectionWireDocument.STALE_GENERATION
-        SourceReadRejection.SOURCE_STATE_MISMATCH -> SourceReadRejectionWireDocument.SOURCE_STATE_MISMATCH
-        SourceReadRejection.CANDIDATE_STALE -> SourceReadRejectionWireDocument.CANDIDATE_STALE
-        SourceReadRejection.SOURCE_SELECTOR_STALE -> SourceReadRejectionWireDocument.SOURCE_SELECTOR_STALE
-        SourceReadRejection.SOURCE_SNAPSHOT_MISMATCH -> SourceReadRejectionWireDocument.SOURCE_SNAPSHOT_MISMATCH
-        SourceReadRejection.SOURCE_UNAVAILABLE -> SourceReadRejectionWireDocument.SOURCE_UNAVAILABLE
-        SourceReadRejection.DOCUMENT_DIRTY -> SourceReadRejectionWireDocument.DOCUMENT_DIRTY
-        SourceReadRejection.PSI_DOCUMENT_UNCOMMITTED -> SourceReadRejectionWireDocument.PSI_DOCUMENT_UNCOMMITTED
-        SourceReadRejection.OUTSIDE_SOURCE_SCOPE -> SourceReadRejectionWireDocument.OUTSIDE_SOURCE_SCOPE
-        SourceReadRejection.ANCHOR_NOT_FOUND -> SourceReadRejectionWireDocument.ANCHOR_NOT_FOUND
-        SourceReadRejection.AMBIGUOUS_ANCHOR -> SourceReadRejectionWireDocument.AMBIGUOUS_ANCHOR
-        SourceReadRejection.REGION_NOT_APPLICABLE -> SourceReadRejectionWireDocument.REGION_NOT_APPLICABLE
-        SourceReadRejection.REGION_ABSENT -> SourceReadRejectionWireDocument.REGION_ABSENT
-        SourceReadRejection.COMPILER_ANALYSIS_UNAVAILABLE ->
-            SourceReadRejectionWireDocument.COMPILER_ANALYSIS_UNAVAILABLE
-        SourceReadRejection.CONTRACT_VIOLATION -> SourceReadRejectionWireDocument.CONTRACT_VIOLATION
-    }
-
-private fun SourceReadRejectionWireDocument.toContract(): SourceReadRejection =
-    when (this) {
-        SourceReadRejectionWireDocument.WORKSPACE_NOT_READY -> SourceReadRejection.WORKSPACE_NOT_READY
-        SourceReadRejectionWireDocument.WORKSPACE_ROOT_MISMATCH -> SourceReadRejection.WORKSPACE_ROOT_MISMATCH
-        SourceReadRejectionWireDocument.STALE_GENERATION -> SourceReadRejection.STALE_GENERATION
-        SourceReadRejectionWireDocument.SOURCE_STATE_MISMATCH -> SourceReadRejection.SOURCE_STATE_MISMATCH
-        SourceReadRejectionWireDocument.CANDIDATE_STALE -> SourceReadRejection.CANDIDATE_STALE
-        SourceReadRejectionWireDocument.SOURCE_SELECTOR_STALE -> SourceReadRejection.SOURCE_SELECTOR_STALE
-        SourceReadRejectionWireDocument.SOURCE_SNAPSHOT_MISMATCH -> SourceReadRejection.SOURCE_SNAPSHOT_MISMATCH
-        SourceReadRejectionWireDocument.SOURCE_UNAVAILABLE -> SourceReadRejection.SOURCE_UNAVAILABLE
-        SourceReadRejectionWireDocument.DOCUMENT_DIRTY -> SourceReadRejection.DOCUMENT_DIRTY
-        SourceReadRejectionWireDocument.PSI_DOCUMENT_UNCOMMITTED -> SourceReadRejection.PSI_DOCUMENT_UNCOMMITTED
-        SourceReadRejectionWireDocument.OUTSIDE_SOURCE_SCOPE -> SourceReadRejection.OUTSIDE_SOURCE_SCOPE
-        SourceReadRejectionWireDocument.ANCHOR_NOT_FOUND -> SourceReadRejection.ANCHOR_NOT_FOUND
-        SourceReadRejectionWireDocument.AMBIGUOUS_ANCHOR -> SourceReadRejection.AMBIGUOUS_ANCHOR
-        SourceReadRejectionWireDocument.REGION_NOT_APPLICABLE -> SourceReadRejection.REGION_NOT_APPLICABLE
-        SourceReadRejectionWireDocument.REGION_ABSENT -> SourceReadRejection.REGION_ABSENT
-        SourceReadRejectionWireDocument.COMPILER_ANALYSIS_UNAVAILABLE ->
-            SourceReadRejection.COMPILER_ANALYSIS_UNAVAILABLE
-        SourceReadRejectionWireDocument.CONTRACT_VIOLATION -> SourceReadRejection.CONTRACT_VIOLATION
+        SourceReadQualification.create(
+                admittedCount,
+                limitations.map(SourceReadLimitationWireDocument::toContract),
+                progress,
+            )
+            .toWireDocumentConversion()
     }
 
 private fun SourceCoordinateUnitDocument.toWireDocument(): SourceCoordinateUnitWireDocument =
@@ -519,32 +457,6 @@ private fun SourceTextWithheldReasonWireDocument.toContract(): SourceTextWithhel
         SourceTextWithheldReasonWireDocument.BYTE_LIMIT_REACHED -> SourceTextWithheldReasonDocument.BYTE_LIMIT_REACHED
         SourceTextWithheldReasonWireDocument.PROVIDER_UNAVAILABLE ->
             SourceTextWithheldReasonDocument.PROVIDER_UNAVAILABLE
-    }
-
-private fun SourceReadLimitationDocument.toWireDocument(): SourceReadLimitationWireDocument =
-    when (this) {
-        SourceReadLimitationDocument.ENTITY_LIMIT_REACHED -> SourceReadLimitationWireDocument.ENTITY_LIMIT_REACHED
-        SourceReadLimitationDocument.TEXT_BYTE_LIMIT_REACHED -> SourceReadLimitationWireDocument.TEXT_BYTE_LIMIT_REACHED
-        SourceReadLimitationDocument.WORK_LIMIT_REACHED -> SourceReadLimitationWireDocument.WORK_LIMIT_REACHED
-        SourceReadLimitationDocument.TIME_LIMIT_REACHED -> SourceReadLimitationWireDocument.TIME_LIMIT_REACHED
-        SourceReadLimitationDocument.DUMB_MODE_TRANSITION -> SourceReadLimitationWireDocument.DUMB_MODE_TRANSITION
-        SourceReadLimitationDocument.SEMANTIC_RESOLUTION_INCOMPLETE ->
-            SourceReadLimitationWireDocument.SEMANTIC_RESOLUTION_INCOMPLETE
-        SourceReadLimitationDocument.UNSUPPORTED_ENTITY -> SourceReadLimitationWireDocument.UNSUPPORTED_ENTITY
-        SourceReadLimitationDocument.PROVIDER_FAILURE -> SourceReadLimitationWireDocument.PROVIDER_FAILURE
-    }
-
-private fun SourceReadLimitationWireDocument.toContract(): SourceReadLimitationDocument =
-    when (this) {
-        SourceReadLimitationWireDocument.ENTITY_LIMIT_REACHED -> SourceReadLimitationDocument.ENTITY_LIMIT_REACHED
-        SourceReadLimitationWireDocument.TEXT_BYTE_LIMIT_REACHED -> SourceReadLimitationDocument.TEXT_BYTE_LIMIT_REACHED
-        SourceReadLimitationWireDocument.WORK_LIMIT_REACHED -> SourceReadLimitationDocument.WORK_LIMIT_REACHED
-        SourceReadLimitationWireDocument.TIME_LIMIT_REACHED -> SourceReadLimitationDocument.TIME_LIMIT_REACHED
-        SourceReadLimitationWireDocument.DUMB_MODE_TRANSITION -> SourceReadLimitationDocument.DUMB_MODE_TRANSITION
-        SourceReadLimitationWireDocument.SEMANTIC_RESOLUTION_INCOMPLETE ->
-            SourceReadLimitationDocument.SEMANTIC_RESOLUTION_INCOMPLETE
-        SourceReadLimitationWireDocument.UNSUPPORTED_ENTITY -> SourceReadLimitationDocument.UNSUPPORTED_ENTITY
-        SourceReadLimitationWireDocument.PROVIDER_FAILURE -> SourceReadLimitationDocument.PROVIDER_FAILURE
     }
 
 private fun String.protocolText(): WireDocumentConversion<ProtocolText> =

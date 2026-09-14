@@ -2,7 +2,6 @@
 
 package io.github.amichne.kast.protocol.contract
 
-import io.github.amichne.kast.kernel.Refinement
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.KeepGeneratedSerializer
 import kotlinx.serialization.SerialName
@@ -220,6 +219,9 @@ data class QueryRunRequest(
     val output: QueryOutputDocument,
     val execution: QueryExecutionDocument,
     val continuation: ProtocolText? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @SerialName("execution_budget")
+    val executionBudget: ExecutionBudgetDocument? = null,
 ) : OperationRequest
 
 internal object QueryRunRequestSerializer : KSerializer<QueryRunRequest> {
@@ -399,62 +401,8 @@ enum class QueryRelationFailureDocument {
 data class QueryRunResult(
     val items: BoundedProtocolList<QueryResultItemDocument>,
     val failures: BoundedProtocolList<QueryItemFailureDocument>,
-    val continuation: ProtocolText? = null,
-    val terminalReason: QueryTerminalReasonDocument? = null,
+    val executionBudget: ExecutionBudgetReport? = null,
 ) : OperationResult
-
-enum class QueryLimitationDocument {
-    RESULT_LIMIT_REACHED,
-    BYTE_LIMIT_REACHED,
-    WORK_LIMIT_REACHED,
-    TIME_LIMIT_REACHED,
-    DISCOVERY_INCOMPLETE,
-    REFINEMENT_INCOMPLETE,
-    VISIBILITY_INCOMPLETE,
-    RELATION_INCOMPLETE,
-}
-
-enum class QueryKnownMinimumFailure {
-    NEGATIVE
-}
-
-@JvmInline
-value class QueryKnownMinimum private constructor(val value: Int) {
-    companion object {
-        fun parse(raw: Int): Refinement<QueryKnownMinimum, QueryKnownMinimumFailure> =
-            if (raw < 0) Refinement.Rejected(QueryKnownMinimumFailure.NEGATIVE)
-            else Refinement.Refined(QueryKnownMinimum(raw))
-    }
-}
-
-enum class QueryRunQualificationFailure {
-    EMPTY_LIMITATIONS,
-    NON_CANONICAL_LIMITATIONS,
-}
-
-class QueryRunQualification
-private constructor(
-    val knownMinimum: QueryKnownMinimum,
-    val limitations: List<QueryLimitationDocument>,
-) : OperationQualification {
-    companion object {
-        fun create(
-            knownMinimum: QueryKnownMinimum,
-            limitations: List<QueryLimitationDocument>,
-        ): Refinement<QueryRunQualification, QueryRunQualificationFailure> =
-            when {
-                limitations.isEmpty() -> Refinement.Rejected(QueryRunQualificationFailure.EMPTY_LIMITATIONS)
-                limitations != limitations.distinct().sortedBy { it.ordinal } ->
-                    Refinement.Rejected(QueryRunQualificationFailure.NON_CANONICAL_LIMITATIONS)
-                else -> Refinement.Refined(QueryRunQualification(knownMinimum, limitations.toList()))
-            }
-    }
-
-    override fun equals(other: Any?): Boolean =
-        other is QueryRunQualification && knownMinimum == other.knownMinimum && limitations == other.limitations
-
-    override fun hashCode(): Int = 31 * knownMinimum.hashCode() + limitations.hashCode()
-}
 
 enum class QueryElementTypeDocument {
     DECLARATION_CANDIDATE,

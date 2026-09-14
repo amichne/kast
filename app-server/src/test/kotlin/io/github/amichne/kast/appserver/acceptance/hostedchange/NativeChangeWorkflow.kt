@@ -161,9 +161,15 @@ internal class NativeChangeWorkflow(
             session.trace.plannedReferenceDigests.lastOrNull() == sha256(reference.toByteArray()),
             NativeFailure.RESULT_SHAPE_REJECTED,
         )
-        unchanged(original)
         val cleanRead = searchClass()
-        demand(cleanRead.objectAt("live") == planned.document().objectAt("live"), NativeFailure.SOURCE_CHANGED)
+        evidence.verifyPlan(
+            observeNativePlan(
+                original,
+                Files.readAllBytes(source),
+                planned.document().objectAt("live"),
+                cleanRead.objectAt("live"),
+            )
+        )
         evidence.record(
             "plan-has-no-source-effect",
             NativeCaseOutcome.PASSED,

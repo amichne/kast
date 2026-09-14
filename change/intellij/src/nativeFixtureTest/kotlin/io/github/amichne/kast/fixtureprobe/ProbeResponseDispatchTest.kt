@@ -105,6 +105,7 @@ class ProbeResponseDispatchTest {
             assertInstanceOf(
                     ProbeResult.Accepted::class.java,
                     ProbeSetupObservation.admit(
+                        beforeRefresh = sample,
                         before = sample,
                         after = sample,
                         elapsedNanos = SETUP_QUIET_WINDOW_NANOS,

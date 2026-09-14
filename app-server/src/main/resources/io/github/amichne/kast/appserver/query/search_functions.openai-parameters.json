@@ -30,12 +30,16 @@
         }
       ],
       "description": "null searches the session workspace recursively in source sets main and test. Otherwise choose one directory scope or one package scope. Source-set restrictions intersect with the chosen scope."
+    },
+    "execution_budget": {
+      "$ref": "#/$defs/ExecutionBudget"
     }
   },
   "required": [
     "function_name",
     "name_match",
-    "scope"
+    "scope",
+    "execution_budget"
   ],
   "additionalProperties": false,
   "$defs": {
@@ -100,6 +104,54 @@
         "package_name",
         "include_subpackages",
         "source_set_names"
+      ],
+      "additionalProperties": false
+    },
+    "ExecutionBudget": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "Optional execution allowances. Null or omitted dimensions use configured defaults; positive values are independently clamped to operator and transport ceilings. These controls do not alter query take, scope, or projection.",
+      "properties": {
+        "max_elapsed_ms": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 9223372036854775807
+        },
+        "max_work_units": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 9223372036854775807
+        },
+        "max_results": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "max_returned_bytes": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 9223372036854775807
+        }
+      },
+      "required": [
+        "max_elapsed_ms",
+        "max_work_units",
+        "max_results",
+        "max_returned_bytes"
       ],
       "additionalProperties": false
     }

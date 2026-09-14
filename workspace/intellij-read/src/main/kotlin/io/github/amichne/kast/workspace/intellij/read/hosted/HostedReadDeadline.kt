@@ -8,18 +8,22 @@ import io.github.amichne.kast.kernel.Refinement
 /** Positive child allowances bounded below the host time remaining at semantic admission. */
 class HostedSemanticTimeAllowance
 private constructor(
-    val semantic: ElapsedTimeLimitMillis,
+    val executionBudget: io.github.amichne.kast.kernel.AdmittedExecutionBudget,
     val diagnosticScope: ElapsedTimeLimitMillis,
 ) {
+    val semantic: ElapsedTimeLimitMillis
+        get() = executionBudget.elapsed.effective
+
     internal companion object {
         fun admit(
             limits: ReadLimits,
             availableMillis: Long,
+            request: HostedExecutionBudgetRequest = HostedExecutionBudgetRequest(),
         ): Refinement<HostedSemanticTimeAllowance, HostedQueryFailure> {
             fun bounded(parameter: ReadLimitParameter) =
                 ElapsedTimeLimitMillis.parse(minOf(limits[parameter].value.toLong(), availableMillis))
             val semantic =
-                when (val result = bounded(ReadLimitParameter.SEMANTIC_MILLIS)) {
+                when (val result = ElapsedTimeLimitMillis.parse(availableMillis)) {
                     is Refinement.Refined -> result.value
                     is Refinement.Rejected -> return Refinement.Rejected(HostedQueryFailure.BUDGET_EXCEEDED)
                 }
@@ -28,13 +32,19 @@ private constructor(
                     is Refinement.Refined -> result.value
                     is Refinement.Rejected -> return Refinement.Rejected(HostedQueryFailure.BUDGET_EXCEEDED)
                 }
-            return Refinement.Refined(HostedSemanticTimeAllowance(semantic, diagnostic))
+            return Refinement.Refined(
+                HostedSemanticTimeAllowance(admitHostedExecutionBudget(limits, request, semantic), diagnostic)
+            )
         }
     }
 }
 
 /** The clock starts before scheduling the hard timer, conservatively including dispatch and model work. */
-internal class HostedReadDeadline(private val limits: ReadLimits, private val clock: () -> Long) {
+internal class HostedReadDeadline(
+    private val limits: ReadLimits,
+    private val clock: () -> Long,
+    private val request: HostedExecutionBudgetRequest = HostedExecutionBudgetRequest(),
+) {
     private val started = clock()
     // Reserve for cooperative overrun, freshness revalidation and detachment. The hard timer still bounds all work.
     private val completionReserveMillis =
@@ -44,7 +54,7 @@ internal class HostedReadDeadline(private val limits: ReadLimits, private val cl
         val elapsedNanos = (clock() - started).coerceAtLeast(0L)
         val elapsedMillis = elapsedNanos / 1_000_000L + if (elapsedNanos % 1_000_000L == 0L) 0L else 1L
         val remaining = (limits[ReadLimitParameter.HOST_QUERY_MILLIS].value - elapsedMillis).coerceAtLeast(0L)
-        val result = HostedSemanticTimeAllowance.admit(limits, remaining - completionReserveMillis)
+        val result = HostedSemanticTimeAllowance.admit(limits, remaining - completionReserveMillis, request)
         diagnostics?.budget(
             when (result) {
                 is Refinement.Refined ->

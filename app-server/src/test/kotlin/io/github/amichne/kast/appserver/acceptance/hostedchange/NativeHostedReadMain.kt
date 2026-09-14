@@ -12,6 +12,7 @@ import io.github.amichne.kast.appserver.core.ToolAddress
 import io.github.amichne.kast.appserver.core.ToolName
 import io.github.amichne.kast.appserver.provider.KastProviderOptions
 import io.github.amichne.kast.appserver.provider.KastProviderQualifier
+import io.github.amichne.kast.appserver.schema.CompiledJsonSchema
 import io.github.amichne.kast.appserver.schema.JsonSchemaViolationEvidenceDocument
 import io.github.amichne.kast.protocol.registry.CanonicalAgentToolDefinitions
 import io.github.amichne.kast.protocol.registry.OperationEffect
@@ -51,7 +52,15 @@ object NativeHostedReadMain {
 }
 
 @Serializable
-private sealed interface NativeReadResponse {
+internal sealed interface NativeReadResponse {
+    @Serializable
+    @SerialName("validation_accepted")
+    data class ValidationAccepted(val schemaDigest: String) : NativeReadResponse
+
+    @Serializable
+    @SerialName("validation_rejected")
+    data class ValidationRejected(val evidence: JsonSchemaViolationEvidenceDocument) : NativeReadResponse
+
     @Serializable
     @SerialName("completed")
     data class Completed(val success: Boolean, val envelope: JsonElement) : NativeReadResponse
@@ -66,12 +75,24 @@ private sealed interface NativeReadResponse {
 
 private val readResponseJson = Json { classDiscriminator = "kind" }
 
-private class NativeHostedReadTransport(private val broker: Broker, private val workspace: Path) {
+private class NativeHostedReadTransport(
+    private val broker: Broker,
+    private val workspace: Path,
+    private val schemas: Map<String, CompiledJsonSchema>,
+) {
     private var sequence = 0
 
     suspend fun invoke(document: JsonObject): NativeReadResponse {
-        val tool = document.textAt("tool")
-        demand(document.keys == setOf("tool", "arguments") && tool in readToolNames, NativeFailure.INPUT_REJECTED)
+        val request = readRequestJson.decodeFromJsonElement(NativeReadRequest.serializer(), document)
+        demand(request.tool in readToolNames, NativeFailure.INPUT_REJECTED)
+        return when (request) {
+            is NativeReadRequest.Invoke -> dispatch(request)
+            is NativeReadRequest.Validate -> validateNativeReadOutput(schemas.getValue(request.tool), request.document)
+        }
+    }
+
+    private suspend fun dispatch(request: NativeReadRequest.Invoke): NativeReadResponse {
+        val tool = request.tool
         val context =
             BrokerInvocationContext.admit(
                     threadId = "native-read-regression",
@@ -84,7 +105,7 @@ private class NativeHostedReadTransport(private val broker: Broker, private val 
             broker.dispatch(
                 BrokerDispatchRequest(
                     ToolAddress(ProviderNamespace.admit("kast").nativeValue(), ToolName.admit(tool).nativeValue()),
-                    document.objectAt("arguments"),
+                    request.arguments,
                     context,
                 )
             )
@@ -129,6 +150,7 @@ private class NativeHostedReadTransport(private val broker: Broker, private val 
             return NativeHostedReadTransport(
                 Broker.create(listOf(qualified.registration), BrokerLimits.defaults()).nativeValue(),
                 workspace,
+                qualified.registration.toolDocuments.associate { it.name.value to it.outputSchema },
             )
         }
     }

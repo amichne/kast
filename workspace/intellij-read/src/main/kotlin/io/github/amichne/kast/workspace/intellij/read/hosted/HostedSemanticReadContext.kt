@@ -21,6 +21,9 @@ internal constructor(
     val timeAllowance: HostedSemanticTimeAllowance,
     private val freshness: HostedReadFreshness,
 ) {
+    val executionBudget
+        get() = timeAllowance.executionBudget
+
     private enum class Lifetime {
         ACTIVE,
         ENDED,

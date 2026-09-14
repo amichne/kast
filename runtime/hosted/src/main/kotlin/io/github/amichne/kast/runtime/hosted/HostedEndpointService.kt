@@ -11,7 +11,6 @@ import io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryResult
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryService
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryWire
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedSemanticReadResult
-import java.nio.channels.Channels
 import java.nio.file.Path
 import kotlinx.coroutines.*
 import kotlinx.serialization.Serializable
@@ -28,6 +27,7 @@ internal enum class HostedEndpointStage {
     RETIREMENT,
 }
 
+@Serializable
 internal enum class HostedEndpointOutcome {
     STARTED,
     COMPLETED,
@@ -38,6 +38,8 @@ internal enum class HostedEndpointOutcome {
 
 internal fun interface HostedEndpointObserver {
     fun observe(stage: HostedEndpointStage, outcome: HostedEndpointOutcome)
+
+    fun transport(observation: HostedTransportObservation) = Unit
 
     fun responded(response: HostedResponse) {
         when (response) {
@@ -70,6 +72,11 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
     private val changes = HostedChangeCoordinator(project, query)
     private val observer =
         object : HostedEndpointObserver {
+            override fun transport(observation: HostedTransportObservation) {
+                Logger.getInstance(HostedEndpointService::class.java)
+                    .info("kast_transport " + Json { encodeDefaults = true }.encodeToString(observation))
+            }
+
             override fun observe(stage: HostedEndpointStage, outcome: HostedEndpointOutcome) {
                 Logger.getInstance(HostedEndpointService::class.java)
                     .info("kast_hosted stage=${stage.name} outcome=${outcome.name}")
@@ -120,6 +127,7 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
                             root = root,
                             host = query.hostLifetime,
                             observer = observer,
+                            limits = limits,
                         )
                 ) {
                     is Refinement.Refined -> opened.value
@@ -130,36 +138,8 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
                 }
             observer.observe(HostedEndpointStage.BIND, HostedEndpointOutcome.COMPLETED)
             try {
-                while (isActive) {
-                    val connection =
-                        when (val accepted = acceptHostedConnection(observer, accept = owner.server::accept)) {
-                            is Refinement.Refined -> accepted.value
-                            is Refinement.Rejected -> break
-                        }
-                    connection.use { client ->
-                        serveHostedConnection(
-                            Channels.newInputStream(client),
-                            Channels.newOutputStream(client),
-                            observer,
-                            limits,
-                        ) {
-                            when (
-                                val result =
-                                    dispatchUntilPeerTermination(client::awaitHostedPeerTermination) {
-                                        dispatch(root, it, continuations, limits)
-                                    }
-                            ) {
-                                is HostedPeerDispatch.Completed -> result.response
-                                is HostedPeerDispatch.Rejected ->
-                                    HostedResponse.Rejected(
-                                        when (result.termination) {
-                                            HostedPeerTermination.DISCONNECTED -> HostedEndpointFailure.IO_UNAVAILABLE
-                                            HostedPeerTermination.EXTRA_INPUT -> HostedEndpointFailure.INVALID_REQUEST
-                                        }
-                                    )
-                            }
-                        }
-                    }
+                serveHostedListener(owner.server, observer, limits) { request ->
+                    dispatch(root, request, continuations, limits)
                 }
             } finally {
                 withContext(NonCancellable) {
@@ -220,18 +200,28 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
                     is HostedQueryResult.Published -> HostedResponse.Completed(HostedQueryWire.encode(result))
                 }
             is HostedRequest.PlanChange -> planHostedChange(project, query, request)
-            is HostedRequest.Read ->
-                when (
-                    val result =
-                        query.read(query.endpoint, root, outcome = { it.outcome }) { context ->
-                            evaluateHostedCanonicalQuery(project, context, request, continuations)
-                        }
-                ) {
-                    is HostedSemanticReadResult.Completed -> result.value
-                    is HostedSemanticReadResult.Rejected -> HostedResponse.ReadRejected(result.failure, result.stage)
-                }
+            is HostedRequest.Read -> dispatchRead(request, continuations)
         }
     }
+
+    private suspend fun dispatchRead(
+        request: HostedRequest.Read,
+        continuations: io.github.amichne.kast.source.intellij.IntellijSourceReadContinuations,
+    ): HostedResponse =
+        when (
+            val result =
+                query.read(
+                    query.endpoint,
+                    request.root,
+                    outcome = { it.outcome },
+                    executionBudget = request.executionBudget(),
+                ) { context ->
+                    evaluateHostedCanonicalQuery(project, context, request, continuations)
+                }
+        ) {
+            is HostedSemanticReadResult.Completed -> result.value
+            is HostedSemanticReadResult.Rejected -> HostedResponse.ReadRejected(result.failure, result.stage)
+        }
 
     override fun dispose() {
         changes.close()

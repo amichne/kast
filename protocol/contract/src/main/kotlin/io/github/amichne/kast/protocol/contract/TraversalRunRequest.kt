@@ -1,3 +1,5 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
 package io.github.amichne.kast.protocol.contract
 
 import kotlinx.serialization.SerialName
@@ -29,4 +31,7 @@ data class TraversalRunRequest(
     val maximumResults: ProtocolCount,
     val position: TraversalRunPositionDocument = TraversalRunPositionDocument.Start,
     val strategy: TraversalStrategyDocument = TraversalStrategyDocument.BreadthFirst,
+    @SerialName("execution_budget")
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val executionBudget: ExecutionBudgetDocument? = null,
 ) : OperationRequest

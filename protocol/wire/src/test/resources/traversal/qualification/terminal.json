@@ -1,0 +1,9 @@
+{
+  "type": "terminal_incomplete",
+  "limitations": [
+    "one_hop_incomplete"
+  ],
+  "relationLimitations": [
+    "unresolved_target"
+  ]
+}

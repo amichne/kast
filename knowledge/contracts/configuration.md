@@ -4,7 +4,7 @@ title: Installation configuration
 description: Every external configuration input has declared ownership, parsing, defaults, and projection before it can affect the broker, installation or existing-IDE request.
 resource: file://distribution/contract
 tags: [configuration, distribution, installation]
-timestamp: 2026-09-13T00:00:00Z
+timestamp: 2026-09-14T00:00:00Z
 code_sources:
   - path: kernel/src/main/kotlin/io/github/amichne/kast/kernel/ReadLimits.kt
     symbols: [ReadLimits, ReadLimitParameter]
@@ -35,6 +35,14 @@ The `KAST_READ_*` declarations retain parameter identity, admitted values and pr
 
 `ConfigurationSchemaDocument` defines the shared document. The CLI-owned `InstalledConfigurationSchema` is the sole catalogue generator and includes operational limits from protocol, broker, installation, and CLI owners.
 
+The generated snapshot includes the four `EXECUTION_MAX_*` ceilings for time,
+work, results and returned bytes, each defaulting to 2,147,483,646. It also
+declares `SOURCE_CONTINUATION_BYTES` (33,554,432 bytes) and
+`SOURCE_CONTINUATION_TTL_MILLIS` (600,000 ms), alongside the transport backlog
+and connection limits. Refresh the snapshot from
+`:cli:generateConfigurationCatalogue`; `verifyConfigurationIngress` requires
+byte-for-byte agreement with that owner-generated output.
+
 Bare installed CLI composition fails closed on rejected saved configuration. Its passive product response identifies `existing_ide` authority and root discovery rather than inventing a worker/bootstrap observation. Broker configuration identity remains owner-correlated while coordinator status admits zero workers.
 
 The default host query limit is 4,000 ms. At semantic entry the host derives smaller positive semantic and diagnostic-scope allowances from remaining request time, preserving the configured policy separately in diagnostics. See the deadline admission rules in the read configuration guide.
@@ -48,3 +56,8 @@ compiler refinement. Query continuation retention has independent typed limits:
 execution/output store. Both stores apply the same policy independently, so the
 combined retained-state ceiling is twice the configured per-store byte bound.
 These keys are declared in the installation catalogue and generated snapshot.
+
+`HOST_ACCEPT_BACKLOG` (64) bounds native pending connections;
+`HOST_CONNECTIONS` (16) bounds concurrently served frames. Semantic work remains
+serialized. Saturation returns a finite admission rejection when a connection
+has reached the application; the OS backlog is a separate finite capacity.

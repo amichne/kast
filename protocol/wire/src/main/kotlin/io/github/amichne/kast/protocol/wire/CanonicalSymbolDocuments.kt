@@ -1,3 +1,5 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
 package io.github.amichne.kast.protocol.wire
 
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
@@ -24,10 +26,7 @@ import io.github.amichne.kast.protocol.contract.SymbolKindDocument
 import io.github.amichne.kast.protocol.contract.SymbolNameKindDocument
 import io.github.amichne.kast.protocol.contract.SymbolQualifiedIdentityDocument
 import io.github.amichne.kast.protocol.contract.TraversalDepthDocument
-import io.github.amichne.kast.protocol.contract.TraversalProgressDocument
 import io.github.amichne.kast.protocol.contract.TraversalRecordDocument
-import io.github.amichne.kast.protocol.contract.TraversalRunResult
-import io.github.amichne.kast.protocol.contract.TraversalStrategyDocument
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -64,15 +63,6 @@ internal sealed interface SymbolDiscoveryWireDocument {
 }
 
 @Serializable internal data class SymbolInspectResultWireDocument(val symbol: SymbolWireDocument)
-
-@Serializable
-internal data class TraversalRunResultWireDocument(
-    val snapshotRoot: String,
-    val records: List<TraversalRecordWireDocument>,
-    val progress: TraversalProgressDocument = TraversalProgressDocument(),
-    val strategy: TraversalStrategyDocument = TraversalStrategyDocument.BreadthFirst,
-    val partialExpansions: List<TraversalPartialExpansionWireDocument> = emptyList(),
-)
 
 @Serializable
 internal data class RelationFactWireDocument(
@@ -268,32 +258,6 @@ internal fun SymbolInspectResult.toSymbolWireDocument() = SymbolInspectResultWir
 internal fun SymbolInspectResultWireDocument.toContract(): WireDocumentConversion<SymbolInspectResult> =
     symbol.toContract().mapConverted(::SymbolInspectResult)
 
-internal fun TraversalRunResult.toSymbolWireDocument() =
-    TraversalRunResultWireDocument(
-        snapshotRoot = snapshotRoot.value,
-        records = records.values.map { it.toWireDocument() },
-        progress = progress,
-        strategy = strategy,
-        partialExpansions = partialExpansions.values.map { it.toWireDocument() },
-    )
-
-/**
- * `TraversalRunResultWireDocument -> TraversalRunResult` establishes a bounded exact-symbol list; invalid raw fields
- * become `WireFailure.InvalidPayload` at this wire boundary.
- */
-internal fun TraversalRunResultWireDocument.toContract(): WireDocumentConversion<TraversalRunResult> =
-    combineConverted(
-            snapshotRoot.toProtocolText(),
-            records.convertEach { it.toContract() }.flatMapConverted { values -> values.toBoundedList() },
-            { root, records -> TraversalRunResult(root, records, progress, strategy) },
-        )
-        .flatMapConverted { result ->
-            partialExpansions
-                .convertEach { it.toContract() }
-                .flatMapConverted { it.toBoundedList() }
-                .mapConverted { result.copy(partialExpansions = it) }
-        }
-
 internal fun RelationFactDocument.toWireDocument(): RelationFactWireDocument =
     RelationFactWireDocument(
         meaning = meaning.toRelationWireDocument(),
@@ -333,10 +297,10 @@ private fun RelationOccurrenceWireDocument.toContract(): WireDocumentConversion<
         ::RelationOccurrenceDocument,
     )
 
-private fun TraversalRecordDocument.toWireDocument(): TraversalRecordWireDocument =
+internal fun TraversalRecordDocument.toWireDocument(): TraversalRecordWireDocument =
     TraversalRecordWireDocument(depth.value, relation.toWireDocument())
 
-private fun TraversalRecordWireDocument.toContract(): WireDocumentConversion<TraversalRecordDocument> =
+internal fun TraversalRecordWireDocument.toContract(): WireDocumentConversion<TraversalRecordDocument> =
     combineConverted(
         TraversalDepthDocument.parse(depth).toWireDocumentConversion(),
         relation.toContract(),

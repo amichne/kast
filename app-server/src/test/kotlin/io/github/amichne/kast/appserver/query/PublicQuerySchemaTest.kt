@@ -11,10 +11,18 @@ class PublicQuerySchemaTest {
     private val authoring = read("query.schema.json")
 
     @Test
-    fun `all objects are closed and use uppercase type enums`() {
+    fun `query syntax objects retain tags and the external execution budget remains closed`() {
         visit(authoring) { node ->
             if (node["properties"] != null) {
                 assertEquals(JsonPrimitive(false), node["additionalProperties"])
+                if (node == authoring.getValue("\$defs").jsonObject.getValue("ExecutionBudget")) {
+                    assertEquals(
+                        setOf("max_elapsed_ms", "max_work_units", "max_results", "max_returned_bytes"),
+                        node.getValue("properties").jsonObject.keys,
+                    )
+                    assertTrue(node.getValue("required").jsonArray.isEmpty())
+                    return@visit
+                }
                 assertTrue(JsonPrimitive("type") in node.getValue("required").jsonArray)
                 val tag = node.getValue("properties").jsonObject.getValue("type").jsonObject
                 assertNull(tag["const"])

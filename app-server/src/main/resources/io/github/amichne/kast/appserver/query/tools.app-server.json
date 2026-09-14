@@ -38,12 +38,16 @@
               }
             ],
             "description": "null searches the session workspace recursively in source sets main and test. Otherwise choose one directory scope or one package scope. Source-set restrictions intersect with the chosen scope."
+          },
+          "execution_budget": {
+            "$ref": "#/$defs/ExecutionBudget"
           }
         },
         "required": [
           "class_name",
           "name_match",
-          "scope"
+          "scope",
+          "execution_budget"
         ],
         "additionalProperties": false,
         "$defs": {
@@ -108,6 +112,54 @@
               "package_name",
               "include_subpackages",
               "source_set_names"
+            ],
+            "additionalProperties": false
+          },
+          "ExecutionBudget": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "Optional execution allowances. Null or omitted dimensions use configured defaults; positive values are independently clamped to operator and transport ceilings. These controls do not alter query take, scope, or projection.",
+            "properties": {
+              "max_elapsed_ms": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 9223372036854775807
+              },
+              "max_work_units": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 9223372036854775807
+              },
+              "max_results": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 2147483647
+              },
+              "max_returned_bytes": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 9223372036854775807
+              }
+            },
+            "required": [
+              "max_elapsed_ms",
+              "max_work_units",
+              "max_results",
+              "max_returned_bytes"
             ],
             "additionalProperties": false
           }
@@ -151,12 +203,16 @@
               }
             ],
             "description": "null searches the session workspace recursively in source sets main and test. Otherwise choose one directory scope or one package scope. Source-set restrictions intersect with the chosen scope."
+          },
+          "execution_budget": {
+            "$ref": "#/$defs/ExecutionBudget"
           }
         },
         "required": [
           "function_name",
           "name_match",
-          "scope"
+          "scope",
+          "execution_budget"
         ],
         "additionalProperties": false,
         "$defs": {
@@ -221,6 +277,54 @@
               "package_name",
               "include_subpackages",
               "source_set_names"
+            ],
+            "additionalProperties": false
+          },
+          "ExecutionBudget": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "Optional execution allowances. Null or omitted dimensions use configured defaults; positive values are independently clamped to operator and transport ceilings. These controls do not alter query take, scope, or projection.",
+            "properties": {
+              "max_elapsed_ms": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 9223372036854775807
+              },
+              "max_work_units": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 9223372036854775807
+              },
+              "max_results": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 2147483647
+              },
+              "max_returned_bytes": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 9223372036854775807
+              }
+            },
+            "required": [
+              "max_elapsed_ms",
+              "max_work_units",
+              "max_results",
+              "max_returned_bytes"
             ],
             "additionalProperties": false
           }
@@ -282,13 +386,17 @@
             "minItems": 1,
             "maxItems": 4,
             "description": "null includes all four supported declaration families. Supply a non-empty, non-duplicate list to restrict them. The class family means Kast's supported class-like declarations. Constructors are not included."
+          },
+          "execution_budget": {
+            "$ref": "#/$defs/ExecutionBudget"
           }
         },
         "required": [
           "declaration_name",
           "name_match",
           "scope",
-          "declaration_kinds"
+          "declaration_kinds",
+          "execution_budget"
         ],
         "additionalProperties": false,
         "$defs": {
@@ -353,6 +461,54 @@
               "package_name",
               "include_subpackages",
               "source_set_names"
+            ],
+            "additionalProperties": false
+          },
+          "ExecutionBudget": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "Optional execution allowances. Null or omitted dimensions use configured defaults; positive values are independently clamped to operator and transport ceilings. These controls do not alter query take, scope, or projection.",
+            "properties": {
+              "max_elapsed_ms": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 9223372036854775807
+              },
+              "max_work_units": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 9223372036854775807
+              },
+              "max_results": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 2147483647
+              },
+              "max_returned_bytes": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 9223372036854775807
+              }
+            },
+            "required": [
+              "max_elapsed_ms",
+              "max_work_units",
+              "max_results",
+              "max_returned_bytes"
             ],
             "additionalProperties": false
           }
@@ -455,13 +611,17 @@
               "null"
             ],
             "description": "Opaque continuation returned by this exact pipeline. Omit or use null to start. Resume with the same source, steps and return_fields; stale or mismatched state rejects."
+          },
+          "execution_budget": {
+            "$ref": "#/$defs/ExecutionBudget"
           }
         },
         "required": [
           "source",
           "steps",
           "return_fields",
-          "continuation"
+          "continuation",
+          "execution_budget"
         ],
         "additionalProperties": false,
         "$defs": {
@@ -748,6 +908,54 @@
             ],
             "additionalProperties": false,
             "description": "Remove duplicate symbol identities at this position only. Never insert this step implicitly."
+          },
+          "ExecutionBudget": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "Optional execution allowances. Null or omitted dimensions use configured defaults; positive values are independently clamped to operator and transport ceilings. These controls do not alter query take, scope, or projection.",
+            "properties": {
+              "max_elapsed_ms": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 9223372036854775807
+              },
+              "max_work_units": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 9223372036854775807
+              },
+              "max_results": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 2147483647
+              },
+              "max_returned_bytes": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 9223372036854775807
+              }
+            },
+            "required": [
+              "max_elapsed_ms",
+              "max_work_units",
+              "max_results",
+              "max_returned_bytes"
+            ],
+            "additionalProperties": false
           }
         }
       },

@@ -37,7 +37,10 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
+@Serializable
 enum class HostedEndpointFailure {
+    ADMISSION_CAPACITY_EXCEEDED,
+    ADMISSION_DEADLINE_EXCEEDED,
     INVALID_REQUEST,
     REQUEST_TOO_LARGE,
     REQUEST_INCOMPLETE,

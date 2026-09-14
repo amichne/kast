@@ -1,3 +1,5 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
 package io.github.amichne.kast.cli.projection
 
 import io.github.amichne.kast.cli.CliJsonDocument
@@ -17,6 +19,7 @@ internal object CanonicalQueryCliDocuments {
                         "complete",
                         result.items.values.map(QueryResultItemDocument::toCliDocument),
                         result.failures.values.map(QueryItemFailureDocument::toCliDocument),
+                        result.executionBudget,
                     )
                 )
             },
@@ -30,9 +33,11 @@ internal object CanonicalQueryCliDocuments {
                         QueryQualificationCliDocument(
                             qualification.knownMinimum.value,
                             qualification.limitations.map(Enum<*>::cliName),
+                            qualification.progress,
                         ),
-                        result.continuation?.value,
-                        result.terminalReason?.cliName(),
+                        qualification.progress.continuationToken?.value,
+                        qualification.progress.terminalReason?.cliName(),
+                        result.executionBudget,
                     )
                 )
             },
@@ -54,6 +59,9 @@ private data class QueryCompleteCliDocument(
     val status: String,
     val items: List<QueryResultItemCliDocument>,
     val failures: List<QueryItemFailureCliDocument>,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @SerialName("execution_budget")
+    val executionBudget: ExecutionBudgetReport? = null,
 )
 
 @Serializable
@@ -65,6 +73,9 @@ private data class QueryQualifiedCliDocument(
     val qualification: QueryQualificationCliDocument,
     val continuation: String?,
     @SerialName("terminal_reason") val terminalReason: String?,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @SerialName("execution_budget")
+    val executionBudget: ExecutionBudgetReport? = null,
 )
 
 @Serializable
@@ -78,6 +89,7 @@ private data class QueryRejectedCliDocument(
 private data class QueryQualificationCliDocument(
     val knownMinimum: Int,
     val limitations: List<String>,
+    val progress: QueryQualifiedProgressDocument,
 )
 
 @Serializable private data class QueryReferenceCliDocument(val kind: String, val token: String)

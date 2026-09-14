@@ -7994,16 +7994,6 @@
     {
       "fingerprint": {
         "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt",
-        "scope": "fun:objectSchema(4:List1:<20:ServerSchemaProperty1:>)",
-        "kind": "JSON_BUILDER",
-        "sha256": "1cf8650cc53c53777eeccc55f0c37f68fac9dd8dac53433e7e204e2f5e2ec0c5"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt",
         "scope": "fun:objectSchemaWithRequired(3:Set1:<6:String1:>,20:ServerSchemaProperty)",
         "kind": "JSON_BUILDER",
         "sha256": "f9507ad855753de04b31dd3df0493229ce9d3f560be8169f5f63535df955e7b2"
@@ -8317,16 +8307,6 @@
         "scope": "fun:arrayVariant(7:kotlinx1:.13:serialization1:.4:json1:.11:JsonElement,4:List1:<28:ProtocolCollectionConstraint1:>)",
         "kind": "JSON_BUILDER",
         "sha256": "0127ec657a423d102e35e331bf6ba39c97f3289919f430ad068daed531877fa6"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KotlinxRequestJsonSchema.kt",
-        "scope": "fun:objectSchema()16:SerialDescriptor",
-        "kind": "JSON_BUILDER",
-        "sha256": "1f3883efe37b8e14a531ee1f8bfceea5cf204205647c21ae0aceb1cd27913636"
       },
       "count": 1,
       "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
@@ -9054,16 +9034,6 @@
     {
       "fingerprint": {
         "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/InstalledServerProjectionTest.kt",
-        "scope": "type:InstalledServerProjectionTest/fun:source read projection accepts one canonical request document and proof rich outcomes()/val:qualified",
-        "kind": "JSON_LITERAL",
-        "sha256": "1e892c78e451eed12092a98652b794efe144489eef29abe12a999280cf71e216"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/InstalledServerProjectionTest.kt",
         "scope": "type:InstalledServerProjectionTest/fun:installedProjection()/val:schema",
         "kind": "JSON_LITERAL",
         "sha256": "e951e0529a48f403ef1751f1c42d135f4e10447002446e0a84c5458be8e84ce7"
@@ -9687,16 +9657,6 @@
         "scope": "type:GeneratedCliProjectionTest/fun:qualified read outputs retain structured proof instead of one reason label()/declaration:<anonymous>",
         "kind": "JSON_LITERAL",
         "sha256": "80d3622e0523197d36d28b9d44a52a2f4fdd402d9ed70c22abc2955bc3a480bd"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/projection/GeneratedCliProjectionTest.kt",
-        "scope": "type:GeneratedCliProjectionTest/fun:qualified read outputs retain structured proof instead of one reason label()/declaration:<anonymous>",
-        "kind": "JSON_LITERAL",
-        "sha256": "a41f21105f0824aab6ea1df4ff2aabbd5ac7e7e00cd4f9dde8f88b5e48ea85bf"
       },
       "count": 1,
       "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
@@ -10347,46 +10307,6 @@
         "scope": "type:CanonicalReadGeneratedSerializationTest/fun:proof carrying qualifications round trip and malformed claims fail closed()",
         "kind": "JSON_LITERAL",
         "sha256": "16dc69d120dd49577d1d35b578448d3467a020a7413efb5812ec6e03dede94ab"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "protocol/wire/src/test/kotlin/io/github/amichne/kast/protocol/wire/CanonicalReadGeneratedSerializationTest.kt",
-        "scope": "type:CanonicalReadGeneratedSerializationTest/fun:proof carrying qualifications round trip and malformed claims fail closed()",
-        "kind": "JSON_LITERAL",
-        "sha256": "de51a13b60a349ddb29fdead4daa219b6c4d6e2e587aaa3a922b522503098b90"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "protocol/wire/src/test/kotlin/io/github/amichne/kast/protocol/wire/CanonicalReadGeneratedSerializationTest.kt",
-        "scope": "type:CanonicalReadGeneratedSerializationTest/fun:proof carrying qualifications round trip and malformed claims fail closed()",
-        "kind": "JSON_LITERAL",
-        "sha256": "047a799df5c4471861d0a649a6789767c5a2b27c5d002588a087a8d1a6637d3e"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "protocol/wire/src/test/kotlin/io/github/amichne/kast/protocol/wire/CanonicalReadGeneratedSerializationTest.kt",
-        "scope": "type:CanonicalReadGeneratedSerializationTest/fun:proof carrying qualifications round trip and malformed claims fail closed()",
-        "kind": "JSON_LITERAL",
-        "sha256": "ecc0215544fc21ce63ee1b8e1ad0ace498413c0b55c7ba9a572c9f98833e1bd2"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "protocol/wire/src/test/kotlin/io/github/amichne/kast/protocol/wire/CanonicalReadGeneratedSerializationTest.kt",
-        "scope": "type:CanonicalReadGeneratedSerializationTest/fun:proof carrying qualifications round trip and malformed claims fail closed()",
-        "kind": "JSON_LITERAL",
-        "sha256": "4408dd81abd4c646d52ba94e6dfa4014c1b1656e4026a8df0666d779e9487bef"
       },
       "count": 1,
       "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."

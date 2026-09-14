@@ -1,3 +1,5 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
 package io.github.amichne.kast.protocol.contract
 
 import io.github.amichne.kast.kernel.Refinement
@@ -14,7 +16,7 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
 private const val MAX_PROTOCOL_TEXT_LENGTH = 1_048_576
-private const val MAX_PROTOCOL_ITEMS = 1_000
+const val MAX_PROTOCOL_ITEMS = 1_000
 private const val MAX_PROTOCOL_COUNT = 1_000
 
 enum class ProtocolTextFailure {
@@ -168,11 +170,15 @@ data class RelationReadRequest(
     val relation: RelationKindDocument,
     val limit: ProtocolCount,
     val position: RelationReadPositionDocument = RelationReadPositionDocument.Start,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @kotlinx.serialization.SerialName("execution_budget")
+    val executionBudget: ExecutionBudgetDocument? = null,
 ) : OperationRequest
 
 data class RelationReadResult(
     val relations: BoundedProtocolList<RelationFactDocument>,
     val omissions: BoundedProtocolList<RelationOmissionDocument> = RelationOmissionDocument.Empty,
+    val executionBudget: ExecutionBudgetReport? = null,
 ) : OperationResult {
     val soundness: RelationSoundnessDocument
         get() = RelationSoundnessDocument.EXACT_RETURNED_FACTS
@@ -245,9 +251,15 @@ enum class RelationContinuationDocumentFailure {
 @Serializable(with = RelationContinuationDocumentSerializer::class)
 value class RelationContinuationDocument private constructor(val value: String) {
     companion object {
-        const val TOKEN_PATTERN: String = "^relation-continuation:v[12]:"
+        const val OUTPUT_PREFIX: String = "relation-output:v1:"
+        const val TOKEN_PATTERN: String =
+            "^(relation-continuation:v[12]:|relation-output:v1:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$)"
 
         fun parse(raw: String): Refinement<RelationContinuationDocument, RelationContinuationDocumentFailure> {
+            if (raw.startsWith(OUTPUT_PREFIX)) {
+                return if (Regex(TOKEN_PATTERN).matches(raw)) Refinement.Refined(RelationContinuationDocument(raw))
+                else Refinement.Rejected(RelationContinuationDocumentFailure.INVALID_TOKEN_STRUCTURE)
+            }
             val parts = raw.split(':')
             if (parts.firstOrNull() != RELATION_CONTINUATION_TOKEN_FAMILY) {
                 return Refinement.Rejected(RelationContinuationDocumentFailure.UNKNOWN_TOKEN_FAMILY)
@@ -367,6 +379,8 @@ enum class RelationReadRejection : OperationRejection {
     SELECTOR_STALE,
     RELATION_UNSUPPORTED,
     CONTINUATION_MALFORMED,
+    CONTINUATION_UNAVAILABLE,
+    CONTINUATION_REQUEST_MISMATCH,
     CONTINUATION_SUBJECT_MISMATCH,
     CONTINUATION_RELATION_MISMATCH,
     CONTINUATION_SCOPE_MISMATCH,
@@ -412,117 +426,9 @@ data class TraversalRecordDocument(
     val relation: RelationFactDocument,
 )
 
-enum class TraversalLimitationDocument {
-    RECORD_LIMIT_REACHED,
-    BYTE_LIMIT_REACHED,
-    WORK_LIMIT_REACHED,
-    TIME_LIMIT_REACHED,
-    DEPTH_LIMIT_REACHED,
-    FRONTIER_LIMIT_REACHED,
-    ONE_HOP_INCOMPLETE,
-    NO_PROGRESS,
-}
-
-enum class TraversalRunQualificationFailure {
-    EMPTY_LIMITATIONS,
-    NON_CANONICAL_LIMITATIONS,
-    NON_CANONICAL_RELATION_LIMITATIONS,
-    MISSING_RELATION_LIMITATIONS,
-    UNEXPECTED_RELATION_LIMITATIONS,
-    TERMINAL_LIMITATION_RESUMABLE,
-    TERMINAL_WITHOUT_TERMINAL_LIMITATION,
-}
-
-/** Incomplete traversal coverage, split by whether additional deterministic work remains. */
-sealed interface TraversalRunQualification : OperationQualification {
-    val limitations: List<TraversalLimitationDocument>
-    val relationLimitations: List<RelationLimitationDocument>
-
-    @ConsistentCopyVisibility
-    data class Resumable
-    internal constructor(
-        override val limitations: List<TraversalLimitationDocument>,
-        override val relationLimitations: List<RelationLimitationDocument>,
-        val continuation: TraversalContinuationDocument,
-    ) : TraversalRunQualification
-
-    @ConsistentCopyVisibility
-    data class TerminalIncomplete
-    internal constructor(
-        override val limitations: List<TraversalLimitationDocument>,
-        override val relationLimitations: List<RelationLimitationDocument>,
-    ) : TraversalRunQualification
-
-    companion object {
-        fun resumable(
-            limitations: List<TraversalLimitationDocument>,
-            relationLimitations: List<RelationLimitationDocument>,
-            continuation: TraversalContinuationDocument,
-        ): Refinement<Resumable, TraversalRunQualificationFailure> =
-            when (val admitted = admitTraversalLimitations(limitations, relationLimitations)) {
-                is Refinement.Refined ->
-                    if (
-                        TraversalLimitationDocument.DEPTH_LIMIT_REACHED in admitted.value.first ||
-                            TraversalLimitationDocument.NO_PROGRESS in admitted.value.first
-                    ) {
-                        Refinement.Rejected(TraversalRunQualificationFailure.TERMINAL_LIMITATION_RESUMABLE)
-                    } else {
-                        Refinement.Refined(Resumable(admitted.value.first, admitted.value.second, continuation))
-                    }
-                is Refinement.Rejected -> admitted
-            }
-
-        fun terminalIncomplete(
-            limitations: List<TraversalLimitationDocument>,
-            relationLimitations: List<RelationLimitationDocument>,
-        ): Refinement<TerminalIncomplete, TraversalRunQualificationFailure> =
-            when (val admitted = admitTraversalLimitations(limitations, relationLimitations)) {
-                is Refinement.Refined ->
-                    if (
-                        setOf(
-                                TraversalLimitationDocument.ONE_HOP_INCOMPLETE,
-                                TraversalLimitationDocument.DEPTH_LIMIT_REACHED,
-                                TraversalLimitationDocument.NO_PROGRESS,
-                                TraversalLimitationDocument.TIME_LIMIT_REACHED,
-                            )
-                            .none { it in admitted.value.first }
-                    ) {
-                        Refinement.Rejected(TraversalRunQualificationFailure.TERMINAL_WITHOUT_TERMINAL_LIMITATION)
-                    } else {
-                        Refinement.Refined(TerminalIncomplete(admitted.value.first, admitted.value.second))
-                    }
-                is Refinement.Rejected -> admitted
-            }
-    }
-}
-
-private fun admitTraversalLimitations(
-    limitations: List<TraversalLimitationDocument>,
-    relationLimitations: List<RelationLimitationDocument>,
-): Refinement<
-    Pair<List<TraversalLimitationDocument>, List<RelationLimitationDocument>>,
-    TraversalRunQualificationFailure,
-> {
-    if (limitations.isEmpty()) {
-        return Refinement.Rejected(TraversalRunQualificationFailure.EMPTY_LIMITATIONS)
-    }
-    if (limitations != limitations.distinct().sortedBy { it.ordinal }) {
-        return Refinement.Rejected(TraversalRunQualificationFailure.NON_CANONICAL_LIMITATIONS)
-    }
-    if (relationLimitations != relationLimitations.distinct().sortedBy { it.ordinal }) {
-        return Refinement.Rejected(TraversalRunQualificationFailure.NON_CANONICAL_RELATION_LIMITATIONS)
-    }
-    val oneHopIncomplete = TraversalLimitationDocument.ONE_HOP_INCOMPLETE in limitations
-    if (oneHopIncomplete && relationLimitations.isEmpty()) {
-        return Refinement.Rejected(TraversalRunQualificationFailure.MISSING_RELATION_LIMITATIONS)
-    }
-    if (!oneHopIncomplete && relationLimitations.isNotEmpty()) {
-        return Refinement.Rejected(TraversalRunQualificationFailure.UNEXPECTED_RELATION_LIMITATIONS)
-    }
-    return Refinement.Refined(java.util.List.copyOf(limitations) to java.util.List.copyOf(relationLimitations))
-}
-
 enum class TraversalRunRejection : OperationRejection {
+    CONTINUATION_UNAVAILABLE,
+    CONTINUATION_REQUEST_MISMATCH,
     WORKSPACE_NOT_READY,
     SELECTOR_WRONG_KIND,
     SELECTOR_MALFORMED,

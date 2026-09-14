@@ -53,6 +53,7 @@ internal data class ProbeSetupSample(
 internal class ProbeSetupObservation
 private constructor(
     val import: ProbeSetupImportEvidence,
+    val beforeRefresh: ProbeSetupSample,
     val before: ProbeSetupSample,
     val after: ProbeSetupSample,
     val drain: ProbeSetupDrainState,
@@ -62,11 +63,18 @@ private constructor(
 
     companion object {
         fun admit(
+            beforeRefresh: ProbeSetupSample,
             before: ProbeSetupSample,
             after: ProbeSetupSample,
             elapsedNanos: Long,
             drain: ProbeSetupDrainState,
         ): ProbeResult<ProbeSetupObservation> {
+            if (
+                beforeRefresh.status != ProbeSetupStatus.CANDIDATE ||
+                    beforeRefresh.import != after.import ||
+                    beforeRefresh.generation.imports != after.generation.imports
+            )
+                return ProbeResult.Rejected(ProbeFailure.SETUP_MOVING)
             if (after.indexing != ProbeSetupIndexingState.IDLE) return ProbeResult.Rejected(ProbeFailure.SETUP_MOVING)
             if (!after.refresh.idle) return ProbeResult.Rejected(ProbeFailure.SETUP_MOVING)
             if (after.generation.run { listOf(imports, roots, workspace, vfs, psi, dumb).any { it < 0 } })
@@ -85,7 +93,13 @@ private constructor(
                     else -> return ProbeResult.Rejected(ProbeFailure.SETUP_IMPORT_PENDING)
                 }
             return ProbeResult.Accepted(
-                ProbeSetupObservation(import = evidence, before = before, after = after, drain = drain)
+                ProbeSetupObservation(
+                    import = evidence,
+                    beforeRefresh = beforeRefresh,
+                    before = before,
+                    after = after,
+                    drain = drain,
+                )
             )
         }
     }

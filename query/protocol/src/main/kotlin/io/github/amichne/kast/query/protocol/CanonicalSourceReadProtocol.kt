@@ -24,7 +24,6 @@ import io.github.amichne.kast.protocol.contract.SourceEntityTargetDocument
 import io.github.amichne.kast.protocol.contract.SourceLengthDocument
 import io.github.amichne.kast.protocol.contract.SourceNestingDepthDocument
 import io.github.amichne.kast.protocol.contract.SourceReadAnchorDocument
-import io.github.amichne.kast.protocol.contract.SourceReadContinuationStateDocument
 import io.github.amichne.kast.protocol.contract.SourceReadLimitationDocument
 import io.github.amichne.kast.protocol.contract.SourceReadPageDocument
 import io.github.amichne.kast.protocol.contract.SourceReadQualification
@@ -62,7 +61,6 @@ import io.github.amichne.kast.source.contract.SourceEntityTarget
 import io.github.amichne.kast.source.contract.SourceReadAnchor as DomainSourceReadAnchor
 import io.github.amichne.kast.source.contract.SourceReadContext
 import io.github.amichne.kast.source.contract.SourceReadContinuation
-import io.github.amichne.kast.source.contract.SourceReadContinuationState
 import io.github.amichne.kast.source.contract.SourceReadLimitation
 import io.github.amichne.kast.source.contract.SourceReadOperations
 import io.github.amichne.kast.source.contract.SourceReadPage
@@ -198,7 +196,7 @@ private fun SourceReadRequest.admit(
             }
         }
     val domainEntityLimit =
-        SourceEntityLimit.parse(minOf(entityLimit.value, budget.maximumEntities.value)).refinedOrNull()
+        SourceEntityLimit.parse(minOf(entityLimit.value, budget.resources.resultLimit.value)).refinedOrNull()
             ?: return SourceRequestAdmission.Rejected(SourceReadRejection.CONTRACT_VIOLATION)
     val domainTextByteLimit =
         SourceTextByteLimit.parse(minOf(textByteLimit.value, budget.maximumTextBytes.value)).refinedOrNull()
@@ -221,6 +219,7 @@ private fun SourceReadRequest.admit(
             domainEntityLimit,
             domainTextByteLimit,
             domainPage,
+            budget.resources,
         )
     )
 }
@@ -307,7 +306,7 @@ private fun DomainSourceReadResult.Qualified.project(
 ): SourceQualifiedResultProjection {
     val result =
         protocolResult(snapshot, region, entities, text, authority) ?: return SourceQualifiedResultProjection.Rejected
-    val protocolQualification = qualification.protocol() ?: return SourceQualifiedResultProjection.Rejected
+    val protocolQualification = qualification.protocol(entities.size) ?: return SourceQualifiedResultProjection.Rejected
     return SourceQualifiedResultProjection.Projected(result, protocolQualification)
 }
 
@@ -460,16 +459,11 @@ private fun SourceSelector.protocolSelection(): SourceSelectionDocument? {
     )
 }
 
-private fun DomainSourceReadQualification.protocol(): SourceReadQualification? {
+private fun DomainSourceReadQualification.protocol(entityCount: Int): SourceReadQualification? {
     val count = SourceEntityCountDocument.parse(knownMinimumEntityCount.value).refinedOrNull() ?: return null
     val protocolLimitations = limitations.map { it.protocol() }
-    val protocolContinuation =
-        when (val value = continuation) {
-            SourceReadContinuationState.Unavailable -> SourceReadContinuationStateDocument.Unavailable
-            is SourceReadContinuationState.Available ->
-                SourceReadContinuationStateDocument.Available(protocolText(value.continuation.value) ?: return null)
-        }
-    return SourceReadQualification.create(count, protocolLimitations, protocolContinuation).refinedOrNull()
+    val progress = projectProgress(entityCount).refinedOrNull() ?: return null
+    return SourceReadQualification.create(count, protocolLimitations, progress).refinedOrNull()
 }
 
 private fun SourceReadLimitation.protocol(): SourceReadLimitationDocument =
@@ -544,6 +538,3 @@ private fun <Value, Failure> Refinement<Value, Failure>.refinedOrNull(): Value? 
 
 private fun contractViolation(): OperationOutcome.Rejected<SourceReadRejection> =
     OperationOutcome.Rejected(SourceReadRejection.CONTRACT_VIOLATION)
-
-/** Host caps intersect the authored per-request source projection limits. */
-data class SourceProtocolBudget(val maximumEntities: SourceEntityLimit, val maximumTextBytes: SourceTextByteLimit)

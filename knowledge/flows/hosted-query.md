@@ -6,6 +6,38 @@ resource: file://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/
 tags: [intellij, kotlin, semantic-query, lifecycle]
 timestamp: 2026-09-13T00:00:00Z
 code_sources:
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceQualifiedProgressDocument.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceReadOutcomeDocuments.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/SourceProgressProjection.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourcePreparedCoverage.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryRunQualification.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryQualifiedProgressDocument.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryProgressProjection.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryPreparedCoverage.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ExecutionBudgetReport.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ExecutionLimitDocument.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReadBudgetReports.kt
+  - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/TraversalRunResultWireDocument.kt
+  - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/SourceReadOutcomeWireMappings.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/projection/TraversalOutcomeCliDocuments.kt
+  - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceEntityPageCollector.kt
+  - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceExecution.kt
+  - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/NativeSourceSelections.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/SourceProtocolBudget.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceReadOutcomeDocuments.kt
+  - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceReadContinuations.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ExecutionBudgetDocument.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryResponse.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedExecutionBudgetRequest.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedTransportObservation.kt
+  - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmissionTest.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedRelationResponse.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalRelation.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedOutputPages.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceResponse.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalSource.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceOutputPages.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryContinuations.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDeadline.kt
   - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijScopedDeclarationEnumeration.kt
@@ -180,6 +212,20 @@ library-inclusive scope policy. This explicit distinction keeps supported live
 requests executable without claiming library-read parity; wider native library
 coverage remains a separate qualification boundary.
 
+`HostedConnectionAdmission` admits up to `HOST_CONNECTIONS` frame exchanges
+(default 16); the native accept backlog is `HOST_ACCEPT_BACKLOG` (default 64).
+One further connection may receive a bounded capacity rejection without semantic
+admission. A shared mutex retains serialization of all semantic and mutation
+operations. Queue admission reserves the configured host-query allowance and
+100 ms of connection time for publication; insufficient time returns
+`ADMISSION_DEADLINE_EXCEEDED` before dispatch. A blocked request frame therefore
+occupies one connection slot without blocking other frame reads.
+
+`kast_transport` records a per-connection correlation ID, finite stage/outcome,
+monotonic stage duration, and observed byte counts. Stages cover accept, request
+read, semantic admission, execution, response preparation, and reply write.
+These records contain no source, request payload, or opaque reference.
+
 `HostedPeerCancellation` races request dispatch against peer disconnection or
 additional input after the one admitted frame. Both jobs are cancelled and joined
 before the request leaves its scope. The semantic executor separately drains its
@@ -333,3 +379,64 @@ explicit read settings; epoch replacement and disposal clear project state.
 Resumption acquires fresh host admission before state lookup. No checkpoint holds
 PSI, K2 symbols or an IDE observer callback. The serialized output budget is
 checked after compact references and selected projection fields are encoded.
+
+Relation output uses the same detached output-page retention implementation as
+query output. If the full encoded relation response exceeds its byte cap, the
+host retains the suffix before publishing a nonempty fitting prefix. The suffix
+preserves omissions and the provider's original resumable or terminal coverage.
+`relation-output:v1` cursors identify host-owned retained output, while
+`relation-continuation:v1` and `v2` remain provider checkpoints. Restoring output
+cannot prove an unfinished provider scan complete.
+
+Output cursors are replayable until expiry or eviction. Equal retained requests
+and outcomes have equal child identities; replay does not refresh expiry. The
+request identity retains selector and relationship but excludes the page limit
+and position. Changed authority or semantic request is rejected. Each of the
+query checkpoint, query output, relation output, and source output stores has the configured
+entry/byte bound; their aggregate maximum is four times that bound. No retained
+entry contains PSI or K2 state.
+
+Relation and query/search reads admit optional caller execution controls once at
+semantic entry.
+`HostedReadDeadline` subtracts elapsed request time and its completion reserve;
+`HostedSemanticTimeAllowance` retains the resulting immutable grant. Domain
+budgets derive their resource values from that grant. Their response metadata
+projects its effective values and clamping causes, and byte fitting includes the
+metadata. Retained query, relation, and source suffixes omit previous-call grant metadata; resume
+publishes the newly admitted grant and excludes execution controls from retained
+semantic identity.
+
+Reissuing an equal detached query checkpoint returns its existing token without
+renewing its expiry or consuming another entry. Restoration is non-consuming.
+Query pipeline checkpoints and output suffixes exclude caller execution controls
+from semantic identity. Query page result limits also constrain retained output;
+every page preserves known item failures. An explicit query `take` remains part of
+the query identity. Source and traversal caller controls retain the same admitted report; traversal encoded fitting remains unfinished.
+
+Source entity cursors retain typed token keys and exact snapshot, region, and
+selection identity. Their binding excludes entity/text page allowances; an equal
+source cursor position reuses its token. The source continuation owner is separate
+from native entity collection.
+
+The source continuation owner applies independent entry, charged-byte, and age bounds. It expires entries before admission and issuance, and replay does not renew token age. Retention includes detached snapshot/scope identity but no source payload. Oversized entries fail before issuance; retirement clears every entry.
+
+Source requests require an explicit resource grant. Hosted source admission retains the same immutable resource object and intersects entity/text projection limits. Query visibility predicates transfer one charged unit and the remaining elapsed allowance into their exact SELF source read; failed admission retains the unstarted pipeline task. Native source enumeration now charges visited PSI units against that grant and checks monotonic elapsed time before each unit and at completion. Accounting survives canceled read attempts, while their PSI and detached result buffers do not. Source encoding now fits the complete encoded envelope, including report and cursor, before publishing a nonempty entity prefix. Its `source-output:v1` cursor retains the detached suffix and original upstream qualification under the shared hosted `QUERY_CONTINUATION_*` policy, independently of the native `SOURCE_CONTINUATION_*` policy. Source output identity retains anchor, region, entity selection, and text projection but excludes entity/text page allowances and execution controls. Every page retains requested text; an indivisible item or mandatory envelope that cannot fit is rejected without an empty unchanged cursor.
+
+Source and traversal result projections preserve their admitted execution report through canonical wire decoding and CLI output. Their complete and qualified envelopes share the same closed installed execution schema. Hosted encoding measures the full response, including this report, against the current grant.
+
+Execution-limit reports refine positive numeric amounts and validate caller/default selection, effective bounds, and canonical clamping before decoded fields become report evidence. Private construction prevents a report copy from bypassing those relationships.
+
+Native source enumeration feeds the existing ordered page owner incrementally. It retains only the selected entity page and one ordering/lookahead witness, discards excluded entities and previously delivered ordinals, and stops provider work at eligible lookahead. The attempt-local collector is recreated on an IntelliJ read restart; only the execution meter survives. Sequence-based fixtures use the same filter, ordering, and page owner, with their explicit fixed stream guard. Native collection uses the admitted caller work/time grant and does not reconstruct that guard.
+
+Decoded execution reports also retain their dimension rules: elapsed limits admit deadline clamps; result and byte limits admit transport clamps; work limits admit only the operator ceiling. Every result amount remains within the integer domain. Invalid dimension evidence is rejected by the report decoder before a report value is exposed.
+
+Query qualification owns a mandatory closed progress state: resumable with an upstream checkpoint or retained-output checkpoint, or terminal-incomplete with a finite reason. A retained-output checkpoint reports the original upstream coverage, preserving terminal reasons without asserting that an interrupted scan can resume. Empty upstream pages explicitly require increased execution allowances. Query result payloads cannot carry independent cursor/terminal state; the CLI compatibility fields are derived from qualification. Wire decoding rejects missing progress and noncanonical checkpoint families.
+
+Source qualifications own closed resumable or terminal-incomplete progress. Native
+source checkpoints and hosted retained-output checkpoints are separate variants;
+retained output preserves original complete, resumable, or terminal coverage.
+Legacy cursor availability is derived from that authority. Empty native pages
+require an increased execution allowance. A terminal text-withheld explanation
+requires a matching text-byte limitation; other upstream gaps remain finite
+terminal evidence. Source wire admission rejects missing progress, unsupported
+variants and mismatched checkpoint families.

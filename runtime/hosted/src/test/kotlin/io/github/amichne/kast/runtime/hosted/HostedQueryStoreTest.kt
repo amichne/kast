@@ -26,6 +26,46 @@ import org.junit.jupiter.api.Test
 
 class HostedQueryStoreTest {
     @Test
+    fun `output replay changes allowances while preserving semantic identity and token`() {
+        val lease =
+            SemanticReadLease(
+                CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined(),
+                EvidenceGeneration.parse(1).refined(),
+            )
+        val store = HostedQueryContinuations.Active(lease, ReadLimits.Default)
+        val low =
+            request("short")
+                .copy(
+                    executionBudget =
+                        io.github.amichne.kast.protocol.contract.ExecutionBudgetDocument(
+                            maxResults = io.github.amichne.kast.kernel.ResultLimit.parse(1).refined()
+                        )
+                )
+        val high =
+            low.copy(
+                executionBudget =
+                    io.github.amichne.kast.protocol.contract.ExecutionBudgetDocument(
+                        maxResults = io.github.amichne.kast.kernel.ResultLimit.parse(2).refined()
+                    )
+            )
+        val output =
+            OperationOutcome.Complete(
+                EvidenceEnvelope(
+                    CanonicalOperation.QUERY_RUN.id,
+                    lease.generation,
+                    QueryRunResult(bounded(emptyList()), bounded(emptyList())),
+                )
+            )
+        val first = store.issue(low, lease, output) as HostedOutputRetention.Retained
+        assertEquals(output, store.restore(first.token, high, lease))
+        assertEquals(output, store.restore(first.token, high, lease))
+        assertEquals(first, store.issue(high, lease, output))
+        assertTrue(store.restore(first.token, request("different"), lease) is OperationOutcome.Rejected)
+        val hosted = HostedRequest.Query(lease.workspaceRoot, high)
+        assertEquals(high.executionBudget!!.requested(), hosted.executionBudget().requested)
+    }
+
+    @Test
     fun `retention accounts for query request independently of its small output suffix`() {
         val lease =
             SemanticReadLease(
@@ -50,8 +90,8 @@ class HostedQueryStoreTest {
                     QueryRunResult(bounded(emptyList()), bounded(emptyList())),
                 )
             )
-        assertTrue(store.issue(request("short"), lease, output) is HostedQueryRetention.Retained)
-        assertEquals(HostedQueryRetention.CapacityExceeded, store.issue(request("x".repeat(6000)), lease, output))
+        assertTrue(store.issue(request("short"), lease, output) is HostedOutputRetention.Retained)
+        assertEquals(HostedOutputRetention.CapacityExceeded, store.issue(request("x".repeat(6000)), lease, output))
     }
 
     private fun request(reference: String) =

@@ -135,6 +135,8 @@ internal enum class RelationReadRejectionWireDocument {
     @SerialName("selector_stale") SELECTOR_STALE,
     @SerialName("relation_unsupported") RELATION_UNSUPPORTED,
     @SerialName("continuation_malformed") CONTINUATION_MALFORMED,
+    @SerialName("continuation_unavailable") CONTINUATION_UNAVAILABLE,
+    @SerialName("continuation_request_mismatch") CONTINUATION_REQUEST_MISMATCH,
     @SerialName("continuation_subject_mismatch") CONTINUATION_SUBJECT_MISMATCH,
     @SerialName("continuation_relation_mismatch") CONTINUATION_RELATION_MISMATCH,
     @SerialName("continuation_scope_mismatch") CONTINUATION_SCOPE_MISMATCH,
@@ -152,7 +154,8 @@ internal sealed interface TraversalRunQualificationWireDocument {
     data class Resumable(
         override val limitations: List<TraversalLimitationWireDocument>,
         override val relationLimitations: List<RelationLimitationWireDocument>,
-        val continuation: String,
+        val checkpoint: io.github.amichne.kast.protocol.contract.TraversalCheckpointDocument,
+        @SerialName("next_action") val nextAction: io.github.amichne.kast.protocol.contract.ReadResumeActionDocument,
     ) : TraversalRunQualificationWireDocument
 
     @Serializable
@@ -177,6 +180,8 @@ internal enum class TraversalLimitationWireDocument {
 
 @Serializable
 internal enum class TraversalRunRejectionWireDocument {
+    @SerialName("continuation_unavailable") CONTINUATION_UNAVAILABLE,
+    @SerialName("continuation_request_mismatch") CONTINUATION_REQUEST_MISMATCH,
     @SerialName("workspace_not_ready") WORKSPACE_NOT_READY,
     @SerialName("selector_wrong_kind") SELECTOR_WRONG_KIND,
     @SerialName("selector_malformed") SELECTOR_MALFORMED,

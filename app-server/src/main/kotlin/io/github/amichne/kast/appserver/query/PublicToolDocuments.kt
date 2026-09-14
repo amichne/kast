@@ -1,8 +1,11 @@
 // Generated from tools.schema.json by packaging/generate-public-query.py. Do not edit.
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
 package io.github.amichne.kast.appserver.query
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
+import io.github.amichne.kast.protocol.contract.ExecutionBudgetDocument
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerializationException
@@ -124,6 +127,9 @@ internal data class PublicToolSearchClasses(
     val class_name: ProtocolText,
     val name_match: PublicToolNameMatch?,
     val scope: PublicToolScope?,
+    @SerialName("execution_budget")
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val executionBudget: ExecutionBudgetDocument? = null,
 ) : PublicToolDocument
 
 @Serializable
@@ -131,6 +137,9 @@ internal data class PublicToolSearchFunctions(
     val function_name: ProtocolText,
     val name_match: PublicToolNameMatch?,
     val scope: PublicToolScope?,
+    @SerialName("execution_budget")
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val executionBudget: ExecutionBudgetDocument? = null,
 ) : PublicToolDocument
 
 @Serializable
@@ -139,6 +148,9 @@ internal data class PublicToolSearchDeclarations(
     val name_match: PublicToolNameMatch?,
     val scope: PublicToolScope?,
     val declaration_kinds: BoundedProtocolList<PublicToolDeclarationKinds>?,
+    @SerialName("execution_budget")
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val executionBudget: ExecutionBudgetDocument? = null,
 ) : PublicToolDocument
 
 @Serializable
@@ -153,6 +165,9 @@ internal data class PublicToolQuerySymbols(
     val steps: BoundedProtocolList<PublicToolStep>?,
     val return_fields: BoundedProtocolList<PublicToolReturnFields>?,
     val continuation: ProtocolText? = null,
+    @SerialName("execution_budget")
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val executionBudget: ExecutionBudgetDocument? = null,
 ) : PublicToolDocument
 
 internal object PublicToolScopeSerializer : JsonContentPolymorphicSerializer<PublicToolScope>(PublicToolScope::class) {

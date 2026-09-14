@@ -56,6 +56,8 @@ def prepare_read_fixture(workspace: Path, repo: Path) -> ReadFixture:
         raise ReadFixtureRejected('READ_FIXTURE_ORACLE_REJECTED')
     for name in ('core', 'logging'):
         shutil.copytree(template / name, workspace / name)
+    source_budget = target.parent / 'ReadPageBudget.kt'
+    shutil.copyfile(template / 'read-reliability/ReadPageBudget.kt', source_budget)
     (workspace / 'noise0').mkdir(mode=0o700)
     for name in ('build.gradle.kts', 'settings.gradle.kts'):
         _digest(workspace / name)
@@ -67,7 +69,7 @@ def prepare_read_fixture(workspace: Path, repo: Path) -> ReadFixture:
     build.write_text(build.read_text() + '\nsubprojects {\n'
         '    apply(plugin = "org.jetbrains.kotlin.jvm")\n'
         '    repositories { mavenCentral() }\n}\n')
-    files = [target, enum_fixture, build, workspace / 'settings.gradle.kts']
+    files = [target, source_budget, enum_fixture, build, workspace / 'settings.gradle.kts']
     for name in ('core', 'logging'):
         files.extend(path for path in (workspace / name).rglob('*') if path.is_file())
     inventory = tuple(sorted((str(path.relative_to(workspace)), _digest(path)) for path in files))

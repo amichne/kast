@@ -1,6 +1,8 @@
 package io.github.amichne.kast.runtime.hosted
 
 import com.google.gson.Gson
+import io.github.amichne.kast.kernel.ReadLimitParameter
+import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.IdeReadHostLifetime
@@ -64,6 +66,7 @@ private constructor(
             root: CanonicalWorkspaceRoot,
             host: IdeReadHostLifetime,
             observer: HostedEndpointObserver = HostedEndpointObserver { _, _ -> },
+            limits: ReadLimits = ReadLimits.Default,
         ): Refinement<OwnedHostedEndpoint, HostedEndpointFailure> {
             val socket = directory.resolve("host.sock")
             val descriptor = directory.resolve("endpoint.json")
@@ -119,7 +122,10 @@ private constructor(
                         return Refinement.Rejected(HostedEndpointFailure.SOCKET_UNAVAILABLE)
                     }
                 try {
-                    server.bind(UnixDomainSocketAddress.of(socket), 1)
+                    server.bind(
+                        UnixDomainSocketAddress.of(socket),
+                        limits[ReadLimitParameter.HOST_ACCEPT_BACKLOG].value,
+                    )
                     val socketKey = key(socket)
                     try {
                         Files.writeString(

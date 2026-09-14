@@ -69,6 +69,7 @@ class ProbeClientTest(unittest.TestCase):
                      "import": "FINAL_TASKS_OBSERVED", "vfsRefresh": "COMPLETED", "vfsRefreshScope": "ALL_CACHED_ROOTS", "quietWindowMillis": 2000,
                      "scope": "OBSERVED_SETUP_ONLY", "pushedPropertiesDrain": "COMPLETED", "indexing": "IDLE",
                      "refreshScanning": "IDLE", "refreshEventProcessing": "IDLE",
+                     "generationBeforeRefresh": dict.fromkeys(("imports", "roots", "workspace", "vfs", "psi", "dumb"), 1),
                      "generationBefore": dict.fromkeys(("imports", "roots", "workspace", "vfs", "psi", "dumb"), 1),
                      "generationAfter": dict.fromkeys(("imports", "roots", "workspace", "vfs", "psi", "dumb"), 1)}
         first = {**self.response(command="AWAIT_SETUP_READY"), "outcome": "SETUP_READY", "readiness": readiness}
@@ -91,8 +92,13 @@ class ProbeClientTest(unittest.TestCase):
             with self.assertRaises(probe.NativeFixtureProbeError):
                 probe.validate_response({**first, "readiness": {**readiness, "generationAfter": counters}},
                                         "id", "AWAIT_SETUP_READY")
+        for counters in ({"imports": 1}, {**readiness["generationBeforeRefresh"], "imports": 0},
+                         {**readiness["generationBeforeRefresh"], "imports": True}):
+            with self.assertRaises(probe.NativeFixtureProbeError):
+                probe.validate_response({**first, "readiness": {**readiness, "generationBeforeRefresh": counters}},
+                                        "id", "AWAIT_SETUP_READY")
         for key in ("vfsRefreshScope", "pushedPropertiesDrain", "indexing", "refreshScanning", "refreshEventProcessing",
-                    "generationBefore", "generationAfter"):
+                    "generationBeforeRefresh", "generationBefore", "generationAfter"):
             with self.assertRaises(probe.NativeFixtureProbeError):
                 probe.validate_response({**first, "readiness": {k: v for k, v in readiness.items() if k != key}},
                                         "id", "AWAIT_SETUP_READY")

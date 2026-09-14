@@ -3,6 +3,7 @@ package io.github.amichne.kast.cli
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.cli.bootstrap.HostedRejectionSchemas
 import io.github.amichne.kast.cli.command.CliCommandSurface
+import io.github.amichne.kast.cli.projection.cliName
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ChangeApplyRequest
 import io.github.amichne.kast.protocol.contract.ChangePlanRequest
@@ -11,6 +12,7 @@ import io.github.amichne.kast.protocol.contract.DiagnosticCheckRequest
 import io.github.amichne.kast.protocol.contract.IndexSyncRequest
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.RelationReadRequest
+import io.github.amichne.kast.protocol.contract.SourceReadLimitationDocument
 import io.github.amichne.kast.protocol.contract.SourceReadRequest
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
 import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
@@ -303,6 +305,7 @@ private enum class InstalledServerTool(
 internal data class ServerSchemaProperty(
     val name: String,
     val schema: JsonObject,
+    val required: Boolean = true,
 )
 
 internal fun installedServerOutputSchema(operation: CanonicalOperation): JsonObject =
@@ -360,11 +363,17 @@ private fun JsonObject.withLocalOutputDefinitions(): JsonObject {
 // Names are stable schema addresses; every referenced definition retains the exact existing shape.
 private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
     linkedMapOf(
+            "executionBudget" to
+                generatedRequestSchema(io.github.amichne.kast.protocol.contract.ExecutionBudgetReport.serializer()),
+            "executionLimit" to
+                generatedRequestSchema(io.github.amichne.kast.protocol.contract.ExecutionLimitDocument.serializer()),
             "liveReadEvidence" to liveReadEvidenceSchema(),
             "hostedEndpointRejection" to HostedRejectionSchemas.endpoint,
             "hostedReadRejection" to HostedRejectionSchemas.read,
             "queryResultItem" to queryResultItemSchema(),
             "queryItemFailure" to queryItemFailureSchema(),
+            "queryExactReference" to queryOutputReferenceSchema("exact-symbol"),
+            "queryCandidateReference" to queryOutputReferenceSchema("declaration-candidate"),
             "queryRejection" to queryRejectionSchema(),
             "compilerFunctionSignature" to functionCompilerSignatureSchema(),
             "compilerReceiver" to compilerReceiverSchema(),
@@ -381,6 +390,8 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
             "sourceRegion" to sourceRegionSchema(),
             "sourceEntity" to sourceEntitySchema(),
             "sourceTextProjection" to sourceTextProjectionSchema(),
+            "sourceQualification" to sourceReadQualificationSchema(),
+            "traversalQualification" to traversalQualificationSchema(),
             "publishedTraversalGraph" to normalizedTraversalGraphSchema(ServerReadEvidenceShape.PUBLISHED),
             "liveTraversalGraph" to normalizedTraversalGraphSchema(ServerReadEvidenceShape.LIVE),
             "diagnostic" to diagnosticSchema(),
@@ -434,6 +445,7 @@ private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject =
             proofQualifiedOutcomeSchema(
                 operation,
                 sourceReadQualificationSchema(),
+                executionBudgetProperty(),
                 ServerSchemaProperty("snapshot", sourceSnapshotSchema()),
                 ServerSchemaProperty("region", sourceRegionSchema()),
                 ServerSchemaProperty("entities", arraySchema(sourceEntitySchema())),
@@ -444,6 +456,7 @@ private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject =
                 operation,
                 relationQualificationSchema(),
                 ServerSchemaProperty("relations", arraySchema(relationFactSchema())),
+                executionBudgetProperty(),
                 ServerSchemaProperty("omissions", arraySchema(relationOmissionSchema())),
                 ServerSchemaProperty(
                     "soundness",
@@ -457,6 +470,7 @@ private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject =
             proofQualifiedOutcomeSchema(
                 operation,
                 traversalQualificationSchema(),
+                executionBudgetProperty(),
                 ServerSchemaProperty("graph", normalizedTraversalGraphSchema()),
                 ServerSchemaProperty(
                     "partialExpansions",
@@ -570,6 +584,7 @@ private fun queryRunDocumentSchema(operation: CanonicalOperation): JsonObject =
             operation,
             "complete",
             ServerSchemaProperty("items", arraySchema(queryResultItemSchema())),
+            executionBudgetProperty(),
             ServerSchemaProperty("failures", arraySchema(queryItemFailureSchema())),
         ),
         operationOutcomeVariant(
@@ -584,6 +599,7 @@ private fun queryRunDocumentSchema(operation: CanonicalOperation): JsonObject =
                 queryTerminalReasonSchema(),
             ),
             ServerSchemaProperty("items", arraySchema(queryResultItemSchema())),
+            executionBudgetProperty(),
             ServerSchemaProperty("failures", arraySchema(queryItemFailureSchema())),
             ServerSchemaProperty(
                 "qualification",
@@ -613,6 +629,12 @@ private fun queryTerminalReasonSchema(): JsonObject =
 private fun queryQualificationSchema(): JsonObject =
     objectSchema(
         ServerSchemaProperty("knownMinimum", integerSchema(0, description = "Known returned item count.")),
+        ServerSchemaProperty(
+            "progress",
+            generatedRequestSchema(
+                io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument.serializer()
+            ),
+        ),
         ServerSchemaProperty(
             "limitations",
             nonEmptyArraySchema(
@@ -933,6 +955,12 @@ private fun relationQualificationSchema(): JsonObject =
 private fun sourceReadQualificationSchema(): JsonObject =
     objectSchema(
         ServerSchemaProperty(
+            "progress",
+            generatedRequestSchema(
+                io.github.amichne.kast.protocol.contract.SourceQualifiedProgressDocument.serializer()
+            ),
+        ),
+        ServerSchemaProperty(
             "knownMinimumEntityCount",
             integerSchema(0, description = "Known minimum matching entity count."),
         ),
@@ -940,16 +968,7 @@ private fun sourceReadQualificationSchema(): JsonObject =
             "limitations",
             nonEmptyArraySchema(
                 enumSchema(
-                    listOf(
-                        "entity-limit-reached",
-                        "text-byte-limit-reached",
-                        "work-limit-reached",
-                        "time-limit-reached",
-                        "dumb-mode-transition",
-                        "semantic-resolution-incomplete",
-                        "unsupported-entity",
-                        "provider-failure",
-                    ),
+                    SourceReadLimitationDocument.entries.map { it.cliName() },
                     "Every source-read coverage limitation.",
                 )
             ),
@@ -1161,6 +1180,16 @@ private fun traversalQualificationSchema(): JsonObject =
     unionSchema(
         objectSchema(
             ServerSchemaProperty("type", constantSchema("resumable", "Coverage state.")),
+            ServerSchemaProperty(
+                "checkpoint",
+                generatedRequestSchema(
+                    io.github.amichne.kast.protocol.contract.TraversalCheckpointDocument.serializer()
+                ),
+            ),
+            ServerSchemaProperty(
+                "next_action",
+                generatedRequestSchema(io.github.amichne.kast.protocol.contract.ReadResumeActionDocument.serializer()),
+            ),
             ServerSchemaProperty("limitations", traversalLimitationsSchema()),
             ServerSchemaProperty("relationLimitations", relationLimitationsSchema()),
             ServerSchemaProperty(
@@ -1691,16 +1720,8 @@ internal fun typedFailureSchema(type: String, field: String): JsonObject =
 
 internal fun objectSchema(vararg properties: ServerSchemaProperty): JsonObject = objectSchema(properties.toList())
 
-internal fun objectSchema(properties: List<ServerSchemaProperty>): JsonObject = buildJsonObject {
-    put("type", "object")
-    put("additionalProperties", false)
-    putJsonObject("properties") {
-        properties.forEach { property -> put(property.name, property.schema) }
-    }
-    putJsonArray("required") {
-        properties.forEach { property -> add(JsonPrimitive(property.name)) }
-    }
-}
+internal fun objectSchema(properties: List<ServerSchemaProperty>): JsonObject =
+    objectSchemaWithRequired(properties.filter { it.required }.map { it.name }.toSet(), *properties.toTypedArray())
 
 internal fun objectSchemaWithRequired(
     required: Set<String>,
@@ -1856,4 +1877,13 @@ private fun relationSchema(): JsonObject =
                 "type-uses",
             ),
         description = "One canonical Kast semantic relation.",
+    )
+
+private fun executionBudgetProperty() =
+    ServerSchemaProperty(
+        "execution_budget",
+        nullableSchema(
+            generatedRequestSchema(io.github.amichne.kast.protocol.contract.ExecutionBudgetReport.serializer())
+        ),
+        required = false,
     )

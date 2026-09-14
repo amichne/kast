@@ -44,6 +44,7 @@ internal class HostedQueryExecutor(
         endpoint: HostedQueryEndpoint,
         limits: ReadLimits = ReadLimits.Default,
         outcome: (Value) -> HostedDiagnosticOutcome = ::hostedExecutionOutcome,
+        executionBudget: HostedExecutionBudgetRequest = HostedExecutionBudgetRequest(),
         computation: suspend (HostedQueryProgress) -> Value,
     ): HostedExecution<Value> {
         val permit =
@@ -54,7 +55,7 @@ internal class HostedQueryExecutor(
                     return HostedExecution.Rejected(admission.failure)
                 }
             }
-        val progress = HostedQueryProgress(limits, clock)
+        val progress = HostedQueryProgress(limits, clock, executionBudget)
         val operation = scope.async {
             withTimeout(limits[ReadLimitParameter.HOST_QUERY_MILLIS].value.toLong()) {
                 progress.observe(diagnostics(limits))
@@ -131,8 +132,12 @@ enum class HostedQueryStage {
     RESULT_DETACHED,
 }
 
-internal class HostedQueryProgress(val limits: ReadLimits = ReadLimits.Default, clock: () -> Long = System::nanoTime) {
-    private val deadline = HostedReadDeadline(limits, clock)
+internal class HostedQueryProgress(
+    val limits: ReadLimits = ReadLimits.Default,
+    clock: () -> Long = System::nanoTime,
+    executionBudget: HostedExecutionBudgetRequest = HostedExecutionBudgetRequest(),
+) {
+    private val deadline = HostedReadDeadline(limits, clock, executionBudget)
 
     fun admitSemanticTime() = deadline.admit(diagnostics)
 

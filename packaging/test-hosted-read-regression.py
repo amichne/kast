@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Focused proof for fixture isolation, source preservation and bounded read receipts."""
+from dataclasses import asdict, dataclass, field
 import hashlib
 import importlib.util
 import json
@@ -8,9 +9,11 @@ import tempfile
 import unittest
 from types import SimpleNamespace
 from collections import Counter
-from dataclasses import asdict, dataclass
 from unittest.mock import Mock
 from unittest.mock import patch
+from contextlib import nullcontext
+from threading import Barrier
+from hosted_concurrent_read import run_concurrent_read_regression
 
 from hosted_read_fixture import ReadFixtureRejected, prepare_read_fixture
 from hosted_enum_read_regression import run_enum_read_regression
@@ -25,6 +28,39 @@ REPO = Path(__file__).resolve().parent.parent
 
 
 @dataclass(frozen=True)
+class SourceCheckpointFixture:
+    type: str = 'upstream'
+    token: str = 'source-read-continuation-v1|' + 'a' * 64
+
+
+@dataclass(frozen=True)
+class SourceProgressFixture:
+    type: str = 'resumable'
+    checkpoint: SourceCheckpointFixture = field(default_factory=SourceCheckpointFixture)
+    next_action: str = 'resume'
+
+
+@dataclass(frozen=True)
+class SourceCursorFixture:
+    type: str = 'available'
+    continuation: str = 'source-read-continuation-v1|' + 'a' * 64
+
+
+@dataclass(frozen=True)
+class SourceQualificationFixture:
+    knownMinimumEntityCount: int = 2
+    limitations: list[str] = field(default_factory=lambda: ['entity-limit-reached', 'work-limit-reached'])
+    continuation: SourceCursorFixture = field(default_factory=SourceCursorFixture)
+    progress: SourceProgressFixture = field(default_factory=SourceProgressFixture)
+
+
+@dataclass(frozen=True)
+class SourceObservationFixture:
+    status: str = 'qualified'
+    qualification: SourceQualificationFixture = field(default_factory=SourceQualificationFixture)
+
+
+@dataclass(frozen=True)
 class EnumItemStub:
     name: str
     symbol_ref: str
@@ -33,11 +69,22 @@ class EnumItemStub:
 
 
 @dataclass(frozen=True)
+class EnumWorkStub:
+    effective: int = 32
+
+
+@dataclass(frozen=True)
+class EnumBudgetStub:
+    max_work_units: EnumWorkStub = field(default_factory=EnumWorkStub)
+
+
+@dataclass(frozen=True)
 class EnumResponseStub:
     items: tuple[EnumItemStub, ...]
     status: str = 'complete'
     failures: tuple[str, ...] = ()
     live: str = 'private-live-authority'
+    execution_budget: EnumBudgetStub = field(default_factory=EnumBudgetStub)
 
 
 def enum_response(names):
@@ -126,7 +173,7 @@ class HostedReadRegressionTest(unittest.TestCase):
         self.assertEqual(5, len(replay.rows))
         self.assertTrue(all(row['passed'] for row in replay.rows))
         requests = [call.args[2] for call in replay.transport.invoke.call_args_list]
-        self.assertTrue(all('execution_budget' not in request for request in requests))
+        self.assertTrue(all(request['execution_budget']['max_work_units'] == 32 for request in requests))
         self.assertEqual(['private-reference-0', 'private-reference-1'],
                          list(requests[-1]['source']['symbol_refs']))
         self.assertEqual(('name', 'signature'), requests[-1]['return_fields'])
@@ -170,6 +217,47 @@ class HostedReadRegressionTest(unittest.TestCase):
         replay.record('case', 'query_symbols', {'exact': True}, 1)
         self.assertEqual({'exact': True}, replay.rows[0]['assertions'])
         self.assertTrue(replay.rows[0]['passed'])
+
+    def test_installed_replay_coordinates_all_156_first_attempts_and_detects_mixed_replies(self):
+        cases = [SimpleNamespace(name=f'exact-{index}', identity=index) for index in range(10)]
+        oracle = SimpleNamespace(cases=lambda _: cases, ToolSurface=SimpleNamespace(PUBLIC='public'),
+            Finding=SimpleNamespace(REPRODUCED=SimpleNamespace(value='reproduced')),
+            invocation=lambda case, _: ('query_symbols', [], {'identity': case.identity}),
+            assess=lambda case, response, *_: {'finding': 'reproduced',
+                'assertions': {'identity': response['identity'] == case.identity}})
+        fixture = SimpleNamespace(oracle={}, workspace=self.workspace)
+        live = {'host': 'fixture-host'}
+        for mix_replies in (False, True):
+            rendezvous = Barrier(12)
+            def invoke(_surface, _tool, arguments):
+                rendezvous.wait(timeout=5)
+                return {'status': 'complete', 'live': live,
+                        'identity': -1 if mix_replies else arguments['identity']}
+            transport = SimpleNamespace(invoke=invoke, validate=lambda *_: 'sha256:' + 'a' * 64)
+            with patch('hosted_concurrent_read.blocked_peer', return_value=nullcontext()):
+                report = run_concurrent_read_regression(None, fixture, oracle, transport, live)
+            self.assertEqual(156, report['firstAttempts'])
+            self.assertEqual(0, report['serialRetries'])
+            self.assertEqual(0 if mix_replies else 156, report['passedCount'])
+            self.assertEqual('rejected' if mix_replies else 'passed', report['outcome'])
+            self.assertEqual(156, len({(row['client'], row['round']) for row in report['attempts']}))
+            self.assertNotIn('identity', json.dumps(report))
+
+    def test_source_qualification_observation_retains_finite_causes_without_cursor_payload(self):
+        response = asdict(SourceObservationFixture())
+        observed = _read_observation(response)['sourceQualification']
+        self.assertEqual('observed', observed['outcome'])
+        self.assertEqual(('entity-limit-reached', 'work-limit-reached'), observed['limitations'])
+        self.assertNotIn(SourceCursorFixture().continuation, json.dumps(observed))
+        self.assertEqual('resumable', observed['progress'])
+        response['qualification']['limitations'] = ['unknown']
+        self.assertEqual({'outcome': 'unrecognized'}, _read_observation(response)['sourceQualification'])
+
+    def test_source_observation_rejects_unknown_or_conflicting_progress(self):
+        for progress in ('unknown', 'terminal_incomplete'):
+            response = asdict(SourceObservationFixture())
+            response['qualification']['progress']['type'] = progress
+            self.assertEqual({'outcome': 'unrecognized'}, _read_observation(response)['sourceQualification'])
 
     @staticmethod
     def schema():

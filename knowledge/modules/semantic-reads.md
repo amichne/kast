@@ -158,16 +158,22 @@ actual elapsed time and proven facts, stops further reads, and qualifies the
 page with `time-limit-reached`. It resumes only when unfinished work remains;
 an exhausted overrun is terminal. An over-budget page cannot claim completion.
 
-Kotlin enum entries are excluded from supported class candidates before compiler
-refinement. Scoped declaration enumeration still visits their bodies, so excluding
-an entry does not exclude its eligible functions or properties. Compiler callable
-identity retains a native callable ID when available; an enum-body member instead
-requires the compiler-proven anonymous initializer, its enum-entry owner and
-non-special member name. Unsupported or incomplete ownership remains a finite
-rejection. Bounded identity counters and termination reasons distinguish these
-paths without recording source payloads.
+Exact K2 callable projection distinguishes native callable identity, compiler-owned
+enum-entry initializer membership, and finite unavailable ownership stages.
+Bounded counters and termination reasons expose that boundary without recording
+names, source payloads, references, or live compiler objects. Enum-entry membership
+is established only through the compiler containing-symbol chain and equality
+with the enum entry's initializer, never from PSI naming.
+
+For a verified enum-entry initializer member, exact projection combines the
+compiler enum-entry callable identity and compiler member name. The existing
+function/property signature retains that qualified owner identity. This does not
+classify the entry itself as a supported class, accept arbitrary anonymous-object
+members, or derive authority from source spelling. Unsupported ownership remains
+a finite compiler-identity rejection.
 
 The installed enum fixture checks exact, fuzzy and scoped class searches, both
 `act` declarations, and reuse of their exact references and signatures through
-CLI and provider surfaces. Its default-budget run proves these behaviors; it
-does not establish the separate source-enumeration compiler-work ordering gate.
+CLI and provider surfaces. The scoped fixture retains an explicit 32-work-unit
+grant to qualify enum exclusion before candidate capacity. This does not establish
+the separate source-enumeration compiler-work ordering gate.

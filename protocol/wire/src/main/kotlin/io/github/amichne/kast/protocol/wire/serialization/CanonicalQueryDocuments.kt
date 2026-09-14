@@ -247,8 +247,7 @@ private fun QueryRunResult.toQueryWireDocument() =
     QueryRunResultWireDocument(
         items = items.values.map(QueryResultItemDocument::toWire),
         failures = failures.values.map(QueryItemFailureDocument::toWire),
-        continuation = continuation?.value,
-        terminalReason = terminalReason?.let { QueryTerminalReasonWireDocument.valueOf(it.name) },
+        executionBudget = executionBudget,
     )
 
 private fun QueryRunResultWireDocument.toContract(): WireDocumentConversion<QueryRunResult> =
@@ -256,14 +255,13 @@ private fun QueryRunResultWireDocument.toContract(): WireDocumentConversion<Quer
         queryItems.bounded().flatMapConverted { boundedItems ->
             failures.convertEach(QueryItemFailureWireDocument::toContract).flatMapConverted { queryFailures ->
                 queryFailures.bounded().flatMapConverted { boundedFailures ->
-                    optionalText(continuation).mapConverted { token ->
+                    WireDocumentConversion.Converted(
                         QueryRunResult(
                             items = boundedItems,
                             failures = boundedFailures,
-                            continuation = token,
-                            terminalReason = terminalReason?.let { QueryTerminalReasonDocument.valueOf(it.name) },
+                            executionBudget = executionBudget,
                         )
-                    }
+                    )
                 }
             }
         }
@@ -421,11 +419,12 @@ private fun QueryRunQualification.toQueryWireDocument() =
     QueryRunQualificationWireDocument(
         knownMinimum.value,
         limitations.map(QueryLimitationDocument::toWire),
+        progress,
     )
 
 private fun QueryRunQualificationWireDocument.toContract(): WireDocumentConversion<QueryRunQualification> =
     QueryKnownMinimum.parse(knownMinimum).toWireDocumentConversion().flatMapConverted { minimum ->
-        QueryRunQualification.create(minimum, limitations.map(QueryLimitationWireDocument::toContract))
+        QueryRunQualification.create(minimum, limitations.map(QueryLimitationWireDocument::toContract), progress)
             .toWireDocumentConversion()
     }
 

@@ -2,6 +2,8 @@ package io.github.amichne.kast.protocol.wire
 
 import io.github.amichne.kast.kernel.*
 import io.github.amichne.kast.protocol.contract.*
+import io.github.amichne.kast.protocol.contract.SourceQualifiedProgressDocument
+import io.github.amichne.kast.protocol.contract.SourceTerminalReasonDocument
 import java.util.UUID
 import kotlinx.serialization.json.*
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -122,7 +124,9 @@ class SnapshotEvidenceWireBindingTest {
             SourceReadQualification.create(
                     SourceEntityCountDocument.parse(0).refined(),
                     listOf(SourceReadLimitationDocument.WORK_LIMIT_REACHED),
-                    SourceReadContinuationStateDocument.Unavailable,
+                    SourceQualifiedProgressDocument.TerminalIncomplete(
+                        SourceTerminalReasonDocument.UPSTREAM_INCOMPLETE
+                    ),
                 )
                 .refined()
         return listOf(OperationOutcome.Complete(evidence), OperationOutcome.Qualified(evidence, qualification))

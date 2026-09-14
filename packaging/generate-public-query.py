@@ -16,10 +16,13 @@ KOTLIN = ROOT / 'app-server/src/main/kotlin/io/github/amichne/kast/appserver/que
 SCHEMA = RESOURCES / 'query.schema.json'
 PREFIX = 'PublicQuery'
 HEADER = '''// Generated from query.schema.json by packaging/generate-public-query.py. Do not edit.
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
 package io.github.amichne.kast.appserver.query
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
+import io.github.amichne.kast.protocol.contract.ExecutionBudgetDocument
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerializationException
@@ -51,7 +54,7 @@ def name(value: str) -> str:
 
 def render(schema: dict) -> dict[Path, str]:
     definitions = schema['$defs']
-    objects = {'Document': schema, **{key: value for key, value in definitions.items() if tagged_type(value, 'object')}}
+    objects = {'Document': schema, **{key: value for key, value in definitions.items() if tagged_type(value, 'object') and 'x-kotlin-type' not in value}}
     unions = {key: value for key, value in definitions.items() if 'anyOf' in value}
     parents = {branch['$ref'].split('/')[-1]: key for key, value in unions.items() for branch in value['anyOf']}
     enums = {key: value for key, value in definitions.items() if 'enum' in value}
@@ -83,6 +86,8 @@ def render(schema: dict) -> dict[Path, str]:
 
     def literal(node: dict, value) -> str:
         key, spec = resolve(node)
+        if 'x-kotlin-type' in spec and tagged_type(spec, 'object') and value == {}:
+            return typename(node) + '()'
         if 'enum' in spec:
             if value not in spec['enum']:
                 raise ValueError(f'Invalid enum default: {value}')
@@ -113,7 +118,12 @@ def render(schema: dict) -> dict[Path, str]:
                 default = ' = null'
             else:
                 raise ValueError(f'Optional control lacks a declaring default: {prop}')
-        return f'    {prefix}{prop}: {typename(spec)}{default},\n'
+        parameter = prop
+        annotation = ''
+        if 'x-kotlin-type' in resolved and '_' in prop:
+            parameter = prop.split('_')[0] + ''.join(part.title() for part in prop.split('_')[1:])
+            annotation = f'    @SerialName({json.dumps(prop)})\n    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)\n'
+        return annotation + f'    {prefix}{parameter}: {typename(spec)}{default},\n'
 
     lines = [HEADER]
     for key, value in enums.items():
@@ -248,7 +258,7 @@ def render_tools(authority: dict) -> dict[Path, str]:
     import copy
     definitions = copy.deepcopy(authority['$defs'])
     roots = {''.join(part.title() for part in tool['name'].split('_')): tool['schema'] for tool in authority['tools']}
-    objects = {**definitions, **roots}
+    objects = {**{key: value for key, value in definitions.items() if 'x-kotlin-type' not in value}, **roots}
     enums = {}
     unions = {'Scope': ['DirectoryScope', 'PackageScope'],
               'Source': ['SearchSource', 'AllSource', 'ReferenceSource'],
@@ -256,7 +266,11 @@ def render_tools(authority: dict) -> dict[Path, str]:
     parents = {child: parent for parent, children in unions.items() for child in children}
     def typ(spec, prop):
         if '$ref' in spec:
-            return 'PublicTool' + spec['$ref'].split('/')[-1]
+            key = spec['$ref'].split('/')[-1]
+            external = definitions.get(key, {})
+            if 'x-kotlin-type' in external:
+                return external['x-kotlin-type'] + ('?' if nullable(external) else '')
+            return 'PublicTool' + key
         if 'anyOf' in spec:
             branches = [s['$ref'].split('/')[-1] for s in spec['anyOf'] if '$ref' in s]
             union = next(key for key, values in unions.items() if values == branches)
@@ -291,8 +305,13 @@ def render_tools(authority: dict) -> dict[Path, str]:
         else:
             body.append(annotation + f'internal data class PublicTool{key}(\n')
             for prop, value in props:
-                default = ' = null' if prop not in spec.get('required', []) and nullable(value) else ''
-                body.append(f'    val {prop}: {typ(value, prop)}{default},\n')
+                resolved = definitions[value['$ref'].split('/')[-1]] if '$ref' in value else value
+                default = ' = null' if prop not in spec.get('required', []) and nullable(resolved) else ''
+                parameter = prop
+                if 'x-kotlin-type' in resolved and '_' in prop:
+                    parameter = prop.split('_')[0] + ''.join(part.title() for part in prop.split('_')[1:])
+                    body.append(f'    @SerialName({json.dumps(prop)})\n    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)\n')
+                body.append(f'    val {parameter}: {typ(value, prop)}{default},\n')
             body.append(')' + suffix + '\n\n')
     for key, values in enums.items():
         lines.append(f'@Serializable\ninternal enum class PublicTool{key} {{\n')

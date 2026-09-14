@@ -21,6 +21,17 @@ internal enum class JsonSchemaViolationKeyword(val wireName: String) {
     MAX_LENGTH("maxLength"),
     MIN_ITEMS("minItems"),
     MAX_ITEMS("maxItems"),
+    EXECUTION_BUDGET("execution_budget"),
+    MAX_ELAPSED_MS("max_elapsed_ms"),
+    MAX_WORK_UNITS("max_work_units"),
+    MAX_RESULTS("max_results"),
+    MAX_RETURNED_BYTES("max_returned_bytes"),
+    SELECTION("selection"),
+    REQUESTED("requested"),
+    CONFIGURED_DEFAULT("configuredDefault"),
+    OPERATOR_CEILING("operatorCeiling"),
+    EFFECTIVE("effective"),
+    CLAMPING("clamping"),
     UNKNOWN("");
 
     companion object {
@@ -71,6 +82,17 @@ internal enum class JsonSchemaViolationField(val wireName: String) {
     CONTINUATION("continuation"),
     REASON("reason"),
     DIAGNOSTIC("diagnostic"),
+    EXECUTION_BUDGET("execution_budget"),
+    MAX_ELAPSED_MS("max_elapsed_ms"),
+    MAX_WORK_UNITS("max_work_units"),
+    MAX_RESULTS("max_results"),
+    MAX_RETURNED_BYTES("max_returned_bytes"),
+    SELECTION("selection"),
+    REQUESTED("requested"),
+    CONFIGURED_DEFAULT("configuredDefault"),
+    OPERATOR_CEILING("operatorCeiling"),
+    EFFECTIVE("effective"),
+    CLAMPING("clamping"),
     UNKNOWN("");
 
     companion object {

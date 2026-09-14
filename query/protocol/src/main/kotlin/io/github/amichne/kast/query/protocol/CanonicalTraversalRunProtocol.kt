@@ -197,7 +197,7 @@ class CanonicalTraversalRunProtocol(
             TraversalProjection.Complete -> OperationOutcome.Complete(envelope)
             is TraversalProjection.Qualified -> {
                 val qualification =
-                    projection.qualification.protocolQualification(authority)
+                    projection.qualification.protocolQualification(authority, page.records.size)
                         ?: return OperationOutcome.Rejected(TraversalRunRejection.PLAN_REJECTED)
                 OperationOutcome.Qualified(envelope, qualification)
             }

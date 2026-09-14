@@ -161,15 +161,22 @@ class IntellijSourceEntityReadTest {
         val continuation = (first.qualification.continuation as SourceReadContinuationState.Available).continuation
 
         val final =
-            read(
-                port,
-                fixture,
-                selection,
-                limit = 1,
-                page = SourceReadPage.Continue(continuation),
+            org.junit.jupiter.api.Assertions.assertInstanceOf(
+                SourceReadResult.Complete::class.java,
+                read(
+                    port,
+                    fixture,
+                    selection,
+                    limit = 4,
+                    page = SourceReadPage.Continue(continuation),
+                ),
             )
-                as SourceReadResult.Complete
         assertEquals(listOf("nested"), final.entities.names())
+
+        val reference = read(port, fixture, selection, limit = 4) as SourceReadResult.Complete
+        assertEquals(reference.entities, first.entities + final.entities)
+        val replay = read(port, fixture, selection, limit = 1) as SourceReadResult.Qualified
+        assertEquals(first.qualification.continuation, replay.qualification.continuation)
 
         assertEquals(
             SourceReadResult.Rejected(io.github.amichne.kast.source.contract.SourceReadRejection.CONTRACT_VIOLATION),
@@ -270,6 +277,7 @@ class IntellijSourceEntityReadTest {
                 SourceEntityLimit.parse(limit).refined(),
                 SourceTextByteLimit.parse(65_536).refined(),
                 page,
+                resources = sourceTestResources(),
             ),
         )
     }
@@ -564,3 +572,10 @@ class IntellijSourceEntityReadTest {
         val entities: List<SourceEntity>,
     )
 }
+
+private fun sourceTestResources(): io.github.amichne.kast.kernel.ResourceBudget =
+    io.github.amichne.kast.kernel.ResourceBudget(
+        (io.github.amichne.kast.kernel.ResultLimit.parse(1000) as Refinement.Refined).value,
+        (io.github.amichne.kast.kernel.WorkUnitLimit.parse(10000) as Refinement.Refined).value,
+        (io.github.amichne.kast.kernel.ElapsedTimeLimitMillis.parse(2000) as Refinement.Refined).value,
+    )

@@ -12,6 +12,8 @@ import io.github.amichne.kast.cli.projection.CanonicalSymbolCliDocuments
 import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
 import io.github.amichne.kast.kernel.*
 import io.github.amichne.kast.protocol.contract.*
+import io.github.amichne.kast.protocol.contract.SourceQualifiedProgressDocument
+import io.github.amichne.kast.protocol.contract.SourceTerminalReasonDocument
 import io.github.amichne.kast.query.protocol.RelationPagingFixture
 import java.util.UUID
 import kotlinx.coroutines.test.runTest
@@ -52,6 +54,15 @@ class LiveReadOutputSchemaTest {
                     )
                     .document(),
             )
+        }
+    }
+
+    @Test
+    fun `every finite relation rejection satisfies its installed schema`() {
+        for (reason in RelationReadRejection.entries) {
+            val document = CanonicalReadCliDocuments.projectRelation(OperationOutcome.Rejected(reason)).document()
+            assertAdmits(CanonicalOperation.RELATION_READ, document)
+            assertEquals(JsonPrimitive(reason.name.lowercase().replace('_', '-')), document["reason"])
         }
     }
 
@@ -122,7 +133,7 @@ class LiveReadOutputSchemaTest {
         }
     }
 
-    private fun relationInputSchema(): com.networknt.schema.Schema {
+    internal fun relationInputSchema(): com.networknt.schema.Schema {
         val graph =
             (CliCommandGraphFactory.create(canonicalCliRequestPreparers()) as CliCommandGraphConstruction.Created)
                 .factory
@@ -337,10 +348,10 @@ class LiveReadOutputSchemaTest {
                         )
                         .refined(),
                 )
-            assertAdmits(
-                CanonicalOperation.TRAVERSAL_RUN,
-                CanonicalReadCliDocuments.projectTraversal(outcome).document(),
-            )
+            val operation = CanonicalOperation.TRAVERSAL_RUN
+            val document = CanonicalReadCliDocuments.projectTraversal(outcome).document()
+            assertAdmits(operation, document)
+            assertUpstreamTraversalCheckpointContract(document, continuation)
         }
     }
 
@@ -353,6 +364,11 @@ class LiveReadOutputSchemaTest {
                             QueryRunQualification.create(
                                     QueryKnownMinimum.parse(0).refined(),
                                     listOf(QueryLimitationDocument.DISCOVERY_INCOMPLETE),
+                                    io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument
+                                        .TerminalIncomplete(
+                                            io.github.amichne.kast.protocol.contract.QueryTerminalReasonDocument
+                                                .UPSTREAM_INCOMPLETE
+                                        ),
                                 )
                                 .refined(),
                         )
@@ -389,7 +405,9 @@ class LiveReadOutputSchemaTest {
                             SourceReadQualification.create(
                                     SourceEntityCountDocument.parse(0).refined(),
                                     listOf(SourceReadLimitationDocument.WORK_LIMIT_REACHED),
-                                    SourceReadContinuationStateDocument.Unavailable,
+                                    SourceQualifiedProgressDocument.TerminalIncomplete(
+                                        SourceTerminalReasonDocument.UPSTREAM_INCOMPLETE
+                                    ),
                                 )
                                 .refined(),
                         )
@@ -448,7 +466,7 @@ class LiveReadOutputSchemaTest {
                     .document(),
         )
 
-    private fun sourceResult(basis: EvidenceBasis): SourceReadResult {
+    fun sourceResult(basis: EvidenceBasis): SourceReadResult {
         val snapshot =
             SourceSnapshotDocument(
                 text("/workspace"),
@@ -475,7 +493,7 @@ class LiveReadOutputSchemaTest {
         )
     }
 
-    private fun traversalResult(): TraversalRunResult =
+    fun traversalResult(): TraversalRunResult =
         TraversalRunResult(
             text("/workspace"),
             BoundedProtocolList.create(
@@ -520,37 +538,32 @@ class LiveReadOutputSchemaTest {
         if (operation == CanonicalOperation.SOURCE_READ) document.getValue("snapshot").jsonObject
         else document.getValue("graph").jsonObject.getValue("snapshot").jsonObject
 
-    private fun JsonObject.withSnapshot(operation: CanonicalOperation, snapshot: JsonObject): JsonObject =
+    internal fun JsonObject.withSnapshot(operation: CanonicalOperation, snapshot: JsonObject): JsonObject =
         if (operation == CanonicalOperation.SOURCE_READ) with("snapshot", snapshot)
         else with("graph", getValue("graph").jsonObject.with("snapshot", snapshot))
 
-    private fun assertAdmits(operation: CanonicalOperation, document: JsonObject) {
+    internal fun qualifiedEnvelope(operation: CanonicalOperation): String =
+        completedSchemaEnvelope(qualifiedDocuments(published).first { it.first == operation }.second)
+
+    internal fun assertAdmits(operation: CanonicalOperation, document: JsonObject) {
         val errors = validate(operation, document)
         assertTrue(errors.isEmpty(), "$operation rejected its emitted document: $errors")
     }
 
-    private fun assertRejects(operation: CanonicalOperation, document: JsonObject) =
+    internal fun assertRejects(operation: CanonicalOperation, document: JsonObject) =
         assertTrue(validate(operation, document).isNotEmpty(), "$operation admitted contradictory evidence: $document")
 
     private fun validate(operation: CanonicalOperation, document: JsonObject) =
         schemas
             .getSchema(installedServerOutputSchema(operation).toString())
             .validate(
-                Json.encodeToString(CompletedProviderEnvelope(ProviderStatus.COMPLETED, document)),
+                completedSchemaEnvelope(document),
                 InputFormat.JSON,
             )
 
-    /** The provider envelope owns a contract-defined dynamic canonical CLI document. */
-    @Serializable private data class CompletedProviderEnvelope(val status: ProviderStatus, val document: JsonObject)
-
-    @Serializable
-    private enum class ProviderStatus {
-        @kotlinx.serialization.SerialName("completed") COMPLETED
-    }
-
     @Serializable private data object UnusedMetadata
 
-    private fun ProjectedCliOutcome.document(): JsonObject =
+    internal fun ProjectedCliOutcome.document(): JsonObject =
         when (this) {
                 is ProjectedCliOutcome.Complete -> document
                 is ProjectedCliOutcome.Qualified -> document
@@ -563,7 +576,7 @@ class LiveReadOutputSchemaTest {
     private fun <R> complete(operation: CanonicalOperation, basis: EvidenceBasis, result: R) =
         OperationOutcome.Complete(EvidenceEnvelope(operation.id, basis, result))
 
-    private fun JsonObject.with(key: String, value: JsonElement) = JsonObject(this + (key to value))
+    internal fun JsonObject.with(key: String, value: JsonElement) = JsonObject(this + (key to value))
 
     private fun text(value: String) = ProtocolText.parse(value).refined()
 
@@ -571,5 +584,5 @@ class LiveReadOutputSchemaTest {
 
     private fun <T> empty(): BoundedProtocolList<T> = BoundedProtocolList.create(emptyList<T>()).refined()
 
-    private fun <T, F> Refinement<T, F>.refined(): T = (this as Refinement.Refined).value
+    internal fun <T, F> Refinement<T, F>.refined(): T = (this as Refinement.Refined).value
 }

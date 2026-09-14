@@ -1,0 +1,83 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
+package io.github.amichne.kast.protocol.contract
+
+import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
+import io.github.amichne.kast.kernel.ExecutionAllowance
+import io.github.amichne.kast.kernel.RequestedExecutionBudget
+import io.github.amichne.kast.kernel.ResultLimit
+import io.github.amichne.kast.kernel.ReturnedByteLimit
+import io.github.amichne.kast.kernel.WorkUnitLimit
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
+/** Optional boundary controls; all supplied numbers are refined during deserialization. */
+@Serializable
+data class ExecutionBudgetDocument(
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @SerialName("max_elapsed_ms")
+    @Serializable(with = ExecutionElapsedSerializer::class)
+    val maxElapsedMillis: ElapsedTimeLimitMillis? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @SerialName("max_work_units")
+    @Serializable(with = ExecutionWorkSerializer::class)
+    val maxWorkUnits: WorkUnitLimit? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @SerialName("max_results")
+    @Serializable(with = ExecutionResultsSerializer::class)
+    val maxResults: ResultLimit? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @SerialName("max_returned_bytes")
+    @Serializable(with = ExecutionBytesSerializer::class)
+    val maxReturnedBytes: ReturnedByteLimit? = null,
+) {
+    fun requested() =
+        RequestedExecutionBudget(
+            maxElapsedMillis.allowance(),
+            maxWorkUnits.allowance(),
+            maxResults.allowance(),
+            maxReturnedBytes.allowance(),
+        )
+}
+
+private fun <Value : Any> Value?.allowance(): ExecutionAllowance<Value> =
+    if (this == null) ExecutionAllowance.Default else ExecutionAllowance.Requested(this)
+
+internal object ExecutionElapsedSerializer :
+    RefiningLongSerializer<ElapsedTimeLimitMillis>("ExecutionElapsedMillis", 1) {
+    override fun raw(value: ElapsedTimeLimitMillis) = value.value
+
+    override fun refine(raw: Long) = ElapsedTimeLimitMillis.parse(raw)
+}
+
+internal object ExecutionWorkSerializer : RefiningLongSerializer<WorkUnitLimit>("ExecutionWorkUnits", 1) {
+    override fun raw(value: WorkUnitLimit) = value.value
+
+    override fun refine(raw: Long) = WorkUnitLimit.parse(raw)
+}
+
+internal object ExecutionResultsSerializer :
+    RefiningIntSerializer<ResultLimit>("ExecutionResults", 1, Int.MAX_VALUE.toLong()) {
+    override fun raw(value: ResultLimit) = value.value
+
+    override fun refine(raw: Int) = ResultLimit.parse(raw)
+}
+
+internal object ExecutionBytesSerializer : RefiningLongSerializer<ReturnedByteLimit>("ExecutionReturnedBytes", 1) {
+    override fun raw(value: ReturnedByteLimit) = value.value
+
+    override fun refine(raw: Long) = ReturnedByteLimit.parse(raw)
+}
+
+@Serializable
+enum class ExecutionBudgetSelectionDocument {
+    @SerialName("configured_default") CONFIGURED_DEFAULT,
+    @SerialName("caller") CALLER,
+}
+
+@Serializable
+enum class ExecutionBudgetClampDocument {
+    @SerialName("operator_ceiling") OPERATOR_CEILING,
+    @SerialName("transport_capacity") TRANSPORT_CAPACITY,
+    @SerialName("deadline_remaining") DEADLINE_REMAINING,
+}

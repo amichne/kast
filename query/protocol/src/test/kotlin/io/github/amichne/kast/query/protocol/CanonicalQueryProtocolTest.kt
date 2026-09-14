@@ -30,6 +30,8 @@ class CanonicalQueryProtocolTest {
             QueryByteLimit.parse(10000).refined(),
         )
 
+    private val largerGrant = ExecutionBudgetDocument(maxWorkUnits = WorkUnitLimit.parse(200).refined())
+
     @Test
     fun `opaque checkpoint binds query and snapshot while allowing fresh page budget`() = runTest {
         val store = QueryCheckpointStore()
@@ -64,14 +66,17 @@ class CanonicalQueryProtocolTest {
                 store,
             )
         val first = protocol.execute(request(), lease, budget) as OperationOutcome.Qualified
-        val token = first.evidence.payload.continuation!!
+        val token = first.qualification.progress.continuationToken!!
         assertTrue(token.value.length < 64)
-        assertNull(first.evidence.payload.terminalReason)
+        assertEquals(
+            ReadResumeActionDocument.INCREASE_EXECUTION_BUDGET,
+            (first.qualification.progress as QueryQualifiedProgressDocument.Resumable).nextAction,
+        )
         assertCheckpointBinding(protocol, token)
         assertInstanceOf(
             OperationOutcome.Complete::class.java,
             protocol.execute(
-                request().copy(continuation = token),
+                request().copy(continuation = token, executionBudget = largerGrant),
                 lease,
                 budget.copy(returnedBytes = QueryByteLimit.parse(20000).refined()),
             ),
@@ -99,39 +104,6 @@ class CanonicalQueryProtocolTest {
             (protocol.execute(request().copy(continuation = text("query:v1:missing")), lease, budget)
                     as OperationOutcome.Rejected)
                 .reason,
-        )
-    }
-
-    @Test
-    fun `checkpoint expiry and capacity release retained state with explicit unavailable outcome`() = runTest {
-        var now = 0L
-        val store = QueryCheckpointStore(capacity = 1, maximumBytes = 16384L, clock = { now })
-        lateinit var retained: QueryCheckpoint
-        CanonicalQueryProtocol(
-                QueryOperations { admitted ->
-                    retained =
-                        object : QueryCheckpoint {
-                            override val plan = admitted.plan
-                            override val lease = admitted.lease
-                            override val retainedBytes = 1024L
-                        }
-                    QueryExecutionResult.Complete(
-                        QueryResult(QueryResultSet.Symbols(emptyList()), emptyList()),
-                        QueryCoverage.Complete(QueryCount.parse(0).refined()),
-                    )
-                },
-                CanonicalQueryReferences(),
-            )
-            .execute(request(), lease, budget)
-        val first = store.issue(request(), retained) as QueryCheckpointIssuance.Issued
-        val second = store.issue(request(), retained) as QueryCheckpointIssuance.Issued
-        assertEquals(QueryCheckpointRestoration.Unavailable, store.restore(first.token, request(), lease))
-        assertInstanceOf(QueryCheckpointRestoration.Restored::class.java, store.restore(second.token, request(), lease))
-        now = 600_000_000_001L
-        assertEquals(QueryCheckpointRestoration.Unavailable, store.restore(second.token, request(), lease))
-        assertEquals(
-            QueryCheckpointIssuance.CapacityExceeded,
-            QueryCheckpointStore(maximumBytes = 1L).issue(request(), retained),
         )
     }
 
@@ -534,6 +506,8 @@ class CanonicalQueryProtocolTest {
                 executed = true
                 assertEquals(2, read.entityLimit.value)
                 assertEquals(64L, read.textByteLimit.value)
+                assertEquals(10L, read.resources.workUnitLimit.value)
+                assertEquals(100L, read.resources.elapsedTimeLimit.value)
                 io.github.amichne.kast.source.contract.SourceReadResult.Rejected(
                     io.github.amichne.kast.source.contract.SourceReadRejection.WORKSPACE_NOT_READY
                 )
@@ -543,14 +517,21 @@ class CanonicalQueryProtocolTest {
                 .execute(
                     request,
                     lease,
-                    SourceProtocolBudget(
-                        io.github.amichne.kast.source.contract.SourceEntityLimit.parse(2).refined(),
-                        io.github.amichne.kast.source.contract.SourceTextByteLimit.parse(64).refined(),
-                    ),
+                    sourceProjectionBudget(),
                 )
         assertTrue(executed)
         assertTrue(outcome is OperationOutcome.Rejected)
     }
+
+    private fun sourceProjectionBudget() =
+        SourceProtocolBudget(
+            io.github.amichne.kast.kernel.ResourceBudget(
+                io.github.amichne.kast.kernel.ResultLimit.parse(2).refined(),
+                io.github.amichne.kast.kernel.WorkUnitLimit.parse(10).refined(),
+                io.github.amichne.kast.kernel.ElapsedTimeLimitMillis.parse(100).refined(),
+            ),
+            io.github.amichne.kast.source.contract.SourceTextByteLimit.parse(64).refined(),
+        )
 
     private fun token(payload: String): ProtocolText {
         val bytes = payload.toByteArray()

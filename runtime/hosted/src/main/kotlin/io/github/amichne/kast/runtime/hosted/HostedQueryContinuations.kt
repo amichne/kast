@@ -6,29 +6,30 @@ import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument
 import io.github.amichne.kast.protocol.contract.QueryRunQualification
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.QueryRunResult
+import io.github.amichne.kast.protocol.contract.RelationContinuationDocument
+import io.github.amichne.kast.protocol.contract.RelationReadPositionDocument
+import io.github.amichne.kast.protocol.contract.RelationReadRejection
+import io.github.amichne.kast.protocol.contract.RelationReadRequest
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
-import io.github.amichne.kast.protocol.wire.WireEncoding
 import io.github.amichne.kast.query.protocol.QueryCheckpointStore
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
-import java.util.UUID
-import java.util.concurrent.TimeUnit
-import kotlinx.serialization.json.Json
 
 internal typealias HostedQueryOutcome = OperationOutcome<QueryRunResult, QueryRunQualification, QueryRunRejection>
 
 /** Project-free bounded detached state shared across hosted read epochs; lease checks fail closed on every resume. */
-internal sealed interface HostedQueryRetention {
-    data class Retained(val token: ProtocolText) : HostedQueryRetention
+internal sealed interface HostedOutputRetention {
+    data class Retained(val token: ProtocolText) : HostedOutputRetention
 
-    data object CapacityExceeded : HostedQueryRetention
+    data object CapacityExceeded : HostedOutputRetention
 
-    data object EncodingRejected : HostedQueryRetention
+    data object EncodingRejected : HostedOutputRetention
 }
 
 @Service(Service.Level.PROJECT)
@@ -61,89 +62,53 @@ internal class HostedQueryContinuations : Disposable {
                 ttlMillis = limits[ReadLimitParameter.QUERY_CONTINUATION_TTL_MILLIS].value.toLong(),
             )
 
-        private data class Entry(
-            val request: QueryRunRequest,
-            val lease: SemanticReadAuthority,
-            val outcome: HostedQueryOutcome,
-            val bytes: Long,
-            val createdAt: Long,
-        )
+        private val outputs =
+            HostedOutputPages(
+                CanonicalOperationWireBindings.queryRun,
+                prefix,
+                limits,
+                normalize = { request: QueryRunRequest ->
+                    request.copy(continuation = null, executionBudget = null)
+                },
+                unavailable =
+                    QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.CONTINUATION_UNAVAILABLE),
+                mismatch = QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.CONTINUATION_MISMATCH),
+            )
 
-        private val entries = linkedMapOf<ProtocolText, Entry>()
-        private val maximumBytes = limits[ReadLimitParameter.QUERY_CONTINUATION_BYTES].value.toLong()
-        private val capacity = limits[ReadLimitParameter.QUERY_CONTINUATION_ENTRIES].value
+        val sourceOutputs = hostedSourceOutputPages(limits)
+        val traversalOutputs = hostedTraversalOutputPages(limits)
 
-        @Synchronized
+        val relationOutputs =
+            HostedOutputPages(
+                CanonicalOperationWireBindings.relationRead,
+                RelationContinuationDocument.OUTPUT_PREFIX,
+                limits,
+                normalize = { request: RelationReadRequest ->
+                    request.copy(
+                        position = RelationReadPositionDocument.Start,
+                        executionBudget = null,
+                        limit = (ProtocolCount.parse(1) as Refinement.Refined).value,
+                    )
+                },
+                unavailable = RelationReadRejection.CONTINUATION_UNAVAILABLE,
+                mismatch = RelationReadRejection.CONTINUATION_REQUEST_MISMATCH,
+            )
+
         fun issue(
             request: QueryRunRequest,
             lease: SemanticReadAuthority,
             outcome: HostedQueryOutcome,
-        ): HostedQueryRetention {
-            expire()
-            val retainedRequest = request.copy(continuation = null)
-            val requestBytes =
-                Json.encodeToString(QueryRunRequest.serializer(), retainedRequest)
-                    .toByteArray(Charsets.UTF_8)
-                    .size
-                    .toLong()
-            val outcomeBytes =
-                when (val encoded = CanonicalOperationWireBindings.queryRun.encodeOutcome(outcome)) {
-                    is WireEncoding.Encoded -> encoded.document.toByteArray(Charsets.UTF_8).size.toLong()
-                    is WireEncoding.Rejected -> return HostedQueryRetention.EncodingRejected
-                }
-            val bytes = (requestBytes + outcomeBytes) * RETAINED_DOCUMENT_FACTOR
-            if (bytes > maximumBytes) return HostedQueryRetention.CapacityExceeded
-            while (entries.size >= capacity || entries.values.sumOf { it.bytes } + bytes > maximumBytes) entries.remove(
-                entries.keys.first()
-            )
-            val token =
-                when (val parsed = ProtocolText.parse(prefix + UUID.randomUUID())) {
-                    is Refinement.Refined -> parsed.value
-                    is Refinement.Rejected -> error("Generated query output handle must fit ProtocolText")
-                }
-            entries[token] =
-                Entry(
-                    request = retainedRequest,
-                    lease = lease,
-                    outcome = outcome,
-                    bytes = bytes,
-                    createdAt = System.nanoTime(),
-                )
-            return HostedQueryRetention.Retained(token)
-        }
+        ): HostedOutputRetention = outputs.issue(request, lease, outcome)
 
-        @Synchronized
-        fun restore(token: ProtocolText, request: QueryRunRequest, lease: SemanticReadAuthority): HostedQueryOutcome {
-            expire()
-            val entry = entries[token] ?: return rejection(QueryExecutionRejectionDocument.CONTINUATION_UNAVAILABLE)
-            if (
-                entry.lease != lease ||
-                    request.copy(execution = entry.request.execution, continuation = null) != entry.request
-            ) {
-                return rejection(QueryExecutionRejectionDocument.CONTINUATION_MISMATCH)
-            }
-            return entry.outcome
-        }
+        fun restore(token: ProtocolText, request: QueryRunRequest, lease: SemanticReadAuthority): HostedQueryOutcome =
+            outputs.restore(token, request, lease)
 
-        @Synchronized
         fun clear() {
-            entries.clear()
+            outputs.clear()
+            relationOutputs.clear()
+            sourceOutputs.clear()
+            traversalOutputs.clear()
             checkpoints.clear()
         }
-
-        private fun expire() {
-            val now = System.nanoTime()
-            entries.entries.removeIf { entry ->
-                now - entry.value.createdAt >
-                    TimeUnit.MILLISECONDS.toNanos(
-                        limits[ReadLimitParameter.QUERY_CONTINUATION_TTL_MILLIS].value.toLong()
-                    )
-            }
-        }
-
-        private fun rejection(reason: QueryExecutionRejectionDocument): HostedQueryOutcome =
-            OperationOutcome.Rejected(QueryRunRejection.ExecutionRejected(reason))
     }
 }
-
-private const val RETAINED_DOCUMENT_FACTOR = 4L

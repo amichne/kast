@@ -14,7 +14,9 @@ import subprocess
 from hosted_read_transport import HostedReadTransport, ReadProviderFailure, ReadTransportRejected
 from hosted_read_requests import NativeTraversalRequest, TraversalStart, TraversalResume
 from native_provider_qualification import qualification_document
+from hosted_concurrent_read import run_concurrent_read_regression
 from hosted_enum_read_regression import run_enum_read_regression
+from hosted_source_read_regression import run_source_paging_regression, source_qualification_observation
 
 
 def _reproduction(repo):
@@ -38,6 +40,7 @@ def run_read_regression(isolation, fixture, product, java, harness, repo, read_f
     oracle = _reproduction(repo)
     rows, failure, failure_details, unchanged, before = [], None, None, False, False
     qualification = None
+    concurrent = None
     try:
         before = read_fixture.unchanged()
         with HostedReadTransport(isolation, fixture, product, java, harness).open() as transport:
@@ -45,6 +48,7 @@ def run_read_regression(isolation, fixture, product, java, harness, repo, read_f
             for surface in ('cli', 'provider'):
                 replay = _ReadReplay(oracle, read_fixture, initial_live, transport, surface, rows)
                 replay.run()
+            concurrent = run_concurrent_read_regression(isolation, read_fixture, oracle, transport, initial_live)
     except ReadTransportRejected as error:
         failure = 'READ_TRANSPORT_REJECTED'
         failure_details = error.evidence()
@@ -57,14 +61,15 @@ def run_read_regression(isolation, fixture, product, java, harness, repo, read_f
             unchanged = before and read_fixture.unchanged()
         except (OSError, ValueError):
             failure = 'READ_FIXTURE_REJECTED'
-    passed = failure is None and unchanged and bool(rows) and all(row['passed'] for row in rows)
+    passed = (failure is None and unchanged and bool(rows) and all(row['passed'] for row in rows)
+              and concurrent is not None and concurrent['outcome'] == 'passed')
     return {'schemaVersion': 1, 'outcome': 'passed' if passed else 'rejected', 'failure': failure,
             'failureDetails': failure_details, 'providerQualification': qualification,
             'scope': 'complete-authored-base-semantic-matrix-and-eight-default-read-tools',
             'fixture': read_fixture.evidence(), 'sourceUnchanged': unchanged,
             'queryBudgets': 'unchanged-production-policy', 'sourcePayloadsLogged': False,
             'stockCodexUi': 'unqualified', 'caseCount': len(rows),
-            'passedCount': sum(row['passed'] for row in rows), 'cases': rows}
+            'passedCount': sum(row['passed'] for row in rows), 'cases': rows, 'concurrentReplay': concurrent}
 
 
 class _ReadReplay:
@@ -120,6 +125,7 @@ class _ReadReplay:
             self.record('specialist-read-tools', 'all', {'issuerAvailable': False})
             return
         self.source_read()
+        run_source_paging_regression(self)
         run_enum_read_regression(self)
         self.relations()
         response = self.transport.invoke(self.surface, 'check_diagnostics',
@@ -223,6 +229,8 @@ def _read_observation(response):
     qualification = response.get('qualification')
     if isinstance(qualification, dict) and 'relationLimitations' in qualification:
         result['traversalQualification'] = _traversal_qualification_observation(qualification)
+    if isinstance(qualification, dict) and 'knownMinimumEntityCount' in qualification:
+        result['sourceQualification'] = source_qualification_observation(qualification)
     live = response.get('live')
     if (isinstance(live, dict) and set(live) == {'root', 'host', 'epoch', 'contentView', 'version'}
             and type(live['epoch']) is int and 1 <= live['epoch'] <= 2**63 - 1

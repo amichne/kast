@@ -128,19 +128,6 @@ class CanonicalQueryProtocol(
             }
         val boundedItems = BoundedProtocolList.create(items).refinedOrNull() ?: return contractRejected()
         val boundedFailures = BoundedProtocolList.create(failures).refinedOrNull() ?: return contractRejected()
-        var token: ProtocolText? = null
-        var terminalReason: QueryTerminalReasonDocument? = null
-        when (continuationState) {
-            is QueryContinuationState.Resumable ->
-                when (val issued = checkpoints.issue(request, continuationState.checkpoint)) {
-                    is QueryCheckpointIssuance.Issued -> token = issued.token
-                    QueryCheckpointIssuance.CapacityExceeded ->
-                        terminalReason = QueryTerminalReasonDocument.CHECKPOINT_CAPACITY_EXCEEDED
-                }
-            is QueryContinuationState.Terminal ->
-                terminalReason = QueryTerminalReasonDocument.valueOf(continuationState.reason.name)
-            null -> Unit
-        }
         val envelope =
             EvidenceEnvelope(
                 CanonicalOperation.QUERY_RUN.id,
@@ -148,15 +135,19 @@ class CanonicalQueryProtocol(
                 QueryRunResult(
                     items = boundedItems,
                     failures = boundedFailures,
-                    continuation = token,
-                    terminalReason = terminalReason,
                 ),
             )
-        if (coverage == null) return OperationOutcome.Complete(envelope)
+        if (coverage == null) {
+            if (continuationState != null) return contractRejected()
+            return OperationOutcome.Complete(envelope)
+        }
+        if (continuationState == null) return contractRejected()
+        val progress = projectQueryProgress(request, continuationState, items.size, checkpoints)
         val qualification =
             QueryRunQualification.create(
                     QueryKnownMinimum.parse(coverage.knownMinimum.value).refinedOrNull() ?: return contractRejected(),
                     coverage.limitations.map { QueryLimitationDocument.valueOf(it.name) },
+                    progress,
                 )
                 .refinedOrNull() ?: return contractRejected()
         return OperationOutcome.Qualified(envelope, qualification)

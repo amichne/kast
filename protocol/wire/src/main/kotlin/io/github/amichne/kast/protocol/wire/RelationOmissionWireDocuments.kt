@@ -93,6 +93,8 @@ internal data class RelationReadResultWireDocument(
     val relations: List<RelationFactWireDocument>,
     val omissions: List<RelationOmissionWireDocument>,
     val soundness: io.github.amichne.kast.protocol.contract.RelationSoundnessDocument,
+    @kotlinx.serialization.SerialName("execution_budget")
+    val executionBudget: io.github.amichne.kast.protocol.contract.ExecutionBudgetReport? = null,
 )
 
 internal fun RelationReadResult.toSymbolWireDocument() =
@@ -100,6 +102,7 @@ internal fun RelationReadResult.toSymbolWireDocument() =
         relations.values.map { it.toWireDocument() },
         omissions.values.map { it.toWireDocument() },
         soundness,
+        executionBudget,
     )
 
 /**
@@ -114,5 +117,5 @@ internal fun RelationReadResultWireDocument.toContract(): WireDocumentConversion
             omissions
                 .convertEach { it.toContract() }
                 .flatMapConverted { BoundedProtocolList.create(it).toWireDocumentConversion() }
-                .mapConverted { RelationReadResult(relations, it) }
+                .mapConverted { RelationReadResult(relations, it, executionBudget) }
         }

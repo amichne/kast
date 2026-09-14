@@ -16,7 +16,6 @@ import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiManager
-import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.source.contract.BodyKind
@@ -35,7 +34,6 @@ import io.github.amichne.kast.source.contract.SourceEntityKind
 import io.github.amichne.kast.source.contract.SourceEntityName
 import io.github.amichne.kast.source.contract.SourceEntityTarget
 import io.github.amichne.kast.source.contract.SourceNestingDepth
-import io.github.amichne.kast.source.contract.SourceRange
 import io.github.amichne.kast.source.contract.SourceReadContext
 import io.github.amichne.kast.source.contract.SourceReadLimitation
 import io.github.amichne.kast.source.contract.SourceReadRequest
@@ -45,7 +43,6 @@ import io.github.amichne.kast.source.contract.SourceSelector
 import io.github.amichne.kast.source.contract.SourceSnapshot
 import io.github.amichne.kast.source.contract.SourceTextIdentity
 import io.github.amichne.kast.source.contract.Utf16CodeUnitCount
-import io.github.amichne.kast.source.contract.Utf16CodeUnitOffset
 import io.github.amichne.kast.source.contract.readScope
 import io.github.amichne.kast.symbol.contract.CandidateSelector
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
@@ -114,8 +111,9 @@ internal class LiveIntellijSourceRegionAccess(
         if (DumbService.isDumb(project)) {
             return regionRejected(IntellijSourceReadRejection.COMPILER_ANALYSIS_UNAVAILABLE)
         }
+        val execution = IntellijSourceExecution(request.resources)
         return try {
-            readAction { selectInReadAction(context, request, cursor) }
+            readAction { selectInReadAction(context, request, cursor, execution) }
         } catch (cancelled: ProcessCanceledException) {
             throw cancelled
         } catch (cancelled: CancellationException) {
@@ -138,6 +136,7 @@ internal class LiveIntellijSourceRegionAccess(
         context: SourceReadContext,
         request: SourceReadRequest,
         cursor: IntellijSourceEntityCursor,
+        execution: IntellijSourceExecution,
     ): IntellijSourceRegionAccessResult {
         val fileIdentity =
             when (val anchor = request.anchor) {
@@ -186,7 +185,7 @@ internal class LiveIntellijSourceRegionAccess(
                         regionSelector,
                         request,
                         cursor,
-                        limits,
+                        execution,
                     )
             ) {
                 is NativeSourceEntityProjection.Projected -> projected.page
@@ -199,7 +198,7 @@ internal class LiveIntellijSourceRegionAccess(
                     admittedAnchor.selector,
                     regionSelector,
                     document.text,
-                    entityPage,
+                    execution.finish(entityPage),
                 )
         ) {
             is Refinement.Refined -> IntellijSourceRegionAccessResult.Selected(capture.value)
@@ -504,74 +503,10 @@ private fun PsiElement?.strictAncestors(selector: SourceSelector): Sequence<PsiE
                 element.textRange.endOffset > selector.range.endExclusive.value
         }
 
-private fun SourceSelector.nativeRegionKind(): SourceRegionKind =
-    when (this) {
-        is SourceSelector.RootRegion -> kind
-        is SourceSelector.NestedRegion -> kind
-        is SourceSelector.Entity -> SourceRegionKind.ANCHOR
-    }
-
-private fun SourceSnapshot.sourceRange(textRange: TextRange): SourceRange? =
-    sourceRange(textRange.startOffset, textRange.endOffset)
-
-private fun SourceSnapshot.sourceRange(start: Int, end: Int): SourceRange? {
-    val startOffset =
-        when (val parsed = Utf16CodeUnitOffset.parse(start)) {
-            is Refinement.Refined -> parsed.value
-            is Refinement.Rejected -> return null
-        }
-    val endOffset =
-        when (val parsed = Utf16CodeUnitOffset.parse(end)) {
-            is Refinement.Refined -> parsed.value
-            is Refinement.Rejected -> return null
-        }
-    return when (val admitted = SourceRange.create(this, startOffset, endOffset)) {
-        is Refinement.Refined -> admitted.value
-        is Refinement.Rejected -> null
-    }
-}
-
-private fun issueRegionSelector(
-    anchor: SourceSelector,
-    range: SourceRange,
-    kind: SourceRegionKind,
-): SourceSelector? {
-    val sameRange =
-        range.startInclusive == anchor.range.startInclusive && range.endExclusive == anchor.range.endExclusive
-    if (sameRange && anchor.nativeRegionKind() == kind && anchor !is SourceSelector.Entity) {
-        return anchor
-    }
-    val insideAnchor =
-        range.startInclusive >= anchor.range.startInclusive && range.endExclusive <= anchor.range.endExclusive
-    return if (insideAnchor) {
-        when (val issued = SourceSelector.issueNested(anchor, range, kind)) {
-            is Refinement.Refined -> issued.value
-            is Refinement.Rejected -> null
-        }
-    } else {
-        SourceSelector.issueRoot(range, kind)
-    }
-}
-
 private sealed interface NativeSourceEntityProjection {
     data class Projected(val page: IntellijSourceEntityPage) : NativeSourceEntityProjection
 
     data class Rejected(val reason: IntellijSourceReadRejection) : NativeSourceEntityProjection
-}
-
-private sealed interface NativeSourceEntityEnumeration {
-    val entities: List<SourceEntity>
-
-    data class Complete(override val entities: List<SourceEntity>) : NativeSourceEntityEnumeration
-
-    data class Qualified(
-        override val entities: List<SourceEntity>,
-        val limitation: SourceReadLimitation,
-    ) : NativeSourceEntityEnumeration
-
-    data class Rejected(val reason: IntellijSourceReadRejection) : NativeSourceEntityEnumeration {
-        override val entities: List<SourceEntity> = emptyList()
-    }
 }
 
 private enum class NativeVisibilityTarget {
@@ -590,7 +525,7 @@ private fun projectEntities(
     regionSelector: SourceSelector,
     request: SourceReadRequest,
     cursor: IntellijSourceEntityCursor,
-    limits: ReadLimits,
+    execution: IntellijSourceExecution,
 ): NativeSourceEntityProjection {
     if (request.entities == EntitySelection.None) {
         return NativeSourceEntityProjection.Projected(IntellijSourceEntityPage.empty())
@@ -601,42 +536,9 @@ private fun projectEntities(
     val includeCalls = EntityFilter.Calls in matching.filters
     val includeReferences = EntityFilter.References in matching.filters
     val requiresK2 = includeDeclarations || includeCalls || includeReferences
-    val enumeration =
-        if (requiresK2) {
-            analyze(document.psiFile) {
-                NativeSourceEntityEnumerator(
-                        document,
-                        region,
-                        regionSelector,
-                        includeDeclarations,
-                        includeParameters,
-                        includeCalls,
-                        includeReferences,
-                        matching.containment,
-                        limits,
-                        visibility = { declaration, target ->
-                            val visibility =
-                                when (target) {
-                                    NativeVisibilityTarget.DECLARATION -> declaration.symbol.visibility
-                                    NativeVisibilityTarget.PRIMARY_CONSTRUCTOR_PROPERTY ->
-                                        ((declaration as? KtParameter)?.symbol as? KaValueParameterSymbol)
-                                            ?.generatedPrimaryConstructorProperty
-                                            ?.visibility
-                                }
-                            visibility?.sourceVisibility()
-                        },
-                        target = { reference ->
-                            val targets = reference.mainReference.resolveToSymbols().toList()
-                            when (targets.size) {
-                                0 -> SourceEntityTarget.Unresolved(CompilerUnresolvedReason.NAME_NOT_FOUND)
-                                1 -> targets.single().sourceEntityTarget(document)
-                                else -> SourceEntityTarget.Unresolved(CompilerUnresolvedReason.AMBIGUOUS)
-                            }
-                        },
-                    )
-                    .enumerate()
-            }
-        } else {
+    val page = IntellijSourceEntityPageCollector(matching, cursor, request.entityLimit)
+    return if (requiresK2) {
+        analyze(document.psiFile) {
             NativeSourceEntityEnumerator(
                     document,
                     region,
@@ -646,35 +548,46 @@ private fun projectEntities(
                     includeCalls,
                     includeReferences,
                     matching.containment,
-                    limits,
-                    { _, _ -> null },
-                    { SourceEntityTarget.Unresolved(CompilerUnresolvedReason.UNSUPPORTED_TARGET) },
+                    execution,
+                    page,
+                    visibility = { declaration, target ->
+                        val visibility =
+                            when (target) {
+                                NativeVisibilityTarget.DECLARATION -> declaration.symbol.visibility
+                                NativeVisibilityTarget.PRIMARY_CONSTRUCTOR_PROPERTY ->
+                                    ((declaration as? KtParameter)?.symbol as? KaValueParameterSymbol)
+                                        ?.generatedPrimaryConstructorProperty
+                                        ?.visibility
+                            }
+                        visibility?.sourceVisibility()
+                    },
+                    target = { reference ->
+                        val targets = reference.mainReference.resolveToSymbols().toList()
+                        when (targets.size) {
+                            0 -> SourceEntityTarget.Unresolved(CompilerUnresolvedReason.NAME_NOT_FOUND)
+                            1 -> targets.single().sourceEntityTarget(document)
+                            else -> SourceEntityTarget.Unresolved(CompilerUnresolvedReason.AMBIGUOUS)
+                        }
+                    },
                 )
                 .enumerate()
         }
-    return when (enumeration) {
-        is NativeSourceEntityEnumeration.Rejected -> NativeSourceEntityProjection.Rejected(enumeration.reason)
-        is NativeSourceEntityEnumeration.Complete ->
-            NativeSourceEntityProjection.Projected(
-                IntellijSourceEntityPage.select(
-                    enumeration.entities.asSequence(),
-                    request.entities,
-                    cursor,
-                    request.entityLimit,
-                    limits,
-                )
+    } else {
+        NativeSourceEntityEnumerator(
+                document,
+                region,
+                regionSelector,
+                includeDeclarations,
+                includeParameters,
+                includeCalls,
+                includeReferences,
+                matching.containment,
+                execution,
+                page,
+                { _, _ -> null },
+                { SourceEntityTarget.Unresolved(CompilerUnresolvedReason.UNSUPPORTED_TARGET) },
             )
-        is NativeSourceEntityEnumeration.Qualified ->
-            NativeSourceEntityProjection.Projected(
-                IntellijSourceEntityPage.select(
-                        enumeration.entities.asSequence(),
-                        request.entities,
-                        cursor,
-                        request.entityLimit,
-                        limits,
-                    )
-                    .withLimitation(enumeration.limitation)
-            )
+            .enumerate()
     }
 }
 
@@ -687,16 +600,15 @@ private class NativeSourceEntityEnumerator(
     private val includeCalls: Boolean,
     private val includeReferences: Boolean,
     private val containment: io.github.amichne.kast.source.contract.Containment,
-    private val limits: ReadLimits,
+    private val execution: IntellijSourceExecution,
+    private val page: IntellijSourceEntityPageCollector,
     private val visibility: (KtNamedDeclaration, NativeVisibilityTarget) -> DeclarationVisibility?,
     private val target: (KtNameReferenceExpression) -> SourceEntityTarget,
 ) {
-    private val entities = ArrayList<SourceEntity>()
-    private var examined = 0
     private var limitation: SourceReadLimitation? = null
     private var rejection: IntellijSourceReadRejection? = null
 
-    fun enumerate(): NativeSourceEntityEnumeration {
+    fun enumerate(): NativeSourceEntityProjection {
         val rootParent = NativeStructuralParent(regionSelector, 0)
         val classParent = (region.element as? KtClassOrObject)?.let { rootParent }
         if (containment == io.github.amichne.kast.source.contract.Containment.SELF) {
@@ -709,13 +621,12 @@ private class NativeSourceEntityEnumerator(
             }
         } else visitChildren(region.element, rootParent, classParent)
         val rejected = rejection
-        if (rejected != null) return NativeSourceEntityEnumeration.Rejected(rejected)
+        if (rejected != null) return NativeSourceEntityProjection.Rejected(rejected)
         val limited = limitation
-        return if (limited == null) {
-            NativeSourceEntityEnumeration.Complete(entities.toList())
-        } else {
-            NativeSourceEntityEnumeration.Qualified(entities.toList(), limited)
-        }
+        val selected = page.finish()
+        return NativeSourceEntityProjection.Projected(
+            if (limited == null) selected else selected.withLimitation(limited)
+        )
     }
 
     private fun visitChildren(
@@ -821,7 +732,7 @@ private class NativeSourceEntityEnumerator(
                     is Refinement.Refined -> created.value
                     is Refinement.Rejected -> return reject(IntellijSourceReadRejection.CONTRACT_VIOLATION)
                 }
-            entities += entity
+            page.offer(entity)
         }
         if (!stopped()) visitChildren(call, parent, classPropertyParent)
     }
@@ -851,7 +762,7 @@ private class NativeSourceEntityEnumerator(
                 is Refinement.Refined -> created.value
                 is Refinement.Rejected -> return reject(IntellijSourceReadRejection.CONTRACT_VIOLATION)
             }
-        entities += entity
+        page.offer(entity)
     }
 
     private fun visitDeclaration(
@@ -885,7 +796,7 @@ private class NativeSourceEntityEnumerator(
                     is Refinement.Refined -> created.value
                     is Refinement.Rejected -> return reject(IntellijSourceReadRejection.CONTRACT_VIOLATION)
                 }
-            entities += entity
+            page.offer(entity)
         }
         if (containment == io.github.amichne.kast.source.contract.Containment.SELF) return
         val childParent = NativeStructuralParent(selector, parent.depth + 1)
@@ -939,9 +850,9 @@ private class NativeSourceEntityEnumerator(
                     is Refinement.Refined -> created.value
                     is Refinement.Rejected -> return reject(IntellijSourceReadRejection.CONTRACT_VIOLATION)
                 }
-            entities += property
+            page.offer(property)
         }
-        if (!includeParameters) return
+        if (!includeParameters || stopped()) return
         val selector =
             issueEntitySelector(
                 parameter.textRange,
@@ -960,7 +871,7 @@ private class NativeSourceEntityEnumerator(
                 is Refinement.Refined -> created.value
                 is Refinement.Rejected -> return reject(IntellijSourceReadRejection.CONTRACT_VIOLATION)
             }
-        entities += entity
+        page.offer(entity)
     }
 
     private fun visitAnonymousCallable(
@@ -1020,16 +931,25 @@ private class NativeSourceEntityEnumerator(
         }
     }
 
-    private fun examine(): Boolean {
-        if (examined == limits[ReadLimitParameter.SOURCE_ENTITY_WORK].value) {
-            limitation = SourceReadLimitation.WORK_LIMIT_REACHED
-            return false
+    private fun examine(): Boolean =
+        when (execution.admitUnit()) {
+            SourceExecutionAdmission.ADMITTED -> true
+            SourceExecutionAdmission.WORK_LIMIT_REACHED -> {
+                limitation = SourceReadLimitation.WORK_LIMIT_REACHED
+                false
+            }
+            SourceExecutionAdmission.TIME_LIMIT_REACHED -> {
+                limitation = SourceReadLimitation.TIME_LIMIT_REACHED
+                false
+            }
+            SourceExecutionAdmission.CLOCK_REJECTED -> {
+                rejection = IntellijSourceReadRejection.CONTRACT_VIOLATION
+                false
+            }
         }
-        examined += 1
-        return true
-    }
 
-    private fun stopped(): Boolean = limitation != null || rejection != null
+    private fun stopped(): Boolean =
+        limitation != null || rejection != null || page.admission == SourceEntityCollectionAdmission.STOPPED
 
     private fun qualify(value: SourceReadLimitation) {
         limitation = value
@@ -1040,7 +960,7 @@ private class NativeSourceEntityEnumerator(
     }
 }
 
-private fun IntellijSourceEntityPage.withLimitation(limitation: SourceReadLimitation): IntellijSourceEntityPage =
+internal fun IntellijSourceEntityPage.withLimitation(limitation: SourceReadLimitation): IntellijSourceEntityPage =
     when (this) {
         is IntellijSourceEntityPage.Complete -> copy(limitations = limitations + limitation)
         is IntellijSourceEntityPage.Prefix -> copy(limitations = limitations + limitation)

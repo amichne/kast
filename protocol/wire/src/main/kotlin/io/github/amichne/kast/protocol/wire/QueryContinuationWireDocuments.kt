@@ -1,3 +1,5 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
 package io.github.amichne.kast.protocol.wire
 
 import kotlinx.serialization.SerialName
@@ -7,17 +9,10 @@ import kotlinx.serialization.Serializable
 internal data class QueryRunResultWireDocument(
     val items: List<QueryResultItemWireDocument>,
     val failures: List<QueryItemFailureWireDocument>,
-    val continuation: String? = null,
-    val terminalReason: QueryTerminalReasonWireDocument? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @SerialName("execution_budget")
+    val executionBudget: io.github.amichne.kast.protocol.contract.ExecutionBudgetReport? = null,
 )
-
-@Serializable
-internal enum class QueryTerminalReasonWireDocument {
-    @SerialName("upstream-incomplete") UPSTREAM_INCOMPLETE,
-    @SerialName("output-item-too-large") OUTPUT_ITEM_TOO_LARGE,
-    @SerialName("checkpoint-capacity-exceeded") CHECKPOINT_CAPACITY_EXCEEDED,
-    @SerialName("no-progress") NO_PROGRESS,
-}
 
 @Serializable
 internal enum class QueryExecutionRejectionWireDocument {
@@ -34,6 +29,7 @@ internal enum class QueryExecutionRejectionWireDocument {
 internal data class QueryRunQualificationWireDocument(
     val knownMinimum: Int,
     val limitations: List<QueryLimitationWireDocument>,
+    val progress: io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument,
 )
 
 @Serializable
