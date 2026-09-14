@@ -509,7 +509,9 @@ def remaining_matrix_gates(native: dict | None = None, read_regression: dict | N
 
 
 def native_workflow_qualified(evidence: dict) -> bool:
-    return (evidence.get('status') != 'rejected' and evidence.get('source', {}).get('clean') is True
+    from released_coordinator_acceptance import coordinator_qualified
+    return (('releasedProduct' not in evidence or coordinator_qualified(evidence.get('releasedCoordinator', {})))
+            and evidence.get('status') != 'rejected' and evidence.get('source', {}).get('clean') is True
             and evidence.get('native', {}).get('metadata', {}).get('status') == 'observed'
             and evidence.get('native', {}).get('providerQualification') == qualification_document(QualificationAdmitted())
             and evidence.get('readRegression', {}).get('providerQualification') == qualification_document(QualificationAdmitted())

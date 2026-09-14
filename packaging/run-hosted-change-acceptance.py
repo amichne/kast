@@ -24,6 +24,7 @@ from released_acceptance_product import admit_release, install_release, product_
 from released_session_acceptance import SessionRejected, inspect_shell_sessions
 from released_upgrade_acceptance import admit_previous_release, prepare_release_upgrade
 from released_tool_inventory import inspect_installed_inventory
+from released_coordinator_acceptance import qualify_released_coordinator
 
 
 def main():
@@ -35,6 +36,7 @@ def main():
     inputs.add_argument('--release-assets', type=Path)
     parser.add_argument('--plugin', type=Path)
     parser.add_argument('--release-version')
+    parser.add_argument('--codex-executable', type=Path)
     parser.add_argument('--previous-release-assets', type=Path)
     parser.add_argument('--previous-release-version')
     parser.add_argument('--diagnostic-dirty', action='store_true')
@@ -49,6 +51,8 @@ def main():
     if ((args.previous_release_assets is None) != (args.previous_release_version is None)
             or (args.previous_release_assets is not None and args.release_assets is None)):
         parser.error('adjacent patch upgrade requires release mode and both --previous-release-assets and --previous-release-version')
+    if args.release_assets is not None and args.codex_executable is None:
+        parser.error('release mode requires an explicitly admitted --codex-executable')
     report = args.report.absolute()
     if report.exists() or report.is_symlink():
         parser.error('report already exists')
@@ -85,7 +89,10 @@ def main():
         evidence['source'] = {'commit': source.commit, 'clean': source.clean, 'changesDigest': source.changes_digest}
         evidence['artifacts'] = {'product': product_identity, 'schemas': schema_identity,
             'harnessSha256': harness_digest, 'pluginSha256': plugin_digest}
-        with AcceptanceEnvironment(admitted_tools(), network=NetworkPolicy.DEPENDENCY_DOWNLOADS) as isolation:
+        tools = admitted_tools()
+        if args.codex_executable is not None:
+            tools['codex'] = args.codex_executable.absolute()
+        with AcceptanceEnvironment(tools, network=NetworkPolicy.DEPENDENCY_DOWNLOADS) as isolation:
             isolation.report_after_cleanup(report, evidence)
             if release:
                 evidence['releaseInputs'] = asdict(ReleaseAssetIdentity.from_inputs(release))
@@ -103,7 +110,8 @@ def main():
             plugins = Path(installed.pluginsDirectory) if installed else None
             if installed:
                 evidence['releasedProduct'] = asdict(installed)
-                evidence['releasedInventory'] = asdict(inspect_installed_inventory(isolation, product))
+                inventory = inspect_installed_inventory(isolation, product)
+                evidence['releasedInventory'] = asdict(inventory)
             private = isolation.root / 'native-change'
             private.mkdir(mode=0o700)
             harness, schemas = private / 'harness.jar', private / 'schemas'
@@ -148,6 +156,9 @@ def main():
                 record({'event': 'stage', 'stage': 'native-readiness', 'outcome': 'completed'})
                 evidence['readRegression'] = run_read_regression(isolation, fixture, product, idea.java, harness, repo, read_fixture, evidence['initialLive'])
                 write()
+                if installed:
+                    evidence['releasedCoordinator'] = asdict(qualify_released_coordinator(isolation, installed, inventory, fixture))
+                    write()
                 processes.run(idea.java, harness, schemas, private, native_report, args.run_seconds, record)
                 evidence['native'] = bounded_native_report(native_report, fixture.workspace)
                 evidence['durableReceipts'] = durable_receipt_scopes(isolation.root / 'home', fixture.workspace)

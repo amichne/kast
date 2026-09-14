@@ -22,6 +22,7 @@ class ReleaseFailure(Enum):
     INVENTORY = 'release-advertised-inventory-rejected'
     SESSION = 'release-shell-session-rejected'
     UPGRADE = 'release-upgrade-rejected'
+    COORDINATOR = 'release-coordinator-lifecycle-rejected'
 
 
 class ReleaseRejected(ValueError):

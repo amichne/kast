@@ -7,6 +7,8 @@ tags: [distribution, configuration, packaging, release]
 timestamp: 2026-09-14T00:00:00Z
 code_sources:
   - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/acceptance/hostedchange/NativeHostedReadMain.kt
+  - path: packaging/installed_codex_lifecycle.py
+  - path: packaging/released_coordinator_acceptance.py
   - path: packaging/released_session_acceptance.py
   - path: packaging/released_upgrade_acceptance.py
   - path: packaging/released_acceptance_product.py
@@ -97,3 +99,12 @@ surfaces. Adding those cases does not change installed production defaults;
 fixture wiring and inventory admission do not establish their native result.
 
 Released mode checks two fresh noninteractive Bash sessions without reading startup files: command resolution, exact version, saved runtime configuration, and installation identity. Optional `--previous-release-assets` and `--previous-release-version` first install the immediately preceding patch through the same tagged target installer, then register the owned empty workspace through that prior wrapper. The upgrade requires completed prior admission, retirement, configuration validation and command qualification observations, unchanged prior payload/configuration, and exact populated workspace-registry retention. Original archives and invocation output digests remain bound to the receipt. These child-shell observations do not qualify login-service activation, a persistent coordinator, or stock Codex UI; those remain explicit runtime gates.
+
+Released native qualification also requires an explicitly admitted Codex executable and
+the original installed `kast-complete` and `kast-codex-complete` wrappers. The shared
+installed coordinator check observes matched private ownership before attachment,
+real initialize and thread-start responses, clean parent stdio closure, a prepared
+host after detach, and successful service disable in a finally block. Tool selection
+comes from the admitted saved inventory. Its bounded receipt retains hashes and
+closed observations; stock desktop UI remains unqualified. This is harness capability,
+not evidence that a particular released version passed the live check.
