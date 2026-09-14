@@ -1,6 +1,7 @@
 package io.github.amichne.kast.workspace.intellij.read.hosted
 
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
+import io.github.amichne.kast.kernel.ExecutionAllowance
 import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
@@ -95,14 +96,22 @@ internal class HostedReadDeadline(
 
     private fun admitPublication(candidate: HostedSemanticTimeAllowance): Refinement<Unit, HostedQueryFailure> {
         val checked = publication.admit(ExecutionBudgetReport.from(candidate.executionBudget), limits)
-        if (checked is Refinement.Rejected || candidate.semantic.value == 1L) return checked
-        // Lower remaining time changes only effective elapsed digits and may add the deadline clamp.
-        // The adjacent smaller allowance witnesses its widest representation; all later positive
-        // allowances have no more digits or clamp causes. Diagnostic scope is re-admitted separately.
-        return when (val smaller = HostedSemanticTimeAllowance.admit(limits, candidate.semantic.value - 1L, request)) {
-            is Refinement.Rejected -> smaller
+        val elapsed = candidate.executionBudget.elapsed
+        val selected =
+            when (val supplied = elapsed.requested) {
+                ExecutionAllowance.Default -> elapsed.configuredDefault.value
+                is ExecutionAllowance.Requested -> supplied.value.value
+            }
+        if (checked is Refinement.Rejected || selected == 1L) return checked
+        // A deadline clamp can appear while an operator ceiling keeps effective time unchanged.
+        // This actual allowance has the largest positive effective time below the selected amount,
+        // including that clamp. Any later report has no more digits or clamp causes; all other
+        // dimensions stay fixed. The positive selected proof makes subtraction safe even at Long.MAX_VALUE.
+        val witnessAvailable = minOf(candidate.semantic.value, selected - 1L)
+        return when (val witness = HostedSemanticTimeAllowance.admit(limits, witnessAvailable, request)) {
+            is Refinement.Rejected -> witness
             is Refinement.Refined ->
-                publication.admit(ExecutionBudgetReport.from(smaller.value.executionBudget), limits)
+                publication.admit(ExecutionBudgetReport.from(witness.value.executionBudget), limits)
         }
     }
 }

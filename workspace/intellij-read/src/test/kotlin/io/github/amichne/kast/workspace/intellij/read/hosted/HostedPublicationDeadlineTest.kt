@@ -16,23 +16,58 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class HostedPublicationDeadlineTest {
+    @Test fun `operator-clamped one-millisecond report fits after deadline clamp appears`() = assertCeilingPlateau(1L)
+
+    @Test fun `operator-clamped four-digit report fits after deadline clamp appears`() = assertCeilingPlateau(1000L)
+
+    private fun assertCeilingPlateau(ceiling: Long) {
+        val limits =
+            ReadLimits.resolve(environment = mapOf("KAST_READ_EXECUTION_MAX_MILLIS" to ceiling.toString())).proven()
+        var now = 0L
+        val checkedSizes = mutableListOf<Int>()
+        fun bytes(report: ExecutionBudgetReport) =
+            Json.encodeToString(ExecutionBudgetReport.serializer(), report).toByteArray(Charsets.UTF_8).size
+        val progress =
+            HostedQueryProgress(
+                limits,
+                { now },
+                publication =
+                    HostedReadPublicationAdmission { report, _ ->
+                        checkedSizes += bytes(report)
+                        now = 2_250_000_000L
+                        Refinement.Refined(Unit)
+                    },
+            )
+        val allowance = progress.admitSemanticTime().proven()
+        val report = ExecutionBudgetReport.from(allowance.executionBudget)
+        assertEquals(ceiling, allowance.semantic.value)
+        assertEquals(1500L, allowance.diagnosticScope.value)
+        assertTrue(
+            bytes(report) <= checkedSizes.max(),
+            "ceiling=$ceiling, final=${bytes(report)}, checked=$checkedSizes",
+        )
+        assertEquals(ExecutionBudgetPresence.Present(report), progress.executionBudget)
+    }
+
     @Test
     fun `publication witnesses bound all elapsed digit and clamp transitions including maximum inputs`() {
         val policies =
-            listOf(
-                ReadLimits.Default,
-                ReadLimits.resolve(environment = mapOf("KAST_READ_EXECUTION_MAX_MILLIS" to "800")).proven(),
-            )
+            listOf(ReadLimits.Default) +
+                listOf(1L, 10L, 100L, 800L, 1000L).map { ceiling ->
+                    ReadLimits.resolve(environment = mapOf("KAST_READ_EXECUTION_MAX_MILLIS" to ceiling.toString()))
+                        .proven()
+                }
         val requests =
             listOf(HostedExecutionBudgetRequest()) +
-                listOf(1L, 100L, Long.MAX_VALUE).map { amount ->
+                listOf(1L, 100L, 2000L, Long.MAX_VALUE).map { amount ->
                     HostedExecutionBudgetRequest(
                         RequestedExecutionBudget(
                             elapsed = ExecutionAllowance.Requested(ElapsedTimeLimitMillis.parse(amount).proven())
                         )
                     )
                 }
-        for (limits in policies) for (request in requests) for (initial in listOf(1L, 10L, 1000L, Long.MAX_VALUE)) {
+        for (limits in policies) for (request in requests) for (initial in
+            listOf(1L, 10L, 1000L, 3750L, Long.MAX_VALUE)) {
             assertPublicationBound(limits, request, initial)
         }
     }
@@ -44,8 +79,13 @@ class HostedPublicationDeadlineTest {
             Json.encodeToString(ExecutionBudgetReport.serializer(), value).toByteArray(Charsets.UTF_8).size
         val candidate = allowance(initial)
         val original = report(candidate)
-        val adjacent = report(allowance((candidate.semantic.value - 1L).coerceAtLeast(1L)))
-        val bound = maxOf(bytes(original), bytes(adjacent))
+        val selected =
+            when (val supplied = request.requested.elapsed) {
+                ExecutionAllowance.Default -> limits[ReadLimitParameter.SEMANTIC_MILLIS].value.toLong()
+                is ExecutionAllowance.Requested -> supplied.value.value
+            }
+        val witness = report(allowance(minOf(candidate.semantic.value, (selected - 1L).coerceAtLeast(1L))))
+        val bound = maxOf(bytes(original), bytes(witness))
         val decimalBoundaries =
             generateSequence(10L) { if (it < 1_000_000_000L) it * 10L else null }
                 .flatMap { sequenceOf(it - 1L, it) }
@@ -54,6 +94,8 @@ class HostedPublicationDeadlineTest {
             (listOf(
                     1L,
                     initial,
+                    selected,
+                    (selected - 1L).coerceAtLeast(1L),
                     candidate.semantic.value,
                     (candidate.semantic.value - 1L).coerceAtLeast(1L),
                 ) + decimalBoundaries)
