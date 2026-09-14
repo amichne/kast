@@ -1,3 +1,5 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
 package io.github.amichne.kast.workspace.intellij.read.hosted
 
 import com.google.gson.Gson
@@ -66,6 +68,7 @@ object HostedQueryWire {
                         detail = result.failure.detail(),
                         stage = result.stage.name,
                         recovery = result.failure.recovery(),
+                        executionBudget = result.executionBudget,
                     )
                 )
             is HostedQueryResult.Published ->
@@ -101,6 +104,10 @@ data class HostedQueryRejectionDocument(
     val recovery: HostedReadRecovery,
     val schemaVersion: Int = 1,
     val outcome: String = "rejected",
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @kotlinx.serialization.SerialName("execution_budget")
+    val executionBudget: io.github.amichne.kast.protocol.contract.ExecutionBudgetPresence =
+        io.github.amichne.kast.protocol.contract.ExecutionBudgetPresence.Absent,
 )
 
 private fun HostedCompilerDeclaration.document(): Map<String, Any> {

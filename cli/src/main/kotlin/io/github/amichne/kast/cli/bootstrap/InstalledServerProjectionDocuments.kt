@@ -372,6 +372,8 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
             "queryRunOperation" to
                 constantSchema(CanonicalOperation.QUERY_RUN.id.value, "Canonical operation identity."),
             "finiteFailureEvidence" to textSchema("Finite failure evidence."),
+            "compilerQualifiedIdentity" to textSchema("Compiler qualified identity."),
+            "compilerIdentity" to compilerIdentitySchema(),
             "readRecoveryAction" to
                 generatedRequestSchema(io.github.amichne.kast.protocol.contract.ReadRecoveryAction.serializer()),
             "executionBudget" to
@@ -418,7 +420,9 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
         .apply {
             for ((name, definition) in
                 HostedRejectionSchemas.readDefinitions.entries + HostedRejectionSchemas.endpointDefinitions.entries) {
-                check(name !in this) { "Duplicate hosted output schema definition: $name" }
+                check(name !in this || this[name] == definition) {
+                    "Conflicting hosted output schema definition: $name"
+                }
                 put(name, definition.jsonObject)
             }
         }
