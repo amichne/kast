@@ -14,6 +14,7 @@ import subprocess
 from hosted_read_transport import HostedReadTransport, ReadProviderFailure, ReadTransportRejected
 from hosted_read_requests import NativeTraversalRequest, TraversalStart, TraversalResume
 from native_provider_qualification import qualification_document
+from hosted_enum_read_regression import run_enum_read_regression
 
 
 def _reproduction(repo):
@@ -119,6 +120,7 @@ class _ReadReplay:
             self.record('specialist-read-tools', 'all', {'issuerAvailable': False})
             return
         self.source_read()
+        run_enum_read_regression(self)
         self.relations()
         response = self.transport.invoke(self.surface, 'check_diagnostics',
             {'relative_path': 'src/main/kotlin/Fixture.kt', 'max_diagnostics': None})
