@@ -453,6 +453,8 @@ slice; the expanded same-revision matrix below now closes AR-02–AR-08 source q
 | [v0.40.8](https://github.com/amichne/kast/releases/tag/v0.40.8) | `21af38ddfaf1797d9c27473119b0e584b2d7b536` | AR-05 continuation expiry, retention identity and cross-grant replay qualification | [Exact-main product CI](https://github.com/amichne/kast/actions/runs/34900790101); [release build](https://github.com/amichne/kast/actions/runs/34900790346). Released assets, checksums, executable/catalog and installer dry-run verified. |
 | [v0.40.9](https://github.com/amichne/kast/releases/tag/v0.40.9) | `c33132ef07c9a92895b0a764989854e74f370b15` | AR-06 transport drain and ordinary-edit authority recovery fixtures | [Exact-head CI](https://github.com/amichne/kast/actions/runs/34900906189); [release build](https://github.com/amichne/kast/actions/runs/34901769185). All assets/checksums, executable/catalog and installer dry-run verified. |
 | [v0.40.10](https://github.com/amichne/kast/releases/tag/v0.40.10) | `3b702c391c56a8665edfa1662743fa2a7ff4ccac` | AR-07 declaration-kind eligibility before compiler projection | [Exact-head CI](https://github.com/amichne/kast/actions/runs/34901801892); [release build](https://github.com/amichne/kast/actions/runs/34902580454). All assets/checksums, executable/catalog and installer dry-run verified. |
+| [v0.40.11](https://github.com/amichne/kast/releases/tag/v0.40.11) | `7701759998526f360845b0f1544fd98b62481f00` | Final admitted host-failure budget reports, exhaustive strict failure schemas and catalog-scale subprocess allowance | [Exact-head CI](https://github.com/amichne/kast/actions/runs/34904519875); [release build](https://github.com/amichne/kast/actions/runs/34905291515). All assets/checksums and executable/catalog verified; [original supported installation, fresh sessions and real coordinator preflight](https://gist.github.com/amichne/0094398cba4a958cbe886d71f7ef038d) passed. |
+| [v0.40.12](https://github.com/amichne/kast/releases/tag/v0.40.12) | `47df5dcb1fe3fc889c0e491487ee099a53e835f4` | AR-08 same-revision R1–R7 closure, raw-symbol/LRU fixtures and released installation/upgrade/session harness | [Exact-head CI](https://github.com/amichne/kast/actions/runs/34905482051); [release build](https://github.com/amichne/kast/actions/runs/34906166336). All assets/checksums, executable/catalog and installer dry-run verified. AR-02–AR-08 are closed by the source evidence below. |
 
 The v0.40.6 catalog is 519263 bytes, SHA-256
 `6de922bf00a83f5875a40358fc57e8e06fdd758abb3df224d1509f0f7706ab27`.
@@ -523,3 +525,40 @@ unqualified by this direct provider harness. Original released installation,
 upgrade/sessions and coordinator lifecycle are separate AR-11/AR-12 work.
 There are no open R1–R7 requirements in this source qualification; AR-09 naming
 migration is unblocked.
+
+
+### AR-09 and AR-10 implementation; final delivery gates
+
+AR-09 introduces preferred `read_relations` and `traverse_relations` names while
+retaining the canonical `relation.read` and `traversal.run` operations. The
+registry owns input aliases, configuration normalizes them before duplicate
+identity checks, and provider routes remain limited to the selected tool set.
+New catalogs advertise only preferred names; server projection 11 invalidates
+incompatible persisted catalogs. Legacy inputs remain supported through 0.40.x,
+with removal no earlier than 0.41.0. The public scope documentation distinguishes
+root-relative inputs from raw canonical absolute locations, direct/descendant
+containment, source selection from expansion scope, page grants from semantic
+bounds, and declaration from occurrence cardinality. Reachability is not a
+breakage or test-selection guarantee.
+
+At `d6f2f82ed8966f08c84ef43bd3d6b7a6395e0a8c`, AR-09's combined module/fixture,
+architecture and documentation checks passed: 586 registry/App Server/CLI tests
+and 99 Python fixture tests, with zero Kotlin failures, errors or skips. Sixteen
+focused Kotlin tests and three fixture-oracle tests cover the new behavior;
+two added installed provider alias cases remain subject to final native execution.
+
+AR-10's actual subprocess test reproduced `config --help` returning
+`INVALID_COMMAND`. At `ad03f66e6a55305546dd0e515090d19f8bed17d7`, help and `-h`
+return the passive command list before configuration loading, including with
+malformed saved/process configuration. Fourteen configuration tests and the
+full CLI/native CLI, JSON, configuration, architecture and knowledge checks pass.
+Original v0.40.5 version/root-help/schema/show/explain checks did not reproduce
+stderr noise; no diagnostic suppression was introduced.
+
+The final combined source must pass the repository product path and expanded
+native matrix before AR-11 delivery. AR-12 then evaluates the original released
+archives through the supported installer, adjacent patch upgrade, fresh shells,
+real coordinator attachment/detach, full advertised read/provider inventory and
+controlled mutation/recovery/restart/undo matrix. Earlier source runs and the
+v0.40.11 installer/coordinator preflight do not substitute for that final shipped-byte
+qualification. Stock Codex UI remains a separately reported unqualified surface.
