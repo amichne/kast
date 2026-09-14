@@ -1,5 +1,7 @@
 package io.github.amichne.kast.appserver
 
+import io.github.amichne.kast.distribution.contract.ControlDistributionLimits
+
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationOperationalLimit
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationScope
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationUnit
@@ -47,7 +49,7 @@ object BrokerOperationalLimits {
     const val maximumControlStateBytes: Int = 16_384
     const val maximumDesktopInspectionBytes: Int = 1_024
     const val maximumClientMessageBytes: Int = 4 * 1_024 * 1_024
-    const val maximumInventoryEntries: Int = 4_096
+    const val maximumInventoryEntries: Int = ControlDistributionLimits.maximumEntryCount
     const val maximumInventoryBytes: Int = 1_024 * 1_024 * 1_024
     const val maximumEpochBytes: Int = 1_024
     const val maximumObserverDiffBytes: Int = 512 * 1_024
