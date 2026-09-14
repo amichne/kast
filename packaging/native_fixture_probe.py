@@ -127,7 +127,7 @@ def validate_response(result: object, request_id: str, command: str) -> dict:
         fields.add("readiness")
         readiness = result.get("readiness")
         expected_imports = {"FINAL_TASKS_OBSERVED"} if command != "AWAIT_REOPEN_READY" else {"FINAL_TASKS_OBSERVED", "NOT_OBSERVED_PERSISTED_MODEL"}
-        if outcome != "SETUP_READY" or not isinstance(readiness, dict) or set(readiness) != {"smartMode", "externalTasks", "gradleModule", "sourceProvenance", "import", "vfsRefresh", "vfsRefreshScope", "quietWindowMillis", "scope", "pushedPropertiesDrain", "indexing", "refreshScanning", "refreshEventProcessing", "generationBefore", "generationAfter"}:
+        if outcome != "SETUP_READY" or not isinstance(readiness, dict) or set(readiness) != {"smartMode", "externalTasks", "gradleModule", "sourceProvenance", "import", "vfsRefresh", "vfsRefreshScope", "quietWindowMillis", "scope", "pushedPropertiesDrain", "indexing", "refreshScanning", "refreshEventProcessing", "generationBeforeRefresh", "generationBefore", "generationAfter"}:
             raise NativeFixtureProbeError("MALFORMED_RESPONSE")
         expected_provenance = {"AUTHORED", "GENERATED"} if command == "REIMPORT_GRADLE" else {"AUTHORED"}
         if readiness["sourceProvenance"] not in expected_provenance:
@@ -136,12 +136,14 @@ def validate_response(result: object, request_id: str, command: str) -> dict:
             raise NativeFixtureProbeError("MALFORMED_RESPONSE")
         if readiness["vfsRefreshScope"] != "ALL_CACHED_ROOTS" or readiness["pushedPropertiesDrain"] != "COMPLETED" or any(readiness[key] != "IDLE" for key in ("indexing", "refreshScanning", "refreshEventProcessing")):
             raise NativeFixtureProbeError("MALFORMED_RESPONSE")
-        for key in ("generationBefore", "generationAfter"):
+        for key in ("generationBeforeRefresh", "generationBefore", "generationAfter"):
             counters = readiness[key]
             if not isinstance(counters, dict) or set(counters) != {"imports", "roots", "workspace", "vfs", "psi", "dumb"}:
                 raise NativeFixtureProbeError("MALFORMED_RESPONSE")
             if any(type(value) is not int or not 0 <= value < 2 ** 63 for value in counters.values()):
                 raise NativeFixtureProbeError("MALFORMED_RESPONSE")
+        if readiness["generationBeforeRefresh"]["imports"] != readiness["generationAfter"]["imports"]:
+            raise NativeFixtureProbeError("MALFORMED_RESPONSE")
         if readiness["generationBefore"] != readiness["generationAfter"]:
             raise NativeFixtureProbeError("MALFORMED_RESPONSE")
     elif outcome != "COMPLETED":
