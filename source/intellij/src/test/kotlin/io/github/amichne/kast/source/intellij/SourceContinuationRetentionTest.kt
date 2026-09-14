@@ -56,7 +56,7 @@ class SourceContinuationRetentionTest {
         for (age in listOf(10_000_000L, 10_000_001L)) {
             now = age
             assertEquals(
-                IntellijSourceContinuationAdmission.Rejected,
+                IntellijSourceContinuationAdmission.Rejected(IntellijSourceContinuationRejection.UNAVAILABLE),
                 owner.admit(fixture.capture.snapshot.context, resumed),
             )
         }
@@ -76,7 +76,7 @@ class SourceContinuationRetentionTest {
         val first = owner.issue(fixture.request, fixture.capture, 1).refined()
         val second = owner.issue(fixture.request, fixture.capture, 2).refined()
         assertEquals(
-            IntellijSourceContinuationAdmission.Rejected,
+            IntellijSourceContinuationAdmission.Rejected(IntellijSourceContinuationRejection.UNAVAILABLE),
             owner.admit(fixture.capture.snapshot.context, fixture.request.copy(page = SourceReadPage.Continue(first))),
         )
         repeat(2) {

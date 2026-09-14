@@ -136,3 +136,8 @@ budget admission; an admitted budget report does not change that action. This
 projection does not restore references, consume continuations, or convert a
 rejection into progress.
 See [operation outcomes](../contracts/operation-outcomes.md) for the action contract.
+
+Source continuation admission preserves finite causes before invoking the provider:
+missing, expired, evicted, or retired tokens yield `CONTINUATION_UNAVAILABLE`;
+a changed context yields `SOURCE_SNAPSHOT_MISMATCH`; a changed request yields
+`CONTINUATION_REQUEST_MISMATCH`. Provider contract failures remain distinct.
