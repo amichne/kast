@@ -3,6 +3,7 @@ package io.github.amichne.kast.cli.installation
 import io.github.amichne.kast.appserver.InstalledWorkspaceRegistryRetention
 import io.github.amichne.kast.appserver.PublishedBrokerServiceCommand
 import io.github.amichne.kast.appserver.WorkspaceRegistryRetention
+import io.github.amichne.kast.distribution.contract.ControlDistributionLimits
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationSource
 import io.github.amichne.kast.distribution.contract.configuration.InstallationOperationalLimits
 import io.github.amichne.kast.distribution.contract.configuration.KastConfigurationCatalogue
@@ -27,9 +28,9 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 
-internal const val MAXIMUM_CONTROL_FILES = 4_096
 private const val MAXIMUM_CONTROL_BYTES = 1024L * 1024L * 1024L
-internal const val MAXIMUM_MANIFEST_BYTES = 1024L * 1024L
+private const val MAXIMUM_UNIX_SOCKET_PATH_BYTES = 104
+private const val SOCKET_NAME_DIGEST_CHARACTERS = 43
 
 internal enum class InstallationChildStage {
     PRIOR_ADMISSION,
@@ -110,6 +111,7 @@ internal fun priorServiceRetirementEnvironment(
 internal enum class InstallationFailure {
     REQUEST_REJECTED,
     CONTROL_REJECTED,
+    CONTROL_LAYOUT_REJECTED,
     PLUGIN_REJECTED,
     IDEA_REJECTED,
     INSTALLATION_ROOT_REJECTED,
@@ -255,7 +257,9 @@ internal object InstallationWorkflow {
         if (!regularFile(request.pluginArchive.value) || digest(request.pluginArchive.value) != request.pluginDigest) {
             return PlanVerification.Rejected(InstallationFailure.PLUGIN_REJECTED)
         }
-        if (!verifyControlLayout(controlRoot)) return PlanVerification.Rejected(InstallationFailure.CONTROL_REJECTED)
+        if (!verifyControlLayout(controlRoot)) {
+            return PlanVerification.Rejected(InstallationFailure.CONTROL_LAYOUT_REJECTED)
+        }
 
         val manifest =
             when (val admitted = admitHostedPluginArtifact(request)) {
@@ -336,7 +340,7 @@ internal object InstallationWorkflow {
                             return InstallationOutcome.Rejected(InstallationFailure.PREVIOUS_INSTALLATION_REJECTED)
                     }
                 if (prior != null && prior != plan.targetRoot) {
-                    if (!admitPrior(prior, plan.request) || !retire(prior, plan.request)) {
+                    if (!admitPrior(prior, plan) || !retire(prior, plan.request)) {
                         return InstallationOutcome.Rejected(InstallationFailure.RETIREMENT_REJECTED)
                     }
                     when (
@@ -385,7 +389,9 @@ internal object InstallationWorkflow {
             writeConfiguration(plan, staged.resolve("config/environment"))
             Files.writeString(staged.resolve(".kast-control-sha256"), "${plan.request.controlDigest.value}\n")
             Files.writeString(staged.resolve(".kast-plugin-sha256"), "${plan.request.pluginDigest.value}\n")
-            writeManifest(plan, staged)
+            if (!writeManifest(plan, staged)) {
+                return StageResult.Rejected(InstallationFailure.CONTROL_LAYOUT_REJECTED)
+            }
             move(staged, plan.targetRoot)
             return StageResult.Complete
         } catch (_: IOException) {
@@ -489,85 +495,95 @@ internal object InstallationWorkflow {
         setMode(launcher, "rwxr-xr-x")
     }
 
-    private fun writeManifest(plan: VerifiedInstallationPlan, staged: Path) {
-        val payloadFiles = payloadFiles(staged)
+    private fun writeManifest(plan: VerifiedInstallationPlan, staged: Path): Boolean {
+        val manifest = installationManifest(plan, staged)
+        val encoded = manifestJson.encodeToString(InstallationManifest.serializer(), manifest) + "\n"
+        if (encoded.encodeToByteArray().size > ControlDistributionLimits.maximumManifestBytes) return false
+        Files.writeString(staged.resolve("installation.json"), encoded, StandardOpenOption.CREATE_NEW)
+        return true
+    }
+
+    private fun installationManifest(plan: VerifiedInstallationPlan, staged: Path): InstallationManifest =
+        InstallationManifest(
+            semanticVersion = plan.request.version.toString(),
+            installationRoot = plan.targetRoot.toString(),
+            payloadIdentity = "sha256:${plan.payloadDigest.value}",
+            controlSha256 = "sha256:${plan.request.controlDigest.value}",
+            hostedPluginSha256 = "sha256:${plan.request.pluginDigest.value}",
+            codexHome = plan.request.codexHome.value.toString(),
+            configuration = plan.configuration.toString(),
+            workspaceRegistry = plan.targetRoot.resolve("config/workspaces.json").toString(),
+            stateRoot = plan.targetRoot.resolve("state").toString(),
+            externalAnchors = externalAnchors(plan),
+            payloadFiles = payloadFiles(staged),
+        )
+
+    private fun externalAnchors(plan: VerifiedInstallationPlan): List<ExternalAnchor> =
+        fixedExternalAnchors(plan) + transportExternalAnchors(plan)
+
+    private fun fixedExternalAnchors(plan: VerifiedInstallationPlan): List<ExternalAnchor> {
         val currentTarget = "versions/${plan.targetRoot.fileName}"
         val serviceHash = sha256(plan.targetRoot.toString().toByteArray()).value.take(32)
         val serviceLabel = "io.github.amichne.kast.broker.$serviceHash"
-        val anchors = buildList {
-            add(ExternalAnchor("current", plan.currentLink.toString(), expectedLinkTarget = currentTarget))
-            add(
-                ExternalAnchor(
-                    "command",
-                    plan.commandLink.toString(),
-                    expectedLinkTarget = plan.currentLink.resolve("bin/kast-complete").toString(),
-                    requiresCurrentTarget = currentTarget,
-                )
-            )
-            add(
-                ExternalAnchor(
-                    "codex-command",
-                    plan.codexCommandLink.toString(),
-                    expectedLinkTarget = plan.currentLink.resolve("bin/kast-codex-complete").toString(),
-                    requiresCurrentTarget = currentTarget,
-                )
-            )
-            add(
-                ExternalAnchor(
-                    "login",
-                    plan.request.home.value.resolve("Library/LaunchAgents/$serviceLabel.login.plist").toString(),
-                    expectedExecutable = plan.targetRoot.resolve("bin/kast").toString(),
-                    expectedLabel = "$serviceLabel.login",
-                )
-            )
-            val run = plan.targetRoot.resolve("state/run")
-            if (run.resolve("kast-${"0".repeat(43)}.sock").toString().toByteArray().size >= 104) {
-                val alias = Path.of("/tmp/kast-uds-${sha256(run.toString().toByteArray()).value.take(32)}")
-                add(
-                    ExternalAnchor(
-                        "socket-alias",
-                        alias.toString(),
-                        expectedLinkTarget = run.toString(),
-                        identityReceipt = run.resolve("endpoint-alias.json").toString(),
-                    )
-                )
-            }
-            val upstream = InstalledUpstreamDirectories.transportPath(run.resolve("u.sock"))
-            if (upstream != run.resolve("u.sock")) {
-                add(
-                    ExternalAnchor(
-                        "upstream-directory",
-                        upstream.parent.toString(),
-                        identityReceipt = run.resolve("upstream-directory.json").toString(),
-                        expectedPhysicalDirectory = run.toString(),
-                    )
-                )
-            }
-        }
-        val manifest =
-            InstallationManifest(
-                semanticVersion = plan.request.version.toString(),
-                installationRoot = plan.targetRoot.toString(),
-                payloadIdentity = "sha256:${plan.payloadDigest.value}",
-                controlSha256 = "sha256:${plan.request.controlDigest.value}",
-                hostedPluginSha256 = "sha256:${plan.request.pluginDigest.value}",
-                codexHome = plan.request.codexHome.value.toString(),
-                configuration = plan.configuration.toString(),
-                workspaceRegistry = plan.targetRoot.resolve("config/workspaces.json").toString(),
-                stateRoot = plan.targetRoot.resolve("state").toString(),
-                externalAnchors = anchors,
-                payloadFiles = payloadFiles,
-            )
-        Files.writeString(
-            staged.resolve("installation.json"),
-            manifestJson.encodeToString(InstallationManifest.serializer(), manifest) + "\n",
-            StandardOpenOption.CREATE_NEW,
+        return listOf(
+            ExternalAnchor("current", plan.currentLink.toString(), expectedLinkTarget = currentTarget),
+            ExternalAnchor(
+                "command",
+                plan.commandLink.toString(),
+                expectedLinkTarget = plan.currentLink.resolve("bin/kast-complete").toString(),
+                requiresCurrentTarget = currentTarget,
+            ),
+            ExternalAnchor(
+                "codex-command",
+                plan.codexCommandLink.toString(),
+                expectedLinkTarget = plan.currentLink.resolve("bin/kast-codex-complete").toString(),
+                requiresCurrentTarget = currentTarget,
+            ),
+            ExternalAnchor(
+                "login",
+                plan.request.home.value.resolve("Library/LaunchAgents/$serviceLabel.login.plist").toString(),
+                expectedExecutable = plan.targetRoot.resolve("bin/kast").toString(),
+                expectedLabel = "$serviceLabel.login",
+            ),
         )
+    }
+
+    private fun transportExternalAnchors(plan: VerifiedInstallationPlan): List<ExternalAnchor> = buildList {
+        val run = plan.targetRoot.resolve("state/run")
+        if (
+            run.resolve("kast-${"0".repeat(SOCKET_NAME_DIGEST_CHARACTERS)}.sock").toString().toByteArray().size >=
+                MAXIMUM_UNIX_SOCKET_PATH_BYTES
+        ) {
+            val alias = Path.of("/tmp/kast-uds-${sha256(run.toString().toByteArray()).value.take(32)}")
+            add(
+                ExternalAnchor(
+                    "socket-alias",
+                    alias.toString(),
+                    expectedLinkTarget = run.toString(),
+                    identityReceipt = run.resolve("endpoint-alias.json").toString(),
+                )
+            )
+        }
+        val upstream = InstalledUpstreamDirectories.transportPath(run.resolve("u.sock"))
+        if (upstream != run.resolve("u.sock")) {
+            add(
+                ExternalAnchor(
+                    "upstream-directory",
+                    upstream.parent.toString(),
+                    identityReceipt = run.resolve("upstream-directory.json").toString(),
+                    expectedPhysicalDirectory = run.toString(),
+                )
+            )
+        }
     }
 
     private fun admitExisting(plan: VerifiedInstallationPlan): Boolean {
         if (!physicalDirectory(plan.targetRoot)) return false
-        val raw = readBounded(plan.targetRoot.resolve("installation.json"), MAXIMUM_MANIFEST_BYTES) ?: return false
+        val raw =
+            readBounded(
+                plan.targetRoot.resolve("installation.json"),
+                ControlDistributionLimits.maximumManifestBytes.toLong(),
+            ) ?: return false
         val manifest =
             try {
                 manifestJson.decodeFromString(InstallationManifest.serializer(), raw)
@@ -617,16 +633,23 @@ internal object InstallationWorkflow {
         ) == InstallationChildOutcome.COMPLETED
     }
 
-    private fun admitPrior(prior: Path, request: InstallationRequest): Boolean {
-        val executable = prior.resolve("bin/kast-complete")
-        if (!regularExecutable(executable)) return false
+    private fun admitPrior(prior: Path, plan: VerifiedInstallationPlan): Boolean {
+        val lifecycle = plan.targetRoot.resolve("share/kast/installation-lifecycle.py")
+        if (!regularFile(lifecycle)) return false
         return executeInstallationChild(
             InstallationChildStage.PRIOR_ADMISSION,
-            listOf(executable.toString(), "installation", "inspect", "--json"),
+            listOf(
+                "python3",
+                lifecycle.toString(),
+                "--installation",
+                prior.toString(),
+                "inspect",
+                "--json",
+            ),
             mapOf(
-                "HOME" to request.home.value.toString(),
+                "HOME" to plan.request.home.value.toString(),
                 "PATH" to (System.getenv("PATH") ?: "/usr/bin:/bin"),
-                "CODEX_HOME" to request.codexHome.value.toString(),
+                "CODEX_HOME" to plan.request.codexHome.value.toString(),
             ),
         ) == InstallationChildOutcome.COMPLETED
     }
@@ -833,7 +856,9 @@ private fun verifyControlLayout(root: Path): Boolean {
                     if (Files.isRegularFile(entry, LinkOption.NOFOLLOW_LINKS)) {
                         files += 1
                         bytes += Files.size(entry)
-                        if (files > MAXIMUM_CONTROL_FILES || bytes > MAXIMUM_CONTROL_BYTES) throw IOException("limit")
+                        if (files > ControlDistributionLimits.maximumEntryCount || bytes > MAXIMUM_CONTROL_BYTES) {
+                            throw IOException("limit")
+                        }
                     }
                 }
             }
@@ -866,7 +891,7 @@ private fun payloadFiles(root: Path): List<PayloadFile> {
             entries.sorted().forEach { file ->
                 if (Files.isSymbolicLink(file)) throw IOException("payload rejected")
                 if (!Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS)) return@forEach
-                if (result.size >= MAXIMUM_CONTROL_FILES) throw IOException("payload rejected")
+                if (result.size >= ControlDistributionLimits.maximumEntryCount) throw IOException("payload rejected")
                 bytes += Files.size(file)
                 if (bytes > MAXIMUM_CONTROL_BYTES) throw IOException("payload rejected")
                 result +=

@@ -139,28 +139,73 @@ class InstallationWorkflowTest {
             Files.getPosixFilePermissions(lock),
         )
     }
+}
 
-    private fun releaseRequest(
-        fixture: Path,
-        installation: Path,
-        commands: Path,
-        home: Path,
-        codexHome: Path,
-        version: String,
-    ): InstallationRequest {
-        val control = Files.createDirectories(fixture.resolve("control-$version"))
-        val bin = Files.createDirectories(control.resolve("bin"))
-        val metadata = Files.createDirectories(control.resolve("share/kast"))
-        val executable = Files.writeString(bin.resolve("kast"), "#!/bin/sh\nexit 0\n")
-        Files.setPosixFilePermissions(executable, PosixFilePermissions.fromString("rwxr-xr-x"))
-        Files.writeString(metadata.resolve("operation-registry.json"), "{}")
-        Files.writeString(metadata.resolve("wire-schema.json"), "{}")
-        Files.writeString(
-            metadata.resolve("installation-lifecycle.py"),
-            """
+internal fun releaseRequest(
+    fixture: Path,
+    installation: Path,
+    commands: Path,
+    home: Path,
+    codexHome: Path,
+    version: String,
+    controlFileCount: Int = 5,
+    mode: InstallationMode = InstallationMode.APPLY,
+    lifecycleInspectionExit: Int = 0,
+): InstallationRequest {
+    val product = releaseFixture(fixture, version, controlFileCount, lifecycleInspectionExit)
+    val parsed =
+        InstallationRequest.parse(
+            installationEnvironment(
+                product,
+                version,
+                installation,
+                commands,
+                home,
+                codexHome,
+                mode,
+            )
+        )
+    return when (parsed) {
+        is Refinement.Refined -> parsed.value
+        is Refinement.Rejected -> error("fixture request rejected: ${parsed.failure}")
+    }
+}
+
+private fun releaseFixture(
+    fixture: Path,
+    version: String,
+    controlFileCount: Int,
+    lifecycleInspectionExit: Int,
+): ReleaseFixture {
+    val control = Files.createDirectories(fixture.resolve("control-$version"))
+    val metadata = Files.createDirectories(control.resolve("share/kast"))
+    writeControlFiles(control, metadata, controlFileCount, lifecycleInspectionExit)
+    val runtime = writePluginFixture(fixture, metadata, version)
+    val controlArchive = Files.writeString(fixture.resolve("control-$version.tar.gz"), "control-$version")
+    val idea = writeIdeaFixture(fixture)
+    return ReleaseFixture(control, controlArchive, runtime, digest(runtime), idea.first, idea.second)
+}
+
+private fun writeControlFiles(
+    control: Path,
+    metadata: Path,
+    controlFileCount: Int,
+    lifecycleInspectionExit: Int,
+) {
+    val bin = Files.createDirectories(control.resolve("bin"))
+    val emptyDocument = Json.encodeToString(EmptyDocumentFixture)
+    val executable = Files.writeString(bin.resolve("kast"), "#!/bin/sh\nexit 0\n")
+    Files.setPosixFilePermissions(executable, PosixFilePermissions.fromString("rwxr-xr-x"))
+    Files.writeString(metadata.resolve("operation-registry.json"), emptyDocument)
+    Files.writeString(metadata.resolve("wire-schema.json"), emptyDocument)
+    Files.writeString(
+        metadata.resolve("installation-lifecycle.py"),
+        """
             |import json
             |from pathlib import Path
             |import sys
+            |if $lifecycleInspectionExit:
+            |    raise SystemExit($lifecycleInspectionExit)
             |arguments = sys.argv[1:]
             |installation = Path(arguments[arguments.index('--installation') + 1])
             |manifest = json.loads((installation / 'installation.json').read_text())
@@ -170,85 +215,105 @@ class InstallationWorkflowTest {
             |    raise SystemExit(1)
             |print('{"status":"complete"}')
             |"""
-                .trimMargin(),
-        )
-
-        val runtime = fixture.resolve("kast-ide-hosted-$version.zip")
-        ZipOutputStream(Files.newOutputStream(runtime)).use { archive ->
-            archive.putNextEntry(ZipEntry("kast-ide-hosted/lib/kast-ide-hosted.jar"))
-            archive.write("fixture".toByteArray())
-            archive.closeEntry()
-        }
-        val runtimeDigest = digest(runtime)
-        Files.writeString(
-            metadata.resolve("ide-host.json"),
-            Json.encodeToString(
-                PluginFixture(
-                    1,
-                    version,
-                    "existing_ide",
-                    "261.1",
-                    "261.1-IJ",
-                    runtime.fileName.toString(),
-                    "sha256:$runtimeDigest",
-                    Files.size(runtime),
-                )
-            ),
-        )
-        val controlArchive = Files.writeString(fixture.resolve("control-$version.tar.gz"), "control-$version")
-
-        val idea = Files.createDirectories(fixture.resolve("idea"))
-        Files.createDirectories(idea.resolve("Resources"))
-        Files.createDirectories(idea.resolve("plugins/Kotlin"))
-        val javaHome = Files.createDirectories(idea.resolve("jbr/Contents/Home"))
-        val java = Files.createDirectories(javaHome.resolve("bin")).resolve("java")
-        if (!Files.exists(java)) {
-            Files.writeString(java, "#!/bin/sh\nexit 0\n")
-            Files.setPosixFilePermissions(java, PosixFilePermissions.fromString("rwxr-xr-x"))
-        }
-        Files.writeString(idea.resolve("Resources/build.txt"), "IU-261.1")
-
-        val parsed =
-            InstallationRequest.parse(
-                mapOf(
-                    InstallationEnvironment.CONTROL_ROOT.key to control.toString(),
-                    InstallationEnvironment.CONTROL_ARCHIVE.key to controlArchive.toString(),
-                    InstallationEnvironment.CONTROL_SHA256.key to digest(controlArchive),
-                    InstallationEnvironment.HOSTED_PLUGIN_ARCHIVE.key to runtime.toString(),
-                    InstallationEnvironment.HOSTED_PLUGIN_SHA256.key to runtimeDigest,
-                    InstallationEnvironment.VERSION.key to version,
-                    InstallationEnvironment.IDEA_HOME.key to idea.toString(),
-                    InstallationEnvironment.JAVA_HOME.key to javaHome.toString(),
-                    InstallationEnvironment.INSTALL_ROOT.key to installation.toString(),
-                    InstallationEnvironment.BIN_DIRECTORY.key to commands.toString(),
-                    InstallationEnvironment.HOME.key to home.toString(),
-                    InstallationEnvironment.CODEX_HOME.key to codexHome.toString(),
-                    InstallationEnvironment.ENABLE_LAUNCHD.key to "0",
-                    InstallationEnvironment.ENABLE_APP_SERVER.key to "0",
-                    InstallationEnvironment.APP_SERVER_TOOLS.key to "query_symbols,source_read",
-                    InstallationEnvironment.REFRESH_APP_SERVER.key to "0",
-                    InstallationEnvironment.MODE.key to "apply",
-                )
-            )
-        return when (parsed) {
-            is Refinement.Refined -> parsed.value
-            is Refinement.Rejected -> error("fixture request rejected: ${parsed.failure}")
-        }
-    }
-
-    private fun digest(path: Path): String = Files.newInputStream(path).use(::digest)
-
-    private fun digest(input: java.io.InputStream): String = input.use {
-        val hash = MessageDigest.getInstance("SHA-256")
-        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-        while (true) {
-            val count = it.read(buffer)
-            if (count < 0) break
-            hash.update(buffer, 0, count)
-        }
-        hash.digest().joinToString("") { byte -> "%02x".format(byte) }
-    }
+            .trimMargin(),
+    )
+    require(controlFileCount >= 5)
+    val knowledge = Files.createDirectories(metadata.resolve("knowledge/declarations"))
+    repeat(controlFileCount - 5) { index -> Files.writeString(knowledge.resolve("$index.json"), emptyDocument) }
 }
+
+private fun writePluginFixture(fixture: Path, metadata: Path, version: String): Path {
+    val runtime = fixture.resolve("kast-ide-hosted-$version.zip")
+    ZipOutputStream(Files.newOutputStream(runtime)).use { archive ->
+        archive.putNextEntry(ZipEntry("kast-ide-hosted/lib/kast-ide-hosted.jar"))
+        archive.write("fixture".toByteArray())
+        archive.closeEntry()
+    }
+    val runtimeDigest = digest(runtime)
+    Files.writeString(
+        metadata.resolve("ide-host.json"),
+        Json.encodeToString(
+            PluginFixture(
+                1,
+                version,
+                "existing_ide",
+                "261.1",
+                "261.1-IJ",
+                runtime.fileName.toString(),
+                "sha256:$runtimeDigest",
+                Files.size(runtime),
+            )
+        ),
+    )
+    return runtime
+}
+
+private fun writeIdeaFixture(fixture: Path): Pair<Path, Path> {
+    val idea = Files.createDirectories(fixture.resolve("idea"))
+    Files.createDirectories(idea.resolve("Resources"))
+    Files.createDirectories(idea.resolve("plugins/Kotlin"))
+    val javaHome = Files.createDirectories(idea.resolve("jbr/Contents/Home"))
+    val java = Files.createDirectories(javaHome.resolve("bin")).resolve("java")
+    if (!Files.exists(java)) {
+        Files.writeString(java, "#!/bin/sh\nexit 0\n")
+        Files.setPosixFilePermissions(java, PosixFilePermissions.fromString("rwxr-xr-x"))
+    }
+    Files.writeString(idea.resolve("Resources/build.txt"), "IU-261.1")
+    return idea to javaHome
+}
+
+private fun installationEnvironment(
+    product: ReleaseFixture,
+    version: String,
+    installation: Path,
+    commands: Path,
+    home: Path,
+    codexHome: Path,
+    mode: InstallationMode,
+): Map<String, String> =
+    mapOf(
+        InstallationEnvironment.CONTROL_ROOT.key to product.controlRoot.toString(),
+        InstallationEnvironment.CONTROL_ARCHIVE.key to product.controlArchive.toString(),
+        InstallationEnvironment.CONTROL_SHA256.key to digest(product.controlArchive),
+        InstallationEnvironment.HOSTED_PLUGIN_ARCHIVE.key to product.pluginArchive.toString(),
+        InstallationEnvironment.HOSTED_PLUGIN_SHA256.key to product.pluginDigest,
+        InstallationEnvironment.VERSION.key to version,
+        InstallationEnvironment.IDEA_HOME.key to product.ideaHome.toString(),
+        InstallationEnvironment.JAVA_HOME.key to product.javaHome.toString(),
+        InstallationEnvironment.INSTALL_ROOT.key to installation.toString(),
+        InstallationEnvironment.BIN_DIRECTORY.key to commands.toString(),
+        InstallationEnvironment.HOME.key to home.toString(),
+        InstallationEnvironment.CODEX_HOME.key to codexHome.toString(),
+        InstallationEnvironment.ENABLE_LAUNCHD.key to "0",
+        InstallationEnvironment.ENABLE_APP_SERVER.key to "0",
+        InstallationEnvironment.APP_SERVER_TOOLS.key to "query_symbols,source_read",
+        InstallationEnvironment.REFRESH_APP_SERVER.key to "0",
+        InstallationEnvironment.MODE.key to mode.name.lowercase(),
+    )
+
+private data class ReleaseFixture(
+    val controlRoot: Path,
+    val controlArchive: Path,
+    val pluginArchive: Path,
+    val pluginDigest: String,
+    val ideaHome: Path,
+    val javaHome: Path,
+)
+
+private fun digest(path: Path): String = Files.newInputStream(path).use(::digest)
+
+private fun digest(input: java.io.InputStream): String = input.use {
+    val hash = MessageDigest.getInstance("SHA-256")
+    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+    while (true) {
+        val count = it.read(buffer)
+        if (count < 0) break
+        hash.update(buffer, 0, count)
+    }
+    hash.digest().joinToString("") { byte -> "%02x".format(byte) }
+}
+
+@Serializable private data object EmptyDocumentFixture
 
 @Serializable
 private data class PluginFixture(
@@ -262,4 +327,4 @@ private data class PluginFixture(
     val bytes: Long,
 )
 
-@Serializable private data class RegistryFixture(val schemaVersion: Int, val revision: Int, val roots: List<String>)
+@Serializable internal data class RegistryFixture(val schemaVersion: Int, val revision: Int, val roots: List<String>)

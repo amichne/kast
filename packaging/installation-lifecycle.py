@@ -16,6 +16,8 @@ import uuid
 # Fixed projections of InstallationOperationalLimits; checked against the generated catalogue.
 RETIREMENT_CHILD_TIMEOUT_MILLIS = 60000
 STATE_MAXIMUM_ENTRIES = 100000
+CONTROL_MAXIMUM_ENTRIES = 16384
+CONTROL_MANIFEST_MAXIMUM_BYTES = 67108864
 
 class Failure(str, Enum):
     MANIFEST_REJECTED = 'MANIFEST_REJECTED'
@@ -86,7 +88,7 @@ class Installation:
         root = Path(raw)
         if not root.is_absolute() or root.resolve(strict=True) != root or root.parent.name != 'versions':
             raise Rejected(Failure.MANIFEST_REJECTED)
-        document = read_json(root / 'installation.json', 65536, Failure.MANIFEST_REJECTED)
+        document = read_json(root / 'installation.json', CONTROL_MANIFEST_MAXIMUM_BYTES, Failure.MANIFEST_REJECTED)
         payload = document.get('payloadIdentity', '')
         if (document.get('schemaVersion') not in {1, 2} or document.get('installationRoot') != str(root)
                 or len(payload) != 71 or not payload.startswith('sha256:')
@@ -107,7 +109,7 @@ class Installation:
 
 def verify_payload(root, manifest):
     expected = manifest.get('payloadFiles')
-    if not isinstance(expected, list) or not 1 <= len(expected) <= 4096:
+    if not isinstance(expected, list) or not 1 <= len(expected) <= CONTROL_MAXIMUM_ENTRIES:
         raise Rejected(Failure.MANIFEST_REJECTED)
     actual = []
     total = 0
@@ -136,7 +138,7 @@ def verify_payload(root, manifest):
                         digest.update(chunk)
                 actual.append({'path': candidate.relative_to(root).as_posix(),
                                'sha256': 'sha256:' + digest.hexdigest(), 'mode': observed.st_mode & 0o777})
-                if len(actual) > 4096:
+                if len(actual) > CONTROL_MAXIMUM_ENTRIES:
                     raise Rejected(Failure.MANIFEST_REJECTED)
     if sorted(actual, key=lambda item: item['path']) != sorted(expected, key=lambda item: item['path']):
         raise Rejected(Failure.MANIFEST_REJECTED)

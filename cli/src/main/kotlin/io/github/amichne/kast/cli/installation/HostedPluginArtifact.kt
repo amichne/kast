@@ -10,6 +10,9 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 
+private const val MAXIMUM_HOSTED_PLUGIN_ENTRIES = 4_096
+private const val MAXIMUM_HOSTED_PLUGIN_MANIFEST_BYTES = 1_024 * 1_024
+
 /** Read-only admission of the exact build-owned descriptor and its already checksum-verified plugin archive. */
 internal fun admitHostedPluginArtifact(
     request: InstallationRequest
@@ -20,9 +23,11 @@ internal fun admitHostedPluginArtifact(
             return rejectedArtifact(InstallationFailure.CONTROL_REJECTED)
         val bytes =
             Files.newInputStream(path, LinkOption.NOFOLLOW_LINKS).use {
-                it.readNBytes(MAXIMUM_MANIFEST_BYTES.toInt() + 1)
+                it.readNBytes(MAXIMUM_HOSTED_PLUGIN_MANIFEST_BYTES + 1)
             }
-        if (bytes.size > MAXIMUM_MANIFEST_BYTES) return rejectedArtifact(InstallationFailure.CONTROL_REJECTED)
+        if (bytes.size > MAXIMUM_HOSTED_PLUGIN_MANIFEST_BYTES) {
+            return rejectedArtifact(InstallationFailure.CONTROL_REJECTED)
+        }
         val manifest = Json.decodeFromString<HostedPluginManifest>(bytes.decodeToString(throwOnInvalidSequence = true))
         if (!manifest.matches(request)) return rejectedArtifact(InstallationFailure.PLUGIN_REJECTED)
         if (!verifyPluginArchive(request.pluginArchive.value))
@@ -71,7 +76,7 @@ private fun validPluginEntries(zip: ZipFile): Boolean {
     for (entry in zip.entries().asSequence()) {
         val name = entry.name
         if (!canonicalArchiveMember(name) || !pluginMember(name)) return false
-        if (names.size >= MAXIMUM_CONTROL_FILES || !names.add(name.trimEnd('/'))) return false
+        if (names.size >= MAXIMUM_HOSTED_PLUGIN_ENTRIES || !names.add(name.trimEnd('/'))) return false
     }
     return names.any { it.startsWith("kast-ide-hosted/lib/") && it.endsWith(".jar") }
 }

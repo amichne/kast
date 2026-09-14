@@ -162,12 +162,19 @@ import shutil
 import sys
 import tarfile
 
+MAXIMUM_CONTROL_ARCHIVE_ENTRIES = 16_384
+
 archive, destination = Path(sys.argv[1]), Path(sys.argv[2])
 destination.mkdir(mode=0o700)
 with tarfile.open(archive, "r:gz") as source:
     members = source.getmembers()
-    if not members or len(members) > 4096:
+    if not members:
         raise SystemExit("kast-install: control archive layout rejected")
+    if len(members) > MAXIMUM_CONTROL_ARCHIVE_ENTRIES:
+        raise SystemExit(
+            "kast-install: control archive entry count rejected "
+            f"(observed={len(members)}, maximum={MAXIMUM_CONTROL_ARCHIVE_ENTRIES})"
+        )
     for member in members:
         path = PurePosixPath(member.name)
         if path.is_absolute() or not path.parts or any(part in ("", ".", "..") for part in path.parts):
