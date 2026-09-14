@@ -4,10 +4,11 @@ title: Public intent tools
 description: Schema-bound search and diagnostics presentations lower into existing canonical operations without transferring compiler authority.
 resource: file://app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json
 tags: [tools, query, protocol, agents]
-timestamp: 2026-09-13T00:00:00Z
+timestamp: 2026-09-14T00:00:00Z
 code_sources:
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceQualifiedProgressDocument.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/CanonicalReadRejectionSchemas.kt
+  - path: cli/src/test/kotlin/io/github/amichne/kast/cli/ReadRejectionSchemaParityTest.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/MintlifyCallableReference.kt
   - path: cli/src/test/kotlin/io/github/amichne/kast/cli/MintlifyCallableReferenceTest.kt
   - path: docs/public/docs.json
@@ -44,6 +45,15 @@ The advanced pipeline preserves source meaning, step order, repeated steps and e
 Installed projection 10 and CLI invocation version 3 join by tool name. Repeated canonical operation IDs are allowed only with consistent effect, approval, budget and output metadata. Private admitted requests retain their presentation and schema identities through transport encoding, excluding cross-tool substitution. Old persisted catalogs reject rather than silently accepting a new grammar. Source, relation and traversal defaults remain unchanged. Raw candidate lookup/refinement requires explicit selection. Native-qualified change tools are deferred defaults; `change_plan` has approval policy `NONE`, while apply and recovery retain
 `EXPLICIT` exact-plan approval. The hosted planning schema admits only
 `add-declaration`; unsupported canonical intents do not enter another runtime.
+
+Query reference rejection schemas retain all seven canonical reasons, including
+`stale-authority`, `incompatible-authority`, and `incompatible-reference-version`.
+Unknown reason strings remain invalid. A stale reference requires reacquiring
+authority; schema admission does not refresh it or convert rejection to success.
+
+Installed source, relation and traversal rejection schemas derive their finite
+reason sets from the canonical enums. Wire decoding, CLI projection and the
+installed tool envelope preserve every reason; unknown strings are invalid.
 
 The 32-example corpus, typed lowering, duplicate/path rejection, CLI wire parity and production provider routing are deterministic proofs. Codex schemas omit the Responses-only `strict` field and retain separate stronger admission constraints. These checks do not by themselves establish live API acceptance or improved model first-call accuracy.
 
