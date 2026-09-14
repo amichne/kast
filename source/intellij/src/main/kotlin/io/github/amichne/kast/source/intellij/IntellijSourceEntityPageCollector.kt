@@ -41,7 +41,7 @@ internal class IntellijSourceEntityPageCollector(
 
     /** Keeps structural traversal outside deferred compiler projection. */
     fun projectDeclaration(kind: DeclarationKind, project: () -> Unit) {
-        if (selection.filters.any { it is EntityFilter.Declarations }) project()
+        if (selection.filters.any { it is EntityFilter.Declarations && kind in it.kinds.values }) project()
     }
 
     fun offer(entity: SourceEntity): SourceEntityCollectionAdmission {
