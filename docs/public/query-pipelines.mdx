@@ -31,7 +31,7 @@ Sources are `search_declarations`, `all_declarations` and `symbol_refs`. Steps a
 
 `steps: null` and `steps: []` both mean no transformations. `return_fields: null` selects name and location; `return_fields: []` requests mandatory identity and kind only. Duplicate projection fields reject.
 
-To reuse a result, copy its `symbol_ref` verbatim into `source: {"type":"symbol_refs","symbol_refs":["<returned token>"]}`. Schema admission does not authenticate a token. The original owner re-admits its workspace, lifetime, epoch and scope. Do not construct or shorten references. Use `semantic_query` for occurrence-oriented relation facts, including use-site locations; query expansion returns related declaration symbols.
+To reuse a result, copy its `symbol_ref` verbatim into `source: {"type":"symbol_refs","symbol_refs":["<returned token>"]}`. Schema admission does not authenticate a token. The original owner re-admits its workspace, lifetime, epoch and scope. Do not construct or shorten references. Use `read_relations` for occurrence-oriented relation facts, including use-site locations; query expansion returns related declaration symbols.
 
 
 ## Continue an ordered pipeline
@@ -44,7 +44,7 @@ resuming does not rerun an already emitted prefix.
 
 `distinct_symbols` preserves the first occurrence of each canonical symbol at
 that stage, including the connections carried by that occurrence. Later
-occurrences do not add connections to an earlier result. Use `semantic_query`
+occurrences do not add connections to an earlier result. Use `read_relations`
 when you need occurrence coverage rather than distinct declarations.
 
 A null continuation means there is no resumable suffix. Read `terminal_reason`:
@@ -66,13 +66,15 @@ model changes. Tokens are opaque and cannot be reconstructed. The
 [read-limit settings](https://github.com/amichne/kast/blob/main/docs/hosted-read-configuration.md)
 include checkpoint bytes, store entries, aggregate bytes and lifetime.
 
-Read qualification and item failures on every page. Source-set restrictions
-apply to discovery and do not restrict expansion destinations. An incomplete
+Read qualification and item failures on every page. For a `query_symbols`
+`expand_relation` step, source-set restrictions select discovery subjects and do
+not restrict expansion destinations. Specialist `read_relations` and
+`traverse_relations` retain the exact subject selector's admitted scope. An incomplete
 upstream result remains incomplete after its buffered output has drained.
 
 ## Traverse a large graph
 
-`impact_analyze` exposes `traversal.run`. Include
+`traverse_relations` exposes `traversal.run`. Include
 `"strategy": {"type": "breadth_first"}` in tool requests; the direct CLI decoder
 also supplies this strategy when omitted. It finishes a node's resumable relation
 before moving to the next node. Select
@@ -96,3 +98,25 @@ grant. If scheduling or provider work overruns that grant, traversal retains the
 actual elapsed time and proven facts, stops further reads, and qualifies the
 page with `time-limit-reached`. It resumes only when unfinished work remains;
 an exhausted overrun is terminal. An over-budget page cannot claim completion.
+
+## Keep semantic bounds separate from page budgets
+
+`execution_budget` grants elapsed time, provider work, returned results and
+encoded bytes for one request. A continuation can request a larger grant without
+changing the semantic query. Relation `limit`, traversal `maximumResults`, and
+source `entityLimit` bound returned page capacity; traversal `maximumDepth` and
+`strategy` define the requested exploration and remain bound to its continuation.
+A larger page grant does not increase depth or erase a provider omission.
+
+`source_read` selects a source `region` and an `entities` projection separately.
+For `entities.type: "matching"`, `containment: "direct"` considers direct children;
+`containment: "descendants"` also walks nested elements in that region. The
+`filters` choose declarations, parameters, calls or references. This source
+structure choice is separate from recursive directory/package discovery.
+
+A relation read preserves individual occurrences, including multiple call sites
+between the same declarations. Query expansion returns declarations and retains
+its connection evidence; `distinct_symbols` changes declaration cardinality.
+Traversal reports bounded reachability with its depth, scope, strategy and
+coverage qualifications. It does not guarantee which edits will break callers or
+which tests must run.

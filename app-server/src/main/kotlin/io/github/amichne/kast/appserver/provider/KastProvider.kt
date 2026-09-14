@@ -339,6 +339,7 @@ internal object KastProviderQualifier {
             invoke = { runtime, input, context -> runtime.invoke(this, input, context) },
             encode = KastInvocationOutput::document,
             invocationBudget = executionBudget.invocation,
+            inputAliases = inputAliases,
             effect = BrokerOperationEffect.Canonical(hostedDefinition.effect),
             inputGuidance = { failure ->
                 val guidance =
@@ -370,7 +371,7 @@ internal object KastProviderQualifier {
     }
 
     private fun admitProjection(projection: KastServerProjectionBoundary): QualifiedKastProjection? {
-        if (projection.schemaVersion != 10 || projection.namespace != "kast") return null
+        if (projection.schemaVersion != KAST_SERVER_PROJECTION_VERSION || projection.namespace != "kast") return null
         val bootstrap = projection.hostedBootstrap
         val cli = projection.cliInvocations
         if (bootstrap.schemaVersion != 1 || cli.schemaVersion != 3) return null
@@ -431,6 +432,10 @@ internal object KastProviderQualifier {
         if (approval != canonicalDefinition.approval) return null
         if (tool.deferLoading != (canonicalDefinition.loading == HostedToolLoading.DEFERRED)) return null
         val name = refined(ToolName.admit(tool.name)) ?: return null
+        val aliases =
+            canonicalDefinition.inputAliases.mapTo(linkedSetOf()) { alias ->
+                refined(ToolName.admit(alias.value)) ?: return null
+            }
         val description = refined(ToolDescription.admit(tool.description)) ?: return null
         if (cliInvocation.cliUsage.isBlank() || cliInvocation.cliUsage.length > 16_384) return null
         if (cliInvocation.invocation.command.isEmpty() || cliInvocation.invocation.command.size > 16) return null
@@ -470,6 +475,7 @@ internal object KastProviderQualifier {
             outputSchema,
             cliInvocation.invocation.command,
             canonicalDefinition.inputBinding,
+            aliases,
         )
     }
 
@@ -639,6 +645,7 @@ internal data class QualifiedKastTool(
     val outputSchema: CompiledJsonSchema,
     val command: List<String>,
     val inputBinding: AgentToolInputBinding = AgentToolInputBinding.Canonical,
+    val inputAliases: Set<ToolName> = emptySet(),
 )
 
 @JvmInline
@@ -664,3 +671,5 @@ private val invocationJson = Json { encodeDefaults = true }
 
 /** Diagnostic payloads are admitted by the installed rejection schema before presentation. */
 @Serializable private data class KastRejectedDocument(val diagnostic: JsonElement, val status: String = "rejected")
+
+private const val KAST_SERVER_PROJECTION_VERSION = 11

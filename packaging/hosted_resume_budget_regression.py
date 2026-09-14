@@ -83,7 +83,7 @@ def admit_progress(tool, response):
     qualification = response.get('qualification', {})
     if response.get('status') != 'qualified' or not isinstance(qualification, dict):
         return DrainRejected(ResumeFailure.NON_RESUMABLE)
-    progress = qualification if tool == 'semantic_query' else qualification.get('progress', {})
+    progress = qualification if tool == 'read_relations' else qualification.get('progress', {})
     if not isinstance(progress, dict) or progress.get('type') != 'resumable':
         return DrainRejected(ResumeFailure.NON_RESUMABLE)
     checkpoint = progress.get('checkpoint', {})
@@ -158,7 +158,7 @@ def _freeze(value):
 
 
 def records(tool, response):
-    key = {'query_symbols': 'items', 'source_read': 'entities', 'semantic_query': 'relations'}[tool]
+    key = {'query_symbols': 'items', 'source_read': 'entities', 'read_relations': 'relations'}[tool]
     return tuple(_freeze(record) for record in response.get(key, []))
 
 
@@ -168,7 +168,7 @@ def record_parity(tool, observed, baseline):
         return False
     actual = tuple(item for page in observed.pages for item in records(tool, page))
     expected = tuple(item for page in baseline.pages for item in records(tool, page))
-    if tool == 'semantic_query':
+    if tool == 'read_relations':
         # Native provider cursors use file/range order; RelationBatch sorts each
         # admitted page by endpoint fingerprint. Grant changes can change page
         # boundaries, but must preserve every full occurrence, including duplicates.
@@ -192,7 +192,7 @@ def coverage_parity(tool, observed, baseline):
         return all(page.get('snapshot') == original.get('snapshot')
                    and page.get('region') == original.get('region')
                    and page.get('text') == original.get('text') for page in pages)
-    if tool == 'semantic_query':
+    if tool == 'read_relations':
         return relation_coverage_parity(observed, baseline)
     return all(page.get('failures') == baseline.pages[0].get('failures') for page in pages)
 
@@ -209,7 +209,7 @@ def relation_coverage_parity(observed, baseline):
                 permanent.append(omission)
                 continue
             qualification = page.get('qualification', {})
-            if (not isinstance(admit_progress('semantic_query', page), Checkpoint)
+            if (not isinstance(admit_progress('read_relations', page), Checkpoint)
                     or omission['reason'].lower().replace('_', '-') not in qualification.get('limitations', [])
                     or omission.get('measurement') != {'type': 'unmeasured_on_page'}
                     or _freeze(omission.get('samples')) != () or omission.get('remediation') != 'INCREASE_READ_LIMIT'):
@@ -230,7 +230,7 @@ def _authored_baseline(replay, tool, result):
         items = tuple(item for page in result.pages for item in page.get('items', []))
         return tuple(item.get('symbol_ref') for item in items) == tuple(
             replay.seeds[key]['symbol_ref'] for key in ('logger', 'helper'))
-    if tool == 'semantic_query':
+    if tool == 'read_relations':
         relations = tuple(item for page in result.pages for item in page.get('relations', []))
         return (Counter(item.get('source', {}).get('qualifiedIdentity') for item in relations)
                 == Counter(replay.fixture.oracle['helperCallers'])
@@ -251,7 +251,7 @@ def run_resume_budget_regression(replay):
             for key in ('logger', 'helper'))), ResultsBudget(),
             return_fields=('name', 'location', 'signature'))),
         ('source_read', ResumeSource(SymbolAnchor(replay.seeds['logger']['symbol_ref']), ResultsBudget())),
-        ('semantic_query', BudgetRelation(replay.seeds['helper']['symbol_ref'], ResultsBudget())),
+        ('read_relations', BudgetRelation(replay.seeds['helper']['symbol_ref'], ResultsBudget())),
     )
     for low, large in ((ElapsedBudget(1000), ElapsedBudget(3000)),
                        (WorkBudget(100), WorkBudget(100000)),

@@ -92,8 +92,8 @@ expanding the complete callable schema.
 | --- | --- | --- |
 | `search_classes`, `search_functions`, `search_declarations`, `query_symbols` | `query.run` | `items[]`: candidate or exact symbol; `failures[]`: per-item failures |
 | `source_read` | `source.read` | `snapshot`, `region`, `entities[]`, `text` |
-| `semantic_query` | `relation.read` | `relations[]`: occurrence-oriented relation facts |
-| `impact_analyze` | `traversal.run` | The graph, traversal coverage, and continuation state in the callable schema |
+| `read_relations` | `relation.read` | `relations[]`: occurrence-oriented relation facts |
+| `traverse_relations` | `traversal.run` | The graph, traversal coverage, and continuation state in the callable schema |
 | `check_diagnostics` | `diagnostic.check` | `diagnostics[]`: severity, message, and source location |
 | `change_plan`, `change_apply`, `change_recover` | Corresponding `change.*` operation | Plan, application, or recovery state; see [Change source](/change) |
 

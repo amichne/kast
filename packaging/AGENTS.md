@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-14 | hash: b1e4560b4406 -->
+<!-- generated: 2026-09-14 | hash: 4b6e409a680a -->
 
 # packaging
 
@@ -9,6 +9,7 @@ Implements installer support, installed-product acceptance, configuration ingres
 
 ## Key Files
 
+- [hosted_read_name_regression.py](hosted_read_name_regression.py) - preferred and legacy provider inputs retain canonical operations, schema and ordered facts.
 - [installed_codex_lifecycle.py](installed_codex_lifecycle.py) - shared real-Codex handshake, private coordinator ownership, detach, and cleanup checks.
 - [released_coordinator_acceptance.py](released_coordinator_acceptance.py) - original installed wrapper and explicit Codex admission for coordinator qualification.
 

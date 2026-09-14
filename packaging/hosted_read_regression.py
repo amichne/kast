@@ -19,6 +19,7 @@ from hosted_authority_read_regression import run_authority_read_regression
 from hosted_budget_read_regression import run_budget_read_regression
 from hosted_resume_budget_regression import run_resume_budget_regression
 from hosted_raw_symbol_regression import run_raw_symbol_regression
+from hosted_read_name_regression import run_read_name_regression
 from hosted_enum_read_regression import run_enum_read_regression
 from hosted_source_read_regression import run_source_paging_regression, source_qualification_observation
 
@@ -139,6 +140,7 @@ class _ReadReplay:
         self.relations()
         run_budget_read_regression(self)
         run_resume_budget_regression(self)
+        run_read_name_regression(self)
         response = self.transport.invoke(self.surface, 'check_diagnostics',
             {'relative_path': 'src/main/kotlin/Fixture.kt', 'max_diagnostics': None})
         self.record('diagnostics-exact-file', 'check_diagnostics', {
@@ -163,12 +165,12 @@ class _ReadReplay:
 
     def relations(self):
         token = self.seeds['helper']['symbol_ref']
-        response = self.transport.invoke(self.surface, 'semantic_query', {
+        response = self.transport.invoke(self.surface, 'read_relations', {
             'exactSelector': token, 'relation': 'callers', 'limit': 100, 'position': {'type': 'start'}})
         relations = response.get('relations', [])
         expected = Counter(self.fixture.oracle['helperCallers'])
         helper = self.fixture.oracle['declarations']['helper'][1]
-        self.record('semantic-callers-five', 'semantic_query', {
+        self.record('semantic-callers-five', 'read_relations', {
             **self.completed(response), 'exactCallers': Counter(r.get('source', {}).get('qualifiedIdentity')
                 for r in relations) == expected,
             'exactTarget': all(r.get('target', {}).get('qualifiedIdentity') == helper for r in relations),
@@ -184,7 +186,7 @@ class _ReadReplay:
         complete, valid_pages, response = False, True, None
         for page in range(sum(expected.values()) + 1):
             request = NativeTraversalRequest(exactSelector=token, position=position)
-            response = self.transport.invoke(self.surface, 'impact_analyze', asdict(request))
+            response = self.transport.invoke(self.surface, 'traverse_relations', asdict(request))
             graph = response.get('graph', {})
             nodes = {node['id']: node for node in graph.get('nodes', [])}
             edges = graph.get('edges', [])
@@ -202,7 +204,7 @@ class _ReadReplay:
                 'compilerProofs': (not edges or bool(graph.get('proofs'))) and
                     all(proof.get('identity') for proof in graph.get('proofs', [])),
             }
-            self.record('transitive-callers-page-' + str(page + 1), 'impact_analyze', checks, len(edges), response)
+            self.record('transitive-callers-page-' + str(page + 1), 'traverse_relations', checks, len(edges), response)
             valid_pages = valid_pages and all(checks.values())
             if not valid_pages:
                 break
@@ -212,7 +214,7 @@ class _ReadReplay:
                 break
             seen.add(continuation)
             position = TraversalResume(continuation=continuation)
-        self.record('transitive-callers-five', 'impact_analyze', {
+        self.record('transitive-callers-five', 'traverse_relations', {
             'complete': complete, 'allPagesProven': valid_pages, 'exactCallers': callers == expected,
         }, sum(callers.values()), response)
 

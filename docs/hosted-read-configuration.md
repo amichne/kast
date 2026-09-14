@@ -153,7 +153,7 @@ Query continuations retain detached pipeline state and encoded-output suffixes i
 
 ## Per-call execution budgets
 
-`semantic_query`, `impact_analyze`, `source_read`, `query_symbols`, all three `search_*` tools, and `query run`
+`read_relations`, `traverse_relations`, `source_read`, `query_symbols`, all three `search_*` tools, and `query run`
 accept an optional `execution_budget` object with
 `max_elapsed_ms`, `max_work_units`, `max_results`, and `max_returned_bytes`.
 Supplied numbers must be positive integers. Omitted controls select configured

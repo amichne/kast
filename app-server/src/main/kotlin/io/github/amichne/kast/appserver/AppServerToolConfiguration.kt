@@ -54,9 +54,14 @@ internal class KastToolSelection private constructor(private val names: Set<Agen
             if (tokens.toSet().size != tokens.size) {
                 return Refinement.Rejected(KastToolSelectionFailure.DUPLICATE_NAME)
             }
-            val definitionsByName = CanonicalAgentToolDefinitions.all.associateBy { it.name.value }
             val admitted = tokens.map { token ->
-                definitionsByName[token]?.name ?: return Refinement.Rejected(KastToolSelectionFailure.UNKNOWN_NAME)
+                when (val resolved = CanonicalAgentToolDefinitions.resolveInput(token)) {
+                    is Refinement.Refined -> resolved.value.name
+                    is Refinement.Rejected -> return Refinement.Rejected(KastToolSelectionFailure.UNKNOWN_NAME)
+                }
+            }
+            if (admitted.toSet().size != admitted.size) {
+                return Refinement.Rejected(KastToolSelectionFailure.DUPLICATE_NAME)
             }
             return Refinement.Refined(KastToolSelection(admitted.toSet()))
         }

@@ -106,10 +106,16 @@ internal class AppServerTools private constructor(private val definitions: List<
             if (tokens.any(String::isBlank)) return Refinement.Rejected(AppServerToolsFailure.EMPTY_NAME)
             val names = tokens.toSet()
             if (names.size != tokens.size) return Refinement.Rejected(AppServerToolsFailure.DUPLICATE_NAME)
-            val definitions = CanonicalAgentToolDefinitions.all.filter { it.name.value in names }
-            if (definitions.size != names.size) {
-                return Refinement.Rejected(AppServerToolsFailure.UNKNOWN_NAME)
+            val admitted = tokens.map { token ->
+                when (val resolved = CanonicalAgentToolDefinitions.resolveInput(token)) {
+                    is Refinement.Refined -> resolved.value.name
+                    is Refinement.Rejected -> return Refinement.Rejected(AppServerToolsFailure.UNKNOWN_NAME)
+                }
             }
+            if (admitted.toSet().size != admitted.size) {
+                return Refinement.Rejected(AppServerToolsFailure.DUPLICATE_NAME)
+            }
+            val definitions = CanonicalAgentToolDefinitions.all.filter { it.name in admitted }
             return Refinement.Refined(AppServerTools(definitions))
         }
     }

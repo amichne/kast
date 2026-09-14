@@ -79,8 +79,10 @@ live envelope against the requested root and admitted descriptor host. A typed h
 rejection can be returned before read authority exists; it does not become a
 successful canonical payload.
 
-App Server provider qualification requires projection version 10 and its exact
-operation schemas and declared default budgets. Invocation continues through the configured CLI
+App Server provider qualification requires projection version 11 and its exact
+operation schemas and declared default budgets. Canonical registry input aliases
+resolve to the selected preferred tool route; omitted tools and incompatible
+catalog bindings reject before provider invocation. Invocation continues through the configured CLI
 process with admitted output and elapsed-time settings. `selectCliRuntimePath` now selects the seven existing-IDE reads before
 installed bootstrap in `KastCliMain`; saved read settings are admitted before the socket is opened. Invalid settings and missing hosts remain distinct rejections. The
 [native acceptance review](../../docs/reviews/live-semantic-read-acceptance.md)

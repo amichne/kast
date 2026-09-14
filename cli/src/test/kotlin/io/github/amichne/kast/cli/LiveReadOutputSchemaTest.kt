@@ -85,7 +85,7 @@ class LiveReadOutputSchemaTest {
             val token = (first.qualification as RelationReadQualification.Resumable).continuation
             val position = RelationReadPositionDocument.Resume(token)
             val errors = schema.validate(Json.encodeToString(fixture.request(position)), InputFormat.JSON)
-            assertTrue(errors.isEmpty(), "semantic_query rejected its emitted continuation: $errors")
+            assertTrue(errors.isEmpty(), "read_relations rejected its emitted continuation: $errors")
             val second = fixture.page(position) as OperationOutcome.Complete
             assertEquals(3, first.evidence.payload.relations.values.size)
             assertEquals(1, second.evidence.payload.relations.values.size)
@@ -156,7 +156,7 @@ class LiveReadOutputSchemaTest {
                 .getValue("tools")
                 .jsonArray
                 .map { it.jsonObject }
-                .single { it.getValue("name").jsonPrimitive.content == "semantic_query" }
+                .single { it.getValue("name").jsonPrimitive.content == "read_relations" }
         return schemas.getSchema(tool.getValue("inputSchema").toString())
     }
 

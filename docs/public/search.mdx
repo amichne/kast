@@ -85,9 +85,16 @@ A package scope instead uses semantic Kotlin package names:
 }
 ```
 
+`include_subdirectories: false` selects files directly in the named directory;
+`true` also includes descendant directories. `include_subpackages` makes the
+same choice for semantic package descendants. A package scope is not a directory
+alias: Kotlin package declarations determine membership. Live discovery includes
+authored Kotlin sources with admitted imported source-set ownership; generated
+and library sources are excluded.
+
 The two closed shapes are exclusive. Mixed fields, absolute paths, parent traversal and non-canonical paths reject. `source_set_names: null` means exactly `main` and `test`, not every imported source set. Explicit names such as `integrationTest` or `commonMain` must match imported Gradle ownership. Empty and duplicate selections reject. A known absent source-set name contributes no declarations.
 
-Source-set restrictions intersect the chosen directory or package during discovery. They do not constrain later expansion destinations.
+Source-set restrictions intersect the chosen directory or package during discovery. A later `query_symbols` `expand_relation` step uses workspace expansion and does not constrain its destinations to that discovery selection.
 
 ## Check diagnostics separately
 
@@ -111,7 +118,7 @@ A path may name a file or directory. Use `.` explicitly for the workspace root. 
 
 For callers, implementations, enumeration, or returned-reference input, continue
 with [Query pipelines](/query-pipelines). A query expansion returns declarations;
-use `semantic_query` when you need individual use-site facts.
+use `read_relations` when you need individual use-site facts.
 
 <Accordion title="Why did a search miss a saved edit?">
   Save the file and let IDEA finish indexing. Kast reads the saved, indexed

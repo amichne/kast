@@ -28,7 +28,7 @@ class InstalledServerProjectionTest {
     @Test
     fun `traversal resume input admits both supported checkpoint versions and rejects unknown versions`() {
         val schema =
-            schemaRegistry.getSchema(projectionTools().tool("impact_analyze").getValue("inputSchema").toString())
+            schemaRegistry.getSchema(projectionTools().tool("traverse_relations").getValue("inputSchema").toString())
         for (version in listOf("v1", "v2", "v3")) {
             val request =
                 requireNotNull(javaClass.getResource("/projection/traversal-resume-schema.json"))
@@ -69,7 +69,7 @@ class InstalledServerProjectionTest {
                 .jsonArray
                 .map(JsonElement::jsonObject)
 
-        assertEquals(10, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
+        assertEquals(11, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
         assertTrue(
             bootstrap.getValue("policy").jsonPrimitive.content.contains("compiler-grounded Kotlin source intelligence")
         )
@@ -87,7 +87,7 @@ class InstalledServerProjectionTest {
     fun `server projection publishes readiness and canonical semantic budgets`() {
         val tools = projectionTools()
         val readBudget = tools.tool("source_read").getValue("executionBudget").jsonObject
-        val traversalBudget = tools.tool("impact_analyze").getValue("executionBudget").jsonObject
+        val traversalBudget = tools.tool("traverse_relations").getValue("executionBudget").jsonObject
         assertEquals("1020000", readBudget.getValue("readinessMillis").jsonPrimitive.content)
         assertEquals("60000", readBudget.getValue("operationMillis").jsonPrimitive.content)
         assertEquals(
@@ -120,10 +120,10 @@ class InstalledServerProjectionTest {
             ),
             tools.map { it.getValue("operationId").jsonPrimitive.content },
         )
-        assertEquals(listOf("relation", "read"), invocations.invocation("semantic_query").cliCommand())
+        assertEquals(listOf("relation", "read"), invocations.invocation("read_relations").cliCommand())
         assertEquals(listOf("tool", "check_diagnostics"), invocations.invocation("check_diagnostics").cliCommand())
         tools
-            .tool("semantic_query")
+            .tool("read_relations")
             .outputSchema()
             .assertAdmits(requireNotNull(javaClass.getResource("/projection/complete-relation.json")).readText())
         tools
@@ -198,7 +198,7 @@ class InstalledServerProjectionTest {
         val internalOperations = HostedOperationProjection.internalDefinitions.map { it.operation.id.value }
 
         assertEquals(13, tools.size)
-        assertEquals(10, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
+        assertEquals(11, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
         assertEquals("kast", projection.getValue("namespace").jsonPrimitive.content)
         assertEquals(
             expectedPublicOperations.toSet(),
@@ -213,8 +213,8 @@ class InstalledServerProjectionTest {
                 "symbol_lookup",
                 "symbol_inspect",
                 "source_read",
-                "semantic_query",
-                "impact_analyze",
+                "read_relations",
+                "traverse_relations",
                 "check_diagnostics",
                 "change_plan",
                 "change_apply",
@@ -267,8 +267,8 @@ class InstalledServerProjectionTest {
                 "symbol_lookup" to listOf("symbol", "discover"),
                 "symbol_inspect" to listOf("symbol", "inspect"),
                 "source_read" to listOf("source", "read"),
-                "semantic_query" to listOf("relation", "read"),
-                "impact_analyze" to listOf("traversal", "run"),
+                "read_relations" to listOf("relation", "read"),
+                "traverse_relations" to listOf("traversal", "run"),
                 "check_diagnostics" to listOf("tool", "check_diagnostics"),
                 "change_plan" to listOf("change", "plan"),
                 "change_apply" to listOf("change", "apply"),
@@ -287,7 +287,7 @@ class InstalledServerProjectionTest {
                 .completedDocumentRequiredProperties()
                 .containsAll(listOf("operation", "status", "symbol"))
         )
-        assertTrue(tools.tool("impact_analyze").completedDocumentProperty("graph") != null)
+        assertTrue(tools.tool("traverse_relations").completedDocumentProperty("graph") != null)
 
         val changeIntentVariants =
             tools
