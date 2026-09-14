@@ -73,15 +73,34 @@ class SourceFunctionRequest:
     execution_budget: SourceExecutionBudget = field(default_factory=SourceExecutionBudget)
 
 
+@dataclass(frozen=True)
+class SourceBudgetAnchorSearch:
+    class_name: str = field(default='ReadPageBudget', init=False)
+    name_match: str = field(default='exact', init=False)
+    scope: None = field(default=None, init=False)
+
+
 def run_source_paging_regression(replay):
-    request = SourceFunctionRequest(SymbolAnchor(replay.seeds['logger']['symbol_ref']))
+    _check_page(replay, 'source-stop-at-eligible-page', replay.seeds['logger']['symbol_ref'], 'loggerFunction')
+    response = replay.transport.invoke(replay.surface, 'search_classes', asdict(SourceBudgetAnchorSearch()))
+    items = response.get('items', [])
+    admitted = response.get('status') == 'complete' and len(items) == 1 and bool(items[0].get('symbol_ref'))
+    replay.record('source-budget-fixture-anchor', 'search_classes', {
+        'exactAnchor': admitted, 'sameLiveAuthority': response.get('live') == replay.live,
+    }, len(items), response)
+    if admitted:
+        _check_page(replay, 'source-stop-before-large-tail', items[0]['symbol_ref'], 'pageItem00')
+
+
+def _check_page(replay, name, selector, expected_name):
+    request = SourceFunctionRequest(SymbolAnchor(selector))
     response = replay.transport.invoke(replay.surface, 'source_read', asdict(request))
     qualification = response.get('qualification', {})
     entities = response.get('entities', [])
     continuation = qualification.get('continuation', {})
-    replay.record('source-stop-at-eligible-page', 'source_read', {
+    replay.record(name, 'source_read', {
         'qualified': response.get('status') == 'qualified',
-        'exactFirstEntity': [entity.get('name') for entity in entities] == ['loggerFunction'],
+        'exactFirstEntity': [entity.get('name') for entity in entities] == [expected_name],
         'entityLimitOnly': qualification.get('limitations') == ['entity-limit-reached'],
         'upstreamContinuation': continuation.get('type') == 'available' and bool(continuation.get('continuation')),
         'sameLiveAuthority': response.get('live') == replay.live,
