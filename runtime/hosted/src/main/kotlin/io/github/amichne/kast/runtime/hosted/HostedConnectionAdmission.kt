@@ -47,6 +47,8 @@ internal suspend fun serveHostedListener(
                     }
                 } finally {
                     connections.release()
+                    trace.enter(HostedTransportStage.CONNECTION_RELEASE)
+                    trace.emit(HostedEndpointOutcome.COMPLETED)
                 }
             }
         } else {
