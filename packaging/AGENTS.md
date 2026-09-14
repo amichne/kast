@@ -22,6 +22,7 @@ Implements installer support, installed-product acceptance, configuration ingres
 - [run-hosted-change-acceptance.py](run-hosted-change-acceptance.py) - staged broker, CLI, and plugin change workflow in a private native IDE.
 - [hosted_read_regression.py](hosted_read_regression.py) - native CLI/provider read regression and bounded continuation checks.
 - [hosted_read_requests.py](hosted_read_requests.py) - typed traversal fixture requests with explicit strategy and retained resume position.
+- [hosted_budget_read_regression.py](hosted_budget_read_regression.py) - independent caller-grant forwarding and retained traversal replay across installed read surfaces.
 - [native_fixture_probe.py](native_fixture_probe.py) - typed native fixture control responses and readiness evidence admission.
 - [native_provider_qualification.py](native_provider_qualification.py) - closed, payload-free provider startup evidence retained by native read reports.
 
