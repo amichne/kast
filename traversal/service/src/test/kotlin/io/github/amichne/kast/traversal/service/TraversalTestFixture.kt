@@ -249,24 +249,6 @@ internal class TraversalTestFixture {
         return RelationEndpoint.resolve(subject.lease, subject.scope, evidence).refined()
     }
 
-    private fun functionSignature(qualifiedIdentity: String): CanonicalCompilerSignature =
-        CanonicalCompilerSignature.function(
-                qualifiedIdentity,
-                null,
-                emptyList(),
-                emptyList(),
-                0,
-            )
-            .refined()
-
-    private fun CanonicalCompilerSignature.qualifiedIdentity(): String =
-        when (this) {
-            is CanonicalCompilerSignature.Function -> qualifiedIdentity.value
-            is CanonicalCompilerSignature.Property -> qualifiedIdentity.value
-            is CanonicalCompilerSignature.TypeAlias -> qualifiedIdentity.value
-            is CanonicalCompilerSignature.ClassLike -> qualifiedIdentity.value
-        }
-
     fun completeRelationResult(
         request: RelationRequest,
         targets: List<RelationEndpoint.Resolved>,
@@ -405,4 +387,22 @@ internal fun <Strong, Failure> Refinement<Strong, Failure>.refined(): Strong =
     when (this) {
         is Refinement.Refined -> value
         is Refinement.Rejected -> error(failure.toString())
+    }
+
+private fun functionSignature(qualifiedIdentity: String): CanonicalCompilerSignature =
+    CanonicalCompilerSignature.function(
+            rawQualifiedIdentity = qualifiedIdentity,
+            rawReceiverType = null,
+            rawContextReceiverTypes = emptyList(),
+            rawValueParameterTypes = emptyList(),
+            rawTypeParameterCount = 0,
+        )
+        .refined()
+
+private fun CanonicalCompilerSignature.qualifiedIdentity(): String =
+    when (this) {
+        is CanonicalCompilerSignature.Function -> qualifiedIdentity.value
+        is CanonicalCompilerSignature.Property -> qualifiedIdentity.value
+        is CanonicalCompilerSignature.TypeAlias -> qualifiedIdentity.value
+        is CanonicalCompilerSignature.ClassLike -> qualifiedIdentity.value
     }
