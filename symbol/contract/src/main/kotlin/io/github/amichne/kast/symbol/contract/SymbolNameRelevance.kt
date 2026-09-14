@@ -29,11 +29,33 @@ private fun oneEditApart(left: String, right: String): Boolean {
     while (prefix < minOf(left.length, right.length) && left[prefix] == right[prefix]) prefix++
     if (prefix == minOf(left.length, right.length)) return true
     return when {
-        left.length < right.length -> left.regionMatches(prefix, right, prefix + 1, left.length - prefix)
-        left.length > right.length -> left.regionMatches(prefix + 1, right, prefix, right.length - prefix)
-        left.regionMatches(prefix + 1, right, prefix + 1, left.length - prefix - 1) -> true
+        left.length < right.length ->
+            left.regionMatches(
+                thisOffset = prefix,
+                other = right,
+                otherOffset = prefix + 1,
+                length = left.length - prefix,
+            )
+        left.length > right.length ->
+            left.regionMatches(
+                thisOffset = prefix + 1,
+                other = right,
+                otherOffset = prefix,
+                length = right.length - prefix,
+            )
+        left.regionMatches(
+            thisOffset = prefix + 1,
+            other = right,
+            otherOffset = prefix + 1,
+            length = left.length - prefix - 1,
+        ) -> true
         prefix + 1 < left.length && left[prefix] == right[prefix + 1] && left[prefix + 1] == right[prefix] ->
-            left.regionMatches(prefix + 2, right, prefix + 2, left.length - prefix - 2)
+            left.regionMatches(
+                thisOffset = prefix + 2,
+                other = right,
+                otherOffset = prefix + 2,
+                length = left.length - prefix - 2,
+            )
         else -> false
     }
 }

@@ -9,9 +9,8 @@ import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.symbol.contract.fingerprintFields
 import io.github.amichne.kast.workspace.contract.SemanticReadIdentity
 import java.nio.charset.StandardCharsets
-import java.security.MessageDigest
 
-private const val RELATION_CONTINUATION_FINGERPRINT_LENGTH = 64
+internal const val RELATION_CONTINUATION_FINGERPRINT_LENGTH = 64
 
 /** One closed semantic hop; no direction flag can be combined with an arbitrary kind. */
 sealed interface RelationMeaning {
@@ -573,28 +572,3 @@ private fun RelationEndpoint.selectorScopeCanonical(): String {
         constraints.fingerprintFields().forEach(::appendContinuationField)
     }
 }
-
-private fun ByteArray.sha256(): String =
-    MessageDigest.getInstance("SHA-256").digest(this).joinToString(separator = "") { byte ->
-        (byte.toInt() and 0xff).toString(16).padStart(2, '0')
-    }
-
-private fun String.isCanonicalSha256(): Boolean =
-    length == RELATION_CONTINUATION_FINGERPRINT_LENGTH &&
-        all { character -> character in '0'..'9' || character in 'a'..'f' }
-
-private fun <Value, Failure> Refinement<Value, Failure>.refinedInvariant(): Value =
-    when (this) {
-        is Refinement.Refined -> value
-        is Refinement.Rejected -> error("Internally derived relation value violated its invariant")
-    }
-
-/** Page limits can clear on continuation; omitted semantic evidence cannot. */
-val RelationRequest.retainedLimitations: Set<RelationLimitation>
-    get() = when (val read = position) {
-        RelationReadPosition.Start -> emptySet()
-        is RelationReadPosition.Resume -> read.continuation.retainedLimitations
-    }
-
-private val relationPageLimits = setOf(RelationLimitation.RESULT_LIMIT_REACHED, RelationLimitation.BYTE_LIMIT_REACHED,
-    RelationLimitation.WORK_LIMIT_REACHED, RelationLimitation.TIME_LIMIT_REACHED)

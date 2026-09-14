@@ -9,19 +9,17 @@ import java.nio.file.Path
 internal fun SymbolDiscoveryConstraints.admit(
     item: NavigationItem,
     filePath: String,
-    workspaceRoot: String,
     compiledScope: CompiledIntellijSearchScope,
-    itemCompilerKind: IntellijDiscoveryItemCompilerKind,
-    itemPackage: IntellijDiscoveryItemPackage,
+    policies: IntellijDiscoveryItemPolicies,
     inspectPackage: Boolean = true,
 ): IntellijDiscoveryItemAdmission {
     val sourceAdmission = admitSourceSets(filePath, compiledScope)
     if (sourceAdmission != IntellijDiscoveryItemAdmission.ADMITTED) return sourceAdmission
-    val directoryAdmission = admitDirectory(filePath, workspaceRoot)
+    val directoryAdmission = admitDirectory(filePath, compiledScope.lease.workspaceRoot.value)
     if (directoryAdmission != IntellijDiscoveryItemAdmission.ADMITTED) return directoryAdmission
-    val kindAdmission = admitKind(item, itemCompilerKind)
+    val kindAdmission = admitKind(item, policies.itemCompilerKind)
     if (kindAdmission != IntellijDiscoveryItemAdmission.ADMITTED) return kindAdmission
-    return if (inspectPackage) packageName.admitPackage { itemPackage.inspect(item) }
+    return if (inspectPackage) packageName.admitPackage { policies.itemPackage.inspect(item) }
     else IntellijDiscoveryItemAdmission.ADMITTED
 }
 

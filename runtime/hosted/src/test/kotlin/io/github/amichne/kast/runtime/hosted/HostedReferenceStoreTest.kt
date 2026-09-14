@@ -23,6 +23,19 @@ import org.junit.jupiter.api.Test
 
 class HostedReferenceStoreTest {
     @Test
+    fun `short digest collision preserves existing authority and returns inline selector`() {
+        val first = text("exact:v3:first-scoped-selector")
+        val second = text("exact:v3:second-scoped-selector")
+        val handle = io.github.amichne.kast.query.protocol.compactSymbolReference(first)
+        val counts = Counts()
+        val transport = HostedReferenceTokens(ReadLimits.Default) { handle }.transport(counts)
+        assertEquals(handle.token, transport.issue(first))
+        assertEquals(second, transport.issue(second))
+        assertEquals(first, (transport.restore(handle.token) as CanonicalSelectorDecoding.Decoded).value)
+        assertEquals(1, counts.values[IntellijReadCounter.REFERENCE_INLINE_COLLISION])
+    }
+
+    @Test
     fun `lookup preserves all original bytes and reuses the same compact identity`() {
         val counts = Counts()
         val transport = HostedReferenceTokens(ReadLimits.Default).transport(counts)

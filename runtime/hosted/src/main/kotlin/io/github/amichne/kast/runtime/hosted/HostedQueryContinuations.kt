@@ -18,6 +18,7 @@ import io.github.amichne.kast.query.protocol.QueryCheckpointStore
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import java.util.UUID
 import java.util.concurrent.TimeUnit
+import kotlinx.serialization.json.Json
 
 internal typealias HostedQueryOutcome = OperationOutcome<QueryRunResult, QueryRunQualification, QueryRunRejection>
 
@@ -79,11 +80,18 @@ internal class HostedQueryContinuations : Disposable {
             outcome: HostedQueryOutcome,
         ): HostedQueryRetention {
             expire()
-            val bytes =
+            val retainedRequest = request.copy(continuation = null)
+            val requestBytes =
+                Json.encodeToString(QueryRunRequest.serializer(), retainedRequest)
+                    .toByteArray(Charsets.UTF_8)
+                    .size
+                    .toLong()
+            val outcomeBytes =
                 when (val encoded = CanonicalOperationWireBindings.queryRun.encodeOutcome(outcome)) {
-                    is WireEncoding.Encoded -> encoded.document.toByteArray(Charsets.UTF_8).size.toLong() * 4L
+                    is WireEncoding.Encoded -> encoded.document.toByteArray(Charsets.UTF_8).size.toLong()
                     is WireEncoding.Rejected -> return HostedQueryRetention.EncodingRejected
                 }
+            val bytes = (requestBytes + outcomeBytes) * RETAINED_DOCUMENT_FACTOR
             if (bytes > maximumBytes) return HostedQueryRetention.CapacityExceeded
             while (entries.size >= capacity || entries.values.sumOf { it.bytes } + bytes > maximumBytes) entries.remove(
                 entries.keys.first()
@@ -95,7 +103,7 @@ internal class HostedQueryContinuations : Disposable {
                 }
             entries[token] =
                 Entry(
-                    request = request.copy(continuation = null),
+                    request = retainedRequest,
                     lease = lease,
                     outcome = outcome,
                     bytes = bytes,
@@ -137,3 +145,5 @@ internal class HostedQueryContinuations : Disposable {
             OperationOutcome.Rejected(QueryRunRejection.ExecutionRejected(reason))
     }
 }
+
+private const val RETAINED_DOCUMENT_FACTOR = 4L

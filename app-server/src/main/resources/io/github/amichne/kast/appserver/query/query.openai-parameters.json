@@ -17,13 +17,21 @@
     },
     "select": {
       "$ref": "#/$defs/Selection"
+    },
+    "continuation": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Opaque continuation for this same query. Omitted or null starts a new execution."
     }
   },
   "required": [
     "type",
     "from",
     "steps",
-    "select"
+    "select",
+    "continuation"
   ],
   "additionalProperties": false,
   "$defs": {

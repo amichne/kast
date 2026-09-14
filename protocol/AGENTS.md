@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-12 | hash: 2d9c2bfbeb71 -->
+<!-- generated: 2026-09-14 | hash: d6efd03fbe07 -->
 
 # protocol
 
@@ -9,6 +9,8 @@ Defines canonical operation models, authoritative operation/tool registries, and
 
 ## Key Files
 
+- [RelationOmissionDocument.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/RelationOmissionDocument.kt) - canonical omission and soundness evidence.
+- [TraversalPartialExpansionDocument.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/TraversalPartialExpansionDocument.kt) - typed partial-expansion projection.
 - [CanonicalSourceReadAnchorDocument.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalSourceReadAnchorDocument.kt) - disjoint inline and hosted-handle source anchor admission.
 
 - [contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalOperation.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalOperation.kt) - canonical operation domain.

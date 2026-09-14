@@ -27,29 +27,42 @@ import org.junit.jupiter.api.Test
 class HostedQueryStoreTest {
     @Test
     fun `retention accounts for query request independently of its small output suffix`() {
-        val lease = SemanticReadLease(
-            CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined(),
-            EvidenceGeneration.parse(1).refined(),
-        )
-        val limits = ReadLimits.resolve(
-            environment = mapOf(ReadLimitParameter.QUERY_CONTINUATION_BYTES.environmentKey to "8192")
-        ).refined()
+        val lease =
+            SemanticReadLease(
+                CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined(),
+                EvidenceGeneration.parse(1).refined(),
+            )
+        val limits =
+            ReadLimits.resolve(
+                    environment =
+                        mapOf(
+                            ReadLimitParameter.QUERY_CONTINUATION_BYTES.environmentKey to "8192",
+                            ReadLimitParameter.QUERY_CHECKPOINT_BYTES.environmentKey to "8192",
+                        )
+                )
+                .refined()
         val store = HostedQueryContinuations.Active(lease, limits)
-        val output = OperationOutcome.Complete(EvidenceEnvelope(
-            CanonicalOperation.QUERY_RUN.id, lease.generation, QueryRunResult(bounded(emptyList()), bounded(emptyList()))
-        ))
+        val output =
+            OperationOutcome.Complete(
+                EvidenceEnvelope(
+                    CanonicalOperation.QUERY_RUN.id,
+                    lease.generation,
+                    QueryRunResult(bounded(emptyList()), bounded(emptyList())),
+                )
+            )
         assertTrue(store.issue(request("short"), lease, output) is HostedQueryRetention.Retained)
         assertEquals(HostedQueryRetention.CapacityExceeded, store.issue(request("x".repeat(6000)), lease, output))
     }
 
-    private fun request(reference: String) = QueryRunRequest(
-        QueryFromDocument.References(bounded(listOf(QueryReferenceDocument.ExactSymbol(
-            ProtocolText.parse("exact:v3:$reference").refined()
-        )))),
-        bounded(emptyList()),
-        QueryOutputDocument.Symbols(bounded(emptyList())),
-        QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
-    )
+    private fun request(reference: String) =
+        QueryRunRequest(
+            QueryFromDocument.References(
+                bounded(listOf(QueryReferenceDocument.ExactSymbol(ProtocolText.parse("exact:v3:$reference").refined())))
+            ),
+            bounded(emptyList()),
+            QueryOutputDocument.Symbols(bounded(emptyList())),
+            QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
+        )
 
     private fun <T> bounded(values: List<T>): BoundedProtocolList<T> = BoundedProtocolList.create(values).refined()
 

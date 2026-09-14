@@ -13,7 +13,6 @@ import io.github.amichne.kast.appserver.core.ObserverPresentation
 import io.github.amichne.kast.appserver.core.ProviderFailureCode
 import io.github.amichne.kast.appserver.core.ProviderNamespace
 import io.github.amichne.kast.appserver.core.ToolAddress
-import io.github.amichne.kast.appserver.core.ToolContent
 import io.github.amichne.kast.appserver.core.ToolName
 import io.github.amichne.kast.appserver.runtime.BrokerInvocationApproval
 import io.github.amichne.kast.appserver.runtime.ClientConnectionId

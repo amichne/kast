@@ -10,5 +10,8 @@
     },
     "reason": "BUILD_ROOT_UNAVAILABLE"
   },
-  "stage": "MODEL_CAPTURE"
+  "stage": "MODEL_CAPTURE",
+  "recovery": {
+    "kind": "review_failure"
+  }
 }

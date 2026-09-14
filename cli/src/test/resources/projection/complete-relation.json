@@ -1,0 +1,10 @@
+{
+  "status": "completed",
+  "document": {
+    "operation": "relation.read",
+    "status": "complete",
+    "relations": [],
+    "omissions": [],
+    "soundness": "EXACT_RETURNED_FACTS"
+  }
+}

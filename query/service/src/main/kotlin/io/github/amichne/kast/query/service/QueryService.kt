@@ -98,19 +98,26 @@ class QueryService(
                 is PipelineTask.Related -> related(task)
                 is PipelineTask.Discover -> {
                     when (val result = stages.discover(task.syntax, state)) {
-                        is DiscoveryExecution.Rejected -> rejection = result.result
+                        DiscoveryExecution.NotStarted -> false
+                        is DiscoveryExecution.Rejected -> {
+                            rejection = result.result
+                            true
+                        }
                         is DiscoveryExecution.Discovered -> {
                             tasks.removeFirst()
                             result.values.asReversed().forEach { tasks.addFirst(PipelineTask.Candidate(it, task.next)) }
+                            true
                         }
                     }
-                    true
                 }
                 is PipelineTask.Revalidate -> {
-                    val values = stages.revalidate(listOf(task.selector), state)
-                    tasks.removeFirst()
-                    values.asReversed().forEach { tasks.addFirst(PipelineTask.Symbol(it, task.next)) }
-                    true
+                    if (!state.consumeUnit()) false
+                    else {
+                        val values = stages.revalidate(task.selector, state)
+                        tasks.removeFirst()
+                        values.asReversed().forEach { tasks.addFirst(PipelineTask.Symbol(it, task.next)) }
+                        true
+                    }
                 }
             }
 
@@ -137,9 +144,9 @@ class QueryService(
                     true
                 }
                 is CandidateQueryStage.Inspect -> {
-                    if (!state.canContinue(true)) false
+                    if (!state.consumeUnit()) false
                     else {
-                        val values = stages.refine(listOf(task.value), discoverySyntax(request.plan), state)
+                        val values = stages.refine(task.value, discoverySyntax(request.plan), state)
                         tasks.removeFirst()
                         values.asReversed().forEach { tasks.addFirst(PipelineTask.Symbol(it, stage.next)) }
                         true
@@ -161,9 +168,9 @@ class QueryService(
                     true
                 }
                 is ExactQueryStage.Where -> {
-                    if (!state.canContinue(true)) false
+                    if (!state.consumeUnit()) false
                     else {
-                        val values = stages.where(listOf(task.value), stage.predicate, state)
+                        val values = stages.where(task.value, stage.predicate, state)
                         tasks.removeFirst()
                         values.asReversed().forEach { tasks.addFirst(PipelineTask.Symbol(it, stage.next)) }
                         true

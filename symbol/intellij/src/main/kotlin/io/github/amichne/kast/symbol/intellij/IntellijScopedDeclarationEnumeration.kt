@@ -71,10 +71,7 @@ internal fun collectScopedKotlinDeclarations(
     project: Project,
     scope: CompiledIntellijSearchScope,
     request: SymbolDiscoveryRequest,
-    kinds: Set<CompilerSymbolKind>,
-    observe: () -> Boolean,
-    qualify: (SymbolDiscoveryQualification) -> Unit,
-    accept: (NavigationItem) -> Boolean,
+    callbacks: ScopedDeclarationCallbacks,
     limits: io.github.amichne.kast.kernel.ReadLimits = io.github.amichne.kast.kernel.ReadLimits.Default,
 ): Boolean {
     val fileLimit =
@@ -82,7 +79,13 @@ internal fun collectScopedKotlinDeclarations(
                 limits[io.github.amichne.kast.kernel.ReadLimitParameter.DISCOVERY_FILES].value.toLong()
             ) as io.github.amichne.kast.kernel.Refinement.Refined)
             .value
-    val files = ScopedKotlinFileCollection(scope, fileLimit, observe, qualify)
+    val files =
+        ScopedKotlinFileCollection(
+            scope = scope,
+            workLimit = fileLimit,
+            observe = callbacks.observe,
+            qualify = callbacks.qualify,
+        )
     val packageConstraint = request.constraints.packageName
     val complete =
         if (packageConstraint?.containment == SymbolDiscoveryContainment.DIRECT) {
@@ -98,16 +101,17 @@ internal fun collectScopedKotlinDeclarations(
                 files.accept(file.virtualFile)
             }
         } else FileTypeIndex.processFiles(KotlinFileType.INSTANCE, files::accept, scope.nativeScope)
-    if (!complete && files.stop == ScopedFileCollectionStop.NONE) qualify(SymbolDiscoveryQualification.PROVIDER_FAILURE)
+    if (!complete && files.stop == ScopedFileCollectionStop.NONE)
+        callbacks.qualify(SymbolDiscoveryQualification.PROVIDER_FAILURE)
     // Native callbacks have ended before any PSI package inspection or declaration traversal.
     val visitor =
         ScopedKotlinDeclarationVisitor(
-            PsiManager.getInstance(project),
-            request.constraints,
-            kinds,
-            observe,
-            qualify,
-            accept,
+            manager = PsiManager.getInstance(project),
+            constraints = request.constraints,
+            kinds = request.requestedDeclarationKinds(),
+            observe = callbacks.observe,
+            qualify = callbacks.qualify,
+            accept = callbacks.accept,
         )
     return files.values.sortedBy { it.path }.all(visitor::read)
 }
@@ -197,3 +201,9 @@ private class ScopedKotlinDeclarationVisitor(
     private fun constructorProperties(declaration: KtClassOrObject): Boolean =
         declaration.primaryConstructorParameters.all { observe() && (!it.hasValOrVar() || accept(it)) }
 }
+
+internal data class ScopedDeclarationCallbacks(
+    val observe: () -> Boolean,
+    val qualify: (SymbolDiscoveryQualification) -> Unit,
+    val accept: (NavigationItem) -> Boolean,
+)

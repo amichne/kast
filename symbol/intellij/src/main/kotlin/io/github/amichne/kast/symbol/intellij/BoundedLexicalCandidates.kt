@@ -28,11 +28,11 @@ internal class BoundedLexicalCandidates(private val pattern: SymbolDiscoveryPatt
         val psi = item as? PsiElement
         val candidate =
             Ranked(
-                item,
-                pattern.relevance(name),
-                name,
-                psi?.containingFile?.virtualFile?.path.orEmpty(),
-                psi?.textOffset ?: 0,
+                item = item,
+                relevance = pattern.relevance(name),
+                name = name,
+                path = psi?.containingFile?.virtualFile?.path.orEmpty(),
+                offset = psi?.textOffset ?: 0,
             )
         if (item in identities) return LexicalCandidateRetention.DUPLICATE
         if (retained.size < capacity) {

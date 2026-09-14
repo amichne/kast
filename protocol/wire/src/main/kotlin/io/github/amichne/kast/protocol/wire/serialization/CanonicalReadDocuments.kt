@@ -172,6 +172,7 @@ internal enum class TraversalLimitationWireDocument {
     @SerialName("depth_limit_reached") DEPTH_LIMIT_REACHED,
     @SerialName("frontier_limit_reached") FRONTIER_LIMIT_REACHED,
     @SerialName("one_hop_incomplete") ONE_HOP_INCOMPLETE,
+    @SerialName("no_progress") NO_PROGRESS,
 }
 
 @Serializable

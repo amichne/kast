@@ -448,12 +448,20 @@
             "minItems": 0,
             "maxItems": 3,
             "description": "null returns name and location, [] requests mandatory identity and kind only. Symbol references and completeness evidence are always retained. Duplicate fields are rejected by server admission."
+          },
+          "continuation": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Opaque continuation returned by this exact pipeline. Omit or use null to start. Resume with the same source, steps and return_fields; stale or mismatched state rejects."
           }
         },
         "required": [
           "source",
           "steps",
-          "return_fields"
+          "return_fields",
+          "continuation"
         ],
         "additionalProperties": false,
         "$defs": {

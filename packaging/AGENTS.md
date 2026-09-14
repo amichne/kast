@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-12 | hash: 91aef654ec89 -->
+<!-- generated: 2026-09-14 | hash: 50a24a6e24ca -->
 
 # packaging
 
@@ -9,6 +9,7 @@ Implements installer support, installed-product acceptance, configuration ingres
 
 ## Key Files
 
+- [hosted_change_acceptance.py](hosted_change_acceptance.py) - bounded complete artifact inventory admission and native acceptance evidence.
 - [configuration-schema.json](configuration-schema.json) - packaging-side configuration schema.
 - [installation-lifecycle.py](installation-lifecycle.py) - installed lifecycle orchestration.
 - [installed_acceptance_product.py](installed_acceptance_product.py) - acceptance product model.

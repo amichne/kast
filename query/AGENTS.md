@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-12 | hash: d2eb199966be -->
+<!-- generated: 2026-09-14 | hash: fbcfe24f9532 -->
 
 # query
 
@@ -9,6 +9,8 @@ Models and executes multi-stage semantic queries while retaining scope, budgets,
 
 ## Key Files
 
+- [PipelineCheckpoint.kt](service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineCheckpoint.kt) - detached ordered stage tasks and distinct history.
+- [QueryCheckpointStore.kt](protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCheckpointStore.kt) - bounded expiring query state and exact resume admission.
 - [QueryReferenceTransport.kt](protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryReferenceTransport.kt) - detached token representation before canonical authority validation.
 
 - [contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPlan.kt](contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPlan.kt) - query plan model.

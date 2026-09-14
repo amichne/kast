@@ -42,7 +42,6 @@ import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonArray
@@ -1173,7 +1172,11 @@ class CodexProtocolAdapterTest {
                 .getValue("result")
                 .jsonObject
         assertFalse(result.getValue("success").jsonPrimitive.content.toBoolean())
-        val rejection = Json.parseToJsonElement(result.getValue("contentItems").jsonArray.single().jsonObject.getValue("text").jsonPrimitive.content).jsonObject
+        val rejection =
+            Json.parseToJsonElement(
+                    result.getValue("contentItems").jsonArray.single().jsonObject.getValue("text").jsonPrimitive.content
+                )
+                .jsonObject
         assertEquals("rejected", rejection.getValue("status").jsonPrimitive.content)
         assertEquals("BROKER_ACTIVITY_UNAVAILABLE", rejection.getValue("failure").jsonPrimitive.content)
     }
@@ -1725,33 +1728,6 @@ class CodexProtocolAdapterTest {
         assertEquals("<plan>", arguments.getValue("plan").jsonPrimitive.content)
         assertEquals("<symbol>", arguments.getValue("target").jsonPrimitive.content)
     }
-
-    private fun JsonElement.objectWithId(id: String): JsonObject =
-        when (this) {
-            is JsonObject ->
-                if (this["id"]?.jsonPrimitive?.content == id) {
-                    this
-                } else {
-                    values.firstNotNullOfOrNull { value -> value.objectWithIdOrNull(id) }
-                        ?: throw AssertionError("No object with id=$id in $this")
-                }
-            is JsonArray ->
-                firstNotNullOfOrNull { value -> value.objectWithIdOrNull(id) }
-                    ?: throw AssertionError("No object with id=$id in $this")
-            else -> throw AssertionError("No object with id=$id in $this")
-        }
-
-    private fun JsonElement.objectWithIdOrNull(id: String): JsonObject? =
-        when (this) {
-            is JsonObject ->
-                if (this["id"]?.jsonPrimitive?.content == id) {
-                    this
-                } else {
-                    values.firstNotNullOfOrNull { value -> value.objectWithIdOrNull(id) }
-                }
-            is JsonArray -> firstNotNullOfOrNull { value -> value.objectWithIdOrNull(id) }
-            else -> null
-        }
 
     private fun String.objectValue(name: String): JsonObject =
         Json.parseToJsonElement(this).jsonObject.getValue(name).jsonObject

@@ -9,6 +9,25 @@ import org.junit.jupiter.api.Test
 
 class PublicToolContractTest {
     @Test
+    fun `pipeline continuation retains exact opaque bytes through facade lowering`() {
+        val token = (ProtocolText.parse("query:v1:EXAMPLE_NOT_ISSUED") as Refinement.Refined).value
+        val refs =
+            (BoundedProtocolList.create(
+                    listOf((ProtocolText.parse("NON_ISSUED_SCHEMA_TEST_ONLY") as Refinement.Refined).value)
+                ) as Refinement.Refined)
+                .value
+        val document = PublicToolQuerySymbols(PublicToolReferenceSource(refs), null, null, token)
+        val encoded = Json.encodeToJsonElement(PublicToolQuerySymbols.serializer(), document)
+        val admitted = PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, encoded) as Refinement.Refined
+        val canonical = (admitted.value.canonical as PublicToolCanonical.Query).request
+        assertEquals(token, canonical.continuation)
+        assertEquals(
+            "query:v1:EXAMPLE_NOT_ISSUED",
+            PublicToolContract.encode(admitted.value).jsonObject.getValue("continuation").jsonPrimitive.content,
+        )
+    }
+
+    @Test
     fun `class facade compiles explicit null once to exact scoped exhaustive search`() {
         val admitted =
             PublicToolContract.admit(

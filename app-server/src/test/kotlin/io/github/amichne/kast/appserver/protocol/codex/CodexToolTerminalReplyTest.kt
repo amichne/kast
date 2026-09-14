@@ -6,14 +6,22 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class CodexToolTerminalReplyTest {
     @Test
     fun `every terminal failure remains one parseable JSON item with its exact finite code`() {
-        val expected = listOf("CATALOG_INCOMPATIBLE", "BROKER_OVERLOADED_IN_FLIGHT_CALLS_PER_CONNECTION",
-            "DUPLICATE_INVOCATION", "BROKER_ACTIVITY_UNAVAILABLE", "BROKER_OVERLOADED_MAXIMUM_TOOL_RESULT_BYTES")
+        val expected =
+            listOf(
+                "CATALOG_INCOMPATIBLE",
+                "BROKER_OVERLOADED_IN_FLIGHT_CALLS_PER_CONNECTION",
+                "DUPLICATE_INVOCATION",
+                "BROKER_ACTIVITY_UNAVAILABLE",
+                "BROKER_OVERLOADED_MAXIMUM_TOOL_RESULT_BYTES",
+            )
         assertEquals(expected, CodexToolTerminalFailure.entries.map { it.name })
         for ((failure, code) in CodexToolTerminalFailure.entries.zip(expected)) {
             val presentation = codexToolFailurePresentation(failure)

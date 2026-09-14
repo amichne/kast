@@ -77,7 +77,7 @@ continuations in its resume input and qualified output. Both schemas use
 the authority's version. The [query protocol](../modules/query-protocol.md)
 retains the stronger continuation ownership checks after structural admission.
 
-Public exact-reference syntax accepts hosted `exact:v4:` handles alongside legacy `v2` and `v3` tokens. Returned references remain opaque and must be passed back unchanged. The host resolves compact handles before validating authority; source anchors also accept the corresponding candidate handle family.
+Public exact-reference syntax accepts hosted `exact:v5:` and `exact:v4:` handles alongside legacy `v2` and `v3` tokens. Returned references remain opaque and must be passed back unchanged. The host resolves compact handles before validating authority; source anchors also accept the corresponding candidate handle family.
 
 The published agent policy permits opening or reopening the exact repository in
 IDE tools when the user has already authorized it, followed by saved/indexed
@@ -96,3 +96,11 @@ retains raw text and exposes a single Kast JSON object through the supported
 has no such property in the locally generated Codex 0.154.0 schema. Malformed,
 mixed, and non-object display results omit structured content rather than
 manufacturing an empty object.
+
+`query_symbols` accepts optional nullable `continuation`; omission or null starts
+a query. It preserves the opaque token through public lowering. Qualified query
+output includes nullable `continuation` and `terminal_reason`, while exact items
+include `symbol_id` independently of the retained `symbol_ref` capability.
+Traversal output includes progress, strategy and page-local partial expansions.
+Relation output separates exact returned-fact soundness from bounded provider
+omission evidence, with measured or explicitly unmeasured page counts.

@@ -9,6 +9,7 @@ import io.github.amichne.kast.relation.contract.RelationCompilation
 import io.github.amichne.kast.relation.contract.RelationCompilerRejection
 import io.github.amichne.kast.relation.contract.RelationFact
 import io.github.amichne.kast.relation.contract.RelationLimitation
+import io.github.amichne.kast.relation.contract.RelationOmissionSample
 import io.github.amichne.kast.relation.contract.RelationProviderCursor
 import io.github.amichne.kast.relation.contract.RelationProviderItemDescriptor
 import io.github.amichne.kast.relation.contract.RelationRequest
@@ -59,6 +60,7 @@ internal class IntellijRelationCollector(
     private val startedAt = clockNanoseconds()
     private val facts = mutableListOf<RelationFact>()
     private val limitations = request.retainedLimitations.toMutableSet()
+    private val omissions = IntellijRelationOmissionObservation(request.providerCursor.provider)
     private val requestedCursor = request.providerCursor
     private var observedPrefix = RelationProviderCursor.start(requestedCursor.provider)
     private var nextProviderCursor = requestedCursor
@@ -183,7 +185,10 @@ internal class IntellijRelationCollector(
     }
 
     /** Records semantic work that could not produce an exact detached fact. */
-    fun examineIncomplete(limitation: RelationLimitation): Boolean {
+    fun examineIncomplete(
+        limitation: RelationLimitation,
+        sample: RelationOmissionSample = RelationOmissionSample.Unavailable,
+    ): Boolean {
         val pending = pendingProviderItem ?: return contractHalt()
         if (state != IntellijRelationCollectionState.COLLECTING) return false
         if (elapsedLimitReached()) return halt(RelationLimitation.TIME_LIMIT_REACHED)
@@ -193,6 +198,8 @@ internal class IntellijRelationCollector(
         nextProviderCursor = nextProviderCursor.advance(pending)
         pendingProviderItem = null
         examined += 1L
+        omissions.record(limitation, sample)
+        observation.count(IntellijReadCounter.RELATION_ITEMS_OMITTED)
         limitations += limitation
         observation.terminated(limitation.observedTermination())
         return true
@@ -217,12 +224,12 @@ internal class IntellijRelationCollector(
             is IntellijRelationTermination.TerminalIncomplete ->
                 limitations +=
                     termination.limitations.ifEmpty {
-                        setOf(RelationLimitation.PROVIDER_INCOMPLETE)
+                        if (limitations.isEmpty()) setOf(RelationLimitation.PROVIDER_INCOMPLETE) else emptySet()
                     }
             is IntellijRelationTermination.Resumable ->
                 limitations +=
                     termination.limitations.ifEmpty {
-                        setOf(RelationLimitation.PROVIDER_INCOMPLETE)
+                        if (limitations.isEmpty()) setOf(RelationLimitation.PROVIDER_INCOMPLETE) else emptySet()
                     }
         }
 
@@ -237,8 +244,16 @@ internal class IntellijRelationCollector(
         val work = RelationWorkCount.parse(examined).refinedOrReject() ?: return contractRejected()
         val results = RelationResultCount.parse(orderedFacts.size).refinedOrReject() ?: return contractRejected()
         val batch =
-            RelationBatch.create(request, orderedFacts, bytes, work, results).refinedOrReject()
-                ?: return contractRejected()
+            RelationBatch.create(
+                    request = request,
+                    facts = orderedFacts,
+                    encodedBytes = bytes,
+                    examinedWorkUnits = work,
+                    resultCount = results,
+                )
+                .refinedOrReject()
+                ?.withOmissions(omissions.summarize(limitations))
+                ?.refinedOrReject() ?: return contractRejected()
 
         // Canonical order is unproven after overflow; a continuation cannot promise progress.
         val resumable =

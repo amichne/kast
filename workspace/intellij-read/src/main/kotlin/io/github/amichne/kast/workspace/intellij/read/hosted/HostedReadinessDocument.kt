@@ -11,9 +11,7 @@ import kotlinx.serialization.json.JsonClassDiscriminator
 @Serializable
 @JsonClassDiscriminator("status")
 sealed interface HostedReadinessDocument {
-    @Serializable
-    @SerialName("admission_ready")
-    data object AdmissionReady : HostedReadinessDocument
+    @Serializable @SerialName("admission_ready") data object AdmissionReady : HostedReadinessDocument
 
     @Serializable
     @SerialName("unavailable")
@@ -25,13 +23,16 @@ internal fun observeHostedReadiness(observe: () -> ExistingProjectValidation): H
     when (val validation = observe()) {
         ExistingProjectValidation.Validated -> HostedReadinessDocument.AdmissionReady
         is ExistingProjectValidation.Rejected ->
-            HostedQueryFailure.ProjectAdmission(validation.failure).readinessRejection(HostedQueryStage.PROJECT_ADMISSION)
+            HostedQueryFailure.ProjectAdmission(validation.failure)
+                .readinessRejection(HostedQueryStage.PROJECT_ADMISSION)
     }
 
 internal fun HostedQueryFailure.readinessRejection(stage: HostedQueryStage): HostedReadinessDocument.Unavailable =
-    HostedReadinessDocument.Unavailable(HostedQueryRejectionDocument(
-        failure = code(),
-        detail = detail(),
-        stage = stage.name,
-        recovery = recovery(),
-    ))
+    HostedReadinessDocument.Unavailable(
+        HostedQueryRejectionDocument(
+            failure = code(),
+            detail = detail(),
+            stage = stage.name,
+            recovery = recovery(),
+        )
+    )

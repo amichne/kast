@@ -1,8 +1,11 @@
 package io.github.amichne.kast.query.protocol
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.ResultLimit
+import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.TraversalContinuationDocument
+import io.github.amichne.kast.protocol.contract.TraversalStrategyDocument
 import io.github.amichne.kast.query.protocol.*
 import io.github.amichne.kast.relation.contract.RelationEndpointFingerprint
 import io.github.amichne.kast.relation.contract.RelationLimitation
@@ -16,6 +19,8 @@ import io.github.amichne.kast.traversal.contract.TraversalNode
 import io.github.amichne.kast.traversal.contract.TraversalPendingRead
 import io.github.amichne.kast.traversal.contract.TraversalPendingState
 import io.github.amichne.kast.traversal.contract.TraversalPlan
+import io.github.amichne.kast.traversal.contract.TraversalProgress
+import io.github.amichne.kast.traversal.contract.TraversalStrategy
 import io.github.amichne.kast.workspace.contract.LiveSemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import java.nio.charset.CharacterCodingException
@@ -45,6 +50,12 @@ private data class TraversalContinuationPayload(
     val terminalRelationLimitations: List<String> = emptyList(),
     val pending: TraversalPendingPayload? = null,
     val fingerprint: String,
+    val checkpointSequence: Long = 0L,
+    val totalReads: Long = 0L,
+    val totalEdges: Long = 0L,
+    val maximumDepthReached: Int = 0,
+    val maximumDepth: Int,
+    val strategy: TraversalStrategyDocument,
 )
 
 @Serializable
@@ -77,6 +88,21 @@ object CanonicalTraversalContinuationCodec {
         continuation: TraversalContinuation,
         authority: QueryReferenceAuthority,
     ): TraversalContinuationDocument? {
+        val document = payload(continuation, authority) ?: return null
+        val payload =
+            traversalContinuationJson
+                .encodeToString(TraversalContinuationPayload.serializer(), document)
+                .toByteArray(Charsets.UTF_8)
+        val encoded = Base64.getUrlEncoder().withoutPadding().encodeToString(payload)
+        val version = if (continuation.start.lease is LiveSemanticReadAuthority) "v2" else "v1"
+        return TraversalContinuationDocument.parse("traversal-continuation:$version:$encoded:${payload.sha256()}")
+            .refinedOrNull()
+    }
+
+    private fun payload(
+        continuation: TraversalContinuation,
+        authority: QueryReferenceAuthority,
+    ): TraversalContinuationPayload? {
         val start =
             when (val issued = authority.issueExact(continuation.start)) {
                 is ExactSelectorIssuance.Issued -> issued.selector.value
@@ -96,31 +122,34 @@ object CanonicalTraversalContinuationCodec {
                     TraversalPendingPayload.Active(entry, relation.value)
                 }
             }
-        val payload =
-            traversalContinuationJson
-                .encodeToString(
-                    TraversalContinuationPayload.serializer(),
-                    TraversalContinuationPayload(
-                        start = start,
-                        relation = continuation.meaning.tokenName(),
-                        frontier = frontier,
-                        visited =
-                            continuation.checkpoint.visited
-                                .sortedBy(RelationEndpointFingerprint::value)
-                                .map(RelationEndpointFingerprint::value),
-                        terminalRelationLimitations =
-                            continuation.checkpoint.terminalRelationLimitations
-                                .sortedBy { it.ordinal }
-                                .map(RelationLimitation::name),
-                        pending = pending,
-                        fingerprint = continuation.fingerprint.value,
-                    ),
-                )
-                .toByteArray(Charsets.UTF_8)
-        val encoded = Base64.getUrlEncoder().withoutPadding().encodeToString(payload)
-        val version = if (continuation.start.lease is LiveSemanticReadAuthority) "v2" else "v1"
-        return TraversalContinuationDocument.parse("traversal-continuation:$version:$encoded:${payload.sha256()}")
-            .refinedOrNull()
+        return TraversalContinuationPayload(
+            start = start,
+            relation = continuation.meaning.tokenName(),
+            frontier = frontier,
+            visited =
+                continuation.checkpoint.visited
+                    .sortedBy(RelationEndpointFingerprint::value)
+                    .map(RelationEndpointFingerprint::value),
+            terminalRelationLimitations =
+                continuation.checkpoint.terminalRelationLimitations
+                    .sortedBy { it.ordinal }
+                    .map(RelationLimitation::name),
+            pending = pending,
+            fingerprint = continuation.fingerprint.value,
+            checkpointSequence = continuation.checkpoint.progress.checkpointSequence,
+            totalReads = continuation.checkpoint.progress.totalReads,
+            totalEdges = continuation.checkpoint.progress.totalEdges,
+            maximumDepthReached = continuation.checkpoint.progress.maximumDepthReached,
+            maximumDepth = continuation.maximumDepth.value,
+            strategy =
+                when (val selected = continuation.strategy) {
+                    TraversalStrategy.BreadthFirst -> TraversalStrategyDocument.BreadthFirst
+                    is TraversalStrategy.BoundedFanOut ->
+                        TraversalStrategyDocument.BoundedFanOut(
+                            ProtocolCount.parse(selected.maximumEdgesPerNode.value).refinedOrNull() ?: return null
+                        )
+                },
+        )
     }
 
     fun decode(
@@ -165,7 +194,16 @@ object CanonicalTraversalContinuationCodec {
                     }
             }
         val meaning = payload.relation.relationMeaningOrNull() ?: return malformed()
-        val plan = TraversalPlan.start(start, meaning, budget).refinedOrNull() ?: return malformed()
+        if (payload.maximumDepth != budget.depth.value) return malformed()
+        val strategy =
+            when (val selected = payload.strategy) {
+                TraversalStrategyDocument.BreadthFirst -> TraversalStrategy.BreadthFirst
+                is TraversalStrategyDocument.BoundedFanOut ->
+                    TraversalStrategy.BoundedFanOut(
+                        ResultLimit.parse(selected.maximumEdgesPerNode.value).refinedOrNull() ?: return malformed()
+                    )
+            }
+        val plan = TraversalPlan.start(start, meaning, budget, strategy).refinedOrNull() ?: return malformed()
         val frontier =
             payload.frontier.map { entry ->
                 entry.restore(plan, authority) ?: return malformed()
@@ -212,6 +250,13 @@ object CanonicalTraversalContinuationCodec {
                     visited,
                     pending,
                     terminalRelationLimitations,
+                    TraversalProgress.restore(
+                            payload.checkpointSequence,
+                            payload.totalReads,
+                            payload.totalEdges,
+                            payload.maximumDepthReached,
+                        )
+                        .refinedOrNull() ?: return malformed(),
                 )
                 .refinedOrNull() ?: return malformed()
         val fingerprint =

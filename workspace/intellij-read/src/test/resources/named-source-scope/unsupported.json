@@ -14,5 +14,8 @@
       "truncated": false
     }
   },
-  "stage": "MODEL_CAPTURE"
+  "stage": "MODEL_CAPTURE",
+  "recovery": {
+    "kind": "review_failure"
+  }
 }

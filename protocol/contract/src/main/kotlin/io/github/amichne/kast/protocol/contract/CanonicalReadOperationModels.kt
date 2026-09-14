@@ -170,7 +170,13 @@ data class RelationReadRequest(
     val position: RelationReadPositionDocument = RelationReadPositionDocument.Start,
 ) : OperationRequest
 
-data class RelationReadResult(val relations: BoundedProtocolList<RelationFactDocument>) : OperationResult
+data class RelationReadResult(
+    val relations: BoundedProtocolList<RelationFactDocument>,
+    val omissions: BoundedProtocolList<RelationOmissionDocument> = RelationOmissionDocument.Empty,
+) : OperationResult {
+    val soundness: RelationSoundnessDocument
+        get() = RelationSoundnessDocument.EXACT_RETURNED_FACTS
+}
 
 enum class RelationProvenanceDocument {
     K2_AUTHORED_SOURCE,
@@ -198,6 +204,7 @@ data class RelationFactDocument(
     val coverage: RelationFactCoverageDocument,
 )
 
+@Serializable
 enum class RelationLimitationDocument {
     RESULT_LIMIT_REACHED,
     BYTE_LIMIT_REACHED,
@@ -367,29 +374,21 @@ enum class RelationReadRejection : OperationRejection {
     CONTINUATION_CURSOR_MOVED,
 }
 
+/** Wire-bound cumulative committed traversal work, independent of page size. */
 @Serializable
-sealed interface TraversalRunPositionDocument {
-    @Serializable @SerialName("start") data object Start : TraversalRunPositionDocument
-
-    @Serializable
-    @SerialName("resume")
-    data class Resume(val continuation: TraversalContinuationDocument) : TraversalRunPositionDocument
+data class TraversalProgressDocument(
+    val checkpointSequence: Long = 0L,
+    val totalReads: Long = 0L,
+    val totalEdges: Long = 0L,
+    val maximumDepthReached: Int = 0,
+) {
+    init {
+        require(
+            checkpointSequence >= 0L && totalReads >= checkpointSequence && totalEdges >= 0L && maximumDepthReached >= 0
+        )
+        require(totalReads > 0L || (totalEdges == 0L && maximumDepthReached == 0))
+    }
 }
-
-@Serializable
-data class TraversalRunRequest(
-    val exactSelector: ProtocolText,
-    val relation: RelationKindDocument,
-    val maximumDepth: ProtocolCount,
-    val maximumResults: ProtocolCount,
-    val position: TraversalRunPositionDocument = TraversalRunPositionDocument.Start,
-) : OperationRequest
-
-data class TraversalRunResult(
-    /** Canonical workspace root shared by every selector and proof in [records]. */
-    val snapshotRoot: ProtocolText,
-    val records: BoundedProtocolList<TraversalRecordDocument>,
-) : OperationResult
 
 enum class TraversalDepthDocumentFailure {
     NEGATIVE
@@ -421,6 +420,7 @@ enum class TraversalLimitationDocument {
     DEPTH_LIMIT_REACHED,
     FRONTIER_LIMIT_REACHED,
     ONE_HOP_INCOMPLETE,
+    NO_PROGRESS,
 }
 
 enum class TraversalRunQualificationFailure {
@@ -461,7 +461,10 @@ sealed interface TraversalRunQualification : OperationQualification {
         ): Refinement<Resumable, TraversalRunQualificationFailure> =
             when (val admitted = admitTraversalLimitations(limitations, relationLimitations)) {
                 is Refinement.Refined ->
-                    if (TraversalLimitationDocument.DEPTH_LIMIT_REACHED in admitted.value.first) {
+                    if (
+                        TraversalLimitationDocument.DEPTH_LIMIT_REACHED in admitted.value.first ||
+                            TraversalLimitationDocument.NO_PROGRESS in admitted.value.first
+                    ) {
                         Refinement.Rejected(TraversalRunQualificationFailure.TERMINAL_LIMITATION_RESUMABLE)
                     } else {
                         Refinement.Refined(Resumable(admitted.value.first, admitted.value.second, continuation))
@@ -476,8 +479,13 @@ sealed interface TraversalRunQualification : OperationQualification {
             when (val admitted = admitTraversalLimitations(limitations, relationLimitations)) {
                 is Refinement.Refined ->
                     if (
-                        TraversalLimitationDocument.ONE_HOP_INCOMPLETE !in admitted.value.first &&
-                            TraversalLimitationDocument.DEPTH_LIMIT_REACHED !in admitted.value.first
+                        setOf(
+                                TraversalLimitationDocument.ONE_HOP_INCOMPLETE,
+                                TraversalLimitationDocument.DEPTH_LIMIT_REACHED,
+                                TraversalLimitationDocument.NO_PROGRESS,
+                                TraversalLimitationDocument.TIME_LIMIT_REACHED,
+                            )
+                            .none { it in admitted.value.first }
                     ) {
                         Refinement.Rejected(TraversalRunQualificationFailure.TERMINAL_WITHOUT_TERMINAL_LIMITATION)
                     } else {

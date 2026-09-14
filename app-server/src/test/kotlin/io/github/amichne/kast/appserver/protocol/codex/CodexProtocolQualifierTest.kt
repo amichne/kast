@@ -33,17 +33,30 @@ class CodexProtocolQualifierTest {
             io.github.amichne.kast.kernel.Validation.Validated::class.java,
             CodexProtocolContracts.define(documents),
         )
-        val nativeProperties = documents.getValue(CodexOwnedSchema.DYNAMIC_TOOL_CALL_RESPONSE).getValue("properties").jsonObject
+        val nativeProperties =
+            documents.getValue(CodexOwnedSchema.DYNAMIC_TOOL_CALL_RESPONSE).getValue("properties").jsonObject
         org.junit.jupiter.api.Assertions.assertFalse(nativeProperties.containsKey("structuredContent"))
-        val resultSchema = documents.getValue(CodexOwnedSchema.ITEM_COMPLETED_NOTIFICATION)
-            .getValue("definitions").jsonObject.getValue("McpToolCallResult").jsonObject
-        org.junit.jupiter.api.Assertions.assertTrue(resultSchema.getValue("properties").jsonObject.containsKey("structuredContent"))
-        val item = Json.parseToJsonElement(checkNotNull(javaClass.getResource("/structured-tool-display.json")).readText()).jsonObject
+        val resultSchema =
+            documents
+                .getValue(CodexOwnedSchema.ITEM_COMPLETED_NOTIFICATION)
+                .getValue("definitions")
+                .jsonObject
+                .getValue("McpToolCallResult")
+                .jsonObject
+        org.junit.jupiter.api.Assertions.assertTrue(
+            resultSchema.getValue("properties").jsonObject.containsKey("structuredContent")
+        )
+        val item =
+            Json.parseToJsonElement(checkNotNull(javaClass.getResource("/structured-tool-display.json")).readText())
+                .jsonObject
         val projected = (CodexToolCallProjector.projectCompleted(item) as CodexToolCallProjection.Projected).item
-        val compiled = io.github.amichne.kast.appserver.schema.NetworkntJsonSchemaCompiler.compile(resultSchema) as Refinement.Refined
-        assertInstanceOf(io.github.amichne.kast.kernel.Validation.Validated::class.java,
-            compiled.value.admit(projected.getValue("result")))
-
+        val compiled =
+            io.github.amichne.kast.appserver.schema.NetworkntJsonSchemaCompiler.compile(resultSchema)
+                as Refinement.Refined
+        assertInstanceOf(
+            io.github.amichne.kast.kernel.Validation.Validated::class.java,
+            compiled.value.admit(projected.getValue("result")),
+        )
     }
 
     @Test

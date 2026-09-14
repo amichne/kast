@@ -3,7 +3,6 @@ package io.github.amichne.kast.symbol.intellij
 import com.intellij.navigation.ChooseByNameContributor
 import com.intellij.navigation.ChooseByNameContributorEx
 import com.intellij.navigation.NavigationItem
-import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.IndexNotReadyException
 import com.intellij.util.Processor
@@ -94,20 +93,7 @@ internal class IntellijNativeDiscoveryQuery(
         if (target !is SymbolDiscoveryTarget.Name && target !is SymbolDiscoveryTarget.All) {
             return IntellijNativeDiscoveryExecution.Rejected(IntellijNativeDiscoveryRejection.INTERNAL_INVARIANT)
         }
-        val collector =
-            BoundedNativeDiscoveryCollector(
-                compiledScope = compiledScope,
-                request = request,
-                itemFile = itemFile,
-                projector = projector,
-                itemAdmission = itemAdmission,
-                itemCompilerKind = itemCompilerKind,
-                itemPackage = itemPackage,
-                environmentState = environmentState,
-                cancellationCheck = cancellationCheck,
-                clock = clock,
-                observation = observation,
-            )
+        val collector = collector(compiledScope, request)
         if (compiledScope.population == IntellijScopePopulation.KNOWN_EMPTY) return collector.finish()
         if (contributors.isEmpty()) {
             return IntellijNativeDiscoveryExecution.Rejected(IntellijNativeDiscoveryRejection.NO_NATIVE_PROVIDERS)
@@ -227,15 +213,13 @@ internal class IntellijNativeDiscoveryQuery(
                 !(target is SymbolDiscoveryTarget.Name && target.match == SymbolDiscoveryMatch.FUZZY)
         )
             return IntellijNativeDiscoveryExecution.Rejected(IntellijNativeDiscoveryRejection.INTERNAL_INVARIANT)
-        return discoverIndexed(compiledScope, request, IntellijReadContributor.SCOPED_DECLARATIONS, process)
+        return discoverIndexed(
+            compiledScope = compiledScope,
+            request = request,
+            contributor = IntellijReadContributor.SCOPED_DECLARATIONS,
+            process = process,
+        )
     }
-
-    fun discoverAll(
-        compiledScope: CompiledIntellijSearchScope,
-        request: SymbolDiscoveryRequest,
-        process: ((NavigationItem) -> Boolean) -> Boolean,
-    ): IntellijNativeDiscoveryExecution =
-        discoverDeclarations(compiledScope, request) { _, _, accept -> process(accept) }
 
     fun discoverExactName(
         compiledScope: CompiledIntellijSearchScope,
@@ -265,20 +249,7 @@ internal class IntellijNativeDiscoveryQuery(
                 return IntellijNativeDiscoveryExecution.Rejected(IntellijNativeDiscoveryRejection.PROJECT_DISPOSED)
             IntellijDiscoveryEnvironmentState.READY -> Unit
         }
-        val collector =
-            BoundedNativeDiscoveryCollector(
-                compiledScope,
-                request,
-                itemFile,
-                projector,
-                itemAdmission,
-                itemCompilerKind,
-                itemPackage,
-                environmentState,
-                cancellationCheck,
-                clock,
-                observation,
-            )
+        val collector = collector(compiledScope, request)
         collector.contributor = contributor
         if (compiledScope.population == IntellijScopePopulation.KNOWN_EMPTY) return collector.finish()
         val pending = ArrayList<NavigationItem>()
@@ -311,15 +282,7 @@ internal class IntellijNativeDiscoveryQuery(
                     )
                         return@process !collector.halted
                     if (ranked != null) {
-                        when (ranked.accept(item)) {
-                            LexicalCandidateRetention.RETAINED ->
-                                observation.count(IntellijReadCounter.LEXICAL_CANDIDATES_RETAINED, contributor)
-                            LexicalCandidateRetention.REPLACED ->
-                                observation.count(IntellijReadCounter.LEXICAL_CANDIDATES_REPLACED, contributor)
-                            LexicalCandidateRetention.DROPPED ->
-                                observation.count(IntellijReadCounter.LEXICAL_CANDIDATES_DROPPED, contributor)
-                            LexicalCandidateRetention.DUPLICATE -> Unit
-                        }
+                        ranked.accept(item).observe(observation, contributor)
                     } else {
                         if (pending.size >= capacity) {
                             reachedLimit = true
@@ -381,7 +344,44 @@ internal class IntellijNativeDiscoveryQuery(
         return collector.finish()
     }
 
-    private companion object {
-        val LOG: Logger = Logger.getInstance(IntellijNativeDiscoveryQuery::class.java)
-    }
+    private fun collector(scope: CompiledIntellijSearchScope, request: SymbolDiscoveryRequest) =
+        BoundedNativeDiscoveryCollector(
+            compiledScope = scope,
+            request = request,
+            policies =
+                IntellijDiscoveryItemPolicies(
+                    itemFile = itemFile,
+                    projector = projector,
+                    itemAdmission = itemAdmission,
+                    itemCompilerKind = itemCompilerKind,
+                    itemPackage = itemPackage,
+                ),
+            execution =
+                IntellijDiscoveryExecution(
+                    environmentState = environmentState,
+                    cancellationCheck = cancellationCheck,
+                    clock = clock,
+                    observation = observation,
+                ),
+        )
+}
+
+internal fun IntellijNativeDiscoveryQuery.discoverAll(
+    compiledScope: CompiledIntellijSearchScope,
+    request: SymbolDiscoveryRequest,
+    process: ((NavigationItem) -> Boolean) -> Boolean,
+): IntellijNativeDiscoveryExecution = discoverDeclarations(compiledScope, request) { _, _, accept -> process(accept) }
+
+private fun LexicalCandidateRetention.observe(
+    observation: IntellijReadObservation,
+    contributor: IntellijReadContributor,
+) {
+    val counter =
+        when (this) {
+            LexicalCandidateRetention.RETAINED -> IntellijReadCounter.LEXICAL_CANDIDATES_RETAINED
+            LexicalCandidateRetention.REPLACED -> IntellijReadCounter.LEXICAL_CANDIDATES_REPLACED
+            LexicalCandidateRetention.DROPPED -> IntellijReadCounter.LEXICAL_CANDIDATES_DROPPED
+            LexicalCandidateRetention.DUPLICATE -> return
+        }
+    observation.count(counter, contributor)
 }

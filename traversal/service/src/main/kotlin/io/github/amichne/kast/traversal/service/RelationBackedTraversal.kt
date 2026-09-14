@@ -11,8 +11,8 @@ import io.github.amichne.kast.traversal.contract.TraversalOperations
  * Proof transition: `RelationOperations -> TraversalOperations`.
  *
  * Establishes a host-neutral traversal capability whose every hop delegates to the sole public bounded relation
- * authority. Exact endpoint, meaning, scope, budget, and continuation authority are retained. Each read is
- * charged its observed elapsed time through an explicit monotonic clock at this effect boundary.
+ * authority. Exact endpoint, meaning, scope, budget, and continuation authority are retained. Each read is charged its
+ * observed elapsed time through an explicit monotonic clock at this effect boundary.
  */
 fun traversalOperations(
     relations: RelationOperations,

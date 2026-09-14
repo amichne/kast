@@ -28,8 +28,9 @@ class LiveReadOutputSchemaTest {
             assertAdmits(
                 CanonicalOperation.QUERY_RUN,
                 CanonicalQueryCliDocuments.project(
-                    OperationOutcome.Rejected(QueryRunRejection.ExecutionRejected(reason))
-                ).document(),
+                        OperationOutcome.Rejected(QueryRunRejection.ExecutionRejected(reason))
+                    )
+                    .document(),
             )
         }
     }

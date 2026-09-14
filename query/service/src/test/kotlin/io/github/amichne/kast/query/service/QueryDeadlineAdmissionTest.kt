@@ -1,12 +1,13 @@
 package io.github.amichne.kast.query.service
 
-import io.github.amichne.kast.source.contract.DeclarationVisibility
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.query.contract.QueryContinuationState
 import io.github.amichne.kast.query.contract.QueryExecutionRequest
 import io.github.amichne.kast.query.contract.QueryExecutionResult
 import io.github.amichne.kast.query.contract.QueryTerminalReason
+import io.github.amichne.kast.source.contract.DeclarationVisibility
 import io.github.amichne.kast.source.contract.SourceReadOperations
+import io.github.amichne.kast.symbol.contract.ResolvedSymbol
 import io.github.amichne.kast.symbol.contract.SymbolDescription
 import io.github.amichne.kast.symbol.contract.SymbolDescriptionResult
 import io.github.amichne.kast.symbol.contract.SymbolResolutionResult
@@ -35,29 +36,33 @@ class QueryDeadlineAdmissionTest {
             val selected = selector(selection())
             val clock = DeadlineClock(cutoff)
             val effects = mutableListOf<Stage>()
-            val service = service(
-                discovery = discoveryWithCandidate(),
-                exact = exactOperations(
-                    describe = {
-                        effects += Stage.REFERENCE
-                        SymbolDescriptionResult.Described(SymbolDescription.from(it))
-                    },
-                    resolve = {
-                        effects += Stage.INSPECT
-                        SymbolResolutionResult.Resolved(io.github.amichne.kast.symbol.contract.ResolvedSymbol(selector(it)))
-                    },
-                ),
-                source = SourceReadOperations {
-                    effects += Stage.VISIBILITY
-                    selfRead(selected, DeclarationVisibility.PUBLIC)
-                },
-                clock = clock,
-            )
-            val plan = when (stage) {
-                Stage.REFERENCE -> exactReferencePlan(List(2) { selected })
-                Stage.INSPECT -> symbolPlan()
-                Stage.VISIBILITY -> visibilityPlan(selected)
-            }
+            val service =
+                service(
+                    discovery = discoveryWithCandidate(),
+                    exact =
+                        exactOperations(
+                            describe = {
+                                effects += Stage.REFERENCE
+                                SymbolDescriptionResult.Described(SymbolDescription.from(it))
+                            },
+                            resolve = {
+                                effects += Stage.INSPECT
+                                SymbolResolutionResult.Resolved(ResolvedSymbol(selector(it)))
+                            },
+                        ),
+                    source =
+                        SourceReadOperations {
+                            effects += Stage.VISIBILITY
+                            selfRead(selected, DeclarationVisibility.PUBLIC)
+                        },
+                    clock = clock,
+                )
+            val plan =
+                when (stage) {
+                    Stage.REFERENCE -> exactReferencePlan(List(2) { selected })
+                    Stage.INSPECT -> symbolPlan()
+                    Stage.VISIBILITY -> visibilityPlan(selected)
+                }
             val input = request(plan, workLimit = 8L, elapsedMillis = 1L)
             val first = service.run(input)
             val expected = if (stage == Stage.REFERENCE) 2 else 1
@@ -77,35 +82,50 @@ class QueryDeadlineAdmissionTest {
         first: QueryExecutionResult,
         replay: Replay,
         cutoff: Int,
-    ) = with(replay) {
-        when (first) {
-            is QueryExecutionResult.Complete -> assertEquals(expected, first.symbolCount(), "clock read $cutoff")
-            is QueryExecutionResult.Rejected -> error("Unexpected rejection ${first.reason}")
-            is QueryExecutionResult.Qualified -> when (val continuation = first.continuation) {
-                is QueryContinuationState.Terminal -> {
-                    assertEquals(QueryTerminalReason.NO_PROGRESS, continuation.reason, "clock read $cutoff")
-                    assertEquals(emptyList<Stage>(), effects)
-                }
-                is QueryContinuationState.Resumable -> {
-                    clock.resume()
-                    val request = QueryExecutionRequest.create(
-                        input.plan, input.lease, input.budget, continuation.checkpoint,
-                    ).refined()
-                    val last = service.run(request)
-                    assertEquals(expected, first.symbolCount() + last.symbolCount(), "clock read $cutoff")
-                    assertEquals(expected, effects.count { it != Stage.VISIBILITY })
-                }
+    ) =
+        with(replay) {
+            when (first) {
+                is QueryExecutionResult.Complete -> assertEquals(expected, first.symbolCount(), "clock read $cutoff")
+                is QueryExecutionResult.Rejected -> error("Unexpected rejection ${first.reason}")
+                is QueryExecutionResult.Qualified ->
+                    when (val continuation = first.continuation) {
+                        is QueryContinuationState.Terminal -> {
+                            assertEquals(QueryTerminalReason.NO_PROGRESS, continuation.reason, "clock read $cutoff")
+                            assertEquals(emptyList<Stage>(), effects)
+                        }
+                        is QueryContinuationState.Resumable -> {
+                            clock.resume()
+                            val request =
+                                QueryExecutionRequest.create(
+                                        input.plan,
+                                        input.lease,
+                                        input.budget,
+                                        continuation.checkpoint,
+                                    )
+                                    .refined()
+                            val last = service.run(request)
+                            assertEquals(expected, first.symbolCount() + last.symbolCount(), "clock read $cutoff")
+                            assertEquals(expected, effects.count { it != Stage.VISIBILITY })
+                        }
+                    }
             }
         }
-    }
 
-    private enum class Stage { REFERENCE, INSPECT, VISIBILITY }
+    private enum class Stage {
+        REFERENCE,
+        INSPECT,
+        VISIBILITY,
+    }
 
     private class DeadlineClock(private val cutoff: Int) : QueryNanoClock {
         private var reads = 0
         private var resumed = false
+
         override fun now(): Long = if (resumed || reads++ < cutoff) 0L else NANOS_PER_MILLISECOND
-        fun resume() { resumed = true }
+
+        fun resume() {
+            resumed = true
+        }
     }
 
     private companion object {
@@ -114,7 +134,8 @@ class QueryDeadlineAdmissionTest {
     }
 }
 
-private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value = when (this) {
-    is Refinement.Refined -> value
-    is Refinement.Rejected -> error("Fixture rejected: $failure")
-}
+private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value =
+    when (this) {
+        is Refinement.Refined -> value
+        is Refinement.Rejected -> error("Fixture rejected: $failure")
+    }

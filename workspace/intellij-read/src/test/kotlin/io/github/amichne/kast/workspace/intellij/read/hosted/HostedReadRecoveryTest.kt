@@ -10,10 +10,16 @@ import org.junit.jupiter.api.Test
 class HostedReadRecoveryTest {
     @Test
     fun `unavailable Gradle model retains rejection and points to observed readiness`() {
-        val document = Json.parseToJsonElement(HostedQueryWire.encode(HostedQueryResult.Rejected(
-            HostedQueryFailure.ProjectAdmission(ExistingProjectAdmissionFailure.GradleModelUnavailable),
-            HostedQueryStage.PROJECT_ADMISSION,
-        ))).jsonObject
+        val document =
+            Json.parseToJsonElement(
+                    HostedQueryWire.encode(
+                        HostedQueryResult.Rejected(
+                            HostedQueryFailure.ProjectAdmission(ExistingProjectAdmissionFailure.GradleModelUnavailable),
+                            HostedQueryStage.PROJECT_ADMISSION,
+                        )
+                    )
+                )
+                .jsonObject
         assertEquals("rejected", document.getValue("outcome").jsonPrimitive.content)
         assertEquals("GRADLE_MODEL_UNAVAILABLE", document.getValue("detail").jsonPrimitive.content)
         val recovery = document.getValue("recovery").jsonObject

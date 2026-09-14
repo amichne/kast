@@ -11,8 +11,6 @@ import io.github.amichne.kast.symbol.contract.SymbolSelector
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 
-private const val TRAVERSAL_CONTINUATION_FINGERPRINT_LENGTH = 64
-
 enum class TraversalDepthFailure {
     NEGATIVE,
     OVERFLOW,
@@ -212,6 +210,7 @@ private constructor(
     val visited: Set<RelationEndpointFingerprint>,
     val pending: TraversalPendingState,
     val terminalRelationLimitations: Set<RelationLimitation>,
+    val progress: TraversalProgress,
 ) {
     companion object {
         /**
@@ -226,6 +225,7 @@ private constructor(
                 visited = emptySet(),
                 pending = TraversalPendingState.None,
                 terminalRelationLimitations = emptySet(),
+                progress = TraversalProgress.Initial,
             )
 
         /**
@@ -242,6 +242,7 @@ private constructor(
             visited: Set<RelationEndpointFingerprint>,
             pending: TraversalPendingState,
             terminalRelationLimitations: Set<RelationLimitation> = emptySet(),
+            progress: TraversalProgress = TraversalProgress.Initial,
         ): Refinement<TraversalCheckpoint, TraversalCheckpointFailure> {
             if (frontier != frontier.sorted()) {
                 return Refinement.Rejected(TraversalCheckpointFailure.NON_DETERMINISTIC_FRONTIER)
@@ -273,6 +274,7 @@ private constructor(
                     visited.toSet(),
                     pending,
                     terminalRelationLimitations.toSortedSet(compareBy { it.ordinal }).toSet(),
+                    progress,
                 )
             )
         }
@@ -284,34 +286,6 @@ enum class TraversalContinuationFailure {
     INTEGRITY_MISMATCH,
 }
 
-enum class TraversalContinuationFingerprintFailure {
-    INVALID_SHA256
-}
-
-@JvmInline
-value class TraversalContinuationFingerprint private constructor(val value: String) {
-    init {
-        require(
-            value.length == TRAVERSAL_CONTINUATION_FINGERPRINT_LENGTH &&
-                value.all { character -> character in '0'..'9' || character in 'a'..'f' }
-        )
-    }
-
-    companion object {
-        fun parse(raw: String): Refinement<TraversalContinuationFingerprint, TraversalContinuationFingerprintFailure> =
-            if (
-                raw.length == TRAVERSAL_CONTINUATION_FINGERPRINT_LENGTH &&
-                    raw.all { character -> character in '0'..'9' || character in 'a'..'f' }
-            ) {
-                Refinement.Refined(TraversalContinuationFingerprint(raw))
-            } else {
-                Refinement.Rejected(TraversalContinuationFingerprintFailure.INVALID_SHA256)
-            }
-
-        internal fun established(raw: String): TraversalContinuationFingerprint = TraversalContinuationFingerprint(raw)
-    }
-}
-
 /** Opaque deterministic resume state bound to one traversal semantic identity. */
 class TraversalContinuation
 private constructor(
@@ -320,6 +294,8 @@ private constructor(
     val identity: TraversalIdentityFingerprint,
     val checkpoint: TraversalCheckpoint,
     val fingerprint: TraversalContinuationFingerprint,
+    val strategy: TraversalStrategy,
+    val maximumDepth: TraversalDepthLimit,
 ) {
     companion object {
         /**
@@ -339,6 +315,10 @@ private constructor(
             }
             val canonical = buildString {
                 appendTraversalField(plan.identity.value)
+                appendTraversalField(checkpoint.progress.checkpointSequence.toString())
+                appendTraversalField(checkpoint.progress.totalReads.toString())
+                appendTraversalField(checkpoint.progress.totalEdges.toString())
+                appendTraversalField(checkpoint.progress.maximumDepthReached.toString())
                 appendTraversalField(checkpoint.frontier.size.toString())
                 checkpoint.frontier.forEach { entry ->
                     appendTraversalField(entry.depth.value.toString())
@@ -372,6 +352,8 @@ private constructor(
                             (byte.toInt() and 0xff).toString(16).padStart(2, '0')
                         }
                     ),
+                    plan.strategy,
+                    plan.budget.depth,
                 )
             )
         }

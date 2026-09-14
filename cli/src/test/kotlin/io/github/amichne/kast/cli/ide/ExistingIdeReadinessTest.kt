@@ -14,11 +14,15 @@ class ExistingIdeReadinessTest {
     fun `status admits observed cold and ready states and rejects invented importing state`() {
         for (name in listOf("cold", "ready")) {
             val document = checkNotNull(javaClass.getResource("/hosted-readiness/$name.json")).readText()
-            assertInstanceOf(ExistingIdeExchange.Received::class.java,
-                ExistingIdeDocuments.response(document.toByteArray(), root, ExistingIdeOperation.Status, descriptor))
+            assertInstanceOf(
+                ExistingIdeExchange.Received::class.java,
+                ExistingIdeDocuments.response(document.toByteArray(), root, ExistingIdeOperation.Status, descriptor),
+            )
             val unknown = document.replace(if (name == "cold") "unavailable" else "admission_ready", "importing")
-            assertInstanceOf(ExistingIdeExchange.Rejected::class.java,
-                ExistingIdeDocuments.response(unknown.toByteArray(), root, ExistingIdeOperation.Status, descriptor))
+            assertInstanceOf(
+                ExistingIdeExchange.Rejected::class.java,
+                ExistingIdeDocuments.response(unknown.toByteArray(), root, ExistingIdeOperation.Status, descriptor),
+            )
         }
     }
 }

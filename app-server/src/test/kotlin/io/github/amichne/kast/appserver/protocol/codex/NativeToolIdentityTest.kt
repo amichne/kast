@@ -62,17 +62,26 @@ class NativeToolIdentityTest {
 
     @Test
     fun `single JSON result exposes supported structured display content without changing raw text`() {
-        val item = Json.parseToJsonElement(checkNotNull(javaClass.getResource("/structured-tool-display.json")).readText()).jsonObject
+        val item =
+            Json.parseToJsonElement(checkNotNull(javaClass.getResource("/structured-tool-display.json")).readText())
+                .jsonObject
         val projected = (CodexToolCallProjector.projectCompleted(item) as CodexToolCallProjection.Projected).item
         assertRawToolDisplay(item, projected)
         val raw = item.getValue("contentItems").jsonArray.single().jsonObject.getValue("text").jsonPrimitive.content
-        assertEquals(Json.parseToJsonElement(raw), projected.getValue("result").jsonObject.getValue("structuredContent"))
+        assertEquals(
+            Json.parseToJsonElement(raw),
+            projected.getValue("result").jsonObject.getValue("structuredContent"),
+        )
     }
 
     @Test
     fun `unsupported single content remains raw without manufactured structured result`() {
         for (name in listOf("plain", "array", "null", "malformed")) {
-            val item = Json.parseToJsonElement(checkNotNull(javaClass.getResource("/structured-tool-display-$name.json")).readText()).jsonObject
+            val item =
+                Json.parseToJsonElement(
+                        checkNotNull(javaClass.getResource("/structured-tool-display-$name.json")).readText()
+                    )
+                    .jsonObject
             val projected = (CodexToolCallProjector.projectCompleted(item) as CodexToolCallProjection.Projected).item
             assertRawToolDisplay(item, projected)
             assertFalse(projected.getValue("result").jsonObject.containsKey("structuredContent"))

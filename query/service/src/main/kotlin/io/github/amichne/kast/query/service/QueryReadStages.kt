@@ -43,13 +43,10 @@ internal class QueryReadStages(
                 io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidate,
                 SymbolDiscoverySelection,
             >()
+        var progress: DiscoveryExecution = DiscoveryExecution.NotStarted
         for (kind in discoveryKinds(syntax)) {
-            val remainingResults =
-                state.remainingResultCapacity(selections.size)
-                    ?: return DiscoveryExecution.Discovered(selections.values.toList())
-            val childBudget =
-                state.discoveryBudget(remainingResults)
-                    ?: return DiscoveryExecution.Discovered(selections.values.toList())
+            val remainingResults = state.remainingResultCapacity(selections.size) ?: return progress
+            val childBudget = state.discoveryBudget(remainingResults) ?: return progress
             val request =
                 SymbolDiscoveryRequest(
                     scope =
@@ -101,92 +98,86 @@ internal class QueryReadStages(
                     is Refinement.Rejected -> state.contractViolation = true
                 }
             }
+            progress = DiscoveryExecution.Discovered(selections.values.toList())
         }
-        return DiscoveryExecution.Discovered(selections.values.toList())
+        return progress
     }
 
     suspend fun refine(
-        candidates: List<SymbolDiscoverySelection>,
+        candidate: SymbolDiscoverySelection,
         discovery: QueryDiscoverySyntax?,
         state: QueryExecutionState,
     ): List<QuerySymbol> = buildList {
-        for (candidate in candidates) {
-            if (!state.consumeUnit()) break
-            when (val result = exact.resolve(SymbolResolutionRequest(candidate))) {
-                is SymbolResolutionResult.Resolved -> {
-                    val selector = result.symbol.selector
-                    if (discovery == null || selector.kind in discovery.declarationKinds.values) {
-                        add(QuerySymbol(SymbolDescription.from(selector), emptyList()))
-                    }
-                }
-                is SymbolResolutionResult.Rejected -> {
-                    state.failure(QueryItemFailure.Refinement(candidate, result.reason))
-                    state.limit(QueryLimitation.REFINEMENT_INCOMPLETE)
+        when (val result = exact.resolve(SymbolResolutionRequest(candidate))) {
+            is SymbolResolutionResult.Resolved -> {
+                val selector = result.symbol.selector
+                if (discovery == null || selector.kind in discovery.declarationKinds.values) {
+                    add(QuerySymbol(SymbolDescription.from(selector), emptyList()))
                 }
             }
-            state.observeTime()
+            is SymbolResolutionResult.Rejected -> {
+                state.failure(QueryItemFailure.Refinement(candidate, result.reason))
+                state.limit(QueryLimitation.REFINEMENT_INCOMPLETE)
+            }
         }
+        state.observeTime()
     }
 
     suspend fun revalidate(
-        selectors: List<io.github.amichne.kast.symbol.contract.SymbolSelector>,
+        selector: io.github.amichne.kast.symbol.contract.SymbolSelector,
         state: QueryExecutionState,
     ): List<QuerySymbol> = buildList {
-        for (selector in selectors) {
-            if (!state.consumeUnit()) break
-            when (val result = exact.describe(ExactSymbolRequest(selector))) {
-                is SymbolDescriptionResult.Described -> add(QuerySymbol(result.description, emptyList()))
-                is SymbolDescriptionResult.Rejected -> {
-                    state.failure(QueryItemFailure.ExactReference(selector, result.reason))
-                    state.limit(QueryLimitation.REFINEMENT_INCOMPLETE)
-                    if (
-                        result.reason ==
-                            io.github.amichne.kast.symbol.contract.SymbolExactRejection.COMPILER_CONTRACT_VIOLATION
-                    ) {
-                        state.contractViolation = true
-                    }
+        when (val result = exact.describe(ExactSymbolRequest(selector))) {
+            is SymbolDescriptionResult.Described -> add(QuerySymbol(result.description, emptyList()))
+            is SymbolDescriptionResult.Rejected -> {
+                state.failure(QueryItemFailure.ExactReference(selector, result.reason))
+                state.limit(QueryLimitation.REFINEMENT_INCOMPLETE)
+                if (
+                    result.reason ==
+                        io.github.amichne.kast.symbol.contract.SymbolExactRejection.COMPILER_CONTRACT_VIOLATION
+                ) {
+                    state.contractViolation = true
                 }
             }
-            state.observeTime()
         }
+        state.observeTime()
     }
 
     suspend fun where(
-        input: List<QuerySymbol>,
+        symbol: QuerySymbol,
         predicate: QueryPredicate,
         state: QueryExecutionState,
     ): List<QuerySymbol> =
         when (predicate) {
             is QueryPredicate.Visibility ->
                 buildList {
-                    for (symbol in input) {
-                        if (!state.consumeUnit()) break
-                        when (val result = source.read(visibilityRequest(symbol.selector, state))) {
-                            is SourceReadResult.Complete ->
-                                when (val evidence = SourceDeclarationVisibility.admit(symbol.selector, result)) {
-                                    is Refinement.Refined ->
-                                        if (evidence.value.visibility in predicate.values.values) add(symbol)
-                                    is Refinement.Rejected -> {
-                                        state.failure(QueryItemFailure.PredicateUnproven(symbol.selector))
-                                        state.limit(QueryLimitation.VISIBILITY_INCOMPLETE)
-                                    }
+                    when (val result = source.read(visibilityRequest(symbol.selector, state))) {
+                        is SourceReadResult.Complete ->
+                            when (val evidence = SourceDeclarationVisibility.admit(symbol.selector, result)) {
+                                is Refinement.Refined ->
+                                    if (evidence.value.visibility in predicate.values.values) add(symbol)
+                                is Refinement.Rejected -> {
+                                    state.failure(QueryItemFailure.PredicateUnproven(symbol.selector))
+                                    state.limit(QueryLimitation.VISIBILITY_INCOMPLETE)
                                 }
-                            is SourceReadResult.Qualified -> {
-                                state.failure(QueryItemFailure.PredicateUnproven(symbol.selector))
-                                state.limit(QueryLimitation.VISIBILITY_INCOMPLETE)
                             }
-                            is SourceReadResult.Rejected -> {
-                                state.failure(QueryItemFailure.Visibility(symbol.selector, result.reason))
-                                state.limit(QueryLimitation.VISIBILITY_INCOMPLETE)
-                            }
+                        is SourceReadResult.Qualified -> {
+                            state.failure(QueryItemFailure.PredicateUnproven(symbol.selector))
+                            state.limit(QueryLimitation.VISIBILITY_INCOMPLETE)
                         }
-                        state.observeTime()
+                        is SourceReadResult.Rejected -> {
+                            state.failure(QueryItemFailure.Visibility(symbol.selector, result.reason))
+                            state.limit(QueryLimitation.VISIBILITY_INCOMPLETE)
+                        }
                     }
+                    state.observeTime()
                 }
         }
 }
 
 internal sealed interface DiscoveryExecution {
+    data object NotStarted : DiscoveryExecution
+
     data class Discovered(val values: List<SymbolDiscoverySelection>) : DiscoveryExecution
 
     data class Rejected(val result: QueryExecutionResult.Rejected) : DiscoveryExecution

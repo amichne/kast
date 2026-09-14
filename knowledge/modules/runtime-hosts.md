@@ -6,6 +6,7 @@ resource: file://runtime
 tags: [kotlin, runtime, server, indexer, cli]
 timestamp: 2026-09-13T00:00:00Z
 code_sources:
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryContinuations.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt
   - path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt
   - path: docs/reviews/live-semantic-read-acceptance.md
@@ -71,3 +72,8 @@ the closed failure and conditional recovery guidance. It creates no semantic
 read permit, source epoch, import, or indexing wait. Query admission still checks
 saved content and current authority. Older hosts may omit the new observation;
 absence provides no readiness proof.
+
+`HostedQueryContinuations` owns bounded expiring pipeline and encoded-output state
+for the current project read authority. Lookup follows fresh host admission and
+compares the unchanged query and semantic snapshot. Project disposal or epoch
+replacement clears both stores. It cannot restore a foreign or stale authority.

@@ -7,7 +7,15 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
 import io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceSets
-import io.github.amichne.kast.workspace.contract.*
+import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
+import io.github.amichne.kast.workspace.contract.ImportedWorkspaceModelState
+import io.github.amichne.kast.workspace.contract.ModelOwnedSourceRoot
+import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModel
+import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
+import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootBoundary
+import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootKind
+import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootProvenance
+import io.github.amichne.kast.workspace.contract.WorkspaceSourceSetName
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadContributor
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
@@ -45,46 +53,13 @@ class ScopedFuzzyScaleTest {
                             SymbolDiscoverySourceSets.Exact.from(setOf(WorkspaceSourceSetName.parse("main").refined()))
                                 .refined(),
                         sourceRoots = roots,
-                        itemPaths =
-                            names.associateWith { name ->
-                                when {
-                                    name == excludedTest -> "/workspace/module199/src/test/$name.kt"
-                                    name in noise -> "/workspace/module${noise.indexOf(name) % 199}/src/main/$name.kt"
-                                    else -> "/workspace/module199/src/main/$name.kt"
-                                }
-                            },
+                        itemPaths = paths(names, noise, excludedTest),
                         itemPackages =
                             names.associateWith { if (it == excludedPackage) "sample.other" else "sample.catalog" },
                         itemKinds = names.associateWith { CompilerSymbolKind.CLASSLIKE },
-                        observation =
-                            object : IntellijReadObservation {
-                                override fun count(
-                                    counter: IntellijReadCounter,
-                                    contributor: IntellijReadContributor,
-                                    amount: Int,
-                                ) {
-                                    counts[counter] = (counts[counter] ?: 0) + amount
-                                }
-
-                                override fun terminated(
-                                    reason: IntellijReadTermination,
-                                    contributor: IntellijReadContributor,
-                                ) = Unit
-                            },
+                        observation = observation(counts),
                     )
-            val execution =
-                scenario.query.discoverDeclarations(scenario.compiledScope, scenario.request) { _, _, accept ->
-                    for (name in names) {
-                        val outsideCallback = mutableListOf<NavigationItem>()
-                        scenario.contributor.processElementsWithName(
-                            name,
-                            Processor { outsideCallback.add(it) },
-                            FindSymbolParameters.wrap(name, scenario.scope),
-                        )
-                        for (item in outsideCallback) if (!accept(item)) return@discoverDeclarations false
-                    }
-                    true
-                }
+            val execution = discover(scenario, names)
             val outcome = (execution as IntellijNativeDiscoveryExecution.Produced).outcome
             assertTrue(outcome is SymbolDiscoveryOutcome.Qualified)
             val batch = (outcome as SymbolDiscoveryOutcome.Qualified).batch
@@ -96,6 +71,37 @@ class ScopedFuzzyScaleTest {
             assertEquals(10_002, counts[IntellijReadCounter.SCOPE_FILTERED])
         }
     }
+
+    private fun paths(names: List<String>, noise: List<String>, test: String): Map<String, String> {
+        val foreign =
+            noise.mapIndexed { index, name -> name to "/workspace/module${index % 199}/src/main/$name.kt" }.toMap()
+        return names.associateWith { name ->
+            foreign[name] ?: "/workspace/module199/src/${if (name == test) "test" else "main"}/$name.kt"
+        }
+    }
+
+    private fun observation(counts: MutableMap<IntellijReadCounter, Int>) =
+        object : IntellijReadObservation {
+            override fun count(counter: IntellijReadCounter, contributor: IntellijReadContributor, amount: Int) {
+                counts[counter] = (counts[counter] ?: 0) + amount
+            }
+
+            override fun terminated(reason: IntellijReadTermination, contributor: IntellijReadContributor) = Unit
+        }
+
+    private fun discover(scenario: SymbolDiscoveryTest.Fixture, names: List<String>): IntellijNativeDiscoveryExecution =
+        scenario.query.discoverDeclarations(scenario.compiledScope, scenario.request) { _, _, accept ->
+            for (name in names) {
+                val outsideCallback = mutableListOf<NavigationItem>()
+                scenario.contributor.processElementsWithName(
+                    name,
+                    Processor { outsideCallback.add(it) },
+                    FindSymbolParameters.wrap(name, scenario.scope),
+                )
+                for (item in outsideCallback) if (!accept(item)) return@discoverDeclarations false
+            }
+            true
+        }
 
     private fun roots(): List<ModelOwnedSourceRoot> {
         val boundaries =

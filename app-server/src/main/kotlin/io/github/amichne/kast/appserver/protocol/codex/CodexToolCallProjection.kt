@@ -5,17 +5,12 @@ import io.github.amichne.kast.appserver.core.ProviderNamespace
 import io.github.amichne.kast.appserver.core.ToolAddress
 import io.github.amichne.kast.appserver.core.ToolName
 import io.github.amichne.kast.kernel.Refinement
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.SerializationException
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
-import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
@@ -273,13 +268,11 @@ internal object CodexToolCallProjector {
             displayItem(
                 item,
                 identity,
-                displayJson.encodeToJsonElement(CodexToolDisplayResultDocument(
-                    content = result.texts.map { CodexToolDisplayTextDocument(it.value) },
-                    structuredContent = when (val structured = admitStructuredResult(contentItems, identity)) {
-                        is StructuredToolResult.Admitted -> structured.document
-                        is StructuredToolResult.Unavailable -> null
-                    },
-                )),
+                encodeStructuredToolDisplayResult(
+                    result.texts.map { it.value },
+                    contentItems,
+                    identity.address.namespace,
+                ),
                 when (completion) {
                     DynamicToolCompletion.SUCCEEDED -> JsonNull
                     DynamicToolCompletion.FAILED -> buildJsonObject { put("message", "Tool call failed") }
@@ -341,27 +334,6 @@ internal object CodexToolCallProjector {
         return ToolResultAdmission.Admitted(DynamicToolResult(texts = texts))
     }
 
-    /** Syntax projection of one owned machine payload; original content remains the display authority. */
-    private fun admitStructuredResult(items: JsonArray, identity: DynamicToolIdentity): StructuredToolResult {
-        if (identity.address.namespace.value != "kast")
-            return StructuredToolResult.Unavailable(StructuredToolResultUnavailable.NOT_KAST)
-        val item = items.singleOrNull() as? JsonObject
-            ?: return StructuredToolResult.Unavailable(StructuredToolResultUnavailable.NOT_SINGLE_TEXT)
-        if (item.strictString("type") != "inputText")
-            return StructuredToolResult.Unavailable(StructuredToolResultUnavailable.NOT_SINGLE_TEXT)
-        val text = item.strictString("text")
-            ?: return StructuredToolResult.Unavailable(StructuredToolResultUnavailable.NOT_SINGLE_TEXT)
-        val parsed = try { Json.parseToJsonElement(text) } catch (_: SerializationException) {
-            return StructuredToolResult.Unavailable(StructuredToolResultUnavailable.INVALID_JSON)
-        } catch (_: IllegalArgumentException) {
-            return StructuredToolResult.Unavailable(StructuredToolResultUnavailable.INVALID_JSON)
-        }
-        return when (parsed) {
-            is JsonObject -> StructuredToolResult.Admitted(parsed)
-            else -> StructuredToolResult.Unavailable(StructuredToolResultUnavailable.NOT_OBJECT)
-        }
-    }
-
     private fun rejected(failure: CodexToolCallProjectionFailure): CodexToolCallProjection.Rejected =
         CodexToolCallProjection.Rejected(failure)
 
@@ -380,13 +352,6 @@ internal object CodexToolCallProjector {
     @JvmInline private value class ToolResultText(val value: String)
 
     private data class DynamicToolResult(val texts: List<ToolResultText>)
-
-    private sealed interface StructuredToolResult {
-        data class Admitted(val document: JsonObject) : StructuredToolResult
-        data class Unavailable(val cause: StructuredToolResultUnavailable) : StructuredToolResult
-    }
-
-    private enum class StructuredToolResultUnavailable { NOT_KAST, NOT_SINGLE_TEXT, INVALID_JSON, NOT_OBJECT }
 
     private enum class DynamicToolCompletion(val success: Boolean) {
         SUCCEEDED(true),
@@ -897,15 +862,3 @@ private fun <Strong, Failure> refined(refinement: Refinement<Strong, Failure>): 
         is Refinement.Refined -> refinement.value
         is Refinement.Rejected -> null
     }
-
-private val displayJson = Json { encodeDefaults = true; explicitNulls = false }
-
-/** `structuredContent` is the upstream schema's opaque JSON value, not new semantic authority. */
-@Serializable
-private data class CodexToolDisplayResultDocument(
-    val content: List<CodexToolDisplayTextDocument>,
-    val structuredContent: JsonObject? = null,
-)
-
-@Serializable
-private data class CodexToolDisplayTextDocument(val text: String, val type: String = "text")

@@ -122,3 +122,9 @@ terminated. Deterministic gates test queued and later calls, mutation without
 replay, independent workspaces, and retirement held across cancellation/deadline.
 
 `HostedResponse` carries the original typed semantic outcome beside the encoded document until transport ends. Completion, qualification and rejection have separate endpoint observations. Encoding rejection and size rejection retain the semantic value for diagnosis. Read transaction success alone is `EVALUATED`; the canonical path additionally retains semantic `COMPLETE`, `QUALIFIED` or `REJECTED` evidence. Change-storage failures retain their finite cause in schema-admitted `HOST_REJECTED.detail` and in default bounded storage observations.
+
+Model-facing Codex replies carry one JSON document. Terminal broker admission,
+capacity and cancellation paths also retain typed JSON rejection or cancellation
+data; uncertainty is not converted into success. A supported native desktop
+display receives the same bounded result as structured content. Display parsing
+cannot alter execution authority or the broker's recovery settlement.

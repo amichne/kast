@@ -26,7 +26,6 @@ import io.github.amichne.kast.appserver.protocol.ThreadCatalogBinding
 import io.github.amichne.kast.appserver.protocol.ThreadCatalogStore
 import io.github.amichne.kast.appserver.protocol.ThreadStoreRead
 import io.github.amichne.kast.appserver.protocol.ThreadStoreWrite
-import io.github.amichne.kast.appserver.schema.canonicalJson
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.Validation
 import java.nio.file.Path

@@ -1,0 +1,17 @@
+{
+  "status": "completed",
+  "document": {
+    "operation": "query.run",
+    "status": "qualified",
+    "items": [],
+    "failures": [],
+    "continuation": null,
+    "terminal_reason": "upstream-incomplete",
+    "qualification": {
+      "knownMinimum": 0,
+      "limitations": [
+        "discovery-incomplete"
+      ]
+    }
+  }
+}

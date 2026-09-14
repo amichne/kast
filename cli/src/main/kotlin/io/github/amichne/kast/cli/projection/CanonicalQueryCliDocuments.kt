@@ -102,7 +102,7 @@ private sealed interface QueryResultItemCliDocument {
         val location: QueryExactLocationCliDocument?,
         val signature: CompilerSignatureCliDocument?,
         val connections: List<RelationFactCliDocument>,
-        val symbol_id: String,
+        @SerialName("symbol_id") val symbolId: String,
     ) : QueryResultItemCliDocument {
         // Migration alias is derived from the retained exact reference, never an independent input.
         val symbol_ref: String = ref.token

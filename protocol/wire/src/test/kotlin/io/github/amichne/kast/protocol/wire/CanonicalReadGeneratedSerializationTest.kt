@@ -85,19 +85,13 @@ class CanonicalReadGeneratedSerializationTest {
                 count(3),
                 count(25),
             )
-        val startDocument =
-            json(
-                """{"exactSelector":"exact:Target","relation":"callees","maximumDepth":3,"maximumResults":25,"position":{"type":"start"}}"""
-            )
+        val startDocument = json(requireNotNull(javaClass.getResource("/traversal/start-request.json")).readText())
         assertEquals(WireValueEncoding.Encoded(startDocument), codec.encode(start, WireValueRole.REQUEST))
         assertEquals(WireDecoding.Decoded(start), codec.decode(startDocument, WireValueRole.REQUEST))
 
         val continuation = traversalContinuation("resume")
         val resume = start.copy(position = TraversalRunPositionDocument.Resume(continuation))
-        val resumeDocument =
-            json(
-                """{"exactSelector":"exact:Target","relation":"callees","maximumDepth":3,"maximumResults":25,"position":{"type":"resume","continuation":"${continuation.value}"}}"""
-            )
+        val resumeDocument = json(requireNotNull(javaClass.getResource("/traversal/resume-request.json")).readText())
         assertEquals(
             WireValueEncoding.Encoded(resumeDocument),
             codec.encode(resume, WireValueRole.REQUEST),

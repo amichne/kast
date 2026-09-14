@@ -8844,29 +8844,9 @@
     {
       "fingerprint": {
         "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/InstalledServerProjectionTest.kt",
-        "scope": "type:InstalledServerProjectionTest/fun:traversal resume input admits both supported checkpoint versions and rejects unknown versions()/val:request",
-        "kind": "JSON_LITERAL",
-        "sha256": "e366ba063549b780aeb4ca91ef3fac65c6381723b9c869dc210744eef1137a7a"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/InstalledServerProjectionTest.kt",
         "scope": "type:InstalledServerProjectionTest/fun:full generated capability document fits the production provider schema byte budget()/val:document",
         "kind": "JSON_LITERAL",
         "sha256": "384566de5c074a47a84ee4595a1cc670e8b6c741b5c3c631eaf18617eb723f29"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/InstalledServerProjectionTest.kt",
-        "scope": "type:InstalledServerProjectionTest/fun:installed broker publishes executable read operations()",
-        "kind": "JSON_LITERAL",
-        "sha256": "7f206b0007d0fc0e3b74e2c5ae7ef09b4ffc90e742c4aaa6d38f14ba40457111"
       },
       "count": 1,
       "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
@@ -8957,16 +8937,6 @@
         "scope": "type:InstalledServerProjectionTest/fun:query schema exposes intent and defaults but not evaluator states()",
         "kind": "JSON_LITERAL",
         "sha256": "4898d09faeae027eff1337d62a403fd4e000df0f4d3e311fd71ba85ed5202d51"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/InstalledServerProjectionTest.kt",
-        "scope": "type:InstalledServerProjectionTest/fun:query schema exposes intent and defaults but not evaluator states()",
-        "kind": "JSON_LITERAL",
-        "sha256": "b0e355d20f3be4e9eeec276054faeaeb8328304cc0760d175e491ad1e2be5d05"
       },
       "count": 1,
       "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."

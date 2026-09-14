@@ -11,7 +11,6 @@ import io.github.amichne.kast.appserver.core.ProviderNamespace
 import io.github.amichne.kast.appserver.core.ToolAddress
 import io.github.amichne.kast.appserver.core.ToolName
 import io.github.amichne.kast.appserver.provider.KastProviderOptions
-import io.github.amichne.kast.appserver.provider.KastProviderQualification
 import io.github.amichne.kast.appserver.provider.KastProviderQualifier
 import io.github.amichne.kast.appserver.schema.JsonSchemaViolationEvidenceDocument
 import io.github.amichne.kast.protocol.registry.CanonicalAgentToolDefinitions
@@ -123,8 +122,9 @@ private class NativeHostedReadTransport(private val broker: Broker, private val 
                     )
                     .nativeValue()
             val qualified =
-                KastProviderQualifier.qualify(options) as? KastProviderQualification.Qualified
-                    ?: throw NativeRejected(NativeFailure.PROVIDER_QUALIFICATION_REJECTED)
+                KastProviderQualifier.qualify(options).nativeQualified { observation ->
+                    System.err.println(observation.encodeObservation())
+                }
             return NativeHostedReadTransport(
                 Broker.create(listOf(qualified.registration), BrokerLimits.defaults()).nativeValue(),
                 workspace,

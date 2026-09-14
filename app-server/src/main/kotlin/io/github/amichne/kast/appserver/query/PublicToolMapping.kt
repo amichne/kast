@@ -52,6 +52,7 @@ internal fun PublicToolDocument.lower(): Refinement<PublicToolCanonical, PublicT
                             from.value,
                             (steps ?: PublicToolDefaults.steps).values.map { it.lower() },
                             (return_fields ?: PublicToolDefaults.returnFields).values,
+                            continuation,
                         )
                     )
             }
@@ -200,13 +201,19 @@ private fun PublicToolScope.lower(): Refinement<QueryScopeDocument, PublicToolIn
 private fun containment(recursive: Boolean): QueryContainmentDocument =
     if (recursive) QueryContainmentDocument.DESCENDANTS else QueryContainmentDocument.DIRECT
 
-private fun query(source: QueryFromDocument, steps: List<QueryStepDocument>, fields: List<PublicToolReturnFields>) =
+private fun query(
+    source: QueryFromDocument,
+    steps: List<QueryStepDocument>,
+    fields: List<PublicToolReturnFields>,
+    continuation: ProtocolText? = null,
+) =
     PublicToolCanonical.Query(
         QueryRunRequest(
             source,
             bounded(steps),
             QueryOutputDocument.Symbols(bounded(fields.map { it.lower() })),
             QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
+            continuation = continuation,
         )
     )
 

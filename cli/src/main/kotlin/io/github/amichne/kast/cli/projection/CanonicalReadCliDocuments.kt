@@ -2,6 +2,7 @@ package io.github.amichne.kast.cli.projection
 
 import io.github.amichne.kast.cli.CliJsonDocument
 import io.github.amichne.kast.cli.ProjectedCliOutcome
+import io.github.amichne.kast.kernel.EvidenceBasis
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckQualification
@@ -13,9 +14,12 @@ import io.github.amichne.kast.protocol.contract.RelationFactDocument
 import io.github.amichne.kast.protocol.contract.RelationReadQualification
 import io.github.amichne.kast.protocol.contract.RelationReadRejection
 import io.github.amichne.kast.protocol.contract.RelationReadResult
+import io.github.amichne.kast.protocol.contract.SourceRangeDocument
+import io.github.amichne.kast.protocol.contract.TraversalProgressDocument
 import io.github.amichne.kast.protocol.contract.TraversalRunQualification
 import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import io.github.amichne.kast.protocol.contract.TraversalRunResult
+import io.github.amichne.kast.protocol.contract.TraversalStrategyDocument
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -36,6 +40,8 @@ internal object CanonicalReadCliDocuments {
                         operation = CanonicalOperation.RELATION_READ.id.value,
                         status = "complete",
                         relations = result.relations.values.map { it.toCliDocument() },
+                        omissions = result.omissions.values.map { it.toCliDocument() },
+                        soundness = result.soundness,
                     )
                 )
             },
@@ -45,6 +51,8 @@ internal object CanonicalReadCliDocuments {
                         operation = CanonicalOperation.RELATION_READ.id.value,
                         status = "qualified",
                         relations = result.relations.values.map { it.toCliDocument() },
+                        omissions = result.omissions.values.map { it.toCliDocument() },
+                        soundness = result.soundness,
                         qualification = qualification.toCliDocument(),
                     )
                 )
@@ -65,38 +73,11 @@ internal object CanonicalReadCliDocuments {
         when (outcome) {
             is OperationOutcome.Complete ->
                 ProjectedCliOutcome.Complete(
-                    traversalCompleteFactory
-                        .create(
-                            TraversalCompleteCliDocument(
-                                operation = CanonicalOperation.TRAVERSAL_RUN.id.value,
-                                status = "complete",
-                                graph =
-                                    normalizeTraversalGraph(
-                                        outcome.evidence.payload.snapshotRoot,
-                                        outcome.evidence.basis,
-                                        outcome.evidence.payload.records.values,
-                                    ),
-                            )
-                        )
-                        .withEvidence(outcome.evidence.basis)
+                    traversalCompleteDocument(outcome.evidence.payload, outcome.evidence.basis)
                 )
             is OperationOutcome.Qualified ->
                 ProjectedCliOutcome.Qualified(
-                    traversalQualifiedFactory
-                        .create(
-                            TraversalQualifiedCliDocument(
-                                operation = CanonicalOperation.TRAVERSAL_RUN.id.value,
-                                status = "qualified",
-                                graph =
-                                    normalizeTraversalGraph(
-                                        outcome.evidence.payload.snapshotRoot,
-                                        outcome.evidence.basis,
-                                        outcome.evidence.payload.records.values,
-                                    ),
-                                qualification = outcome.qualification.toCliDocument(),
-                            )
-                        )
-                        .withEvidence(outcome.evidence.basis)
+                    traversalQualifiedDocument(outcome.evidence.payload, outcome.evidence.basis, outcome.qualification)
                 )
             is OperationOutcome.Rejected ->
                 ProjectedCliOutcome.Rejected(
@@ -106,6 +87,52 @@ internal object CanonicalReadCliDocuments {
                     )
                 )
         }
+
+    private fun traversalCompleteDocument(
+        result: TraversalRunResult,
+        basis: EvidenceBasis,
+    ) =
+        traversalCompleteFactory
+            .create(
+                TraversalCompleteCliDocument(
+                    operation = CanonicalOperation.TRAVERSAL_RUN.id.value,
+                    progress = result.progress,
+                    partialExpansions = result.partialExpansions.values.map { it.toCliDocument() },
+                    strategy = result.strategy,
+                    status = "complete",
+                    graph =
+                        normalizeTraversalGraph(
+                            result.snapshotRoot,
+                            basis,
+                            result.records.values,
+                        ),
+                )
+            )
+            .withEvidence(basis)
+
+    private fun traversalQualifiedDocument(
+        result: TraversalRunResult,
+        basis: EvidenceBasis,
+        qualification: TraversalRunQualification,
+    ) =
+        traversalQualifiedFactory
+            .create(
+                TraversalQualifiedCliDocument(
+                    operation = CanonicalOperation.TRAVERSAL_RUN.id.value,
+                    progress = result.progress,
+                    partialExpansions = result.partialExpansions.values.map { it.toCliDocument() },
+                    strategy = result.strategy,
+                    status = "qualified",
+                    graph =
+                        normalizeTraversalGraph(
+                            result.snapshotRoot,
+                            basis,
+                            result.records.values,
+                        ),
+                    qualification = qualification.toCliDocument(),
+                )
+            )
+            .withEvidence(basis)
 
     fun projectDiagnostics(
         outcome:
@@ -147,6 +174,8 @@ private data class RelationCompleteCliDocument(
     val operation: String,
     val status: String,
     val relations: List<RelationFactCliDocument>,
+    val omissions: List<RelationOmissionCliDocument>,
+    val soundness: io.github.amichne.kast.protocol.contract.RelationSoundnessDocument,
 )
 
 @Serializable
@@ -154,6 +183,8 @@ private data class RelationQualifiedCliDocument(
     val operation: String,
     val status: String,
     val relations: List<RelationFactCliDocument>,
+    val omissions: List<RelationOmissionCliDocument>,
+    val soundness: io.github.amichne.kast.protocol.contract.RelationSoundnessDocument,
     val qualification: RelationQualificationCliDocument,
 )
 
@@ -180,6 +211,9 @@ private data class TraversalCompleteCliDocument(
     val operation: String,
     val status: String,
     val graph: NormalizedTraversalGraphCliDocument,
+    val partialExpansions: List<TraversalPartialExpansionCliDocument>,
+    val progress: TraversalProgressDocument,
+    val strategy: TraversalStrategyDocument,
 )
 
 @Serializable
@@ -187,6 +221,9 @@ private data class TraversalQualifiedCliDocument(
     val operation: String,
     val status: String,
     val graph: NormalizedTraversalGraphCliDocument,
+    val partialExpansions: List<TraversalPartialExpansionCliDocument>,
+    val progress: TraversalProgressDocument,
+    val strategy: TraversalStrategyDocument,
     val qualification: TraversalQualificationCliDocument,
 )
 
@@ -342,8 +379,7 @@ private fun DiagnosticLimitationDocument.toCliDocument() =
         reason.cliName(),
     )
 
-private fun io.github.amichne.kast.protocol.contract.SourceRangeDocument.toReadCliDocument() =
-    SourceRangeCliDocument(startInclusive.value, endExclusive.value)
+private fun SourceRangeDocument.toReadCliDocument() = SourceRangeCliDocument(startInclusive.value, endExclusive.value)
 
 private val relationCompleteFactory = CliJsonDocument.generated(RelationCompleteCliDocument.serializer())
 private val relationQualifiedFactory = CliJsonDocument.generated(RelationQualifiedCliDocument.serializer())

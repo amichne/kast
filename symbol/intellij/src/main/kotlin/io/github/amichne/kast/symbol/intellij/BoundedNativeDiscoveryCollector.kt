@@ -21,16 +21,24 @@ import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
 internal class BoundedNativeDiscoveryCollector(
     private val compiledScope: CompiledIntellijSearchScope,
     private val request: SymbolDiscoveryRequest,
-    private val itemFile: IntellijDiscoveryItemFile,
-    private val projector: IntellijDiscoveryCandidateProjector,
-    private val itemAdmission: IntellijDiscoveryItemAdmissionPolicy,
-    private val itemCompilerKind: IntellijDiscoveryItemCompilerKind,
-    private val itemPackage: IntellijDiscoveryItemPackage,
-    private val environmentState: () -> IntellijDiscoveryEnvironmentState,
-    private val cancellationCheck: () -> Unit,
-    private val clock: IntellijDiscoveryNanoClock,
-    private val observation: IntellijReadObservation,
+    private val policies: IntellijDiscoveryItemPolicies,
+    private val execution: IntellijDiscoveryExecution,
 ) {
+    private val clock
+        get() = execution.clock
+
+    private val observation
+        get() = execution.observation
+
+    private val itemFile
+        get() = policies.itemFile
+
+    private val projector
+        get() = policies.projector
+
+    private val itemAdmission
+        get() = policies.itemAdmission
+
     private val startedAt = clock.now()
     private val candidates = linkedSetOf<SymbolDiscoveryCandidate>()
     private val qualifications = linkedSetOf<SymbolDiscoveryQualification>()
@@ -42,8 +50,8 @@ internal class BoundedNativeDiscoveryCollector(
         private set
 
     fun observe(): Boolean {
-        cancellationCheck()
-        when (environmentState()) {
+        execution.cancellationCheck()
+        when (execution.environmentState()) {
             IntellijDiscoveryEnvironmentState.DUMB -> {
                 qualifyAndHalt(SymbolDiscoveryQualification.DUMB_MODE_TRANSITION)
                 return false
@@ -90,13 +98,11 @@ internal class BoundedNativeDiscoveryCollector(
         }
         when (
             request.constraints.admit(
-                item,
-                file.path,
-                request.scope.lease.workspaceRoot.value,
-                compiledScope,
-                itemCompilerKind,
-                itemPackage,
-                inspectPackage,
+                item = item,
+                filePath = file.path,
+                compiledScope = compiledScope,
+                policies = policies,
+                inspectPackage = inspectPackage,
             )
         ) {
             IntellijDiscoveryItemAdmission.ADMITTED -> Unit
@@ -283,3 +289,18 @@ private fun SymbolDiscoveryQualification.observedTermination(): IntellijReadTerm
         SymbolDiscoveryQualification.EXACT_DEFINITION_UNAVAILABLE ->
             IntellijReadTermination.EXACT_REFINEMENT_UNAVAILABLE
     }
+
+internal data class IntellijDiscoveryItemPolicies(
+    val itemFile: IntellijDiscoveryItemFile,
+    val projector: IntellijDiscoveryCandidateProjector,
+    val itemAdmission: IntellijDiscoveryItemAdmissionPolicy,
+    val itemCompilerKind: IntellijDiscoveryItemCompilerKind,
+    val itemPackage: IntellijDiscoveryItemPackage,
+)
+
+internal data class IntellijDiscoveryExecution(
+    val environmentState: () -> IntellijDiscoveryEnvironmentState,
+    val cancellationCheck: () -> Unit,
+    val clock: IntellijDiscoveryNanoClock,
+    val observation: IntellijReadObservation,
+)

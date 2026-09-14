@@ -40,3 +40,11 @@ Bare installed CLI composition fails closed on rejected saved configuration. Its
 The default host query limit is 4,000 ms. At semantic entry the host derives smaller positive semantic and diagnostic-scope allowances from remaining request time, preserving the configured policy separately in diagnostics. See the deadline admission rules in the read configuration guide.
 
 `HOST_REFERENCE_ENTRIES` and `HOST_REFERENCE_BYTES` bound the project-owned compact-reference table. Their defaults are 16,384 entries and 33,554,432 UTF-8 bytes; both are positive typed read limits. Capacity preserves a valid inline representation instead of evicting current-epoch handles.
+
+`DISCOVERY_FILES` separately bounds cheap scoped lexical file enumeration before
+compiler refinement. Query continuation retention has independent typed limits:
+`QUERY_CHECKPOINT_BYTES` bounds one checkpoint, and `QUERY_CONTINUATION_ENTRIES`,
+`QUERY_CONTINUATION_BYTES`, `QUERY_CONTINUATION_TTL_MILLIS` bound each project-owned
+execution/output store. Both stores apply the same policy independently, so the
+combined retained-state ceiling is twice the configured per-store byte bound.
+These keys are declared in the installation catalogue and generated snapshot.

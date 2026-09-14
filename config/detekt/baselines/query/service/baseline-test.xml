@@ -3,7 +3,7 @@
   <ManuallySuppressedIssues/>
   <CurrentIssues>
     <ID>LargeClass:QueryServiceTest.kt:QueryServiceTest</ID>
-    <ID>LongMethod:QueryServiceTest.kt:QueryServiceTest$private fun selfRead: SourceReadResult.Complete</ID>
+    <ID>LongMethod:QueryServiceTest.kt:QueryServiceTest$internal fun selfRead: SourceReadResult.Complete</ID>
     <ID>NamedArguments:QueryServiceTest.kt:QueryServiceTest$create( SourceReadContext.Published( selected.lease as SemanticReadLease, io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity.parse("a".repeat(64)).refined(), ), selected.file as io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity.Workspace, SourceTextIdentity.fromNormalizedCommittedText(" ".repeat(64)), Utf16CodeUnitCount.parse(64).refined(), SourceReadScope.Constrained(selected.scope, selected.constraints), )</ID>
     <ID>NamedArguments:QueryServiceTest.kt:QueryServiceTest$create( entitySelector, SourceNestingDepth.parse(0).refined(), DeclarationKind.CLASSLIKE, visibility, DeclarationSemanticIdentity.Candidate(candidateSelector), )</ID>
     <ID>NamedArguments:QueryServiceTest.kt:QueryServiceTest$create( request, candidates, SymbolDiscoveryByteCount.parse(candidates.sumOf { it.projectedUtf8Size().value }).refined(), SymbolDiscoveryWorkCount.parse(work).refined(), SymbolDiscoveryTimings( SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(), SymbolDiscoveryElapsedNanoseconds.parse(1L).refined(), ), )</ID>
