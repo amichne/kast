@@ -98,11 +98,15 @@ def _check_page(replay, name, selector, expected_name):
     qualification = response.get('qualification', {})
     entities = response.get('entities', [])
     continuation = qualification.get('continuation', {})
+    progress = qualification.get('progress', {})
     replay.record(name, 'source_read', {
         'qualified': response.get('status') == 'qualified',
         'exactFirstEntity': [entity.get('name') for entity in entities] == [expected_name],
         'entityLimitOnly': qualification.get('limitations') == ['entity-limit-reached'],
         'upstreamContinuation': continuation.get('type') == 'available' and bool(continuation.get('continuation')),
+        'explicitNativeProgress': (progress.get('type') == 'resumable'
+            and progress.get('checkpoint', {}).get('type') == 'upstream'
+            and progress.get('next_action') == 'resume'),
         'sameLiveAuthority': response.get('live') == replay.live,
         'effectiveWorkRetained': response.get('execution_budget', {}).get('max_work_units', {}).get('effective') == 100,
     }, len(entities), response)
@@ -125,11 +129,17 @@ class SourceContinuationKind(str, Enum):
     UNAVAILABLE = 'unavailable'
 
 
+class SourceProgressKind(str, Enum):
+    RESUMABLE = 'resumable'
+    TERMINAL = 'terminal_incomplete'
+
+
 @dataclass(frozen=True)
 class ObservedSourceQualification:
     limitations: tuple[SourceLimitation, ...]
     continuation: SourceContinuationKind
     knownMinimumEntityCount: int
+    progress: SourceProgressKind
     outcome: str = field(default='observed', init=False)
 
 
@@ -140,7 +150,7 @@ class UnrecognizedSourceQualification:
 
 def source_qualification_observation(qualification):
     try:
-        if set(qualification) != {'limitations', 'continuation', 'knownMinimumEntityCount'}:
+        if set(qualification) != {'limitations', 'continuation', 'knownMinimumEntityCount', 'progress'}:
             raise ValueError('SOURCE_QUALIFICATION_SHAPE')
         limits, continuation = qualification['limitations'], qualification['continuation']
         count = qualification['knownMinimumEntityCount']
@@ -155,6 +165,12 @@ def source_qualification_observation(qualification):
         keys = {'type', 'continuation'} if kind is SourceContinuationKind.AVAILABLE else {'type'}
         if set(continuation) != keys:
             raise ValueError('SOURCE_QUALIFICATION_CONTINUATION')
-        return asdict(ObservedSourceQualification(admitted, kind, count))
+        # The installed transport already validates the full schema. This receipt
+        # records only the finite progress discriminator, never checkpoint payloads.
+        progress = SourceProgressKind(qualification['progress']['type'])
+        if ((progress is SourceProgressKind.RESUMABLE)
+                != (kind is SourceContinuationKind.AVAILABLE)):
+            raise ValueError('SOURCE_PROGRESS_AVAILABILITY')
+        return asdict(ObservedSourceQualification(admitted, kind, count, progress))
     except (ValueError, TypeError, KeyError):
         return asdict(UnrecognizedSourceQualification())

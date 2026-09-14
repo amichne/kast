@@ -332,3 +332,23 @@ architecture and knowledge checks (`/tmp/kast-query-completion-check.log`). Exac
 reference schema reuse keeps the capability document within its unchanged cap and
 headroom. This is local query evidence; source/traversal completion, remaining
 installed matrix cases and presentation naming remain open.
+
+### Source qualified completion authority
+
+RED `d6b5c461a` reproduced source qualification without explicit progress evidence.
+The qualification now owns native versus retained-output checkpoints and finite
+terminal states. Retained output preserves original coverage and all limitations;
+legacy cursor availability is derived. Empty native pages require an increased
+execution allowance. Text-withheld terminal evidence requires the corresponding
+limitation. No raw checkpoint payload enters the bounded installed receipt.
+
+Wire checks cover independent encoded shapes, all progress variants, unsupported
+reasons/actions, inconsistent terminal evidence, and wrong checkpoint families.
+Source protocol tests cover empty-page action and terminal explanations; hosted
+fitting preserves terminal upstream coverage and replay. Full protocol, query
+protocol, runtime, CLI, App Server, installed-harness unit, JSON, architecture and
+knowledge checks passed (`/tmp/kast-source-completion-check.log`). The capability
+cap remains unchanged. The affected handwritten positive source fixture and its
+obsolete JSON allowance were removed in favor of typed projection. The installed
+source fixture now also asserts native checkpoint scope and supported action;
+that new assertion still needs its current-build native run.

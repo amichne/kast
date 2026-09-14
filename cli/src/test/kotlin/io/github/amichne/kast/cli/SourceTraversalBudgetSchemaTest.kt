@@ -16,9 +16,10 @@ import io.github.amichne.kast.protocol.contract.OperationRejection
 import io.github.amichne.kast.protocol.contract.OperationRequest
 import io.github.amichne.kast.protocol.contract.OperationResult
 import io.github.amichne.kast.protocol.contract.SourceEntityCountDocument
-import io.github.amichne.kast.protocol.contract.SourceReadContinuationStateDocument
+import io.github.amichne.kast.protocol.contract.SourceQualifiedProgressDocument
 import io.github.amichne.kast.protocol.contract.SourceReadLimitationDocument
 import io.github.amichne.kast.protocol.contract.SourceReadQualification
+import io.github.amichne.kast.protocol.contract.SourceTerminalReasonDocument
 import io.github.amichne.kast.protocol.contract.TraversalLimitationDocument
 import io.github.amichne.kast.protocol.contract.TraversalRunQualification
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
@@ -50,7 +51,9 @@ class SourceTraversalBudgetSchemaTest {
             SourceReadQualification.create(
                     SourceEntityCountDocument.parse(0).proven(),
                     listOf(SourceReadLimitationDocument.TIME_LIMIT_REACHED),
-                    SourceReadContinuationStateDocument.Unavailable,
+                    SourceQualifiedProgressDocument.TerminalIncomplete(
+                        SourceTerminalReasonDocument.UPSTREAM_INCOMPLETE
+                    ),
                 )
                 .proven()
         verify(

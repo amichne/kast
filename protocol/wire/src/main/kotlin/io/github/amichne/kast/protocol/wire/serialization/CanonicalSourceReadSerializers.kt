@@ -14,7 +14,6 @@ import io.github.amichne.kast.protocol.contract.SourceEntityLimitDocument
 import io.github.amichne.kast.protocol.contract.SourceEntityTargetDocument
 import io.github.amichne.kast.protocol.contract.SourceLengthDocument
 import io.github.amichne.kast.protocol.contract.SourceNestingDepthDocument
-import io.github.amichne.kast.protocol.contract.SourceReadContinuationStateDocument
 import io.github.amichne.kast.protocol.contract.SourceReadLimitationDocument
 import io.github.amichne.kast.protocol.contract.SourceReadQualification
 import io.github.amichne.kast.protocol.contract.SourceReadRejection
@@ -387,36 +386,17 @@ private fun SourceReadQualification.toWireDocument(): SourceReadQualificationWir
     SourceReadQualificationWireDocument(
         knownMinimumEntityCount.value,
         limitations.map(SourceReadLimitationDocument::toWireDocument),
-        continuation.toWireDocument(),
+        progress,
     )
 
 private fun SourceReadQualificationWireDocument.toContract(): WireDocumentConversion<SourceReadQualification> =
     knownMinimumEntityCount.sourceEntityCount().flatMapConverted { admittedCount ->
-        val admittedLimitations = limitations.map(SourceReadLimitationWireDocument::toContract)
-        continuation.toContract().flatMapConverted { admittedContinuation ->
-            SourceReadQualification.create(
-                    admittedCount,
-                    admittedLimitations,
-                    admittedContinuation,
-                )
-                .toWireDocumentConversion()
-        }
-    }
-
-private fun SourceReadContinuationStateDocument.toWireDocument(): SourceReadContinuationStateWireDocument =
-    when (this) {
-        SourceReadContinuationStateDocument.Unavailable -> SourceReadContinuationStateWireDocument.Unavailable
-        is SourceReadContinuationStateDocument.Available ->
-            SourceReadContinuationStateWireDocument.Available(continuation.value)
-    }
-
-private fun SourceReadContinuationStateWireDocument.toContract():
-    WireDocumentConversion<SourceReadContinuationStateDocument> =
-    when (this) {
-        SourceReadContinuationStateWireDocument.Unavailable ->
-            WireDocumentConversion.Converted(SourceReadContinuationStateDocument.Unavailable)
-        is SourceReadContinuationStateWireDocument.Available ->
-            continuation.protocolText().mapConverted(SourceReadContinuationStateDocument::Available)
+        SourceReadQualification.create(
+                admittedCount,
+                limitations.map(SourceReadLimitationWireDocument::toContract),
+                progress,
+            )
+            .toWireDocumentConversion()
     }
 
 private fun SourceCoordinateUnitDocument.toWireDocument(): SourceCoordinateUnitWireDocument =

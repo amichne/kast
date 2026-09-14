@@ -9,8 +9,11 @@ import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.ReturnedByteLimit
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.ReadResumeActionDocument
+import io.github.amichne.kast.protocol.contract.SourceCheckpointDocument
 import io.github.amichne.kast.protocol.contract.SourceEntityCountDocument
-import io.github.amichne.kast.protocol.contract.SourceReadContinuationStateDocument
+import io.github.amichne.kast.protocol.contract.SourcePreparedCoverageDocument
+import io.github.amichne.kast.protocol.contract.SourceQualifiedProgressDocument
 import io.github.amichne.kast.protocol.contract.SourceReadLimitationDocument
 import io.github.amichne.kast.protocol.contract.SourceReadQualification
 import io.github.amichne.kast.protocol.contract.SourceReadResult
@@ -53,7 +56,7 @@ internal fun encodeHostedSourceResponse(
     }
         .distinct()
         .sortedBy { it.ordinal }
-    val fitting = SourcePageEncoding(evidence, minimum, exhausted, limits, maximumBytes)
+    val fitting = SourcePageEncoding(evidence, minimum, exhausted, semantic.preparedCoverage(), limits, maximumBytes)
     val count = largestFittingSourcePrefix(minOf(size - 1, maximumResults.value), fitting::placeholder)
     if (count == 0) return original.indivisibleSource()
     val remainder =
@@ -88,6 +91,7 @@ private class SourcePageEncoding(
     private val evidence: EvidenceEnvelope<SourceReadResult>,
     private val minimum: SourceEntityCountDocument,
     private val limitations: List<SourceReadLimitationDocument>,
+    private val upstream: SourcePreparedCoverageDocument,
     private val limits: ReadLimits,
     private val maximumBytes: ReturnedByteLimit,
 ) {
@@ -106,7 +110,10 @@ private class SourcePageEncoding(
                 SourceReadQualification.create(
                         minimum,
                         limitations,
-                        SourceReadContinuationStateDocument.Available(token),
+                        SourceQualifiedProgressDocument.Resumable(
+                            SourceCheckpointDocument.RetainedOutput(token, upstream),
+                            ReadResumeActionDocument.RESUME,
+                        ),
                     )
                     .proven(),
             ),

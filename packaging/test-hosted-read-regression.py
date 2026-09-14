@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Focused proof for fixture isolation, source preservation and bounded read receipts."""
+from dataclasses import asdict, dataclass, field
 import hashlib
 import importlib.util
 import json
@@ -23,6 +24,39 @@ from hosted_generated_fixture import (GENERATED_FILE, GENERATED_SOURCE, MOVEMENT
 
 
 REPO = Path(__file__).resolve().parent.parent
+
+
+@dataclass(frozen=True)
+class SourceCheckpointFixture:
+    type: str = 'upstream'
+    token: str = 'source-read-continuation-v1|' + 'a' * 64
+
+
+@dataclass(frozen=True)
+class SourceProgressFixture:
+    type: str = 'resumable'
+    checkpoint: SourceCheckpointFixture = field(default_factory=SourceCheckpointFixture)
+    next_action: str = 'resume'
+
+
+@dataclass(frozen=True)
+class SourceCursorFixture:
+    type: str = 'available'
+    continuation: str = 'source-read-continuation-v1|' + 'a' * 64
+
+
+@dataclass(frozen=True)
+class SourceQualificationFixture:
+    knownMinimumEntityCount: int = 2
+    limitations: list[str] = field(default_factory=lambda: ['entity-limit-reached', 'work-limit-reached'])
+    continuation: SourceCursorFixture = field(default_factory=SourceCursorFixture)
+    progress: SourceProgressFixture = field(default_factory=SourceProgressFixture)
+
+
+@dataclass(frozen=True)
+class SourceObservationFixture:
+    status: str = 'qualified'
+    qualification: SourceQualificationFixture = field(default_factory=SourceQualificationFixture)
 
 
 class HostedReadRegressionTest(unittest.TestCase):
@@ -116,15 +150,20 @@ class HostedReadRegressionTest(unittest.TestCase):
             self.assertNotIn('identity', json.dumps(report))
 
     def test_source_qualification_observation_retains_finite_causes_without_cursor_payload(self):
-        response = {'status': 'qualified', 'qualification': {'knownMinimumEntityCount': 2,
-            'limitations': ['entity-limit-reached', 'work-limit-reached'],
-            'continuation': {'type': 'available', 'continuation': 'private-token'}}}
+        response = asdict(SourceObservationFixture())
         observed = _read_observation(response)['sourceQualification']
         self.assertEqual('observed', observed['outcome'])
         self.assertEqual(('entity-limit-reached', 'work-limit-reached'), observed['limitations'])
-        self.assertNotIn('private-token', json.dumps(observed))
+        self.assertNotIn(SourceCursorFixture().continuation, json.dumps(observed))
+        self.assertEqual('resumable', observed['progress'])
         response['qualification']['limitations'] = ['unknown']
         self.assertEqual({'outcome': 'unrecognized'}, _read_observation(response)['sourceQualification'])
+
+    def test_source_observation_rejects_unknown_or_conflicting_progress(self):
+        for progress in ('unknown', 'terminal_incomplete'):
+            response = asdict(SourceObservationFixture())
+            response['qualification']['progress']['type'] = progress
+            self.assertEqual({'outcome': 'unrecognized'}, _read_observation(response)['sourceQualification'])
 
     @staticmethod
     def schema():

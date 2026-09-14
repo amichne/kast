@@ -23,8 +23,8 @@ import io.github.amichne.kast.protocol.contract.SourceEntityLimitDocument
 import io.github.amichne.kast.protocol.contract.SourceEntitySelectionDocument
 import io.github.amichne.kast.protocol.contract.SourceLengthDocument
 import io.github.amichne.kast.protocol.contract.SourceLineRangeDocument
+import io.github.amichne.kast.protocol.contract.SourceQualifiedProgressDocument
 import io.github.amichne.kast.protocol.contract.SourceReadAnchorDocument
-import io.github.amichne.kast.protocol.contract.SourceReadContinuationStateDocument
 import io.github.amichne.kast.protocol.contract.SourceReadLimitationDocument
 import io.github.amichne.kast.protocol.contract.SourceReadPageDocument
 import io.github.amichne.kast.protocol.contract.SourceReadQualification
@@ -38,6 +38,7 @@ import io.github.amichne.kast.protocol.contract.SourceSelectionDocument
 import io.github.amichne.kast.protocol.contract.SourceSelectionRangeDocument
 import io.github.amichne.kast.protocol.contract.SourceSnapshotContextDocument
 import io.github.amichne.kast.protocol.contract.SourceSnapshotDocument
+import io.github.amichne.kast.protocol.contract.SourceTerminalReasonDocument
 import io.github.amichne.kast.protocol.contract.SourceTextByteLimitDocument
 import io.github.amichne.kast.protocol.contract.SourceTextProjectionDocument
 import io.github.amichne.kast.protocol.contract.SourceTextRequestDocument
@@ -100,7 +101,9 @@ class CanonicalSourceReadWireBindingTest {
             SourceReadQualification.create(
                     SourceEntityCountDocument.parse(0).refinedValue(),
                     listOf(SourceReadLimitationDocument.TEXT_BYTE_LIMIT_REACHED),
-                    SourceReadContinuationStateDocument.Unavailable,
+                    SourceQualifiedProgressDocument.TerminalIncomplete(
+                        SourceTerminalReasonDocument.TEXT_PROJECTION_WITHHELD
+                    ),
                 )
                 .refinedValue()
 

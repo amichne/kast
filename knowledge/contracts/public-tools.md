@@ -6,6 +6,7 @@ resource: file://app-server/src/main/resources/io/github/amichne/kast/appserver/
 tags: [tools, query, protocol, agents]
 timestamp: 2026-09-13T00:00:00Z
 code_sources:
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceQualifiedProgressDocument.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/CanonicalReadRejectionSchemas.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/MintlifyCallableReference.kt
   - path: cli/src/test/kotlin/io/github/amichne/kast/cli/MintlifyCallableReferenceTest.kt
@@ -112,3 +113,9 @@ Unknown reason strings remain invalid. Reacquire reference authority explicitly;
 a rejected reference is never refreshed by spelling or converted to success.
 
 Installed source, relation, and traversal rejection schemas enumerate their canonical finite reasons. Wire decode and CLI projection preserve each reason; an unknown rejection string is incompatible with the installed tool envelope.
+
+Source output derives cursor availability from required qualified progress.
+`upstream` checkpoints resume the native source page owner; `retained_output`
+checkpoints drain detached entities while preserving original upstream coverage.
+Terminal qualifications retain a finite reason and all source limitations. These
+states do not independently override canonical complete/qualified/rejected status.

@@ -163,7 +163,7 @@ internal enum class SourceTextWithheldReasonWireDocument {
 internal data class SourceReadQualificationWireDocument(
     val knownMinimumEntityCount: Int,
     val limitations: List<SourceReadLimitationWireDocument>,
-    val continuation: SourceReadContinuationStateWireDocument,
+    val progress: io.github.amichne.kast.protocol.contract.SourceQualifiedProgressDocument,
 )
 
 @Serializable
@@ -177,15 +177,6 @@ internal enum class SourceReadLimitationWireDocument {
     @SerialName("semantic-resolution-incomplete") SEMANTIC_RESOLUTION_INCOMPLETE,
     @SerialName("unsupported-entity") UNSUPPORTED_ENTITY,
     @SerialName("provider-failure") PROVIDER_FAILURE,
-}
-
-@Serializable
-internal sealed interface SourceReadContinuationStateWireDocument {
-    @Serializable @SerialName("unavailable") data object Unavailable : SourceReadContinuationStateWireDocument
-
-    @Serializable
-    @SerialName("available")
-    data class Available(val continuation: String) : SourceReadContinuationStateWireDocument
 }
 
 @Serializable

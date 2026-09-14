@@ -9034,16 +9034,6 @@
     {
       "fingerprint": {
         "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/InstalledServerProjectionTest.kt",
-        "scope": "type:InstalledServerProjectionTest/fun:source read projection accepts one canonical request document and proof rich outcomes()/val:qualified",
-        "kind": "JSON_LITERAL",
-        "sha256": "1e892c78e451eed12092a98652b794efe144489eef29abe12a999280cf71e216"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/InstalledServerProjectionTest.kt",
         "scope": "type:InstalledServerProjectionTest/fun:installedProjection()/val:schema",
         "kind": "JSON_LITERAL",
         "sha256": "e951e0529a48f403ef1751f1c42d135f4e10447002446e0a84c5458be8e84ce7"

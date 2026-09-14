@@ -6,6 +6,10 @@ resource: file://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/
 tags: [intellij, kotlin, semantic-query, lifecycle]
 timestamp: 2026-09-13T00:00:00Z
 code_sources:
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceQualifiedProgressDocument.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceReadOutcomeDocuments.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/SourceProgressProjection.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourcePreparedCoverage.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryRunQualification.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryQualifiedProgressDocument.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryProgressProjection.kt
@@ -427,3 +431,12 @@ Native source enumeration feeds the existing ordered page owner incrementally. I
 Decoded execution reports also retain their dimension rules: elapsed limits admit deadline clamps; result and byte limits admit transport clamps; work limits admit only the operator ceiling. Every result amount remains within the integer domain. Invalid dimension evidence is rejected by the report decoder before a report value is exposed.
 
 Query qualification owns a mandatory closed progress state: resumable with an upstream checkpoint or retained-output checkpoint, or terminal-incomplete with a finite reason. A retained-output checkpoint reports the original upstream coverage, preserving terminal reasons without asserting that an interrupted scan can resume. Empty upstream pages explicitly require increased execution allowances. Query result payloads cannot carry independent cursor/terminal state; the CLI compatibility fields are derived from qualification. Wire decoding rejects missing progress and noncanonical checkpoint families.
+
+Source qualifications own closed resumable or terminal-incomplete progress. Native
+source checkpoints and hosted retained-output checkpoints are separate variants;
+retained output preserves original complete, resumable, or terminal coverage.
+Legacy cursor availability is derived from that authority. Empty native pages
+require an increased execution allowance. A terminal text-withheld explanation
+requires a matching text-byte limitation; other upstream gaps remain finite
+terminal evidence. Source wire admission rejects missing progress, unsupported
+variants and mismatched checkpoint families.

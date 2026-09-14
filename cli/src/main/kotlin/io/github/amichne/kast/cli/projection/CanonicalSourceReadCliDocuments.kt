@@ -222,6 +222,7 @@ private data class SourceReadQualificationCliDocument(
     val knownMinimumEntityCount: Int,
     val limitations: List<String>,
     val continuation: SourceReadContinuationCliDocument,
+    val progress: io.github.amichne.kast.protocol.contract.SourceQualifiedProgressDocument,
 )
 
 @Serializable
@@ -318,6 +319,7 @@ private fun SourceReadQualification.toCliDocument() =
             is SourceReadContinuationStateDocument.Available ->
                 SourceReadContinuationCliDocument.Available(state.continuation.value)
         },
+        progress,
     )
 
 private val completeFactory = CliJsonDocument.generated(SourceReadCompleteCliDocument.serializer())

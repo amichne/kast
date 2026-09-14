@@ -4,11 +4,16 @@ import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.ReturnedByteLimit
+import io.github.amichne.kast.protocol.contract.ReadResumeActionDocument
+import io.github.amichne.kast.protocol.contract.SourceCheckpointDocument
+import io.github.amichne.kast.protocol.contract.SourcePreparedCoverageDocument
+import io.github.amichne.kast.protocol.contract.SourceQualifiedProgressDocument
 import io.github.amichne.kast.protocol.contract.SourceReadContinuationStateDocument
 import io.github.amichne.kast.protocol.contract.SourceReadLimitationDocument
 import io.github.amichne.kast.protocol.contract.SourceReadPageDocument
 import io.github.amichne.kast.protocol.contract.SourceReadQualification
 import io.github.amichne.kast.protocol.contract.SourceReadResult
+import io.github.amichne.kast.protocol.contract.SourceTerminalReasonDocument
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -37,6 +42,7 @@ class HostedSourceResponseTest {
         assertTrue(response.document.toByteArray().size <= maximum.value)
         val prefix = (response as HostedResponse.Canonical<*, *, *>).semantic as OperationOutcome.Qualified
         val qualification = prefix.qualification as SourceReadQualification
+        assertTerminalCoverage(qualification)
         val result = prefix.evidence.payload as SourceReadResult
         assertTrue(result.entities.values.isNotEmpty())
         assertTrue(SourceReadLimitationDocument.RETURNED_BYTE_LIMIT_REACHED in qualification.limitations)
@@ -51,5 +57,15 @@ class HostedSourceResponseTest {
         assertEquals(original.qualification, suffix.qualification)
         assertEquals(original.evidence.payload.text, result.text)
         assertEquals(suffix, outputs.restore(token, request, fixture.owner.authority))
+    }
+
+    private fun assertTerminalCoverage(qualification: SourceReadQualification) {
+        val progress = qualification.progress as SourceQualifiedProgressDocument.Resumable
+        assertEquals(ReadResumeActionDocument.RESUME, progress.nextAction)
+        val checkpoint = progress.checkpoint as SourceCheckpointDocument.RetainedOutput
+        assertEquals(
+            SourcePreparedCoverageDocument.TerminalIncomplete(SourceTerminalReasonDocument.UPSTREAM_INCOMPLETE),
+            checkpoint.upstream,
+        )
     }
 }

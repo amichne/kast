@@ -48,6 +48,8 @@ enum class SourceReadQualificationFailure {
     EMPTY_LIMITATIONS,
     NON_CANONICAL_LIMITATIONS,
     CONTINUATION_REQUIRED,
+    INVALID_CONTINUATION,
+    UNSUPPORTED_TERMINAL_REASON,
 }
 
 @ConsistentCopyVisibility
@@ -55,13 +57,21 @@ data class SourceReadQualification
 private constructor(
     val knownMinimumEntityCount: SourceEntityCountDocument,
     val limitations: List<SourceReadLimitationDocument>,
-    val continuation: SourceReadContinuationStateDocument,
+    val progress: SourceQualifiedProgressDocument,
 ) : OperationQualification {
+    val continuation: SourceReadContinuationStateDocument
+        get() =
+            when (val state = progress) {
+                is SourceQualifiedProgressDocument.Resumable ->
+                    SourceReadContinuationStateDocument.Available(state.checkpoint.token)
+                is SourceQualifiedProgressDocument.TerminalIncomplete -> SourceReadContinuationStateDocument.Unavailable
+            }
+
     companion object {
         fun create(
             knownMinimumEntityCount: SourceEntityCountDocument,
             limitations: List<SourceReadLimitationDocument>,
-            continuation: SourceReadContinuationStateDocument,
+            progress: SourceQualifiedProgressDocument,
         ): Refinement<SourceReadQualification, SourceReadQualificationFailure> {
             if (limitations.isEmpty()) {
                 return Refinement.Rejected(SourceReadQualificationFailure.EMPTY_LIMITATIONS)
@@ -71,11 +81,17 @@ private constructor(
             }
             if (
                 SourceReadLimitationDocument.ENTITY_LIMIT_REACHED in limitations &&
-                    continuation is SourceReadContinuationStateDocument.Unavailable
+                    progress is SourceQualifiedProgressDocument.TerminalIncomplete
             ) {
                 return Refinement.Rejected(SourceReadQualificationFailure.CONTINUATION_REQUIRED)
             }
-            return Refinement.Refined(SourceReadQualification(knownMinimumEntityCount, limitations, continuation))
+            if (!progress.hasCanonicalSyntax()) {
+                return Refinement.Rejected(SourceReadQualificationFailure.INVALID_CONTINUATION)
+            }
+            if (!progress.hasSupportedTerminalReason(limitations)) {
+                return Refinement.Rejected(SourceReadQualificationFailure.UNSUPPORTED_TERMINAL_REASON)
+            }
+            return Refinement.Refined(SourceReadQualification(knownMinimumEntityCount, limitations.toList(), progress))
         }
     }
 }

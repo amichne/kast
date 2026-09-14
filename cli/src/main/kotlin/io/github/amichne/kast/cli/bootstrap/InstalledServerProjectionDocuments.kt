@@ -390,6 +390,7 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
             "sourceRegion" to sourceRegionSchema(),
             "sourceEntity" to sourceEntitySchema(),
             "sourceTextProjection" to sourceTextProjectionSchema(),
+            "sourceQualification" to sourceReadQualificationSchema(),
             "publishedTraversalGraph" to normalizedTraversalGraphSchema(ServerReadEvidenceShape.PUBLISHED),
             "liveTraversalGraph" to normalizedTraversalGraphSchema(ServerReadEvidenceShape.LIVE),
             "diagnostic" to diagnosticSchema(),
@@ -952,6 +953,12 @@ private fun relationQualificationSchema(): JsonObject =
 
 private fun sourceReadQualificationSchema(): JsonObject =
     objectSchema(
+        ServerSchemaProperty(
+            "progress",
+            generatedRequestSchema(
+                io.github.amichne.kast.protocol.contract.SourceQualifiedProgressDocument.serializer()
+            ),
+        ),
         ServerSchemaProperty(
             "knownMinimumEntityCount",
             integerSchema(0, description = "Known minimum matching entity count."),

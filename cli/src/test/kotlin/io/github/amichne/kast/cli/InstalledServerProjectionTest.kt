@@ -177,7 +177,7 @@ class InstalledServerProjectionTest {
                 """{"status":"completed","document":{"operation":"query.run","status":"complete","items":[],""" +
                     """"failures":[]}}"""
             )
-        query.outputSchema().assertAdmits(LiveReadOutputSchemaTest().qualifiedQueryEnvelope())
+        query.outputSchema().assertAdmits(LiveReadOutputSchemaTest().qualifiedEnvelope(CanonicalOperation.QUERY_RUN))
     }
 
     @Test
@@ -435,15 +435,7 @@ class InstalledServerProjectionTest {
                 """"endExclusive":0}}},"entities":[],"text":{"type":"returned","lines":{"startInclusive":1,""" +
                 """"endInclusive":1},"selection":{"selector":"source-selector-v1:payload:digest",""" +
                 """"range":{"startInclusive":0,"endExclusive":0}},"text":""}}} """
-        val qualified =
-            """{"status":"completed","document":{"operation":"source.read","status":"qualified",""" +
-                """"snapshot":{"canonicalRoot":"/workspace","generation":17,"sourceState":"state",""" +
-                """"file":"src/Target.kt","textIdentity":"identity","coordinateUnit":"utf16-code-unit",""" +
-                """"length":10},"region":{"kind":"declaration",""" +
-                """"selection":{"selector":"source-selector-v1:payload:digest","range":{"startInclusive":0,""" +
-                """"endExclusive":10}}},"entities":[],"text":{"type":"withheld",""" +
-                """"reason":"byte-limit-reached"},"qualification":{"knownMinimumEntityCount":0,""" +
-                """"limitations":["text-byte-limit-reached"],"continuation":{"type":"unavailable"}}}}"""
+        val qualified = LiveReadOutputSchemaTest().qualifiedEnvelope(CanonicalOperation.SOURCE_READ)
         val missingRegionSelector =
             complete.replace(
                 "\"selection\":{\"selector\":\"source-selector-v1:payload:digest\",\"range\":{\"startInclusive\":0,\"endExclusive\":0}},",

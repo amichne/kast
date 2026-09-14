@@ -17,8 +17,8 @@ import io.github.amichne.kast.protocol.contract.SourceEntityLimitDocument
 import io.github.amichne.kast.protocol.contract.SourceEntitySelectionDocument
 import io.github.amichne.kast.protocol.contract.SourceLengthDocument
 import io.github.amichne.kast.protocol.contract.SourceNestingDepthDocument
+import io.github.amichne.kast.protocol.contract.SourceQualifiedProgressDocument
 import io.github.amichne.kast.protocol.contract.SourceReadAnchorDocument
-import io.github.amichne.kast.protocol.contract.SourceReadContinuationStateDocument
 import io.github.amichne.kast.protocol.contract.SourceReadLimitationDocument
 import io.github.amichne.kast.protocol.contract.SourceReadPageDocument
 import io.github.amichne.kast.protocol.contract.SourceReadQualification
@@ -31,6 +31,7 @@ import io.github.amichne.kast.protocol.contract.SourceSelectionDocument
 import io.github.amichne.kast.protocol.contract.SourceSelectionRangeDocument
 import io.github.amichne.kast.protocol.contract.SourceSnapshotContextDocument
 import io.github.amichne.kast.protocol.contract.SourceSnapshotDocument
+import io.github.amichne.kast.protocol.contract.SourceTerminalReasonDocument
 import io.github.amichne.kast.protocol.contract.SourceTextByteLimitDocument
 import io.github.amichne.kast.protocol.contract.SourceTextProjectionDocument
 import io.github.amichne.kast.protocol.contract.SourceTextRequestDocument
@@ -90,7 +91,9 @@ private constructor(
                 SourceReadQualification.create(
                         SourceEntityCountDocument.parse(6).sourceFixtureValue(),
                         listOf(SourceReadLimitationDocument.SEMANTIC_RESOLUTION_INCOMPLETE),
-                        SourceReadContinuationStateDocument.Unavailable,
+                        SourceQualifiedProgressDocument.TerminalIncomplete(
+                            SourceTerminalReasonDocument.UPSTREAM_INCOMPLETE
+                        ),
                     )
                     .sourceFixtureValue()
             return HostedSourcePagingFixture(

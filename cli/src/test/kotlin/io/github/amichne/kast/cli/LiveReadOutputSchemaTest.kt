@@ -12,6 +12,8 @@ import io.github.amichne.kast.cli.projection.CanonicalSymbolCliDocuments
 import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
 import io.github.amichne.kast.kernel.*
 import io.github.amichne.kast.protocol.contract.*
+import io.github.amichne.kast.protocol.contract.SourceQualifiedProgressDocument
+import io.github.amichne.kast.protocol.contract.SourceTerminalReasonDocument
 import io.github.amichne.kast.query.protocol.RelationPagingFixture
 import java.util.UUID
 import kotlinx.coroutines.test.runTest
@@ -403,7 +405,9 @@ class LiveReadOutputSchemaTest {
                             SourceReadQualification.create(
                                     SourceEntityCountDocument.parse(0).refined(),
                                     listOf(SourceReadLimitationDocument.WORK_LIMIT_REACHED),
-                                    SourceReadContinuationStateDocument.Unavailable,
+                                    SourceQualifiedProgressDocument.TerminalIncomplete(
+                                        SourceTerminalReasonDocument.UPSTREAM_INCOMPLETE
+                                    ),
                                 )
                                 .refined(),
                         )
@@ -538,10 +542,8 @@ class LiveReadOutputSchemaTest {
         if (operation == CanonicalOperation.SOURCE_READ) with("snapshot", snapshot)
         else with("graph", getValue("graph").jsonObject.with("snapshot", snapshot))
 
-    internal fun qualifiedQueryEnvelope(): String =
-        Json.encodeToString(
-            CompletedProviderEnvelope(ProviderStatus.COMPLETED, qualifiedDocuments(published).first().second)
-        )
+    internal fun qualifiedEnvelope(operation: CanonicalOperation): String =
+        completedSchemaEnvelope(qualifiedDocuments(published).first { it.first == operation }.second)
 
     internal fun assertAdmits(operation: CanonicalOperation, document: JsonObject) {
         val errors = validate(operation, document)
@@ -555,17 +557,9 @@ class LiveReadOutputSchemaTest {
         schemas
             .getSchema(installedServerOutputSchema(operation).toString())
             .validate(
-                Json.encodeToString(CompletedProviderEnvelope(ProviderStatus.COMPLETED, document)),
+                completedSchemaEnvelope(document),
                 InputFormat.JSON,
             )
-
-    /** The provider envelope owns a contract-defined dynamic canonical CLI document. */
-    @Serializable private data class CompletedProviderEnvelope(val status: ProviderStatus, val document: JsonObject)
-
-    @Serializable
-    private enum class ProviderStatus {
-        @kotlinx.serialization.SerialName("completed") COMPLETED
-    }
 
     @Serializable private data object UnusedMetadata
 
