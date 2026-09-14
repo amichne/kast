@@ -509,7 +509,7 @@ def load_tests(loader, tests, _pattern):
                  'test-hosted-resume-budget-regression.py', 'test-hosted-raw-symbol-regression.py',
                  'test-hosted-read-name-regression.py',
                  'test-released-acceptance-product.py', 'test-released-tool-inventory.py',
-                 'test-released-upgrade-acceptance.py'):
+                 'test-released-upgrade-acceptance.py', 'test-released-coordinator-acceptance.py'):
         spec = importlib.util.spec_from_file_location(name[:-3].replace('-', '_'), Path(__file__).with_name(name))
         module = importlib.util.module_from_spec(spec)
         sys.modules[spec.name] = module
