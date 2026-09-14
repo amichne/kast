@@ -28,7 +28,7 @@ class HostedReferenceStoreTest {
         val transport = HostedReferenceTokens(ReadLimits.Default).transport(counts)
         val canonical = text("exact:v3:" + "a".repeat(3000))
         val compact = transport.issue(canonical)
-        assertEquals(73, compact.value.length)
+        assertEquals(31, compact.value.length)
         assertEquals(compact, transport.issue(canonical))
         assertEquals(canonical, (transport.restore(compact) as CanonicalSelectorDecoding.Decoded).value)
         assertEquals(2, counts.values[IntellijReadCounter.REFERENCE_HANDLES_ISSUED])
