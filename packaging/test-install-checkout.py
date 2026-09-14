@@ -185,9 +185,9 @@ class BootstrapInstallTest(IsolatedInstallerTest):
         self.plugin = self.assets / f"kast-ide-hosted-v{self.version}-idea-262.zip"
         self.write_plugin("262.*")
 
-        product = self.root / "product"
-        (product / "bin").mkdir(parents=True)
-        self.write_script(product / "bin/kast", '''#!/bin/bash
+        self.product = self.root / "product"
+        (self.product / "bin").mkdir(parents=True)
+        self.write_script(self.product / "bin/kast", '''#!/bin/bash
 python3 - <<'PYTHON'
 import json, os
 keys = ["KAST_INSTALL_CONTROL_ROOT", "KAST_INSTALL_CONTROL_SHA256", "KAST_INSTALL_HOSTED_PLUGIN_ARCHIVE",
@@ -199,7 +199,7 @@ PYTHON
 ''')
         self.control = self.assets / f"kast-control-v{self.version}-macos-aarch64.tar.gz"
         with tarfile.open(self.control, "w:gz") as archive:
-            archive.add(product / "bin", arcname="bin")
+            archive.add(self.product / "bin", arcname="bin")
         for asset in (self.control, self.plugin):
             asset.with_name(asset.name + ".sha256").write_text(
                 f"{hashlib.sha256(asset.read_bytes()).hexdigest()}  {asset.name}\n",
@@ -232,6 +232,26 @@ PYTHON
             text=True,
         )
 
+    def write_control_with_member_count(self, member_count):
+        launcher = (self.product / "bin/kast").read_bytes()
+        with tarfile.open(self.control, "w:gz") as archive:
+            directory = tarfile.TarInfo("bin")
+            directory.type = tarfile.DIRTYPE
+            directory.mode = 0o755
+            archive.addfile(directory)
+            executable = tarfile.TarInfo("bin/kast")
+            executable.mode = 0o755
+            executable.size = len(launcher)
+            archive.addfile(executable, io.BytesIO(launcher))
+            for index in range(member_count - 2):
+                entry = tarfile.TarInfo(f"share/kast/knowledge/declarations/{index}.json")
+                entry.mode = 0o644
+                entry.size = 2
+                archive.addfile(entry, io.BytesIO(b"{}"))
+        self.control.with_name(self.control.name + ".sha256").write_text(
+            f"{hashlib.sha256(self.control.read_bytes()).hexdigest()}  {self.control.name}\n",
+        )
+
     def test_verified_assets_are_delivered_to_staged_typed_installer(self):
         result = self.run_installer("--dry-run")
         self.assertEqual(0, result.returncode, result.stderr)
@@ -242,6 +262,22 @@ PYTHON
         self.assertEqual(hashlib.sha256(self.plugin.read_bytes()).hexdigest(), contract["KAST_INSTALL_HOSTED_PLUGIN_SHA256"])
         self.assertEqual(str(self.idea), contract["KAST_INSTALL_IDEA_HOME"])
         self.assertFalse((self.root / "Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins").exists())
+
+    def test_control_archive_with_current_knowledge_entry_count_is_accepted(self):
+        self.write_control_with_member_count(7_609)
+        result = self.run_installer("--dry-run")
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertTrue((self.root / "calls").is_file())
+
+    def test_control_archive_over_entry_limit_reports_observed_boundary(self):
+        self.write_control_with_member_count(16_385)
+        result = self.run_installer("--dry-run")
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn(
+            "control archive entry count rejected (observed=16385, maximum=16384)",
+            result.stderr,
+        )
+        self.assertFalse((self.root / "calls").exists())
 
     def test_programmatic_plugin_install_uses_verified_release_line_archive(self):
         result = self.run_installer()
