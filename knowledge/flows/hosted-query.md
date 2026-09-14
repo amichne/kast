@@ -6,6 +6,8 @@ resource: file://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/
 tags: [intellij, kotlin, semantic-query, lifecycle]
 timestamp: 2026-09-13T00:00:00Z
 code_sources:
+  - path: packaging/hosted_resume_budget_regression.py
+  - path: packaging/test-hosted-resume-budget-regression.py
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCheckpointStore.kt
   - path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/QueryCheckpointReplayTest.kt
   - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedRelationReplayTest.kt
@@ -492,3 +494,17 @@ failures without source, responses, descriptors, or connection identities. The
 peer checks establish exact rejection shapes and host authority fields; the full
 finite-failure payload/envelope schema matrix and edited/foreign-authority replay
 remain separate qualification requirements.
+
+The installed resume-budget helper defines twelve bounded cases per surface:
+query, source and relation reads, each with independently larger elapsed-time,
+work, result and byte allowances. It compares ordered complete drains against
+an unchanged-fixture baseline, including full relation occurrences and compiler
+evidence, source child order, ranges, snapshots and saved text. Issued upstream
+and retained-output checkpoints keep their distinct request positions and
+compatibility aliases. Each drain admits at most sixteen pages and one thousand
+records, rejects repeated tokens or changed authority/grants, and records only
+finite assertion names and counts. A complete low-grant page requires no invented
+continuation; time/work cases do not claim a deterministic wall-clock cutoff.
+Local Python checks qualify this orchestration and comparison logic. Native
+parity requires invoking the helper through the integrated staged artifact;
+its presence alone is not an installed-product qualification result.
