@@ -1,6 +1,6 @@
 # Agent read reliability: requirements and implementation plan
 
-Status: implementation in progress. Transport, schema, relation/query budgets and page fitting have local evidence below. Remaining cross-operation work and installed gates must complete before this is a reliability release.
+Status: R1–R7 source qualification passed at clean `1e1de5223c6900ec8c2857b3cf898709099995fd`. R8 naming, help cleanup and final shipped-artifact evaluation remain in progress. The same-revision ledger below records the applicable proof and limits.
 
 Baseline: `24a7e92d09a31624cf11e4f596c64d3a99e9a995`, inspected on 2026-09-14. Both `main` and `v0.40.0` pointed to this commit. Its existing checkpoint and traversal-timing work is therefore part of the assessed release, not a subsequent fix.
 
@@ -439,7 +439,7 @@ The user authorized incremental patch delivery after the audit. The earlier
 stack is integrated through #752; the original #735/#748/#749 branches are
 historical implementation evidence, not additional changes to merge again.
 AR-01 is closed by v0.40.4. v0.40.5 adds the AR-02 traversal characterization
-slice; full AR-02 acceptance still requires the expanded installed matrix.
+slice; the expanded same-revision matrix below now closes AR-02–AR-08 source qualification.
 
 | Patch | Source revision | Delivered section | Verification |
 | --- | --- | --- | --- |
@@ -477,22 +477,30 @@ and combined stdout/stderr overflow. Semantic request and result caps are unchan
 
 ### R1–R7 closure ledger
 
-These rows separate executable implementation evidence from pending qualification.
-A row remains open until its applicable installed and product evidence is bound
-to one clean integration revision. Historical green runs do not close it.
+Every row below passed on clean integration revision
+`1e1de5223c6900ec8c2857b3cf898709099995fd`:
+[product CI](https://github.com/amichne/kast/actions/runs/34904522683) and
+[bounded per-requirement/native evidence](https://gist.github.com/amichne/fd8830bcc3c41e161ab6c1d76cda2573).
+The local product path passed 544 tasks with external Codex schema qualification
+enabled; native acceptance passed in 7m1. It observed 224/224 reads, 156/156
+concurrent first attempts with zero serial retries, all four peer cases, all 14
+normal-edit authority cases, and all 30 mutation/recovery/restart/undo cases.
+The fixture was removed after successful cleanup. These observations qualify
+that implementation revision; this documentation follow-up was not the native
+build source.
 
-| Gate | Current implementation and focused evidence | Installed fixture/command | State and remaining evidence |
+| Gate | Current implementation and focused evidence | Installed fixture/command | Observed result and bounds |
 | --- | --- | --- | --- |
-| R1 — transport | `HostedConnectionAdmissionTest`, `HostedEndpointTransportTest`, correlated `CONNECTION_RELEASE` after permit cleanup | `hostedChangeAcceptance`: 156 first attempts, blocked/disconnected/malformed peers, saturation, drain and one health request | Expanded current-source native run pending. No serial retries or altered semantic/mutation serialization. |
-| R2 — failure/schema parity | `ReadRejectionSchemaParityTest`, `AdmittedReadRejectionSchemaTest`, `NativeReadValidationTest`; 242 actual host encoding fixtures validated against packaged and installed schemas; actual provider envelope validation | Same-build CLI/provider schemas plus ordinary-edit stale references/cursors and foreign-root refusal | Expanded native run pending. Foreign-root case refuses an unenrolled workspace; it does not claim two enrolled IDE owners. |
-| R3 — budgets/deadlines | `HostedBudgetDimensionTest`, `HostedDeadlineEvidenceTest`, `ReadDeadlineOrderingTest`; one admitted grant and finite post-admission failures | `hosted_budget_read_regression.py`: all four axes on four reads and all three search conveniences | Impossible-byte pre-dispatch and malformed-budget decoder tests pass; containment reports have focused schema/runtime evidence. Expanded same-revision native qualification remains pending. |
-| R4 — cooperative progress | `QueryWorkAdmissionTest`, `RelationTimeAdmissionTest`, `IntellijSourcePageCollectorTest`, traversal fitting/replay tests | Low-page/high-grant reference comparisons on one unchanged fixture | Native comparison pending. Source cancellation proof exercises the production attempt owner and shared meter; it does not claim control of IntelliJ retry scheduling. |
-| R5 — completion/recovery | Closed query/source/traversal progress, explicit relation checkpoint/action, retained original coverage and omissions | Wire/CLI/schema variants plus installed page drains | Finite recovery actions and source continuation causes are implemented and schema-tested; same-revision installed page drains remain pending. |
-| R6 — continuation identity/retention | `QueryCheckpointReplayTest`, `HostedReadAllowanceIdentityTest`, `HostedContinuationOwnerRetentionTest`, source/relation/traversal replay and TTL tests | `hosted_resume_budget_regression.py` plus traversal parity/replay | Native four-axis comparisons pending. Five separately bounded stores, distinct source TTL policy, and no expiry renewal remain unchanged. |
-| R7 — cheap eligibility | Source deferred declaration-kind projection; enum exclusion/member reuse; excluded-kind tests and shared structural fixture | Existing enum exact/fuzzy/scoped/member cases and source paging in `hostedChangeAcceptance` | Current-source native regression pending; v0.40.3 native evidence remains historical. |
+| R1 — transport | `HostedConnectionAdmissionTest`, `HostedEndpointTransportTest`, correlated `CONNECTION_RELEASE` after permit cleanup | `hostedChangeAcceptance`: 156 first attempts, blocked/disconnected/malformed peers, saturation, drain and one health request | Pass: all first attempts and peer cases; correlated replies, at most one complete frame, cancellation drain. No altered semantic/mutation serialization. |
+| R2 — failure/schema parity | `ReadRejectionSchemaParityTest`, `AdmittedReadRejectionSchemaTest`, `NativeReadValidationTest`; 242 actual host encoding fixtures validated against packaged and installed schemas; actual provider envelope validation | Same-build CLI/provider schemas plus ordinary-edit stale references/cursors and foreign-root refusal | Pass: strict actual-encoder and installed schema checks; actual provider envelopes in the authority phase. Foreign-root case refuses an unenrolled workspace, not two enrolled IDE owners. |
+| R3 — budgets/deadlines | `HostedBudgetDimensionTest`, `HostedDeadlineEvidenceTest`, `ReadDeadlineOrderingTest`; one admitted grant and finite post-admission failures | `hosted_budget_read_regression.py`: all four axes on four reads and all three search conveniences | Pass: independent axes, malformed/impossible pre-admission refusal, admitted containment reports, final publication clock observation and operator-clamped deadline plateaus. |
+| R4 — cooperative progress | `QueryWorkAdmissionTest`, `RelationTimeAdmissionTest`, `IntellijSourcePageCollectorTest`, traversal fitting/replay tests | Low-page/high-grant reference comparisons on one unchanged fixture | Pass: native reference comparisons retain declaration/occurrence cardinality, graph coverage and source ranges/order. Source cancellation proof exercises the production attempt owner, not IntelliJ retry scheduling. |
+| R5 — completion/recovery | Closed query/source/traversal progress, explicit relation checkpoint/action, retained original coverage and omissions | Wire/CLI/schema variants plus installed page drains | Pass: finite recovery actions, source continuation causes, retained coverage/omissions and installed page drains. Fresh authority is explicitly reacquired. |
+| R6 — continuation identity/retention | `QueryCheckpointReplayTest`, `HostedReadAllowanceIdentityTest`, `HostedContinuationOwnerRetentionTest`, source/relation/traversal replay and TTL tests | `hosted_resume_budget_regression.py` plus traversal parity/replay | Pass: native four-axis comparisons, deterministic replay and focused identity/retention policy tests. Five separately bounded stores, distinct source TTL/LRU policy and no expiry renewal remain unchanged. |
+| R7 — cheap eligibility | Source deferred declaration-kind projection; enum exclusion/member reuse; excluded-kind tests and shared structural fixture | Existing enum exact/fuzzy/scoped/member cases and source paging in `hostedChangeAcceptance` | Pass: current-source enum/member reuse and source paging regressions; excluded kinds avoid compiler projection while eligible descendants remain reachable. |
 
 Knowledge impact was recomputed against audited `8c2b16ccb`, using the actual
-changed paths through `e7de7de28` and the documentation refresh. Thirteen concepts
+changed paths through the qualified `1e1de5223` integration and the documentation refresh. Thirteen concepts
 are affected: configuration, operation outcomes, public tools, hosted query,
 request dispatch, semantic query, change, distribution, protocol, query protocol,
 runtime hosts, semantic reads and workspace. Their source claims were reviewed;
@@ -501,10 +509,17 @@ were reviewed: fifteen generated maps and two preserved authored guides. The
 review refreshed only changed claims and generated routes/hashes; authored policy
 remains unchanged.
 
-Final AR-08 verification uses `.github/scripts/ci/verify-checks.py`,
+Final AR-08 verification ran `.github/scripts/ci/verify-checks.py`,
 `knowledgeImpact`, `verifyKnowledgeBase`, and expanded `hostedChangeAcceptance`
-on one clean revision with pinned IDEA 262.10315.125 and JDK 25. Reports must bind
-source, fixture/configuration/catalog identities, plugin/product/harness hashes,
-and the external Codex-schema identity. Stock Codex UI remains explicitly
-unqualified; CLI/provider evidence is not UI evidence. AR-09 naming migration
-remains gated on this ledger closing R1–R7.
+on that clean revision with pinned IDEA 262.10315.125, Kotlin 262.10315.125-IJ,
+JDK 25.0.2 and IDE JBR 25.0.4. The published report binds source,
+fixture/configuration/catalog identities, plugin/product/harness/probe hashes,
+and external Codex-schema identity. Product log SHA-256:
+`70f0291fddddc921285e7c2dcddeaf07e085af975cee4169c184b60a518bd383`.
+Native report SHA-256:
+`a16f5d21c0f69b63c1113ae8cb4101be0b4cae8123cb774284a06633414246e2`.
+Stock Codex UI and persistent coordinator attachment remain explicitly
+unqualified by this direct provider harness. Original released installation,
+upgrade/sessions and coordinator lifecycle are separate AR-11/AR-12 work.
+There are no open R1–R7 requirements in this source qualification; AR-09 naming
+migration is unblocked.
