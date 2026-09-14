@@ -32,7 +32,7 @@ class BrokerOperationalCatalogueTest {
                 "broker.process.maximum_input_bytes" to 4_194_304L,
                 "broker.process.maximum_output_bytes" to 67_108_864L,
                 "broker.gradle.maximum_output_bytes" to 524_288L,
-                "broker.kast.schema.maximum_bytes" to 524_288L,
+                "broker.kast.schema.maximum_bytes" to 1_048_576L,
                 "broker.readiness.exchange" to 3_000L,
                 "broker.observer.diff.maximum_bytes" to 524_288L,
                 "broker.observer.change.maximum_files" to 64L,
