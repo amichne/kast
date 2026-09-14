@@ -29,6 +29,7 @@ import io.github.amichne.kast.query.contract.QueryStepSyntax
 import io.github.amichne.kast.query.contract.QuerySymbolField
 import io.github.amichne.kast.query.contract.QuerySymbolFields
 import io.github.amichne.kast.query.contract.QueryVisibilitySelection
+import io.github.amichne.kast.relation.contract.*
 import io.github.amichne.kast.relation.contract.RelationOperations
 import io.github.amichne.kast.source.contract.*
 import io.github.amichne.kast.source.contract.SourceReadOperations
@@ -340,13 +341,193 @@ class QueryServiceTest {
     }
 
     @Test
+    fun `byte pages retain the exact unconsumed item without redoing effects`() = runTest {
+        val selected = selector(selection())
+        var descriptions = 0
+        val service =
+            service(
+                exact =
+                    exactOperations(
+                        describe = {
+                            descriptions++
+                            SymbolDescriptionResult.Described(SymbolDescription.from(it))
+                        },
+                        resolve = { error("No discovery expected") },
+                    )
+            )
+        val size =
+            io.github.amichne.kast.query.contract
+                .QuerySymbol(SymbolDescription.from(selected), emptyList())
+                .projectedUtf8Size()
+        val first = request(exactReferencePlan(List(2) { selected }), workLimit = 8L, returnedBytes = size)
+        val page = service.run(first) as QueryExecutionResult.Qualified
+        assertEquals(1, page.symbolCount())
+        val checkpoint =
+            (page.continuation as io.github.amichne.kast.query.contract.QueryContinuationState.Resumable).checkpoint
+        val last =
+            service.run(QueryExecutionRequest.create(first.plan, first.lease, first.budget, checkpoint).refined())
+        assertInstanceOf(QueryExecutionResult.Complete::class.java, last)
+        assertEquals(1, last.symbolCount())
+        assertEquals(2, descriptions)
+    }
+
+    @Test
+    fun `upstream work limitation survives a resumed downstream page`() = runTest {
+        val discovery = discoveryWithCandidate()
+        val service =
+            service(
+                discovery =
+                    SymbolDiscoveryOperations { input ->
+                        val complete =
+                            (discovery.discover(input) as SymbolDiscoveryResult.Discovered).outcome
+                                as SymbolDiscoveryOutcome.Complete
+                        SymbolDiscoveryResult.Discovered(
+                            SymbolDiscoveryOutcome.Qualified(
+                                complete.batch,
+                                SymbolDiscoveryQualifications.from(
+                                        setOf(SymbolDiscoveryQualification.WORK_LIMIT_REACHED)
+                                    )
+                                    .refined(),
+                            )
+                        )
+                    },
+                exact =
+                    exactOperations {
+                        SymbolResolutionResult.Resolved(
+                            io.github.amichne.kast.symbol.contract.ResolvedSymbol(selector(it))
+                        )
+                    },
+            )
+        val first = request(symbolPlan(), workLimit = 1L)
+        val page = service.run(first) as QueryExecutionResult.Qualified
+        val checkpoint =
+            (page.continuation as io.github.amichne.kast.query.contract.QueryContinuationState.Resumable).checkpoint
+        val resumed = request(first.plan, workLimit = 8L)
+        val last =
+            service.run(QueryExecutionRequest.create(first.plan, first.lease, resumed.budget, checkpoint).refined())
+                as QueryExecutionResult.Qualified
+        assertEquals(1, last.symbolCount())
+        assertTrue(QueryLimitation.DISCOVERY_INCOMPLETE in last.coverage.limitations)
+        assertTrue(QueryLimitation.WORK_LIMIT_REACHED in last.coverage.limitations)
+        assertEquals(
+            io.github.amichne.kast.query.contract.QueryContinuationState.Terminal(
+                io.github.amichne.kast.query.contract.QueryTerminalReason.UPSTREAM_INCOMPLETE
+            ),
+            last.continuation,
+        )
+    }
+
+    @Test
+    fun `relation cursor and distinct state survive a full output page`() = runTest {
+        val selected = selector(selection())
+        val positions = mutableListOf<Long>()
+        val service =
+            QueryService(
+                discoveryEmpty(false),
+                exactOperations(
+                    describe = { SymbolDescriptionResult.Described(SymbolDescription.from(it)) },
+                    resolve = { error("No discovery expected") },
+                ),
+                SourceReadOperations { error("No source expected") },
+                RelationOperations { read ->
+                    val position = read.providerCursor.nextPosition.value
+                    positions += position
+                    val fact =
+                        RelationFact.create(
+                                read,
+                                read.subject,
+                                read.subject,
+                                RelationOccurrence.fromBoundary(selected.file, 8, 9).refined(),
+                                RelationProvenance.K2_AUTHORED_SOURCE,
+                            )
+                            .refined()
+                    val batch =
+                        RelationBatch.create(
+                                read,
+                                listOf(fact),
+                                RelationByteCount.parse(
+                                        fact.canonicalProjection().toByteArray(Charsets.UTF_8).size.toLong()
+                                    )
+                                    .refined(),
+                                RelationWorkCount.parse(1).refined(),
+                                RelationResultCount.parse(1).refined(),
+                            )
+                            .refined()
+                    if (position == 0L) {
+                        val coverage =
+                            RelationIncompleteCoverage.resumable(
+                                    batch,
+                                    setOf(RelationLimitation.RESULT_LIMIT_REACHED),
+                                    read.providerCursor.advance(
+                                        RelationProviderItemDescriptor.parse("sample.catalog.first").refined()
+                                    ),
+                                )
+                                .refined()
+                        RelationReadResult.Qualified(batch, coverage)
+                    } else {
+                        val complete = RelationCompilation.complete(batch)
+                        RelationReadResult.Complete(batch, complete.coverage)
+                    }
+                },
+            )
+        val first =
+            request(
+                exactReferencePlan(
+                    listOf(selected),
+                    listOf(QueryStepSyntax.Related(RelationMeaning.Callees), QueryStepSyntax.Distinct),
+                ),
+                workLimit = 8L,
+                resultLimit = 1,
+            )
+        val page = service.run(first) as QueryExecutionResult.Qualified
+        assertEquals(1, page.symbolCount())
+        val checkpoint =
+            (page.continuation as io.github.amichne.kast.query.contract.QueryContinuationState.Resumable).checkpoint
+        val last =
+            service.run(QueryExecutionRequest.create(first.plan, first.lease, first.budget, checkpoint).refined())
+        assertInstanceOf(QueryExecutionResult.Complete::class.java, last)
+        assertEquals(0, last.symbolCount())
+        assertEquals(listOf(0L, 1L), positions)
+    }
+
+    @Test
+    fun `failure byte stops retain pending evidence and an oversized item is terminal`() = runTest {
+        val selected = selector(selection())
+        val service =
+            service(
+                exact =
+                    exactOperations(
+                        describe = { SymbolDescriptionResult.Rejected(SymbolExactRejection.AMBIGUOUS_DECLARATION) },
+                        resolve = { error("No discovery expected") },
+                    )
+            )
+        val first = request(exactReferencePlan(listOf(selected)), workLimit = 8L, returnedBytes = 1L)
+        val page = service.run(first) as QueryExecutionResult.Qualified
+        assertEquals(
+            io.github.amichne.kast.query.contract.QueryContinuationState.Terminal(
+                io.github.amichne.kast.query.contract.QueryTerminalReason.OUTPUT_ITEM_TOO_LARGE
+            ),
+            page.continuation,
+        )
+        assertTrue(QueryLimitation.REFINEMENT_INCOMPLETE in page.coverage.limitations)
+        assertTrue(QueryLimitation.BYTE_LIMIT_REACHED in page.coverage.limitations)
+    }
+
+    @Test
     fun `work and item pages resume ordered references without omission`() = runTest {
         val selected = selector(selection())
         var descriptions = 0
-        val service = service(exact = exactOperations(
-            describe = { descriptions++; SymbolDescriptionResult.Described(SymbolDescription.from(it)) },
-            resolve = { error("No discovery expected") },
-        ))
+        val service =
+            service(
+                exact =
+                    exactOperations(
+                        describe = {
+                            descriptions++
+                            SymbolDescriptionResult.Described(SymbolDescription.from(it))
+                        },
+                        resolve = { error("No discovery expected") },
+                    )
+            )
         val first = request(exactReferencePlan(List(3) { selected }), workLimit = 1L, resultLimit = 1)
         var pageRequest = first
         var count = 0
@@ -358,8 +539,13 @@ class QueryServiceTest {
             check(pages <= 3)
             if (page is QueryExecutionResult.Complete) break
             val qualified = page as QueryExecutionResult.Qualified
-            val continuation = assertInstanceOf(io.github.amichne.kast.query.contract.QueryContinuationState.Resumable::class.java, qualified.continuation)
-            pageRequest = QueryExecutionRequest.create(first.plan, first.lease, first.budget, continuation.checkpoint).refined()
+            val continuation =
+                assertInstanceOf(
+                    io.github.amichne.kast.query.contract.QueryContinuationState.Resumable::class.java,
+                    qualified.continuation,
+                )
+            pageRequest =
+                QueryExecutionRequest.create(first.plan, first.lease, first.budget, continuation.checkpoint).refined()
         }
         assertEquals(3, count)
         assertEquals(3, descriptions)
@@ -369,15 +555,27 @@ class QueryServiceTest {
     @Test
     fun `distinct retains seen state across pages`() = runTest {
         val selected = selector(selection())
-        val service = service(exact = exactOperations(
-            describe = { SymbolDescriptionResult.Described(SymbolDescription.from(it)) },
-            resolve = { error("No discovery expected") },
-        ))
-        val first = request(exactReferencePlan(List(3) { selected }, listOf(QueryStepSyntax.Distinct)), workLimit = 8L, resultLimit = 1)
+        val service =
+            service(
+                exact =
+                    exactOperations(
+                        describe = { SymbolDescriptionResult.Described(SymbolDescription.from(it)) },
+                        resolve = { error("No discovery expected") },
+                    )
+            )
+        val first =
+            request(
+                exactReferencePlan(List(3) { selected }, listOf(QueryStepSyntax.Distinct)),
+                workLimit = 8L,
+                resultLimit = 1,
+            )
         val page = service.run(first) as QueryExecutionResult.Qualified
         assertEquals(1, page.symbolCount())
         val continuation = page.continuation as io.github.amichne.kast.query.contract.QueryContinuationState.Resumable
-        val last = service.run(QueryExecutionRequest.create(first.plan, first.lease, first.budget, continuation.checkpoint).refined())
+        val last =
+            service.run(
+                QueryExecutionRequest.create(first.plan, first.lease, first.budget, continuation.checkpoint).refined()
+            )
         assertInstanceOf(QueryExecutionResult.Complete::class.java, last)
         assertEquals(0, last.symbolCount())
     }
@@ -385,13 +583,20 @@ class QueryServiceTest {
     @Test
     fun `intermediate discovery bytes do not spend final output authority`() = runTest {
         val selected = selector(selection())
-        val service = service(
-            discovery = discoveryWithCandidate(),
-            exact = exactOperations { candidate ->
-                SymbolResolutionResult.Resolved(io.github.amichne.kast.symbol.contract.ResolvedSymbol(selector(candidate)))
-            },
-        )
-        val bytes = io.github.amichne.kast.query.contract.QuerySymbol(SymbolDescription.from(selected), emptyList()).projectedUtf8Size()
+        val service =
+            service(
+                discovery = discoveryWithCandidate(),
+                exact =
+                    exactOperations { candidate ->
+                        SymbolResolutionResult.Resolved(
+                            io.github.amichne.kast.symbol.contract.ResolvedSymbol(selector(candidate))
+                        )
+                    },
+            )
+        val bytes =
+            io.github.amichne.kast.query.contract
+                .QuerySymbol(SymbolDescription.from(selected), emptyList())
+                .projectedUtf8Size()
         val result = service.run(request(symbolPlan(), workLimit = 8L, returnedBytes = bytes))
         assertEquals(1, result.symbolCount())
     }

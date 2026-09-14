@@ -31,6 +31,8 @@ internal object CanonicalQueryCliDocuments {
                             qualification.knownMinimum.value,
                             qualification.limitations.map(Enum<*>::cliName),
                         ),
+                        result.continuation?.value,
+                        result.terminalReason?.cliName(),
                     )
                 )
             },
@@ -61,6 +63,8 @@ private data class QueryQualifiedCliDocument(
     val items: List<QueryResultItemCliDocument>,
     val failures: List<QueryItemFailureCliDocument>,
     val qualification: QueryQualificationCliDocument,
+    val continuation: String?,
+    @SerialName("terminal_reason") val terminalReason: String?,
 )
 
 @Serializable
@@ -98,6 +102,7 @@ private sealed interface QueryResultItemCliDocument {
         val location: QueryExactLocationCliDocument?,
         val signature: CompilerSignatureCliDocument?,
         val connections: List<RelationFactCliDocument>,
+        val symbol_id: String,
     ) : QueryResultItemCliDocument {
         // Migration alias is derived from the retained exact reference, never an independent input.
         val symbol_ref: String = ref.token
@@ -179,6 +184,7 @@ private fun QueryResultItemDocument.toCliDocument(): QueryResultItemCliDocument 
                 },
                 signature?.toCliDocument(),
                 connections.values.map(RelationFactDocument::toCliDocument),
+                symbolId.value,
             )
     }
 

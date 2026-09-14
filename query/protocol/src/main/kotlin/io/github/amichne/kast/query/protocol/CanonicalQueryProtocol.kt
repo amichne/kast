@@ -23,11 +23,39 @@ import io.github.amichne.kast.workspace.contract.*
 class CanonicalQueryProtocol(
     private val operations: QueryOperations,
     private val authority: QueryReferenceAuthority,
+    private val checkpoints: QueryCheckpointStore = QueryCheckpointStore(),
 ) {
     suspend fun execute(
         request: QueryRunRequest,
         lease: SemanticReadAuthority,
         budget: QueryBudget,
+    ): OperationOutcome<QueryRunResult, QueryRunQualification, QueryRunRejection> {
+        val continuationToken = request.continuation
+        val checkpoint =
+            if (continuationToken == null) null
+            else {
+                when (val restored = checkpoints.restore(continuationToken, request, lease)) {
+                    is QueryCheckpointRestoration.Restored -> restored.checkpoint
+                    QueryCheckpointRestoration.Unavailable ->
+                        return OperationOutcome.Rejected(
+                            QueryRunRejection.ExecutionRejected(
+                                QueryExecutionRejectionDocument.CONTINUATION_UNAVAILABLE
+                            )
+                        )
+                    QueryCheckpointRestoration.Mismatch ->
+                        return OperationOutcome.Rejected(
+                            QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.CONTINUATION_MISMATCH)
+                        )
+                }
+            }
+        return executeAdmitted(request = request, lease = lease, budget = budget, checkpoint = checkpoint)
+    }
+
+    private suspend fun executeAdmitted(
+        request: QueryRunRequest,
+        lease: SemanticReadAuthority,
+        budget: QueryBudget,
+        checkpoint: QueryCheckpoint?,
     ): OperationOutcome<QueryRunResult, QueryRunQualification, QueryRunRejection> {
         val syntax =
             when (val admission = request.admitSyntax(lease, authority)) {
@@ -47,37 +75,61 @@ class CanonicalQueryProtocol(
                 is QueryPlanAdmission.Rejected -> return OperationOutcome.Rejected(admitted.failure.protocolRejection())
             }
         val execution =
-            when (val admitted = QueryExecutionRequest.create(plan, lease, budget)) {
+            when (
+                val admitted =
+                    QueryExecutionRequest.create(
+                        plan = checkpoint?.plan ?: plan,
+                        lease = lease,
+                        budget = budget,
+                        checkpoint = checkpoint,
+                    )
+            ) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected ->
                     return OperationOutcome.Rejected(
                         QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.REQUEST_REJECTED)
                     )
             }
-        return when (val result = operations.run(execution)) {
-            is QueryExecutionResult.Complete -> project(request.output, lease, result.result, null)
+        return projectExecution(request, lease, operations.run(execution))
+    }
+
+    private fun projectExecution(
+        request: QueryRunRequest,
+        lease: SemanticReadAuthority,
+        result: QueryExecutionResult,
+    ): OperationOutcome<QueryRunResult, QueryRunQualification, QueryRunRejection> =
+        when (result) {
+            is QueryExecutionResult.Complete ->
+                project(
+                    request = request,
+                    lease = lease,
+                    result = result.result,
+                    coverage = null,
+                    continuationState = null,
+                )
             is QueryExecutionResult.Qualified ->
                 project(
-                    request.output,
-                    lease,
-                    result.result,
-                    result.coverage,
+                    request = request,
+                    lease = lease,
+                    result = result.result,
+                    coverage = result.coverage,
+                    continuationState = result.continuation,
                 )
             is QueryExecutionResult.Rejected ->
                 OperationOutcome.Rejected(
                     QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.valueOf(result.reason.name))
                 )
         }
-    }
 
     private fun project(
-        output: QueryOutputDocument,
+        request: QueryRunRequest,
         lease: SemanticReadAuthority,
         result: QueryResult,
         coverage: QueryCoverage.Qualified?,
+        continuationState: QueryContinuationState?,
     ): OperationOutcome<QueryRunResult, QueryRunQualification, QueryRunRejection> {
         val items =
-            when (val projected = projectItems(output, result.items)) {
+            when (val projected = projectItems(request.output, result.items)) {
                 is QueryProjection.Projected -> projected.values
                 QueryProjection.Rejected -> return contractRejected()
             }
@@ -88,11 +140,29 @@ class CanonicalQueryProtocol(
             }
         val boundedItems = BoundedProtocolList.create(items).refinedOrNull() ?: return contractRejected()
         val boundedFailures = BoundedProtocolList.create(failures).refinedOrNull() ?: return contractRejected()
+        var token: ProtocolText? = null
+        var terminalReason: QueryTerminalReasonDocument? = null
+        when (continuationState) {
+            is QueryContinuationState.Resumable ->
+                when (val issued = checkpoints.issue(request, continuationState.checkpoint)) {
+                    is QueryCheckpointIssuance.Issued -> token = issued.token
+                    QueryCheckpointIssuance.CapacityExceeded ->
+                        terminalReason = QueryTerminalReasonDocument.CHECKPOINT_CAPACITY_EXCEEDED
+                }
+            is QueryContinuationState.Terminal ->
+                terminalReason = QueryTerminalReasonDocument.valueOf(continuationState.reason.name)
+            null -> Unit
+        }
         val envelope =
             EvidenceEnvelope(
                 CanonicalOperation.QUERY_RUN.id,
                 lease.evidenceBasis(),
-                QueryRunResult(boundedItems, boundedFailures),
+                QueryRunResult(
+                    items = boundedItems,
+                    failures = boundedFailures,
+                    continuation = token,
+                    terminalReason = terminalReason,
+                ),
             )
         if (coverage == null) return OperationOutcome.Complete(envelope)
         val qualification =
@@ -145,16 +215,23 @@ class CanonicalQueryProtocol(
                             QueryProjection.Rejected -> return@mapProjected null
                         }
                     QueryResultItemDocument.ExactSymbol(
-                        QueryReferenceDocument.ExactSymbol(token),
-                        document.kind,
-                        document.name.takeIf { QuerySymbolFieldDocument.NAME in output.fields.values },
-                        QueryExactLocationDocument(document.file, document.range).takeIf {
-                            QuerySymbolFieldDocument.LOCATION in output.fields.values
-                        },
-                        document.compilerEvidence.signature.takeIf {
-                            QuerySymbolFieldDocument.SIGNATURE in output.fields.values
-                        },
-                        boundedConnections,
+                        ref = QueryReferenceDocument.ExactSymbol(token),
+                        kind = document.kind,
+                        name = document.name.takeIf { QuerySymbolFieldDocument.NAME in output.fields.values },
+                        location =
+                            QueryExactLocationDocument(document.file, document.range).takeIf {
+                                QuerySymbolFieldDocument.LOCATION in output.fields.values
+                            },
+                        signature =
+                            document.compilerEvidence.signature.takeIf {
+                                QuerySymbolFieldDocument.SIGNATURE in output.fields.values
+                            },
+                        connections = boundedConnections,
+                        symbolId =
+                            io.github.amichne.kast.protocol.contract.SymbolIdDocument.parse(
+                                    io.github.amichne.kast.symbol.contract.CanonicalSymbolId.from(symbol.selector).value
+                                )
+                                .refinedOrNull() ?: return@mapProjected null,
                     )
                 }
             else -> QueryProjection.Rejected

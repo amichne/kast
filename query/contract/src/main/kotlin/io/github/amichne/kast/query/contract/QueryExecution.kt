@@ -20,6 +20,11 @@ enum class QueryByteLimitFailure {
 @JvmInline
 value class QueryByteLimit private constructor(val value: Long) {
     companion object {
+        val DefaultCheckpoint =
+            QueryByteLimit(
+                io.github.amichne.kast.kernel.ReadLimitParameter.QUERY_CHECKPOINT_BYTES.defaultValue.toLong()
+            )
+
         fun parse(raw: Long): Refinement<QueryByteLimit, QueryByteLimitFailure> =
             if (raw > 0L) {
                 Refinement.Refined(QueryByteLimit(raw))
@@ -33,6 +38,7 @@ value class QueryByteLimit private constructor(val value: Long) {
 data class QueryBudget(
     val resources: ResourceBudget,
     val returnedBytes: QueryByteLimit,
+    val checkpointBytes: QueryByteLimit = QueryByteLimit.DefaultCheckpoint,
 )
 
 enum class QueryExecutionRequestFailure {
@@ -190,7 +196,8 @@ sealed interface QueryExecutionResult {
     data class Qualified(
         val result: QueryResult,
         val coverage: QueryCoverage.Qualified,
-        val continuation: QueryContinuationState = QueryContinuationState.Terminal(QueryTerminalReason.UPSTREAM_INCOMPLETE),
+        val continuation: QueryContinuationState =
+            QueryContinuationState.Terminal(QueryTerminalReason.UPSTREAM_INCOMPLETE),
     ) : QueryExecutionResult
 
     data class Rejected(
@@ -216,5 +223,6 @@ enum class QueryTerminalReason {
 
 sealed interface QueryContinuationState {
     data class Resumable(val checkpoint: QueryCheckpoint) : QueryContinuationState
+
     data class Terminal(val reason: QueryTerminalReason) : QueryContinuationState
 }

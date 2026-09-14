@@ -25,6 +25,11 @@ enum class ReadLimitParameter(val defaultValue: Int, val unit: ReadLimitUnit, va
     SEMANTIC_WORK(100_000, ReadLimitUnit.COUNT),
     SEMANTIC_RESULTS(128, ReadLimitUnit.COUNT),
     SEMANTIC_RETURNED_BYTES(49_152, ReadLimitUnit.BYTES),
+    QUERY_CHECKPOINT_BYTES(DEFAULT_QUERY_CHECKPOINT_BYTES, ReadLimitUnit.BYTES),
+    QUERY_CONTINUATION_ENTRIES(DEFAULT_QUERY_CONTINUATION_ENTRIES, ReadLimitUnit.COUNT),
+    QUERY_CONTINUATION_BYTES(DEFAULT_QUERY_CONTINUATION_BYTES, ReadLimitUnit.BYTES),
+    QUERY_CONTINUATION_TTL_MILLIS(DEFAULT_QUERY_CONTINUATION_TTL_MILLIS, ReadLimitUnit.MILLISECONDS),
+    DISCOVERY_FILES(DEFAULT_DISCOVERY_FILES, ReadLimitUnit.COUNT),
     DISCOVERY_NAMES(10_000, ReadLimitUnit.COUNT),
     DISCOVERY_CANDIDATES(10_000, ReadLimitUnit.COUNT),
     RELATION_CANDIDATES(10_000, ReadLimitUnit.COUNT),
@@ -166,6 +171,7 @@ class ReadLimits private constructor(private val limits: Map<ReadLimitParameter,
             val selected = Default.limits + values.associateBy { it.parameter }
             for ((inner, outer) in
                 listOf(
+                    ReadLimitParameter.QUERY_CHECKPOINT_BYTES to ReadLimitParameter.QUERY_CONTINUATION_BYTES,
                     ReadLimitParameter.SEMANTIC_MILLIS to ReadLimitParameter.HOST_QUERY_MILLIS,
                     ReadLimitParameter.DIAGNOSTIC_SCOPE_MILLIS to ReadLimitParameter.HOST_QUERY_MILLIS,
                     ReadLimitParameter.HOST_QUERY_MILLIS to ReadLimitParameter.HOST_CONNECTION_MILLIS,
@@ -193,3 +199,9 @@ private const val DEFAULT_HOST_QUERY_MILLIS = 4_000
 
 private const val DEFAULT_HOST_REFERENCE_ENTRIES = 16_384
 private const val DEFAULT_HOST_REFERENCE_BYTES = 32 * 1_024 * 1_024
+
+private const val DEFAULT_QUERY_CHECKPOINT_BYTES = 8 * 1_024 * 1_024
+private const val DEFAULT_QUERY_CONTINUATION_ENTRIES = 64
+private const val DEFAULT_QUERY_CONTINUATION_BYTES = 32 * 1_024 * 1_024
+private const val DEFAULT_QUERY_CONTINUATION_TTL_MILLIS = 600_000
+private const val DEFAULT_DISCOVERY_FILES = 100_000

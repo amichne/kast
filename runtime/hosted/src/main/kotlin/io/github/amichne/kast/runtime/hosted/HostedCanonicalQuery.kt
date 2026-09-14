@@ -1,5 +1,6 @@
 package io.github.amichne.kast.runtime.hosted
 
+import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
@@ -48,7 +49,7 @@ internal suspend fun evaluateHostedCanonicalQuery(
     val relations = services.relations
     val references = services.references
     return when (request) {
-        is HostedRequest.Query -> evaluateHostedQuery(services, context, request, continuations)
+        is HostedRequest.Query -> evaluateHostedQuery(project, services, context, request, continuations)
         is HostedRequest.Discover ->
             HostedResponse.Canonical.encode(
                 CanonicalOperationWireBindings.symbolDiscover,
@@ -88,20 +89,35 @@ internal suspend fun evaluateHostedCanonicalQuery(
 }
 
 private suspend fun evaluateHostedQuery(
+    project: Project,
     services: HostedSemanticServices,
     context: HostedSemanticReadContext,
     request: HostedRequest.Query,
     continuations: IntellijSourceReadContinuations,
-): HostedResponse =
-    encodeHostedQueryResponse(
-        CanonicalQueryProtocol(
-                QueryService(services.discovery, services.exact, services.source(continuations), services.relations),
-                services.references,
-            )
-            .execute(request.request, context.authority, services.budgets.hostedQueryBudget),
-        limits = context.limits,
-        observation = context.observation,
-    )
+): HostedResponse {
+    val queryContinuations = project.service<HostedQueryContinuations>().forEpoch(context.authority, context.limits)
+    val token = request.request.continuation
+    val outcome =
+        if (token != null && token.value.startsWith(HostedQueryContinuations.prefix)) {
+            queryContinuations.restore(token, request.request, context.authority)
+        } else {
+            CanonicalQueryProtocol(
+                    QueryService(
+                        discovery = services.discovery,
+                        exact = services.exact,
+                        source = services.source(continuations),
+                        relations = services.relations,
+                    ),
+                    services.references,
+                    queryContinuations.checkpoints,
+                )
+                .execute(request.request, context.authority, services.budgets.hostedQueryBudget)
+        }
+    return encodeHostedQueryResponse(semantic = outcome, limits = context.limits, observation = context.observation) {
+        remaining ->
+        queryContinuations.issue(request.request, context.authority, remaining)
+    }
+}
 
 private suspend fun evaluateHostedDiagnostic(
     services: HostedSemanticServices,
@@ -128,6 +144,7 @@ internal class HostedSemanticBudgets(
                 timeAllowance.semantic,
             ),
             fixed(QueryByteLimit.parse(limits[ReadLimitParameter.SEMANTIC_RETURNED_BYTES].value.toLong())),
+            fixed(QueryByteLimit.parse(limits[ReadLimitParameter.QUERY_CHECKPOINT_BYTES].value.toLong())),
         )
 
     val hostedDiscoveryBudget =

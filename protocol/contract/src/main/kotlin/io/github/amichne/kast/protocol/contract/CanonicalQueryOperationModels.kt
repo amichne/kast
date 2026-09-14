@@ -219,6 +219,7 @@ data class QueryRunRequest(
     val steps: BoundedProtocolList<QueryStepDocument>,
     val output: QueryOutputDocument,
     val execution: QueryExecutionDocument,
+    val continuation: ProtocolText? = null,
 ) : OperationRequest
 
 internal object QueryRunRequestSerializer : KSerializer<QueryRunRequest> {
@@ -317,6 +318,7 @@ sealed interface QueryResultItemDocument {
         val location: QueryExactLocationDocument?,
         val signature: CompilerSignatureDocument?,
         val connections: BoundedProtocolList<RelationFactDocument>,
+        val symbolId: SymbolIdDocument,
     ) : QueryResultItemDocument
 }
 
@@ -397,6 +399,8 @@ enum class QueryRelationFailureDocument {
 data class QueryRunResult(
     val items: BoundedProtocolList<QueryResultItemDocument>,
     val failures: BoundedProtocolList<QueryItemFailureDocument>,
+    val continuation: ProtocolText? = null,
+    val terminalReason: QueryTerminalReasonDocument? = null,
 ) : OperationResult
 
 enum class QueryLimitationDocument {
@@ -500,7 +504,16 @@ sealed interface QueryRunRejection : OperationRejection {
     data class ExecutionRejected(val reason: QueryExecutionRejectionDocument) : QueryRunRejection
 }
 
+enum class QueryTerminalReasonDocument {
+    UPSTREAM_INCOMPLETE,
+    OUTPUT_ITEM_TOO_LARGE,
+    CHECKPOINT_CAPACITY_EXCEEDED,
+    NO_PROGRESS,
+}
+
 enum class QueryExecutionRejectionDocument {
+    CONTINUATION_UNAVAILABLE,
+    CONTINUATION_MISMATCH,
     REQUEST_REJECTED,
     DISCOVERY_REJECTED,
     REFERENCE_STALE,

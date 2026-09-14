@@ -35,6 +35,8 @@ internal enum class QueryDeclarationKindWireDocument {
 internal data class QueryRunResultWireDocument(
     val items: List<QueryResultItemWireDocument>,
     val failures: List<QueryItemFailureWireDocument>,
+    val continuation: String? = null,
+    val terminalReason: QueryTerminalReasonWireDocument? = null,
 )
 
 @Serializable
@@ -57,6 +59,7 @@ internal sealed interface QueryResultItemWireDocument {
         val location: QueryExactLocationWireDocument?,
         val signature: CompilerSignatureWireDocument?,
         val connections: List<RelationFactWireDocument>,
+        val symbolId: String,
     ) : QueryResultItemWireDocument
 }
 
@@ -201,7 +204,17 @@ internal sealed interface QueryRunRejectionWireDocument {
 }
 
 @Serializable
+internal enum class QueryTerminalReasonWireDocument {
+    @SerialName("upstream-incomplete") UPSTREAM_INCOMPLETE,
+    @SerialName("output-item-too-large") OUTPUT_ITEM_TOO_LARGE,
+    @SerialName("checkpoint-capacity-exceeded") CHECKPOINT_CAPACITY_EXCEEDED,
+    @SerialName("no-progress") NO_PROGRESS,
+}
+
+@Serializable
 internal enum class QueryExecutionRejectionWireDocument {
+    @SerialName("continuation-unavailable") CONTINUATION_UNAVAILABLE,
+    @SerialName("continuation-mismatch") CONTINUATION_MISMATCH,
     @SerialName("request-rejected") REQUEST_REJECTED,
     @SerialName("discovery-rejected") DISCOVERY_REJECTED,
     @SerialName("reference-stale") REFERENCE_STALE,
@@ -277,15 +290,26 @@ private fun QueryReferenceWireDocument.toContract(): WireDocumentConversion<Quer
 
 private fun QueryRunResult.toQueryWireDocument() =
     QueryRunResultWireDocument(
-        items.values.map(QueryResultItemDocument::toWire),
-        failures.values.map(QueryItemFailureDocument::toWire),
+        items = items.values.map(QueryResultItemDocument::toWire),
+        failures = failures.values.map(QueryItemFailureDocument::toWire),
+        continuation = continuation?.value,
+        terminalReason = terminalReason?.let { QueryTerminalReasonWireDocument.valueOf(it.name) },
     )
 
 private fun QueryRunResultWireDocument.toContract(): WireDocumentConversion<QueryRunResult> =
     items.convertEach(QueryResultItemWireDocument::toContract).flatMapConverted { queryItems ->
         queryItems.bounded().flatMapConverted { boundedItems ->
             failures.convertEach(QueryItemFailureWireDocument::toContract).flatMapConverted { queryFailures ->
-                queryFailures.bounded().mapConverted { QueryRunResult(boundedItems, it) }
+                queryFailures.bounded().flatMapConverted { boundedFailures ->
+                    optionalText(continuation).mapConverted { token ->
+                        QueryRunResult(
+                            items = boundedItems,
+                            failures = boundedFailures,
+                            continuation = token,
+                            terminalReason = terminalReason?.let { QueryTerminalReasonDocument.valueOf(it.name) },
+                        )
+                    }
+                }
             }
         }
     }
@@ -307,6 +331,7 @@ private fun QueryResultItemDocument.toWire(): QueryResultItemWireDocument =
                 location?.let { QueryExactLocationWireDocument(it.file.value, it.range.toWireDocument()) },
                 signature?.toWireDocument(),
                 connections.values.map(RelationFactDocument::toWireDocument),
+                symbolId.value,
             )
     }
 
@@ -331,15 +356,20 @@ private fun QueryResultItemWireDocument.toContract(): WireDocumentConversion<Que
                     location.toContract().flatMapConverted { projectedLocation ->
                         optionalSignature(signature).flatMapConverted { projectedSignature ->
                             connections.convertEach(RelationFactWireDocument::toContract).flatMapConverted { facts ->
-                                facts.bounded().mapConverted {
-                                    QueryResultItemDocument.ExactSymbol(
-                                        QueryReferenceDocument.ExactSymbol(token),
-                                        kind.toContract(),
-                                        projectedName,
-                                        projectedLocation,
-                                        projectedSignature,
-                                        it,
-                                    )
+                                facts.bounded().flatMapConverted { boundedFacts ->
+                                    io.github.amichne.kast.protocol.contract.SymbolIdDocument.parse(symbolId)
+                                        .toWireDocumentConversion()
+                                        .mapConverted { identity ->
+                                            QueryResultItemDocument.ExactSymbol(
+                                                QueryReferenceDocument.ExactSymbol(token),
+                                                kind.toContract(),
+                                                projectedName,
+                                                projectedLocation,
+                                                projectedSignature,
+                                                boundedFacts,
+                                                identity,
+                                            )
+                                        }
                                 }
                             }
                         }
