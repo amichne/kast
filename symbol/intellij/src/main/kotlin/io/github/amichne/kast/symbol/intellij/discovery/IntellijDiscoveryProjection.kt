@@ -16,6 +16,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtConstructor
+import org.jetbrains.kotlin.psi.KtEnumEntry
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.kotlin.psi.KtProperty
@@ -69,6 +70,9 @@ internal data object AdmitEveryIntellijDiscoveryItem : IntellijDiscoveryItemAdmi
 sealed interface IntellijDiscoveryItemCompilerKindResult {
     data class Found(val kind: CompilerSymbolKind) : IntellijDiscoveryItemCompilerKindResult
 
+    /** Proven syntax outside the supported compiler declaration kinds, not missing PSI evidence. */
+    data object EnumEntry : IntellijDiscoveryItemCompilerKindResult
+
     data object Unsupported : IntellijDiscoveryItemCompilerKindResult
 }
 
@@ -81,6 +85,7 @@ internal data object IntellijPsiDiscoveryItemCompilerKind : IntellijDiscoveryIte
     override fun classify(item: NavigationItem): IntellijDiscoveryItemCompilerKindResult {
         val kind =
             when (val element = item.psiElement()) {
+                is KtEnumEntry -> return IntellijDiscoveryItemCompilerKindResult.EnumEntry
                 is KtClassOrObject -> CompilerSymbolKind.CLASSLIKE
                 is KtConstructor<*> -> CompilerSymbolKind.CONSTRUCTOR
                 is KtNamedFunction -> CompilerSymbolKind.FUNCTION
