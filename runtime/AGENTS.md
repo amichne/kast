@@ -9,6 +9,7 @@ Composes semantic services inside an existing IntelliJ project and retains typed
 
 ## Key Files
 
+- [HostedConnectionAdmission.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt) - bounded connection ownership and post-release drain observations.
 - [HostedQueryContinuations.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryContinuations.kt) - project-owned execution and encoded-output continuation stores.
 - [HostedReferenceStore.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReferenceStore.kt) - project-owned bounded compact reference lookup.
 

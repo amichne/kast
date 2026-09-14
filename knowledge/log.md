@@ -2,6 +2,32 @@
 
 ## 2026-09-14
 
+- Recomputed AR08 impact from audited `8c2b16ccb` through integrated
+  `14eeaff51`: reviewed all ten affected concepts, including
+  [configuration](contracts/configuration.md),
+  [operation outcomes](contracts/operation-outcomes.md),
+  [public tools](contracts/public-tools.md),
+  [hosted queries](flows/hosted-query.md),
+  [semantic queries](flows/semantic-query.md),
+  [distribution](modules/distribution.md), [protocol](modules/protocol.md),
+  [query protocol](modules/query-protocol.md),
+  [runtime hosts](modules/runtime-hosts.md), and
+  [semantic reads](modules/semantic-reads.md).
+  Updated retained checkpoint ownership, five-store accounting, admitted failures,
+  transport drain witnesses and source attempt/kind admission; retained correct
+  configuration and outcome claims after checking their current owners.
+- Reviewed the current diff's navigation owners together with the prior stack's
+  staleness markers: 18 locations, comprising 15 generated maps and three authored
+  instruction files. Preserved authored instructions and checked local source
+  links; refreshed generated hashes only after source review. Hash equality is
+  still a shallow routing hint. A checkout's `OUTDATED.local.md` is truncated only
+  after its listed reviews succeed; markers from other checkouts remain local to
+  their differing source states.
+- Schema and deterministic fixture evidence remains distinct from an installed
+  native run. Ordinary-edit restoration does not qualify two enrolled IDE owners,
+  and provider-envelope validation does not establish socket-envelope schema or
+  per-request hosted-frame budget qualification.
+
 - Added resumable ordered query checkpoints, byte-bounded output suffixes,
   canonical symbol equality and short hosted references. Retained source scope,
   freshness and finite terminal failure evidence through public projections.

@@ -6,6 +6,9 @@ resource: file://distribution
 tags: [distribution, configuration, packaging, release]
 timestamp: 2026-09-14T00:00:00Z
 code_sources:
+  - path: packaging/hosted_read_regression.py
+  - path: packaging/hosted_authority_read_regression.py
+  - path: packaging/hosted_concurrent_read.py
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/ControlDistributionLimits.kt
     symbols: [ControlDistributionLimits]
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationSchemaDocument.kt
@@ -58,3 +61,17 @@ Release asset construction, checksums, SBOM inventory, and publication agree on 
 The [installed knowledge contract](../contracts/installed-knowledge.md) describes
 `kast knowledge`, its isolated PSI extraction, verified module ownership and
 scoped guide resources staged with the control product.
+
+The generated catalogue also declares the four execution ceilings, host backlog
+and connection capacity, and native source continuation byte/TTL limits.
+`:cli:generateConfigurationCatalogue` owns the snapshot;
+`verifyConfigurationIngress` checks its exact agreement with the Kotlin owners.
+The [configuration contract](../contracts/configuration.md) records the defaults.
+
+Installed read acceptance uses the same staged CLI, provider and hosted-plugin
+identity as the mutation fixture. It records the base matrix, bounded transport
+faults, independent caller grants and ordinary-edit authority transitions before
+mutation starts. Exact source restoration and observed readiness are required.
+Deterministic fixture tests and schema checks do not themselves qualify a native
+IDE run; [hosted query qualification](../flows/hosted-query.md) keeps those evidence
+boundaries separate.

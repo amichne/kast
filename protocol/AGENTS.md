@@ -9,6 +9,7 @@ Defines canonical operation models, authoritative operation/tool registries, and
 
 ## Key Files
 
+- [RelationCheckpointDocument.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/RelationCheckpointDocument.kt) - upstream versus retained relation coverage.
 - [AdmittedReadRejections.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/AdmittedReadRejections.kt) - operation-owned admitted failures retain finite reasons and required execution reports.
 - [RelationOmissionDocument.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/RelationOmissionDocument.kt) - canonical omission and soundness evidence.
 - [TraversalPartialExpansionDocument.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/TraversalPartialExpansionDocument.kt) - typed partial-expansion projection.
