@@ -35,10 +35,15 @@ class RelationHostedSchemaTest {
             val cursor =
                 RelationContinuationDocument.parse("relation-output:v1:00000000-0000-0000-0000-000000000001").refined()
             val qualification =
-                RelationReadQualification.resumable(
-                        original.qualification.knownMinimum,
-                        original.qualification.limitations,
-                        cursor,
+                RelationReadQualification.admitResumable(
+                        knownMinimum = original.qualification.knownMinimum,
+                        limitations = original.qualification.limitations,
+                        checkpoint =
+                            io.github.amichne.kast.protocol.contract.RelationCheckpointDocument.RetainedOutput(
+                                cursor,
+                                io.github.amichne.kast.protocol.contract.RelationPreparedCoverageDocument.RESUMABLE,
+                            ),
+                        nextAction = io.github.amichne.kast.protocol.contract.ReadResumeActionDocument.RESUME,
                     )
                     .refined()
             assertAdmits(
