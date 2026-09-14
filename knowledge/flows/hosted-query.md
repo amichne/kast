@@ -6,6 +6,9 @@ resource: file://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/
 tags: [intellij, kotlin, semantic-query, lifecycle]
 timestamp: 2026-09-13T00:00:00Z
 code_sources:
+  - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedReadAllowanceIdentityTest.kt
+  - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedContinuationOwnerRetentionTest.kt
+  - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryUnsupportedIdentityTest.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCheckpointStore.kt
   - path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/QueryCheckpointReplayTest.kt
   - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedRelationReplayTest.kt
@@ -465,3 +468,20 @@ the oldest inserted entry even if it was replayed. Owner retirement clears all
 five stores. Tests exercise TTL−1, exact TTL, TTL+1, replay, eviction and clear
 without changing those policies. Retained values are detached identities and
 results; these stores do not retain PSI, K2 sessions or a live project.
+
+The hosted owner identity checks independently increase elapsed-time, work,
+result and byte allowances for all four output stores. Each change restores the
+same detached outcome and reissues the same token. Query checkpoint admission
+also receives each larger grant while retaining the original plan. Query
+matching, source sets, declaration kinds, projection and relationship changes
+reject, as do workspace, published generation, live host lifetime and live epoch
+changes. Absent and empty execution-budget controls normalize alike; omitted
+traversal strategy and explicit breadth-first retain the same semantic choice.
+Query `take` steps and query fanout fields are unsupported and reject at the
+public wire boundary; traversal bounded fanout remains a supported strategy
+whose value participates in continuation identity.
+
+A shared-owner test configures one entry per store, retains five entries
+simultaneously, and verifies that changing the epoch retires all five. This is
+entry-composition and detached-identity evidence. It does not measure heap use
+or replace unchanged-fixture native execution parity for larger grants.

@@ -60,8 +60,7 @@ private constructor(
     val outcome: OperationOutcome.Qualified<SourceReadResult, SourceReadQualification>,
 ) {
     companion object {
-        suspend fun create(): HostedSourcePagingFixture {
-            val owner = RelationPagingFixture.live()
+        suspend fun create(owner: RelationPagingFixture = RelationPagingFixture.live()): HostedSourcePagingFixture {
             val basis = (owner.page() as OperationOutcome.Qualified).evidence.basis as EvidenceBasis.Live
             val snapshot =
                 SourceSnapshot.create(
