@@ -9,6 +9,8 @@ code_sources:
   - path: cli/src/test/kotlin/io/github/amichne/kast/cli/HostedFailureBudgetSchemaTest.kt
   - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointEncodingFixtureTest.kt
   - path: workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedFailureEncodingFixtureTest.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/BrokerOperationalLimits.kt
+  - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/KastSchemaOutputBudgetTest.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReadRecoveryAction.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt
   - path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt
@@ -105,6 +107,11 @@ reason and budget, then CLI projection derives the same action. Installed schema
 reuse the generated action enum and equal finite-failure evidence definitions.
 The provider qualification byte allowance and its reserved headroom remain owned
 by the broker operational limits.
+Schema qualification uses the broker's 1 MiB catalog-scale allowance, with
+4,096 bytes reserved by the generated-output check for process diagnostics.
+This internal policy is independent of semantic read-result allowances; schema
+detail and finite enums remain intact. The process reader rejects combined
+stdout/stderr above its allowance rather than truncating or weakening a schema.
 
 Hosted endpoint and hosted read rejection projections preserve an optional execution report from an actually admitted grant. The report shape matches the canonical serializer descriptor; CLI admission also checks its semantic dimension and clamping rules. Failure causes and stages retain their existing finite meanings.
 
