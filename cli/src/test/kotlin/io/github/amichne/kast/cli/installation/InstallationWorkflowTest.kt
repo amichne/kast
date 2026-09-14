@@ -192,6 +192,7 @@ private fun writeControlFiles(
     controlFileCount: Int,
     lifecycleInspectionExit: Int,
 ) {
+    Files.createDirectories(control.resolve("lib"))
     val bin = Files.createDirectories(control.resolve("bin"))
     val emptyDocument = Json.encodeToString(EmptyDocumentFixture)
     val executable = Files.writeString(bin.resolve("kast"), "#!/bin/sh\nexit 0\n")

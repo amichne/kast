@@ -8,6 +8,9 @@ import io.github.amichne.kast.distribution.contract.configuration.ConfigurationS
 import io.github.amichne.kast.distribution.contract.configuration.InstallationOperationalLimits
 import io.github.amichne.kast.distribution.contract.configuration.KastConfigurationCatalogue
 import io.github.amichne.kast.distribution.managed.endpoint.InstalledUpstreamDirectories
+import io.github.amichne.kast.distribution.managed.ControlPayloadInventory
+import io.github.amichne.kast.distribution.managed.ControlInventoryAdmission
+import io.github.amichne.kast.distribution.managed.ControlInventoryBoundary
 import java.io.IOException
 import java.nio.channels.FileChannel
 import java.nio.channels.OverlappingFileLockException
@@ -844,28 +847,12 @@ private fun verifyControlLayout(root: Path): Boolean {
     if (!regularExecutable(root.resolve("bin/kast"))) return false
     val required = listOf("ide-host.json", "operation-registry.json", "wire-schema.json", "installation-lifecycle.py")
     if (required.any { !regularFile(root.resolve("share/kast/$it")) }) return false
-    var files = 0
-    var bytes = 0L
-    return try {
-        for (directoryName in listOf("bin", "lib", "share")) {
-            val directory = root.resolve(directoryName)
-            if (!Files.exists(directory, LinkOption.NOFOLLOW_LINKS)) continue
-            Files.walk(directory).use { entries ->
-                entries.forEach { entry ->
-                    if (Files.isSymbolicLink(entry)) throw IOException("link")
-                    if (Files.isRegularFile(entry, LinkOption.NOFOLLOW_LINKS)) {
-                        files += 1
-                        bytes += Files.size(entry)
-                        if (files > ControlDistributionLimits.maximumEntryCount || bytes > MAXIMUM_CONTROL_BYTES) {
-                            throw IOException("limit")
-                        }
-                    }
-                }
-            }
+    return when (val inventory = ControlPayloadInventory.admit(root)) {
+        is ControlInventoryAdmission.Admitted -> true
+        is ControlInventoryAdmission.Rejected -> {
+            inventory.report(ControlInventoryBoundary.INSTALLER)
+            false
         }
-        true
-    } catch (_: IOException) {
-        false
     }
 }
 
@@ -882,28 +869,20 @@ private fun prepareOwnedDirectory(path: Path): Boolean =
     }
 
 private fun payloadFiles(root: Path): List<PayloadFile> {
-    val result = mutableListOf<PayloadFile>()
-    var bytes = 0L
-    for (directoryName in listOf("bin", "lib", "share")) {
-        val directory = root.resolve(directoryName)
-        if (!Files.exists(directory, LinkOption.NOFOLLOW_LINKS)) continue
-        Files.walk(directory).use { entries ->
-            entries.sorted().forEach { file ->
-                if (Files.isSymbolicLink(file)) throw IOException("payload rejected")
-                if (!Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS)) return@forEach
-                if (result.size >= ControlDistributionLimits.maximumEntryCount) throw IOException("payload rejected")
-                bytes += Files.size(file)
-                if (bytes > MAXIMUM_CONTROL_BYTES) throw IOException("payload rejected")
-                result +=
-                    PayloadFile(
-                        root.relativize(file).toString().replace(java.io.File.separatorChar, '/'),
-                        "sha256:${digest(file)?.value ?: throw IOException("payload unreadable")}",
-                        mode(file),
-                    )
-            }
+    val inventory = when (val admitted = ControlPayloadInventory.admit(root)) {
+        is ControlInventoryAdmission.Admitted -> admitted
+        is ControlInventoryAdmission.Rejected -> {
+            admitted.report(ControlInventoryBoundary.INSTALLER)
+            throw IOException("control inventory rejected")
         }
     }
-    return result
+    return inventory.files.map { file ->
+        PayloadFile(
+            root.relativize(file).toString().replace(java.io.File.separatorChar, '/'),
+            "sha256:${digest(file)?.value ?: throw IOException("payload unreadable")}",
+            mode(file),
+        )
+    }
 }
 
 private fun mode(path: Path): Int =

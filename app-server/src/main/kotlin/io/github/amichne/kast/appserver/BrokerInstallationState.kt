@@ -2,6 +2,11 @@ package io.github.amichne.kast.appserver
 
 import io.github.amichne.kast.appserver.protocol.ThreadBindingOwner
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.distribution.managed.ControlPayloadInventory
+import io.github.amichne.kast.distribution.managed.ControlInventoryAdmission
+import io.github.amichne.kast.distribution.managed.ControlInventoryBoundary
+import io.github.amichne.kast.distribution.managed.ControlInventoryResource
+import io.github.amichne.kast.distribution.managed.ControlInventoryFailure
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
@@ -14,6 +19,7 @@ import kotlinx.serialization.json.*
 internal enum class InstallationStateFailure {
     PATH_REJECTED,
     PAYLOAD_REJECTED,
+    PAYLOAD_LIMIT_EXCEEDED,
     EPOCH_ABSENT,
     EPOCH_REJECTED,
     WRITE_REJECTED,
@@ -135,41 +141,28 @@ internal object BrokerInstallationState {
             val digest = MessageDigest.getInstance("SHA-256")
             digest.update(root.toString().toByteArray(Charsets.UTF_8))
             var totalBytes = 0L
-            var count = 0
-            for (directory in listOf("bin", "lib", "share")) {
-                val payload = root.resolve(directory)
-                if (!Files.isDirectory(payload, LinkOption.NOFOLLOW_LINKS)) {
-                    return Refinement.Rejected(InstallationStateFailure.PAYLOAD_REJECTED)
+            val inventory = when (val admitted = ControlPayloadInventory.admit(root)) {
+                is ControlInventoryAdmission.Admitted -> admitted
+                is ControlInventoryAdmission.Rejected -> {
+                    admitted.report(ControlInventoryBoundary.RUNTIME_IDENTITY)
+                    return Refinement.Rejected(if (admitted.failure == ControlInventoryFailure.LIMIT_EXCEEDED) InstallationStateFailure.PAYLOAD_LIMIT_EXCEEDED else InstallationStateFailure.PAYLOAD_REJECTED)
                 }
-                Files.walk(payload).use { paths ->
-                    val files =
-                        paths.limit(BrokerOperationalLimits.maximumInventoryEntries.toLong() + 1).sorted().toList()
-                    if (files.size > BrokerOperationalLimits.maximumInventoryEntries)
-                        return Refinement.Rejected(InstallationStateFailure.PAYLOAD_REJECTED)
-                    for (file in files) {
-                        if (Files.isSymbolicLink(file))
-                            return Refinement.Rejected(InstallationStateFailure.PAYLOAD_REJECTED)
-                        if (Files.isDirectory(file, LinkOption.NOFOLLOW_LINKS)) continue
-                        if (
-                            !Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS) ||
-                                ++count > BrokerOperationalLimits.maximumInventoryEntries
-                        ) {
-                            return Refinement.Rejected(InstallationStateFailure.PAYLOAD_REJECTED)
+            }
+            for (file in inventory.files) {
+                digest.update(0)
+                digest.update(root.relativize(file).toString().toByteArray(Charsets.UTF_8))
+                digest.update(0)
+                Files.newInputStream(file, LinkOption.NOFOLLOW_LINKS).use { input ->
+                    val buffer = ByteArray(64 * 1_024)
+                    while (true) {
+                        val size = input.read(buffer)
+                        if (size < 0) break
+                        totalBytes += size
+                        if (totalBytes > BrokerOperationalLimits.maximumInventoryBytes) {
+                            ControlPayloadInventory.exceeded(ControlInventoryResource.PAYLOAD_BYTES, BrokerOperationalLimits.maximumInventoryBytes.toLong(), totalBytes).report(ControlInventoryBoundary.RUNTIME_IDENTITY)
+                            return Refinement.Rejected(InstallationStateFailure.PAYLOAD_LIMIT_EXCEEDED)
                         }
-                        digest.update(0)
-                        digest.update(root.relativize(file).toString().toByteArray(Charsets.UTF_8))
-                        digest.update(0)
-                        Files.newInputStream(file, LinkOption.NOFOLLOW_LINKS).use { input ->
-                            val buffer = ByteArray(64 * 1_024)
-                            while (true) {
-                                val size = input.read(buffer)
-                                if (size < 0) break
-                                totalBytes += size
-                                if (totalBytes > BrokerOperationalLimits.maximumInventoryBytes)
-                                    return Refinement.Rejected(InstallationStateFailure.PAYLOAD_REJECTED)
-                                digest.update(buffer, 0, size)
-                            }
-                        }
+                        digest.update(buffer, 0, size)
                     }
                 }
             }
