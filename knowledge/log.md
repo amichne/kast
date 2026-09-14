@@ -2,6 +2,68 @@
 
 ## 2026-09-14
 
+- Preserved all finite configuration-detail variants and parameter identities after
+  exhaustive actual-encoder validation found four missing schema variants. At the
+  user's direction, aligned schema qualification with the existing 1 MiB catalog
+  policy rather than weakening schema precision to fit the former 512 KiB bound.
+  Rechecked the process consumer, generated configuration declaration and combined
+  stdout/stderr overflow proof; refreshed affected navigation hashes after review.
+
+- Extended AR08 failure/schema proof with 242 actual hosted encodings. The schema
+  sweep exposed four configuration-detail mismatches; closed cause/field variants
+  and the exact parameter-key enum now validate against packaged and installed
+  contracts. Updated [protocol](modules/protocol.md), the reliability ledger and
+  generated routes for original-release session/upgrade helpers. This is local
+  encoder/schema evidence; exact-head product and native qualification remain
+  separate gates.
+
+- Reviewed the AR08 follow-up from audited `8c2b16ccb` through integrated
+  `e7de7de28`: impact reported 15 pages, comprising 13 concepts and two reserved
+  files. The prior ten concepts remain in scope; necessary response-byte admission
+  additionally affects [request dispatch](flows/request-dispatch.md), while
+  containment touches [workspace](modules/workspace.md) and the shared response
+  owner bound by [change](modules/change.md). Change lifecycle claims remain valid.
+  Checked strict outer deadline ordering, necessary byte admission, finite
+  rejected-read recovery, source continuation causes, page-local omissions,
+  cross-grant occurrence identity, endpoint-frame and provider-envelope schemas,
+  native source access-order eviction, admitted containment reports,
+  and original-release installer/payload/tool-inventory admission against their
+  current owners. Clarified occurrence multisets and required per-page order;
+  retained source-bound claims that remain accurate.
+- Rechecked 17 navigation owners: 15 generated maps and two authored instruction
+  files. All local links resolve. Added only missing routes for recovery,
+  endpoint frames, raw symbol reads, containment admission and original-release
+  qualification; refreshed
+  the two changed shallow hashes after review. Authored instructions are unchanged.
+  Source, fixture, schema and installer-admission evidence remains separate from
+  the final same-revision native run and the later released-artifact evaluation.
+
+- Recomputed AR08 impact from audited `8c2b16ccb` through integrated
+  `14eeaff51`: reviewed all ten affected concepts, including
+  [configuration](contracts/configuration.md),
+  [operation outcomes](contracts/operation-outcomes.md),
+  [public tools](contracts/public-tools.md),
+  [hosted queries](flows/hosted-query.md),
+  [semantic queries](flows/semantic-query.md),
+  [distribution](modules/distribution.md), [protocol](modules/protocol.md),
+  [query protocol](modules/query-protocol.md),
+  [runtime hosts](modules/runtime-hosts.md), and
+  [semantic reads](modules/semantic-reads.md).
+  Updated retained checkpoint ownership, five-store accounting, admitted failures,
+  transport drain witnesses and source attempt/kind admission; retained correct
+  configuration and outcome claims after checking their current owners.
+- Reviewed the current diff's navigation owners together with the prior stack's
+  staleness markers: 18 locations, comprising 15 generated maps and three authored
+  instruction files. Preserved authored instructions and checked local source
+  links; refreshed generated hashes only after source review. Hash equality is
+  still a shallow routing hint. A checkout's `OUTDATED.local.md` is truncated only
+  after its listed reviews succeed; markers from other checkouts remain local to
+  their differing source states.
+- Schema and deterministic fixture evidence remains distinct from an installed
+  native run. Ordinary-edit restoration does not qualify two enrolled IDE owners,
+  and provider-envelope validation does not establish socket-envelope schema or
+  per-request hosted-frame budget qualification.
+
 - Added resumable ordered query checkpoints, byte-bounded output suffixes,
   canonical symbol equality and short hosted references. Retained source scope,
   freshness and finite terminal failure evidence through public projections.

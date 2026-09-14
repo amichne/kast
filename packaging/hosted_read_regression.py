@@ -18,6 +18,7 @@ from hosted_concurrent_read import run_concurrent_read_regression
 from hosted_authority_read_regression import run_authority_read_regression
 from hosted_budget_read_regression import run_budget_read_regression
 from hosted_resume_budget_regression import run_resume_budget_regression
+from hosted_raw_symbol_regression import run_raw_symbol_regression
 from hosted_enum_read_regression import run_enum_read_regression
 from hosted_source_read_regression import run_source_paging_regression, source_qualification_observation
 
@@ -71,7 +72,7 @@ def run_read_regression(isolation, fixture, product, java, harness, repo, read_f
               and authority is not None and authority['outcome'] == 'passed')
     return {'schemaVersion': 1, 'outcome': 'passed' if passed else 'rejected', 'failure': failure,
             'failureDetails': failure_details, 'providerQualification': qualification,
-            'scope': 'complete-authored-base-semantic-matrix-and-eight-default-read-tools',
+            'scope': 'complete-authored-base-semantic-matrix-and-ten-explicit-read-tools',
             'fixture': read_fixture.evidence(), 'sourceUnchanged': unchanged,
             'queryBudgets': 'unchanged-production-policy', 'sourcePayloadsLogged': False,
             'stockCodexUi': 'unqualified', 'caseCount': len(rows),
@@ -94,6 +95,7 @@ class _ReadReplay:
             self.query(case)
         self.roundtrips()
         self.specialists()
+        run_raw_symbol_regression(self)
 
     def query(self, case):
         tool, _, request = self.oracle.invocation(case, self.oracle.ToolSurface.PUBLIC)

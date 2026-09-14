@@ -6,6 +6,9 @@ resource: file://runtime
 tags: [kotlin, runtime, server, indexer, cli]
 timestamp: 2026-09-14T00:00:00Z
 code_sources:
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedTransportObservation.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReadBudgetReports.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryContinuations.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt
   - path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt
@@ -75,7 +78,19 @@ absence provides no readiness proof.
 
 `HostedQueryContinuations` owns bounded expiring pipeline and encoded-output state
 for the current project read authority. Lookup follows fresh host admission and
-compares the unchanged query and semantic snapshot. Project disposal or epoch
-replacement clears both stores. It cannot restore a foreign or stale authority.
+compares the normalized request and semantic snapshot. Its active epoch owns
+five stores: query execution checkpoints and query, source, relation and traversal
+output suffixes. Each store has an independent entry, charged-byte and TTL bound;
+project disposal or epoch replacement clears all five. Restore does not renew
+creation time. It cannot restore a foreign or stale authority. See the
+[hosted retention bounds](../flows/hosted-query.md#hosted-continuation-retention-bounds)
+for aggregate accounting and the separate native source owner.
+
+Connection admission remains bounded independently of serialized semantic work.
+`CONNECTION_RELEASE` is emitted after the admitted connection's semaphore permit
+is released, so native fault fixtures can wait for a correlated drain witness
+before the next health request. The structured observer retains finite outcomes,
+durations and byte counts without request or response payloads. Read rejection
+projection preserves any admitted execution report through fitting and encoding.
 
 Read containment keeps the admitted execution report when a timeout, final freshness check or publication failure rejects the operation. The executor records the report at semantic admission; failure projection does not reconstruct it from defaults. Pre-admission failures carry no grant. Output fitting retains the original semantic outcome internally when publishing an oversized or unencodable response fails.

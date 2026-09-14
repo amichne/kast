@@ -1,7 +1,7 @@
 ---
 type: Runtime Flow
 title: Existing-IDE semantic query
-description: An existing IDEA project owns the default seven canonical reads, with bounded live authority and scoped native CLI/provider acceptance.
+description: An existing IDEA project owns seven canonical read operations, with bounded live authority and scoped native CLI/provider acceptance.
 resource: file://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted
 tags: [intellij, kotlin, semantic-query, lifecycle]
 timestamp: 2026-09-14T00:00:00Z
@@ -245,7 +245,8 @@ occupies one connection slot without blocking other frame reads.
 
 `kast_transport` records a per-connection correlation ID, finite stage/outcome,
 monotonic stage duration, and observed byte counts. Stages cover accept, request
-read, semantic admission, execution, response preparation, and reply write.
+read, semantic admission, execution, response preparation, reply write, and
+connection release after the admission permit is returned.
 These records contain no source, request payload, or opaque reference.
 
 `HostedPeerCancellation` races request dispatch against peer disconnection or
@@ -531,14 +532,18 @@ The separate native source continuation owner and compact reference store have
 their own policies and are outside this five-store sum.
 
 The native source continuation owner expires at age greater than or equal to
-its TTL; its exact-boundary policy is intentionally distinct from the hosted
-stores. Both hosted output and query-checkpoint stores expire when age is strictly
+its TTL and evicts the least recently accessed checkpoint; a successful replay
+updates eviction order without renewing creation time. Its exact-boundary and
+access-order policies are distinct from the hosted stores. Both hosted output and query-checkpoint stores expire when age is strictly
 greater than TTL. An entry remains available at exactly TTL; restore and
 identical reissuance do not renew its creation time. Capacity eviction removes
 the oldest inserted entry even if it was replayed. Owner retirement clears all
 five stores. Tests exercise TTL−1, exact TTL, TTL+1, replay, eviction and clear
 without changing those policies. Retained values are detached identities and
 results; these stores do not retain PSI, K2 sessions or a live project.
+
+### Installed transport and authority qualification
+
 The installed concurrent-read harness separates 156 semantic first attempts from
 four peer probes: disconnect, malformed input, admission saturation, and fresh
 listener health. Saturation uses the staged configuration catalog and actual
@@ -580,17 +585,28 @@ simultaneously, and verifies that changing the epoch retires all five. This is
 entry-composition and detached-identity evidence. It does not measure heap use
 or replace unchanged-fixture native execution parity for larger grants.
 
-
 The installed resume-budget helper defines twelve bounded cases per surface:
 query, source and relation reads, each with independently larger elapsed-time,
-work, result and byte allowances. It compares complete drains with ordered declarations/source children and full relation occurrence identity against
-an unchanged-fixture baseline, including full relation occurrences and compiler
-evidence, source child order, ranges, snapshots and saved text. Issued upstream
+work, result and byte allowances. Complete query and source drains retain exact
+record order, source child ranges, snapshots and saved text. Relation drains retain
+the multiset of full occurrences and compiler evidence, including duplicates, plus
+canonical order within each returned page. Native cursor order and page-local
+relation sorting can change global concatenation order when grants change page
+boundaries; this does not relax occurrence identity or per-page order. Issued upstream
 and retained-output checkpoints keep their distinct request positions and
 compatibility aliases. Each drain admits at most sixteen pages and one thousand
 records, rejects repeated tokens or changed authority/grants, and records only
 finite assertion names and counts. A complete low-grant page requires no invented
 continuation; time/work cases do not claim a deterministic wall-clock cutoff.
+A relation page stopped by a result, byte, time or work limit retains an
+`unmeasured_on_page` omission, matching limitation, available checkpoint, empty
+samples and `INCREASE_READ_LIMIT` remediation. Permanent omissions remain equal
+to the baseline; the final drain restores its final omissions. An unmeasured
+page remainder does not assert observed missing occurrences in the final drain.
+
+Traversal cross-grant drains likewise compare full occurrence and proof multisets,
+final edge/depth progress and terminal partial expansions. Retained suffix replay
+separately preserves ordered records and restores its upstream coverage.
 Local Python checks qualify this orchestration and comparison logic. Native
 parity requires invoking the helper through the integrated staged artifact;
 its presence alone is not an installed-product qualification result.

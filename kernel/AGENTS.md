@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-14 | hash: cbbc908bc0c4 -->
+<!-- generated: 2026-09-14 | hash: 9f0a354e79f5 -->
 
 # kernel
 
@@ -9,6 +9,7 @@ Provides the smallest shared domain vocabulary for typed outcomes, evidence, val
 
 ## Key Files
 
+- [ExecutionBudget.kt](src/main/kotlin/io/github/amichne/kast/kernel/ExecutionBudget.kt) - independent caller/default/ceiling grants and retained clamp evidence.
 - [ReadLimits.kt](src/main/kotlin/io/github/amichne/kast/kernel/ReadLimits.kt) - typed lexical enumeration and continuation-store limits.
 - [src/main/kotlin/io/github/amichne/kast/kernel/OperationOutcome.kt](src/main/kotlin/io/github/amichne/kast/kernel/OperationOutcome.kt) - complete/qualified/rejected outcome semantics.
 - [src/main/kotlin/io/github/amichne/kast/kernel/EvidenceEnvelope.kt](src/main/kotlin/io/github/amichne/kast/kernel/EvidenceEnvelope.kt) - evidence-bearing result envelope.

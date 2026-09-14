@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-12 | hash: 969a74170b5c -->
+<!-- generated: 2026-09-14 | hash: c3352bddaf38 -->
 
 # distribution
 

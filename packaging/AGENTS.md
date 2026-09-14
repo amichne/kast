@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-14 | hash: 74a8fc606e7d -->
+<!-- generated: 2026-09-14 | hash: 4230136f8f4f -->
 
 # packaging
 
@@ -9,6 +9,15 @@ Implements installer support, installed-product acceptance, configuration ingres
 
 ## Key Files
 
+- [released_session_acceptance.py](released_session_acceptance.py) - owned child-shell wrapper, version and saved-configuration qualification.
+- [released_upgrade_acceptance.py](released_upgrade_acceptance.py) - adjacent original-release upgrade and retained installation evidence.
+
+- [hosted_wire_schema.py](hosted_wire_schema.py) - exact staged-jar endpoint schema admission for native peer frames.
+- [hosted_raw_symbol_regression.py](hosted_raw_symbol_regression.py) - raw discovery candidates and compiler refinement through both read surfaces.
+- [released_acceptance_product.py](released_acceptance_product.py) - original release assets through the tagged public installer in an owned fixture.
+- [released_payload_identity.py](released_payload_identity.py) - installed payload comparison against original archive bytes.
+- [released_tool_inventory.py](released_tool_inventory.py) - installed catalog, canonical bindings and saved default inventory.
+- [hosted_transport_observation.py](hosted_transport_observation.py) - bounded native log observations and named transport drain conditions.
 - [hosted_enum_read_regression.py](hosted_enum_read_regression.py) - installed enum exclusion and member identity regression.
 
 - [hosted_change_acceptance.py](hosted_change_acceptance.py) - bounded complete artifact inventory admission and native acceptance evidence.

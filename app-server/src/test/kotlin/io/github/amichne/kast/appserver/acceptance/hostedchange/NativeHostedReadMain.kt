@@ -84,7 +84,7 @@ private class NativeHostedReadTransport(
 
     suspend fun invoke(document: JsonObject): NativeReadResponse {
         val request = readRequestJson.decodeFromJsonElement(NativeReadRequest.serializer(), document)
-        demand(request.tool in readToolNames, NativeFailure.INPUT_REJECTED)
+        demand(request.tool in nativeReadToolNames, NativeFailure.INPUT_REJECTED)
         return when (request) {
             is NativeReadRequest.Invoke -> dispatch(request)
             is NativeReadRequest.Validate -> validateNativeReadOutput(schemas.getValue(request.tool), request.document)
@@ -132,16 +132,14 @@ private class NativeHostedReadTransport(
         suspend fun open(product: Path, workspace: Path): NativeHostedReadTransport {
             val origin = Path.of(Broker::class.java.protectionDomain.codeSource.location.toURI()).toRealPath()
             demand(
-                product.parent == workspace.parent &&
-                    origin.startsWith(product.resolve("lib")) &&
-                    Files.isRegularFile(origin),
+                origin.startsWith(product.resolve("lib")) && Files.isRegularFile(origin),
                 NativeFailure.PRODUCT_CLASS_ORIGIN_REJECTED,
             )
             val options =
                 KastProviderOptions.admit(
-                        executable = product.resolve("bin/kast"),
+                        executable = NativeProductAdmission.executable(product, workspace),
                         qualificationDirectory = workspace,
-                        toolSelection = KastToolSelection.admit(readToolNames.joinToString(",")).nativeValue(),
+                        toolSelection = KastToolSelection.admit(nativeReadToolNames.joinToString(",")).nativeValue(),
                     )
                     .nativeValue()
             val qualified =
@@ -158,9 +156,12 @@ private class NativeHostedReadTransport(
     }
 }
 
-private val readToolNames =
-    CanonicalAgentToolDefinitions.defaultAppServerTools
-        .filter { it.operation.effect in setOf(OperationEffect.NONE, OperationEffect.INTELLIJ_READ) }
+internal val nativeReadToolNames =
+    CanonicalAgentToolDefinitions.all
+        .filter { definition ->
+            definition !== CanonicalAgentToolDefinitions.changePlan &&
+                definition.operation.effect in setOf(OperationEffect.NONE, OperationEffect.INTELLIJ_READ)
+        }
         .map { it.name.value }
         .toSet()
 

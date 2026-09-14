@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-14 | hash: 1ede91fb0fe0 -->
+<!-- generated: 2026-09-14 | hash: 040393c2bd3c -->
 
 # traversal
 

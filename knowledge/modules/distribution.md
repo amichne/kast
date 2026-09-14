@@ -6,6 +6,17 @@ resource: file://distribution
 tags: [distribution, configuration, packaging, release]
 timestamp: 2026-09-14T00:00:00Z
 code_sources:
+  - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/acceptance/hostedchange/NativeHostedReadMain.kt
+  - path: packaging/released_session_acceptance.py
+  - path: packaging/released_upgrade_acceptance.py
+  - path: packaging/released_acceptance_product.py
+  - path: packaging/released_tool_inventory.py
+  - path: packaging/hosted_raw_symbol_regression.py
+  - path: packaging/released_payload_identity.py
+  - path: packaging/run-hosted-change-acceptance.py
+  - path: packaging/hosted_read_regression.py
+  - path: packaging/hosted_authority_read_regression.py
+  - path: packaging/hosted_concurrent_read.py
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/ControlDistributionLimits.kt
     symbols: [ControlDistributionLimits]
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationSchemaDocument.kt
@@ -58,3 +69,31 @@ Release asset construction, checksums, SBOM inventory, and publication agree on 
 The [installed knowledge contract](../contracts/installed-knowledge.md) describes
 `kast knowledge`, its isolated PSI extraction, verified module ownership and
 scoped guide resources staged with the control product.
+
+The generated catalogue also declares the four execution ceilings, host backlog
+and connection capacity, and native source continuation byte/TTL limits.
+`:cli:generateConfigurationCatalogue` owns the snapshot;
+`verifyConfigurationIngress` checks its exact agreement with the Kotlin owners.
+The [configuration contract](../contracts/configuration.md) records the defaults.
+
+Installed read acceptance uses the same staged CLI, provider and hosted-plugin
+identity as the mutation fixture. It records the base matrix, bounded transport
+faults, independent caller grants and ordinary-edit authority transitions before
+mutation starts. Exact source restoration and observed readiness are required.
+Deterministic fixture tests and schema checks do not themselves qualify a native
+IDE run; [hosted query qualification](../flows/hosted-query.md) keeps those evidence
+boundaries separate.
+
+The native acceptance runner also accepts `--release-assets` and `--release-version` in place of source-built `--product` and `--plugin`. This mode requires a clean checkout at the exact version tag and a harness carrying that source commit. It invokes the tagged public `install.sh` with original checksum-bound control and plugin archives in an exclusively owned fixture. It verifies the checksum-derived installed version directory, manifest inventory, and original archive file bytes, then routes CLI and provider calls through the installed `bin/kast-complete`. The hosted plugin stays in the installer's private JetBrains plugin directory; only the separately identified test probe is added. Login-service and App Server activation are disabled during installation. This admission mode alone proves neither native behavior nor upgrade or persistent-session behavior; those require the corresponding completed runtime receipts. Temporary fake-installer tests qualify the admission boundary only.
+
+Released-mode admission also reads the installed schema through that wrapper and
+verifies all 13 advertised tools against their canonical operation IDs and the
+11-tool saved default selection. Those defaults contain eight read tools and
+three change tools. The native read harness explicitly selects ten read tools,
+including raw symbol discovery and inspection, and excludes `change_plan` even
+though planning has a read effect. The two raw-symbol cases preserve an issued
+candidate through compiler refinement and are invoked for both CLI and provider
+surfaces. Adding those cases does not change installed production defaults;
+fixture wiring and inventory admission do not establish their native result.
+
+Released mode checks two fresh noninteractive Bash sessions without reading startup files: command resolution, exact version, saved runtime configuration, and installation identity. Optional `--previous-release-assets` and `--previous-release-version` first install the immediately preceding patch through the same tagged target installer, then register the owned empty workspace through that prior wrapper. The upgrade requires completed prior admission, retirement, configuration validation and command qualification observations, unchanged prior payload/configuration, and exact populated workspace-registry retention. Original archives and invocation output digests remain bound to the receipt. These child-shell observations do not qualify login-service activation, a persistent coordinator, or stock Codex UI; those remain explicit runtime gates.

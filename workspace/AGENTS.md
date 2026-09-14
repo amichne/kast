@@ -9,6 +9,8 @@ Defines canonical workspace identity and read evidence, and admits bounded seman
 
 ## Key Files
 
+- [HostedReadPublicationAdmission.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadPublicationAdmission.kt) - pre-provider containment capacity and candidate-versus-admitted budget evidence.
+
 - [HostedReadinessDocument.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadinessDocument.kt) - passive fresh model admission status.
 - [HostedReadRecovery.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadRecovery.kt) - closed recovery prerequisites and actions.
 - [CanonicalSemanticProjectRoot.kt](contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/CanonicalSemanticProjectRoot.kt) - canonical root identity.

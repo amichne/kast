@@ -1,6 +1,6 @@
 # Agent read reliability: requirements and implementation plan
 
-Status: implementation in progress. Transport, schema, relation/query budgets and page fitting have local evidence below. Remaining cross-operation work and installed gates must complete before this is a reliability release.
+Status: R1–R7 source qualification passed at clean `1e1de5223c6900ec8c2857b3cf898709099995fd`. R8 naming, help cleanup and final shipped-artifact evaluation remain in progress. The same-revision ledger below records the applicable proof and limits.
 
 Baseline: `24a7e92d09a31624cf11e4f596c64d3a99e9a995`, inspected on 2026-09-14. Both `main` and `v0.40.0` pointed to this commit. Its existing checkpoint and traversal-timing work is therefore part of the assessed release, not a subsequent fix.
 
@@ -432,3 +432,94 @@ identified seven concepts requiring review: passing the structural validator doe
 not establish that their traversal claims have been refreshed. No check threshold,
 schema allowance, freshness rule, or release requirement was waived. Traversal
 continuation/schema/native coverage and the remaining R1–R8 matrix are still open.
+
+## AR delivery and same-revision qualification
+
+The user authorized incremental patch delivery after the audit. The earlier
+stack is integrated through #752; the original #735/#748/#749 branches are
+historical implementation evidence, not additional changes to merge again.
+AR-01 is closed by v0.40.4. v0.40.5 adds the AR-02 traversal characterization
+slice; the expanded same-revision matrix below now closes AR-02–AR-08 source qualification.
+
+| Patch | Source revision | Delivered section | Verification |
+| --- | --- | --- | --- |
+| [v0.40.1](https://github.com/amichne/kast/releases/tag/v0.40.1) | `cc698c2352a3c3afb44ebcdd758f025be6ef514a` | Query reference-rejection schema parity | Released executable/catalog and all assets/checksums verified. |
+| [v0.40.2](https://github.com/amichne/kast/releases/tag/v0.40.2) | `8c656114c3371df1e458d3280053d0d3e2d5c427` | Closed source/relation/traversal reason schemas | Released executable/catalog and all assets/checksums verified. |
+| [v0.40.3](https://github.com/amichne/kast/releases/tag/v0.40.3) | `f62748b43c6b631d99465e10c496046c73118d18` | Enum exclusion and compiler-owned enum-body member identity | 126 native reads and existing mutation/recovery matrix; released assets verified. |
+| [v0.40.4](https://github.com/amichne/kast/releases/tag/v0.40.4) | `6f65e16dead408e6aff2a062573d108cbfa36d6c` | AR-01 deterministic checkpoint repair and existing reliability stack | [Exact-head product CI](https://github.com/amichne/kast/actions/runs/34892753666); [exact-main release build](https://github.com/amichne/kast/actions/runs/34894362353). All ten assets, five checksum files, version/catalog and installer dry-run verified. |
+| [v0.40.5](https://github.com/amichne/kast/releases/tag/v0.40.5) | `2c57af5cfc7a1123f76a46c21a00f94cc213baad` | AR-02 traversal fitting/replay/store/schema tests | [Exact-head product CI](https://github.com/amichne/kast/actions/runs/34894610344); [exact-main release build](https://github.com/amichne/kast/actions/runs/34895664261). All ten assets, five checksum files, version/catalog and installer dry-run verified. |
+| [v0.40.6](https://github.com/amichne/kast/releases/tag/v0.40.6) | `06cb04787324951497888fd10e1a606619189d20` | AR-03 admitted semantic rejection budgets, deadline ordering, minimum envelope admission and cancelled source attempts | [Exact-head product CI](https://github.com/amichne/kast/actions/runs/34897457617); [exact-main release build](https://github.com/amichne/kast/actions/runs/34898382578). All ten assets, five checksums, executable/catalog and installer dry-run verified. |
+| [v0.40.7](https://github.com/amichne/kast/releases/tag/v0.40.7) | `608cc877a6b0cf3edfed43e902e6f669b5a48f6f` | AR-04 relation checkpoints, finite recovery actions and source continuation causes | [Exact-main product CI](https://github.com/amichne/kast/actions/runs/34899775711); [release build](https://github.com/amichne/kast/actions/runs/34899776285). Released assets, checksums, executable/catalog and installer dry-run verified. |
+| [v0.40.8](https://github.com/amichne/kast/releases/tag/v0.40.8) | `21af38ddfaf1797d9c27473119b0e584b2d7b536` | AR-05 continuation expiry, retention identity and cross-grant replay qualification | [Exact-main product CI](https://github.com/amichne/kast/actions/runs/34900790101); [release build](https://github.com/amichne/kast/actions/runs/34900790346). Released assets, checksums, executable/catalog and installer dry-run verified. |
+| [v0.40.9](https://github.com/amichne/kast/releases/tag/v0.40.9) | `c33132ef07c9a92895b0a764989854e74f370b15` | AR-06 transport drain and ordinary-edit authority recovery fixtures | [Exact-head CI](https://github.com/amichne/kast/actions/runs/34900906189); [release build](https://github.com/amichne/kast/actions/runs/34901769185). All assets/checksums, executable/catalog and installer dry-run verified. |
+| [v0.40.10](https://github.com/amichne/kast/releases/tag/v0.40.10) | `3b702c391c56a8665edfa1662743fa2a7ff4ccac` | AR-07 declaration-kind eligibility before compiler projection | [Exact-head CI](https://github.com/amichne/kast/actions/runs/34901801892); [release build](https://github.com/amichne/kast/actions/runs/34902580454). All assets/checksums, executable/catalog and installer dry-run verified. |
+
+The v0.40.6 catalog is 519263 bytes, SHA-256
+`6de922bf00a83f5875a40358fc57e8e06fdd758abb3df224d1509f0f7706ab27`.
+Independent released-schema validation passed 230 valid and 2535 invalid samples,
+including absent/admitted budgets, malformed reports, and every finite read reason.
+That release does not contain the later post-admission host containment report repair; its integrated evidence remains subject to the final same-revision gate.
+
+The v0.40.4/v0.40.5 released catalog is 518810 bytes, SHA-256
+`1891349dff8fa967db9c85ccde4ff7407d9b83070c39154a7aac1fe4861e1972`.
+Independent released-schema checks accept seven query reference reasons,
+nineteen source reasons, fourteen relation reasons and fourteen traversal
+reasons; unknown reasons reject. Those releases retained the historical
+520192-byte allowance and 4096-byte reserved headroom.
+
+The user subsequently authorized prioritizing schema precision over that internal
+size policy. Schema qualification now uses the existing broker catalog-scale
+1 MiB allowance, with the same 4096-byte diagnostic headroom check. This is a
+local subprocess bound, not an external protocol restriction. The strict schema
+retains every configuration failure shape and all 60 parameter identities. Real
+process tests accept 600 KiB and exactly 1 MiB, and reject both stdout overflow
+and combined stdout/stderr overflow. Semantic request and result caps are unchanged.
+
+### R1–R7 closure ledger
+
+Every row below passed on clean integration revision
+`1e1de5223c6900ec8c2857b3cf898709099995fd`:
+[product CI](https://github.com/amichne/kast/actions/runs/34904522683) and
+[bounded per-requirement/native evidence](https://gist.github.com/amichne/fd8830bcc3c41e161ab6c1d76cda2573).
+The local product path passed 544 tasks with external Codex schema qualification
+enabled; native acceptance passed in 7m1. It observed 224/224 reads, 156/156
+concurrent first attempts with zero serial retries, all four peer cases, all 14
+normal-edit authority cases, and all 30 mutation/recovery/restart/undo cases.
+The fixture was removed after successful cleanup. These observations qualify
+that implementation revision; this documentation follow-up was not the native
+build source.
+
+| Gate | Current implementation and focused evidence | Installed fixture/command | Observed result and bounds |
+| --- | --- | --- | --- |
+| R1 — transport | `HostedConnectionAdmissionTest`, `HostedEndpointTransportTest`, correlated `CONNECTION_RELEASE` after permit cleanup | `hostedChangeAcceptance`: 156 first attempts, blocked/disconnected/malformed peers, saturation, drain and one health request | Pass: all first attempts and peer cases; correlated replies, at most one complete frame, cancellation drain. No altered semantic/mutation serialization. |
+| R2 — failure/schema parity | `ReadRejectionSchemaParityTest`, `AdmittedReadRejectionSchemaTest`, `NativeReadValidationTest`; 242 actual host encoding fixtures validated against packaged and installed schemas; actual provider envelope validation | Same-build CLI/provider schemas plus ordinary-edit stale references/cursors and foreign-root refusal | Pass: strict actual-encoder and installed schema checks; actual provider envelopes in the authority phase. Foreign-root case refuses an unenrolled workspace, not two enrolled IDE owners. |
+| R3 — budgets/deadlines | `HostedBudgetDimensionTest`, `HostedDeadlineEvidenceTest`, `ReadDeadlineOrderingTest`; one admitted grant and finite post-admission failures | `hosted_budget_read_regression.py`: all four axes on four reads and all three search conveniences | Pass: independent axes, malformed/impossible pre-admission refusal, admitted containment reports, final publication clock observation and operator-clamped deadline plateaus. |
+| R4 — cooperative progress | `QueryWorkAdmissionTest`, `RelationTimeAdmissionTest`, `IntellijSourcePageCollectorTest`, traversal fitting/replay tests | Low-page/high-grant reference comparisons on one unchanged fixture | Pass: native reference comparisons retain declaration/occurrence cardinality, graph coverage and source ranges/order. Source cancellation proof exercises the production attempt owner, not IntelliJ retry scheduling. |
+| R5 — completion/recovery | Closed query/source/traversal progress, explicit relation checkpoint/action, retained original coverage and omissions | Wire/CLI/schema variants plus installed page drains | Pass: finite recovery actions, source continuation causes, retained coverage/omissions and installed page drains. Fresh authority is explicitly reacquired. |
+| R6 — continuation identity/retention | `QueryCheckpointReplayTest`, `HostedReadAllowanceIdentityTest`, `HostedContinuationOwnerRetentionTest`, source/relation/traversal replay and TTL tests | `hosted_resume_budget_regression.py` plus traversal parity/replay | Pass: native four-axis comparisons, deterministic replay and focused identity/retention policy tests. Five separately bounded stores, distinct source TTL/LRU policy and no expiry renewal remain unchanged. |
+| R7 — cheap eligibility | Source deferred declaration-kind projection; enum exclusion/member reuse; excluded-kind tests and shared structural fixture | Existing enum exact/fuzzy/scoped/member cases and source paging in `hostedChangeAcceptance` | Pass: current-source enum/member reuse and source paging regressions; excluded kinds avoid compiler projection while eligible descendants remain reachable. |
+
+Knowledge impact was recomputed against audited `8c2b16ccb`, using the actual
+changed paths through the qualified `1e1de5223` integration and the documentation refresh. Thirteen concepts
+are affected: configuration, operation outcomes, public tools, hosted query,
+request dispatch, semantic query, change, distribution, protocol, query protocol,
+runtime hosts, semantic reads and workspace. Their source claims were reviewed;
+structural OKF validation is separate evidence. Seventeen navigation locations
+were reviewed: fifteen generated maps and two preserved authored guides. The
+review refreshed only changed claims and generated routes/hashes; authored policy
+remains unchanged.
+
+Final AR-08 verification ran `.github/scripts/ci/verify-checks.py`,
+`knowledgeImpact`, `verifyKnowledgeBase`, and expanded `hostedChangeAcceptance`
+on that clean revision with pinned IDEA 262.10315.125, Kotlin 262.10315.125-IJ,
+JDK 25.0.2 and IDE JBR 25.0.4. The published report binds source,
+fixture/configuration/catalog identities, plugin/product/harness/probe hashes,
+and external Codex-schema identity. Product log SHA-256:
+`70f0291fddddc921285e7c2dcddeaf07e085af975cee4169c184b60a518bd383`.
+Native report SHA-256:
+`a16f5d21c0f69b63c1113ae8cb4101be0b4cae8123cb774284a06633414246e2`.
+Stock Codex UI and persistent coordinator attachment remain explicitly
+unqualified by this direct provider harness. Original released installation,
+upgrade/sessions and coordinator lifecycle are separate AR-11/AR-12 work.
+There are no open R1–R7 requirements in this source qualification; AR-09 naming
+migration is unblocked.

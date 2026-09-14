@@ -47,15 +47,6 @@ Installed projection 10 and CLI invocation version 3 join by tool name. Repeated
 `EXPLICIT` exact-plan approval. The hosted planning schema admits only
 `add-declaration`; unsupported canonical intents do not enter another runtime.
 
-Query reference rejection schemas retain all seven canonical reasons, including
-`stale-authority`, `incompatible-authority`, and `incompatible-reference-version`.
-Unknown reason strings remain invalid. A stale reference requires reacquiring
-authority; schema admission does not refresh it or convert rejection to success.
-
-Installed source, relation and traversal rejection schemas derive their finite
-reason sets from the canonical enums. Wire decoding, CLI projection and the
-installed tool envelope preserve every reason; unknown strings are invalid.
-
 The 32-example corpus, typed lowering, duplicate/path rejection, CLI wire parity and production provider routing are deterministic proofs. Codex schemas omit the Responses-only `strict` field and retain separate stronger admission constraints. These checks do not by themselves establish live API acceptance or improved model first-call accuracy.
 
 See the [public search guide](../../docs/public/search.mdx) and [semantic query flow](../flows/semantic-query.md).

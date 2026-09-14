@@ -6,6 +6,9 @@ resource: file://query
 tags: [kotlin, semantic, query, compiler]
 timestamp: 2026-09-14T00:00:00Z
 code_sources:
+  - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceEntityAttempt.kt
+  - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceEntityPageCollector.kt
+  - path: source/intellij/src/test/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceEntityReadTest.kt
   - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceReadContinuations.kt
   - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceReadPort.kt
   - path: source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceReadOutcome.kt
@@ -180,6 +183,14 @@ The installed enum fixture checks exact, fuzzy and scoped class searches, both
 CLI and provider surfaces. The scoped fixture retains an explicit 32-work-unit
 grant to qualify enum exclusion before candidate capacity. This does not establish
 the separate source-enumeration compiler-work ordering gate.
+
+Native source enumeration allocates a fresh detached collector for each read
+attempt while keeping the request's execution accounting. A cancelled attempt
+cannot publish its partially collected page. Requested declaration kinds are
+checked before visibility resolution and candidate construction; structural
+selectors, parents, ranges and depths still preserve eligible descendants inside
+excluded containers. The focused excluded-input and cancellation tests prove
+these boundaries without claiming installed IDE qualification.
 
 Source continuation admission preserves finite causes before invoking the provider:
 missing, expired, evicted, or retired tokens yield `CONTINUATION_UNAVAILABLE`;

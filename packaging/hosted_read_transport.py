@@ -6,6 +6,7 @@ import os
 import re
 import selectors
 import subprocess
+from released_acceptance_product import product_executable
 import time
 from threading import Lock
 from dataclasses import asdict, dataclass
@@ -247,7 +248,7 @@ class HostedReadTransport:
 
     @contextmanager
     def open(self):
-        schema = subprocess.run([str(self.product / 'bin/kast'), '--schema'],
+        schema = subprocess.run([str(product_executable(self.product, self.fixture.workspace.parent)), '--schema'],
             cwd=self.fixture.workspace, env=self.fixture.environment,
             capture_output=True, timeout=30)
         if schema.returncode != 0 or not 0 < len(schema.stdout) <= MAXIMUM_RESPONSE_BYTES:
@@ -297,7 +298,7 @@ class HostedReadTransport:
         if surface == 'cli':
             if tool not in self.cli_commands:
                 raise ReadTransportRejected('READ_CLI_TOOL_REJECTED')
-            result = subprocess.run([str(self.product / 'bin/kast'), *self.cli_commands[tool]],
+            result = subprocess.run([str(product_executable(self.product, self.fixture.workspace.parent)), *self.cli_commands[tool]],
                 cwd=self.fixture.workspace, env=self.fixture.environment,
                 input=json.dumps(arguments).encode(), capture_output=True, timeout=60)
             if len(result.stdout) > MAXIMUM_RESPONSE_BYTES or not result.stdout:
