@@ -71,6 +71,11 @@ class LifecycleTest(unittest.TestCase):
         self.assertEqual(0, code, result)
         self.assertFalse(self.log.exists())
         self.assertEqual(self.epoch, json.loads((self.root / 'state/epoch.json').read_text()))
+    def test_manifest_large_enough_for_current_inventory_is_admitted(self):
+        self.manifest['boundedPadding'] = 'x' * 1_750_000
+        (self.root / 'installation.json').write_text(json.dumps(self.manifest))
+        code, result = self.invoke('inspect')
+        self.assertEqual(0, code, result)
     def test_reset_retires_exact_commands_preserves_config_and_changes_epoch(self):
         code, result = self.invoke('reset')
         self.assertEqual(0, code, result)
