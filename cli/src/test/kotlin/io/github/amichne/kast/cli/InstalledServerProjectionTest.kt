@@ -51,8 +51,8 @@ class InstalledServerProjectionTest {
                 .constructedDocument()
         val emittedBytes = (document.value + "\n").toByteArray(Charsets.UTF_8).size
         assertTrue(
-            emittedBytes <= BrokerOperationalLimits.maximumKastSchemaBytes,
-            "Full --schema output is $emittedBytes bytes; provider accepts ${BrokerOperationalLimits.maximumKastSchemaBytes}",
+            emittedBytes <= BrokerOperationalLimits.maximumKastSchemaBytes - QUALIFICATION_OUTPUT_HEADROOM_BYTES,
+            "Schema output $emittedBytes bytes leaves insufficient qualification process headroom",
         )
     }
 
@@ -564,6 +564,7 @@ class InstalledServerProjectionTest {
     }
 
     companion object {
+        private const val QUALIFICATION_OUTPUT_HEADROOM_BYTES = 4096
         private val schemaRegistry = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12)
     }
 }

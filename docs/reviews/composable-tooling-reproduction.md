@@ -35,13 +35,13 @@ These deterministic fixtures prove ordering, capacity isolation, identity,
 continuation and encoded-contract behavior. A synthetic imported-model port is
 not a benchmark of a live 200-module IDE import. The readiness seam establishes
 admission state; it does not claim compiler/index readiness or prove desktop
-rendering. The first native run reached imported and indexed readiness and passed 58 CLI
-read assertions with unchanged synthetic sources. It rejected provider admission
-before any provider case with an unclassified qualification rejection. A
-separate integrated check reproduced schema-budget overflow, but the copied
-native artifact was just below that bound; its exact rejection cause was not
-retained. The harness now records the finite qualification cause. This is
-partial diagnostic evidence, not native qualification.
+rendering. The initial native runs reached imported and indexed readiness and
+passed 58 CLI read assertions with unchanged synthetic sources. They rejected
+provider admission before any provider case. Replaying the immutable schema
+command under the isolated JVM environment reproduced an aggregate output-budget
+overflow: schema output alone fit, but schema output plus JVM startup stderr
+exceeded the shared byte bound. This is partial diagnostic evidence, not native
+qualification.
 A corrected immutable fixture run is required below before completion.
 
 ## Contract and tuning changes

@@ -12,6 +12,7 @@ import sys
 import subprocess
 
 from hosted_read_transport import HostedReadTransport, ReadTransportRejected
+from native_provider_qualification import qualification_document
 
 
 def _reproduction(repo):
@@ -34,15 +35,19 @@ def run_read_regression(isolation, fixture, product, java, harness, repo, read_f
     """Call once after readiness, before the first mutation or external fixture edit."""
     oracle = _reproduction(repo)
     rows, failure, failure_details, unchanged, before = [], None, None, False, False
+    qualification = None
     try:
         before = read_fixture.unchanged()
         with HostedReadTransport(isolation, fixture, product, java, harness).open() as transport:
+            qualification = qualification_document(transport.qualification)
             for surface in ('cli', 'provider'):
                 replay = _ReadReplay(oracle, read_fixture, initial_live, transport, surface, rows)
                 replay.run()
     except ReadTransportRejected as error:
         failure = 'READ_TRANSPORT_REJECTED'
         failure_details = error.evidence()
+        if error.qualification is not None:
+            qualification = qualification_document(error.qualification)
     except (OSError, ValueError, TypeError, KeyError, subprocess.SubprocessError):
         failure = 'READ_RESULT_OR_FIXTURE_REJECTED'
     finally:
@@ -52,7 +57,7 @@ def run_read_regression(isolation, fixture, product, java, harness, repo, read_f
             failure = 'READ_FIXTURE_REJECTED'
     passed = failure is None and unchanged and bool(rows) and all(row['passed'] for row in rows)
     return {'schemaVersion': 1, 'outcome': 'passed' if passed else 'rejected', 'failure': failure,
-            'failureDetails': failure_details,
+            'failureDetails': failure_details, 'providerQualification': qualification,
             'scope': 'complete-authored-base-semantic-matrix-and-eight-default-read-tools',
             'fixture': read_fixture.evidence(), 'sourceUnchanged': unchanged,
             'queryBudgets': 'unchanged-production-policy', 'sourcePayloadsLogged': False,

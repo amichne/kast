@@ -12,6 +12,9 @@
   Mutation authority and workspace recovery requirements remain unchanged.
 - Recorded synthetic multi-module and graph reproductions in the
   [composability review](../docs/reviews/composable-tooling-reproduction.md).
+- Rechecked installed schema definitions and documented the shared process output
+  cap and its headroom regression; native reports now retain finite provider
+  qualification evidence before invoking tools.
 
 ## 2026-09-12
 

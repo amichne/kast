@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-14 | hash: 50a24a6e24ca -->
+<!-- generated: 2026-09-14 | hash: 4aefbd667d02 -->
 
 # packaging
 
@@ -20,6 +20,7 @@ Implements installer support, installed-product acceptance, configuration ingres
 - [run-hosted-change-acceptance.py](run-hosted-change-acceptance.py) - staged broker, CLI, and plugin change workflow in a private native IDE.
 - [hosted_read_regression.py](hosted_read_regression.py) - native CLI/provider read regression and bounded continuation checks.
 - [native_fixture_probe.py](native_fixture_probe.py) - typed native fixture control responses and readiness evidence admission.
+- [native_provider_qualification.py](native_provider_qualification.py) - closed, payload-free provider startup evidence retained by native read reports.
 
 ## Subdirectories
 
@@ -38,3 +39,4 @@ Implements installer support, installed-product acceptance, configuration ingres
 - For a packaging failure, start with the failing test, then the corresponding lifecycle/environment module.
 - Cross-check owned paths and configuration meaning against `distribution` contracts.
 - For fixture control or readiness failures, pair `native_fixture_probe.py` with the [isolated probe source](../change/intellij/src/nativeFixture) and its [contract tests](../change/intellij/src/nativeFixtureTest).
+- For provider startup rejection, inspect `providerQualification` in the native report; `hosted_read_transport.py` admits the bounded startup handshake before tool calls.

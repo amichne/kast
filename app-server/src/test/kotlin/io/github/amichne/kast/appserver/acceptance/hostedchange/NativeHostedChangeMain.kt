@@ -77,11 +77,9 @@ private class NativeHostedChangeRun(
         try {
             session =
                 NativeChangeSession.open(
-                    product = inputs.product,
-                    workspace = inputs.workspace,
+                    inputs = inputs,
                     home = Path.of(System.getProperty("user.home")).toRealPath(),
-                    schemas = inputs.schemas,
-                    privateDirectory = inputs.privateDirectory,
+                    observeQualification = evidence::providerQualification,
                 )
             withTimeout(900_000) {
                 NativeChangeWorkflow(
@@ -97,6 +95,8 @@ private class NativeHostedChangeRun(
         } catch (rejected: NativeContractRejected) {
             evidence.contractRejected(rejected.document)
             failure = NativeFailure.CONTRACT_REJECTED
+        } catch (_: NativeProviderQualificationRejected) {
+            failure = NativeFailure.PROVIDER_QUALIFICATION_REJECTED
         } catch (rejected: NativeRejected) {
             failure = rejected.failure
         } catch (_: TimeoutCancellationException) {

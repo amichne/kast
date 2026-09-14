@@ -123,7 +123,8 @@ private class NativeHostedReadTransport(private val broker: Broker, private val 
                     .nativeValue()
             val qualified =
                 KastProviderQualifier.qualify(options).nativeQualified { observation ->
-                    System.err.println(observation.encodeObservation())
+                    System.out.println(observation.encodeObservation())
+                    System.out.flush()
                 }
             return NativeHostedReadTransport(
                 Broker.create(listOf(qualified.registration), BrokerLimits.defaults()).nativeValue(),

@@ -8,6 +8,8 @@ import selectors
 import subprocess
 import time
 
+from native_provider_qualification import (QualificationRejected, admit_qualification, qualification_document)
+
 
 class ReadTransportFailure(str, Enum):
     CLI_SCHEMA = 'READ_CLI_SCHEMA_REJECTED'
@@ -20,6 +22,7 @@ class ReadTransportFailure(str, Enum):
     OUTPUT_BOUND = 'READ_PROVIDER_OUTPUT_BOUND'
     EXTRA_OUTPUT = 'READ_PROVIDER_EXTRA_OUTPUT'
     TIMEOUT = 'READ_PROVIDER_TIMEOUT'
+    QUALIFICATION = 'READ_PROVIDER_QUALIFICATION_REJECTED'
 
 
 class ReadProviderFailure(str, Enum):
@@ -129,10 +132,11 @@ def _admit_output_violation_evidence(raw):
 
 
 class ReadTransportRejected(ValueError):
-    def __init__(self, reason, provider_failure=None, output_violation_evidence=None):
+    def __init__(self, reason, provider_failure=None, output_violation_evidence=None, qualification=None):
         self.reason = ReadTransportFailure(reason)
         self.provider_failure = provider_failure
         self.output_violation_evidence = output_violation_evidence
+        self.qualification = qualification
         self.invocation = None
         super().__init__(self.reason.value)
 
@@ -142,6 +146,8 @@ class ReadTransportRejected(ValueError):
             result['providerFailure'] = self.provider_failure.value
         if self.output_violation_evidence is not None:
             result['outputViolationEvidence'] = self.output_violation_evidence
+        if self.qualification is not None:
+            result['providerQualification'] = qualification_document(self.qualification)
         if self.invocation is not None:
             result['surface'], result['tool'] = self.invocation
         return result
@@ -202,6 +208,7 @@ class HostedReadTransport:
         self.java, self.harness = java, harness
         self.provider = None
         self.cli_commands = {}
+        self.qualification = None
 
     @contextmanager
     def open(self):
@@ -218,6 +225,7 @@ class HostedReadTransport:
             env=self.fixture.environment, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL)
         try:
+            self._qualify()
             yield self
         finally:
             self.provider.stdin.close()
@@ -231,6 +239,16 @@ class HostedReadTransport:
                     self.provider.kill()
                     self.provider.wait(timeout=5)
             self.provider.stdout.close()
+
+    def _qualify(self):
+        try:
+            self.qualification = admit_qualification(json.loads(self._response(maximum_bytes=1024)))
+        except ReadTransportRejected:
+            raise
+        except (ValueError, TypeError):
+            raise ReadTransportRejected('READ_PROVIDER_PROTOCOL_REJECTED') from None
+        if isinstance(self.qualification, QualificationRejected):
+            raise ReadTransportRejected('READ_PROVIDER_QUALIFICATION_REJECTED', qualification=self.qualification)
 
     def invoke(self, surface, tool, arguments):
         try:
@@ -257,7 +275,7 @@ class HostedReadTransport:
         self.provider.stdin.flush()
         return _provider_result(json.loads(self._response()))
 
-    def _response(self):
+    def _response(self, maximum_bytes=MAXIMUM_RESPONSE_BYTES):
         deadline, response = time.monotonic() + 90, b''
         with selectors.DefaultSelector() as selector:
             selector.register(self.provider.stdout, selectors.EVENT_READ)
@@ -267,7 +285,7 @@ class HostedReadTransport:
                     if not part:
                         raise ReadTransportRejected('READ_PROVIDER_DISCONNECTED')
                     response += part
-                    if len(response) > MAXIMUM_RESPONSE_BYTES:
+                    if len(response) > maximum_bytes:
                         raise ReadTransportRejected('READ_PROVIDER_OUTPUT_BOUND')
                     if b'\n' in response:
                         line, trailing = response.split(b'\n', 1)

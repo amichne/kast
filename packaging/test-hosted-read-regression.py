@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Focused proof for fixture isolation, source preservation and bounded read receipts."""
 import hashlib
+import importlib.util
 import json
 from pathlib import Path
 import tempfile
@@ -281,6 +282,15 @@ class HostedReadRegressionTest(unittest.TestCase):
             amend_generated_provenance(fixture)
         self.assertEqual(fixture.initial_build, build.read_text())
         self.assertEqual('class UnexpectedContent\n', target.read_text())
+
+
+def load_tests(loader, tests, _pattern):
+    spec = importlib.util.spec_from_file_location('native_provider_qualification_tests',
+        Path(__file__).with_name('test-native-provider-qualification.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    tests.addTests(loader.loadTestsFromModule(module))
+    return tests
 
 
 if __name__ == '__main__':

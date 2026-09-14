@@ -27,7 +27,7 @@ code_sources:
 }
 ```
 
-Sources are `search_declarations`, `all_declarations` and `symbol_refs`. Steps are `filter_visibility`, `expand_relation` and `distinct_symbols`. Their order is meaningful: filtering before expansion selects callers of public functions; filtering after expansion selects public callers. Kast does not reorder steps or insert deduplication. Diagnostics are a separate tool.
+Sources are `search_declarations`, `all_declarations` and `symbol_refs`. Steps are `filter_visibility`, `expand_relation` and `distinct_symbols`. Their order is meaningful: filtering before expansion selects callers of public functions; filtering after expansion selects public callers. Discovery sources deduplicate canonical symbols after compiler refinement. Kast preserves the order of explicit steps; use `distinct_symbols` to deduplicate downstream results. Diagnostics are a separate tool.
 
 `steps: null` and `steps: []` both mean no transformations. `return_fields: null` selects name and location; `return_fields: []` requests mandatory identity and kind only. Duplicate projection fields reject.
 
@@ -52,9 +52,13 @@ A null continuation means there is no resumable suffix. Read `terminal_reason`:
 | Reason | Meaning |
 | --- | --- |
 | `upstream-incomplete` | A provider or discovery stage retained incomplete coverage without resumable state. |
-| `output-item-too-large` | One indivisible item or failure exceeds the encoded output budget. |
+| `output-item-too-large` | One indivisible projected item or failure exceeds the query execution output budget. |
 | `checkpoint-capacity-exceeded` | The unfinished state exceeds the configured checkpoint capacity. |
 | `no-progress` | The execution could not prove a progressing checkpoint. |
+
+The transport separately checks actual encoded response bytes. If no response
+prefix fits, the request rejects with `RESULT_TOO_LARGE` instead of returning a
+qualified page with a terminal reason.
 
 A token belongs to one project, source snapshot and exact query. Changed queries
 reject; expired, evicted or stale checkpoints reject. Rediscover after source or

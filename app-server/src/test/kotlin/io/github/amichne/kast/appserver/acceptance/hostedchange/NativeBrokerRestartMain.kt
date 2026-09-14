@@ -23,11 +23,8 @@ object NativeBrokerRestartMain {
         demand(sha256(before) == request.textAt("sourceSha256"), NativeFailure.SOURCE_CHANGED)
         val session =
             NativeChangeSession.open(
-                product = inputs.product,
-                workspace = inputs.workspace,
+                inputs = inputs,
                 home = Path.of(System.getProperty("user.home")).toRealPath(),
-                schemas = inputs.schemas,
-                privateDirectory = inputs.privateDirectory,
             )
         try {
             withTimeout(180_000) { retrieve(session, identity, source, before) }
