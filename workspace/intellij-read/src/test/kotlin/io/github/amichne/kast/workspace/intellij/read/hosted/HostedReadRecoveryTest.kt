@@ -19,7 +19,7 @@ class HostedReadRecoveryTest {
         val recovery = document.getValue("recovery").jsonObject
         assertEquals("after_state_change", recovery.getValue("kind").jsonPrimitive.content)
         assertEquals("IDE_STATUS", recovery.getValue("check").jsonPrimitive.content)
-        assertEquals("CACHED_GRADLE_MODEL_AVAILABLE", recovery.getValue("required").jsonPrimitive.content)
+        assertEquals("CACHED_GRADLE_MODEL_COMPLETE", recovery.getValue("required").jsonPrimitive.content)
         assertEquals("OBSERVE_IDE_GRADLE_MODEL", recovery.getValue("remediation").jsonPrimitive.content)
     }
 }

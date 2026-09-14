@@ -113,10 +113,16 @@ inside the state tree are deleted as links and never followed.
 ## Presentation and evidence
 
 Kast executes through `item/tool/call` and returns native dynamic-tool text
-content: an operation/status summary and the complete bounded structured outcome.
+content containing one independently parseable JSON document. The existing CLI
+envelope preserves process completion separately from the canonical
+`complete`, `qualified`, or `rejected` outcome, including its qualifications and
+failure details. No summary prefix or newline splitting is required.
 For display, the broker projects its owned `dynamicToolCall` items into the standard
 expandable `mcpToolCall` shape, with the provider namespace as `server`, unchanged
-arguments, and raw text in `result.content`. This is a display adaptation, not an
+arguments, and raw text in `result.content`. A single JSON object from Kast also
+projects into the supported `result.structuredContent` field. Multiple content
+items, malformed JSON, and non-object payloads remain raw text without a
+manufactured structured result. This is a display adaptation, not an
 MCP execution backend. The installed desktop client's generic dynamic-tool row
 only displays a name and discards result content.
 

@@ -43,6 +43,7 @@ import java.security.MessageDigest
 import java.util.HexFormat
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
@@ -50,6 +51,8 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.jsonObject
 
 internal enum class KastProviderOptionsFailure {
     EXECUTABLE_UNAVAILABLE,
@@ -364,24 +367,7 @@ internal object KastProviderQualifier {
                     }
                 }
             },
-            present = { output ->
-                val envelope = output.document
-                val semantic = (envelope["document"] as? JsonObject)?.get("status") as? JsonPrimitive
-                val status =
-                    when (semantic?.content) {
-                        "complete",
-                        "qualified",
-                        "rejected",
-                        "cancelled",
-                        "uncertain" -> semantic.content
-                        else -> if (output.success) "completed" else "rejected"
-                    }
-                ToolPresentation.outcome(
-                    "Kast · ${operation.value} · $status",
-                    canonicalJson(envelope),
-                    success = output.success,
-                )
-            },
+            present = { output -> ToolPresentation.outcome(output.document, success = output.success) },
         )
     }
 
@@ -586,17 +572,9 @@ internal class KastRuntime(private val options: KastProviderOptions) {
                 null
             } ?: return ProviderCall.Rejected(ProviderFailureCode.MALFORMED_KAST_OUTPUT)
         val document =
-            if (completed.exitCode == 0) {
-                buildJsonObject {
-                    put("status", "completed")
-                    put("document", payload)
-                }
-            } else {
-                buildJsonObject {
-                    put("status", "rejected")
-                    put("diagnostic", payload)
-                }
-            }
+            if (completed.exitCode == 0)
+                invocationJson.encodeToJsonElement(KastCompletedDocument(payload)).jsonObject
+            else invocationJson.encodeToJsonElement(KastRejectedDocument(payload)).jsonObject
         return ProviderCall.Completed(
             KastInvocationOutput(
                 document,
@@ -614,7 +592,8 @@ internal class KastRuntime(private val options: KastProviderOptions) {
 /** Hosted admission can fail before canonical read evidence exists, with a successful process exit. */
 private fun JsonElement.isHostedReadRejection(): Boolean {
     val document = this as? JsonObject ?: return false
-    return document["type"] == JsonPrimitive("HOST_REJECTED") || document["outcome"] == JsonPrimitive("rejected")
+    return document["type"] == JsonPrimitive("HOST_REJECTED") || document["outcome"] == JsonPrimitive("rejected") ||
+        document["status"] == JsonPrimitive("rejected")
 }
 
 private sealed interface KastContractQualification {
@@ -679,3 +658,13 @@ internal data class KastInvocationOutput(
     val success: Boolean,
     val observerDirectory: CanonicalBrokerDirectory,
 )
+
+private val invocationJson = Json { encodeDefaults = true }
+
+/** The payload is opaque here; the owning operation output schema admits it before presentation. */
+@Serializable
+private data class KastCompletedDocument(val document: JsonElement, val status: String = "completed")
+
+/** Diagnostic payloads are admitted by the installed rejection schema before presentation. */
+@Serializable
+private data class KastRejectedDocument(val diagnostic: JsonElement, val status: String = "rejected")

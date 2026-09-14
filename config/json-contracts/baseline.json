@@ -956,36 +956,6 @@
         "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexToolCallProjection.kt",
         "scope": "type:CodexToolCallProjector/fun:admitCompleted(10:JsonObject,19:DynamicToolIdentity)",
         "kind": "JSON_BUILDER",
-        "sha256": "c31c707967c17486b448a778302f73a7324bc332eb21cd7f5df18c1204ca50ec"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexToolCallProjection.kt",
-        "scope": "type:CodexToolCallProjector/fun:admitCompleted(10:JsonObject,19:DynamicToolIdentity)/declaration:<anonymous>",
-        "kind": "JSON_BUILDER",
-        "sha256": "5f5eac2cda097d7421c57b9efdf84bed8726b1a9502fc5744ffece67d5fba813"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexToolCallProjection.kt",
-        "scope": "type:CodexToolCallProjector/fun:admitCompleted(10:JsonObject,19:DynamicToolIdentity)/declaration:<anonymous>/declaration:<anonymous>/declaration:<anonymous>",
-        "kind": "JSON_BUILDER",
-        "sha256": "9387ed8cb8a8a37d706bc2f93034d8593f1a49b4becf1c2e35248892236b3afe"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexToolCallProjection.kt",
-        "scope": "type:CodexToolCallProjector/fun:admitCompleted(10:JsonObject,19:DynamicToolIdentity)",
-        "kind": "JSON_BUILDER",
         "sha256": "8e343e91073dd84db4533c71534b06aaf27ae473852314b4671e89b2f134e1ea"
       },
       "count": 1,
@@ -1167,26 +1137,6 @@
         "scope": "type:GradleOutput/val:document",
         "kind": "JSON_BUILDER",
         "sha256": "235d4b16a08f50e64bf1d318c9dadd3dc941f4dcd11ae8a80e18766d06313b58"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastProvider.kt",
-        "scope": "type:KastRuntime/fun:outcome(22:BrokerProcessExecution,2:io1:.6:github1:.7:amichne1:.4:kast1:.9:appserver1:.4:core1:.23:BrokerInvocationContext)/val:document",
-        "kind": "JSON_BUILDER",
-        "sha256": "90c35e0ebd21dce2dc56183add3bfb5dad754df8598bbeb8d9be958707c375ca"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastProvider.kt",
-        "scope": "type:KastRuntime/fun:outcome(22:BrokerProcessExecution,2:io1:.6:github1:.7:amichne1:.4:kast1:.9:appserver1:.4:core1:.23:BrokerInvocationContext)/val:document",
-        "kind": "JSON_BUILDER",
-        "sha256": "b55a0caf0685ea41cbd435b47b36f5150b1f9627c71f9a574ad5d506969f0052"
       },
       "count": 1,
       "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."

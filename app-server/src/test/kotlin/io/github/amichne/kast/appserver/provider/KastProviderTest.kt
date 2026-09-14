@@ -186,6 +186,7 @@ class KastProviderTest {
             val cwd = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
             for (rejection in
                 listOf(
+                    checkNotNull(javaClass.getResource("/canonical-rejected-presentation.json")).readText(),
                     """{"type":"HOST_REJECTED","failure":"DEADLINE_EXCEEDED"}""",
                     """{"schemaVersion":1,"outcome":"rejected","failure":"DIRTY_DOCUMENTS","detail":"saved content required","stage":"EPOCH_OBSERVATION"}""",
                 )) {

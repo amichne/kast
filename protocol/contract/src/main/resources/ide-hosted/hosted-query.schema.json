@@ -108,6 +108,9 @@
             "CONTENT_REVALIDATION",
             "RESULT_DETACHED"
           ]
+        },
+        "recovery": {
+          "$ref": "#/$defs/readRecovery"
         }
       }
     },
@@ -523,6 +526,70 @@
                 "PROJECT_PATH_MALFORMED",
                 "CACHED_PROJECT_UNAVAILABLE"
               ]
+            }
+          }
+        }
+      ]
+    },
+    "readRecovery": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "check",
+            "required",
+            "remediation"
+          ],
+          "properties": {
+            "kind": {
+              "const": "after_state_change"
+            },
+            "check": {
+              "const": "IDE_STATUS"
+            },
+            "required": {
+              "const": "CACHED_GRADLE_MODEL_COMPLETE"
+            },
+            "remediation": {
+              "const": "OBSERVE_IDE_GRADLE_MODEL"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "check",
+            "required",
+            "remediation"
+          ],
+          "properties": {
+            "kind": {
+              "const": "after_indexing"
+            },
+            "check": {
+              "const": "IDE_STATUS"
+            },
+            "required": {
+              "const": "SMART_MODE"
+            },
+            "remediation": {
+              "const": "WAIT_FOR_IDE_INDEXING"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "const": "review_failure"
             }
           }
         }

@@ -1,0 +1,41 @@
+{
+  "type": "KAST_IDE_HOST",
+  "protocol": 3,
+  "root": "/workspace",
+  "hostPid": 123,
+  "host": "00000000-0000-0000-0000-000000000001",
+  "querySchema": "kast.query.run.v2",
+  "operations": [
+    "DESCRIBE",
+    "CLASS_LOOKUP",
+    "DIRECT_SUPERTYPE",
+    "QUERY_RUN",
+    "SYMBOL_DISCOVER",
+    "SYMBOL_INSPECT",
+    "SOURCE_READ",
+    "RELATION_READ",
+    "TRAVERSAL_RUN",
+    "DIAGNOSTIC_CHECK",
+    "CHANGE_PLAN",
+    "CHANGE_APPROVAL_PREPARE",
+    "CHANGE_APPLY",
+    "CHANGE_RECOVER"
+  ],
+  "indexAuthority": "existing_ide_kotlin_stub_index",
+  "readiness": {
+    "status": "unavailable",
+    "rejection": {
+      "schemaVersion": 1,
+      "outcome": "rejected",
+      "failure": "PROJECT_ADMISSION_REJECTED",
+      "detail": "GRADLE_MODEL_UNAVAILABLE",
+      "stage": "PROJECT_ADMISSION",
+      "recovery": {
+        "kind": "after_state_change",
+        "check": "IDE_STATUS",
+        "required": "CACHED_GRADLE_MODEL_COMPLETE",
+        "remediation": "OBSERVE_IDE_GRADLE_MODEL"
+      }
+    }
+  }
+}

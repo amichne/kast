@@ -53,6 +53,22 @@ Keep its product version, semantic authority and repository-root observation.
 Run `kast ide status` to inspect the existing project endpoint. App Server status adds exact paths for
 `serviceLog`, `launchEnvironment`, `savedConfiguration`, and `workspaceRegistry`.
 
+`kast ide status` reports a fresh `readiness` observation without acquiring a
+semantic query permit or spending its search budget. `admission_ready` means the
+exact project is open and initialized, its cached Gradle model is complete,
+indexing is in smart mode, and host admission checks passed. Each subsequent
+query still checks saved documents, its source epoch, and semantic authority.
+`unavailable` retains the observed rejection and its typed recovery guidance.
+An older host that omits `readiness` provides no readiness evidence.
+
+For `GRADLE_MODEL_UNAVAILABLE`, recovery identifies `IDE_STATUS`, the required
+`CACHED_GRADLE_MODEL_COMPLETE` state, and `OBSERVE_IDE_GRADLE_MODEL`. Inspect IDEA's
+existing Gradle project state, then check status again after that state changes.
+Retry the same query after admission becomes ready. A missing cached model does
+not establish that an import is running; Kast neither starts import nor returns
+an empty successful search in its place. If older rejection output omits
+`recovery`, it carries no automated retry instruction.
+
 If startup itself fails, `kast codex` writes a finite reason to stderr.
 `KAST_DEBUG=1` enables bounded launch-stage output alongside the service log.
 

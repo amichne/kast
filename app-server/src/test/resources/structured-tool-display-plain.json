@@ -1,0 +1,15 @@
+{
+  "type": "dynamicToolCall",
+  "id": "call-structured",
+  "namespace": "kast",
+  "tool": "query",
+  "arguments": {},
+  "status": "completed",
+  "success": true,
+  "contentItems": [
+    {
+      "type": "inputText",
+      "text": "human output"
+    }
+  ]
+}

@@ -64,3 +64,10 @@ HostedSemanticServices projects the context’s admitted time allowance into que
 `HostedQueryResponse` bounds the actual encoded query bytes. An oversized positive result becomes a qualified prefix carrying `BYTE_LIMIT_REACHED`, all existing limitations, the original proven lower bound, and every item failure. If mandatory evidence alone cannot fit, the response remains rejected.
 
 Runtime installation admission uses the shared distribution traversal budget rather than the historical 4,096-path broker ceiling. `PAYLOAD_LIMIT_EXCEEDED` remains distinct through coordinator, service, and client failure projections. Both lifecycle transitions and standalone recovery fences block startup.
+
+`ide status` includes a fresh passive `readiness` observation. `admission_ready`
+proves existing-project admission checks at that instant; `unavailable` retains
+the closed failure and conditional recovery guidance. It creates no semantic
+read permit, source epoch, import, or indexing wait. Query admission still checks
+saved content and current authority. Older hosts may omit the new observation;
+absence provides no readiness proof.

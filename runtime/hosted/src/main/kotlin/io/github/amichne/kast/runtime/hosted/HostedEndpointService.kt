@@ -24,6 +24,7 @@ internal enum class HostedEndpointStage {
     RECLAMATION_RETIREMENT,
     ACCEPT,
     REQUEST,
+    READINESS,
     RETIREMENT,
 }
 
@@ -202,6 +203,7 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
                                 host = query.hostLifetime.value.toString(),
                                 querySchema = HostedReadCapabilities.querySchema,
                                 operations = HostedEndpointCapabilities.operations,
+                                readiness = observeEndpointReadiness(observer) { query.readiness(root) },
                             )
                         )
                 )
@@ -251,7 +253,27 @@ private data class HostedDescriptionDocument(
     val host: String,
     val querySchema: String,
     val operations: List<String>,
+    val readiness: io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadinessDocument,
     val type: String = "KAST_IDE_HOST",
     val protocol: Int = HostedEndpointCapabilities.protocol,
     val indexAuthority: String = "existing_ide_kotlin_stub_index",
 )
+
+/** Readiness telemetry reports only the finite outcome of passive admission observation. */
+internal fun observeEndpointReadiness(
+    observer: HostedEndpointObserver,
+    observe: () -> io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadinessDocument,
+): io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadinessDocument {
+    observer.observe(HostedEndpointStage.READINESS, HostedEndpointOutcome.STARTED)
+    return observe().also { result ->
+        observer.observe(
+            HostedEndpointStage.READINESS,
+            when (result) {
+                io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadinessDocument.AdmissionReady ->
+                    HostedEndpointOutcome.COMPLETED
+                is io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadinessDocument.Unavailable ->
+                    HostedEndpointOutcome.REJECTED
+            },
+        )
+    }
+}
