@@ -147,11 +147,12 @@ internal class QueryReadStages(
         symbol: QuerySymbol,
         predicate: QueryPredicate,
         state: QueryExecutionState,
+        resources: io.github.amichne.kast.kernel.ResourceBudget,
     ): List<QuerySymbol> =
         when (predicate) {
             is QueryPredicate.Visibility ->
                 buildList {
-                    when (val result = source.read(visibilityRequest(symbol.selector, state))) {
+                    when (val result = source.read(visibilityRequest(symbol.selector, state, resources))) {
                         is SourceReadResult.Complete ->
                             when (val evidence = SourceDeclarationVisibility.admit(symbol.selector, result)) {
                                 is Refinement.Refined ->

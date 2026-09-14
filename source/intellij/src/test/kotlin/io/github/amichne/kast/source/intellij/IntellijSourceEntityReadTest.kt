@@ -277,6 +277,7 @@ class IntellijSourceEntityReadTest {
                 SourceEntityLimit.parse(limit).refined(),
                 SourceTextByteLimit.parse(65_536).refined(),
                 page,
+                resources = sourceTestResources(),
             ),
         )
     }
@@ -571,3 +572,10 @@ class IntellijSourceEntityReadTest {
         val entities: List<SourceEntity>,
     )
 }
+
+private fun sourceTestResources(): io.github.amichne.kast.kernel.ResourceBudget =
+    io.github.amichne.kast.kernel.ResourceBudget(
+        (io.github.amichne.kast.kernel.ResultLimit.parse(1000) as Refinement.Refined).value,
+        (io.github.amichne.kast.kernel.WorkUnitLimit.parse(10000) as Refinement.Refined).value,
+        (io.github.amichne.kast.kernel.ElapsedTimeLimitMillis.parse(2000) as Refinement.Refined).value,
+    )

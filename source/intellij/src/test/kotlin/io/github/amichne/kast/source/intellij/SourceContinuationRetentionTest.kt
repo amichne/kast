@@ -116,6 +116,7 @@ class SourceContinuationRetentionTest {
                 SourceEntityLimit.parse(1).refined(),
                 SourceTextByteLimit.parse(1000).refined(),
                 SourceReadPage.First,
+                resources = sourceTestResources(),
             ),
             IntellijSelectedSourceCapture.create(snapshot, selector, selector, text).refined(),
         )
@@ -129,3 +130,10 @@ class SourceContinuationRetentionTest {
             is Refinement.Rejected -> error("Expected refinement, got $failure")
         }
 }
+
+private fun sourceTestResources(): io.github.amichne.kast.kernel.ResourceBudget =
+    io.github.amichne.kast.kernel.ResourceBudget(
+        (io.github.amichne.kast.kernel.ResultLimit.parse(1000) as Refinement.Refined).value,
+        (io.github.amichne.kast.kernel.WorkUnitLimit.parse(10000) as Refinement.Refined).value,
+        (io.github.amichne.kast.kernel.ElapsedTimeLimitMillis.parse(2000) as Refinement.Refined).value,
+    )

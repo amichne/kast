@@ -58,6 +58,27 @@ internal class QueryExecutionState(
         return true
     }
 
+    /** Transfers one visibility unit together with the remaining elapsed authority. */
+    fun sourceResources(): Refinement<ResourceBudget, QueryLimitation> {
+        val millis = remainingMillis()
+        if (remainingWork() < 1L) {
+            limit(QueryLimitation.WORK_LIMIT_REACHED)
+            return Refinement.Rejected(QueryLimitation.WORK_LIMIT_REACHED)
+        }
+        if (millis < 1L) {
+            limit(QueryLimitation.TIME_LIMIT_REACHED)
+            return Refinement.Rejected(QueryLimitation.TIME_LIMIT_REACHED)
+        }
+        usedWork += 1L
+        return Refinement.Refined(
+            ResourceBudget(
+                ResultLimit.parse(1).refined(),
+                WorkUnitLimit.parse(1).refined(),
+                ElapsedTimeLimitMillis.parse(millis).refined(),
+            )
+        )
+    }
+
     /**
      * Result authority is shared by sibling child calls in one stage. A stage may transform an existing stream without
      * spending the previous stage's cardinality again.

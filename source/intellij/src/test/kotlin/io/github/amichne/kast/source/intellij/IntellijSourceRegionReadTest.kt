@@ -258,6 +258,7 @@ class IntellijSourceRegionReadTest {
             SourceEntityLimit.parse(250).refined(),
             SourceTextByteLimit.parse(65_536).refined(),
             SourceReadPage.First,
+            resources = sourceTestResources(),
         )
 
     private fun snapshot(text: String): SourceSnapshot {
@@ -309,3 +310,10 @@ class IntellijSourceRegionReadTest {
         return checkNotNull(completion).getOrThrow()
     }
 }
+
+private fun sourceTestResources(): io.github.amichne.kast.kernel.ResourceBudget =
+    io.github.amichne.kast.kernel.ResourceBudget(
+        (io.github.amichne.kast.kernel.ResultLimit.parse(1000) as Refinement.Refined).value,
+        (io.github.amichne.kast.kernel.WorkUnitLimit.parse(10000) as Refinement.Refined).value,
+        (io.github.amichne.kast.kernel.ElapsedTimeLimitMillis.parse(2000) as Refinement.Refined).value,
+    )

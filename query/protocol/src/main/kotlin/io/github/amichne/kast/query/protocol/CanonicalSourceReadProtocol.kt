@@ -198,7 +198,7 @@ private fun SourceReadRequest.admit(
             }
         }
     val domainEntityLimit =
-        SourceEntityLimit.parse(minOf(entityLimit.value, budget.maximumEntities.value)).refinedOrNull()
+        SourceEntityLimit.parse(minOf(entityLimit.value, budget.resources.resultLimit.value)).refinedOrNull()
             ?: return SourceRequestAdmission.Rejected(SourceReadRejection.CONTRACT_VIOLATION)
     val domainTextByteLimit =
         SourceTextByteLimit.parse(minOf(textByteLimit.value, budget.maximumTextBytes.value)).refinedOrNull()
@@ -221,6 +221,7 @@ private fun SourceReadRequest.admit(
             domainEntityLimit,
             domainTextByteLimit,
             domainPage,
+            budget.resources,
         )
     )
 }
@@ -544,6 +545,3 @@ private fun <Value, Failure> Refinement<Value, Failure>.refinedOrNull(): Value? 
 
 private fun contractViolation(): OperationOutcome.Rejected<SourceReadRejection> =
     OperationOutcome.Rejected(SourceReadRejection.CONTRACT_VIOLATION)
-
-/** Host caps intersect the authored per-request source projection limits. */
-data class SourceProtocolBudget(val maximumEntities: SourceEntityLimit, val maximumTextBytes: SourceTextByteLimit)

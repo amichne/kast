@@ -264,4 +264,5 @@ data class SourceReadRequest(
     val entityLimit: SourceEntityLimit,
     val textByteLimit: SourceTextByteLimit,
     val page: SourceReadPage,
+    val resources: io.github.amichne.kast.kernel.ResourceBudget,
 )

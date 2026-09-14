@@ -503,6 +503,8 @@ class CanonicalQueryProtocolTest {
                 executed = true
                 assertEquals(2, read.entityLimit.value)
                 assertEquals(64L, read.textByteLimit.value)
+                assertEquals(10L, read.resources.workUnitLimit.value)
+                assertEquals(100L, read.resources.elapsedTimeLimit.value)
                 io.github.amichne.kast.source.contract.SourceReadResult.Rejected(
                     io.github.amichne.kast.source.contract.SourceReadRejection.WORKSPACE_NOT_READY
                 )
@@ -512,14 +514,21 @@ class CanonicalQueryProtocolTest {
                 .execute(
                     request,
                     lease,
-                    SourceProtocolBudget(
-                        io.github.amichne.kast.source.contract.SourceEntityLimit.parse(2).refined(),
-                        io.github.amichne.kast.source.contract.SourceTextByteLimit.parse(64).refined(),
-                    ),
+                    sourceProjectionBudget(),
                 )
         assertTrue(executed)
         assertTrue(outcome is OperationOutcome.Rejected)
     }
+
+    private fun sourceProjectionBudget() =
+        SourceProtocolBudget(
+            io.github.amichne.kast.kernel.ResourceBudget(
+                io.github.amichne.kast.kernel.ResultLimit.parse(2).refined(),
+                io.github.amichne.kast.kernel.WorkUnitLimit.parse(10).refined(),
+                io.github.amichne.kast.kernel.ElapsedTimeLimitMillis.parse(100).refined(),
+            ),
+            io.github.amichne.kast.source.contract.SourceTextByteLimit.parse(64).refined(),
+        )
 
     private fun token(payload: String): ProtocolText {
         val bytes = payload.toByteArray()

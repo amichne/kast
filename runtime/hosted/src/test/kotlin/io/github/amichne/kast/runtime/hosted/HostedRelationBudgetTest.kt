@@ -42,6 +42,7 @@ class HostedRelationBudgetTest {
         val grant = grant(budget.requested())
         val projected = HostedSemanticBudgets(ReadLimits.Default, grant)
         assertSame(grant.resources, projected.hostedRelationBudget.resources)
+        assertSame(grant.resources, projected.hostedSourceBudget.resources)
         assertEquals(2L, projected.hostedRelationBudget.resources.workUnitLimit.value)
         assertEquals(1, projected.hostedRelationBudget.resources.resultLimit.value)
         assertEquals(grant.returnedBytes.effective.value, projected.hostedRelationBudget.returnedBytes.value)

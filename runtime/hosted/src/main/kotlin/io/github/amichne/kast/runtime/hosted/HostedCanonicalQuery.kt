@@ -18,7 +18,6 @@ import io.github.amichne.kast.query.protocol.SourceProtocolBudget
 import io.github.amichne.kast.query.service.QueryService
 import io.github.amichne.kast.relation.contract.RelationBudget
 import io.github.amichne.kast.relation.contract.RelationByteLimit
-import io.github.amichne.kast.source.contract.SourceEntityLimit
 import io.github.amichne.kast.source.contract.SourceTextByteLimit
 import io.github.amichne.kast.source.intellij.IntellijSourceReadContinuations
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBudget
@@ -153,7 +152,7 @@ internal class HostedSemanticBudgets(
         )
     val hostedSourceBudget =
         SourceProtocolBudget(
-            fixed(SourceEntityLimit.parse(grant.results.effective.value)),
+            grant.resources,
             fixed(SourceTextByteLimit.parse(grant.returnedBytes.effective.value)),
         )
     val hostedTraversalBudget =

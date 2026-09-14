@@ -168,12 +168,14 @@ class QueryService(
                     true
                 }
                 is ExactQueryStage.Where -> {
-                    if (!state.consumeUnit()) false
-                    else {
-                        val values = stages.where(task.value, stage.predicate, state)
-                        tasks.removeFirst()
-                        values.asReversed().forEach { tasks.addFirst(PipelineTask.Symbol(it, stage.next)) }
-                        true
+                    when (val admitted = state.sourceResources()) {
+                        is Refinement.Rejected -> false
+                        is Refinement.Refined -> {
+                            val values = stages.where(task.value, stage.predicate, state, admitted.value)
+                            tasks.removeFirst()
+                            values.asReversed().forEach { tasks.addFirst(PipelineTask.Symbol(it, stage.next)) }
+                            true
+                        }
                     }
                 }
                 is ExactQueryStage.Related -> {
