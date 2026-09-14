@@ -6,6 +6,9 @@ resource: file://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/
 tags: [intellij, kotlin, semantic-query, lifecycle]
 timestamp: 2026-09-13T00:00:00Z
 code_sources:
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedTransportObservation.kt
+  - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmissionTest.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryContinuations.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDeadline.kt
   - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijScopedDeclarationEnumeration.kt
@@ -179,6 +182,20 @@ generated sources and libraries. Published authority retains its existing
 library-inclusive scope policy. This explicit distinction keeps supported live
 requests executable without claiming library-read parity; wider native library
 coverage remains a separate qualification boundary.
+
+`HostedConnectionAdmission` admits up to `HOST_CONNECTIONS` frame exchanges
+(default 16); the native accept backlog is `HOST_ACCEPT_BACKLOG` (default 64).
+One further connection may receive a bounded capacity rejection without semantic
+admission. A shared mutex retains serialization of all semantic and mutation
+operations. Queue admission reserves the configured host-query allowance and
+100 ms of connection time for publication; insufficient time returns
+`ADMISSION_DEADLINE_EXCEEDED` before dispatch. A blocked request frame therefore
+occupies one connection slot without blocking other frame reads.
+
+`kast_transport` records a per-connection correlation ID, finite stage/outcome,
+monotonic stage duration, and observed byte counts. Stages cover accept, request
+read, semantic admission, execution, response preparation, and reply write.
+These records contain no source, request payload, or opaque reference.
 
 `HostedPeerCancellation` races request dispatch against peer disconnection or
 additional input after the one admitted frame. Both jobs are cancelled and joined

@@ -127,18 +127,19 @@ class HostedEndpointTest {
         val executor = java.util.concurrent.Executors.newFixedThreadPool(12)
         try {
             (OwnedHostedEndpoint.open(directory, root, host) as Refinement.Refined).value.use { owner ->
-                val attempts = (1..12).map {
-                    executor.submit<Boolean> {
-                        val client = java.nio.channels.SocketChannel.open(java.net.StandardProtocolFamily.UNIX)
-                        clients.add(client)
-                        start.await(5, java.util.concurrent.TimeUnit.SECONDS)
-                        try {
-                            client.connect(java.net.UnixDomainSocketAddress.of(owner.socket))
-                        } catch (_: java.io.IOException) {
-                            false
+                val attempts =
+                    (1..12).map {
+                        executor.submit<Boolean> {
+                            val client = java.nio.channels.SocketChannel.open(java.net.StandardProtocolFamily.UNIX)
+                            clients.add(client)
+                            start.await(5, java.util.concurrent.TimeUnit.SECONDS)
+                            try {
+                                client.connect(java.net.UnixDomainSocketAddress.of(owner.socket))
+                            } catch (_: java.io.IOException) {
+                                false
+                            }
                         }
                     }
-                }
                 assertEquals(12, attempts.count { it.get(5, java.util.concurrent.TimeUnit.SECONDS) })
             }
         } finally {

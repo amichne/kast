@@ -1,9 +1,9 @@
 package io.github.amichne.kast.runtime.hosted
 
 import com.google.gson.Gson
-import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.ReadLimitParameter
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.IdeReadHostLifetime
 import java.net.StandardProtocolFamily
@@ -122,7 +122,10 @@ private constructor(
                         return Refinement.Rejected(HostedEndpointFailure.SOCKET_UNAVAILABLE)
                     }
                 try {
-                    server.bind(UnixDomainSocketAddress.of(socket), limits[ReadLimitParameter.HOST_ACCEPT_BACKLOG].value)
+                    server.bind(
+                        UnixDomainSocketAddress.of(socket),
+                        limits[ReadLimitParameter.HOST_ACCEPT_BACKLOG].value,
+                    )
                     val socketKey = key(socket)
                     try {
                         Files.writeString(

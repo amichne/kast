@@ -187,3 +187,30 @@ Local repository compilation was blocked by unavailable GitHub network resolutio
 Kotlin's [`withTimeout` contract](https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/with-timeout.html) documents cooperative cancellation and the race in which a timeout can prevent delivery of a computed result. Therefore progress must be owned and published before the hard deadline, not reconstructed from a caught timeout.
 
 JetBrains' [coroutine read-action contract](https://plugins.jetbrains.com/docs/intellij/coroutine-read-actions.html) permits write-allowing read attempts to be canceled and restarted. Keep read actions short, use the platform's cancellation checks, and publish only detached, revalidated facts outside abandoned attempts. Existing lifetime and final-publication checks must remain intact.
+
+## Local continuation evidence (2026-09-14)
+
+The original reports and captured results are now available under
+`~/Downloads/kast-0.40.0-stress-2026-09-14`. Inspection confirms the original
+concurrency patterns were 60 mixed requests at concurrency 6 and 96 class reads
+at concurrency 16. The stale query document is a `query.run` rejection with
+`type=reference-rejected`, `path=from.values[0]`, and `reason=stale-authority`.
+The installed schema omitted three existing canonical reference reasons.
+`LiveReadOutputSchemaTest` now checks every canonical reference rejection
+against the installed output envelope; its new regression failed before the
+schema correction and passed afterward. Unknown reasons remain rejected.
+
+A JVM native-socket test reproduced refusal while dispatch was occupied:
+only 2 of 12 barrier-started clients connected with the original backlog of one.
+All 12 connect with the bounded configurable backlog. The extracted listener
+now serves bounded concurrent frames while preserving serialized semantic and
+mutation dispatch. Native tests complete 156 identified replies with a blocked
+frame, verify finite saturation rejection, and prove disconnected dispatch drains
+before the next request enters. These are transport fixtures, not installed
+compiler qualification or proof that every original failure had this cause.
+
+JDK 25 is available locally. The starter enum tests, hosted transport tests,
+installed output-schema tests, JSON contract guard, knowledge impact, and
+knowledge validation have run successfully. Broader checks and installed
+qualification remain separate gates. R3–R6 and R8 are not yet implemented by
+these changes; no release-completion claim follows from this evidence.

@@ -104,3 +104,8 @@ include `symbol_id` independently of the retained `symbol_ref` capability.
 Traversal output includes progress, strategy and page-local partial expansions.
 Relation output separates exact returned-fact soundness from bounded provider
 omission evidence, with measured or explicitly unmeasured page counts.
+
+Query reference rejection schemas retain all seven canonical reasons, including
+`stale-authority`, `incompatible-authority`, and `incompatible-reference-version`.
+Unknown reason strings remain invalid. Reacquire reference authority explicitly;
+a rejected reference is never refreshed by spelling or converted to success.

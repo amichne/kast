@@ -72,6 +72,8 @@ All values are positive decimal integers, up to 2,147,483,646. Transport and pro
 | `HOST_REQUEST_BYTES` | 16,384 | bytes |
 | `HOST_RESPONSE_BYTES` | 65,536 | bytes |
 | `HOST_DESCRIPTOR_BYTES` | 16,384 | bytes |
+| `HOST_ACCEPT_BACKLOG` | 64 | count |
+| `HOST_CONNECTIONS` | 16 | count |
 | `HOST_CONNECTION_MILLIS` | 5,000 | milliseconds |
 | `CLIENT_EXCHANGE_MILLIS` | 6,000 | milliseconds |
 | `HOST_FILE_CHARACTERS` | 262,144 | characters |

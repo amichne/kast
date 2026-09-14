@@ -137,6 +137,8 @@
         },
         "failure": {
           "enum": [
+            "ADMISSION_CAPACITY_EXCEEDED",
+            "ADMISSION_DEADLINE_EXCEEDED",
             "INVALID_REQUEST",
             "REQUEST_TOO_LARGE",
             "REQUEST_INCOMPLETE",
@@ -928,7 +930,9 @@
             "cause": {
               "type": "string",
               "enum": [
-                "INVALID_REQUEST",
+                "ADMISSION_CAPACITY_EXCEEDED",
+            "ADMISSION_DEADLINE_EXCEEDED",
+            "INVALID_REQUEST",
                 "REQUEST_TOO_LARGE",
                 "REQUEST_INCOMPLETE",
                 "IO_UNAVAILABLE",
@@ -971,6 +975,8 @@
         },
         "failure": {
           "enum": [
+            "ADMISSION_CAPACITY_EXCEEDED",
+            "ADMISSION_DEADLINE_EXCEEDED",
             "INVALID_REQUEST",
             "REQUEST_TOO_LARGE",
             "REQUEST_INCOMPLETE",

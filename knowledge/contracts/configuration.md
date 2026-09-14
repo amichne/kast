@@ -48,3 +48,8 @@ compiler refinement. Query continuation retention has independent typed limits:
 execution/output store. Both stores apply the same policy independently, so the
 combined retained-state ceiling is twice the configured per-store byte bound.
 These keys are declared in the installation catalogue and generated snapshot.
+
+`HOST_ACCEPT_BACKLOG` (64) bounds native pending connections;
+`HOST_CONNECTIONS` (16) bounds concurrently served frames. Semantic work remains
+serialized. Saturation returns a finite admission rejection when a connection
+has reached the application; the OS backlog is a separate finite capacity.
