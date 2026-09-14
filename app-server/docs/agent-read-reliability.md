@@ -352,3 +352,15 @@ cap remains unchanged. The affected handwritten positive source fixture and its
 obsolete JSON allowance were removed in favor of typed projection. The installed
 source fixture now also asserts native checkpoint scope and supported action;
 that new assertion still needs its current-build native run.
+
+### Installed enum-entry qualification fixture
+
+The installed matrix now includes a separate `reliability.discovery` package with
+`Mode`, `ACTIVE.act`, `PASSIVE`, 64 additional enum entries, `Nested`, and an
+ordinary class. It checks exact entry exclusion, fuzzy class discovery, scoped ALL
+class discovery and both `act` declarations through CLI and provider. Requests
+admit 32 work units and eight results: the existing native collector derives
+candidate capacity from work (and fuzzy retention also from results), so excluded
+entries outnumber both bounds. Class results must refine without item failures.
+Fixture isolation, harness unit, JSON and knowledge checks pass; the new native
+cases remain pending until their installed run completes.

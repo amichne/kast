@@ -15,6 +15,7 @@ from hosted_read_transport import HostedReadTransport, ReadProviderFailure, Read
 from hosted_read_requests import NativeTraversalRequest, TraversalStart, TraversalResume
 from native_provider_qualification import qualification_document
 from hosted_concurrent_read import run_concurrent_read_regression
+from hosted_enum_read_regression import run_enum_read_regression
 from hosted_source_read_regression import run_source_paging_regression, source_qualification_observation
 
 
@@ -125,6 +126,7 @@ class _ReadReplay:
             return
         self.source_read()
         run_source_paging_regression(self)
+        run_enum_read_regression(self)
         self.relations()
         response = self.transport.invoke(self.surface, 'check_diagnostics',
             {'relative_path': 'src/main/kotlin/Fixture.kt', 'max_diagnostics': None})

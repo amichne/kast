@@ -62,11 +62,13 @@ def prepare_read_fixture(workspace: Path, repo: Path) -> ReadFixture:
         _digest(workspace / name)
     (workspace / 'settings.gradle.kts').write_text(
         'rootProject.name = "hosted-change-acceptance"\ninclude(":core", ":logging", ":noise0")\n')
+    enum_fixture = workspace / 'src/main/kotlin/ReadEnumMode.kt'
+    shutil.copyfile(template / 'read-reliability/ReadEnumMode.kt', enum_fixture)
     build = workspace / 'build.gradle.kts'
     build.write_text(build.read_text() + '\nsubprojects {\n'
         '    apply(plugin = "org.jetbrains.kotlin.jvm")\n'
         '    repositories { mavenCentral() }\n}\n')
-    files = [target, source_budget, build, workspace / 'settings.gradle.kts']
+    files = [target, source_budget, enum_fixture, build, workspace / 'settings.gradle.kts']
     for name in ('core', 'logging'):
         files.extend(path for path in (workspace / name).rglob('*') if path.is_file())
     inventory = tuple(sorted((str(path.relative_to(workspace)), _digest(path)) for path in files))
