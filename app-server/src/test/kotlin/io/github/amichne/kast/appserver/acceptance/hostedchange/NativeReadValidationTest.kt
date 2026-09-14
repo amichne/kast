@@ -15,6 +15,27 @@ import org.junit.jupiter.api.assertThrows
 
 class NativeReadValidationTest {
     @Test
+    fun `actual provider envelope is validated without manufacturing its status`() {
+        val json = Json { encodeDefaults = true }
+        val schema =
+            (CompiledJsonSchema.compile(
+                    json.encodeToJsonElement(ValidationSchema.serializer(), ValidationSchema()).jsonObject
+                ) as Refinement.Refined)
+                .value
+        val encoded = json.encodeToJsonElement(ActualEnvelope.serializer(), ActualEnvelope())
+        assertTrue(validateNativeReadEnvelope(schema, encoded) is NativeReadResponse.ValidationAccepted)
+        for (malformed in
+            listOf(
+                json.encodeToJsonElement(MissingStatusEnvelope.serializer(), MissingStatusEnvelope()),
+                json.encodeToJsonElement(ActualEnvelope.serializer(), ActualEnvelope(status = "unknown")),
+                json.encodeToJsonElement(ExtraFieldEnvelope.serializer(), ExtraFieldEnvelope()),
+                json.encodeToJsonElement(WrongPayloadEnvelope.serializer(), WrongPayloadEnvelope()),
+            )) {
+            assertTrue(validateNativeReadEnvelope(schema, malformed) is NativeReadResponse.ValidationRejected)
+        }
+    }
+
+    @Test
     fun `validator admits the exact outer envelope and retains bounded failure evidence`() {
         val json = Json { encodeDefaults = true }
         val schema =
@@ -39,6 +60,9 @@ class NativeReadValidationTest {
 }
 
 @Serializable
+private data class ActualEnvelope(val status: String = "completed", val document: String = "canonical output")
+
+@Serializable
 private data class ValidationSchema(
     val type: String = "object",
     val additionalProperties: Boolean = false,
@@ -55,3 +79,14 @@ private data class ValidationProperties(
 @Serializable private data class StatusProperty(val type: String = "string", val const: String = "completed")
 
 @Serializable private data class StringProperty(val type: String = "string")
+
+@Serializable private data class MissingStatusEnvelope(val document: String = "canonical output")
+
+@Serializable
+private data class ExtraFieldEnvelope(
+    val status: String = "completed",
+    val document: String = "canonical output",
+    val extra: Boolean = true,
+)
+
+@Serializable private data class WrongPayloadEnvelope(val status: String = "completed", val document: Int = 1)

@@ -6,6 +6,9 @@ resource: file://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/
 tags: [intellij, kotlin, semantic-query, lifecycle]
 timestamp: 2026-09-13T00:00:00Z
 code_sources:
+  - path: packaging/hosted_wire_schema.py
+  - path: packaging/hosted_peer_probe.py
+  - path: packaging/hosted_concurrent_read.py
   - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedReadAllowanceIdentityTest.kt
   - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedContinuationOwnerRetentionTest.kt
   - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryUnsupportedIdentityTest.kt
@@ -14,6 +17,12 @@ code_sources:
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCheckpointStore.kt
   - path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/QueryCheckpointReplayTest.kt
   - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedRelationReplayTest.kt
+  - path: packaging/hosted_authority_read_regression.py
+  - path: packaging/hosted_read_transport.py
+  - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/acceptance/hostedchange/NativeReadRequest.kt
+  - path: packaging/hosted_transport_observation.py
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedTransportObservation.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceQualifiedProgressDocument.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceReadOutcomeDocuments.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/SourceProgressProjection.kt
@@ -34,14 +43,11 @@ code_sources:
   - path: source/intellij/src/test/kotlin/io/github/amichne/kast/source/intellij/IntellijSourcePageCollectorTest.kt
   - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/NativeSourceSelections.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/SourceProtocolBudget.kt
-  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceReadOutcomeDocuments.kt
   - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceReadContinuations.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ExecutionBudgetDocument.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryResponse.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedExecutionBudgetRequest.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReadBudgetAdmission.kt
-  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt
-  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedTransportObservation.kt
   - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmissionTest.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedRelationResponse.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalRelation.kt
@@ -126,7 +132,6 @@ code_sources:
   - path: protocol/contract/src/main/resources/ide-hosted/hosted-endpoint.schema.json
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnection.kt
-  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint.kt
   - path: experiments/host-observation/kast_ide.py
   - path: experiments/host-observation/qualify_hosted_index.py
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeApply.kt
@@ -490,6 +495,29 @@ the oldest inserted entry even if it was replayed. Owner retirement clears all
 five stores. Tests exercise TTL−1, exact TTL, TTL+1, replay, eviction and clear
 without changing those policies. Retained values are detached identities and
 results; these stores do not retain PSI, K2 sessions or a live project.
+The installed concurrent-read harness separates 156 semantic first attempts from
+four peer probes: disconnect, malformed input, admission saturation, and fresh
+listener health. Saturation uses the staged configuration catalog and actual
+request-read observations, then requires the finite capacity rejection. The
+endpoint emits `CONNECTION_RELEASE` after releasing the admitted connection's
+permit; the macOS native harness waits on log-change notifications for those
+correlated release records before its single health request. Reports retain
+bounded stage/outcome duration and byte totals, first attempts, and finite witness
+failures without source, responses, descriptors, or connection identities. The
+peer checks establish exact rejection shapes and host authority fields; the full
+hosted socket-envelope schema matrix remains separate from the exact frame checks.
+
+After the base and concurrency reads, an ordinary edit to the private fixture
+passes through native refresh/readiness and a single fresh search must observe
+an increased epoch. Both CLI and provider reject an old symbol reference and a
+fresh anchor paired with the old upstream continuation, then acquire fresh read
+authority. Exact byte restoration repeats readiness and requires another epoch
+increase and fresh acquisition. A separate unenrolled owned root refuses issued
+references and continuations before selecting an alternate IDE; it does not
+qualify two enrolled IDE owners. The receipt retains source digests, epoch
+numbers and finite outcomes without tokens or source. The provider's actual outer
+completed/document envelope is checked with its qualified same-build output
+schema; CLI payloads are checked through the canonical wrapper projection.
 
 The hosted owner identity checks independently increase elapsed-time, work,
 result and byte allowances for all four output stores. Each change restores the
@@ -522,6 +550,13 @@ continuation; time/work cases do not claim a deterministic wall-clock cutoff.
 Local Python checks qualify this orchestration and comparison logic. Native
 parity requires invoking the helper through the integrated staged artifact;
 its presence alone is not an installed-product qualification result.
+
+Native malformed, saturated, and health peer responses are validated in memory
+against the hosted endpoint schema extracted from the exact staged product jar.
+Peer receipts retain the schema digest only after validation. Missing, duplicate,
+or invalid embedded schemas fail closed; disconnected peers do not claim a reply.
+This endpoint evidence is separate from canonical tool-document and actual
+provider-envelope validation.
 
 Relation pages retain canonical order within each page. Cross-grant drains
 preserve the full occurrence multiset; changing page boundaries does not promise

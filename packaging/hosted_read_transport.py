@@ -229,6 +229,13 @@ class NativeReadValidation:
     action: str = 'validate'
 
 
+@dataclass(frozen=True)
+class NativeReadEnvelopeValidation:
+    tool: str
+    envelope: dict
+    action: str = 'validate_envelope'
+
+
 class HostedReadTransport:
     def __init__(self, isolation, fixture, product, java, harness):
         self.isolation, self.fixture, self.product = isolation, fixture, product
@@ -304,9 +311,29 @@ class HostedReadTransport:
         return _provider_result(json.loads(self._response()))
 
     def validate(self, tool, document):
+        return self._validate(NativeReadValidation(tool, document))
+
+    def invoke_observed(self, surface, tool, arguments):
+        """Retain the actual provider envelope until its same-build schema has admitted it."""
+        if surface == 'cli':
+            document = self.invoke(surface, tool, arguments)
+            return document, self.validate(tool, document)
+        if surface != 'provider' or self.provider is None:
+            raise ReadTransportRejected('READ_SURFACE_REJECTED')
+        payload = json.dumps(asdict(NativeReadInvocation(tool, arguments))).encode() + b'\n'
+        self.provider.stdin.write(payload)
+        self.provider.stdin.flush()
+        response = json.loads(self._response())
+        document = _provider_result(response)
+        if response.get('kind') != 'completed':
+            raise ReadTransportRejected('READ_PROVIDER_PROTOCOL_REJECTED')
+        digest = self._validate(NativeReadEnvelopeValidation(tool, response['envelope']))
+        return document, digest
+
+    def _validate(self, request):
         # The provider pipe is serial; CLI requests remain concurrent outside this lock.
         with self.validation_lock:
-            payload = json.dumps(asdict(NativeReadValidation(tool, document))).encode() + b'\n'
+            payload = json.dumps(asdict(request)).encode() + b'\n'
             if len(payload) > MAXIMUM_RESPONSE_BYTES or self.provider is None:
                 raise ReadTransportRejected('READ_PROVIDER_OUTPUT_BOUND')
             self.provider.stdin.write(payload)

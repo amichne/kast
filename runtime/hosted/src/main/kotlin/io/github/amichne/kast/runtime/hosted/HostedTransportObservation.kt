@@ -22,6 +22,7 @@ internal enum class HostedTransportStage {
     EXECUTION,
     ENCODING,
     REPLY_WRITE,
+    CONNECTION_RELEASE,
 }
 
 /** One connection owns its correlation and monotonic stage clock through retirement. */

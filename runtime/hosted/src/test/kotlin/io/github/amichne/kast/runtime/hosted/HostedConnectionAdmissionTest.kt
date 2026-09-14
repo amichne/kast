@@ -76,10 +76,10 @@ class HostedConnectionAdmissionTest {
                         concurrentReads(address)
                     }
                     assertEquals(156, calls.get())
-                    assertReplayObservations(observations)
                 } finally {
                     server.cancelAndJoin()
                 }
+                assertReplayObservations(observations)
             }
         }
     }
@@ -166,6 +166,42 @@ class HostedConnectionAdmissionTest {
                     cancellation.release.complete(Unit)
                     server.cancelAndJoin()
                 }
+                assertEquals(2, cancellation.released.get())
+            }
+        }
+    }
+
+    @Test
+    fun `malformed request releases its admitted connection with a correlated completion signal`() = runBlocking {
+        withTimeout(10_000) {
+            fixture { listener, address ->
+                val observations = Collections.synchronizedList(mutableListOf<HostedTransportObservation>())
+                val server =
+                    launch(Dispatchers.IO) {
+                        serveHostedListener(listener, observer(observations) {}, ReadLimits.Default) {
+                            error("Malformed input must not enter semantic dispatch")
+                        }
+                    }
+                try {
+                    assertEquals(
+                        HostedRequests.rejected(HostedEndpointFailure.INVALID_REQUEST),
+                        withContext(Dispatchers.IO) { exchangeRaw(address, "{") },
+                    )
+                } finally {
+                    server.cancelAndJoin()
+                }
+                val events = synchronized(observations) { observations.toList() }
+                val rejected = events.single {
+                    it.stage == HostedTransportStage.REQUEST_READ && it.failure == HostedEndpointFailure.INVALID_REQUEST
+                }
+                assertEquals(
+                    1,
+                    events.count {
+                        it.connectionId == rejected.connectionId &&
+                            it.stage == HostedTransportStage.CONNECTION_RELEASE &&
+                            it.outcome == HostedEndpointOutcome.COMPLETED
+                    },
+                )
             }
         }
     }
@@ -216,9 +252,12 @@ class HostedConnectionAdmissionTest {
     }
 
     private fun exchange(address: UnixDomainSocketAddress, root: String): String =
+        exchangeRaw(address, json.encodeToString(Request(root)))
+
+    private fun exchangeRaw(address: UnixDomainSocketAddress, document: String): String =
         SocketChannel.open(StandardProtocolFamily.UNIX).use { client ->
             client.connect(address)
-            val request = json.encodeToString(Request(root)).toByteArray(Charsets.UTF_8)
+            val request = document.toByteArray(Charsets.UTF_8)
             DataOutputStream(Channels.newOutputStream(client)).apply {
                 writeInt(request.size)
                 write(request)
@@ -253,10 +292,16 @@ class HostedConnectionAdmissionTest {
         val nextQueued = CompletableDeferred<Unit>()
         val nextEntered = CompletableDeferred<Unit>()
         private val admissions = AtomicInteger()
+        val released = AtomicInteger()
 
         override fun observe(stage: HostedEndpointStage, outcome: HostedEndpointOutcome) = Unit
 
         override fun transport(observation: HostedTransportObservation) {
+            if (
+                observation.stage == HostedTransportStage.CONNECTION_RELEASE &&
+                    observation.outcome == HostedEndpointOutcome.COMPLETED
+            )
+                released.incrementAndGet()
             if (
                 observation.stage == HostedTransportStage.SEMANTIC_ADMISSION &&
                     observation.outcome == HostedEndpointOutcome.STARTED &&

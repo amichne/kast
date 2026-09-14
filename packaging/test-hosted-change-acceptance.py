@@ -55,6 +55,14 @@ class ExpectedNativeReport:
 
 
 @dataclass(frozen=True)
+class ExpectedTransportSummary:
+    passed: bool = True
+    completeReplies: int = 159
+    maximumCompleteRepliesPerConnection: int = 1
+    correlatedReplies: bool = True
+
+
+@dataclass(frozen=True)
 class ExpectedConcurrentReplay:
     outcome: str = 'passed'
     clients: int = 12
@@ -64,12 +72,50 @@ class ExpectedConcurrentReplay:
     serialRetries: int = 0
     blockedPeer: bool = True
     sourcePayloadsLogged: bool = False
+    disconnectedPeer: bool = True
+    malformedPeer: bool = True
+    listenerHealthy: bool = True
+    saturatedAdmission: bool = True
+    admissionDrained: bool = True
+    peerFirstAttempts: int = 4
+    peerPassedCount: int = 4
+    transportObservation: ExpectedTransportSummary = ExpectedTransportSummary()
+
+
+@dataclass(frozen=True)
+class ExpectedAuthorityCase:
+    name: str
+    surface: str
+    actualProviderEnvelope: bool = True
+    passed: bool = True
+
+
+@dataclass(frozen=True)
+class ExpectedAuthorityReplay:
+    outcome: str = 'passed'
+    failure: None = None
+    beforeEpoch: int = 1
+    editedEpoch: int = 2
+    restoredEpoch: int = 3
+    preimageSha256: str = '1' * 64
+    editedSha256: str = '2' * 64
+    restoredSha256: str = '1' * 64
+    readinessTransitions: int = 2
+    sourceRestored: bool = True
+    cases: tuple[ExpectedAuthorityCase, ...] = tuple(
+        ExpectedAuthorityCase(name, surface) for surface in ('cli', 'provider') for name in (
+            'current-authority-issued', 'current-continuation-resumes', 'old-epoch-reference-rejected',
+            'fresh-anchor-old-continuation-rejected', 'fresh-authority-reacquired',
+            'restored-source-fresh-authority-reacquired')) + tuple(
+        ExpectedAuthorityCase(name, 'cli') for name in (
+            'foreign-workspace-reference-refused', 'foreign-workspace-continuation-refused'))
 
 
 @dataclass(frozen=True)
 class ExpectedReadQualification:
     providerQualification: ExpectedQualificationAdmitted | ExpectedQualificationRejected | None
     concurrentReplay: ExpectedConcurrentReplay = ExpectedConcurrentReplay()
+    authorityReplay: ExpectedAuthorityReplay = ExpectedAuthorityReplay()
     outcome: str = 'passed'
     sourceUnchanged: bool = True
 
@@ -433,8 +479,19 @@ class HostedChangeAcceptanceTest(unittest.TestCase):
                         'post-save-interrupted', 'plugin-owner-retired', 'fixture-broker-process-replaced')]}
         self.assertTrue(native_workflow_qualified(evidence))
         for path, value in ((('readRegression', 'outcome'), 'rejected'),
+                            (('readRegression', 'authorityReplay'), None),
+                            (('readRegression', 'authorityReplay'), asdict(ExpectedAuthorityReplay(editedEpoch=1))),
+                            (('readRegression', 'authorityReplay'), asdict(ExpectedAuthorityReplay(sourceRestored=False))),
                             (('readRegression', 'concurrentReplay'), None),
                             (('readRegression', 'concurrentReplay'), asdict(ExpectedConcurrentReplay(firstAttempts=155))),
+                            (('readRegression', 'concurrentReplay'), asdict(ExpectedConcurrentReplay(disconnectedPeer=False))),
+                            (('readRegression', 'concurrentReplay'), asdict(ExpectedConcurrentReplay(malformedPeer=False))),
+                            (('readRegression', 'concurrentReplay'), asdict(ExpectedConcurrentReplay(listenerHealthy=False))),
+                            (('readRegression', 'concurrentReplay'), asdict(ExpectedConcurrentReplay(saturatedAdmission=False))),
+                            (('readRegression', 'concurrentReplay'), asdict(ExpectedConcurrentReplay(admissionDrained=False))),
+                            (('readRegression', 'concurrentReplay'), asdict(ExpectedConcurrentReplay(transportObservation=ExpectedTransportSummary(maximumCompleteRepliesPerConnection=2)))),
+                            (('readRegression', 'concurrentReplay'), asdict(ExpectedConcurrentReplay(peerFirstAttempts=5))),
+                            (('readRegression', 'concurrentReplay'), asdict(ExpectedConcurrentReplay(peerPassedCount=2))),
                             (('source', 'clean'), False), (('native', 'metadata', 'status'), 'rejected'),
                             (('native', 'providerQualification'), None),
                             (('native', 'providerQualification'), asdict(ExpectedQualificationRejected('SCHEMA_INVALID'))),
