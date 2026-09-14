@@ -10,6 +10,8 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 
+private const val MAXIMUM_HOSTED_PLUGIN_ENTRIES = 4_096
+
 /** Read-only admission of the exact build-owned descriptor and its already checksum-verified plugin archive. */
 internal fun admitHostedPluginArtifact(
     request: InstallationRequest
@@ -71,7 +73,7 @@ private fun validPluginEntries(zip: ZipFile): Boolean {
     for (entry in zip.entries().asSequence()) {
         val name = entry.name
         if (!canonicalArchiveMember(name) || !pluginMember(name)) return false
-        if (names.size >= MAXIMUM_CONTROL_FILES || !names.add(name.trimEnd('/'))) return false
+        if (names.size >= MAXIMUM_HOSTED_PLUGIN_ENTRIES || !names.add(name.trimEnd('/'))) return false
     }
     return names.any { it.startsWith("kast-ide-hosted/lib/") && it.endsWith(".jar") }
 }

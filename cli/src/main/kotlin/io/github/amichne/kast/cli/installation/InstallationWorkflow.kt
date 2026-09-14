@@ -3,6 +3,7 @@ package io.github.amichne.kast.cli.installation
 import io.github.amichne.kast.appserver.InstalledWorkspaceRegistryRetention
 import io.github.amichne.kast.appserver.PublishedBrokerServiceCommand
 import io.github.amichne.kast.appserver.WorkspaceRegistryRetention
+import io.github.amichne.kast.distribution.contract.ControlDistributionLimits
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationSource
 import io.github.amichne.kast.distribution.contract.configuration.InstallationOperationalLimits
 import io.github.amichne.kast.distribution.contract.configuration.KastConfigurationCatalogue
@@ -27,7 +28,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 
-internal const val MAXIMUM_CONTROL_FILES = 4_096
 private const val MAXIMUM_CONTROL_BYTES = 1024L * 1024L * 1024L
 internal const val MAXIMUM_MANIFEST_BYTES = 1024L * 1024L
 
@@ -833,7 +833,9 @@ private fun verifyControlLayout(root: Path): Boolean {
                     if (Files.isRegularFile(entry, LinkOption.NOFOLLOW_LINKS)) {
                         files += 1
                         bytes += Files.size(entry)
-                        if (files > MAXIMUM_CONTROL_FILES || bytes > MAXIMUM_CONTROL_BYTES) throw IOException("limit")
+                        if (files > ControlDistributionLimits.maximumEntryCount || bytes > MAXIMUM_CONTROL_BYTES) {
+                            throw IOException("limit")
+                        }
                     }
                 }
             }
@@ -866,7 +868,7 @@ private fun payloadFiles(root: Path): List<PayloadFile> {
             entries.sorted().forEach { file ->
                 if (Files.isSymbolicLink(file)) throw IOException("payload rejected")
                 if (!Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS)) return@forEach
-                if (result.size >= MAXIMUM_CONTROL_FILES) throw IOException("payload rejected")
+                if (result.size >= ControlDistributionLimits.maximumEntryCount) throw IOException("payload rejected")
                 bytes += Files.size(file)
                 if (bytes > MAXIMUM_CONTROL_BYTES) throw IOException("payload rejected")
                 result +=
