@@ -351,31 +351,7 @@ class LiveReadOutputSchemaTest {
             val operation = CanonicalOperation.TRAVERSAL_RUN
             val document = CanonicalReadCliDocuments.projectTraversal(outcome).document()
             assertAdmits(operation, document)
-            val qualification = document.getValue("qualification").jsonObject
-            val checkpoint = qualification.getValue("checkpoint").jsonObject
-            assertEquals(JsonPrimitive("upstream"), checkpoint["type"])
-            assertEquals(JsonPrimitive(continuation.value), checkpoint["token"])
-            assertEquals(checkpoint["token"], qualification["continuation"])
-            assertEquals(JsonPrimitive("resume"), qualification["next_action"])
-            assertRejects(operation, document.with("qualification", qualification.with("checkpoint", JsonNull)))
-            assertRejects(
-                operation,
-                document.with("qualification", qualification.with("next_action", JsonPrimitive("unknown"))),
-            )
-            assertRejects(
-                operation,
-                document.with(
-                    "qualification",
-                    qualification.with("checkpoint", checkpoint.with("type", JsonPrimitive("unknown"))),
-                ),
-            )
-            assertRejects(
-                operation,
-                document.with(
-                    "qualification",
-                    qualification.with("checkpoint", checkpoint.with("unproven", JsonPrimitive(true))),
-                ),
-            )
+            assertUpstreamTraversalCheckpointContract(document, continuation)
         }
     }
 
