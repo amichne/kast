@@ -186,3 +186,5 @@ Each output page retains
 known item failures, and its full canonical encoding includes the current grant.
 These controls are implemented for relation and query/search reads. Traversal and
 source remain part of the unfinished reliability work.
+
+Source entity continuations remain owned by the original project. `SOURCE_CONTINUATIONS` bounds entries, `SOURCE_CONTINUATION_BYTES` bounds charged retention (default 32 MiB), and `SOURCE_CONTINUATION_TTL_MILLIS` bounds token age (default ten minutes). The byte charge conservatively includes detached identity text, scope constraints, and object/container overhead; it is not a heap measurement. The store retains no source text or PSI. Replay preserves the original creation time. Expired or evicted tokens are rejected; reacquire a source selection and start a fresh read. A checkpoint that cannot fit is rejected before issuance.

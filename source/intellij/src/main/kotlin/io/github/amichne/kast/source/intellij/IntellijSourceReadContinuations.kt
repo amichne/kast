@@ -14,6 +14,7 @@ import io.github.amichne.kast.source.contract.SourceReadContinuation
 import io.github.amichne.kast.source.contract.SourceReadPage
 import io.github.amichne.kast.source.contract.SourceReadRejection
 import io.github.amichne.kast.source.contract.SourceReadRequest
+import io.github.amichne.kast.source.contract.SourceReadScope
 import io.github.amichne.kast.source.contract.SourceSnapshot
 import io.github.amichne.kast.source.contract.TextProjection
 import io.github.amichne.kast.source.contract.VisibilitySelection
@@ -23,6 +24,7 @@ import io.github.amichne.kast.symbol.contract.fingerprintFields
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.util.LinkedHashMap
+import java.util.concurrent.TimeUnit
 
 internal sealed interface IntellijSourceContinuationAdmission {
     data class Admitted(val cursor: IntellijSourceEntityCursor) : IntellijSourceContinuationAdmission
@@ -42,11 +44,16 @@ class IntellijSourceReadContinuations(
 
     private var lifetime = Lifetime.ACTIVE
     private var sequence = 0L
-    private val entries =
-        object : LinkedHashMap<SourceReadContinuation, Entry>(16, 0.75f, true) {
-            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<SourceReadContinuation, Entry>?): Boolean =
-                size > limits[ReadLimitParameter.SOURCE_CONTINUATIONS].value
-        }
+    private val entries = LinkedHashMap<SourceReadContinuation, Retained>(16, 0.75f, true)
+
+    private data class Retained(val proof: Entry, val createdAt: Long, val chargedBytes: Long)
+
+    private fun expire() {
+        val now = clock()
+        val ttl =
+            TimeUnit.MILLISECONDS.toNanos(limits[ReadLimitParameter.SOURCE_CONTINUATION_TTL_MILLIS].value.toLong())
+        entries.entries.removeIf { now - it.value.createdAt >= ttl }
+    }
 
     @Synchronized
     fun retire() {
@@ -56,11 +63,12 @@ class IntellijSourceReadContinuations(
 
     @Synchronized
     internal fun admit(context: SourceReadContext, request: SourceReadRequest): IntellijSourceContinuationAdmission {
+        expire()
         if (lifetime == Lifetime.RETIRED) return IntellijSourceContinuationAdmission.Rejected
         return when (val page = request.page) {
             SourceReadPage.First -> IntellijSourceContinuationAdmission.Admitted(IntellijSourceEntityCursor(0))
             is SourceReadPage.Continue -> {
-                val entry = entries[page.continuation] ?: return IntellijSourceContinuationAdmission.Rejected
+                val entry = entries[page.continuation]?.proof ?: return IntellijSourceContinuationAdmission.Rejected
                 if (entry.snapshot.context != context || entry.request != request.binding()) {
                     IntellijSourceContinuationAdmission.Rejected
                 } else {
@@ -86,13 +94,38 @@ class IntellijSourceReadContinuations(
             retire()
             return Refinement.Rejected(SourceReadRejection.SOURCE_UNAVAILABLE)
         }
+        expire()
         val binding = request.binding()
         val retained = Entry(binding, capture.snapshot, capture.regionSelector.fingerprint.value, nextOrdinal)
         entries.entries
-            .firstOrNull { it.value == retained }
+            .firstOrNull { it.value.proof == retained }
             ?.let {
                 return Refinement.Refined(it.key)
             }
+        val bytes = retained.chargedBytes()
+        val maximumBytes = limits[ReadLimitParameter.SOURCE_CONTINUATION_BYTES].value.toLong()
+        if (bytes > maximumBytes) return Refinement.Rejected(SourceReadRejection.SOURCE_UNAVAILABLE)
+        while (
+            entries.size >= limits[ReadLimitParameter.SOURCE_CONTINUATIONS].value ||
+                entries.values.sumOf { it.chargedBytes } + bytes > maximumBytes
+        ) {
+            entries.remove(entries.keys.first())
+        }
+        return when (val issued = token(request, capture, binding, nextOrdinal)) {
+            is Refinement.Rejected -> issued
+            is Refinement.Refined -> {
+                entries[issued.value] = Retained(retained, clock(), bytes)
+                issued
+            }
+        }
+    }
+
+    private fun token(
+        request: SourceReadRequest,
+        capture: IntellijSelectedSourceCapture,
+        binding: SourceRequestBinding,
+        nextOrdinal: Int,
+    ): Refinement<SourceReadContinuation, SourceReadRejection> {
         sequence += 1
         val predecessor = (request.page as? SourceReadPage.Continue)?.continuation?.value.orEmpty()
         val canonical = buildString {
@@ -115,7 +148,6 @@ class IntellijSourceReadContinuations(
                 is Refinement.Refined -> parsed.value
                 is Refinement.Rejected -> return Refinement.Rejected(SourceReadRejection.CONTRACT_VIOLATION)
             }
-        entries[continuation] = retained
         return Refinement.Refined(continuation)
     }
 
@@ -124,8 +156,30 @@ class IntellijSourceReadContinuations(
         val snapshot: SourceSnapshot,
         val regionFingerprint: String,
         val nextOrdinal: Int,
-    )
+    ) {
+        /**
+         * Conservative retention charge for detached identity text and its object/container overhead; not heap
+         * measurement.
+         */
+        fun chargedBytes(): Long {
+            val scopeFields =
+                when (val scope = snapshot.readScope) {
+                    SourceReadScope.ExactFile -> emptyList()
+                    is SourceReadScope.Constrained ->
+                        listOf(SymbolSearchScope.snapshot(scope.scope).toString()) +
+                            scope.constraints.fingerprintFields()
+                }
+            val fields = listOf(request.toString(), snapshot.toString(), regionFingerprint) + scopeFields
+            return fields.sumOf {
+                it.toByteArray(StandardCharsets.UTF_8).size.toLong() * RETAINED_TEXT_FACTOR + RETAINED_FIELD_BYTES
+            } + RETAINED_ENTRY_BYTES
+        }
+    }
 }
+
+private const val RETAINED_TEXT_FACTOR = 4L
+private const val RETAINED_FIELD_BYTES = 128L
+private const val RETAINED_ENTRY_BYTES = 4_096L
 
 private data class SourceRequestBinding(
     val anchor: SourceAnchorBinding,

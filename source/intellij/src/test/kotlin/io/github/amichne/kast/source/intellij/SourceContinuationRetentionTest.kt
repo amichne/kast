@@ -34,17 +34,24 @@ class SourceContinuationRetentionTest {
     @Test
     fun `replay does not renew expiry and expired continuation cannot restore`() {
         var now = 0L
-        val owner = IntellijSourceReadContinuations(limits(ReadLimitParameter.SOURCE_CONTINUATION_TTL_MILLIS, 10)) { now }
+        val owner =
+            IntellijSourceReadContinuations(limits(ReadLimitParameter.SOURCE_CONTINUATION_TTL_MILLIS, 10)) { now }
         val fixture = fixture()
         val token = owner.issue(fixture.request, fixture.capture, 1).refined()
         val resumed = fixture.request.copy(page = SourceReadPage.Continue(token))
         now = TimeUnit.MILLISECONDS.toNanos(6)
         assertEquals(token, owner.issue(fixture.request, fixture.capture, 1).refined())
         repeat(2) {
-            assertInstanceOf(IntellijSourceContinuationAdmission.Admitted::class.java, owner.admit(fixture.capture.snapshot.context, resumed))
+            assertInstanceOf(
+                IntellijSourceContinuationAdmission.Admitted::class.java,
+                owner.admit(fixture.capture.snapshot.context, resumed),
+            )
         }
         now = TimeUnit.MILLISECONDS.toNanos(11)
-        assertEquals(IntellijSourceContinuationAdmission.Rejected, owner.admit(fixture.capture.snapshot.context, resumed))
+        assertEquals(
+            IntellijSourceContinuationAdmission.Rejected,
+            owner.admit(fixture.capture.snapshot.context, resumed),
+        )
     }
 
     @Test
@@ -60,9 +67,19 @@ class SourceContinuationRetentionTest {
         val fixture = fixture()
         val first = owner.issue(fixture.request, fixture.capture, 1).refined()
         val second = owner.issue(fixture.request, fixture.capture, 2).refined()
-        assertEquals(IntellijSourceContinuationAdmission.Rejected, owner.admit(fixture.capture.snapshot.context, fixture.request.copy(page = SourceReadPage.Continue(first))))
+        assertEquals(
+            IntellijSourceContinuationAdmission.Rejected,
+            owner.admit(fixture.capture.snapshot.context, fixture.request.copy(page = SourceReadPage.Continue(first))),
+        )
         repeat(2) {
-            val admitted = assertInstanceOf(IntellijSourceContinuationAdmission.Admitted::class.java, owner.admit(fixture.capture.snapshot.context, fixture.request.copy(page = SourceReadPage.Continue(second))))
+            val admitted =
+                assertInstanceOf(
+                    IntellijSourceContinuationAdmission.Admitted::class.java,
+                    owner.admit(
+                        fixture.capture.snapshot.context,
+                        fixture.request.copy(page = SourceReadPage.Continue(second)),
+                    ),
+                )
             assertEquals(2, admitted.cursor.startOrdinal)
         }
     }
@@ -74,25 +91,41 @@ class SourceContinuationRetentionTest {
         val text = "class Subject"
         val root = CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined()
         val file = CanonicalWorkspaceFilePath.fromCanonicalPath(root, Path.of("/workspace/Subject.kt")).refined()
-        val snapshot = SourceSnapshot.create(
-            SemanticReadLease(root, EvidenceGeneration.parse(42).refined()),
-            WorkspaceStateIdentity.parse("workspace-state-v1|source").refined(),
-            SymbolDiscoveryFileIdentity.Workspace(file),
-            SourceTextIdentity.fromNormalizedCommittedText(text),
-            Utf16CodeUnitCount.parse(text.length).refined(),
-        )
-        val range = SourceRange.create(snapshot, Utf16CodeUnitOffset.parse(0).refined(), Utf16CodeUnitOffset.parse(text.length).refined()).refined()
+        val snapshot =
+            SourceSnapshot.create(
+                SemanticReadLease(root, EvidenceGeneration.parse(42).refined()),
+                WorkspaceStateIdentity.parse("workspace-state-v1|source").refined(),
+                SymbolDiscoveryFileIdentity.Workspace(file),
+                SourceTextIdentity.fromNormalizedCommittedText(text),
+                Utf16CodeUnitCount.parse(text.length).refined(),
+            )
+        val range =
+            SourceRange.create(
+                    snapshot,
+                    Utf16CodeUnitOffset.parse(0).refined(),
+                    Utf16CodeUnitOffset.parse(text.length).refined(),
+                )
+                .refined()
         val selector = SourceSelector.issueRoot(range, SourceRegionKind.FILE)
         return Fixture(
-            SourceReadRequest(SourceReadAnchor.Source(selector), RegionSelection.Anchor, EntitySelection.None, TextProjection.None, SourceEntityLimit.parse(1).refined(), SourceTextByteLimit.parse(1000).refined(), SourceReadPage.First),
+            SourceReadRequest(
+                SourceReadAnchor.Source(selector),
+                RegionSelection.Anchor,
+                EntitySelection.None,
+                TextProjection.None,
+                SourceEntityLimit.parse(1).refined(),
+                SourceTextByteLimit.parse(1000).refined(),
+                SourceReadPage.First,
+            ),
             IntellijSelectedSourceCapture.create(snapshot, selector, selector, text).refined(),
         )
     }
 
     private data class Fixture(val request: SourceReadRequest, val capture: IntellijSelectedSourceCapture)
 
-    private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value = when (this) {
-        is Refinement.Refined -> value
-        is Refinement.Rejected -> error("Expected refinement, got $failure")
-    }
+    private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value =
+        when (this) {
+            is Refinement.Refined -> value
+            is Refinement.Rejected -> error("Expected refinement, got $failure")
+        }
 }

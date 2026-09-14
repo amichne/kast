@@ -395,3 +395,5 @@ Source entity cursors retain typed token keys and exact snapshot, region, and
 selection identity. Their binding excludes entity/text page allowances; an equal
 source cursor position reuses its token. The source continuation owner is separate
 from native entity collection.
+
+The source continuation owner applies independent entry, charged-byte, and age bounds. It expires entries before admission and issuance, and replay does not renew token age. Retention includes detached snapshot/scope identity but no source payload. Oversized entries fail before issuance; retirement clears every entry.
