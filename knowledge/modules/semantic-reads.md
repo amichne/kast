@@ -191,6 +191,7 @@ checked before visibility resolution and candidate construction; structural
 selectors, parents, ranges and depths still preserve eligible descendants inside
 excluded containers. The focused excluded-input and cancellation tests prove
 these boundaries without claiming installed IDE qualification.
+
 Source continuation admission preserves finite causes before invoking the provider:
 missing, expired, evicted, or retired tokens yield `CONTINUATION_UNAVAILABLE`;
 a changed context yields `SOURCE_SNAPSHOT_MISMATCH`; a changed request yields

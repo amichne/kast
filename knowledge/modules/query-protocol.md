@@ -117,7 +117,10 @@ no IntelliJ process and make no native provider-parity claim.
 `QueryReferenceTransport` separates detached token representation from canonical decoding. Hosted exact and candidate references normally use version-5 handles (31 and 35 characters); lookup restores the full version-2/3 token before the existing authority, scope and evidence checks. Short-digest collisions return the inline selector and retain the prior handle. Exact query results separately expose a canonical `symbol_id` for snapshot-local declaration equality across admitted scopes; this key cannot restore or broaden a read capability. Published test composition retains inline transport by default. Source snapshot tokens retain their codec. Query continuations use a host-supplied bounded checkpoint store. Traversal tokens additionally bind strategy, maximum depth and cumulative progress; older tokens without these witnesses reject. Relation tokens retain earlier-page provider limitations even after the final page.
 
 Relation projection retains provider/version, page-local observed or unmeasured
-omissions, bounded source samples and a closed remediation. `soundness` describes
+omissions, bounded source samples and a closed remediation. Budget stops qualify
+that page's unmeasured remainder; they do not manufacture observed missing facts.
+An eventual complete drain retains permanent provider omissions and its final
+coverage independently of temporary page boundaries. `soundness` describes
 the exact returned facts independently of incomplete enumeration. Traversal
 projection retains cumulative progress and page-local partial node expansions;
 a bounded-fan-out remainder is explicitly unexamined rather than silently absent.

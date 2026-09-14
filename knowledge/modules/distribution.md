@@ -6,6 +6,7 @@ resource: file://distribution
 tags: [distribution, configuration, packaging, release]
 timestamp: 2026-09-14T00:00:00Z
 code_sources:
+  - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/acceptance/hostedchange/NativeHostedReadMain.kt
   - path: packaging/released_acceptance_product.py
   - path: packaging/released_tool_inventory.py
   - path: packaging/hosted_raw_symbol_regression.py
@@ -83,4 +84,12 @@ boundaries separate.
 
 The native acceptance runner also accepts `--release-assets` and `--release-version` in place of source-built `--product` and `--plugin`. This mode requires a clean checkout at the exact version tag and a harness carrying that source commit. It invokes the tagged public `install.sh` with original checksum-bound control and plugin archives in an exclusively owned fixture. It verifies the checksum-derived installed version directory, manifest inventory, and original archive file bytes, then routes CLI and provider calls through the installed `bin/kast-complete`. The hosted plugin stays in the installer's private JetBrains plugin directory; only the separately identified test probe is added. Login-service and App Server activation are disabled during installation. This admission mode alone proves neither native behavior nor upgrade or persistent-session behavior; those require the corresponding completed runtime receipts. Temporary fake-installer tests qualify the admission boundary only.
 
-Released-mode admission also reads the installed schema through that wrapper and verifies all 13 advertised tools against their canonical operation IDs and the 11-tool saved default selection. The native read harness explicitly selects the 10 read tools, including raw symbol discovery and inspection. Their two additional native cases preserve the issued candidate selector through compiler refinement; adding those cases does not change installed production defaults.
+Released-mode admission also reads the installed schema through that wrapper and
+verifies all 13 advertised tools against their canonical operation IDs and the
+11-tool saved default selection. Those defaults contain eight read tools and
+three change tools. The native read harness explicitly selects ten read tools,
+including raw symbol discovery and inspection, and excludes `change_plan` even
+though planning has a read effect. The two raw-symbol cases preserve an issued
+candidate through compiler refinement and are invoked for both CLI and provider
+surfaces. Adding those cases does not change installed production defaults;
+fixture wiring and inventory admission do not establish their native result.
