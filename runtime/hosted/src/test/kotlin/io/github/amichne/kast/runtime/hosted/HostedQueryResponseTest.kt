@@ -99,7 +99,7 @@ class HostedQueryResponseTest {
             val response =
                 encodeHostedQueryResponse(pending) { retained ->
                     remainder = retained
-                    HostedQueryRetention.Retained(
+                    HostedOutputRetention.Retained(
                         ProtocolText.parse(HostedQueryContinuations.prefix + "0".repeat(36)).refined()
                     )
                 }
@@ -129,7 +129,7 @@ class HostedQueryResponseTest {
 
     private fun encodeWithRetention(semantic: HostedQueryOutcome): HostedResponse =
         encodeHostedQueryResponse(semantic) {
-            HostedQueryRetention.Retained(
+            HostedOutputRetention.Retained(
                 ProtocolText.parse(HostedQueryContinuations.prefix + "0".repeat(36)).refined()
             )
         }

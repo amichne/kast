@@ -20,7 +20,7 @@ internal fun encodeHostedQueryResponse(
     semantic: HostedQueryOutcome,
     limits: ReadLimits = ReadLimits.Default,
     observation: IntellijReadObservation = IntellijReadObservation.None,
-    retain: ((HostedQueryOutcome) -> HostedQueryRetention)? = null,
+    retain: ((HostedQueryOutcome) -> HostedOutputRetention)? = null,
 ): HostedResponse {
     val original = HostedResponse.Canonical.encode(CanonicalOperationWireBindings.queryRun, semantic, limits)
     if (original !is HostedResponse.Oversized) return original
@@ -110,12 +110,12 @@ private fun largestHostedQueryPrefix(itemCount: Int, encode: (Int) -> HostedResp
     return bestCount
 }
 
-private fun HostedQueryRetention.encodeOr(
+private fun HostedOutputRetention.encodeOr(
     original: HostedResponse,
     encode: (ProtocolText) -> HostedResponse,
 ): HostedResponse =
     when (this) {
-        is HostedQueryRetention.Retained -> encode(token)
-        HostedQueryRetention.CapacityExceeded,
-        HostedQueryRetention.EncodingRejected -> original
+        is HostedOutputRetention.Retained -> encode(token)
+        HostedOutputRetention.CapacityExceeded,
+        HostedOutputRetention.EncodingRejected -> original
     }

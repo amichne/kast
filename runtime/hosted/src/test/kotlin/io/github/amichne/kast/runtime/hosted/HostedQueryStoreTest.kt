@@ -50,8 +50,8 @@ class HostedQueryStoreTest {
                     QueryRunResult(bounded(emptyList()), bounded(emptyList())),
                 )
             )
-        assertTrue(store.issue(request("short"), lease, output) is HostedQueryRetention.Retained)
-        assertEquals(HostedQueryRetention.CapacityExceeded, store.issue(request("x".repeat(6000)), lease, output))
+        assertTrue(store.issue(request("short"), lease, output) is HostedOutputRetention.Retained)
+        assertEquals(HostedOutputRetention.CapacityExceeded, store.issue(request("x".repeat(6000)), lease, output))
     }
 
     private fun request(reference: String) =
