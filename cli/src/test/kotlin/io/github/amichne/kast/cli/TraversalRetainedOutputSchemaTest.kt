@@ -27,18 +27,24 @@ class TraversalRetainedOutputSchemaTest {
 
     @Test
     fun `retained traversal coverage and resume action survive CLI and installed schemas`() = runTest {
-        val cases = listOf(
-            TraversalPreparedCoverageDocument.COMPLETE to "complete",
-            TraversalPreparedCoverageDocument.RESUMABLE to "resumable",
-            TraversalPreparedCoverageDocument.TERMINAL_INCOMPLETE to "terminal_incomplete",
-        )
+        val cases =
+            listOf(
+                TraversalPreparedCoverageDocument.COMPLETE to "complete",
+                TraversalPreparedCoverageDocument.RESUMABLE to "resumable",
+                TraversalPreparedCoverageDocument.TERMINAL_INCOMPLETE to "terminal_incomplete",
+            )
         for (owner in listOf(RelationPagingFixture.published(), RelationPagingFixture.live())) {
             val page = owner.page() as OperationOutcome.Qualified
             for ((coverage, expected) in cases) {
-                val outcome = OperationOutcome.Qualified(
-                    EvidenceEnvelope(CanonicalOperation.TRAVERSAL_RUN.id, page.evidence.basis, fixture.traversalResult()),
-                    qualification(coverage),
-                )
+                val outcome =
+                    OperationOutcome.Qualified(
+                        EvidenceEnvelope(
+                            CanonicalOperation.TRAVERSAL_RUN.id,
+                            page.evidence.basis,
+                            fixture.traversalResult(),
+                        ),
+                        qualification(coverage),
+                    )
                 with(fixture) {
                     val document = CanonicalReadCliDocuments.projectTraversal(outcome).document()
                     assertAdmits(CanonicalOperation.TRAVERSAL_RUN, document)
@@ -57,18 +63,22 @@ class TraversalRetainedOutputSchemaTest {
 
     private fun qualification(coverage: TraversalPreparedCoverageDocument) =
         TraversalRunQualification.admitResumable(
-            limitations = when (coverage) {
-                TraversalPreparedCoverageDocument.COMPLETE,
-                TraversalPreparedCoverageDocument.RESUMABLE -> listOf(TraversalLimitationDocument.BYTE_LIMIT_REACHED)
-                TraversalPreparedCoverageDocument.TERMINAL_INCOMPLETE -> listOf(
-                    TraversalLimitationDocument.BYTE_LIMIT_REACHED,
-                    TraversalLimitationDocument.DEPTH_LIMIT_REACHED,
-                )
-            },
-            relationLimitations = emptyList(),
-            checkpoint = TraversalCheckpointDocument.RetainedOutput(token, coverage),
-            nextAction = ReadResumeActionDocument.RESUME,
-        ).proven()
+                limitations =
+                    when (coverage) {
+                        TraversalPreparedCoverageDocument.COMPLETE,
+                        TraversalPreparedCoverageDocument.RESUMABLE ->
+                            listOf(TraversalLimitationDocument.BYTE_LIMIT_REACHED)
+                        TraversalPreparedCoverageDocument.TERMINAL_INCOMPLETE ->
+                            listOf(
+                                TraversalLimitationDocument.BYTE_LIMIT_REACHED,
+                                TraversalLimitationDocument.DEPTH_LIMIT_REACHED,
+                            )
+                    },
+                relationLimitations = emptyList(),
+                checkpoint = TraversalCheckpointDocument.RetainedOutput(token, coverage),
+                nextAction = ReadResumeActionDocument.RESUME,
+            )
+            .proven()
 
     private fun assertInvalidCheckpoints(document: JsonObject, qualification: JsonObject, checkpoint: JsonObject) =
         with(fixture) {
@@ -76,7 +86,10 @@ class TraversalRetainedOutputSchemaTest {
             for (invalid in listOf(JsonNull, JsonPrimitive("unknown"))) {
                 assertRejects(
                     operation,
-                    document.with("qualification", qualification.with("checkpoint", checkpoint.with("upstream", invalid))),
+                    document.with(
+                        "qualification",
+                        qualification.with("checkpoint", checkpoint.with("upstream", invalid)),
+                    ),
                 )
                 assertRejects(operation, document.with("qualification", qualification.with("next_action", invalid)))
             }
