@@ -100,6 +100,29 @@ class InstallationWorkflowTest {
     }
 
     @Test
+    fun `control verification reports layout rejection above the file limit`(@TempDir temporary: Path) {
+        val root = temporary.toRealPath()
+        val outcome =
+            InstallationWorkflow.execute(
+                releaseRequest(
+                    root,
+                    root.resolve("installation"),
+                    root.resolve("commands"),
+                    Files.createDirectory(root.resolve("home")),
+                    Files.createDirectory(root.resolve("codex-home")),
+                    "1.2.3",
+                    controlFileCount = 16_385,
+                    mode = InstallationMode.PLAN,
+                )
+            )
+
+        assertEquals(
+            InstallationOutcome.Rejected(InstallationFailure.CONTROL_LAYOUT_REJECTED),
+            outcome,
+        )
+    }
+
+    @Test
     fun `installation with the shipped knowledge file count is idempotent`(@TempDir temporary: Path) {
         val root = temporary.toRealPath()
         val request =
@@ -227,10 +250,11 @@ class InstallationWorkflowTest {
         val control = Files.createDirectories(fixture.resolve("control-$version"))
         val bin = Files.createDirectories(control.resolve("bin"))
         val metadata = Files.createDirectories(control.resolve("share/kast"))
+        val emptyDocument = Json.encodeToString(EmptyDocumentFixture)
         val executable = Files.writeString(bin.resolve("kast"), "#!/bin/sh\nexit 0\n")
         Files.setPosixFilePermissions(executable, PosixFilePermissions.fromString("rwxr-xr-x"))
-        Files.writeString(metadata.resolve("operation-registry.json"), "{}")
-        Files.writeString(metadata.resolve("wire-schema.json"), "{}")
+        Files.writeString(metadata.resolve("operation-registry.json"), emptyDocument)
+        Files.writeString(metadata.resolve("wire-schema.json"), emptyDocument)
         Files.writeString(
             metadata.resolve("installation-lifecycle.py"),
             """
@@ -252,7 +276,7 @@ class InstallationWorkflowTest {
         )
         require(controlFileCount >= 5)
         val knowledge = Files.createDirectories(metadata.resolve("knowledge/declarations"))
-        repeat(controlFileCount - 5) { index -> Files.writeString(knowledge.resolve("$index.json"), "{}") }
+        repeat(controlFileCount - 5) { index -> Files.writeString(knowledge.resolve("$index.json"), emptyDocument) }
 
         val runtime = fixture.resolve("kast-ide-hosted-$version.zip")
         ZipOutputStream(Files.newOutputStream(runtime)).use { archive ->
@@ -330,6 +354,8 @@ class InstallationWorkflowTest {
         hash.digest().joinToString("") { byte -> "%02x".format(byte) }
     }
 }
+
+@Serializable private data object EmptyDocumentFixture
 
 @Serializable
 private data class PluginFixture(
