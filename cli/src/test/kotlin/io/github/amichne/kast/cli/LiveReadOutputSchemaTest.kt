@@ -23,6 +23,26 @@ import org.junit.jupiter.api.Test
 
 class LiveReadOutputSchemaTest {
     @Test
+    fun `every finite query reference rejection satisfies its installed schema`() {
+        for (reason in QueryReferenceRejectionReason.entries) {
+            val document =
+                CanonicalQueryCliDocuments.project(
+                        OperationOutcome.Rejected(QueryRunRejection.ReferenceRejected(offset(0), reason))
+                    )
+                    .document()
+            assertAdmits(CanonicalOperation.QUERY_RUN, document)
+            assertEquals(JsonPrimitive("rejected"), document["status"])
+            val rejection = document.getValue("rejection").jsonObject
+            assertEquals(JsonPrimitive("reference-rejected"), rejection["type"])
+            assertEquals(JsonPrimitive("from.values[0]"), rejection["path"])
+            assertRejects(
+                CanonicalOperation.QUERY_RUN,
+                document.with("rejection", rejection.with("reason", JsonPrimitive("unknown-authority"))),
+            )
+        }
+    }
+
+    @Test
     fun `every finite query execution rejection satisfies its installed schema`() {
         for (reason in QueryExecutionRejectionDocument.entries) {
             assertAdmits(
