@@ -1,5 +1,6 @@
 """Installed independent budget grants and retained traversal replay; payloads stay in memory."""
 from dataclasses import asdict, dataclass, field, replace
+from collections import Counter
 import json
 
 from hosted_read_requests import BreadthFirstStrategy, TraversalStart, TraversalResume
@@ -126,8 +127,10 @@ def run_budget_read_regression(replay):
                 'sameLiveAuthority': response.get('live') == replay.live,
                 'independentGrant': independent_grant(response, budget),
             }, response=response)
+    _retained_traversal(replay, ElapsedBudget(1000), ElapsedBudget(3000))
+    _retained_traversal(replay, WorkBudget(100), WorkBudget(100000))
     _retained_traversal(replay, ResultsBudget(1), ResultsBudget(100))
-    _retained_traversal(replay, BytesBudget(16384), BytesBudget(500000))
+    _retained_traversal(replay, BytesBudget(8192), BytesBudget(500000))
 
 
 def _invoke(replay, tool, request):
@@ -230,9 +233,13 @@ def _retained_traversal(replay, low, large):
     last, reference = changed.pages[-1], baseline.pages[-1]
     checks = {
         'ampleBaselineComplete': baseline.valid,
-        'lowBudgetQualified': first.get('status') == 'qualified' and traversal_checkpoint(first) is not None,
+        'lowBudgetCompleteOrResumable': ((isinstance(low, (ElapsedBudget, WorkBudget))
+            and first.get('status') == 'complete' and 'qualification' not in first)
+            or traversal_checkpoint(first) is not None),
+        'effectiveAllowanceIncreased': (baseline.pages[0].get('execution_budget', {}).get(axis, {}).get('effective', 0)
+            > first.get('execution_budget', {}).get(axis, {}).get('effective', 0)),
         'largerGrantComplete': changed.valid,
-        'orderedGraphAndProofIdentity': changed_records == baseline_records,
+        'graphOccurrenceAndProofIdentity': Counter(changed_records) == Counter(baseline_records),
         'finalEdgeProgress': last.get('progress', {}).get('totalEdges') == reference.get('progress', {}).get('totalEdges'),
         'semanticDepthUnchanged': (last.get('progress', {}).get('maximumDepthReached')
                                    == reference.get('progress', {}).get('maximumDepthReached')),

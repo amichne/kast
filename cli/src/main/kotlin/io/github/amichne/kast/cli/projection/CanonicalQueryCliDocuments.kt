@@ -47,6 +47,7 @@ internal object CanonicalQueryCliDocuments {
                         CanonicalOperation.QUERY_RUN.id.value,
                         "rejected",
                         rejection.reason().toCliDocument(),
+                        rejection.recoveryAction(),
                         rejection.budgetPresence(),
                     )
                 )
@@ -84,6 +85,7 @@ private data class QueryRejectedCliDocument(
     val operation: String,
     val status: String,
     val rejection: QueryRejectionCliDocument,
+    @SerialName("next_action") val nextAction: ReadRecoveryAction,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     @SerialName("execution_budget")
     val executionBudget: ExecutionBudgetPresence = ExecutionBudgetPresence.Absent,

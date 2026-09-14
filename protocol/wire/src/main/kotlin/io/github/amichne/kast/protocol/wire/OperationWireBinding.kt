@@ -74,6 +74,10 @@ internal constructor(
     val schema: SchemaIdentity
         get() = definition.schema
 
+    val minimumResponseBytes: WireResponseByteMinimum by lazy {
+        WireResponseByteMinimum.forOperation(schema, operation)
+    }
+
     fun encodeRequest(request: Request): WireEncoding =
         when (val encoded = serializers.request.encode(request, WireValueRole.REQUEST)) {
             is WireValueEncoding.Encoded -> encodeEnvelope(WireBodyDocument.Request(encoded.value))

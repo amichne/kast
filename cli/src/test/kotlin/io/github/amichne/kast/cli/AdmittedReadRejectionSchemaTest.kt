@@ -34,6 +34,7 @@ class AdmittedReadRejectionSchemaTest {
                         "operation",
                         "status",
                         "execution_budget",
+                        "next_action",
                         if (case.operation == CanonicalOperation.QUERY_RUN) "rejection" else "reason",
                     ),
                     document.keys,

@@ -138,7 +138,7 @@ class AuthorityReadTest(unittest.TestCase):
         elif arguments['anchor']['selector'] != selector:
             document = RejectionFixture('stale-generation')
         elif arguments['page']['type'] == 'continue' and arguments['page']['continuation'] != 'cursor-' + str(self.epoch):
-            document = RejectionFixture('contract-violation')
+            document = RejectionFixture('continuation-unavailable')
         else:
             name = 'pageItem01' if arguments['page']['type'] == 'continue' else 'pageItem00'
             token = 'cursor-' + str(self.epoch)

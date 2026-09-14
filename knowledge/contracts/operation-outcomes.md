@@ -4,8 +4,9 @@ title: Operation outcomes
 description: Semantic success is complete or explicitly qualified and carries either published or live evidence; rejection carries no successful payload.
 resource: file://kernel/src/main/kotlin/io/github/amichne/kast/kernel/OperationOutcome.kt
 tags: [outcome, evidence, failure]
-timestamp: 2026-09-10T00:00:00Z
+timestamp: 2026-09-14T00:00:00Z
 code_sources:
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReadRecoveryAction.kt
   - path: kernel/src/main/kotlin/io/github/amichne/kast/kernel/OperationOutcome.kt
     symbols: [OperationOutcome]
   - path: kernel/src/main/kotlin/io/github/amichne/kast/kernel/EvidenceEnvelope.kt
@@ -38,3 +39,22 @@ publication or grant mutation authority. The wire boundary rejects missing or
 simultaneously supplied published/live evidence.
 
 Transport success does not imply semantic completeness. A host must preserve the distinction when projecting output, and it must not attach a successful payload to rejection. The [README](../../README.md) exposes the same complete/qualified/rejected semantics to users.
+
+Canonical query, source, relation and traversal failures derive a closed
+`ReadRecoveryAction`. Their CLI/tool rejected documents require `next_action`
+for both unadmitted and budget-bearing rejections. The wire retains the finite
+failure and budget; projection derives the action again after decoding rather
+than accepting a separate action as authority.
+
+| Action | Required direction |
+| --- | --- |
+| `reacquire_authority` | Obtain fresh authority for a stale, foreign, malformed or otherwise unusable opaque reference; do not repair its text. |
+| `restart_read` | Start a new read without an unavailable continuation, under fresh admission. |
+| `correct_request` | Correct unsupported controls or restore the original continuation-bound request; changed semantics require a new read. |
+| `wait_for_workspace` | Observe workspace readiness before a later request. |
+| `save_source` | Save source and allow IDE document-to-PSI synchronization before a later request. |
+| `report_failure` | Report compiler, discovery or internal contract failure when the reason proves no recovery prerequisite. |
+
+These directions grant no automatic retry, source write, workspace opening,
+import, or refresh capability. Qualified progress keeps its separate continuation
+actions; rejection recovery does not assert successful or complete output.

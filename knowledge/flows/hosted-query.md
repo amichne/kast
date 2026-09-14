@@ -47,6 +47,7 @@ code_sources:
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ExecutionBudgetDocument.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryResponse.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedExecutionBudgetRequest.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReadBudgetAdmission.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedTransportObservation.kt
   - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmissionTest.kt
@@ -396,6 +397,11 @@ time, and both provider invocation deadlines to strictly exceed client exchange
 time. These outer boundaries retain positive IPC slack even when operators lower
 their settings; semantic/host configuration equality still uses the completion reserve.
 
+Typed request decoding rejects a supplied returned-byte allowance below the wire
+owner's serialized schema/operation identity size before semantic dispatch. This is
+a necessary lower bound, not an exact sufficient envelope size. The original
+encoder still fits bodies, reports and continuations against the admitted allowance.
+
 Hosted query continuation stores retain detached task/output state under an exact
 query and semantic snapshot. Entry, byte, per-checkpoint and lifetime limits are
 explicit read settings; epoch replacement and disposal clear project state.
@@ -540,7 +546,7 @@ or replace unchanged-fixture native execution parity for larger grants.
 
 The installed resume-budget helper defines twelve bounded cases per surface:
 query, source and relation reads, each with independently larger elapsed-time,
-work, result and byte allowances. It compares ordered complete drains against
+work, result and byte allowances. It compares complete drains with ordered declarations/source children and full relation occurrence identity against
 an unchanged-fixture baseline, including full relation occurrences and compiler
 evidence, source child order, ranges, snapshots and saved text. Issued upstream
 and retained-output checkpoints keep their distinct request positions and

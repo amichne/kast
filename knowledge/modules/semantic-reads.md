@@ -9,6 +9,9 @@ code_sources:
   - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceEntityAttempt.kt
   - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceEntityPageCollector.kt
   - path: source/intellij/src/test/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceEntityReadTest.kt
+  - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceReadContinuations.kt
+  - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceReadPort.kt
+  - path: source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceReadOutcome.kt
   - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijCallableIdentity.kt
   - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijCallableIdentityObservation.kt
   - path: symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/IntellijDiscoveryKindAdmissionTest.kt
@@ -188,3 +191,7 @@ checked before visibility resolution and candidate construction; structural
 selectors, parents, ranges and depths still preserve eligible descendants inside
 excluded containers. The focused excluded-input and cancellation tests prove
 these boundaries without claiming installed IDE qualification.
+Source continuation admission preserves finite causes before invoking the provider:
+missing, expired, evicted, or retired tokens yield `CONTINUATION_UNAVAILABLE`;
+a changed context yields `SOURCE_SNAPSHOT_MISMATCH`; a changed request yields
+`CONTINUATION_REQUEST_MISMATCH`. Provider contract failures remain distinct.

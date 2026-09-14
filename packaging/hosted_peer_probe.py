@@ -61,7 +61,7 @@ class ExpectedPeerRejection:
 
 @dataclass(frozen=True)
 class ExpectedReady:
-    type: str = field(default="admission_ready", init=False)
+    status: str = field(default="admission_ready", init=False)
 
 
 @dataclass(frozen=True)
