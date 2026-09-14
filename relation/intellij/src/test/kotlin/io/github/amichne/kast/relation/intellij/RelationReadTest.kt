@@ -57,6 +57,25 @@ import org.junit.jupiter.api.Test
 
 class RelationReadTest {
     @Test
+    fun `deadline before first committed item reports a terminal provider stall`() {
+        val request = request(RelationMeaning.Callees)
+        var now = 0L
+        val collector = IntellijRelationCollector(request, clockNanoseconds = { now })
+        now = request.budget.resources.elapsedTimeLimit.value * 1_000_000L
+        assertEquals(IntellijRelationProviderEnumerationAdmission.HALTED, collector.admitProviderEnumeration())
+        val result = assertInstanceOf(
+            RelationCompilation.Qualified::class.java,
+            collector.finish(IntellijRelationTermination.Resumable(setOf(RelationLimitation.TIME_LIMIT_REACHED))),
+        )
+        assertInstanceOf(
+            io.github.amichne.kast.relation.contract.RelationIncompleteCoverage.TerminalIncomplete::class.java,
+            result.coverage,
+        )
+        assertEquals(setOf("TIME_LIMIT_REACHED", "PROVIDER_STALLED"), result.coverage.limitations.map { it.name }.toSet())
+        assertTrue(result.batch.facts.isEmpty())
+    }
+
+    @Test
     fun `diagnostics distinguish complete coverage from unsupported items and candidate caps`() {
         val reasons = mutableListOf<io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination>()
         val observation =
