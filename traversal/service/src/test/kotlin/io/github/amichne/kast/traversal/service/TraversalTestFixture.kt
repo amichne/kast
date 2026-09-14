@@ -176,9 +176,13 @@ internal class TraversalTestFixture {
         request: OneHopRelationRequest,
         targets: List<SymbolSelector>,
         elapsedMillis: Long = 1L,
+        occurrenceOffset: Int = 0,
     ): OneHopRelationRead {
         val relationRequest = request.relationRequest()
-        val facts = targets.map { target -> fact(relationRequest, endpoint(relationRequest.subject, target)) }.sorted()
+        val facts = targets.mapIndexed { index, target ->
+            val repeatedOccurrences = targets.take(index).count { it.fingerprint == target.fingerprint }
+            fact(relationRequest, endpoint(relationRequest.subject, target), occurrenceOffset + repeatedOccurrences)
+        }.sorted()
         val batch = batch(relationRequest, facts)
         val complete = RelationCompilation.complete(batch)
         return OneHopRelationRead.Completed(
@@ -325,12 +329,13 @@ internal class TraversalTestFixture {
     private fun fact(
         request: RelationRequest,
         endpoint: RelationEndpoint.Resolved,
+        occurrenceOffset: Int = 0,
     ): RelationFact {
         val occurrence =
             RelationOccurrence.fromBoundary(
                     request.subject.file,
-                    request.subject.range.startInclusive,
-                    request.subject.range.startInclusive + 1,
+                    request.subject.range.startInclusive + occurrenceOffset,
+                    request.subject.range.startInclusive + occurrenceOffset + 1,
                 )
                 .refined()
         val (source, target) =
