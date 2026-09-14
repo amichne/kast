@@ -146,6 +146,41 @@ class InstallationWorkflowTest {
     }
 
     @Test
+    fun `upgrade uses the new lifecycle authority to admit an older installation`(@TempDir temporary: Path) {
+        val root = temporary.toRealPath()
+        val installation = root.resolve("installation")
+        val commands = root.resolve("commands")
+        val home = Files.createDirectory(root.resolve("home"))
+        val codexHome = Files.createDirectory(home.resolve(".codex"))
+
+        assertInstanceOf(
+            InstallationOutcome.Complete::class.java,
+            InstallationWorkflow.execute(
+                releaseRequest(
+                    root,
+                    installation,
+                    commands,
+                    home,
+                    codexHome,
+                    "1.2.3",
+                    lifecycleInspectionExit = 17,
+                )
+            ),
+        )
+        val prior = installation.resolve(Files.readSymbolicLink(installation.resolve("current")))
+        val workspace = Files.createDirectory(root.resolve("workspace"))
+        Files.writeString(
+            prior.resolve("config/workspaces.json"),
+            Json.encodeToString(RegistryFixture(2, 1, listOf(workspace.toString()))),
+        )
+
+        assertInstanceOf(
+            InstallationOutcome.Complete::class.java,
+            InstallationWorkflow.execute(releaseRequest(root, installation, commands, home, codexHome, "1.2.4")),
+        )
+    }
+
+    @Test
     fun `prior service retirement reconstructs the enabled owner configuration`() {
         val prior = Path.of("/fixture/versions/1.2.3-payload")
 
@@ -187,6 +222,7 @@ class InstallationWorkflowTest {
         version: String,
         controlFileCount: Int = 5,
         mode: InstallationMode = InstallationMode.APPLY,
+        lifecycleInspectionExit: Int = 0,
     ): InstallationRequest {
         val control = Files.createDirectories(fixture.resolve("control-$version"))
         val bin = Files.createDirectories(control.resolve("bin"))
@@ -201,6 +237,8 @@ class InstallationWorkflowTest {
             |import json
             |from pathlib import Path
             |import sys
+            |if $lifecycleInspectionExit:
+            |    raise SystemExit($lifecycleInspectionExit)
             |arguments = sys.argv[1:]
             |installation = Path(arguments[arguments.index('--installation') + 1])
             |manifest = json.loads((installation / 'installation.json').read_text())
