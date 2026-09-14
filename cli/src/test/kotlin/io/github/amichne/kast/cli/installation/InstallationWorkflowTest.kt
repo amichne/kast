@@ -80,6 +80,26 @@ class InstallationWorkflowTest {
     }
 
     @Test
+    fun `control verification admits the shipped knowledge bundle file count`(@TempDir temporary: Path) {
+        val root = temporary.toRealPath()
+        val outcome =
+            InstallationWorkflow.execute(
+                releaseRequest(
+                    root,
+                    root.resolve("installation"),
+                    root.resolve("commands"),
+                    Files.createDirectory(root.resolve("home")),
+                    Files.createDirectory(root.resolve("codex-home")),
+                    "1.2.3",
+                    controlFileCount = 7_494,
+                    mode = InstallationMode.PLAN,
+                )
+            )
+
+        assertInstanceOf(InstallationOutcome.Complete::class.java, outcome)
+    }
+
+    @Test
     fun `upgrade retains the admitted workspace registry`(@TempDir temporary: Path) {
         val root = temporary.toRealPath()
         val installation = root.resolve("installation")
@@ -147,6 +167,8 @@ class InstallationWorkflowTest {
         home: Path,
         codexHome: Path,
         version: String,
+        controlFileCount: Int = 5,
+        mode: InstallationMode = InstallationMode.APPLY,
     ): InstallationRequest {
         val control = Files.createDirectories(fixture.resolve("control-$version"))
         val bin = Files.createDirectories(control.resolve("bin"))
@@ -172,6 +194,9 @@ class InstallationWorkflowTest {
             |"""
                 .trimMargin(),
         )
+        require(controlFileCount >= 5)
+        val knowledge = Files.createDirectories(metadata.resolve("knowledge/declarations"))
+        repeat(controlFileCount - 5) { index -> Files.writeString(knowledge.resolve("$index.json"), "{}") }
 
         val runtime = fixture.resolve("kast-ide-hosted-$version.zip")
         ZipOutputStream(Files.newOutputStream(runtime)).use { archive ->
@@ -227,7 +252,7 @@ class InstallationWorkflowTest {
                     InstallationEnvironment.ENABLE_APP_SERVER.key to "0",
                     InstallationEnvironment.APP_SERVER_TOOLS.key to "query_symbols,source_read",
                     InstallationEnvironment.REFRESH_APP_SERVER.key to "0",
-                    InstallationEnvironment.MODE.key to "apply",
+                    InstallationEnvironment.MODE.key to mode.name.lowercase(),
                 )
             )
         return when (parsed) {
