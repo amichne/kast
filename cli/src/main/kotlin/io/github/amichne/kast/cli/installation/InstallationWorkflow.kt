@@ -29,6 +29,8 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 
 private const val MAXIMUM_CONTROL_BYTES = 1024L * 1024L * 1024L
+private const val MAXIMUM_UNIX_SOCKET_PATH_BYTES = 104
+private const val SOCKET_NAME_DIGEST_CHARACTERS = 43
 
 internal enum class InstallationChildStage {
     PRIOR_ADMISSION,
@@ -494,82 +496,85 @@ internal object InstallationWorkflow {
     }
 
     private fun writeManifest(plan: VerifiedInstallationPlan, staged: Path): Boolean {
-        val payloadFiles = payloadFiles(staged)
+        val manifest = installationManifest(plan, staged)
+        val encoded = manifestJson.encodeToString(InstallationManifest.serializer(), manifest) + "\n"
+        if (encoded.encodeToByteArray().size > ControlDistributionLimits.maximumManifestBytes) return false
+        Files.writeString(staged.resolve("installation.json"), encoded, StandardOpenOption.CREATE_NEW)
+        return true
+    }
+
+    private fun installationManifest(plan: VerifiedInstallationPlan, staged: Path): InstallationManifest =
+        InstallationManifest(
+            semanticVersion = plan.request.version.toString(),
+            installationRoot = plan.targetRoot.toString(),
+            payloadIdentity = "sha256:${plan.payloadDigest.value}",
+            controlSha256 = "sha256:${plan.request.controlDigest.value}",
+            hostedPluginSha256 = "sha256:${plan.request.pluginDigest.value}",
+            codexHome = plan.request.codexHome.value.toString(),
+            configuration = plan.configuration.toString(),
+            workspaceRegistry = plan.targetRoot.resolve("config/workspaces.json").toString(),
+            stateRoot = plan.targetRoot.resolve("state").toString(),
+            externalAnchors = externalAnchors(plan),
+            payloadFiles = payloadFiles(staged),
+        )
+
+    private fun externalAnchors(plan: VerifiedInstallationPlan): List<ExternalAnchor> =
+        fixedExternalAnchors(plan) + transportExternalAnchors(plan)
+
+    private fun fixedExternalAnchors(plan: VerifiedInstallationPlan): List<ExternalAnchor> {
         val currentTarget = "versions/${plan.targetRoot.fileName}"
         val serviceHash = sha256(plan.targetRoot.toString().toByteArray()).value.take(32)
         val serviceLabel = "io.github.amichne.kast.broker.$serviceHash"
-        val anchors = buildList {
-            add(ExternalAnchor("current", plan.currentLink.toString(), expectedLinkTarget = currentTarget))
-            add(
-                ExternalAnchor(
-                    "command",
-                    plan.commandLink.toString(),
-                    expectedLinkTarget = plan.currentLink.resolve("bin/kast-complete").toString(),
-                    requiresCurrentTarget = currentTarget,
-                )
-            )
-            add(
-                ExternalAnchor(
-                    "codex-command",
-                    plan.codexCommandLink.toString(),
-                    expectedLinkTarget = plan.currentLink.resolve("bin/kast-codex-complete").toString(),
-                    requiresCurrentTarget = currentTarget,
-                )
-            )
-            add(
-                ExternalAnchor(
-                    "login",
-                    plan.request.home.value.resolve("Library/LaunchAgents/$serviceLabel.login.plist").toString(),
-                    expectedExecutable = plan.targetRoot.resolve("bin/kast").toString(),
-                    expectedLabel = "$serviceLabel.login",
-                )
-            )
-            val run = plan.targetRoot.resolve("state/run")
-            if (run.resolve("kast-${"0".repeat(43)}.sock").toString().toByteArray().size >= 104) {
-                val alias = Path.of("/tmp/kast-uds-${sha256(run.toString().toByteArray()).value.take(32)}")
-                add(
-                    ExternalAnchor(
-                        "socket-alias",
-                        alias.toString(),
-                        expectedLinkTarget = run.toString(),
-                        identityReceipt = run.resolve("endpoint-alias.json").toString(),
-                    )
-                )
-            }
-            val upstream = InstalledUpstreamDirectories.transportPath(run.resolve("u.sock"))
-            if (upstream != run.resolve("u.sock")) {
-                add(
-                    ExternalAnchor(
-                        "upstream-directory",
-                        upstream.parent.toString(),
-                        identityReceipt = run.resolve("upstream-directory.json").toString(),
-                        expectedPhysicalDirectory = run.toString(),
-                    )
-                )
-            }
-        }
-        val manifest =
-            InstallationManifest(
-                semanticVersion = plan.request.version.toString(),
-                installationRoot = plan.targetRoot.toString(),
-                payloadIdentity = "sha256:${plan.payloadDigest.value}",
-                controlSha256 = "sha256:${plan.request.controlDigest.value}",
-                hostedPluginSha256 = "sha256:${plan.request.pluginDigest.value}",
-                codexHome = plan.request.codexHome.value.toString(),
-                configuration = plan.configuration.toString(),
-                workspaceRegistry = plan.targetRoot.resolve("config/workspaces.json").toString(),
-                stateRoot = plan.targetRoot.resolve("state").toString(),
-                externalAnchors = anchors,
-                payloadFiles = payloadFiles,
-            )
-        val encoded = manifestJson.encodeToString(InstallationManifest.serializer(), manifest) + "\n"
-        if (encoded.encodeToByteArray().size > ControlDistributionLimits.maximumManifestBytes) return false
-        Files.writeString(
-            staged.resolve("installation.json"),
-            encoded,
-            StandardOpenOption.CREATE_NEW,
+        return listOf(
+            ExternalAnchor("current", plan.currentLink.toString(), expectedLinkTarget = currentTarget),
+            ExternalAnchor(
+                "command",
+                plan.commandLink.toString(),
+                expectedLinkTarget = plan.currentLink.resolve("bin/kast-complete").toString(),
+                requiresCurrentTarget = currentTarget,
+            ),
+            ExternalAnchor(
+                "codex-command",
+                plan.codexCommandLink.toString(),
+                expectedLinkTarget = plan.currentLink.resolve("bin/kast-codex-complete").toString(),
+                requiresCurrentTarget = currentTarget,
+            ),
+            ExternalAnchor(
+                "login",
+                plan.request.home.value.resolve("Library/LaunchAgents/$serviceLabel.login.plist").toString(),
+                expectedExecutable = plan.targetRoot.resolve("bin/kast").toString(),
+                expectedLabel = "$serviceLabel.login",
+            ),
         )
-        return true
+    }
+
+    private fun transportExternalAnchors(plan: VerifiedInstallationPlan): List<ExternalAnchor> = buildList {
+        val run = plan.targetRoot.resolve("state/run")
+        if (
+            run.resolve("kast-${"0".repeat(SOCKET_NAME_DIGEST_CHARACTERS)}.sock").toString().toByteArray().size >=
+                MAXIMUM_UNIX_SOCKET_PATH_BYTES
+        ) {
+            val alias = Path.of("/tmp/kast-uds-${sha256(run.toString().toByteArray()).value.take(32)}")
+            add(
+                ExternalAnchor(
+                    "socket-alias",
+                    alias.toString(),
+                    expectedLinkTarget = run.toString(),
+                    identityReceipt = run.resolve("endpoint-alias.json").toString(),
+                )
+            )
+        }
+        val upstream = InstalledUpstreamDirectories.transportPath(run.resolve("u.sock"))
+        if (upstream != run.resolve("u.sock")) {
+            add(
+                ExternalAnchor(
+                    "upstream-directory",
+                    upstream.parent.toString(),
+                    identityReceipt = run.resolve("upstream-directory.json").toString(),
+                    expectedPhysicalDirectory = run.toString(),
+                )
+            )
+        }
     }
 
     private fun admitExisting(plan: VerifiedInstallationPlan): Boolean {
