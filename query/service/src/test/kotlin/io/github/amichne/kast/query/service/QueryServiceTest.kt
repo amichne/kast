@@ -135,7 +135,7 @@ class QueryServiceTest {
         }
     }
 
-    private fun visibilityPlan(selected: SymbolSelector): AdmittedQueryPlan =
+    internal fun visibilityPlan(selected: SymbolSelector): AdmittedQueryPlan =
         exactReferencePlan(
             listOf(selected),
             listOf(
@@ -147,7 +147,7 @@ class QueryServiceTest {
             ),
         )
 
-    private fun selfRead(
+    internal fun selfRead(
         selected: SymbolSelector,
         visibility: DeclarationVisibility,
         missing: Boolean = false,
