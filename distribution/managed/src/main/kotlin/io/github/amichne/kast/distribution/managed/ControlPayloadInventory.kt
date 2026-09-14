@@ -39,25 +39,26 @@ data class ControlInventoryObservation(
     val limit: ControlLimitExceeded? = null,
 )
 
+/** Bounded accepted inventory evidence; callers choose its diagnostic destination. */
 @Serializable
-private data class ControlInventoryAccepted(
+data class ControlInventoryAccepted(
     val boundary: ControlInventoryBoundary,
     val traversedEntries: Int,
     val payloadFiles: Int,
     val payloadBytes: Long,
-)
+) {
+    fun report() {
+        System.err.println(Json.encodeToString(serializer(), this))
+    }
+}
 
 sealed interface ControlInventoryAdmission {
     /** Paths retain the historical bin/lib/share ordering, sorted within each tree. */
     data class Admitted(val files: List<Path>, val traversedEntries: Int, val bytes: Long) : ControlInventoryAdmission {
-        fun report(boundary: ControlInventoryBoundary) {
-            System.err.println(
-                Json.encodeToString(
-                    ControlInventoryAccepted.serializer(),
-                    ControlInventoryAccepted(boundary, traversedEntries, files.size, bytes),
-                )
-            )
-        }
+        fun observation(boundary: ControlInventoryBoundary): ControlInventoryAccepted =
+            ControlInventoryAccepted(boundary, traversedEntries, files.size, bytes)
+
+        fun report(boundary: ControlInventoryBoundary) = observation(boundary).report()
     }
 
     data class Rejected(val failure: ControlInventoryFailure, val limit: ControlLimitExceeded? = null) :

@@ -6,6 +6,8 @@ resource: file://distribution
 tags: [distribution, configuration, packaging, release]
 timestamp: 2026-09-14T00:00:00Z
 code_sources:
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/BrokerInstallationState.kt
+    symbols: [BrokerInstallationState]
   - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/acceptance/hostedchange/NativeHostedReadMain.kt
   - path: packaging/installed_codex_lifecycle.py
   - path: packaging/released_coordinator_acceptance.py
@@ -108,3 +110,12 @@ host after detach, and successful service disable in a finally block. Tool selec
 comes from the admitted saved inventory. Its bounded receipt retains hashes and
 closed observations; stock desktop UI remains unqualified. This is harness capability,
 not evidence that a particular released version passed the live check.
+
+Passive runtime identity inspection emits accepted inventory counters only to an
+explicit typed diagnostic sink. Coordinator startup retains its existing success
+report, and rejected inventory admission retains bounded finite stderr evidence.
+The original-release session helper requires the current target's successful
+`config show` and `config explain` calls to keep stderr empty. It passes the owned
+JVM home/temp options through launcher `JAVA_OPTS`, without filtering stderr or
+relaxing diagnostics. Previous-release sessions retain their historical stderr
+as evidence so an adjacent upgrade can qualify the repaired target.

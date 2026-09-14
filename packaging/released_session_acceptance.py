@@ -15,6 +15,7 @@ class SessionCommand(str, Enum):
     RESOLVE = 'resolve-command'
     VERSION = 'version'
     CONFIGURATION = 'saved-configuration'
+    EXPLANATION = 'configuration-explanation'
     INSTALLATION = 'installation-inspect'
 
 
@@ -107,6 +108,12 @@ def inspect_shell_sessions(isolation, installed, *, previous=False):
     directory = isolation.root / ('previous-release-sessions' if previous else 'release-sessions')
     directory.mkdir(mode=0o700)
     environment = _shell_environment(isolation)
+    if not previous:
+        # Preserve the owned JVM home/temp options through the launcher without JVM-injection notices.
+        options = environment.pop('_JAVA_OPTIONS', None)
+        if not isinstance(options, str) or environment.pop('JAVA_TOOL_OPTIONS', None) != options:
+            raise ReleaseRejected(ReleaseFailure.SESSION)
+        environment['JAVA_OPTS'] = options
     configuration = product / 'config/environment'
     configuration_digest = digest(configuration)
     receipts = []
@@ -135,6 +142,21 @@ def inspect_shell_sessions(isolation, installed, *, previous=False):
             valid = False
         if not valid:
             raise SessionRejected(call)
+        if not previous:
+            # Previous releases retain their original diagnostics as evidence; the current target must be quiet.
+            if call.stderrSha256 != hashlib.sha256(b'').hexdigest():
+                raise SessionRejected(call)
+            raw, call = _invoke(isolation, installed, directory, index, SessionCommand.EXPLANATION,
+                                ('config', 'explain', 'KAST_APP_SERVER_TOOLS'), environment)
+            observations.append(call)
+            try:
+                explanation = json.loads(raw)
+                explained = (explanation['operation'] == 'config-explain' and explanation['status'] == 'complete'
+                             and explanation['key'] == 'KAST_APP_SERVER_TOOLS')
+            except (ValueError, KeyError, TypeError):
+                explained = False
+            if not explained or call.stderrSha256 != hashlib.sha256(b'').hexdigest():
+                raise SessionRejected(call)
         raw, call = _invoke(isolation, installed, directory, index, SessionCommand.INSTALLATION,
                             ('installation', 'inspect', '--json'), environment)
         observations.append(call)

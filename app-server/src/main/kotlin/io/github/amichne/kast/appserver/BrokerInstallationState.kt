@@ -1,6 +1,7 @@
 package io.github.amichne.kast.appserver
 
 import io.github.amichne.kast.appserver.protocol.ThreadBindingOwner
+import io.github.amichne.kast.distribution.managed.ControlInventoryAccepted
 import io.github.amichne.kast.distribution.managed.ControlInventoryAdmission
 import io.github.amichne.kast.distribution.managed.ControlInventoryBoundary
 import io.github.amichne.kast.distribution.managed.ControlInventoryFailure
@@ -29,7 +30,7 @@ internal enum class InstallationStateFailure {
 internal object BrokerInstallationState {
     fun admit(root: Path): Refinement<ThreadBindingOwner.Installation, InstallationStateFailure> {
         val identity =
-            when (val payload = identity(root)) {
+            when (val payload = identity(root, ControlInventoryAccepted::report)) {
                 is Refinement.Refined -> payload.value
                 is Refinement.Rejected -> return payload
             }
@@ -75,9 +76,15 @@ internal object BrokerInstallationState {
         }
     }
 
-    /** Passive proof against the physical immutable payload; it never creates state or epochs. */
-    fun observe(root: Path): Refinement<ThreadBindingOwner.Installation, InstallationStateFailure> =
-        when (val payload = identity(root)) {
+    /**
+     * Passive proof against the physical immutable payload; it never creates state or epochs. Successful counters reach
+     * only an explicit diagnostic sink. Rejected inventory diagnostics remain on stderr.
+     */
+    fun observe(
+        root: Path,
+        observeInventory: (ControlInventoryAccepted) -> Unit = {},
+    ): Refinement<ThreadBindingOwner.Installation, InstallationStateFailure> =
+        when (val payload = identity(root, observeInventory)) {
             is Refinement.Rejected -> payload
             is Refinement.Refined -> readEpoch(root.resolve("state"), payload.value)
         }
@@ -135,7 +142,10 @@ internal object BrokerInstallationState {
     }
 
     /** Immutable control payload plus physical installation root; mutable configuration/state are excluded. */
-    private fun identity(root: Path): Refinement<String, InstallationStateFailure> {
+    private fun identity(
+        root: Path,
+        observeInventory: (ControlInventoryAccepted) -> Unit,
+    ): Refinement<String, InstallationStateFailure> {
         return try {
             if (root.toRealPath() != root) return Refinement.Rejected(InstallationStateFailure.PATH_REJECTED)
             val digest = MessageDigest.getInstance("SHA-256")
@@ -176,7 +186,7 @@ internal object BrokerInstallationState {
                     }
                 }
             }
-            inventory.report(ControlInventoryBoundary.RUNTIME_IDENTITY)
+            observeInventory(inventory.observation(ControlInventoryBoundary.RUNTIME_IDENTITY))
             Refinement.Refined("sha256:" + HexFormat.of().formatHex(digest.digest()))
         } catch (_: Exception) {
             Refinement.Rejected(InstallationStateFailure.PAYLOAD_REJECTED)
