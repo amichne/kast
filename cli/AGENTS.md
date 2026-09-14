@@ -9,6 +9,7 @@ Defines Kast's human-facing command graph, installed configuration and installat
 
 ## Key Files
 
+- [CanonicalReadRejectedDocument.kt](src/main/kotlin/io/github/amichne/kast/cli/projection/CanonicalReadRejectedDocument.kt) - typed rejected read output with required derived recovery action.
 - [RelationOmissionSchema.kt](src/main/kotlin/io/github/amichne/kast/cli/RelationOmissionSchema.kt) - bounded provider-omission schema.
 - [InstalledBootstrapSchemas.kt](src/main/kotlin/io/github/amichne/kast/cli/InstalledBootstrapSchemas.kt) - shared installed process and bootstrap schemas.
 - [src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt](src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt) - executable main.

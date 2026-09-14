@@ -16,8 +16,6 @@ import io.github.amichne.kast.protocol.contract.SourceRegionDocument
 import io.github.amichne.kast.protocol.contract.SourceSelectionDocument
 import io.github.amichne.kast.protocol.contract.SourceSnapshotDocument
 import io.github.amichne.kast.protocol.contract.SourceTextProjectionDocument
-import io.github.amichne.kast.protocol.contract.budgetPresence
-import io.github.amichne.kast.protocol.contract.reason
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -53,11 +51,7 @@ internal object CanonicalSourceReadCliDocuments {
                 )
             },
             rejected = { rejection ->
-                canonicalRejectedDocument(
-                    CanonicalOperation.SOURCE_READ,
-                    rejection.reason().cliName(),
-                    rejection.budgetPresence(),
-                )
+                canonicalReadRejectedDocument(rejection)
             },
         )
 }
