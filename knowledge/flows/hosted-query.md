@@ -9,6 +9,7 @@ code_sources:
   - path: packaging/hosted_wire_schema.py
   - path: packaging/hosted_peer_probe.py
   - path: packaging/hosted_concurrent_read.py
+  - path: workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedPublicationDeadlineTest.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadPublicationAdmission.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReadFailureReports.kt
   - path: workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedContainmentReportTest.kt
@@ -473,7 +474,14 @@ No failure path reconstructs a default grant to fill missing evidence.
 containment rejection. Neither cap is raised for a failure. Before recording a
 semantic grant or calling its evaluator, publication admission encodes the typed
 containment witnesses with the calculated candidate report and checks that they
-fit the hard frame cap. Runtime admission also checks every finite endpoint
+fit the hard frame cap. It checks the candidate and the adjacent smaller elapsed
+allowance, which bounds the only additional deadline clamp and all smaller
+positive elapsed encodings. After those checks, it observes remaining host time
+again and re-admits both semantic and diagnostic allowances before recording the
+grant. Exhaustion during publication checks returns `BUDGET_EXCEEDED` without
+provider access and records `exhausted`, distinct from capacity rejection.
+`HostedPublicationDeadlineTest` covers this ordering, decimal/clamping boundaries
+and maximum positive input values. Runtime admission also checks every finite endpoint
 failure encoding. The freshness witness is checked against every closed freshness
 cause and stage in a focused test. Insufficient capacity returns the existing
 `RESULT_LIMIT_EXCEEDED` without an executed report. Its bounded
