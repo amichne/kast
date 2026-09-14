@@ -4,17 +4,18 @@ import io.github.amichne.kast.protocol.contract.DiagnosticCheckQualification
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRejection
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRequest
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckResult
+import io.github.amichne.kast.protocol.contract.RelationReadFailure
 import io.github.amichne.kast.protocol.contract.RelationReadQualification
-import io.github.amichne.kast.protocol.contract.RelationReadRejection
 import io.github.amichne.kast.protocol.contract.RelationReadRequest
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRejection
 import io.github.amichne.kast.protocol.contract.SymbolInspectQualification
 import io.github.amichne.kast.protocol.contract.SymbolInspectRejection
 import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
+import io.github.amichne.kast.protocol.contract.TraversalRunFailure
 import io.github.amichne.kast.protocol.contract.TraversalRunQualification
-import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import io.github.amichne.kast.protocol.contract.TraversalRunRequest
+import io.github.amichne.kast.protocol.contract.reason
 
 internal object CanonicalReadSerializers {
     private val factory = GeneratedWireCodecFactory(wireJson)
@@ -57,10 +58,10 @@ internal object CanonicalReadSerializers {
             RelationReadQualification::toWireDocument,
             RelationReadQualificationWireDocument::toContract,
         )
-    val relationReadRejection =
+    val relationReadRejection: WireValueCodec<RelationReadFailure> =
         factory.create(
             RelationReadRejectionWireDocument.serializer(),
-            RelationReadRejection::toWireDocument,
+            { value: RelationReadFailure -> value.reason().toWireDocument() },
             { document -> WireDocumentConversion.Converted(document.toContract()) },
         )
 
@@ -72,10 +73,10 @@ internal object CanonicalReadSerializers {
             TraversalRunQualification::toWireDocument,
             TraversalRunQualificationWireDocument::toContract,
         )
-    val traversalRunRejection =
+    val traversalRunRejection: WireValueCodec<TraversalRunFailure> =
         factory.create(
             TraversalRunRejectionWireDocument.serializer(),
-            TraversalRunRejection::toWireDocument,
+            { value: TraversalRunFailure -> value.reason().toWireDocument() },
             { document -> WireDocumentConversion.Converted(document.toContract()) },
         )
 

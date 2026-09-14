@@ -11,13 +11,13 @@ import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.RelationContinuationDocument
 import io.github.amichne.kast.protocol.contract.RelationKnownMinimumDocument
 import io.github.amichne.kast.protocol.contract.RelationLimitationDocument
+import io.github.amichne.kast.protocol.contract.RelationReadFailure
 import io.github.amichne.kast.protocol.contract.RelationReadQualification
-import io.github.amichne.kast.protocol.contract.RelationReadRejection
 import io.github.amichne.kast.protocol.contract.RelationReadResult
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 
 internal typealias HostedRelationOutcome =
-    OperationOutcome<RelationReadResult, RelationReadQualification, RelationReadRejection>
+    OperationOutcome<RelationReadResult, RelationReadQualification, RelationReadFailure>
 
 /** Response fitting retains a detached suffix before publishing a nonempty prefix. */
 internal fun encodeHostedRelationResponse(

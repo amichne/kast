@@ -39,19 +39,19 @@ import io.github.amichne.kast.protocol.contract.OperationRequest
 import io.github.amichne.kast.protocol.contract.OperationResult
 import io.github.amichne.kast.protocol.contract.OperationTypeBinding
 import io.github.amichne.kast.protocol.contract.QueryRunCapability
+import io.github.amichne.kast.protocol.contract.QueryRunFailure
 import io.github.amichne.kast.protocol.contract.QueryRunQualification
-import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.QueryRunResult
 import io.github.amichne.kast.protocol.contract.RelationReadCapability
+import io.github.amichne.kast.protocol.contract.RelationReadFailure
 import io.github.amichne.kast.protocol.contract.RelationReadQualification
-import io.github.amichne.kast.protocol.contract.RelationReadRejection
 import io.github.amichne.kast.protocol.contract.RelationReadRequest
 import io.github.amichne.kast.protocol.contract.RelationReadResult
 import io.github.amichne.kast.protocol.contract.SchemaIdentity
 import io.github.amichne.kast.protocol.contract.SourceReadCapability
+import io.github.amichne.kast.protocol.contract.SourceReadFailure
 import io.github.amichne.kast.protocol.contract.SourceReadQualification
-import io.github.amichne.kast.protocol.contract.SourceReadRejection
 import io.github.amichne.kast.protocol.contract.SourceReadRequest
 import io.github.amichne.kast.protocol.contract.SourceReadResult
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverCapability
@@ -70,8 +70,8 @@ import io.github.amichne.kast.protocol.contract.TopologyBuildRejection
 import io.github.amichne.kast.protocol.contract.TopologyBuildRequest
 import io.github.amichne.kast.protocol.contract.TopologyBuildResult
 import io.github.amichne.kast.protocol.contract.TraversalRunCapability
+import io.github.amichne.kast.protocol.contract.TraversalRunFailure
 import io.github.amichne.kast.protocol.contract.TraversalRunQualification
-import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import io.github.amichne.kast.protocol.contract.TraversalRunRequest
 import io.github.amichne.kast.protocol.contract.TraversalRunResult
 import kotlin.reflect.KClass
@@ -151,7 +151,7 @@ object CanonicalOperationDefinitions {
             SourceReadRequest::class,
             SourceReadResult::class,
             SourceReadQualification::class,
-            SourceReadRejection::class,
+            SourceReadFailure::class,
             SourceReadCapability::class,
             OperationLane.SCOPED_SEMANTIC_READ,
             OperationEffect.INTELLIJ_READ,
@@ -168,7 +168,7 @@ object CanonicalOperationDefinitions {
             RelationReadRequest::class,
             RelationReadResult::class,
             RelationReadQualification::class,
-            RelationReadRejection::class,
+            RelationReadFailure::class,
             RelationReadCapability::class,
             OperationLane.BOUNDED_RELATION_READ,
             OperationEffect.INTELLIJ_READ,
@@ -185,7 +185,7 @@ object CanonicalOperationDefinitions {
             TraversalRunRequest::class,
             TraversalRunResult::class,
             TraversalRunQualification::class,
-            TraversalRunRejection::class,
+            TraversalRunFailure::class,
             TraversalRunCapability::class,
             OperationLane.REGISTERED_LONG_WORK,
             OperationEffect.NONE,
@@ -202,7 +202,7 @@ object CanonicalOperationDefinitions {
             QueryRunRequest::class,
             QueryRunResult::class,
             QueryRunQualification::class,
-            QueryRunRejection::class,
+            QueryRunFailure::class,
             QueryRunCapability::class,
             OperationLane.SCOPED_SEMANTIC_READ,
             OperationEffect.INTELLIJ_READ,
