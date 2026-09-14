@@ -19,7 +19,7 @@ class BrokerFailureDocumentTest {
     private val address =
         ToolAddress(
             ProviderNamespace.admit("kast").refined(),
-            ToolName.admit("impact_analyze").refined(),
+            ToolName.admit("traverse_relations").refined(),
         )
 
     @Test

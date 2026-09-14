@@ -235,17 +235,17 @@ class HostedResumeBudgetRegressionTest(unittest.TestCase):
         source = ProgressResponse(SourceQualification(Progress(Token('source')), Available('source')))
         relation = ProgressResponse(RelationQualification(Token('relation'), 'relation'))
         self.assertEqual(Checkpoint('source', 'upstream'), admit_progress('source_read', asdict(source)))
-        self.assertEqual(Checkpoint('relation', 'upstream'), admit_progress('semantic_query', asdict(relation)))
+        self.assertEqual(Checkpoint('relation', 'upstream'), admit_progress('read_relations', asdict(relation)))
         changed = replace(source, qualification=replace(source.qualification, continuation=Available('wrong')))
         self.assertEqual(DrainRejected(ResumeFailure.CHECKPOINT_REJECTED), admit_progress('source_read', asdict(changed)))
 
     def test_relation_page_boundaries_preserve_full_occurrence_multiset_and_page_order(self):
         a, b = Record('a'), Record('b', 'call-2')
         reference = Drained((asdict(Relation((a, b))),))
-        self.assertTrue(payload_parity('semantic_query',
+        self.assertTrue(payload_parity('read_relations',
             Drained((asdict(Relation((b,))), asdict(Relation((a,))))), reference))
         for changed in ((a,), (a, a), (a, b, b)):
-            self.assertFalse(payload_parity('semantic_query', Drained((asdict(Relation(changed)),)), reference))
+            self.assertFalse(payload_parity('read_relations', Drained((asdict(Relation(changed)),)), reference))
 
     def test_upstream_budget_omission_retains_unknown_work_until_complete_drain(self):
         a, b = Record('a'), Record('b', 'call-2')
@@ -253,19 +253,19 @@ class HostedResumeBudgetRegressionTest(unittest.TestCase):
         page = BudgetRelationPage((a,), qualification)
         tail = asdict(Relation((b,)))
         reference = Drained((asdict(Relation((a, b))),))
-        self.assertTrue(payload_parity('semantic_query', Drained((asdict(page), tail)), reference))
+        self.assertTrue(payload_parity('read_relations', Drained((asdict(page), tail)), reference))
         for changed in (replace(page, omissions=(Omission(Observed()),)),
                 replace(page, qualification=replace(qualification, limitations=())),
                 replace(page, omissions=(replace(Omission(), reason='UNRESOLVED_TARGET'),)),
                 replace(page, omissions=(replace(Omission(), remediation='REPAIR_PROVIDER'),))):
-            self.assertFalse(payload_parity('semantic_query', Drained((asdict(changed), tail)), reference))
+            self.assertFalse(payload_parity('read_relations', Drained((asdict(changed), tail)), reference))
 
     def test_parity_rejects_lost_order_occurrence_proof_source_text_and_range(self):
         records = (Record('a'), Record('b', 'call-2'))
         reference = Drained((asdict(Relation(records)),))
         for changed in (tuple(reversed(records)), (replace(records[0], occurrence='wrong'), records[1]),
                         (replace(records[0], proof='wrong'), records[1])):
-            self.assertFalse(payload_parity('semantic_query', Drained((asdict(Relation(changed)),)), reference))
+            self.assertFalse(payload_parity('read_relations', Drained((asdict(Relation(changed)),)), reference))
         source = Source(records)
         expected = Drained((asdict(source),))
         pages = Drained((asdict(replace(source, entities=records[:1])), asdict(replace(source, entities=records[1:]))))

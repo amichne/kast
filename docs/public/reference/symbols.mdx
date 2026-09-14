@@ -100,13 +100,15 @@ location. A syntactically valid token is not proof that the runtime will admit i
 
 ## Read locations and relationships
 
-An exact location contains a workspace-relative `file` and a half-open `range`:
+Convenience query and search locations use a workspace-relative `file`. Raw
+`symbol_lookup` and `symbol_inspect` canonical locations retain absolute physical
+file paths. An exact location includes a half-open `range`:
 `startInclusive` belongs to the range; `endExclusive` does not. Treat these as
 source offsets, not line numbers. Use them only with the corresponding source
 state. A candidate location has an `offset` rather than the exact-symbol range.
 
 A query `expand_relation` step returns related **declarations**. A relation fact
-can describe a particular **use site**. Use `semantic_query` for occurrence-oriented
+can describe a particular **use site**. Use `read_relations` for occurrence-oriented
 facts and inspect its tagged [relation model](/reference/models/relation-fact).
 Do not turn every relation into an unlabelled pair of names: keep its relation
 kind, endpoints, use-site location, and any unavailable evidence represented by

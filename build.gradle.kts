@@ -211,7 +211,7 @@ val installedCodexHostTest = tasks.register<Exec>("installedCodexHostTest") {
     description = "Exercises the staged private facade and stdio compatibility host against Codex."
     dependsOn(stageInstalledProduct)
     inputs.dir(installedProductDirectory)
-    inputs.file(layout.projectDirectory.file("packaging/test-installed-codex-host.py"))
+    inputs.files("packaging/test-installed-codex-host.py", "packaging/installed_codex_lifecycle.py")
     inputs.file("packaging/acceptance_environment.py")
     outputs.file(layout.buildDirectory.file("reports/installed-product/codex-host.json"))
     outputs.upToDateWhen { false }
@@ -461,12 +461,15 @@ val hostedReadRegressionTest = tasks.register<Exec>("hostedReadRegressionTest") 
         "packaging/hosted_budget_read_regression.py", "packaging/test-hosted-budget-read-regression.py",
         "packaging/hosted_resume_budget_regression.py", "packaging/test-hosted-resume-budget-regression.py",
         "packaging/hosted_generated_fixture.py",
+        "packaging/hosted_read_name_regression.py", "packaging/test-hosted-read-name-regression.py",
         "packaging/hosted_raw_symbol_regression.py", "packaging/test-hosted-raw-symbol-regression.py",
         "packaging/released_acceptance_product.py", "packaging/released_payload_identity.py",
         "packaging/released_tool_inventory.py", "packaging/test-released-tool-inventory.py",
         "packaging/test-released-acceptance-product.py",
         "packaging/released_session_acceptance.py", "packaging/released_upgrade_acceptance.py",
         "packaging/test-released-upgrade-acceptance.py",
+        "packaging/installed_codex_lifecycle.py", "packaging/released_coordinator_acceptance.py",
+        "packaging/test-released-coordinator-acceptance.py",
         "packaging/native_provider_qualification.py", "packaging/test-native-provider-qualification.py",
     )
     commandLine("python3", layout.projectDirectory.file("packaging/test-hosted-read-regression.py"))

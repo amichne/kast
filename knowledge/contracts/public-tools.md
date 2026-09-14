@@ -43,7 +43,7 @@ The authored tool bundle generates Kotlin request DTOs, concrete normalization d
 
 The advanced pipeline preserves source meaning, step order, repeated steps and empty projections. Expansion returns related declarations; occurrence-oriented relation facts remain the relation-read contract. `symbol_ref` is derived from the exact result token and is equal to the retained migration field `ref.token`. No token spelling creates authority: existing runtime owners re-admit workspace, lifetime, epoch and compiler evidence.
 
-Installed projection 10 and CLI invocation version 3 join by tool name. Repeated canonical operation IDs are allowed only with consistent effect, approval, budget and output metadata. Private admitted requests retain their presentation and schema identities through transport encoding, excluding cross-tool substitution. Old persisted catalogs reject rather than silently accepting a new grammar. Source, relation and traversal defaults remain unchanged. Raw candidate lookup/refinement requires explicit selection. Native-qualified change tools are deferred defaults; `change_plan` has approval policy `NONE`, while apply and recovery retain
+Installed projection 11 and CLI invocation version 3 join by tool name. Repeated canonical operation IDs are allowed only with consistent effect, approval, budget and output metadata. Private admitted requests retain their presentation and schema identities through transport encoding, excluding cross-tool substitution. Old persisted catalogs reject rather than silently accepting a new grammar. Source, relation and traversal defaults remain unchanged. Raw candidate lookup/refinement requires explicit selection. Native-qualified change tools are deferred defaults; `change_plan` has approval policy `NONE`, while apply and recovery retain
 `EXPLICIT` exact-plan approval. The hosted planning schema admits only
 `add-declaration`; unsupported canonical intents do not enter another runtime.
 
@@ -75,7 +75,7 @@ HTTP server or interactive playground advertised. Full-width contract pages keep
 the generated fields visible without synthesized response examples; invocation
 commands render as Bash blocks in the page content.
 
-`semantic_query` advertises both published `v1` and live `v2` relation
+`read_relations` advertises both published `v1` and live `v2` relation
 continuations in its resume input and qualified output. Both schemas use
 `RelationContinuationDocument.TOKEN_PATTERN`; the production codec preserves
 the authority's version. The [query protocol](../modules/query-protocol.md)
@@ -132,3 +132,13 @@ Canonical rejected query, source, relation and traversal tool documents require 
 Unknown or absent actions fail the installed schema. The
 [outcome contract](operation-outcomes.md) defines the six recovery directions;
 action text does not authorize silent reference refresh or an automatic retry.
+
+Server projection version 11 advertises `read_relations` and `traverse_relations`
+for the unchanged `relation.read` and `traversal.run` operations. Canonical
+registry definitions own the input-only `semantic_query` and `impact_analyze`
+aliases. Configuration resolves aliases before rejecting duplicate identities;
+provider qualification carries those aliases into the selected registration.
+Provider registration rejects advertised-name and alias collisions, while catalog
+publication includes only preferred names. Legacy inputs remain supported through
+0.40.x, with removal no earlier than 0.41.0. Catalog digest binding remains
+required before either input spelling dispatches.

@@ -2,6 +2,15 @@
 
 ## 2026-09-14
 
+- After the recorded R1–R7 gate, advanced the agent catalog to projection 11:
+  `read_relations` and `traverse_relations` advertise unchanged canonical reads,
+  with registry-owned legacy inputs through 0.40.x. Reviewed nine impacted
+  concepts; updated public tools, protocol and dispatch claims, and retained the
+  other six source-bound explanations. Refreshed scope, source containment,
+  page-budget and occurrence-cardinality guidance and the generated callable
+  reference. Local routing, selection, collision and catalog-binding tests pass;
+  the two new installed-provider alias cases remain for native qualification.
+
 - Preserved all finite configuration-detail variants and parameter identities after
   exhaustive actual-encoder validation found four missing schema variants. At the
   user's direction, aligned schema qualification with the existing 1 MiB catalog

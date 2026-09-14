@@ -36,7 +36,7 @@ implementing another harness.
   <Step title="Admit the installed projection">
     Validate the projection and its versions. Missing, malformed, unsupported,
     or contradictory data must stop catalog registration. The current server
-    projection is version 10; CLI invocation bindings are version 3. A version
+    projection is version 11; CLI invocation bindings are version 3. A version
     number alone does not prove the rest of the contract.
   </Step>
   <Step title="Join by tool name">
@@ -67,7 +67,7 @@ construct a new catalog instead of keeping bindings from the prior installation.
 | Availability | Tools | Why |
 | --- | --- | --- |
 | Eager defaults | `search_classes`, `search_functions`, `search_declarations`, `check_diagnostics` | Directly express common reader intent |
-| Deferred defaults | `query_symbols`, `source_read`, `semantic_query`, `impact_analyze` | Add pipelines, source, relations, and traversal when needed |
+| Deferred defaults | `query_symbols`, `source_read`, `read_relations`, `traverse_relations` | Add pipelines, source, relations, and traversal when needed |
 | Deferred changes | `change_plan`, `change_apply`, `change_recover` | Keep planning and approval attached to stored changes |
 | Explicit opt-in | `symbol_lookup`, `symbol_inspect` | Expose candidate discovery and refinement when required |
 
@@ -100,7 +100,7 @@ and recovery. Preserve qualified mutation outcomes: `applied_unverified` and
     Its default selection is:
 
     ```text
-    search_classes,search_functions,search_declarations,query_symbols,source_read,semantic_query,impact_analyze,check_diagnostics,change_plan,change_apply,change_recover
+    search_classes,search_functions,search_declarations,query_symbols,source_read,read_relations,traverse_relations,check_diagnostics,change_plan,change_apply,change_recover
     ```
 
     Catalog selection does not grant mutation authority. Direct candidate tools
@@ -123,3 +123,18 @@ and recovery. Preserve qualified mutation outcomes: `applied_unverified` and
     grammar still exists; it is distinct from the new agent registration.
   </Accordion>
 </AccordionGroup>
+
+## Relation tool name compatibility
+
+New catalogs advertise `read_relations` for `relation.read` and
+`traverse_relations` for `traversal.run`. Provider calls and `KAST_APP_SERVER_TOOLS`
+continue accepting `semantic_query` and `impact_analyze` throughout `0.40.x`;
+removal is no earlier than `0.41.0`. Saved selections normalize to the preferred
+names. Selecting both spellings of one tool rejects as a duplicate. An alias
+does not enable a tool omitted from the configured selection.
+
+Server projection version 11 advertises only preferred names and retains the
+canonical `kast relation read` and `kast traversal run` CLI commands. An older
+persisted catalog must be requalified before dispatch; aliases do not bypass the
+catalog digest binding. Query and search tools retain their current names and
+canonical query implementation.

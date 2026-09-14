@@ -1,6 +1,7 @@
 package io.github.amichne.kast.appserver.provider
 
 import io.github.amichne.kast.appserver.core.*
+import io.github.amichne.kast.appserver.installedKastCatalogFixture
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.Validation
@@ -8,6 +9,9 @@ import io.github.amichne.kast.protocol.registry.*
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
@@ -101,7 +105,7 @@ class KastPublicQueryProviderTest {
         val invalid =
             listOf(
                 capability(driftSchema = true),
-                schema.replace("\"schemaVersion\":10", "\"schemaVersion\":9"),
+                schema.replace("\"schemaVersion\":11", "\"schemaVersion\":10"),
                 schema.replace(
                     "\"command\":[\"tool\",\"search_classes\"]",
                     "\"command\":[\"tool\",\"search_functions\"]",
@@ -165,76 +169,40 @@ class KastPublicQueryProviderTest {
         }
     }
 
-    private fun capability(driftSchema: Boolean = false): String = buildJsonObject {
-        put("schemaVersion", 1)
-        putJsonObject("serverProjection") {
-            put("schemaVersion", 10)
-            put("namespace", "kast")
-            putJsonObject("hostedBootstrap") {
-                put("schemaVersion", 1)
-                put("policy", CanonicalAgentToolDefinitions.policy.text)
-                putJsonArray("tools") {
-                    PublicToolIdentity.entries.forEach { identity ->
-                        val definition = CanonicalAgentToolDefinitions.all.single { it.name.value == identity.toolName }
-                        add(
-                            buildJsonObject {
-                                put("operationId", identity.operation.id.value)
-                                put("name", identity.toolName)
-                                put("description", definition.description.value)
-                                put("deferLoading", identity.loading == HostedToolLoading.DEFERRED)
-                                put("effect", definition.operation.effect.name.lowercase())
-                                put("approvalPolicy", "none")
-                                putJsonObject("executionBudget") {
-                                    put("readinessMillis", OperationExecutionBudget.WORKSPACE_READINESS.value)
-                                    put(
-                                        "operationMillis",
-                                        OperationExecutionBudget.forOperation(identity.operation).operation.value,
-                                    )
-                                }
-                                put(
-                                    "inputSchema",
-                                    if (driftSchema)
-                                        JsonObject(
-                                            PublicToolContract.parameters(identity) +
-                                                ("description" to JsonPrimitive("drift"))
-                                        )
-                                    else PublicToolContract.parameters(identity),
-                                )
-                                put(
-                                    "outputSchema",
-                                    Json.parseToJsonElement(
-                                        """{"type":"object","properties":{"status":{"enum":["completed"]},"document":{"type":"object"}},"required":["status","document"],"additionalProperties":false}"""
-                                    ),
-                                )
-                            }
-                        )
-                    }
-                }
-            }
-            putJsonObject("cliInvocations") {
-                put("schemaVersion", 3)
-                putJsonArray("operations") {
-                    PublicToolIdentity.entries.forEach { identity ->
-                        add(
-                            buildJsonObject {
-                                put("toolName", identity.toolName)
-                                put("operationId", identity.operation.id.value)
-                                put("cliUsage", "tool ${identity.toolName} < request.json")
-                                putJsonObject("invocation") {
-                                    put("type", "CLI")
-                                    putJsonArray("command") {
-                                        add("tool")
-                                        add(identity.toolName)
+    private fun capability(driftSchema: Boolean = false): String {
+        val json = Json { encodeDefaults = true }
+        val base = json.decodeFromString<KastCapabilityBoundary>(installedKastCatalogFixture())
+        val projection = base.serverProjection
+        val facades = PublicToolIdentity.entries.map { it.toolName }.toSet()
+        val tools =
+            projection.hostedBootstrap.tools
+                .filter { it.name in facades }
+                .map { tool ->
+                    tool.copy(
+                        inputSchema =
+                            if (driftSchema)
+                                json.encodeToJsonElement(
+                                    tool.inputSchema.jsonObject.toMutableMap().apply {
+                                        put("description", JsonPrimitive("drift"))
                                     }
-                                }
-                            }
-                        )
-                    }
+                                )
+                            else tool.inputSchema,
+                        outputSchema = json.encodeToJsonElement(FacadeOutputSchema()),
+                    )
                 }
-            }
-        }
+        return json.encodeToString(
+            base.copy(
+                serverProjection =
+                    projection.copy(
+                        hostedBootstrap = projection.hostedBootstrap.copy(tools = tools),
+                        cliInvocations =
+                            projection.cliInvocations.copy(
+                                operations = projection.cliInvocations.operations.filter { it.toolName in facades }
+                            ),
+                    )
+            )
+        )
     }
-        .toString()
 
     private fun <T, E> Refinement<T, E>.refined(): T =
         when (this) {
@@ -242,3 +210,21 @@ class KastPublicQueryProviderTest {
             is Refinement.Rejected -> error("Rejected test fixture: $failure")
         }
 }
+
+@Serializable
+private data class FacadeOutputSchema(
+    val type: String = "object",
+    val properties: FacadeOutputProperties = FacadeOutputProperties(),
+    val required: List<String> = listOf("status", "document"),
+    val additionalProperties: Boolean = false,
+)
+
+@Serializable
+private data class FacadeOutputProperties(
+    val status: FacadeOutputStatus = FacadeOutputStatus(),
+    val document: FacadeOutputDocument = FacadeOutputDocument(),
+)
+
+@Serializable private data class FacadeOutputStatus(@SerialName("enum") val values: List<String> = listOf("completed"))
+
+@Serializable private data class FacadeOutputDocument(val type: String = "object")

@@ -109,7 +109,10 @@ internal class BrokerTool<Runtime, Input, Output, InputFailure>(
         {
             emptyList()
         },
-)
+    inputAliases: Set<ToolName> = emptySet(),
+) {
+    internal val inputAliases: Set<ToolName> = inputAliases.toSet()
+}
 
 internal sealed interface ProviderDefinitionFailure {
     data object EmptyToolSet : ProviderDefinitionFailure
@@ -154,7 +157,8 @@ private constructor(
             if (tools.isEmpty()) return Validation.rejected(ProviderDefinitionFailure.EmptyToolSet)
             val duplicate =
                 tools
-                    .groupBy(BrokerTool<Runtime, *, *, *>::name)
+                    .flatMap { tool -> listOf(tool.name) + tool.inputAliases }
+                    .groupBy { name -> name }
                     .entries
                     .firstOrNull { (_, definitions) -> definitions.size > 1 }
                     ?.key
@@ -367,9 +371,12 @@ private class TypedProviderRoute<Runtime>(
     private val invocationCapacity = Semaphore(limits.inFlightCallsPerProvider)
     private var startup: ProviderStartup<Runtime>? = null
     private val tools: Map<ToolName, TypedToolRoute<Runtime>> =
-        registration.tools.associate { tool ->
-            tool.name to typedToolRoute(tool)
-        }
+        registration.tools
+            .flatMap { tool ->
+                val route = typedToolRoute(tool)
+                (listOf(tool.name) + tool.inputAliases).map { name -> name to route }
+            }
+            .toMap()
 
     override suspend fun dispatch(request: BrokerDispatchRequest): BrokerDispatch =
         tools[request.address.tool]?.dispatch(request, ::acquire)

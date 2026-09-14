@@ -68,6 +68,7 @@ data class AgentToolDefinition(
     val approval: HostedApprovalPolicy,
     val loading: HostedToolLoading,
     val inputBinding: AgentToolInputBinding = AgentToolInputBinding.Canonical,
+    val inputAliases: Set<AgentToolName> = emptySet(),
 )
 
 enum class AgentToolPolicyFailure {
@@ -123,17 +124,19 @@ object CanonicalAgentToolDefinitions {
     val semanticQuery =
         tool(
             CanonicalOperationDefinitions.relationRead,
-            "semantic_query",
+            "read_relations",
             "Read one bounded compiler-grounded semantic relation from an exact selector. Use " +
                 "a Kast search tool first when exact identity is not established.",
+            inputAliases = setOf("semantic_query"),
         )
     val impactAnalyze =
         tool(
             CanonicalOperationDefinitions.traversalRun,
-            "impact_analyze",
-            "Perform bounded transitive semantic traversal from an exact selector. Required topology " +
-                "is acquired automatically for the current semantic state; the caller does not prepare " +
-                "it separately.",
+            "traverse_relations",
+            "Traverse bounded compiler-grounded semantic relations from an exact selector. Returned " +
+                "reachability is qualified by depth, scope, relation evidence and execution budgets; " +
+                "it does not guarantee breakage analysis or test selection.",
+            inputAliases = setOf("impact_analyze"),
         )
     val diagnosticCheck = facade(PublicToolIdentity.CHECK_DIAGNOSTICS)
     val changePlan =
@@ -183,6 +186,18 @@ object CanonicalAgentToolDefinitions {
         definition !== symbolLookup && definition !== symbolInspect
     }
 
+    /** Legacy input names remain accepted throughout 0.40.x; removal is no earlier than 0.41.0. */
+    fun resolveInput(raw: String): Refinement<AgentToolDefinition, AgentToolInputFailure> {
+        val matches = all.filter { definition ->
+            definition.name.value == raw || definition.inputAliases.any { it.value == raw }
+        }
+        return when (matches.size) {
+            0 -> Refinement.Rejected(AgentToolInputFailure.UNKNOWN)
+            1 -> Refinement.Refined(matches.single())
+            else -> Refinement.Rejected(AgentToolInputFailure.AMBIGUOUS)
+        }
+    }
+
     val policy: AgentToolPolicy =
         refined(
             AgentToolPolicy.parse(
@@ -194,7 +209,7 @@ object CanonicalAgentToolDefinitions {
                 matching is default; request fuzzy explicitly. Apply known directory, package,
                 source-set, declaration-kind and exact-name constraints before expensive work.
                 Use kast.check_diagnostics for compiler diagnostics, deferred kast.query_symbols
-                for enumeration and ordered pipelines, and semantic_query for occurrence facts.
+                for enumeration and ordered pipelines, and read_relations for occurrence facts.
                 Preserve returned symbol references verbatim, including compact host handles.
                 Do not decode or reconstruct them; refresh stale handles with a scoped search.
 
@@ -243,6 +258,7 @@ object CanonicalAgentToolDefinitions {
         description: String,
         approval: HostedApprovalPolicy = HostedApprovalPolicy.NONE,
         loading: HostedToolLoading = HostedToolLoading.DEFERRED,
+        inputAliases: Set<String> = emptySet(),
     ): AgentToolDefinition =
         AgentToolDefinition(
             operation,
@@ -250,6 +266,7 @@ object CanonicalAgentToolDefinitions {
             refined(ProtocolText.parse(description)),
             approval,
             loading,
+            inputAliases = inputAliases.mapTo(linkedSetOf()) { refined(AgentToolName.parse(it)) },
         )
 
     private fun <Value, Failure> refined(value: Refinement<Value, Failure>): Value =
@@ -264,4 +281,10 @@ sealed interface AgentToolInputBinding {
     data object Canonical : AgentToolInputBinding
 
     data class Facade(val identity: PublicToolIdentity) : AgentToolInputBinding
+}
+
+/** Closed failure at the canonical hosted-tool input-name boundary. */
+enum class AgentToolInputFailure {
+    UNKNOWN,
+    AMBIGUOUS,
 }
