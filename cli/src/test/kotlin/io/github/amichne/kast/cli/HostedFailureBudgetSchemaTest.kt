@@ -3,13 +3,17 @@ package io.github.amichne.kast.cli
 import com.networknt.schema.InputFormat
 import com.networknt.schema.SchemaRegistry
 import com.networknt.schema.SpecificationVersion
+import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetDocument
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -94,6 +98,60 @@ class HostedFailureBudgetSchemaTest {
                     assertRejects(operation, unknown)
                     assertRejects(operation, nullBudget)
                 }
+            }
+        }
+    }
+
+    @Test
+    fun `configuration parameter schema retains exactly the finite owner keys`() {
+        val document =
+            Json.parseToJsonElement(
+                    checkNotNull(CanonicalOperation::class.java.getResource("/ide-hosted/hosted-query.schema.json"))
+                        .readText()
+                )
+                .jsonObject
+        assertEquals(
+            ReadLimitParameter.entries.map { it.environmentKey },
+            document
+                .getValue("\$defs")
+                .jsonObject
+                .getValue("readLimitParameter")
+                .jsonObject
+                .getValue("enum")
+                .jsonArray
+                .map { it.jsonPrimitive.content },
+        )
+    }
+
+    @Test
+    fun `configuration details reject unknown null missing and unrelated fields`() {
+        val fixtures =
+            Json.decodeFromString<FailureDocuments>(
+                checkNotNull(javaClass.getResource("/hosted-read-failure-encodings.json")).readText()
+            )
+        val schema =
+            SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12)
+                .getSchema(
+                    checkNotNull(CanonicalOperation::class.java.getResource("/ide-hosted/hosted-query.schema.json"))
+                        .readText()
+                )
+        val assertions = LiveReadOutputSchemaTest()
+        for (encoded in fixtures.documents) {
+            val document = Json.parseToJsonElement(encoded).jsonObject
+            if (document.getValue("failure").jsonPrimitive.content != "CONFIGURATION_REJECTED") continue
+            val invalid = malformedConfigurationDetails(document)
+            for (candidate in invalid) {
+                assertTrue(
+                    schema.validate(candidate.toString(), InputFormat.JSON).isNotEmpty(),
+                    candidate.toString(),
+                )
+                for (operation in
+                    listOf(
+                        CanonicalOperation.QUERY_RUN,
+                        CanonicalOperation.SOURCE_READ,
+                        CanonicalOperation.RELATION_READ,
+                        CanonicalOperation.TRAVERSAL_RUN,
+                    )) assertions.assertRejects(operation, candidate)
             }
         }
     }
@@ -188,4 +246,21 @@ class HostedFailureBudgetSchemaTest {
         val schemaVersion: Int = 1,
         val outcome: String = "rejected",
     )
+
+    private fun malformedConfigurationDetails(document: JsonObject): List<JsonObject> =
+        with(LiveReadOutputSchemaTest()) {
+            val detail = document.getValue("detail").jsonObject
+            listOf(
+                document.with("failure", JsonPrimitive("BUDGET_EXCEEDED")),
+                document.with("detail", detail.with("cause", JsonPrimitive("UNKNOWN"))),
+                document.with("detail", detail.with("unexpected", JsonPrimitive("value"))),
+            ) +
+                detail.keys.flatMap { key ->
+                    listOf(
+                        document.with("detail", Json.encodeToJsonElement(detail - key).jsonObject),
+                        document.with("detail", detail.with(key, JsonNull)),
+                        document.with("detail", detail.with(key, JsonPrimitive("KAST_READ_BOGUS"))),
+                    )
+                }
+        }
 }
