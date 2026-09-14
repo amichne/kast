@@ -36,7 +36,8 @@ data class QueryBudget(
 )
 
 enum class QueryExecutionRequestFailure {
-    REFERENCE_LEASE_MISMATCH
+    REFERENCE_LEASE_MISMATCH,
+    CHECKPOINT_MISMATCH,
 }
 
 class QueryExecutionRequest
@@ -44,12 +45,14 @@ private constructor(
     val plan: AdmittedQueryPlan,
     val lease: SemanticReadAuthority,
     val budget: QueryBudget,
+    val checkpoint: QueryCheckpoint?,
 ) {
     companion object {
         fun create(
             plan: AdmittedQueryPlan,
             lease: SemanticReadAuthority,
             budget: QueryBudget,
+            checkpoint: QueryCheckpoint? = null,
         ): Refinement<QueryExecutionRequest, QueryExecutionRequestFailure> {
             val referenceLeases =
                 when (plan) {
@@ -58,10 +61,13 @@ private constructor(
                     is AdmittedQueryPlan.Candidates,
                     is AdmittedQueryPlan.Symbols -> emptyList()
                 }
+            if (checkpoint != null && (checkpoint.plan != plan || checkpoint.lease != lease)) {
+                return Refinement.Rejected(QueryExecutionRequestFailure.CHECKPOINT_MISMATCH)
+            }
             return if (referenceLeases.any { it != lease }) {
                 Refinement.Rejected(QueryExecutionRequestFailure.REFERENCE_LEASE_MISMATCH)
             } else {
-                Refinement.Refined(QueryExecutionRequest(plan, lease, budget))
+                Refinement.Refined(QueryExecutionRequest(plan, lease, budget, checkpoint))
             }
         }
     }
@@ -184,10 +190,31 @@ sealed interface QueryExecutionResult {
     data class Qualified(
         val result: QueryResult,
         val coverage: QueryCoverage.Qualified,
+        val continuation: QueryContinuationState = QueryContinuationState.Terminal(QueryTerminalReason.UPSTREAM_INCOMPLETE),
     ) : QueryExecutionResult
 
     data class Rejected(
         val reason: QueryExecutionRejection,
         val discoveryReason: SymbolDiscoveryRejection? = null,
     ) : QueryExecutionResult
+}
+
+/** Detached execution proof. Implementations must retain no live compiler/PSI objects. */
+interface QueryCheckpoint {
+    val plan: AdmittedQueryPlan
+    val lease: SemanticReadAuthority
+    /** Conservative retained-state accounting used by bounded host stores. */
+    val retainedBytes: Long
+}
+
+enum class QueryTerminalReason {
+    UPSTREAM_INCOMPLETE,
+    OUTPUT_ITEM_TOO_LARGE,
+    CHECKPOINT_CAPACITY_EXCEEDED,
+    NO_PROGRESS,
+}
+
+sealed interface QueryContinuationState {
+    data class Resumable(val checkpoint: QueryCheckpoint) : QueryContinuationState
+    data class Terminal(val reason: QueryTerminalReason) : QueryContinuationState
 }

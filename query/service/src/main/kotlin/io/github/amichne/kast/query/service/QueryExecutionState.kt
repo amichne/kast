@@ -28,9 +28,19 @@ internal class QueryExecutionState(
     val limitations = linkedSetOf<QueryLimitation>()
     var contractViolation: Boolean = false
 
+    val failureCount: Int get() = failures.size
+
+    fun canContinue(workRequired: Boolean): Boolean {
+        if (workRequired && remainingWork() < 1L) {
+            limit(QueryLimitation.WORK_LIMIT_REACHED)
+            return false
+        }
+        return observeTime()
+    }
+
     fun consume(work: Long, bytes: Long) {
         usedWork = saturatedAdd(usedWork, work)
-        usedBytes = saturatedAdd(usedBytes, bytes)
+        // Intermediate bytes bound child effects; only final output spends returned-byte authority.
         if (usedWork > request.budget.resources.workUnitLimit.value) {
             limit(QueryLimitation.WORK_LIMIT_REACHED)
         }
@@ -124,7 +134,7 @@ internal class QueryExecutionState(
         return values.take(limit)
     }
 
-    fun boundConnections(values: List<RelationFact>): List<RelationFact> = boundResults(values.distinct().sorted())
+    fun boundConnections(values: List<RelationFact>): List<RelationFact> = values.distinct().sorted()
 
     fun <Value> boundOutput(
         values: List<Value>,
@@ -193,10 +203,10 @@ internal class QueryExecutionState(
     /** Leaves at least half of remaining byte authority available for downstream projection. */
     private fun childByteAllowance(): Long? {
         val remaining = remainingBytes() ?: return null
-        return (remaining / 2L).coerceAtLeast(1L)
+        return request.budget.returnedBytes.value
     }
 
-    private fun consumeOutput(bytes: Long): Boolean {
+    fun consumeOutput(bytes: Long): Boolean {
         val remaining = remainingBytes() ?: return false
         if (bytes > remaining) {
             limit(QueryLimitation.BYTE_LIMIT_REACHED)

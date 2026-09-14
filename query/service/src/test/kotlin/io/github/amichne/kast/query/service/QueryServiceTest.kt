@@ -340,6 +340,49 @@ class QueryServiceTest {
     }
 
     @Test
+    fun `work and item pages resume ordered references without omission`() = runTest {
+        val selected = selector(selection())
+        var descriptions = 0
+        val service = service(exact = exactOperations(
+            describe = { descriptions++; SymbolDescriptionResult.Described(SymbolDescription.from(it)) },
+            resolve = { error("No discovery expected") },
+        ))
+        val first = request(exactReferencePlan(List(3) { selected }), workLimit = 1L, resultLimit = 1)
+        var pageRequest = first
+        var count = 0
+        var pages = 0
+        while (true) {
+            val page = service.run(pageRequest)
+            count += page.symbolCount()
+            pages++
+            check(pages <= 3)
+            if (page is QueryExecutionResult.Complete) break
+            val qualified = page as QueryExecutionResult.Qualified
+            val continuation = assertInstanceOf(io.github.amichne.kast.query.contract.QueryContinuationState.Resumable::class.java, qualified.continuation)
+            pageRequest = QueryExecutionRequest.create(first.plan, first.lease, first.budget, continuation.checkpoint).refined()
+        }
+        assertEquals(3, count)
+        assertEquals(3, descriptions)
+        assertEquals(3, pages)
+    }
+
+    @Test
+    fun `distinct retains seen state across pages`() = runTest {
+        val selected = selector(selection())
+        val service = service(exact = exactOperations(
+            describe = { SymbolDescriptionResult.Described(SymbolDescription.from(it)) },
+            resolve = { error("No discovery expected") },
+        ))
+        val first = request(exactReferencePlan(List(3) { selected }, listOf(QueryStepSyntax.Distinct)), workLimit = 8L, resultLimit = 1)
+        val page = service.run(first) as QueryExecutionResult.Qualified
+        assertEquals(1, page.symbolCount())
+        val continuation = page.continuation as io.github.amichne.kast.query.contract.QueryContinuationState.Resumable
+        val last = service.run(QueryExecutionRequest.create(first.plan, first.lease, first.budget, continuation.checkpoint).refined())
+        assertInstanceOf(QueryExecutionResult.Complete::class.java, last)
+        assertEquals(0, last.symbolCount())
+    }
+
+    @Test
     fun `intermediate discovery bytes do not spend final output authority`() = runTest {
         val selected = selector(selection())
         val service = service(
