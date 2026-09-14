@@ -1,5 +1,7 @@
 package io.github.amichne.kast.appserver
 
+import io.github.amichne.kast.distribution.managed.ControlInventoryAccepted
+import io.github.amichne.kast.distribution.managed.ControlInventoryBoundary
 import io.github.amichne.kast.kernel.Refinement
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
@@ -32,11 +34,27 @@ class RuntimeIdentityObservationTest {
         val product = payload(root)
         val admitted = capture { BrokerInstallationState.admit(product) }
         assertTrue(admitted.value is Refinement.Refined)
+        val startup = Json.parseToJsonElement(admitted.stderr.trim()).jsonObject
+        assertEquals(setOf("boundary", "traversedEntries", "payloadFiles", "payloadBytes"), startup.keys)
+        assertEquals("RUNTIME_IDENTITY", startup.getValue("boundary").jsonPrimitive.content)
         val epoch = Files.readString(product.resolve("state/epoch.json"))
         val observed = capture { BrokerInstallationState.observe(product) }
         assertEquals(admitted.value, observed.value)
         assertEquals("", observed.stderr)
         assertEquals(epoch, Files.readString(product.resolve("state/epoch.json")))
+    }
+
+    @Test
+    fun `passive inspection offers typed counters to an explicit diagnostic sink`(@TempDir root: Path) {
+        val product = payload(root)
+        val observations = mutableListOf<ControlInventoryAccepted>()
+        val observed = capture { BrokerInstallationState.observe(product, observations::add) }
+        assertEquals(Refinement.Rejected(InstallationStateFailure.EPOCH_ABSENT), observed.value)
+        assertEquals("", observed.stderr)
+        assertEquals(
+            listOf(ControlInventoryAccepted(ControlInventoryBoundary.RUNTIME_IDENTITY, 5, 2, 15)),
+            observations,
+        )
     }
 
     @Test

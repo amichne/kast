@@ -2,6 +2,14 @@
 
 ## 2026-09-14
 
+- Reproduced successful passive runtime-identity counters on stderr from the
+  original v0.40.15 installation. Routed accepted counters to an explicit typed
+  sink for passive reads while preserving startup reporting and finite rejection
+  diagnostics. Added default-silence, opt-in-observation and rejection tests, plus
+  original installed-session assertions for quiet current-target show/explain.
+  Reviewed the distribution concept and affected navigation; original-release
+  validation of the successor remains a separate gate.
+
 - After the recorded R1–R7 gate, advanced the agent catalog to projection 11:
   `read_relations` and `traverse_relations` advertise unchanged canonical reads,
   with registry-owned legacy inputs through 0.40.x. Reviewed nine impacted

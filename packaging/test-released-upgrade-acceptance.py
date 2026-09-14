@@ -8,12 +8,13 @@ from pathlib import Path
 import shlex
 import shutil
 import sys
+import subprocess
 import unittest
 from unittest.mock import patch
 
 from acceptance_idea import digest
 from released_acceptance_product import ReleaseFailure, ReleaseRejected
-from released_session_acceptance import SessionRejected
+from released_session_acceptance import SessionRejected, inspect_shell_sessions
 from released_upgrade_acceptance import admit_previous_release, prepare_release_upgrade, _registry_identity
 
 _spec = importlib.util.spec_from_file_location('release_test_fixture', Path(__file__).with_name('test-released-acceptance-product.py'))
@@ -35,6 +36,13 @@ class Configuration:
     operation: str = 'config-show'
     status: str = 'complete'
     desiredSavedConfiguration: str = 'LOADED'
+
+
+@dataclass(frozen=True)
+class Explanation:
+    operation: str = 'config-explain'
+    status: str = 'complete'
+    key: str = 'KAST_APP_SERVER_TOOLS'
 
 
 @dataclass(frozen=True)
@@ -114,6 +122,7 @@ class ReleasedUpgradeTest(unittest.TestCase):
         documents = (
             ('configuration.json', Configuration((Assignment(str(product / 'state/run')),))),
             ('inspection.json', Inspection(str(product), str(product / 'state'))),
+            ('explanation.json', Explanation()),
             ('registration.json', Registration(hashlib.sha256(workspace.encode()).hexdigest(), workspace)),
             ('registry.json', Registry((workspace,))))
         for name, document in documents:
@@ -126,6 +135,7 @@ class ReleasedUpgradeTest(unittest.TestCase):
             'case "$*" in\n'
             f' --version) /bin/echo "kast {version} (IntelliJ plugin)";;\n'
             f' "config show --json") /bin/cat {q(product / "config/configuration.json")};;\n'
+            f' "config explain KAST_APP_SERVER_TOOLS") /bin/cat {q(product / "config/explanation.json")};;\n'
             f' "installation inspect --json") /bin/cat {q(product / "config/inspection.json")};;\n'
             f' "app-server register") /bin/cp {q(product / "config/registry.json")} {q(product / "config/workspaces.json")}; '
             f'/bin/cat {q(product / "config/registration.json")};;\n *) exit 23;;\nesac\n')
@@ -142,12 +152,63 @@ class ReleasedUpgradeTest(unittest.TestCase):
         self.assertEqual(receipt.previous.version, '1.2.2')
         self.assertEqual(receipt.target.version, '1.2.3')
         self.assertEqual(receipt.installerSourceCommit, self.target.commit)
-        self.assertEqual([len(session.invocations) for session in (*receipt.previousSessions, *receipt.targetSessions)], [4] * 4)
+        self.assertEqual([len(session.invocations) for session in (*receipt.previousSessions, *receipt.targetSessions)], [4, 4, 5, 5])
         self.assertEqual(json.loads((f.product / 'config/workspaces.json').read_text())['roots'], [str(f.root / 'workspace')])
         self.assertEqual((f.root / 'bin/kast').resolve(), f.product / 'bin/kast-complete')
         self.assertEqual(list((f.root / 'workspace').iterdir()), [])
         self.assertEqual(digest(self.target.control), self.target.controlSha256)
         self.assertEqual(digest(self.previous.control), self.previous.controlSha256)
+
+    def test_successful_current_config_show_rejects_stderr(self):
+        self.rejects_current_stderr(('config', 'show', '--json'))
+
+    def test_successful_current_config_explain_rejects_stderr(self):
+        self.rejects_current_stderr(('config', 'explain', 'KAST_APP_SERVER_TOOLS'))
+
+    def rejects_current_stderr(self, command):
+        original_run = subprocess.run
+
+        def noisy(arguments, **kwargs):
+            result = original_run(arguments, **kwargs)
+            current = (self.fixture.root / 'bin/kast').resolve() == self.fixture.product / 'bin/kast-complete'
+            if current and tuple(arguments[-len(command):]) == command:
+                result.stderr += b'bounded successful inventory observation\n'
+            return result
+
+        with patch('released_session_acceptance.subprocess.run', side_effect=noisy):
+            with self.assertRaises(SessionRejected) as rejected:
+                prepare_release_upgrade(self.fixture.isolation, self.previous, self.target, self.fixture.idea)
+        self.assertEqual(rejected.exception.invocation.stderrSha256,
+                         hashlib.sha256(b'bounded successful inventory observation\n').hexdigest())
+
+    def test_current_sessions_preserve_owned_jvm_options_and_prior_diagnostics(self):
+        original_run = subprocess.run
+        environments = []
+        noise = b'prior release inventory observation\n'
+
+        def observe(arguments, **kwargs):
+            result = original_run(arguments, **kwargs)
+            if tuple(arguments[-3:]) == ('config', 'show', '--json'):
+                environments.append(dict(kwargs['env']))
+                prior = (self.fixture.root / 'bin/kast').resolve() == self.prior_product / 'bin/kast-complete'
+                if prior:
+                    result.stderr += noise
+            return result
+
+        with patch('released_session_acceptance.subprocess.run', side_effect=observe):
+            receipt = prepare_release_upgrade(self.fixture.isolation, self.previous, self.target, self.fixture.idea)
+        self.assertEqual(4, len(environments))
+        options = self.fixture.isolation.environment['_JAVA_OPTIONS']
+        for environment in environments[:2]:
+            self.assertEqual(options, environment['_JAVA_OPTIONS'])
+            self.assertEqual(options, environment['JAVA_TOOL_OPTIONS'])
+        for environment in environments[2:]:
+            self.assertEqual(options, environment['JAVA_OPTS'])
+            self.assertNotIn('_JAVA_OPTIONS', environment)
+            self.assertNotIn('JAVA_TOOL_OPTIONS', environment)
+        for session in receipt.previousSessions:
+            configuration = next(call for call in session.invocations if call.command.value == 'saved-configuration')
+            self.assertEqual(hashlib.sha256(noise).hexdigest(), configuration.stderrSha256)
 
     def test_prior_version_must_be_the_immediately_preceding_patch(self):
         with patch('released_upgrade_acceptance.subprocess.run') as command:
