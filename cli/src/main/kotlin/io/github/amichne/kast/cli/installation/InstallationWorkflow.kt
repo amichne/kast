@@ -338,7 +338,7 @@ internal object InstallationWorkflow {
                             return InstallationOutcome.Rejected(InstallationFailure.PREVIOUS_INSTALLATION_REJECTED)
                     }
                 if (prior != null && prior != plan.targetRoot) {
-                    if (!admitPrior(prior, plan.request) || !retire(prior, plan.request)) {
+                    if (!admitPrior(prior, plan) || !retire(prior, plan.request)) {
                         return InstallationOutcome.Rejected(InstallationFailure.RETIREMENT_REJECTED)
                     }
                     when (
@@ -628,16 +628,23 @@ internal object InstallationWorkflow {
         ) == InstallationChildOutcome.COMPLETED
     }
 
-    private fun admitPrior(prior: Path, request: InstallationRequest): Boolean {
-        val executable = prior.resolve("bin/kast-complete")
-        if (!regularExecutable(executable)) return false
+    private fun admitPrior(prior: Path, plan: VerifiedInstallationPlan): Boolean {
+        val lifecycle = plan.targetRoot.resolve("share/kast/installation-lifecycle.py")
+        if (!regularFile(lifecycle)) return false
         return executeInstallationChild(
             InstallationChildStage.PRIOR_ADMISSION,
-            listOf(executable.toString(), "installation", "inspect", "--json"),
+            listOf(
+                "python3",
+                lifecycle.toString(),
+                "--installation",
+                prior.toString(),
+                "inspect",
+                "--json",
+            ),
             mapOf(
-                "HOME" to request.home.value.toString(),
+                "HOME" to plan.request.home.value.toString(),
                 "PATH" to (System.getenv("PATH") ?: "/usr/bin:/bin"),
-                "CODEX_HOME" to request.codexHome.value.toString(),
+                "CODEX_HOME" to plan.request.codexHome.value.toString(),
             ),
         ) == InstallationChildOutcome.COMPLETED
     }
