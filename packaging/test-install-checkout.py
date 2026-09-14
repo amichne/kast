@@ -5,6 +5,7 @@ import io
 import json
 from pathlib import Path
 import platform
+import re
 import shutil
 import subprocess
 import tarfile
@@ -16,6 +17,36 @@ from acceptance_environment import AcceptanceEnvironment, admitted_tools
 
 CHECKOUT_INSTALLER = Path(__file__).with_name("install-checkout.sh").resolve()
 PUBLIC_INSTALLER = CHECKOUT_INSTALLER.parent.parent / "install.sh"
+ROOT_BUILD = CHECKOUT_INSTALLER.parent.parent / "build.gradle.kts"
+CONTROL_LIMITS = (
+    CHECKOUT_INSTALLER.parent.parent
+    / "distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/ControlDistributionLimits.kt"
+)
+INSTALLATION_LIFECYCLE = CHECKOUT_INSTALLER.parent / "installation-lifecycle.py"
+
+
+class ControlDistributionLimitTest(unittest.TestCase):
+    def test_shell_build_and_runtime_entry_limits_are_identical(self):
+        sources = (
+            (PUBLIC_INSTALLER, r"MAXIMUM_CONTROL_ARCHIVE_ENTRIES\s*=\s*([0-9_]+)"),
+            (ROOT_BUILD, r"controlDistributionMaximumEntries\s*=\s*([0-9_]+)"),
+            (CONTROL_LIMITS, r"maximumEntryCount:\s*Int\s*=\s*([0-9_]+)"),
+            (INSTALLATION_LIFECYCLE, r"CONTROL_MAXIMUM_ENTRIES\s*=\s*([0-9_]+)"),
+        )
+        observed = []
+        for path, pattern in sources:
+            match = re.search(pattern, path.read_text())
+            self.assertIsNotNone(match, path)
+            observed.append(int(match.group(1).replace("_", "")))
+        self.assertEqual([observed[0]] * len(observed), observed)
+
+    def test_kotlin_and_installed_lifecycle_manifest_limits_are_identical(self):
+        sources = (
+            (CONTROL_LIMITS, r"maximumManifestBytes:\s*Int\s*=\s*64\s*\*\s*1_024\s*\*\s*1_024"),
+            (INSTALLATION_LIFECYCLE, r"CONTROL_MANIFEST_MAXIMUM_BYTES\s*=\s*67108864"),
+        )
+        for path, pattern in sources:
+            self.assertRegex(path.read_text(), pattern, path)
 
 
 class IsolatedInstallerTest(unittest.TestCase):
