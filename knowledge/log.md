@@ -2,6 +2,13 @@
 
 ## 2026-09-14
 
+- Preserved all finite configuration-detail variants and parameter identities after
+  exhaustive actual-encoder validation found four missing schema variants. At the
+  user's direction, aligned schema qualification with the existing 1 MiB catalog
+  policy rather than weakening schema precision to fit the former 512 KiB bound.
+  Rechecked the process consumer, generated configuration declaration and combined
+  stdout/stderr overflow proof; refreshed affected navigation hashes after review.
+
 - Extended AR08 failure/schema proof with 242 actual hosted encodings. The schema
   sweep exposed four configuration-detail mismatches; closed cause/field variants
   and the exact parameter-key enum now validate against packaged and installed

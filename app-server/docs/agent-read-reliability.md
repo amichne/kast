@@ -451,7 +451,8 @@ slice; full AR-02 acceptance still requires the expanded installed matrix.
 | [v0.40.6](https://github.com/amichne/kast/releases/tag/v0.40.6) | `06cb04787324951497888fd10e1a606619189d20` | AR-03 admitted semantic rejection budgets, deadline ordering, minimum envelope admission and cancelled source attempts | [Exact-head product CI](https://github.com/amichne/kast/actions/runs/34897457617); [exact-main release build](https://github.com/amichne/kast/actions/runs/34898382578). All ten assets, five checksums, executable/catalog and installer dry-run verified. |
 | [v0.40.7](https://github.com/amichne/kast/releases/tag/v0.40.7) | `608cc877a6b0cf3edfed43e902e6f669b5a48f6f` | AR-04 relation checkpoints, finite recovery actions and source continuation causes | [Exact-main product CI](https://github.com/amichne/kast/actions/runs/34899775711); [release build](https://github.com/amichne/kast/actions/runs/34899776285). Released assets, checksums, executable/catalog and installer dry-run verified. |
 | [v0.40.8](https://github.com/amichne/kast/releases/tag/v0.40.8) | `21af38ddfaf1797d9c27473119b0e584b2d7b536` | AR-05 continuation expiry, retention identity and cross-grant replay qualification | [Exact-main product CI](https://github.com/amichne/kast/actions/runs/34900790101); [release build](https://github.com/amichne/kast/actions/runs/34900790346). Released assets, checksums, executable/catalog and installer dry-run verified. |
-| v0.40.9 (building) | `c33132ef07c9a92895b0a764989854e74f370b15` | AR-06 transport drain and ordinary-edit authority recovery fixtures | [Release build](https://github.com/amichne/kast/actions/runs/34901769185) is in progress; released-artifact verification is pending. |
+| [v0.40.9](https://github.com/amichne/kast/releases/tag/v0.40.9) | `c33132ef07c9a92895b0a764989854e74f370b15` | AR-06 transport drain and ordinary-edit authority recovery fixtures | [Exact-head CI](https://github.com/amichne/kast/actions/runs/34900906189); [release build](https://github.com/amichne/kast/actions/runs/34901769185). All assets/checksums, executable/catalog and installer dry-run verified. |
+| [v0.40.10](https://github.com/amichne/kast/releases/tag/v0.40.10) | `3b702c391c56a8665edfa1662743fa2a7ff4ccac` | AR-07 declaration-kind eligibility before compiler projection | [Exact-head CI](https://github.com/amichne/kast/actions/runs/34901801892); [release build](https://github.com/amichne/kast/actions/runs/34902580454). All assets/checksums, executable/catalog and installer dry-run verified. |
 
 The v0.40.6 catalog is 519263 bytes, SHA-256
 `6de922bf00a83f5875a40358fc57e8e06fdd758abb3df224d1509f0f7706ab27`.
@@ -463,8 +464,16 @@ The v0.40.4/v0.40.5 released catalog is 518810 bytes, SHA-256
 `1891349dff8fa967db9c85ccde4ff7407d9b83070c39154a7aac1fe4861e1972`.
 Independent released-schema checks accept seven query reference reasons,
 nineteen source reasons, fourteen relation reasons and fourteen traversal
-reasons; unknown reasons reject. The 520192-byte allowance and 4096-byte
-reserved headroom remain unchanged.
+reasons; unknown reasons reject. Those releases retained the historical
+520192-byte allowance and 4096-byte reserved headroom.
+
+The user subsequently authorized prioritizing schema precision over that internal
+size policy. Schema qualification now uses the existing broker catalog-scale
+1 MiB allowance, with the same 4096-byte diagnostic headroom check. This is a
+local subprocess bound, not an external protocol restriction. The strict schema
+retains every configuration failure shape and all 60 parameter identities. Real
+process tests accept 600 KiB and exactly 1 MiB, and reject both stdout overflow
+and combined stdout/stderr overflow. Semantic request and result caps are unchanged.
 
 ### R1–R7 closure ledger
 
@@ -475,7 +484,7 @@ to one clean integration revision. Historical green runs do not close it.
 | Gate | Current implementation and focused evidence | Installed fixture/command | State and remaining evidence |
 | --- | --- | --- | --- |
 | R1 — transport | `HostedConnectionAdmissionTest`, `HostedEndpointTransportTest`, correlated `CONNECTION_RELEASE` after permit cleanup | `hostedChangeAcceptance`: 156 first attempts, blocked/disconnected/malformed peers, saturation, drain and one health request | Expanded current-source native run pending. No serial retries or altered semantic/mutation serialization. |
-| R2 — failure/schema parity | `ReadRejectionSchemaParityTest`, `AdmittedReadRejectionSchemaTest`, `NativeReadValidationTest`; actual provider envelope schema validation | Same-build CLI/provider schemas plus ordinary-edit stale references/cursors and foreign-root refusal | Expanded native run pending. Foreign-root case refuses an unenrolled workspace; it does not claim two enrolled IDE owners. |
+| R2 — failure/schema parity | `ReadRejectionSchemaParityTest`, `AdmittedReadRejectionSchemaTest`, `NativeReadValidationTest`; 242 actual host encoding fixtures validated against packaged and installed schemas; actual provider envelope validation | Same-build CLI/provider schemas plus ordinary-edit stale references/cursors and foreign-root refusal | Expanded native run pending. Foreign-root case refuses an unenrolled workspace; it does not claim two enrolled IDE owners. |
 | R3 — budgets/deadlines | `HostedBudgetDimensionTest`, `HostedDeadlineEvidenceTest`, `ReadDeadlineOrderingTest`; one admitted grant and finite post-admission failures | `hosted_budget_read_regression.py`: all four axes on four reads and all three search conveniences | Impossible-byte pre-dispatch and malformed-budget decoder tests pass; containment reports have focused schema/runtime evidence. Expanded same-revision native qualification remains pending. |
 | R4 — cooperative progress | `QueryWorkAdmissionTest`, `RelationTimeAdmissionTest`, `IntellijSourcePageCollectorTest`, traversal fitting/replay tests | Low-page/high-grant reference comparisons on one unchanged fixture | Native comparison pending. Source cancellation proof exercises the production attempt owner and shared meter; it does not claim control of IntelliJ retry scheduling. |
 | R5 — completion/recovery | Closed query/source/traversal progress, explicit relation checkpoint/action, retained original coverage and omissions | Wire/CLI/schema variants plus installed page drains | Finite recovery actions and source continuation causes are implemented and schema-tested; same-revision installed page drains remain pending. |
