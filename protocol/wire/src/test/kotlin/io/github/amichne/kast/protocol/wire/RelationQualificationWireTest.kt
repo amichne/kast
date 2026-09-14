@@ -84,19 +84,19 @@ class RelationQualificationWireTest {
         assertEquals(
             Refinement.Rejected(RelationReadQualificationFailure.RETAINED_COVERAGE_CONFLICT),
             RelationReadQualification.admitResumable(
-                minimum,
-                listOf(RelationLimitationDocument.PROVIDER_FAILURE),
-                outputCheckpoint,
-                ReadResumeActionDocument.RESUME,
+                knownMinimum = minimum,
+                limitations = listOf(RelationLimitationDocument.PROVIDER_FAILURE),
+                checkpoint = outputCheckpoint,
+                nextAction = ReadResumeActionDocument.RESUME,
             ),
         )
         assertEquals(
             Refinement.Rejected(RelationReadQualificationFailure.UNSUPPORTED_NEXT_ACTION),
             RelationReadQualification.admitResumable(
-                minimum,
-                listOf(RelationLimitationDocument.RESULT_LIMIT_REACHED),
-                outputCheckpoint,
-                ReadResumeActionDocument.INCREASE_EXECUTION_BUDGET,
+                knownMinimum = minimum,
+                limitations = listOf(RelationLimitationDocument.RESULT_LIMIT_REACHED),
+                checkpoint = outputCheckpoint,
+                nextAction = ReadResumeActionDocument.INCREASE_EXECUTION_BUDGET,
             ),
         )
     }

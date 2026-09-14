@@ -70,8 +70,9 @@ class HostedRelationCoverageTest {
         val request = fixture.request(RelationReadPositionDocument.Start)
         val pages = HostedQueryContinuations.Active(fixture.authority, ReadLimits.Default).relationOutputs
         val response =
-            encodeHostedRelationResponse(terminal(fixture), ReadLimits.Default, ResultLimit.parse(1).proven()) {
-                suffix -> pages.issue(request, fixture.authority, suffix)
+            encodeHostedRelationResponse(terminal(fixture), ReadLimits.Default, ResultLimit.parse(1).proven()) { suffix
+                ->
+                pages.issue(request, fixture.authority, suffix)
             }
         val body = Json.parseToJsonElement(response.document).jsonObject.getValue("body").jsonObject
         val qualification = body.getValue("qualification").jsonObject
