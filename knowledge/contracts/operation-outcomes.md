@@ -11,6 +11,8 @@ code_sources:
   - path: kernel/src/main/kotlin/io/github/amichne/kast/kernel/EvidenceEnvelope.kt
     symbols: [EvidenceEnvelope, EvidenceGeneration, EvidenceBasis, LiveReadEvidence]
   - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/OperationWireBinding.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/AdmittedReadRejections.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ExecutionBudgetPresence.kt
   - path: README.md
 ---
 
@@ -20,7 +22,14 @@ code_sources:
 
 - `Complete` carries an evidence envelope with no limitation.
 - `Qualified` carries the same evidence plus a domain-owned qualification.
-- `Rejected` carries only a closed rejection reason.
+- `Rejected` carries an operation-owned closed failure and no successful payload.
+
+The four canonical reads distinguish their existing finite rejection reason from
+an admitted rejection carrying that reason and a required execution-budget report.
+Wire and CLI projections preserve the reason shape and place `execution_budget`
+beside it. Missing report metadata retains the unadmitted variant; explicit null
+or invalid report metadata is rejected. These reports describe admission, not
+successful semantic evidence.
 
 An evidence envelope has one closed basis: published generation or detached live
 IDE provenance. Live evidence retains root, host identity, epoch revision, schema

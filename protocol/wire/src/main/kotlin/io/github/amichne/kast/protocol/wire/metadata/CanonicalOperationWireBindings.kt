@@ -90,6 +90,7 @@ object CanonicalOperationWireBindings {
                 CanonicalSourceReadSerializers.result,
                 CanonicalSourceReadSerializers.qualification,
                 CanonicalSourceReadSerializers.rejection,
+                ReadRejectionBudgets.source,
             ),
         )
     val relationRead =
@@ -100,6 +101,7 @@ object CanonicalOperationWireBindings {
                 CanonicalReadSerializers.relationReadResult,
                 CanonicalReadSerializers.relationReadQualification,
                 CanonicalReadSerializers.relationReadRejection,
+                ReadRejectionBudgets.relation,
             ),
         )
     val traversalRun =
@@ -110,6 +112,7 @@ object CanonicalOperationWireBindings {
                 CanonicalReadSerializers.traversalRunResult,
                 CanonicalReadSerializers.traversalRunQualification,
                 CanonicalReadSerializers.traversalRunRejection,
+                ReadRejectionBudgets.traversal,
             ),
         )
     val queryRun =
@@ -120,6 +123,7 @@ object CanonicalOperationWireBindings {
                 CanonicalQuerySerializers.result,
                 CanonicalQuerySerializers.qualification,
                 CanonicalQuerySerializers.rejection,
+                ReadRejectionBudgets.query,
             ),
         )
     val diagnosticCheck =

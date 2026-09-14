@@ -1,3 +1,5 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
 package io.github.amichne.kast.cli.projection
 
 import io.github.amichne.kast.cli.CliJsonDocument
@@ -23,14 +25,14 @@ import io.github.amichne.kast.protocol.contract.IndexSyncResult
 import io.github.amichne.kast.protocol.contract.OperationQualification
 import io.github.amichne.kast.protocol.contract.OperationRejection
 import io.github.amichne.kast.protocol.contract.OperationResult
+import io.github.amichne.kast.protocol.contract.QueryRunFailure
 import io.github.amichne.kast.protocol.contract.QueryRunQualification
-import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.QueryRunResult
+import io.github.amichne.kast.protocol.contract.RelationReadFailure
 import io.github.amichne.kast.protocol.contract.RelationReadQualification
-import io.github.amichne.kast.protocol.contract.RelationReadRejection
 import io.github.amichne.kast.protocol.contract.RelationReadResult
+import io.github.amichne.kast.protocol.contract.SourceReadFailure
 import io.github.amichne.kast.protocol.contract.SourceReadQualification
-import io.github.amichne.kast.protocol.contract.SourceReadRejection
 import io.github.amichne.kast.protocol.contract.SourceReadResult
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRejection
@@ -38,8 +40,8 @@ import io.github.amichne.kast.protocol.contract.SymbolDiscoverResult
 import io.github.amichne.kast.protocol.contract.SymbolInspectQualification
 import io.github.amichne.kast.protocol.contract.SymbolInspectRejection
 import io.github.amichne.kast.protocol.contract.SymbolInspectResult
+import io.github.amichne.kast.protocol.contract.TraversalRunFailure
 import io.github.amichne.kast.protocol.contract.TraversalRunQualification
-import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import io.github.amichne.kast.protocol.contract.TraversalRunResult
 import kotlinx.serialization.Serializable
 
@@ -74,7 +76,7 @@ internal val sourceReadCliProjector =
     CliOutcomeProjector<
         SourceReadResult,
         SourceReadQualification,
-        SourceReadRejection,
+        SourceReadFailure,
     > { outcome ->
         CanonicalSourceReadCliDocuments.project(outcome)
     }
@@ -83,7 +85,7 @@ internal val relationReadCliProjector =
     CliOutcomeProjector<
         RelationReadResult,
         RelationReadQualification,
-        RelationReadRejection,
+        RelationReadFailure,
     > { outcome ->
         CanonicalReadCliDocuments.projectRelation(outcome)
     }
@@ -92,7 +94,7 @@ internal val traversalRunCliProjector =
     CliOutcomeProjector<
         TraversalRunResult,
         TraversalRunQualification,
-        TraversalRunRejection,
+        TraversalRunFailure,
     > { outcome ->
         CanonicalReadCliDocuments.projectTraversal(outcome)
     }
@@ -101,7 +103,7 @@ internal val queryRunCliProjector =
     CliOutcomeProjector<
         QueryRunResult,
         QueryRunQualification,
-        QueryRunRejection,
+        QueryRunFailure,
     > { outcome ->
         CanonicalQueryCliDocuments.project(outcome)
     }
@@ -167,6 +169,10 @@ private data class RejectedCliDocument(
     val operation: String,
     val status: String,
     val reason: String,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @kotlinx.serialization.SerialName("execution_budget")
+    val executionBudget: io.github.amichne.kast.protocol.contract.ExecutionBudgetPresence =
+        io.github.amichne.kast.protocol.contract.ExecutionBudgetPresence.Absent,
 )
 
 private val rejectedDocumentFactory = CliJsonDocument.generated(RejectedCliDocument.serializer())
@@ -174,12 +180,15 @@ private val rejectedDocumentFactory = CliJsonDocument.generated(RejectedCliDocum
 internal fun canonicalRejectedDocument(
     operation: CanonicalOperation,
     reason: String,
+    executionBudget: io.github.amichne.kast.protocol.contract.ExecutionBudgetPresence =
+        io.github.amichne.kast.protocol.contract.ExecutionBudgetPresence.Absent,
 ): CliJsonDocument =
     rejectedDocumentFactory.create(
         RejectedCliDocument(
             operation = operation.id.value,
             status = "rejected",
             reason = reason,
+            executionBudget = executionBudget,
         )
     )
 
