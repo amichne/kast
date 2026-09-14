@@ -9,6 +9,8 @@ Implements installer support, installed-product acceptance, configuration ingres
 
 ## Key Files
 
+- [hosted_enum_read_regression.py](hosted_enum_read_regression.py) - installed enum exclusion and member identity regression.
+
 - [hosted_change_acceptance.py](hosted_change_acceptance.py) - bounded complete artifact inventory admission and native acceptance evidence.
 - [configuration-schema.json](configuration-schema.json) - packaging-side configuration schema.
 - [installation-lifecycle.py](installation-lifecycle.py) - installed lifecycle orchestration.

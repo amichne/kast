@@ -4,10 +4,13 @@ title: Semantic read domains
 description: Domain contracts refine discovery into exact compiler identity and compose source, relation, traversal, diagnostics, and queries without erasing evidence.
 resource: file://query
 tags: [kotlin, semantic, query, compiler]
-timestamp: 2026-09-13T00:00:00Z
+timestamp: 2026-09-14T00:00:00Z
 code_sources:
   - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijCallableIdentity.kt
   - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijCallableIdentityObservation.kt
+  - path: symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/IntellijDiscoveryKindAdmissionTest.kt
+  - path: symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/IntellijCallableIdentityObservationTest.kt
+  - path: packaging/hosted_enum_read_regression.py
   - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/BoundedNativeDiscoveryCollector.kt
   - path: symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/ScopedDeclarationDiscoveryTest.kt
   - path: query/service/src/test/kotlin/io/github/amichne/kast/query/service/QueryDiscoveryPlanningTest.kt
@@ -168,3 +171,9 @@ function/property signature retains that qualified owner identity. This does not
 classify the entry itself as a supported class, accept arbitrary anonymous-object
 members, or derive authority from source spelling. Unsupported ownership remains
 a finite compiler-identity rejection.
+
+The installed enum fixture checks exact, fuzzy and scoped class searches, both
+`act` declarations, and reuse of their exact references and signatures through
+CLI and provider surfaces. The scoped fixture retains an explicit 32-work-unit
+grant to qualify enum exclusion before candidate capacity. This does not establish
+the separate source-enumeration compiler-work ordering gate.

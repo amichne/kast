@@ -9,6 +9,8 @@ Defines symbol discovery and exact declaration identity, provides domain service
 
 ## Key Files
 
+- [IntellijCallableIdentity.kt](intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijCallableIdentity.kt) - native and compiler-owned enum-entry member identity.
+
 - [CanonicalSymbolId.kt](contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/CanonicalSymbolId.kt) - snapshot-local canonical equality without widening selector scope.
 - [BoundedLexicalCandidates.kt](intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/BoundedLexicalCandidates.kt) - bounded lexical ranking before compiler projection.
 - [contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/CanonicalCompilerSignature.kt](contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/CanonicalCompilerSignature.kt) - canonical signature identity.

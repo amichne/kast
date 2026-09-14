@@ -16,6 +16,7 @@ from threading import Barrier
 from hosted_concurrent_read import run_concurrent_read_regression
 
 from hosted_read_fixture import ReadFixtureRejected, prepare_read_fixture
+from hosted_enum_read_regression import run_enum_read_regression
 from hosted_read_regression import _ReadReplay, _read_observation, _reproduction
 from hosted_read_transport import (HostedReadTransport, ReadTransportRejected, _admit_cli_invocations,
     _admit_output_violation_evidence, _provider_result)
@@ -57,6 +58,40 @@ class SourceQualificationFixture:
 class SourceObservationFixture:
     status: str = 'qualified'
     qualification: SourceQualificationFixture = field(default_factory=SourceQualificationFixture)
+
+
+@dataclass(frozen=True)
+class EnumItemStub:
+    name: str
+    symbol_ref: str
+    symbol_id: str
+    signature: str
+
+
+@dataclass(frozen=True)
+class EnumWorkStub:
+    effective: int = 32
+
+
+@dataclass(frozen=True)
+class EnumBudgetStub:
+    max_work_units: EnumWorkStub = field(default_factory=EnumWorkStub)
+
+
+@dataclass(frozen=True)
+class EnumResponseStub:
+    items: tuple[EnumItemStub, ...]
+    status: str = 'complete'
+    failures: tuple[str, ...] = ()
+    live: str = 'private-live-authority'
+    execution_budget: EnumBudgetStub = field(default_factory=EnumBudgetStub)
+
+
+def enum_response(names):
+    # Transport stubs retain only fields read by the oracle; they are not wire fixtures.
+    return json.loads(json.dumps(asdict(EnumResponseStub(tuple(
+        EnumItemStub(name, f'private-reference-{index}', f'private-identity-{index}',
+                     f'private-signature-{index}') for index, name in enumerate(names))))))
 
 
 class HostedReadRegressionTest(unittest.TestCase):
@@ -105,6 +140,65 @@ class HostedReadRegressionTest(unittest.TestCase):
         with self.assertRaises(ReadFixtureRejected):
             prepare_read_fixture(self.workspace, REPO)
         self.assertTrue((self.workspace / 'core').is_symlink())
+
+    def test_enum_fixture_is_in_inventory_and_existing_source_cannot_be_overwritten(self):
+        fixture = prepare_read_fixture(self.workspace, REPO)
+        enum = self.workspace / 'src/main/kotlin/ReadEnumMode.kt'
+        self.assertIn('src/main/kotlin/ReadEnumMode.kt', dict(fixture.files))
+        self.assertIn('ACTIVE { override fun act() = target() }', enum.read_text())
+        enum.write_text('private source edit')
+        self.assertFalse(fixture.unchanged())
+
+    def test_existing_enum_source_rejects_before_installing_fixture(self):
+        enum = self.workspace / 'src/main/kotlin/ReadEnumMode.kt'
+        enum.write_text('private source')
+        with self.assertRaises(ReadFixtureRejected):
+            prepare_read_fixture(self.workspace, REPO)
+        self.assertEqual('private source', enum.read_text())
+        self.assertFalse((self.workspace / 'core').exists())
+
+    def enum_replay(self, responses):
+        transport = Mock()
+        transport.invoke.side_effect = responses
+        replay = _ReadReplay(None, None, 'private-live-authority', transport, 'provider', [])
+        run_enum_read_regression(replay)
+        return replay
+
+    def enum_responses(self):
+        return [enum_response(names) for names in
+                ((), ('Mode',), ('Mode', 'Nested', 'Ordinary'), ('act', 'act'), ('act', 'act'))]
+
+    def test_enum_oracle_requires_exclusion_and_preserves_member_references_and_signatures(self):
+        replay = self.enum_replay(self.enum_responses())
+        self.assertEqual(5, len(replay.rows))
+        self.assertTrue(all(row['passed'] for row in replay.rows))
+        requests = [call.args[2] for call in replay.transport.invoke.call_args_list]
+        self.assertTrue(all(request['execution_budget']['max_work_units'] == 32 for request in requests))
+        self.assertEqual(['private-reference-0', 'private-reference-1'],
+                         list(requests[-1]['source']['symbol_refs']))
+        self.assertEqual(('name', 'signature'), requests[-1]['return_fields'])
+        self.assertNotIn('private-', json.dumps(replay.rows))
+
+    def test_enum_oracle_rejects_entries_in_any_class_search(self):
+        for index in range(3):
+            with self.subTest(case=index):
+                responses = self.enum_responses()
+                responses[index]['items'].extend(enum_response(('ModeEntry00',))['items'])
+                replay = self.enum_replay(responses)
+                self.assertFalse(replay.rows[index]['passed'])
+
+    def test_enum_oracle_rejects_missing_identity_or_changed_member_projection(self):
+        for field in ('symbol_id', 'symbol_ref', 'signature'):
+            with self.subTest(field=field):
+                responses = self.enum_responses()
+                responses[-1]['items'][0].pop(field)
+                replay = self.enum_replay(responses)
+                self.assertFalse(replay.rows[-1]['passed'])
+        responses = self.enum_responses()
+        responses[3] = enum_response(('act',))
+        replay = self.enum_replay(responses)
+        self.assertFalse(replay.rows[-1]['passed'])
+        self.assertEqual(4, replay.transport.invoke.call_count)
 
     def test_authored_oracle_rejects_missing_results_without_learning_from_output(self):
         fixture = prepare_read_fixture(self.workspace, REPO)

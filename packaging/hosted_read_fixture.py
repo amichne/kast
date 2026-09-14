@@ -42,7 +42,8 @@ def prepare_read_fixture(workspace: Path, repo: Path) -> ReadFixture:
     target = workspace / 'src/main/kotlin/Fixture.kt'
     if (not workspace.is_absolute() or workspace.resolve() != workspace
             or workspace.name != 'workspace' or not target.is_file()
-            or any((workspace / name).exists() for name in ('core', 'logging', 'noise0'))):
+            or any((workspace / name).exists() or (workspace / name).is_symlink()
+                   for name in ('core', 'logging', 'noise0', 'src/main/kotlin/ReadEnumMode.kt'))):
         raise ReadFixtureRejected('READ_FIXTURE_OWNERSHIP_REJECTED')
     _admit_prepared_fixture(workspace, target)
     template = repo / 'experiments/host-observation/semantic-fixture'

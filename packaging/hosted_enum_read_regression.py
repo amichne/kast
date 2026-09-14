@@ -97,9 +97,12 @@ def _roundtrip_members(replay, discovery):
     exact = response.get('items', [])
     replay.record('enum-entry-member-reference-reuse', 'query_symbols', {
         'complete': response.get('status') == 'complete',
-        'sameDeclarations': [item.get('symbol_id') for item in exact] == [item.get('symbol_id') for item in items],
+        'sameDeclarations': all(item.get('symbol_id') for item in items) and
+            [item.get('symbol_id') for item in exact] == [item.get('symbol_id') for item in items],
+        'sameReferences': tuple(item.get('symbol_ref') for item in exact) == references,
         'exactEligibleNames': [item.get('name') for item in exact] == ['act', 'act'],
         'allReferencesRestored': response.get('failures') == [] and len(exact) == 2,
         'sameLiveAuthority': response.get('live') == replay.live,
-        'signaturesPresent': all(item.get('signature') for item in exact),
+        'signaturesPreserved': all(item.get('signature') for item in items) and
+            [item.get('signature') for item in exact] == [item.get('signature') for item in items],
     }, len(exact), response)
