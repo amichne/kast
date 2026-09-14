@@ -38,9 +38,35 @@ import kotlin.coroutines.Continuation
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.startCoroutine
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Test
 
 class SourceReadServiceTest {
+    @Test
+    fun `admitted source resources and finite provider rejection survive final authority validation`() {
+        val workspace = published(7, "source-state")
+        val request = request(workspace, "fun subject() = 1\n")
+        val rejection = SourceReadResult.Rejected(SourceReadRejection.COMPILER_ANALYSIS_UNAVAILABLE)
+        var inspections = 0
+        val port = RecordingSourceReadPort { _, admitted ->
+            assertSame(request.resources, admitted.resources)
+            rejection
+        }
+        val service =
+            SourceReadService(
+                WorkspaceInspectionOperations {
+                    inspections++
+                    WorkspaceRuntimeState.Ready(workspace)
+                },
+                port,
+            )
+
+        assertSame(rejection, runSuspend { service.read(request) })
+        assertEquals(2, inspections)
+        assertEquals(listOf(request), port.requests)
+        assertSame(request.resources, port.requests.single().resources)
+    }
+
     @Test
     fun `current publication admits and preserves one complete provider result`() {
         val workspace = published(7, "source-state")
