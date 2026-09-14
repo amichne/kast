@@ -399,7 +399,7 @@ tasks.named("check") { dependsOn(verifyConfigurationIngress, verifyKnowledgeBase
 val hostedChangeAcceptanceTest = tasks.register<Exec>("hostedChangeAcceptanceTest") {
     group = "verification"
     description = "Checks native change fixture admission and bounded receipt projection without launching an IDE."
-    inputs.files(fileTree("packaging") { include("hosted_change_*.py", "test-hosted-change-acceptance.py") })
+    inputs.files(fileTree("packaging") { include("hosted_change_*.py", "test-hosted-change-acceptance.py", "native_provider_qualification.py") })
     inputs.file("packaging/hosted_generated_fixture.py")
     commandLine("python3", layout.projectDirectory.file("packaging/test-hosted-change-acceptance.py"))
 }
@@ -451,7 +451,8 @@ val hostedReadRegressionTest = tasks.register<Exec>("hostedReadRegressionTest") 
     description = "Checks the native read fixture oracle and bounded result receipt."
     inputs.files(
         "packaging/hosted_read_fixture.py", "packaging/hosted_read_regression.py",
-        "packaging/hosted_read_transport.py", "packaging/test-hosted-read-regression.py",
+        "packaging/hosted_read_transport.py", "packaging/hosted_read_requests.py",
+        "packaging/test-hosted-read-regression.py",
         "packaging/hosted_generated_fixture.py",
         "packaging/native_provider_qualification.py", "packaging/test-native-provider-qualification.py",
     )

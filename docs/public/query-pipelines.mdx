@@ -72,8 +72,10 @@ upstream result remains incomplete after its buffered output has drained.
 
 ## Traverse a large graph
 
-`impact_analyze` exposes `traversal.run`. Its default `breadth_first` strategy
-finishes a node's resumable relation before moving to the next node. Select
+`impact_analyze` exposes `traversal.run`. Include
+`"strategy": {"type": "breadth_first"}` in tool requests; the direct CLI decoder
+also supplies this strategy when omitted. It finishes a node's resumable relation
+before moving to the next node. Select
 `bounded_fan_out` with `maximumEdgesPerNode` to visit deeper nodes after at most
 that many returned edges per node. This deliberately retains incomplete coverage
 for truncated expansions; it does not establish absence in omitted subtrees.

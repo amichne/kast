@@ -5,6 +5,8 @@ import hashlib
 import json
 import os
 from pathlib import Path
+from native_provider_qualification import (QualificationAdmitted, QualificationRejected,
+    admit_qualification, qualification_document)
 import re
 import sqlite3
 import subprocess
@@ -282,11 +284,26 @@ def admit_contract_failure(value: dict):
             raise AcceptanceRejected(AcceptanceFailure.NATIVE_OUTPUT)
 
 
+def admit_report_qualification(raw, status):
+    if raw is None:
+        if status == 'observed':
+            raise AcceptanceRejected(AcceptanceFailure.NATIVE_OUTPUT)
+        return None
+    try:
+        qualification = admit_qualification(raw)
+    except (ValueError, TypeError):
+        raise AcceptanceRejected(AcceptanceFailure.NATIVE_OUTPUT) from None
+    if status == 'observed' and isinstance(qualification, QualificationRejected):
+        raise AcceptanceRejected(AcceptanceFailure.NATIVE_OUTPUT)
+    return qualification_document(qualification)
+
+
 def bounded_native_report(path: Path, workspace: Path) -> dict:
     if path.stat().st_size > 256 * 1024:
         raise AcceptanceRejected(AcceptanceFailure.NATIVE_OUTPUT)
     value = json.loads(path.read_text())
-    if set(value) != {'schemaVersion', 'metadata', 'cases'} or value['schemaVersion'] != 1:
+    if (not isinstance(value, dict) or set(value) != {'schemaVersion', 'metadata', 'cases', 'providerQualification'}
+            or value['schemaVersion'] != 1):
         raise AcceptanceRejected(AcceptanceFailure.NATIVE_OUTPUT)
     metadata = value['metadata']
     if set(metadata) == {'upstream', 'provider', 'stockCodexUi', 'workspaceRoot'}:
@@ -306,6 +323,8 @@ def bounded_native_report(path: Path, workspace: Path) -> dict:
         admit_contract_failure(metadata['contractFailure'])
         if metadata['status'] != 'rejected' or metadata['failure'] != 'CONTRACT_REJECTED':
             raise AcceptanceRejected(AcceptanceFailure.NATIVE_OUTPUT)
+    qualification = admit_report_qualification(value['providerQualification'], metadata['status'])
+    value = dict(value, providerQualification=qualification)
     cases = value['cases']
     if not isinstance(cases, dict) or not set(cases) <= CASE_NAMES:
         raise AcceptanceRejected(AcceptanceFailure.NATIVE_OUTPUT)
@@ -445,5 +464,7 @@ def remaining_matrix_gates(native: dict | None = None, read_regression: dict | N
 def native_workflow_qualified(evidence: dict) -> bool:
     return (evidence.get('status') != 'rejected' and evidence.get('source', {}).get('clean') is True
             and evidence.get('native', {}).get('metadata', {}).get('status') == 'observed'
+            and evidence.get('native', {}).get('providerQualification') == qualification_document(QualificationAdmitted())
+            and evidence.get('readRegression', {}).get('providerQualification') == qualification_document(QualificationAdmitted())
             and not remaining_matrix_gates(evidence.get('native'), evidence.get('readRegression'),
                                            evidence.get('events', [])))

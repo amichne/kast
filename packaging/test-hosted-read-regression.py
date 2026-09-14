@@ -159,6 +159,10 @@ class HostedReadRegressionTest(unittest.TestCase):
         self.assertEqual(2, transport.invoke.call_count)
         initial, resumed = [call.args[2] for call in transport.invoke.call_args_list]
         self.assertEqual({'type': 'start'}, initial['position'])
+        self.assertEqual({'type': 'breadth_first'}, initial['strategy'])
+        self.assertEqual({'exactSelector': 'original-reference', 'relation': 'callers',
+                          'maximumDepth': 4, 'maximumResults': 100, 'position': {'type': 'start'},
+                          'strategy': {'type': 'breadth_first'}}, json.loads(json.dumps(initial)))
         self.assertEqual({'type': 'resume', 'continuation': 'private-checkpoint'}, resumed['position'])
         self.assertEqual({k: v for k, v in initial.items() if k != 'position'},
                          {k: v for k, v in resumed.items() if k != 'position'})
@@ -205,6 +209,15 @@ class HostedReadRegressionTest(unittest.TestCase):
                          _provider_result({'kind': 'rejected', 'failure': 'INVALID_ARGUMENTS'}))
         self.assertEqual({'status': 'complete'}, _provider_result({
             'kind': 'completed', 'envelope': {'document': {'status': 'complete'}}}))
+
+    def test_invalid_argument_observation_retains_finite_failure_without_diagnostic_payload(self):
+        response = _provider_result({'kind': 'rejected', 'failure': 'INVALID_ARGUMENTS'})
+        response['diagnostic'] = 'synthetic-private-text'
+        observation = _read_observation(response)
+        self.assertEqual('INVALID_ARGUMENTS', observation['providerFailure'])
+        self.assertNotIn('synthetic-private-text', json.dumps(observation))
+        unknown = _read_observation({'failure': 'synthetic-private-text'})
+        self.assertNotIn('synthetic-private-text', json.dumps(unknown))
 
     def test_output_violation_evidence_preserves_only_closed_field_keyword_pairs(self):
         evidence = {'observations': [{'keyword': 'REQUIRED', 'field': 'PROOFS'}]}

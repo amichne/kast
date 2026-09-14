@@ -4,14 +4,15 @@ Only bounded assertions and counts survive in the receipt. Returned references,
 source text and canonical payloads are used in memory and are never logged.
 """
 from collections import Counter
-from dataclasses import replace
+from dataclasses import asdict, replace
 import hashlib
 import importlib.util
 import json
 import sys
 import subprocess
 
-from hosted_read_transport import HostedReadTransport, ReadTransportRejected
+from hosted_read_transport import HostedReadTransport, ReadProviderFailure, ReadTransportRejected
+from hosted_read_requests import NativeTraversalRequest, TraversalStart, TraversalResume
 from native_provider_qualification import qualification_document
 
 
@@ -158,14 +159,13 @@ class _ReadReplay:
         self.traversal(token, expected, helper)
 
     def traversal(self, token, expected, helper):
-        # The relation-backed adapter charges each hop its full authorized time.
-        # Consume its actual checkpoints; each request retains the original limits.
-        position, seen, callers = {'type': 'start'}, set(), Counter()
+        # Each hop retains its observed elapsed time; consume only issued checkpoints.
+        # Keep the explicit strategy and original limits unchanged across requests.
+        position, seen, callers = TraversalStart(), set(), Counter()
         complete, valid_pages, response = False, True, None
         for page in range(sum(expected.values()) + 1):
-            response = self.transport.invoke(self.surface, 'impact_analyze', {
-                'exactSelector': token, 'relation': 'callers', 'maximumDepth': 4, 'maximumResults': 100,
-                'position': position})
+            request = NativeTraversalRequest(exactSelector=token, position=position)
+            response = self.transport.invoke(self.surface, 'impact_analyze', asdict(request))
             graph = response.get('graph', {})
             nodes = {node['id']: node for node in graph.get('nodes', [])}
             edges = graph.get('edges', [])
@@ -192,7 +192,7 @@ class _ReadReplay:
                 complete = True
                 break
             seen.add(continuation)
-            position = {'type': 'resume', 'continuation': continuation}
+            position = TraversalResume(continuation=continuation)
         self.record('transitive-callers-five', 'impact_analyze', {
             'complete': complete, 'allPagesProven': valid_pages, 'exactCallers': callers == expected,
         }, sum(callers.values()), response)
@@ -215,6 +215,9 @@ def _read_observation(response):
     status = response.get('status')
     result = {'outcome': 'observed', 'status': status if status in ('complete', 'qualified', 'rejected')
               else 'unrecognized'}
+    failure = response.get('failure')
+    if isinstance(failure, str) and failure in {known.value for known in ReadProviderFailure}:
+        result['providerFailure'] = ReadProviderFailure(failure).value
     qualification = response.get('qualification')
     if isinstance(qualification, dict) and 'relationLimitations' in qualification:
         result['traversalQualification'] = _traversal_qualification_observation(qualification)

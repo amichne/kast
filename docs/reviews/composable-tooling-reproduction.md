@@ -53,7 +53,8 @@ A corrected immutable fixture run is required below before completion.
   and its connections, including across page boundaries.
 - Traversal results add cumulative progress, selected strategy and page-local
   partial expansions. Tokens bind depth and strategy; old traversal tokens that
-  lack these witnesses must be restarted.
+  lack these witnesses must be restarted. Tool requests explicitly include
+  `strategy`; the direct CLI decoder retains its breadth-first default.
 - Relation results add exact-fact soundness and bounded provider omission
   evidence. Counts describe observations on one page, never an estimated total.
 - Discovery file enumeration and project continuation retention have declared
