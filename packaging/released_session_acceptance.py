@@ -64,7 +64,10 @@ def _invoke(isolation, installed, directory, index, command, arguments, environm
         stream.write(stdout[:262144] + b'\n--- stderr ---\n' + stderr[:262144])
     if status != '0' or len(stdout) > 262144 or len(stderr) > 262144:
         raise SessionRejected(record)
-    return stdout.decode(), record
+    try:
+        return stdout.decode(), record
+    except UnicodeError:
+        raise SessionRejected(record) from None
 
 
 def _shell_environment(isolation):

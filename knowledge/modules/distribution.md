@@ -7,6 +7,8 @@ tags: [distribution, configuration, packaging, release]
 timestamp: 2026-09-14T00:00:00Z
 code_sources:
   - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/acceptance/hostedchange/NativeHostedReadMain.kt
+  - path: packaging/released_session_acceptance.py
+  - path: packaging/released_upgrade_acceptance.py
   - path: packaging/released_acceptance_product.py
   - path: packaging/released_tool_inventory.py
   - path: packaging/hosted_raw_symbol_regression.py
@@ -93,3 +95,5 @@ though planning has a read effect. The two raw-symbol cases preserve an issued
 candidate through compiler refinement and are invoked for both CLI and provider
 surfaces. Adding those cases does not change installed production defaults;
 fixture wiring and inventory admission do not establish their native result.
+
+Released mode checks two fresh noninteractive Bash sessions without reading startup files: command resolution, exact version, saved runtime configuration, and installation identity. Optional `--previous-release-assets` and `--previous-release-version` first install the immediately preceding patch through the same tagged target installer, then register the owned empty workspace through that prior wrapper. The upgrade requires completed prior admission, retirement, configuration validation and command qualification observations, unchanged prior payload/configuration, and exact populated workspace-registry retention. Original archives and invocation output digests remain bound to the receipt. These child-shell observations do not qualify login-service activation, a persistent coordinator, or stock Codex UI; those remain explicit runtime gates.

@@ -20,7 +20,9 @@ from native_fixture_probe import NativeFixtureProbeError
 from hosted_read_fixture import prepare_read_fixture
 from hosted_generated_fixture import prepare_generated_fixture, finalize_generated_fixture
 from hosted_read_regression import run_read_regression
-from released_acceptance_product import admit_release, install_release, product_executable, ReleaseRejected
+from released_acceptance_product import admit_release, install_release, product_executable, ReleaseAssetIdentity, ReleaseRejected
+from released_session_acceptance import SessionRejected, inspect_shell_sessions
+from released_upgrade_acceptance import admit_previous_release, prepare_release_upgrade
 from released_tool_inventory import inspect_installed_inventory
 
 
@@ -33,6 +35,8 @@ def main():
     inputs.add_argument('--release-assets', type=Path)
     parser.add_argument('--plugin', type=Path)
     parser.add_argument('--release-version')
+    parser.add_argument('--previous-release-assets', type=Path)
+    parser.add_argument('--previous-release-version')
     parser.add_argument('--diagnostic-dirty', action='store_true')
     parser.add_argument('--readiness-seconds', type=int, default=600)
     parser.add_argument('--run-seconds', type=int, default=900)
@@ -42,6 +46,9 @@ def main():
     if ((args.product is not None and (args.plugin is None or args.release_version is not None))
             or (args.release_assets is not None and (args.release_version is None or args.plugin is not None or args.diagnostic_dirty))):
         parser.error('source mode requires --product and --plugin; release mode requires --release-assets and --release-version with a clean tag')
+    if ((args.previous_release_assets is None) != (args.previous_release_version is None)
+            or (args.previous_release_assets is not None and args.release_assets is None)):
+        parser.error('adjacent patch upgrade requires release mode and both --previous-release-assets and --previous-release-version')
     report = args.report.absolute()
     if report.exists() or report.is_symlink():
         parser.error('report already exists')
@@ -67,6 +74,7 @@ def main():
         source = source_identity(repo, args.diagnostic_dirty)
         idea = admit_hosted_idea(args.idea_home, repo / 'gradle/libs.versions.toml')
         release = admit_release(repo, args.release_assets, args.release_version, idea, source) if args.release_assets else None
+        previous = admit_previous_release(repo, args.previous_release_assets, args.previous_release_version, idea, release) if args.previous_release_assets else None
         archive = release.plugin if release else args.plugin
         product_identity = tree_identity(args.product) if release is None else None
         schema_identity = tree_identity(args.schemas)
@@ -79,7 +87,18 @@ def main():
             'harnessSha256': harness_digest, 'pluginSha256': plugin_digest}
         with AcceptanceEnvironment(admitted_tools(), network=NetworkPolicy.DEPENDENCY_DOWNLOADS) as isolation:
             isolation.report_after_cleanup(report, evidence)
-            installed = install_release(isolation, release, idea) if release else None
+            if release:
+                evidence['releaseInputs'] = asdict(ReleaseAssetIdentity.from_inputs(release))
+                evidence['fixtureRoot'] = str(isolation.root)
+            if previous:
+                evidence['previousReleaseInputs'] = asdict(ReleaseAssetIdentity.from_inputs(previous))
+                upgrade = prepare_release_upgrade(isolation, previous, release, idea)
+                installed = upgrade.target
+                evidence['releasedUpgrade'] = asdict(upgrade)
+            else:
+                installed = install_release(isolation, release, idea) if release else None
+                if installed:
+                    evidence['releasedSessions'] = [asdict(session) for session in inspect_shell_sessions(isolation, installed)]
             product = Path(installed.product) if installed else isolation.stage_product(args.product)
             plugins = Path(installed.pluginsDirectory) if installed else None
             if installed:
@@ -142,6 +161,9 @@ def main():
                         evidence['nativeReportFailure'] = error.failure.value
             if native_workflow_qualified(evidence):
                 isolation.mark_passed()
+    except SessionRejected as error:
+        evidence['status'], evidence['failure'] = 'rejected', error.failure.value
+        evidence['releasedSessionFailure'] = asdict(error.invocation)
     except ReleaseRejected as error:
         evidence['status'], evidence['failure'] = 'rejected', error.failure.value
     except AcceptanceRejected as error:

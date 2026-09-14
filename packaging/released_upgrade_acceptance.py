@@ -37,8 +37,11 @@ def admit_previous_release(repo, assets, version, idea, target: ReleaseInputs):
     if (len(previous_version) != 3 or previous_version[:2] != target_version[:2]
             or previous_version[2] + 1 != target_version[2]):
         raise ReleaseRejected(ReleaseFailure.UPGRADE)
-    commit = subprocess.run(['git', 'rev-parse', '--verify', f'refs/tags/v{version}^{{commit}}'], cwd=repo,
-                            check=True, capture_output=True, text=True, timeout=10).stdout.strip()
+    try:
+        commit = subprocess.run(['git', 'rev-parse', '--verify', f'refs/tags/v{version}^{{commit}}'], cwd=repo,
+                                check=True, capture_output=True, text=True, timeout=10).stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        raise ReleaseRejected(ReleaseFailure.SOURCE) from None
     previous = admit_release_assets(assets, version, idea, target.installer, commit)
     if previous.installerSha256 != target.installerSha256:
         raise ReleaseRejected(ReleaseFailure.SOURCE)
@@ -46,7 +49,7 @@ def admit_previous_release(repo, assets, version, idea, target: ReleaseInputs):
 
 
 def _registry_identity(path, workspace):
-    if path.resolve() != path or not path.is_file() or path.stat().st_size > 1048576:
+    if path.resolve() != path or not path.is_file() or path.stat().st_size > 262144:
         raise ReleaseRejected(ReleaseFailure.UPGRADE)
     try:
         registry = json.loads(path.read_text())
@@ -70,6 +73,8 @@ def _upgrade_observations(log):
         try:
             event = json.loads(line)
         except ValueError:
+            continue
+        if not isinstance(event, dict):
             continue
         if event.get('event') == 'kast_installation':
             if (set(event) != {'event', 'stage', 'outcome'} or event['outcome'] != 'COMPLETED'
@@ -100,6 +105,9 @@ def prepare_release_upgrade(isolation, previous, target, idea):
     _upgrade_observations(log)
     if (digest(configuration) != configuration_digest
             or digest(prior_root / 'installation.json') != prior.installationManifestSha256
+            or _registry_identity(prior_root / 'config/workspaces.json', isolation.root / 'workspace') != registry
+            or digest(previous.control) != previous.controlSha256
+            or digest(previous.plugin) != previous.hostedPluginSha256
             or _registry_identity(Path(installed.product) / 'config/workspaces.json', isolation.root / 'workspace') != registry):
         raise ReleaseRejected(ReleaseFailure.UPGRADE)
     verify_control(prior_root, previous.control, json.loads((prior_root / 'installation.json').read_text()))
