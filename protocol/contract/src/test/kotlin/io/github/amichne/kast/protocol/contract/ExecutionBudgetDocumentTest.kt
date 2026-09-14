@@ -15,9 +15,17 @@ import org.junit.jupiter.api.Test
 class ExecutionBudgetDocumentTest {
     @Test
     fun `encoded budget uses four positive controls and preserves typed requests`() {
-        val document = ExecutionBudgetDocument(ElapsedTimeLimitMillis.parse(200).proven(), WorkUnitLimit.parse(50).proven(),
-            ResultLimit.parse(2).proven(), ReturnedByteLimit.parse(1_000).proven())
-        assertEquals("""{"max_elapsed_ms":200,"max_work_units":50,"max_results":2,"max_returned_bytes":1000}""", Json.encodeToString(document))
+        val document =
+            ExecutionBudgetDocument(
+                ElapsedTimeLimitMillis.parse(200).proven(),
+                WorkUnitLimit.parse(50).proven(),
+                ResultLimit.parse(2).proven(),
+                ReturnedByteLimit.parse(1_000).proven(),
+            )
+        assertEquals(
+            """{"max_elapsed_ms":200,"max_work_units":50,"max_results":2,"max_returned_bytes":1000}""",
+            Json.encodeToString(document),
+        )
         assertEquals(ExecutionAllowance.Requested(ResultLimit.parse(2).proven()), document.requested().results)
     }
 
@@ -25,10 +33,16 @@ class ExecutionBudgetDocumentTest {
     fun `nonpositive overflowing and unknown controls fail before semantic admission`() {
         for (field in listOf("max_elapsed_ms", "max_work_units", "max_results", "max_returned_bytes")) {
             for (invalid in listOf("0", "-1", "9223372036854775808", "1.5", "\"10\"")) {
-                assertThrows(SerializationException::class.java, { Json.decodeFromString<ExecutionBudgetDocument>("{\"$field\":$invalid}") }, "$field=$invalid")
+                assertThrows(
+                    SerializationException::class.java,
+                    { Json.decodeFromString<ExecutionBudgetDocument>("{\"$field\":$invalid}") },
+                    "$field=$invalid",
+                )
             }
         }
-        assertThrows(SerializationException::class.java) { Json.decodeFromString<ExecutionBudgetDocument>("""{"unsupported":1}""") }
+        assertThrows(SerializationException::class.java) {
+            Json.decodeFromString<ExecutionBudgetDocument>("""{"unsupported":1}""")
+        }
     }
 
     private fun <Value> Refinement<Value, *>.proven(): Value = (this as Refinement.Refined).value

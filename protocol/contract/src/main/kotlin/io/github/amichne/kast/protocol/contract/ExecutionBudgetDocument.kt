@@ -5,7 +5,6 @@ import io.github.amichne.kast.kernel.AdmittedExecutionLimit
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.ExecutionAllowance
 import io.github.amichne.kast.kernel.ExecutionBudgetClamp
-import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.RequestedExecutionBudget
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.ReturnedByteLimit
@@ -16,37 +15,54 @@ import kotlinx.serialization.Serializable
 /** Optional boundary controls; all supplied numbers are refined during deserialization. */
 @Serializable
 data class ExecutionBudgetDocument(
-    @SerialName("max_elapsed_ms") @Serializable(with = ExecutionElapsedSerializer::class)
+    @SerialName("max_elapsed_ms")
+    @Serializable(with = ExecutionElapsedSerializer::class)
     val maxElapsedMillis: ElapsedTimeLimitMillis? = null,
-    @SerialName("max_work_units") @Serializable(with = ExecutionWorkSerializer::class)
+    @SerialName("max_work_units")
+    @Serializable(with = ExecutionWorkSerializer::class)
     val maxWorkUnits: WorkUnitLimit? = null,
-    @SerialName("max_results") @Serializable(with = ExecutionResultsSerializer::class)
+    @SerialName("max_results")
+    @Serializable(with = ExecutionResultsSerializer::class)
     val maxResults: ResultLimit? = null,
-    @SerialName("max_returned_bytes") @Serializable(with = ExecutionBytesSerializer::class)
+    @SerialName("max_returned_bytes")
+    @Serializable(with = ExecutionBytesSerializer::class)
     val maxReturnedBytes: ReturnedByteLimit? = null,
 ) {
-    fun requested() = RequestedExecutionBudget(
-        maxElapsedMillis.allowance(), maxWorkUnits.allowance(), maxResults.allowance(), maxReturnedBytes.allowance(),
-    )
+    fun requested() =
+        RequestedExecutionBudget(
+            maxElapsedMillis.allowance(),
+            maxWorkUnits.allowance(),
+            maxResults.allowance(),
+            maxReturnedBytes.allowance(),
+        )
 }
 
 private fun <Value : Any> Value?.allowance(): ExecutionAllowance<Value> =
     if (this == null) ExecutionAllowance.Default else ExecutionAllowance.Requested(this)
 
-internal object ExecutionElapsedSerializer : RefiningLongSerializer<ElapsedTimeLimitMillis>("ExecutionElapsedMillis", 1) {
+internal object ExecutionElapsedSerializer :
+    RefiningLongSerializer<ElapsedTimeLimitMillis>("ExecutionElapsedMillis", 1) {
     override fun raw(value: ElapsedTimeLimitMillis) = value.value
+
     override fun refine(raw: Long) = ElapsedTimeLimitMillis.parse(raw)
 }
+
 internal object ExecutionWorkSerializer : RefiningLongSerializer<WorkUnitLimit>("ExecutionWorkUnits", 1) {
     override fun raw(value: WorkUnitLimit) = value.value
+
     override fun refine(raw: Long) = WorkUnitLimit.parse(raw)
 }
-internal object ExecutionResultsSerializer : RefiningIntSerializer<ResultLimit>("ExecutionResults", 1, Int.MAX_VALUE.toLong()) {
+
+internal object ExecutionResultsSerializer :
+    RefiningIntSerializer<ResultLimit>("ExecutionResults", 1, Int.MAX_VALUE.toLong()) {
     override fun raw(value: ResultLimit) = value.value
+
     override fun refine(raw: Int) = ResultLimit.parse(raw)
 }
+
 internal object ExecutionBytesSerializer : RefiningLongSerializer<ReturnedByteLimit>("ExecutionReturnedBytes", 1) {
     override fun raw(value: ReturnedByteLimit) = value.value
+
     override fun refine(raw: Long) = ReturnedByteLimit.parse(raw)
 }
 
@@ -64,7 +80,8 @@ enum class ExecutionBudgetClampDocument {
 }
 
 @Serializable
-data class ExecutionLimitDocument private constructor(
+data class ExecutionLimitDocument
+private constructor(
     val selection: ExecutionBudgetSelectionDocument,
     val requested: Long?,
     val configuredDefault: Long,
@@ -74,38 +91,52 @@ data class ExecutionLimitDocument private constructor(
 ) {
     companion object {
         fun <Value> from(limit: AdmittedExecutionLimit<Value>, raw: (Value) -> Long): ExecutionLimitDocument {
-            val selection = when (limit.requested) {
-                ExecutionAllowance.Default -> ExecutionBudgetSelectionDocument.CONFIGURED_DEFAULT
-                is ExecutionAllowance.Requested -> ExecutionBudgetSelectionDocument.CALLER
-            }
-            val requested = when (val request = limit.requested) {
-                ExecutionAllowance.Default -> null
-                is ExecutionAllowance.Requested -> raw(request.value)
-            }
-            return ExecutionLimitDocument(selection, requested, raw(limit.configuredDefault), raw(limit.operatorCeiling), raw(limit.effective),
-                limit.clamping.map { cause -> when (cause) {
-                    ExecutionBudgetClamp.OPERATOR_CEILING -> ExecutionBudgetClampDocument.OPERATOR_CEILING
-                    ExecutionBudgetClamp.TRANSPORT_CAPACITY -> ExecutionBudgetClampDocument.TRANSPORT_CAPACITY
-                    ExecutionBudgetClamp.DEADLINE_REMAINING -> ExecutionBudgetClampDocument.DEADLINE_REMAINING
-                } }.sortedBy { it.ordinal })
+            val selection =
+                when (limit.requested) {
+                    ExecutionAllowance.Default -> ExecutionBudgetSelectionDocument.CONFIGURED_DEFAULT
+                    is ExecutionAllowance.Requested -> ExecutionBudgetSelectionDocument.CALLER
+                }
+            val requested =
+                when (val request = limit.requested) {
+                    ExecutionAllowance.Default -> null
+                    is ExecutionAllowance.Requested -> raw(request.value)
+                }
+            return ExecutionLimitDocument(
+                selection,
+                requested,
+                raw(limit.configuredDefault),
+                raw(limit.operatorCeiling),
+                raw(limit.effective),
+                limit.clamping
+                    .map { cause ->
+                        when (cause) {
+                            ExecutionBudgetClamp.OPERATOR_CEILING -> ExecutionBudgetClampDocument.OPERATOR_CEILING
+                            ExecutionBudgetClamp.TRANSPORT_CAPACITY -> ExecutionBudgetClampDocument.TRANSPORT_CAPACITY
+                            ExecutionBudgetClamp.DEADLINE_REMAINING -> ExecutionBudgetClampDocument.DEADLINE_REMAINING
+                        }
+                    }
+                    .sortedBy { it.ordinal },
+            )
         }
     }
 }
 
 /** A wire projection of admitted proof, never a second execution decision. */
 @Serializable
-data class ExecutionBudgetReport private constructor(
+data class ExecutionBudgetReport
+private constructor(
     @SerialName("max_elapsed_ms") val elapsed: ExecutionLimitDocument,
     @SerialName("max_work_units") val work: ExecutionLimitDocument,
     @SerialName("max_results") val results: ExecutionLimitDocument,
     @SerialName("max_returned_bytes") val returnedBytes: ExecutionLimitDocument,
 ) {
     companion object {
-        fun from(grant: AdmittedExecutionBudget) = ExecutionBudgetReport(
-            ExecutionLimitDocument.from(grant.elapsed) { it.value },
-            ExecutionLimitDocument.from(grant.work) { it.value },
-            ExecutionLimitDocument.from(grant.results) { it.value.toLong() },
-            ExecutionLimitDocument.from(grant.returnedBytes) { it.value },
-        )
+        fun from(grant: AdmittedExecutionBudget) =
+            ExecutionBudgetReport(
+                ExecutionLimitDocument.from(grant.elapsed) { it.value },
+                ExecutionLimitDocument.from(grant.work) { it.value },
+                ExecutionLimitDocument.from(grant.results) { it.value.toLong() },
+                ExecutionLimitDocument.from(grant.returnedBytes) { it.value },
+            )
     }
 }

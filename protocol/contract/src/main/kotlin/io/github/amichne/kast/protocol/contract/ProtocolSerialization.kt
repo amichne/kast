@@ -15,6 +15,10 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.longOrNull
 
 /** JSON-schema evidence retained by the serializer that enforces the same string constraint. */
 @SerialInfo
@@ -130,7 +134,7 @@ internal abstract class RefiningIntSerializer<Value>(
     }
 
     final override fun deserialize(decoder: Decoder): Value =
-        when (val refinement = refine(decoder.decodeInt())) {
+        when (val refinement = refine(decoder.decodeStrictInt())) {
             is Refinement.Refined -> refinement.value
             is Refinement.Rejected ->
                 throw SerializationException("${descriptor.serialName} rejected ${refinement.failure}")
@@ -159,9 +163,28 @@ internal abstract class RefiningLongSerializer<Value>(
     }
 
     final override fun deserialize(decoder: Decoder): Value =
-        when (val refinement = refine(decoder.decodeLong())) {
+        when (val refinement = refine(decoder.decodeStrictLong())) {
             is Refinement.Refined -> refinement.value
             is Refinement.Rejected ->
                 throw SerializationException("${descriptor.serialName} rejected ${refinement.failure}")
         }
+}
+
+/** JSON numeric strings contradict the numeric schema and cannot establish an integer proof. */
+private fun Decoder.decodeStrictInt(): Int =
+    when (this) {
+        is JsonDecoder -> numericPrimitive().intOrNull ?: throw SerializationException("Expected an in-range integer")
+        else -> decodeInt()
+    }
+
+private fun Decoder.decodeStrictLong(): Long =
+    when (this) {
+        is JsonDecoder -> numericPrimitive().longOrNull ?: throw SerializationException("Expected an in-range integer")
+        else -> decodeLong()
+    }
+
+private fun JsonDecoder.numericPrimitive(): JsonPrimitive {
+    val value = decodeJsonElement()
+    if (value !is JsonPrimitive || value.isString) throw SerializationException("Expected a JSON number")
+    return value
 }
