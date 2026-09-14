@@ -5,8 +5,10 @@ package io.github.amichne.kast.workspace.intellij.read.hosted
 import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -14,6 +16,33 @@ import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 
 class HostedDeadlineEvidenceTest {
+    @Test
+    fun `caller cancellation and owner retirement remain distinct terminal receipts`() = runTest {
+        for (cancellation in Cancellation.entries) {
+            val receipts = mutableListOf<HostedReadDiagnosticReceipt>()
+            val executor =
+                HostedQueryExecutor(backgroundScope, { testScheduler.currentTime * 1_000_000L }) { policy ->
+                    HostedReadDiagnostics({ testScheduler.currentTime * 1_000_000L }, policy, receipts::add)
+                }
+            val work = async {
+                executor.execute(executor.endpoint) { progress ->
+                    runHostedReadTransaction(progress, { Refinement.Refined(Unit) }) { awaitCancellation() }
+                }
+            }
+            runCurrent()
+            when (cancellation) {
+                Cancellation.CALLER -> work.cancel()
+                Cancellation.OWNER -> executor.retire()
+            }
+            work.join()
+            assertEquals(HostedDiagnosticOutcome.Rejected(cancellation.failure), receipts.single().outcome)
+            assertEquals(HostedQueryStage.SEMANTIC_READ, receipts.single().stages.last().stage)
+            assertInstanceOf(HostedSemanticBudgetObservation.Admitted::class.java, receipts.single().semanticBudget)
+            executor.retire()
+            executor.drain()
+        }
+    }
+
     @Test
     fun `fractional elapsed milliseconds cannot consume the publication reserve`() {
         var now = 0L
@@ -62,4 +91,9 @@ class HostedDeadlineEvidenceTest {
     }
 
     private fun <Value> Refinement<Value, *>.proven(): Value = (this as Refinement.Refined).value
+
+    private enum class Cancellation(val failure: HostedQueryFailure) {
+        CALLER(HostedQueryFailure.CANCELLED),
+        OWNER(HostedQueryFailure.RETIRED),
+    }
 }
