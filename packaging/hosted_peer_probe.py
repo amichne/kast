@@ -30,6 +30,7 @@ class PeerFailure(str, Enum):
     EXTRA = 'extra_response'
     SHAPE = 'response_shape_rejected'
     AUTHORITY = 'response_authority_rejected'
+    SCHEMA = 'response_schema_rejected'
 
 
 class TerminalReply(str, Enum):
@@ -74,6 +75,7 @@ class PeerAttempt:
     elapsedNanos: int
     failure: PeerFailure | None = None
     attempts: int = 1
+    schemaDigest: str | None = None
 
 
 class PeerRejected(ValueError):
@@ -138,11 +140,12 @@ def receive_terminal_reply(peer):
     return document, length + 4
 
 
-def probe_peer(endpoint, case):
+def probe_peer(endpoint, case, schema=None):
     started = time.monotonic_ns()
     sent = received = 0
     terminal = TerminalReply.UNPROVEN
     failure = None
+    schema_digest = None
     try:
         # Deliberately malformed JSON is the negative fixture, not a request DTO.
         payload = b'{' if case is PeerCase.MALFORMED else json.dumps(asdict(DescribeRequest(endpoint.root))).encode()
@@ -154,6 +157,10 @@ def probe_peer(endpoint, case):
             else:
                 document, received = receive_terminal_reply(peer)
                 terminal = TerminalReply.SINGLE
+                if schema is not None:
+                    if not schema.admits(document):
+                        raise PeerRejected(PeerFailure.SCHEMA)
+                    schema_digest = schema.digest
                 if case in (PeerCase.MALFORMED, PeerCase.SATURATED):
                     expected = (EndpointFailure.INVALID_REQUEST if case is PeerCase.MALFORMED else EndpointFailure.ADMISSION_CAPACITY_EXCEEDED)
                     if document != asdict(ExpectedPeerRejection(expected)):
@@ -171,4 +178,4 @@ def probe_peer(endpoint, case):
     except OSError:
         failure = PeerFailure.IO
     return PeerAttempt(case, PeerOutcome.PASSED if failure is None else PeerOutcome.REJECTED,
-                       terminal, sent, received, time.monotonic_ns() - started, failure)
+                       terminal, sent, received, time.monotonic_ns() - started, failure, schemaDigest=schema_digest)
