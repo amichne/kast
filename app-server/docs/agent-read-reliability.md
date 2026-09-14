@@ -294,3 +294,21 @@ allowances, exact entity sequence conservation, preserved terminal coverage,
 non-consuming replay, changed scope/projection/authority refusal, retirement,
 capacity refusal, and an indivisible envelope. They characterize the already
 implemented hosted suffix owner; they do not establish native streaming.
+
+Native source streaming GREEN: `af8745ec6` passed the same installed matrix in
+5m8s. Both `source-stop-before-large-tail` cases retained the exact first entity,
+100-unit grant and cursor with only `entity-limit-reached`. All 122 read cases and
+156 concurrent first attempts passed (blocked peer present, zero serial retries),
+and all mutation/recovery gates passed. The source owner now retains a bounded
+page plus ordering/lookahead witness during native enumeration, using the existing
+selection/order/ordinal owner. Its four new focused collector tests and full source
+checks also pass. Report: `/tmp/kast-agent-read-native-af8745ec6.json`.
+
+Execution-report dimension admission RED `3fb8d3caa` reproduced unsupported clamp
+causes and out-of-range result amounts. GREEN `e3eaeeaed` adds the report boundary
+refinement and prevents public copy construction from bypassing it. Contract,
+wire, runtime, installed budget-schema, generated reference, JSON, architecture and
+knowledge checks passed. The native run above predates this final report decoder
+change. Closed query/source completion semantics, traversal encoded fitting,
+remaining installed budget/resume/transport variants, enum-entry native coverage,
+and presentation naming remain release gates.
