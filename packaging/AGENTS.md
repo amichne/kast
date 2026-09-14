@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-14 | hash: 8a97a3c671ac -->
+<!-- generated: 2026-09-14 | hash: 8aaca05b9f00 -->
 
 # packaging
 
@@ -8,6 +8,9 @@
 Implements installer support, installed-product acceptance, configuration ingress generation, and real-environment lifecycle checks.
 
 ## Key Files
+
+- [released_session_acceptance.py](released_session_acceptance.py) - owned child-shell wrapper, version and saved-configuration qualification.
+- [released_upgrade_acceptance.py](released_upgrade_acceptance.py) - adjacent original-release upgrade and retained installation evidence.
 
 - [hosted_wire_schema.py](hosted_wire_schema.py) - exact staged-jar endpoint schema admission for native peer frames.
 - [hosted_raw_symbol_regression.py](hosted_raw_symbol_regression.py) - raw discovery candidates and compiler refinement through both read surfaces.

@@ -483,13 +483,14 @@ to one clean integration revision. Historical green runs do not close it.
 | R7 — cheap eligibility | Source deferred declaration-kind projection; enum exclusion/member reuse; excluded-kind tests and shared structural fixture | Existing enum exact/fuzzy/scoped/member cases and source paging in `hostedChangeAcceptance` | Current-source native regression pending; v0.40.3 native evidence remains historical. |
 
 Knowledge impact was recomputed against audited `8c2b16ccb`, using the actual
-changed paths. Ten concepts are affected: configuration, operation outcomes,
-public tools, hosted query, semantic query, distribution, protocol, query
-protocol, runtime hosts and semantic reads. Their source claims were reviewed;
-structural OKF validation is separate evidence. Eighteen navigation locations
-were reviewed: fifteen generated maps and three preserved authored guides.
-Newly changed immediate files require their affected map hashes to be refreshed
-again before final qualification.
+changed paths through `e7de7de28` and the documentation refresh. Thirteen concepts
+are affected: configuration, operation outcomes, public tools, hosted query,
+request dispatch, semantic query, change, distribution, protocol, query protocol,
+runtime hosts, semantic reads and workspace. Their source claims were reviewed;
+structural OKF validation is separate evidence. Seventeen navigation locations
+were reviewed: fifteen generated maps and two preserved authored guides. The
+review refreshed only changed claims and generated routes/hashes; authored policy
+remains unchanged.
 
 Final AR-08 verification uses `.github/scripts/ci/verify-checks.py`,
 `knowledgeImpact`, `verifyKnowledgeBase`, and expanded `hostedChangeAcceptance`

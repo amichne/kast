@@ -2,6 +2,14 @@
 
 ## 2026-09-14
 
+- Extended AR08 failure/schema proof with 242 actual hosted encodings. The schema
+  sweep exposed four configuration-detail mismatches; closed cause/field variants
+  and the exact parameter-key enum now validate against packaged and installed
+  contracts. Updated [protocol](modules/protocol.md), the reliability ledger and
+  generated routes for original-release session/upgrade helpers. This is local
+  encoder/schema evidence; exact-head product and native qualification remain
+  separate gates.
+
 - Reviewed the AR08 follow-up from audited `8c2b16ccb` through integrated
   `e7de7de28`: impact reported 15 pages, comprising 13 concepts and two reserved
   files. The prior ten concepts remain in scope; necessary response-byte admission
