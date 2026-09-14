@@ -31,6 +31,7 @@ internal object ConfigurationCliInspection {
     fun inspect(arguments: List<String>, environment: Map<String, String>): ConfigurationInspectionHandling {
         if (arguments.firstOrNull() != "config") return ConfigurationInspectionHandling.Unrelated
         val supplied = arguments.drop(1)
+        if (supplied == listOf("--help") || supplied == listOf("-h")) return help()
         val workspaceOption = supplied.indexOf("--workspace")
         val workspaceText = if (workspaceOption >= 0) supplied.getOrNull(workspaceOption + 1) else null
         if (workspaceOption >= 0 && (workspaceText == null || supplied.count { it == "--workspace" } != 1)) {
@@ -242,6 +243,33 @@ internal object ConfigurationCliInspection {
             }
         } catch (_: InvalidPathException) {
             AppliedConfigurationInspection.Unobserved(AppliedConfigurationUnavailable.OWNER_REJECTED)
+        }
+    }
+
+    private fun help(): ConfigurationInspectionHandling.Handled {
+        val text =
+            """
+            Usage: kast config COMMAND
+
+            Inspect configuration without starting the runtime.
+
+            Commands:
+              schema [--json]                         Show the configuration schema.
+              show [--json] [--workspace PATH]         Show configuration values and provenance.
+              explain KEY [--workspace PATH]           Explain one configuration value.
+              validate --file PATH [--json]            Validate a saved configuration file.
+
+            Options:
+              -h, --help                              Show this help.
+            """
+                .trimIndent()
+        return when (val admitted = CliTextDocument.admit(text)) {
+            is CliTextDocumentAdmission.Admitted ->
+                ConfigurationInspectionHandling.Handled(CliExit.Complete(admitted.document))
+            is CliTextDocumentAdmission.Rejected ->
+                ConfigurationInspectionHandling.Handled(
+                    boundaryExit(CliBoundaryExitStatus.USAGE, admitted.failure.name)
+                )
         }
     }
 
