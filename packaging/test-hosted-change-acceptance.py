@@ -55,8 +55,21 @@ class ExpectedNativeReport:
 
 
 @dataclass(frozen=True)
+class ExpectedConcurrentReplay:
+    outcome: str = 'passed'
+    clients: int = 12
+    rounds: int = 13
+    firstAttempts: int = 156
+    passedCount: int = 156
+    serialRetries: int = 0
+    blockedPeer: bool = True
+    sourcePayloadsLogged: bool = False
+
+
+@dataclass(frozen=True)
 class ExpectedReadQualification:
     providerQualification: ExpectedQualificationAdmitted | ExpectedQualificationRejected | None
+    concurrentReplay: ExpectedConcurrentReplay = ExpectedConcurrentReplay()
     outcome: str = 'passed'
     sourceUnchanged: bool = True
 
@@ -420,6 +433,8 @@ class HostedChangeAcceptanceTest(unittest.TestCase):
                         'post-save-interrupted', 'plugin-owner-retired', 'fixture-broker-process-replaced')]}
         self.assertTrue(native_workflow_qualified(evidence))
         for path, value in ((('readRegression', 'outcome'), 'rejected'),
+                            (('readRegression', 'concurrentReplay'), None),
+                            (('readRegression', 'concurrentReplay'), asdict(ExpectedConcurrentReplay(firstAttempts=155))),
                             (('source', 'clean'), False), (('native', 'metadata', 'status'), 'rejected'),
                             (('native', 'providerQualification'), None),
                             (('native', 'providerQualification'), asdict(ExpectedQualificationRejected('SCHEMA_INVALID'))),

@@ -422,6 +422,7 @@ def receipt_scope_observation(body: dict, document_digest: str, workspace: Path)
 def remaining_matrix_gates(native: dict | None = None, read_regression: dict | None = None,
                            events: list[dict] | None = None) -> list[dict]:
     cases = (native or {}).get('cases', {})
+    concurrent = (read_regression or {}).get('concurrentReplay') or {}
     def passed(*names):
         return all(cases.get(name, {}).get('outcome') == 'passed' for name in names)
     stages = {event.get('stage') for event in events or []
@@ -446,6 +447,12 @@ def remaining_matrix_gates(native: dict | None = None, read_regression: dict | N
         ('complete-hosted-read-regression',
          (read_regression or {}).get('outcome') == 'passed' and (read_regression or {}).get('sourceUnchanged') is True,
          'Requires the full authored semantic matrix and all eight default read tools through staged CLI/provider.'),
+        ('barrier-controlled-installed-reads',
+         concurrent.get('outcome') == 'passed' and concurrent.get('clients') == 12
+         and concurrent.get('rounds') == 13 and concurrent.get('firstAttempts') == 156
+         and concurrent.get('passedCount') == 156 and concurrent.get('serialRetries') == 0
+         and concurrent.get('blockedPeer') is True and concurrent.get('sourcePayloadsLogged') is False,
+         'Requires 156 schema-valid first attempts through staged CLI clients with a blocked native peer.'),
         ('foreign-root-generated-ambiguous-and-model-movement',
          passed('foreign-root-refusal', 'generated-target-refusal', 'ambiguous-name-is-not-authority',
                 'model-movement-refusal', 'unsupported-intents', 'old-epoch-reference'),

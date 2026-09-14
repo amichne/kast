@@ -7,6 +7,8 @@ import re
 import selectors
 import subprocess
 import time
+from threading import Lock
+from dataclasses import asdict, dataclass
 
 from native_provider_qualification import (QualificationRejected, admit_qualification, qualification_document)
 
@@ -107,6 +109,17 @@ class ReadViolationField(str, Enum):
     CONTINUATION = 'CONTINUATION'
     REASON = 'REASON'
     DIAGNOSTIC = 'DIAGNOSTIC'
+    EXECUTION_BUDGET = 'EXECUTION_BUDGET'
+    MAX_ELAPSED_MS = 'MAX_ELAPSED_MS'
+    MAX_WORK_UNITS = 'MAX_WORK_UNITS'
+    MAX_RESULTS = 'MAX_RESULTS'
+    MAX_RETURNED_BYTES = 'MAX_RETURNED_BYTES'
+    SELECTION = 'SELECTION'
+    REQUESTED = 'REQUESTED'
+    CONFIGURED_DEFAULT = 'CONFIGURED_DEFAULT'
+    OPERATOR_CEILING = 'OPERATOR_CEILING'
+    EFFECTIVE = 'EFFECTIVE'
+    CLAMPING = 'CLAMPING'
     UNKNOWN = 'UNKNOWN'
 
 
@@ -202,6 +215,20 @@ def _admit_cli_invocations(document):
     return commands
 
 
+@dataclass(frozen=True)
+class NativeReadInvocation:
+    tool: str
+    arguments: dict
+    action: str = 'invoke'
+
+
+@dataclass(frozen=True)
+class NativeReadValidation:
+    tool: str
+    document: dict
+    action: str = 'validate'
+
+
 class HostedReadTransport:
     def __init__(self, isolation, fixture, product, java, harness):
         self.isolation, self.fixture, self.product = isolation, fixture, product
@@ -209,6 +236,7 @@ class HostedReadTransport:
         self.provider = None
         self.cli_commands = {}
         self.qualification = None
+        self.validation_lock = Lock()
 
     @contextmanager
     def open(self):
@@ -270,10 +298,27 @@ class HostedReadTransport:
             return json.loads(result.stdout)
         if surface != 'provider' or self.provider is None:
             raise ReadTransportRejected('READ_SURFACE_REJECTED')
-        payload = json.dumps({'tool': tool, 'arguments': arguments}).encode() + b'\n'
+        payload = json.dumps(asdict(NativeReadInvocation(tool, arguments))).encode() + b'\n'
         self.provider.stdin.write(payload)
         self.provider.stdin.flush()
         return _provider_result(json.loads(self._response()))
+
+    def validate(self, tool, document):
+        # The provider pipe is serial; CLI requests remain concurrent outside this lock.
+        with self.validation_lock:
+            payload = json.dumps(asdict(NativeReadValidation(tool, document))).encode() + b'\n'
+            if len(payload) > MAXIMUM_RESPONSE_BYTES or self.provider is None:
+                raise ReadTransportRejected('READ_PROVIDER_OUTPUT_BOUND')
+            self.provider.stdin.write(payload)
+            self.provider.stdin.flush()
+            result = json.loads(self._response())
+            if result.get('kind') == 'validation_rejected':
+                evidence = _admit_output_violation_evidence(result.get('evidence'))
+                raise ReadTransportRejected('READ_PROVIDER_REJECTED', ReadProviderFailure.OUTPUT_CONTRACT, evidence)
+            if (set(result) != {'kind', 'schemaDigest'} or result['kind'] != 'validation_accepted'
+                    or not re.fullmatch(r'sha256:[0-9a-f]{64}', result['schemaDigest'])):
+                raise ReadTransportRejected('READ_PROVIDER_PROTOCOL_REJECTED')
+            return result['schemaDigest']
 
     def _response(self, maximum_bytes=MAXIMUM_RESPONSE_BYTES):
         deadline, response = time.monotonic() + 90, b''

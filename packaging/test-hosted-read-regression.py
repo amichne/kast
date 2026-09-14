@@ -10,6 +10,9 @@ from types import SimpleNamespace
 from collections import Counter
 from unittest.mock import Mock
 from unittest.mock import patch
+from contextlib import nullcontext
+from threading import Barrier
+from hosted_concurrent_read import run_concurrent_read_regression
 
 from hosted_read_fixture import ReadFixtureRejected, prepare_read_fixture
 from hosted_read_regression import _ReadReplay, _read_observation, _reproduction
@@ -86,6 +89,31 @@ class HostedReadRegressionTest(unittest.TestCase):
         replay.record('case', 'query_symbols', {'exact': True}, 1)
         self.assertEqual({'exact': True}, replay.rows[0]['assertions'])
         self.assertTrue(replay.rows[0]['passed'])
+
+    def test_installed_replay_coordinates_all_156_first_attempts_and_detects_mixed_replies(self):
+        cases = [SimpleNamespace(name=f'exact-{index}', identity=index) for index in range(10)]
+        oracle = SimpleNamespace(cases=lambda _: cases, ToolSurface=SimpleNamespace(PUBLIC='public'),
+            Finding=SimpleNamespace(REPRODUCED=SimpleNamespace(value='reproduced')),
+            invocation=lambda case, _: ('query_symbols', [], {'identity': case.identity}),
+            assess=lambda case, response, *_: {'finding': 'reproduced',
+                'assertions': {'identity': response['identity'] == case.identity}})
+        fixture = SimpleNamespace(oracle={}, workspace=self.workspace)
+        live = {'host': 'fixture-host'}
+        for mix_replies in (False, True):
+            rendezvous = Barrier(12)
+            def invoke(_surface, _tool, arguments):
+                rendezvous.wait(timeout=5)
+                return {'status': 'complete', 'live': live,
+                        'identity': -1 if mix_replies else arguments['identity']}
+            transport = SimpleNamespace(invoke=invoke, validate=lambda *_: 'sha256:' + 'a' * 64)
+            with patch('hosted_concurrent_read.blocked_peer', return_value=nullcontext()):
+                report = run_concurrent_read_regression(None, fixture, oracle, transport, live)
+            self.assertEqual(156, report['firstAttempts'])
+            self.assertEqual(0, report['serialRetries'])
+            self.assertEqual(0 if mix_replies else 156, report['passedCount'])
+            self.assertEqual('rejected' if mix_replies else 'passed', report['outcome'])
+            self.assertEqual(156, len({(row['client'], row['round']) for row in report['attempts']}))
+            self.assertNotIn('identity', json.dumps(report))
 
     @staticmethod
     def schema():

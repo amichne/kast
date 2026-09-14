@@ -14,6 +14,7 @@ import subprocess
 from hosted_read_transport import HostedReadTransport, ReadProviderFailure, ReadTransportRejected
 from hosted_read_requests import NativeTraversalRequest, TraversalStart, TraversalResume
 from native_provider_qualification import qualification_document
+from hosted_concurrent_read import run_concurrent_read_regression
 
 
 def _reproduction(repo):
@@ -37,6 +38,7 @@ def run_read_regression(isolation, fixture, product, java, harness, repo, read_f
     oracle = _reproduction(repo)
     rows, failure, failure_details, unchanged, before = [], None, None, False, False
     qualification = None
+    concurrent = None
     try:
         before = read_fixture.unchanged()
         with HostedReadTransport(isolation, fixture, product, java, harness).open() as transport:
@@ -44,6 +46,7 @@ def run_read_regression(isolation, fixture, product, java, harness, repo, read_f
             for surface in ('cli', 'provider'):
                 replay = _ReadReplay(oracle, read_fixture, initial_live, transport, surface, rows)
                 replay.run()
+            concurrent = run_concurrent_read_regression(isolation, read_fixture, oracle, transport, initial_live)
     except ReadTransportRejected as error:
         failure = 'READ_TRANSPORT_REJECTED'
         failure_details = error.evidence()
@@ -56,14 +59,15 @@ def run_read_regression(isolation, fixture, product, java, harness, repo, read_f
             unchanged = before and read_fixture.unchanged()
         except (OSError, ValueError):
             failure = 'READ_FIXTURE_REJECTED'
-    passed = failure is None and unchanged and bool(rows) and all(row['passed'] for row in rows)
+    passed = (failure is None and unchanged and bool(rows) and all(row['passed'] for row in rows)
+              and concurrent is not None and concurrent['outcome'] == 'passed')
     return {'schemaVersion': 1, 'outcome': 'passed' if passed else 'rejected', 'failure': failure,
             'failureDetails': failure_details, 'providerQualification': qualification,
             'scope': 'complete-authored-base-semantic-matrix-and-eight-default-read-tools',
             'fixture': read_fixture.evidence(), 'sourceUnchanged': unchanged,
             'queryBudgets': 'unchanged-production-policy', 'sourcePayloadsLogged': False,
             'stockCodexUi': 'unqualified', 'caseCount': len(rows),
-            'passedCount': sum(row['passed'] for row in rows), 'cases': rows}
+            'passedCount': sum(row['passed'] for row in rows), 'cases': rows, 'concurrentReplay': concurrent}
 
 
 class _ReadReplay:
