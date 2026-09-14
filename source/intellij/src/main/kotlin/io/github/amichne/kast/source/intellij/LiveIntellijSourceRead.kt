@@ -111,7 +111,7 @@ internal class LiveIntellijSourceRegionAccess(
         if (DumbService.isDumb(project)) {
             return regionRejected(IntellijSourceReadRejection.COMPILER_ANALYSIS_UNAVAILABLE)
         }
-        val execution = IntellijSourceExecution(request.resources, limits)
+        val execution = IntellijSourceExecution(request.resources)
         return try {
             readAction { selectInReadAction(context, request, cursor, execution) }
         } catch (cancelled: ProcessCanceledException) {
@@ -199,7 +199,7 @@ internal class LiveIntellijSourceRegionAccess(
                     admittedAnchor.selector,
                     regionSelector,
                     document.text,
-                    entityPage,
+                    execution.finish(entityPage),
                 )
         ) {
             is Refinement.Refined -> IntellijSourceRegionAccessResult.Selected(capture.value)
@@ -971,21 +971,22 @@ private class NativeSourceEntityEnumerator(
         }
     }
 
-    private fun examine(): Boolean = when (execution.admitUnit()) {
-        SourceExecutionAdmission.ADMITTED -> true
-        SourceExecutionAdmission.WORK_LIMIT_REACHED -> {
-            limitation = SourceReadLimitation.WORK_LIMIT_REACHED
-            false
+    private fun examine(): Boolean =
+        when (execution.admitUnit()) {
+            SourceExecutionAdmission.ADMITTED -> true
+            SourceExecutionAdmission.WORK_LIMIT_REACHED -> {
+                limitation = SourceReadLimitation.WORK_LIMIT_REACHED
+                false
+            }
+            SourceExecutionAdmission.TIME_LIMIT_REACHED -> {
+                limitation = SourceReadLimitation.TIME_LIMIT_REACHED
+                false
+            }
+            SourceExecutionAdmission.CLOCK_REJECTED -> {
+                rejection = IntellijSourceReadRejection.CONTRACT_VIOLATION
+                false
+            }
         }
-        SourceExecutionAdmission.TIME_LIMIT_REACHED -> {
-            limitation = SourceReadLimitation.TIME_LIMIT_REACHED
-            false
-        }
-        SourceExecutionAdmission.CLOCK_REJECTED -> {
-            rejection = IntellijSourceReadRejection.CONTRACT_VIOLATION
-            false
-        }
-    }
 
     private fun stopped(): Boolean = limitation != null || rejection != null
 
@@ -998,7 +999,7 @@ private class NativeSourceEntityEnumerator(
     }
 }
 
-private fun IntellijSourceEntityPage.withLimitation(limitation: SourceReadLimitation): IntellijSourceEntityPage =
+internal fun IntellijSourceEntityPage.withLimitation(limitation: SourceReadLimitation): IntellijSourceEntityPage =
     when (this) {
         is IntellijSourceEntityPage.Complete -> copy(limitations = limitations + limitation)
         is IntellijSourceEntityPage.Prefix -> copy(limitations = limitations + limitation)
