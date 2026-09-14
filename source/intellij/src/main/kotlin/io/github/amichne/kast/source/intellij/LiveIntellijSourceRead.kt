@@ -767,13 +767,13 @@ private class NativeSourceEntityEnumerator(
         val selector =
             issueEntitySelector(declaration.textRange, kind.entityKind(), name, parent.selector)
                 ?: return reject(IntellijSourceReadRejection.CONTRACT_VIOLATION)
-        if (includeDeclarations) {
+        attempt.projectDeclaration(kind) {
             val semanticVisibility =
                 visibility(declaration, NativeVisibilityTarget.DECLARATION)
-                    ?: return qualify(SourceReadLimitation.SEMANTIC_RESOLUTION_INCOMPLETE)
+                    ?: return@projectDeclaration qualify(SourceReadLimitation.SEMANTIC_RESOLUTION_INCOMPLETE)
             val candidate =
                 declaration.candidateSelector(document.snapshot, kind, name)
-                    ?: return reject(IntellijSourceReadRejection.CONTRACT_VIOLATION)
+                    ?: return@projectDeclaration reject(IntellijSourceReadRejection.CONTRACT_VIOLATION)
             val entity =
                 when (
                     val created =
@@ -786,7 +786,8 @@ private class NativeSourceEntityEnumerator(
                         )
                 ) {
                     is Refinement.Refined -> created.value
-                    is Refinement.Rejected -> return reject(IntellijSourceReadRejection.CONTRACT_VIOLATION)
+                    is Refinement.Rejected ->
+                        return@projectDeclaration reject(IntellijSourceReadRejection.CONTRACT_VIOLATION)
                 }
             attempt.offer(entity)
         }
@@ -801,33 +802,32 @@ private class NativeSourceEntityEnumerator(
         visitChildren(declaration, childParent, classParent)
     }
 
-    private fun visitParameter(
+    private fun visitConstructorProperty(
         parameter: KtParameter,
-        parent: NativeStructuralParent,
         classPropertyParent: NativeStructuralParent?,
+        name: String,
     ) {
-        if (!parameter.isSupportedValueParameter()) return
-        val name = parameter.name ?: return qualify(SourceReadLimitation.UNSUPPORTED_ENTITY)
-        if (includeDeclarations && parameter.hasValOrVar() && parameter.ownerDeclaration is KtPrimaryConstructor) {
-            val propertyParent = classPropertyParent ?: return reject(IntellijSourceReadRejection.CONTRACT_VIOLATION)
+        attempt.projectDeclaration(DeclarationKind.PROPERTY) {
+            val propertyParent =
+                classPropertyParent ?: return@projectDeclaration reject(IntellijSourceReadRejection.CONTRACT_VIOLATION)
             val propertySelector =
                 issueEntitySelector(
                     parameter.textRange,
                     SourceEntityKind.DECLARATION_PROPERTY,
                     name,
                     propertyParent.selector,
-                ) ?: return reject(IntellijSourceReadRejection.CONTRACT_VIOLATION)
+                ) ?: return@projectDeclaration reject(IntellijSourceReadRejection.CONTRACT_VIOLATION)
             val semanticVisibility =
                 visibility(
                     parameter,
                     NativeVisibilityTarget.PRIMARY_CONSTRUCTOR_PROPERTY,
-                ) ?: return qualify(SourceReadLimitation.SEMANTIC_RESOLUTION_INCOMPLETE)
+                ) ?: return@projectDeclaration qualify(SourceReadLimitation.SEMANTIC_RESOLUTION_INCOMPLETE)
             val candidate =
                 parameter.candidateSelector(
                     document.snapshot,
                     DeclarationKind.PROPERTY,
                     name,
-                ) ?: return reject(IntellijSourceReadRejection.CONTRACT_VIOLATION)
+                ) ?: return@projectDeclaration reject(IntellijSourceReadRejection.CONTRACT_VIOLATION)
             val property =
                 when (
                     val created =
@@ -840,9 +840,22 @@ private class NativeSourceEntityEnumerator(
                         )
                 ) {
                     is Refinement.Refined -> created.value
-                    is Refinement.Rejected -> return reject(IntellijSourceReadRejection.CONTRACT_VIOLATION)
+                    is Refinement.Rejected ->
+                        return@projectDeclaration reject(IntellijSourceReadRejection.CONTRACT_VIOLATION)
                 }
             attempt.offer(property)
+        }
+    }
+
+    private fun visitParameter(
+        parameter: KtParameter,
+        parent: NativeStructuralParent,
+        classPropertyParent: NativeStructuralParent?,
+    ) {
+        if (!parameter.isSupportedValueParameter()) return
+        val name = parameter.name ?: return qualify(SourceReadLimitation.UNSUPPORTED_ENTITY)
+        if (parameter.hasValOrVar() && parameter.ownerDeclaration is KtPrimaryConstructor) {
+            visitConstructorProperty(parameter, classPropertyParent, name)
         }
         if (!includeParameters || stopped()) return
         val selector =

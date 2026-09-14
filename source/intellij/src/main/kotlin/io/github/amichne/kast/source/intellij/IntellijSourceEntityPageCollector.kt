@@ -1,6 +1,7 @@
 package io.github.amichne.kast.source.intellij
 
 import io.github.amichne.kast.source.contract.Containment
+import io.github.amichne.kast.source.contract.DeclarationKind
 import io.github.amichne.kast.source.contract.DeclarationVisibility
 import io.github.amichne.kast.source.contract.EntityFilter
 import io.github.amichne.kast.source.contract.EntitySelection
@@ -37,6 +38,11 @@ internal class IntellijSourceEntityPageCollector(
                 State.Collecting -> SourceEntityCollectionAdmission.ACCEPTING
                 is State.Stopped -> SourceEntityCollectionAdmission.STOPPED
             }
+
+    /** Keeps structural traversal outside deferred compiler projection. */
+    fun projectDeclaration(kind: DeclarationKind, project: () -> Unit) {
+        if (selection.filters.any { it is EntityFilter.Declarations && kind in it.kinds.values }) project()
+    }
 
     fun offer(entity: SourceEntity): SourceEntityCollectionAdmission {
         if (state is State.Stopped) return SourceEntityCollectionAdmission.STOPPED

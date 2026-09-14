@@ -1,5 +1,6 @@
 package io.github.amichne.kast.source.intellij
 
+import io.github.amichne.kast.source.contract.DeclarationKind
 import io.github.amichne.kast.source.contract.EntitySelection
 import io.github.amichne.kast.source.contract.SourceEntity
 import io.github.amichne.kast.source.contract.SourceEntityLimit
@@ -22,6 +23,8 @@ private constructor(
     fun admitUnit(): SourceExecutionAdmission = execution.admitUnit()
 
     fun offer(entity: SourceEntity): SourceEntityCollectionAdmission = page.offer(entity)
+
+    fun projectDeclaration(kind: DeclarationKind, project: () -> Unit) = page.projectDeclaration(kind, project)
 
     fun finish(): IntellijSourceEntityPage = page.finish()
 
