@@ -92,6 +92,32 @@ class SourceContinuationRetentionTest {
         }
     }
 
+    @Test
+    fun `native eviction retains recently replayed checkpoint instead of insertion order`() {
+        val owner = IntellijSourceReadContinuations(limits(ReadLimitParameter.SOURCE_CONTINUATIONS, 2)) { 0L }
+        val fixture = fixture()
+        val first = owner.issue(fixture.request, fixture.capture, 1).refined()
+        val second = owner.issue(fixture.request, fixture.capture, 2).refined()
+        assertInstanceOf(
+            IntellijSourceContinuationAdmission.Admitted::class.java,
+            owner.admit(fixture.capture.snapshot.context, fixture.request.copy(page = SourceReadPage.Continue(first))),
+        )
+        val third = owner.issue(fixture.request, fixture.capture, 3).refined()
+        assertEquals(
+            IntellijSourceContinuationAdmission.Rejected(IntellijSourceContinuationRejection.UNAVAILABLE),
+            owner.admit(fixture.capture.snapshot.context, fixture.request.copy(page = SourceReadPage.Continue(second))),
+        )
+        for (token in listOf(first, third)) {
+            assertInstanceOf(
+                IntellijSourceContinuationAdmission.Admitted::class.java,
+                owner.admit(
+                    fixture.capture.snapshot.context,
+                    fixture.request.copy(page = SourceReadPage.Continue(token)),
+                ),
+            )
+        }
+    }
+
     private fun limits(parameter: ReadLimitParameter, value: Int): ReadLimits =
         ReadLimits.resolve(environment = mapOf(parameter.environmentKey to value.toString())).refined()
 
