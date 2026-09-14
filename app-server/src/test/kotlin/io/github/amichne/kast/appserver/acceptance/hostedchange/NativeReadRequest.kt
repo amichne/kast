@@ -21,6 +21,10 @@ internal sealed interface NativeReadRequest {
     @Serializable
     @SerialName("validate")
     data class Validate(override val tool: String, val document: JsonElement) : NativeReadRequest
+
+    @Serializable
+    @SerialName("validate_envelope")
+    data class ValidateEnvelope(override val tool: String, val envelope: JsonElement) : NativeReadRequest
 }
 
 internal val readRequestJson = Json { classDiscriminator = "action" }
@@ -36,6 +40,9 @@ private data class NativeReadValidationEnvelope(
 private enum class NativeReadProcessStatus {
     @SerialName("completed") COMPLETED
 }
+
+internal fun validateNativeReadEnvelope(schema: CompiledJsonSchema, envelope: JsonElement): NativeReadResponse =
+    validateNativeReadOutput(schema, envelope)
 
 internal fun validateNativeReadOutput(schema: CompiledJsonSchema, document: JsonElement): NativeReadResponse =
     when (
