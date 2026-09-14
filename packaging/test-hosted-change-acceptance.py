@@ -64,6 +64,11 @@ class ExpectedConcurrentReplay:
     serialRetries: int = 0
     blockedPeer: bool = True
     sourcePayloadsLogged: bool = False
+    disconnectedPeer: bool = True
+    malformedPeer: bool = True
+    listenerHealthy: bool = True
+    peerFirstAttempts: int = 3
+    peerPassedCount: int = 3
 
 
 @dataclass(frozen=True)
@@ -435,6 +440,11 @@ class HostedChangeAcceptanceTest(unittest.TestCase):
         for path, value in ((('readRegression', 'outcome'), 'rejected'),
                             (('readRegression', 'concurrentReplay'), None),
                             (('readRegression', 'concurrentReplay'), asdict(ExpectedConcurrentReplay(firstAttempts=155))),
+                            (('readRegression', 'concurrentReplay'), asdict(ExpectedConcurrentReplay(disconnectedPeer=False))),
+                            (('readRegression', 'concurrentReplay'), asdict(ExpectedConcurrentReplay(malformedPeer=False))),
+                            (('readRegression', 'concurrentReplay'), asdict(ExpectedConcurrentReplay(listenerHealthy=False))),
+                            (('readRegression', 'concurrentReplay'), asdict(ExpectedConcurrentReplay(peerFirstAttempts=4))),
+                            (('readRegression', 'concurrentReplay'), asdict(ExpectedConcurrentReplay(peerPassedCount=2))),
                             (('source', 'clean'), False), (('native', 'metadata', 'status'), 'rejected'),
                             (('native', 'providerQualification'), None),
                             (('native', 'providerQualification'), asdict(ExpectedQualificationRejected('SCHEMA_INVALID'))),
