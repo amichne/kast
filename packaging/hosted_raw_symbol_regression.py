@@ -30,6 +30,7 @@ class InspectRequest:
 
 def run_raw_symbol_regression(replay):
     lookup = replay.transport.invoke(replay.surface, 'symbol_lookup', asdict(DiscoverRequest()))
+    lookup_schema = replay.transport.validate('symbol_lookup', lookup)
     candidates = lookup.get('items', [])
     valid = (lookup.get('operation') == 'symbol.discover' and lookup.get('status') == 'complete'
              and len(candidates) == 1 and candidates[0].get('name') == 'NativeChangeTarget'
@@ -39,12 +40,13 @@ def run_raw_symbol_regression(replay):
              and bool(candidates[0]['candidateSelector']))
     replay.record('explicit-raw-symbol-lookup', 'symbol_lookup',
                   {'candidateFromAuthoredFixture': valid,
-                   'outputSchema': replay.transport.validate('symbol_lookup', lookup)}, len(candidates), lookup)
+                   'outputSchema': isinstance(lookup_schema, str) and bool(lookup_schema)}, len(candidates), lookup)
     if not valid:
         replay.record('explicit-raw-symbol-inspect', 'symbol_inspect', {'candidateAvailable': False})
         return
     inspected = replay.transport.invoke(replay.surface, 'symbol_inspect',
         asdict(InspectRequest(CandidateTarget(candidates[0]['candidateSelector']))))
+    inspect_schema = replay.transport.validate('symbol_inspect', inspected)
     symbol = inspected.get('symbol', {})
     compiler = symbol.get('compilerEvidence', {})
     replay.record('explicit-raw-symbol-inspect', 'symbol_inspect',
@@ -56,4 +58,4 @@ def run_raw_symbol_regression(replay):
                                       and re.fullmatch(r'canonical-signature-sha256-v1\|[0-9a-f]{64}', compiler['identity']) is not None
                                       and compiler.get('signature', {}).get('qualifiedIdentity') == 'fixture.NativeChangeTarget'
                                       and compiler.get('signature', {}).get('type') == 'class-like',
-         'outputSchema': replay.transport.validate('symbol_inspect', inspected)}, 1, inspected)
+         'outputSchema': isinstance(inspect_schema, str) and bool(inspect_schema)}, 1, inspected)

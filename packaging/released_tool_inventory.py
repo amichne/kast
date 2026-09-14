@@ -39,7 +39,8 @@ def admit_inventory(document, configuration, schema_digest):
     expected_defaults = tuple(name for name, _ in OPERATIONS if name not in ('symbol_lookup', 'symbol_inspect'))
     if len(selections) != 1 or tuple(selections[0].split(',')) != expected_defaults:
         raise ReleaseRejected(ReleaseFailure.INVENTORY)
-    reads = tuple(tool['name'] for tool in tools if tool['effect'] in ('none', 'intellij_read'))
+    reads = tuple(tool['name'] for tool in tools if tool['effect'] in ('none', 'intellij_read')
+                  and tool['operationId'] != 'change.plan')
     if len(reads) != 10 or not {'symbol_lookup', 'symbol_inspect'} <= set(reads):
         raise ReleaseRejected(ReleaseFailure.INVENTORY)
     return ReleasedToolInventory(names, expected_defaults, reads, schema_digest)

@@ -20,6 +20,11 @@ class NativeProductAdmissionTest {
         val defaults = CanonicalAgentToolDefinitions.defaultAppServerTools
         assertEquals(13, catalog.size)
         assertEquals(11, defaults.size)
+        assertEquals(10, nativeReadToolNames.size)
+        assertEquals(
+            emptySet<String>(),
+            nativeReadToolNames.intersect(setOf("change_plan", "change_apply", "change_recover")),
+        )
         assertEquals(
             setOf("symbol_lookup", "symbol_inspect"),
             catalog.map { definition -> definition.name.value }.toSet() -
