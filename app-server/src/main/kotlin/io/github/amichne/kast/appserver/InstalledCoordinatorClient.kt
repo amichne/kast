@@ -127,6 +127,8 @@ internal class InstalledCoordinatorClient(private val kast: Path) {
                         return Refinement.Rejected(
                             if (observed.failure == InstallationStateFailure.EPOCH_ABSENT)
                                 WorkerControlFailure.UNAVAILABLE
+                            else if (observed.failure == InstallationStateFailure.PAYLOAD_LIMIT_EXCEEDED)
+                                WorkerControlFailure.PAYLOAD_LIMIT_EXCEEDED
                             else WorkerControlFailure.IDENTITY_REJECTED
                         )
                 }

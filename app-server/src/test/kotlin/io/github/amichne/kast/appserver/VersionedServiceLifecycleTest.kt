@@ -3,6 +3,8 @@ package io.github.amichne.kast.appserver
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.Path
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -44,6 +46,45 @@ class VersionedServiceLifecycleTest {
         Files.createSymbolicLink(other.resolve("state"), state)
         assertEquals(Refinement.Rejected(InstallationStateFailure.PATH_REJECTED), BrokerInstallationState.admit(other))
         assertEquals("{}", Files.readString(state.resolve("epoch.json")))
+    }
+
+    @Test
+    fun `current distribution above historical inventory ceiling is admitted`(@TempDir root: Path) {
+        val installation = product(root.resolve("product"))
+        repeat(4_097) { Files.writeString(installation.resolve("share/resource-$it"), "") }
+        assertTrue(BrokerInstallationState.admit(installation) is Refinement.Refined)
+    }
+
+    @Test
+    fun `traversal budget applies across all payload trees`(@TempDir root: Path) {
+        val installation = product(root.resolve("product"))
+        for (tree in listOf("bin", "lib", "share")) {
+            repeat(5_500) { Files.createDirectory(installation.resolve("$tree/d-$it")) }
+        }
+        assertTrue(BrokerInstallationState.admit(installation) is Refinement.Rejected)
+        assertFalse(Files.exists(installation.resolve("state")))
+    }
+
+    @Test
+    fun `shared admission preserves the historical payload identity bytes`(@TempDir root: Path) {
+        val installation = product(root.resolve("product"))
+        assertTrue(BrokerInstallationState.admit(installation) is Refinement.Refined)
+        val expected = java.security.MessageDigest.getInstance("SHA-256")
+        expected.update(installation.toString().toByteArray())
+        for ((path, content) in listOf("bin/kast" to "launcher", "lib/control.jar" to "payload")) {
+            expected.update(0)
+            expected.update(path.toByteArray())
+            expected.update(0)
+            expected.update(content.toByteArray())
+        }
+        val epoch =
+            kotlinx.serialization.json.Json.parseToJsonElement(
+                Files.readString(installation.resolve("state/epoch.json"))
+            )
+        assertEquals(
+            "sha256:" + java.util.HexFormat.of().formatHex(expected.digest()),
+            epoch.jsonObject.getValue("installation").jsonPrimitive.content,
+        )
     }
 
     private fun product(root: Path): Path {

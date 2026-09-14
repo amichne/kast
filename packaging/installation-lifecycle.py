@@ -1,7 +1,8 @@
 """Explicit installed ownership transitions. Never searches or signals arbitrary processes."""
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from enum import Enum
 import argparse
+from typing import Optional
 import fcntl
 import hashlib
 import json
@@ -21,6 +22,7 @@ CONTROL_MANIFEST_MAXIMUM_BYTES = 67108864
 
 class Failure(str, Enum):
     MANIFEST_REJECTED = 'MANIFEST_REJECTED'
+    CONTROL_LIMIT_EXCEEDED = 'CONTROL_LIMIT_EXCEEDED'
     STATE_REJECTED = 'STATE_REJECTED'
     REGISTRY_REJECTED = 'REGISTRY_REJECTED'
     UNRESOLVED_INVOCATION = 'UNRESOLVED_INVOCATION'
@@ -31,8 +33,32 @@ class Failure(str, Enum):
     RECOVERY_REJECTED = 'RECOVERY_REJECTED'
 
 class Rejected(Exception):
-    def __init__(self, failure):
+    def __init__(self, failure, limit=None):
         self.failure = failure
+        self.limit = limit
+
+class ControlResource(str, Enum):
+    TRAVERSED_ENTRIES = 'TRAVERSED_ENTRIES'
+    PAYLOAD_FILES = 'PAYLOAD_FILES'
+    PAYLOAD_BYTES = 'PAYLOAD_BYTES'
+
+@dataclass(frozen=True)
+class ControlLimit:
+    resource: ControlResource
+    maximum: int
+    observedAtLeast: int
+
+@dataclass(frozen=True)
+class LifecycleRejection:
+    failure: Failure
+    limit: Optional[ControlLimit] = None
+    status: str = 'rejected'
+
+@dataclass(frozen=True)
+class PayloadFile:
+    path: str
+    sha256: str
+    mode: int
 
 class RetirementStage(str, Enum):
     COORDINATOR = 'coordinator-retirement'
@@ -109,38 +135,57 @@ class Installation:
 
 def verify_payload(root, manifest):
     expected = manifest.get('payloadFiles')
-    if not isinstance(expected, list) or not 1 <= len(expected) <= CONTROL_MAXIMUM_ENTRIES:
+    if not isinstance(expected, list) or not expected:
         raise Rejected(Failure.MANIFEST_REJECTED)
+    if len(expected) > CONTROL_MAXIMUM_ENTRIES:
+        raise Rejected(Failure.CONTROL_LIMIT_EXCEEDED, ControlLimit(ControlResource.PAYLOAD_FILES, CONTROL_MAXIMUM_ENTRIES, len(expected)))
+    if any(not isinstance(item, dict) or set(item) != {'path', 'sha256', 'mode'} for item in expected):
+        raise Rejected(Failure.MANIFEST_REJECTED)
+    expected = [PayloadFile(**item) for item in expected]
     actual = []
     total = 0
+    traversed = 0
     for directory in ('bin', 'lib', 'share'):
         parent = root / directory
         if parent.is_symlink():
             raise Rejected(Failure.MANIFEST_REJECTED)
         if not parent.exists():
             continue
-        for current, directories, files in os.walk(parent, followlinks=False):
-            for name in directories:
-                if (Path(current) / name).is_symlink():
-                    raise Rejected(Failure.MANIFEST_REJECTED)
-            for name in files:
-                candidate = Path(current) / name
-                descriptor = os.open(candidate, os.O_RDONLY | os.O_NOFOLLOW)
-                digest = hashlib.sha256()
-                with os.fdopen(descriptor, 'rb') as source:
-                    observed = os.fstat(source.fileno())
-                    if not stat.S_ISREG(observed.st_mode):
+        pending = [parent]
+        while pending:
+            current = pending.pop()
+            traversed += 1
+            if traversed > CONTROL_MAXIMUM_ENTRIES:
+                raise Rejected(Failure.CONTROL_LIMIT_EXCEEDED, ControlLimit(ControlResource.TRAVERSED_ENTRIES, CONTROL_MAXIMUM_ENTRIES, traversed))
+            with os.scandir(current) as children:
+                for child in children:
+                    candidate = Path(child.path)
+                    if child.is_symlink():
                         raise Rejected(Failure.MANIFEST_REJECTED)
-                    for chunk in iter(lambda: source.read(65536), b''):
-                        total += len(chunk)
-                        if total > 1073741824:
+                    if child.is_dir(follow_symlinks=False):
+                        if traversed + len(pending) >= CONTROL_MAXIMUM_ENTRIES:
+                            raise Rejected(Failure.CONTROL_LIMIT_EXCEEDED, ControlLimit(ControlResource.TRAVERSED_ENTRIES, CONTROL_MAXIMUM_ENTRIES, traversed + len(pending) + 1))
+                        pending.append(candidate)
+                        continue
+                    traversed += 1
+                    if traversed + len(pending) > CONTROL_MAXIMUM_ENTRIES:
+                        raise Rejected(Failure.CONTROL_LIMIT_EXCEEDED, ControlLimit(ControlResource.TRAVERSED_ENTRIES, CONTROL_MAXIMUM_ENTRIES, traversed + len(pending)))
+                    descriptor = os.open(candidate, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+                    digest = hashlib.sha256()
+                    with os.fdopen(descriptor, 'rb') as source:
+                        observed = os.fstat(source.fileno())
+                        if not stat.S_ISREG(observed.st_mode):
                             raise Rejected(Failure.MANIFEST_REJECTED)
-                        digest.update(chunk)
-                actual.append({'path': candidate.relative_to(root).as_posix(),
-                               'sha256': 'sha256:' + digest.hexdigest(), 'mode': observed.st_mode & 0o777})
-                if len(actual) > CONTROL_MAXIMUM_ENTRIES:
-                    raise Rejected(Failure.MANIFEST_REJECTED)
-    if sorted(actual, key=lambda item: item['path']) != sorted(expected, key=lambda item: item['path']):
+                        for chunk in iter(lambda: source.read(65536), b''):
+                            total += len(chunk)
+                            if total > 1073741824:
+                                raise Rejected(Failure.CONTROL_LIMIT_EXCEEDED, ControlLimit(ControlResource.PAYLOAD_BYTES, 1073741824, total))
+                            digest.update(chunk)
+                    actual.append(PayloadFile(candidate.relative_to(root).as_posix(),
+                                              'sha256:' + digest.hexdigest(), observed.st_mode & 0o777))
+                    if len(actual) > CONTROL_MAXIMUM_ENTRIES:
+                        raise Rejected(Failure.MANIFEST_REJECTED)
+    if sorted(actual, key=lambda item: item.path) != sorted(expected, key=lambda item: item.path):
         raise Rejected(Failure.MANIFEST_REJECTED)
 
 
@@ -648,7 +693,7 @@ def main():
             try:
                 if not stat.S_ISREG(os.fstat(descriptor).st_mode):
                     raise Rejected(Failure.MANIFEST_REJECTED)
-                fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                fcntl.lockf(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
                 if arguments.operation == 'recover-read-only':
                     report = execute_read_only_recovery(installation, arguments.dry_run)
                 else:
@@ -658,10 +703,10 @@ def main():
         print(json.dumps(report, separators=(',', ':')))
         return 0
     except Rejected as rejected:
-        print(json.dumps({'status': 'rejected', 'failure': rejected.failure.value}))
+        print(json.dumps(asdict(LifecycleRejection(rejected.failure, rejected.limit))))
         return 1
     except (OSError, ValueError, TypeError, KeyError):
-        print(json.dumps({'status': 'rejected', 'failure': Failure.FILESYSTEM_REJECTED.value}))
+        print(json.dumps(asdict(LifecycleRejection(Failure.FILESYSTEM_REJECTED))))
         return 1
 
 if __name__ == '__main__':

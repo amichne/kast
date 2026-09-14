@@ -167,7 +167,15 @@ MAXIMUM_CONTROL_ARCHIVE_ENTRIES = 16_384
 archive, destination = Path(sys.argv[1]), Path(sys.argv[2])
 destination.mkdir(mode=0o700)
 with tarfile.open(archive, "r:gz") as source:
-    members = source.getmembers()
+    members = []
+    total_bytes = 0
+    for member in source:
+        if len(members) >= MAXIMUM_CONTROL_ARCHIVE_ENTRIES:
+            raise SystemExit(f"kast-install: control archive entry count rejected (observedAtLeast={len(members) + 1}, maximum={MAXIMUM_CONTROL_ARCHIVE_ENTRIES})")
+        total_bytes += member.size
+        if total_bytes > 1073741824:
+            raise SystemExit("kast-install: control archive byte count rejected (maximum=1073741824)")
+        members.append(member)
     if not members:
         raise SystemExit("kast-install: control archive layout rejected")
     if len(members) > MAXIMUM_CONTROL_ARCHIVE_ENTRIES:
@@ -288,38 +296,10 @@ PYTHON
 activate_hosted_plugin() {
   local staged="$1"
   local plugin_root="$2"
-  python3 - "$staged" "$plugin_root" <<'PYTHON'
-from pathlib import Path
-import shutil
-import sys
-import uuid
-
-staged, root = Path(sys.argv[1]), Path(sys.argv[2])
-source = staged / "kast-ide-hosted"
-root.mkdir(parents=True, exist_ok=True)
-if root.is_symlink() or not root.is_dir():
-    raise SystemExit("kast-install: IDEA plugin directory is not a physical directory")
-destination = root / "kast-ide-hosted"
-if destination.is_symlink() or (destination.exists() and not destination.is_dir()):
-    raise SystemExit("kast-install: existing hosted plugin is not a physical directory")
-token = uuid.uuid4().hex
-candidate = root / f".kast-ide-hosted.install-{token}"
-backup = root / f".kast-ide-hosted.backup-{token}"
-shutil.copytree(source, candidate)
-replaced = destination.exists()
-try:
-    if replaced:
-        destination.replace(backup)
-    candidate.replace(destination)
-except BaseException:
-    if candidate.exists():
-        shutil.rmtree(candidate)
-    if replaced and backup.exists() and not destination.exists():
-        backup.replace(destination)
-    raise
-if backup.exists():
-    shutil.rmtree(backup)
-PYTHON
+  local selected
+  selected="$(cd "$install_root/current" && pwd -P)"
+  python3 "$control_root/share/kast/installation-recovery.py" activate-plugin \
+    --installation "$selected" --staged-plugin "$staged" --plugin-root "$plugin_root"
 }
 
 script_source="${BASH_SOURCE[0]:-}"

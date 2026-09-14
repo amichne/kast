@@ -71,6 +71,7 @@ enum class ControlOperation {
 }
 
 enum class AppServerManagementFailure {
+    PAYLOAD_LIMIT_EXCEEDED,
     CONFIGURATION_REJECTED,
     DESKTOP_OVERRIDE_CONFLICT,
     DESKTOP_VERSION_UNSUPPORTED,
@@ -253,6 +254,8 @@ class InstalledAppServerManager(
                 is CoordinatorStatusRead.Observed -> PassiveServiceState.READY
                 is CoordinatorStatusRead.Rejected ->
                     when (observed.failure) {
+                        WorkerControlFailure.PAYLOAD_LIMIT_EXCEEDED ->
+                            return AppServerManagementResult.Rejected(AppServerManagementFailure.PAYLOAD_LIMIT_EXCEEDED)
                         WorkerControlFailure.UNAVAILABLE,
                         WorkerControlFailure.DEADLINE_EXCEEDED -> PassiveServiceState.UNAVAILABLE
                         WorkerControlFailure.ISOLATED_RUNTIME_RETIRED,

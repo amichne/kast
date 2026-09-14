@@ -8503,16 +8503,6 @@
     },
     {
       "fingerprint": {
-        "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt",
-        "scope": "type:InstallationChildObservation/fun:toJson()",
-        "kind": "JSON_LITERAL",
-        "sha256": "e1c559fc2039da4f78237a40cefa628cd6419b5ed6de6b3fd1671f38ea138ef6"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
         "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/projection/CanonicalChangeCliDocuments.kt",
         "scope": "type:CanonicalChangeCliDocuments/fun:projectApplication(16:OperationOutcome1:<17:ChangeApplyResult1:,24:ChangeApplyQualification1:,20:ChangeApplyRejection1:>)/declaration:<anonymous>",
         "kind": "JSON_BUILDER",

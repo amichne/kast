@@ -17,12 +17,16 @@ internal enum class InstallationLifecycleStartAdmission {
 internal object InstallationLifecycleFence {
     fun observe(installationRoot: Path): InstallationLifecycleStartAdmission =
         try {
-            Files.readAttributes(
-                installationRoot.resolve(".lifecycle-transition.json"),
-                BasicFileAttributes::class.java,
-                LinkOption.NOFOLLOW_LINKS,
-            )
-            InstallationLifecycleStartAdmission.TRANSITION_IN_PROGRESS
+            if (Files.exists(installationRoot.resolve(".recovery-detached"), LinkOption.NOFOLLOW_LINKS)) {
+                InstallationLifecycleStartAdmission.TRANSITION_IN_PROGRESS
+            } else {
+                Files.readAttributes(
+                    installationRoot.resolve(".lifecycle-transition.json"),
+                    BasicFileAttributes::class.java,
+                    LinkOption.NOFOLLOW_LINKS,
+                )
+                InstallationLifecycleStartAdmission.TRANSITION_IN_PROGRESS
+            }
         } catch (_: NoSuchFileException) {
             InstallationLifecycleStartAdmission.AVAILABLE
         } catch (_: IOException) {

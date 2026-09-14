@@ -4,7 +4,7 @@ title: Distribution and packaging
 description: Typed configuration and runtime identity contracts constrain managed installation effects, release assembly, and acceptance harnesses.
 resource: file://distribution
 tags: [distribution, configuration, packaging, release]
-timestamp: 2026-09-13T00:00:00Z
+timestamp: 2026-09-14T00:00:00Z
 code_sources:
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/ControlDistributionLimits.kt
     symbols: [ControlDistributionLimits]
@@ -15,6 +15,9 @@ code_sources:
   - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedInstallationOwnedTree.kt
     symbols: [ManagedInstallationOwnedTree]
   - path: packaging/configuration-schema.json
+  - path: packaging/installation-recovery.py
+  - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/InstallationRecoveryReceipt.kt
+  - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ControlPayloadInventory.kt
   - path: install.sh
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt
     symbols: [InstallationWorkflow, executeInstallationChild]
@@ -37,6 +40,10 @@ Root and packaging scripts orchestrate checkout installation, persistent lifecyc
 Installation child processes emit `kast_installation` records by default with a closed stage and outcome. Prior admission, retirement, configuration validation, command qualification and App Server enablement retain distinct success, nonzero exit, deadline, I/O and interruption observations. Child admission remains authoritative; these records do not contain command arguments, environment values or filesystem paths.
 
 `ControlDistributionLimits` owns the maximum verified control-product entry count and manifest size used by staged installation and runtime identity admission. The shell bootstrap, installed lifecycle, build verifier, and Kotlin owner are checked for the same entry limit, and release layout verification rejects a product outside that bound before publication. Upgrade admission uses the new, checksum-verified lifecycle implementation to inspect the prior installation, so a valid older product cannot block its own replacement because its validator predates the current product bounds. This retains the resource limits while preventing copied limits from drifting below the product that the build produced.
+
+`ControlPayloadInventory` counts paths globally, including the three payload roots, before sorting or hashing. Installer and broker use that same admission; `verifyReleaseRuntimeAdmission` exercises the runtime identity owner on the actual staged control product. Limit diagnostics retain the resource and observed lower bound. The hosted-plugin ZIP has a separate archive budget.
+
+Before activation, `prepareInstallationRecovery` saves a typed receipt and an offline Python bundle outside the payload. `installation-recovery.py detach` fences launches, detaches matching command links and receipted plugin directories, and retains previous plugin backups. It executes retirement only after full payload admission. Verified retired state is quarantined; uncertain processes and journals remain preserved and produce `DetachedWithUnresolvedState`. A missing plugin ownership witness cannot produce a clean result. The standalone `prepare` operation supports older installations without requiring their executable to run. Python and JVM installation transitions use compatible POSIX record locks.
 
 The staged Kotlin installer selects default tools directly from the canonical agent catalog. The shell bootstrap preserves an explicit selection and supplies no copied default list. Explicit selections must contain current, unique tool names; installation retains their admitted definitions in canonical catalog order before writing configuration.
 

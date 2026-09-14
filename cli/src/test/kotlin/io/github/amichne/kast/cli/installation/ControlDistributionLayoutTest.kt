@@ -47,10 +47,10 @@ class ControlDistributionLayoutTest {
                 )
             )
 
-        assertEquals(
-            InstallationOutcome.Rejected(InstallationFailure.CONTROL_LAYOUT_REJECTED),
-            outcome,
-        )
+        val rejected = assertInstanceOf(InstallationOutcome.Rejected::class.java, outcome)
+        assertEquals(InstallationFailure.CONTROL_LIMIT_EXCEEDED, rejected.failure)
+        assertEquals(16_384L, rejected.limit?.maximum)
+        assertEquals(16_385L, rejected.limit?.observedAtLeast)
     }
 
     @Test

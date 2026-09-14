@@ -39,12 +39,13 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
         check(archive.length() < maximumArchiveBytes.get()) {
             "control archive is ${archive.length()} bytes; limit is below 64 MiB"
         }
-        val paths = Files.walk(root).use { stream -> stream.toList() }
+        val paths = Files.walk(root).use { stream -> stream.limit(maximumEntries.get().toLong() + 2).toList() }
         val entries = paths.map { path -> root.relativize(path).toString() }
         val payloadEntries = entries.filter(String::isNotEmpty)
         check(payloadEntries.size <= maximumEntries.get()) {
             "control product contains ${payloadEntries.size} entries; limit is ${maximumEntries.get()}"
         }
+        logger.lifecycle("Control inventory: entries={}, remaining={}", payloadEntries.size, maximumEntries.get() - payloadEntries.size)
         val installedBytes = paths
             .filter(Files::isRegularFile)
             .sumOf(Files::size)

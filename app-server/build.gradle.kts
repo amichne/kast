@@ -158,3 +158,14 @@ tasks.register<Jar>("hostedChangeHarnessJar") {
     inputs.property("sourceCommit", hostedChangeSourceCommit)
     manifest.attributes("Kast-Acceptance-Source-Commit" to hostedChangeSourceCommit.get())
 }
+
+val verifyReleaseRuntimeAdmission by
+    tasks.registering(JavaExec::class) {
+        group = "verification"
+        dependsOn(tasks.named("testClasses"), rootProject.tasks.named("stageKastControlProduct"))
+        classpath = sourceSets.test.get().runtimeClasspath
+        mainClass = "io.github.amichne.kast.appserver.ControlDistributionAdmissionMain"
+        val product = rootProject.layout.buildDirectory.dir("control-product")
+        inputs.dir(product)
+        args(product.get().asFile.absolutePath)
+    }
