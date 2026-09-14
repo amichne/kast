@@ -61,6 +61,15 @@ class BudgetFunctionSearch:
 
 
 @dataclass(frozen=True)
+class BudgetDeclarationSearch:
+    execution_budget: Budget
+    declaration_name: str = 'pageItem00'
+    name_match: str = 'exact'
+    scope: None = None
+    declaration_kinds: None = None
+
+
+@dataclass(frozen=True)
 class NoEntities:
     type: str = field(default='none', init=False)
 
@@ -105,6 +114,7 @@ def run_budget_read_regression(replay):
             ('query_symbols', BudgetQuery(ExactReferences((replay.seeds['logger']['symbol_ref'],)), budget)),
             ('search_classes', BudgetClassSearch(budget)),
             ('search_functions', BudgetFunctionSearch(budget)),
+            ('search_declarations', BudgetDeclarationSearch(budget)),
             ('source_read', BudgetSource(SymbolAnchor(replay.seeds['logger']['symbol_ref']), budget)),
             ('semantic_query', BudgetRelation(replay.seeds['helper']['symbol_ref'], budget)),
             ('impact_analyze', BudgetTraversal(replay.seeds['helper']['symbol_ref'], budget)),
@@ -149,44 +159,129 @@ def encoded_payload_bytes(response):
     return len(json.dumps(response, ensure_ascii=False, separators=(',', ':')).encode())
 
 
+@dataclass(frozen=True)
+class TraversalDrain:
+    pages: tuple[dict, ...]
+    complete: bool
+    checkpointsAdvance: bool
+    progressMonotonic: bool
+    sameLiveAuthority: bool
+    grantsRetained: bool
+
+    @property
+    def valid(self):
+        return (self.complete and self.checkpointsAdvance and self.progressMonotonic
+                and self.sameLiveAuthority and self.grantsRetained)
+
+
+def traversal_checkpoint(response):
+    qualification = response.get('qualification', {})
+    checkpoint = qualification.get('checkpoint', {})
+    token = checkpoint.get('token')
+    if (response.get('status') != 'qualified' or qualification.get('type') != 'resumable'
+            or checkpoint.get('type') not in ('upstream', 'retained_output')
+            or qualification.get('next_action') not in ('resume', 'increase_execution_budget')
+            or not isinstance(token, str) or not 1 <= len(token) <= 1048576
+            or qualification.get('continuation') != token):
+        return None
+    if (checkpoint['type'] == 'retained_output'
+            and checkpoint.get('upstream') not in ('complete', 'resumable', 'terminal_incomplete')):
+        return None
+    return checkpoint
+
+
+def progress_advances(previous, current):
+    keys = ('checkpointSequence', 'totalReads', 'totalEdges', 'maximumDepthReached')
+    return all(type(current.get(key)) is int and current[key] >= previous.get(key, 0) for key in keys)
+
+
+def _drain_traversal(replay, request, larger, first=None):
+    pages, seen = [], set()
+    advancing, monotonic, same_live, grants, complete = True, True, True, True, False
+    for index in range(16):
+        response = first if index == 0 and first is not None else _invoke(replay, 'impact_analyze', request)
+        previous = pages[-1].get('progress', {}) if pages else {}
+        monotonic = monotonic and progress_advances(previous, response.get('progress', {}))
+        same_live = same_live and response.get('live') == replay.live
+        grants = grants and independent_grant(response, request.execution_budget)
+        pages.append(response)
+        if response.get('status') == 'complete':
+            complete = 'qualification' not in response
+            break
+        checkpoint = traversal_checkpoint(response)
+        if checkpoint is None or checkpoint['token'] in seen:
+            advancing = False
+            break
+        seen.add(checkpoint['token'])
+        request = replace(request, position=TraversalResume(checkpoint['token']), execution_budget=larger)
+    return TraversalDrain(tuple(pages), complete, advancing, monotonic, same_live, grants)
+
+
 def _retained_traversal(replay, low, large):
     tool = 'impact_analyze'
     start = BudgetTraversal(replay.seeds['helper']['symbol_ref'], large)
-    baseline = _invoke(replay, tool, start)
-    first = _invoke(replay, tool, replace(start, execution_budget=low))
-    qualification = first.get('qualification', {})
-    checkpoint = qualification.get('checkpoint', {})
-    token = checkpoint.get('token')
-    retained = (first.get('status') == 'qualified' and checkpoint.get('type') == 'retained_output'
-                and checkpoint.get('upstream') == 'complete' and qualification.get('next_action') == 'resume'
-                and isinstance(token, str) and qualification.get('continuation') == token)
+    baseline = _drain_traversal(replay, start, large)
+    low_start = replace(start, execution_budget=low)
+    first = _invoke(replay, tool, low_start)
+    changed = _drain_traversal(replay, low_start, large, first)
     axis = next(iter(asdict(low)))
+    baseline_records = tuple(record for page in baseline.pages for record in graph_records(page))
+    changed_records = tuple(record for page in changed.pages for record in graph_records(page))
+    last, reference = changed.pages[-1], baseline.pages[-1]
     checks = {
-        'ampleBaselineComplete': baseline.get('status') == 'complete',
-        'retainedCompleteSuffix': retained,
-        'independentLowGrant': independent_grant(first, low),
-        'sameLiveAuthority': first.get('live') == baseline.get('live') == replay.live,
-        'cumulativeProgressRetained': first.get('progress') == baseline.get('progress'),
-        'partialExpansionsRetained': first.get('partialExpansions') == baseline.get('partialExpansions'),
+        'ampleBaselineComplete': baseline.valid,
+        'lowBudgetQualified': first.get('status') == 'qualified' and traversal_checkpoint(first) is not None,
+        'largerGrantComplete': changed.valid,
+        'orderedGraphAndProofIdentity': changed_records == baseline_records,
+        'finalEdgeProgress': last.get('progress', {}).get('totalEdges') == reference.get('progress', {}).get('totalEdges'),
+        'semanticDepthUnchanged': (last.get('progress', {}).get('maximumDepthReached')
+                                   == reference.get('progress', {}).get('maximumDepthReached')),
+        'terminalPartialExpansionsPreserved': last.get('partialExpansions') == reference.get('partialExpansions'),
     }
-    if retained:
-        resume = replace(start, position=TraversalResume(token), execution_budget=low)
-        child = _invoke(replay, tool, resume)
-        repeated = _invoke(replay, tool, resume)
-        suffix = _invoke(replay, tool, replace(resume, execution_budget=large))
-        checks.update({
-            'identicalTokenReplay': child == repeated,
-            'largerGrantComplete': suffix.get('status') == 'complete' and independent_grant(suffix, large),
-            'orderedGraphAndProofIdentity': graph_records(first) + graph_records(suffix) == graph_records(baseline),
-            'suffixCumulativeProgressRetained': suffix.get('progress') == baseline.get('progress'),
-            'suffixPartialExpansionsRetained': suffix.get('partialExpansions') == baseline.get('partialExpansions'),
-            'suffixSameLiveAuthority': suffix.get('live') == replay.live,
-        })
-        if isinstance(low, BytesBudget):
-            checks['projectedPayloadFits'] = all(encoded_payload_bytes(value) <= low.max_returned_bytes
-                                                for value in (first, child, repeated))
-    replay.record('budget-retained-traversal-' + axis, tool, checks,
+    if isinstance(low, ResultsBudget):
+        checks['pageResultBound'] = len(first.get('graph', {}).get('edges', [])) <= low.max_results
+    if isinstance(low, BytesBudget):
+        checks['projectedPayloadFits'] = encoded_payload_bytes(first) <= low.max_returned_bytes
+        checks.update(_retained_result_replay(replay, start, first))
+    replay.record('budget-traversal-' + axis, tool, checks,
                   len(first.get('graph', {}).get('edges', [])), first)
+
+
+def _retained_result_replay(replay, start, first):
+    # A native result-only page may checkpoint upstream work. Exercise result fitting
+    # on a genuinely issued retained byte suffix, where replay performs no provider work.
+    checkpoint = traversal_checkpoint(first)
+    retained = checkpoint is not None and checkpoint['type'] == 'retained_output'
+    checks = {'byteRetainedSuffixAvailable': retained}
+    if not retained:
+        return checks
+    resume = replace(start, position=TraversalResume(checkpoint['token']), execution_budget=ResultsBudget(1))
+    child = _invoke(replay, 'impact_analyze', resume)
+    repeated = _invoke(replay, 'impact_analyze', resume)
+    full = _invoke(replay, 'impact_analyze', replace(resume, execution_budget=ResultsBudget(100)))
+    child_checkpoint = traversal_checkpoint(child)
+    child_retained = child_checkpoint is not None and child_checkpoint['type'] == 'retained_output'
+    checks.update({
+        'identicalRetainedTokenReplay': child == repeated,
+        'retainedResultGrant': independent_grant(child, ResultsBudget(1)),
+        'oneRetainedResult': len(child.get('graph', {}).get('edges', [])) == 1,
+        'retainedChildIssued': child_retained,
+        'retainedProgressUnchanged': child.get('progress') == full.get('progress') == first.get('progress'),
+        'retainedPartialExpansionsUnchanged': (child.get('partialExpansions') == full.get('partialExpansions')
+                                              == first.get('partialExpansions')),
+        'retainedAuthorityUnchanged': child.get('live') == full.get('live') == replay.live,
+    })
+    if child_retained:
+        tail = _invoke(replay, 'impact_analyze', replace(resume, position=TraversalResume(child_checkpoint['token']),
+                                                       execution_budget=ResultsBudget(100)))
+        checks.update({
+            'retainedChildCoverage': child_checkpoint['upstream'] == checkpoint['upstream'],
+            'largerRetainedGrant': independent_grant(tail, ResultsBudget(100)),
+            'retainedOrderAndProofIdentity': graph_records(child) + graph_records(tail) == graph_records(full),
+            'upstreamCoverageAndActionRestored': tail.get('qualification') == full.get('qualification'),
+            'retainedTailProgress': tail.get('progress') == full.get('progress'),
+        })
+    return checks
 
 
 def graph_records(response):
