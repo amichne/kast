@@ -39,7 +39,8 @@ class HostedTraversalOutputBoundaryTest {
             encodeHostedTraversalResponse(original, ReadLimits.Default, ResultLimit.parse(1).proven(), maximumBytes) {
                 retained += it
                 HostedOutputRetention.Retained(ProtocolText.parse(OUTPUT_TOKEN).proven())
-            } as HostedResponse.Canonical<*, *, *>
+            }
+                as HostedResponse.Canonical<*, *, *>
         val semantic = response.semantic as OperationOutcome.Qualified
         val page = semantic.evidence.payload as TraversalRunResult
         val qualification = semantic.qualification as TraversalRunQualification.Resumable
