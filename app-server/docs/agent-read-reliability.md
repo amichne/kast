@@ -449,6 +449,14 @@ slice; full AR-02 acceptance still requires the expanded installed matrix.
 | [v0.40.4](https://github.com/amichne/kast/releases/tag/v0.40.4) | `6f65e16dead408e6aff2a062573d108cbfa36d6c` | AR-01 deterministic checkpoint repair and existing reliability stack | [Exact-head product CI](https://github.com/amichne/kast/actions/runs/34892753666); [exact-main release build](https://github.com/amichne/kast/actions/runs/34894362353). All ten assets, five checksum files, version/catalog and installer dry-run verified. |
 | [v0.40.5](https://github.com/amichne/kast/releases/tag/v0.40.5) | `2c57af5cfc7a1123f76a46c21a00f94cc213baad` | AR-02 traversal fitting/replay/store/schema tests | [Exact-head product CI](https://github.com/amichne/kast/actions/runs/34894610344); [exact-main release build](https://github.com/amichne/kast/actions/runs/34895664261). All ten assets, five checksum files, version/catalog and installer dry-run verified. |
 
+| [v0.40.6](https://github.com/amichne/kast/releases/tag/v0.40.6) | `06cb04787324951497888fd10e1a606619189d20` | AR-03 admitted semantic rejection budgets, deadline ordering, minimum envelope admission and cancelled source attempts | [Exact-head product CI](https://github.com/amichne/kast/actions/runs/34897457617); [exact-main release build](https://github.com/amichne/kast/actions/runs/34898382578). All ten assets, five checksums, executable/catalog and installer dry-run verified. |
+
+The v0.40.6 catalog is 519263 bytes, SHA-256
+`6de922bf00a83f5875a40358fc57e8e06fdd758abb3df224d1509f0f7706ab27`.
+Independent released-schema validation passed 230 valid and 2535 invalid samples,
+including absent/admitted budgets, malformed reports, and every finite read reason.
+Post-admission host containment reports remain a separate follow-up.
+
 The v0.40.4/v0.40.5 released catalog is 518810 bytes, SHA-256
 `1891349dff8fa967db9c85ccde4ff7407d9b83070c39154a7aac1fe4861e1972`.
 Independent released-schema checks accept seven query reference reasons,
