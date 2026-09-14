@@ -13,33 +13,51 @@ class ExecutionReportDimensionTest {
 
     @Test
     fun `report dimensions reject clamping causes the admitted grant cannot produce`() {
-        val transport = DimensionLimit(effective = 5, clamping = listOf(ExecutionBudgetClampDocument.TRANSPORT_CAPACITY))
+        val transport =
+            DimensionLimit(effective = 5, clamping = listOf(ExecutionBudgetClampDocument.TRANSPORT_CAPACITY))
         val deadline = DimensionLimit(effective = 5, clamping = listOf(ExecutionBudgetClampDocument.DEADLINE_REMAINING))
-        for (report in listOf(
-            DimensionReport(elapsed = transport), DimensionReport(work = transport),
-            DimensionReport(work = deadline), DimensionReport(results = deadline), DimensionReport(bytes = deadline),
-        )) reject(report)
+        for (report in
+            listOf(
+                DimensionReport(elapsed = transport),
+                DimensionReport(work = transport),
+                DimensionReport(work = deadline),
+                DimensionReport(results = deadline),
+                DimensionReport(bytes = deadline),
+            )) reject(report)
     }
 
     @Test
     fun `every result amount retains the finite integer range of its domain`() {
         val large = Int.MAX_VALUE.toLong() + 1
-        for (results in listOf(
-            DimensionLimit(configuredDefault = large), DimensionLimit(operatorCeiling = large),
-            DimensionLimit(requested = large, operatorCeiling = Int.MAX_VALUE.toLong(),
-                effective = Int.MAX_VALUE.toLong(), clamping = listOf(ExecutionBudgetClampDocument.OPERATOR_CEILING)),
-            DimensionLimit(requested = large, operatorCeiling = large, effective = large),
-        )) reject(DimensionReport(results = results))
+        for (results in
+            listOf(
+                DimensionLimit(configuredDefault = large),
+                DimensionLimit(operatorCeiling = large),
+                DimensionLimit(
+                    requested = large,
+                    operatorCeiling = Int.MAX_VALUE.toLong(),
+                    effective = Int.MAX_VALUE.toLong(),
+                    clamping = listOf(ExecutionBudgetClampDocument.OPERATOR_CEILING),
+                ),
+                DimensionLimit(requested = large, operatorCeiling = large, effective = large),
+            )) reject(DimensionReport(results = results))
     }
 
     @Test
     fun `valid dimension evidence retains its independently specified wire shape`() {
-        val report = DimensionReport(
-            elapsed = DimensionLimit(effective = 5, clamping = listOf(ExecutionBudgetClampDocument.DEADLINE_REMAINING)),
-            results = DimensionLimit(requested = Int.MAX_VALUE.toLong(), operatorCeiling = Int.MAX_VALUE.toLong(),
-                effective = Int.MAX_VALUE.toLong()),
-            bytes = DimensionLimit(effective = 5, clamping = listOf(ExecutionBudgetClampDocument.TRANSPORT_CAPACITY)),
-        )
+        val report =
+            DimensionReport(
+                elapsed =
+                    DimensionLimit(effective = 5, clamping = listOf(ExecutionBudgetClampDocument.DEADLINE_REMAINING)),
+                results =
+                    DimensionLimit(
+                        requested = Int.MAX_VALUE.toLong(),
+                        operatorCeiling = Int.MAX_VALUE.toLong(),
+                        effective = Int.MAX_VALUE.toLong(),
+                    ),
+                bytes =
+                    DimensionLimit(effective = 5, clamping = listOf(ExecutionBudgetClampDocument.TRANSPORT_CAPACITY)),
+            )
         val input = json.encodeToString(DimensionReport.serializer(), report)
         val decoded = json.decodeFromString(ExecutionBudgetReport.serializer(), input)
         val encoded = json.encodeToString(ExecutionBudgetReport.serializer(), decoded)
@@ -48,9 +66,13 @@ class ExecutionReportDimensionTest {
 
     private fun reject(report: DimensionReport) {
         val input = json.encodeToString(DimensionReport.serializer(), report)
-        assertThrows(SerializationException::class.java, {
-            json.decodeFromString(ExecutionBudgetReport.serializer(), input)
-        }, report.toString())
+        assertThrows(
+            SerializationException::class.java,
+            {
+                json.decodeFromString(ExecutionBudgetReport.serializer(), input)
+            },
+            report.toString(),
+        )
     }
 }
 

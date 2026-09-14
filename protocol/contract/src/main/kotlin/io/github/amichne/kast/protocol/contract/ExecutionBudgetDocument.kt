@@ -2,7 +2,6 @@
 
 package io.github.amichne.kast.protocol.contract
 
-import io.github.amichne.kast.kernel.AdmittedExecutionBudget
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.ExecutionAllowance
 import io.github.amichne.kast.kernel.RequestedExecutionBudget
@@ -81,24 +80,4 @@ enum class ExecutionBudgetClampDocument {
     @SerialName("operator_ceiling") OPERATOR_CEILING,
     @SerialName("transport_capacity") TRANSPORT_CAPACITY,
     @SerialName("deadline_remaining") DEADLINE_REMAINING,
-}
-
-/** A wire projection of admitted proof, never a second execution decision. */
-@Serializable
-data class ExecutionBudgetReport
-private constructor(
-    @SerialName("max_elapsed_ms") val elapsed: ExecutionLimitDocument,
-    @SerialName("max_work_units") val work: ExecutionLimitDocument,
-    @SerialName("max_results") val results: ExecutionLimitDocument,
-    @SerialName("max_returned_bytes") val returnedBytes: ExecutionLimitDocument,
-) {
-    companion object {
-        fun from(grant: AdmittedExecutionBudget) =
-            ExecutionBudgetReport(
-                ExecutionLimitDocument.from(grant.elapsed) { it.value },
-                ExecutionLimitDocument.from(grant.work) { it.value },
-                ExecutionLimitDocument.from(grant.results) { it.value.toLong() },
-                ExecutionLimitDocument.from(grant.returnedBytes) { it.value },
-            )
-    }
 }
