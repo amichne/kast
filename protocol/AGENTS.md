@@ -21,6 +21,7 @@ Defines canonical operation models, authoritative operation/tool registries, and
 - [registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt](registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt) - tool catalog projection.
 - [wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/OperationWireTable.kt](wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/OperationWireTable.kt) - operation-to-wire binding table.
 - [wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/WireEnvelope.kt](wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/WireEnvelope.kt) - wire envelope.
+- [wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/WireResponseByteMinimum.kt](wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/WireResponseByteMinimum.kt) - serialized mandatory identity bound for response-byte admission.
 
 - [registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt](registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt) - closed public tool identity vocabulary.
 

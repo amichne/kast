@@ -19,6 +19,7 @@ code_sources:
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryReferenceAuthority.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointProtocol.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReadBudgetAdmission.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeQuery.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeSocketClient.kt
@@ -52,6 +53,7 @@ code_sources:
 host request
   -> canonical operation lookup
   -> typed wire decoding
+  -> necessary response-byte admission
   -> existing-IDE handler selection
   -> domain operation
   -> typed complete / qualified / rejected outcome
@@ -59,6 +61,11 @@ host request
 ```
 
 Registry construction proves that every canonical operation has one definition. Wire-table construction proves that each has one serializer binding. Hosted dispatch uses those typed bindings; `HostedSemanticServices` supplies the request-scoped domain services. Host adapters may change presentation, but they must preserve qualification and rejection.
+
+For the four reads, a supplied byte limit below the serialized wire schema and
+operation identity rejects before handler selection. No semantic grant is invented
+for this rejection. Satisfying that necessary lower bound does not establish that a
+complete response body can fit; encoded output remains the publication authority.
 
 Canonical semantic-read handlers delegate request admission, reference codecs,
 and outcome projection to [`query:protocol`](../modules/query-protocol.md).

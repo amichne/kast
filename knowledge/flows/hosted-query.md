@@ -31,6 +31,7 @@ code_sources:
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ExecutionBudgetDocument.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryResponse.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedExecutionBudgetRequest.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReadBudgetAdmission.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedTransportObservation.kt
   - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmissionTest.kt
@@ -374,6 +375,15 @@ completion reserve precedes the hard deadline. Exhaustion rejects before semanti
 evaluation, while a cooperative time-limited query can publish qualified results
 after freshness revalidation. Receipts distinguish configured limits from effective
 allowances. Work that exceeds the hard deadline still cancels and drains.
+Configuration also requires client exchange time to strictly exceed host connection
+time, and both provider invocation deadlines to strictly exceed client exchange
+time. These outer boundaries retain positive IPC slack even when operators lower
+their settings; semantic/host configuration equality still uses the completion reserve.
+
+Typed request decoding rejects a supplied returned-byte allowance below the wire
+owner's serialized schema/operation identity size before semantic dispatch. This is
+a necessary lower bound, not an exact sufficient envelope size. The original
+encoder still fits bodies, reports and continuations against the admitted allowance.
 
 Hosted query continuation stores retain detached task/output state under an exact
 query and semantic snapshot. Entry, byte, per-checkpoint and lifetime limits are

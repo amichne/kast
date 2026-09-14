@@ -1,6 +1,6 @@
 # Configure semantic reads and diagnose limits
 
-The existing-IDE read path admits an immutable settings policy when its project service starts. The CLI and provider admit their policy when their processes start. Defaults preserve the previous capacities and deadlines. The authoritative parameter identities, ranges and cross-limit checks are in [ReadLimits.kt](../kernel/src/main/kotlin/io/github/amichne/kast/kernel/ReadLimits.kt); `kast config schema --json` exposes the generated catalogue.
+The existing-IDE read path admits an immutable settings policy when its project service starts. The CLI and provider admit their policy when their processes start. Defaults preserve the previous capacities and deadlines. The authoritative parameter identities, ranges and cross-limit checks are in [ReadLimits.kt](../kernel/src/main/kotlin/io/github/amichne/kast/kernel/ReadLimits.kt); `kast config schema --json` exposes the generated catalogue. Client exchange time must strictly exceed host connection time, and both provider invocation deadlines must strictly exceed client exchange time. Equality rejects configuration so an outer timer cannot expire at the inner boundary. Semantic and hosted query settings may remain equal because hosted admission reserves completion time before selecting the effective semantic grant.
 
 ## Apply a setting
 
@@ -165,6 +165,12 @@ canonical page capacity, response bytes, and remaining hosted deadline still
 apply. Raising a caller allowance cannot extend the configured host or client
 deadline. The admitted time excludes already elapsed model work and reserves
 publication headroom.
+
+A supplied byte allowance must hold at least the serialized canonical schema and
+operation identity. The host rejects smaller allowances before semantic dispatch.
+This necessary bound is derived by the wire owner; passing it does not promise that
+the response body, report, or continuation will fit. Final encoding still measures
+the complete envelope and returns its existing finite outcome when publication cannot fit.
 
 Read result metadata reports the selected default or caller value, operator
 ceiling, effective value, and finite clamping reasons. Relation work units are examined
