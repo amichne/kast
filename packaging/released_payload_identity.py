@@ -38,6 +38,11 @@ def _file(root, name):
 
 
 def verify_payloads(product, plugins, control, plugin, manifest):
+    verify_control(product, control, manifest)
+    verify_plugin(plugins, plugin)
+
+
+def verify_control(product, control, manifest):
     inventory = manifest['payloadFiles']
     if not isinstance(inventory, list) or not 1 <= len(inventory) <= 16384:
         raise PayloadRejected(PayloadFailure.INVENTORY)
@@ -76,6 +81,9 @@ def verify_payloads(product, plugins, control, plugin, manifest):
                     raise PayloadRejected(PayloadFailure.CONTROL_IDENTITY)
             if path.stat().st_mode & 0o777 != member.mode & 0o777:
                 raise PayloadRejected(PayloadFailure.CONTROL_MODE)
+
+
+def verify_plugin(plugins, plugin):
     with zipfile.ZipFile(plugin) as archive:
         members = archive.infolist()
         if not members or len(members) > 16384 or sum(item.file_size for item in members) > 256 * 1024 * 1024:

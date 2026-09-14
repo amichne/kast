@@ -20,6 +20,8 @@ class ReleaseFailure(Enum):
     MANIFEST = 'release-installation-manifest-rejected'
     PAYLOAD = 'release-installed-payload-changed'
     INVENTORY = 'release-advertised-inventory-rejected'
+    SESSION = 'release-shell-session-rejected'
+    UPGRADE = 'release-upgrade-rejected'
 
 
 class ReleaseRejected(ValueError):
@@ -73,6 +75,14 @@ def admit_release(repo: Path, assets: Path, version: str, idea, source) -> Relea
     installer = repo / 'install.sh'
     if tag != source.commit or not _physical(installer):
         raise ReleaseRejected(ReleaseFailure.SOURCE)
+    return admit_release_assets(assets, version, idea, installer, tag)
+
+
+def admit_release_assets(assets: Path, version: str, idea, installer: Path, commit: str) -> ReleaseInputs:
+    """Read archive identity after the caller has admitted the version tag and tagged installer."""
+    if (not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+', version)
+            or not re.fullmatch(r'[0-9a-f]{40}', commit) or not _physical(installer)):
+        raise ReleaseRejected(ReleaseFailure.SOURCE)
     if not _physical(assets) or not assets.is_dir():
         raise ReleaseRejected(ReleaseFailure.ASSETS)
     metadata = json.loads((idea.home / 'Resources/product-info.json').read_text())
@@ -91,7 +101,7 @@ def admit_release(repo: Path, assets: Path, version: str, idea, source) -> Relea
         if checksum.read_text() != f'{actual}  {archive.name}\n':
             raise ReleaseRejected(ReleaseFailure.ASSETS)
         hashes.append(actual)
-    return ReleaseInputs(version, tag, installer, digest(installer), control, hashes[0], plugin, hashes[1], directory)
+    return ReleaseInputs(version, commit, installer, digest(installer), control, hashes[0], plugin, hashes[1], directory)
 
 
 def install_release(isolation, release: ReleaseInputs, idea) -> ReleasedProduct:
