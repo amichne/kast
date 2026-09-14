@@ -888,7 +888,7 @@ private fun proofQualifiedOutcomeSchema(
         operationOutcomeVariant(
             operation,
             "rejected",
-            ServerSchemaProperty("reason", textSchema("Closed rejection reason.")),
+            ServerSchemaProperty("reason", canonicalReadRejectionSchema(operation)),
         ),
     )
 
