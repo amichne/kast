@@ -123,6 +123,7 @@ internal class ProbeSetupReadiness(private val project: Project, private val san
                         return ProbeExecution.Rejected(ProbeFailure.DOCUMENT_STATE_REJECTED)
                 else -> return prepared
             }
+            val beforeRefresh = onEdt(deadline) { sample(request.command, requirement) }
             when (val refresh = refresh(deadline)) {
                 is ProbeResult.Accepted ->
                     awaitQuiet(
@@ -130,6 +131,7 @@ internal class ProbeSetupReadiness(private val project: Project, private val san
                         deadline = deadline,
                         requirement = requirement,
                         drain = refresh.value,
+                        beforeRefresh = beforeRefresh,
                         observeSource = observeSource,
                     )
                 is ProbeResult.Rejected -> ProbeExecution.Rejected(refresh.failure)
@@ -149,6 +151,7 @@ internal class ProbeSetupReadiness(private val project: Project, private val san
         deadline: Long,
         requirement: ProbeImportRequirement,
         drain: ProbeSetupDrainState,
+        beforeRefresh: ProbeSetupSample,
         observeSource: () -> ProbeExecution,
     ): ProbeExecution {
         var candidate = onEdt(deadline) { sample(request.command, requirement) }
@@ -165,6 +168,7 @@ internal class ProbeSetupReadiness(private val project: Project, private val san
             when (
                 val proof =
                     ProbeSetupObservation.admit(
+                        beforeRefresh = beforeRefresh,
                         before = candidate,
                         after = current,
                         elapsedNanos = now - candidateSince,

@@ -62,6 +62,7 @@ private constructor(
 
     companion object {
         fun admit(
+            beforeRefresh: ProbeSetupSample,
             before: ProbeSetupSample,
             after: ProbeSetupSample,
             elapsedNanos: Long,
