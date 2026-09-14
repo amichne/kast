@@ -49,6 +49,20 @@ class EnumClassEnumeration:
     execution_budget: EnumBudget = field(default_factory=EnumBudget, init=False)
 
 
+@dataclass(frozen=True)
+class EnumMemberReferences:
+    symbol_refs: tuple[str, ...]
+    type: str = field(default='symbol_refs', init=False)
+
+
+@dataclass(frozen=True)
+class EnumMemberRoundtrip:
+    source: EnumMemberReferences
+    steps: None = field(default=None, init=False)
+    return_fields: tuple[str, ...] = field(default=('name', 'signature'), init=False)
+    execution_budget: EnumBudget = field(default_factory=EnumBudget, init=False)
+
+
 def run_enum_read_regression(replay):
     cases = (
         ('enum-entry-exact-exclusion', 'search_classes', EnumClassSearch('ACTIVE', 'exact'), ()),
@@ -68,3 +82,24 @@ def run_enum_read_regression(replay):
             'sameLiveAuthority': response.get('live') == replay.live,
             'boundedWorkRetained': response.get('execution_budget', {}).get('max_work_units', {}).get('effective') == 32,
         }, len(items), response)
+
+    _roundtrip_members(replay, response)
+
+
+def _roundtrip_members(replay, discovery):
+    items = discovery.get('items', [])
+    references = tuple(item.get('symbol_ref') for item in items)
+    if len(references) != 2 or not all(isinstance(value, str) and value for value in references):
+        replay.record('enum-entry-member-reference-reuse', 'query_symbols', {'issuerAvailable': False})
+        return
+    response = replay.transport.invoke(replay.surface, 'query_symbols',
+        asdict(EnumMemberRoundtrip(EnumMemberReferences(references))))
+    exact = response.get('items', [])
+    replay.record('enum-entry-member-reference-reuse', 'query_symbols', {
+        'complete': response.get('status') == 'complete',
+        'sameDeclarations': [item.get('symbol_id') for item in exact] == [item.get('symbol_id') for item in items],
+        'exactEligibleNames': [item.get('name') for item in exact] == ['act', 'act'],
+        'allReferencesRestored': response.get('failures') == [] and len(exact) == 2,
+        'sameLiveAuthority': response.get('live') == replay.live,
+        'signaturesPresent': all(item.get('signature') for item in exact),
+    }, len(exact), response)

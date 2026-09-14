@@ -201,7 +201,7 @@ private inline fun IntellijCallableIdentity.projectCallable(
         }
         is IntellijCallableIdentity.EnumEntryMember -> {
             observation.callableIdentity(IntellijCallableIdentityStatus.EnumEntryMember)
-            compilerProjectionRejected()
+            project(owner.asSingleFqName().child(name).asString())
         }
         is IntellijCallableIdentity.Unavailable -> {
             observation.callableIdentity(IntellijCallableIdentityStatus.Unavailable(reason))

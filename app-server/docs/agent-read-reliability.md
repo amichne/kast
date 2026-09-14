@@ -377,5 +377,17 @@ The retained IDE observations show two candidates and two compiler refinements,
 with one refinement rejected. The investigation now records native callable
 identity, compiler-proven enum-entry ownership, or a finite unavailable ownership
 stage at exact K2 projection. It does not log names, source, references, or K2
-objects. The current projection still rejects enum-entry-owned members; this
-instrumentation is diagnostic preparation, not a fix or waived requirement.
+objects. That instrumentation checkpoint still rejected enum-entry-owned members; it was
+diagnostic preparation, not a fix or waived requirement.
+
+At `3c5214b4c`, both installed surfaces recorded two compiler refinements, one
+native callable identity, one verified enum-entry member identity, and one rejected
+refinement. Both entry-body cases still failed. This proves the missing transition
+at the existing projection owner: compiler-owned initializer evidence was present
+but discarded. The adapter now projects the verified entry callable identity plus
+the compiler member name into the existing function/property signature. Enum
+entries remain excluded from class discovery. Local symbol, workspace, query,
+runtime, harness unit, JSON, architecture and knowledge checks pass
+(`/tmp/kast-enum-identity-green-check.log`); installed GREEN remains pending. The
+installed fixture additionally reuses both member references and requests their
+signatures, comparing snapshot-local declaration identities and order.

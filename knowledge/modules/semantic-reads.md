@@ -161,3 +161,10 @@ Bounded counters and termination reasons expose that boundary without recording
 names, source payloads, references, or live compiler objects. Enum-entry membership
 is established only through the compiler containing-symbol chain and equality
 with the enum entry's initializer, never from PSI naming.
+
+For a verified enum-entry initializer member, exact projection combines the
+compiler enum-entry callable identity and compiler member name. The existing
+function/property signature retains that qualified owner identity. This does not
+classify the entry itself as a supported class, accept arbitrary anonymous-object
+members, or derive authority from source spelling. Unsupported ownership remains
+a finite compiler-identity rejection.
