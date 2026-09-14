@@ -4,7 +4,7 @@ title: Installation configuration
 description: Every external configuration input has declared ownership, parsing, defaults, and projection before it can affect the broker, installation or existing-IDE request.
 resource: file://distribution/contract
 tags: [configuration, distribution, installation]
-timestamp: 2026-09-13T00:00:00Z
+timestamp: 2026-09-14T00:00:00Z
 code_sources:
   - path: kernel/src/main/kotlin/io/github/amichne/kast/kernel/ReadLimits.kt
     symbols: [ReadLimits, ReadLimitParameter]
@@ -34,6 +34,14 @@ See [distribution](../modules/distribution.md).
 The `KAST_READ_*` declarations retain parameter identity, admitted values and provenance across model/epoch capture, semantic budgets, native collection, source paging, diagnostic scope enumeration, transport and provider execution. [Configuration instructions](../../docs/hosted-read-configuration.md) explain activation and paired bounds. Default request diagnostics include the effective policy.
 
 `ConfigurationSchemaDocument` defines the shared document. The CLI-owned `InstalledConfigurationSchema` is the sole catalogue generator and includes operational limits from protocol, broker, installation, and CLI owners.
+
+The generated snapshot includes the four `EXECUTION_MAX_*` ceilings for time,
+work, results and returned bytes, each defaulting to 2,147,483,646. It also
+declares `SOURCE_CONTINUATION_BYTES` (33,554,432 bytes) and
+`SOURCE_CONTINUATION_TTL_MILLIS` (600,000 ms), alongside the transport backlog
+and connection limits. Refresh the snapshot from
+`:cli:generateConfigurationCatalogue`; `verifyConfigurationIngress` requires
+byte-for-byte agreement with that owner-generated output.
 
 Bare installed CLI composition fails closed on rejected saved configuration. Its passive product response identifies `existing_ide` authority and root discovery rather than inventing a worker/bootstrap observation. Broker configuration identity remains owner-correlated while coordinator status admits zero workers.
 
