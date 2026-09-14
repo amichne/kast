@@ -285,6 +285,35 @@ class IntellijSourceEntityReadTest {
     }
 
     @Test
+    fun `continuation refusal preserves cause before invoking source provider`() {
+        var now = 0L
+        var invocations = 0
+        val fixture = fixture()
+        val owner = IntellijSourceReadContinuations(
+            io.github.amichne.kast.kernel.ReadLimits.resolve(
+                environment = mapOf("KAST_SOURCE_CONTINUATION_TTL_MILLIS" to "10")
+            ).refined()
+        ) { now }
+        val port = port(fixture, owner) { invocations += 1 }
+        val selection = matching(Containment.DESCENDANTS, declarations(setOf(DeclarationKind.FUNCTION), null))
+        val first = read(port, fixture, selection, limit = 1) as SourceReadResult.Qualified
+        val token = (first.qualification.continuation as SourceReadContinuationState.Available).continuation
+        val page = SourceReadPage.Continue(token)
+        val original = fixture.snapshot.context as SourceReadContext.Published
+        val changed = original.copy(sourceState = WorkspaceStateIdentity.parse("workspace-state-v1|changed").refined())
+        fun reason(result: SourceReadResult) = assertInstanceOf(SourceReadResult.Rejected::class.java, result).reason.name
+        assertEquals("SOURCE_SNAPSHOT_MISMATCH", reason(read(port, fixture, selection, page = page, readContext = changed)))
+        assertEquals("REQUEST_MISMATCH", reason(read(port, fixture, EntitySelection.None, page = page)))
+        assertEquals(1, invocations)
+        now = 10_000_000L
+        assertEquals("CONTINUATION_UNAVAILABLE", reason(read(port, fixture, selection, page = page)))
+        owner.retire()
+        assertEquals("CONTINUATION_UNAVAILABLE", reason(read(port, fixture, selection, page = page)))
+        assertEquals("CONTINUATION_UNAVAILABLE", reason(read(port, fixture, selection)))
+        assertEquals(1, invocations)
+    }
+
+    @Test
     fun `supported call filters return a complete empty structural negative`() {
         val fixture = fixture()
         val result =
@@ -301,9 +330,11 @@ class IntellijSourceEntityReadTest {
     private fun port(
         fixture: Fixture,
         continuations: IntellijSourceReadContinuations = IntellijSourceReadContinuations(),
+        onSelect: () -> Unit = {},
     ): IntellijSourceReadPort =
         IntellijSourceReadPort(
             IntellijSourceRegionAccess { _, request, cursor ->
+                onSelect()
                 val page =
                     IntellijSourceEntityPage.select(
                         fixture.entities.asSequence(),
