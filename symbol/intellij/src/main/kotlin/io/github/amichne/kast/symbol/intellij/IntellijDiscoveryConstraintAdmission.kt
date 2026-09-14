@@ -13,6 +13,7 @@ internal fun SymbolDiscoveryConstraints.admit(
     compiledScope: CompiledIntellijSearchScope,
     itemCompilerKind: IntellijDiscoveryItemCompilerKind,
     itemPackage: IntellijDiscoveryItemPackage,
+    inspectPackage: Boolean = true,
 ): IntellijDiscoveryItemAdmission {
     val sourceAdmission = admitSourceSets(filePath, compiledScope)
     if (sourceAdmission != IntellijDiscoveryItemAdmission.ADMITTED) return sourceAdmission
@@ -20,7 +21,8 @@ internal fun SymbolDiscoveryConstraints.admit(
     if (directoryAdmission != IntellijDiscoveryItemAdmission.ADMITTED) return directoryAdmission
     val kindAdmission = admitKind(item, itemCompilerKind)
     if (kindAdmission != IntellijDiscoveryItemAdmission.ADMITTED) return kindAdmission
-    return packageName.admitPackage { itemPackage.inspect(item) }
+    return if (inspectPackage) packageName.admitPackage { itemPackage.inspect(item) }
+    else IntellijDiscoveryItemAdmission.ADMITTED
 }
 
 private fun SymbolDiscoveryConstraints.admitSourceSets(

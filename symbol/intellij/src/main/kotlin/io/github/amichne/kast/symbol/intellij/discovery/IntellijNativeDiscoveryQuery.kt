@@ -167,6 +167,8 @@ internal class IntellijNativeDiscoveryQuery(
                             name,
                             Processor { item ->
                                 if (!collector.observe()) return@Processor false
+                                if (collector.admit(item, inspectPackage = false) != IntellijDiscoveryItemAdmission.ADMITTED)
+                                    return@Processor !collector.halted
                                 if (pending.size >= limits[ReadLimitParameter.DISCOVERY_CANDIDATES].value) {
                                     reachedCandidateLimit = true
                                     observation.terminated(IntellijReadTermination.CANDIDATE_CAP, collector.contributor)
@@ -280,6 +282,9 @@ internal class IntellijNativeDiscoveryQuery(
             var reachedLimit = false
             val target = request.target
             val fuzzy = (target as? SymbolDiscoveryTarget.Name)?.takeIf { it.match == SymbolDiscoveryMatch.FUZZY }
+            val capacity = minOf(request.budget.resources.workUnitLimit.value,
+                limits[ReadLimitParameter.DISCOVERY_CANDIDATES].value.toLong()).toInt()
+            val ranked = fuzzy?.let { BoundedLexicalCandidates(it.pattern, minOf(capacity, request.budget.resources.resultLimit.value)) }
             val complete =
                 process(collector::observe, collector::qualify) { item ->
                     if (!collector.observe()) return@process false
@@ -289,20 +294,28 @@ internal class IntellijNativeDiscoveryQuery(
                         if (fuzzy.pattern.relevance(name) == SymbolNameRelevance.UNMATCHED) return@process true
                         observation.count(IntellijReadCounter.NAMES_MATCHED, contributor)
                     }
-                    if (
-                        pending.size.toLong() >=
-                            minOf(
-                                request.budget.resources.workUnitLimit.value,
-                                limits[ReadLimitParameter.DISCOVERY_CANDIDATES].value.toLong(),
-                            )
-                    ) {
-                        reachedLimit = true
-                        return@process false
+                    // Scoped enumeration has left native callbacks; package PSI is safe here.
+                    if (collector.admit(item, contributor == IntellijReadContributor.SCOPED_DECLARATIONS) !=
+                        IntellijDiscoveryItemAdmission.ADMITTED) return@process !collector.halted
+                    if (ranked != null) {
+                        ranked.accept(item)
+                    } else {
+                        if (pending.size >= capacity) {
+                            reachedLimit = true
+                            return@process false
+                        }
+                        pending += item
                     }
-                    pending += item
                     observation.count(IntellijReadCounter.CANDIDATES_COLLECTED, collector.contributor)
                     true
                 }
+            if (ranked != null) {
+                pending += ranked.values()
+                if (ranked.truncated) {
+                    collector.qualify(if (request.budget.resources.resultLimit.value <= capacity)
+                        SymbolDiscoveryQualification.RESULT_LIMIT_REACHED else SymbolDiscoveryQualification.WORK_LIMIT_REACHED)
+                }
+            }
             if (reachedLimit) {
                 observation.terminated(
                     if (pending.size == limits[ReadLimitParameter.DISCOVERY_CANDIDATES].value)

@@ -72,21 +72,21 @@ internal class BoundedNativeDiscoveryCollector(
         return true
     }
 
-    fun accept(item: NavigationItem): Boolean {
+    fun admit(item: NavigationItem, inspectPackage: Boolean = true): IntellijDiscoveryItemAdmission {
         if (!observe()) {
-            return false
+            return IntellijDiscoveryItemAdmission.FILTERED
         }
         val file =
             when (val itemFileResult = itemFile.find(item)) {
                 is IntellijDiscoveryItemFileResult.Found -> itemFileResult.file
                 IntellijDiscoveryItemFileResult.Unsupported -> {
                     qualify(SymbolDiscoveryQualification.UNSUPPORTED_ITEM)
-                    return true
+                    return IntellijDiscoveryItemAdmission.FILTERED
                 }
             }
         if (!compiledScope.nativeScope.contains(file)) {
             observation.count(IntellijReadCounter.SCOPE_FILTERED, contributor)
-            return true
+            return IntellijDiscoveryItemAdmission.FILTERED
         }
         when (
             request.constraints.admit(
@@ -96,30 +96,42 @@ internal class BoundedNativeDiscoveryCollector(
                 compiledScope,
                 itemCompilerKind,
                 itemPackage,
+                inspectPackage,
             )
         ) {
             IntellijDiscoveryItemAdmission.ADMITTED -> Unit
             IntellijDiscoveryItemAdmission.FILTERED -> {
                 observation.count(IntellijReadCounter.SCOPE_FILTERED, contributor)
-                return true
+                return IntellijDiscoveryItemAdmission.FILTERED
             }
             IntellijDiscoveryItemAdmission.UNSUPPORTED -> {
                 qualify(SymbolDiscoveryQualification.UNSUPPORTED_ITEM)
-                return true
+                return IntellijDiscoveryItemAdmission.FILTERED
             }
         }
         when (itemAdmission.admit(item)) {
             IntellijDiscoveryItemAdmission.ADMITTED -> Unit
             IntellijDiscoveryItemAdmission.FILTERED -> {
                 observation.count(IntellijReadCounter.SCOPE_FILTERED, contributor)
-                return true
+                return IntellijDiscoveryItemAdmission.FILTERED
             }
             IntellijDiscoveryItemAdmission.UNSUPPORTED -> {
                 qualify(SymbolDiscoveryQualification.UNSUPPORTED_ITEM)
-                return true
+                return IntellijDiscoveryItemAdmission.FILTERED
             }
         }
-        return project(item, file)
+        return IntellijDiscoveryItemAdmission.ADMITTED
+    }
+
+    fun accept(item: NavigationItem): Boolean {
+        if (admit(item) != IntellijDiscoveryItemAdmission.ADMITTED) return !halted
+        return when (val file = itemFile.find(item)) {
+            is IntellijDiscoveryItemFileResult.Found -> project(item, file.file)
+            IntellijDiscoveryItemFileResult.Unsupported -> {
+                qualify(SymbolDiscoveryQualification.UNSUPPORTED_ITEM)
+                true
+            }
+        }
     }
 
     private fun project(item: NavigationItem, file: com.intellij.openapi.vfs.VirtualFile): Boolean {
