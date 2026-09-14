@@ -11,7 +11,7 @@ val assembleRelease by tasks.registering(Sync::class) {
     group = "distribution"
     description =
         "Publishes the control and existing-IDE plugin assets for one matched product."
-    dependsOn(controlArchive, pluginArchive)
+    dependsOn(controlArchive, pluginArchive, "verifyDistributionContent")
     into(releaseDirectory)
     from(controlArchive.flatMap(Tar::getArchiveFile))
     from(pluginArchive.flatMap(Zip::getArchiveFile))

@@ -32,6 +32,7 @@ enum class CodexClientLaunch {
 }
 
 enum class CodexClientLaunchFailure {
+    PAYLOAD_LIMIT_EXCEEDED,
     APP_SERVER_DISABLED,
     APP_SERVER_CONFIGURATION_REJECTED,
     APP_SERVER_UNAVAILABLE,
@@ -337,6 +338,7 @@ private object JdkCodexClientProcessLauncher : CodexClientProcessLauncher {
 
 private fun PersistentBrokerServiceFailure.launchFailure(): CodexClientLaunchFailure =
     when (this) {
+        PersistentBrokerServiceFailure.PAYLOAD_LIMIT_EXCEEDED -> CodexClientLaunchFailure.PAYLOAD_LIMIT_EXCEEDED
         PersistentBrokerServiceFailure.DISABLED -> CodexClientLaunchFailure.APP_SERVER_DISABLED
         PersistentBrokerServiceFailure.CONFIGURATION_REJECTED,
         PersistentBrokerServiceFailure.KAST_EXECUTABLE_UNAVAILABLE,

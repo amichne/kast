@@ -13,6 +13,7 @@ enum class AppliedConfigurationScope {
 
 @Serializable
 enum class AppliedConfigurationUnavailable {
+    PAYLOAD_LIMIT_EXCEEDED,
     INSTALLATION_UNSELECTED,
     COORDINATOR_UNAVAILABLE,
     OWNER_REJECTED,
@@ -94,6 +95,8 @@ object InstalledConfigurationAppliedInspection {
                 is CoordinatorStatusRead.Rejected ->
                     return unobserved(
                         when (observed.failure) {
+                            WorkerControlFailure.PAYLOAD_LIMIT_EXCEEDED ->
+                                AppliedConfigurationUnavailable.PAYLOAD_LIMIT_EXCEEDED
                             WorkerControlFailure.UNAVAILABLE,
                             WorkerControlFailure.DEADLINE_EXCEEDED ->
                                 AppliedConfigurationUnavailable.COORDINATOR_UNAVAILABLE

@@ -1,12 +1,10 @@
 package io.github.amichne.kast.appserver
 
 import io.github.amichne.kast.distribution.contract.ControlDistributionLimits
-
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationOperationalLimit
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationScope
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationUnit
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
-import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
 
 /**
@@ -50,7 +48,7 @@ object BrokerOperationalLimits {
     const val maximumDesktopInspectionBytes: Int = 1_024
     const val maximumClientMessageBytes: Int = 4 * 1_024 * 1_024
     const val maximumInventoryEntries: Int = ControlDistributionLimits.maximumEntryCount
-    const val maximumInventoryBytes: Int = 1_024 * 1_024 * 1_024
+    const val maximumInventoryBytes: Long = ControlDistributionLimits.maximumPayloadBytes
     const val maximumEpochBytes: Int = 1_024
     const val maximumObserverDiffBytes: Int = 512 * 1_024
     const val maximumObserverChangeFiles: Int = 64
@@ -72,97 +70,97 @@ object BrokerOperationalLimits {
         get() = OperationExecutionBudget.GRAPH_BUILD.invocation
 
     val gradleInvocation: ElapsedTimeLimitMillis
-        get() = limit(30_000)
+        get() = brokerDeadline(30_000)
 
     val codexQualification: ElapsedTimeLimitMillis
-        get() = limit(30_000)
+        get() = brokerDeadline(30_000)
 
     val maximumKastQualification: ElapsedTimeLimitMillis
-        get() = limit(300_000)
+        get() = brokerDeadline(300_000)
 
     val readinessExchange: ElapsedTimeLimitMillis
-        get() = limit(3_000)
+        get() = brokerDeadline(3_000)
 
     val serviceChildPhases: ElapsedTimeLimitMillis
-        get() = limit(90_000)
+        get() = brokerDeadline(90_000)
 
     val serviceStartup: ElapsedTimeLimitMillis
-        get() = limit(120_000)
+        get() = brokerDeadline(120_000)
 
     val serviceRetirement: ElapsedTimeLimitMillis
-        get() = limit(10_000)
+        get() = brokerDeadline(10_000)
 
     val serviceStartLock: ElapsedTimeLimitMillis
-        get() = limit(180_000)
+        get() = brokerDeadline(180_000)
 
     val serviceLockPoll: ElapsedTimeLimitMillis
-        get() = limit(25)
+        get() = brokerDeadline(25)
 
     val servicePoll: ElapsedTimeLimitMillis
-        get() = limit(50)
+        get() = brokerDeadline(50)
 
     val launchctlInvocation: ElapsedTimeLimitMillis
-        get() = limit(5_000)
+        get() = brokerDeadline(5_000)
 
     val clientConnect: ElapsedTimeLimitMillis
-        get() = limit(10_000)
+        get() = brokerDeadline(10_000)
 
     val clientProcessRetirementWait: ElapsedTimeLimitMillis
-        get() = limit(2_000)
+        get() = brokerDeadline(2_000)
 
     val upstreamProcessRetirementWait: ElapsedTimeLimitMillis
-        get() = limit(2_000)
+        get() = brokerDeadline(2_000)
 
     val clientShutdown: ElapsedTimeLimitMillis
-        get() = limit(10_000)
+        get() = brokerDeadline(10_000)
 
     val desktopShutdown: ElapsedTimeLimitMillis
-        get() = limit(10_000)
+        get() = brokerDeadline(10_000)
 
     val desktopInspection: ElapsedTimeLimitMillis
-        get() = limit(5_000)
+        get() = brokerDeadline(5_000)
 
     val managementExchange: ElapsedTimeLimitMillis
-        get() = limit(5_000)
+        get() = brokerDeadline(5_000)
 
     val managementConnect: ElapsedTimeLimitMillis
-        get() = limit(2_000)
+        get() = brokerDeadline(2_000)
 
     val processRetirementWait: ElapsedTimeLimitMillis
-        get() = limit(250)
+        get() = brokerDeadline(250)
 
     val seedConsent: ElapsedTimeLimitMillis
-        get() = limit(60_000)
+        get() = brokerDeadline(60_000)
 
     val workerStartupJoin: ElapsedTimeLimitMillis
-        get() = limit(10_000)
+        get() = brokerDeadline(10_000)
 
     val workerControlHandshake: ElapsedTimeLimitMillis
-        get() = limit(10_000)
+        get() = brokerDeadline(10_000)
 
     val workerShutdownJoin: ElapsedTimeLimitMillis
-        get() = limit(10_000)
+        get() = brokerDeadline(10_000)
 
     val connectionInitialization: ElapsedTimeLimitMillis
-        get() = limit(10_000)
+        get() = brokerDeadline(10_000)
 
     val serverShutdownGrace: ElapsedTimeLimitMillis
-        get() = limit(500)
+        get() = brokerDeadline(500)
 
     val serverShutdown: ElapsedTimeLimitMillis
-        get() = limit(2_000)
+        get() = brokerDeadline(2_000)
 
     val serverFailedStartupShutdown: ElapsedTimeLimitMillis
-        get() = limit(1_000)
+        get() = brokerDeadline(1_000)
 
     val upstreamHealthPoll: ElapsedTimeLimitMillis
-        get() = limit(25)
+        get() = brokerDeadline(25)
 
     val sessionSend: ElapsedTimeLimitMillis
-        get() = limit(5_000)
+        get() = brokerDeadline(5_000)
 
     val sessionClose: ElapsedTimeLimitMillis
-        get() = limit(2_000)
+        get() = brokerDeadline(2_000)
 
     val declarations: List<ConfigurationOperationalLimit>
         get() =
@@ -722,10 +720,4 @@ object BrokerOperationalLimits {
         scope: ConfigurationScope,
         property: String,
     ) = ConfigurationOperationalLimit(key, ":app-server", value, unit, scope, "BrokerOperationalLimits.$property")
-
-    private fun limit(value: Long): ElapsedTimeLimitMillis =
-        when (val admitted = ElapsedTimeLimitMillis.parse(value)) {
-            is Refinement.Refined -> admitted.value
-            is Refinement.Rejected -> error("Invalid fixed broker deadline")
-        }
 }

@@ -3,6 +3,7 @@ package io.github.amichne.kast.cli.installation
 import io.github.amichne.kast.cli.CliBoundaryExitStatus
 import io.github.amichne.kast.cli.CliExit
 import io.github.amichne.kast.cli.CliJsonDocument
+import io.github.amichne.kast.distribution.managed.ControlLimitExceeded
 import io.github.amichne.kast.kernel.Refinement
 import kotlinx.serialization.Serializable
 
@@ -27,7 +28,7 @@ internal object InstallationCliInspection {
         return when (val outcome = InstallationWorkflow.execute(request)) {
             is InstallationOutcome.Complete ->
                 InstallationHandling.Handled(CliExit.Complete(reportFactory.create(outcome.report)))
-            is InstallationOutcome.Rejected -> rejected(outcome.failure, CliBoundaryExitStatus.BOOTSTRAP)
+            is InstallationOutcome.Rejected -> rejected(outcome.failure, CliBoundaryExitStatus.BOOTSTRAP, outcome.limit)
         }
     }
 
@@ -54,11 +55,12 @@ internal object InstallationCliInspection {
     private fun rejected(
         failure: InstallationFailure,
         status: CliBoundaryExitStatus,
+        limit: ControlLimitExceeded? = null,
     ): InstallationHandling =
         InstallationHandling.Handled(
             CliExit.BoundaryRejected(
                 status,
-                rejectionFactory.create(InstallationRejectionDocument(reason = failure.reason())),
+                rejectionFactory.create(InstallationRejectionDocument(reason = failure.reason(), limit = limit)),
             )
         )
 }
@@ -69,6 +71,7 @@ private data class InstallationRejectionDocument(
     val status: String = "rejected",
     val reason: String,
     val field: String? = null,
+    val limit: ControlLimitExceeded? = null,
 )
 
 private fun InstallationFailure.reason(): String = name.lowercase().replace('_', '-')

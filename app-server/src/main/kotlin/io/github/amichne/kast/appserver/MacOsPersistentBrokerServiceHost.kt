@@ -1115,33 +1115,6 @@ internal class MacOsPersistentBrokerServiceHost(
     private fun BrokerReadinessObservation.Published.isCurrent(command: BrokerServiceLaunchCommand): Boolean =
         identity == command.identity && brokerVersion == VENDORED_BROKER_VERSION
 
-    private fun BrokerServerFailure.persistentServiceFailure(): PersistentBrokerServiceFailure =
-        when (this) {
-            BrokerServerFailure.UNAVAILABLE -> PersistentBrokerServiceFailure.UNAVAILABLE
-            BrokerServerFailure.CONFIGURATION_REJECTED -> PersistentBrokerServiceFailure.CONFIGURATION_REJECTED
-            BrokerServerFailure.KAST_EXECUTABLE_REJECTED -> PersistentBrokerServiceFailure.KAST_EXECUTABLE_UNAVAILABLE
-            BrokerServerFailure.USER_HOME_REJECTED -> PersistentBrokerServiceFailure.USER_HOME_REJECTED
-            BrokerServerFailure.CODEX_EXECUTABLE_REJECTED -> PersistentBrokerServiceFailure.CODEX_EXECUTABLE_UNAVAILABLE
-            BrokerServerFailure.CODEX_HOME_REJECTED -> PersistentBrokerServiceFailure.CODEX_HOME_REJECTED
-            BrokerServerFailure.STATE_DIRECTORY_REJECTED -> PersistentBrokerServiceFailure.STATE_DIRECTORY_REJECTED
-            BrokerServerFailure.SOCKET_PATH_REJECTED -> PersistentBrokerServiceFailure.SOCKET_PATH_REJECTED
-            BrokerServerFailure.PROVIDER_CONFIGURATION_REJECTED ->
-                PersistentBrokerServiceFailure.PROVIDER_CONFIGURATION_REJECTED
-            BrokerServerFailure.PROTOCOL_CONFIGURATION_REJECTED ->
-                PersistentBrokerServiceFailure.PROTOCOL_CONFIGURATION_REJECTED
-            BrokerServerFailure.APP_SERVER_DISABLED -> PersistentBrokerServiceFailure.DISABLED
-            BrokerServerFailure.KAST_QUALIFICATION_REJECTED ->
-                PersistentBrokerServiceFailure.KAST_QUALIFICATION_REJECTED
-            BrokerServerFailure.CATALOG_REJECTED -> PersistentBrokerServiceFailure.CATALOG_REJECTED
-            BrokerServerFailure.CODEX_QUALIFICATION_REJECTED ->
-                PersistentBrokerServiceFailure.CODEX_QUALIFICATION_REJECTED
-            BrokerServerFailure.THREAD_STORE_REJECTED -> PersistentBrokerServiceFailure.THREAD_STORE_REJECTED
-            BrokerServerFailure.UPSTREAM_REJECTED -> PersistentBrokerServiceFailure.UPSTREAM_REJECTED
-            BrokerServerFailure.SERVER_REJECTED -> PersistentBrokerServiceFailure.SERVER_REJECTED
-            BrokerServerFailure.READINESS_REJECTED -> PersistentBrokerServiceFailure.READINESS_REJECTED
-            BrokerServerFailure.INTERRUPTED -> PersistentBrokerServiceFailure.INTERRUPTED
-        }
-
     private fun rejected(failure: PersistentBrokerServiceFailure): PersistentBrokerServiceAdmission.Rejected =
         PersistentBrokerServiceAdmission.Rejected(failure)
 

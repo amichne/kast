@@ -333,17 +333,6 @@ internal data class InstalledBrokerServerOptions(
     val configuration: ResolvedKastConfiguration,
 )
 
-internal enum class InstalledBrokerServerFailure {
-    READINESS_REJECTED,
-    KAST_QUALIFICATION_REJECTED,
-    GRADLE_DEFINITION_REJECTED,
-    CATALOG_REJECTED,
-    CODEX_QUALIFICATION_REJECTED,
-    THREAD_STORE_REJECTED,
-    UPSTREAM_REJECTED,
-    PUBLIC_SERVER_REJECTED,
-}
-
 internal sealed interface InstalledBrokerServerStart {
     data class Started(val server: InstalledBrokerServer) : InstalledBrokerServerStart
 
@@ -574,7 +563,13 @@ internal object InstalledBrokerHost {
         val owner =
             when (val admitted = BrokerInstallationState.admit(options.installationRoot)) {
                 is Refinement.Refined -> admitted.value
-                is Refinement.Rejected -> return rejectHost(stage, InstalledBrokerServerFailure.THREAD_STORE_REJECTED)
+                is Refinement.Rejected ->
+                    return rejectHost(
+                        stage,
+                        if (admitted.failure == InstallationStateFailure.PAYLOAD_LIMIT_EXCEEDED)
+                            InstalledBrokerServerFailure.PAYLOAD_LIMIT_EXCEEDED
+                        else InstalledBrokerServerFailure.THREAD_STORE_REJECTED,
+                    )
             }
         stage = BrokerStartupStage.UPSTREAM
         activity.started(stage)
@@ -680,18 +675,6 @@ private fun InstalledBrokerServerConfigurationFailure.serverFailure(): BrokerSer
         InstalledBrokerServerConfigurationFailure.PROTOCOL_CONFIGURATION_REJECTED ->
             BrokerServerFailure.PROTOCOL_CONFIGURATION_REJECTED
         InstalledBrokerServerConfigurationFailure.APP_SERVER_DISABLED -> BrokerServerFailure.APP_SERVER_DISABLED
-    }
-
-private fun InstalledBrokerServerFailure.serverFailure(): BrokerServerFailure =
-    when (this) {
-        InstalledBrokerServerFailure.READINESS_REJECTED -> BrokerServerFailure.READINESS_REJECTED
-        InstalledBrokerServerFailure.KAST_QUALIFICATION_REJECTED -> BrokerServerFailure.KAST_QUALIFICATION_REJECTED
-        InstalledBrokerServerFailure.GRADLE_DEFINITION_REJECTED,
-        InstalledBrokerServerFailure.CATALOG_REJECTED -> BrokerServerFailure.CATALOG_REJECTED
-        InstalledBrokerServerFailure.CODEX_QUALIFICATION_REJECTED -> BrokerServerFailure.CODEX_QUALIFICATION_REJECTED
-        InstalledBrokerServerFailure.THREAD_STORE_REJECTED -> BrokerServerFailure.THREAD_STORE_REJECTED
-        InstalledBrokerServerFailure.UPSTREAM_REJECTED -> BrokerServerFailure.UPSTREAM_REJECTED
-        InstalledBrokerServerFailure.PUBLIC_SERVER_REJECTED -> BrokerServerFailure.SERVER_REJECTED
     }
 
 @JvmInline

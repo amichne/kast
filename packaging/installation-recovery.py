@@ -7,9 +7,11 @@ from dataclasses import asdict, dataclass, fields
 from enum import Enum
 from pathlib import Path
 import argparse
-import fcntl
 import hashlib
+import plistlib
+import fcntl
 import json
+import importlib.util
 import os
 import shutil
 import stat
@@ -35,6 +37,7 @@ class Failure(str, Enum):
     RETIREMENT = 'RETIREMENT_UNPROVEN'
     EVIDENCE = 'UNRESOLVED_STATE_PRESERVED'
     RESTART = 'IDE_RESTART_REQUIRED'
+    PLUGIN = 'PLUGIN_OWNERSHIP_UNPROVEN'
 
 
 class Rejected(Exception):
@@ -81,6 +84,7 @@ class Receipt:
     links: list[Link]
     priorInstallation: str | None
     plugin: Plugin | None
+    pluginRoot: str | None
     stage: Status
 
 
@@ -111,7 +115,10 @@ def decode(kind, value):
             raise Rejected(Failure.RECEIPT)
         return value
     if issubclass(kind, Enum):
-        return kind(value)
+        try:
+            return kind(value)
+        except ValueError:
+            raise Rejected(Failure.RECEIPT) from None
     if not isinstance(value, dict) or set(value) != {field.name for field in fields(kind)}:
         raise Rejected(Failure.RECEIPT)
     return kind(**{field.name: decode(field.type, value[field.name]) for field in fields(kind)})
@@ -158,7 +165,7 @@ def save(path, document):
             temporary.unlink()
 
 
-def load(path):
+def load(path, kind=Receipt):
     descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
     with os.fdopen(descriptor, 'rb') as source:
         observed = os.fstat(source.fileno())
@@ -167,7 +174,10 @@ def load(path):
         raw = source.read(65537)
     if len(raw) > 65536:
         raise Rejected(Failure.RECEIPT)
-    return decode(Receipt, json.loads(raw, object_pairs_hook=unique))
+    try:
+        return decode(kind, json.loads(raw, object_pairs_hook=unique))
+    except (ValueError, UnicodeDecodeError):
+        raise Rejected(Failure.RECEIPT) from None
 
 
 def location(root):
@@ -183,15 +193,16 @@ def retained_script(bundle):
     return bundle / 'installation-recovery.py'
 
 
-def prepare(root, bin_directory):
+def prepare(root, bin_directory, plugin_root=None):
     outer, bundle = location(root)
     physical(bin_directory)
-    if bundle.exists():
+    if bundle.exists() and (bundle / 'receipt.json').exists():
         validate(root, load(bundle / 'receipt.json'))
         return Report(Status.PREPARED, [], str(retained_script(bundle)))
     (outer / 'recovery').mkdir(mode=0o700, exist_ok=True)
     physical(outer / 'recovery')
-    bundle.mkdir(mode=0o700)
+    bundle.mkdir(mode=0o700, exist_ok=True)
+    physical(bundle)
     current = outer / 'current'
     previous = None
     if os.path.lexists(current):
@@ -212,8 +223,9 @@ def prepare(root, bin_directory):
                 raise Rejected(Failure.OWNERSHIP)
             prior = target
         links.append(Link(str(path), target, prior))
+    selected_plugin_root = str(physical(plugin_root)) if plugin_root is not None else None
     receipt = Receipt(1, str(root), Identity.observe(root), links,
-                      str(outer / previous) if previous else None, None, Status.PREPARED)
+                      str(outer / previous) if previous else None, None, selected_plugin_root, Status.PREPARED)
     # Copy the trusted executing bundle, not a file from the damaged installation.
     shutil.copyfile(Path(__file__).resolve(), retained_script(bundle))
     os.chmod(retained_script(bundle), 0o600)
@@ -246,12 +258,25 @@ def validate(root, receipt):
             raise Rejected(Failure.RECEIPT)
     if Path(command.path).parent != Path(codex.path).parent:
         raise Rejected(Failure.RECEIPT)
+    if receipt.plugin is not None:
+        plugin = receipt.plugin
+        destination = Path(plugin.destination)
+        if destination.name != 'kast-ide-hosted' or receipt.pluginRoot != str(destination.parent):
+            raise Rejected(Failure.RECEIPT)
+        physical(destination.parent)
+        for raw, prefix in ((plugin.candidate, '.kast-ide-hosted.install-'),
+                            (plugin.backup, '.kast-ide-hosted.baseline-'),
+                            (plugin.quarantine, '.kast-ide-hosted.detached-')):
+            path = Path(raw)
+            if path.parent != destination.parent or not path.name.startswith(prefix):
+                raise Rejected(Failure.RECEIPT)
     return bundle
 
 
 def replace_stage(receipt, stage, plugin=None):
     from dataclasses import replace
-    return replace(receipt, stage=stage, plugin=receipt.plugin if plugin is None else plugin)
+    return replace(receipt, stage=stage, plugin=receipt.plugin if plugin is None else plugin,
+                   pluginRoot=receipt.pluginRoot if plugin is None else str(Path(plugin.destination).parent))
 
 
 def activate_plugin(root, staged, plugin_root):
@@ -300,6 +325,105 @@ def activate_plugin(root, staged, plugin_root):
     return Report(Status.ACTIVE, [Failure.RESTART], str(retained_script(bundle)))
 
 
+@dataclass(frozen=True)
+class RecoveryFence:
+    schemaVersion: int
+    installation: str
+    operation: str
+
+
+def detach_login(root, bundle):
+    home = physical(Path(os.environ['HOME']))
+    label = 'io.github.amichne.kast.broker.' + hashlib.sha256(str(root).encode()).hexdigest()[:32] + '.login'
+    path = home / 'Library/LaunchAgents' / (label + '.plist')
+    if not os.path.lexists(path):
+        return []
+    try:
+        physical(path.parent)
+        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+        with os.fdopen(descriptor, 'rb') as source:
+            observed = os.fstat(source.fileno())
+            if not stat.S_ISREG(observed.st_mode) or observed.st_uid != os.getuid():
+                return [Failure.OWNERSHIP]
+            raw = source.read(65537)
+        if len(raw) > 65536:
+            return [Failure.OWNERSHIP]
+        document = plistlib.loads(raw)
+        arguments = document.get('ProgramArguments')
+        if document.get('Label') != label or not isinstance(arguments, list) or not arguments or arguments[0] != str(root / 'bin/kast'):
+            return [Failure.OWNERSHIP]
+        if Identity.observe(path) != Identity(observed.st_dev, observed.st_ino, observed.st_uid):
+            return [Failure.OWNERSHIP]
+        destination = bundle / 'login.plist'
+        if destination.exists():
+            return [Failure.OWNERSHIP]
+        # Cross-device quarantine is not guessed; retain the entry if rename is unavailable.
+        path.rename(destination)
+        sync(path.parent)
+        sync(bundle)
+        return []
+    except (OSError, ValueError, TypeError, plistlib.InvalidFileException):
+        return [Failure.OWNERSHIP]
+
+
+@dataclass(frozen=True)
+class StateQuarantine:
+    installationIdentity: Identity
+    stateIdentity: Identity
+    quarantine: str
+
+
+def retire_and_preserve(root, bundle):
+    """Only a fully verified payload may execute retirement; recovery still detaches on rejection."""
+    record = bundle / 'retirement.json'
+    if record.exists():
+        proof = load(record, StateQuarantine)
+        destination = Path(proof.quarantine)
+        if proof.installationIdentity != Identity.observe(root) or destination.parent != root or not destination.name.startswith('.recovered-state-'):
+            raise Rejected(Failure.RECEIPT)
+        if destination.exists() and Identity.observe(destination) == proof.stateIdentity and not os.path.lexists(root / 'state'):
+            return []
+        if destination.exists() or Identity.observe(root / 'state') != proof.stateIdentity:
+            raise Rejected(Failure.OWNERSHIP)
+        (root / 'state').rename(destination)
+        sync(root)
+        return []
+    lifecycle_path = bundle / 'installation-lifecycle.py'
+    if not lifecycle_path.is_file() or lifecycle_path.is_symlink():
+        return [Failure.RETIREMENT]
+    spec = importlib.util.spec_from_file_location('kast_recovery_lifecycle', lifecycle_path)
+    lifecycle = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = lifecycle
+    spec.loader.exec_module(lifecycle)
+    try:
+        installation = lifecycle.Installation.admit(str(root))
+        roots = lifecycle.workspaces(installation)
+        lifecycle.validate_owned_configuration(installation)
+        lifecycle.retire(installation, roots)
+        installation.revalidate()
+        state_identity = lifecycle.inspect_state(installation)
+        workers = root / 'state/workers'
+        if workers.exists() and any(workers.iterdir()):
+            return [Failure.RETIREMENT]
+        # External aliases and login entries must already be absent after retirement.
+        if lifecycle.owned_aliases(installation) or lifecycle.owned_upstream_directories(installation):
+            return [Failure.OWNERSHIP]
+        for anchor in installation.manifest['externalAnchors']:
+            if anchor.get('kind') == 'login' and os.path.lexists(anchor['path']):
+                return [Failure.OWNERSHIP]
+        if state_identity is not None:
+            state = root / 'state'
+            proof = StateQuarantine(Identity.observe(root), Identity.observe(state), str(root / ('.recovered-state-' + uuid.uuid4().hex)))
+            save(record, proof)
+            state.rename(Path(proof.quarantine))
+            sync(root)
+        return []
+    except lifecycle.Rejected as rejected:
+        return [Failure.EVIDENCE if rejected.failure == lifecycle.Failure.UNRESOLVED_INVOCATION else Failure.RETIREMENT]
+    except (OSError, ValueError, TypeError, KeyError):
+        return [Failure.RETIREMENT]
+
+
 def detach(root, dry_run):
     outer, bundle = location(root)
     receipt = load(bundle / 'receipt.json')
@@ -315,8 +439,13 @@ def detach(root, dry_run):
         sync(root)
     elif not stat.S_ISREG(fence.lstat().st_mode):
         raise Rejected(Failure.OWNERSHIP)
+    # Historical runtimes understand this presence fence even without .recovery-detached support.
+    transition = root / '.lifecycle-transition.json'
+    if not os.path.lexists(transition):
+        save(transition, RecoveryFence(1, str(root), 'detach'))
     save(bundle / 'receipt.json', replace_stage(receipt, Status.UNRESOLVED))
-    unresolved = [Failure.RETIREMENT]
+    unresolved = retire_and_preserve(root, bundle)
+    unresolved.extend(detach_login(root, bundle))
     # Command links are only owned by this activation while current selects this version.
     current = Path(receipt.links[0].path)
     selector_matches = current.is_symlink() and os.readlink(current) == receipt.links[0].target
@@ -331,7 +460,10 @@ def detach(root, dry_run):
             sync(path.parent)
         else:
             unresolved.append(Failure.OWNERSHIP)
-    if receipt.plugin is not None:
+    if receipt.plugin is None:
+        if receipt.pluginRoot is None or os.path.lexists(physical(Path(receipt.pluginRoot)) / 'kast-ide-hosted'):
+            unresolved.append(Failure.PLUGIN)
+    else:
         plugin = receipt.plugin
         destination, quarantine = Path(plugin.destination), Path(plugin.quarantine)
         physical(destination.parent)
@@ -348,7 +480,9 @@ def detach(root, dry_run):
     # it may still be held open by an old process. No deletion or recursive state scan.
     if os.path.lexists(root / 'state'):
         unresolved.append(Failure.EVIDENCE)
-    return Report(Status.UNRESOLVED, sorted(set(unresolved), key=lambda value: value.value), str(retained_script(bundle)))
+    status = Status.UNRESOLVED if unresolved else Status.CLEAN
+    save(bundle / 'receipt.json', replace_stage(receipt, status))
+    return Report(status, sorted(set(unresolved), key=lambda value: value.value), str(retained_script(bundle)))
 
 
 def main():
@@ -371,9 +505,10 @@ def main():
             try:
                 if not stat.S_ISREG(os.fstat(descriptor).st_mode):
                     raise Rejected(Failure.OWNERSHIP)
-                fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                # Coordinate with JVM FileChannel locks as well as Python lifecycle callers.
+                fcntl.lockf(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
                 if arguments.operation == 'prepare' and arguments.bin_directory is not None:
-                    report = prepare(arguments.installation, arguments.bin_directory)
+                    report = prepare(arguments.installation, arguments.bin_directory, arguments.plugin_root)
                 elif arguments.operation == 'activate-plugin' and arguments.staged_plugin is not None and arguments.plugin_root is not None:
                     report = activate_plugin(arguments.installation, arguments.staged_plugin, arguments.plugin_root)
                 elif arguments.operation == 'detach':

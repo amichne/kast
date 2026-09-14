@@ -158,7 +158,7 @@ private constructor(
             val owner =
                 when (val admission = BrokerInstallationState.admit(options.installationRoot)) {
                     is Refinement.Refined -> admission.value
-                    is Refinement.Rejected -> return reject(BrokerServerFailure.STATE_DIRECTORY_REJECTED)
+                    is Refinement.Rejected -> return reject(admission.failure.serverFailure())
                 }
             activity.completed(stage)
             val generation =

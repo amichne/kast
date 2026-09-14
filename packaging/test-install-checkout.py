@@ -220,7 +220,17 @@ class BootstrapInstallTest(IsolatedInstallerTest):
         (self.product / "bin").mkdir(parents=True)
         self.write_script(self.product / "bin/kast", '''#!/bin/bash
 python3 - <<'PYTHON'
-import json, os
+import json, os, subprocess, sys
+from pathlib import Path
+if os.environ["KAST_INSTALL_MODE"] != 'plan':
+    outer = Path(os.environ['KAST_INSTALL_ROOT'])
+    installed = outer / 'versions' / ('1.2.3-' + 'a' * 64)
+    installed.mkdir(parents=True, exist_ok=True)
+    commands = Path(os.environ['KAST_BIN_DIR'])
+    commands.mkdir(parents=True, exist_ok=True)
+    subprocess.run([sys.executable, str(Path(os.environ['KAST_INSTALL_CONTROL_ROOT']) / 'share/kast/installation-recovery.py'),
+                    'prepare', '--installation', str(installed), '--bin-directory', str(commands)], check=True)
+    (outer / 'current').symlink_to('versions/' + installed.name)
 keys = ["KAST_INSTALL_CONTROL_ROOT", "KAST_INSTALL_CONTROL_SHA256", "KAST_INSTALL_HOSTED_PLUGIN_ARCHIVE",
         "KAST_INSTALL_HOSTED_PLUGIN_SHA256", "KAST_INSTALL_VERSION", "KAST_INSTALL_IDEA_HOME",
         "KAST_INSTALL_JAVA_HOME", "KAST_INSTALL_ROOT", "KAST_BIN_DIR", "KAST_INSTALL_MODE"]
@@ -228,9 +238,12 @@ with open(os.environ["TEST_LOG"], "w") as output:
     json.dump({**{key: os.environ[key] for key in keys}, "KAST_APP_SERVER_TOOLS": os.environ.get("KAST_APP_SERVER_TOOLS")}, output)
 PYTHON
 ''')
+        (self.product / "share/kast").mkdir(parents=True)
+        shutil.copyfile(Path(__file__).with_name('installation-recovery.py'), self.product / 'share/kast/installation-recovery.py')
         self.control = self.assets / f"kast-control-v{self.version}-macos-aarch64.tar.gz"
         with tarfile.open(self.control, "w:gz") as archive:
             archive.add(self.product / "bin", arcname="bin")
+            archive.add(self.product / "share", arcname="share")
         for asset in (self.control, self.plugin):
             asset.with_name(asset.name + ".sha256").write_text(
                 f"{hashlib.sha256(asset.read_bytes()).hexdigest()}  {asset.name}\n",
@@ -274,7 +287,9 @@ PYTHON
             executable.mode = 0o755
             executable.size = len(launcher)
             archive.addfile(executable, io.BytesIO(launcher))
-            for index in range(member_count - 2):
+            recovery = self.product / 'share/kast/installation-recovery.py'
+            archive.add(recovery, arcname='share/kast/installation-recovery.py')
+            for index in range(member_count - 3):
                 entry = tarfile.TarInfo(f"share/kast/knowledge/declarations/{index}.json")
                 entry.mode = 0o644
                 entry.size = 2
@@ -305,7 +320,7 @@ PYTHON
         result = self.run_installer("--dry-run")
         self.assertNotEqual(0, result.returncode)
         self.assertIn(
-            "control archive entry count rejected (observed=16385, maximum=16384)",
+            "control archive entry count rejected (observedAtLeast=16385, maximum=16384)",
             result.stderr,
         )
         self.assertFalse((self.root / "calls").exists())

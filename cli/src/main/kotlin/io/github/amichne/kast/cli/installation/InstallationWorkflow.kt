@@ -7,10 +7,14 @@ import io.github.amichne.kast.distribution.contract.ControlDistributionLimits
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationSource
 import io.github.amichne.kast.distribution.contract.configuration.InstallationOperationalLimits
 import io.github.amichne.kast.distribution.contract.configuration.KastConfigurationCatalogue
-import io.github.amichne.kast.distribution.managed.endpoint.InstalledUpstreamDirectories
-import io.github.amichne.kast.distribution.managed.ControlPayloadInventory
 import io.github.amichne.kast.distribution.managed.ControlInventoryAdmission
 import io.github.amichne.kast.distribution.managed.ControlInventoryBoundary
+import io.github.amichne.kast.distribution.managed.ControlInventoryFailure
+import io.github.amichne.kast.distribution.managed.ControlLimitExceeded
+import io.github.amichne.kast.distribution.managed.ControlPayloadInventory
+import io.github.amichne.kast.distribution.managed.InstallationRecoveryPreparation
+import io.github.amichne.kast.distribution.managed.endpoint.InstalledUpstreamDirectories
+import io.github.amichne.kast.distribution.managed.prepareInstallationRecovery
 import java.io.IOException
 import java.nio.channels.FileChannel
 import java.nio.channels.OverlappingFileLockException
@@ -31,10 +35,10 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 
-private const val MAXIMUM_CONTROL_BYTES = 1024L * 1024L * 1024L
 private const val MAXIMUM_UNIX_SOCKET_PATH_BYTES = 104
 private const val SOCKET_NAME_DIGEST_CHARACTERS = 43
 
+@Serializable
 internal enum class InstallationChildStage {
     PRIOR_ADMISSION,
     PRIOR_RETIREMENT,
@@ -43,6 +47,7 @@ internal enum class InstallationChildStage {
     APP_SERVER_ENABLE,
 }
 
+@Serializable
 internal enum class InstallationChildOutcome {
     COMPLETED,
     EXIT_REJECTED,
@@ -51,11 +56,13 @@ internal enum class InstallationChildOutcome {
     INTERRUPTED,
 }
 
+@Serializable
 internal data class InstallationChildObservation(
+    val event: String = "kast_installation",
     val stage: InstallationChildStage,
     val outcome: InstallationChildOutcome,
 ) {
-    fun toJson(): String = """{"event":"kast_installation","stage":"${stage.name}","outcome":"${outcome.name}"}"""
+    fun toJson(): String = Json { encodeDefaults = true }.encodeToString(serializer(), this)
 }
 
 /** The child retains admission authority; the parent records only its bounded process outcome. */
@@ -92,7 +99,7 @@ internal fun executeInstallationChild(
             Thread.currentThread().interrupt()
             InstallationChildOutcome.INTERRUPTED
         }
-    observe(InstallationChildObservation(stage, outcome))
+    observe(InstallationChildObservation(stage = stage, outcome = outcome))
     return outcome
 }
 
@@ -115,6 +122,7 @@ internal enum class InstallationFailure {
     REQUEST_REJECTED,
     CONTROL_REJECTED,
     CONTROL_LAYOUT_REJECTED,
+    CONTROL_LIMIT_EXCEEDED,
     PLUGIN_REJECTED,
     IDEA_REJECTED,
     INSTALLATION_ROOT_REJECTED,
@@ -125,6 +133,7 @@ internal enum class InstallationFailure {
     RETIREMENT_REJECTED,
     REGISTRY_RETENTION_REJECTED,
     ACTIVATION_REJECTED,
+    RECOVERY_REQUIRED,
     APP_SERVER_ENABLE_REJECTED,
     FILESYSTEM_REJECTED,
     INTERRUPTED,
@@ -133,7 +142,7 @@ internal enum class InstallationFailure {
 internal sealed interface InstallationOutcome {
     data class Complete(val report: InstallationReport) : InstallationOutcome
 
-    data class Rejected(val failure: InstallationFailure) : InstallationOutcome
+    data class Rejected(val failure: InstallationFailure, val limit: ControlLimitExceeded? = null) : InstallationOutcome
 }
 
 @Serializable
@@ -232,7 +241,7 @@ internal object InstallationWorkflow {
         val plan =
             when (val verified = verify(request)) {
                 is PlanVerification.Verified -> verified.plan
-                is PlanVerification.Rejected -> return InstallationOutcome.Rejected(verified.failure)
+                is PlanVerification.Rejected -> return InstallationOutcome.Rejected(verified.failure, verified.limit)
             }
         if (request.mode == InstallationMode.PLAN) {
             return InstallationOutcome.Complete(plan.report("planned"))
@@ -260,8 +269,17 @@ internal object InstallationWorkflow {
         if (!regularFile(request.pluginArchive.value) || digest(request.pluginArchive.value) != request.pluginDigest) {
             return PlanVerification.Rejected(InstallationFailure.PLUGIN_REJECTED)
         }
-        if (!verifyControlLayout(controlRoot)) {
-            return PlanVerification.Rejected(InstallationFailure.CONTROL_LAYOUT_REJECTED)
+        when (val inventory = verifyControlLayout(controlRoot)) {
+            is ControlInventoryAdmission.Admitted -> inventory.report(ControlInventoryBoundary.INSTALLER)
+            is ControlInventoryAdmission.Rejected -> {
+                inventory.report(ControlInventoryBoundary.INSTALLER)
+                return PlanVerification.Rejected(
+                    if (inventory.failure == ControlInventoryFailure.LIMIT_EXCEEDED)
+                        InstallationFailure.CONTROL_LIMIT_EXCEEDED
+                    else InstallationFailure.CONTROL_LAYOUT_REJECTED,
+                    inventory.limit,
+                )
+            }
         }
 
         val manifest =
@@ -342,6 +360,11 @@ internal object InstallationWorkflow {
                         is PriorSelection.Rejected ->
                             return InstallationOutcome.Rejected(InstallationFailure.PREVIOUS_INSTALLATION_REJECTED)
                     }
+                when (prepareInstallationRecovery(plan.targetRoot, plan.commandLink, plan.codexCommandLink)) {
+                    InstallationRecoveryPreparation.Prepared -> Unit
+                    InstallationRecoveryPreparation.Rejected ->
+                        return InstallationOutcome.Rejected(InstallationFailure.RECOVERY_REQUIRED)
+                }
                 if (prior != null && prior != plan.targetRoot) {
                     if (!admitPrior(prior, plan) || !retire(prior, plan.request)) {
                         return InstallationOutcome.Rejected(InstallationFailure.RETIREMENT_REJECTED)
@@ -361,6 +384,9 @@ internal object InstallationWorkflow {
                     return InstallationOutcome.Rejected(InstallationFailure.CONFIGURATION_REJECTED)
                 }
                 val activation = activate(plan)
+                if (activation is ActivationResult.RecoveryRequired) {
+                    return InstallationOutcome.Rejected(InstallationFailure.RECOVERY_REQUIRED)
+                }
                 if (activation is ActivationResult.Rejected) {
                     return InstallationOutcome.Rejected(InstallationFailure.ACTIVATION_REJECTED)
                 }
@@ -490,6 +516,12 @@ internal object InstallationWorkflow {
             |export JAVA=${shellQuote(plan.request.javaHome.value.resolve("bin/java").toString())}
             |export JAVA_HOME=${shellQuote(plan.request.javaHome.value.toString())}
             |unset KAST_SESSION_ROOT
+            |if [ -e "${'$'}installation_root/.recovery-detached" ]; then
+            |  case "${'$'}{1-} ${'$'}{2-}" in
+            |    'app-server disable'|'stop ') ;;
+            |    *) printf '%s\n' 'kast: installation detached; use standalone recovery' >&2; exit 1 ;;
+            |  esac
+            |fi
             |exec "${'$'}control_executable" "${'$'}@"
             |
         """
@@ -706,10 +738,14 @@ internal object InstallationWorkflow {
                 throw IOException("installed command qualification rejected")
             ActivationResult.Complete
         } catch (_: IOException) {
-            restoreLink(plan.currentLink, priorCurrent)
-            restoreLink(plan.commandLink, priorCommand)
-            restoreLink(plan.codexCommandLink, priorCodex)
-            ActivationResult.Rejected
+            val restored =
+                listOf(
+                        restoreLink(plan.currentLink, priorCurrent),
+                        restoreLink(plan.commandLink, priorCommand),
+                        restoreLink(plan.codexCommandLink, priorCodex),
+                    )
+                    .all { it == LinkRestoration.RESTORED }
+            if (restored) ActivationResult.Rejected else ActivationResult.RecoveryRequired
         }
     }
 
@@ -744,7 +780,7 @@ internal object InstallationWorkflow {
 private sealed interface PlanVerification {
     data class Verified(val plan: VerifiedInstallationPlan) : PlanVerification
 
-    data class Rejected(val failure: InstallationFailure) : PlanVerification
+    data class Rejected(val failure: InstallationFailure, val limit: ControlLimitExceeded? = null) : PlanVerification
 }
 
 private sealed interface StageResult {
@@ -762,6 +798,8 @@ private sealed interface PriorSelection {
 }
 
 private sealed interface ActivationResult {
+    data object RecoveryRequired : ActivationResult
+
     data object Complete : ActivationResult
 
     data object Rejected : ActivationResult
@@ -843,17 +881,13 @@ private fun sha256(bytes: ByteArray): Sha256 =
 
 private fun ByteArray.hex(): String = joinToString("") { byte -> "%02x".format(byte) }
 
-private fun verifyControlLayout(root: Path): Boolean {
-    if (!regularExecutable(root.resolve("bin/kast"))) return false
+private fun verifyControlLayout(root: Path): ControlInventoryAdmission {
+    if (!regularExecutable(root.resolve("bin/kast")))
+        return ControlInventoryAdmission.Rejected(ControlInventoryFailure.UNSUPPORTED_ENTRY)
     val required = listOf("ide-host.json", "operation-registry.json", "wire-schema.json", "installation-lifecycle.py")
-    if (required.any { !regularFile(root.resolve("share/kast/$it")) }) return false
-    return when (val inventory = ControlPayloadInventory.admit(root)) {
-        is ControlInventoryAdmission.Admitted -> true
-        is ControlInventoryAdmission.Rejected -> {
-            inventory.report(ControlInventoryBoundary.INSTALLER)
-            false
-        }
-    }
+    if (required.any { !regularFile(root.resolve("share/kast/$it")) })
+        return ControlInventoryAdmission.Rejected(ControlInventoryFailure.UNSUPPORTED_ENTRY)
+    return ControlPayloadInventory.admit(root)
 }
 
 private fun prepareOwnedDirectory(path: Path): Boolean =
@@ -869,13 +903,14 @@ private fun prepareOwnedDirectory(path: Path): Boolean =
     }
 
 private fun payloadFiles(root: Path): List<PayloadFile> {
-    val inventory = when (val admitted = ControlPayloadInventory.admit(root)) {
-        is ControlInventoryAdmission.Admitted -> admitted
-        is ControlInventoryAdmission.Rejected -> {
-            admitted.report(ControlInventoryBoundary.INSTALLER)
-            throw IOException("control inventory rejected")
+    val inventory =
+        when (val admitted = ControlPayloadInventory.admit(root)) {
+            is ControlInventoryAdmission.Admitted -> admitted
+            is ControlInventoryAdmission.Rejected -> {
+                admitted.report(ControlInventoryBoundary.INSTALLER)
+                throw IOException("control inventory rejected")
+            }
         }
-    }
     return inventory.files.map { file ->
         PayloadFile(
             root.relativize(file).toString().replace(java.io.File.separatorChar, '/'),
@@ -950,15 +985,21 @@ private fun replaceLink(path: Path, target: Path) {
     }
 }
 
-private fun restoreLink(path: Path, observation: LinkObservation) {
-    try {
+private enum class LinkRestoration {
+    RESTORED,
+    REJECTED,
+}
+
+private fun restoreLink(path: Path, observation: LinkObservation): LinkRestoration {
+    return try {
         when (observation) {
             LinkObservation.Absent -> Files.deleteIfExists(path)
             is LinkObservation.Present -> replaceLink(path, observation.target)
-            LinkObservation.Rejected -> Unit
+            LinkObservation.Rejected -> return LinkRestoration.REJECTED
         }
+        LinkRestoration.RESTORED
     } catch (_: IOException) {
-        // The caller already returns ACTIVATION_REJECTED; no weaker success is manufactured.
+        LinkRestoration.REJECTED
     }
 }
 

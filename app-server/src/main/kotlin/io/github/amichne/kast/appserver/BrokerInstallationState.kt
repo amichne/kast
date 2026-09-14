@@ -1,12 +1,12 @@
 package io.github.amichne.kast.appserver
 
 import io.github.amichne.kast.appserver.protocol.ThreadBindingOwner
-import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.distribution.managed.ControlPayloadInventory
 import io.github.amichne.kast.distribution.managed.ControlInventoryAdmission
 import io.github.amichne.kast.distribution.managed.ControlInventoryBoundary
-import io.github.amichne.kast.distribution.managed.ControlInventoryResource
 import io.github.amichne.kast.distribution.managed.ControlInventoryFailure
+import io.github.amichne.kast.distribution.managed.ControlInventoryResource
+import io.github.amichne.kast.distribution.managed.ControlPayloadInventory
+import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
@@ -141,13 +141,18 @@ internal object BrokerInstallationState {
             val digest = MessageDigest.getInstance("SHA-256")
             digest.update(root.toString().toByteArray(Charsets.UTF_8))
             var totalBytes = 0L
-            val inventory = when (val admitted = ControlPayloadInventory.admit(root)) {
-                is ControlInventoryAdmission.Admitted -> admitted
-                is ControlInventoryAdmission.Rejected -> {
-                    admitted.report(ControlInventoryBoundary.RUNTIME_IDENTITY)
-                    return Refinement.Rejected(if (admitted.failure == ControlInventoryFailure.LIMIT_EXCEEDED) InstallationStateFailure.PAYLOAD_LIMIT_EXCEEDED else InstallationStateFailure.PAYLOAD_REJECTED)
+            val inventory =
+                when (val admitted = ControlPayloadInventory.admit(root)) {
+                    is ControlInventoryAdmission.Admitted -> admitted
+                    is ControlInventoryAdmission.Rejected -> {
+                        admitted.report(ControlInventoryBoundary.RUNTIME_IDENTITY)
+                        return Refinement.Rejected(
+                            if (admitted.failure == ControlInventoryFailure.LIMIT_EXCEEDED)
+                                InstallationStateFailure.PAYLOAD_LIMIT_EXCEEDED
+                            else InstallationStateFailure.PAYLOAD_REJECTED
+                        )
+                    }
                 }
-            }
             for (file in inventory.files) {
                 digest.update(0)
                 digest.update(root.relativize(file).toString().toByteArray(Charsets.UTF_8))
@@ -159,16 +164,32 @@ internal object BrokerInstallationState {
                         if (size < 0) break
                         totalBytes += size
                         if (totalBytes > BrokerOperationalLimits.maximumInventoryBytes) {
-                            ControlPayloadInventory.exceeded(ControlInventoryResource.PAYLOAD_BYTES, BrokerOperationalLimits.maximumInventoryBytes.toLong(), totalBytes).report(ControlInventoryBoundary.RUNTIME_IDENTITY)
+                            ControlPayloadInventory.exceeded(
+                                    ControlInventoryResource.PAYLOAD_BYTES,
+                                    BrokerOperationalLimits.maximumInventoryBytes.toLong(),
+                                    totalBytes,
+                                )
+                                .report(ControlInventoryBoundary.RUNTIME_IDENTITY)
                             return Refinement.Rejected(InstallationStateFailure.PAYLOAD_LIMIT_EXCEEDED)
                         }
                         digest.update(buffer, 0, size)
                     }
                 }
             }
+            inventory.report(ControlInventoryBoundary.RUNTIME_IDENTITY)
             Refinement.Refined("sha256:" + HexFormat.of().formatHex(digest.digest()))
         } catch (_: Exception) {
             Refinement.Rejected(InstallationStateFailure.PAYLOAD_REJECTED)
         }
     }
 }
+
+internal fun InstallationStateFailure.serverFailure(): BrokerServerFailure =
+    when (this) {
+        InstallationStateFailure.PAYLOAD_LIMIT_EXCEEDED -> BrokerServerFailure.PAYLOAD_LIMIT_EXCEEDED
+        InstallationStateFailure.PATH_REJECTED,
+        InstallationStateFailure.PAYLOAD_REJECTED,
+        InstallationStateFailure.EPOCH_ABSENT,
+        InstallationStateFailure.EPOCH_REJECTED,
+        InstallationStateFailure.WRITE_REJECTED -> BrokerServerFailure.STATE_DIRECTORY_REJECTED
+    }
