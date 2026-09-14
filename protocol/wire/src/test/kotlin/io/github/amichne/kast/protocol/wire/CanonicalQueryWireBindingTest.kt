@@ -45,7 +45,10 @@ class CanonicalQueryWireBindingTest {
         }
         assertTrue(
             CanonicalQuerySerializers.result.decode(
-                json.encodeToJsonElement(ExpectedQueryPage.serializer(), ExpectedQueryPage(terminalReason = "invented")),
+                json.encodeToJsonElement(
+                    ExpectedQueryPage.serializer(),
+                    ExpectedQueryPage(terminalReason = "invented"),
+                ),
                 WireValueRole.RESULT,
             ) is WireDecoding.Rejected
         )

@@ -13,7 +13,7 @@ import zipfile
 
 from hosted_change_process import NativeProcesses
 from native_fixture_probe import NativeFixtureProbeError
-from hosted_change_acceptance import (AcceptanceRejected, admit_event, admit_harness, admitted_live,
+from hosted_change_acceptance import (AcceptanceFailure, AcceptanceRejected, admit_event, admit_harness, admitted_live,
     CASE_NAMES, admit_contract_failure, bounded_native_report, event_observation, native_workflow_qualified, pending_readiness, startup_discovery_state, StartupDiscoveryState, receipt_scope_observation, remaining_matrix_gates, tree_identity)
 
 
@@ -73,9 +73,22 @@ class HostedChangeAcceptanceTest(unittest.TestCase):
                 (root / f'concept-{ordinal}.md').write_text('sample catalog concept')
             identity = tree_identity(root)
             self.assertEqual(2049, identity['fileCount'])
+            self.assertEqual({'stage': 'artifact-inventory', 'observedCount': 2049, 'limit': 16384}, identity['admission'])
             self.assertEqual(2049 * len('sample catalog concept'), identity['bytes'])
             (root / 'concept-2048.md').write_text('updated catalog concept')
             self.assertNotEqual(identity['sha256'], tree_identity(root)['sha256'])
+
+    def test_tree_inventory_limit_reports_bounded_count_before_hashing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for ordinal in range(3):
+                (root / f'concept-{ordinal}.md').write_text('sample')
+            with patch('hosted_change_acceptance.TREE_IDENTITY_MAX_FILES', 2), patch('hosted_change_acceptance.digest') as digest:
+                with self.assertRaises(AcceptanceRejected) as rejected:
+                    tree_identity(root)
+                self.assertEqual(AcceptanceFailure.INPUT_INVENTORY_LIMIT, rejected.exception.failure)
+                self.assertEqual({'stage': 'artifact-inventory', 'observedCount': 3, 'limit': 2}, asdict(rejected.exception.inventory))
+                digest.assert_not_called()
 
     def test_tree_identity_tracks_content_and_rejects_symlinks(self):
         with tempfile.TemporaryDirectory() as directory:

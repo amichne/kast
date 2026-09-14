@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Opt-in real staged broker/CLI/plugin change workflow in one private native IDE."""
 import argparse
+from dataclasses import asdict
 import json
 from pathlib import Path
 import shutil
@@ -125,6 +126,8 @@ def main():
                 isolation.mark_passed()
     except AcceptanceRejected as error:
         evidence['status'], evidence['failure'] = 'rejected', error.failure.value
+        if error.inventory is not None:
+            evidence['inventoryAdmission'] = asdict(error.inventory)
     except (OSError, ValueError, TypeError, KeyError, subprocess.SubprocessError, NativeFixtureProbeError):
         evidence['status'], evidence['failure'] = 'rejected', AcceptanceFailure.INPUT.value
     finally:

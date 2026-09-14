@@ -67,6 +67,19 @@ class CanonicalQueryProtocolTest {
         val token = first.evidence.payload.continuation!!
         assertTrue(token.value.length < 64)
         assertNull(first.evidence.payload.terminalReason)
+        assertCheckpointBinding(protocol, token)
+        assertInstanceOf(
+            OperationOutcome.Complete::class.java,
+            protocol.execute(
+                request().copy(continuation = token),
+                lease,
+                budget.copy(returnedBytes = QueryByteLimit.parse(20000).refined()),
+            ),
+        )
+        assertEquals(2, executions)
+    }
+
+    private suspend fun assertCheckpointBinding(protocol: CanonicalQueryProtocol, token: ProtocolText) {
         val changed = request().copy(continuation = token, steps = bounded(listOf(QueryStepDocument.Distinct)))
         assertEquals(
             QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.CONTINUATION_MISMATCH),
@@ -87,15 +100,6 @@ class CanonicalQueryProtocolTest {
                     as OperationOutcome.Rejected)
                 .reason,
         )
-        assertInstanceOf(
-            OperationOutcome.Complete::class.java,
-            protocol.execute(
-                request().copy(continuation = token),
-                lease,
-                budget.copy(returnedBytes = QueryByteLimit.parse(20000).refined()),
-            ),
-        )
-        assertEquals(2, executions)
     }
 
     @Test

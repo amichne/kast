@@ -1,5 +1,5 @@
 """Admission and bounded evidence for the opt-in real hosted change acceptance."""
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from enum import Enum
 import hashlib
 import json
@@ -18,6 +18,7 @@ from native_fixture_probe import COMMANDS, DIGEST
 
 class AcceptanceFailure(Enum):
     INPUT = 'input-rejected'
+    INPUT_INVENTORY_LIMIT = 'input-inventory-limit-exceeded'
     DIRTY_SOURCE = 'dirty-source-rejected'
     ARTIFACT_CHANGED = 'artifact-changed'
     HARNESS = 'harness-rejected'
@@ -31,9 +32,22 @@ class AcceptanceFailure(Enum):
     RETIREMENT = 'retirement-rejected'
 
 
+# Full staged knowledge bundles exceed the former 2,048-entry artifact ceiling.
+# This independent admission budget bounds enumeration before sorting or hashing.
+TREE_IDENTITY_MAX_FILES = 16_384
+
+
+@dataclass(frozen=True)
+class InventoryEvidence:
+    stage: str
+    observedCount: int
+    limit: int
+
+
 class AcceptanceRejected(ValueError):
-    def __init__(self, failure: AcceptanceFailure):
+    def __init__(self, failure: AcceptanceFailure, inventory: InventoryEvidence | None = None):
         self.failure = failure
+        self.inventory = inventory
         super().__init__(failure.value)
 
 
@@ -57,14 +71,25 @@ def source_identity(repo: Path, diagnostic_dirty: bool) -> SourceIdentity:
 def tree_identity(root: Path) -> dict:
     if not root.is_absolute() or root.is_symlink() or not root.is_dir():
         raise AcceptanceRejected(AcceptanceFailure.INPUT)
-    files = sorted(path for path in root.rglob('*') if path.is_file() or path.is_symlink())
-    if not files or len(files) > 2048 or any(path.is_symlink() for path in files):
+    files = []
+    for path in root.rglob('*'):
+        if path.is_symlink():
+            raise AcceptanceRejected(AcceptanceFailure.INPUT)
+        if not path.is_file():
+            continue
+        files.append(path)
+        if len(files) > TREE_IDENTITY_MAX_FILES:
+            raise AcceptanceRejected(AcceptanceFailure.INPUT_INVENTORY_LIMIT,
+                InventoryEvidence('artifact-inventory', len(files), TREE_IDENTITY_MAX_FILES))
+    if not files:
         raise AcceptanceRejected(AcceptanceFailure.INPUT)
+    files.sort()
     inventory = [{'path': path.relative_to(root).as_posix(), 'sha256': digest(path),
                   'bytes': path.stat().st_size} for path in files]
     encoded = json.dumps(inventory, separators=(',', ':'), sort_keys=True).encode()
     return {'sha256': hashlib.sha256(encoded).hexdigest(), 'fileCount': len(files),
-            'bytes': sum(item['bytes'] for item in inventory)}
+            'bytes': sum(item['bytes'] for item in inventory),
+            'admission': asdict(InventoryEvidence('artifact-inventory', len(files), TREE_IDENTITY_MAX_FILES))}
 
 
 def admit_harness(jar: Path, commit: str) -> str:
