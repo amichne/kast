@@ -511,7 +511,7 @@ or replace unchanged-fixture native execution parity for larger grants.
 
 The installed resume-budget helper defines twelve bounded cases per surface:
 query, source and relation reads, each with independently larger elapsed-time,
-work, result and byte allowances. It compares ordered complete drains against
+work, result and byte allowances. It compares complete drains with ordered declarations/source children and full relation occurrence identity against
 an unchanged-fixture baseline, including full relation occurrences and compiler
 evidence, source child order, ranges, snapshots and saved text. Issued upstream
 and retained-output checkpoints keep their distinct request positions and
@@ -522,3 +522,8 @@ continuation; time/work cases do not claim a deterministic wall-clock cutoff.
 Local Python checks qualify this orchestration and comparison logic. Native
 parity requires invoking the helper through the integrated staged artifact;
 its presence alone is not an installed-product qualification result.
+
+Relation pages retain canonical order within each page. Cross-grant drains
+preserve the full occurrence multiset; changing page boundaries does not promise
+global fingerprint order. A resumable budget stop retains unmeasured work evidence
+until the final complete drain; it never becomes an invented zero omitted count.
