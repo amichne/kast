@@ -10,7 +10,6 @@ import io.github.amichne.kast.query.contract.QueryBudget
 import io.github.amichne.kast.query.contract.QueryByteLimit
 import io.github.amichne.kast.query.protocol.CanonicalDiagnosticCheckProtocol
 import io.github.amichne.kast.query.protocol.CanonicalQueryProtocol
-import io.github.amichne.kast.query.protocol.CanonicalSourceReadProtocol
 import io.github.amichne.kast.query.protocol.CanonicalSymbolDiscoverProtocol
 import io.github.amichne.kast.query.protocol.CanonicalSymbolInspectProtocol
 import io.github.amichne.kast.query.protocol.CanonicalTraversalRunProtocol
@@ -40,7 +39,6 @@ internal suspend fun evaluateHostedCanonicalQuery(
     val budgets = services.budgets
     val discovery = services.discovery
     val exact = services.exact
-    val source = services.source(continuations)
     val relations = services.relations
     val references = services.references
     return when (request) {
@@ -58,16 +56,7 @@ internal suspend fun evaluateHostedCanonicalQuery(
                 CanonicalSymbolInspectProtocol(exact, references).execute(request.request, context.authority),
                 limits = context.limits,
             )
-        is HostedRequest.Source ->
-            encodeHostedSourceResponse(
-                CanonicalSourceReadProtocol(source, references)
-                    .execute(request.request, context.authority, budgets.hostedSourceBudget)
-                    .withSourceBudget(
-                        io.github.amichne.kast.protocol.contract.ExecutionBudgetReport.from(context.executionBudget)
-                    ),
-                limits = context.limits,
-                maximumBytes = context.executionBudget.returnedBytes.effective,
-            )
+        is HostedRequest.Source -> evaluateHostedSource(project, services, context, request, continuations)
         is HostedRequest.Relation -> evaluateHostedRelation(project, services, context, request)
         is HostedRequest.Traversal ->
             HostedResponse.Canonical.encode(

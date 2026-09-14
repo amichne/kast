@@ -170,6 +170,7 @@ internal data class SourceReadQualificationWireDocument(
 internal enum class SourceReadLimitationWireDocument {
     @SerialName("entity-limit-reached") ENTITY_LIMIT_REACHED,
     @SerialName("text-byte-limit-reached") TEXT_BYTE_LIMIT_REACHED,
+    @SerialName("returned-byte-limit-reached") RETURNED_BYTE_LIMIT_REACHED,
     @SerialName("work-limit-reached") WORK_LIMIT_REACHED,
     @SerialName("time-limit-reached") TIME_LIMIT_REACHED,
     @SerialName("dumb-mode-transition") DUMB_MODE_TRANSITION,
@@ -206,6 +207,8 @@ internal enum class SourceReadRejectionWireDocument {
     @SerialName("region-absent") REGION_ABSENT,
     @SerialName("compiler-analysis-unavailable") COMPILER_ANALYSIS_UNAVAILABLE,
     @SerialName("contract-violation") CONTRACT_VIOLATION,
+    @SerialName("continuation-unavailable") CONTINUATION_UNAVAILABLE,
+    @SerialName("continuation-request-mismatch") CONTINUATION_REQUEST_MISMATCH,
 }
 
 @Serializable internal data class SourceLineRangeWireDocument(val startInclusive: Long, val endInclusive: Long)

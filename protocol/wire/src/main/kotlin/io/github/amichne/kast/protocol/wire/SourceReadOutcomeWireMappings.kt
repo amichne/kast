@@ -5,6 +5,9 @@ import io.github.amichne.kast.protocol.contract.SourceReadRejection
 
 internal fun SourceReadRejection.toWireDocument(): SourceReadRejectionWireDocument =
     when (this) {
+        SourceReadRejection.CONTINUATION_UNAVAILABLE -> SourceReadRejectionWireDocument.CONTINUATION_UNAVAILABLE
+        SourceReadRejection.CONTINUATION_REQUEST_MISMATCH ->
+            SourceReadRejectionWireDocument.CONTINUATION_REQUEST_MISMATCH
         SourceReadRejection.WORKSPACE_NOT_READY -> SourceReadRejectionWireDocument.WORKSPACE_NOT_READY
         SourceReadRejection.WORKSPACE_ROOT_MISMATCH -> SourceReadRejectionWireDocument.WORKSPACE_ROOT_MISMATCH
         SourceReadRejection.STALE_GENERATION -> SourceReadRejectionWireDocument.STALE_GENERATION
@@ -27,6 +30,9 @@ internal fun SourceReadRejection.toWireDocument(): SourceReadRejectionWireDocume
 
 internal fun SourceReadRejectionWireDocument.toContract(): SourceReadRejection =
     when (this) {
+        SourceReadRejectionWireDocument.CONTINUATION_UNAVAILABLE -> SourceReadRejection.CONTINUATION_UNAVAILABLE
+        SourceReadRejectionWireDocument.CONTINUATION_REQUEST_MISMATCH ->
+            SourceReadRejection.CONTINUATION_REQUEST_MISMATCH
         SourceReadRejectionWireDocument.WORKSPACE_NOT_READY -> SourceReadRejection.WORKSPACE_NOT_READY
         SourceReadRejectionWireDocument.WORKSPACE_ROOT_MISMATCH -> SourceReadRejection.WORKSPACE_ROOT_MISMATCH
         SourceReadRejectionWireDocument.STALE_GENERATION -> SourceReadRejection.STALE_GENERATION
@@ -49,6 +55,8 @@ internal fun SourceReadRejectionWireDocument.toContract(): SourceReadRejection =
 
 internal fun SourceReadLimitationDocument.toWireDocument(): SourceReadLimitationWireDocument =
     when (this) {
+        SourceReadLimitationDocument.RETURNED_BYTE_LIMIT_REACHED ->
+            SourceReadLimitationWireDocument.RETURNED_BYTE_LIMIT_REACHED
         SourceReadLimitationDocument.ENTITY_LIMIT_REACHED -> SourceReadLimitationWireDocument.ENTITY_LIMIT_REACHED
         SourceReadLimitationDocument.TEXT_BYTE_LIMIT_REACHED -> SourceReadLimitationWireDocument.TEXT_BYTE_LIMIT_REACHED
         SourceReadLimitationDocument.WORK_LIMIT_REACHED -> SourceReadLimitationWireDocument.WORK_LIMIT_REACHED
@@ -62,6 +70,8 @@ internal fun SourceReadLimitationDocument.toWireDocument(): SourceReadLimitation
 
 internal fun SourceReadLimitationWireDocument.toContract(): SourceReadLimitationDocument =
     when (this) {
+        SourceReadLimitationWireDocument.RETURNED_BYTE_LIMIT_REACHED ->
+            SourceReadLimitationDocument.RETURNED_BYTE_LIMIT_REACHED
         SourceReadLimitationWireDocument.ENTITY_LIMIT_REACHED -> SourceReadLimitationDocument.ENTITY_LIMIT_REACHED
         SourceReadLimitationWireDocument.TEXT_BYTE_LIMIT_REACHED -> SourceReadLimitationDocument.TEXT_BYTE_LIMIT_REACHED
         SourceReadLimitationWireDocument.WORK_LIMIT_REACHED -> SourceReadLimitationDocument.WORK_LIMIT_REACHED

@@ -3,6 +3,7 @@ package io.github.amichne.kast.cli
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.cli.bootstrap.HostedRejectionSchemas
 import io.github.amichne.kast.cli.command.CliCommandSurface
+import io.github.amichne.kast.cli.projection.cliName
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ChangeApplyRequest
 import io.github.amichne.kast.protocol.contract.ChangePlanRequest
@@ -11,6 +12,7 @@ import io.github.amichne.kast.protocol.contract.DiagnosticCheckRequest
 import io.github.amichne.kast.protocol.contract.IndexSyncRequest
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.RelationReadRequest
+import io.github.amichne.kast.protocol.contract.SourceReadLimitationDocument
 import io.github.amichne.kast.protocol.contract.SourceReadRequest
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
 import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
@@ -950,16 +952,7 @@ private fun sourceReadQualificationSchema(): JsonObject =
             "limitations",
             nonEmptyArraySchema(
                 enumSchema(
-                    listOf(
-                        "entity-limit-reached",
-                        "text-byte-limit-reached",
-                        "work-limit-reached",
-                        "time-limit-reached",
-                        "dumb-mode-transition",
-                        "semantic-resolution-incomplete",
-                        "unsupported-entity",
-                        "provider-failure",
-                    ),
+                    SourceReadLimitationDocument.entries.map { it.cliName() },
                     "Every source-read coverage limitation.",
                 )
             ),

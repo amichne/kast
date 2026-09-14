@@ -243,3 +243,21 @@ disconnect variants, and the compatibility naming work remain release gates.
 No requirement in R1–R8 is waived by the matrix above.
 
 Commit `f8359fe93` passed the same installed harness after source continuation byte/TTL bounds, installed configuration registration, source/traversal input admission, and cooperative native source accounting. Report `/tmp/kast-agent-read-native-f8359fe93.json` records 116/116 read cases and 156/156 concurrent first attempts with zero retries, plus all native mutation/recovery cases. This remains evidence for that committed matrix. Later source/traversal budget-report projections require their own current-build validation; the remaining specification gates are not waived.
+
+### Source encoded page fitting
+
+Source hosted encoding now reuses the detached output suffix owner. A full encoded
+page over its caller byte/result allowance publishes a fitting nonempty entity
+prefix after retaining the remainder. Prefix and suffix preserve snapshot, text,
+known minimum, original qualifications, and any upstream source cursor. Output
+cursors are independently bounded by `QUERY_CONTINUATION_*`; native source cursor
+retention remains governed by `SOURCE_CONTINUATION_*`. Neither is unbounded.
+
+`HostedSourceResponseTest` failed with `Oversized` at RED `08e51ef4e`, then passed
+with fitting bytes, ordered entity conservation, preserved terminal coverage and
+non-consuming replay. Runtime, protocol contract/wire, source/traversal installed
+budget-schema tests, JSON, architecture and knowledge checks passed. Generated
+references and App Server checks passed (the external raw-display schema test
+still requires the installed harness). This is local encoding evidence; it does
+not establish the remaining source work-buffer, traversal, completion-state,
+finite rejection parity, or installed matrix requirements.

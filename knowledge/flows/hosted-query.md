@@ -25,6 +25,9 @@ code_sources:
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedRelationResponse.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalRelation.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedOutputPages.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceResponse.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalSource.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceOutputPages.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryContinuations.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDeadline.kt
   - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijScopedDeclarationEnumeration.kt
@@ -379,8 +382,8 @@ Output cursors are replayable until expiry or eviction. Equal retained requests
 and outcomes have equal child identities; replay does not refresh expiry. The
 request identity retains selector and relationship but excludes the page limit
 and position. Changed authority or semantic request is rejected. Each of the
-query checkpoint, query output, and relation output stores has the configured
-entry/byte bound; their aggregate maximum is three times that bound. No retained
+query checkpoint, query output, relation output, and source output stores has the configured
+entry/byte bound; their aggregate maximum is four times that bound. No retained
 entry contains PSI or K2 state.
 
 Relation and query/search reads admit optional caller execution controls once at
@@ -389,7 +392,7 @@ semantic entry.
 `HostedSemanticTimeAllowance` retains the resulting immutable grant. Domain
 budgets derive their resource values from that grant. Their response metadata
 projects its effective values and clamping causes, and byte fitting includes the
-metadata. Retained query and relation suffixes omit previous-call grant metadata; resume
+metadata. Retained query, relation, and source suffixes omit previous-call grant metadata; resume
 publishes the newly admitted grant and excludes execution controls from retained
 semantic identity.
 
@@ -398,7 +401,7 @@ renewing its expiry or consuming another entry. Restoration is non-consuming.
 Query pipeline checkpoints and output suffixes exclude caller execution controls
 from semantic identity. Query page result limits also constrain retained output;
 every page preserves known item failures. An explicit query `take` remains part of
-the query identity. Source and traversal caller controls are still unfinished.
+the query identity. Source and traversal caller controls retain the same admitted report; traversal encoded fitting remains unfinished.
 
 Source entity cursors retain typed token keys and exact snapshot, region, and
 selection identity. Their binding excludes entity/text page allowances; an equal
@@ -407,7 +410,7 @@ from native entity collection.
 
 The source continuation owner applies independent entry, charged-byte, and age bounds. It expires entries before admission and issuance, and replay does not renew token age. Retention includes detached snapshot/scope identity but no source payload. Oversized entries fail before issuance; retirement clears every entry.
 
-Source requests require an explicit resource grant. Hosted source admission retains the same immutable resource object and intersects entity/text projection limits. Query visibility predicates transfer one charged unit and the remaining elapsed allowance into their exact SELF source read; failed admission retains the unstarted pipeline task. Native source enumeration now charges visited PSI units against that grant and checks monotonic elapsed time before each unit and at completion. Accounting survives canceled read attempts, while their PSI and detached result buffers do not. Full encoded source fitting remains a separate implementation gate.
+Source requests require an explicit resource grant. Hosted source admission retains the same immutable resource object and intersects entity/text projection limits. Query visibility predicates transfer one charged unit and the remaining elapsed allowance into their exact SELF source read; failed admission retains the unstarted pipeline task. Native source enumeration now charges visited PSI units against that grant and checks monotonic elapsed time before each unit and at completion. Accounting survives canceled read attempts, while their PSI and detached result buffers do not. Source encoding now fits the complete encoded envelope, including report and cursor, before publishing a nonempty entity prefix. Its `source-output:v1` cursor retains the detached suffix and original upstream qualification under the shared hosted `QUERY_CONTINUATION_*` policy, independently of the native `SOURCE_CONTINUATION_*` policy. Source output identity retains anchor, region, entity selection, and text projection but excludes entity/text page allowances and execution controls. Every page retains requested text; an indivisible item or mandatory envelope that cannot fit is rejected without an empty unchanged cursor.
 
 Source and traversal result projections preserve their admitted execution report through canonical wire decoding and CLI output. Their complete and qualified envelopes share the same closed installed execution schema. Hosted encoding measures the full response, including this report, against the current grant.
 

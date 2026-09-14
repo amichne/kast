@@ -52,7 +52,8 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.workspace.contract.LiveSemanticReadAuthority
 
 /** Source-owner-issued selectors from one unchanged live authority, with a terminal coverage gap. */
-internal class HostedSourcePagingFixture private constructor(
+internal class HostedSourcePagingFixture
+private constructor(
     val owner: RelationPagingFixture,
     val request: SourceReadRequest,
     val outcome: OperationOutcome.Qualified<SourceReadResult, SourceReadQualification>,
@@ -61,69 +62,102 @@ internal class HostedSourcePagingFixture private constructor(
         suspend fun create(): HostedSourcePagingFixture {
             val owner = RelationPagingFixture.live()
             val basis = (owner.page() as OperationOutcome.Qualified).evidence.basis as EvidenceBasis.Live
-            val snapshot = SourceSnapshot.create(
-                SourceReadContext.Live(owner.authority as LiveSemanticReadAuthority),
-                owner.selector.file as SymbolDiscoveryFileIdentity.Workspace,
-                SourceTextIdentity.fromNormalizedCommittedText("parameters"),
-                Utf16CodeUnitCount.parse(10).sourceFixtureValue(),
-                SourceReadScope.ExactFile,
-            )
+            val snapshot =
+                SourceSnapshot.create(
+                    SourceReadContext.Live(owner.authority as LiveSemanticReadAuthority),
+                    owner.selector.file as SymbolDiscoveryFileIdentity.Workspace,
+                    SourceTextIdentity.fromNormalizedCommittedText("parameters"),
+                    Utf16CodeUnitCount.parse(10).sourceFixtureValue(),
+                    SourceReadScope.ExactFile,
+                )
             val root = SourceSelector.issueRoot(snapshot.range(0, 10), SourceRegionKind.FILE)
-            val result = SourceReadResult(
-                SourceSnapshotDocument(
-                    text(owner.authority.workspaceRoot.value), SourceSnapshotContextDocument.Live(basis.evidence),
-                    text("Subject.kt"), text(snapshot.textIdentity.value), SourceCoordinateUnitDocument.UTF16_CODE_UNIT,
-                    SourceLengthDocument.parse(10).sourceFixtureValue(),
+            val result =
+                SourceReadResult(
+                    SourceSnapshotDocument(
+                        text(owner.authority.workspaceRoot.value),
+                        SourceSnapshotContextDocument.Live(basis.evidence),
+                        text("Subject.kt"),
+                        text(snapshot.textIdentity.value),
+                        SourceCoordinateUnitDocument.UTF16_CODE_UNIT,
+                        SourceLengthDocument.parse(10).sourceFixtureValue(),
+                    ),
+                    SourceRegionDocument(SourceRegionKindDocument.FILE, root.selection()),
+                    BoundedProtocolList.create((0 until 6).map { index -> parameter(root, index) })
+                        .sourceFixtureValue(),
+                    SourceTextProjectionDocument.NotRequested,
+                )
+            val qualification =
+                SourceReadQualification.create(
+                        SourceEntityCountDocument.parse(6).sourceFixtureValue(),
+                        listOf(SourceReadLimitationDocument.SEMANTIC_RESOLUTION_INCOMPLETE),
+                        SourceReadContinuationStateDocument.Unavailable,
+                    )
+                    .sourceFixtureValue()
+            return HostedSourcePagingFixture(
+                owner,
+                request(root),
+                OperationOutcome.Qualified(
+                    EvidenceEnvelope(CanonicalOperation.SOURCE_READ.id, basis, result),
+                    qualification,
                 ),
-                SourceRegionDocument(SourceRegionKindDocument.FILE, root.selection()),
-                BoundedProtocolList.create((0 until 6).map { index -> parameter(root, index) }).sourceFixtureValue(),
-                SourceTextProjectionDocument.NotRequested,
             )
-            val qualification = SourceReadQualification.create(
-                SourceEntityCountDocument.parse(6).sourceFixtureValue(),
-                listOf(SourceReadLimitationDocument.SEMANTIC_RESOLUTION_INCOMPLETE),
-                SourceReadContinuationStateDocument.Unavailable,
-            ).sourceFixtureValue()
-            val request = SourceReadRequest(
-                SourceReadAnchorDocument.Source(root.selection().selector), SourceRegionSelectionDocument.File,
-                SourceEntitySelectionDocument.Matching(
-                    SourceContainmentDocument.DESCENDANTS, listOf(SourceEntityFilterDocument.Parameters),
-                ), SourceTextRequestDocument.None, SourceEntityLimitDocument.parse(6).sourceFixtureValue(),
-                SourceTextByteLimitDocument.parse(50_000).sourceFixtureValue(), SourceReadPageDocument.First,
-            )
-            return HostedSourcePagingFixture(owner, request, OperationOutcome.Qualified(
-                EvidenceEnvelope(CanonicalOperation.SOURCE_READ.id, basis, result), qualification,
-            ))
         }
+
+        private fun request(root: SourceSelector) =
+            SourceReadRequest(
+                SourceReadAnchorDocument.Source(root.selection().selector),
+                SourceRegionSelectionDocument.File,
+                SourceEntitySelectionDocument.Matching(
+                    SourceContainmentDocument.DESCENDANTS,
+                    listOf(SourceEntityFilterDocument.Parameters),
+                ),
+                SourceTextRequestDocument.None,
+                SourceEntityLimitDocument.parse(6).sourceFixtureValue(),
+                SourceTextByteLimitDocument.parse(50_000).sourceFixtureValue(),
+                SourceReadPageDocument.First,
+            )
 
         private fun parameter(parent: SourceSelector, index: Int): SourceEntityDocument {
-            val selector = SourceSelector.issueEntity(
-                parent, NonEmptySourceRange.create(parent.snapshot.range(index, index + 1)).sourceFixtureValue(),
-                SourceEntityKind.VALUE_PARAMETER, SourceEntityName.present("p$index").sourceFixtureValue(),
-            ).sourceFixtureValue()
+            val selector =
+                SourceSelector.issueEntity(
+                        parent,
+                        NonEmptySourceRange.create(parent.snapshot.range(index, index + 1)).sourceFixtureValue(),
+                        SourceEntityKind.VALUE_PARAMETER,
+                        SourceEntityName.present("p$index").sourceFixtureValue(),
+                    )
+                    .sourceFixtureValue()
             return SourceEntityDocument.ValueParameter(
-                text("p$index"), SourceNestingDepthDocument.parse(1).sourceFixtureValue(),
-                parent.selection().selector, selector.selection(),
+                text("p$index"),
+                SourceNestingDepthDocument.parse(1).sourceFixtureValue(),
+                parent.selection().selector,
+                selector.selection(),
             )
         }
 
-        private fun SourceSnapshot.range(start: Int, end: Int) = SourceRange.create(
-            this, Utf16CodeUnitOffset.parse(start).sourceFixtureValue(), Utf16CodeUnitOffset.parse(end).sourceFixtureValue(),
-        ).sourceFixtureValue()
+        private fun SourceSnapshot.range(start: Int, end: Int) =
+            SourceRange.create(
+                    this,
+                    Utf16CodeUnitOffset.parse(start).sourceFixtureValue(),
+                    Utf16CodeUnitOffset.parse(end).sourceFixtureValue(),
+                )
+                .sourceFixtureValue()
 
-        private fun SourceSelector.selection() = SourceSelectionDocument(
-            text(SourceSelectorTokenCodec.encode(this).value),
-            SourceSelectionRangeDocument.create(
-                ProtocolOffset.parse(range.startInclusive.value).sourceFixtureValue(),
-                ProtocolOffset.parse(range.endExclusive.value).sourceFixtureValue(),
-            ).sourceFixtureValue(),
-        )
+        private fun SourceSelector.selection() =
+            SourceSelectionDocument(
+                text(SourceSelectorTokenCodec.encode(this).value),
+                SourceSelectionRangeDocument.create(
+                        ProtocolOffset.parse(range.startInclusive.value).sourceFixtureValue(),
+                        ProtocolOffset.parse(range.endExclusive.value).sourceFixtureValue(),
+                    )
+                    .sourceFixtureValue(),
+            )
 
         private fun text(value: String) = ProtocolText.parse(value).sourceFixtureValue()
     }
 }
 
-internal fun <T> Refinement<T, *>.sourceFixtureValue(): T = when (this) {
-    is Refinement.Refined -> value
-    is Refinement.Rejected -> error("Source fixture rejected: $failure")
-}
+internal fun <T> Refinement<T, *>.sourceFixtureValue(): T =
+    when (this) {
+        is Refinement.Refined -> value
+        is Refinement.Rejected -> error("Source fixture rejected: $failure")
+    }

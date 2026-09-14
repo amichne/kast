@@ -75,6 +75,8 @@ internal class HostedQueryContinuations : Disposable {
                 mismatch = QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.CONTINUATION_MISMATCH),
             )
 
+        val sourceOutputs = hostedSourceOutputPages(limits)
+
         val relationOutputs =
             HostedOutputPages(
                 CanonicalOperationWireBindings.relationRead,
@@ -103,6 +105,7 @@ internal class HostedQueryContinuations : Disposable {
         fun clear() {
             outputs.clear()
             relationOutputs.clear()
+            sourceOutputs.clear()
             checkpoints.clear()
         }
     }
