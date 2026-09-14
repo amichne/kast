@@ -103,9 +103,17 @@ private suspend fun evaluateHostedQuery(
                 )
                 .execute(request.request, context.authority, services.budgets.hostedQueryBudget)
         }
-    return encodeHostedQueryResponse(semantic = outcome, limits = context.limits, observation = context.observation) {
-        remaining ->
-        queryContinuations.issue(request.request, context.authority, remaining)
+    return encodeHostedQueryResponse(
+        semantic =
+            outcome.withQueryBudget(
+                io.github.amichne.kast.protocol.contract.ExecutionBudgetReport.from(context.executionBudget)
+            ),
+        limits = context.limits,
+        observation = context.observation,
+        maximumResults = context.executionBudget.results.effective,
+        maximumBytes = context.executionBudget.returnedBytes.effective,
+    ) { remaining ->
+        queryContinuations.issue(request.request, context.authority, remaining.withQueryBudget(null))
     }
 }
 

@@ -221,7 +221,8 @@ data class QueryRunRequest(
     val execution: QueryExecutionDocument,
     val continuation: ProtocolText? = null,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    @SerialName("execution_budget") val executionBudget: ExecutionBudgetDocument? = null,
+    @SerialName("execution_budget")
+    val executionBudget: ExecutionBudgetDocument? = null,
 ) : OperationRequest
 
 internal object QueryRunRequestSerializer : KSerializer<QueryRunRequest> {
@@ -403,6 +404,7 @@ data class QueryRunResult(
     val failures: BoundedProtocolList<QueryItemFailureDocument>,
     val continuation: ProtocolText? = null,
     val terminalReason: QueryTerminalReasonDocument? = null,
+    val executionBudget: ExecutionBudgetReport? = null,
 ) : OperationResult
 
 enum class QueryLimitationDocument {

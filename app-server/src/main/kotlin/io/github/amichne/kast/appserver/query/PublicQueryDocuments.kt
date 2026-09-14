@@ -1,8 +1,11 @@
 // Generated from query.schema.json by packaging/generate-public-query.py. Do not edit.
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
 package io.github.amichne.kast.appserver.query
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
+import io.github.amichne.kast.protocol.contract.ExecutionBudgetDocument
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerializationException
@@ -83,6 +86,9 @@ internal data class PublicQueryDocument(
     val steps: BoundedProtocolList<PublicQueryStep> = queryListOf(),
     val select: BoundedProtocolList<PublicQueryField> = queryListOf(PublicQueryField.NAME, PublicQueryField.LOCATION),
     val continuation: ProtocolText? = null,
+    @SerialName("execution_budget")
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val executionBudget: ExecutionBudgetDocument = ExecutionBudgetDocument(),
 )
 
 @Serializable(with = PublicQueryScopeSerializer::class)

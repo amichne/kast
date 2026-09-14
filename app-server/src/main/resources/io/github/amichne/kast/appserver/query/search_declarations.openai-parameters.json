@@ -48,13 +48,17 @@
       "minItems": 1,
       "maxItems": 4,
       "description": "null includes all four supported declaration families. Supply a non-empty, non-duplicate list to restrict them. The class family means Kast's supported class-like declarations. Constructors are not included."
+    },
+    "execution_budget": {
+      "$ref": "#/$defs/ExecutionBudget"
     }
   },
   "required": [
     "declaration_name",
     "name_match",
     "scope",
-    "declaration_kinds"
+    "declaration_kinds",
+    "execution_budget"
   ],
   "additionalProperties": false,
   "$defs": {
@@ -119,6 +123,54 @@
         "package_name",
         "include_subpackages",
         "source_set_names"
+      ],
+      "additionalProperties": false
+    },
+    "ExecutionBudget": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "Optional execution allowances. Null or omitted dimensions use configured defaults; positive values are independently clamped to operator and transport ceilings. These controls do not alter query take, scope, or projection.",
+      "properties": {
+        "max_elapsed_ms": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 9223372036854775807
+        },
+        "max_work_units": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 9223372036854775807
+        },
+        "max_results": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "max_returned_bytes": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 9223372036854775807
+        }
+      },
+      "required": [
+        "max_elapsed_ms",
+        "max_work_units",
+        "max_results",
+        "max_returned_bytes"
       ],
       "additionalProperties": false
     }

@@ -30,6 +30,8 @@ class CanonicalQueryProtocolTest {
             QueryByteLimit.parse(10000).refined(),
         )
 
+    private val largerGrant = ExecutionBudgetDocument(maxWorkUnits = WorkUnitLimit.parse(200).refined())
+
     @Test
     fun `opaque checkpoint binds query and snapshot while allowing fresh page budget`() = runTest {
         val store = QueryCheckpointStore()
@@ -71,10 +73,7 @@ class CanonicalQueryProtocolTest {
         assertInstanceOf(
             OperationOutcome.Complete::class.java,
             protocol.execute(
-                request().copy(
-                    continuation = token,
-                    executionBudget = ExecutionBudgetDocument(maxWorkUnits = WorkUnitLimit.parse(200).refined()),
-                ),
+                request().copy(continuation = token, executionBudget = largerGrant),
                 lease,
                 budget.copy(returnedBytes = QueryByteLimit.parse(20000).refined()),
             ),

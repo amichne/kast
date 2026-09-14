@@ -78,7 +78,8 @@ class QueryCheckpointStore(
         val entry = entries[token] ?: return QueryCheckpointRestoration.Unavailable
         if (
             entry.checkpoint.lease != lease ||
-                request.copy(execution = entry.request.execution, continuation = null, executionBudget = null) != entry.request
+                request.copy(execution = entry.request.execution, continuation = null, executionBudget = null) !=
+                    entry.request
         ) {
             return QueryCheckpointRestoration.Mismatch
         }

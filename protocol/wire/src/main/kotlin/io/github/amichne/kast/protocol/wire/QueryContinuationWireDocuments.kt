@@ -1,3 +1,5 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
 package io.github.amichne.kast.protocol.wire
 
 import kotlinx.serialization.SerialName
@@ -9,6 +11,9 @@ internal data class QueryRunResultWireDocument(
     val failures: List<QueryItemFailureWireDocument>,
     val continuation: String? = null,
     val terminalReason: QueryTerminalReasonWireDocument? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @SerialName("execution_budget")
+    val executionBudget: io.github.amichne.kast.protocol.contract.ExecutionBudgetReport? = null,
 )
 
 @Serializable

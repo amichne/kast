@@ -76,7 +76,7 @@ class RelationHostedSchemaTest {
                     )
                     .isEmpty()
             )
-            val grant = budgetGrant(request)
+            val grant = hostedSchemaBudgetGrant(request)
             val original = fixture.page() as OperationOutcome.Qualified
             val result = original.evidence.payload.copy(executionBudget = ExecutionBudgetReport.from(grant))
             val document =
@@ -98,23 +98,23 @@ class RelationHostedSchemaTest {
             )
         }
     }
-
-    private fun budgetGrant(request: ExecutionBudgetDocument) =
-        with(LiveReadOutputSchemaTest()) {
-            val resources =
-                ResourceBudget(
-                    ResultLimit.parse(128).refined(),
-                    WorkUnitLimit.parse(100).refined(),
-                    ElapsedTimeLimitMillis.parse(200).refined(),
-                )
-            val bytes = ReturnedByteLimit.parse(10_000).refined()
-            AdmittedExecutionBudget.admit(
-                request.requested(),
-                resources,
-                bytes,
-                resources,
-                bytes,
-                ExecutionBudgetCapacity(resources.elapsedTimeLimit, resources.resultLimit, bytes),
-            )
-        }
 }
+
+internal fun hostedSchemaBudgetGrant(request: ExecutionBudgetDocument) =
+    with(LiveReadOutputSchemaTest()) {
+        val resources =
+            ResourceBudget(
+                ResultLimit.parse(128).refined(),
+                WorkUnitLimit.parse(100).refined(),
+                ElapsedTimeLimitMillis.parse(200).refined(),
+            )
+        val bytes = ReturnedByteLimit.parse(10_000).refined()
+        AdmittedExecutionBudget.admit(
+            request.requested(),
+            resources,
+            bytes,
+            resources,
+            bytes,
+            ExecutionBudgetCapacity(resources.elapsedTimeLimit, resources.resultLimit, bytes),
+        )
+    }

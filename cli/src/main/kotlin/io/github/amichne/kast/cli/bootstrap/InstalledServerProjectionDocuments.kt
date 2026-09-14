@@ -361,6 +361,10 @@ private fun JsonObject.withLocalOutputDefinitions(): JsonObject {
 // Names are stable schema addresses; every referenced definition retains the exact existing shape.
 private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
     linkedMapOf(
+            "executionBudget" to
+                generatedRequestSchema(io.github.amichne.kast.protocol.contract.ExecutionBudgetReport.serializer()),
+            "executionLimit" to
+                generatedRequestSchema(io.github.amichne.kast.protocol.contract.ExecutionLimitDocument.serializer()),
             "liveReadEvidence" to liveReadEvidenceSchema(),
             "hostedEndpointRejection" to HostedRejectionSchemas.endpoint,
             "hostedReadRejection" to HostedRejectionSchemas.read,
@@ -580,6 +584,13 @@ private fun queryRunDocumentSchema(operation: CanonicalOperation): JsonObject =
             operation,
             "complete",
             ServerSchemaProperty("items", arraySchema(queryResultItemSchema())),
+            ServerSchemaProperty(
+                "execution_budget",
+                nullableSchema(
+                    generatedRequestSchema(io.github.amichne.kast.protocol.contract.ExecutionBudgetReport.serializer())
+                ),
+                required = false,
+            ),
             ServerSchemaProperty("failures", arraySchema(queryItemFailureSchema())),
         ),
         operationOutcomeVariant(
@@ -594,6 +605,13 @@ private fun queryRunDocumentSchema(operation: CanonicalOperation): JsonObject =
                 queryTerminalReasonSchema(),
             ),
             ServerSchemaProperty("items", arraySchema(queryResultItemSchema())),
+            ServerSchemaProperty(
+                "execution_budget",
+                nullableSchema(
+                    generatedRequestSchema(io.github.amichne.kast.protocol.contract.ExecutionBudgetReport.serializer())
+                ),
+                required = false,
+            ),
             ServerSchemaProperty("failures", arraySchema(queryItemFailureSchema())),
             ServerSchemaProperty(
                 "qualification",

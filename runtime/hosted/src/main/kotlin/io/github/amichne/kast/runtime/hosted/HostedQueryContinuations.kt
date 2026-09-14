@@ -68,7 +68,7 @@ internal class HostedQueryContinuations : Disposable {
                 prefix,
                 limits,
                 normalize = { request: QueryRunRequest ->
-                    request.copy(continuation = null)
+                    request.copy(continuation = null, executionBudget = null)
                 },
                 unavailable =
                     QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.CONTINUATION_UNAVAILABLE),

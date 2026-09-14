@@ -1,6 +1,6 @@
 # Agent read reliability: requirements and implementation plan
 
-Status: draft implementation plan; the branch contains a deliberately narrow starter patch, not a completed reliability release.
+Status: implementation in progress. Transport, schema, relation/query budgets and page fitting have local evidence below. Remaining cross-operation work and installed gates must complete before this is a reliability release.
 
 Baseline: `24a7e92d09a31624cf11e4f596c64d3a99e9a995`, inspected on 2026-09-14. Both `main` and `v0.40.0` pointed to this commit. Its existing checkpoint and traversal-timing work is therefore part of the assessed release, not a subsequent fix.
 
@@ -19,11 +19,11 @@ Keep declaration queries, relation-occurrence reads, graph traversal, and source
 | Query pages of 107 + 43, source/relation pagination, resumable traversal | Supplied observations, consistent with existing continuation implementations. Do not rebuild those mechanisms. |
 | Relation limit 100 rejected with `RESULT_TOO_LARGE`; limit 10 paginated | Supplied observation. Require automatic page fitting, not caller guesswork. |
 | Two-hop caller traversal rejected with `BUDGET_EXCEEDED`; broad discovery qualified without a cursor | Supplied observations. Distinguish output pagination from genuinely resumable upstream work. |
-| Stale-reference response/schema mismatch | Supplied observation. The offending payload and schema location are not available here; capture them before selecting a schema fix. Do not guess a failure code or weaken schema validation. |
+| Stale-reference response/schema mismatch | Supplied observation. Captured payload and schema location are recorded in the local continuation evidence below; the missing canonical reasons are now covered without weakening schema validation. |
 | Class discovery classifies every `KtClassOrObject` as `CLASSLIKE`; scoped enumeration accepts it before descending | Source-confirmed subtype problem: enum entries reach class candidate admission. The starter patch addresses this boundary. |
 | `HostedEndpointService` serves each accepted connection before accepting the next; `HostedQueryExecutor` converts timeout to rejection | Source-confirmed boundaries, not a demonstrated root cause of the four transport failures. Instrument and reproduce before changing concurrency policy. |
 
-The two raw `REPORT.md` files referenced in the assessment are on the reporter's Mac and were not read or reproduced in this work. The table records the supplied evidence without promoting it to independently verified results. Whether higher configured deadlines complete the failing caller traversal remains unverified.
+The two raw `REPORT.md` files were subsequently read locally; the original failures remain supplied observations. The independently executed matrix and its exact commit are recorded below. Whether higher configured deadlines complete the originally failing caller traversal remains unverified.
 
 ## Requirements
 
@@ -174,13 +174,13 @@ Run focused repository checks for the starter patch:
 
 Then use the existing CI product verification path, which runs `python3 .github/scripts/ci/verify-checks.py` on its configured macOS/JDK toolchain. Do not add a new all-purpose test framework or bypass required repository checks. Installed acceptance is a separate gate from unit tests and must retain the exact plugin/build/IDE/JDK/configuration identity.
 
-## Starter patch and verification status
+## Historical starter patch and verification status
 
-The starter patch changes only enum-entry classification/admission/scoped enumeration and adds focused admission tests. It does **not** implement per-call budgets, change concurrency, fix an unidentified schema mismatch, rename tools, or claim the original stress cases now pass.
+The initial starter patch changed only enum-entry classification/admission/scoped enumeration and adds focused admission tests. It does **not** implement per-call budgets, change concurrency, fix an unidentified schema mismatch, rename tools, or claim the original stress cases now pass.
 
 A local standalone Kotlin 1.9.0 PSI probe parsed the fixture above. The baseline class-like test admitted `[Mode, ACTIVE, PASSIVE, Nested]`; excluding `KtEnumEntry` retained `[Mode, Nested]` while retaining both `act` declarations and `target` during member traversal. This supports the subtype diagnosis only: it is not compilation of Kast or validation against Kast's pinned IntelliJ/Kotlin distribution.
 
-Local repository compilation was blocked by unavailable GitHub network resolution in the execution container; the available local JDK is 21, while repository CI explicitly provisions JDK 25. The focused repository tests, required gates, and installed-native checks are not claimed as passed here. Record their actual CI/native results before promoting this draft.
+At that initial checkpoint, local repository compilation was blocked by unavailable GitHub network resolution in the execution container; the available local JDK is 21, while repository CI explicitly provisions JDK 25. That initial checkpoint did not establish repository or native qualification. Subsequent evidence follows.
 
 ## Platform constraints informing the design
 
@@ -214,3 +214,30 @@ installed output-schema tests, JSON contract guard, knowledge impact, and
 knowledge validation have run successfully. Broader checks and installed
 qualification remain separate gates. R3–R6 and R8 are not yet implemented by
 these changes; no release-completion claim follows from this evidence.
+
+### Installed acceptance after transport and fixture corrections
+
+Commit `c3b185662` passed the installed `hostedChangeAcceptance` harness on
+2026-09-14 with the pinned IDEA 262 distribution and JDK 25. The private report
+`/tmp/kast-agent-read-native-c3b185662.json` records 116 CLI/provider read cases,
+156/156 schema-validated concurrent first attempts, zero serial retries, and the
+full native mutation, recovery, owner restart, and undo workflow. The existing
+harness reported `releaseQualified=true`; that is qualification of its matrix,
+not a claim that all requirements in this document are finished.
+
+The earlier run at `20e6eb876` passed both read gates but failed the plan-invariance
+check. Its retained IDE log showed a Gradle cache VFS refresh after reimport,
+between plan epoch 6 and read epoch 7. Production freshness rejection was retained.
+The fixture now waits for completed import before draining refresh, retains the
+pre-refresh import generation, and rejects evidence from an earlier generation.
+Its regression failed before the correction and passes afterward. Native plan
+evidence now distinguishes source changes, authority changes, and both.
+
+Query/search propagation and encoded output fitting have subsequent focused
+checks for public admission, host grants, retained identity, independent output
+limits, full encoded metadata, and preservation of known failures across pages.
+Legacy query null-control rejection remains intact. Schema reuse keeps the full
+provider catalog within its existing byte cap. Source/traversal propagation, stronger closed
+completion metadata, remaining resume/native enum tests, installed overload and
+disconnect variants, and the compatibility naming work remain release gates.
+No requirement in R1–R8 is waived by the matrix above.

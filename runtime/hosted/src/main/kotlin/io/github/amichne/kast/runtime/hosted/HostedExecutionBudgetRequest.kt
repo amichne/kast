@@ -12,7 +12,7 @@ internal fun HostedRequest.Read.executionBudget(): HostedExecutionBudgetRequest 
         requested =
             when (this) {
                 is HostedRequest.Relation -> request.executionBudget?.requested() ?: RequestedExecutionBudget()
-                is HostedRequest.Query,
+                is HostedRequest.Query -> request.executionBudget?.requested() ?: RequestedExecutionBudget()
                 is HostedRequest.Discover,
                 is HostedRequest.Inspect,
                 is HostedRequest.Source,

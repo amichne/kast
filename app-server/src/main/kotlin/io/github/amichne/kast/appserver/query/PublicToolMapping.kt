@@ -13,6 +13,7 @@ internal fun PublicToolDocument.lower(): Refinement<PublicToolCanonical, PublicT
                 scope,
                 listOf(PublicToolDeclarationKinds.CLASS),
                 PublicToolParameter.CLASS_NAME,
+                executionBudget,
             )
         is PublicToolSearchFunctions ->
             search(
@@ -21,6 +22,7 @@ internal fun PublicToolDocument.lower(): Refinement<PublicToolCanonical, PublicT
                 scope,
                 listOf(PublicToolDeclarationKinds.FUNCTION),
                 PublicToolParameter.FUNCTION_NAME,
+                executionBudget,
             )
         is PublicToolSearchDeclarations ->
             search(
@@ -28,6 +30,7 @@ internal fun PublicToolDocument.lower(): Refinement<PublicToolCanonical, PublicT
                 name_match,
                 scope,
                 (declaration_kinds ?: PublicToolDefaults.declarationKinds).values,
+                executionBudget = executionBudget,
             )
         is PublicToolCheckDiagnostics ->
             when (WorkspaceRelativePath.parse(relative_path.value)) {
@@ -53,6 +56,7 @@ internal fun PublicToolDocument.lower(): Refinement<PublicToolCanonical, PublicT
                             (steps ?: PublicToolDefaults.steps).values.map { it.lower() },
                             (return_fields ?: PublicToolDefaults.returnFields).values,
                             continuation,
+                            executionBudget,
                         )
                     )
             }
@@ -64,6 +68,7 @@ private fun search(
     scope: PublicToolScope?,
     kinds: List<PublicToolDeclarationKinds>,
     parameter: PublicToolParameter = PublicToolParameter.DECLARATION_NAME,
+    executionBudget: ExecutionBudgetDocument? = null,
 ): Refinement<PublicToolCanonical, PublicToolInputFailure> =
     when (
         val source =
@@ -77,7 +82,14 @@ private fun search(
     ) {
         is Refinement.Rejected -> source
         is Refinement.Refined ->
-            Refinement.Refined(query(source.value, emptyList(), PublicToolDefaults.searchFields.values))
+            Refinement.Refined(
+                query(
+                    source.value,
+                    emptyList(),
+                    PublicToolDefaults.searchFields.values,
+                    executionBudget = executionBudget,
+                )
+            )
     }
 
 private fun PublicToolSource.lower(): Refinement<QueryFromDocument, PublicToolInputFailure> =
@@ -206,6 +218,7 @@ private fun query(
     steps: List<QueryStepDocument>,
     fields: List<PublicToolReturnFields>,
     continuation: ProtocolText? = null,
+    executionBudget: ExecutionBudgetDocument? = null,
 ) =
     PublicToolCanonical.Query(
         QueryRunRequest(
@@ -214,6 +227,7 @@ private fun query(
             QueryOutputDocument.Symbols(bounded(fields.map { it.lower() })),
             QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
             continuation = continuation,
+            executionBudget = executionBudget,
         )
     )
 

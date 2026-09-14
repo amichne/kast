@@ -20,6 +20,7 @@ import io.github.amichne.kast.protocol.contract.QueryStepDocument
 internal fun PublicQueryDocument.toCanonicalQuery(): QueryRunRequest =
     QueryRunRequest(
         continuation = continuation,
+        executionBudget = executionBudget,
         from =
             when (val source = from) {
                 is PublicQuerySearch ->

@@ -25,20 +25,77 @@ import org.junit.jupiter.api.Test
 
 class HostedQueryResponseTest {
     @Test
+    fun `caller byte allowance includes grant evidence and preserves failure coverage on every page`() {
+        val report = io.github.amichne.kast.protocol.contract.ExecutionBudgetReport.from(queryTestGrant())
+        val all = List(4) { item() }
+        val original = OperationOutcome.Complete(envelope(all, listOf(failure()))).withQueryBudget(report)
+        val maximum = io.github.amichne.kast.kernel.ReturnedByteLimit.parse(11000).refined()
+        var suffix: HostedQueryOutcome? = null
+        val response =
+            encodeHostedQueryResponse(original, maximumBytes = maximum) { remaining ->
+                suffix = remaining
+                HostedOutputRetention.Retained(
+                    ProtocolText.parse(HostedQueryContinuations.prefix + "0".repeat(36)).refined()
+                )
+            }
+                as HostedResponse.Canonical<*, *, *>
+        assertTrue(response.document.toByteArray().size <= maximum.value)
+        val decoded =
+            CanonicalOperationWireBindings.queryRun.decodeOutcome(response.document)
+                as io.github.amichne.kast.protocol.wire.WireDecoding.Decoded
+        val page = (decoded.value as OperationOutcome.Qualified).evidence.payload
+        assertEquals(report, page.executionBudget)
+        assertEquals(listOf(failure()), page.failures.values)
+        val remainder = (suffix as OperationOutcome.Complete).evidence.payload
+        assertEquals(listOf(failure()), remainder.failures.values)
+        assertEquals(all, page.items.values + remainder.items.values)
+    }
+
+    private fun queryTestGrant(): io.github.amichne.kast.kernel.AdmittedExecutionBudget {
+        val resources =
+            io.github.amichne.kast.kernel.ResourceBudget(
+                io.github.amichne.kast.kernel.ResultLimit.parse(128).refined(),
+                io.github.amichne.kast.kernel.WorkUnitLimit.parse(100000).refined(),
+                io.github.amichne.kast.kernel.ElapsedTimeLimitMillis.parse(2000).refined(),
+            )
+        val bytes = io.github.amichne.kast.kernel.ReturnedByteLimit.parse(49152).refined()
+        return io.github.amichne.kast.kernel.AdmittedExecutionBudget.admit(
+            io.github.amichne.kast.kernel.RequestedExecutionBudget(),
+            resources,
+            bytes,
+            resources,
+            bytes,
+            io.github.amichne.kast.kernel.ExecutionBudgetCapacity(
+                resources.elapsedTimeLimit,
+                resources.resultLimit,
+                bytes,
+            ),
+        )
+    }
+
+    @Test
     fun `caller page result allowance fits retained output without changing its semantics`() {
         val all = List(3) { item() }
         var suffix: HostedQueryOutcome? = null
-        val response = encodeHostedQueryResponse(
-            OperationOutcome.Complete(envelope(all, emptyList())),
-            maximumResults = io.github.amichne.kast.kernel.ResultLimit.parse(1).refined(),
-        ) { retained ->
-            suffix = retained
-            HostedOutputRetention.Retained(ProtocolText.parse(HostedQueryContinuations.prefix + "0".repeat(36)).refined())
-        } as HostedResponse.Canonical<*, *, *>
-        val qualified = org.junit.jupiter.api.Assertions.assertInstanceOf(OperationOutcome.Qualified::class.java, response.semantic)
+        val response =
+            encodeHostedQueryResponse(
+                OperationOutcome.Complete(envelope(all, emptyList())),
+                maximumResults = io.github.amichne.kast.kernel.ResultLimit.parse(1).refined(),
+            ) { retained ->
+                suffix = retained
+                HostedOutputRetention.Retained(
+                    ProtocolText.parse(HostedQueryContinuations.prefix + "0".repeat(36)).refined()
+                )
+            }
+                as HostedResponse.Canonical<*, *, *>
+        val qualified =
+            org.junit.jupiter.api.Assertions.assertInstanceOf(OperationOutcome.Qualified::class.java, response.semantic)
         val page = qualified.evidence.payload as QueryRunResult
         assertEquals(all.take(1), page.items.values)
-        assertEquals(listOf(QueryLimitationDocument.RESULT_LIMIT_REACHED), (qualified.qualification as QueryRunQualification).limitations)
+        assertEquals(
+            listOf(QueryLimitationDocument.RESULT_LIMIT_REACHED),
+            (qualified.qualification as QueryRunQualification).limitations,
+        )
         val remaining = suffix as OperationOutcome.Complete
         assertEquals(all.drop(1), remaining.evidence.payload.items.values)
     }

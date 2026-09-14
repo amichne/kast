@@ -1,3 +1,5 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
 package io.github.amichne.kast.protocol.contract
 
 import io.github.amichne.kast.kernel.AdmittedExecutionBudget
@@ -15,15 +17,19 @@ import kotlinx.serialization.Serializable
 /** Optional boundary controls; all supplied numbers are refined during deserialization. */
 @Serializable
 data class ExecutionBudgetDocument(
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     @SerialName("max_elapsed_ms")
     @Serializable(with = ExecutionElapsedSerializer::class)
     val maxElapsedMillis: ElapsedTimeLimitMillis? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     @SerialName("max_work_units")
     @Serializable(with = ExecutionWorkSerializer::class)
     val maxWorkUnits: WorkUnitLimit? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     @SerialName("max_results")
     @Serializable(with = ExecutionResultsSerializer::class)
     val maxResults: ResultLimit? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     @SerialName("max_returned_bytes")
     @Serializable(with = ExecutionBytesSerializer::class)
     val maxReturnedBytes: ReturnedByteLimit? = null,

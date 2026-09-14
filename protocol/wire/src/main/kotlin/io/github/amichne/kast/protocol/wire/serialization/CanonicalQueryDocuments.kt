@@ -249,6 +249,7 @@ private fun QueryRunResult.toQueryWireDocument() =
         failures = failures.values.map(QueryItemFailureDocument::toWire),
         continuation = continuation?.value,
         terminalReason = terminalReason?.let { QueryTerminalReasonWireDocument.valueOf(it.name) },
+        executionBudget = executionBudget,
     )
 
 private fun QueryRunResultWireDocument.toContract(): WireDocumentConversion<QueryRunResult> =
@@ -262,6 +263,7 @@ private fun QueryRunResultWireDocument.toContract(): WireDocumentConversion<Quer
                             failures = boundedFailures,
                             continuation = token,
                             terminalReason = terminalReason?.let { QueryTerminalReasonDocument.valueOf(it.name) },
+                            executionBudget = executionBudget,
                         )
                     }
                 }

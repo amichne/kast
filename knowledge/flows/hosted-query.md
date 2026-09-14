@@ -6,6 +6,9 @@ resource: file://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/
 tags: [intellij, kotlin, semantic-query, lifecycle]
 timestamp: 2026-09-13T00:00:00Z
 code_sources:
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ExecutionBudgetDocument.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryResponse.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedExecutionBudgetRequest.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedTransportObservation.kt
   - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmissionTest.kt
@@ -370,11 +373,17 @@ query checkpoint, query output, and relation output stores has the configured
 entry/byte bound; their aggregate maximum is three times that bound. No retained
 entry contains PSI or K2 state.
 
-Relation reads admit optional caller execution controls once at semantic entry.
+Relation and query/search reads admit optional caller execution controls once at
+semantic entry.
 `HostedReadDeadline` subtracts elapsed request time and its completion reserve;
 `HostedSemanticTimeAllowance` retains the resulting immutable grant. Domain
-budgets derive their resource values from that grant. Relation response metadata
+budgets derive their resource values from that grant. Their response metadata
 projects its effective values and clamping causes, and byte fitting includes the
-metadata. Retained relation suffixes omit previous-call grant metadata; resume
+metadata. Retained query and relation suffixes omit previous-call grant metadata; resume
 publishes the newly admitted grant and excludes execution controls from retained
 semantic identity.
+
+Query pipeline checkpoints and output suffixes exclude caller execution controls
+from semantic identity. Query page result limits also constrain retained output;
+every page preserves known item failures. An explicit query `take` remains part of
+the query identity. Source and traversal caller controls are still unfinished.

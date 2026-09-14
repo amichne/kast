@@ -151,12 +151,14 @@ evidence cannot fit, the response stays rejected.
 
 Query continuations retain detached pipeline state and encoded-output suffixes in bounded project-owned stores. Each store applies the continuation entry, byte, and TTL limits. A checkpoint must fit `QUERY_CHECKPOINT_BYTES`, which cannot exceed `QUERY_CONTINUATION_BYTES`. Epoch movement and project disposal clear retained state; expired or evicted handles return `continuation-unavailable`. Returned-byte authority covers final items and failures, independently of bounded child-read bytes.
 
-## Per-call relation execution budgets
+## Per-call execution budgets
 
-`semantic_query` accepts an optional `execution_budget` object with
+`semantic_query`, `query_symbols`, all three `search_*` tools, and `query run`
+accept an optional `execution_budget` object with
 `max_elapsed_ms`, `max_work_units`, `max_results`, and `max_returned_bytes`.
 Supplied numbers must be positive integers. Omitted controls select configured
-defaults. The IDE admits each dimension against the corresponding
+defaults. Intent tools also normalize null controls to defaults; the legacy
+`query run` grammar rejects explicit null execution controls. The IDE admits each dimension against the corresponding
 `KAST_READ_EXECUTION_MAX_*` operator ceiling and applicable transport capacity.
 These ceilings default to 2,147,483,646; existing semantic defaults, the 1,000-item
 canonical page capacity, response bytes, and remaining hosted deadline still
@@ -175,6 +177,10 @@ canonical response, including this metadata and any cursor.
 Hosted output cursors can resume with a changed execution budget and page limit.
 Each resume admits a new grant, while selector, relationship, authority and epoch
 remain bound. Storage capacity and expiry retain their separate operator limits.
-These per-call controls are currently implemented for relation reads; extending
-them to query/search, traversal and source is part of the remaining reliability
-work.
+Query result units are emitted declarations; work units retain the query pipeline's
+existing accounting for candidate refinement and child reads. An explicit `take`
+remains part of query semantics. Query output suffixes and pipeline checkpoints
+exclude execution allowances from their request identity. Each output page retains
+known item failures, and its full canonical encoding includes the current grant.
+These controls are implemented for relation and query/search reads. Traversal and
+source remain part of the unfinished reliability work.
