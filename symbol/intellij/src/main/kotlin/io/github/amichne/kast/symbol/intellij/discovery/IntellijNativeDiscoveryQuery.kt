@@ -11,13 +11,13 @@ import com.intellij.util.indexing.FindSymbolParameters
 import com.intellij.util.indexing.IdFilter
 import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
-import io.github.amichne.kast.symbol.contract.relevance
-import io.github.amichne.kast.symbol.contract.SymbolNameRelevance
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryMatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualification
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
+import io.github.amichne.kast.symbol.contract.SymbolNameRelevance
+import io.github.amichne.kast.symbol.contract.relevance
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadContributor
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
@@ -64,7 +64,7 @@ internal class IntellijNativeDiscoveryQuery(
     private val cancellationCheck: () -> Unit,
     private val clock: IntellijDiscoveryNanoClock = SystemIntellijDiscoveryNanoClock,
     private val observation: IntellijReadObservation = IntellijReadObservation.None,
-    private val limits: ReadLimits = ReadLimits.Default,
+    internal val limits: ReadLimits = ReadLimits.Default,
 ) {
     /**
      * Proof transition: CompiledIntellijSearchScope + SymbolDiscoveryRequest + native contributors to
@@ -137,7 +137,8 @@ internal class IntellijNativeDiscoveryQuery(
                                     is SymbolDiscoveryTarget.All -> true
                                     is SymbolDiscoveryTarget.Name ->
                                         when (target.match) {
-                                            SymbolDiscoveryMatch.FUZZY -> target.pattern.relevance(name) != SymbolNameRelevance.UNMATCHED
+                                            SymbolDiscoveryMatch.FUZZY ->
+                                                target.pattern.relevance(name) != SymbolNameRelevance.UNMATCHED
                                             SymbolDiscoveryMatch.EXACT_NAME -> name == target.pattern.value
                                         }
                                 }
@@ -167,7 +168,10 @@ internal class IntellijNativeDiscoveryQuery(
                             name,
                             Processor { item ->
                                 if (!collector.observe()) return@Processor false
-                                if (collector.admit(item, inspectPackage = false) != IntellijDiscoveryItemAdmission.ADMITTED)
+                                if (
+                                    collector.admit(item, inspectPackage = false) !=
+                                        IntellijDiscoveryItemAdmission.ADMITTED
+                                )
                                     return@Processor !collector.halted
                                 if (pending.size >= limits[ReadLimitParameter.DISCOVERY_CANDIDATES].value) {
                                     reachedCandidateLimit = true
@@ -282,9 +286,15 @@ internal class IntellijNativeDiscoveryQuery(
             var reachedLimit = false
             val target = request.target
             val fuzzy = (target as? SymbolDiscoveryTarget.Name)?.takeIf { it.match == SymbolDiscoveryMatch.FUZZY }
-            val capacity = minOf(request.budget.resources.workUnitLimit.value,
-                limits[ReadLimitParameter.DISCOVERY_CANDIDATES].value.toLong()).toInt()
-            val ranked = fuzzy?.let { BoundedLexicalCandidates(it.pattern, minOf(capacity, request.budget.resources.resultLimit.value)) }
+            val capacity =
+                minOf(
+                        request.budget.resources.workUnitLimit.value,
+                        limits[ReadLimitParameter.DISCOVERY_CANDIDATES].value.toLong(),
+                    )
+                    .toInt()
+            val ranked = fuzzy?.let {
+                BoundedLexicalCandidates(it.pattern, minOf(capacity, request.budget.resources.resultLimit.value))
+            }
             val complete =
                 process(collector::observe, collector::qualify) { item ->
                     if (!collector.observe()) return@process false
@@ -295,10 +305,21 @@ internal class IntellijNativeDiscoveryQuery(
                         observation.count(IntellijReadCounter.NAMES_MATCHED, contributor)
                     }
                     // Scoped enumeration has left native callbacks; package PSI is safe here.
-                    if (collector.admit(item, contributor == IntellijReadContributor.SCOPED_DECLARATIONS) !=
-                        IntellijDiscoveryItemAdmission.ADMITTED) return@process !collector.halted
+                    if (
+                        collector.admit(item, contributor == IntellijReadContributor.SCOPED_DECLARATIONS) !=
+                            IntellijDiscoveryItemAdmission.ADMITTED
+                    )
+                        return@process !collector.halted
                     if (ranked != null) {
-                        ranked.accept(item)
+                        when (ranked.accept(item)) {
+                            LexicalCandidateRetention.RETAINED ->
+                                observation.count(IntellijReadCounter.LEXICAL_CANDIDATES_RETAINED, contributor)
+                            LexicalCandidateRetention.REPLACED ->
+                                observation.count(IntellijReadCounter.LEXICAL_CANDIDATES_REPLACED, contributor)
+                            LexicalCandidateRetention.DROPPED ->
+                                observation.count(IntellijReadCounter.LEXICAL_CANDIDATES_DROPPED, contributor)
+                            LexicalCandidateRetention.DUPLICATE -> Unit
+                        }
                     } else {
                         if (pending.size >= capacity) {
                             reachedLimit = true
@@ -312,8 +333,11 @@ internal class IntellijNativeDiscoveryQuery(
             if (ranked != null) {
                 pending += ranked.values()
                 if (ranked.truncated) {
-                    collector.qualify(if (request.budget.resources.resultLimit.value <= capacity)
-                        SymbolDiscoveryQualification.RESULT_LIMIT_REACHED else SymbolDiscoveryQualification.WORK_LIMIT_REACHED)
+                    collector.qualify(
+                        if (request.budget.resources.resultLimit.value <= capacity)
+                            SymbolDiscoveryQualification.RESULT_LIMIT_REACHED
+                        else SymbolDiscoveryQualification.WORK_LIMIT_REACHED
+                    )
                 }
             }
             if (reachedLimit) {

@@ -18,6 +18,47 @@ import org.junit.jupiter.api.Test
 
 class SymbolSelectorContractTest {
     @Test
+    fun `canonical identity ignores query constraints while selectors retain them`() {
+        val selected = selection()
+        val evidence = evidence(selected, "kotlin.Int")
+        val broad = SymbolSelector.issue(selected, evidence).refined()
+        val narrow =
+            SymbolSelector.issue(
+                broad.lease,
+                broad.scope,
+                evidence,
+                SymbolDiscoveryConstraints(
+                    directory = null,
+                    packageName = null,
+                    declarationKinds = SymbolDiscoveryDeclarationKinds.from(setOf(broad.kind)).refined(),
+                ),
+            )
+        assertEquals(CanonicalSymbolId.from(broad), CanonicalSymbolId.from(narrow))
+        assertNotEquals(broad.fingerprint, narrow.fingerprint)
+        val fileScope =
+            SymbolSearchScope.ExactFile(
+                (broad.file as SymbolDiscoveryFileIdentity.Workspace).path,
+                broad.scope.sourceKinds,
+                broad.scope.generatedSources,
+            )
+        val fileSelected = SymbolSelector.issue(broad.lease, fileScope, evidence)
+        assertEquals(CanonicalSymbolId.from(broad), CanonicalSymbolId.from(fileSelected))
+        assertNotEquals(broad.fingerprint, fileSelected.fingerprint)
+        assertEquals(fileScope, fileSelected.scope)
+        val nextSnapshot =
+            SymbolSelector.issue(
+                (broad.lease as SemanticReadLease).copy(generation = EvidenceGeneration.parse(999L).refined()),
+                broad.scope,
+                evidence,
+            )
+        assertNotEquals(CanonicalSymbolId.from(broad), CanonicalSymbolId.from(nextSnapshot))
+        assertNotEquals(
+            CanonicalSymbolId.from(broad),
+            CanonicalSymbolId.from(SymbolSelector.issue(selected, evidence(selected, "kotlin.String")).refined()),
+        )
+    }
+
+    @Test
     fun `compiler evidence retains canonical signature and rejects mismatched restored identity`() {
         val selection = selection()
         val location = selection.candidate.location as SymbolDiscoveryCandidateLocation.Declaration

@@ -2,7 +2,6 @@ package io.github.amichne.kast.symbol.intellij
 
 import com.intellij.navigation.NavigationItem
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.symbol.contract.candidateOrder
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteCount
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidate
@@ -13,6 +12,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualifications
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTimings
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryWorkCount
+import io.github.amichne.kast.symbol.contract.candidateOrder
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadContributor
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation

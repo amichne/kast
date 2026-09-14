@@ -27,7 +27,7 @@ internal fun IntellijNativeDiscoveryQuery.discoverNative(
     val kinds = request.requestedDeclarationKinds()
     return if (request.usesScopedDeclarationEnumeration()) {
         discoverDeclarations(scope, request) { observe, qualify, accept ->
-            collectScopedKotlinDeclarations(project, scope, request, kinds, observe, qualify, accept)
+            collectScopedKotlinDeclarations(project, scope, request, kinds, observe, qualify, accept, limits)
         }
     } else if (target is SymbolDiscoveryTarget.Name && target.match == SymbolDiscoveryMatch.EXACT_NAME) {
         discoverExactName(scope, request) { name, accept ->

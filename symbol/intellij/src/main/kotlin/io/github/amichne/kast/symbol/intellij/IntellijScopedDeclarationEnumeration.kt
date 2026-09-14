@@ -5,8 +5,10 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiManager
 import com.intellij.psi.search.FileTypeIndex
+import com.intellij.psi.stubs.StubIndex
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryContainment
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryMatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualification
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
@@ -14,6 +16,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
 import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
 import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
 import org.jetbrains.kotlin.idea.KotlinFileType
+import org.jetbrains.kotlin.idea.stubindex.KotlinExactPackagesIndex
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
@@ -72,9 +75,29 @@ internal fun collectScopedKotlinDeclarations(
     observe: () -> Boolean,
     qualify: (SymbolDiscoveryQualification) -> Unit,
     accept: (NavigationItem) -> Boolean,
+    limits: io.github.amichne.kast.kernel.ReadLimits = io.github.amichne.kast.kernel.ReadLimits.Default,
 ): Boolean {
-    val files = ScopedKotlinFileCollection(scope, request.budget.resources.workUnitLimit, observe, qualify)
-    val complete = FileTypeIndex.processFiles(KotlinFileType.INSTANCE, files::accept, scope.nativeScope)
+    val fileLimit =
+        (io.github.amichne.kast.kernel.WorkUnitLimit.parse(
+                limits[io.github.amichne.kast.kernel.ReadLimitParameter.DISCOVERY_FILES].value.toLong()
+            ) as io.github.amichne.kast.kernel.Refinement.Refined)
+            .value
+    val files = ScopedKotlinFileCollection(scope, fileLimit, observe, qualify)
+    val packageConstraint = request.constraints.packageName
+    val complete =
+        if (packageConstraint?.containment == SymbolDiscoveryContainment.DIRECT) {
+            // Exact package membership is authoritative index evidence before file capacity; no package PSI in
+            // callbacks.
+            StubIndex.getInstance().processElements(
+                KotlinExactPackagesIndex.NAME,
+                packageConstraint.packageName.value,
+                project,
+                scope.nativeScope,
+                KtFile::class.java,
+            ) { file ->
+                files.accept(file.virtualFile)
+            }
+        } else FileTypeIndex.processFiles(KotlinFileType.INSTANCE, files::accept, scope.nativeScope)
     if (!complete && files.stop == ScopedFileCollectionStop.NONE) qualify(SymbolDiscoveryQualification.PROVIDER_FAILURE)
     // Native callbacks have ended before any PSI package inspection or declaration traversal.
     val visitor =

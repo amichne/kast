@@ -70,11 +70,11 @@ class SymbolDiscoveryTest {
     }
 
     @Test
-    fun `scope exclusions are counted after native candidates were collected`() {
+    fun `scope exclusions are counted before native candidate capacity`() {
         val observation = RecordingNativeRead()
         val scenario = fixture(all = true, observation = observation)
         assertTrue(scenario.execute().outcome() is SymbolDiscoveryOutcome.Complete)
-        assertEquals(4, observation.counts[IntellijReadCounter.CANDIDATES_COLLECTED])
+        assertEquals(3, observation.counts[IntellijReadCounter.CANDIDATES_COLLECTED])
         assertEquals(1, observation.counts[IntellijReadCounter.SCOPE_FILTERED])
         assertEquals(3, observation.counts[IntellijReadCounter.CANDIDATES_PROJECTED])
     }
@@ -712,6 +712,7 @@ class SymbolDiscoveryTest {
         clock: IntellijDiscoveryNanoClock = StepClock(),
         providerFails: Boolean = false,
         collidingNames: Boolean = false,
+        declarationNames: List<String>? = null,
         leadingUnrelatedNames: Int = 0,
         leadingMatchingNames: Int = 0,
         all: Boolean = false,
@@ -750,7 +751,8 @@ class SymbolDiscoveryTest {
         val alpha = FakeItem("AItem")
         val outside = FakeItem("OutsideItem")
         val items =
-            if (collidingNames) {
+            if (declarationNames != null) declarationNames.map { FakeItem(it) }
+            else if (collidingNames) {
                 listOf(
                     FakeItem("CollisionItem", "first"),
                     FakeItem("CollisionItem", "second"),
@@ -761,7 +763,7 @@ class SymbolDiscoveryTest {
         val files = items.associateWith {
             LightVirtualFile(itemPaths[it.candidateName] ?: "/workspace/src/${it.identity}.kt")
         }
-        val inScopeItems = if (collidingNames) items.toSet() else setOf(zed, noMatch, alpha)
+        val inScopeItems = if (collidingNames || declarationNames != null) items.toSet() else setOf(zed, noMatch, alpha)
         val inScopeFiles = inScopeItems.mapTo(linkedSetOf(), files::getValue)
         val scope =
             object : GlobalSearchScope() {
