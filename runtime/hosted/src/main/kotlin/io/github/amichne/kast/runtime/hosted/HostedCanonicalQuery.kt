@@ -59,8 +59,7 @@ internal suspend fun evaluateHostedCanonicalQuery(
                 limits = context.limits,
             )
         is HostedRequest.Source ->
-            HostedResponse.Canonical.encode(
-                CanonicalOperationWireBindings.sourceRead,
+            encodeHostedSourceResponse(
                 CanonicalSourceReadProtocol(source, references)
                     .execute(request.request, context.authority, budgets.hostedSourceBudget)
                     .withSourceBudget(
