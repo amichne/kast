@@ -456,6 +456,8 @@ val hostedReadRegressionTest = tasks.register<Exec>("hostedReadRegressionTest") 
         "packaging/test-hosted-read-regression.py",
         "packaging/hosted_concurrent_read.py", "packaging/hosted_peer_probe.py",
         "packaging/hosted_transport_observation.py", "packaging/test-hosted-peer-probe.py",
+        "packaging/hosted_authority_read_regression.py", "packaging/test-hosted-authority-read.py",
+        "packaging/hosted_budget_read_regression.py", "packaging/test-hosted-budget-read-regression.py",
         "packaging/hosted_generated_fixture.py",
         "packaging/native_provider_qualification.py", "packaging/test-native-provider-qualification.py",
     )

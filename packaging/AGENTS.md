@@ -21,6 +21,8 @@ Implements installer support, installed-product acceptance, configuration ingres
 - [test-installed-product.sh](test-installed-product.sh) - installed product and local knowledge acceptance entry.
 - [run-hosted-change-acceptance.py](run-hosted-change-acceptance.py) - staged broker, CLI, and plugin change workflow in a private native IDE.
 - [hosted_read_regression.py](hosted_read_regression.py) - native CLI/provider read regression and bounded continuation checks.
+- [hosted_authority_read_regression.py](hosted_authority_read_regression.py) - ordinary private source edits, observed epochs, stale authority refusal, exact restoration, and provider envelope qualification.
+- [hosted_concurrent_read.py](hosted_concurrent_read.py) - bounded concurrent reads and structured transport fault/drain witnesses.
 - [hosted_read_requests.py](hosted_read_requests.py) - typed traversal fixture requests with explicit strategy and retained resume position.
 - [hosted_budget_read_regression.py](hosted_budget_read_regression.py) - independent caller-grant forwarding and retained traversal replay across installed read surfaces.
 - [native_fixture_probe.py](native_fixture_probe.py) - typed native fixture control responses and readiness evidence admission.
