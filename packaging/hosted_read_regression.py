@@ -15,6 +15,8 @@ from hosted_read_transport import HostedReadTransport, ReadProviderFailure, Read
 from hosted_read_requests import NativeTraversalRequest, TraversalStart, TraversalResume
 from native_provider_qualification import qualification_document
 from hosted_concurrent_read import run_concurrent_read_regression
+from hosted_authority_read_regression import run_authority_read_regression
+from hosted_budget_read_regression import run_budget_read_regression
 from hosted_enum_read_regression import run_enum_read_regression
 from hosted_source_read_regression import run_source_paging_regression, source_qualification_observation
 
@@ -41,6 +43,7 @@ def run_read_regression(isolation, fixture, product, java, harness, repo, read_f
     rows, failure, failure_details, unchanged, before = [], None, None, False, False
     qualification = None
     concurrent = None
+    authority = None
     try:
         before = read_fixture.unchanged()
         with HostedReadTransport(isolation, fixture, product, java, harness).open() as transport:
@@ -49,6 +52,7 @@ def run_read_regression(isolation, fixture, product, java, harness, repo, read_f
                 replay = _ReadReplay(oracle, read_fixture, initial_live, transport, surface, rows)
                 replay.run()
             concurrent = run_concurrent_read_regression(isolation, read_fixture, oracle, transport, initial_live)
+            authority = asdict(run_authority_read_regression(isolation, fixture, transport, initial_live))
     except ReadTransportRejected as error:
         failure = 'READ_TRANSPORT_REJECTED'
         failure_details = error.evidence()
@@ -62,14 +66,16 @@ def run_read_regression(isolation, fixture, product, java, harness, repo, read_f
         except (OSError, ValueError):
             failure = 'READ_FIXTURE_REJECTED'
     passed = (failure is None and unchanged and bool(rows) and all(row['passed'] for row in rows)
-              and concurrent is not None and concurrent['outcome'] == 'passed')
+              and concurrent is not None and concurrent['outcome'] == 'passed'
+              and authority is not None and authority['outcome'] == 'passed')
     return {'schemaVersion': 1, 'outcome': 'passed' if passed else 'rejected', 'failure': failure,
             'failureDetails': failure_details, 'providerQualification': qualification,
             'scope': 'complete-authored-base-semantic-matrix-and-eight-default-read-tools',
             'fixture': read_fixture.evidence(), 'sourceUnchanged': unchanged,
             'queryBudgets': 'unchanged-production-policy', 'sourcePayloadsLogged': False,
             'stockCodexUi': 'unqualified', 'caseCount': len(rows),
-            'passedCount': sum(row['passed'] for row in rows), 'cases': rows, 'concurrentReplay': concurrent}
+            'passedCount': sum(row['passed'] for row in rows), 'cases': rows, 'concurrentReplay': concurrent,
+            'authorityReplay': authority}
 
 
 class _ReadReplay:
@@ -128,6 +134,7 @@ class _ReadReplay:
         run_source_paging_regression(self)
         run_enum_read_regression(self)
         self.relations()
+        run_budget_read_regression(self)
         response = self.transport.invoke(self.surface, 'check_diagnostics',
             {'relative_path': 'src/main/kotlin/Fixture.kt', 'max_diagnostics': None})
         self.record('diagnostics-exact-file', 'check_diagnostics', {

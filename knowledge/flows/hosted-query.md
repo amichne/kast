@@ -6,6 +6,9 @@ resource: file://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/
 tags: [intellij, kotlin, semantic-query, lifecycle]
 timestamp: 2026-09-13T00:00:00Z
 code_sources:
+  - path: packaging/hosted_authority_read_regression.py
+  - path: packaging/hosted_read_transport.py
+  - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/acceptance/hostedchange/NativeReadRequest.kt
   - path: packaging/hosted_concurrent_read.py
   - path: packaging/hosted_peer_probe.py
   - path: packaging/hosted_transport_observation.py
@@ -456,5 +459,16 @@ correlated release records before its single health request. Reports retain
 bounded stage/outcome duration and byte totals, first attempts, and finite witness
 failures without source, responses, descriptors, or connection identities. The
 peer checks establish exact rejection shapes and host authority fields; the full
-finite-failure payload/envelope schema matrix and edited/foreign-authority replay
-remain separate qualification requirements.
+hosted socket-envelope schema matrix remains separate from the exact frame checks.
+
+After the base and concurrency reads, an ordinary edit to the private fixture
+passes through native refresh/readiness and a single fresh search must observe
+an increased epoch. Both CLI and provider reject an old symbol reference and a
+fresh anchor paired with the old upstream continuation, then acquire fresh read
+authority. Exact byte restoration repeats readiness and requires another epoch
+increase and fresh acquisition. A separate unenrolled owned root refuses issued
+references and continuations before selecting an alternate IDE; it does not
+qualify two enrolled IDE owners. The receipt retains source digests, epoch
+numbers and finite outcomes without tokens or source. The provider's actual outer
+completed/document envelope is checked with its qualified same-build output
+schema; CLI payloads are checked through the canonical wrapper projection.

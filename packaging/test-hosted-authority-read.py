@@ -2,6 +2,7 @@
 """Deterministic qualification control tests; native epoch movement is a separate gate."""
 from dataclasses import asdict, dataclass, field, replace
 import hashlib
+import io
 import json
 from pathlib import Path
 from types import SimpleNamespace
@@ -10,7 +11,9 @@ import unittest
 from unittest.mock import Mock, patch
 
 from hosted_authority_read_regression import (AuthorityOutcome, AuthorityFailure, AuthorityCaseName,
-    run_authority_read_regression)
+    run_authority_read_regression, _foreign_refusal, AuthorityRejected, ForeignBoundaryRefusal)
+from hosted_read_transport import HostedReadTransport
+from hosted_source_read_regression import SourceFunctionRequest, SymbolAnchor
 
 
 @dataclass(frozen=True)
@@ -43,7 +46,7 @@ class CursorFixture:
 
 @dataclass(frozen=True)
 class CheckpointFixture:
-    continuation: str
+    token: str
     type: str = 'upstream'
 
 
@@ -81,11 +84,24 @@ class RejectionFixture:
     operation: str = 'source.read'
 
 
+@dataclass(frozen=True)
+class ProbeEvidenceFixture:
+    savedSha256: str
+    documentSha256: str
+    documentState: str = 'SAVED_COMMITTED'
+
+
+@dataclass(frozen=True)
+class ProbeReadyFixture:
+    evidence: ProbeEvidenceFixture
+    outcome: str = 'SETUP_READY'
+
+
 class AuthorityReadTest(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        self.root = Path(self.temp.name)
+        self.root = Path(self.temp.name).resolve()
         self.workspace = self.root / 'workspace'
         self.source = self.workspace / 'src/main/kotlin/Fixture.kt'
         self.source.parent.mkdir(parents=True)
@@ -111,7 +127,7 @@ class AuthorityReadTest(unittest.TestCase):
         self.assertEqual(hashlib.sha256(self.source.read_bytes()).hexdigest(), digest)
         self.epoch += 1
         self.transitions.append(self.source.read_bytes())
-        return {'outcome': 'SETUP_READY'}  # Existing probe admits the full typed native response.
+        return asdict(ProbeReadyFixture(ProbeEvidenceFixture(digest, digest)))
 
     def invoke(self, surface, tool, arguments):
         self.calls.append((surface, tool, arguments))
@@ -150,7 +166,8 @@ class AuthorityReadTest(unittest.TestCase):
         self.assertNotIn('cursor-', json.dumps(asdict(report)))
 
     def test_no_epoch_movement_fails_closed_and_still_restores_source(self):
-        self.probe.request.side_effect = lambda *args, **kwargs: {'outcome': 'SETUP_READY'}
+        self.probe.request.side_effect = lambda command, digest, **kwargs: asdict(
+            ProbeReadyFixture(ProbeEvidenceFixture(digest, digest)))
         report = self.run_fixture()
         self.assertEqual(AuthorityOutcome.REJECTED, report.outcome)
         self.assertEqual(AuthorityFailure.EPOCH, report.failure)
@@ -166,6 +183,73 @@ class AuthorityReadTest(unittest.TestCase):
         report = self.run_fixture()
         self.assertEqual(AuthorityFailure.REJECTION, report.failure)
         self.assertEqual(self.original, self.source.read_bytes())
+
+    def test_unexpected_intervening_source_is_not_overwritten_during_restore(self):
+        ready = self.ready
+        def change_source(command, digest, **kwargs):
+            result = ready(command, digest, **kwargs)
+            if self.epoch == 2:
+                self.source.write_bytes(b'class Intervening {}\n')
+            return result
+        self.probe.request.side_effect = change_source
+        report = self.run_fixture()
+        self.assertEqual(AuthorityFailure.RESTORATION, report.failure)
+        self.assertFalse(report.sourceRestored)
+        self.assertEqual(b'class Intervening {}\n', self.source.read_bytes())
+
+    def test_foreign_cli_requires_exact_finite_refusal_and_unchanged_owned_root(self):
+        self.stack[1].stop()
+        fixture = SimpleNamespace(workspace=self.workspace, environment={})
+        transport = SimpleNamespace(product=self.root / 'product', cli_commands={'source_read': ('source', 'read')})
+        request = SourceFunctionRequest(SymbolAnchor('private-issued-reference'))
+        accepted = json.dumps(asdict(ForeignBoundaryRefusal())).encode()
+        with patch('hosted_authority_read_regression.subprocess.run',
+                   return_value=SimpleNamespace(returncode=1, stdout=b'', stderr=accepted)) as execute:
+            _foreign_refusal(transport, fixture, request)
+            self.assertEqual(self.root / 'foreign-read-workspace', execute.call_args.kwargs['cwd'])
+            self.assertEqual(json.loads(json.dumps(asdict(request))), json.loads(execute.call_args.kwargs['input']))
+        for malformed in (b'{"status":"rejected","boundary":"runtime","reason":"unknown"}',
+                          b'{"status":"rejected","boundary":"runtime","reason":"ide-host-unavailable","extra":1}'):
+            with patch('hosted_authority_read_regression.subprocess.run',
+                       return_value=SimpleNamespace(returncode=1, stdout=b'', stderr=malformed)):
+                with self.assertRaises(AuthorityRejected):
+                    _foreign_refusal(transport, fixture, request)
+
+
+@dataclass(frozen=True)
+class ProviderEnvelopeFixture:
+    document: RejectionFixture
+    status: str = 'completed'
+
+
+@dataclass(frozen=True)
+class ProviderResponseFixture:
+    envelope: ProviderEnvelopeFixture
+    success: bool = False
+    kind: str = 'completed'
+
+
+@dataclass(frozen=True)
+class SchemaAdmissionFixture:
+    schemaDigest: str = 'sha256:' + '1' * 64
+    kind: str = 'validation_accepted'
+
+
+class ActualEnvelopeTransportTest(unittest.TestCase):
+    def test_actual_provider_envelope_is_forwarded_to_the_schema_without_rebuilding(self):
+        transport = HostedReadTransport(None, None, None, None, None)
+        transport.provider = SimpleNamespace(stdin=io.BytesIO())
+        expected = ProviderResponseFixture(ProviderEnvelopeFixture(RejectionFixture('stale-generation')))
+        transport._response = Mock(side_effect=(json.dumps(asdict(expected)).encode(),
+            json.dumps(asdict(SchemaAdmissionFixture())).encode()))
+        document, digest = transport.invoke_observed('provider', 'source_read',
+            asdict(SourceFunctionRequest(SymbolAnchor('private-issued-reference'))))
+        requests = [json.loads(line) for line in transport.provider.stdin.getvalue().splitlines()]
+        self.assertEqual('invoke', requests[0]['action'])
+        self.assertEqual('validate_envelope', requests[1]['action'])
+        self.assertEqual(asdict(expected.envelope), requests[1]['envelope'])
+        self.assertEqual(asdict(expected.envelope.document), document)
+        self.assertEqual(SchemaAdmissionFixture().schemaDigest, digest)
 
 
 if __name__ == '__main__':
