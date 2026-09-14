@@ -18,6 +18,7 @@ import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
 import org.jetbrains.kotlin.idea.KotlinFileType
 import org.jetbrains.kotlin.idea.stubindex.KotlinExactPackagesIndex
 import org.jetbrains.kotlin.psi.KtClassOrObject
+import org.jetbrains.kotlin.psi.KtEnumEntry
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtNamedFunction
@@ -192,8 +193,11 @@ private class ScopedKotlinDeclarationVisitor(
     }
 
     private fun visitClass(declaration: KtClassOrObject): Boolean {
-        if (CompilerSymbolKind.CLASSLIKE in kinds && !accept(declaration)) return false
-        if (CompilerSymbolKind.PROPERTY in kinds && !constructorProperties(declaration)) return false
+        // Enum entries inherit KtClassOrObject but are not supported class declarations.
+        if (declaration !is KtEnumEntry) {
+            if (CompilerSymbolKind.CLASSLIKE in kinds && !accept(declaration)) return false
+            if (CompilerSymbolKind.PROPERTY in kinds && !constructorProperties(declaration)) return false
+        }
         // Excluded containers can own eligible members; pruning the container cannot prune its subtree.
         return declaration.declarations.all { it !is KtNamedDeclaration || visit(it) }
     }
