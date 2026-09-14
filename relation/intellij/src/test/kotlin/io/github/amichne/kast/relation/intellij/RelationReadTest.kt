@@ -454,7 +454,7 @@ class RelationReadTest {
 
         collector.beginProviderItem(providerItem("first"))
         assertTrue(collector.accept(fact(request)))
-        collector.beginProviderItem(providerItem("second"))
+        assertEquals(IntellijRelationProviderItemAdmission.HALTED, collector.beginProviderItem(providerItem("second")))
         org.junit.jupiter.api.Assertions.assertFalse(collector.accept(fact(request)))
         val qualified =
             assertInstanceOf(
@@ -549,6 +549,7 @@ class RelationReadTest {
     internal fun request(
         meaning: RelationMeaning,
         resultLimit: Int = 8,
+        workLimit: Long = 32L,
     ): RelationRequest =
         RelationRequest.start(
             selector = selector(),
@@ -557,7 +558,7 @@ class RelationReadTest {
                 RelationBudget(
                     ResourceBudget(
                         ResultLimit.parse(resultLimit).refined(),
-                        WorkUnitLimit.parse(32L).refined(),
+                        WorkUnitLimit.parse(workLimit).refined(),
                         ElapsedTimeLimitMillis.parse(1_000L).refined(),
                     ),
                     RelationByteLimit.parse(100_000L).refined(),
