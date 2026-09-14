@@ -4,8 +4,13 @@ title: Existing-IDE semantic query
 description: An existing IDEA project owns the default seven canonical reads, with bounded live authority and scoped native CLI/provider acceptance.
 resource: file://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted
 tags: [intellij, kotlin, semantic-query, lifecycle]
-timestamp: 2026-09-13T00:00:00Z
+timestamp: 2026-09-14T00:00:00Z
 code_sources:
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadPublicationAdmission.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReadFailureReports.kt
+  - path: workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedContainmentReportTest.kt
+  - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedContainmentBudgetTest.kt
+  - path: cli/src/test/kotlin/io/github/amichne/kast/cli/ide/HostedReportAdmissionTest.kt
   - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedReadAllowanceIdentityTest.kt
   - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedContinuationOwnerRetentionTest.kt
   - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryUnsupportedIdentityTest.kt
@@ -457,8 +462,36 @@ the current hosted grant in operation-owned admitted failure variants. Their
 wire/CLI documents preserve the original finite reason and add a sibling
 `execution_budget`; clearing retained output payload reports cannot erase an
 admitted rejection's proof. Pre-admission rejection documents omit the field.
-This does not yet establish report retention for hard deadlines, encoding errors,
-or transport admission failures, which use separate hosted failure paths.
+The executor also retains an actually admitted report through hard timeout,
+platform/cancellation/lifetime refusal and final freshness rejection. Hosted read
+failure documents preserve the finite cause and stage with that report. Oversized,
+encoding and retention refusals preserve the same report when publishing a read
+outcome fails; their internal semantic evidence remains attached. Rejections
+before semantic admission, including transport admission failure, omit the report.
+No failure path reconstructs a default grant to fill missing evidence.
+
+`max_returned_bytes` bounds canonical semantic output; the operator's
+`HOST_RESPONSE_BYTES` bounds each hosted frame payload, including a terminal
+containment rejection. Neither cap is raised for a failure. Before recording a
+semantic grant or calling its evaluator, publication admission encodes the typed
+containment witnesses with the calculated candidate report and checks that they
+fit the hard frame cap. Runtime admission also checks every finite endpoint
+failure encoding. The freshness witness is checked against every closed freshness
+cause and stage in a focused test. Insufficient capacity returns the existing
+`RESULT_LIMIT_EXCEEDED` without an executed report. Its bounded
+`publication-rejected` diagnostic retains the candidate, distinct from an
+`admitted` observation. A consistent 256-byte host/semantic/source configuration
+proves zero provider calls and a fitting pre-admission rejection; normal capacity
+proves report-bearing publication. This guard does not promise that a semantic
+result, even an empty one, fits a caller's output allowance.
+
+The packaged hosted schemas admit this optional, non-null report from the same
+`ExecutionBudgetReport` descriptor used by canonical reads. The CLI additionally
+decodes it through report refinement, rejecting dimensionally impossible clamping
+as well as unknown or structurally invalid fields. `HostedContainmentReportTest`,
+`HostedContainmentBudgetTest` and `HostedReportAdmissionTest` cover the executor,
+actual encoded failure documents and the external admission boundary. These are
+controlled local checks; installed containment/report qualification is separate.
 
 Execution-limit reports refine positive numeric amounts and validate caller/default selection, effective bounds, and canonical clamping before decoded fields become report evidence. Private construction prevents a report copy from bypassing those relationships.
 

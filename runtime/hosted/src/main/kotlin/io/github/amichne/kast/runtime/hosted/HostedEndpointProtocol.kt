@@ -1,3 +1,5 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
 package io.github.amichne.kast.runtime.hosted
 
 import com.google.gson.JsonObject
@@ -265,10 +267,14 @@ internal object HostedRequests {
             is WireDecoding.Rejected -> Refinement.Rejected(HostedEndpointFailure.INVALID_REQUEST)
         }
 
-    fun rejected(failure: HostedEndpointFailure): String = Json {
+    fun rejected(
+        failure: HostedEndpointFailure,
+        executionBudget: io.github.amichne.kast.protocol.contract.ExecutionBudgetPresence =
+            io.github.amichne.kast.protocol.contract.ExecutionBudgetPresence.Absent,
+    ): String = Json {
         encodeDefaults = true
     }
-        .encodeToString(HostedEndpointRejectionDocument(failure))
+        .encodeToString(HostedEndpointRejectionDocument(failure, executionBudget = executionBudget))
 }
 
 /** Four-byte network-order length followed by bounded strict UTF-8 JSON; no line ambiguity. */
@@ -322,4 +328,8 @@ private const val MAX_HOSTED_ASSERTION_LENGTH = 16384
 private data class HostedEndpointRejectionDocument(
     val failure: HostedEndpointFailure,
     val type: String = "HOST_REJECTED",
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @kotlinx.serialization.SerialName("execution_budget")
+    val executionBudget: io.github.amichne.kast.protocol.contract.ExecutionBudgetPresence =
+        io.github.amichne.kast.protocol.contract.ExecutionBudgetPresence.Absent,
 )

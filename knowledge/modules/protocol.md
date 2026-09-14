@@ -101,3 +101,5 @@ canonical failure, including its admitted wrapper. Wire round trips preserve the
 reason and budget, then CLI projection derives the same action. Installed schemas
 reuse the generated action enum and equal finite-failure evidence definitions to
 retain the unchanged provider qualification byte cap and 4,096-byte headroom.
+
+Hosted endpoint and hosted read rejection schemas admit an optional execution report only when an actual grant exists. The report shape matches the canonical serializer descriptor; CLI admission also checks its semantic dimension and clamping rules. Failure causes and stages retain their existing finite meanings.

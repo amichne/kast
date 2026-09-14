@@ -158,6 +158,9 @@
         },
         "detail": {
           "$ref": "#/$defs/changeFailure"
+        },
+        "execution_budget": {
+          "$ref": "#/$defs/executionBudget"
         }
       },
       "allOf": [
@@ -931,8 +934,8 @@
               "type": "string",
               "enum": [
                 "ADMISSION_CAPACITY_EXCEEDED",
-            "ADMISSION_DEADLINE_EXCEEDED",
-            "INVALID_REQUEST",
+                "ADMISSION_DEADLINE_EXCEEDED",
+                "INVALID_REQUEST",
                 "REQUEST_TOO_LARGE",
                 "REQUEST_INCOMPLETE",
                 "IO_UNAVAILABLE",
@@ -992,6 +995,9 @@
             "APPROVAL_UNAVAILABLE",
             "APPROVAL_REJECTED"
           ]
+        },
+        "execution_budget": {
+          "$ref": "#/$defs/executionBudget"
         }
       }
     },
@@ -1375,6 +1381,238 @@
           "type": "boolean"
         }
       }
+    },
+    "executionBudget": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "max_elapsed_ms": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "selection": {
+              "type": "string",
+              "enum": [
+                "configured_default",
+                "caller"
+              ]
+            },
+            "requested": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "configuredDefault": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "operatorCeiling": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "effective": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "clamping": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "operator_ceiling",
+                  "transport_capacity",
+                  "deadline_remaining"
+                ]
+              }
+            }
+          },
+          "required": [
+            "selection",
+            "requested",
+            "configuredDefault",
+            "operatorCeiling",
+            "effective",
+            "clamping"
+          ]
+        },
+        "max_work_units": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "selection": {
+              "type": "string",
+              "enum": [
+                "configured_default",
+                "caller"
+              ]
+            },
+            "requested": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "configuredDefault": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "operatorCeiling": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "effective": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "clamping": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "operator_ceiling",
+                  "transport_capacity",
+                  "deadline_remaining"
+                ]
+              }
+            }
+          },
+          "required": [
+            "selection",
+            "requested",
+            "configuredDefault",
+            "operatorCeiling",
+            "effective",
+            "clamping"
+          ]
+        },
+        "max_results": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "selection": {
+              "type": "string",
+              "enum": [
+                "configured_default",
+                "caller"
+              ]
+            },
+            "requested": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "configuredDefault": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "operatorCeiling": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "effective": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "clamping": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "operator_ceiling",
+                  "transport_capacity",
+                  "deadline_remaining"
+                ]
+              }
+            }
+          },
+          "required": [
+            "selection",
+            "requested",
+            "configuredDefault",
+            "operatorCeiling",
+            "effective",
+            "clamping"
+          ]
+        },
+        "max_returned_bytes": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "selection": {
+              "type": "string",
+              "enum": [
+                "configured_default",
+                "caller"
+              ]
+            },
+            "requested": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "configuredDefault": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "operatorCeiling": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "effective": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "clamping": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "operator_ceiling",
+                  "transport_capacity",
+                  "deadline_remaining"
+                ]
+              }
+            }
+          },
+          "required": [
+            "selection",
+            "requested",
+            "configuredDefault",
+            "operatorCeiling",
+            "effective",
+            "clamping"
+          ]
+        }
+      },
+      "required": [
+        "max_elapsed_ms",
+        "max_work_units",
+        "max_results",
+        "max_returned_bytes"
+      ]
     }
   }
 }

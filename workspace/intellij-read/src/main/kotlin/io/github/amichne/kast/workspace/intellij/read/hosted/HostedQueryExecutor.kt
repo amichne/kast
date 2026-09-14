@@ -4,6 +4,9 @@ import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.progress.ProcessCanceledException
 import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.ExecutionBudgetPresence
+import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadStage
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadUnexpectedFailure
 import kotlinx.coroutines.CancellationException
@@ -19,12 +22,16 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 
 internal sealed interface HostedExecution<out Value> {
-    data class Completed<Value>(val value: Value, val stage: HostedQueryStage = HostedQueryStage.REQUEST_ADMISSION) :
-        HostedExecution<Value>
+    data class Completed<Value>(
+        val value: Value,
+        val stage: HostedQueryStage = HostedQueryStage.REQUEST_ADMISSION,
+        val executionBudget: ExecutionBudgetPresence = ExecutionBudgetPresence.Absent,
+    ) : HostedExecution<Value>
 
     data class Rejected(
         val failure: HostedQueryFailure,
         val stage: HostedQueryStage = HostedQueryStage.REQUEST_ADMISSION,
+        val executionBudget: ExecutionBudgetPresence = ExecutionBudgetPresence.Absent,
     ) : HostedExecution<Nothing>
 }
 
@@ -45,6 +52,7 @@ internal class HostedQueryExecutor(
         limits: ReadLimits = ReadLimits.Default,
         outcome: (Value) -> HostedDiagnosticOutcome = ::hostedExecutionOutcome,
         executionBudget: HostedExecutionBudgetRequest = HostedExecutionBudgetRequest(),
+        publication: HostedReadPublicationAdmission = HostedReadPublicationAdmission.Containment,
         computation: suspend (HostedQueryProgress) -> Value,
     ): HostedExecution<Value> {
         val permit =
@@ -55,7 +63,7 @@ internal class HostedQueryExecutor(
                     return HostedExecution.Rejected(admission.failure)
                 }
             }
-        val progress = HostedQueryProgress(limits, clock, executionBudget)
+        val progress = HostedQueryProgress(limits, clock, executionBudget, publication)
         val operation = scope.async {
             withTimeout(limits[ReadLimitParameter.HOST_QUERY_MILLIS].value.toLong()) {
                 progress.observe(diagnostics(limits))
@@ -65,15 +73,15 @@ internal class HostedQueryExecutor(
         }
         val result =
             try {
-                HostedExecution.Completed(operation.await(), progress.stage)
+                HostedExecution.Completed(operation.await(), progress.stage, progress.executionBudget)
             } catch (_: TimeoutCancellationException) {
-                HostedExecution.Rejected(HostedQueryFailure.BUDGET_EXCEEDED, progress.stage)
+                HostedExecution.Rejected(HostedQueryFailure.BUDGET_EXCEEDED, progress.stage, progress.executionBudget)
             } catch (_: ReadAction.CannotReadException) {
-                HostedExecution.Rejected(HostedQueryFailure.READ_PREEMPTED, progress.stage)
+                HostedExecution.Rejected(HostedQueryFailure.READ_PREEMPTED, progress.stage, progress.executionBudget)
             } catch (_: ProcessCanceledException) {
-                HostedExecution.Rejected(HostedQueryFailure.CANCELLED, progress.stage)
+                HostedExecution.Rejected(HostedQueryFailure.CANCELLED, progress.stage, progress.executionBudget)
             } catch (_: CancellationException) {
-                HostedExecution.Rejected(HostedQueryFailure.CANCELLED, progress.stage)
+                HostedExecution.Rejected(HostedQueryFailure.CANCELLED, progress.stage, progress.executionBudget)
             } catch (failure: RuntimeException) {
                 progress.observation.unexpected(
                     IntellijReadUnexpectedFailure.capture(IntellijReadStage.HOSTED, failure, limits)
@@ -81,6 +89,7 @@ internal class HostedQueryExecutor(
                 HostedExecution.Rejected(
                     HostedQueryFailure.Platform(HostedPlatformFailureCause.RUNTIME),
                     progress.stage,
+                    progress.executionBudget,
                 )
             } catch (failure: LinkageError) {
                 progress.observation.unexpected(
@@ -89,6 +98,7 @@ internal class HostedQueryExecutor(
                 HostedExecution.Rejected(
                     HostedQueryFailure.Platform(HostedPlatformFailureCause.LINKAGE),
                     progress.stage,
+                    progress.executionBudget,
                 )
             } finally {
                 // Cancellation of the caller must not release admission while its analysis still runs.
@@ -97,7 +107,8 @@ internal class HostedQueryExecutor(
         val final =
             when (val completion = lifetime.complete(permit)) {
                 HostedQueryCompletion.Published -> result
-                is HostedQueryCompletion.Rejected -> HostedExecution.Rejected(completion.failure, progress.stage)
+                is HostedQueryCompletion.Rejected ->
+                    HostedExecution.Rejected(completion.failure, progress.stage, progress.executionBudget)
             }
         // Even a service cancelled before the coroutine starts emits a terminal receipt.
         (progress.diagnostics ?: diagnostics(limits))?.finish(
@@ -136,10 +147,21 @@ internal class HostedQueryProgress(
     val limits: ReadLimits = ReadLimits.Default,
     clock: () -> Long = System::nanoTime,
     executionBudget: HostedExecutionBudgetRequest = HostedExecutionBudgetRequest(),
+    publication: HostedReadPublicationAdmission = HostedReadPublicationAdmission.Containment,
 ) {
-    private val deadline = HostedReadDeadline(limits, clock, executionBudget)
+    private val deadline = HostedReadDeadline(limits, clock, executionBudget, publication)
 
-    fun admitSemanticTime() = deadline.admit(diagnostics)
+    @Volatile
+    var executionBudget: ExecutionBudgetPresence = ExecutionBudgetPresence.Absent
+        private set
+
+    fun admitSemanticTime() =
+        deadline.admit(diagnostics).also { admitted ->
+            if (admitted is Refinement.Refined) {
+                executionBudget =
+                    ExecutionBudgetPresence.Present(ExecutionBudgetReport.from(admitted.value.executionBudget))
+            }
+        }
 
     @Volatile
     var diagnostics: HostedReadDiagnostics? = null

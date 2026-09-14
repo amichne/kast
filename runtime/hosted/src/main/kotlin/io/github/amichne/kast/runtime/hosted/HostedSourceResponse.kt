@@ -17,6 +17,7 @@ import io.github.amichne.kast.protocol.contract.SourceQualifiedProgressDocument
 import io.github.amichne.kast.protocol.contract.SourceReadLimitationDocument
 import io.github.amichne.kast.protocol.contract.SourceReadQualification
 import io.github.amichne.kast.protocol.contract.SourceReadResult
+import io.github.amichne.kast.protocol.contract.budgetPresence
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 
 /** Response fitting retains a detached suffix before publishing a nonempty prefix. */
@@ -26,6 +27,22 @@ internal fun encodeHostedSourceResponse(
     maximumResults: ResultLimit = ResultLimit.parse(limits[ReadLimitParameter.SEMANTIC_RESULTS].value).proven(),
     maximumBytes: ReturnedByteLimit =
         ReturnedByteLimit.parse(limits[ReadLimitParameter.HOST_RESPONSE_BYTES].value.toLong()).proven(),
+    retain: (HostedSourceOutcome) -> HostedOutputRetention,
+): HostedResponse =
+    encodeHostedSourceResponseDocument(semantic, limits, maximumResults, maximumBytes, retain)
+        .withReadBudget(
+            when (semantic) {
+                is OperationOutcome.Complete -> semantic.evidence.payload.executionBudget.presence()
+                is OperationOutcome.Qualified -> semantic.evidence.payload.executionBudget.presence()
+                is OperationOutcome.Rejected -> semantic.reason.budgetPresence()
+            }
+        )
+
+private fun encodeHostedSourceResponseDocument(
+    semantic: HostedSourceOutcome,
+    limits: ReadLimits,
+    maximumResults: ResultLimit,
+    maximumBytes: ReturnedByteLimit,
     retain: (HostedSourceOutcome) -> HostedOutputRetention,
 ): HostedResponse {
     val original =

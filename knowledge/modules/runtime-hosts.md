@@ -4,7 +4,7 @@ title: Runtime and process hosts
 description: The existing IDEA plugin owns semantic execution; CLI and App Server own installation, transport, sessions and approval.
 resource: file://runtime
 tags: [kotlin, runtime, server, indexer, cli]
-timestamp: 2026-09-13T00:00:00Z
+timestamp: 2026-09-14T00:00:00Z
 code_sources:
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryContinuations.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt
@@ -77,3 +77,5 @@ absence provides no readiness proof.
 for the current project read authority. Lookup follows fresh host admission and
 compares the unchanged query and semantic snapshot. Project disposal or epoch
 replacement clears both stores. It cannot restore a foreign or stale authority.
+
+Read containment keeps the admitted execution report when a timeout, final freshness check or publication failure rejects the operation. The executor records the report at semantic admission; failure projection does not reconstruct it from defaults. Pre-admission failures carry no grant. Output fitting retains the original semantic outcome internally when publishing an oversized or unencodable response fails.

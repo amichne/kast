@@ -135,3 +135,5 @@ capacity and cancellation paths also retain typed JSON rejection or cancellation
 data; uncertainty is not converted into success. A supported native desktop
 display receives the same bounded result as structured content. Display parsing
 cannot alter execution authority or the broker's recovery settlement.
+
+An existing-host read failure carries an execution report only after semantic budget admission. Timeout and final revalidation preserve the report together with the finite failure and stage; encoded-output and retention refusal preserve the report at the publication boundary. CLI schema admission then refines the report through the canonical decoder before forwarding the hosted failure document.

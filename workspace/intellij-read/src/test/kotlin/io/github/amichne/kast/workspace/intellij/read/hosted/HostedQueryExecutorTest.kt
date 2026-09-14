@@ -2,6 +2,8 @@
 
 package io.github.amichne.kast.workspace.intellij.read.hosted
 
+import io.github.amichne.kast.protocol.contract.ExecutionBudgetPresence
+import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.async
@@ -17,6 +19,7 @@ import org.junit.jupiter.api.Test
 class HostedQueryExecutorTest {
     @Test
     fun `equal configured deadlines shrink semantic time after capture and retain qualified publication`() = runTest {
+        lateinit var admittedReport: ExecutionBudgetReport
         val limits =
             (io.github.amichne.kast.kernel.ReadLimits.resolve(mapOf("KAST_READ_HOST_QUERY_MILLIS" to "2000"))
                     as io.github.amichne.kast.kernel.Refinement.Refined)
@@ -36,13 +39,18 @@ class HostedQueryExecutorTest {
                 delay(318)
                 runHostedReadTransaction(progress, { io.github.amichne.kast.kernel.Refinement.Refined(Unit) }) {
                     allowance ->
+                    admittedReport = ExecutionBudgetReport.from(allowance.executionBudget)
                     assertEquals(1432, allowance.semantic.value)
                     delay(allowance.semantic.value + 50)
                     42
                 }
             }
         assertEquals(
-            HostedExecution.Completed(HostedSemanticRead.Resolved(42), HostedQueryStage.RESULT_DETACHED),
+            HostedExecution.Completed(
+                HostedSemanticRead.Resolved(42),
+                HostedQueryStage.RESULT_DETACHED,
+                ExecutionBudgetPresence.Present(admittedReport),
+            ),
             result,
         )
         assertEquals(HostedDiagnosticOutcome.Evaluated(HostedEvaluationOutcome.QUALIFIED), receipts.single().outcome)

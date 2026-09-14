@@ -215,12 +215,14 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
                     request.root,
                     outcome = { it.outcome },
                     executionBudget = request.executionBudget(),
+                    publication = hostedReadPublicationAdmission,
                 ) { context ->
                     evaluateHostedCanonicalQuery(project, context, request, continuations)
                 }
         ) {
             is HostedSemanticReadResult.Completed -> result.value
-            is HostedSemanticReadResult.Rejected -> HostedResponse.ReadRejected(result.failure, result.stage)
+            is HostedSemanticReadResult.Rejected ->
+                HostedResponse.ReadRejected(result.failure, result.stage, result.executionBudget)
         }
 
     override fun dispose() {
