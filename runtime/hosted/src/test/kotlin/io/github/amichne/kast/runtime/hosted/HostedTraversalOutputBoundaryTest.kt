@@ -2,7 +2,7 @@ package io.github.amichne.kast.runtime.hosted
 
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.ReadLimitParameter
-import io.github.amichne/kast/kernel.ReadLimits
+import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.ReturnedByteLimit
