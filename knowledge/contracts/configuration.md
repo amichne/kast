@@ -31,7 +31,7 @@ Two checked artifacts enforce the boundary: [configuration-schema.json](../../pa
 
 See [distribution](../modules/distribution.md).
 
-The `KAST_READ_*` declarations retain parameter identity, admitted values and provenance across model/epoch capture, semantic budgets, native collection, source paging, diagnostic scope enumeration, transport and provider execution. [Configuration instructions](../../docs/hosted-read-configuration.md) explain activation and paired bounds. Default request diagnostics include the effective policy.
+The `KAST_READ_*` declarations retain parameter identity, admitted values and provenance across model/epoch capture, semantic budgets, native collection, source paging, diagnostic scope enumeration, transport and provider execution. [Configuration instructions](../../docs/hosted-read-configuration.md) explain activation and paired bounds. Client exchange time strictly exceeds host connection time, and each provider invocation deadline strictly exceeds client exchange time; equality rejects with `InconsistentBounds`. Semantic configuration may equal host query configuration because semantic admission reserves completion time. Default request diagnostics include the effective policy.
 
 `ConfigurationSchemaDocument` defines the shared document. The CLI-owned `InstalledConfigurationSchema` is the sole catalogue generator and includes operational limits from protocol, broker, installation, and CLI owners.
 

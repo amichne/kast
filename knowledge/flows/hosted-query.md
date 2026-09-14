@@ -22,6 +22,8 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/projection/TraversalOutcomeCliDocuments.kt
   - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceEntityPageCollector.kt
   - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceExecution.kt
+  - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceEntityAttempt.kt
+  - path: source/intellij/src/test/kotlin/io/github/amichne/kast/source/intellij/IntellijSourcePageCollectorTest.kt
   - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/NativeSourceSelections.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/SourceProtocolBudget.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceReadOutcomeDocuments.kt
@@ -29,6 +31,7 @@ code_sources:
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ExecutionBudgetDocument.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryResponse.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedExecutionBudgetRequest.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReadBudgetAdmission.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedTransportObservation.kt
   - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmissionTest.kt
@@ -372,6 +375,15 @@ completion reserve precedes the hard deadline. Exhaustion rejects before semanti
 evaluation, while a cooperative time-limited query can publish qualified results
 after freshness revalidation. Receipts distinguish configured limits from effective
 allowances. Work that exceeds the hard deadline still cancels and drains.
+Configuration also requires client exchange time to strictly exceed host connection
+time, and both provider invocation deadlines to strictly exceed client exchange
+time. These outer boundaries retain positive IPC slack even when operators lower
+their settings; semantic/host configuration equality still uses the completion reserve.
+
+Typed request decoding rejects a supplied returned-byte allowance below the wire
+owner's serialized schema/operation identity size before semantic dispatch. This is
+a necessary lower bound, not an exact sufficient envelope size. The original
+encoder still fits bodies, reports and continuations against the admitted allowance.
 
 Hosted query continuation stores retain detached task/output state under an exact
 query and semantic snapshot. Entry, byte, per-checkpoint and lifetime limits are
@@ -424,9 +436,17 @@ Source requests require an explicit resource grant. Hosted source admission reta
 
 Source and traversal result projections preserve their admitted execution report through canonical wire decoding and CLI output. Their complete and qualified envelopes share the same closed installed execution schema. Hosted encoding measures the full response, including this report, against the current grant.
 
+Canonical source, relation, traversal, and query semantic rejections now retain
+the current hosted grant in operation-owned admitted failure variants. Their
+wire/CLI documents preserve the original finite reason and add a sibling
+`execution_budget`; clearing retained output payload reports cannot erase an
+admitted rejection's proof. Pre-admission rejection documents omit the field.
+This does not yet establish report retention for hard deadlines, encoding errors,
+or transport admission failures, which use separate hosted failure paths.
+
 Execution-limit reports refine positive numeric amounts and validate caller/default selection, effective bounds, and canonical clamping before decoded fields become report evidence. Private construction prevents a report copy from bypassing those relationships.
 
-Native source enumeration feeds the existing ordered page owner incrementally. It retains only the selected entity page and one ordering/lookahead witness, discards excluded entities and previously delivered ordinals, and stops provider work at eligible lookahead. The attempt-local collector is recreated on an IntelliJ read restart; only the execution meter survives. Sequence-based fixtures use the same filter, ordering, and page owner, with their explicit fixed stream guard. Native collection uses the admitted caller work/time grant and does not reconstruct that guard.
+Native source enumeration feeds the existing ordered page owner incrementally. It retains only the selected entity page and one ordering/lookahead witness, discards excluded entities and previously delivered ordinals, and stops provider work at eligible lookahead. The production `IntellijSourceEntityAttempt.collect` boundary creates a fresh collector inside each read-action invocation; only the request execution meter survives. Controlled cancellation tests prove that a canceled invocation publishes no page, its facts do not enter the next invocation, and neither work nor elapsed allowance resets. Native IntelliJ retry scheduling remains separate installed evidence. Sequence-based fixtures use the same filter, ordering, and page owner, with their explicit fixed stream guard. Native collection uses the admitted caller work/time grant and does not reconstruct that guard.
 
 Decoded execution reports also retain their dimension rules: elapsed limits admit deadline clamps; result and byte limits admit transport clamps; work limits admit only the operator ceiling. Every result amount remains within the integer domain. Invalid dimension evidence is rejected by the report decoder before a report value is exposed.
 

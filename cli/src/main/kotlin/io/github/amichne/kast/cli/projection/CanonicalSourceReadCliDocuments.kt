@@ -9,18 +9,20 @@ import io.github.amichne.kast.protocol.contract.SourceDeclarationSemanticIdentit
 import io.github.amichne.kast.protocol.contract.SourceEntityDocument
 import io.github.amichne.kast.protocol.contract.SourceEntityTargetDocument
 import io.github.amichne.kast.protocol.contract.SourceReadContinuationStateDocument
+import io.github.amichne.kast.protocol.contract.SourceReadFailure
 import io.github.amichne.kast.protocol.contract.SourceReadQualification
-import io.github.amichne.kast.protocol.contract.SourceReadRejection
 import io.github.amichne.kast.protocol.contract.SourceReadResult
 import io.github.amichne.kast.protocol.contract.SourceRegionDocument
 import io.github.amichne.kast.protocol.contract.SourceSelectionDocument
 import io.github.amichne.kast.protocol.contract.SourceSnapshotDocument
 import io.github.amichne.kast.protocol.contract.SourceTextProjectionDocument
+import io.github.amichne.kast.protocol.contract.budgetPresence
+import io.github.amichne.kast.protocol.contract.reason
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 internal object CanonicalSourceReadCliDocuments {
-    fun project(outcome: OperationOutcome<SourceReadResult, SourceReadQualification, SourceReadRejection>) =
+    fun project(outcome: OperationOutcome<SourceReadResult, SourceReadQualification, SourceReadFailure>) =
         projectClosedOutcome(
             outcome,
             complete = { result ->
@@ -51,7 +53,11 @@ internal object CanonicalSourceReadCliDocuments {
                 )
             },
             rejected = { rejection ->
-                canonicalRejectedDocument(CanonicalOperation.SOURCE_READ, rejection.cliName())
+                canonicalRejectedDocument(
+                    CanonicalOperation.SOURCE_READ,
+                    rejection.reason().cliName(),
+                    rejection.budgetPresence(),
+                )
             },
         )
 }

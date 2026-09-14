@@ -124,6 +124,11 @@ a rejected reference is never refreshed by spelling or converted to success.
 
 Installed source, relation, and traversal rejection schemas enumerate their canonical finite reasons. Wire decode and CLI projection preserve each reason; an unknown rejection string is incompatible with the installed tool envelope.
 
+All four read output schemas separately admit rejected outcomes with a required,
+nonnull `execution_budget` report. The existing reason string or query rejection
+object retains its shape. An omitted report describes an unadmitted rejection;
+an explicit null does not satisfy either schema variant.
+
 Source output derives cursor availability from required qualified progress.
 `upstream` checkpoints resume the native source page owner; `retained_output`
 checkpoints drain detached entities while preserving original upstream coverage.

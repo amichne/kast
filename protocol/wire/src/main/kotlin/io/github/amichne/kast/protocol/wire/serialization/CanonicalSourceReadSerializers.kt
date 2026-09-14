@@ -14,9 +14,9 @@ import io.github.amichne.kast.protocol.contract.SourceEntityLimitDocument
 import io.github.amichne.kast.protocol.contract.SourceEntityTargetDocument
 import io.github.amichne.kast.protocol.contract.SourceLengthDocument
 import io.github.amichne.kast.protocol.contract.SourceNestingDepthDocument
+import io.github.amichne.kast.protocol.contract.SourceReadFailure
 import io.github.amichne.kast.protocol.contract.SourceReadLimitationDocument
 import io.github.amichne.kast.protocol.contract.SourceReadQualification
-import io.github.amichne.kast.protocol.contract.SourceReadRejection
 import io.github.amichne.kast.protocol.contract.SourceReadRequest
 import io.github.amichne.kast.protocol.contract.SourceReadResult
 import io.github.amichne.kast.protocol.contract.SourceRegionDocument
@@ -29,6 +29,7 @@ import io.github.amichne.kast.protocol.contract.SourceTextByteLimitDocument
 import io.github.amichne.kast.protocol.contract.SourceTextProjectionDocument
 import io.github.amichne.kast.protocol.contract.SourceTextWithheldReasonDocument
 import io.github.amichne.kast.protocol.contract.SourceUnresolvedReasonDocument
+import io.github.amichne.kast.protocol.contract.reason
 
 internal object CanonicalSourceReadSerializers {
     private val factory = GeneratedWireCodecFactory(wireJson)
@@ -46,10 +47,10 @@ internal object CanonicalSourceReadSerializers {
             SourceReadQualification::toWireDocument,
             SourceReadQualificationWireDocument::toContract,
         )
-    val rejection =
+    val rejection: WireValueCodec<SourceReadFailure> =
         factory.create(
             SourceReadRejectionWireDocument.serializer(),
-            SourceReadRejection::toWireDocument,
+            { value: SourceReadFailure -> value.reason().toWireDocument() },
             { WireDocumentConversion.Converted(it.toContract()) },
         )
 }

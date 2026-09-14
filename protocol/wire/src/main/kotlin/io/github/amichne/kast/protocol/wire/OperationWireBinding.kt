@@ -74,6 +74,10 @@ internal constructor(
     val schema: SchemaIdentity
         get() = definition.schema
 
+    val minimumResponseBytes: WireResponseByteMinimum by lazy {
+        WireResponseByteMinimum.forOperation(schema, operation)
+    }
+
     fun encodeRequest(request: Request): WireEncoding =
         when (val encoded = serializers.request.encode(request, WireValueRole.REQUEST)) {
             is WireValueEncoding.Encoded -> encodeEnvelope(WireBodyDocument.Request(encoded.value))
@@ -201,7 +205,8 @@ internal constructor(
 
     private fun encodeRejected(rejection: Rejection): WireEncoding =
         when (val encoded = serializers.rejection.encode(rejection, WireValueRole.REJECTION)) {
-            is WireValueEncoding.Encoded -> encodeEnvelope(WireBodyDocument.Rejected(encoded.value))
+            is WireValueEncoding.Encoded ->
+                encodeEnvelope(WireBodyDocument.Rejected(encoded.value, serializers.rejectionBudget.project(rejection)))
             is WireValueEncoding.Rejected -> WireEncoding.Rejected(encoded.failure)
         }
 
@@ -237,7 +242,18 @@ internal constructor(
         body: WireBodyDocument.Rejected
     ): WireDecoding<OperationOutcome<Result, Qualification, Rejection>> =
         when (val rejection = serializers.rejection.decode(body.rejection, WireValueRole.REJECTION)) {
-            is WireDecoding.Decoded -> WireDecoding.Decoded(OperationOutcome.Rejected(rejection.value))
+            is WireDecoding.Decoded ->
+                when (val budget = body.executionBudget) {
+                    io.github.amichne.kast.protocol.contract.ExecutionBudgetPresence.Absent ->
+                        WireDecoding.Decoded(OperationOutcome.Rejected(rejection.value))
+                    is io.github.amichne.kast.protocol.contract.ExecutionBudgetPresence.Present ->
+                        when (val admitted = serializers.rejectionBudget.admit(rejection.value, budget.report)) {
+                            is WireDocumentConversion.Converted ->
+                                WireDecoding.Decoded(OperationOutcome.Rejected(admitted.value))
+                            WireDocumentConversion.Rejected ->
+                                WireDecoding.Rejected(WireFailure.InvalidPayload(WireValueRole.REJECTION))
+                        }
+                }
             is WireDecoding.Rejected -> rejection
         }
 

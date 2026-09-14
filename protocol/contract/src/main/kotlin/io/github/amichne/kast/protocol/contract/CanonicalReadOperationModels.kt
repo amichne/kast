@@ -371,7 +371,7 @@ private const val RELATION_CONTINUATION_TOKEN_FAMILY = "relation-continuation"
 private const val RELATION_CONTINUATION_TOKEN_VERSION = "v1"
 private const val RELATION_CONTINUATION_TOKEN_PART_COUNT = 4
 
-enum class RelationReadRejection : OperationRejection {
+enum class RelationReadRejection : RelationReadFailure {
     WORKSPACE_NOT_READY,
     SELECTOR_WRONG_KIND,
     SELECTOR_MALFORMED,
@@ -426,7 +426,7 @@ data class TraversalRecordDocument(
     val relation: RelationFactDocument,
 )
 
-enum class TraversalRunRejection : OperationRejection {
+enum class TraversalRunRejection : TraversalRunFailure {
     CONTINUATION_UNAVAILABLE,
     CONTINUATION_REQUEST_MISMATCH,
     WORKSPACE_NOT_READY,

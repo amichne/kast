@@ -9,7 +9,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 internal object CanonicalQueryCliDocuments {
-    fun project(outcome: OperationOutcome<QueryRunResult, QueryRunQualification, QueryRunRejection>) =
+    fun project(outcome: OperationOutcome<QueryRunResult, QueryRunQualification, QueryRunFailure>) =
         projectClosedOutcome(
             outcome,
             complete = { result ->
@@ -46,7 +46,8 @@ internal object CanonicalQueryCliDocuments {
                     QueryRejectedCliDocument(
                         CanonicalOperation.QUERY_RUN.id.value,
                         "rejected",
-                        rejection.toCliDocument(),
+                        rejection.reason().toCliDocument(),
+                        rejection.budgetPresence(),
                     )
                 )
             },
@@ -83,6 +84,9 @@ private data class QueryRejectedCliDocument(
     val operation: String,
     val status: String,
     val rejection: QueryRejectionCliDocument,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @SerialName("execution_budget")
+    val executionBudget: ExecutionBudgetPresence = ExecutionBudgetPresence.Absent,
 )
 
 @Serializable

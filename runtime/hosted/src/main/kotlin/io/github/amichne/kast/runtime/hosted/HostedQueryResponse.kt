@@ -7,6 +7,7 @@ import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.ReturnedByteLimit
+import io.github.amichne.kast.protocol.contract.AdmittedQueryRunRejection
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryCheckpointDocument
@@ -17,6 +18,7 @@ import io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument
 import io.github.amichne.kast.protocol.contract.QueryRunQualification
 import io.github.amichne.kast.protocol.contract.QueryRunResult
 import io.github.amichne.kast.protocol.contract.ReadResumeActionDocument
+import io.github.amichne.kast.protocol.contract.reason
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
@@ -172,5 +174,6 @@ internal fun HostedQueryOutcome.withQueryBudget(
                 evidence.copy(payload = evidence.payload.copy(executionBudget = report)),
                 qualification,
             )
-        is OperationOutcome.Rejected -> this
+        is OperationOutcome.Rejected ->
+            if (report == null) this else OperationOutcome.Rejected(AdmittedQueryRunRejection(reason.reason(), report))
     }

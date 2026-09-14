@@ -18,6 +18,7 @@ code_sources:
     symbols: [OperationWireTable]
   - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/OperationWireBinding.kt
   - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/WireEnvelope.kt
+  - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/WireResponseByteMinimum.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalSourceReadOperationModels.kt
   - path: protocol/contract/src/main/resources/ide-hosted/hosted-endpoint.schema.json
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt
@@ -40,6 +41,11 @@ Protocol has three layers:
 3. `protocol:wire` requires exactly one serializer binding per canonical operation and projects canonical documents.
 
 Unknown identities remain explicit unknown results; neither registry nor wire construction manufactures authority for them. See [operation registry](../contracts/operation-registry.md) for the exact completeness invariant.
+
+Each wire binding derives a necessary response-byte minimum from its serialized
+schema and operation identity. Hosted request admission rejects caller allowances
+below that bound before semantic dispatch. Bodies, reports and continuations remain
+subject to full envelope fitting; the identity bound does not promise they will fit.
 
 Semantic-read admission and projection live in the separate
 [`query:protocol` module](query-protocol.md). Hosts supply current authority and
@@ -64,8 +70,11 @@ Qualified effects retain their finite reason and exact plan identity.
 Hosted rejection schemas retain their transitive definitions when embedded in
 installed output schemas, preserving bounded module/root evidence for selected-build
 source-scope failures.
-Installed output schemas reuse equal compiler-signature, receiver, source-range
-and traversal-qualification definitions through local references. The complete CLI schema regression reserves
+Installed output schemas reuse equal compiler-signature, receiver, source-range,
+source/relation/traversal qualification, rejection-reason, and execution-budget
+definitions through local references. Admitted failures in the four canonical
+reads preserve a required report alongside their existing finite reason; wire
+decoding distinguishes missing metadata from invalid or null reports. The complete CLI schema regression reserves
 4,096 bytes below the 524,288-byte qualification cap, which counts both stdout and
 stderr from the process. Hosted read admission now also has a closed
 `CONFIGURATION_REJECTED` outcome; canonical semantic outcome schemas retain their existing identities. Schema compatibility and native execution remain
