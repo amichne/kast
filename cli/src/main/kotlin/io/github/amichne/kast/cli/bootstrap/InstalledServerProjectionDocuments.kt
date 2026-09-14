@@ -826,7 +826,15 @@ private fun queryRejectionSchema(): JsonObject =
             ServerSchemaProperty(
                 "reason",
                 enumSchema(
-                    listOf("wrong-kind", "malformed", "incompatible-workspace", "stale-generation"),
+                    listOf(
+                        "wrong-kind",
+                        "malformed",
+                        "incompatible-workspace",
+                        "stale-generation",
+                        "stale-authority",
+                        "incompatible-authority",
+                        "incompatible-reference-version",
+                    ),
                     "Exact reference rejection reason.",
                 ),
             ),
