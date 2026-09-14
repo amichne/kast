@@ -57,6 +57,23 @@ import org.junit.jupiter.api.Test
 
 class RelationReadTest {
     @Test
+    fun `pagination retains earlier provider coverage loss after the result limit clears`() {
+        val initial = request(RelationMeaning.References)
+        val first = IntellijRelationCollector(initial, { 0L })
+        first.beginProviderItem(providerItem("unsupported"))
+        first.examineIncomplete(RelationLimitation.UNSUPPORTED_ITEM)
+        val page = assertInstanceOf(RelationCompilation.Qualified::class.java,
+            first.finish(IntellijRelationTermination.Resumable(setOf(RelationLimitation.RESULT_LIMIT_REACHED))))
+        val continuation = assertInstanceOf(io.github.amichne.kast.relation.contract.RelationIncompleteCoverage.Resumable::class.java, page.coverage).continuation
+        val resumed = RelationRequest.resume((initial.subject as RelationEndpoint.Subject).selector, initial.meaning, initial.budget, continuation).refined()
+        val last = IntellijRelationCollector(resumed, { 0L })
+        last.beginProviderItem(providerItem("unsupported"))
+        val result = assertInstanceOf(RelationCompilation.Qualified::class.java, last.finish(IntellijRelationTermination.Terminal))
+        assertEquals(setOf(RelationLimitation.UNSUPPORTED_ITEM), result.coverage.limitations)
+        assertInstanceOf(io.github.amichne.kast.relation.contract.RelationIncompleteCoverage.TerminalIncomplete::class.java, result.coverage)
+    }
+
+    @Test
     fun `deadline before first committed item reports a terminal provider stall`() {
         val request = request(RelationMeaning.Callees)
         var now = 0L
