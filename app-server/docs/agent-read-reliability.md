@@ -432,3 +432,59 @@ identified seven concepts requiring review: passing the structural validator doe
 not establish that their traversal claims have been refreshed. No check threshold,
 schema allowance, freshness rule, or release requirement was waived. Traversal
 continuation/schema/native coverage and the remaining R1–R8 matrix are still open.
+
+## AR delivery and same-revision qualification
+
+The user authorized incremental patch delivery after the audit. The earlier
+stack is integrated through #752; the original #735/#748/#749 branches are
+historical implementation evidence, not additional changes to merge again.
+AR-01 is closed by v0.40.4. v0.40.5 adds the AR-02 traversal characterization
+slice; full AR-02 acceptance still requires the expanded installed matrix.
+
+| Patch | Source revision | Delivered section | Verification |
+| --- | --- | --- | --- |
+| [v0.40.1](https://github.com/amichne/kast/releases/tag/v0.40.1) | `cc698c2352a3c3afb44ebcdd758f025be6ef514a` | Query reference-rejection schema parity | Released executable/catalog and all assets/checksums verified. |
+| [v0.40.2](https://github.com/amichne/kast/releases/tag/v0.40.2) | `8c656114c3371df1e458d3280053d0d3e2d5c427` | Closed source/relation/traversal reason schemas | Released executable/catalog and all assets/checksums verified. |
+| [v0.40.3](https://github.com/amichne/kast/releases/tag/v0.40.3) | `f62748b43c6b631d99465e10c496046c73118d18` | Enum exclusion and compiler-owned enum-body member identity | 126 native reads and existing mutation/recovery matrix; released assets verified. |
+| [v0.40.4](https://github.com/amichne/kast/releases/tag/v0.40.4) | `6f65e16dead408e6aff2a062573d108cbfa36d6c` | AR-01 deterministic checkpoint repair and existing reliability stack | [Exact-head product CI](https://github.com/amichne/kast/actions/runs/34892753666); [exact-main release build](https://github.com/amichne/kast/actions/runs/34894362353). All ten assets, five checksum files, version/catalog and installer dry-run verified. |
+| [v0.40.5](https://github.com/amichne/kast/releases/tag/v0.40.5) | `2c57af5cfc7a1123f76a46c21a00f94cc213baad` | AR-02 traversal fitting/replay/store/schema tests | [Exact-head product CI](https://github.com/amichne/kast/actions/runs/34894610344); [exact-main release build](https://github.com/amichne/kast/actions/runs/34895664261). All ten assets, five checksum files, version/catalog and installer dry-run verified. |
+
+The v0.40.4/v0.40.5 released catalog is 518810 bytes, SHA-256
+`1891349dff8fa967db9c85ccde4ff7407d9b83070c39154a7aac1fe4861e1972`.
+Independent released-schema checks accept seven query reference reasons,
+nineteen source reasons, fourteen relation reasons and fourteen traversal
+reasons; unknown reasons reject. The 520192-byte allowance and 4096-byte
+reserved headroom remain unchanged.
+
+### R1–R7 closure ledger
+
+These rows separate executable implementation evidence from pending qualification.
+A row remains open until its applicable installed and product evidence is bound
+to one clean integration revision. Historical green runs do not close it.
+
+| Gate | Current implementation and focused evidence | Installed fixture/command | State and remaining evidence |
+| --- | --- | --- | --- |
+| R1 — transport | `HostedConnectionAdmissionTest`, `HostedEndpointTransportTest`, correlated `CONNECTION_RELEASE` after permit cleanup | `hostedChangeAcceptance`: 156 first attempts, blocked/disconnected/malformed peers, saturation, drain and one health request | Expanded current-source native run pending. No serial retries or altered semantic/mutation serialization. |
+| R2 — failure/schema parity | `ReadRejectionSchemaParityTest`, `AdmittedReadRejectionSchemaTest`, `NativeReadValidationTest`; actual provider envelope schema validation | Same-build CLI/provider schemas plus ordinary-edit stale references/cursors and foreign-root refusal | Expanded native run pending. Foreign-root case refuses an unenrolled workspace; it does not claim two enrolled IDE owners. |
+| R3 — budgets/deadlines | `HostedBudgetDimensionTest`, `HostedDeadlineEvidenceTest`, `ReadDeadlineOrderingTest`; one admitted grant and finite post-admission failures | `hosted_budget_read_regression.py`: all four axes on four reads and all three search conveniences | Impossible-byte pre-dispatch and outer malformed-budget admission evidence still being completed. |
+| R4 — cooperative progress | `QueryWorkAdmissionTest`, `RelationTimeAdmissionTest`, `IntellijSourcePageCollectorTest`, traversal fitting/replay tests | Low-page/high-grant reference comparisons on one unchanged fixture | Native comparison pending. Source cancellation proof exercises the production attempt owner and shared meter; it does not claim control of IntelliJ retry scheduling. |
+| R5 — completion/recovery | Closed query/source/traversal progress, explicit relation checkpoint/action, retained original coverage and omissions | Wire/CLI/schema variants plus installed page drains | Explicit finite recovery actions on rejected reads are being completed. |
+| R6 — continuation identity/retention | `QueryCheckpointReplayTest`, `HostedReadAllowanceIdentityTest`, `HostedContinuationOwnerRetentionTest`, source/relation/traversal replay and TTL tests | `hosted_resume_budget_regression.py` plus traversal parity/replay | Native four-axis comparisons pending. Five separately bounded stores, distinct source TTL policy, and no expiry renewal remain unchanged. |
+| R7 — cheap eligibility | Source deferred declaration-kind projection; enum exclusion/member reuse; excluded-kind tests and shared structural fixture | Existing enum exact/fuzzy/scoped/member cases and source paging in `hostedChangeAcceptance` | Current-source native regression pending; v0.40.3 native evidence remains historical. |
+
+Knowledge impact was recomputed against audited `8c2b16ccb`, using the actual
+changed paths. Ten concepts are affected: configuration, operation outcomes,
+public tools, hosted query, semantic query, distribution, protocol, query
+protocol, runtime hosts and semantic reads. Their source claims were reviewed;
+structural OKF validation is separate evidence. Eighteen navigation locations
+were reviewed: fifteen generated maps and three preserved authored guides.
+Newly changed immediate files require their affected map hashes to be refreshed
+again before final qualification.
+
+Final AR-08 verification uses `.github/scripts/ci/verify-checks.py`,
+`knowledgeImpact`, `verifyKnowledgeBase`, and expanded `hostedChangeAcceptance`
+on one clean revision with pinned IDEA 262.10315.125 and JDK 25. Reports must bind
+source, fixture/configuration/catalog identities, plugin/product/harness hashes,
+and the external Codex-schema identity. Stock Codex UI remains explicitly
+unqualified; CLI/provider evidence is not UI evidence. AR-09 naming migration
+remains gated on this ledger closing R1–R7.
