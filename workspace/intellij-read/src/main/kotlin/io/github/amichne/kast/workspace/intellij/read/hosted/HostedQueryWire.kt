@@ -65,6 +65,7 @@ object HostedQueryWire {
                         failure = result.failure.code(),
                         detail = result.failure.detail(),
                         stage = result.stage.name,
+                        recovery = result.failure.recovery(),
                     )
                 )
             is HostedQueryResult.Published ->
@@ -92,11 +93,12 @@ object HostedQueryWire {
 }
 
 @Serializable
-internal data class HostedQueryRejectionDocument(
+data class HostedQueryRejectionDocument(
     val failure: String,
     /** The schema-defined diagnostic union is a string, typed object, or finite enum list. */
     val detail: JsonElement,
     val stage: String,
+    val recovery: HostedReadRecovery,
     val schemaVersion: Int = 1,
     val outcome: String = "rejected",
 )

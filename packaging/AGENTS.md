@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-12 | hash: 91aef654ec89 -->
+<!-- generated: 2026-09-14 | hash: 9f7ea9e03b18 -->
 
 # packaging
 
@@ -9,6 +9,7 @@ Implements installer support, installed-product acceptance, configuration ingres
 
 ## Key Files
 
+- [hosted_change_acceptance.py](hosted_change_acceptance.py) - bounded complete artifact inventory admission and native acceptance evidence.
 - [configuration-schema.json](configuration-schema.json) - packaging-side configuration schema.
 - [installation-lifecycle.py](installation-lifecycle.py) - installed lifecycle orchestration.
 - [installed_acceptance_product.py](installed_acceptance_product.py) - acceptance product model.
@@ -18,7 +19,9 @@ Implements installer support, installed-product acceptance, configuration ingres
 - [test-installed-product.sh](test-installed-product.sh) - installed product and local knowledge acceptance entry.
 - [run-hosted-change-acceptance.py](run-hosted-change-acceptance.py) - staged broker, CLI, and plugin change workflow in a private native IDE.
 - [hosted_read_regression.py](hosted_read_regression.py) - native CLI/provider read regression and bounded continuation checks.
+- [hosted_read_requests.py](hosted_read_requests.py) - typed traversal fixture requests with explicit strategy and retained resume position.
 - [native_fixture_probe.py](native_fixture_probe.py) - typed native fixture control responses and readiness evidence admission.
+- [native_provider_qualification.py](native_provider_qualification.py) - closed, payload-free provider startup evidence retained by native read reports.
 
 ## Subdirectories
 
@@ -37,3 +40,4 @@ Implements installer support, installed-product acceptance, configuration ingres
 - For a packaging failure, start with the failing test, then the corresponding lifecycle/environment module.
 - Cross-check owned paths and configuration meaning against `distribution` contracts.
 - For fixture control or readiness failures, pair `native_fixture_probe.py` with the [isolated probe source](../change/intellij/src/nativeFixture) and its [contract tests](../change/intellij/src/nativeFixtureTest).
+- For provider startup rejection, inspect `providerQualification` in the native report; `hosted_read_transport.py` admits the bounded startup handshake before tool calls.

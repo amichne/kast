@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-12 | hash: 00f827a33b82 -->
+<!-- generated: 2026-09-14 | hash: c25f787b9630 -->
 
 # workspace
 
@@ -9,6 +9,8 @@ Defines canonical workspace identity and read evidence, and admits bounded seman
 
 ## Key Files
 
+- [HostedReadinessDocument.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadinessDocument.kt) - passive fresh model admission status.
+- [HostedReadRecovery.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadRecovery.kt) - closed recovery prerequisites and actions.
 - [CanonicalSemanticProjectRoot.kt](contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/CanonicalSemanticProjectRoot.kt) - canonical root identity.
 - [HostedQueryExecutor.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt) - bounded read execution and outcome observation.
 - [HostedReadTransaction.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadTransaction.kt) - freshness admission and revalidation.

@@ -63,6 +63,13 @@ value class TraversalFrontierLimit private constructor(val value: Int) {
     }
 }
 
+/** Explicit exploration policy. A fan-out cap preserves representative deeper paths with qualified coverage. */
+sealed interface TraversalStrategy {
+    data object BreadthFirst : TraversalStrategy
+
+    data class BoundedFanOut(val maximumEdgesPerNode: ResultLimit) : TraversalStrategy
+}
+
 data class TraversalBudget(
     val records: ResultLimit,
     val returnedBytes: TraversalByteLimit,
@@ -113,6 +120,7 @@ private constructor(
     val budget: TraversalBudget,
     val position: TraversalPosition,
     val identity: TraversalIdentityFingerprint,
+    val strategy: TraversalStrategy,
 ) {
     val scope: SymbolSearchScope = start.scope
 
@@ -129,12 +137,14 @@ private constructor(
             selector: SymbolSelector,
             meaning: RelationMeaning,
             budget: TraversalBudget,
+            strategy: TraversalStrategy = TraversalStrategy.BreadthFirst,
         ): Refinement<TraversalPlan, TraversalPlanFailure> =
             admit(
                 selector,
                 meaning,
                 budget,
                 TraversalPosition.Start,
+                strategy,
             )
 
         /**
@@ -150,8 +160,9 @@ private constructor(
             meaning: RelationMeaning,
             budget: TraversalBudget,
             continuation: TraversalContinuation,
+            strategy: TraversalStrategy = continuation.strategy,
         ): Refinement<TraversalPlan, TraversalPlanResumeFailure> {
-            val identity = traversalIdentity(selector, meaning)
+            val identity = traversalIdentity(selector, meaning, budget, strategy)
             val resumeFailure =
                 when {
                     selector.lease != continuation.start.lease -> TraversalResumeFailure.GENERATION_MISMATCH
@@ -173,6 +184,7 @@ private constructor(
                         meaning,
                         budget,
                         TraversalPosition.Resume(continuation),
+                        strategy,
                     )
             ) {
                 is Refinement.Refined -> Refinement.Refined(admitted.value)
@@ -192,6 +204,7 @@ private constructor(
             meaning: RelationMeaning,
             budget: TraversalBudget,
             position: TraversalPosition,
+            strategy: TraversalStrategy,
         ): Refinement<TraversalPlan, TraversalPlanFailure> =
             when {
                 budget.oneHop.resources.resultLimit.value > budget.records.value ->
@@ -209,7 +222,8 @@ private constructor(
                             meaning,
                             budget,
                             position,
-                            traversalIdentity(selector, meaning),
+                            traversalIdentity(selector, meaning, budget, strategy),
+                            strategy,
                         )
                     )
             }
@@ -225,10 +239,20 @@ sealed interface TraversalPlanResumeFailure {
 private fun traversalIdentity(
     selector: SymbolSelector,
     meaning: RelationMeaning,
+    budget: TraversalBudget,
+    strategy: TraversalStrategy,
 ): TraversalIdentityFingerprint {
     val canonical = buildString {
         appendTraversalField(selector.fingerprint.value)
         appendTraversalField(meaning.canonicalName())
+        appendTraversalField(budget.depth.value.toString())
+        when (strategy) {
+            TraversalStrategy.BreadthFirst -> appendTraversalField("breadth-first")
+            is TraversalStrategy.BoundedFanOut -> {
+                appendTraversalField("bounded-fan-out")
+                appendTraversalField(strategy.maximumEdgesPerNode.value.toString())
+            }
+        }
     }
     val digest = MessageDigest.getInstance("SHA-256").digest(canonical.toByteArray(StandardCharsets.UTF_8))
     return TraversalIdentityFingerprint(

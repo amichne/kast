@@ -56,6 +56,10 @@ All values are positive decimal integers, up to 2,147,483,646. Transport and pro
 | `SEMANTIC_WORK` | 100,000 | count |
 | `SEMANTIC_RESULTS` | 128 | count |
 | `SEMANTIC_RETURNED_BYTES` | 49,152 | bytes |
+| `QUERY_CHECKPOINT_BYTES` | 8,388,608 | bytes |
+| `QUERY_CONTINUATION_ENTRIES` | 64 | count |
+| `QUERY_CONTINUATION_BYTES` | 33,554,432 | bytes |
+| `QUERY_CONTINUATION_TTL_MILLIS` | 600,000 | milliseconds |
 | `DISCOVERY_NAMES` | 10,000 | count |
 | `DISCOVERY_CANDIDATES` | 10,000 | count |
 | `RELATION_CANDIDATES` | 10,000 | count |
@@ -141,3 +145,5 @@ The final query response guard measures actual encoded bytes. Oversized positive
 results retain a qualified prefix, the original proven minimum, every item
 failure, and existing limitations plus `BYTE_LIMIT_REACHED`. If the mandatory
 evidence cannot fit, the response stays rejected.
+
+Query continuations retain detached pipeline state and encoded-output suffixes in bounded project-owned stores. Each store applies the continuation entry, byte, and TTL limits. A checkpoint must fit `QUERY_CHECKPOINT_BYTES`, which cannot exceed `QUERY_CONTINUATION_BYTES`. Epoch movement and project disposal clear retained state; expired or evicted handles return `continuation-unavailable`. Returned-byte authority covers final items and failures, independently of bounded child-read bytes.

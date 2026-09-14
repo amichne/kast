@@ -82,6 +82,7 @@ internal data class PublicQueryDocument(
     val from: PublicQuerySource,
     val steps: BoundedProtocolList<PublicQueryStep> = queryListOf(),
     val select: BoundedProtocolList<PublicQueryField> = queryListOf(PublicQueryField.NAME, PublicQueryField.LOCATION),
+    val continuation: ProtocolText? = null,
 )
 
 @Serializable(with = PublicQueryScopeSerializer::class)

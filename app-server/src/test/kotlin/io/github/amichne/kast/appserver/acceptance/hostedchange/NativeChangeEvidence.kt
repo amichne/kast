@@ -13,6 +13,8 @@ import java.nio.file.attribute.PosixFilePermissions
 import java.security.MessageDigest
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlinx.coroutines.channels.Channel
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
@@ -128,6 +130,12 @@ internal class NativeProcessTrace(private val privateDirectory: Path) : BrokerPr
 internal class NativeChangeEvidence(private val report: Path) {
     private val cases = linkedMapOf<String, JsonObject>()
     private var metadata = buildJsonObject {}
+    private var providerQualification: NativeProviderQualificationObservation? = null
+
+    fun providerQualification(observation: NativeProviderQualificationObservation) {
+        providerQualification = observation
+        persist()
+    }
 
     fun metadata(value: JsonObject) {
         metadata = value
@@ -183,11 +191,20 @@ internal class NativeChangeEvidence(private val report: Path) {
     private fun persist() =
         privateWrite(
             report,
-            buildJsonObject {
-                put("schemaVersion", 1)
-                put("metadata", metadata)
-                put("cases", JsonObject(cases))
-            }
-                .toString(),
+            nativeChangeReportJson.encodeToString(NativeChangeReportDocument(metadata, cases, providerQualification)),
         )
+}
+
+/** Metadata and named case evidence are existing dynamic report fields; qualification remains a closed DTO. */
+@Serializable
+private data class NativeChangeReportDocument(
+    val metadata: JsonObject,
+    val cases: Map<String, JsonObject>,
+    val providerQualification: NativeProviderQualificationObservation?,
+    val schemaVersion: Int = 1,
+)
+
+private val nativeChangeReportJson = Json {
+    classDiscriminator = "outcome"
+    encodeDefaults = true
 }

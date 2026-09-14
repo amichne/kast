@@ -3,18 +3,6 @@ package io.github.amichne.kast.query.protocol
 import io.github.amichne.kast.kernel.*
 import io.github.amichne.kast.protocol.contract.*
 import io.github.amichne.kast.query.contract.*
-import io.github.amichne.kast.relation.contract.RelationMeaning
-import io.github.amichne.kast.source.contract.DeclarationVisibility
-import io.github.amichne.kast.symbol.contract.CandidateSelector
-import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryContainment
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryDirectory
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryDirectoryConstraint
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryMatch
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPackage
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPackageConstraint
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPattern
-import io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceSets
 import io.github.amichne.kast.symbol.contract.SymbolExactRejection
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.workspace.contract.*
@@ -23,18 +11,46 @@ import io.github.amichne.kast.workspace.contract.*
 class CanonicalQueryProtocol(
     private val operations: QueryOperations,
     private val authority: QueryReferenceAuthority,
+    private val checkpoints: QueryCheckpointStore = QueryCheckpointStore(),
 ) {
     suspend fun execute(
         request: QueryRunRequest,
         lease: SemanticReadAuthority,
         budget: QueryBudget,
     ): OperationOutcome<QueryRunResult, QueryRunQualification, QueryRunRejection> {
+        val continuationToken = request.continuation
+        val checkpoint =
+            if (continuationToken == null) null
+            else {
+                when (val restored = checkpoints.restore(continuationToken, request, lease)) {
+                    is QueryCheckpointRestoration.Restored -> restored.checkpoint
+                    QueryCheckpointRestoration.Unavailable ->
+                        return OperationOutcome.Rejected(
+                            QueryRunRejection.ExecutionRejected(
+                                QueryExecutionRejectionDocument.CONTINUATION_UNAVAILABLE
+                            )
+                        )
+                    QueryCheckpointRestoration.Mismatch ->
+                        return OperationOutcome.Rejected(
+                            QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.CONTINUATION_MISMATCH)
+                        )
+                }
+            }
+        return executeAdmitted(request = request, lease = lease, budget = budget, checkpoint = checkpoint)
+    }
+
+    private suspend fun executeAdmitted(
+        request: QueryRunRequest,
+        lease: SemanticReadAuthority,
+        budget: QueryBudget,
+        checkpoint: QueryCheckpoint?,
+    ): OperationOutcome<QueryRunResult, QueryRunQualification, QueryRunRejection> {
         val syntax =
             when (val admission = request.admitSyntax(lease, authority)) {
                 is QuerySyntaxAdmission.Admitted -> admission.syntax
                 is QuerySyntaxAdmission.ReferenceRejected ->
                     return OperationOutcome.Rejected(
-                        QueryRunRejection.ReferenceRejected(position(admission.position), admission.reason)
+                        QueryRunRejection.ReferenceRejected(queryPosition(admission.position), admission.reason)
                     )
                 QuerySyntaxAdmission.RequestRejected ->
                     return OperationOutcome.Rejected(
@@ -47,37 +63,61 @@ class CanonicalQueryProtocol(
                 is QueryPlanAdmission.Rejected -> return OperationOutcome.Rejected(admitted.failure.protocolRejection())
             }
         val execution =
-            when (val admitted = QueryExecutionRequest.create(plan, lease, budget)) {
+            when (
+                val admitted =
+                    QueryExecutionRequest.create(
+                        plan = checkpoint?.plan ?: plan,
+                        lease = lease,
+                        budget = budget,
+                        checkpoint = checkpoint,
+                    )
+            ) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected ->
                     return OperationOutcome.Rejected(
                         QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.REQUEST_REJECTED)
                     )
             }
-        return when (val result = operations.run(execution)) {
-            is QueryExecutionResult.Complete -> project(request.output, lease, result.result, null)
+        return projectExecution(request, lease, operations.run(execution))
+    }
+
+    private fun projectExecution(
+        request: QueryRunRequest,
+        lease: SemanticReadAuthority,
+        result: QueryExecutionResult,
+    ): OperationOutcome<QueryRunResult, QueryRunQualification, QueryRunRejection> =
+        when (result) {
+            is QueryExecutionResult.Complete ->
+                project(
+                    request = request,
+                    lease = lease,
+                    result = result.result,
+                    coverage = null,
+                    continuationState = null,
+                )
             is QueryExecutionResult.Qualified ->
                 project(
-                    request.output,
-                    lease,
-                    result.result,
-                    result.coverage,
+                    request = request,
+                    lease = lease,
+                    result = result.result,
+                    coverage = result.coverage,
+                    continuationState = result.continuation,
                 )
             is QueryExecutionResult.Rejected ->
                 OperationOutcome.Rejected(
                     QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.valueOf(result.reason.name))
                 )
         }
-    }
 
     private fun project(
-        output: QueryOutputDocument,
+        request: QueryRunRequest,
         lease: SemanticReadAuthority,
         result: QueryResult,
         coverage: QueryCoverage.Qualified?,
+        continuationState: QueryContinuationState?,
     ): OperationOutcome<QueryRunResult, QueryRunQualification, QueryRunRejection> {
         val items =
-            when (val projected = projectItems(output, result.items)) {
+            when (val projected = projectItems(request.output, result.items)) {
                 is QueryProjection.Projected -> projected.values
                 QueryProjection.Rejected -> return contractRejected()
             }
@@ -88,11 +128,29 @@ class CanonicalQueryProtocol(
             }
         val boundedItems = BoundedProtocolList.create(items).refinedOrNull() ?: return contractRejected()
         val boundedFailures = BoundedProtocolList.create(failures).refinedOrNull() ?: return contractRejected()
+        var token: ProtocolText? = null
+        var terminalReason: QueryTerminalReasonDocument? = null
+        when (continuationState) {
+            is QueryContinuationState.Resumable ->
+                when (val issued = checkpoints.issue(request, continuationState.checkpoint)) {
+                    is QueryCheckpointIssuance.Issued -> token = issued.token
+                    QueryCheckpointIssuance.CapacityExceeded ->
+                        terminalReason = QueryTerminalReasonDocument.CHECKPOINT_CAPACITY_EXCEEDED
+                }
+            is QueryContinuationState.Terminal ->
+                terminalReason = QueryTerminalReasonDocument.valueOf(continuationState.reason.name)
+            null -> Unit
+        }
         val envelope =
             EvidenceEnvelope(
                 CanonicalOperation.QUERY_RUN.id,
                 lease.evidenceBasis(),
-                QueryRunResult(boundedItems, boundedFailures),
+                QueryRunResult(
+                    items = boundedItems,
+                    failures = boundedFailures,
+                    continuation = token,
+                    terminalReason = terminalReason,
+                ),
             )
         if (coverage == null) return OperationOutcome.Complete(envelope)
         val qualification =
@@ -145,16 +203,23 @@ class CanonicalQueryProtocol(
                             QueryProjection.Rejected -> return@mapProjected null
                         }
                     QueryResultItemDocument.ExactSymbol(
-                        QueryReferenceDocument.ExactSymbol(token),
-                        document.kind,
-                        document.name.takeIf { QuerySymbolFieldDocument.NAME in output.fields.values },
-                        QueryExactLocationDocument(document.file, document.range).takeIf {
-                            QuerySymbolFieldDocument.LOCATION in output.fields.values
-                        },
-                        document.compilerEvidence.signature.takeIf {
-                            QuerySymbolFieldDocument.SIGNATURE in output.fields.values
-                        },
-                        boundedConnections,
+                        ref = QueryReferenceDocument.ExactSymbol(token),
+                        kind = document.kind,
+                        name = document.name.takeIf { QuerySymbolFieldDocument.NAME in output.fields.values },
+                        location =
+                            QueryExactLocationDocument(document.file, document.range).takeIf {
+                                QuerySymbolFieldDocument.LOCATION in output.fields.values
+                            },
+                        signature =
+                            document.compilerEvidence.signature.takeIf {
+                                QuerySymbolFieldDocument.SIGNATURE in output.fields.values
+                            },
+                        connections = boundedConnections,
+                        symbolId =
+                            io.github.amichne.kast.protocol.contract.SymbolIdDocument.parse(
+                                    io.github.amichne.kast.symbol.contract.CanonicalSymbolId.from(symbol.selector).value
+                                )
+                                .refinedOrNull() ?: return@mapProjected null,
                     )
                 }
             else -> QueryProjection.Rejected
@@ -225,301 +290,8 @@ private inline fun <Input, Output : Any> Iterable<Input>.mapProjected(
     return QueryProjection.Projected(values)
 }
 
-private sealed interface QuerySyntaxAdmission {
-    data class Admitted(val syntax: QueryPlanSyntax) : QuerySyntaxAdmission
-
-    data class ReferenceRejected(
-        val position: Int,
-        val reason: QueryReferenceRejectionReason,
-    ) : QuerySyntaxAdmission
-
-    data object RequestRejected : QuerySyntaxAdmission
-}
-
-private fun QueryRunRequest.admitSyntax(
-    lease: SemanticReadAuthority,
-    authority: QueryReferenceAuthority,
-): QuerySyntaxAdmission {
-    val source =
-        when (val value = from) {
-            is QueryFromDocument.Candidates ->
-                value.discovery.syntax()?.let(QuerySourceSyntax::Candidates)
-                    ?: return QuerySyntaxAdmission.RequestRejected
-            is QueryFromDocument.Symbols ->
-                value.discovery.syntax()?.let(QuerySourceSyntax::Symbols) ?: return QuerySyntaxAdmission.RequestRejected
-            is QueryFromDocument.References ->
-                when (val references = value.values.values.admitReferenceSource(lease, authority)) {
-                    is QueryReferenceSourceAdmission.Admitted -> references.source
-                    is QueryReferenceSourceAdmission.Rejected ->
-                        return QuerySyntaxAdmission.ReferenceRejected(
-                            references.position,
-                            references.reason,
-                        )
-                    QueryReferenceSourceAdmission.RequestRejected -> return QuerySyntaxAdmission.RequestRejected
-                }
-        }
-    val querySteps = steps.values.map { it.syntax() ?: return QuerySyntaxAdmission.RequestRejected }
-    val queryOutput = output.syntax() ?: return QuerySyntaxAdmission.RequestRejected
-    return QuerySyntaxAdmission.Admitted(QueryPlanSyntax(source, querySteps, queryOutput))
-}
-
-private sealed interface QueryReferenceSourceAdmission {
-    data class Admitted(val source: QuerySourceSyntax) : QueryReferenceSourceAdmission
-
-    data class Rejected(
-        val position: Int,
-        val reason: QueryReferenceRejectionReason,
-    ) : QueryReferenceSourceAdmission
-
-    data object RequestRejected : QueryReferenceSourceAdmission
-}
-
-private fun List<QueryReferenceDocument>.admitReferenceSource(
-    lease: SemanticReadAuthority,
-    authority: QueryReferenceAuthority,
-): QueryReferenceSourceAdmission {
-    val first = firstOrNull() ?: return QueryReferenceSourceAdmission.RequestRejected
-    return when (first) {
-        is QueryReferenceDocument.DeclarationCandidate -> admitCandidateReferences(lease, authority)
-        is QueryReferenceDocument.ExactSymbol -> admitExactReferences(lease, authority)
-    }
-}
-
-private fun List<QueryReferenceDocument>.admitCandidateReferences(
-    lease: SemanticReadAuthority,
-    authority: QueryReferenceAuthority,
-): QueryReferenceSourceAdmission {
-    val selections = mutableListOf<io.github.amichne.kast.symbol.contract.SymbolDiscoverySelection>()
-    forEachIndexed { index, reference ->
-        if (reference !is QueryReferenceDocument.DeclarationCandidate) {
-            return QueryReferenceSourceAdmission.Rejected(index, QueryReferenceRejectionReason.WRONG_KIND)
-        }
-        val selector =
-            when (val decoded = authority.restoreCandidate(reference.token, lease)) {
-                is CanonicalSelectorDecoding.Decoded -> decoded.value
-                is CanonicalSelectorDecoding.Rejected ->
-                    return QueryReferenceSourceAdmission.Rejected(
-                        index,
-                        decoded.failure.queryRejection(reference.token, expectedExact = false),
-                    )
-            }
-        val declaration =
-            selector as? CandidateSelector.Declaration
-                ?: return QueryReferenceSourceAdmission.Rejected(
-                    index,
-                    QueryReferenceRejectionReason.WRONG_KIND,
-                )
-        selections += declaration.selection
-    }
-    val references =
-        QueryCandidateReferences.from(selections).refinedOrNull()
-            ?: return QueryReferenceSourceAdmission.RequestRejected
-    return QueryReferenceSourceAdmission.Admitted(QuerySourceSyntax.CandidateReferences(references))
-}
-
-private fun List<QueryReferenceDocument>.admitExactReferences(
-    lease: SemanticReadAuthority,
-    authority: QueryReferenceAuthority,
-): QueryReferenceSourceAdmission {
-    val selectors = mutableListOf<SymbolSelector>()
-    forEachIndexed { index, reference ->
-        if (reference !is QueryReferenceDocument.ExactSymbol) {
-            return QueryReferenceSourceAdmission.Rejected(index, QueryReferenceRejectionReason.WRONG_KIND)
-        }
-        val selector =
-            when (val decoded = authority.restoreExact(reference.token, lease)) {
-                is CanonicalSelectorDecoding.Decoded -> decoded.value
-                is CanonicalSelectorDecoding.Rejected ->
-                    return QueryReferenceSourceAdmission.Rejected(
-                        index,
-                        decoded.failure.queryRejection(reference.token, expectedExact = true),
-                    )
-            }
-        selectors += selector
-    }
-    val references =
-        QueryExactReferences.from(selectors).refinedOrNull() ?: return QueryReferenceSourceAdmission.RequestRejected
-    return QueryReferenceSourceAdmission.Admitted(QuerySourceSyntax.ExactReferences(references))
-}
-
-private fun ProtocolText.belongsToOtherReferenceFamily(expectedExact: Boolean): Boolean =
-    if (expectedExact) {
-        value.startsWith("candidate:") ||
-            value.startsWith("source-selector-v1:") ||
-            value.startsWith("source-selector-v2:")
-    } else {
-        value.startsWith("exact:") || value.startsWith("source-selector-v1:") || value.startsWith("source-selector-v2:")
-    }
-
-private fun QueryDiscoveryDocument.syntax(): QueryDiscoverySyntax? {
-    val kinds = declarationKinds.values.uniqueValues()?.mapTo(linkedSetOf()) { it.compilerKind() } ?: return null
-    val admittedKinds = QueryDeclarationKinds.from(kinds).refinedOrNull() ?: return null
-    val sets =
-        scope.sourceSets.values.uniqueValues()?.mapTo(linkedSetOf()) {
-            WorkspaceSourceSetName.parse(it.value).refinedOrNull() ?: return null
-        } ?: return null
-    val admittedSets = SymbolDiscoverySourceSets.Exact.from(sets).refinedOrNull() ?: return null
-    val directory =
-        scope.directory?.let {
-            SymbolDiscoveryDirectoryConstraint(
-                SymbolDiscoveryDirectory.parse(it.path.value).refinedOrNull() ?: return null,
-                SymbolDiscoveryContainment.valueOf(it.containment.name),
-            )
-        }
-    val packageName =
-        scope.packageName?.let {
-            SymbolDiscoveryPackageConstraint(
-                SymbolDiscoveryPackage.parse(it.name.value).refinedOrNull() ?: return null,
-                SymbolDiscoveryContainment.valueOf(it.containment.name),
-            )
-        }
-    val queryMatch =
-        when (val value = match) {
-            QueryMatchDocument.All -> QueryMatch.All
-            is QueryMatchDocument.Name ->
-                QueryMatch.Name(
-                    SymbolDiscoveryPattern.parse(value.text.value).refinedOrNull() ?: return null,
-                    SymbolDiscoveryMatch.valueOf(value.matching.name),
-                )
-        }
-    return QueryDiscoverySyntax(
-        queryMatch,
-        QueryScope.Restricted(admittedSets, directory, packageName),
-        admittedKinds,
-    )
-}
-
-private fun QueryStepDocument.syntax(): QueryStepSyntax? =
-    when (this) {
-        QueryStepDocument.Inspect -> QueryStepSyntax.Inspect
-        is QueryStepDocument.Related -> QueryStepSyntax.Related(relation.meaning())
-        QueryStepDocument.Distinct -> QueryStepSyntax.Distinct
-        is QueryStepDocument.Where ->
-            when (val value = predicate) {
-                is QueryPredicateDocument.Visibility -> {
-                    val visibilities =
-                        value.values.values.uniqueValues()?.mapTo(linkedSetOf()) {
-                            DeclarationVisibility.valueOf(it.name)
-                        } ?: return null
-                    QueryStepSyntax.Where(
-                        QueryPredicate.Visibility(
-                            QueryVisibilitySelection.from(visibilities).refinedOrNull() ?: return null
-                        )
-                    )
-                }
-            }
-    }
-
-private fun QueryOutputDocument.syntax(): QueryOutputSyntax? =
-    when (this) {
-        is QueryOutputDocument.Candidates -> {
-            val selected =
-                fields.values.uniqueValues()?.mapTo(linkedSetOf()) { QueryCandidateField.valueOf(it.name) }
-                    ?: return null
-            QueryOutputSyntax.Candidates(QueryCandidateFields.from(selected).refinedOrNull() ?: return null)
-        }
-        is QueryOutputDocument.Symbols -> {
-            val selected =
-                fields.values.uniqueValues()?.mapTo(linkedSetOf()) { QuerySymbolField.valueOf(it.name) } ?: return null
-            QueryOutputSyntax.Symbols(QuerySymbolFields.from(selected).refinedOrNull() ?: return null)
-        }
-    }
-
-private fun QueryDeclarationKindDocument.compilerKind(): CompilerSymbolKind =
-    when (this) {
-        QueryDeclarationKindDocument.CLASS -> CompilerSymbolKind.CLASSLIKE
-        QueryDeclarationKindDocument.CONSTRUCTOR -> CompilerSymbolKind.CONSTRUCTOR
-        QueryDeclarationKindDocument.FUNCTION -> CompilerSymbolKind.FUNCTION
-        QueryDeclarationKindDocument.PROPERTY -> CompilerSymbolKind.PROPERTY
-        QueryDeclarationKindDocument.TYPE_ALIAS -> CompilerSymbolKind.TYPE_ALIAS
-    }
-
-private fun RelationKindDocument.meaning(): RelationMeaning =
-    when (this) {
-        RelationKindDocument.REFERENCES -> RelationMeaning.References
-        RelationKindDocument.CALLERS -> RelationMeaning.Callers
-        RelationKindDocument.CALLEES -> RelationMeaning.Callees
-        RelationKindDocument.IMPLEMENTATIONS -> RelationMeaning.Implementations
-        RelationKindDocument.INHERITORS -> RelationMeaning.Inheritors
-        RelationKindDocument.OVERRIDES -> RelationMeaning.Overrides
-        RelationKindDocument.TYPE_USES -> RelationMeaning.TypeUses
-    }
-
-private fun QueryPlanAdmissionFailure.protocolRejection(): QueryRunRejection =
-    when (this) {
-        is QueryPlanAdmissionFailure.UnsupportedDeclarationKind ->
-            QueryRunRejection.SourceRejected(
-                when (kind) {
-                    CompilerSymbolKind.CLASSLIKE -> QueryDeclarationKindDocument.CLASS
-                    CompilerSymbolKind.CONSTRUCTOR -> QueryDeclarationKindDocument.CONSTRUCTOR
-                    CompilerSymbolKind.FUNCTION -> QueryDeclarationKindDocument.FUNCTION
-                    CompilerSymbolKind.PROPERTY -> QueryDeclarationKindDocument.PROPERTY
-                    CompilerSymbolKind.TYPE_ALIAS -> QueryDeclarationKindDocument.TYPE_ALIAS
-                },
-                QuerySourceRejectionReason.UNSUPPORTED_DECLARATION_KIND,
-            )
-        is QueryPlanAdmissionFailure.StageTypeMismatch ->
-            QueryRunRejection.PlanRejected(
-                position(position.value),
-                QueryElementTypeDocument.valueOf(required.name),
-                QueryElementTypeDocument.valueOf(actual.name),
-                QueryAdmissionCorrectionDocument.valueOf(correction.name),
-            )
-        is QueryPlanAdmissionFailure.OutputTypeMismatch ->
-            QueryRunRejection.PlanRejected(
-                position(position.value),
-                QueryElementTypeDocument.valueOf(required.name),
-                QueryElementTypeDocument.valueOf(actual.name),
-                QueryAdmissionCorrectionDocument.valueOf(correction.name),
-            )
-    }
-
-private fun position(raw: Int): ProtocolOffset =
-    ProtocolOffset.parse(raw).refinedOrNull() ?: error("A bounded query position cannot be negative")
-
-/** Structural uniqueness only. Semantic non-emptiness belongs to each strong collection type. */
-private fun <Value> List<Value>.uniqueValues(): List<Value>? = takeIf { it.distinct().size == it.size }
-
 private fun <Value, Failure> Refinement<Value, Failure>.refinedOrNull(): Value? =
     when (this) {
         is Refinement.Refined -> value
         is Refinement.Rejected -> null
-    }
-
-fun SemanticReadAuthority.evidenceBasis(): EvidenceBasis =
-    when (this) {
-        is SemanticReadLease -> EvidenceBasis.Published(generation)
-        is LiveSemanticReadAuthority ->
-            when (
-                val admitted =
-                    LiveReadEvidence.create(
-                        workspaceRoot.value,
-                        reference.host.value,
-                        reference.epoch.value,
-                        LiveReadContentView.valueOf(reference.contentView.name),
-                        reference.version,
-                    )
-            ) {
-                is Refinement.Refined -> EvidenceBasis.Live(admitted.value)
-                is Refinement.Rejected -> error("An admitted live authority must retain valid evidence")
-            }
-    }
-
-private fun CanonicalSelectorDecodingFailure.queryRejection(
-    token: ProtocolText,
-    expectedExact: Boolean,
-): QueryReferenceRejectionReason =
-    when (this) {
-        CanonicalSelectorDecodingFailure.INCOMPATIBLE_WORKSPACE -> QueryReferenceRejectionReason.INCOMPATIBLE_WORKSPACE
-        CanonicalSelectorDecodingFailure.STALE_AUTHORITY ->
-            if (token.value.startsWith("exact:v2:") || token.value.startsWith("candidate:v2:"))
-                QueryReferenceRejectionReason.STALE_GENERATION
-            else QueryReferenceRejectionReason.STALE_AUTHORITY
-        CanonicalSelectorDecodingFailure.INCOMPATIBLE_AUTHORITY,
-        CanonicalSelectorDecodingFailure.LIVE_AUTHORITY_REQUIRED -> QueryReferenceRejectionReason.INCOMPATIBLE_AUTHORITY
-        CanonicalSelectorDecodingFailure.UNSUPPORTED_REFERENCE_VERSION ->
-            QueryReferenceRejectionReason.INCOMPATIBLE_REFERENCE_VERSION
-        else ->
-            if (token.belongsToOtherReferenceFamily(expectedExact)) QueryReferenceRejectionReason.WRONG_KIND
-            else QueryReferenceRejectionReason.MALFORMED
     }

@@ -70,11 +70,11 @@ class SymbolDiscoveryTest {
     }
 
     @Test
-    fun `scope exclusions are counted after native candidates were collected`() {
+    fun `scope exclusions are counted before native candidate capacity`() {
         val observation = RecordingNativeRead()
         val scenario = fixture(all = true, observation = observation)
         assertTrue(scenario.execute().outcome() is SymbolDiscoveryOutcome.Complete)
-        assertEquals(4, observation.counts[IntellijReadCounter.CANDIDATES_COLLECTED])
+        assertEquals(3, observation.counts[IntellijReadCounter.CANDIDATES_COLLECTED])
         assertEquals(1, observation.counts[IntellijReadCounter.SCOPE_FILTERED])
         assertEquals(3, observation.counts[IntellijReadCounter.CANDIDATES_PROJECTED])
     }
@@ -513,7 +513,7 @@ class SymbolDiscoveryTest {
         val timeOutcome =
             fixture(
                     elapsedMillis = 1L,
-                    clock = StepClock(step = 1_000_000L),
+                    clock = IntellijDiscoveryStepClock(step = 1_000_000L),
                 )
                 .execute()
                 .outcome()
@@ -709,12 +709,14 @@ class SymbolDiscoveryTest {
             IntellijDiscoveryEnvironmentState.READY
         },
         cancellationCheck: () -> Unit = {},
-        clock: IntellijDiscoveryNanoClock = StepClock(),
+        clock: IntellijDiscoveryNanoClock = IntellijDiscoveryStepClock(),
         providerFails: Boolean = false,
         collidingNames: Boolean = false,
+        declarationNames: List<String>? = null,
         leadingUnrelatedNames: Int = 0,
         leadingMatchingNames: Int = 0,
         all: Boolean = false,
+        pattern: String = "Item",
         directory: String? = null,
         packageName: String? = null,
         itemPackages: Map<String, String> = emptyMap(),
@@ -737,6 +739,7 @@ class SymbolDiscoveryTest {
                 workLimit = workLimit,
                 elapsedMillis = elapsedMillis,
                 all = all,
+                pattern = pattern,
                 directory = directory,
                 packageName = packageName,
                 containment = containment,
@@ -748,18 +751,19 @@ class SymbolDiscoveryTest {
         val alpha = FakeItem("AItem")
         val outside = FakeItem("OutsideItem")
         val items =
-            if (collidingNames) {
-                listOf(
-                    FakeItem("CollisionItem", "first"),
-                    FakeItem("CollisionItem", "second"),
-                )
-            } else {
-                listOf(zed, noMatch, alpha, outside)
-            }
+            declarationNames?.map { FakeItem(it) }
+                ?: if (collidingNames) {
+                    listOf(
+                        FakeItem("CollisionItem", "first"),
+                        FakeItem("CollisionItem", "second"),
+                    )
+                } else {
+                    listOf(zed, noMatch, alpha, outside)
+                }
         val files = items.associateWith {
             LightVirtualFile(itemPaths[it.candidateName] ?: "/workspace/src/${it.identity}.kt")
         }
-        val inScopeItems = if (collidingNames) items.toSet() else setOf(zed, noMatch, alpha)
+        val inScopeItems = items.filterNot { it === outside }.toSet()
         val inScopeFiles = inScopeItems.mapTo(linkedSetOf(), files::getValue)
         val scope =
             object : GlobalSearchScope() {
@@ -855,6 +859,7 @@ class SymbolDiscoveryTest {
         workLimit: Long,
         elapsedMillis: Long,
         all: Boolean,
+        pattern: String,
         directory: String?,
         packageName: String?,
         containment: SymbolDiscoveryContainment,
@@ -884,7 +889,7 @@ class SymbolDiscoveryTest {
                 } else {
                     SymbolDiscoveryTarget.Name(
                         kind = kind,
-                        pattern = SymbolDiscoveryPattern.parse("Item").refined(),
+                        pattern = SymbolDiscoveryPattern.parse(pattern).refined(),
                         match = SymbolDiscoveryMatch.FUZZY,
                     )
                 },
@@ -1007,12 +1012,6 @@ class SymbolDiscoveryTest {
         override fun getName(): String = candidateName
 
         override fun getPresentation(): ItemPresentation? = null
-    }
-
-    private class StepClock(private val step: Long = 100L) : IntellijDiscoveryNanoClock {
-        private var current = 0L
-
-        override fun now(): Long = current.also { current += step }
     }
 
     private fun IntellijNativeDiscoveryExecution.outcome(): SymbolDiscoveryOutcome =

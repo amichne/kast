@@ -1,16 +1,21 @@
 package io.github.amichne.kast.traversal.service
 
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.RelationLimitation
 import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationOperations
 import io.github.amichne.kast.relation.contract.RelationReadPosition
+import io.github.amichne.kast.traversal.contract.TraversalDepthLimit
 import io.github.amichne.kast.traversal.contract.TraversalLimitation
+import io.github.amichne.kast.traversal.contract.TraversalNode
 import io.github.amichne.kast.traversal.contract.TraversalPendingState
 import io.github.amichne.kast.traversal.contract.TraversalPlan
 import io.github.amichne.kast.traversal.contract.TraversalQualification
 import io.github.amichne.kast.traversal.contract.TraversalRejection
 import io.github.amichne.kast.traversal.contract.TraversalResult
+import io.github.amichne.kast.traversal.contract.TraversalStrategy
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.startCoroutine
@@ -42,7 +47,7 @@ class TraversalServiceTest {
             fixture.completeRelationResult(request, targets)
         }
 
-        val result = runSuspend { traversalOperations(relations).run(fixture.plan(a)) }
+        val result = runSuspend { traversalOperations(relations, TraversalNanoClock { 0L }).run(fixture.plan(a)) }
 
         assertInstanceOf(TraversalResult.Complete::class.java, result)
         assertEquals(2, requests.size)
@@ -51,30 +56,131 @@ class TraversalServiceTest {
     }
 
     @Test
-    fun `public factory charges full one hop time authority before the next read`() {
+    fun `fast relation reads reach the second depth within one request budget`() {
         val requests = mutableListOf<io.github.amichne.kast.relation.contract.RelationRequest>()
         val relations = RelationOperations { request ->
             requests += request
-            fixture.completeRelationResult(
-                request,
-                listOf(fixture.endpoint(request.subject, b)),
-            )
+            val targets =
+                when (request.subject.fingerprint.value) {
+                    a.fingerprint.value -> listOf(fixture.endpoint(request.subject, b))
+                    b.fingerprint.value -> listOf(fixture.endpoint(request.subject, c))
+                    else -> emptyList()
+                }
+            fixture.completeRelationResult(request, targets)
         }
         val plan =
             fixture.plan(
                 a,
-                aggregateTime = 10L,
-                oneHop = fixture.relationBudget(time = 10L),
+                aggregateTime = 60_000L,
+                oneHop = fixture.relationBudget(time = 60_000L),
             )
 
         val result =
             assertInstanceOf(
-                TraversalResult.Qualified::class.java,
-                runSuspend { traversalOperations(relations).run(plan) },
+                TraversalResult.Complete::class.java,
+                runSuspend { traversalOperations(relations, TraversalNanoClock { 0L }).run(plan) },
             )
 
-        assertEquals(setOf(TraversalLimitation.TIME_LIMIT_REACHED), result.qualification.limitations)
-        assertEquals(1, requests.size)
+        assertTrue(result.page.partialExpansions.isEmpty())
+        assertEquals(listOf(1, 2), result.page.records.map { it.depth.value })
+        assertEquals(3, requests.size)
+    }
+
+    @Test
+    fun `resumes use fresh clocks and publish cumulative committed progress`() {
+        var nanos = 0L
+        val relations = RelationOperations { request ->
+            nanos += 5_000_000L
+            val targets =
+                when (request.subject.fingerprint.value) {
+                    a.fingerprint.value -> listOf(fixture.endpoint(request.subject, b))
+                    b.fingerprint.value -> listOf(fixture.endpoint(request.subject, c))
+                    else -> emptyList()
+                }
+            fixture.completeRelationResult(request, targets)
+        }
+        val operations = traversalOperations(relations, TraversalNanoClock { nanos })
+        var plan = fixture.plan(a, aggregateTime = 5L, oneHop = fixture.relationBudget(time = 5L))
+        for (sequence in 1L..3L) {
+            val result = runSuspend { operations.run(plan) }
+            val page =
+                when (result) {
+                    is TraversalResult.Complete -> result.page
+                    is TraversalResult.Qualified -> result.page
+                    is TraversalResult.Rejected -> error("unexpected rejection: ${result.reason}")
+                }
+            assertEquals(sequence, page.progress.checkpointSequence)
+            assertEquals(sequence, page.progress.totalReads)
+            assertEquals(minOf(sequence, 2L), page.progress.totalEdges)
+            assertEquals(minOf(sequence.toInt(), 2), page.progress.maximumDepthReached)
+            if (sequence < 3L) {
+                val qualified = assertInstanceOf(TraversalResult.Qualified::class.java, result)
+                val resume = assertInstanceOf(TraversalQualification.Resumable::class.java, qualified.qualification)
+                assertEquals(page.progress, resume.continuation.checkpoint.progress)
+                plan = TraversalPlan.resume(a, RelationMeaning.Callees, plan.budget, resume.continuation).refined()
+            } else {
+                assertInstanceOf(TraversalResult.Complete::class.java, result)
+            }
+        }
+    }
+
+    @Test
+    fun `bounded fan out reaches deeper evidence without exhausting the root provider`() {
+        val visited = mutableListOf<String>()
+        val reader = OneHopRelationReader { request ->
+            visited += request.node.fingerprint.value
+            assertEquals(1, request.budget.resources.resultLimit.value)
+            when (request.node.fingerprint.value) {
+                a.fingerprint.value ->
+                    fixture.qualifiedRead(request, listOf(b), RelationLimitation.RESULT_LIMIT_REACHED)
+                b.fingerprint.value -> fixture.completeRead(request, listOf(c))
+                else -> fixture.completeRead(request, emptyList())
+            }
+        }
+        val ordinary = fixture.plan(a)
+        val strategy = TraversalStrategy.BoundedFanOut(ResultLimit.parse(1).refined())
+        val plan = TraversalPlan.start(a, RelationMeaning.Callees, ordinary.budget, strategy).refined()
+        val result =
+            assertInstanceOf(TraversalResult.Qualified::class.java, runSuspend { TraversalService(reader).run(plan) })
+        assertEquals(listOf(1, 2), result.page.records.map { it.depth.value })
+        assertEquals(listOf(a.fingerprint.value, b.fingerprint.value, c.fingerprint.value), visited)
+        assertInstanceOf(TraversalQualification.TerminalIncomplete::class.java, result.qualification)
+        assertEquals(setOf(RelationLimitation.RESULT_LIMIT_REACHED), result.qualification.relationLimitations)
+        assertEquals(strategy, result.page.plan.strategy)
+        val partial = result.page.partialExpansions.single()
+        assertEquals(a.fingerprint.value, partial.entry.node.fingerprint.value)
+        assertEquals(0, partial.entry.depth.value)
+        assertEquals(setOf(RelationLimitation.RESULT_LIMIT_REACHED), partial.limitations)
+        assertEquals("NOT_EXPLORED", partial.remainder.name)
+    }
+
+    @Test
+    fun `continuation cannot change depth or exploration strategy`() {
+        val reader = InMemoryRelationReader(linkedMapOf(a to listOf(b), b to emptyList()), fixture)
+        val plan = fixture.plan(a, aggregateRecords = 1, oneHop = fixture.relationBudget(records = 1))
+        val result =
+            assertInstanceOf(TraversalResult.Qualified::class.java, runSuspend { TraversalService(reader).run(plan) })
+        val continuation =
+            assertInstanceOf(TraversalQualification.Resumable::class.java, result.qualification).continuation
+        assertInstanceOf(
+            Refinement.Rejected::class.java,
+            TraversalPlan.resume(
+                a,
+                RelationMeaning.Callees,
+                plan.budget.copy(depth = TraversalDepthLimit.parse(3).refined()),
+                continuation,
+            ),
+        )
+        assertInstanceOf(
+            Refinement.Rejected::class.java,
+            TraversalPlan.resume(
+                a,
+                RelationMeaning.Callees,
+                plan.budget,
+                continuation,
+                TraversalStrategy.BoundedFanOut(ResultLimit.parse(1).refined()),
+            ),
+        )
     }
 
     @Test
@@ -91,7 +197,7 @@ class TraversalServiceTest {
         val stopped =
             assertInstanceOf(
                 TraversalResult.Qualified::class.java,
-                runSuspend { traversalOperations(relations).run(plan) },
+                runSuspend { traversalOperations(relations, TraversalNanoClock { 0L }).run(plan) },
             )
         val stoppedQualification =
             assertInstanceOf(
@@ -109,7 +215,7 @@ class TraversalServiceTest {
 
         assertInstanceOf(
             TraversalResult.Complete::class.java,
-            runSuspend { traversalOperations(relations).run(resumed) },
+            runSuspend { traversalOperations(relations, TraversalNanoClock { 0L }).run(resumed) },
         )
 
         val resumedPosition =
@@ -294,6 +400,10 @@ class TraversalServiceTest {
                 qualification.continuation.checkpoint.pending,
             )
         assertEquals(a.fingerprint.value, pending.read.entry.node.fingerprint.value)
+        val partial = result.page.partialExpansions.single()
+        assertEquals(a.fingerprint.value, partial.entry.node.fingerprint.value)
+        assertEquals("CONTINUATION_RETAINED", partial.remainder.name)
+        assertEquals(setOf(RelationLimitation.PROVIDER_INCOMPLETE), partial.limitations)
     }
 
     @Test
@@ -303,7 +413,7 @@ class TraversalServiceTest {
         val result =
             assertInstanceOf(
                 TraversalResult.Qualified::class.java,
-                runSuspend { traversalOperations(relations).run(fixture.plan(a)) },
+                runSuspend { traversalOperations(relations, TraversalNanoClock { 0L }).run(fixture.plan(a)) },
             )
 
         assertInstanceOf(
@@ -331,11 +441,8 @@ class TraversalServiceTest {
             }
         }
 
-        val result =
-            assertInstanceOf(
-                TraversalResult.Qualified::class.java,
-                runSuspend { traversalOperations(relations).run(fixture.plan(a)) },
-            )
+        val observed = runSuspend { traversalOperations(relations, TraversalNanoClock { 0L }).run(fixture.plan(a)) }
+        val result = assertInstanceOf(TraversalResult.Qualified::class.java, observed, observed.toString())
 
         assertInstanceOf(
             TraversalQualification.TerminalIncomplete::class.java,
@@ -371,7 +478,7 @@ class TraversalServiceTest {
         val first =
             assertInstanceOf(
                 TraversalResult.Qualified::class.java,
-                runSuspend { traversalOperations(relations).run(limited) },
+                runSuspend { traversalOperations(relations, TraversalNanoClock { 0L }).run(limited) },
             )
         val resumable =
             assertInstanceOf(
@@ -398,7 +505,7 @@ class TraversalServiceTest {
         val terminal =
             assertInstanceOf(
                 TraversalResult.Qualified::class.java,
-                runSuspend { traversalOperations(relations).run(resumed) },
+                runSuspend { traversalOperations(relations, TraversalNanoClock { 0L }).run(resumed) },
             )
 
         assertInstanceOf(
@@ -415,7 +522,7 @@ class TraversalServiceTest {
     fun `reader cannot widen identity scope meaning or one hop budget`() {
         val plan = fixture.plan(a)
         val escalatingReader = OneHopRelationReader { request ->
-            val mismatched = request.copy(node = io.github.amichne.kast.traversal.contract.TraversalNode.start(b))
+            val mismatched = request.copy(node = TraversalNode.start(b))
             fixture.completeRead(mismatched, emptyList())
         }
 

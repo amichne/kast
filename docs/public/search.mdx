@@ -38,9 +38,9 @@ Call `kast.search_classes` with:
 {"class_name":"OrderService","name_match":null,"scope":null}
 ```
 
-The same input works with `kast tool search_classes < request.json`. Use `function_name` with `search_functions`. These searches return names, locations, signatures and opaque `symbol_ref` tokens alongside completeness evidence. Every matching overload remains separate. During migration, `symbol_ref` repeats the exact bytes in `ref.token`.
+The same input works with `kast tool search_classes < request.json`. Use `function_name` with `search_functions`. These searches return names, locations, signatures and opaque `symbol_ref` tokens alongside completeness evidence. Every matching overload remains separate. `symbol_ref` repeats the exact bytes in `ref.token`. Results also carry `symbol_id`, a canonical declaration equality key that stays the same across searches and scopes within one saved snapshot. Different overloads and snapshots have different IDs. Use `symbol_ref` to perform another operation; `symbol_id` cannot authorize a read.
 
-Controls must be present. `null` selects the documented default: exact, case-sensitive name matching and recursive directory `.` in the imported source-set names `main` and `test`. Names are simple declaration identifiers; use a package scope for qualification. Fuzzy matching requires `"name_match":"fuzzy"` and never runs as a hidden retry.
+Controls must be present. `null` selects the documented default: exact, case-sensitive name matching and recursive directory `.` in the imported source-set names `main` and `test`. Names are simple declaration identifiers; use a package scope for qualification. Fuzzy matching requires `"name_match":"fuzzy"` and never runs as a hidden retry. It accepts a single insertion, deletion, substitution, or adjacent transposition and ranks exact names, case-insensitive matches, one-edit matches, then subsequence matches. Scope and declaration-kind filters run before candidate capacity; scoped lexical ranking selects the best bounded candidates before compiler refinement. A bounded search retains its partial-coverage qualifications.
 
 For a property or an unknown declaration kind, call `search_declarations`:
 
@@ -118,3 +118,9 @@ use `semantic_query` when you need individual use-site facts.
   project, not an unsaved editor buffer. If the host is unready, follow its typed
   blocker. If a reference is stale, repeat discovery and use the new token.
 </Accordion>
+
+## Reuse exact references
+
+Hosted exact references use a 31-character `exact:v5:` handle; candidate handles use `candidate:v5:`. Handles retain the original admitted scope, source-set selection, snapshot, and compiler evidence. The same declaration found under different scopes can therefore have different `symbol_ref` values and the same `symbol_id`. Compare `symbol_id` for equality and copy `symbol_ref` verbatim for follow-up reads. When the host's reference store is full, Kast emits the complete inline selector. Existing handles remain valid until their snapshot expires; no handle is evicted to admit another one.
+
+The `sym:` identity uses the complete SHA-256 digest in URL-safe Base64. Hosted handles use a shorter digest with collision checks against the full retained selector; a collision falls back to the inline representation.

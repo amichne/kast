@@ -1,0 +1,12 @@
+{
+  "exactSelector": "exact:Target",
+  "relation": "callees",
+  "maximumDepth": 3,
+  "maximumResults": 25,
+  "position": {
+    "type": "start"
+  },
+  "strategy": {
+    "type": "breadth_first"
+  }
+}

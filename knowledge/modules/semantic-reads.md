@@ -138,3 +138,17 @@ precedes package PSI in candidate admission, and scoped enumeration selects kind
 before candidate capacity. File-index callbacks end before package inspection;
 excluded class containers remain traversable for eligible members. Qualified
 coverage continues through compiler refinement and final projection.
+
+Fuzzy discovery ranks exact, case-insensitive, single-edit, and subsequence name evidence before compiler refinement. A bounded lexical queue retains the best admitted candidates across the selected source files. Exact package selection uses `KotlinExactPackagesIndex`; directory and source-set membership constrain file enumeration before capacity. `DISCOVERY_FILES` bounds lexical file retention independently of semantic work, and lexical retain/replace/drop counters distinguish ranking from compiler refinement. The synthetic 200-module fixture covers deletion and transposition with excluded-directory, package, and test-source noise.
+
+Traversal charges measured one-hop elapsed time rather than the granted time
+ceiling. Cumulative page progress proves advancing resumable checkpoints. The
+optional bounded-fan-out strategy caps each node's returned edges and moves to
+the next frontier while retaining incomplete relation coverage. The default
+breadth-first strategy retains unfinished per-node relation pagination.
+
+Elapsed time is an observation, while a read's time allowance is an admitted
+grant. If scheduling or provider work overruns that grant, traversal retains the
+actual elapsed time and proven facts, stops further reads, and qualifies the
+page with `time-limit-reached`. It resumes only when unfinished work remains;
+an exhausted overrun is terminal. An over-budget page cannot claim completion.

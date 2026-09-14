@@ -10,7 +10,6 @@ import io.github.amichne.kast.appserver.protocol.FileThreadCatalogStore
 import io.github.amichne.kast.appserver.protocol.FileThreadCatalogStoreOpen
 import io.github.amichne.kast.appserver.provider.KastHostedPlanApprovalGateway
 import io.github.amichne.kast.appserver.provider.KastProviderOptions
-import io.github.amichne.kast.appserver.provider.KastProviderQualification
 import io.github.amichne.kast.appserver.provider.KastProviderQualifier
 import io.github.amichne.kast.appserver.runtime.BrokerSessionHub
 import io.github.amichne.kast.appserver.runtime.BrokerSocketPath
@@ -102,18 +101,20 @@ private constructor(
 
     companion object {
         suspend fun open(
-            product: Path,
-            workspace: Path,
+            inputs: NativeHostedChangeInputs,
             home: Path,
-            schemas: Path,
-            privateDirectory: Path,
+            observeQualification: (NativeProviderQualificationObservation) -> Unit = {
+                System.err.println(it.encodeObservation())
+            },
         ): NativeChangeSession {
+            val product = inputs.product
+            val workspace = inputs.workspace
+            val schemas = inputs.schemas
+            val privateDirectory = inputs.privateDirectory
             validateProductOrigin(product)
             val trace = NativeProcessTrace(privateDirectory)
             val options = providerOptions(product, home, trace)
-            val qualification =
-                KastProviderQualifier.qualify(options) as? KastProviderQualification.Qualified
-                    ?: throw NativeRejected(NativeFailure.PROVIDER_QUALIFICATION_REJECTED)
+            val qualification = KastProviderQualifier.qualify(options).nativeQualified(observeQualification)
             val contracts = NativeControllerProtocol.contracts(schemas, workspace)
             val connecting = Channel<NativeUpstream>(4)
             val activities = activitySink(privateDirectory)

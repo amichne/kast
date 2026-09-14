@@ -6,6 +6,16 @@ import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 
 class HostedReferenceAnchorTest {
+    @org.junit.jupiter.api.Test
+    fun `v5 handles admit only canonical unpadded 128 bit digests`() {
+        val valid = (ProtocolText.parse("exact:v5:" + "A".repeat(22)) as Refinement.Refined).value
+        org.junit.jupiter.api.Assertions.assertTrue(HostedSymbolHandle.parse(valid) is Refinement.Refined)
+        for (suffix in listOf("A".repeat(21), "A".repeat(23), "A".repeat(21) + "B", "A".repeat(22) + "==")) {
+            val token = (ProtocolText.parse("exact:v5:" + suffix) as Refinement.Refined).value
+            org.junit.jupiter.api.Assertions.assertTrue(HostedSymbolHandle.parse(token) is Refinement.Rejected)
+        }
+    }
+
     @Test
     fun `compact reference parser rejects malformed and noncanonical digests`() {
         listOf(

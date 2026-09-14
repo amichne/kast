@@ -135,7 +135,7 @@ class QueryServiceTest {
         }
     }
 
-    private fun visibilityPlan(selected: SymbolSelector): AdmittedQueryPlan =
+    internal fun visibilityPlan(selected: SymbolSelector): AdmittedQueryPlan =
         exactReferencePlan(
             listOf(selected),
             listOf(
@@ -147,7 +147,7 @@ class QueryServiceTest {
             ),
         )
 
-    private fun selfRead(
+    internal fun selfRead(
         selected: SymbolSelector,
         visibility: DeclarationVisibility,
         missing: Boolean = false,
@@ -490,7 +490,7 @@ class QueryServiceTest {
             clock = clock,
         )
 
-    private fun discoveryWithCandidate(): SymbolDiscoveryOperations = SymbolDiscoveryOperations { request ->
+    internal fun discoveryWithCandidate(): SymbolDiscoveryOperations = SymbolDiscoveryOperations { request ->
         val candidate =
             SymbolDiscoveryCandidate.fromBoundary(
                     SymbolDiscoveryKind.CLASS,
@@ -536,7 +536,7 @@ class QueryServiceTest {
             )
             .refined()
 
-    private fun exactOperations(
+    internal fun exactOperations(
         describe: (SymbolSelector) -> SymbolDescriptionResult = {
             error("Description was not expected")
         },
@@ -552,7 +552,7 @@ class QueryServiceTest {
             ): SymbolDescriptionResult = describe(request.selector)
         }
 
-    private fun selector(selection: SymbolDiscoverySelection): SymbolSelector {
+    internal fun selector(selection: SymbolDiscoverySelection): SymbolSelector {
         val location =
             selection.candidate.location
                 as io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateLocation.Declaration
@@ -592,7 +592,7 @@ class QueryServiceTest {
             )
             .refined()
 
-    private fun symbolPlan(): AdmittedQueryPlan =
+    internal fun symbolPlan(): AdmittedQueryPlan =
         admittedPlan(
             source = QuerySourceSyntax.Symbols(discovery()),
             output = QueryOutputSyntax.Symbols(symbolFields()),
@@ -610,7 +610,7 @@ class QueryServiceTest {
                 ),
         )
 
-    private fun exactReferencePlan(
+    internal fun exactReferencePlan(
         selectors: List<SymbolSelector>,
         steps: List<QueryStepSyntax> = emptyList(),
     ): AdmittedQueryPlan =
@@ -630,14 +630,14 @@ class QueryServiceTest {
             is QueryPlanAdmission.Rejected -> error("Expected admitted plan, got ${admission.failure}")
         }
 
-    private fun QueryExecutionResult.symbolCount(): Int =
+    internal fun QueryExecutionResult.symbolCount(): Int =
         when (this) {
             is QueryExecutionResult.Complete -> (result.items as QueryResultSet.Symbols).values.size
             is QueryExecutionResult.Qualified -> (result.items as QueryResultSet.Symbols).values.size
             is QueryExecutionResult.Rejected -> error("Expected symbol result, got $reason")
         }
 
-    private fun selection(): SymbolDiscoverySelection {
+    internal fun selection(): SymbolDiscoverySelection {
         val request =
             SymbolDiscoveryRequest(
                 scope =

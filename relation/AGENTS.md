@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-11 | hash: e9e206c7a991 -->
+<!-- generated: 2026-09-14 | hash: cc0480261d61 -->
 
 # relation
 
@@ -9,6 +9,7 @@ Defines semantic relationship requests and facts, coordinates relation reads, an
 
 ## Key Files
 
+- [RelationOmissionEvidence.kt](contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationOmissionEvidence.kt) - provider/version and measured or unmeasured omission evidence.
 - [contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationRequest.kt](contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationRequest.kt) - request model.
 - [contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationFact.kt](contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationFact.kt) - evidence model.
 - [service/src/main/kotlin/io/github/amichne/kast/relation/service/RelationService.kt](service/src/main/kotlin/io/github/amichne/kast/relation/service/RelationService.kt) - orchestration.

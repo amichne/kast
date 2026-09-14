@@ -1,0 +1,13 @@
+{
+  "exactSelector": "exact:Target",
+  "relation": "callees",
+  "maximumDepth": 3,
+  "maximumResults": 25,
+  "position": {
+    "type": "resume",
+    "continuation": "traversal-continuation:v1:cmVzdW1l:a83a31320d921b888a48fa5edd0b4b5a29984de6e96bf7b8ac7d29ba06caf616"
+  },
+  "strategy": {
+    "type": "breadth_first"
+  }
+}

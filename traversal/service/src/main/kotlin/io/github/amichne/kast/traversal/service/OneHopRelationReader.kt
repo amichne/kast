@@ -1,6 +1,5 @@
 package io.github.amichne.kast.traversal.service
 
-import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.RelationBudget
 import io.github.amichne.kast.relation.contract.RelationContinuation
@@ -30,15 +29,6 @@ internal enum class OneHopElapsedFailure {
 @JvmInline
 internal value class OneHopElapsedMillis private constructor(val value: Long) {
     companion object {
-        /**
-         * Proof transition: `ElapsedTimeLimitMillis -> OneHopElapsedMillis`.
-         *
-         * Conservatively charges one relation read its full already-refined elapsed-time authority, so aggregate
-         * traversal accounting never depends on a hidden clock or undercounts work. Raw time extraction is permitted
-         * only inside aggregate traversal accounting.
-         */
-        fun charge(limit: ElapsedTimeLimitMillis): OneHopElapsedMillis = OneHopElapsedMillis(limit.value)
-
         /**
          * Proof transition: `Long -> Refinement<OneHopElapsedMillis, OneHopElapsedFailure>`.
          *

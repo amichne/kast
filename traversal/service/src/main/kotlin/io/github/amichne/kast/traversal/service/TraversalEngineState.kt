@@ -1,5 +1,6 @@
 package io.github.amichne.kast.traversal.service
 
+import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.RelationBudget
 import io.github.amichne.kast.relation.contract.RelationEndpointFingerprint
 import io.github.amichne.kast.relation.contract.RelationLimitation
@@ -8,8 +9,11 @@ import io.github.amichne.kast.traversal.contract.TraversalFrontierEntry
 import io.github.amichne.kast.traversal.contract.TraversalLimitation
 import io.github.amichne.kast.traversal.contract.TraversalNode
 import io.github.amichne.kast.traversal.contract.TraversalPage
+import io.github.amichne.kast.traversal.contract.TraversalPageFailure
 import io.github.amichne.kast.traversal.contract.TraversalPendingState
 import io.github.amichne.kast.traversal.contract.TraversalPlan
+import io.github.amichne.kast.traversal.contract.TraversalPosition
+import io.github.amichne.kast.traversal.contract.TraversalProgress
 import io.github.amichne.kast.traversal.contract.TraversalRecord
 
 internal class MutableTraversalState(
@@ -105,6 +109,8 @@ internal enum class FrontierAdmission {
 
 internal class TraversalAccounting(
     val records: MutableList<TraversalRecord> = mutableListOf(),
+    val partialExpansions: MutableList<io.github.amichne.kast.traversal.contract.TraversalPartialExpansion> =
+        mutableListOf(),
     var encodedBytes: Long = 0L,
     var examinedWorkUnits: Long = 0L,
     var elapsedMillis: Long = 0L,
@@ -113,17 +119,32 @@ internal class TraversalAccounting(
     /**
      * Proof transition: `(TraversalAccounting, TraversalPlan) -> Refinement<TraversalPage, TraversalPageFailure>`.
      *
-     * Establishes exact deterministic aggregate measures under every plan bound.
-     * [io.github.amichne.kast.traversal.contract.TraversalPageFailure] is the closed expected failure. Raw counters are
-     * extracted only at this pure page-construction boundary.
+     * Establishes exact deterministic aggregate measures under every plan bound. [TraversalPageFailure] is the closed
+     * expected failure. Raw counters are extracted only at this pure page-construction boundary.
      */
-    fun page(plan: TraversalPlan) =
-        TraversalPage.fromBoundary(
+    fun page(plan: TraversalPlan): Refinement<TraversalPage, TraversalPageFailure> {
+        val prior =
+            when (val position = plan.position) {
+                TraversalPosition.Start -> TraversalProgress.Initial
+                is TraversalPosition.Resume -> position.continuation.checkpoint.progress
+            }
+        val progress =
+            when (
+                val advanced =
+                    prior.advance(expandedFrontier, records.size, records.maxOfOrNull { it.depth.value } ?: 0)
+            ) {
+                is Refinement.Refined -> advanced.value
+                is Refinement.Rejected -> return Refinement.Rejected(TraversalPageFailure.NEGATIVE_MEASURE)
+            }
+        return TraversalPage.fromBoundary(
             plan,
             records.sorted(),
             encodedBytes,
             examinedWorkUnits,
             elapsedMillis,
             expandedFrontier,
+            progress,
+            partialExpansions,
         )
+    }
 }

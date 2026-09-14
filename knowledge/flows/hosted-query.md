@@ -6,6 +6,7 @@ resource: file://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/
 tags: [intellij, kotlin, semantic-query, lifecycle]
 timestamp: 2026-09-13T00:00:00Z
 code_sources:
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryContinuations.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDeadline.kt
   - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijScopedDeclarationEnumeration.kt
   - path: kernel/src/main/kotlin/io/github/amichne/kast/kernel/ReadLimits.kt
@@ -325,3 +326,10 @@ completion reserve precedes the hard deadline. Exhaustion rejects before semanti
 evaluation, while a cooperative time-limited query can publish qualified results
 after freshness revalidation. Receipts distinguish configured limits from effective
 allowances. Work that exceeds the hard deadline still cancels and drains.
+
+Hosted query continuation stores retain detached task/output state under an exact
+query and semantic snapshot. Entry, byte, per-checkpoint and lifetime limits are
+explicit read settings; epoch replacement and disposal clear project state.
+Resumption acquires fresh host admission before state lookup. No checkpoint holds
+PSI, K2 symbols or an IDE observer callback. The serialized output budget is
+checked after compact references and selected projection fields are encoded.

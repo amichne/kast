@@ -3,14 +3,11 @@ package io.github.amichne.kast.symbol.intellij
 import com.intellij.navigation.ChooseByNameContributor
 import com.intellij.navigation.ChooseByNameContributorEx
 import com.intellij.navigation.NavigationItem
-import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.IndexNotReadyException
-import com.intellij.psi.codeStyle.NameUtil
 import com.intellij.util.Processor
 import com.intellij.util.indexing.FindSymbolParameters
 import com.intellij.util.indexing.IdFilter
-import com.intellij.util.text.matching.MatchingMode
 import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryMatch
@@ -18,6 +15,8 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualification
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
+import io.github.amichne.kast.symbol.contract.SymbolNameRelevance
+import io.github.amichne.kast.symbol.contract.relevance
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadContributor
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
@@ -64,7 +63,7 @@ internal class IntellijNativeDiscoveryQuery(
     private val cancellationCheck: () -> Unit,
     private val clock: IntellijDiscoveryNanoClock = SystemIntellijDiscoveryNanoClock,
     private val observation: IntellijReadObservation = IntellijReadObservation.None,
-    private val limits: ReadLimits = ReadLimits.Default,
+    internal val limits: ReadLimits = ReadLimits.Default,
 ) {
     /**
      * Proof transition: CompiledIntellijSearchScope + SymbolDiscoveryRequest + native contributors to
@@ -94,37 +93,11 @@ internal class IntellijNativeDiscoveryQuery(
         if (target !is SymbolDiscoveryTarget.Name && target !is SymbolDiscoveryTarget.All) {
             return IntellijNativeDiscoveryExecution.Rejected(IntellijNativeDiscoveryRejection.INTERNAL_INVARIANT)
         }
-        val collector =
-            BoundedNativeDiscoveryCollector(
-                compiledScope = compiledScope,
-                request = request,
-                itemFile = itemFile,
-                projector = projector,
-                itemAdmission = itemAdmission,
-                itemCompilerKind = itemCompilerKind,
-                itemPackage = itemPackage,
-                environmentState = environmentState,
-                cancellationCheck = cancellationCheck,
-                clock = clock,
-                observation = observation,
-            )
+        val collector = collector(compiledScope, request)
         if (compiledScope.population == IntellijScopePopulation.KNOWN_EMPTY) return collector.finish()
         if (contributors.isEmpty()) {
             return IntellijNativeDiscoveryExecution.Rejected(IntellijNativeDiscoveryRejection.NO_NATIVE_PROVIDERS)
         }
-        val fuzzyMatcher =
-            when (target) {
-                is SymbolDiscoveryTarget.All -> null
-                is SymbolDiscoveryTarget.Name ->
-                    when (target.match) {
-                        SymbolDiscoveryMatch.FUZZY ->
-                            NameUtil.buildMatcher(
-                                "*${target.pattern.value}",
-                                MatchingMode.IGNORE_CASE,
-                            )
-                        SymbolDiscoveryMatch.EXACT_NAME -> null
-                    }
-            }
 
         contributors
             .sortedBy { it.javaClass.name }
@@ -150,7 +123,8 @@ internal class IntellijNativeDiscoveryQuery(
                                     is SymbolDiscoveryTarget.All -> true
                                     is SymbolDiscoveryTarget.Name ->
                                         when (target.match) {
-                                            SymbolDiscoveryMatch.FUZZY -> checkNotNull(fuzzyMatcher).matches(name)
+                                            SymbolDiscoveryMatch.FUZZY ->
+                                                target.pattern.relevance(name) != SymbolNameRelevance.UNMATCHED
                                             SymbolDiscoveryMatch.EXACT_NAME -> name == target.pattern.value
                                         }
                                 }
@@ -180,6 +154,11 @@ internal class IntellijNativeDiscoveryQuery(
                             name,
                             Processor { item ->
                                 if (!collector.observe()) return@Processor false
+                                if (
+                                    collector.admit(item, inspectPackage = false) !=
+                                        IntellijDiscoveryItemAdmission.ADMITTED
+                                )
+                                    return@Processor !collector.halted
                                 if (pending.size >= limits[ReadLimitParameter.DISCOVERY_CANDIDATES].value) {
                                     reachedCandidateLimit = true
                                     observation.terminated(IntellijReadTermination.CANDIDATE_CAP, collector.contributor)
@@ -234,15 +213,13 @@ internal class IntellijNativeDiscoveryQuery(
                 !(target is SymbolDiscoveryTarget.Name && target.match == SymbolDiscoveryMatch.FUZZY)
         )
             return IntellijNativeDiscoveryExecution.Rejected(IntellijNativeDiscoveryRejection.INTERNAL_INVARIANT)
-        return discoverIndexed(compiledScope, request, IntellijReadContributor.SCOPED_DECLARATIONS, process)
+        return discoverIndexed(
+            compiledScope = compiledScope,
+            request = request,
+            contributor = IntellijReadContributor.SCOPED_DECLARATIONS,
+            process = process,
+        )
     }
-
-    fun discoverAll(
-        compiledScope: CompiledIntellijSearchScope,
-        request: SymbolDiscoveryRequest,
-        process: ((NavigationItem) -> Boolean) -> Boolean,
-    ): IntellijNativeDiscoveryExecution =
-        discoverDeclarations(compiledScope, request) { _, _, accept -> process(accept) }
 
     fun discoverExactName(
         compiledScope: CompiledIntellijSearchScope,
@@ -272,53 +249,60 @@ internal class IntellijNativeDiscoveryQuery(
                 return IntellijNativeDiscoveryExecution.Rejected(IntellijNativeDiscoveryRejection.PROJECT_DISPOSED)
             IntellijDiscoveryEnvironmentState.READY -> Unit
         }
-        val collector =
-            BoundedNativeDiscoveryCollector(
-                compiledScope,
-                request,
-                itemFile,
-                projector,
-                itemAdmission,
-                itemCompilerKind,
-                itemPackage,
-                environmentState,
-                cancellationCheck,
-                clock,
-                observation,
-            )
+        val collector = collector(compiledScope, request)
         collector.contributor = contributor
         if (compiledScope.population == IntellijScopePopulation.KNOWN_EMPTY) return collector.finish()
         val pending = ArrayList<NavigationItem>()
         try {
             var reachedLimit = false
             val target = request.target
-            val fuzzy =
-                if (target is SymbolDiscoveryTarget.Name && target.match == SymbolDiscoveryMatch.FUZZY)
-                    NameUtil.buildMatcher("*${target.pattern.value}", MatchingMode.IGNORE_CASE)
-                else null
+            val fuzzy = (target as? SymbolDiscoveryTarget.Name)?.takeIf { it.match == SymbolDiscoveryMatch.FUZZY }
+            val capacity =
+                minOf(
+                        request.budget.resources.workUnitLimit.value,
+                        limits[ReadLimitParameter.DISCOVERY_CANDIDATES].value.toLong(),
+                    )
+                    .toInt()
+            val ranked = fuzzy?.let {
+                BoundedLexicalCandidates(it.pattern, minOf(capacity, request.budget.resources.resultLimit.value))
+            }
             val complete =
                 process(collector::observe, collector::qualify) { item ->
                     if (!collector.observe()) return@process false
                     if (fuzzy != null) {
                         observation.count(IntellijReadCounter.NAMES_VISITED, contributor)
                         val name = item.name ?: return@process true
-                        if (!fuzzy.matches(name)) return@process true
+                        if (fuzzy.pattern.relevance(name) == SymbolNameRelevance.UNMATCHED) return@process true
                         observation.count(IntellijReadCounter.NAMES_MATCHED, contributor)
                     }
+                    // Scoped enumeration has left native callbacks; package PSI is safe here.
                     if (
-                        pending.size.toLong() >=
-                            minOf(
-                                request.budget.resources.workUnitLimit.value,
-                                limits[ReadLimitParameter.DISCOVERY_CANDIDATES].value.toLong(),
-                            )
-                    ) {
-                        reachedLimit = true
-                        return@process false
+                        collector.admit(item, contributor == IntellijReadContributor.SCOPED_DECLARATIONS) !=
+                            IntellijDiscoveryItemAdmission.ADMITTED
+                    )
+                        return@process !collector.halted
+                    if (ranked != null) {
+                        ranked.accept(item).observe(observation, contributor)
+                    } else {
+                        if (pending.size >= capacity) {
+                            reachedLimit = true
+                            return@process false
+                        }
+                        pending += item
                     }
-                    pending += item
                     observation.count(IntellijReadCounter.CANDIDATES_COLLECTED, collector.contributor)
                     true
                 }
+            if (ranked != null) {
+                pending += ranked.values()
+                if (ranked.truncated) {
+                    collector.qualify(
+                        if (request.budget.resources.resultLimit.value <= capacity)
+                            SymbolDiscoveryQualification.RESULT_LIMIT_REACHED
+                        else SymbolDiscoveryQualification.WORK_LIMIT_REACHED
+                    )
+                }
+            }
             if (reachedLimit) {
                 observation.terminated(
                     if (pending.size == limits[ReadLimitParameter.DISCOVERY_CANDIDATES].value)
@@ -360,7 +344,44 @@ internal class IntellijNativeDiscoveryQuery(
         return collector.finish()
     }
 
-    private companion object {
-        val LOG: Logger = Logger.getInstance(IntellijNativeDiscoveryQuery::class.java)
-    }
+    private fun collector(scope: CompiledIntellijSearchScope, request: SymbolDiscoveryRequest) =
+        BoundedNativeDiscoveryCollector(
+            compiledScope = scope,
+            request = request,
+            policies =
+                IntellijDiscoveryItemPolicies(
+                    itemFile = itemFile,
+                    projector = projector,
+                    itemAdmission = itemAdmission,
+                    itemCompilerKind = itemCompilerKind,
+                    itemPackage = itemPackage,
+                ),
+            execution =
+                IntellijDiscoveryExecution(
+                    environmentState = environmentState,
+                    cancellationCheck = cancellationCheck,
+                    clock = clock,
+                    observation = observation,
+                ),
+        )
+}
+
+internal fun IntellijNativeDiscoveryQuery.discoverAll(
+    compiledScope: CompiledIntellijSearchScope,
+    request: SymbolDiscoveryRequest,
+    process: ((NavigationItem) -> Boolean) -> Boolean,
+): IntellijNativeDiscoveryExecution = discoverDeclarations(compiledScope, request) { _, _, accept -> process(accept) }
+
+private fun LexicalCandidateRetention.observe(
+    observation: IntellijReadObservation,
+    contributor: IntellijReadContributor,
+) {
+    val counter =
+        when (this) {
+            LexicalCandidateRetention.RETAINED -> IntellijReadCounter.LEXICAL_CANDIDATES_RETAINED
+            LexicalCandidateRetention.REPLACED -> IntellijReadCounter.LEXICAL_CANDIDATES_REPLACED
+            LexicalCandidateRetention.DROPPED -> IntellijReadCounter.LEXICAL_CANDIDATES_DROPPED
+            LexicalCandidateRetention.DUPLICATE -> return
+        }
+    observation.count(counter, contributor)
 }

@@ -19,6 +19,7 @@ import io.github.amichne.kast.protocol.contract.QueryStepDocument
 /** Pure lowering. The caller must first establish the public schema identity. */
 internal fun PublicQueryDocument.toCanonicalQuery(): QueryRunRequest =
     QueryRunRequest(
+        continuation = continuation,
         from =
             when (val source = from) {
                 is PublicQuerySearch ->

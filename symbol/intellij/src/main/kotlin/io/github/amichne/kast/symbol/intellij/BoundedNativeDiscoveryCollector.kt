@@ -12,6 +12,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualifications
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTimings
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryWorkCount
+import io.github.amichne.kast.symbol.contract.candidateOrder
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadContributor
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
@@ -20,16 +21,24 @@ import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
 internal class BoundedNativeDiscoveryCollector(
     private val compiledScope: CompiledIntellijSearchScope,
     private val request: SymbolDiscoveryRequest,
-    private val itemFile: IntellijDiscoveryItemFile,
-    private val projector: IntellijDiscoveryCandidateProjector,
-    private val itemAdmission: IntellijDiscoveryItemAdmissionPolicy,
-    private val itemCompilerKind: IntellijDiscoveryItemCompilerKind,
-    private val itemPackage: IntellijDiscoveryItemPackage,
-    private val environmentState: () -> IntellijDiscoveryEnvironmentState,
-    private val cancellationCheck: () -> Unit,
-    private val clock: IntellijDiscoveryNanoClock,
-    private val observation: IntellijReadObservation,
+    private val policies: IntellijDiscoveryItemPolicies,
+    private val execution: IntellijDiscoveryExecution,
 ) {
+    private val clock
+        get() = execution.clock
+
+    private val observation
+        get() = execution.observation
+
+    private val itemFile
+        get() = policies.itemFile
+
+    private val projector
+        get() = policies.projector
+
+    private val itemAdmission
+        get() = policies.itemAdmission
+
     private val startedAt = clock.now()
     private val candidates = linkedSetOf<SymbolDiscoveryCandidate>()
     private val qualifications = linkedSetOf<SymbolDiscoveryQualification>()
@@ -41,8 +50,8 @@ internal class BoundedNativeDiscoveryCollector(
         private set
 
     fun observe(): Boolean {
-        cancellationCheck()
-        when (environmentState()) {
+        execution.cancellationCheck()
+        when (execution.environmentState()) {
             IntellijDiscoveryEnvironmentState.DUMB -> {
                 qualifyAndHalt(SymbolDiscoveryQualification.DUMB_MODE_TRANSITION)
                 return false
@@ -71,54 +80,64 @@ internal class BoundedNativeDiscoveryCollector(
         return true
     }
 
-    fun accept(item: NavigationItem): Boolean {
+    fun admit(item: NavigationItem, inspectPackage: Boolean = true): IntellijDiscoveryItemAdmission {
         if (!observe()) {
-            return false
+            return IntellijDiscoveryItemAdmission.FILTERED
         }
         val file =
             when (val itemFileResult = itemFile.find(item)) {
                 is IntellijDiscoveryItemFileResult.Found -> itemFileResult.file
                 IntellijDiscoveryItemFileResult.Unsupported -> {
                     qualify(SymbolDiscoveryQualification.UNSUPPORTED_ITEM)
-                    return true
+                    return IntellijDiscoveryItemAdmission.FILTERED
                 }
             }
         if (!compiledScope.nativeScope.contains(file)) {
             observation.count(IntellijReadCounter.SCOPE_FILTERED, contributor)
-            return true
+            return IntellijDiscoveryItemAdmission.FILTERED
         }
         when (
             request.constraints.admit(
-                item,
-                file.path,
-                request.scope.lease.workspaceRoot.value,
-                compiledScope,
-                itemCompilerKind,
-                itemPackage,
+                item = item,
+                filePath = file.path,
+                compiledScope = compiledScope,
+                policies = policies,
+                inspectPackage = inspectPackage,
             )
         ) {
             IntellijDiscoveryItemAdmission.ADMITTED -> Unit
             IntellijDiscoveryItemAdmission.FILTERED -> {
                 observation.count(IntellijReadCounter.SCOPE_FILTERED, contributor)
-                return true
+                return IntellijDiscoveryItemAdmission.FILTERED
             }
             IntellijDiscoveryItemAdmission.UNSUPPORTED -> {
                 qualify(SymbolDiscoveryQualification.UNSUPPORTED_ITEM)
-                return true
+                return IntellijDiscoveryItemAdmission.FILTERED
             }
         }
         when (itemAdmission.admit(item)) {
             IntellijDiscoveryItemAdmission.ADMITTED -> Unit
             IntellijDiscoveryItemAdmission.FILTERED -> {
                 observation.count(IntellijReadCounter.SCOPE_FILTERED, contributor)
-                return true
+                return IntellijDiscoveryItemAdmission.FILTERED
             }
             IntellijDiscoveryItemAdmission.UNSUPPORTED -> {
                 qualify(SymbolDiscoveryQualification.UNSUPPORTED_ITEM)
-                return true
+                return IntellijDiscoveryItemAdmission.FILTERED
             }
         }
-        return project(item, file)
+        return IntellijDiscoveryItemAdmission.ADMITTED
+    }
+
+    fun accept(item: NavigationItem): Boolean {
+        if (admit(item) != IntellijDiscoveryItemAdmission.ADMITTED) return !halted
+        return when (val file = itemFile.find(item)) {
+            is IntellijDiscoveryItemFileResult.Found -> project(item, file.file)
+            IntellijDiscoveryItemFileResult.Unsupported -> {
+                qualify(SymbolDiscoveryQualification.UNSUPPORTED_ITEM)
+                true
+            }
+        }
     }
 
     private fun project(item: NavigationItem, file: com.intellij.openapi.vfs.VirtualFile): Boolean {
@@ -180,7 +199,7 @@ internal class BoundedNativeDiscoveryCollector(
                 nativeQuery = (totalNanoseconds - projectionNanoseconds).coerceAtLeast(0L).elapsedMeasure(),
                 projection = projectionNanoseconds.elapsedMeasure(),
             )
-        val orderedCandidates = candidates.sorted()
+        val orderedCandidates = candidates.sortedWith(request.candidateOrder())
         val batch =
             when (
                 val creation =
@@ -270,3 +289,18 @@ private fun SymbolDiscoveryQualification.observedTermination(): IntellijReadTerm
         SymbolDiscoveryQualification.EXACT_DEFINITION_UNAVAILABLE ->
             IntellijReadTermination.EXACT_REFINEMENT_UNAVAILABLE
     }
+
+internal data class IntellijDiscoveryItemPolicies(
+    val itemFile: IntellijDiscoveryItemFile,
+    val projector: IntellijDiscoveryCandidateProjector,
+    val itemAdmission: IntellijDiscoveryItemAdmissionPolicy,
+    val itemCompilerKind: IntellijDiscoveryItemCompilerKind,
+    val itemPackage: IntellijDiscoveryItemPackage,
+)
+
+internal data class IntellijDiscoveryExecution(
+    val environmentState: () -> IntellijDiscoveryEnvironmentState,
+    val cancellationCheck: () -> Unit,
+    val clock: IntellijDiscoveryNanoClock,
+    val observation: IntellijReadObservation,
+)

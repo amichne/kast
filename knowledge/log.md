@@ -1,5 +1,21 @@
 # Knowledge-base update log
 
+## 2026-09-14
+
+- Added resumable ordered query checkpoints, byte-bounded output suffixes,
+  canonical symbol equality and short hosted references. Retained source scope,
+  freshness and finite terminal failure evidence through public projections.
+- Added measured traversal progress, bounded fan-out, partial expansion evidence,
+  page-local provider omissions, passive readiness and single-document tool replies.
+- Reviewed the affected module, configuration, public-tool, identity, dispatch,
+  change-lifecycle and hosted-query concepts against their source bindings.
+  Mutation authority and workspace recovery requirements remain unchanged.
+- Recorded synthetic multi-module and graph reproductions in the
+  [composability review](../docs/reviews/composable-tooling-reproduction.md).
+- Rechecked installed schema definitions and documented the shared process output
+  cap and its headroom regression; native reports now retain finite provider
+  qualification evidence before invoking tools.
+
 ## 2026-09-12
 
 - Added the [installed knowledge contract](contracts/installed-knowledge.md):

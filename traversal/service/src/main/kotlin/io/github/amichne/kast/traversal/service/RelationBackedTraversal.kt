@@ -11,20 +11,36 @@ import io.github.amichne.kast.traversal.contract.TraversalOperations
  * Proof transition: `RelationOperations -> TraversalOperations`.
  *
  * Establishes a host-neutral traversal capability whose every hop delegates to the sole public bounded relation
- * authority. Exact endpoint, meaning, scope, budget, and continuation authority are retained. Each read is
- * conservatively charged its full authorized one-hop elapsed limit; no platform or clock effect is introduced.
+ * authority. Exact endpoint, meaning, scope, budget, and continuation authority are retained. Each read is charged its
+ * observed elapsed time through an explicit monotonic clock at this effect boundary.
  */
-fun traversalOperations(relations: RelationOperations): TraversalOperations =
-    TraversalService(RelationOperationsOneHopReader(relations))
+fun traversalOperations(
+    relations: RelationOperations,
+    clock: TraversalNanoClock = TraversalNanoClock(System::nanoTime),
+): TraversalOperations = TraversalService(RelationOperationsOneHopReader(relations, clock))
 
-private class RelationOperationsOneHopReader(private val relations: RelationOperations) : OneHopRelationReader {
+/** Explicit time capability; the traversal state machine remains deterministic. */
+fun interface TraversalNanoClock {
+    fun now(): Long
+}
+
+private class RelationOperationsOneHopReader(
+    private val relations: RelationOperations,
+    private val clock: TraversalNanoClock,
+) : OneHopRelationReader {
     override suspend fun read(request: OneHopRelationRequest): OneHopRelationRead =
         when (val projection = request.toRelationRequest()) {
-            is OneHopRelationRequestProjection.Admitted ->
-                OneHopRelationRead.Completed(
-                    relations.read(projection.request),
-                    OneHopElapsedMillis.charge(request.budget.resources.elapsedTimeLimit),
-                )
+            is OneHopRelationRequestProjection.Admitted -> {
+                val started = clock.now()
+                val result = relations.read(projection.request)
+                val elapsedNanos = clock.now() - started
+                // Round upward: a sub-millisecond read still consumes time authority.
+                val elapsedMillis = elapsedNanos / 1_000_000L + if (elapsedNanos % 1_000_000L == 0L) 0L else 1L
+                when (val elapsed = OneHopElapsedMillis.parse(if (elapsedNanos < 0L) -1L else elapsedMillis)) {
+                    is Refinement.Refined -> OneHopRelationRead.Completed(result, elapsed.value)
+                    is Refinement.Rejected -> OneHopRelationRead.Rejected
+                }
+            }
             OneHopRelationRequestProjection.Rejected -> OneHopRelationRead.Rejected
         }
 }

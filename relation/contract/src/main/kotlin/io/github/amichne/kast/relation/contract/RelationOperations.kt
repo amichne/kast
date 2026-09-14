@@ -58,6 +58,7 @@ enum class RelationBatchFailure {
     NON_DETERMINISTIC_ORDER,
     ENCODED_BYTE_COUNT_MISMATCH,
     RESULT_COUNT_MISMATCH,
+    INVALID_OMISSION_EVIDENCE,
 }
 
 @ConsistentCopyVisibility
@@ -68,7 +69,20 @@ private constructor(
     val encodedBytes: RelationByteCount,
     val examinedWorkUnits: RelationWorkCount,
     val resultCount: RelationResultCount,
+    val omissions: List<RelationOmissionEvidence>,
 ) {
+    fun withOmissions(values: List<RelationOmissionEvidence>): Refinement<RelationBatch, RelationBatchFailure> {
+        if (omissions.isNotEmpty() && omissions != values) {
+            return Refinement.Rejected(RelationBatchFailure.INVALID_OMISSION_EVIDENCE)
+        }
+        if (
+            values.any { it.provider != request.providerCursor.provider } ||
+                values.map { it.reason } != values.map { it.reason }.distinct().sortedBy { it.ordinal }
+        )
+            return Refinement.Rejected(RelationBatchFailure.INVALID_OMISSION_EVIDENCE)
+        return Refinement.Refined(copy(omissions = java.util.Collections.unmodifiableList(values.toList())))
+    }
+
     companion object {
         /**
          * Proof transition: `(RelationRequest, List<RelationFact>, RelationByteCount, RelationWorkCount) ->
@@ -125,6 +139,7 @@ private constructor(
                     encodedBytes,
                     examinedWorkUnits,
                     resultCount,
+                    emptyList(),
                 )
             )
         }
@@ -141,6 +156,7 @@ enum class RelationLimitation {
     UNSUPPORTED_ITEM,
     PROVIDER_FAILURE,
     PROVIDER_INCOMPLETE,
+    PROVIDER_STALLED,
 }
 
 @JvmInline value class RelationExactCount internal constructor(val value: Int)
@@ -206,7 +222,7 @@ sealed interface RelationIncompleteCoverage {
                 Resumable(
                     knownMinimum = RelationKnownMinimum(batch.facts.size),
                     limitations = orderedLimitations,
-                    continuation = RelationContinuation.issue(batch.request, nextProviderCursor),
+                    continuation = RelationContinuation.issue(batch.request, nextProviderCursor, orderedLimitations),
                 )
             )
         }

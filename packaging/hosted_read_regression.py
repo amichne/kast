@@ -4,14 +4,16 @@ Only bounded assertions and counts survive in the receipt. Returned references,
 source text and canonical payloads are used in memory and are never logged.
 """
 from collections import Counter
-from dataclasses import replace
+from dataclasses import asdict, replace
 import hashlib
 import importlib.util
 import json
 import sys
 import subprocess
 
-from hosted_read_transport import HostedReadTransport, ReadTransportRejected
+from hosted_read_transport import HostedReadTransport, ReadProviderFailure, ReadTransportRejected
+from hosted_read_requests import NativeTraversalRequest, TraversalStart, TraversalResume
+from native_provider_qualification import qualification_document
 
 
 def _reproduction(repo):
@@ -34,15 +36,19 @@ def run_read_regression(isolation, fixture, product, java, harness, repo, read_f
     """Call once after readiness, before the first mutation or external fixture edit."""
     oracle = _reproduction(repo)
     rows, failure, failure_details, unchanged, before = [], None, None, False, False
+    qualification = None
     try:
         before = read_fixture.unchanged()
         with HostedReadTransport(isolation, fixture, product, java, harness).open() as transport:
+            qualification = qualification_document(transport.qualification)
             for surface in ('cli', 'provider'):
                 replay = _ReadReplay(oracle, read_fixture, initial_live, transport, surface, rows)
                 replay.run()
     except ReadTransportRejected as error:
         failure = 'READ_TRANSPORT_REJECTED'
         failure_details = error.evidence()
+        if error.qualification is not None:
+            qualification = qualification_document(error.qualification)
     except (OSError, ValueError, TypeError, KeyError, subprocess.SubprocessError):
         failure = 'READ_RESULT_OR_FIXTURE_REJECTED'
     finally:
@@ -52,7 +58,7 @@ def run_read_regression(isolation, fixture, product, java, harness, repo, read_f
             failure = 'READ_FIXTURE_REJECTED'
     passed = failure is None and unchanged and bool(rows) and all(row['passed'] for row in rows)
     return {'schemaVersion': 1, 'outcome': 'passed' if passed else 'rejected', 'failure': failure,
-            'failureDetails': failure_details,
+            'failureDetails': failure_details, 'providerQualification': qualification,
             'scope': 'complete-authored-base-semantic-matrix-and-eight-default-read-tools',
             'fixture': read_fixture.evidence(), 'sourceUnchanged': unchanged,
             'queryBudgets': 'unchanged-production-policy', 'sourcePayloadsLogged': False,
@@ -153,14 +159,13 @@ class _ReadReplay:
         self.traversal(token, expected, helper)
 
     def traversal(self, token, expected, helper):
-        # The relation-backed adapter charges each hop its full authorized time.
-        # Consume its actual checkpoints; each request retains the original limits.
-        position, seen, callers = {'type': 'start'}, set(), Counter()
+        # Each hop retains its observed elapsed time; consume only issued checkpoints.
+        # Keep the explicit strategy and original limits unchanged across requests.
+        position, seen, callers = TraversalStart(), set(), Counter()
         complete, valid_pages, response = False, True, None
         for page in range(sum(expected.values()) + 1):
-            response = self.transport.invoke(self.surface, 'impact_analyze', {
-                'exactSelector': token, 'relation': 'callers', 'maximumDepth': 4, 'maximumResults': 100,
-                'position': position})
+            request = NativeTraversalRequest(exactSelector=token, position=position)
+            response = self.transport.invoke(self.surface, 'impact_analyze', asdict(request))
             graph = response.get('graph', {})
             nodes = {node['id']: node for node in graph.get('nodes', [])}
             edges = graph.get('edges', [])
@@ -187,7 +192,7 @@ class _ReadReplay:
                 complete = True
                 break
             seen.add(continuation)
-            position = {'type': 'resume', 'continuation': continuation}
+            position = TraversalResume(continuation=continuation)
         self.record('transitive-callers-five', 'impact_analyze', {
             'complete': complete, 'allPagesProven': valid_pages, 'exactCallers': callers == expected,
         }, sum(callers.values()), response)
@@ -210,6 +215,9 @@ def _read_observation(response):
     status = response.get('status')
     result = {'outcome': 'observed', 'status': status if status in ('complete', 'qualified', 'rejected')
               else 'unrecognized'}
+    failure = response.get('failure')
+    if isinstance(failure, str) and failure in {known.value for known in ReadProviderFailure}:
+        result['providerFailure'] = ReadProviderFailure(failure).value
     qualification = response.get('qualification')
     if isinstance(qualification, dict) and 'relationLimitations' in qualification:
         result['traversalQualification'] = _traversal_qualification_observation(qualification)

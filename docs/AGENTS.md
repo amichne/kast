@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-12 | hash: 7adbf23d11b6 -->
+<!-- generated: 2026-09-14 | hash: 3560fe14a60c -->
 
 # docs
 
@@ -9,6 +9,7 @@ Contains the public Mintlify documentation source plus scripts and styles for ob
 
 ## Key Files
 
+- [composable-tooling-reproduction.md](reviews/composable-tooling-reproduction.md) - synthetic scalability and composability regressions with evidence limits.
 - [public/docs.json](public/docs.json) - public documentation navigation and site configuration.
 - [public/index.mdx](public/index.mdx) - product landing documentation.
 - [public/start.mdx](public/start.mdx) - installation and connection guide.

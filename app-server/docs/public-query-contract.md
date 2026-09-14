@@ -14,7 +14,7 @@ The agent supplies intent; Kast establishes semantic evidence. Several tool pres
 | `check_diagnostics` | `diagnostic.check` | `tool check_diagnostics` | eager |
 | `query_symbols` | `query.run` | `tool query_symbols` | deferred |
 
-All routes read one JSON document from stdin. Required nullable controls normalize once into the authored defaults before constructing a canonical request. Exact case-sensitive matching is the default. Search facades select names, locations and signatures, preserving overload identities. Advanced source scopes restrict discovery only, ordered steps stay ordered, and an empty return-field list remains meaningful.
+All routes read one JSON document from stdin. The optional nullable `continuation` is absent/null for a new pipeline and preserves exact opaque bytes for resume. Other required nullable controls normalize once into the authored defaults before constructing a canonical request. Exact case-sensitive matching is the default. Search facades select names, locations and signatures, preserving overload identities. Advanced source scopes restrict discovery only, ordered steps stay ordered, and an empty return-field list remains meaningful.
 
 `PublicToolContract` validates the full schema, decodes generated syntax, and performs pure lowering. `AdmittedPublicTool` has a private constructor and retains tool identity, typed syntax and a closed query/diagnostic canonical request. The provider and CLI share this admission boundary. Re-encoding uses retained typed syntax; a request admitted for one tool cannot be reused under another tool's schema merely because both own `query.run`.
 
@@ -177,3 +177,16 @@ receipt/progression engine; no additional delivery-program proof is implied.
 - Slopsentral API Contracts: `source/skills/manage-json-schemas/references/schema-policy.md`
 - Slopsentral Engineering Baseline: `source/skills/semantic-ratchet/SKILL.md`
 - Kast root `AGENTS.md`: refine never erase, explicit effects, finite failures.
+
+## Ordered continuation and canonical equality
+
+Qualified query output includes a next-page `continuation` or a finite
+`terminal_reason`. Repeat the unchanged source, steps and projection with the
+returned token. Checkpoints retain ordered pending tasks, relation cursors and
+stage-local distinct identities under the exact snapshot. Expired, evicted,
+mismatched and stale state rejects. First-occurrence distinct preserves only
+that occurrence's connections; later pages cannot amend an emitted result.
+
+Exact items expose a snapshot-local canonical `symbol_id` independently of
+`symbol_ref`. Equality across admitted scopes does not broaden either selector's
+scope. The original host still validates the capability and compiler evidence.

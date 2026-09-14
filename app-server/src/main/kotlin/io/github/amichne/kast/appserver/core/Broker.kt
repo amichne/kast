@@ -49,8 +49,9 @@ private constructor(
     val observer: ObserverPresentation,
 ) {
     companion object {
-        internal fun outcome(summary: String, document: String, success: Boolean): ToolPresentation =
-            ToolPresentation(listOf(ToolContent(summary), ToolContent(document)), success, ObserverPresentation.None)
+        /** Codex inputText fallback is one independently parseable JSON document. */
+        internal fun outcome(document: JsonObject, success: Boolean): ToolPresentation =
+            ToolPresentation(listOf(ToolContent(canonicalJson(document))), success, ObserverPresentation.None)
 
         internal fun text(
             text: String,

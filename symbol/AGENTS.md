@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-12 | hash: 98455aebbea2 -->
+<!-- generated: 2026-09-14 | hash: cc0480261d61 -->
 
 # symbol
 
@@ -9,6 +9,8 @@ Defines symbol discovery and exact declaration identity, provides domain service
 
 ## Key Files
 
+- [CanonicalSymbolId.kt](contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/CanonicalSymbolId.kt) - snapshot-local canonical equality without widening selector scope.
+- [BoundedLexicalCandidates.kt](intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/BoundedLexicalCandidates.kt) - bounded lexical ranking before compiler projection.
 - [contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/CanonicalCompilerSignature.kt](contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/CanonicalCompilerSignature.kt) - canonical signature identity.
 - [contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/ExactDeclarationSelector.kt](contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/ExactDeclarationSelector.kt) - exact selector.
 - [contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/discovery/SymbolDiscoveryRequest.kt](contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/discovery/SymbolDiscoveryRequest.kt) - discovery request.

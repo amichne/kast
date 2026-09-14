@@ -31,6 +31,111 @@ class CanonicalQueryProtocolTest {
         )
 
     @Test
+    fun `opaque checkpoint binds query and snapshot while allowing fresh page budget`() = runTest {
+        val store = QueryCheckpointStore()
+        var executions = 0
+        val protocol =
+            CanonicalQueryProtocol(
+                QueryOperations { admitted ->
+                    executions++
+                    if (admitted.checkpoint == null) {
+                        val checkpoint =
+                            object : QueryCheckpoint {
+                                override val plan = admitted.plan
+                                override val lease = admitted.lease
+                                override val retainedBytes = 1024L
+                            }
+                        QueryExecutionResult.Qualified(
+                            QueryResult(QueryResultSet.Symbols(emptyList()), emptyList()),
+                            QueryCoverage.Qualified.create(
+                                    QueryCount.parse(0).refined(),
+                                    setOf(QueryLimitation.WORK_LIMIT_REACHED),
+                                )
+                                .refined(),
+                            QueryContinuationState.Resumable(checkpoint),
+                        )
+                    } else
+                        QueryExecutionResult.Complete(
+                            QueryResult(QueryResultSet.Symbols(emptyList()), emptyList()),
+                            QueryCoverage.Complete(QueryCount.parse(0).refined()),
+                        )
+                },
+                CanonicalQueryReferences(),
+                store,
+            )
+        val first = protocol.execute(request(), lease, budget) as OperationOutcome.Qualified
+        val token = first.evidence.payload.continuation!!
+        assertTrue(token.value.length < 64)
+        assertNull(first.evidence.payload.terminalReason)
+        assertCheckpointBinding(protocol, token)
+        assertInstanceOf(
+            OperationOutcome.Complete::class.java,
+            protocol.execute(
+                request().copy(continuation = token),
+                lease,
+                budget.copy(returnedBytes = QueryByteLimit.parse(20000).refined()),
+            ),
+        )
+        assertEquals(2, executions)
+    }
+
+    private suspend fun assertCheckpointBinding(protocol: CanonicalQueryProtocol, token: ProtocolText) {
+        val changed = request().copy(continuation = token, steps = bounded(listOf(QueryStepDocument.Distinct)))
+        assertEquals(
+            QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.CONTINUATION_MISMATCH),
+            (protocol.execute(changed, lease, budget) as OperationOutcome.Rejected).reason,
+        )
+        assertEquals(
+            QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.CONTINUATION_MISMATCH),
+            (protocol.execute(
+                    request().copy(continuation = token),
+                    SemanticReadLease(root, EvidenceGeneration.parse(8).refined()),
+                    budget,
+                ) as OperationOutcome.Rejected)
+                .reason,
+        )
+        assertEquals(
+            QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.CONTINUATION_UNAVAILABLE),
+            (protocol.execute(request().copy(continuation = text("query:v1:missing")), lease, budget)
+                    as OperationOutcome.Rejected)
+                .reason,
+        )
+    }
+
+    @Test
+    fun `checkpoint expiry and capacity release retained state with explicit unavailable outcome`() = runTest {
+        var now = 0L
+        val store = QueryCheckpointStore(capacity = 1, maximumBytes = 16384L, clock = { now })
+        lateinit var retained: QueryCheckpoint
+        CanonicalQueryProtocol(
+                QueryOperations { admitted ->
+                    retained =
+                        object : QueryCheckpoint {
+                            override val plan = admitted.plan
+                            override val lease = admitted.lease
+                            override val retainedBytes = 1024L
+                        }
+                    QueryExecutionResult.Complete(
+                        QueryResult(QueryResultSet.Symbols(emptyList()), emptyList()),
+                        QueryCoverage.Complete(QueryCount.parse(0).refined()),
+                    )
+                },
+                CanonicalQueryReferences(),
+            )
+            .execute(request(), lease, budget)
+        val first = store.issue(request(), retained) as QueryCheckpointIssuance.Issued
+        val second = store.issue(request(), retained) as QueryCheckpointIssuance.Issued
+        assertEquals(QueryCheckpointRestoration.Unavailable, store.restore(first.token, request(), lease))
+        assertInstanceOf(QueryCheckpointRestoration.Restored::class.java, store.restore(second.token, request(), lease))
+        now = 600_000_000_001L
+        assertEquals(QueryCheckpointRestoration.Unavailable, store.restore(second.token, request(), lease))
+        assertEquals(
+            QueryCheckpointIssuance.CapacityExceeded,
+            QueryCheckpointStore(maximumBytes = 1L).issue(request(), retained),
+        )
+    }
+
+    @Test
     fun `host lookup expands the token before canonical authority and kind validation`() {
         val handle = text("candidate:v4:" + "a".repeat(64))
         val tokens = mutableMapOf<ProtocolText, ProtocolText>()

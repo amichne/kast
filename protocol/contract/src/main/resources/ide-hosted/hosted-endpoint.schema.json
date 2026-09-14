@@ -118,6 +118,9 @@
         },
         "querySchema": {
           "const": "kast.query.run.v2"
+        },
+        "readiness": {
+          "$ref": "#/$defs/readiness"
         }
       }
     },
@@ -983,6 +986,387 @@
             "APPROVAL_UNAVAILABLE",
             "APPROVAL_REJECTED"
           ]
+        }
+      }
+    },
+    "readiness": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status"
+          ],
+          "properties": {
+            "status": {
+              "const": "admission_ready"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "rejection"
+          ],
+          "properties": {
+            "status": {
+              "const": "unavailable"
+            },
+            "rejection": {
+              "$ref": "#/$defs/readinessRejection"
+            }
+          }
+        }
+      ]
+    },
+    "readinessRejection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "outcome",
+        "failure",
+        "detail",
+        "stage"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "outcome": {
+          "const": "rejected"
+        },
+        "failure": {
+          "enum": [
+            "RETIRED",
+            "WRONG_ENDPOINT",
+            "WRONG_PROJECT",
+            "BUSY",
+            "STALE_REQUEST",
+            "INVALID_SELECTION",
+            "DECLARATION_NOT_FOUND",
+            "AMBIGUOUS_DECLARATION",
+            "DECLARATION_IDENTITY_MISMATCH",
+            "PROJECT_UNAVAILABLE",
+            "INDEXING",
+            "WRONG_THREAD",
+            "DIRTY_DOCUMENTS",
+            "UNCOMMITTED_DOCUMENTS",
+            "CONTENT_MOVED",
+            "MODEL_MOVED",
+            "UNSUPPORTED_MODEL",
+            "UNSUPPORTED_DECLARATION",
+            "UNRESOLVED_SUPERTYPE",
+            "FILE_UNAVAILABLE",
+            "FILE_TOO_LARGE",
+            "OUTSIDE_SCOPE",
+            "AMBIGUOUS_SCOPE",
+            "READ_PREEMPTED",
+            "CANCELLED",
+            "BUDGET_EXCEEDED",
+            "PLATFORM_FAILURE",
+            "PROJECT_ADMISSION_REJECTED",
+            "MODEL_CAPTURE_REJECTED",
+            "READ_EPOCH_REJECTED",
+            "FRESHNESS_REJECTED",
+            "RESULT_LIMIT_EXCEEDED",
+            "LIVE_AUTHORITY_REJECTED",
+            "NAMED_SOURCE_SCOPE_REJECTED",
+            "CONFIGURATION_REJECTED"
+          ]
+        },
+        "detail": {
+          "oneOf": [
+            {
+              "type": "string",
+              "maxLength": 128
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "stage": {
+                  "type": "string",
+                  "maxLength": 64
+                },
+                "cause": {
+                  "enum": [
+                    "OBSERVATION_FAILED",
+                    "RUNTIME",
+                    "LINKAGE"
+                  ]
+                },
+                "field": {
+                  "type": "string",
+                  "maxLength": 64
+                }
+              }
+            },
+            {
+              "type": "array",
+              "maxItems": 64,
+              "items": {
+                "type": "string",
+                "maxLength": 128
+              }
+            },
+            {
+              "$ref": "#/$defs/namedSourceScopeFailure"
+            }
+          ]
+        },
+        "stage": {
+          "enum": [
+            "REQUEST_ADMISSION",
+            "PROJECT_ADMISSION",
+            "EPOCH_OBSERVATION",
+            "MODEL_CAPTURE",
+            "SEMANTIC_READ",
+            "CONTENT_REVALIDATION",
+            "RESULT_DETACHED"
+          ]
+        },
+        "recovery": {
+          "$ref": "#/$defs/readRecovery"
+        }
+      }
+    },
+    "readRecovery": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "check",
+            "required",
+            "remediation"
+          ],
+          "properties": {
+            "kind": {
+              "const": "after_state_change"
+            },
+            "check": {
+              "const": "IDE_STATUS"
+            },
+            "required": {
+              "const": "CACHED_GRADLE_MODEL_COMPLETE"
+            },
+            "remediation": {
+              "const": "OBSERVE_IDE_GRADLE_MODEL"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "check",
+            "required",
+            "remediation"
+          ],
+          "properties": {
+            "kind": {
+              "const": "after_indexing"
+            },
+            "check": {
+              "const": "IDE_STATUS"
+            },
+            "required": {
+              "const": "SMART_MODE"
+            },
+            "remediation": {
+              "const": "WAIT_FOR_IDE_INDEXING"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "const": "review_failure"
+            }
+          }
+        }
+      ]
+    },
+    "namedSourceScopeFailure": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "cause",
+            "module",
+            "root",
+            "reason"
+          ],
+          "properties": {
+            "cause": {
+              "const": "IDE_ROOT_UNMAPPED"
+            },
+            "module": {
+              "$ref": "#/$defs/moduleIdentity"
+            },
+            "root": {
+              "$ref": "#/$defs/sourceRootIdentity"
+            },
+            "reason": {
+              "enum": [
+                "SOURCE_FOLDER_UNAVAILABLE",
+                "SOURCE_FOLDER_OBSERVATION_FAILED",
+                "GRADLE_OWNER_MISSING"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "cause",
+            "module",
+            "root",
+            "reason"
+          ],
+          "properties": {
+            "cause": {
+              "const": "IDE_ROOT_INCOHERENT"
+            },
+            "module": {
+              "$ref": "#/$defs/moduleIdentity"
+            },
+            "root": {
+              "$ref": "#/$defs/sourceRootIdentity"
+            },
+            "reason": {
+              "enum": [
+                "UNSUPPORTED_ROOT_TYPE",
+                "SOURCE_PROPERTIES_UNAVAILABLE"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "cause",
+            "module",
+            "root",
+            "ide",
+            "gradle"
+          ],
+          "properties": {
+            "cause": {
+              "const": "ROOT_CLASSIFICATION_MISMATCH"
+            },
+            "module": {
+              "$ref": "#/$defs/moduleIdentity"
+            },
+            "root": {
+              "$ref": "#/$defs/sourceRootIdentity"
+            },
+            "ide": {
+              "$ref": "#/$defs/rootClassification"
+            },
+            "gradle": {
+              "$ref": "#/$defs/rootClassification"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "cause",
+            "module",
+            "reason"
+          ],
+          "properties": {
+            "cause": {
+              "const": "OWNER_UNAVAILABLE"
+            },
+            "module": {
+              "$ref": "#/$defs/moduleIdentity"
+            },
+            "reason": {
+              "enum": [
+                "GRADLE_OWNER_UNAVAILABLE",
+                "BUILD_ROOT_UNAVAILABLE",
+                "BUILD_ROOT_MALFORMED",
+                "MODULE_IDENTITY_MALFORMED",
+                "PROJECT_PATH_UNAVAILABLE",
+                "PROJECT_PATH_MALFORMED",
+                "CACHED_PROJECT_UNAVAILABLE"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "moduleIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "value",
+        "truncated"
+      ],
+      "properties": {
+        "value": {
+          "type": "string",
+          "maxLength": 512
+        },
+        "truncated": {
+          "type": "boolean"
+        }
+      }
+    },
+    "rootClassification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "provenance"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "PRODUCTION",
+            "TEST",
+            "UNKNOWN"
+          ]
+        },
+        "provenance": {
+          "enum": [
+            "AUTHORED",
+            "GENERATED",
+            "UNKNOWN"
+          ]
+        }
+      }
+    },
+    "sourceRootIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "value",
+        "truncated"
+      ],
+      "properties": {
+        "value": {
+          "type": "string",
+          "maxLength": 8192
+        },
+        "truncated": {
+          "type": "boolean"
         }
       }
     }

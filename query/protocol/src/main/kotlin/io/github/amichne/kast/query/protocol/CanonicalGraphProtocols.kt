@@ -6,7 +6,6 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
-import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.RelationFactDocument
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
 import io.github.amichne.kast.protocol.contract.RelationKnownMinimumDocument
@@ -16,17 +15,10 @@ import io.github.amichne.kast.protocol.contract.RelationReadQualification
 import io.github.amichne.kast.protocol.contract.RelationReadRejection
 import io.github.amichne.kast.protocol.contract.RelationReadRequest
 import io.github.amichne.kast.protocol.contract.RelationReadResult
-import io.github.amichne.kast.protocol.contract.TraversalDepthDocument
 import io.github.amichne.kast.protocol.contract.TraversalLimitationDocument
-import io.github.amichne.kast.protocol.contract.TraversalRecordDocument
-import io.github.amichne.kast.protocol.contract.TraversalRunPositionDocument
 import io.github.amichne.kast.protocol.contract.TraversalRunQualification
 import io.github.amichne.kast.protocol.contract.TraversalRunRejection
-import io.github.amichne.kast.protocol.contract.TraversalRunRequest
-import io.github.amichne.kast.protocol.contract.TraversalRunResult
 import io.github.amichne.kast.relation.contract.RelationBudget
-import io.github.amichne.kast.relation.contract.RelationEndpoint
-import io.github.amichne.kast.relation.contract.RelationFact
 import io.github.amichne.kast.relation.contract.RelationIncompleteCoverage
 import io.github.amichne.kast.relation.contract.RelationLimitation
 import io.github.amichne.kast.relation.contract.RelationMeaning
@@ -35,16 +27,10 @@ import io.github.amichne.kast.relation.contract.RelationReadRejection as DomainR
 import io.github.amichne.kast.relation.contract.RelationReadResult as DomainRelationResult
 import io.github.amichne.kast.relation.contract.RelationRequest as DomainRelationRequest
 import io.github.amichne.kast.relation.contract.RelationResumeFailure as DomainRelationResumeFailure
-import io.github.amichne.kast.traversal.contract.TraversalBudget
-import io.github.amichne.kast.traversal.contract.TraversalDepthLimit
 import io.github.amichne.kast.traversal.contract.TraversalLimitation
-import io.github.amichne.kast.traversal.contract.TraversalOperations
-import io.github.amichne.kast.traversal.contract.TraversalPlan
 import io.github.amichne.kast.traversal.contract.TraversalPlanResumeFailure
 import io.github.amichne.kast.traversal.contract.TraversalQualification
-import io.github.amichne.kast.traversal.contract.TraversalRecord
 import io.github.amichne.kast.traversal.contract.TraversalRejection
-import io.github.amichne.kast.traversal.contract.TraversalResult as DomainTraversalResult
 import io.github.amichne.kast.traversal.contract.TraversalResumeFailure
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 
@@ -65,7 +51,7 @@ class CanonicalRelationReadProtocol(
             ResultLimit.parse(minOf(request.limit.value, maximum.resources.resultLimit.value)).refinedOrNull()
                 ?: return OperationOutcome.Rejected(RelationReadRejection.RELATION_UNSUPPORTED)
         val budget = maximum.copy(resources = maximum.resources.copy(resultLimit = resultLimit))
-        val meaning = request.relation.meaning()
+        val meaning = request.relation.graphMeaning()
         val subject =
             when (val lookup = authority.exact(request.exactSelector, current)) {
                 is ExactSelectorLookup.Found -> lookup.selector
@@ -104,26 +90,24 @@ class CanonicalRelationReadProtocol(
             is DomainRelationResult.Rejected -> OperationOutcome.Rejected(result.reason.protocol())
             is DomainRelationResult.Complete ->
                 project(
-                    result.batch.facts,
-                    result.batch.request.subject,
+                    result.batch,
                     RelationProjection.Complete,
                 )
             is DomainRelationResult.Qualified ->
                 project(
-                    result.batch.facts,
-                    result.batch.request.subject,
+                    result.batch,
                     RelationProjection.Qualified(result.coverage),
                 )
         }
     }
 
     private fun project(
-        facts: List<RelationFact>,
-        subject: RelationEndpoint,
+        batch: io.github.amichne.kast.relation.contract.RelationBatch,
         projection: RelationProjection,
     ): OperationOutcome<RelationReadResult, RelationReadQualification, RelationReadRejection> {
+        val subject = batch.request.subject
         val documents = mutableListOf<RelationFactDocument>()
-        facts.forEach { fact ->
+        batch.facts.forEach { fact ->
             val document =
                 fact.protocolDocument(authority)
                     ?: return OperationOutcome.Rejected(RelationReadRejection.RELATION_UNSUPPORTED)
@@ -138,7 +122,15 @@ class CanonicalRelationReadProtocol(
             EvidenceEnvelope(
                 CanonicalOperation.RELATION_READ.id,
                 subject.lease.evidenceBasis(),
-                RelationReadResult(bounded),
+                RelationReadResult(
+                    bounded,
+                    batch.protocolOmissions(
+                        when (projection) {
+                            RelationProjection.Complete -> emptySet()
+                            is RelationProjection.Qualified -> projection.coverage.limitations
+                        }
+                    ) ?: return OperationOutcome.Rejected(RelationReadRejection.RELATION_UNSUPPORTED),
+                ),
             )
         return when (projection) {
             RelationProjection.Complete -> OperationOutcome.Complete(envelope)
@@ -152,149 +144,19 @@ class CanonicalRelationReadProtocol(
     }
 }
 
-class CanonicalTraversalRunProtocol(
-    private val operations: TraversalOperations,
-    private val authority: QueryReferenceAuthority,
-) {
-    suspend fun execute(
-        request: TraversalRunRequest,
-        current: SemanticReadAuthority,
-        maximum: TraversalBudget,
-    ): OperationOutcome<
-        TraversalRunResult,
-        TraversalRunQualification,
-        TraversalRunRejection,
-    > {
-        val selector =
-            when (val lookup = authority.exact(request.exactSelector, current)) {
-                is ExactSelectorLookup.Found -> lookup.selector
-                is ExactSelectorLookup.Rejected -> return OperationOutcome.Rejected(lookup.reason.traversalProtocol())
-            }
-        if (request.maximumDepth.value > maximum.depth.value)
-            return OperationOutcome.Rejected(TraversalRunRejection.PLAN_REJECTED)
-        val records =
-            ResultLimit.parse(minOf(request.maximumResults.value, maximum.records.value)).refinedOrNull()
-                ?: return OperationOutcome.Rejected(TraversalRunRejection.PLAN_REJECTED)
-        val depth =
-            TraversalDepthLimit.parse(request.maximumDepth.value).refinedOrNull()
-                ?: return OperationOutcome.Rejected(TraversalRunRejection.PLAN_REJECTED)
-        val oneHopRecords =
-            ResultLimit.parse(minOf(records.value, maximum.oneHop.resources.resultLimit.value)).refinedOrNull()
-                ?: return OperationOutcome.Rejected(TraversalRunRejection.PLAN_REJECTED)
-        val budget =
-            maximum.copy(
-                records = records,
-                depth = depth,
-                oneHop = maximum.oneHop.copy(resources = maximum.oneHop.resources.copy(resultLimit = oneHopRecords)),
-            )
-        val meaning = request.relation.meaning()
-        val plan =
-            when (val position = request.position) {
-                TraversalRunPositionDocument.Start ->
-                    when (val admitted = TraversalPlan.start(selector, meaning, budget)) {
-                        is Refinement.Refined -> admitted.value
-                        is Refinement.Rejected -> return OperationOutcome.Rejected(TraversalRunRejection.PLAN_REJECTED)
-                    }
-                is TraversalRunPositionDocument.Resume -> {
-                    val continuation =
-                        when (
-                            val decoded =
-                                CanonicalTraversalContinuationCodec.decode(
-                                    position.continuation,
-                                    budget,
-                                    authority,
-                                    current,
-                                )
-                        ) {
-                            is CanonicalTraversalContinuationDecoding.Decoded -> decoded.continuation
-                            CanonicalTraversalContinuationDecoding.SubjectMismatch ->
-                                return OperationOutcome.Rejected(TraversalRunRejection.CONTINUATION_SUBJECT_MISMATCH)
-                            CanonicalTraversalContinuationDecoding.AuthorityMismatch ->
-                                return OperationOutcome.Rejected(TraversalRunRejection.CONTINUATION_GENERATION_MISMATCH)
-                            CanonicalTraversalContinuationDecoding.Malformed ->
-                                return OperationOutcome.Rejected(TraversalRunRejection.CONTINUATION_MALFORMED)
-                        }
-                    when (val admitted = TraversalPlan.resume(selector, meaning, budget, continuation)) {
-                        is Refinement.Refined -> admitted.value
-                        is Refinement.Rejected -> return OperationOutcome.Rejected(admitted.failure.protocol())
-                    }
-                }
-            }
-        return when (val result = operations.run(plan)) {
-            is DomainTraversalResult.Rejected -> OperationOutcome.Rejected(result.reason.protocol())
-            is DomainTraversalResult.Complete ->
-                projectTraversal(
-                    result.page.records,
-                    plan,
-                    TraversalProjection.Complete,
-                )
-            is DomainTraversalResult.Qualified ->
-                projectTraversal(
-                    result.page.records,
-                    plan,
-                    TraversalProjection.Qualified(result.qualification),
-                )
-        }
-    }
-
-    private fun projectTraversal(
-        records: List<TraversalRecord>,
-        plan: TraversalPlan,
-        projection: TraversalProjection,
-    ): OperationOutcome<TraversalRunResult, TraversalRunQualification, TraversalRunRejection> {
-        val documents = mutableListOf<TraversalRecordDocument>()
-        records.forEach { record ->
-            val relation =
-                record.fact.protocolDocument(authority)
-                    ?: return OperationOutcome.Rejected(TraversalRunRejection.PLAN_REJECTED)
-            val depth =
-                when (val admitted = TraversalDepthDocument.parse(record.depth.value)) {
-                    is Refinement.Refined -> admitted.value
-                    is Refinement.Rejected -> return OperationOutcome.Rejected(TraversalRunRejection.PLAN_REJECTED)
-                }
-            documents += TraversalRecordDocument(depth, relation)
-        }
-        val bounded =
-            when (val admitted = BoundedProtocolList.create(documents)) {
-                is Refinement.Refined -> admitted.value
-                is Refinement.Rejected -> return OperationOutcome.Rejected(TraversalRunRejection.PLAN_REJECTED)
-            }
-        val snapshotRoot =
-            when (val admitted = ProtocolText.parse(plan.start.lease.workspaceRoot.value)) {
-                is Refinement.Refined -> admitted.value
-                is Refinement.Rejected -> return OperationOutcome.Rejected(TraversalRunRejection.PLAN_REJECTED)
-            }
-        val envelope =
-            EvidenceEnvelope(
-                CanonicalOperation.TRAVERSAL_RUN.id,
-                plan.start.lease.evidenceBasis(),
-                TraversalRunResult(snapshotRoot, bounded),
-            )
-        return when (projection) {
-            TraversalProjection.Complete -> OperationOutcome.Complete(envelope)
-            is TraversalProjection.Qualified -> {
-                val qualification =
-                    projection.qualification.protocolQualification(authority)
-                        ?: return OperationOutcome.Rejected(TraversalRunRejection.PLAN_REJECTED)
-                OperationOutcome.Qualified(envelope, qualification)
-            }
-        }
-    }
-}
-
 private sealed interface RelationProjection {
     data object Complete : RelationProjection
 
     data class Qualified(val coverage: RelationIncompleteCoverage) : RelationProjection
 }
 
-private sealed interface TraversalProjection {
+internal sealed interface TraversalProjection {
     data object Complete : TraversalProjection
 
     data class Qualified(val qualification: TraversalQualification) : TraversalProjection
 }
 
-private fun RelationKindDocument.meaning(): RelationMeaning =
+internal fun RelationKindDocument.graphMeaning(): RelationMeaning =
     when (this) {
         RelationKindDocument.REFERENCES -> RelationMeaning.References
         RelationKindDocument.CALLERS -> RelationMeaning.Callers
@@ -327,7 +189,7 @@ private fun RelationIncompleteCoverage.protocolQualification(): RelationReadQual
     }
 }
 
-private fun TraversalQualification.protocolQualification(
+internal fun TraversalQualification.protocolQualification(
     authority: QueryReferenceAuthority
 ): TraversalRunQualification? =
     when (this) {
@@ -348,7 +210,7 @@ private fun TraversalQualification.protocolQualification(
                 .refinedOrNull()
     }
 
-private fun RelationLimitation.protocolDocument(): RelationLimitationDocument =
+internal fun RelationLimitation.protocolDocument(): RelationLimitationDocument =
     when (this) {
         RelationLimitation.RESULT_LIMIT_REACHED -> RelationLimitationDocument.RESULT_LIMIT_REACHED
         RelationLimitation.BYTE_LIMIT_REACHED -> RelationLimitationDocument.BYTE_LIMIT_REACHED
@@ -359,9 +221,10 @@ private fun RelationLimitation.protocolDocument(): RelationLimitationDocument =
         RelationLimitation.UNSUPPORTED_ITEM -> RelationLimitationDocument.UNSUPPORTED_ITEM
         RelationLimitation.PROVIDER_FAILURE -> RelationLimitationDocument.PROVIDER_FAILURE
         RelationLimitation.PROVIDER_INCOMPLETE -> RelationLimitationDocument.PROVIDER_INCOMPLETE
+        RelationLimitation.PROVIDER_STALLED -> RelationLimitationDocument.PROVIDER_STALLED
     }
 
-private fun TraversalLimitation.protocolDocument(): TraversalLimitationDocument =
+internal fun TraversalLimitation.protocolDocument(): TraversalLimitationDocument =
     when (this) {
         TraversalLimitation.RECORD_LIMIT_REACHED -> TraversalLimitationDocument.RECORD_LIMIT_REACHED
         TraversalLimitation.BYTE_LIMIT_REACHED -> TraversalLimitationDocument.BYTE_LIMIT_REACHED
@@ -370,6 +233,7 @@ private fun TraversalLimitation.protocolDocument(): TraversalLimitationDocument 
         TraversalLimitation.DEPTH_LIMIT_REACHED -> TraversalLimitationDocument.DEPTH_LIMIT_REACHED
         TraversalLimitation.FRONTIER_LIMIT_REACHED -> TraversalLimitationDocument.FRONTIER_LIMIT_REACHED
         TraversalLimitation.ONE_HOP_INCOMPLETE -> TraversalLimitationDocument.ONE_HOP_INCOMPLETE
+        TraversalLimitation.NO_PROGRESS -> TraversalLimitationDocument.NO_PROGRESS
     }
 
 private fun <Value, Failure> Refinement<Value, Failure>.refinedOrNull(): Value? =
@@ -403,7 +267,7 @@ private fun DomainRelationResumeFailure.protocol(): RelationReadRejection =
         DomainRelationResumeFailure.GENERATION_MISMATCH -> RelationReadRejection.CONTINUATION_GENERATION_MISMATCH
     }
 
-private fun TraversalRejection.protocol(): TraversalRunRejection =
+internal fun TraversalRejection.protocol(): TraversalRunRejection =
     when (this) {
         is TraversalRejection.OneHopRejected ->
             when (reason) {
@@ -427,7 +291,7 @@ private fun SelectorLookupRejection.relationProtocol(): RelationReadRejection =
         SelectorLookupRejection.WORKSPACE_MISMATCH -> RelationReadRejection.SELECTOR_WORKSPACE_MISMATCH
     }
 
-private fun SelectorLookupRejection.traversalProtocol(): TraversalRunRejection =
+internal fun SelectorLookupRejection.traversalProtocol(): TraversalRunRejection =
     when (this) {
         SelectorLookupRejection.WRONG_KIND -> TraversalRunRejection.SELECTOR_WRONG_KIND
         SelectorLookupRejection.MALFORMED -> TraversalRunRejection.SELECTOR_MALFORMED
@@ -435,7 +299,7 @@ private fun SelectorLookupRejection.traversalProtocol(): TraversalRunRejection =
         SelectorLookupRejection.WORKSPACE_MISMATCH -> TraversalRunRejection.SELECTOR_WORKSPACE_MISMATCH
     }
 
-private fun TraversalPlanResumeFailure.protocol(): TraversalRunRejection =
+internal fun TraversalPlanResumeFailure.protocol(): TraversalRunRejection =
     when (this) {
         is TraversalPlanResumeFailure.Plan -> TraversalRunRejection.PLAN_REJECTED
         is TraversalPlanResumeFailure.Resume ->

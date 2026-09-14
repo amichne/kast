@@ -56,6 +56,28 @@ private constructor(
     val endpoint: HostedQueryEndpoint
         get() = executor.endpoint
 
+    /** Fresh passive project admission checks; this does not enter the semantic executor or its budget. */
+    fun readiness(root: CanonicalWorkspaceRoot): HostedReadinessDocument {
+        when (val state = configuredSession) {
+            is ConfiguredHostedSession.Rejected ->
+                return state.failure.readinessRejection(HostedQueryStage.REQUEST_ADMISSION)
+            is ConfiguredHostedSession.Ready -> Unit
+        }
+        val compatibility =
+            when (val admitted = packagedCompatibility) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return admitted.failure.readinessRejection(HostedQueryStage.PROJECT_ADMISSION)
+            }
+        return observeHostedReadiness {
+            io.github.amichne.kast.workspace.intellij.read.ExistingProjectValidation.validate(
+                project,
+                root,
+                compatibility.candidate,
+                compatibility.policy,
+            )
+        }
+    }
+
     /** One permit and deadline for the complete plan; each adapter owns its individual short read. */
     suspend fun <Value> read(
         endpoint: HostedQueryEndpoint,

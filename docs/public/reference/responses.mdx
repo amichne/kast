@@ -4,7 +4,7 @@ sidebarTitle: "Read a response"
 type: "API Contract"
 title: "Read a tool response"
 description: "Separate invocation success from semantic evidence, then choose the next action."
-timestamp: "2026-09-11T00:00:00-04:00"
+timestamp: "2026-09-14T00:00:00-04:00"
 code_sources:
   - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt"
   - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/MintlifyCallableReference.kt"
@@ -12,6 +12,11 @@ code_sources:
 
 Read a Kast response in this order: **invocation → semantic outcome → payload →
 coverage**. A completed process is only the first step.
+
+Kast supplies one JSON document per model-facing tool reply. Decode it once;
+there is no appended prose summary to strip. Clients that support native
+structured display receive the same bounded document for display. Broker
+admission and capacity failures also use closed JSON rejection variants.
 
 ## 1. Did the invocation produce a document?
 
@@ -68,6 +73,8 @@ following schema-valid illustration cannot establish absence:
     "status": "qualified",
     "items": [],
     "failures": [],
+    "continuation": null,
+    "terminal_reason": "upstream-incomplete",
     "qualification": {
       "knownMinimum": 0,
       "limitations": ["discovery-incomplete"]
@@ -105,6 +112,20 @@ discovery, refinement, visibility, and relation coverage.
 `predicate`, or `relation`; it retains the affected `ref` and finite `reason`.
 A relation failure additionally names the `relation`. Successful items remain
 usable, but an item failure cannot be silently discarded from a completeness claim.
+
+Relation results keep `soundness: "EXACT_RETURNED_FACTS"` separately from
+coverage. `omissions[]` names the provider and finite reason, includes at most
+three proven source locations, and suggests a closed remediation action.
+`measurement.type: "observed_on_page"` counts omitted provider inputs actually
+consumed on this page. `unmeasured_on_page` makes no missing-count claim; this
+includes limitations inherited from earlier pages. Neither is an estimate of
+all missing relation facts.
+
+Traversal `partialExpansions[]` identifies each partially expanded subject read
+on the current page, its depth and limitations. `remainder` distinguishes a
+retained continuation from neighbors that were not explored. Keep earlier pages'
+partial-expansion evidence when assembling a traversal. The result does not
+invent a count for omitted subtrees.
 
 <AccordionGroup>
   <Accordion title="When is an empty answer meaningful?">

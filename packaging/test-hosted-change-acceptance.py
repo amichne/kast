@@ -13,7 +13,7 @@ import zipfile
 
 from hosted_change_process import NativeProcesses
 from native_fixture_probe import NativeFixtureProbeError
-from hosted_change_acceptance import (AcceptanceRejected, admit_event, admit_harness, admitted_live,
+from hosted_change_acceptance import (AcceptanceFailure, AcceptanceRejected, admit_event, admit_harness, admitted_live,
     CASE_NAMES, admit_contract_failure, bounded_native_report, event_observation, native_workflow_qualified, pending_readiness, startup_discovery_state, StartupDiscoveryState, receipt_scope_observation, remaining_matrix_gates, tree_identity)
 
 
@@ -23,7 +23,95 @@ class StartupFailureDocument:
     detail: str
 
 
+@dataclass(frozen=True)
+class ExpectedQualificationAdmitted:
+    outcome: str = 'admitted'
+    stage: str = 'PROVIDER_QUALIFICATION'
+
+
+@dataclass(frozen=True)
+class ExpectedQualificationRejected:
+    cause: str
+    outcome: str = 'rejected'
+    stage: str = 'PROVIDER_QUALIFICATION'
+
+
+@dataclass(frozen=True)
+class ExpectedNativeMetadata:
+    workspaceRoot: str
+    status: str = 'observed'
+    failure: str | None = None
+    upstream: str = 'scripted-native-protocol-controller'
+    provider: str = 'staged-production-broker-cli-plugin'
+    stockCodexUi: str = 'unqualified'
+
+
+@dataclass(frozen=True)
+class ExpectedNativeReport:
+    metadata: ExpectedNativeMetadata
+    providerQualification: ExpectedQualificationAdmitted | ExpectedQualificationRejected | None
+    cases: dict
+    schemaVersion: int = 1
+
+
+@dataclass(frozen=True)
+class ExpectedReadQualification:
+    providerQualification: ExpectedQualificationAdmitted | ExpectedQualificationRejected | None
+    outcome: str = 'passed'
+    sourceUnchanged: bool = True
+
+
 class HostedChangeAcceptanceTest(unittest.TestCase):
+    def test_native_report_retains_admitted_qualification_exact_encoded_shape(self):
+        workspace = Path('/private/fixture/workspace')
+        expected = asdict(ExpectedNativeReport(ExpectedNativeMetadata(str(workspace)),
+            ExpectedQualificationAdmitted(), {}))
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'report.json'
+            path.write_text(json.dumps(expected))
+            self.assertEqual(expected, bounded_native_report(path, workspace))
+
+    def test_native_report_retains_every_finite_qualification_rejection(self):
+        workspace = Path('/private/fixture/workspace')
+        for cause in ('VERSION_UNAVAILABLE', 'VERSION_INVALID', 'SCHEMA_UNAVAILABLE',
+                      'SCHEMA_SIZE_LIMIT', 'SCHEMA_INVALID', 'SCHEMA_INCOMPATIBLE'):
+            with self.subTest(cause=cause), tempfile.TemporaryDirectory() as directory:
+                expected = asdict(ExpectedNativeReport(ExpectedNativeMetadata(str(workspace),
+                    'rejected', 'PROVIDER_QUALIFICATION_REJECTED'), ExpectedQualificationRejected(cause), {}))
+                path = Path(directory) / 'report.json'
+                path.write_text(json.dumps(expected))
+                self.assertEqual(expected, bounded_native_report(path, workspace))
+
+    def test_native_report_requires_qualification_field_but_retains_unstarted_null(self):
+        workspace = Path('/private/fixture/workspace')
+        expected = asdict(ExpectedNativeReport(ExpectedNativeMetadata(str(workspace), 'incomplete'), None, {}))
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'report.json'
+            path.write_text(json.dumps(expected))
+            self.assertEqual(expected, bounded_native_report(path, workspace))
+            del expected['providerQualification']
+            path.write_text(json.dumps(expected))
+            with self.assertRaises(AcceptanceRejected):
+                bounded_native_report(path, workspace)
+
+    def test_native_report_rejects_unknown_or_contradictory_qualification(self):
+        workspace = Path('/private/fixture/workspace')
+        expected = asdict(ExpectedNativeReport(ExpectedNativeMetadata(str(workspace)),
+            ExpectedQualificationAdmitted(), {}))
+        admitted = expected['providerQualification']
+        invalid = [None, [], dict(admitted, stage='UNKNOWN'), dict(admitted, outcome='unknown'),
+            dict(admitted, cause='SCHEMA_INVALID'),
+            asdict(ExpectedQualificationRejected('UNKNOWN')),
+            asdict(ExpectedQualificationRejected('SCHEMA_INVALID'))]
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'report.json'
+            for qualification in invalid:
+                with self.subTest(qualification=qualification):
+                    path.write_text(json.dumps(dict(expected, providerQualification=qualification)))
+                    with self.assertRaises(AcceptanceRejected):
+                        bounded_native_report(path, workspace)
+
+
     def test_setup_observation_retains_success_and_bounded_protocol_failure(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -65,6 +153,30 @@ class HostedChangeAcceptanceTest(unittest.TestCase):
             jar('io/github/amichne/kast/appserver/core/Broker.class')
             with self.assertRaises(AcceptanceRejected):
                 admit_harness(path, commit)
+
+    def test_tree_identity_admits_full_knowledge_product_without_truncation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for ordinal in range(2049):
+                (root / f'concept-{ordinal}.md').write_text('sample catalog concept')
+            identity = tree_identity(root)
+            self.assertEqual(2049, identity['fileCount'])
+            self.assertEqual({'stage': 'artifact-inventory', 'observedCount': 2049, 'limit': 16384}, identity['admission'])
+            self.assertEqual(2049 * len('sample catalog concept'), identity['bytes'])
+            (root / 'concept-2048.md').write_text('updated catalog concept')
+            self.assertNotEqual(identity['sha256'], tree_identity(root)['sha256'])
+
+    def test_tree_inventory_limit_reports_bounded_count_before_hashing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for ordinal in range(3):
+                (root / f'concept-{ordinal}.md').write_text('sample')
+            with patch('hosted_change_acceptance.TREE_IDENTITY_MAX_FILES', 2), patch('hosted_change_acceptance.digest') as digest:
+                with self.assertRaises(AcceptanceRejected) as rejected:
+                    tree_identity(root)
+                self.assertEqual(AcceptanceFailure.INPUT_INVENTORY_LIMIT, rejected.exception.failure)
+                self.assertEqual({'stage': 'artifact-inventory', 'observedCount': 3, 'limit': 2}, asdict(rejected.exception.inventory))
+                digest.assert_not_called()
 
     def test_tree_identity_tracks_content_and_rejects_symlinks(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -194,10 +306,10 @@ class HostedChangeAcceptanceTest(unittest.TestCase):
 
     def test_interrupted_controller_snapshot_retains_cases_without_terminal_success(self):
         workspace = Path('/private/fixture/workspace')
-        report = {'schemaVersion': 1, 'metadata': {'upstream': 'scripted-native-protocol-controller',
-            'provider': 'staged-production-broker-cli-plugin', 'stockCodexUi': 'unqualified',
-            'workspaceRoot': str(workspace)},
-            'cases': {'edited-preimage': {'outcome': 'passed', 'evidence': {}}}}
+        report = asdict(ExpectedNativeReport(ExpectedNativeMetadata(str(workspace), 'incomplete'), None,
+            {'edited-preimage': {'outcome': 'passed', 'evidence': {}}}))
+        # The interrupted legacy metadata snapshot predates terminal status fields.
+        del report['metadata']['status'], report['metadata']['failure']
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'report.json'
             path.write_text(json.dumps(report))
@@ -227,12 +339,11 @@ class HostedChangeAcceptanceTest(unittest.TestCase):
 
     def test_report_allows_digest_evidence_but_rejects_source_payload(self):
         workspace = Path('/private/fixture/workspace')
-        report = {'schemaVersion': 1, 'metadata': {'upstream': 'scripted-native-protocol-controller',
-            'provider': 'staged-production-broker-cli-plugin', 'stockCodexUi': 'unqualified',
-            'workspaceRoot': str(workspace), 'status': 'observed', 'failure': None},
-            'cases': {'complete-workflow': {'outcome': 'passed', 'evidence': {'referenceSha256': 'a' * 64}},
-                      'unsupported-intents': {'outcome': 'rejected', 'evidence': {
-                          'expectedRejection': 'BROKER_INVALID_ARGUMENTS', 'observedRejection': 'OTHER_REJECTION'}}}}
+        report = asdict(ExpectedNativeReport(ExpectedNativeMetadata(str(workspace)),
+            ExpectedQualificationAdmitted(),
+            {'complete-workflow': {'outcome': 'passed', 'evidence': {'referenceSha256': 'a' * 64}},
+             'unsupported-intents': {'outcome': 'rejected', 'evidence': {
+                 'expectedRejection': 'BROKER_INVALID_ARGUMENTS', 'observedRejection': 'OTHER_REJECTION'}}}))
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'report.json'
             path.write_text(json.dumps(report))
@@ -302,20 +413,27 @@ class HostedChangeAcceptanceTest(unittest.TestCase):
 
     def test_cleanup_qualification_requires_clean_source_and_complete_read_and_mutation_evidence(self):
         evidence = {'status': 'observed-with-unqualified-matrix', 'source': {'clean': True},
-                    'native': {'metadata': {'status': 'observed'},
-                               'cases': {name: {'outcome': 'passed'} for name in CASE_NAMES}},
-                    'readRegression': {'outcome': 'passed', 'sourceUnchanged': True},
+                    'native': asdict(ExpectedNativeReport(ExpectedNativeMetadata('/private/fixture/workspace'),
+                        ExpectedQualificationAdmitted(), {name: {'outcome': 'passed'} for name in CASE_NAMES})),
+                    'readRegression': asdict(ExpectedReadQualification(ExpectedQualificationAdmitted())),
                     'events': [{'event': 'stage', 'stage': name, 'outcome': 'completed'} for name in (
                         'post-save-interrupted', 'plugin-owner-retired', 'fixture-broker-process-replaced')]}
         self.assertTrue(native_workflow_qualified(evidence))
         for path, value in ((('readRegression', 'outcome'), 'rejected'),
-                            (('source', 'clean'), False), (('native', 'metadata', 'status'), 'rejected')):
+                            (('source', 'clean'), False), (('native', 'metadata', 'status'), 'rejected'),
+                            (('native', 'providerQualification'), None),
+                            (('native', 'providerQualification'), asdict(ExpectedQualificationRejected('SCHEMA_INVALID'))),
+                            (('readRegression', 'providerQualification'), None),
+                            (('readRegression', 'providerQualification'), asdict(ExpectedQualificationRejected('SCHEMA_INVALID')))):
             invalid = copy.deepcopy(evidence)
             destination = invalid
             for key in path[:-1]:
                 destination = destination[key]
             destination[path[-1]] = value
             self.assertFalse(native_workflow_qualified(invalid))
+        missing = copy.deepcopy(evidence)
+        del missing['readRegression']['providerQualification']
+        self.assertFalse(native_workflow_qualified(missing))
 
     def test_missing_matrix_evidence_never_becomes_passed(self):
         self.assertTrue(remaining_matrix_gates())

@@ -4,7 +4,7 @@ title: Protocol
 description: Canonical operation contracts are completed by an exact registry and projected into generated wire documents.
 resource: file://protocol
 tags: [kotlin, protocol, serialization]
-timestamp: 2026-09-12T00:00:00Z
+timestamp: 2026-09-14T00:00:00Z
 code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt
   - path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt
@@ -21,8 +21,10 @@ code_sources:
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalSourceReadOperationModels.kt
   - path: protocol/contract/src/main/resources/ide-hosted/hosted-endpoint.schema.json
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt
+  - path: cli/src/test/kotlin/io/github/amichne/kast/cli/InstalledServerProjectionTest.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/HostedRejectionSchemas.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastProvider.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/BrokerProcess.kt
   - path: query/protocol/build.gradle.kts
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalChangeOperationModels.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeFailure.kt
@@ -62,8 +64,10 @@ Qualified effects retain their finite reason and exact plan identity.
 Hosted rejection schemas retain their transitive definitions when embedded in
 installed output schemas, preserving bounded module/root evidence for selected-build
 source-scope failures.
-The earlier provider-qualified CLI schema document was 290,635 bytes, below its
-524,288-byte qualification cap. Hosted read admission now also has a closed
+Installed output schemas reuse equal compiler-signature, receiver and source-range
+definitions through local references. The complete CLI schema regression reserves
+4,096 bytes below the 524,288-byte qualification cap, which counts both stdout and
+stderr from the process. Hosted read admission now also has a closed
 `CONFIGURATION_REJECTED` outcome; canonical semantic outcome schemas retain their existing identities. Schema compatibility and native execution remain
 separate evidence: the [acceptance review](../../docs/reviews/live-semantic-read-acceptance.md)
 records the final default-route CLI matrix and actual provider invocation.

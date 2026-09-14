@@ -31,10 +31,9 @@ class InstalledServerProjectionTest {
             schemaRegistry.getSchema(projectionTools().tool("impact_analyze").getValue("inputSchema").toString())
         for (version in listOf("v1", "v2", "v3")) {
             val request =
-                """
-                {"exactSelector":"exact-selector","relation":"callers","maximumDepth":1,"maximumResults":1,
-                 "position":{"type":"resume","continuation":"traversal-continuation:$version:payload:digest"}}
-                """
+                requireNotNull(javaClass.getResource("/projection/traversal-resume-schema.json"))
+                    .readText()
+                    .replace("traversal-continuation:v1:", "traversal-continuation:$version:")
             val admitted = schema.validate(request, InputFormat.JSON).isEmpty()
             assertEquals(version != "v3", admitted, version)
         }
@@ -52,8 +51,8 @@ class InstalledServerProjectionTest {
                 .constructedDocument()
         val emittedBytes = (document.value + "\n").toByteArray(Charsets.UTF_8).size
         assertTrue(
-            emittedBytes <= BrokerOperationalLimits.maximumKastSchemaBytes,
-            "Full --schema output is $emittedBytes bytes; provider accepts ${BrokerOperationalLimits.maximumKastSchemaBytes}",
+            emittedBytes <= BrokerOperationalLimits.maximumKastSchemaBytes - QUALIFICATION_OUTPUT_HEADROOM_BYTES,
+            "Schema output $emittedBytes bytes leaves insufficient qualification process headroom",
         )
     }
 
@@ -126,9 +125,7 @@ class InstalledServerProjectionTest {
         tools
             .tool("semantic_query")
             .outputSchema()
-            .assertAdmits(
-                """{"status":"completed","document":{"operation":"relation.read","status":"complete","relations":[]}}"""
-            )
+            .assertAdmits(requireNotNull(javaClass.getResource("/projection/complete-relation.json")).readText())
         tools
             .tool("check_diagnostics")
             .outputSchema()
@@ -182,10 +179,7 @@ class InstalledServerProjectionTest {
             )
         query
             .outputSchema()
-            .assertAdmits(
-                """{"status":"completed","document":{"operation":"query.run","status":"qualified","items":[],""" +
-                    """"failures":[],"qualification":{"knownMinimum":0,"limitations":["discovery-incomplete"]}}}"""
-            )
+            .assertAdmits(requireNotNull(javaClass.getResource("/projection/qualified-query.json")).readText())
     }
 
     @Test
@@ -570,6 +564,7 @@ class InstalledServerProjectionTest {
     }
 
     companion object {
+        private const val QUALIFICATION_OUTPUT_HEADROOM_BYTES = 4096
         private val schemaRegistry = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12)
     }
 }

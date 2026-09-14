@@ -113,7 +113,7 @@ private constructor(
             if (encodedBytes.value > request.budget.returnedBytes.value) {
                 return Refinement.Rejected(SymbolDiscoveryBatchFailure.BYTE_LIMIT_EXCEEDED)
             }
-            if (candidates != candidates.distinct().sorted()) {
+            if (candidates != candidates.distinct().sortedWith(request.candidateOrder())) {
                 return Refinement.Rejected(SymbolDiscoveryBatchFailure.NON_DETERMINISTIC_ORDER)
             }
             if (candidates.sumOf { it.projectedUtf8Size().value } != encodedBytes.value) {

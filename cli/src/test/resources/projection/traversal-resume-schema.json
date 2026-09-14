@@ -1,0 +1,13 @@
+{
+  "exactSelector": "exact-selector",
+  "relation": "callers",
+  "maximumDepth": 1,
+  "maximumResults": 1,
+  "position": {
+    "type": "resume",
+    "continuation": "traversal-continuation:v1:payload:digest"
+  },
+  "strategy": {
+    "type": "breadth_first"
+  }
+}

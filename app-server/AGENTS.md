@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-12 | hash: 1440d58995b7 -->
+<!-- generated: 2026-09-14 | hash: 5c3fdf53c41e -->
 
 # app-server
 
@@ -9,6 +9,7 @@ Owns the persistent broker/coordinator, host attachment, existing-IDE invocation
 
 ## Key Files
 
+- [CodexToolTerminalReply.kt](src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexToolTerminalReply.kt) - single-document finite broker failure and cancellation replies.
 - [README.md](README.md) - architecture, lifecycle, status, and public integration behavior.
 - [docs/compatibility.md](docs/compatibility.md) - tested compatibility evidence and open release gates.
 - [docs/public-query-contract.md](docs/public-query-contract.md) - externally visible query semantics.

@@ -6,6 +6,9 @@ resource: file://query/service
 tags: [query, symbol, source, relation]
 timestamp: 2026-09-13T00:00:00Z
 code_sources:
+  - path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineCheckpoint.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCheckpointStore.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryContinuations.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt
   - path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt
   - path: docs/reviews/live-semantic-read-acceptance.md
@@ -103,4 +106,17 @@ The current [public tool contracts](../contracts/public-tools.md) distinguish pr
 
 Cheap scope and declaration-family constraints precede native collection. Mixed-family syntax issues one symbol discovery request with all requested kinds retained. Project-only fuzzy declarations use scoped Kotlin files, and exact searches select only requested short-name index families. Package PSI runs outside native index callbacks before candidate collection. Qualified partial results retain their limitations through exact refinement.
 
-Hosted query projection issues compact exact/candidate handles before encoding. The final byte guard accounts for actual serialized references and relation connections, preserves the proven lower bound and failures, and qualifies a retained prefix when required. It does not turn incomplete discovery into complete coverage.
+Hosted query projection issues compact exact/candidate handles before encoding.
+The final byte guard accounts for actual serialized references and connections,
+then retains the remaining output and execution checkpoint in a project-owned
+bounded store. Resume binds the exact plan and semantic snapshot. Expiry,
+eviction and mismatch reject rather than restarting the query. The pure service
+retains an ordered task stack, relation cursors, stage-local distinct identities,
+pending output and finite upstream failures. Intermediate expansion does not
+consume final projection byte capacity.
+
+Distinct stages preserve the first canonical declaration occurrence and that
+occurrence's connections. Later duplicates cannot mutate an emitted page.
+Incomplete upstream coverage remains qualified after the final buffered page.
+An indivisible oversized output item, unavailable checkpoint capacity, or
+unproven progress produces a finite terminal reason without a continuation.

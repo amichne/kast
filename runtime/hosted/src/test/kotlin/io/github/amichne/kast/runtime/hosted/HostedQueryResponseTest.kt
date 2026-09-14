@@ -42,7 +42,7 @@ class HostedQueryResponseTest {
                     listOf(QueryLimitationDocument.TIME_LIMIT_REACHED),
                 )
                 .refined()
-        val response = encodeHostedQueryResponse(OperationOutcome.Qualified(envelope, qualification))
+        val response = encodeWithRetention(OperationOutcome.Qualified(envelope, qualification))
         assertEquals(HostedEvaluationOutcome.QUALIFIED, response.outcome)
         assertTrue(
             response.document.toByteArray(Charsets.UTF_8).size <=
@@ -66,15 +66,14 @@ class HostedQueryResponseTest {
     @Test
     fun `small complete response remains complete without projection`() {
         val envelope = envelope(listOf(item()), emptyList())
-        val response =
-            encodeHostedQueryResponse(OperationOutcome.Complete(envelope)) as HostedResponse.Canonical<*, *, *>
+        val response = encodeWithRetention(OperationOutcome.Complete(envelope)) as HostedResponse.Canonical<*, *, *>
         assertEquals(OperationOutcome.Complete(envelope), response.semantic)
     }
 
     @Test
     fun `oversized complete response retains its proven lower bound as qualified`() {
         val response =
-            encodeHostedQueryResponse(OperationOutcome.Complete(envelope(List(40) { item() }, emptyList())))
+            encodeWithRetention(OperationOutcome.Complete(envelope(List(40) { item() }, emptyList())))
                 as HostedResponse.Canonical<*, *, *>
         val outcome = response.semantic as OperationOutcome.Qualified
         val qualification = outcome.qualification as QueryRunQualification
@@ -84,11 +83,56 @@ class HostedQueryResponseTest {
 
     @Test
     fun `mandatory failure evidence exceeding the cap stays rejected`() {
-        val response =
-            encodeHostedQueryResponse(OperationOutcome.Complete(envelope(emptyList(), List(40) { failure() })))
+        val response = encodeWithRetention(OperationOutcome.Complete(envelope(emptyList(), List(40) { failure() })))
         assertTrue(response is HostedResponse.Oversized)
         assertEquals(HostedEvaluationOutcome.REJECTED, response.outcome)
     }
+
+    @Test
+    fun `actual byte pages retain every suffix and eventually finish`() {
+        val original = List(80) { item() }
+        var pending: HostedQueryOutcome = OperationOutcome.Complete(envelope(original, emptyList()))
+        val observed = mutableListOf<QueryResultItemDocument>()
+        var pages = 0
+        while (true) {
+            var remainder: HostedQueryOutcome? = null
+            val response =
+                encodeHostedQueryResponse(pending) { retained ->
+                    remainder = retained
+                    HostedQueryRetention.Retained(
+                        ProtocolText.parse(HostedQueryContinuations.prefix + "0".repeat(36)).refined()
+                    )
+                }
+                    as HostedResponse.Canonical<*, *, *>
+            pages++
+            check(pages < 20)
+            when (val semantic = response.semantic) {
+                is OperationOutcome.Complete -> observed += (semantic.evidence.payload as QueryRunResult).items.values
+                is OperationOutcome.Qualified -> {
+                    val payload = semantic.evidence.payload as QueryRunResult
+                    assertTrue(payload.continuation != null)
+                    observed += payload.items.values
+                }
+                is OperationOutcome.Rejected -> error("Unexpected rejection")
+            }
+            pending = remainder ?: break
+        }
+        assertEquals(original, observed)
+        assertTrue(pages > 1)
+    }
+
+    @Test
+    fun `projection without retention refuses irreversible clipping`() {
+        val response = encodeHostedQueryResponse(OperationOutcome.Complete(envelope(List(40) { item() }, emptyList())))
+        assertTrue(response is HostedResponse.Oversized)
+    }
+
+    private fun encodeWithRetention(semantic: HostedQueryOutcome): HostedResponse =
+        encodeHostedQueryResponse(semantic) {
+            HostedQueryRetention.Retained(
+                ProtocolText.parse(HostedQueryContinuations.prefix + "0".repeat(36)).refined()
+            )
+        }
 
     private fun failure(): QueryItemFailureDocument =
         QueryItemFailureDocument.ExactReference(
@@ -112,6 +156,7 @@ class HostedQueryResponseTest {
             null,
             BoundedProtocolList.create(emptyList<io.github.amichne.kast.protocol.contract.RelationFactDocument>())
                 .refined(),
+            io.github.amichne.kast.protocol.contract.SymbolIdDocument.parse("sym:" + "A".repeat(43)).refined(),
         )
 
     private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value =

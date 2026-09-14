@@ -13,7 +13,7 @@ code_sources:
     symbols: [CanonicalSymbolDiscoverProtocol, CanonicalSymbolInspectProtocol]
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalSourceReadProtocol.kt
     symbols: [CanonicalSourceReadProtocol]
-  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalGraphProtocols.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalTraversalRunProtocol.kt
     symbols: [CanonicalRelationReadProtocol, CanonicalTraversalRunProtocol]
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalDiagnosticCheckProtocol.kt
     symbols: [CanonicalDiagnosticCheckProtocol]
@@ -102,4 +102,10 @@ produces an owner-issued continuation, and resume reaches the fourth fact under
 the unchanged authority without consuming the prefix again. These tests start
 no IntelliJ process and make no native provider-parity claim.
 
-`QueryReferenceTransport` separates detached token representation from canonical decoding. Hosted exact and candidate references normally use version-4 handles; lookup restores the full version-2/3 token before the existing authority, scope and evidence checks. Published test composition retains inline transport by default. Source snapshot and continuation tokens keep their existing codecs.
+`QueryReferenceTransport` separates detached token representation from canonical decoding. Hosted exact and candidate references normally use version-5 handles (31 and 35 characters); lookup restores the full version-2/3 token before the existing authority, scope and evidence checks. Short-digest collisions return the inline selector and retain the prior handle. Exact query results separately expose a canonical `symbol_id` for snapshot-local declaration equality across admitted scopes; this key cannot restore or broaden a read capability. Published test composition retains inline transport by default. Source snapshot tokens retain their codec. Query continuations use a host-supplied bounded checkpoint store. Traversal tokens additionally bind strategy, maximum depth and cumulative progress; older tokens without these witnesses reject. Relation tokens retain earlier-page provider limitations even after the final page.
+
+Relation projection retains provider/version, page-local observed or unmeasured
+omissions, bounded source samples and a closed remediation. `soundness` describes
+the exact returned facts independently of incomplete enumeration. Traversal
+projection retains cumulative progress and page-local partial node expansions;
+a bounded-fan-out remainder is explicitly unexamined rather than silently absent.

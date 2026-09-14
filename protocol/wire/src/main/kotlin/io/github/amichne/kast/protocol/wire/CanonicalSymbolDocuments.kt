@@ -13,7 +13,6 @@ import io.github.amichne.kast.protocol.contract.RelationFactDocument
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
 import io.github.amichne.kast.protocol.contract.RelationOccurrenceDocument
 import io.github.amichne.kast.protocol.contract.RelationProvenanceDocument
-import io.github.amichne.kast.protocol.contract.RelationReadResult
 import io.github.amichne.kast.protocol.contract.SourceRangeDocument
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverResult
 import io.github.amichne.kast.protocol.contract.SymbolDiscoveryDocument
@@ -25,8 +24,10 @@ import io.github.amichne.kast.protocol.contract.SymbolKindDocument
 import io.github.amichne.kast.protocol.contract.SymbolNameKindDocument
 import io.github.amichne.kast.protocol.contract.SymbolQualifiedIdentityDocument
 import io.github.amichne.kast.protocol.contract.TraversalDepthDocument
+import io.github.amichne.kast.protocol.contract.TraversalProgressDocument
 import io.github.amichne.kast.protocol.contract.TraversalRecordDocument
 import io.github.amichne.kast.protocol.contract.TraversalRunResult
+import io.github.amichne.kast.protocol.contract.TraversalStrategyDocument
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -64,12 +65,13 @@ internal sealed interface SymbolDiscoveryWireDocument {
 
 @Serializable internal data class SymbolInspectResultWireDocument(val symbol: SymbolWireDocument)
 
-@Serializable internal data class RelationReadResultWireDocument(val relations: List<RelationFactWireDocument>)
-
 @Serializable
 internal data class TraversalRunResultWireDocument(
     val snapshotRoot: String,
     val records: List<TraversalRecordWireDocument>,
+    val progress: TraversalProgressDocument = TraversalProgressDocument(),
+    val strategy: TraversalStrategyDocument = TraversalStrategyDocument.BreadthFirst,
+    val partialExpansions: List<TraversalPartialExpansionWireDocument> = emptyList(),
 )
 
 @Serializable
@@ -266,23 +268,13 @@ internal fun SymbolInspectResult.toSymbolWireDocument() = SymbolInspectResultWir
 internal fun SymbolInspectResultWireDocument.toContract(): WireDocumentConversion<SymbolInspectResult> =
     symbol.toContract().mapConverted(::SymbolInspectResult)
 
-internal fun RelationReadResult.toSymbolWireDocument() =
-    RelationReadResultWireDocument(relations.values.map { it.toWireDocument() })
-
-/**
- * `RelationReadResultWireDocument -> RelationReadResult` establishes a bounded exact-symbol list; invalid raw fields
- * become `WireFailure.InvalidPayload` at this wire boundary.
- */
-internal fun RelationReadResultWireDocument.toContract(): WireDocumentConversion<RelationReadResult> =
-    relations
-        .convertEach { it.toContract() }
-        .flatMapConverted { values -> values.toBoundedList() }
-        .mapConverted(::RelationReadResult)
-
 internal fun TraversalRunResult.toSymbolWireDocument() =
     TraversalRunResultWireDocument(
         snapshotRoot = snapshotRoot.value,
         records = records.values.map { it.toWireDocument() },
+        progress = progress,
+        strategy = strategy,
+        partialExpansions = partialExpansions.values.map { it.toWireDocument() },
     )
 
 /**
@@ -291,10 +283,16 @@ internal fun TraversalRunResult.toSymbolWireDocument() =
  */
 internal fun TraversalRunResultWireDocument.toContract(): WireDocumentConversion<TraversalRunResult> =
     combineConverted(
-        snapshotRoot.toProtocolText(),
-        records.convertEach { it.toContract() }.flatMapConverted { values -> values.toBoundedList() },
-        ::TraversalRunResult,
-    )
+            snapshotRoot.toProtocolText(),
+            records.convertEach { it.toContract() }.flatMapConverted { values -> values.toBoundedList() },
+            { root, records -> TraversalRunResult(root, records, progress, strategy) },
+        )
+        .flatMapConverted { result ->
+            partialExpansions
+                .convertEach { it.toContract() }
+                .flatMapConverted { it.toBoundedList() }
+                .mapConverted { result.copy(partialExpansions = it) }
+        }
 
 internal fun RelationFactDocument.toWireDocument(): RelationFactWireDocument =
     RelationFactWireDocument(

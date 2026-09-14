@@ -9,11 +9,13 @@ import io.github.amichne.kast.relation.contract.RelationCompilation
 import io.github.amichne.kast.relation.contract.RelationCompilerRejection
 import io.github.amichne.kast.relation.contract.RelationFact
 import io.github.amichne.kast.relation.contract.RelationLimitation
+import io.github.amichne.kast.relation.contract.RelationOmissionSample
 import io.github.amichne.kast.relation.contract.RelationProviderCursor
 import io.github.amichne.kast.relation.contract.RelationProviderItemDescriptor
 import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.relation.contract.RelationResultCount
 import io.github.amichne.kast.relation.contract.RelationWorkCount
+import io.github.amichne.kast.relation.contract.retainedLimitations
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
@@ -57,7 +59,8 @@ internal class IntellijRelationCollector(
 ) {
     private val startedAt = clockNanoseconds()
     private val facts = mutableListOf<RelationFact>()
-    private val limitations = linkedSetOf<RelationLimitation>()
+    private val limitations = request.retainedLimitations.toMutableSet()
+    private val omissions = IntellijRelationOmissionObservation(request.providerCursor.provider)
     private val requestedCursor = request.providerCursor
     private var observedPrefix = RelationProviderCursor.start(requestedCursor.provider)
     private var nextProviderCursor = requestedCursor
@@ -182,7 +185,10 @@ internal class IntellijRelationCollector(
     }
 
     /** Records semantic work that could not produce an exact detached fact. */
-    fun examineIncomplete(limitation: RelationLimitation): Boolean {
+    fun examineIncomplete(
+        limitation: RelationLimitation,
+        sample: RelationOmissionSample = RelationOmissionSample.Unavailable,
+    ): Boolean {
         val pending = pendingProviderItem ?: return contractHalt()
         if (state != IntellijRelationCollectionState.COLLECTING) return false
         if (elapsedLimitReached()) return halt(RelationLimitation.TIME_LIMIT_REACHED)
@@ -192,6 +198,8 @@ internal class IntellijRelationCollector(
         nextProviderCursor = nextProviderCursor.advance(pending)
         pendingProviderItem = null
         examined += 1L
+        omissions.record(limitation, sample)
+        observation.count(IntellijReadCounter.RELATION_ITEMS_OMITTED)
         limitations += limitation
         observation.terminated(limitation.observedTermination())
         return true
@@ -200,7 +208,7 @@ internal class IntellijRelationCollector(
     /** Produces exact, resumable, terminal-incomplete, or typed moved-cursor output. */
     fun finish(termination: IntellijRelationTermination): RelationCompilation {
         if (
-            !prefixVerified && state != IntellijRelationCollectionState.ENUMERATION_LIMIT ||
+            !prefixVerified && state == IntellijRelationCollectionState.COLLECTING ||
                 state == IntellijRelationCollectionState.CURSOR_MOVED
         ) {
             return RelationCompilation.Rejected(RelationCompilerRejection.CONTINUATION_CURSOR_MOVED)
@@ -216,12 +224,12 @@ internal class IntellijRelationCollector(
             is IntellijRelationTermination.TerminalIncomplete ->
                 limitations +=
                     termination.limitations.ifEmpty {
-                        setOf(RelationLimitation.PROVIDER_INCOMPLETE)
+                        if (limitations.isEmpty()) setOf(RelationLimitation.PROVIDER_INCOMPLETE) else emptySet()
                     }
             is IntellijRelationTermination.Resumable ->
                 limitations +=
                     termination.limitations.ifEmpty {
-                        setOf(RelationLimitation.PROVIDER_INCOMPLETE)
+                        if (limitations.isEmpty()) setOf(RelationLimitation.PROVIDER_INCOMPLETE) else emptySet()
                     }
         }
 
@@ -236,8 +244,16 @@ internal class IntellijRelationCollector(
         val work = RelationWorkCount.parse(examined).refinedOrReject() ?: return contractRejected()
         val results = RelationResultCount.parse(orderedFacts.size).refinedOrReject() ?: return contractRejected()
         val batch =
-            RelationBatch.create(request, orderedFacts, bytes, work, results).refinedOrReject()
-                ?: return contractRejected()
+            RelationBatch.create(
+                    request = request,
+                    facts = orderedFacts,
+                    encodedBytes = bytes,
+                    examinedWorkUnits = work,
+                    resultCount = results,
+                )
+                .refinedOrReject()
+                ?.withOmissions(omissions.summarize(limitations))
+                ?.refinedOrReject() ?: return contractRejected()
 
         // Canonical order is unproven after overflow; a continuation cannot promise progress.
         val resumable =
@@ -248,8 +264,13 @@ internal class IntellijRelationCollector(
             observation.terminated(IntellijReadTermination.COMPLETE)
             return RelationCompilation.complete(batch)
         }
+        val advanced = nextProviderCursor.nextPosition.value > requestedCursor.nextPosition.value
+        if (resumable && !advanced) {
+            limitations += RelationLimitation.PROVIDER_STALLED
+            observation.terminated(IntellijReadTermination.RELATION_PROVIDER_STALLED)
+        }
         val qualified =
-            if (resumable) {
+            if (resumable && advanced) {
                 RelationCompilation.qualifiedResumable(batch, limitations, nextProviderCursor)
             } else {
                 RelationCompilation.qualifiedTerminal(batch, limitations)
@@ -302,4 +323,5 @@ private fun RelationLimitation.observedTermination(): IntellijReadTermination =
         RelationLimitation.UNSUPPORTED_ITEM -> IntellijReadTermination.RELATION_UNSUPPORTED_ITEM
         RelationLimitation.PROVIDER_FAILURE -> IntellijReadTermination.PROVIDER_FAILURE
         RelationLimitation.PROVIDER_INCOMPLETE -> IntellijReadTermination.RELATION_PROVIDER_INCOMPLETE
+        RelationLimitation.PROVIDER_STALLED -> IntellijReadTermination.RELATION_PROVIDER_STALLED
     }

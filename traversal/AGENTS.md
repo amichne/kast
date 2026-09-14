@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-12 | hash: 72df15c7422e -->
+<!-- generated: 2026-09-14 | hash: 1ede91fb0fe0 -->
 
 # traversal
 
@@ -9,6 +9,8 @@ Defines bounded multi-hop traversal plans/results and executes them over relatio
 
 ## Key Files
 
+- [TraversalProgress.kt](contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalProgress.kt) - cumulative progressing checkpoint evidence.
+- [TraversalPartialExpansion.kt](contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalPartialExpansion.kt) - page-local partially expanded subjects and remainder evidence.
 - [contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalPlan.kt](contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalPlan.kt) - traversal plan and limits.
 - [contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalState.kt](contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalState.kt) - retained state.
 - [contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalResult.kt](contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalResult.kt) - result model.

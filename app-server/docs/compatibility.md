@@ -135,3 +135,28 @@ receipt.
 describes Unix transport and native tool lifecycle. Dynamic tools remain
 experimental. Generated contracts and observed clients take precedence over a
 custom protocol client's apparent success.
+
+## Structured tool response boundary
+
+Local generation with `codex-cli 0.154.0` on 2026-09-14 confirms that
+`DynamicToolCallResponse` exposes `success` and `contentItems` with `inputText`,
+`inputImage`, and `inputAudio` variants. It defines no `structuredContent`
+response property. Kast therefore sends the complete admitted CLI envelope in
+one JSON `inputText` item. The canonical complete/qualified/rejected result is
+retained inside that envelope; a canonical rejection also sets transport
+`success` to false. Consumers parse the text once and inspect the retained
+semantic result. Schema generation is protocol evidence, not desktop rendering
+or a real model-call acceptance result.
+
+The same generated bundle defines `McpToolCallResult.structuredContent`. The
+broker's existing desktop display adaptation uses that supported field for a
+single Kast JSON-object payload and keeps the exact original text and dynamic
+item fields. It does not add the field to `DynamicToolCallResponse`. Unsupported
+or malformed display payloads retain their raw content and omit structured
+content; no empty success result is synthesized.
+
+Broker-owned admission and response-size failures also serialize to one JSON
+text item with `status: rejected` and the original finite `failure` code.
+Cancellation serializes its existing `cancelled` status and `uncertain` effect.
+The response-size check still measures the actual escaped native response before
+selecting the bounded overload rejection.

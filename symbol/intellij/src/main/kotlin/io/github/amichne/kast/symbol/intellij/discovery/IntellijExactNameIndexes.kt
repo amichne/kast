@@ -27,7 +27,13 @@ internal fun IntellijNativeDiscoveryQuery.discoverNative(
     val kinds = request.requestedDeclarationKinds()
     return if (request.usesScopedDeclarationEnumeration()) {
         discoverDeclarations(scope, request) { observe, qualify, accept ->
-            collectScopedKotlinDeclarations(project, scope, request, kinds, observe, qualify, accept)
+            collectScopedKotlinDeclarations(
+                project = project,
+                scope = scope,
+                request = request,
+                callbacks = ScopedDeclarationCallbacks(observe, qualify, accept),
+                limits = limits,
+            )
         }
     } else if (target is SymbolDiscoveryTarget.Name && target.match == SymbolDiscoveryMatch.EXACT_NAME) {
         discoverExactName(scope, request) { name, accept ->
@@ -78,10 +84,11 @@ internal fun IntellijNativeDiscoveryQuery.discoverNative(
                 },
             )
         discover(
-            scope,
-            request,
-            target.discoveryKind().nativeContributors().filter { request.admitsContributorName(it.javaClass.name) },
-            nameFilter,
+            compiledScope = scope,
+            request = request,
+            contributors =
+                target.discoveryKind().nativeContributors().filter { request.admitsContributorName(it.javaClass.name) },
+            nameFilter = nameFilter,
         )
     }
 }

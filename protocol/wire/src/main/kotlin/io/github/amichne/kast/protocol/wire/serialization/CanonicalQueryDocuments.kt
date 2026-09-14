@@ -32,12 +32,6 @@ internal enum class QueryDeclarationKindWireDocument {
 }
 
 @Serializable
-internal data class QueryRunResultWireDocument(
-    val items: List<QueryResultItemWireDocument>,
-    val failures: List<QueryItemFailureWireDocument>,
-)
-
-@Serializable
 internal sealed interface QueryResultItemWireDocument {
     @Serializable
     @SerialName("candidate")
@@ -57,6 +51,7 @@ internal sealed interface QueryResultItemWireDocument {
         val location: QueryExactLocationWireDocument?,
         val signature: CompilerSignatureWireDocument?,
         val connections: List<RelationFactWireDocument>,
+        val symbolId: String,
     ) : QueryResultItemWireDocument
 }
 
@@ -151,24 +146,6 @@ internal enum class QueryRelationFailureWireDocument {
 }
 
 @Serializable
-internal data class QueryRunQualificationWireDocument(
-    val knownMinimum: Int,
-    val limitations: List<QueryLimitationWireDocument>,
-)
-
-@Serializable
-internal enum class QueryLimitationWireDocument {
-    @SerialName("result-limit-reached") RESULT_LIMIT_REACHED,
-    @SerialName("byte-limit-reached") BYTE_LIMIT_REACHED,
-    @SerialName("work-limit-reached") WORK_LIMIT_REACHED,
-    @SerialName("time-limit-reached") TIME_LIMIT_REACHED,
-    @SerialName("discovery-incomplete") DISCOVERY_INCOMPLETE,
-    @SerialName("refinement-incomplete") REFINEMENT_INCOMPLETE,
-    @SerialName("visibility-incomplete") VISIBILITY_INCOMPLETE,
-    @SerialName("relation-incomplete") RELATION_INCOMPLETE,
-}
-
-@Serializable
 internal sealed interface QueryRunRejectionWireDocument {
     @Serializable @SerialName("workspace-not-ready") data object WorkspaceNotReady : QueryRunRejectionWireDocument
 
@@ -198,15 +175,6 @@ internal sealed interface QueryRunRejectionWireDocument {
     @Serializable
     @SerialName("execution-rejected")
     data class ExecutionRejected(val reason: QueryExecutionRejectionWireDocument) : QueryRunRejectionWireDocument
-}
-
-@Serializable
-internal enum class QueryExecutionRejectionWireDocument {
-    @SerialName("request-rejected") REQUEST_REJECTED,
-    @SerialName("discovery-rejected") DISCOVERY_REJECTED,
-    @SerialName("reference-stale") REFERENCE_STALE,
-    @SerialName("budget-rejected") BUDGET_REJECTED,
-    @SerialName("internal-contract-violation") INTERNAL_CONTRACT_VIOLATION,
 }
 
 @Serializable
@@ -277,15 +245,26 @@ private fun QueryReferenceWireDocument.toContract(): WireDocumentConversion<Quer
 
 private fun QueryRunResult.toQueryWireDocument() =
     QueryRunResultWireDocument(
-        items.values.map(QueryResultItemDocument::toWire),
-        failures.values.map(QueryItemFailureDocument::toWire),
+        items = items.values.map(QueryResultItemDocument::toWire),
+        failures = failures.values.map(QueryItemFailureDocument::toWire),
+        continuation = continuation?.value,
+        terminalReason = terminalReason?.let { QueryTerminalReasonWireDocument.valueOf(it.name) },
     )
 
 private fun QueryRunResultWireDocument.toContract(): WireDocumentConversion<QueryRunResult> =
     items.convertEach(QueryResultItemWireDocument::toContract).flatMapConverted { queryItems ->
         queryItems.bounded().flatMapConverted { boundedItems ->
             failures.convertEach(QueryItemFailureWireDocument::toContract).flatMapConverted { queryFailures ->
-                queryFailures.bounded().mapConverted { QueryRunResult(boundedItems, it) }
+                queryFailures.bounded().flatMapConverted { boundedFailures ->
+                    optionalText(continuation).mapConverted { token ->
+                        QueryRunResult(
+                            items = boundedItems,
+                            failures = boundedFailures,
+                            continuation = token,
+                            terminalReason = terminalReason?.let { QueryTerminalReasonDocument.valueOf(it.name) },
+                        )
+                    }
+                }
             }
         }
     }
@@ -307,6 +286,7 @@ private fun QueryResultItemDocument.toWire(): QueryResultItemWireDocument =
                 location?.let { QueryExactLocationWireDocument(it.file.value, it.range.toWireDocument()) },
                 signature?.toWireDocument(),
                 connections.values.map(RelationFactDocument::toWireDocument),
+                symbolId.value,
             )
     }
 
@@ -331,15 +311,20 @@ private fun QueryResultItemWireDocument.toContract(): WireDocumentConversion<Que
                     location.toContract().flatMapConverted { projectedLocation ->
                         optionalSignature(signature).flatMapConverted { projectedSignature ->
                             connections.convertEach(RelationFactWireDocument::toContract).flatMapConverted { facts ->
-                                facts.bounded().mapConverted {
-                                    QueryResultItemDocument.ExactSymbol(
-                                        QueryReferenceDocument.ExactSymbol(token),
-                                        kind.toContract(),
-                                        projectedName,
-                                        projectedLocation,
-                                        projectedSignature,
-                                        it,
-                                    )
+                                facts.bounded().flatMapConverted { boundedFacts ->
+                                    io.github.amichne.kast.protocol.contract.SymbolIdDocument.parse(symbolId)
+                                        .toWireDocumentConversion()
+                                        .mapConverted { identity ->
+                                            QueryResultItemDocument.ExactSymbol(
+                                                QueryReferenceDocument.ExactSymbol(token),
+                                                kind.toContract(),
+                                                projectedName,
+                                                projectedLocation,
+                                                projectedSignature,
+                                                boundedFacts,
+                                                identity,
+                                            )
+                                        }
                                 }
                             }
                         }

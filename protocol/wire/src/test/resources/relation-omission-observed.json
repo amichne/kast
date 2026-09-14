@@ -1,0 +1,1 @@
+{"provider":"INTELLIJ_REFERENCES_V2","reason":"UNSUPPORTED_ITEM","measurement":{"type":"observed_on_page","items":7},"samples":[{"file":"src/Catalog.kt","range":{"startInclusive":4,"endExclusive":8}}],"remediation":"USE_SUPPORTED_DECLARATIONS"}

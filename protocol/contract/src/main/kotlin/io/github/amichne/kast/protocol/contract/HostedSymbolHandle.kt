@@ -7,7 +7,14 @@ data class HostedSymbolHandle private constructor(val token: ProtocolText, val f
     companion object {
         fun parse(token: ProtocolText): Refinement<HostedSymbolHandle, HostedSymbolHandleFailure> {
             val parts = token.value.split(':')
-            if (parts.size != HANDLE_COMPONENT_COUNT || parts[1] != "v4" || !parts[2].isCanonicalDigest()) {
+            if (
+                parts.size != HANDLE_COMPONENT_COUNT ||
+                    !when (parts[1]) {
+                        "v4" -> parts[2].isCanonicalDigest()
+                        "v5" -> parts[2].matches(Regex("[A-Za-z0-9_-]{21}[AQgw]"))
+                        else -> false
+                    }
+            ) {
                 return Refinement.Rejected(HostedSymbolHandleFailure.INVALID_STRUCTURE)
             }
             val family =

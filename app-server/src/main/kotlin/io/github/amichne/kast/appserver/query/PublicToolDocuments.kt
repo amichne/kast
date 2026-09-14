@@ -152,6 +152,7 @@ internal data class PublicToolQuerySymbols(
     val source: PublicToolSource,
     val steps: BoundedProtocolList<PublicToolStep>?,
     val return_fields: BoundedProtocolList<PublicToolReturnFields>?,
+    val continuation: ProtocolText? = null,
 ) : PublicToolDocument
 
 internal object PublicToolScopeSerializer : JsonContentPolymorphicSerializer<PublicToolScope>(PublicToolScope::class) {

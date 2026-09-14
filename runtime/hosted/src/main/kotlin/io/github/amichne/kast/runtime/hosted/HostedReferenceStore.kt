@@ -54,7 +54,10 @@ class HostedReferenceStore : Disposable {
 }
 
 /** Capacity selects a valid representation; it never evicts a handle from the current epoch. */
-internal class HostedReferenceTokens(private val limits: ReadLimits) {
+internal class HostedReferenceTokens(
+    private val limits: ReadLimits,
+    private val handleOf: (ProtocolText) -> HostedSymbolHandle = ::compactSymbolReference,
+) {
     private val entries = mutableMapOf<HostedSymbolHandle, ProtocolText>()
     private var retainedBytes = 0L
 
@@ -67,14 +70,19 @@ internal class HostedReferenceTokens(private val limits: ReadLimits) {
                         issued.value.token
                     }
                     is HostedReferenceRepresentation.Inline -> {
-                        observation.count(IntellijReadCounter.REFERENCE_INLINE_CAPACITY)
+                        observation.count(
+                            when (issued.reason) {
+                                HostedReferenceInlineReason.CAPACITY -> IntellijReadCounter.REFERENCE_INLINE_CAPACITY
+                                HostedReferenceInlineReason.COLLISION -> IntellijReadCounter.REFERENCE_INLINE_COLLISION
+                            }
+                        )
                         issued.value
                     }
                 }
 
             override fun restore(token: ProtocolText): CanonicalSelectorDecoding<ProtocolText> {
                 val restored = lookup(token)
-                if (token.value.startsWith("exact:v4:") || token.value.startsWith("candidate:v4:")) {
+                if (token.isHostedReference()) {
                     observation.count(
                         when (restored) {
                             is CanonicalSelectorDecoding.Decoded -> IntellijReadCounter.REFERENCE_HANDLES_RESTORED
@@ -88,17 +96,18 @@ internal class HostedReferenceTokens(private val limits: ReadLimits) {
 
     @Synchronized
     private fun retain(canonical: ProtocolText): HostedReferenceRepresentation {
-        val handle = compactSymbolReference(canonical)
+        val handle = handleOf(canonical)
         val text = handle.token
         if (entries[handle] == canonical) return HostedReferenceRepresentation.Handle(handle)
         val bytes =
             canonical.value.toByteArray(Charsets.UTF_8).size.toLong() + text.value.toByteArray(Charsets.UTF_8).size
+        if (entries.containsKey(handle))
+            return HostedReferenceRepresentation.Inline(canonical, HostedReferenceInlineReason.COLLISION)
         if (
-            entries.containsKey(handle) ||
-                entries.size >= limits[ReadLimitParameter.HOST_REFERENCE_ENTRIES].value ||
+            entries.size >= limits[ReadLimitParameter.HOST_REFERENCE_ENTRIES].value ||
                 retainedBytes + bytes > limits[ReadLimitParameter.HOST_REFERENCE_BYTES].value
         ) {
-            return HostedReferenceRepresentation.Inline(canonical)
+            return HostedReferenceRepresentation.Inline(canonical, HostedReferenceInlineReason.CAPACITY)
         }
         entries[handle] = canonical
         retainedBytes += bytes
@@ -107,8 +116,7 @@ internal class HostedReferenceTokens(private val limits: ReadLimits) {
 
     @Synchronized
     private fun lookup(token: ProtocolText): CanonicalSelectorDecoding<ProtocolText> {
-        if (!token.value.startsWith("exact:v4:") && !token.value.startsWith("candidate:v4:"))
-            return CanonicalSelectorDecoding.Decoded(token)
+        if (!token.isHostedReference()) return CanonicalSelectorDecoding.Decoded(token)
         val handle =
             when (val parsed = HostedSymbolHandle.parse(token)) {
                 is Refinement.Refined -> parsed.value
@@ -129,5 +137,16 @@ internal class HostedReferenceTokens(private val limits: ReadLimits) {
 private sealed interface HostedReferenceRepresentation {
     data class Handle(val value: HostedSymbolHandle) : HostedReferenceRepresentation
 
-    data class Inline(val value: ProtocolText) : HostedReferenceRepresentation
+    data class Inline(val value: ProtocolText, val reason: HostedReferenceInlineReason) : HostedReferenceRepresentation
+}
+
+private fun ProtocolText.isHostedReference(): Boolean =
+    value.startsWith("exact:v4:") ||
+        value.startsWith("candidate:v4:") ||
+        value.startsWith("exact:v5:") ||
+        value.startsWith("candidate:v5:")
+
+private enum class HostedReferenceInlineReason {
+    CAPACITY,
+    COLLISION,
 }

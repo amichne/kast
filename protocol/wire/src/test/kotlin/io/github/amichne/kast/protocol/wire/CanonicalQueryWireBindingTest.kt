@@ -3,11 +3,57 @@ package io.github.amichne.kast.protocol.wire
 import io.github.amichne.kast.kernel.*
 import io.github.amichne.kast.protocol.contract.*
 import java.util.UUID
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class CanonicalQueryWireBindingTest {
+    @Test
+    fun `continuation and every terminal reason have independent encoded shapes`() {
+        val json = Json { encodeDefaults = true }
+        val token = text("query:v1:sample-catalog-page")
+        val page = QueryRunResult(items = bounded(emptyList()), failures = bounded(emptyList()), continuation = token)
+        assertEquals(
+            WireValueEncoding.Encoded(
+                json.encodeToJsonElement(
+                    ExpectedQueryPage.serializer(),
+                    ExpectedQueryPage(continuation = token.value),
+                )
+            ),
+            CanonicalQuerySerializers.result.encode(page, WireValueRole.RESULT),
+        )
+        val names =
+            mapOf(
+                QueryTerminalReasonDocument.UPSTREAM_INCOMPLETE to "upstream-incomplete",
+                QueryTerminalReasonDocument.OUTPUT_ITEM_TOO_LARGE to "output-item-too-large",
+                QueryTerminalReasonDocument.CHECKPOINT_CAPACITY_EXCEEDED to "checkpoint-capacity-exceeded",
+                QueryTerminalReasonDocument.NO_PROGRESS to "no-progress",
+            )
+        for ((reason, encoded) in names) {
+            val terminal = page.copy(continuation = null, terminalReason = reason)
+            assertEquals(
+                WireValueEncoding.Encoded(
+                    json.encodeToJsonElement(
+                        ExpectedQueryPage.serializer(),
+                        ExpectedQueryPage(terminalReason = encoded),
+                    )
+                ),
+                CanonicalQuerySerializers.result.encode(terminal, WireValueRole.RESULT),
+            )
+        }
+        assertTrue(
+            CanonicalQuerySerializers.result.decode(
+                json.encodeToJsonElement(
+                    ExpectedQueryPage.serializer(),
+                    ExpectedQueryPage(terminalReason = "invented"),
+                ),
+                WireValueRole.RESULT,
+            ) is WireDecoding.Rejected
+        )
+    }
+
     @Test
     fun `query request round trip admits ref only symbol output`() {
         val request =
@@ -139,3 +185,11 @@ class CanonicalQueryWireBindingTest {
             is WireRequestAdmission.Rejected -> error(failure)
         }
 }
+
+@Serializable
+private data class ExpectedQueryPage(
+    val items: List<String> = emptyList(),
+    val failures: List<String> = emptyList(),
+    val continuation: String? = null,
+    val terminalReason: String? = null,
+)

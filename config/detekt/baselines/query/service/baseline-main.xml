@@ -2,12 +2,12 @@
 <SmellBaseline>
   <ManuallySuppressedIssues/>
   <CurrentIssues>
-    <ID>CognitiveComplexMethod:QueryService.kt:QueryService$private suspend fun refine: List&lt;QuerySymbol></ID>
+    <ID>CognitiveComplexMethod:QueryReadStages.kt:QueryReadStages$suspend fun refine: List&lt;QuerySymbol></ID>
     <ID>CognitiveComplexMethod:QueryService.kt:QueryService$private suspend fun related: List&lt;QuerySymbol></ID>
-    <ID>CognitiveComplexMethod:QueryService.kt:QueryService$private suspend fun where: List&lt;QuerySymbol></ID>
+    <ID>CognitiveComplexMethod:QueryReadStages.kt:QueryReadStages$suspend fun where: List&lt;QuerySymbol></ID>
     <ID>CyclomaticComplexMethod:QueryService.kt:QueryService$private suspend fun related: List&lt;QuerySymbol></ID>
     <ID>LargeClass:QueryService.kt:QueryService : QueryOperations</ID>
-    <ID>LongMethod:QueryService.kt:QueryService$private suspend fun discover: DiscoveryExecution</ID>
+    <ID>LongMethod:QueryReadStages.kt:QueryReadStages$suspend fun discover: DiscoveryExecution</ID>
     <ID>LongMethod:QueryService.kt:QueryService$private suspend fun related: List&lt;QuerySymbol></ID>
     <ID>LoopWithTooManyJumpStatements:QueryService.kt:QueryService$while</ID>
     <ID>NamedArguments:QueryService.kt:QueryService$executeCandidate( input.distinctBy { it.candidate }, stage.next, state, discovery, )</ID>

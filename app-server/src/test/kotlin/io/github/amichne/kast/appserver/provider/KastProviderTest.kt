@@ -13,7 +13,6 @@ import io.github.amichne.kast.appserver.core.ObserverPresentation
 import io.github.amichne.kast.appserver.core.ProviderFailureCode
 import io.github.amichne.kast.appserver.core.ProviderNamespace
 import io.github.amichne.kast.appserver.core.ToolAddress
-import io.github.amichne.kast.appserver.core.ToolContent
 import io.github.amichne.kast.appserver.core.ToolName
 import io.github.amichne.kast.appserver.runtime.BrokerInvocationApproval
 import io.github.amichne.kast.appserver.runtime.ClientConnectionId
@@ -186,6 +185,7 @@ class KastProviderTest {
             val cwd = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
             for (rejection in
                 listOf(
+                    checkNotNull(javaClass.getResource("/canonical-rejected-presentation.json")).readText(),
                     """{"type":"HOST_REJECTED","failure":"DEADLINE_EXCEEDED"}""",
                     """{"schemaVersion":1,"outcome":"rejected","failure":"DIRTY_DOCUMENTS","detail":"saved content required","stage":"EPOCH_OBSERVATION"}""",
                 )) {
@@ -216,8 +216,7 @@ class KastProviderTest {
                     )
                 assertEquals(false, result.presentation.success)
                 assertEquals(ObserverPresentation.None, result.presentation.observer)
-                assertEquals(ToolContent("Kast · symbol.discover · rejected"), result.presentation.content.first())
-                val envelope = Json.parseToJsonElement(result.presentation.content.last().text).jsonObject
+                val envelope = Json.parseToJsonElement(result.presentation.content.single().text).jsonObject
                 assertEquals(JsonPrimitive("completed"), envelope["status"])
                 assertEquals(Json.parseToJsonElement(rejection), envelope["document"])
             }

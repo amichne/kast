@@ -20,6 +20,7 @@ import io.github.amichne.kast.relation.contract.RelationFact
 import io.github.amichne.kast.relation.contract.RelationLimitation
 import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationOccurrence
+import io.github.amichne.kast.relation.contract.RelationOmissionSample
 import io.github.amichne.kast.relation.contract.RelationProvenance
 import io.github.amichne.kast.relation.contract.RelationProviderItemDescriptor
 import io.github.amichne.kast.relation.contract.RelationRequest
@@ -303,13 +304,25 @@ internal class IntellijK2RelationSearch(
                 }
                 when (val candidate = item.value) {
                     is CalleeProviderItem.Unresolved ->
-                        if (!incompleteItem(RelationLimitation.UNRESOLVED_TARGET)) {
+                        if (
+                            !incompleteItem(
+                                RelationLimitation.UNRESOLVED_TARGET,
+                                candidate.call,
+                                candidate.call.textRange.shiftLeft(candidate.call.textRange.startOffset),
+                            )
+                        ) {
                             return termination(ProviderTermination.HALTED)
                         }
                     is CalleeProviderItem.Reference ->
                         when (val resolved = projection.resolve(candidate.reference)) {
                             IntellijK2ResolvedDeclaration.Unresolved ->
-                                if (!incompleteItem(RelationLimitation.UNRESOLVED_TARGET)) {
+                                if (
+                                    !incompleteItem(
+                                        RelationLimitation.UNRESOLVED_TARGET,
+                                        candidate.reference.element,
+                                        candidate.reference.rangeInElement,
+                                    )
+                                ) {
                                     return termination(ProviderTermination.HALTED)
                                 }
                             is IntellijK2ResolvedDeclaration.Found -> {
@@ -398,7 +411,8 @@ internal class IntellijK2RelationSearch(
         ): Boolean =
             when (val result = projection.project(related)) {
                 is IntellijRelationDeclarationProjection.Projected -> emit(result, occurrenceElement, relativeRange)
-                IntellijRelationDeclarationProjection.Unsupported -> incompleteItem(RelationLimitation.UNSUPPORTED_ITEM)
+                IntellijRelationDeclarationProjection.Unsupported ->
+                    incompleteItem(RelationLimitation.UNSUPPORTED_ITEM, occurrenceElement, relativeRange)
             }
 
         private fun emit(
@@ -417,16 +431,17 @@ internal class IntellijK2RelationSearch(
                         )
                 ) {
                     is Refinement.Refined -> resolved.value
-                    is Refinement.Rejected -> return incompleteItem(RelationLimitation.UNSUPPORTED_ITEM)
+                    is Refinement.Rejected ->
+                        return incompleteItem(RelationLimitation.UNSUPPORTED_ITEM, occurrenceElement, relativeRange)
                 }
             val occurrenceFile =
                 PsiUtilCore.getVirtualFile(occurrenceElement)
-                    ?: return incompleteItem(RelationLimitation.UNSUPPORTED_ITEM)
+                    ?: return incompleteItem(RelationLimitation.UNSUPPORTED_ITEM, occurrenceElement, relativeRange)
             val detachedFile =
                 when (val result = projection.detach(occurrenceFile)) {
                     is IntellijDetachedRelationFile.Found -> result.identity
                     IntellijDetachedRelationFile.Unsupported ->
-                        return incompleteItem(RelationLimitation.UNSUPPORTED_ITEM)
+                        return incompleteItem(RelationLimitation.UNSUPPORTED_ITEM, occurrenceElement, relativeRange)
                 }
             val start = occurrenceElement.textRange.startOffset + relativeRange.startOffset
             val occurrence =
@@ -439,12 +454,14 @@ internal class IntellijK2RelationSearch(
                         )
                 ) {
                     is Refinement.Refined -> result.value
-                    is Refinement.Rejected -> return incompleteItem(RelationLimitation.UNSUPPORTED_ITEM)
+                    is Refinement.Rejected ->
+                        return incompleteItem(RelationLimitation.UNSUPPORTED_ITEM, occurrenceElement, relativeRange)
                 }
             val provenance =
                 when (val result = occurrenceFile.provenance()) {
                     is OccurrenceProvenance.Found -> result.provenance
-                    OccurrenceProvenance.Unsupported -> return incompleteItem(RelationLimitation.UNSUPPORTED_ITEM)
+                    OccurrenceProvenance.Unsupported ->
+                        return incompleteItem(RelationLimitation.UNSUPPORTED_ITEM, occurrenceElement, relativeRange)
                 }
             val subjectEndpoint = request.subject
             val (source, target) =
@@ -465,22 +482,29 @@ internal class IntellijK2RelationSearch(
                         )
                 ) {
                     is Refinement.Refined -> result.value
-                    is Refinement.Rejected -> return incompleteItem(RelationLimitation.UNSUPPORTED_ITEM)
+                    is Refinement.Rejected ->
+                        return incompleteItem(RelationLimitation.UNSUPPORTED_ITEM, occurrenceElement, relativeRange)
                 }
             return collector.accept(fact)
         }
 
-        private fun incompleteItem(limitation: RelationLimitation): Boolean {
+        private fun incompleteItem(
+            limitation: RelationLimitation,
+            sample: RelationOmissionSample = RelationOmissionSample.Unavailable,
+        ): Boolean {
             limitations += limitation
-            return collector.examineIncomplete(limitation)
+            return collector.examineIncomplete(limitation, sample)
         }
+
+        private fun incompleteItem(
+            limitation: RelationLimitation,
+            element: PsiElement,
+            range: com.intellij.openapi.util.TextRange,
+        ): Boolean = incompleteItem(limitation, projection.omissionSample(element, range))
 
         private fun termination(provider: ProviderTermination): IntellijRelationTermination =
             when {
-                provider == ProviderTermination.HALTED ->
-                    IntellijRelationTermination.Resumable(
-                        limitations.ifEmpty { setOf(RelationLimitation.PROVIDER_INCOMPLETE) }
-                    )
+                provider == ProviderTermination.HALTED -> IntellijRelationTermination.Resumable(limitations)
                 limitations.isNotEmpty() -> IntellijRelationTermination.TerminalIncomplete(limitations)
                 else -> IntellijRelationTermination.Terminal
             }
@@ -501,114 +525,3 @@ internal class IntellijK2RelationSearch(
             is IntellijProjectFileClassification.Rejected -> OccurrenceProvenance.Unsupported
         }
 }
-
-private sealed interface ContainingDeclaration {
-    data class Found(val declaration: PsiNamedElement) : ContainingDeclaration
-
-    data object Unsupported : ContainingDeclaration
-}
-
-private sealed interface SupportedContainingDeclaration {
-    data class Found(val projection: IntellijRelationDeclarationProjection.Projected) : SupportedContainingDeclaration
-
-    data object Unsupported : SupportedContainingDeclaration
-}
-
-private sealed interface OccurrenceProvenance {
-    data class Found(val provenance: RelationProvenance) : OccurrenceProvenance
-
-    data object Unsupported : OccurrenceProvenance
-}
-
-private sealed interface KotlinCallReferences {
-    data class Found(val references: List<KtReference>) : KotlinCallReferences
-
-    data object Unresolved : KotlinCallReferences
-}
-
-private sealed interface CalleeProviderItem {
-    data class Unresolved(val call: KtCallElement) : CalleeProviderItem
-
-    data class Reference(val reference: KtReference) : CalleeProviderItem
-}
-
-private fun CalleeProviderItem.descriptor(): RelationProviderItemDescriptor =
-    when (this) {
-        is CalleeProviderItem.Unresolved ->
-            providerItemDescriptor(
-                call,
-                call.textRange.shiftLeft(call.textRange.startOffset),
-                "unresolved-call",
-            )
-        is CalleeProviderItem.Reference ->
-            providerItemDescriptor(
-                reference.element,
-                reference.rangeInElement,
-                "callee-reference:${reference.javaClass.name}",
-            )
-    }
-
-private enum class ProviderTermination {
-    TERMINAL,
-    HALTED,
-}
-
-private enum class ProviderItemDisposition {
-    READY,
-    SKIPPED,
-    HALTED,
-}
-
-private fun providerItemDescriptor(
-    element: PsiElement,
-    relativeRange: com.intellij.openapi.util.TextRange,
-    discriminator: String,
-): RelationProviderItemDescriptor {
-    val file = PsiUtilCore.getVirtualFile(element)?.url ?: "detached:${element.containingFile?.name}"
-    val start = element.textRange.startOffset + relativeRange.startOffset
-    val end = element.textRange.startOffset + relativeRange.endOffset
-    val raw = "$discriminator\u0000$file\u0000$start\u0000$end"
-    return when (val parsed = RelationProviderItemDescriptor.parse(raw)) {
-        is Refinement.Refined -> parsed.value
-        is Refinement.Rejected -> error("A native provider descriptor is never blank")
-    }
-}
-
-private fun PsiElement.nearestDeclaration(): ContainingDeclaration =
-    generateSequence(this as PsiElement?) { it.parent }
-        .filterIsInstance<PsiNamedElement>()
-        .filter { it is KtNamedDeclaration || it is com.intellij.psi.PsiMember }
-        .firstOrNull()
-        ?.let(ContainingDeclaration::Found) ?: ContainingDeclaration.Unsupported
-
-/**
- * Proof transition: `(PsiElement, IntellijK2RelationProjection) -> SupportedContainingDeclaration`.
- *
- * A found result carries the nearest containing named declaration that has already proved it can become a detached
- * compiler-grounded relation endpoint. Unsupported local declarations are refined past instead of obscuring a supported
- * enclosing caller. Live PSI remains request-local.
- */
-private fun PsiElement.nearestSupportedDeclaration(
-    projection: IntellijK2RelationProjection
-): SupportedContainingDeclaration =
-    generateSequence(this as PsiElement?) { it.parent }
-        .filterIsInstance<PsiNamedElement>()
-        .filter { it is KtNamedDeclaration || it is com.intellij.psi.PsiMember }
-        // A constructor parameter's type occurrence belongs to its constructor, even when
-        // K2 also exposes the generated property as an independently discoverable declaration.
-        .filterNot { it is org.jetbrains.kotlin.psi.KtParameter }
-        .map(projection::project)
-        .filterIsInstance<IntellijRelationDeclarationProjection.Projected>()
-        .firstOrNull()
-        ?.let(SupportedContainingDeclaration::Found) ?: SupportedContainingDeclaration.Unsupported
-
-private fun KtCallElement.calleeReferences(): KotlinCallReferences {
-    val references = calleeExpression?.references?.filterIsInstance<KtReference>().orEmpty()
-    return if (references.isEmpty()) {
-        KotlinCallReferences.Unresolved
-    } else {
-        KotlinCallReferences.Found(references)
-    }
-}
-
-private fun resumable(limitation: RelationLimitation) = IntellijRelationTermination.Resumable(setOf(limitation))

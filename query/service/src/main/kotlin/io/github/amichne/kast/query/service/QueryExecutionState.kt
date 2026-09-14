@@ -26,16 +26,22 @@ internal class QueryExecutionState(
     private var usedBytes = 0L
     private val failures = mutableListOf<QueryItemFailure>()
     val limitations = linkedSetOf<QueryLimitation>()
+    val upstreamLimitations = linkedSetOf<QueryLimitation>()
     var contractViolation: Boolean = false
 
-    fun consume(work: Long, bytes: Long) {
+    fun canContinue(workRequired: Boolean): Boolean {
+        if (workRequired && remainingWork() < 1L) {
+            limit(QueryLimitation.WORK_LIMIT_REACHED)
+            return false
+        }
+        return observeTime()
+    }
+
+    fun consume(work: Long) {
         usedWork = saturatedAdd(usedWork, work)
-        usedBytes = saturatedAdd(usedBytes, bytes)
+        // Intermediate bytes bound child effects; only final output spends returned-byte authority.
         if (usedWork > request.budget.resources.workUnitLimit.value) {
             limit(QueryLimitation.WORK_LIMIT_REACHED)
-        }
-        if (usedBytes > request.budget.returnedBytes.value) {
-            limit(QueryLimitation.BYTE_LIMIT_REACHED)
         }
     }
 
@@ -77,12 +83,12 @@ internal class QueryExecutionState(
 
     /** Child coverage proves incomplete discovery; aggregate result capacity remains query-owned. */
     fun discoveryLimited(qualifications: Set<SymbolDiscoveryQualification>) {
-        limit(QueryLimitation.DISCOVERY_INCOMPLETE)
+        upstreamLimit(QueryLimitation.DISCOVERY_INCOMPLETE)
         qualifications.forEach { qualification ->
             when (qualification) {
-                SymbolDiscoveryQualification.BYTE_LIMIT_REACHED -> limit(QueryLimitation.BYTE_LIMIT_REACHED)
-                SymbolDiscoveryQualification.WORK_LIMIT_REACHED -> limit(QueryLimitation.WORK_LIMIT_REACHED)
-                SymbolDiscoveryQualification.TIME_LIMIT_REACHED -> limit(QueryLimitation.TIME_LIMIT_REACHED)
+                SymbolDiscoveryQualification.BYTE_LIMIT_REACHED -> upstreamLimit(QueryLimitation.BYTE_LIMIT_REACHED)
+                SymbolDiscoveryQualification.WORK_LIMIT_REACHED -> upstreamLimit(QueryLimitation.WORK_LIMIT_REACHED)
+                SymbolDiscoveryQualification.TIME_LIMIT_REACHED -> upstreamLimit(QueryLimitation.TIME_LIMIT_REACHED)
                 SymbolDiscoveryQualification.RESULT_LIMIT_REACHED,
                 SymbolDiscoveryQualification.DUMB_MODE_TRANSITION,
                 SymbolDiscoveryQualification.PROVIDER_FAILURE,
@@ -101,55 +107,40 @@ internal class QueryExecutionState(
     }
 
     fun relationTerminallyLimited(limitations: Set<RelationLimitation>) {
-        limit(QueryLimitation.RELATION_INCOMPLETE)
+        upstreamLimit(QueryLimitation.RELATION_INCOMPLETE)
         limitations.forEach { limitation ->
             when (limitation) {
-                RelationLimitation.RESULT_LIMIT_REACHED -> limit(QueryLimitation.RESULT_LIMIT_REACHED)
-                RelationLimitation.BYTE_LIMIT_REACHED -> limit(QueryLimitation.BYTE_LIMIT_REACHED)
-                RelationLimitation.WORK_LIMIT_REACHED -> limit(QueryLimitation.WORK_LIMIT_REACHED)
-                RelationLimitation.TIME_LIMIT_REACHED -> limit(QueryLimitation.TIME_LIMIT_REACHED)
+                RelationLimitation.RESULT_LIMIT_REACHED -> upstreamLimit(QueryLimitation.RESULT_LIMIT_REACHED)
+                RelationLimitation.BYTE_LIMIT_REACHED -> upstreamLimit(QueryLimitation.BYTE_LIMIT_REACHED)
+                RelationLimitation.WORK_LIMIT_REACHED -> upstreamLimit(QueryLimitation.WORK_LIMIT_REACHED)
+                RelationLimitation.TIME_LIMIT_REACHED -> upstreamLimit(QueryLimitation.TIME_LIMIT_REACHED)
                 RelationLimitation.DUMB_MODE_TRANSITION,
                 RelationLimitation.UNRESOLVED_TARGET,
                 RelationLimitation.UNSUPPORTED_ITEM,
                 RelationLimitation.PROVIDER_FAILURE,
-                RelationLimitation.PROVIDER_INCOMPLETE -> Unit
+                RelationLimitation.PROVIDER_INCOMPLETE,
+                RelationLimitation.PROVIDER_STALLED -> Unit
             }
         }
     }
 
-    fun <Value> boundResults(values: List<Value>): List<Value> {
-        val limit = request.budget.resources.resultLimit.value
-        if (values.size > limit) this.limit(QueryLimitation.RESULT_LIMIT_REACHED)
-        return values.take(limit)
-    }
-
-    fun boundConnections(values: List<RelationFact>): List<RelationFact> = boundResults(values.distinct().sorted())
-
-    fun <Value> boundOutput(
-        values: List<Value>,
-        projectedUtf8Size: (Value) -> Long,
-    ): List<Value> = buildList {
-        for (value in values) {
-            val bytes = projectedUtf8Size(value)
-            if (!consumeOutput(bytes)) break
-            add(value)
-        }
-    }
-
-    fun boundedFailures(): List<QueryItemFailure> = boundOutput(failures.toList(), QueryItemFailure::projectedUtf8Size)
+    fun boundConnections(values: List<RelationFact>): List<RelationFact> = values.distinct().sorted()
 
     fun failure(failure: QueryItemFailure) {
-        if (failures.size >= request.budget.resources.resultLimit.value) {
-            limit(QueryLimitation.RESULT_LIMIT_REACHED)
-        } else {
-            failures += failure
-        }
+        failures += failure
     }
+
+    fun drainFailures(): List<QueryItemFailure> = failures.toList().also { failures.clear() }
 
     fun observeTime(): Boolean {
         if (remainingMillis() >= 1L) return true
         limit(QueryLimitation.TIME_LIMIT_REACHED)
         return false
+    }
+
+    private fun upstreamLimit(limitation: QueryLimitation) {
+        upstreamLimitations += limitation
+        limit(limitation)
     }
 
     fun limit(limitation: QueryLimitation) {
@@ -189,13 +180,13 @@ internal class QueryExecutionState(
         return remaining
     }
 
-    /** Leaves at least half of remaining byte authority available for downstream projection. */
+    /** Child materialization has its own bounded bytes; it never spends final-output authority. */
     private fun childByteAllowance(): Long? {
-        val remaining = remainingBytes() ?: return null
-        return (remaining / 2L).coerceAtLeast(1L)
+        remainingBytes() ?: return null
+        return request.budget.returnedBytes.value
     }
 
-    private fun consumeOutput(bytes: Long): Boolean {
+    fun consumeOutput(bytes: Long): Boolean {
         val remaining = remainingBytes() ?: return false
         if (bytes > remaining) {
             limit(QueryLimitation.BYTE_LIMIT_REACHED)

@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-12 | hash: f769f85925fc -->
+<!-- generated: 2026-09-14 | hash: 924b0f19d114 -->
 
 # cli
 
@@ -9,6 +9,8 @@ Defines Kast's human-facing command graph, installed configuration and installat
 
 ## Key Files
 
+- [RelationOmissionSchema.kt](src/main/kotlin/io/github/amichne/kast/cli/RelationOmissionSchema.kt) - bounded provider-omission schema.
+- [InstalledBootstrapSchemas.kt](src/main/kotlin/io/github/amichne/kast/cli/InstalledBootstrapSchemas.kt) - shared installed process and bootstrap schemas.
 - [src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt](src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt) - executable main.
 - [src/main/kotlin/io/github/amichne/kast/cli/KastCli.kt](src/main/kotlin/io/github/amichne/kast/cli/KastCli.kt) - root CLI assembly.
 - [src/main/kotlin/io/github/amichne/kast/cli/command/model/CliCommandGraph.kt](src/main/kotlin/io/github/amichne/kast/cli/command/model/CliCommandGraph.kt) - command topology.

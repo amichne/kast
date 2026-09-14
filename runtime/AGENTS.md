@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-12 | hash: cd8dbff354a1 -->
+<!-- generated: 2026-09-14 | hash: d23c97b6e865 -->
 
 # runtime
 
@@ -9,6 +9,7 @@ Composes semantic services inside an existing IntelliJ project and retains typed
 
 ## Key Files
 
+- [HostedQueryContinuations.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryContinuations.kt) - project-owned execution and encoded-output continuation stores.
 - [HostedReferenceStore.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReferenceStore.kt) - project-owned bounded compact reference lookup.
 
 - [HostedEndpointService.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt) - project endpoint ownership.

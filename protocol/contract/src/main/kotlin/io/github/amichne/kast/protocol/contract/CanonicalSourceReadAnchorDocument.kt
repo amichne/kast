@@ -23,9 +23,11 @@ sealed interface SourceReadAnchorDocument {
     @Serializable @SerialName("source") data class Source(val selector: ProtocolText) : SourceReadAnchorDocument
 
     companion object {
+        private val hostedPrefixes = listOf("exact:v4:", "candidate:v4:", "exact:v5:", "candidate:v5:")
+
         /** Refines one opaque selector to its sole disjoint anchor family. */
         fun admit(selector: ProtocolText): Refinement<SourceReadAnchorDocument, SourceReadAnchorDocumentFailure> {
-            if (selector.value.startsWith("exact:v4:") || selector.value.startsWith("candidate:v4:")) {
+            if (hostedPrefixes.any(selector.value::startsWith)) {
                 return when (val handle = HostedSymbolHandle.parse(selector)) {
                     is Refinement.Refined ->
                         Refinement.Refined(

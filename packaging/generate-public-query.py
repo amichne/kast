@@ -291,7 +291,8 @@ def render_tools(authority: dict) -> dict[Path, str]:
         else:
             body.append(annotation + f'internal data class PublicTool{key}(\n')
             for prop, value in props:
-                body.append(f'    val {prop}: {typ(value, prop)},\n')
+                default = ' = null' if prop not in spec.get('required', []) and nullable(value) else ''
+                body.append(f'    val {prop}: {typ(value, prop)}{default},\n')
             body.append(')' + suffix + '\n\n')
     for key, values in enums.items():
         lines.append(f'@Serializable\ninternal enum class PublicTool{key} {{\n')
