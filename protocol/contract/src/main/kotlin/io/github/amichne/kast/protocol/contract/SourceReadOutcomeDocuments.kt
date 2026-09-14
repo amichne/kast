@@ -96,7 +96,7 @@ private constructor(
     }
 }
 
-enum class SourceReadRejection : OperationRejection {
+enum class SourceReadRejection : SourceReadFailure {
     WORKSPACE_NOT_READY,
     WORKSPACE_ROOT_MISMATCH,
     STALE_GENERATION,

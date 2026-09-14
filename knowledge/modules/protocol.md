@@ -64,8 +64,11 @@ Qualified effects retain their finite reason and exact plan identity.
 Hosted rejection schemas retain their transitive definitions when embedded in
 installed output schemas, preserving bounded module/root evidence for selected-build
 source-scope failures.
-Installed output schemas reuse equal compiler-signature, receiver, source-range
-and traversal-qualification definitions through local references. The complete CLI schema regression reserves
+Installed output schemas reuse equal compiler-signature, receiver, source-range,
+source/relation/traversal qualification, rejection-reason, and execution-budget
+definitions through local references. Admitted failures in the four canonical
+reads preserve a required report alongside their existing finite reason; wire
+decoding distinguishes missing metadata from invalid or null reports. The complete CLI schema regression reserves
 4,096 bytes below the 524,288-byte qualification cap, which counts both stdout and
 stderr from the process. Hosted read admission now also has a closed
 `CONFIGURATION_REJECTED` outcome; canonical semantic outcome schemas retain their existing identities. Schema compatibility and native execution remain

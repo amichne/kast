@@ -429,7 +429,7 @@ enum class QueryReferenceRejectionReason {
     INCOMPATIBLE_REFERENCE_VERSION,
 }
 
-sealed interface QueryRunRejection : OperationRejection {
+sealed interface QueryRunRejection : QueryRunFailure {
     data object WorkspaceNotReady : QueryRunRejection
 
     data class PlanRejected(

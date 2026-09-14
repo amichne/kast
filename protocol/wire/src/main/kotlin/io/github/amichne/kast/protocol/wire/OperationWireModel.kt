@@ -22,6 +22,7 @@ internal data class GeneratedOperationSerializers<
     val result: WireValueCodec<Result>,
     val qualification: WireValueCodec<Qualification>,
     val rejection: WireValueCodec<Rejection>,
+    val rejectionBudget: RejectionBudgetCodec<Rejection> = RejectionBudgetCodec(),
 )
 
 sealed interface WireEncoding {

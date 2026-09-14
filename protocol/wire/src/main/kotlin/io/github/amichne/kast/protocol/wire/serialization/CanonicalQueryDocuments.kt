@@ -4,6 +4,8 @@ package io.github.amichne.kast.protocol.wire
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.*
+import io.github.amichne.kast.protocol.contract.QueryRunFailure
+import io.github.amichne.kast.protocol.contract.reason
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
@@ -221,10 +223,10 @@ internal object CanonicalQuerySerializers {
             QueryRunQualification::toQueryWireDocument,
             QueryRunQualificationWireDocument::toContract,
         )
-    val rejection =
+    val rejection: WireValueCodec<QueryRunFailure> =
         factory.create(
             QueryRunRejectionWireDocument.serializer(),
-            QueryRunRejection::toQueryWireDocument,
+            { value: QueryRunFailure -> value.reason().toQueryWireDocument() },
             QueryRunRejectionWireDocument::toContract,
         )
 }

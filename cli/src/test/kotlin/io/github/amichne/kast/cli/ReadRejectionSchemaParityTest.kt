@@ -25,21 +25,36 @@ class ReadRejectionSchemaParityTest {
     @Test
     fun `every source rejection survives wire and installed envelope with unknown reasons rejected`() {
         SourceReadRejection.entries.forEach { reason ->
-            verify(CanonicalOperationWireBindings.sourceRead, reason, CanonicalSourceReadCliDocuments::project)
+            verify(
+                CanonicalOperationWireBindings.sourceRead,
+                reason,
+                reason.name.lowercase().replace('_', '-'),
+                CanonicalSourceReadCliDocuments::project,
+            )
         }
     }
 
     @Test
     fun `every relation rejection survives wire and installed envelope with unknown reasons rejected`() {
         RelationReadRejection.entries.forEach { reason ->
-            verify(CanonicalOperationWireBindings.relationRead, reason, CanonicalReadCliDocuments::projectRelation)
+            verify(
+                CanonicalOperationWireBindings.relationRead,
+                reason,
+                reason.name.lowercase().replace('_', '-'),
+                CanonicalReadCliDocuments::projectRelation,
+            )
         }
     }
 
     @Test
     fun `every traversal rejection survives wire and installed envelope with unknown reasons rejected`() {
         TraversalRunRejection.entries.forEach { reason ->
-            verify(CanonicalOperationWireBindings.traversalRun, reason, CanonicalReadCliDocuments::projectTraversal)
+            verify(
+                CanonicalOperationWireBindings.traversalRun,
+                reason,
+                reason.name.lowercase().replace('_', '-'),
+                CanonicalReadCliDocuments::projectTraversal,
+            )
         }
     }
 
@@ -51,15 +66,16 @@ class ReadRejectionSchemaParityTest {
     > verify(
         binding: OperationWireBinding<Request, Result, Qualification, Rejection>,
         reason: Rejection,
+        expectedReason: String,
         project: (OperationOutcome<Result, Qualification, Rejection>) -> ProjectedCliOutcome,
-    ) where Rejection : Enum<Rejection>, Rejection : OperationRejection =
+    ) where Rejection : OperationRejection =
         with(fixture) {
             val outcome = OperationOutcome.Rejected(reason)
             val wire = binding.encodeOutcome(outcome) as WireEncoding.Encoded
             assertEquals(WireDecoding.Decoded(outcome), binding.decodeOutcome(wire.document))
             val document = project(outcome).document()
             assertEquals("rejected", document.getValue("status").jsonPrimitive.content)
-            assertEquals(reason.name.lowercase().replace('_', '-'), document.getValue("reason").jsonPrimitive.content)
+            assertEquals(expectedReason, document.getValue("reason").jsonPrimitive.content)
             assertAdmits(binding.operation, document)
             // Deliberately incompatible output proves the installed schema is closed, not merely a string shape.
             assertRejects(binding.operation, document.with("reason", JsonPrimitive("unclassified-test-reason")))

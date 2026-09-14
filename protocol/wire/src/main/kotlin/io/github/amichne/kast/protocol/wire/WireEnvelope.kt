@@ -150,7 +150,15 @@ internal sealed interface WireBodyDocument {
         @EncodeDefault(EncodeDefault.Mode.NEVER) val live: LiveEvidenceDocument? = null,
     ) : WireBodyDocument
 
-    @Serializable @SerialName("rejected") data class Rejected(val rejection: JsonElement) : WireBodyDocument
+    @Serializable
+    @SerialName("rejected")
+    data class Rejected(
+        val rejection: JsonElement,
+        @EncodeDefault(EncodeDefault.Mode.NEVER)
+        @SerialName("execution_budget")
+        val executionBudget: io.github.amichne.kast.protocol.contract.ExecutionBudgetPresence =
+            io.github.amichne.kast.protocol.contract.ExecutionBudgetPresence.Absent,
+    ) : WireBodyDocument
 }
 
 internal fun WireBodyDocument.kind(): WireBodyKind =
