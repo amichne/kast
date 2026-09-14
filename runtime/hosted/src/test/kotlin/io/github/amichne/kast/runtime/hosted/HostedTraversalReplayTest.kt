@@ -26,7 +26,7 @@ import org.junit.jupiter.api.Test
 
 class HostedTraversalReplayTest {
     @Test
-    fun `byte only fitting repeatedly drains stable replayable suffixes within the full envelope allowance`() = runTest {
+    fun `byte only fitting drains stable replayable suffixes within the envelope allowance`() = runTest {
         val fixture = HostedTraversalPagingFixture.create()
         val pages = hostedTraversalOutputPages(ReadLimits.Default)
         val maximum = byteLimit(encoded(bytePrefix(fixture)).document)
@@ -36,7 +36,12 @@ class HostedTraversalReplayTest {
         val request = fixture.request.copy(maximumResults = ProtocolCount.parse(9).proven())
         repeat(3) { index ->
             fun encode() =
-                encodeHostedTraversalResponse(remaining, ReadLimits.Default, ResultLimit.parse(9).proven(), maximum) {
+                encodeHostedTraversalResponse(
+                    semantic = remaining,
+                    limits = ReadLimits.Default,
+                    maximumResults = ResultLimit.parse(9).proven(),
+                    maximumBytes = maximum,
+                ) {
                     pages.issue(request, fixture.owner.authority, it)
                 }
             val response = encode()
@@ -69,17 +74,30 @@ class HostedTraversalReplayTest {
     fun `one indivisible record and mandatory metadata reject without retaining an empty page`() = runTest {
         val fixture = HostedTraversalPagingFixture.create()
         for (recordCount in listOf(0, 1)) {
-            val outcome = fixture.outcome.copy(
-                evidence = fixture.outcome.evidence.copy(
-                    payload = fixture.outcome.evidence.payload.copy(
-                        records = BoundedProtocolList.create(fixture.outcome.evidence.payload.records.values.take(recordCount)).proven(),
-                    ),
-                ),
-            )
-            val maximum = ReturnedByteLimit.parse(encoded(outcome).document.toByteArray(Charsets.UTF_8).size - 1L).proven()
+            val outcome =
+                fixture.outcome.copy(
+                    evidence =
+                        fixture.outcome.evidence.copy(
+                            payload =
+                                fixture.outcome.evidence.payload.copy(
+                                    records =
+                                        BoundedProtocolList.create(
+                                                fixture.outcome.evidence.payload.records.values.take(recordCount)
+                                            )
+                                            .proven()
+                                )
+                        )
+                )
+            val maximum =
+                ReturnedByteLimit.parse(encoded(outcome).document.toByteArray(Charsets.UTF_8).size - 1L).proven()
             var retentionCalls = 0
             val response =
-                encodeHostedTraversalResponse(outcome, ReadLimits.Default, ResultLimit.parse(9).proven(), maximum) {
+                encodeHostedTraversalResponse(
+                    semantic = outcome,
+                    limits = ReadLimits.Default,
+                    maximumResults = ResultLimit.parse(9).proven(),
+                    maximumBytes = maximum,
+                ) {
                     retentionCalls += 1
                     HostedOutputRetention.CapacityExceeded
                 }
@@ -100,28 +118,40 @@ class HostedTraversalReplayTest {
 
     private fun bytePrefix(fixture: HostedTraversalPagingFixture): HostedTraversalOutcome =
         fixture.outcome.copy(
-            evidence = fixture.outcome.evidence.copy(
-                payload = fixture.outcome.evidence.payload.copy(
-                    records = BoundedProtocolList.create(fixture.outcome.evidence.payload.records.values.take(1)).proven(),
+            evidence =
+                fixture.outcome.evidence.copy(
+                    payload =
+                        fixture.outcome.evidence.payload.copy(
+                            records =
+                                BoundedProtocolList.create(fixture.outcome.evidence.payload.records.values.take(1))
+                                    .proven()
+                        )
                 ),
-            ),
-            qualification = TraversalRunQualification.admitResumable(
-                limitations = (fixture.outcome.qualification.limitations + TraversalLimitationDocument.BYTE_LIMIT_REACHED)
-                    .sortedBy { it.ordinal },
-                relationLimitations = fixture.outcome.qualification.relationLimitations,
-                checkpoint = TraversalCheckpointDocument.RetainedOutput(
-                    TraversalContinuationDocument.parse("traversal-output:v1:00000000-0000-0000-0000-000000000001").proven(),
-                    TraversalPreparedCoverageDocument.TERMINAL_INCOMPLETE,
-                ),
-                nextAction = ReadResumeActionDocument.RESUME,
-            ).proven(),
+            qualification =
+                TraversalRunQualification.admitResumable(
+                        limitations =
+                            (fixture.outcome.qualification.limitations + TraversalLimitationDocument.BYTE_LIMIT_REACHED)
+                                .sortedBy { it.ordinal },
+                        relationLimitations = fixture.outcome.qualification.relationLimitations,
+                        checkpoint =
+                            TraversalCheckpointDocument.RetainedOutput(
+                                TraversalContinuationDocument.parse(
+                                        "traversal-output:v1:00000000-0000-0000-0000-000000000001"
+                                    )
+                                    .proven(),
+                                TraversalPreparedCoverageDocument.TERMINAL_INCOMPLETE,
+                            ),
+                        nextAction = ReadResumeActionDocument.RESUME,
+                    )
+                    .proven(),
         )
 
     private fun encoded(outcome: HostedTraversalOutcome) =
         HostedResponse.Canonical.encode(CanonicalOperationWireBindings.traversalRun, outcome)
             as HostedResponse.Canonical<*, *, *>
 
-    private fun byteLimit(document: String) = ReturnedByteLimit.parse(document.toByteArray(Charsets.UTF_8).size.toLong()).proven()
+    private fun byteLimit(document: String) =
+        ReturnedByteLimit.parse(document.toByteArray(Charsets.UTF_8).size.toLong()).proven()
 
     @Suppress("UNCHECKED_CAST")
     private fun HostedResponse.qualified() =
