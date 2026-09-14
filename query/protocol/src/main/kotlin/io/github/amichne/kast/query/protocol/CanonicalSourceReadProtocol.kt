@@ -517,6 +517,8 @@ private fun DomainSourceReadRejection.protocol(): SourceReadRejection =
         DomainSourceReadRejection.SOURCE_SELECTOR_STALE -> SourceReadRejection.SOURCE_SELECTOR_STALE
         DomainSourceReadRejection.SOURCE_SNAPSHOT_MISMATCH -> SourceReadRejection.SOURCE_SNAPSHOT_MISMATCH
         DomainSourceReadRejection.SOURCE_UNAVAILABLE -> SourceReadRejection.SOURCE_UNAVAILABLE
+        DomainSourceReadRejection.CONTINUATION_UNAVAILABLE -> SourceReadRejection.CONTINUATION_UNAVAILABLE
+        DomainSourceReadRejection.CONTINUATION_REQUEST_MISMATCH -> SourceReadRejection.CONTINUATION_REQUEST_MISMATCH
         DomainSourceReadRejection.DOCUMENT_DIRTY -> SourceReadRejection.DOCUMENT_DIRTY
         DomainSourceReadRejection.PSI_DOCUMENT_UNCOMMITTED -> SourceReadRejection.PSI_DOCUMENT_UNCOMMITTED
         DomainSourceReadRejection.OUTSIDE_SOURCE_SCOPE -> SourceReadRejection.OUTSIDE_SOURCE_SCOPE
