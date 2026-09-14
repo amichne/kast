@@ -29,7 +29,6 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 
 private const val MAXIMUM_CONTROL_BYTES = 1024L * 1024L * 1024L
-internal const val MAXIMUM_MANIFEST_BYTES = 1024L * 1024L
 
 internal enum class InstallationChildStage {
     PRIOR_ADMISSION,
@@ -110,6 +109,7 @@ internal fun priorServiceRetirementEnvironment(
 internal enum class InstallationFailure {
     REQUEST_REJECTED,
     CONTROL_REJECTED,
+    CONTROL_LAYOUT_REJECTED,
     PLUGIN_REJECTED,
     IDEA_REJECTED,
     INSTALLATION_ROOT_REJECTED,
@@ -255,7 +255,9 @@ internal object InstallationWorkflow {
         if (!regularFile(request.pluginArchive.value) || digest(request.pluginArchive.value) != request.pluginDigest) {
             return PlanVerification.Rejected(InstallationFailure.PLUGIN_REJECTED)
         }
-        if (!verifyControlLayout(controlRoot)) return PlanVerification.Rejected(InstallationFailure.CONTROL_REJECTED)
+        if (!verifyControlLayout(controlRoot)) {
+            return PlanVerification.Rejected(InstallationFailure.CONTROL_LAYOUT_REJECTED)
+        }
 
         val manifest =
             when (val admitted = admitHostedPluginArtifact(request)) {
@@ -385,7 +387,9 @@ internal object InstallationWorkflow {
             writeConfiguration(plan, staged.resolve("config/environment"))
             Files.writeString(staged.resolve(".kast-control-sha256"), "${plan.request.controlDigest.value}\n")
             Files.writeString(staged.resolve(".kast-plugin-sha256"), "${plan.request.pluginDigest.value}\n")
-            writeManifest(plan, staged)
+            if (!writeManifest(plan, staged)) {
+                return StageResult.Rejected(InstallationFailure.CONTROL_LAYOUT_REJECTED)
+            }
             move(staged, plan.targetRoot)
             return StageResult.Complete
         } catch (_: IOException) {
@@ -489,7 +493,7 @@ internal object InstallationWorkflow {
         setMode(launcher, "rwxr-xr-x")
     }
 
-    private fun writeManifest(plan: VerifiedInstallationPlan, staged: Path) {
+    private fun writeManifest(plan: VerifiedInstallationPlan, staged: Path): Boolean {
         val payloadFiles = payloadFiles(staged)
         val currentTarget = "versions/${plan.targetRoot.fileName}"
         val serviceHash = sha256(plan.targetRoot.toString().toByteArray()).value.take(32)
@@ -558,16 +562,23 @@ internal object InstallationWorkflow {
                 externalAnchors = anchors,
                 payloadFiles = payloadFiles,
             )
+        val encoded = manifestJson.encodeToString(InstallationManifest.serializer(), manifest) + "\n"
+        if (encoded.encodeToByteArray().size > ControlDistributionLimits.maximumManifestBytes) return false
         Files.writeString(
             staged.resolve("installation.json"),
-            manifestJson.encodeToString(InstallationManifest.serializer(), manifest) + "\n",
+            encoded,
             StandardOpenOption.CREATE_NEW,
         )
+        return true
     }
 
     private fun admitExisting(plan: VerifiedInstallationPlan): Boolean {
         if (!physicalDirectory(plan.targetRoot)) return false
-        val raw = readBounded(plan.targetRoot.resolve("installation.json"), MAXIMUM_MANIFEST_BYTES) ?: return false
+        val raw =
+            readBounded(
+                plan.targetRoot.resolve("installation.json"),
+                ControlDistributionLimits.maximumManifestBytes.toLong(),
+            ) ?: return false
         val manifest =
             try {
                 manifestJson.decodeFromString(InstallationManifest.serializer(), raw)
