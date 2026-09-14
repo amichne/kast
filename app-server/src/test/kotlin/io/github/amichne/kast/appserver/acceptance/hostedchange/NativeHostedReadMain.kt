@@ -84,7 +84,7 @@ private class NativeHostedReadTransport(
 
     suspend fun invoke(document: JsonObject): NativeReadResponse {
         val request = readRequestJson.decodeFromJsonElement(NativeReadRequest.serializer(), document)
-        demand(request.tool in readToolNames, NativeFailure.INPUT_REJECTED)
+        demand(request.tool in nativeReadToolNames, NativeFailure.INPUT_REJECTED)
         return when (request) {
             is NativeReadRequest.Invoke -> dispatch(request)
             is NativeReadRequest.Validate -> validateNativeReadOutput(schemas.getValue(request.tool), request.document)
@@ -139,7 +139,7 @@ private class NativeHostedReadTransport(
                 KastProviderOptions.admit(
                         executable = NativeProductAdmission.executable(product, workspace),
                         qualificationDirectory = workspace,
-                        toolSelection = KastToolSelection.admit(readToolNames.joinToString(",")).nativeValue(),
+                        toolSelection = KastToolSelection.admit(nativeReadToolNames.joinToString(",")).nativeValue(),
                     )
                     .nativeValue()
             val qualified =
@@ -156,9 +156,12 @@ private class NativeHostedReadTransport(
     }
 }
 
-private val readToolNames =
+internal val nativeReadToolNames =
     CanonicalAgentToolDefinitions.all
-        .filter { it.operation.effect in setOf(OperationEffect.NONE, OperationEffect.INTELLIJ_READ) }
+        .filter { definition ->
+            definition !== CanonicalAgentToolDefinitions.changePlan &&
+                definition.operation.effect in setOf(OperationEffect.NONE, OperationEffect.INTELLIJ_READ)
+        }
         .map { it.name.value }
         .toSet()
 
