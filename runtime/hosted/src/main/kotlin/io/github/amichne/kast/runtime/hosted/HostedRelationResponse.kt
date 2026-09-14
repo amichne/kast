@@ -6,6 +6,7 @@ import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResultLimit
+import io.github.amichne.kast.kernel.ReturnedByteLimit
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.RelationContinuationDocument
 import io.github.amichne.kast.protocol.contract.RelationKnownMinimumDocument
@@ -23,9 +24,13 @@ internal fun encodeHostedRelationResponse(
     semantic: HostedRelationOutcome,
     limits: ReadLimits,
     maximumResults: ResultLimit = ResultLimit.parse(limits[ReadLimitParameter.SEMANTIC_RESULTS].value).proven(),
+    maximumBytes: ReturnedByteLimit =
+        ReturnedByteLimit.parse(limits[ReadLimitParameter.HOST_RESPONSE_BYTES].value.toLong()).proven(),
     retain: (HostedRelationOutcome) -> HostedOutputRetention,
 ): HostedResponse {
-    val original = HostedResponse.Canonical.encode(CanonicalOperationWireBindings.relationRead, semantic, limits)
+    val original =
+        HostedResponse.Canonical.encode(CanonicalOperationWireBindings.relationRead, semantic, limits, maximumBytes)
+    if (original is HostedResponse.EncodingRejected) return original
     val evidence: EvidenceEnvelope<RelationReadResult>
     val limitations: List<RelationLimitationDocument>
     val minimum: RelationKnownMinimumDocument
@@ -51,11 +56,9 @@ internal fun encodeHostedRelationResponse(
     }
         .distinct()
         .sortedBy { it.ordinal }
-    val fitting = RelationPageEncoding(evidence, minimum, exhausted, limits)
+    val fitting = RelationPageEncoding(evidence, minimum, exhausted, limits, maximumBytes)
     val count = largestFittingRelationPrefix(minOf(size - 1, maximumResults.value), fitting::placeholder)
-    if (count == 0)
-        return if (original is HostedResponse.Oversized) original
-        else HostedResponse.Rejected(HostedEndpointFailure.RESULT_TOO_LARGE)
+    if (count == 0) return original.indivisibleRelation()
     val remainder =
         evidence.copy(
             payload =
@@ -71,6 +74,12 @@ internal fun encodeHostedRelationResponse(
         }
     return retain(suffix).encodeRelation { token -> fitting.encode(count, token) }
 }
+
+private fun HostedResponse.indivisibleRelation(): HostedResponse =
+    when (this) {
+        is HostedResponse.Oversized -> this
+        else -> HostedResponse.Rejected(HostedEndpointFailure.RESULT_TOO_LARGE)
+    }
 
 private fun HostedOutputRetention.encodeRelation(
     encode: (RelationContinuationDocument) -> HostedResponse
@@ -90,6 +99,7 @@ private class RelationPageEncoding(
     private val minimum: RelationKnownMinimumDocument,
     private val limitations: List<RelationLimitationDocument>,
     private val limits: ReadLimits,
+    private val maximumBytes: ReturnedByteLimit,
 ) {
     fun placeholder(count: Int) = encode(count, PLACEHOLDER)
 
@@ -112,6 +122,7 @@ private class RelationPageEncoding(
                     .proven(),
             ),
             limits,
+            maximumBytes,
         )
 }
 

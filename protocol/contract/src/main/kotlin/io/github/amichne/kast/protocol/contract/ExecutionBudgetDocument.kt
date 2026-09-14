@@ -83,10 +83,10 @@ enum class ExecutionBudgetClampDocument {
 data class ExecutionLimitDocument
 private constructor(
     val selection: ExecutionBudgetSelectionDocument,
-    val requested: Long?,
-    val configuredDefault: Long,
-    val operatorCeiling: Long,
-    val effective: Long,
+    @ProtocolIntegerConstraint(minimum = 1) val requested: Long?,
+    @ProtocolIntegerConstraint(minimum = 1) val configuredDefault: Long,
+    @ProtocolIntegerConstraint(minimum = 1) val operatorCeiling: Long,
+    @ProtocolIntegerConstraint(minimum = 1) val effective: Long,
     val clamping: List<ExecutionBudgetClampDocument>,
 ) {
     companion object {

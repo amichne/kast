@@ -303,6 +303,7 @@ private enum class InstalledServerTool(
 internal data class ServerSchemaProperty(
     val name: String,
     val schema: JsonObject,
+    val required: Boolean = true,
 )
 
 internal fun installedServerOutputSchema(operation: CanonicalOperation): JsonObject =
@@ -444,6 +445,15 @@ private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject =
                 operation,
                 relationQualificationSchema(),
                 ServerSchemaProperty("relations", arraySchema(relationFactSchema())),
+                ServerSchemaProperty(
+                    "execution_budget",
+                    nullableSchema(
+                        generatedRequestSchema(
+                            io.github.amichne.kast.protocol.contract.ExecutionBudgetReport.serializer()
+                        )
+                    ),
+                    required = false,
+                ),
                 ServerSchemaProperty("omissions", arraySchema(relationOmissionSchema())),
                 ServerSchemaProperty(
                     "soundness",
@@ -1691,16 +1701,8 @@ internal fun typedFailureSchema(type: String, field: String): JsonObject =
 
 internal fun objectSchema(vararg properties: ServerSchemaProperty): JsonObject = objectSchema(properties.toList())
 
-internal fun objectSchema(properties: List<ServerSchemaProperty>): JsonObject = buildJsonObject {
-    put("type", "object")
-    put("additionalProperties", false)
-    putJsonObject("properties") {
-        properties.forEach { property -> put(property.name, property.schema) }
-    }
-    putJsonArray("required") {
-        properties.forEach { property -> add(JsonPrimitive(property.name)) }
-    }
-}
+internal fun objectSchema(properties: List<ServerSchemaProperty>): JsonObject =
+    objectSchemaWithRequired(properties.filter { it.required }.map { it.name }.toSet(), *properties.toTypedArray())
 
 internal fun objectSchemaWithRequired(
     required: Set<String>,

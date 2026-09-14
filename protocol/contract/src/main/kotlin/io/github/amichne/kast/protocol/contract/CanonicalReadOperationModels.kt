@@ -1,3 +1,5 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
 package io.github.amichne.kast.protocol.contract
 
 import io.github.amichne.kast.kernel.Refinement
@@ -14,7 +16,7 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
 private const val MAX_PROTOCOL_TEXT_LENGTH = 1_048_576
-private const val MAX_PROTOCOL_ITEMS = 1_000
+const val MAX_PROTOCOL_ITEMS = 1_000
 private const val MAX_PROTOCOL_COUNT = 1_000
 
 enum class ProtocolTextFailure {
@@ -168,11 +170,15 @@ data class RelationReadRequest(
     val relation: RelationKindDocument,
     val limit: ProtocolCount,
     val position: RelationReadPositionDocument = RelationReadPositionDocument.Start,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @kotlinx.serialization.SerialName("execution_budget")
+    val executionBudget: ExecutionBudgetDocument? = null,
 ) : OperationRequest
 
 data class RelationReadResult(
     val relations: BoundedProtocolList<RelationFactDocument>,
     val omissions: BoundedProtocolList<RelationOmissionDocument> = RelationOmissionDocument.Empty,
+    val executionBudget: ExecutionBudgetReport? = null,
 ) : OperationResult {
     val soundness: RelationSoundnessDocument
         get() = RelationSoundnessDocument.EXACT_RETURNED_FACTS

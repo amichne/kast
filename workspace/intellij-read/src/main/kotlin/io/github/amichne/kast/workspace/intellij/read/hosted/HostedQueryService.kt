@@ -83,6 +83,7 @@ private constructor(
         endpoint: HostedQueryEndpoint,
         root: CanonicalWorkspaceRoot,
         outcome: (Value) -> HostedEvaluationOutcome = { HostedEvaluationOutcome.EVALUATED },
+        executionBudget: HostedExecutionBudgetRequest = HostedExecutionBudgetRequest(),
         evaluate: suspend (HostedSemanticReadContext) -> Value,
     ): HostedSemanticReadResult<Value> {
         if (
@@ -109,6 +110,7 @@ private constructor(
                 executor.execute(
                     endpoint,
                     configured.limits,
+                    executionBudget = executionBudget,
                     outcome = { result: HostedSemanticRead<Value> ->
                         when (result) {
                             is HostedSemanticRead.Rejected -> HostedDiagnosticOutcome.Rejected(result.failure)

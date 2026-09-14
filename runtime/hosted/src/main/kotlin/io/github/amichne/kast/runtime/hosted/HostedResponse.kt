@@ -3,6 +3,8 @@ package io.github.amichne.kast.runtime.hosted
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.ReturnedByteLimit
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.OperationQualification
 import io.github.amichne.kast.protocol.contract.OperationRejection
@@ -67,13 +69,17 @@ internal sealed interface HostedResponse {
                 binding: OperationWireBinding<Request, Result, Qualification, Rejection>,
                 semantic: OperationOutcome<Result, Qualification, Rejection>,
                 limits: ReadLimits = ReadLimits.Default,
+                maximumBytes: ReturnedByteLimit =
+                    (ReturnedByteLimit.parse(limits[ReadLimitParameter.HOST_RESPONSE_BYTES].value.toLong())
+                            as Refinement.Refined)
+                        .value,
             ): HostedResponse =
                 when (val encoded = binding.encodeOutcome(semantic)) {
                     is WireEncoding.Rejected -> EncodingRejected(binding.operation, semantic, encoded.failure)
                     is WireEncoding.Encoded ->
                         if (
                             encoded.document.toByteArray(Charsets.UTF_8).size >
-                                limits[ReadLimitParameter.HOST_RESPONSE_BYTES].value
+                                minOf(limits[ReadLimitParameter.HOST_RESPONSE_BYTES].value.toLong(), maximumBytes.value)
                         ) {
                             Oversized(binding.operation, semantic)
                         } else Canonical(binding.operation, semantic, encoded.document)

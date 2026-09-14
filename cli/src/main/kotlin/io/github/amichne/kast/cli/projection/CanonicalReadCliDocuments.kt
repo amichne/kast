@@ -1,3 +1,5 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
 package io.github.amichne.kast.cli.projection
 
 import io.github.amichne.kast.cli.CliJsonDocument
@@ -42,6 +44,7 @@ internal object CanonicalReadCliDocuments {
                         relations = result.relations.values.map { it.toCliDocument() },
                         omissions = result.omissions.values.map { it.toCliDocument() },
                         soundness = result.soundness,
+                        executionBudget = result.executionBudget,
                     )
                 )
             },
@@ -53,6 +56,7 @@ internal object CanonicalReadCliDocuments {
                         relations = result.relations.values.map { it.toCliDocument() },
                         omissions = result.omissions.values.map { it.toCliDocument() },
                         soundness = result.soundness,
+                        executionBudget = result.executionBudget,
                         qualification = qualification.toCliDocument(),
                     )
                 )
@@ -176,6 +180,8 @@ private data class RelationCompleteCliDocument(
     val relations: List<RelationFactCliDocument>,
     val omissions: List<RelationOmissionCliDocument>,
     val soundness: io.github.amichne.kast.protocol.contract.RelationSoundnessDocument,
+    @SerialName("execution_budget")
+    val executionBudget: io.github.amichne.kast.protocol.contract.ExecutionBudgetReport? = null,
 )
 
 @Serializable
@@ -185,6 +191,8 @@ private data class RelationQualifiedCliDocument(
     val relations: List<RelationFactCliDocument>,
     val omissions: List<RelationOmissionCliDocument>,
     val soundness: io.github.amichne.kast.protocol.contract.RelationSoundnessDocument,
+    @SerialName("execution_budget")
+    val executionBudget: io.github.amichne.kast.protocol.contract.ExecutionBudgetReport? = null,
     val qualification: RelationQualificationCliDocument,
 )
 

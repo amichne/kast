@@ -149,3 +149,31 @@ failure, and existing limitations plus `BYTE_LIMIT_REACHED`. If the mandatory
 evidence cannot fit, the response stays rejected.
 
 Query continuations retain detached pipeline state and encoded-output suffixes in bounded project-owned stores. Each store applies the continuation entry, byte, and TTL limits. A checkpoint must fit `QUERY_CHECKPOINT_BYTES`, which cannot exceed `QUERY_CONTINUATION_BYTES`. Epoch movement and project disposal clear retained state; expired or evicted handles return `continuation-unavailable`. Returned-byte authority covers final items and failures, independently of bounded child-read bytes.
+
+## Per-call relation execution budgets
+
+`semantic_query` accepts an optional `execution_budget` object with
+`max_elapsed_ms`, `max_work_units`, `max_results`, and `max_returned_bytes`.
+Supplied numbers must be positive integers. Omitted controls select configured
+defaults. The IDE admits each dimension against the corresponding
+`KAST_READ_EXECUTION_MAX_*` operator ceiling and applicable transport capacity.
+These ceilings default to 2,147,483,646; existing semantic defaults, the 1,000-item
+canonical page capacity, response bytes, and remaining hosted deadline still
+apply. Raising a caller allowance cannot extend the configured host or client
+deadline. The admitted time excludes already elapsed model work and reserves
+publication headroom.
+
+Relation result metadata reports the selected default or caller value, operator
+ceiling, effective value, and finite clamping reasons. Work units are examined
+semantic relation items; cheap exclusions and replay verification are bounded by
+the provider's candidate and elapsed limits. Result units are occurrence facts,
+so two distinct call sites remain two results. A page-result allowance does not
+change relationship or scope semantics. Byte fitting measures the complete
+canonical response, including this metadata and any cursor.
+
+Hosted output cursors can resume with a changed execution budget and page limit.
+Each resume admits a new grant, while selector, relationship, authority and epoch
+remain bound. Storage capacity and expiry retain their separate operator limits.
+These per-call controls are currently implemented for relation reads; extending
+them to query/search, traversal and source is part of the remaining reliability
+work.

@@ -200,18 +200,28 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
                     is HostedQueryResult.Published -> HostedResponse.Completed(HostedQueryWire.encode(result))
                 }
             is HostedRequest.PlanChange -> planHostedChange(project, query, request)
-            is HostedRequest.Read ->
-                when (
-                    val result =
-                        query.read(query.endpoint, root, outcome = { it.outcome }) { context ->
-                            evaluateHostedCanonicalQuery(project, context, request, continuations)
-                        }
-                ) {
-                    is HostedSemanticReadResult.Completed -> result.value
-                    is HostedSemanticReadResult.Rejected -> HostedResponse.ReadRejected(result.failure, result.stage)
-                }
+            is HostedRequest.Read -> dispatchRead(request, continuations)
         }
     }
+
+    private suspend fun dispatchRead(
+        request: HostedRequest.Read,
+        continuations: io.github.amichne.kast.source.intellij.IntellijSourceReadContinuations,
+    ): HostedResponse =
+        when (
+            val result =
+                query.read(
+                    query.endpoint,
+                    request.root,
+                    outcome = { it.outcome },
+                    executionBudget = request.executionBudget(),
+                ) { context ->
+                    evaluateHostedCanonicalQuery(project, context, request, continuations)
+                }
+        ) {
+            is HostedSemanticReadResult.Completed -> result.value
+            is HostedSemanticReadResult.Rejected -> HostedResponse.ReadRejected(result.failure, result.stage)
+        }
 
     override fun dispose() {
         changes.close()

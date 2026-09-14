@@ -2,8 +2,10 @@ package io.github.amichne.kast.runtime.hosted
 
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
+import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResultLimit
+import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.RelationContinuationDocument
 import io.github.amichne.kast.protocol.contract.RelationReadPositionDocument
@@ -38,7 +40,25 @@ internal suspend fun evaluateHostedRelation(
                 minOf(request.request.limit.value, services.budgets.hostedRelationBudget.resources.resultLimit.value)
             ) as Refinement.Refined)
             .value
-    return encodeHostedRelationResponse(outcome, context.limits, maximum) { suffix ->
-        pages.issue(request.request, context.authority, suffix)
+    val report = ExecutionBudgetReport.from(context.executionBudget)
+    return encodeHostedRelationResponse(
+        outcome.withBudget(report),
+        context.limits,
+        maximum,
+        context.executionBudget.returnedBytes.effective,
+    ) { suffix ->
+        pages.issue(request.request, context.authority, suffix.withBudget(null))
     }
 }
+
+private fun HostedRelationOutcome.withBudget(report: ExecutionBudgetReport?): HostedRelationOutcome =
+    when (this) {
+        is OperationOutcome.Complete ->
+            OperationOutcome.Complete(evidence.copy(payload = evidence.payload.copy(executionBudget = report)))
+        is OperationOutcome.Qualified ->
+            OperationOutcome.Qualified(
+                evidence.copy(payload = evidence.payload.copy(executionBudget = report)),
+                qualification,
+            )
+        is OperationOutcome.Rejected -> this
+    }

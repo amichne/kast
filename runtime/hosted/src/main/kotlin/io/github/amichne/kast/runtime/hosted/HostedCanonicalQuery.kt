@@ -5,9 +5,6 @@ import com.intellij.openapi.project.Project
 import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.kernel.ResourceBudget
-import io.github.amichne.kast.kernel.ResultLimit
-import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.query.contract.QueryBudget
 import io.github.amichne.kast.query.contract.QueryByteLimit
@@ -127,38 +124,34 @@ private suspend fun evaluateHostedDiagnostic(
 /** Budgets are projected only from an admitted, immutable policy. */
 internal class HostedSemanticBudgets(
     private val limits: ReadLimits,
-    timeAllowance: io.github.amichne.kast.workspace.intellij.read.hosted.HostedSemanticTimeAllowance,
+    grant: io.github.amichne.kast.kernel.AdmittedExecutionBudget,
 ) {
     val hostedQueryBudget =
         QueryBudget(
-            ResourceBudget(
-                fixed(ResultLimit.parse(limits[ReadLimitParameter.SEMANTIC_RESULTS].value)),
-                fixed(WorkUnitLimit.parse(limits[ReadLimitParameter.SEMANTIC_WORK].value.toLong())),
-                timeAllowance.semantic,
-            ),
-            fixed(QueryByteLimit.parse(limits[ReadLimitParameter.SEMANTIC_RETURNED_BYTES].value.toLong())),
+            grant.resources,
+            fixed(QueryByteLimit.parse(grant.returnedBytes.effective.value)),
             fixed(QueryByteLimit.parse(limits[ReadLimitParameter.QUERY_CHECKPOINT_BYTES].value.toLong())),
         )
 
     val hostedDiscoveryBudget =
         SymbolDiscoveryBudget(
             hostedQueryBudget.resources,
-            fixed(SymbolDiscoveryByteLimit.parse(limits[ReadLimitParameter.SEMANTIC_RETURNED_BYTES].value.toLong())),
+            fixed(SymbolDiscoveryByteLimit.parse(grant.returnedBytes.effective.value)),
         )
     val hostedRelationBudget =
         RelationBudget(
             hostedQueryBudget.resources,
-            fixed(RelationByteLimit.parse(limits[ReadLimitParameter.SEMANTIC_RETURNED_BYTES].value.toLong())),
+            fixed(RelationByteLimit.parse(grant.returnedBytes.effective.value)),
         )
     val hostedSourceBudget =
         SourceProtocolBudget(
-            fixed(SourceEntityLimit.parse(limits[ReadLimitParameter.SOURCE_ENTITIES].value)),
-            fixed(SourceTextByteLimit.parse(limits[ReadLimitParameter.SOURCE_RETURNED_BYTES].value.toLong())),
+            fixed(SourceEntityLimit.parse(grant.results.effective.value)),
+            fixed(SourceTextByteLimit.parse(grant.returnedBytes.effective.value)),
         )
     val hostedTraversalBudget =
         TraversalBudget(
             hostedQueryBudget.resources.resultLimit,
-            fixed(TraversalByteLimit.parse(limits[ReadLimitParameter.SEMANTIC_RETURNED_BYTES].value.toLong())),
+            fixed(TraversalByteLimit.parse(grant.returnedBytes.effective.value)),
             hostedQueryBudget.resources.workUnitLimit,
             hostedQueryBudget.resources.elapsedTimeLimit,
             fixed(TraversalDepthLimit.parse(limits[ReadLimitParameter.TRAVERSAL_DEPTH].value)),

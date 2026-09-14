@@ -65,38 +65,6 @@ class LiveReadOutputSchemaTest {
     }
 
     @Test
-    fun `hosted output cursor satisfies installed input and output contracts`() = runTest {
-        val fixture = RelationPagingFixture.live()
-        val original = fixture.page() as OperationOutcome.Qualified
-        val cursor =
-            RelationContinuationDocument.parse("relation-output:v1:00000000-0000-0000-0000-000000000001").refined()
-        val qualification =
-            RelationReadQualification.resumable(
-                    original.qualification.knownMinimum,
-                    original.qualification.limitations,
-                    cursor,
-                )
-                .refined()
-        assertAdmits(
-            CanonicalOperation.RELATION_READ,
-            CanonicalReadCliDocuments.projectRelation(OperationOutcome.Qualified(original.evidence, qualification))
-                .document(),
-        )
-        assertTrue(
-            relationInputSchema()
-                .validate(
-                    Json.encodeToString(fixture.request(RelationReadPositionDocument.Resume(cursor))),
-                    InputFormat.JSON,
-                )
-                .isEmpty()
-        )
-        for (raw in
-            listOf(cursor.value + "extra", cursor.value.replace(":v1:", ":v2:"), "relation-output:v1:invalid")) {
-            assertTrue(RelationContinuationDocument.parse(raw) is Refinement.Rejected)
-        }
-    }
-
-    @Test
     fun `owner issued relation continuations satisfy advertised output schemas`() = runTest {
         for (fixture in listOf(RelationPagingFixture.published(), RelationPagingFixture.live())) {
             val outcome = fixture.page() as OperationOutcome.Qualified
@@ -163,7 +131,7 @@ class LiveReadOutputSchemaTest {
         }
     }
 
-    private fun relationInputSchema(): com.networknt.schema.Schema {
+    internal fun relationInputSchema(): com.networknt.schema.Schema {
         val graph =
             (CliCommandGraphFactory.create(canonicalCliRequestPreparers()) as CliCommandGraphConstruction.Created)
                 .factory
@@ -561,16 +529,16 @@ class LiveReadOutputSchemaTest {
         if (operation == CanonicalOperation.SOURCE_READ) document.getValue("snapshot").jsonObject
         else document.getValue("graph").jsonObject.getValue("snapshot").jsonObject
 
-    private fun JsonObject.withSnapshot(operation: CanonicalOperation, snapshot: JsonObject): JsonObject =
+    internal fun JsonObject.withSnapshot(operation: CanonicalOperation, snapshot: JsonObject): JsonObject =
         if (operation == CanonicalOperation.SOURCE_READ) with("snapshot", snapshot)
         else with("graph", getValue("graph").jsonObject.with("snapshot", snapshot))
 
-    private fun assertAdmits(operation: CanonicalOperation, document: JsonObject) {
+    internal fun assertAdmits(operation: CanonicalOperation, document: JsonObject) {
         val errors = validate(operation, document)
         assertTrue(errors.isEmpty(), "$operation rejected its emitted document: $errors")
     }
 
-    private fun assertRejects(operation: CanonicalOperation, document: JsonObject) =
+    internal fun assertRejects(operation: CanonicalOperation, document: JsonObject) =
         assertTrue(validate(operation, document).isNotEmpty(), "$operation admitted contradictory evidence: $document")
 
     private fun validate(operation: CanonicalOperation, document: JsonObject) =
@@ -591,7 +559,7 @@ class LiveReadOutputSchemaTest {
 
     @Serializable private data object UnusedMetadata
 
-    private fun ProjectedCliOutcome.document(): JsonObject =
+    internal fun ProjectedCliOutcome.document(): JsonObject =
         when (this) {
                 is ProjectedCliOutcome.Complete -> document
                 is ProjectedCliOutcome.Qualified -> document
@@ -604,7 +572,7 @@ class LiveReadOutputSchemaTest {
     private fun <R> complete(operation: CanonicalOperation, basis: EvidenceBasis, result: R) =
         OperationOutcome.Complete(EvidenceEnvelope(operation.id, basis, result))
 
-    private fun JsonObject.with(key: String, value: JsonElement) = JsonObject(this + (key to value))
+    internal fun JsonObject.with(key: String, value: JsonElement) = JsonObject(this + (key to value))
 
     private fun text(value: String) = ProtocolText.parse(value).refined()
 
@@ -612,5 +580,5 @@ class LiveReadOutputSchemaTest {
 
     private fun <T> empty(): BoundedProtocolList<T> = BoundedProtocolList.create(emptyList<T>()).refined()
 
-    private fun <T, F> Refinement<T, F>.refined(): T = (this as Refinement.Refined).value
+    internal fun <T, F> Refinement<T, F>.refined(): T = (this as Refinement.Refined).value
 }

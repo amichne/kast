@@ -7994,16 +7994,6 @@
     {
       "fingerprint": {
         "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt",
-        "scope": "fun:objectSchema(4:List1:<20:ServerSchemaProperty1:>)",
-        "kind": "JSON_BUILDER",
-        "sha256": "1cf8650cc53c53777eeccc55f0c37f68fac9dd8dac53433e7e204e2f5e2ec0c5"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt",
         "scope": "fun:objectSchemaWithRequired(3:Set1:<6:String1:>,20:ServerSchemaProperty)",
         "kind": "JSON_BUILDER",
         "sha256": "f9507ad855753de04b31dd3df0493229ce9d3f560be8169f5f63535df955e7b2"
@@ -8317,16 +8307,6 @@
         "scope": "fun:arrayVariant(7:kotlinx1:.13:serialization1:.4:json1:.11:JsonElement,4:List1:<28:ProtocolCollectionConstraint1:>)",
         "kind": "JSON_BUILDER",
         "sha256": "0127ec657a423d102e35e331bf6ba39c97f3289919f430ad068daed531877fa6"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KotlinxRequestJsonSchema.kt",
-        "scope": "fun:objectSchema()16:SerialDescriptor",
-        "kind": "JSON_BUILDER",
-        "sha256": "1f3883efe37b8e14a531ee1f8bfceea5cf204205647c21ae0aceb1cd27913636"
       },
       "count": 1,
       "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."

@@ -9,17 +9,21 @@ import io.github.amichne.kast.protocol.contract.ProtocolIntegerConstraint
 import io.github.amichne.kast.protocol.contract.ProtocolStringConstraint
 import io.github.amichne.kast.protocol.registry.HostedVariants
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.PolymorphicKind
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.SerialKind
 import kotlinx.serialization.descriptors.StructureKind
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonClassDiscriminator
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
@@ -169,25 +173,31 @@ private fun arrayVariant(
     if (constraints.any(ProtocolCollectionConstraint::uniqueItems)) put("uniqueItems", true)
 }
 
-private fun SerialDescriptor.objectSchema(): JsonObject = buildJsonObject {
-    put("type", "object")
-    put("additionalProperties", false)
-    putJsonObject("properties") {
-        repeat(elementsCount) { index ->
-            put(
-                getElementName(index),
-                getElementDescriptor(index)
-                    .toJsonSchema(
-                        getElementAnnotations(index),
-                        includeNullability = true,
-                    ),
-            )
-        }
-    }
-    putJsonArray("required") {
-        repeat(elementsCount) { index -> add(JsonPrimitive(getElementName(index))) }
-    }
-}
+/** Property names and child schemas are the JSON Schema contract's dynamic boundary. */
+@Serializable
+private data class GeneratedObjectSchemaDocument(
+    val type: String = "object",
+    val additionalProperties: Boolean = false,
+    val properties: Map<String, JsonElement>,
+    val required: List<String>,
+)
+
+private val OBJECT_SCHEMA_JSON = Json { encodeDefaults = true }
+
+private fun SerialDescriptor.objectSchema(): JsonObject =
+    OBJECT_SCHEMA_JSON.encodeToJsonElement(
+            GeneratedObjectSchemaDocument.serializer(),
+            GeneratedObjectSchemaDocument(
+                properties =
+                    (0 until elementsCount).associate { index ->
+                        getElementName(index) to
+                            getElementDescriptor(index)
+                                .toJsonSchema(getElementAnnotations(index), includeNullability = true)
+                    },
+                required = (0 until elementsCount).filterNot(::isElementOptional).map(::getElementName),
+            ),
+        )
+        .jsonObject
 
 private fun SerialDescriptor.sealedSchema(): JsonObject {
     val discriminator = annotations.filterIsInstance<JsonClassDiscriminator>().lastOrNull()?.discriminator ?: "type"

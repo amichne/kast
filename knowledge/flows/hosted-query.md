@@ -369,3 +369,12 @@ and position. Changed authority or semantic request is rejected. Each of the
 query checkpoint, query output, and relation output stores has the configured
 entry/byte bound; their aggregate maximum is three times that bound. No retained
 entry contains PSI or K2 state.
+
+Relation reads admit optional caller execution controls once at semantic entry.
+`HostedReadDeadline` subtracts elapsed request time and its completion reserve;
+`HostedSemanticTimeAllowance` retains the resulting immutable grant. Domain
+budgets derive their resource values from that grant. Relation response metadata
+projects its effective values and clamping causes, and byte fitting includes the
+metadata. Retained relation suffixes omit previous-call grant metadata; resume
+publishes the newly admitted grant and excludes execution controls from retained
+semantic identity.

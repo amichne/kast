@@ -83,6 +83,7 @@ internal class HostedQueryContinuations : Disposable {
                 normalize = { request: RelationReadRequest ->
                     request.copy(
                         position = RelationReadPositionDocument.Start,
+                        executionBudget = null,
                         limit = (ProtocolCount.parse(1) as Refinement.Refined).value,
                     )
                 },
