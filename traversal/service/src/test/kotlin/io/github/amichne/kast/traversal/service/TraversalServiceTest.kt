@@ -117,7 +117,14 @@ class TraversalServiceTest {
                 val qualified = assertInstanceOf(TraversalResult.Qualified::class.java, result)
                 val resume = assertInstanceOf(TraversalQualification.Resumable::class.java, qualified.qualification)
                 assertEquals(page.progress, resume.continuation.checkpoint.progress)
-                plan = TraversalPlan.resume(a, RelationMeaning.Callees, plan.budget, resume.continuation).refined()
+                plan =
+                    TraversalPlan.resume(
+                            selector = a,
+                            meaning = RelationMeaning.Callees,
+                            budget = plan.budget,
+                            continuation = resume.continuation,
+                        )
+                        .refined()
             } else {
                 assertInstanceOf(TraversalResult.Complete::class.java, result)
             }
@@ -139,7 +146,14 @@ class TraversalServiceTest {
         }
         val ordinary = fixture.plan(a)
         val strategy = TraversalStrategy.BoundedFanOut(ResultLimit.parse(1).refined())
-        val plan = TraversalPlan.start(a, RelationMeaning.Callees, ordinary.budget, strategy).refined()
+        val plan =
+            TraversalPlan.start(
+                    selector = a,
+                    meaning = RelationMeaning.Callees,
+                    budget = ordinary.budget,
+                    strategy = strategy,
+                )
+                .refined()
         val result =
             assertInstanceOf(TraversalResult.Qualified::class.java, runSuspend { TraversalService(reader).run(plan) })
         assertEquals(listOf(1, 2), result.page.records.map { it.depth.value })
@@ -165,20 +179,20 @@ class TraversalServiceTest {
         assertInstanceOf(
             Refinement.Rejected::class.java,
             TraversalPlan.resume(
-                a,
-                RelationMeaning.Callees,
-                plan.budget.copy(depth = TraversalDepthLimit.parse(3).refined()),
-                continuation,
+                selector = a,
+                meaning = RelationMeaning.Callees,
+                budget = plan.budget.copy(depth = TraversalDepthLimit.parse(3).refined()),
+                continuation = continuation,
             ),
         )
         assertInstanceOf(
             Refinement.Rejected::class.java,
             TraversalPlan.resume(
-                a,
-                RelationMeaning.Callees,
-                plan.budget,
-                continuation,
-                TraversalStrategy.BoundedFanOut(ResultLimit.parse(1).refined()),
+                selector = a,
+                meaning = RelationMeaning.Callees,
+                budget = plan.budget,
+                continuation = continuation,
+                strategy = TraversalStrategy.BoundedFanOut(ResultLimit.parse(1).refined()),
             ),
         )
     }

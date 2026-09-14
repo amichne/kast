@@ -5,10 +5,12 @@ import com.intellij.openapi.project.Project
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResultLimit
+import io.github.amichne.kast.protocol.contract.AdmittedRelationReadRejection
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.RelationContinuationDocument
 import io.github.amichne.kast.protocol.contract.RelationReadPositionDocument
+import io.github.amichne.kast.protocol.contract.reason
 import io.github.amichne.kast.query.protocol.CanonicalRelationReadProtocol
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedSemanticReadContext
 
@@ -42,16 +44,16 @@ internal suspend fun evaluateHostedRelation(
             .value
     val report = ExecutionBudgetReport.from(context.executionBudget)
     return encodeHostedRelationResponse(
-        outcome.withBudget(report),
+        outcome.withRelationBudget(report),
         context.limits,
         maximum,
         context.executionBudget.returnedBytes.effective,
     ) { suffix ->
-        pages.issue(request.request, context.authority, suffix.withBudget(null))
+        pages.issue(request.request, context.authority, suffix.withRelationBudget(null))
     }
 }
 
-private fun HostedRelationOutcome.withBudget(report: ExecutionBudgetReport?): HostedRelationOutcome =
+internal fun HostedRelationOutcome.withRelationBudget(report: ExecutionBudgetReport?): HostedRelationOutcome =
     when (this) {
         is OperationOutcome.Complete ->
             OperationOutcome.Complete(evidence.copy(payload = evidence.payload.copy(executionBudget = report)))
@@ -60,5 +62,7 @@ private fun HostedRelationOutcome.withBudget(report: ExecutionBudgetReport?): Ho
                 evidence.copy(payload = evidence.payload.copy(executionBudget = report)),
                 qualification,
             )
-        is OperationOutcome.Rejected -> this
+        is OperationOutcome.Rejected ->
+            if (report == null) this
+            else OperationOutcome.Rejected(AdmittedRelationReadRejection(reason.reason(), report))
     }

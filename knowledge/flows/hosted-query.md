@@ -427,6 +427,14 @@ Source requests require an explicit resource grant. Hosted source admission reta
 
 Source and traversal result projections preserve their admitted execution report through canonical wire decoding and CLI output. Their complete and qualified envelopes share the same closed installed execution schema. Hosted encoding measures the full response, including this report, against the current grant.
 
+Canonical source, relation, traversal, and query semantic rejections now retain
+the current hosted grant in operation-owned admitted failure variants. Their
+wire/CLI documents preserve the original finite reason and add a sibling
+`execution_budget`; clearing retained output payload reports cannot erase an
+admitted rejection's proof. Pre-admission rejection documents omit the field.
+This does not yet establish report retention for hard deadlines, encoding errors,
+or transport admission failures, which use separate hosted failure paths.
+
 Execution-limit reports refine positive numeric amounts and validate caller/default selection, effective bounds, and canonical clamping before decoded fields become report evidence. Private construction prevents a report copy from bypassing those relationships.
 
 Native source enumeration feeds the existing ordered page owner incrementally. It retains only the selected entity page and one ordering/lookahead witness, discards excluded entities and previously delivered ordinals, and stops provider work at eligible lookahead. The attempt-local collector is recreated on an IntelliJ read restart; only the execution meter survives. Sequence-based fixtures use the same filter, ordering, and page owner, with their explicit fixed stream guard. Native collection uses the admitted caller work/time grant and does not reconstruct that guard.

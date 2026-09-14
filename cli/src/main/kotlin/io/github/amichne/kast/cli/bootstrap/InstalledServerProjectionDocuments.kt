@@ -363,6 +363,14 @@ private fun JsonObject.withLocalOutputDefinitions(): JsonObject {
 // Names are stable schema addresses; every referenced definition retains the exact existing shape.
 private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
     linkedMapOf(
+            "sourceReadOperation" to
+                constantSchema(CanonicalOperation.SOURCE_READ.id.value, "Canonical operation identity."),
+            "relationReadOperation" to
+                constantSchema(CanonicalOperation.RELATION_READ.id.value, "Canonical operation identity."),
+            "traversalRunOperation" to
+                constantSchema(CanonicalOperation.TRAVERSAL_RUN.id.value, "Canonical operation identity."),
+            "queryRunOperation" to
+                constantSchema(CanonicalOperation.QUERY_RUN.id.value, "Canonical operation identity."),
             "executionBudget" to
                 generatedRequestSchema(io.github.amichne.kast.protocol.contract.ExecutionBudgetReport.serializer()),
             "executionLimit" to
@@ -375,6 +383,9 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
             "queryExactReference" to queryOutputReferenceSchema("exact-symbol"),
             "queryCandidateReference" to queryOutputReferenceSchema("declaration-candidate"),
             "queryRejection" to queryRejectionSchema(),
+            "sourceReadRejection" to canonicalReadRejectionSchema(CanonicalOperation.SOURCE_READ),
+            "relationReadRejection" to canonicalReadRejectionSchema(CanonicalOperation.RELATION_READ),
+            "traversalRunRejection" to canonicalReadRejectionSchema(CanonicalOperation.TRAVERSAL_RUN),
             "compilerFunctionSignature" to functionCompilerSignatureSchema(),
             "compilerReceiver" to compilerReceiverSchema(),
             "sourceRange" to sourceRangeSchema(),
@@ -392,6 +403,7 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
             "sourceTextProjection" to sourceTextProjectionSchema(),
             "sourceQualification" to sourceReadQualificationSchema(),
             "traversalQualification" to traversalQualificationSchema(),
+            "relationQualification" to relationQualificationSchema(),
             "publishedTraversalGraph" to normalizedTraversalGraphSchema(ServerReadEvidenceShape.PUBLISHED),
             "liveTraversalGraph" to normalizedTraversalGraphSchema(ServerReadEvidenceShape.LIVE),
             "diagnostic" to diagnosticSchema(),
@@ -610,6 +622,15 @@ private fun queryRunDocumentSchema(operation: CanonicalOperation): JsonObject =
             operation,
             "rejected",
             ServerSchemaProperty("rejection", queryRejectionSchema()),
+        ),
+        operationOutcomeVariant(
+            operation,
+            "rejected",
+            ServerSchemaProperty("rejection", queryRejectionSchema()),
+            ServerSchemaProperty(
+                "execution_budget",
+                generatedRequestSchema(io.github.amichne.kast.protocol.contract.ExecutionBudgetReport.serializer()),
+            ),
         ),
     )
 
@@ -920,7 +941,29 @@ private fun proofQualifiedOutcomeSchema(
             "rejected",
             ServerSchemaProperty("reason", canonicalReadRejectionSchema(operation)),
         ),
+        *admittedReadRejectionVariants(operation),
     )
+
+private fun admittedReadRejectionVariants(operation: CanonicalOperation): Array<JsonObject> =
+    when (operation) {
+        CanonicalOperation.SOURCE_READ,
+        CanonicalOperation.RELATION_READ,
+        CanonicalOperation.TRAVERSAL_RUN ->
+            arrayOf(
+                operationOutcomeVariant(
+                    operation,
+                    "rejected",
+                    ServerSchemaProperty("reason", canonicalReadRejectionSchema(operation)),
+                    ServerSchemaProperty(
+                        "execution_budget",
+                        generatedRequestSchema(
+                            io.github.amichne.kast.protocol.contract.ExecutionBudgetReport.serializer()
+                        ),
+                    ),
+                )
+            )
+        else -> emptyArray()
+    }
 
 private fun relationQualificationSchema(): JsonObject =
     unionSchema(
@@ -931,6 +974,16 @@ private fun relationQualificationSchema(): JsonObject =
                 integerSchema(0, description = "Known minimum relation count."),
             ),
             ServerSchemaProperty("limitations", relationLimitationsSchema()),
+            ServerSchemaProperty(
+                "checkpoint",
+                generatedRequestSchema(
+                    io.github.amichne.kast.protocol.contract.RelationCheckpointDocument.serializer()
+                ),
+            ),
+            ServerSchemaProperty(
+                "next_action",
+                generatedRequestSchema(io.github.amichne.kast.protocol.contract.ReadResumeActionDocument.serializer()),
+            ),
             ServerSchemaProperty(
                 "continuation",
                 patternTextSchema(

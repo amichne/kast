@@ -1,0 +1,8 @@
+[
+  {"type":"resumable","knownMinimum":2,"limitations":["result_limit_reached"],"continuation":"relation-output:v1:00000000-0000-0000-0000-000000000001"},
+  {"type":"resumable","knownMinimum":2,"limitations":["result_limit_reached"],"continuation":"relation-output:v1:00000000-0000-0000-0000-000000000001","checkpoint":{"type":"retained_output","token":"relation-output:v1:00000000-0000-0000-0000-000000000001","upstream":"complete"},"next_action":"unknown"},
+  {"type":"resumable","knownMinimum":2,"limitations":["result_limit_reached"],"continuation":"relation-output:v1:00000000-0000-0000-0000-000000000001","checkpoint":{"type":"retained_output","token":"relation-output:v1:00000000-0000-0000-0000-000000000001","upstream":"unknown"},"next_action":"resume"},
+  {"type":"resumable","knownMinimum":2,"limitations":["result_limit_reached"],"continuation":"relation-output:v1:00000000-0000-0000-0000-000000000001","checkpoint":{"type":"retained_output","token":"relation-output:v1:00000000-0000-0000-0000-000000000002","upstream":"complete"},"next_action":"resume"},
+  {"type":"resumable","knownMinimum":2,"limitations":["result_limit_reached"],"continuation":"relation-output:v1:00000000-0000-0000-0000-000000000001","checkpoint":{"type":"upstream","token":"relation-output:v1:00000000-0000-0000-0000-000000000001"},"next_action":"resume"},
+  {"type":"resumable","knownMinimum":2,"limitations":["result_limit_reached"],"continuation":"relation-output:v1:00000000-0000-0000-0000-000000000001","checkpoint":{"type":"retained_output","token":"relation-output:v1:00000000-0000-0000-0000-000000000001","upstream":"complete"},"next_action":"increase_execution_budget"}
+]

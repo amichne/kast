@@ -305,63 +305,6 @@ internal object RelationContinuationDocumentSerializer :
         RelationContinuationDocument.parse(raw)
 }
 
-enum class RelationReadQualificationFailure {
-    EMPTY_LIMITATIONS,
-    NON_CANONICAL_LIMITATIONS,
-}
-
-/** Exact incomplete relation coverage, split by whether additional provider work remains. */
-sealed interface RelationReadQualification : OperationQualification {
-    val knownMinimum: RelationKnownMinimumDocument
-    val limitations: List<RelationLimitationDocument>
-
-    @ConsistentCopyVisibility
-    data class Resumable
-    internal constructor(
-        override val knownMinimum: RelationKnownMinimumDocument,
-        override val limitations: List<RelationLimitationDocument>,
-        val continuation: RelationContinuationDocument,
-    ) : RelationReadQualification
-
-    @ConsistentCopyVisibility
-    data class TerminalIncomplete
-    internal constructor(
-        override val knownMinimum: RelationKnownMinimumDocument,
-        override val limitations: List<RelationLimitationDocument>,
-    ) : RelationReadQualification
-
-    companion object {
-        fun resumable(
-            knownMinimum: RelationKnownMinimumDocument,
-            limitations: List<RelationLimitationDocument>,
-            continuation: RelationContinuationDocument,
-        ): Refinement<Resumable, RelationReadQualificationFailure> =
-            when (val admitted = admitRelationLimitations(limitations)) {
-                is Refinement.Refined -> Refinement.Refined(Resumable(knownMinimum, admitted.value, continuation))
-                is Refinement.Rejected -> admitted
-            }
-
-        fun terminalIncomplete(
-            knownMinimum: RelationKnownMinimumDocument,
-            limitations: List<RelationLimitationDocument>,
-        ): Refinement<TerminalIncomplete, RelationReadQualificationFailure> =
-            when (val admitted = admitRelationLimitations(limitations)) {
-                is Refinement.Refined -> Refinement.Refined(TerminalIncomplete(knownMinimum, admitted.value))
-                is Refinement.Rejected -> admitted
-            }
-    }
-}
-
-private fun admitRelationLimitations(
-    limitations: List<RelationLimitationDocument>
-): Refinement<List<RelationLimitationDocument>, RelationReadQualificationFailure> =
-    when {
-        limitations.isEmpty() -> Refinement.Rejected(RelationReadQualificationFailure.EMPTY_LIMITATIONS)
-        limitations != limitations.distinct().sortedBy { it.ordinal } ->
-            Refinement.Rejected(RelationReadQualificationFailure.NON_CANONICAL_LIMITATIONS)
-        else -> Refinement.Refined(java.util.List.copyOf(limitations))
-    }
-
 private fun relationContinuationSha256(bytes: ByteArray): String =
     MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { byte ->
         (byte.toInt() and 0xff).toString(16).padStart(2, '0')
@@ -371,7 +314,7 @@ private const val RELATION_CONTINUATION_TOKEN_FAMILY = "relation-continuation"
 private const val RELATION_CONTINUATION_TOKEN_VERSION = "v1"
 private const val RELATION_CONTINUATION_TOKEN_PART_COUNT = 4
 
-enum class RelationReadRejection : OperationRejection {
+enum class RelationReadRejection : RelationReadFailure {
     WORKSPACE_NOT_READY,
     SELECTOR_WRONG_KIND,
     SELECTOR_MALFORMED,
@@ -426,7 +369,7 @@ data class TraversalRecordDocument(
     val relation: RelationFactDocument,
 )
 
-enum class TraversalRunRejection : OperationRejection {
+enum class TraversalRunRejection : TraversalRunFailure {
     CONTINUATION_UNAVAILABLE,
     CONTINUATION_REQUEST_MISMATCH,
     WORKSPACE_NOT_READY,

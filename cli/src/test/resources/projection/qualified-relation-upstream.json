@@ -1,0 +1,11 @@
+{
+  "type": "resumable",
+  "knownMinimum": 0,
+  "limitations": ["result-limit-reached", "provider-incomplete"],
+  "continuation": "relation-continuation:v1:Y2xpLXByb2plY3Rpb24:911327fd190c24a8eddb0884d8ba762832bf4c3805a263dbbb76f787bba8b51b",
+  "checkpoint": {
+    "type": "upstream",
+    "token": "relation-continuation:v1:Y2xpLXByb2plY3Rpb24:911327fd190c24a8eddb0884d8ba762832bf4c3805a263dbbb76f787bba8b51b"
+  },
+  "next_action": "resume"
+}
