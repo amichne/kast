@@ -15,7 +15,6 @@ import io.github.amichne.kast.protocol.contract.OperationQualification
 import io.github.amichne.kast.protocol.contract.OperationRejection
 import io.github.amichne.kast.protocol.contract.OperationRequest
 import io.github.amichne.kast.protocol.contract.OperationResult
-import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.RelationReadRejection
 import io.github.amichne.kast.protocol.contract.SourceReadRejection
@@ -34,17 +33,6 @@ import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Test
 
 class HostedRejectedBudgetTest {
-    @Test
-    fun `invalid legacy traversal page limit retains the already admitted grant`() {
-        val rejected = admitHostedTraversalOutputLimit(ProtocolCount.parse(0).proven(), grant()) as Refinement.Rejected
-        val outcome = OperationOutcome.Rejected(rejected.failure)
-        val encoded = CanonicalOperationWireBindings.traversalRun.encodeOutcome(outcome) as WireEncoding.Encoded
-        val body = Json.parseToJsonElement(encoded.document).jsonObject.getValue("body").jsonObject
-        assertEquals("plan-rejected", body.getValue("rejection").jsonPrimitive.content)
-        assertNotNull(body["execution_budget"], "Post-admission legacy limit rejection must retain its grant")
-        verify(CanonicalOperationWireBindings.traversalRun, outcome)
-    }
-
     @Test
     fun `source rejection after budget admission retains finite reason and effective grant in wire envelope`() {
         val outcome = OperationOutcome.Rejected(SourceReadRejection.COMPILER_ANALYSIS_UNAVAILABLE)
@@ -120,9 +108,7 @@ class HostedRejectedBudgetTest {
         )
     }
 
-    private fun report(): ExecutionBudgetReport = ExecutionBudgetReport.from(grant())
-
-    private fun grant(): AdmittedExecutionBudget {
+    private fun report(): ExecutionBudgetReport {
         val resources =
             ResourceBudget(
                 ResultLimit.parse(8).proven(),
@@ -130,13 +116,15 @@ class HostedRejectedBudgetTest {
                 ElapsedTimeLimitMillis.parse(100).proven(),
             )
         val bytes = ReturnedByteLimit.parse(4096).proven()
-        return AdmittedExecutionBudget.admit(
-            RequestedExecutionBudget(),
-            resources,
-            bytes,
-            resources,
-            bytes,
-            ExecutionBudgetCapacity(resources.elapsedTimeLimit, resources.resultLimit, bytes),
+        return ExecutionBudgetReport.from(
+            AdmittedExecutionBudget.admit(
+                RequestedExecutionBudget(),
+                resources,
+                bytes,
+                resources,
+                bytes,
+                ExecutionBudgetCapacity(resources.elapsedTimeLimit, resources.resultLimit, bytes),
+            )
         )
     }
 

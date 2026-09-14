@@ -2,15 +2,12 @@ package io.github.amichne.kast.runtime.hosted
 
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
-import io.github.amichne.kast.kernel.AdmittedExecutionBudget
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
-import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.TraversalContinuationDocument
-import io.github.amichne.kast.protocol.contract.TraversalRunFailure
 import io.github.amichne.kast.protocol.contract.TraversalRunPositionDocument
 import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
@@ -25,12 +22,17 @@ internal suspend fun evaluateHostedTraversal(
     request: HostedRequest.Traversal,
 ): HostedResponse {
     val maximumResults =
-        when (val value = admitHostedTraversalOutputLimit(request.request.maximumResults, context.executionBudget)) {
+        when (
+            val value =
+                ResultLimit.parse(
+                    minOf(request.request.maximumResults.value, context.executionBudget.results.effective.value)
+                )
+        ) {
             is Refinement.Refined -> value.value
             is Refinement.Rejected ->
                 return HostedResponse.Canonical.encode(
                     CanonicalOperationWireBindings.traversalRun,
-                    OperationOutcome.Rejected(value.failure),
+                    OperationOutcome.Rejected(TraversalRunRejection.PLAN_REJECTED),
                     context.limits,
                     context.executionBudget.returnedBytes.effective,
                 )
@@ -58,13 +60,3 @@ internal suspend fun evaluateHostedTraversal(
         outputs.issue(request.request, context.authority, remaining.withTraversalBudget(null))
     }
 }
-
-/** Legacy page limits are refined under the same grant already admitted for semantic execution. */
-internal fun admitHostedTraversalOutputLimit(
-    requested: ProtocolCount,
-    grant: AdmittedExecutionBudget,
-): Refinement<ResultLimit, TraversalRunFailure> =
-    when (val admitted = ResultLimit.parse(minOf(requested.value, grant.results.effective.value))) {
-        is Refinement.Refined -> admitted
-        is Refinement.Rejected -> Refinement.Rejected(TraversalRunRejection.PLAN_REJECTED)
-    }
