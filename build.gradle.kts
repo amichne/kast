@@ -110,12 +110,15 @@ val assembleKastControlDist by tasks.registering(Tar::class) {
     }
 }
 
+val controlDistributionMaximumEntries = 16_384
+
 val verifyKastControlDistLayout by tasks.registering(VerifyControlDistributionTask::class) {
     group = "verification"
     description = "Rejects oversized or semantic-payload-bearing control archives."
     dependsOn(assembleKastControlDist)
     controlDirectory.set(controlProductDirectory)
     controlArchive.set(assembleKastControlDist.flatMap(Tar::getArchiveFile))
+    maximumEntries.set(controlDistributionMaximumEntries)
     maximumArchiveBytes.set(64L * 1024L * 1024L)
     maximumInstalledBytes.set(128L * 1024L * 1024L)
 }

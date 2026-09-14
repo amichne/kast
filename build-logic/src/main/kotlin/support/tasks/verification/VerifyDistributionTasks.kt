@@ -25,6 +25,9 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
     abstract val controlArchive: RegularFileProperty
 
     @get:Input
+    abstract val maximumEntries: Property<Int>
+
+    @get:Input
     abstract val maximumArchiveBytes: Property<Long>
     @get:Input
     abstract val maximumInstalledBytes: Property<Long>
@@ -38,6 +41,10 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
         }
         val paths = Files.walk(root).use { stream -> stream.toList() }
         val entries = paths.map { path -> root.relativize(path).toString() }
+        val payloadEntries = entries.filter(String::isNotEmpty)
+        check(payloadEntries.size <= maximumEntries.get()) {
+            "control product contains ${payloadEntries.size} entries; limit is ${maximumEntries.get()}"
+        }
         val installedBytes = paths
             .filter(Files::isRegularFile)
             .sumOf(Files::size)
