@@ -44,6 +44,8 @@ internal sealed interface TraversalQualificationCliDocument {
         val limitations: List<String>,
         val relationLimitations: List<String>,
         val continuation: String,
+        val checkpoint: io.github.amichne.kast.protocol.contract.TraversalCheckpointDocument,
+        @SerialName("next_action") val nextAction: io.github.amichne.kast.protocol.contract.ReadResumeActionDocument,
     ) : TraversalQualificationCliDocument
 
     @Serializable
@@ -61,6 +63,8 @@ internal fun TraversalRunQualification.toCliDocument(): TraversalQualificationCl
                 limitations = limitations.map { it.cliName() },
                 relationLimitations = relationLimitations.map { it.cliName() },
                 continuation = continuation.value,
+                checkpoint = checkpoint,
+                nextAction = nextAction,
             )
         is TraversalRunQualification.TerminalIncomplete ->
             TraversalQualificationCliDocument.TerminalIncomplete(

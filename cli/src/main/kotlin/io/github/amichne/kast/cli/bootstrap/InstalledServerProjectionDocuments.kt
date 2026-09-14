@@ -1179,6 +1179,16 @@ private fun traversalQualificationSchema(): JsonObject =
     unionSchema(
         objectSchema(
             ServerSchemaProperty("type", constantSchema("resumable", "Coverage state.")),
+            ServerSchemaProperty(
+                "checkpoint",
+                generatedRequestSchema(
+                    io.github.amichne.kast.protocol.contract.TraversalCheckpointDocument.serializer()
+                ),
+            ),
+            ServerSchemaProperty(
+                "next_action",
+                generatedRequestSchema(io.github.amichne.kast.protocol.contract.ReadResumeActionDocument.serializer()),
+            ),
             ServerSchemaProperty("limitations", traversalLimitationsSchema()),
             ServerSchemaProperty("relationLimitations", relationLimitationsSchema()),
             ServerSchemaProperty(

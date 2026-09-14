@@ -1,7 +1,6 @@
 package io.github.amichne.kast.protocol.wire
 
 import io.github.amichne.kast.protocol.contract.RelationLimitationDocument
-import io.github.amichne.kast.protocol.contract.TraversalContinuationDocument
 import io.github.amichne.kast.protocol.contract.TraversalLimitationDocument
 import io.github.amichne.kast.protocol.contract.TraversalRunQualification
 import io.github.amichne.kast.protocol.contract.TraversalRunRejection
@@ -12,7 +11,8 @@ internal fun TraversalRunQualification.toWireDocument(): TraversalRunQualificati
             TraversalRunQualificationWireDocument.Resumable(
                 limitations = limitations.map(TraversalLimitationDocument::toWireDocument),
                 relationLimitations = relationLimitations.map(RelationLimitationDocument::toWireDocument),
-                continuation = continuation.value,
+                checkpoint = checkpoint,
+                nextAction = nextAction,
             )
         is TraversalRunQualification.TerminalIncomplete ->
             TraversalRunQualificationWireDocument.TerminalIncomplete(
@@ -24,15 +24,13 @@ internal fun TraversalRunQualification.toWireDocument(): TraversalRunQualificati
 internal fun TraversalRunQualificationWireDocument.toContract(): WireDocumentConversion<TraversalRunQualification> =
     when (this) {
         is TraversalRunQualificationWireDocument.Resumable ->
-            TraversalContinuationDocument.parse(continuation).toWireDocumentConversion().flatMapConverted {
-                admittedContinuation ->
-                TraversalRunQualification.resumable(
-                        limitations.map(TraversalLimitationWireDocument::toContract),
-                        relationLimitations.map(RelationLimitationWireDocument::toContract),
-                        admittedContinuation,
-                    )
-                    .toWireDocumentConversion()
-            }
+            TraversalRunQualification.admitResumable(
+                    limitations.map(TraversalLimitationWireDocument::toContract),
+                    relationLimitations.map(RelationLimitationWireDocument::toContract),
+                    checkpoint,
+                    nextAction,
+                )
+                .toWireDocumentConversion()
         is TraversalRunQualificationWireDocument.TerminalIncomplete ->
             TraversalRunQualification.terminalIncomplete(
                     limitations.map(TraversalLimitationWireDocument::toContract),
@@ -67,6 +65,9 @@ private fun TraversalLimitationWireDocument.toContract(): TraversalLimitationDoc
 
 internal fun TraversalRunRejection.toWireDocument(): TraversalRunRejectionWireDocument =
     when (this) {
+        TraversalRunRejection.CONTINUATION_UNAVAILABLE -> TraversalRunRejectionWireDocument.CONTINUATION_UNAVAILABLE
+        TraversalRunRejection.CONTINUATION_REQUEST_MISMATCH ->
+            TraversalRunRejectionWireDocument.CONTINUATION_REQUEST_MISMATCH
         TraversalRunRejection.WORKSPACE_NOT_READY -> TraversalRunRejectionWireDocument.WORKSPACE_NOT_READY
         TraversalRunRejection.SELECTOR_WRONG_KIND -> TraversalRunRejectionWireDocument.SELECTOR_WRONG_KIND
         TraversalRunRejection.SELECTOR_MALFORMED -> TraversalRunRejectionWireDocument.SELECTOR_MALFORMED
@@ -88,6 +89,9 @@ internal fun TraversalRunRejection.toWireDocument(): TraversalRunRejectionWireDo
 
 internal fun TraversalRunRejectionWireDocument.toContract(): TraversalRunRejection =
     when (this) {
+        TraversalRunRejectionWireDocument.CONTINUATION_UNAVAILABLE -> TraversalRunRejection.CONTINUATION_UNAVAILABLE
+        TraversalRunRejectionWireDocument.CONTINUATION_REQUEST_MISMATCH ->
+            TraversalRunRejection.CONTINUATION_REQUEST_MISMATCH
         TraversalRunRejectionWireDocument.WORKSPACE_NOT_READY -> TraversalRunRejection.WORKSPACE_NOT_READY
         TraversalRunRejectionWireDocument.SELECTOR_WRONG_KIND -> TraversalRunRejection.SELECTOR_WRONG_KIND
         TraversalRunRejectionWireDocument.SELECTOR_MALFORMED -> TraversalRunRejection.SELECTOR_MALFORMED

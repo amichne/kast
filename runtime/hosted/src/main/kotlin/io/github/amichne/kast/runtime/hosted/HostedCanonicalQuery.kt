@@ -12,7 +12,6 @@ import io.github.amichne.kast.query.protocol.CanonicalDiagnosticCheckProtocol
 import io.github.amichne.kast.query.protocol.CanonicalQueryProtocol
 import io.github.amichne.kast.query.protocol.CanonicalSymbolDiscoverProtocol
 import io.github.amichne.kast.query.protocol.CanonicalSymbolInspectProtocol
-import io.github.amichne.kast.query.protocol.CanonicalTraversalRunProtocol
 import io.github.amichne.kast.query.protocol.SourceProtocolBudget
 import io.github.amichne.kast.query.service.QueryService
 import io.github.amichne.kast.relation.contract.RelationBudget
@@ -25,7 +24,6 @@ import io.github.amichne.kast.traversal.contract.TraversalBudget
 import io.github.amichne.kast.traversal.contract.TraversalByteLimit
 import io.github.amichne.kast.traversal.contract.TraversalDepthLimit
 import io.github.amichne.kast.traversal.contract.TraversalFrontierLimit
-import io.github.amichne.kast.traversal.service.traversalOperations
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedSemanticReadContext
 
 /** Only the admitted project's pure query service and its bounded read ports enter this graph. */
@@ -39,7 +37,6 @@ internal suspend fun evaluateHostedCanonicalQuery(
     val budgets = services.budgets
     val discovery = services.discovery
     val exact = services.exact
-    val relations = services.relations
     val references = services.references
     return when (request) {
         is HostedRequest.Query -> evaluateHostedQuery(project, services, context, request, continuations)
@@ -58,17 +55,7 @@ internal suspend fun evaluateHostedCanonicalQuery(
             )
         is HostedRequest.Source -> evaluateHostedSource(project, services, context, request, continuations)
         is HostedRequest.Relation -> evaluateHostedRelation(project, services, context, request)
-        is HostedRequest.Traversal ->
-            HostedResponse.Canonical.encode(
-                CanonicalOperationWireBindings.traversalRun,
-                CanonicalTraversalRunProtocol(traversalOperations(relations), references)
-                    .execute(request.request, context.authority, budgets.hostedTraversalBudget)
-                    .withTraversalBudget(
-                        io.github.amichne.kast.protocol.contract.ExecutionBudgetReport.from(context.executionBudget)
-                    ),
-                limits = context.limits,
-                maximumBytes = context.executionBudget.returnedBytes.effective,
-            )
+        is HostedRequest.Traversal -> evaluateHostedTraversal(project, services, context, request)
         is HostedRequest.Diagnostic -> evaluateHostedDiagnostic(services, context, request)
     }
 }

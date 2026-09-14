@@ -76,6 +76,7 @@ internal class HostedQueryContinuations : Disposable {
             )
 
         val sourceOutputs = hostedSourceOutputPages(limits)
+        val traversalOutputs = hostedTraversalOutputPages(limits)
 
         val relationOutputs =
             HostedOutputPages(
@@ -106,6 +107,7 @@ internal class HostedQueryContinuations : Disposable {
             outputs.clear()
             relationOutputs.clear()
             sourceOutputs.clear()
+            traversalOutputs.clear()
             checkpoints.clear()
         }
     }

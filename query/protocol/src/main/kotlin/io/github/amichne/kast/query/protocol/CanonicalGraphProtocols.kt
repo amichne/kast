@@ -190,7 +190,8 @@ private fun RelationIncompleteCoverage.protocolQualification(): RelationReadQual
 }
 
 internal fun TraversalQualification.protocolQualification(
-    authority: QueryReferenceAuthority
+    authority: QueryReferenceAuthority,
+    emittedRecords: Int,
 ): TraversalRunQualification? =
     when (this) {
         is TraversalQualification.Resumable -> {
@@ -199,6 +200,9 @@ internal fun TraversalQualification.protocolQualification(
                     limitations.map(TraversalLimitation::protocolDocument),
                     relationLimitations.map(RelationLimitation::protocolDocument),
                     document,
+                    if (emittedRecords == 0)
+                        io.github.amichne.kast.protocol.contract.ReadResumeActionDocument.INCREASE_EXECUTION_BUDGET
+                    else io.github.amichne.kast.protocol.contract.ReadResumeActionDocument.RESUME,
                 )
                 .refinedOrNull()
         }

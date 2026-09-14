@@ -391,3 +391,44 @@ runtime, harness unit, JSON, architecture and knowledge checks pass
 (`/tmp/kast-enum-identity-green-check.log`); installed GREEN remains pending. The
 installed fixture additionally reuses both member references and requests their
 signatures, comparing snapshot-local declaration identities and order.
+
+### Installed enum-member GREEN and traversal work-in-progress checkpoint
+
+Installed run `671a319e7d6c2d6708ec07eac1396254d69c0273` passed in 5m12s on the
+pinned IDEA 262.10315.125 distribution and JDK 25. The clean-source report
+`/tmp/kast-agent-read-native-671a319e7.json` records 132/132 CLI/provider read
+cases and 156/156 concurrent first attempts, with a blocked peer and zero serial
+retries. The enum body-member reference/signature reuse cases, query/source
+progress assertions, and existing mutation/recovery gates passed. The report's
+`releaseQualified=true` describes that harness matrix only. Its stock Codex UI
+qualification remains `unqualified`; it does not establish all R1–R8 requirements.
+
+Traversal byte-fitting RED `09160e8165df8243cfcbbe055bf158f2517794b4` reproduced
+loss of a publishable graph prefix. The current implementation retains ordered
+output suffixes, distinguishes upstream from retained-output checkpoints, keeps
+partial expansions and cumulative progress, and supplies a supported next action.
+The focused `HostedTraversalResponseTest` and CLI test compilation pass
+(`/tmp/kast-traversal-fitting-green-recheck.log`, 4s). This is a work-in-progress
+publication checkpoint requested by the user, not full traversal GREEN.
+
+The broader checkpoint audit failed in 35s
+(`/tmp/kast-agent-read-checkpoint-audit.log`). Five tasks remain failing:
+
+- `:protocol:contract:detekt`: traversal token parsing has cognitive complexity
+  13 against the existing maximum 12.
+- `:protocol:wire:test`: one qualification fixture still expects the old
+  traversal continuation shape (80/81 tests passed).
+- `:cli:test`: one projection fixture expects the old traversal shape, and the
+  generated capability document is 521536 bytes, exceeding the unchanged
+  520192-byte cap after reserved headroom (178/180 tests passed).
+- `:cli:verifyMintlifyCallableReference`: generated callable reference drift.
+- `:verifyConfigurationIngress`: checked-in configuration schema differs from
+  the generated schema. The preceding remote CI head has this same failure.
+
+Hosted runtime and query protocol checks passed; App Server checks passed with
+one schema qualification test skipped. JSON verification reports 1080 fingerprints
+and zero violations; architecture and knowledge validation passed. Knowledge impact
+identified seven concepts requiring review: passing the structural validator does
+not establish that their traversal claims have been refreshed. No check threshold,
+schema allowance, freshness rule, or release requirement was waived. Traversal
+continuation/schema/native coverage and the remaining R1–R8 matrix are still open.
