@@ -56,6 +56,84 @@ import org.junit.jupiter.api.Test
 
 class IntellijSourceEntityReadTest {
     @Test
+    fun `excluded class and constructor property avoid compiler projection while nested function fills page`() {
+        val text = "class Excluded(val property: Int) { fun retained() = Unit }"
+        val snapshot = snapshot(text)
+        val region = SourceSelector.issueRoot(range(snapshot, 0, text.length), SourceRegionKind.FILE)
+        val parent =
+            SourceSelector.issueEntity(
+                    region,
+                    NonEmptySourceRange.create(range(snapshot, 0, text.length)).refined(),
+                    SourceEntityKind.DECLARATION_CLASSLIKE,
+                    SourceEntityName.present("Excluded").refined(),
+                )
+                .refined()
+        val collector =
+            IntellijSourceEntityPageCollector(
+                matching(Containment.DESCENDANTS, declarations(setOf(DeclarationKind.FUNCTION), null)),
+                IntellijSourceEntityCursor(0),
+                SourceEntityLimit.parse(1).refined(),
+            )
+        val projected = mutableListOf<DeclarationKind>()
+        // Native traversal retains this structural selector even when its declaration is not emitted.
+        collector.projectDeclaration(DeclarationKind.CLASSLIKE) { projected += DeclarationKind.CLASSLIKE }
+        repeat(100) {
+            collector.projectDeclaration(DeclarationKind.PROPERTY) { projected += DeclarationKind.PROPERTY }
+        }
+        val start = text.indexOf("fun retained")
+        collector.projectDeclaration(DeclarationKind.FUNCTION) {
+            projected += DeclarationKind.FUNCTION
+            collector.offer(
+                declarationAt(
+                    snapshot,
+                    parent,
+                    start,
+                    "retained",
+                    DeclarationKind.FUNCTION,
+                    DeclarationVisibility.PUBLIC,
+                    1,
+                    range(snapshot, start, text.length - 2),
+                )
+            )
+        }
+        val page = collector.finish() as IntellijSourceEntityPage.Complete
+        assertEquals(listOf(DeclarationKind.FUNCTION), projected)
+        assertEquals(listOf("retained"), page.entities.names())
+        assertEquals(1, page.knownMinimumEntityCount)
+        val retained = page.entities.single()
+        assertEquals(parent, retained.parentSelector)
+        assertEquals(1, retained.nestingDepth.value)
+        assertEquals(start, retained.selector.range.startInclusive.value)
+        assertEquals(text.length - 2, retained.selector.range.endExclusive.value)
+    }
+
+    @Test
+    fun `declaration projection respects every admitted kind and never broadens parameter-only requests`() {
+        for (requested in DeclarationKind.entries) {
+            val collector =
+                IntellijSourceEntityPageCollector(
+                    matching(Containment.DESCENDANTS, declarations(setOf(requested), null)),
+                    IntellijSourceEntityCursor(0),
+                    SourceEntityLimit.parse(1).refined(),
+                )
+            val projected = mutableListOf<DeclarationKind>()
+            for (candidate in DeclarationKind.entries) {
+                collector.projectDeclaration(candidate) { projected += candidate }
+            }
+            assertEquals(listOf(requested), projected)
+        }
+        val parameters =
+            IntellijSourceEntityPageCollector(
+                matching(Containment.DESCENDANTS, EntityFilter.Parameters),
+                IntellijSourceEntityCursor(0),
+                SourceEntityLimit.parse(1).refined(),
+            )
+        for (kind in DeclarationKind.entries) {
+            parameters.projectDeclaration(kind) { error("Parameter request must not project declarations") }
+        }
+    }
+
+    @Test
     fun `declaration filters use semantic visibility and direct descendant depth`() {
         val fixture = fixture()
         val port = port(fixture)
