@@ -340,6 +340,20 @@ class QueryServiceTest {
     }
 
     @Test
+    fun `intermediate discovery bytes do not spend final output authority`() = runTest {
+        val selected = selector(selection())
+        val service = service(
+            discovery = discoveryWithCandidate(),
+            exact = exactOperations { candidate ->
+                SymbolResolutionResult.Resolved(io.github.amichne.kast.symbol.contract.ResolvedSymbol(selector(candidate)))
+            },
+        )
+        val bytes = io.github.amichne.kast.query.contract.QuerySymbol(SymbolDescription.from(selected), emptyList()).projectedUtf8Size()
+        val result = service.run(request(symbolPlan(), workLimit = 8L, returnedBytes = bytes))
+        assertEquals(1, result.symbolCount())
+    }
+
+    @Test
     fun `final exact projection is charged to the shared byte budget`() = runTest {
         val selector = selector(selection())
         val service =
