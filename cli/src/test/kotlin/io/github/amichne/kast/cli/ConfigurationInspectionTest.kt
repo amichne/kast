@@ -26,6 +26,21 @@ class ConfigurationInspectionTest {
     }
 
     @Test
+    fun `configuration help bypasses malformed saved and process configuration`(@TempDir root: Path) {
+        val inputs = mapOf("KAST_SAVED_CONFIGURATION_FAILURE" to "duplicate-record", "KAST_INDEXER_MAX_HEAP" to "")
+        val longHelp = launch(root, listOf("config", "--help"), inputs)
+        val shortHelp = launch(root, listOf("config", "-h"), inputs)
+        assertEquals(0, longHelp.code)
+        assertEquals(0, shortHelp.code)
+        assertEquals("", longHelp.error)
+        assertEquals("", shortHelp.error)
+        assertTrue(longHelp.output.startsWith("Usage: kast config"))
+        assertEquals(longHelp.output, shortHelp.output)
+        assertFalse(Files.exists(root.resolve("runtime")))
+        assertFalse(Files.exists(root.resolve("cache")))
+    }
+
+    @Test
     fun `schema remains passive when saved configuration and heap are malformed`(@TempDir root: Path) {
         val result =
             launch(

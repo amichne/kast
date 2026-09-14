@@ -16,6 +16,8 @@ code_sources:
     symbols: [ConfigurationSchemaDocument]
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/configuration/InstalledConfigurationSchema.kt
     symbols: [InstalledConfigurationSchema]
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/configuration/ConfigurationInspection.kt
+  - path: cli/src/test/kotlin/io/github/amichne/kast/cli/ConfigurationInspectionTest.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/configuration/SavedConfigurationIngress.kt
     symbols: [SavedConfigurationIngress]
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt
@@ -32,6 +34,10 @@ The Kotlin catalogue owns typed keys, value parsing, defaults, and consuming com
 Two checked artifacts enforce the boundary: [configuration-schema.json](../../packaging/configuration-schema.json) describes the external document and [configuration-ingress.json](../../build-policy/configuration-ingress.json) declares permitted ingress owners. Root verification rejects undeclared ambient reads.
 
 See [distribution](../modules/distribution.md).
+
+`kast config --help` (or `-h`) lists schema, show, explain and validate before
+loading configuration. Help remains available when saved or process configuration
+is invalid; it starts no runtime and writes its text to stdout.
 
 The `KAST_READ_*` declarations retain parameter identity, admitted values and provenance across model/epoch capture, semantic budgets, native collection, source paging, diagnostic scope enumeration, transport and provider execution. [Configuration instructions](../../docs/hosted-read-configuration.md) explain activation and paired bounds. Client exchange time strictly exceeds host connection time, and each provider invocation deadline strictly exceeds client exchange time; equality rejects with `InconsistentBounds`. Semantic configuration may equal host query configuration because semantic admission reserves completion time. Default request diagnostics include the effective policy.
 
