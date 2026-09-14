@@ -347,7 +347,7 @@ internal class IntellijSourceReadPort(
         val cursor =
             when (val admission = continuations.admit(context, request)) {
                 is IntellijSourceContinuationAdmission.Admitted -> admission.cursor
-                IntellijSourceContinuationAdmission.Rejected -> return rejected(SourceReadRejection.CONTRACT_VIOLATION)
+                is IntellijSourceContinuationAdmission.Rejected -> return rejected(admission.reason.publicReason())
             }
         val capture =
             when (val result = regions.select(context, request, cursor)) {
@@ -573,4 +573,11 @@ private fun IntellijSourceReadRejection.publicReason(): SourceReadRejection =
         IntellijSourceReadRejection.UNSUPPORTED_REQUEST -> SourceReadRejection.REGION_NOT_APPLICABLE
         IntellijSourceReadRejection.PROVIDER_FAILURE,
         IntellijSourceReadRejection.CONTRACT_VIOLATION -> SourceReadRejection.CONTRACT_VIOLATION
+    }
+
+private fun IntellijSourceContinuationRejection.publicReason(): SourceReadRejection =
+    when (this) {
+        IntellijSourceContinuationRejection.UNAVAILABLE -> SourceReadRejection.CONTINUATION_UNAVAILABLE
+        IntellijSourceContinuationRejection.CONTEXT_MISMATCH -> SourceReadRejection.SOURCE_SNAPSHOT_MISMATCH
+        IntellijSourceContinuationRejection.REQUEST_MISMATCH -> SourceReadRejection.CONTINUATION_REQUEST_MISMATCH
     }

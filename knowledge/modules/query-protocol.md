@@ -145,3 +145,8 @@ finite reason plus the required execution-budget report. Missing metadata retain
 the unadmitted failure variant; null or malformed reports reject at the boundary.
 The [outcome contract](../contracts/operation-outcomes.md) separates this admission
 evidence from successful semantic results.
+
+Canonical source projection retains the domain continuation refusal cause:
+`CONTINUATION_UNAVAILABLE`, `SOURCE_SNAPSHOT_MISMATCH`, or
+`CONTINUATION_REQUEST_MISMATCH`. These existing finite canonical variants remain
+distinct from provider and discovery contract violations.

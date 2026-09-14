@@ -17,6 +17,7 @@ import io.github.amichne.kast.source.contract.SourceReadContext
 import io.github.amichne.kast.source.contract.SourceReadContinuationState
 import io.github.amichne.kast.source.contract.SourceReadLimitation
 import io.github.amichne.kast.source.contract.SourceReadPage
+import io.github.amichne.kast.source.contract.SourceReadRejection
 import io.github.amichne.kast.source.contract.SourceReadRequest
 import io.github.amichne.kast.source.contract.SourceReadResult
 import io.github.amichne.kast.source.contract.SourceRegionKind
@@ -245,7 +246,9 @@ class IntellijSourceEntityReadTest {
         assertEquals(first.qualification.continuation, replay.qualification.continuation)
 
         assertEquals(
-            SourceReadResult.Rejected(io.github.amichne.kast.source.contract.SourceReadRejection.CONTRACT_VIOLATION),
+            SourceReadResult.Rejected(
+                io.github.amichne.kast.source.contract.SourceReadRejection.CONTINUATION_REQUEST_MISMATCH
+            ),
             read(
                 port,
                 fixture,
@@ -289,11 +292,19 @@ class IntellijSourceEntityReadTest {
         var now = 0L
         var invocations = 0
         val fixture = fixture()
-        val owner = IntellijSourceReadContinuations(
-            io.github.amichne.kast.kernel.ReadLimits.resolve(
-                environment = mapOf("KAST_SOURCE_CONTINUATION_TTL_MILLIS" to "10")
-            ).refined()
-        ) { now }
+        val owner =
+            IntellijSourceReadContinuations(
+                io.github.amichne.kast.kernel.ReadLimits.resolve(
+                        environment =
+                            mapOf(
+                                io.github.amichne.kast.kernel.ReadLimitParameter.SOURCE_CONTINUATION_TTL_MILLIS
+                                    .environmentKey to "10"
+                            )
+                    )
+                    .refined()
+            ) {
+                now
+            }
         val port = port(fixture, owner) { invocations += 1 }
         val selection = matching(Containment.DESCENDANTS, declarations(setOf(DeclarationKind.FUNCTION), null))
         val first = read(port, fixture, selection, limit = 1) as SourceReadResult.Qualified
@@ -301,15 +312,26 @@ class IntellijSourceEntityReadTest {
         val page = SourceReadPage.Continue(token)
         val original = fixture.snapshot.context as SourceReadContext.Published
         val changed = original.copy(sourceState = WorkspaceStateIdentity.parse("workspace-state-v1|changed").refined())
-        fun reason(result: SourceReadResult) = assertInstanceOf(SourceReadResult.Rejected::class.java, result).reason.name
-        assertEquals("SOURCE_SNAPSHOT_MISMATCH", reason(read(port, fixture, selection, page = page, readContext = changed)))
-        assertEquals("REQUEST_MISMATCH", reason(read(port, fixture, EntitySelection.None, page = page)))
+        fun reason(result: SourceReadResult) = assertInstanceOf(SourceReadResult.Rejected::class.java, result).reason
+        assertEquals(
+            SourceReadRejection.SOURCE_SNAPSHOT_MISMATCH,
+            reason(read(port, fixture, selection, page = page, readContext = changed)),
+        )
+        assertEquals(
+            SourceReadRejection.CONTINUATION_REQUEST_MISMATCH,
+            reason(read(port, fixture, EntitySelection.None, page = page)),
+        )
+        val unknownOwner = port(fixture) { invocations += 1 }
+        assertEquals(
+            SourceReadRejection.CONTINUATION_UNAVAILABLE,
+            reason(read(unknownOwner, fixture, selection, page = page)),
+        )
         assertEquals(1, invocations)
         now = 10_000_000L
-        assertEquals("CONTINUATION_UNAVAILABLE", reason(read(port, fixture, selection, page = page)))
+        assertEquals(SourceReadRejection.CONTINUATION_UNAVAILABLE, reason(read(port, fixture, selection, page = page)))
         owner.retire()
-        assertEquals("CONTINUATION_UNAVAILABLE", reason(read(port, fixture, selection, page = page)))
-        assertEquals("CONTINUATION_UNAVAILABLE", reason(read(port, fixture, selection)))
+        assertEquals(SourceReadRejection.CONTINUATION_UNAVAILABLE, reason(read(port, fixture, selection, page = page)))
+        assertEquals(SourceReadRejection.CONTINUATION_UNAVAILABLE, reason(read(port, fixture, selection)))
         assertEquals(1, invocations)
     }
 

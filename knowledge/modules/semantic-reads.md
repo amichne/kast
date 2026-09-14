@@ -6,6 +6,9 @@ resource: file://query
 tags: [kotlin, semantic, query, compiler]
 timestamp: 2026-09-14T00:00:00Z
 code_sources:
+  - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceReadContinuations.kt
+  - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceReadPort.kt
+  - path: source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceReadOutcome.kt
   - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceEntityAttempt.kt
   - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceEntityPageCollector.kt
   - path: source/intellij/src/test/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceEntityReadTest.kt
@@ -188,3 +191,11 @@ checked before visibility resolution and candidate construction; structural
 selectors, parents, ranges and depths still preserve eligible descendants inside
 excluded containers. The focused excluded-input and cancellation tests prove
 these boundaries without claiming installed IDE qualification.
+
+Source continuation admission preserves finite refusal causes before selecting
+source: missing, expired, evicted, or retired checkpoints return
+`CONTINUATION_UNAVAILABLE`; a changed retained context returns
+`SOURCE_SNAPSHOT_MISMATCH`; changed request identity returns
+`CONTINUATION_REQUEST_MISMATCH`. Replay retains the original expiry and existing
+access-order eviction policy. Provider contract failures remain
+`CONTRACT_VIOLATION`.
