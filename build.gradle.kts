@@ -261,6 +261,13 @@ val acceptanceIdeaInputTest = tasks.register<Exec>("acceptanceIdeaInputTest") {
     commandLine("python3", layout.projectDirectory.file("packaging/test-acceptance-idea.py"))
 }
 
+val installationSystemPythonTest = tasks.register<Exec>("installationSystemPythonTest") {
+    group = "verification"
+    description = "Proves offline recovery works with macOS system Python, independently of the development interpreter."
+    inputs.files("packaging/installation-recovery.py", "packaging/installation-lifecycle.py", "packaging/test-installation-recovery.py")
+    commandLine("/usr/bin/python3", layout.projectDirectory.file("packaging/test-installation-recovery.py"))
+}
+
 val installationRecoveryTest = tasks.register<Exec>("installationRecoveryTest") {
     group = "verification"
     inputs.files("packaging/installation-recovery.py", "packaging/test-installation-recovery.py")
@@ -289,6 +296,7 @@ val productBuildGate by tasks.registering {
         acceptanceIdeaInputTest,
         installationLifecycleTest,
         installationRecoveryTest,
+        installationSystemPythonTest,
         localInstallationTest,
         installerRemovalTest,
         installedProductTest,
