@@ -561,3 +561,8 @@ Peer receipts retain the schema digest only after validation. Missing, duplicate
 or invalid embedded schemas fail closed; disconnected peers do not claim a reply.
 This endpoint evidence is separate from canonical tool-document and actual
 provider-envelope validation.
+
+Relation pages retain canonical order within each page. Cross-grant drains
+preserve the full occurrence multiset; changing page boundaries does not promise
+global fingerprint order. A resumable budget stop retains unmeasured work evidence
+until the final complete drain; it never becomes an invented zero omitted count.
