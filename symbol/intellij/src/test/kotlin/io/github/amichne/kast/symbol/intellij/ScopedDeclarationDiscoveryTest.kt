@@ -16,6 +16,35 @@ import org.junit.jupiter.api.Test
 
 class ScopedDeclarationDiscoveryTest {
     @Test
+    fun `excluded directories cannot consume scoped declaration candidate capacity`() {
+        val scenario = SymbolDiscoveryTest().fixture(directory = "selected", workLimit = 1L,
+            itemPaths = mapOf("ZItem" to "/workspace/other/ZItem.kt", "AItem" to "/workspace/selected/AItem.kt"))
+        val result = scenario.query.discoverDeclarations(scenario.compiledScope, scenario.request) { _, _, accept ->
+            for (name in listOf("ZItem", "AItem")) {
+                scenario.contributor.processElementsWithName(name, Processor { accept(it) },
+                    FindSymbolParameters.wrap(name, scenario.scope))
+            }
+            true
+        }.outcome()
+        assertTrue(result is SymbolDiscoveryOutcome.Complete)
+        assertEquals(listOf("AItem"), result.batch().candidates.map { it.name.value })
+    }
+
+    @Test
+    fun `later preferred fuzzy match replaces earlier candidates before projection`() {
+        val scenario = SymbolDiscoveryTest().fixture(pattern = "Item", workLimit = 1L, resultLimit = 1)
+        val result = scenario.query.discoverDeclarations(scenario.compiledScope, scenario.request) { _, _, accept ->
+            for (name in listOf("ZItem", "AItem")) {
+                scenario.contributor.processElementsWithName(name, Processor { accept(it) },
+                    FindSymbolParameters.wrap(name, scenario.scope))
+            }
+            true
+        }.outcome()
+        assertEquals(listOf("AItem"), result.batch().candidates.map { it.name.value })
+        assertEquals(listOf("AItem"), scenario.projectedNames)
+    }
+
+    @Test
     fun `transposed fuzzy name still reaches scoped declarations`() {
         val scenario = SymbolDiscoveryTest().fixture(pattern = "AItme", workLimit = 2L)
         val result = scenario.query.discoverDeclarations(scenario.compiledScope, scenario.request) { _, _, accept ->
