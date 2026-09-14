@@ -120,6 +120,7 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
                             root = root,
                             host = query.hostLifetime,
                             observer = observer,
+                            limits = limits,
                         )
                 ) {
                     is Refinement.Refined -> opened.value
