@@ -1,0 +1,14 @@
+{
+  "type": "resumable",
+  "limitations": [
+    "record_limit_reached",
+    "depth_limit_reached"
+  ],
+  "relationLimitations": [],
+  "checkpoint": {
+    "type": "retained_output",
+    "token": "traversal-output:v1:00000000-0000-0000-0000-000000000001",
+    "upstream": "terminal_incomplete"
+  },
+  "next_action": "resume"
+}

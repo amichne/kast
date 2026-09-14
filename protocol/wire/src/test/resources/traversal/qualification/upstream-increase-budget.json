@@ -1,0 +1,15 @@
+{
+  "type": "resumable",
+  "limitations": [
+    "record_limit_reached",
+    "one_hop_incomplete"
+  ],
+  "relationLimitations": [
+    "provider_incomplete"
+  ],
+  "checkpoint": {
+    "type": "upstream",
+    "token": "traversal-continuation:v1:cXVhbGlmaWNhdGlvbg:1dbf39600b5761d58378447f494a50c8b9c01b559b6ef420720f99f4e45717c9"
+  },
+  "next_action": "increase_execution_budget"
+}

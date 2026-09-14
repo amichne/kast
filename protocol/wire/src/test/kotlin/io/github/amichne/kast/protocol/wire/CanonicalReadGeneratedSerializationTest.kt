@@ -24,9 +24,7 @@ import io.github.amichne.kast.protocol.contract.RelationReadRequest
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverLimitation
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
 import io.github.amichne.kast.protocol.contract.TraversalContinuationDocument
-import io.github.amichne.kast.protocol.contract.TraversalLimitationDocument
 import io.github.amichne.kast.protocol.contract.TraversalRunPositionDocument
-import io.github.amichne.kast.protocol.contract.TraversalRunQualification
 import io.github.amichne.kast.protocol.contract.TraversalRunRequest
 import kotlinx.serialization.json.JsonElement
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -176,38 +174,6 @@ class CanonicalReadGeneratedSerializationTest {
             terminal,
             """{"type":"terminal_incomplete","knownMinimum":0,"limitations":["unresolved_target"]}""",
             listOf("""{"type":"terminal_incomplete","knownMinimum":0,"limitations":[],"continuation":"bad"}"""),
-        )
-
-        val traversalContinuation = traversalContinuation("qualification")
-        val traversal =
-            TraversalRunQualification.resumable(
-                    listOf(
-                        TraversalLimitationDocument.RECORD_LIMIT_REACHED,
-                        TraversalLimitationDocument.ONE_HOP_INCOMPLETE,
-                    ),
-                    listOf(RelationLimitationDocument.PROVIDER_INCOMPLETE),
-                    traversalContinuation,
-                )
-                .refinedValue()
-        assertQualification(
-            CanonicalReadSerializers.traversalRunQualification,
-            traversal,
-            """{"type":"resumable","limitations":["record_limit_reached","one_hop_incomplete"],"relationLimitations":["provider_incomplete"],"continuation":"${traversalContinuation.value}"}""",
-            listOf(
-                """{"type":"resumable","limitations":["one_hop_incomplete"],"relationLimitations":[],"continuation":"${traversalContinuation.value}"}"""
-            ),
-        )
-        val terminalTraversal =
-            TraversalRunQualification.terminalIncomplete(
-                    listOf(TraversalLimitationDocument.ONE_HOP_INCOMPLETE),
-                    listOf(RelationLimitationDocument.UNRESOLVED_TARGET),
-                )
-                .refinedValue()
-        assertQualification(
-            CanonicalReadSerializers.traversalRunQualification,
-            terminalTraversal,
-            """{"type":"terminal_incomplete","limitations":["one_hop_incomplete"],"relationLimitations":["unresolved_target"]}""",
-            listOf("""{"type":"terminal_incomplete","limitations":["one_hop_incomplete"],"relationLimitations":[]}"""),
         )
 
         val diagnostic =
