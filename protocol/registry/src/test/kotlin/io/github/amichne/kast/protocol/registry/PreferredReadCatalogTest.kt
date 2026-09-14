@@ -1,5 +1,6 @@
 package io.github.amichne.kast.protocol.registry
 
+import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -24,5 +25,25 @@ class PreferredReadCatalogTest {
         )
         assertEquals(13, CanonicalAgentToolDefinitions.all.size)
         assertEquals(11, CanonicalAgentToolDefinitions.defaultAppServerTools.size)
+    }
+
+    @Test
+    fun `every accepted input has one canonical authority and aliases remain closed`() {
+        val definitions = CanonicalAgentToolDefinitions.all
+        val names = definitions.flatMap { listOf(it.name) + it.inputAliases }
+        assertEquals(names.size, names.toSet().size)
+        for (definition in definitions) {
+            for (name in listOf(definition.name) + definition.inputAliases) {
+                assertEquals(Refinement.Refined(definition), CanonicalAgentToolDefinitions.resolveInput(name.value))
+            }
+        }
+        assertEquals(
+            setOf("semantic_query", "impact_analyze"),
+            definitions.flatMap { it.inputAliases }.map { it.value }.toSet(),
+        )
+        assertEquals(
+            Refinement.Rejected(AgentToolInputFailure.UNKNOWN),
+            CanonicalAgentToolDefinitions.resolveInput("unknown_read"),
+        )
     }
 }

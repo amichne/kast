@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-14 | hash: 4230136f8f4f -->
+<!-- generated: 2026-09-14 | hash: d16f5d36c04a -->
 
 # packaging
 
@@ -8,6 +8,8 @@
 Implements installer support, installed-product acceptance, configuration ingress generation, and real-environment lifecycle checks.
 
 ## Key Files
+
+- [hosted_read_name_regression.py](hosted_read_name_regression.py) - preferred and legacy provider inputs retain canonical operations, schema and ordered facts.
 
 - [released_session_acceptance.py](released_session_acceptance.py) - owned child-shell wrapper, version and saved-configuration qualification.
 - [released_upgrade_acceptance.py](released_upgrade_acceptance.py) - adjacent original-release upgrade and retained installation evidence.

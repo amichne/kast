@@ -117,8 +117,8 @@ def run_budget_read_regression(replay):
             ('search_functions', BudgetFunctionSearch(budget)),
             ('search_declarations', BudgetDeclarationSearch(budget)),
             ('source_read', BudgetSource(SymbolAnchor(replay.seeds['logger']['symbol_ref']), budget)),
-            ('semantic_query', BudgetRelation(replay.seeds['helper']['symbol_ref'], budget)),
-            ('impact_analyze', BudgetTraversal(replay.seeds['helper']['symbol_ref'], budget)),
+            ('read_relations', BudgetRelation(replay.seeds['helper']['symbol_ref'], budget)),
+            ('traverse_relations', BudgetTraversal(replay.seeds['helper']['symbol_ref'], budget)),
         )
         for tool, request in cases:
             response = _invoke(replay, tool, request)
@@ -202,7 +202,7 @@ def _drain_traversal(replay, request, larger, first=None):
     pages, seen = [], set()
     advancing, monotonic, same_live, grants, complete = True, True, True, True, False
     for index in range(16):
-        response = first if index == 0 and first is not None else _invoke(replay, 'impact_analyze', request)
+        response = first if index == 0 and first is not None else _invoke(replay, 'traverse_relations', request)
         previous = pages[-1].get('progress', {}) if pages else {}
         monotonic = monotonic and progress_advances(previous, response.get('progress', {}))
         same_live = same_live and response.get('live') == replay.live
@@ -221,7 +221,7 @@ def _drain_traversal(replay, request, larger, first=None):
 
 
 def _retained_traversal(replay, low, large):
-    tool = 'impact_analyze'
+    tool = 'traverse_relations'
     start = BudgetTraversal(replay.seeds['helper']['symbol_ref'], large)
     baseline = _drain_traversal(replay, start, large)
     low_start = replace(start, execution_budget=low)
@@ -263,8 +263,8 @@ def _retained_result_replay(replay, start, first):
     if not retained:
         return checks
     resume = replace(start, position=TraversalResume(checkpoint['token']), execution_budget=ResultsBudget(1))
-    child = _invoke(replay, 'impact_analyze', resume)
-    repeated = _invoke(replay, 'impact_analyze', resume)
+    child = _invoke(replay, 'traverse_relations', resume)
+    repeated = _invoke(replay, 'traverse_relations', resume)
     ample = replace(resume, execution_budget=ResultsBudget(100))
     full, full_valid = _detached_suffix(replay, ample)
     reference = full[-1]
@@ -307,7 +307,7 @@ def _detached_suffix(replay, request):
     """Drain byte refits only; an upstream checkpoint belongs to later semantic work."""
     pages, seen = [], set()
     for _ in range(16):
-        response = _invoke(replay, 'impact_analyze', request)
+        response = _invoke(replay, 'traverse_relations', request)
         pages.append(response)
         if (response.get('live') != replay.live or not independent_grant(response, request.execution_budget)
                 or response.get('progress') != pages[0].get('progress')

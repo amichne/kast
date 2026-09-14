@@ -1,117 +1,90 @@
 package io.github.amichne.kast.appserver
 
+import io.github.amichne.kast.appserver.provider.KastApprovalPolicy
+import io.github.amichne.kast.appserver.provider.KastCapabilityBoundary
+import io.github.amichne.kast.appserver.provider.KastCliInvocationBoundary
+import io.github.amichne.kast.appserver.provider.KastCliInvocationsBoundary
+import io.github.amichne.kast.appserver.provider.KastCliOperationInvocationBoundary
+import io.github.amichne.kast.appserver.provider.KastExecutionBudgetBoundary
+import io.github.amichne.kast.appserver.provider.KastHostedBootstrapBoundary
+import io.github.amichne.kast.appserver.provider.KastHostedToolBoundary
+import io.github.amichne.kast.appserver.provider.KastInvocationType
+import io.github.amichne.kast.appserver.provider.KastServerProjectionBoundary
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.protocol.registry.AgentToolInputBinding
 import io.github.amichne.kast.protocol.registry.CanonicalAgentToolDefinitions
+import io.github.amichne.kast.protocol.registry.HostedApprovalPolicy
 import io.github.amichne.kast.protocol.registry.HostedToolLoading
 import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
-import kotlinx.serialization.json.buildJsonArray
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.encodeToJsonElement
+
+private val catalogFixtureJson = Json { encodeDefaults = true }
 
 /** Registration-only fixture. Semantic request/result contracts are tested at their own boundaries. */
-internal fun installedKastCatalogFixture(): String = buildJsonObject {
-    put("schemaVersion", 1)
-    put(
-        "serverProjection",
-        buildJsonObject {
-            put("schemaVersion", 10)
-            put("namespace", "kast")
-            put(
-                "hostedBootstrap",
-                buildJsonObject {
-                    put("schemaVersion", 1)
-                    put("policy", CanonicalAgentToolDefinitions.policy.text)
-                    put(
-                        "tools",
-                        buildJsonArray {
-                            CanonicalAgentToolDefinitions.all.forEach { definition ->
-                                add(
-                                    buildJsonObject {
-                                        put("operationId", definition.operation.id.value)
-                                        put("name", definition.name.value)
-                                        put("description", definition.description.value)
-                                        put("deferLoading", definition.loading == HostedToolLoading.DEFERRED)
-                                        put("effect", definition.operation.effect.name.lowercase())
-                                        put("approvalPolicy", definition.approval.name.lowercase())
-                                        put(
-                                            "executionBudget",
-                                            buildJsonObject {
-                                                put(
-                                                    "readinessMillis",
-                                                    OperationExecutionBudget.WORKSPACE_READINESS.value,
-                                                )
-                                                put(
-                                                    "operationMillis",
-                                                    OperationExecutionBudget.forOperation(
-                                                            definition.operation.operation
-                                                        )
-                                                        .operation
-                                                        .value,
-                                                )
-                                            },
-                                        )
-                                        put(
-                                            "inputSchema",
-                                            when (val input = definition.inputBinding) {
-                                                is AgentToolInputBinding.Facade ->
-                                                    PublicToolContract.parameters(input.identity)
-                                                AgentToolInputBinding.Canonical ->
-                                                    buildJsonObject {
-                                                        put("type", "object")
-                                                        put("properties", buildJsonObject {})
-                                                        put("additionalProperties", false)
-                                                    }
-                                            },
-                                        )
-                                        put("outputSchema", buildJsonObject { put("type", "object") })
-                                    }
-                                )
+internal fun installedKastCatalogFixture(): String =
+    catalogFixtureJson.encodeToString(
+        KastCapabilityBoundary(
+            1,
+            KastServerProjectionBoundary(
+                11,
+                "kast",
+                KastHostedBootstrapBoundary(
+                    1,
+                    CanonicalAgentToolDefinitions.policy.text,
+                    CanonicalAgentToolDefinitions.all.map { definition ->
+                        KastHostedToolBoundary(
+                            definition.operation.id.value,
+                            definition.name.value,
+                            definition.description.value,
+                            definition.loading == HostedToolLoading.DEFERRED,
+                            definition.operation.effect.name.lowercase(),
+                            when (definition.approval) {
+                                HostedApprovalPolicy.NONE -> KastApprovalPolicy.NONE
+                                HostedApprovalPolicy.EXPLICIT -> KastApprovalPolicy.EXPLICIT
+                            },
+                            KastExecutionBudgetBoundary(
+                                OperationExecutionBudget.WORKSPACE_READINESS.value,
+                                OperationExecutionBudget.forOperation(definition.operation.operation).operation.value,
+                            ),
+                            when (val input = definition.inputBinding) {
+                                is AgentToolInputBinding.Facade -> PublicToolContract.parameters(input.identity)
+                                AgentToolInputBinding.Canonical ->
+                                    catalogFixtureJson.encodeToJsonElement(FixtureInputSchema())
+                            },
+                            catalogFixtureJson.encodeToJsonElement(FixtureOutputSchema()),
+                        )
+                    },
+                ),
+                KastCliInvocationsBoundary(
+                    3,
+                    CanonicalAgentToolDefinitions.all.map { definition ->
+                        val command =
+                            when (val input = definition.inputBinding) {
+                                is AgentToolInputBinding.Facade -> listOf("tool", input.identity.toolName)
+                                AgentToolInputBinding.Canonical -> definition.operation.id.value.split('.')
                             }
-                        },
-                    )
-                },
-            )
-            put(
-                "cliInvocations",
-                buildJsonObject {
-                    put("schemaVersion", 3)
-                    put(
-                        "operations",
-                        buildJsonArray {
-                            CanonicalAgentToolDefinitions.all.forEach { definition ->
-                                val command =
-                                    when (val input = definition.inputBinding) {
-                                        is AgentToolInputBinding.Facade -> listOf("tool", input.identity.toolName)
-                                        AgentToolInputBinding.Canonical -> definition.operation.id.value.split('.')
-                                    }
-                                add(
-                                    buildJsonObject {
-                                        put("operationId", definition.operation.id.value)
-                                        put("toolName", definition.name.value)
-                                        put("cliUsage", command.joinToString(" ") + " < request.json")
-                                        put(
-                                            "invocation",
-                                            buildJsonObject {
-                                                put("type", "CLI")
-                                                put(
-                                                    "command",
-                                                    buildJsonArray {
-                                                        command.forEach {
-                                                            add(kotlinx.serialization.json.JsonPrimitive(it))
-                                                        }
-                                                    },
-                                                )
-                                            },
-                                        )
-                                    }
-                                )
-                            }
-                        },
-                    )
-                },
-            )
-        },
+                        KastCliOperationInvocationBoundary(
+                            definition.name.value,
+                            definition.operation.id.value,
+                            command.joinToString(" ") + " < request.json",
+                            KastCliInvocationBoundary(KastInvocationType.CLI, command),
+                        )
+                    },
+                ),
+            ),
+        )
     )
-}
-    .toString()
+
+@Serializable private class FixtureProperties
+
+@Serializable
+private data class FixtureInputSchema(
+    val type: String = "object",
+    val properties: FixtureProperties = FixtureProperties(),
+    val additionalProperties: Boolean = false,
+)
+
+@Serializable private data class FixtureOutputSchema(val type: String = "object")

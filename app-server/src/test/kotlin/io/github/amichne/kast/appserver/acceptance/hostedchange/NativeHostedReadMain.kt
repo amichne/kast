@@ -84,12 +84,13 @@ private class NativeHostedReadTransport(
 
     suspend fun invoke(document: JsonObject): NativeReadResponse {
         val request = readRequestJson.decodeFromJsonElement(NativeReadRequest.serializer(), document)
-        demand(request.tool in nativeReadToolNames, NativeFailure.INPUT_REJECTED)
+        val definition = CanonicalAgentToolDefinitions.resolveInput(request.tool).nativeValue()
+        demand(definition.name.value in nativeReadToolNames, NativeFailure.INPUT_REJECTED)
+        val schema = schemas.getValue(definition.name.value)
         return when (request) {
             is NativeReadRequest.Invoke -> dispatch(request)
-            is NativeReadRequest.Validate -> validateNativeReadOutput(schemas.getValue(request.tool), request.document)
-            is NativeReadRequest.ValidateEnvelope ->
-                validateNativeReadEnvelope(schemas.getValue(request.tool), request.envelope)
+            is NativeReadRequest.Validate -> validateNativeReadOutput(schema, request.document)
+            is NativeReadRequest.ValidateEnvelope -> validateNativeReadEnvelope(schema, request.envelope)
         }
     }
 

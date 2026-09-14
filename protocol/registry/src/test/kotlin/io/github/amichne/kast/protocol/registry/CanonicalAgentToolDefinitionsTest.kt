@@ -60,8 +60,8 @@ class CanonicalAgentToolDefinitionsTest {
                 "symbol_lookup",
                 "symbol_inspect",
                 "source_read",
-                "semantic_query",
-                "impact_analyze",
+                "read_relations",
+                "traverse_relations",
                 "check_diagnostics",
                 "change_plan",
                 "change_apply",
@@ -76,8 +76,8 @@ class CanonicalAgentToolDefinitionsTest {
                 "search_declarations",
                 "query_symbols",
                 "source_read",
-                "semantic_query",
-                "impact_analyze",
+                "read_relations",
+                "traverse_relations",
                 "check_diagnostics",
                 "change_plan",
                 "change_apply",
@@ -93,7 +93,8 @@ class CanonicalAgentToolDefinitionsTest {
         )
         assertEquals(HostedApprovalPolicy.EXPLICIT, CanonicalAgentToolDefinitions.changeApply.approval)
         assertTrue("exact selector" in CanonicalAgentToolDefinitions.semanticQuery.description.value)
-        assertTrue("automatically" in CanonicalAgentToolDefinitions.impactAnalyze.description.value)
+        assertTrue("reachability is qualified" in CanonicalAgentToolDefinitions.impactAnalyze.description.value)
+        assertTrue("does not guarantee breakage" in CanonicalAgentToolDefinitions.impactAnalyze.description.value)
         val policy = CanonicalAgentToolDefinitions.policy.text
         assertTrue("compiler-grounded Kotlin source intelligence" in policy)
         assertTrue("Preserve returned symbol references" in policy)

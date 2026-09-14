@@ -12,7 +12,7 @@ OPERATIONS = (
     ('search_classes', 'query.run'), ('search_functions', 'query.run'),
     ('search_declarations', 'query.run'), ('query_symbols', 'query.run'),
     ('symbol_lookup', 'symbol.discover'), ('symbol_inspect', 'symbol.inspect'),
-    ('source_read', 'source.read'), ('semantic_query', 'relation.read'), ('impact_analyze', 'traversal.run'),
+    ('source_read', 'source.read'), ('read_relations', 'relation.read'), ('traverse_relations', 'traversal.run'),
     ('check_diagnostics', 'diagnostic.check'), ('change_plan', 'change.plan'),
     ('change_apply', 'change.apply'), ('change_recover', 'change.recover'),
 )

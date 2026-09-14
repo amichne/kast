@@ -143,7 +143,10 @@ class PreferredReadRoutingTest {
         }
         val calls = executor.requests.filterNot { it.arguments.first().startsWith("--") }
         assertEquals(listOf(operation.split('.'), operation.split('.')), calls.map { it.arguments })
-        assertEquals(1, calls.map { it.input }.distinct().size)
+        assertEquals(
+            listOf(arguments.toString(), arguments.toString()),
+            calls.map { (it.input as BrokerProcessInput.Document).value },
+        )
         assertEquals(
             listOf(preferred),
             broker.catalog.namespaces

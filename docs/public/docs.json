@@ -80,8 +80,8 @@
             "pages": [
               "POST /callables/query_symbols",
               "POST /callables/source_read",
-              "POST /callables/semantic_query",
-              "POST /callables/impact_analyze"
+              "POST /callables/read_relations",
+              "POST /callables/traverse_relations"
             ]
           },
           {
