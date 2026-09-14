@@ -12,8 +12,6 @@ import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.wire.OperationWireBinding
 import io.github.amichne.kast.protocol.wire.WireEncoding
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
-import java.nio.ByteBuffer
-import java.security.MessageDigest
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
@@ -52,6 +50,12 @@ internal class HostedOutputPages<
     ): HostedOutputRetention {
         expire()
         val normalized = normalize(request)
+        // Bounded equality retains the first issued identity without hashing source-bearing evidence.
+        val existing =
+            entries.entries.firstOrNull { (_, entry) ->
+                entry.lease == lease && entry.request == normalized && entry.outcome == outcome
+            }
+        if (existing != null) return HostedOutputRetention.Retained(existing.key)
         val requestDocument =
             when (val encoded = binding.encodeRequest(normalized)) {
                 is WireEncoding.Encoded -> encoded.document
@@ -68,16 +72,11 @@ internal class HostedOutputPages<
         if (bytes > maximumBytes) return HostedOutputRetention.CapacityExceeded
         // Stable child identities make a lost reply replayable without consuming its parent checkpoint.
         val token =
-            when (val parsed = ProtocolText.parse(prefix + outputIdentity(requestBytes, outcomeBytes))) {
+            when (val parsed = ProtocolText.parse(prefix + UUID.randomUUID())) {
                 is Refinement.Refined -> parsed.value
                 is Refinement.Rejected -> return HostedOutputRetention.EncodingRejected
             }
-        val existing = entries[token]
-        if (existing != null) {
-            return if (existing.lease == lease && existing.request == normalized && existing.outcome == outcome)
-                HostedOutputRetention.Retained(token)
-            else HostedOutputRetention.EncodingRejected
-        }
+        if (entries.containsKey(token)) return HostedOutputRetention.EncodingRejected
         while (entries.size >= capacity || entries.values.sumOf { it.bytes } + bytes > maximumBytes) entries.remove(
             entries.keys.first()
         )
@@ -109,10 +108,3 @@ internal class HostedOutputPages<
 }
 
 private const val RETAINED_DOCUMENT_FACTOR = 4L
-
-private fun outputIdentity(request: ByteArray, outcome: ByteArray): UUID {
-    val digest = MessageDigest.getInstance("SHA-256")
-    digest.update(request)
-    val bytes = ByteBuffer.wrap(digest.digest(outcome))
-    return UUID(bytes.long, bytes.long)
-}
