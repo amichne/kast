@@ -58,46 +58,7 @@
             "CONFIGURATION_REJECTED"
           ]
         },
-        "detail": {
-          "oneOf": [
-            {
-              "type": "string",
-              "maxLength": 128
-            },
-            {
-              "type": "object",
-              "additionalProperties": false,
-              "properties": {
-                "stage": {
-                  "type": "string",
-                  "maxLength": 64
-                },
-                "cause": {
-                  "enum": [
-                    "OBSERVATION_FAILED",
-                    "RUNTIME",
-                    "LINKAGE"
-                  ]
-                },
-                "field": {
-                  "type": "string",
-                  "maxLength": 64
-                }
-              }
-            },
-            {
-              "type": "array",
-              "maxItems": 64,
-              "items": {
-                "type": "string",
-                "maxLength": 128
-              }
-            },
-            {
-              "$ref": "#/$defs/namedSourceScopeFailure"
-            }
-          ]
-        },
+        "detail": {},
         "stage": {
           "enum": [
             "REQUEST_ADMISSION",
@@ -111,8 +72,73 @@
         },
         "recovery": {
           "$ref": "#/$defs/readRecovery"
+        },
+        "execution_budget": {
+          "$ref": "#/$defs/executionBudget"
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "failure": {
+                "const": "CONFIGURATION_REJECTED"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "detail": {
+                "$ref": "#/$defs/configurationFailure"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "detail": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 128
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "stage": {
+                        "type": "string",
+                        "maxLength": 64
+                      },
+                      "cause": {
+                        "enum": [
+                          "OBSERVATION_FAILED",
+                          "RUNTIME",
+                          "LINKAGE"
+                        ]
+                      },
+                      "field": {
+                        "type": "string",
+                        "maxLength": 64
+                      }
+                    }
+                  },
+                  {
+                    "type": "array",
+                    "maxItems": 64,
+                    "items": {
+                      "type": "string",
+                      "maxLength": 128
+                    }
+                  },
+                  {
+                    "$ref": "#/$defs/namedSourceScopeFailure"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
     },
     {
       "type": "object",
@@ -593,6 +619,361 @@
             }
           }
         }
+      ]
+    },
+    "executionBudget": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "max_elapsed_ms": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "selection": {
+              "type": "string",
+              "enum": [
+                "configured_default",
+                "caller"
+              ]
+            },
+            "requested": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "configuredDefault": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "operatorCeiling": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "effective": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "clamping": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "operator_ceiling",
+                  "transport_capacity",
+                  "deadline_remaining"
+                ]
+              }
+            }
+          },
+          "required": [
+            "selection",
+            "requested",
+            "configuredDefault",
+            "operatorCeiling",
+            "effective",
+            "clamping"
+          ]
+        },
+        "max_work_units": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "selection": {
+              "type": "string",
+              "enum": [
+                "configured_default",
+                "caller"
+              ]
+            },
+            "requested": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "configuredDefault": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "operatorCeiling": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "effective": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "clamping": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "operator_ceiling",
+                  "transport_capacity",
+                  "deadline_remaining"
+                ]
+              }
+            }
+          },
+          "required": [
+            "selection",
+            "requested",
+            "configuredDefault",
+            "operatorCeiling",
+            "effective",
+            "clamping"
+          ]
+        },
+        "max_results": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "selection": {
+              "type": "string",
+              "enum": [
+                "configured_default",
+                "caller"
+              ]
+            },
+            "requested": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "configuredDefault": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "operatorCeiling": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "effective": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "clamping": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "operator_ceiling",
+                  "transport_capacity",
+                  "deadline_remaining"
+                ]
+              }
+            }
+          },
+          "required": [
+            "selection",
+            "requested",
+            "configuredDefault",
+            "operatorCeiling",
+            "effective",
+            "clamping"
+          ]
+        },
+        "max_returned_bytes": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "selection": {
+              "type": "string",
+              "enum": [
+                "configured_default",
+                "caller"
+              ]
+            },
+            "requested": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "configuredDefault": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "operatorCeiling": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "effective": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "clamping": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "operator_ceiling",
+                  "transport_capacity",
+                  "deadline_remaining"
+                ]
+              }
+            }
+          },
+          "required": [
+            "selection",
+            "requested",
+            "configuredDefault",
+            "operatorCeiling",
+            "effective",
+            "clamping"
+          ]
+        }
+      },
+      "required": [
+        "max_elapsed_ms",
+        "max_work_units",
+        "max_results",
+        "max_returned_bytes"
+      ]
+    },
+    "configurationFailure": {
+      "oneOf": [
+        {
+          "properties": {
+            "cause": {
+              "enum": [
+                "UNKNOWN_PARAMETER"
+              ]
+            }
+          },
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "cause"
+          ]
+        },
+        {
+          "required": [
+            "cause",
+            "parameter"
+          ],
+          "properties": {
+            "cause": {
+              "enum": [
+                "INVALID_NUMBER",
+                "OUT_OF_RANGE"
+              ]
+            },
+            "parameter": {
+              "$ref": "#/$defs/readLimitParameter"
+            }
+          },
+          "type": "object",
+          "additionalProperties": false
+        },
+        {
+          "required": [
+            "cause",
+            "inner",
+            "outer"
+          ],
+          "properties": {
+            "cause": {
+              "enum": [
+                "INCONSISTENT_BOUNDS"
+              ]
+            },
+            "inner": {
+              "$ref": "#/$defs/readLimitParameter"
+            },
+            "outer": {
+              "$ref": "#/$defs/readLimitParameter"
+            }
+          },
+          "type": "object",
+          "additionalProperties": false
+        }
+      ]
+    },
+    "readLimitParameter": {
+      "enum": [
+        "KAST_READ_MODEL_CACHED_GRADLE_MODELS",
+        "KAST_READ_MODEL_MODULES",
+        "KAST_READ_MODEL_SOURCE_ROOTS_PER_MODULE",
+        "KAST_READ_MODEL_CLASSPATH_ENTRIES_PER_MODULE",
+        "KAST_READ_MODEL_IDENTITY_CHARACTERS",
+        "KAST_READ_MODEL_PATH_CHARACTERS",
+        "KAST_READ_MODEL_CLASSPATH_URL_CHARACTERS",
+        "KAST_READ_EPOCH_CACHED_GRADLE_MODELS",
+        "KAST_READ_EPOCH_VFS_EVENTS",
+        "KAST_READ_EPOCH_PATH_CHARACTERS",
+        "KAST_READ_EPOCH_PATH_BYTES",
+        "KAST_READ_HOST_QUERY_MILLIS",
+        "KAST_READ_SEMANTIC_MILLIS",
+        "KAST_READ_EXECUTION_MAX_MILLIS",
+        "KAST_READ_EXECUTION_MAX_WORK",
+        "KAST_READ_EXECUTION_MAX_RESULTS",
+        "KAST_READ_EXECUTION_MAX_RETURNED_BYTES",
+        "KAST_READ_SEMANTIC_WORK",
+        "KAST_READ_SEMANTIC_RESULTS",
+        "KAST_READ_SEMANTIC_RETURNED_BYTES",
+        "KAST_READ_QUERY_CHECKPOINT_BYTES",
+        "KAST_READ_QUERY_CONTINUATION_ENTRIES",
+        "KAST_READ_QUERY_CONTINUATION_BYTES",
+        "KAST_READ_QUERY_CONTINUATION_TTL_MILLIS",
+        "KAST_READ_DISCOVERY_FILES",
+        "KAST_READ_DISCOVERY_NAMES",
+        "KAST_READ_DISCOVERY_CANDIDATES",
+        "KAST_READ_RELATION_CANDIDATES",
+        "KAST_READ_SOURCE_ENTITY_WORK",
+        "KAST_READ_SOURCE_CONTINUATIONS",
+        "KAST_READ_SOURCE_CONTINUATION_BYTES",
+        "KAST_READ_SOURCE_CONTINUATION_TTL_MILLIS",
+        "KAST_READ_SOURCE_ENTITIES",
+        "KAST_READ_SOURCE_RETURNED_BYTES",
+        "KAST_READ_TRAVERSAL_DEPTH",
+        "KAST_READ_TRAVERSAL_FRONTIER",
+        "KAST_READ_HOST_REFERENCE_ENTRIES",
+        "KAST_READ_HOST_REFERENCE_BYTES",
+        "KAST_READ_HOST_REQUEST_BYTES",
+        "KAST_READ_HOST_RESPONSE_BYTES",
+        "KAST_READ_HOST_DESCRIPTOR_BYTES",
+        "KAST_READ_HOST_ACCEPT_BACKLOG",
+        "KAST_READ_HOST_CONNECTIONS",
+        "KAST_READ_HOST_CONNECTION_MILLIS",
+        "KAST_READ_CLIENT_EXCHANGE_MILLIS",
+        "KAST_READ_HOST_FILE_CHARACTERS",
+        "KAST_READ_HOST_CLASS_CANDIDATES",
+        "KAST_READ_DIAGNOSTIC_SCOPE_FILES",
+        "KAST_READ_DIAGNOSTIC_SCOPE_WORK",
+        "KAST_READ_DIAGNOSTIC_SCOPE_MILLIS",
+        "KAST_READ_DIAGNOSTIC_COUNT",
+        "KAST_READ_DIAGNOSTIC_FAILURES",
+        "KAST_READ_DIAGNOSTIC_FRAMES",
+        "KAST_READ_DIAGNOSTIC_TEXT_CHARACTERS",
+        "KAST_READ_PROVIDER_OUTPUT_BYTES",
+        "KAST_READ_PROVIDER_INVOCATION_MILLIS",
+        "KAST_READ_PROVIDER_GRAPH_INVOCATION_MILLIS",
+        "KAST_READ_PROCESS_INPUT_BYTES",
+        "KAST_READ_PROCESS_OUTPUT_BYTES",
+        "KAST_READ_PROCESS_TIMEOUT_MILLIS"
       ]
     }
   }

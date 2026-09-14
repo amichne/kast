@@ -36,8 +36,15 @@ internal object ExistingIdeDocuments {
                     ?: return Refinement.Rejected(ExistingIdeFailure.SCHEMA_UNAVAILABLE)
             val schemaText = resource.bufferedReader().use { it.readText() }
             val node = mapper.readTree(raw)
-            if (registry.getSchema(schemaText).validate(node).isEmpty()) Refinement.Refined(node)
-            else Refinement.Rejected(ExistingIdeFailure.RESPONSE_REJECTED)
+            if (registry.getSchema(schemaText).validate(node).isEmpty()) {
+                if (node.has("execution_budget")) {
+                    Json.decodeFromJsonElement(
+                        io.github.amichne.kast.protocol.contract.ExecutionBudgetReport.serializer(),
+                        Json.parseToJsonElement(node.get("execution_budget").toString()),
+                    )
+                }
+                Refinement.Refined(node)
+            } else Refinement.Rejected(ExistingIdeFailure.RESPONSE_REJECTED)
         } catch (_: RuntimeException) {
             Refinement.Rejected(ExistingIdeFailure.RESPONSE_REJECTED)
         } catch (_: java.io.IOException) {

@@ -4,6 +4,8 @@ package io.github.amichne.kast.workspace.intellij.read.hosted
 
 import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.ExecutionBudgetPresence
+import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitCancellation
@@ -59,6 +61,7 @@ class HostedDeadlineEvidenceTest {
 
     @Test
     fun `hard deadline retains the actual cleanup overrun in bounded stage evidence`() = runTest {
+        lateinit var admittedReport: ExecutionBudgetReport
         val receipts = mutableListOf<HostedReadDiagnosticReceipt>()
         val executor =
             HostedQueryExecutor(backgroundScope, { testScheduler.currentTime * 1_000_000L }) { policy ->
@@ -67,6 +70,7 @@ class HostedDeadlineEvidenceTest {
         val result =
             executor.execute(executor.endpoint) { progress ->
                 runHostedReadTransaction(progress, { Refinement.Refined(Unit) }) { allowance ->
+                    admittedReport = ExecutionBudgetReport.from(allowance.executionBudget)
                     assertEquals(2_000L, allowance.semantic.value)
                     try {
                         awaitCancellation()
@@ -77,7 +81,11 @@ class HostedDeadlineEvidenceTest {
             }
 
         assertEquals(
-            HostedExecution.Rejected(HostedQueryFailure.BUDGET_EXCEEDED, HostedQueryStage.SEMANTIC_READ),
+            HostedExecution.Rejected(
+                HostedQueryFailure.BUDGET_EXCEEDED,
+                HostedQueryStage.SEMANTIC_READ,
+                ExecutionBudgetPresence.Present(admittedReport),
+            ),
             result,
         )
         val receipt = receipts.single()

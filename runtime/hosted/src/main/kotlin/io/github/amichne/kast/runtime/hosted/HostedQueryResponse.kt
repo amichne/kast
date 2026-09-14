@@ -18,6 +18,7 @@ import io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument
 import io.github.amichne.kast.protocol.contract.QueryRunQualification
 import io.github.amichne.kast.protocol.contract.QueryRunResult
 import io.github.amichne.kast.protocol.contract.ReadResumeActionDocument
+import io.github.amichne.kast.protocol.contract.budgetPresence
 import io.github.amichne.kast.protocol.contract.reason
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
@@ -32,6 +33,23 @@ internal fun encodeHostedQueryResponse(
     maximumBytes: ReturnedByteLimit =
         ReturnedByteLimit.parse(limits[ReadLimitParameter.HOST_RESPONSE_BYTES].value.toLong()).proven(),
     retain: ((HostedQueryOutcome) -> HostedOutputRetention)? = null,
+): HostedResponse =
+    encodeHostedQueryResponseDocument(semantic, limits, observation, maximumResults, maximumBytes, retain)
+        .withReadBudget(
+            when (semantic) {
+                is OperationOutcome.Complete -> semantic.evidence.payload.executionBudget.presence()
+                is OperationOutcome.Qualified -> semantic.evidence.payload.executionBudget.presence()
+                is OperationOutcome.Rejected -> semantic.reason.budgetPresence()
+            }
+        )
+
+private fun encodeHostedQueryResponseDocument(
+    semantic: HostedQueryOutcome,
+    limits: ReadLimits,
+    observation: IntellijReadObservation,
+    maximumResults: ResultLimit,
+    maximumBytes: ReturnedByteLimit,
+    retain: ((HostedQueryOutcome) -> HostedOutputRetention)?,
 ): HostedResponse {
     val original =
         HostedResponse.Canonical.encode(CanonicalOperationWireBindings.queryRun, semantic, limits, maximumBytes)

@@ -302,6 +302,11 @@ internal sealed interface HostedSemanticBudgetObservation {
     ) : HostedSemanticBudgetObservation
 
     @Serializable
+    @SerialName("publication-rejected")
+    data class PublicationRejected(val candidate: io.github.amichne.kast.protocol.contract.ExecutionBudgetReport) :
+        HostedSemanticBudgetObservation
+
+    @Serializable
     @SerialName("exhausted")
     data class Exhausted(
         val remainingHostMillis: Long,

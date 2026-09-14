@@ -103,6 +103,8 @@ sealed interface HostedQueryResult {
     data class Rejected(
         val failure: HostedQueryFailure,
         val stage: HostedQueryStage = HostedQueryStage.REQUEST_ADMISSION,
+        val executionBudget: io.github.amichne.kast.protocol.contract.ExecutionBudgetPresence =
+            io.github.amichne.kast.protocol.contract.ExecutionBudgetPresence.Absent,
     ) : HostedQueryResult
 }
 

@@ -6,6 +6,8 @@ resource: file://distribution/contract
 tags: [configuration, distribution, installation]
 timestamp: 2026-09-14T00:00:00Z
 code_sources:
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/BrokerOperationalLimits.kt
+  - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/KastSchemaOutputBudgetTest.kt
   - path: kernel/src/main/kotlin/io/github/amichne/kast/kernel/ReadLimits.kt
     symbols: [ReadLimits, ReadLimitParameter]
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeReadConfiguration.kt
@@ -32,6 +34,12 @@ Two checked artifacts enforce the boundary: [configuration-schema.json](../../pa
 See [distribution](../modules/distribution.md).
 
 The `KAST_READ_*` declarations retain parameter identity, admitted values and provenance across model/epoch capture, semantic budgets, native collection, source paging, diagnostic scope enumeration, transport and provider execution. [Configuration instructions](../../docs/hosted-read-configuration.md) explain activation and paired bounds. Client exchange time strictly exceeds host connection time, and each provider invocation deadline strictly exceeds client exchange time; equality rejects with `InconsistentBounds`. Semantic configuration may equal host query configuration because semantic admission reserves completion time. Default request diagnostics include the effective policy.
+
+The fixed `broker.kast.schema.maximum_bytes` declaration is 1 MiB, aligned with
+the existing broker catalog allowance. It bounds schema qualification's combined
+process output independently of semantic request/result limits. The previous
+512 KiB policy was internal, not an external schema restriction; it must not
+force removal of finite variants or precise schema metadata.
 
 `ConfigurationSchemaDocument` defines the shared document. The CLI-owned `InstalledConfigurationSchema` is the sole catalogue generator and includes operational limits from protocol, broker, installation, and CLI owners.
 

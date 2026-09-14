@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-14 | hash: c25f787b9630 -->
+<!-- generated: 2026-09-14 | hash: ba0248f76aa7 -->
 
 # workspace
 
