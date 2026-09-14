@@ -180,7 +180,9 @@ remain bound. Storage capacity and expiry retain their separate operator limits.
 Query result units are emitted declarations; work units retain the query pipeline's
 existing accounting for candidate refinement and child reads. An explicit `take`
 remains part of query semantics. Query output suffixes and pipeline checkpoints
-exclude execution allowances from their request identity. Each output page retains
+exclude execution allowances from their request identity. Reissuing the same
+checkpoint reuses its token without renewing expiry; replay is non-consuming.
+Each output page retains
 known item failures, and its full canonical encoding includes the current grant.
 These controls are implemented for relation and query/search reads. Traversal and
 source remain part of the unfinished reliability work.

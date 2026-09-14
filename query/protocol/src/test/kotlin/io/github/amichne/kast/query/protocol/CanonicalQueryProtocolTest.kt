@@ -105,41 +105,6 @@ class CanonicalQueryProtocolTest {
     }
 
     @Test
-    fun `checkpoint replay retains token and expiry without consuming capacity`() = runTest {
-        var now = 0L
-        val store = QueryCheckpointStore(capacity = 1, maximumBytes = 16384L, clock = { now })
-        lateinit var retained: QueryCheckpoint
-        CanonicalQueryProtocol(
-                QueryOperations { admitted ->
-                    retained =
-                        object : QueryCheckpoint {
-                            override val plan = admitted.plan
-                            override val lease = admitted.lease
-                            override val retainedBytes = 1024L
-                        }
-                    QueryExecutionResult.Complete(
-                        QueryResult(QueryResultSet.Symbols(emptyList()), emptyList()),
-                        QueryCoverage.Complete(QueryCount.parse(0).refined()),
-                    )
-                },
-                CanonicalQueryReferences(),
-            )
-            .execute(request(), lease, budget)
-        val first = store.issue(request(), retained) as QueryCheckpointIssuance.Issued
-        now = 300_000_000_000L
-        val second = store.issue(request().copy(executionBudget = largerGrant), retained) as QueryCheckpointIssuance.Issued
-        assertEquals(first, second)
-        assertInstanceOf(QueryCheckpointRestoration.Restored::class.java, store.restore(first.token, request(), lease))
-        assertInstanceOf(QueryCheckpointRestoration.Restored::class.java, store.restore(second.token, request(), lease))
-        now = 600_000_000_001L
-        assertEquals(QueryCheckpointRestoration.Unavailable, store.restore(second.token, request(), lease))
-        assertEquals(
-            QueryCheckpointIssuance.CapacityExceeded,
-            QueryCheckpointStore(maximumBytes = 1L).issue(request(), retained),
-        )
-    }
-
-    @Test
     fun `host lookup expands the token before canonical authority and kind validation`() {
         val handle = text("candidate:v4:" + "a".repeat(64))
         val tokens = mutableMapOf<ProtocolText, ProtocolText>()

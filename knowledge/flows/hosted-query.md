@@ -383,6 +383,8 @@ metadata. Retained query and relation suffixes omit previous-call grant metadata
 publishes the newly admitted grant and excludes execution controls from retained
 semantic identity.
 
+Reissuing an equal detached query checkpoint returns its existing token without
+renewing its expiry or consuming another entry. Restoration is non-consuming.
 Query pipeline checkpoints and output suffixes exclude caller execution controls
 from semantic identity. Query page result limits also constrain retained output;
 every page preserves known item failures. An explicit query `take` remains part of
