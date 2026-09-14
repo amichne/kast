@@ -114,6 +114,49 @@ class HostedRelationReplayTest {
     }
 
     @Test
+    fun `exact expiry boundary is retained and replay never renews creation time`() = runTest {
+        val fixture = RelationPagingFixture.live()
+        val request = fixture.request(RelationReadPositionDocument.Start)
+        val outcome = fixture.page()
+        var now = 0L
+        val limits = ReadLimits.resolve(environment = mapOf("KAST_READ_QUERY_CONTINUATION_TTL_MILLIS" to "1")).proven()
+        val pages = store(limits) { now }
+        val retained = pages.issue(request, fixture.authority, outcome) as HostedOutputRetention.Retained
+        for (age in listOf(999_999L, 1_000_000L)) {
+            now = age
+            assertEquals(outcome, pages.restore(retained.token, request, fixture.authority))
+            assertEquals(retained, pages.issue(request, fixture.authority, outcome))
+        }
+        now = 1_000_001L
+        assertEquals(
+            OperationOutcome.Rejected(RelationReadRejection.CONTINUATION_UNAVAILABLE),
+            pages.restore(retained.token, request, fixture.authority),
+        )
+    }
+
+    @Test
+    fun `entry eviction uses creation order despite replay and clear retires retained output`() = runTest {
+        val authority = RelationPagingFixture.live().authority
+        val fixtures = listOf("first", "second", "third").map { RelationPagingFixture(authority, it) }
+        val requests = fixtures.map { it.request(RelationReadPositionDocument.Start) }
+        val outcomes = fixtures.map { it.page() }
+        val limits = ReadLimits.resolve(environment = mapOf("KAST_READ_QUERY_CONTINUATION_ENTRIES" to "2")).proven()
+        val pages = store(limits)
+        val first = pages.issue(requests[0], authority, outcomes[0]) as HostedOutputRetention.Retained
+        val second = pages.issue(requests[1], authority, outcomes[1]) as HostedOutputRetention.Retained
+        assertEquals(outcomes[0], pages.restore(first.token, requests[0], authority))
+        assertEquals(first, pages.issue(requests[0], authority, outcomes[0]))
+        val third = pages.issue(requests[2], authority, outcomes[2]) as HostedOutputRetention.Retained
+        val unavailable = OperationOutcome.Rejected(RelationReadRejection.CONTINUATION_UNAVAILABLE)
+        assertEquals(unavailable, pages.restore(first.token, requests[0], authority))
+        assertEquals(outcomes[1], pages.restore(second.token, requests[1], authority))
+        assertEquals(outcomes[2], pages.restore(third.token, requests[2], authority))
+        pages.clear()
+        assertEquals(unavailable, pages.restore(second.token, requests[1], authority))
+        assertEquals(unavailable, pages.restore(third.token, requests[2], authority))
+    }
+
+    @Test
     fun `envelope below minimum capacity never retains or publishes an empty cursor page`() = runTest {
         val fixture = RelationPagingFixture.live()
         val limits =
