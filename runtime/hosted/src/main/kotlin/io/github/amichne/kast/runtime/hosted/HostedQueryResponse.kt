@@ -20,6 +20,8 @@ internal fun encodeHostedQueryResponse(
     semantic: HostedQueryOutcome,
     limits: ReadLimits = ReadLimits.Default,
     observation: IntellijReadObservation = IntellijReadObservation.None,
+    maximumResults: io.github.amichne.kast.kernel.ResultLimit = io.github.amichne.kast.kernel.ResultLimit.parse(Int.MAX_VALUE).proven(),
+    maximumBytes: io.github.amichne.kast.kernel.ReturnedByteLimit = io.github.amichne.kast.kernel.ReturnedByteLimit.parse(65536).proven(),
     retain: ((HostedQueryOutcome) -> HostedOutputRetention)? = null,
 ): HostedResponse {
     val original = HostedResponse.Canonical.encode(CanonicalOperationWireBindings.queryRun, semantic, limits)

@@ -25,6 +25,25 @@ import org.junit.jupiter.api.Test
 
 class HostedQueryResponseTest {
     @Test
+    fun `caller page result allowance fits retained output without changing its semantics`() {
+        val all = List(3) { item() }
+        var suffix: HostedQueryOutcome? = null
+        val response = encodeHostedQueryResponse(
+            OperationOutcome.Complete(envelope(all, emptyList())),
+            maximumResults = io.github.amichne.kast.kernel.ResultLimit.parse(1).refined(),
+        ) { retained ->
+            suffix = retained
+            HostedOutputRetention.Retained(ProtocolText.parse(HostedQueryContinuations.prefix + "0".repeat(36)).refined())
+        } as HostedResponse.Canonical<*, *, *>
+        val qualified = org.junit.jupiter.api.Assertions.assertInstanceOf(OperationOutcome.Qualified::class.java, response.semantic)
+        val page = qualified.evidence.payload as QueryRunResult
+        assertEquals(all.take(1), page.items.values)
+        assertEquals(listOf(QueryLimitationDocument.RESULT_LIMIT_REACHED), (qualified.qualification as QueryRunQualification).limitations)
+        val remaining = suffix as OperationOutcome.Complete
+        assertEquals(all.drop(1), remaining.evidence.payload.items.values)
+    }
+
+    @Test
     fun `opaque reference expansion retains a qualified prefix inside the actual wire byte limit`() {
         val items = List(40) { item() }
         val envelope =
