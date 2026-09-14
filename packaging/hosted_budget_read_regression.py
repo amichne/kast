@@ -61,6 +61,15 @@ class BudgetFunctionSearch:
 
 
 @dataclass(frozen=True)
+class BudgetDeclarationSearch:
+    execution_budget: Budget
+    declaration_name: str = 'pageItem00'
+    name_match: str = 'exact'
+    scope: None = None
+    declaration_kinds: None = None
+
+
+@dataclass(frozen=True)
 class NoEntities:
     type: str = field(default='none', init=False)
 
@@ -105,6 +114,7 @@ def run_budget_read_regression(replay):
             ('query_symbols', BudgetQuery(ExactReferences((replay.seeds['logger']['symbol_ref'],)), budget)),
             ('search_classes', BudgetClassSearch(budget)),
             ('search_functions', BudgetFunctionSearch(budget)),
+            ('search_declarations', BudgetDeclarationSearch(budget)),
             ('source_read', BudgetSource(SymbolAnchor(replay.seeds['logger']['symbol_ref']), budget)),
             ('semantic_query', BudgetRelation(replay.seeds['helper']['symbol_ref'], budget)),
             ('impact_analyze', BudgetTraversal(replay.seeds['helper']['symbol_ref'], budget)),
