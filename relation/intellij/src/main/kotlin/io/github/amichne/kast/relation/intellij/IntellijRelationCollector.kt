@@ -119,6 +119,10 @@ internal class IntellijRelationCollector(
             state = IntellijRelationCollectionState.CONTRACT_REJECTED
             return IntellijRelationProviderItemAdmission.HALTED
         }
+        if (elapsedLimitReached()) {
+            halt(RelationLimitation.TIME_LIMIT_REACHED)
+            return IntellijRelationProviderItemAdmission.HALTED
+        }
         if (!prefixVerified) {
             observedPrefix = observedPrefix.advance(item)
             if (observedPrefix.nextPosition == requestedCursor.nextPosition) {
@@ -130,12 +134,25 @@ internal class IntellijRelationCollector(
             }
             return IntellijRelationProviderItemAdmission.SKIPPED_VERIFIED_PREFIX
         }
-        if (elapsedLimitReached()) {
-            halt(RelationLimitation.TIME_LIMIT_REACHED)
-            return IntellijRelationProviderItemAdmission.HALTED
+        return admitSemanticItem(item)
+    }
+
+    /** A completed unit consumes work; stop before another K2 refinement can begin. */
+    private fun admitSemanticItem(item: RelationProviderItemDescriptor): IntellijRelationProviderItemAdmission =
+        when {
+            examined >= request.budget.resources.workUnitLimit.value ->
+                haltAdmission(RelationLimitation.WORK_LIMIT_REACHED)
+            facts.size >= request.budget.resources.resultLimit.value ->
+                haltAdmission(RelationLimitation.RESULT_LIMIT_REACHED)
+            else -> {
+                pendingProviderItem = item
+                IntellijRelationProviderItemAdmission.READY
+            }
         }
-        pendingProviderItem = item
-        return IntellijRelationProviderItemAdmission.READY
+
+    private fun haltAdmission(limitation: RelationLimitation): IntellijRelationProviderItemAdmission {
+        halt(limitation)
+        return IntellijRelationProviderItemAdmission.HALTED
     }
 
     /** Commits a provider item that the semantic plan deliberately filtered. */
@@ -154,8 +171,8 @@ internal class IntellijRelationCollector(
      * unconsumed so a resumed request cannot omit it.
      */
     fun accept(fact: RelationFact): Boolean {
-        val pending = pendingProviderItem ?: return contractHalt()
         if (state != IntellijRelationCollectionState.COLLECTING) return false
+        val pending = pendingProviderItem ?: return contractHalt()
         if (elapsedLimitReached()) return halt(RelationLimitation.TIME_LIMIT_REACHED)
         if (examined >= request.budget.resources.workUnitLimit.value) {
             return halt(RelationLimitation.WORK_LIMIT_REACHED)
@@ -189,8 +206,8 @@ internal class IntellijRelationCollector(
         limitation: RelationLimitation,
         sample: RelationOmissionSample = RelationOmissionSample.Unavailable,
     ): Boolean {
-        val pending = pendingProviderItem ?: return contractHalt()
         if (state != IntellijRelationCollectionState.COLLECTING) return false
+        val pending = pendingProviderItem ?: return contractHalt()
         if (elapsedLimitReached()) return halt(RelationLimitation.TIME_LIMIT_REACHED)
         if (examined >= request.budget.resources.workUnitLimit.value) {
             return halt(RelationLimitation.WORK_LIMIT_REACHED)
