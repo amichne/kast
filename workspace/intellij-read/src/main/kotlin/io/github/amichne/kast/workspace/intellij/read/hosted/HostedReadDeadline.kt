@@ -44,6 +44,7 @@ internal class HostedReadDeadline(
     private val limits: ReadLimits,
     private val clock: () -> Long,
     private val request: HostedExecutionBudgetRequest = HostedExecutionBudgetRequest(),
+    private val publication: HostedReadPublicationAdmission = HostedReadPublicationAdmission.Containment,
 ) {
     private val started = clock()
     // Reserve for cooperative overrun, freshness revalidation and detachment. The hard timer still bounds all work.
@@ -54,7 +55,24 @@ internal class HostedReadDeadline(
         val elapsedNanos = (clock() - started).coerceAtLeast(0L)
         val elapsedMillis = elapsedNanos / 1_000_000L + if (elapsedNanos % 1_000_000L == 0L) 0L else 1L
         val remaining = (limits[ReadLimitParameter.HOST_QUERY_MILLIS].value - elapsedMillis).coerceAtLeast(0L)
-        val result = HostedSemanticTimeAllowance.admit(limits, remaining - completionReserveMillis, request)
+        val candidate = HostedSemanticTimeAllowance.admit(limits, remaining - completionReserveMillis, request)
+        val result =
+            when (candidate) {
+                is Refinement.Rejected -> candidate
+                is Refinement.Refined ->
+                    when (
+                        val admitted =
+                            publication.admit(
+                                io.github.amichne.kast.protocol.contract.ExecutionBudgetReport.from(
+                                    candidate.value.executionBudget
+                                ),
+                                limits,
+                            )
+                    ) {
+                        is Refinement.Refined -> candidate
+                        is Refinement.Rejected -> admitted
+                    }
+            }
         diagnostics?.budget(
             when (result) {
                 is Refinement.Refined ->
@@ -64,7 +82,17 @@ internal class HostedReadDeadline(
                         result.value.semantic.value,
                         result.value.diagnosticScope.value,
                     )
-                is Refinement.Rejected -> HostedSemanticBudgetObservation.Exhausted(remaining, completionReserveMillis)
+                is Refinement.Rejected ->
+                    when (candidate) {
+                        is Refinement.Rejected ->
+                            HostedSemanticBudgetObservation.Exhausted(remaining, completionReserveMillis)
+                        is Refinement.Refined ->
+                            HostedSemanticBudgetObservation.PublicationRejected(
+                                io.github.amichne.kast.protocol.contract.ExecutionBudgetReport.from(
+                                    candidate.value.executionBudget
+                                )
+                            )
+                    }
             }
         )
         return result

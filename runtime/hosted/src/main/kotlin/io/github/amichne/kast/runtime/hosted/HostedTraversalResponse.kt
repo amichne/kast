@@ -16,10 +16,27 @@ import io.github.amichne.kast.protocol.contract.TraversalLimitationDocument
 import io.github.amichne.kast.protocol.contract.TraversalPreparedCoverageDocument
 import io.github.amichne.kast.protocol.contract.TraversalRunQualification
 import io.github.amichne.kast.protocol.contract.TraversalRunResult
+import io.github.amichne.kast.protocol.contract.budgetPresence
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 
 /** Retain detached graph records before publishing; partial expansions and committed work remain mandatory. */
 internal fun encodeHostedTraversalResponse(
+    semantic: HostedTraversalOutcome,
+    limits: ReadLimits,
+    maximumResults: ResultLimit,
+    maximumBytes: ReturnedByteLimit,
+    retain: (HostedTraversalOutcome) -> HostedOutputRetention,
+): HostedResponse =
+    encodeHostedTraversalResponseDocument(semantic, limits, maximumResults, maximumBytes, retain)
+        .withReadBudget(
+            when (semantic) {
+                is OperationOutcome.Complete -> semantic.evidence.payload.executionBudget.presence()
+                is OperationOutcome.Qualified -> semantic.evidence.payload.executionBudget.presence()
+                is OperationOutcome.Rejected -> semantic.reason.budgetPresence()
+            }
+        )
+
+private fun encodeHostedTraversalResponseDocument(
     semantic: HostedTraversalOutcome,
     limits: ReadLimits,
     maximumResults: ResultLimit,

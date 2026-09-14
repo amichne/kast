@@ -84,6 +84,7 @@ private constructor(
         root: CanonicalWorkspaceRoot,
         outcome: (Value) -> HostedEvaluationOutcome = { HostedEvaluationOutcome.EVALUATED },
         executionBudget: HostedExecutionBudgetRequest = HostedExecutionBudgetRequest(),
+        publication: HostedReadPublicationAdmission = HostedReadPublicationAdmission.Containment,
         evaluate: suspend (HostedSemanticReadContext) -> Value,
     ): HostedSemanticReadResult<Value> {
         if (
@@ -111,6 +112,7 @@ private constructor(
                     endpoint,
                     configured.limits,
                     executionBudget = executionBudget,
+                    publication = publication,
                     outcome = { result: HostedSemanticRead<Value> ->
                         when (result) {
                             is HostedSemanticRead.Rejected -> HostedDiagnosticOutcome.Rejected(result.failure)
@@ -194,11 +196,13 @@ private constructor(
                     }
                 }
         ) {
-            is HostedExecution.Rejected -> HostedSemanticReadResult.Rejected(execution.failure, execution.stage)
+            is HostedExecution.Rejected ->
+                HostedSemanticReadResult.Rejected(execution.failure, execution.stage, execution.executionBudget)
             is HostedExecution.Completed ->
                 when (val result = execution.value) {
                     is HostedSemanticRead.Resolved -> HostedSemanticReadResult.Completed(result.evidence)
-                    is HostedSemanticRead.Rejected -> HostedSemanticReadResult.Rejected(result.failure, execution.stage)
+                    is HostedSemanticRead.Rejected ->
+                        HostedSemanticReadResult.Rejected(result.failure, execution.stage, execution.executionBudget)
                 }
         }
     }

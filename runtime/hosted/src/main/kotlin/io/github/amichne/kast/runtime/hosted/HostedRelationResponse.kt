@@ -17,6 +17,7 @@ import io.github.amichne.kast.protocol.contract.RelationPreparedCoverageDocument
 import io.github.amichne.kast.protocol.contract.RelationReadFailure
 import io.github.amichne.kast.protocol.contract.RelationReadQualification
 import io.github.amichne.kast.protocol.contract.RelationReadResult
+import io.github.amichne.kast.protocol.contract.budgetPresence
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 
 internal typealias HostedRelationOutcome =
@@ -29,6 +30,22 @@ internal fun encodeHostedRelationResponse(
     maximumResults: ResultLimit = ResultLimit.parse(limits[ReadLimitParameter.SEMANTIC_RESULTS].value).proven(),
     maximumBytes: ReturnedByteLimit =
         ReturnedByteLimit.parse(limits[ReadLimitParameter.HOST_RESPONSE_BYTES].value.toLong()).proven(),
+    retain: (HostedRelationOutcome) -> HostedOutputRetention,
+): HostedResponse =
+    encodeHostedRelationResponseDocument(semantic, limits, maximumResults, maximumBytes, retain)
+        .withReadBudget(
+            when (semantic) {
+                is OperationOutcome.Complete -> semantic.evidence.payload.executionBudget.presence()
+                is OperationOutcome.Qualified -> semantic.evidence.payload.executionBudget.presence()
+                is OperationOutcome.Rejected -> semantic.reason.budgetPresence()
+            }
+        )
+
+private fun encodeHostedRelationResponseDocument(
+    semantic: HostedRelationOutcome,
+    limits: ReadLimits,
+    maximumResults: ResultLimit,
+    maximumBytes: ReturnedByteLimit,
     retain: (HostedRelationOutcome) -> HostedOutputRetention,
 ): HostedResponse {
     val original =

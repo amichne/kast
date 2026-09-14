@@ -6,6 +6,7 @@ import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ReturnedByteLimit
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.contract.ExecutionBudgetPresence
 import io.github.amichne.kast.protocol.contract.OperationQualification
 import io.github.amichne.kast.protocol.contract.OperationRejection
 import io.github.amichne.kast.protocol.contract.OperationRequest
@@ -31,8 +32,11 @@ internal sealed interface HostedResponse {
         override val outcome = HostedEvaluationOutcome.COMPLETE
     }
 
-    class Rejected(val failure: HostedEndpointFailure) : HostedResponse {
-        override val document = HostedRequests.rejected(failure)
+    class Rejected(
+        val failure: HostedEndpointFailure,
+        val executionBudget: ExecutionBudgetPresence = ExecutionBudgetPresence.Absent,
+    ) : HostedResponse {
+        override val document = HostedRequests.rejected(failure, executionBudget)
         override val outcome = HostedEvaluationOutcome.REJECTED
     }
 
@@ -41,8 +45,12 @@ internal sealed interface HostedResponse {
         override val outcome = HostedEvaluationOutcome.REJECTED
     }
 
-    class ReadRejected(val failure: HostedQueryFailure, val stage: HostedQueryStage) : HostedResponse {
-        override val document = HostedQueryWire.encode(HostedQueryResult.Rejected(failure, stage))
+    class ReadRejected(
+        val failure: HostedQueryFailure,
+        val stage: HostedQueryStage,
+        val executionBudget: ExecutionBudgetPresence = ExecutionBudgetPresence.Absent,
+    ) : HostedResponse {
+        override val document = HostedQueryWire.encode(HostedQueryResult.Rejected(failure, stage, executionBudget))
         override val outcome = HostedEvaluationOutcome.REJECTED
     }
 
@@ -90,8 +98,9 @@ internal sealed interface HostedResponse {
     class Oversized(
         val operation: CanonicalOperation,
         val semantic: OperationOutcome<OperationResult, OperationQualification, OperationRejection>,
+        val executionBudget: ExecutionBudgetPresence = ExecutionBudgetPresence.Absent,
     ) : HostedResponse {
-        override val document = HostedRequests.rejected(HostedEndpointFailure.RESULT_TOO_LARGE)
+        override val document = HostedRequests.rejected(HostedEndpointFailure.RESULT_TOO_LARGE, executionBudget)
         override val outcome = HostedEvaluationOutcome.REJECTED
     }
 
@@ -100,8 +109,9 @@ internal sealed interface HostedResponse {
         val operation: CanonicalOperation,
         val semantic: OperationOutcome<OperationResult, OperationQualification, OperationRejection>,
         val failure: io.github.amichne.kast.protocol.wire.WireFailure,
+        val executionBudget: ExecutionBudgetPresence = ExecutionBudgetPresence.Absent,
     ) : HostedResponse {
-        override val document = HostedRequests.rejected(HostedEndpointFailure.RESPONSE_REJECTED)
+        override val document = HostedRequests.rejected(HostedEndpointFailure.RESPONSE_REJECTED, executionBudget)
         override val outcome = HostedEvaluationOutcome.REJECTED
     }
 }

@@ -92,3 +92,5 @@ is released, so native fault fixtures can wait for a correlated drain witness
 before the next health request. The structured observer retains finite outcomes,
 durations and byte counts without request or response payloads. Read rejection
 projection preserves any admitted execution report through fitting and encoding.
+
+Read containment keeps the admitted execution report when a timeout, final freshness check or publication failure rejects the operation. The executor records the report at semantic admission; failure projection does not reconstruct it from defaults. Pre-admission failures carry no grant. Output fitting retains the original semantic outcome internally when publishing an oversized or unencodable response fails.

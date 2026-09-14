@@ -70,8 +70,12 @@ internal constructor(
 sealed interface HostedSemanticReadResult<out Value> {
     data class Completed<Value>(val value: Value) : HostedSemanticReadResult<Value>
 
-    data class Rejected(val failure: HostedQueryFailure, val stage: HostedQueryStage) :
-        HostedSemanticReadResult<Nothing>
+    data class Rejected(
+        val failure: HostedQueryFailure,
+        val stage: HostedQueryStage,
+        val executionBudget: io.github.amichne.kast.protocol.contract.ExecutionBudgetPresence =
+            io.github.amichne.kast.protocol.contract.ExecutionBudgetPresence.Absent,
+    ) : HostedSemanticReadResult<Nothing>
 }
 
 /** One root and nonce for the service lifetime; retirement cannot rebind a project. */
