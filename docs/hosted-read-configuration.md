@@ -106,7 +106,8 @@ The [reproduction guide](../experiments/host-observation/SEMANTIC_REPRODUCTION.m
 
 The host deadline covers admission, model capture, semantic evaluation, freshness
 revalidation and detachment. Its default is 4,000 ms; semantic work retains a
-2,000 ms ceiling. At semantic entry, the host subtracts elapsed request time and
+2,000 ms default. Caller allowances may raise that default within the operator and
+host limits. At semantic entry, the host subtracts elapsed request time and
 reserves the smaller of 250 ms or one eighth of the host limit (at least 1 ms)
 for completion. Semantic and diagnostic-scope allowances are each capped by the
 remaining time after that reserve. A nonpositive allowance rejects before the

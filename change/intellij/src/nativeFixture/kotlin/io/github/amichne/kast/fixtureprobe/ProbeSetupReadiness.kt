@@ -123,7 +123,11 @@ internal class ProbeSetupReadiness(private val project: Project, private val san
                         return ProbeExecution.Rejected(ProbeFailure.DOCUMENT_STATE_REJECTED)
                 else -> return prepared
             }
-            val beforeRefresh = onEdt(deadline) { sample(request.command, requirement) }
+            val beforeRefresh =
+                when (val ready = awaitRefreshAdmission(request.command, requirement, deadline)) {
+                    is ProbeResult.Accepted -> ready.value
+                    is ProbeResult.Rejected -> return ProbeExecution.Rejected(ready.failure)
+                }
             when (val refresh = refresh(deadline)) {
                 is ProbeResult.Accepted ->
                     awaitQuiet(
@@ -144,6 +148,20 @@ internal class ProbeSetupReadiness(private val project: Project, private val san
         } catch (_: Exception) {
             ProbeExecution.Rejected(ProbeFailure.NATIVE_UNAVAILABLE)
         }
+    }
+
+    private fun awaitRefreshAdmission(
+        command: ProbeCommand,
+        requirement: ProbeImportRequirement,
+        deadline: Long,
+    ): ProbeResult<ProbeSetupSample> {
+        while (System.nanoTime() < deadline) {
+            val observed = onEdt(deadline) { sample(command, requirement) }
+            if (observed.status == ProbeSetupStatus.CANDIDATE) return ProbeResult.Accepted(observed)
+            if (disposed.await(SETUP_POLL_MILLIS, TimeUnit.MILLISECONDS))
+                return ProbeResult.Rejected(ProbeFailure.SETUP_CANCELLED)
+        }
+        return ProbeResult.Rejected(timeoutFailure())
     }
 
     private fun awaitQuiet(
