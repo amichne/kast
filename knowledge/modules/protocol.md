@@ -6,6 +6,9 @@ resource: file://protocol
 tags: [kotlin, protocol, serialization]
 timestamp: 2026-09-14T00:00:00Z
 code_sources:
+  - path: cli/src/test/kotlin/io/github/amichne/kast/cli/HostedFailureBudgetSchemaTest.kt
+  - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointEncodingFixtureTest.kt
+  - path: workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedFailureEncodingFixtureTest.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReadRecoveryAction.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt
   - path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt
@@ -99,7 +102,10 @@ remain unchanged on every fitted page, including the terminal suffix.
 `ReadRecoveryAction` derives the rejected read's direction exhaustively from the
 canonical failure, including its admitted wrapper. Wire round trips preserve the
 reason and budget, then CLI projection derives the same action. Installed schemas
-reuse the generated action enum and equal finite-failure evidence definitions to
-retain the unchanged provider qualification byte cap and 4,096-byte headroom.
+reuse the generated action enum and equal finite-failure evidence definitions.
+The provider qualification byte allowance and its reserved headroom remain owned
+by the broker operational limits.
 
-Hosted endpoint and hosted read rejection schemas admit an optional execution report only when an actual grant exists. The report shape matches the canonical serializer descriptor; CLI admission also checks its semantic dimension and clamping rules. Failure causes and stages retain their existing finite meanings.
+Hosted endpoint and hosted read rejection projections preserve an optional execution report from an actually admitted grant. The report shape matches the canonical serializer descriptor; CLI admission also checks its semantic dimension and clamping rules. Failure causes and stages retain their existing finite meanings.
+
+Hosted configuration rejections retain three closed detail shapes: an unknown parameter cause, an invalid-value cause with its parameter, or inconsistent bounds with their inner and outer parameters. The packaged schema binds parameter identities to the exact `ReadLimitParameter.environmentKey` set. Configuration details cannot appear under an unrelated failure code. Checked-in typed fixture documents are byte-compared with actual workspace and endpoint encoders, then validated against packaged and installed schemas; unknown causes, missing/null fields, unknown parameter keys and extra fields reject. Each producing test declares those shared fixture bytes as an input, so changes invalidate its cached result.
