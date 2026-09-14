@@ -456,7 +456,9 @@ checkpoints charge detached checkpoint accounting plus four times request bytes.
 The separate native source continuation owner and compact reference store have
 their own policies and are outside this five-store sum.
 
-Both hosted output and query-checkpoint stores expire when age is strictly
+The native source continuation owner expires at age greater than or equal to
+its TTL; its exact-boundary policy is intentionally distinct from the hosted
+stores. Both hosted output and query-checkpoint stores expire when age is strictly
 greater than TTL. An entry remains available at exactly TTL; restore and
 identical reissuance do not renew its creation time. Capacity eviction removes
 the oldest inserted entry even if it was replayed. Owner retirement clears all
