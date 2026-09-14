@@ -106,3 +106,55 @@ def _check_page(replay, name, selector, expected_name):
         'sameLiveAuthority': response.get('live') == replay.live,
         'effectiveWorkRetained': response.get('execution_budget', {}).get('max_work_units', {}).get('effective') == 100,
     }, len(entities), response)
+
+
+class SourceLimitation(str, Enum):
+    ENTITY_LIMIT = 'entity-limit-reached'
+    TEXT_BYTES = 'text-byte-limit-reached'
+    RETURNED_BYTES = 'returned-byte-limit-reached'
+    WORK = 'work-limit-reached'
+    TIME = 'time-limit-reached'
+    DUMB_MODE = 'dumb-mode-transition'
+    RESOLUTION = 'semantic-resolution-incomplete'
+    UNSUPPORTED = 'unsupported-entity'
+    PROVIDER = 'provider-failure'
+
+
+class SourceContinuationKind(str, Enum):
+    AVAILABLE = 'available'
+    UNAVAILABLE = 'unavailable'
+
+
+@dataclass(frozen=True)
+class ObservedSourceQualification:
+    limitations: tuple[SourceLimitation, ...]
+    continuation: SourceContinuationKind
+    knownMinimumEntityCount: int
+    outcome: str = field(default='observed', init=False)
+
+
+@dataclass(frozen=True)
+class UnrecognizedSourceQualification:
+    outcome: str = field(default='unrecognized', init=False)
+
+
+def source_qualification_observation(qualification):
+    try:
+        if set(qualification) != {'limitations', 'continuation', 'knownMinimumEntityCount'}:
+            raise ValueError('SOURCE_QUALIFICATION_SHAPE')
+        limits, continuation = qualification['limitations'], qualification['continuation']
+        count = qualification['knownMinimumEntityCount']
+        if (not isinstance(limits, list) or not 1 <= len(limits) <= len(SourceLimitation)
+                or type(count) is not int or not 0 <= count <= 2**31 - 1
+                or not isinstance(continuation, dict)):
+            raise ValueError('SOURCE_QUALIFICATION_VALUES')
+        admitted = tuple(SourceLimitation(value) for value in limits)
+        if len(set(admitted)) != len(admitted):
+            raise ValueError('SOURCE_QUALIFICATION_DUPLICATES')
+        kind = SourceContinuationKind(continuation['type'])
+        keys = {'type', 'continuation'} if kind is SourceContinuationKind.AVAILABLE else {'type'}
+        if set(continuation) != keys:
+            raise ValueError('SOURCE_QUALIFICATION_CONTINUATION')
+        return asdict(ObservedSourceQualification(admitted, kind, count))
+    except (ValueError, TypeError, KeyError):
+        return asdict(UnrecognizedSourceQualification())

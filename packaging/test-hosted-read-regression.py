@@ -115,6 +115,17 @@ class HostedReadRegressionTest(unittest.TestCase):
             self.assertEqual(156, len({(row['client'], row['round']) for row in report['attempts']}))
             self.assertNotIn('identity', json.dumps(report))
 
+    def test_source_qualification_observation_retains_finite_causes_without_cursor_payload(self):
+        response = {'status': 'qualified', 'qualification': {'knownMinimumEntityCount': 2,
+            'limitations': ['entity-limit-reached', 'work-limit-reached'],
+            'continuation': {'type': 'available', 'continuation': 'private-token'}}}
+        observed = _read_observation(response)['sourceQualification']
+        self.assertEqual('observed', observed['outcome'])
+        self.assertEqual(('entity-limit-reached', 'work-limit-reached'), observed['limitations'])
+        self.assertNotIn('private-token', json.dumps(observed))
+        response['qualification']['limitations'] = ['unknown']
+        self.assertEqual({'outcome': 'unrecognized'}, _read_observation(response)['sourceQualification'])
+
     @staticmethod
     def schema():
         return {'serverProjection': {'schemaVersion': 10, 'namespace': 'kast',

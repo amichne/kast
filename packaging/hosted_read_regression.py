@@ -15,7 +15,7 @@ from hosted_read_transport import HostedReadTransport, ReadProviderFailure, Read
 from hosted_read_requests import NativeTraversalRequest, TraversalStart, TraversalResume
 from native_provider_qualification import qualification_document
 from hosted_concurrent_read import run_concurrent_read_regression
-from hosted_source_read_regression import run_source_paging_regression
+from hosted_source_read_regression import run_source_paging_regression, source_qualification_observation
 
 
 def _reproduction(repo):
@@ -227,6 +227,8 @@ def _read_observation(response):
     qualification = response.get('qualification')
     if isinstance(qualification, dict) and 'relationLimitations' in qualification:
         result['traversalQualification'] = _traversal_qualification_observation(qualification)
+    if isinstance(qualification, dict) and 'knownMinimumEntityCount' in qualification:
+        result['sourceQualification'] = source_qualification_observation(qualification)
     live = response.get('live')
     if (isinstance(live, dict) and set(live) == {'root', 'host', 'epoch', 'contentView', 'version'}
             and type(live['epoch']) is int and 1 <= live['epoch'] <= 2**63 - 1
