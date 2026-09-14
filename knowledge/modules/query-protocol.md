@@ -4,8 +4,11 @@ title: Query protocol
 description: Shared semantic-read admission and projection bind canonical requests and detached references to an authority supplied by the owning host.
 resource: file://query/protocol
 tags: [kotlin, protocol, query, authority]
-timestamp: 2026-09-13T00:00:00Z
+timestamp: 2026-09-14T00:00:00Z
 code_sources:
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/RelationCheckpointDocument.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/TraversalCheckpointDocument.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/AdmittedReadRejections.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceQualifiedProgressDocument.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceReadOutcomeDocuments.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/SourceProgressProjection.kt
@@ -95,13 +98,13 @@ or topology admission. See [source identity](../contracts/source-identity.md),
 [semantic query](../flows/semantic-query.md), and
 [operation outcomes](../contracts/operation-outcomes.md).
 
-Relation and traversal continuations preserve their authority version: published
-continuations use version 1 and live continuations use version 2. Each document
+Relation and traversal upstream continuations preserve their authority version:
+published continuations use version 1 and live continuations use version 2. Each document
 owns the accepted-version pattern shared by its input serializer and advertised
 resumable output schema. Structural schema admission does not authenticate a
 continuation. Decoding checks the authority-specific version and revision, while
-owner admission retains subject, relation and scope checks. Terminal-incomplete
-relation output carries no continuation.
+owner admission retains subject, relation and scope checks. Terminal-incomplete upstream relation work has no upstream continuation; retained
+output may still need draining while preserving that terminal coverage.
 
 Test-only fixtures in `workspace:contract` and `query:protocol` admit a fixed live
 authority through its original owner and provide four ordered relation facts.
@@ -128,3 +131,17 @@ require an increased execution allowance. A terminal text-withheld explanation
 requires a matching text-byte limitation; other upstream gaps remain finite
 terminal evidence. Source wire admission rejects missing progress, unsupported
 variants and mismatched checkpoint families.
+
+Relation and traversal checkpoints distinguish upstream work from hosted retained
+output. The latter binds a detached suffix to the original complete, resumable,
+or terminal-incomplete coverage. Its token family does not grant permission to
+restart upstream work. The relation compatibility continuation is derived from
+the checkpoint, and wire admission rejects conflicting tokens. Traversal token
+admission verifies canonical payload encoding and digest before the owning
+protocol checks authority, subject, strategy, scope and cumulative progress.
+
+An admitted rejection in query, source, relation or traversal carries its existing
+finite reason plus the required execution-budget report. Missing metadata retains
+the unadmitted failure variant; null or malformed reports reject at the boundary.
+The [outcome contract](../contracts/operation-outcomes.md) separates this admission
+evidence from successful semantic results.

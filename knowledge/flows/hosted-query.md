@@ -241,7 +241,8 @@ occupies one connection slot without blocking other frame reads.
 
 `kast_transport` records a per-connection correlation ID, finite stage/outcome,
 monotonic stage duration, and observed byte counts. Stages cover accept, request
-read, semantic admission, execution, response preparation, and reply write.
+read, semantic admission, execution, response preparation, reply write, and
+connection release after the admission permit is returned.
 These records contain no source, request payload, or opaque reference.
 
 `HostedPeerCancellation` races request dispatch against peer disconnection or
@@ -492,6 +493,9 @@ the oldest inserted entry even if it was replayed. Owner retirement clears all
 five stores. Tests exercise TTL−1, exact TTL, TTL+1, replay, eviction and clear
 without changing those policies. Retained values are detached identities and
 results; these stores do not retain PSI, K2 sessions or a live project.
+
+### Installed transport and authority qualification
+
 The installed concurrent-read harness separates 156 semantic first attempts from
 four peer probes: disconnect, malformed input, admission saturation, and fresh
 listener health. Saturation uses the staged configuration catalog and actual

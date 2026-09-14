@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-14 | hash: be1cc28b93bb -->
+<!-- generated: 2026-09-14 | hash: d0f69692804f -->
 
 # packaging
 
@@ -9,6 +9,7 @@ Implements installer support, installed-product acceptance, configuration ingres
 
 ## Key Files
 
+- [hosted_transport_observation.py](hosted_transport_observation.py) - bounded native log observations and named transport drain conditions.
 - [hosted_enum_read_regression.py](hosted_enum_read_regression.py) - installed enum exclusion and member identity regression.
 
 - [hosted_change_acceptance.py](hosted_change_acceptance.py) - bounded complete artifact inventory admission and native acceptance evidence.

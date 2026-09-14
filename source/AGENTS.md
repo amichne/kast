@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-12 | hash: 98455aebbea2 -->
+<!-- generated: 2026-09-14 | hash: e9e206c7a991 -->
 
 # source
 
@@ -9,6 +9,7 @@ Models exact source selection, ranges, snapshots, and identity; serves reads thr
 
 ## Key Files
 
+- [IntellijSourceEntityPageCollector.kt](intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceEntityPageCollector.kt) - kind admission before compiler projection and ordered eligible-page capacity.
 - [contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceSelector.kt](contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceSelector.kt) - source selection domain.
 - [contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceSnapshot.kt](contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceSnapshot.kt) - captured source evidence.
 - [contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceTextIdentity.kt](contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceTextIdentity.kt) - content identity.

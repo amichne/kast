@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-14 | hash: cc0480261d61 -->
+<!-- generated: 2026-09-14 | hash: e9e206c7a991 -->
 
 # relation
 
