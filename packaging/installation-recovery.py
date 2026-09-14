@@ -16,7 +16,6 @@ import os
 import shutil
 import stat
 import sys
-import types
 import typing
 import uuid
 
@@ -63,7 +62,7 @@ class Identity:
 class Link:
     path: str
     target: str
-    priorTarget: str | None
+    priorTarget: typing.Optional[str]
 
 
 @dataclass(frozen=True)
@@ -72,7 +71,7 @@ class Plugin:
     candidate: str
     candidateIdentity: Identity
     backup: str
-    priorIdentity: Identity | None
+    priorIdentity: typing.Optional[Identity]
     quarantine: str
 
 
@@ -82,9 +81,9 @@ class Receipt:
     installation: str
     installationIdentity: Identity
     links: list[Link]
-    priorInstallation: str | None
-    plugin: Plugin | None
-    pluginRoot: str | None
+    priorInstallation: typing.Optional[str]
+    plugin: typing.Optional[Plugin]
+    pluginRoot: typing.Optional[str]
     stage: Status
 
 
@@ -102,7 +101,7 @@ def encode(document):
 def decode(kind, value):
     """Strict dataclass boundary: unknown fields and absent fields are rejected."""
     origin = typing.get_origin(kind)
-    if origin in (typing.Union, types.UnionType):
+    if origin is typing.Union:
         if value is None and type(None) in typing.get_args(kind):
             return None
         return decode(next(item for item in typing.get_args(kind) if item is not type(None)), value)

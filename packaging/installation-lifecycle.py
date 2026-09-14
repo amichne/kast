@@ -2,6 +2,7 @@
 from dataclasses import asdict, dataclass
 from enum import Enum
 import argparse
+from typing import Optional
 import fcntl
 import hashlib
 import json
@@ -50,7 +51,7 @@ class ControlLimit:
 @dataclass(frozen=True)
 class LifecycleRejection:
     failure: Failure
-    limit: ControlLimit | None = None
+    limit: Optional[ControlLimit] = None
     status: str = 'rejected'
 
 @dataclass(frozen=True)
