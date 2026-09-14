@@ -32,7 +32,7 @@ class AuthorityFailure(str, Enum):
 
 class AuthorityRefusal(str, Enum):
     STALE_REFERENCE = 'stale-generation'
-    STALE_CONTINUATION = 'contract-violation'
+    STALE_CONTINUATION = 'continuation-unavailable'
     FOREIGN = 'ide-host-unavailable'
 
 
