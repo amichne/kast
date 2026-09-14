@@ -6,6 +6,8 @@ resource: file://query
 tags: [kotlin, semantic, query, compiler]
 timestamp: 2026-09-13T00:00:00Z
 code_sources:
+  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijCallableIdentity.kt
+  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijCallableIdentityObservation.kt
   - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/BoundedNativeDiscoveryCollector.kt
   - path: symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/ScopedDeclarationDiscoveryTest.kt
   - path: query/service/src/test/kotlin/io/github/amichne/kast/query/service/QueryDiscoveryPlanningTest.kt
@@ -152,3 +154,10 @@ grant. If scheduling or provider work overruns that grant, traversal retains the
 actual elapsed time and proven facts, stops further reads, and qualifies the
 page with `time-limit-reached`. It resumes only when unfinished work remains;
 an exhausted overrun is terminal. An over-budget page cannot claim completion.
+
+Exact K2 callable projection distinguishes native callable identity, compiler-owned
+enum-entry initializer membership, and finite unavailable ownership stages.
+Bounded counters and termination reasons expose that boundary without recording
+names, source payloads, references, or live compiler objects. Enum-entry membership
+is established only through the compiler containing-symbol chain and equality
+with the enum entry's initializer, never from PSI naming.

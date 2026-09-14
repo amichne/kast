@@ -364,3 +364,18 @@ candidate capacity from work (and fuzzy retention also from results), so exclude
 entries outnumber both bounds. Class results must refine without item failures.
 Fixture isolation, harness unit, JSON and knowledge checks pass; the new native
 cases remain pending until their installed run completes.
+
+Installed run `8af886ca4` reproduced the entry-body defect: 128/130 read cases
+passed, with only `enum-entry-body-members` failing on both CLI and provider.
+Each returned one qualified declaration instead of both `act` declarations.
+Exact/fuzzy/scoped class exclusions passed, all query/source progress cases
+passed, 156/156 concurrent first attempts passed without retries, and all native
+mutation/recovery gates passed. The full read gate remains unqualified. Report:
+`/tmp/kast-agent-read-native-8af886ca4.json` (5m11s).
+
+The retained IDE observations show two candidates and two compiler refinements,
+with one refinement rejected. The investigation now records native callable
+identity, compiler-proven enum-entry ownership, or a finite unavailable ownership
+stage at exact K2 projection. It does not log names, source, references, or K2
+objects. The current projection still rejects enum-entry-owned members; this
+instrumentation is diagnostic preparation, not a fix or waived requirement.
