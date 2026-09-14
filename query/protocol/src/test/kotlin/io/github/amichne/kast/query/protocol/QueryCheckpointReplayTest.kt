@@ -79,6 +79,14 @@ class QueryCheckpointReplayTest {
         assertEquals(first, second)
         assertInstanceOf(QueryCheckpointRestoration.Restored::class.java, store.restore(first.token, request(), lease))
         assertInstanceOf(QueryCheckpointRestoration.Restored::class.java, store.restore(second.token, request(), lease))
+        for (age in listOf(599_999_999_999L, 600_000_000_000L)) {
+            now = age
+            assertEquals(first, store.issue(request(), retained))
+            assertInstanceOf(
+                QueryCheckpointRestoration.Restored::class.java,
+                store.restore(first.token, request(), lease),
+            )
+        }
         now = 600_000_000_001L
         assertEquals(QueryCheckpointRestoration.Unavailable, store.restore(second.token, request(), lease))
         assertEquals(

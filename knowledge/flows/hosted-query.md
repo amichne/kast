@@ -448,3 +448,23 @@ require an increased execution allowance. A terminal text-withheld explanation
 requires a matching text-byte limitation; other upstream gaps remain finite
 terminal evidence. Source wire admission rejects missing progress, unsupported
 variants and mismatched checkpoint families.
+
+### Hosted continuation retention bounds
+
+Each `HostedQueryContinuations.Active` owns five independently bounded stores:
+query execution checkpoints and query, relation, source and traversal output
+suffixes. For configured entry bound `C` and charged-byte bound `B`, this owner
+can retain at most `5 × C` entries and `5 × B` charged bytes in aggregate.
+`B` is each store's accounting bound, not a measurement of JVM heap usage:
+output stores charge four times encoded request plus outcome bytes; query
+checkpoints charge detached checkpoint accounting plus four times request bytes.
+The separate native source continuation owner and compact reference store have
+their own policies and are outside this five-store sum.
+
+Both hosted output and query-checkpoint stores expire when age is strictly
+greater than TTL. An entry remains available at exactly TTL; restore and
+identical reissuance do not renew its creation time. Capacity eviction removes
+the oldest inserted entry even if it was replayed. Owner retirement clears all
+five stores. Tests exercise TTL−1, exact TTL, TTL+1, replay, eviction and clear
+without changing those policies. Retained values are detached identities and
+results; these stores do not retain PSI, K2 sessions or a live project.
