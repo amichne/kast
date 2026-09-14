@@ -179,10 +179,17 @@ internal class TraversalTestFixture {
         occurrenceOffset: Int = 0,
     ): OneHopRelationRead {
         val relationRequest = request.relationRequest()
-        val facts = targets.mapIndexed { index, target ->
-            val repeatedOccurrences = targets.take(index).count { it.fingerprint == target.fingerprint }
-            fact(relationRequest, endpoint(relationRequest.subject, target), occurrenceOffset + repeatedOccurrences)
-        }.sorted()
+        val facts =
+            targets
+                .mapIndexed { index, target ->
+                    val repeatedOccurrences = targets.take(index).count { it.fingerprint == target.fingerprint }
+                    fact(
+                        relationRequest,
+                        endpoint(relationRequest.subject, target),
+                        occurrenceOffset + repeatedOccurrences,
+                    )
+                }
+                .sorted()
         val batch = batch(relationRequest, facts)
         val complete = RelationCompilation.complete(batch)
         return OneHopRelationRead.Completed(
