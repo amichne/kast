@@ -10266,16 +10266,6 @@
         "path": "protocol/wire/src/test/kotlin/io/github/amichne/kast/protocol/wire/CanonicalReadGeneratedSerializationTest.kt",
         "scope": "type:CanonicalReadGeneratedSerializationTest/fun:proof carrying qualifications round trip and malformed claims fail closed()",
         "kind": "JSON_LITERAL",
-        "sha256": "29471529a9983a634f5e7883e1aaf22d10c5aed10152a556baf3a505cbfd6d60"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "protocol/wire/src/test/kotlin/io/github/amichne/kast/protocol/wire/CanonicalReadGeneratedSerializationTest.kt",
-        "scope": "type:CanonicalReadGeneratedSerializationTest/fun:proof carrying qualifications round trip and malformed claims fail closed()",
-        "kind": "JSON_LITERAL",
         "sha256": "ece287eb87ec21c56174d0702eef9d00464b4888f646924a0d5f194ff1fd9c21"
       },
       "count": 1,

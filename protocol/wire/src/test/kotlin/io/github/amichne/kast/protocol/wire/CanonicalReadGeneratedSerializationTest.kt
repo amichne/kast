@@ -157,7 +157,7 @@ class CanonicalReadGeneratedSerializationTest {
         assertQualification(
             CanonicalReadSerializers.relationReadQualification,
             relation,
-            """{"type":"resumable","knownMinimum":2,"limitations":["result_limit_reached","provider_incomplete"],"continuation":"${continuation.value}"}""",
+            checkNotNull(javaClass.getResource("/relation/qualification/upstream-resume.json")).readText(),
             listOf(
                 """{"type":"resumable","knownMinimum":2,"limitations":["provider_incomplete","result_limit_reached"],"continuation":"${continuation.value}"}""",
                 """{"type":"resumable","knownMinimum":2,"limitations":["provider_incomplete"],"continuation":"bad"}""",
