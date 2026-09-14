@@ -225,6 +225,9 @@ data class SourceReadRequest(
     val entityLimit: SourceEntityLimitDocument,
     val textByteLimit: SourceTextByteLimitDocument,
     val page: SourceReadPageDocument,
+    @SerialName("execution_budget")
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val executionBudget: ExecutionBudgetDocument? = null,
 ) : OperationRequest
 
 internal object SourceReadRequestSerializer : KSerializer<SourceReadRequest> {
