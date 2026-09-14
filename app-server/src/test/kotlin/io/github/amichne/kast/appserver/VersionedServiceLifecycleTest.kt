@@ -53,6 +53,16 @@ class VersionedServiceLifecycleTest {
         assertTrue(BrokerInstallationState.admit(installation) is Refinement.Refined)
     }
 
+    @Test
+    fun `traversal budget applies across all payload trees`(@TempDir root: Path) {
+        val installation = product(root.resolve("product"))
+        for (tree in listOf("bin", "lib", "share")) {
+            repeat(5_500) { Files.createDirectory(installation.resolve("$tree/d-$it")) }
+        }
+        assertTrue(BrokerInstallationState.admit(installation) is Refinement.Rejected)
+        assertFalse(Files.exists(installation.resolve("state")))
+    }
+
     private fun product(root: Path): Path {
         listOf("bin", "lib", "share").forEach { Files.createDirectories(root.resolve(it)) }
         Files.writeString(root.resolve("lib/control.jar"), "payload")
