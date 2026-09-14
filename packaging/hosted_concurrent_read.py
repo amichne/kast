@@ -8,6 +8,7 @@ import json
 import struct
 from threading import Barrier, BrokenBarrierError
 
+from hosted_wire_schema import load_hosted_wire_schema
 from hosted_read_transport import ReadTransportRejected, ReadTransportFailure, ReadProviderFailure
 from hosted_peer_probe import (PeerAttempt, PeerCase, PeerOutcome, admit_peer_endpoint, connected_peer, probe_peer)
 from hosted_transport_observation import NativeTransportWindow, TransportStage, TransportSummary, TransportWitnessFailure, TransportWitnessRejected
@@ -100,6 +101,7 @@ def run_concurrent_read_regression(isolation, fixture, oracle, transport, live):
 
     endpoint = admit_peer_endpoint(isolation, fixture.workspace, live)
     capacity, configuration_digest = admission_capacity(isolation, transport)
+    wire_schema = load_hosted_wire_schema(transport.product)
 
     def faulty_peers():
         results = []
@@ -109,7 +111,7 @@ def run_concurrent_read_regression(isolation, fixture, oracle, transport, live):
             except BrokenBarrierError:
                 return results
             if round_number in (0, 1):
-                results.append(probe_peer(endpoint, PeerCase.DISCONNECTED if round_number == 0 else PeerCase.MALFORMED))
+                results.append(probe_peer(endpoint, PeerCase.DISCONNECTED if round_number == 0 else PeerCase.MALFORMED, wire_schema))
         return results
 
     attempts, peer_attempts = [], []
@@ -131,9 +133,9 @@ def run_concurrent_read_regression(isolation, fixture, oracle, transport, live):
                     peer = peers.enter_context(connected_peer(endpoint))
                     peer.sendall(struct.pack('>I', 128) + b'{')
                 observed.await_reading(before, capacity)
-                peer_attempts.append(probe_peer(endpoint, PeerCase.SATURATED))
+                peer_attempts.append(probe_peer(endpoint, PeerCase.SATURATED, wire_schema))
             observed.await_drained(len(before) + capacity + 1)
-            peer_attempts.append(probe_peer(endpoint, PeerCase.HEALTH))
+            peer_attempts.append(probe_peer(endpoint, PeerCase.HEALTH, wire_schema))
             observed.await_drained(len(before) + capacity + 2)
             observation = observed.summary()
             drained = True
@@ -144,6 +146,8 @@ def run_concurrent_read_regression(isolation, fixture, oracle, transport, live):
     passed_peers = {attempt.case for attempt in peer_attempts if attempt.outcome is PeerOutcome.PASSED}
     passed = (len(attempts) == CLIENTS * ROUNDS and all(attempt.outcome is ConcurrentOutcome.PASSED for attempt in attempts)
               and passed_peers == set(PeerCase) and qualification_failure is None
+              and all(attempt.schemaDigest == wire_schema.digest for attempt in peer_attempts
+                      if attempt.case is not PeerCase.DISCONNECTED)
               and observation is not None and observation.passed
               and observation.completeReplies >= CLIENTS * ROUNDS + 3)
     return asdict(ConcurrentReplay(ReplayOutcome.PASSED if passed else ReplayOutcome.REJECTED,
