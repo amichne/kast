@@ -55,6 +55,14 @@ class ExpectedNativeReport:
 
 
 @dataclass(frozen=True)
+class ExpectedTransportSummary:
+    passed: bool = True
+    completeReplies: int = 159
+    maximumCompleteRepliesPerConnection: int = 1
+    correlatedReplies: bool = True
+
+
+@dataclass(frozen=True)
 class ExpectedConcurrentReplay:
     outcome: str = 'passed'
     clients: int = 12
@@ -67,8 +75,11 @@ class ExpectedConcurrentReplay:
     disconnectedPeer: bool = True
     malformedPeer: bool = True
     listenerHealthy: bool = True
-    peerFirstAttempts: int = 3
-    peerPassedCount: int = 3
+    saturatedAdmission: bool = True
+    admissionDrained: bool = True
+    peerFirstAttempts: int = 4
+    peerPassedCount: int = 4
+    transportObservation: ExpectedTransportSummary = ExpectedTransportSummary()
 
 
 @dataclass(frozen=True)
@@ -443,7 +454,10 @@ class HostedChangeAcceptanceTest(unittest.TestCase):
                             (('readRegression', 'concurrentReplay'), asdict(ExpectedConcurrentReplay(disconnectedPeer=False))),
                             (('readRegression', 'concurrentReplay'), asdict(ExpectedConcurrentReplay(malformedPeer=False))),
                             (('readRegression', 'concurrentReplay'), asdict(ExpectedConcurrentReplay(listenerHealthy=False))),
-                            (('readRegression', 'concurrentReplay'), asdict(ExpectedConcurrentReplay(peerFirstAttempts=4))),
+                            (('readRegression', 'concurrentReplay'), asdict(ExpectedConcurrentReplay(saturatedAdmission=False))),
+                            (('readRegression', 'concurrentReplay'), asdict(ExpectedConcurrentReplay(admissionDrained=False))),
+                            (('readRegression', 'concurrentReplay'), asdict(ExpectedConcurrentReplay(transportObservation=ExpectedTransportSummary(maximumCompleteRepliesPerConnection=2)))),
+                            (('readRegression', 'concurrentReplay'), asdict(ExpectedConcurrentReplay(peerFirstAttempts=5))),
                             (('readRegression', 'concurrentReplay'), asdict(ExpectedConcurrentReplay(peerPassedCount=2))),
                             (('source', 'clean'), False), (('native', 'metadata', 'status'), 'rejected'),
                             (('native', 'providerQualification'), None),

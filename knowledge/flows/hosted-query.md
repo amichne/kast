@@ -6,6 +6,11 @@ resource: file://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/
 tags: [intellij, kotlin, semantic-query, lifecycle]
 timestamp: 2026-09-13T00:00:00Z
 code_sources:
+  - path: packaging/hosted_concurrent_read.py
+  - path: packaging/hosted_peer_probe.py
+  - path: packaging/hosted_transport_observation.py
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedTransportObservation.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceQualifiedProgressDocument.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceReadOutcomeDocuments.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/SourceProgressProjection.kt
@@ -440,3 +445,16 @@ require an increased execution allowance. A terminal text-withheld explanation
 requires a matching text-byte limitation; other upstream gaps remain finite
 terminal evidence. Source wire admission rejects missing progress, unsupported
 variants and mismatched checkpoint families.
+
+The installed concurrent-read harness separates 156 semantic first attempts from
+four peer probes: disconnect, malformed input, admission saturation, and fresh
+listener health. Saturation uses the staged configuration catalog and actual
+request-read observations, then requires the finite capacity rejection. The
+endpoint emits `CONNECTION_RELEASE` after releasing the admitted connection's
+permit; the macOS native harness waits on log-change notifications for those
+correlated release records before its single health request. Reports retain
+bounded stage/outcome duration and byte totals, first attempts, and finite witness
+failures without source, responses, descriptors, or connection identities. The
+peer checks establish exact rejection shapes and host authority fields; the full
+finite-failure payload/envelope schema matrix and edited/foreign-authority replay
+remain separate qualification requirements.

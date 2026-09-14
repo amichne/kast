@@ -423,6 +423,7 @@ def remaining_matrix_gates(native: dict | None = None, read_regression: dict | N
                            events: list[dict] | None = None) -> list[dict]:
     cases = (native or {}).get('cases', {})
     concurrent = (read_regression or {}).get('concurrentReplay') or {}
+    transport = concurrent.get('transportObservation') or {}
     def passed(*names):
         return all(cases.get(name, {}).get('outcome') == 'passed' for name in names)
     stages = {event.get('stage') for event in events or []
@@ -451,8 +452,14 @@ def remaining_matrix_gates(native: dict | None = None, read_regression: dict | N
          concurrent.get('outcome') == 'passed' and concurrent.get('clients') == 12
          and concurrent.get('rounds') == 13 and concurrent.get('firstAttempts') == 156
          and concurrent.get('passedCount') == 156 and concurrent.get('serialRetries') == 0
-         and concurrent.get('blockedPeer') is True and concurrent.get('sourcePayloadsLogged') is False,
-         'Requires 156 schema-valid first attempts through staged CLI clients with a blocked native peer.'),
+         and concurrent.get('blockedPeer') is True and concurrent.get('sourcePayloadsLogged') is False
+         and all(concurrent.get(key) is True for key in ('disconnectedPeer', 'malformedPeer',
+             'saturatedAdmission', 'admissionDrained', 'listenerHealthy'))
+         and concurrent.get('peerFirstAttempts') == 4 and concurrent.get('peerPassedCount') == 4
+         and transport.get('passed') is True and transport.get('correlatedReplies') is True
+         and transport.get('maximumCompleteRepliesPerConnection') == 1
+         and type(transport.get('completeReplies')) is int and transport['completeReplies'] >= 159,
+         'Requires 156 schema-valid first attempts through staged CLI clients with blocked, disconnected, malformed and saturated peers, observed admission drain, and a fresh listener reply.'),
         ('foreign-root-generated-ambiguous-and-model-movement',
          passed('foreign-root-refusal', 'generated-target-refusal', 'ambiguous-name-is-not-authority',
                 'model-movement-refusal', 'unsupported-intents', 'old-epoch-reference'),
