@@ -100,6 +100,24 @@ class InstallationWorkflowTest {
     }
 
     @Test
+    fun `installation with the shipped knowledge file count is idempotent`(@TempDir temporary: Path) {
+        val root = temporary.toRealPath()
+        val request =
+            releaseRequest(
+                root,
+                root.resolve("installation"),
+                root.resolve("commands"),
+                Files.createDirectory(root.resolve("home")),
+                Files.createDirectory(root.resolve("codex-home")),
+                "1.2.3",
+                controlFileCount = 7_494,
+            )
+
+        assertInstanceOf(InstallationOutcome.Complete::class.java, InstallationWorkflow.execute(request))
+        assertInstanceOf(InstallationOutcome.Complete::class.java, InstallationWorkflow.execute(request))
+    }
+
+    @Test
     fun `upgrade retains the admitted workspace registry`(@TempDir temporary: Path) {
         val root = temporary.toRealPath()
         val installation = root.resolve("installation")
