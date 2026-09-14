@@ -122,7 +122,7 @@ def stage_hosted_plugin(archive: Path, destination: Path, idea: HostedIdea) -> s
 
 
 def prepare_hosted_fixture(isolation: AcceptanceEnvironment, repo: Path,
-                           idea: HostedIdea, archive: Path) -> PreparedHostedFixture:
+                           idea: HostedIdea, archive: Path, *, installed_plugins: Path | None = None) -> PreparedHostedFixture:
     root = isolation.root
     workspace = root / 'workspace'
     if workspace.resolve() != workspace or any(workspace.iterdir()):
@@ -131,7 +131,14 @@ def prepare_hosted_fixture(isolation: AcceptanceEnvironment, repo: Path,
     ide.mkdir(mode=0o700)
     for name in ('config', 'system', 'log'):
         (ide / name).mkdir(mode=0o700)
-    plugin_digest = stage_hosted_plugin(archive, ide / 'plugins', idea)
+    plugins = installed_plugins if installed_plugins is not None else ide / 'plugins'
+    if installed_plugins is None:
+        plugin_digest = stage_hosted_plugin(archive, plugins, idea)
+    else:
+        if (not plugins.is_relative_to(root / 'home') or plugins.resolve(strict=True) != plugins
+                or not (plugins / 'kast-ide-hosted').is_dir()):
+            raise FixtureRejected(FixtureFailure.FIXTURE_OWNERSHIP)
+        plugin_digest = digest(archive)
     (workspace / 'settings.gradle.kts').write_text('rootProject.name = "hosted-change-acceptance"\n')
     (workspace / 'build.gradle.kts').write_text(
         'plugins { kotlin("jvm") version "2.3.10" }\nrepositories { mavenCentral() }\n')
@@ -164,7 +171,8 @@ def prepare_hosted_fixture(isolation: AcceptanceEnvironment, repo: Path,
     options = ide / 'idea.vmoptions'
     lines = (idea.home / 'bin/idea.vmoptions').read_text().splitlines()
     # Native launcher receives explicit private paths; it cannot select the daily profile.
-    lines.extend(f'-Didea.{name}.path={ide / name}' for name in ('config', 'system', 'plugins', 'log'))
+    lines.extend(f'-Didea.{name}.path={ide / name}' for name in ('config', 'system', 'log'))
+    lines.append(f'-Didea.plugins.path={plugins}')
     lines.extend((f'-Duser.home={root / "home"}', f'-Djava.io.tmpdir={root / "tmp"}',
                   '-Didea.initially.ask.config=never', '-Djb.consents.confirmation.enabled=false',
                   '-Dide.experimental.ui.onboarding=false'))
@@ -181,7 +189,7 @@ def prepare_hosted_fixture(isolation: AcceptanceEnvironment, repo: Path,
         'sourcePreimageSha256': digest(source),
         'gradleWrapperJarSha256': digest(workspace / 'gradle/wrapper/gradle-wrapper.jar'),
         'gradleWrapperPropertiesSha256': digest(workspace / 'gradle/wrapper/gradle-wrapper.properties'),
-        'writableIdePaths': {name: str(ide / name) for name in ('config', 'system', 'plugins', 'log')},
+        'writableIdePaths': {name: str(plugins if name == 'plugins' else ide / name) for name in ('config', 'system', 'plugins', 'log')},
         'isolation': 'private process environment; external read-only application; no copied user caches',
     }, indent=2) + '\n')
     receipt.chmod(0o600)

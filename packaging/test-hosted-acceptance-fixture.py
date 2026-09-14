@@ -92,6 +92,21 @@ class HostedFixtureTest(unittest.TestCase):
         for document in ({}, {'failure': 'DIRTY_DOCUMENTS'}, {'failure': 'PROJECT_ADMISSION_REJECTED', 'detail': 'WRONG_OWNER'}):
             self.assertFalse(runner.pending_readiness(document))
 
+    def test_installed_plugin_path_is_used_without_reextracting_product(self):
+        repo = Path(__file__).resolve().parent.parent
+        with AcceptanceEnvironment({'python3': Path(sys.executable)}) as isolation:
+            plugins = isolation.root / 'home/Library/Application Support/JetBrains/IntelliJIdea262/plugins'
+            plugins.parent.mkdir(parents=True)
+            stage_hosted_plugin(self.archive, plugins, self.idea)
+            plugin = plugins / 'kast-ide-hosted/lib/hosted.jar'
+            before = plugin.read_bytes()
+            prepared = prepare_hosted_fixture(isolation, repo, self.idea, self.archive, installed_plugins=plugins)
+            self.assertEqual(before, plugin.read_bytes())
+            self.assertIn('-Didea.plugins.path=' + str(plugins),
+                          Path(prepared.environment['IDEA_VM_OPTIONS']).read_text())
+            self.assertFalse((isolation.root / 'ide/plugins').exists())
+            isolation.mark_passed()
+
     def test_preparation_has_private_paths_and_claims_no_native_success(self):
         repo = Path(__file__).resolve().parent.parent
         with AcceptanceEnvironment({'python3': Path(sys.executable)}) as isolation:

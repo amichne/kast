@@ -6,6 +6,11 @@ resource: file://distribution
 tags: [distribution, configuration, packaging, release]
 timestamp: 2026-09-14T00:00:00Z
 code_sources:
+  - path: packaging/released_acceptance_product.py
+  - path: packaging/released_tool_inventory.py
+  - path: packaging/hosted_raw_symbol_regression.py
+  - path: packaging/released_payload_identity.py
+  - path: packaging/run-hosted-change-acceptance.py
   - path: packaging/hosted_read_regression.py
   - path: packaging/hosted_authority_read_regression.py
   - path: packaging/hosted_concurrent_read.py
@@ -75,3 +80,7 @@ mutation starts. Exact source restoration and observed readiness are required.
 Deterministic fixture tests and schema checks do not themselves qualify a native
 IDE run; [hosted query qualification](../flows/hosted-query.md) keeps those evidence
 boundaries separate.
+
+The native acceptance runner also accepts `--release-assets` and `--release-version` in place of source-built `--product` and `--plugin`. This mode requires a clean checkout at the exact version tag and a harness carrying that source commit. It invokes the tagged public `install.sh` with original checksum-bound control and plugin archives in an exclusively owned fixture. It verifies the checksum-derived installed version directory, manifest inventory, and original archive file bytes, then routes CLI and provider calls through the installed `bin/kast-complete`. The hosted plugin stays in the installer's private JetBrains plugin directory; only the separately identified test probe is added. Login-service and App Server activation are disabled during installation. This admission mode alone proves neither native behavior nor upgrade or persistent-session behavior; those require the corresponding completed runtime receipts. Temporary fake-installer tests qualify the admission boundary only.
+
+Released-mode admission also reads the installed schema through that wrapper and verifies all 13 advertised tools against their canonical operation IDs and the 11-tool saved default selection. The native read harness explicitly selects the 10 read tools, including raw symbol discovery and inspection. Their two additional native cases preserve the issued candidate selector through compiler refinement; adding those cases does not change installed production defaults.

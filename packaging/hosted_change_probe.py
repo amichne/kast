@@ -9,13 +9,15 @@ from acceptance_idea import digest
 from hosted_change_acceptance import AcceptanceFailure, AcceptanceRejected
 
 
-def stage_native_probe(archive: Path, root: Path, workspace: Path) -> str:
+def stage_native_probe(archive: Path, root: Path, workspace: Path, *, installed_plugins: Path | None = None) -> str:
     if (not archive.is_absolute() or archive.is_symlink() or not archive.is_file()
             or root.resolve(strict=True) != root or root.stat().st_mode & 0o777 != 0o700
             or workspace != root / 'workspace'):
         raise AcceptanceRejected(AcceptanceFailure.INPUT)
     expected_digest = digest(archive)
-    plugins = root / 'ide/plugins'
+    plugins = installed_plugins if installed_plugins is not None else root / 'ide/plugins'
+    if not plugins.is_relative_to(root) or plugins == root:
+        raise AcceptanceRejected(AcceptanceFailure.INPUT)
     destination = plugins / 'kast-native-fixture-probe'
     if destination.exists() or destination.is_symlink() or plugins.resolve(strict=True) != plugins:
         raise AcceptanceRejected(AcceptanceFailure.INPUT)
