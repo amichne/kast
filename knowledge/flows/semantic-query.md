@@ -85,6 +85,13 @@ and a public leaf needs no children to satisfy it. Missing or mismatched evidenc
 becomes `PredicateUnproven` with `VISIBILITY_INCOMPLETE`. Public source grammar
 continues to expose only direct-child and descendant containment.
 
+Native source declaration projection retains the requested kinds at the page owner.
+Known excluded kinds skip visibility resolution and candidate construction, including
+primary-constructor properties. Structural selectors, ranges, parents, and depths
+remain outside that deferred projection so excluded containers can still contain
+eligible descendants. Unavailable visibility for a selected declaration still
+qualifies the read; visited PSI units still consume the native execution grant.
+
 `CanonicalQueryProtocol` is shared by installed and existing-IDE composition.
 It preserves per-item failures and qualifications and projects the matching
 published or live evidence basis. `HostedCanonicalQuery` constructs the pure
