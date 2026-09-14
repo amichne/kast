@@ -9,6 +9,8 @@ code_sources:
   - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedReadAllowanceIdentityTest.kt
   - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedContinuationOwnerRetentionTest.kt
   - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryUnsupportedIdentityTest.kt
+  - path: packaging/hosted_resume_budget_regression.py
+  - path: packaging/test-hosted-resume-budget-regression.py
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCheckpointStore.kt
   - path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/QueryCheckpointReplayTest.kt
   - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedRelationReplayTest.kt
@@ -495,3 +497,18 @@ A shared-owner test configures one entry per store, retains five entries
 simultaneously, and verifies that changing the epoch retires all five. This is
 entry-composition and detached-identity evidence. It does not measure heap use
 or replace unchanged-fixture native execution parity for larger grants.
+
+
+The installed resume-budget helper defines twelve bounded cases per surface:
+query, source and relation reads, each with independently larger elapsed-time,
+work, result and byte allowances. It compares ordered complete drains against
+an unchanged-fixture baseline, including full relation occurrences and compiler
+evidence, source child order, ranges, snapshots and saved text. Issued upstream
+and retained-output checkpoints keep their distinct request positions and
+compatibility aliases. Each drain admits at most sixteen pages and one thousand
+records, rejects repeated tokens or changed authority/grants, and records only
+finite assertion names and counts. A complete low-grant page requires no invented
+continuation; time/work cases do not claim a deterministic wall-clock cutoff.
+Local Python checks qualify this orchestration and comparison logic. Native
+parity requires invoking the helper through the integrated staged artifact;
+its presence alone is not an installed-product qualification result.
