@@ -22,7 +22,14 @@ Null controls are an intentional property of this surface. Unknown/mixed shapes,
 
 Tool identity is separate from canonical operation identity. Catalogs require unique tool names and exact tool-to-CLI bindings. Repeated operation IDs require consistent operation effect, approval, budget and output contract. The operation continues to own all execution policy. No fake operations, second evaluator or lifecycle prerequisite are added. Source, relation, traversal and approved change tools remain; candidate lookup/refinement stays opt-in.
 
-Installed server projection **10** and CLI invocation projection **3** carry the new bindings. Old catalogs fail qualification and must be recreated with a matched executable/broker. Each new agent tool has exactly one supported schema. `kast.query` and `kast.diagnostic_check` are retired agent names. The explicit legacy `kast query run` CLI route below remains available with its original grammar; it is not a new agent alias.
+Installed server projection **11** and CLI invocation projection **3** carry the new bindings. Old catalogs fail qualification and must be recreated with a matched executable/broker. Each new agent tool has exactly one supported schema. `kast.query` and `kast.diagnostic_check` are retired agent names. The explicit legacy `kast query run` CLI route below remains available with its original grammar; it is not a new agent alias.
+
+The catalog advertises `read_relations` for `relation.read` and `traverse_relations`
+for `traversal.run`. Registry-owned `semantic_query` and `impact_analyze` inputs
+remain accepted by provider calls and configured selections throughout **0.40.x**,
+with removal no earlier than **0.41.0**. Only preferred names are advertised;
+aliases retain selection and catalog-binding checks. See the
+[compatibility interval](../../docs/public/agent-harnesses.mdx#relation-tool-name-compatibility).
 
 Search and advanced query results supply `symbol_ref`, derived from the retained exact `ref.token` bytes. Runtime reference restoration still owns authenticity, workspace, lifetime, epoch and scope. Input schema acceptance proves syntax only. Complete/qualified/rejected outcomes, item failures, signatures and occurrence facts remain intact; a qualified empty result is not proof of absence.
 
