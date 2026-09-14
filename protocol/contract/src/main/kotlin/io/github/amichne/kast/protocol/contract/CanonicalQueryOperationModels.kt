@@ -220,6 +220,8 @@ data class QueryRunRequest(
     val output: QueryOutputDocument,
     val execution: QueryExecutionDocument,
     val continuation: ProtocolText? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @SerialName("execution_budget") val executionBudget: ExecutionBudgetDocument? = null,
 ) : OperationRequest
 
 internal object QueryRunRequestSerializer : KSerializer<QueryRunRequest> {

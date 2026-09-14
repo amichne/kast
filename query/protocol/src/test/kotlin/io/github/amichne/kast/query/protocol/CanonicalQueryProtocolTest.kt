@@ -71,7 +71,10 @@ class CanonicalQueryProtocolTest {
         assertInstanceOf(
             OperationOutcome.Complete::class.java,
             protocol.execute(
-                request().copy(continuation = token),
+                request().copy(
+                    continuation = token,
+                    executionBudget = ExecutionBudgetDocument(maxWorkUnits = WorkUnitLimit.parse(200).refined()),
+                ),
                 lease,
                 budget.copy(returnedBytes = QueryByteLimit.parse(20000).refined()),
             ),
