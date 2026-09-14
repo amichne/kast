@@ -4,7 +4,7 @@ from dataclasses import asdict, dataclass, field, replace
 import unittest
 
 from hosted_budget_read_regression import (BudgetDeclarationSearch, BudgetSource, BudgetTraversal, ResultsBudget, WorkBudget,
-    graph_records, independent_grant)
+    graph_records, independent_grant, progress_advances, traversal_checkpoint)
 from hosted_source_read_regression import SymbolAnchor
 
 
@@ -64,7 +64,57 @@ class GraphResponse:
     graph: Graph
 
 
+@dataclass(frozen=True)
+class UpstreamCheckpoint:
+    token: str = 'traversal:v1:issued-checkpoint'
+    type: str = 'upstream'
+
+
+@dataclass(frozen=True)
+class RetainedCheckpoint:
+    token: str = 'traversal-output:v1:issued-checkpoint'
+    upstream: str = 'complete'
+    type: str = 'retained_output'
+
+
+@dataclass(frozen=True)
+class Qualification:
+    checkpoint: UpstreamCheckpoint | RetainedCheckpoint
+    continuation: str
+    type: str = 'resumable'
+    next_action: str = 'resume'
+
+
+@dataclass(frozen=True)
+class QualifiedPage:
+    qualification: Qualification
+    status: str = 'qualified'
+
+
+@dataclass(frozen=True)
+class Progress:
+    checkpointSequence: int
+    totalReads: int
+    totalEdges: int
+    maximumDepthReached: int
+
+
 class HostedBudgetReadRegressionTest(unittest.TestCase):
+    def test_checkpoint_reader_accepts_upstream_and_retained_without_conflating_them(self):
+        for checkpoint in (UpstreamCheckpoint(), RetainedCheckpoint(), RetainedCheckpoint(upstream='resumable')):
+            qualification = Qualification(checkpoint, checkpoint.token)
+            self.assertEqual(asdict(checkpoint), traversal_checkpoint(asdict(QualifiedPage(qualification))))
+            self.assertIsNone(traversal_checkpoint(asdict(QualifiedPage(replace(qualification, continuation='foreign')))))
+            self.assertIsNone(traversal_checkpoint(asdict(QualifiedPage(replace(qualification, next_action='unknown')))))
+
+    def test_cumulative_progress_allows_retained_equality_and_rejects_each_regression(self):
+        before = Progress(1, 2, 3, 1)
+        self.assertTrue(progress_advances(asdict(before), asdict(before)))
+        self.assertTrue(progress_advances(asdict(before), asdict(Progress(2, 3, 5, 2))))
+        for after in (replace(before, checkpointSequence=0), replace(before, totalReads=1),
+                      replace(before, totalEdges=2), replace(before, maximumDepthReached=0)):
+            self.assertFalse(progress_advances(asdict(before), asdict(after)))
+
     def test_one_axis_request_omits_other_dimensions_without_null_or_default_substitution(self):
         for request in (BudgetSource(SymbolAnchor('admitted-selector'), ResultsBudget(1)),
                         BudgetTraversal('admitted-selector', ResultsBudget(1)),
