@@ -7,6 +7,7 @@ data class SourceReadResult(
     val region: SourceRegionDocument,
     val entities: BoundedProtocolList<SourceEntityDocument>,
     val text: SourceTextProjectionDocument,
+    val executionBudget: ExecutionBudgetReport? = null,
 ) : OperationResult
 
 enum class SourceReadLimitationDocument {

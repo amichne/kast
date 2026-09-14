@@ -457,7 +457,7 @@ class LiveReadOutputSchemaTest {
                     .document(),
         )
 
-    private fun sourceResult(basis: EvidenceBasis): SourceReadResult {
+    fun sourceResult(basis: EvidenceBasis): SourceReadResult {
         val snapshot =
             SourceSnapshotDocument(
                 text("/workspace"),
@@ -484,7 +484,7 @@ class LiveReadOutputSchemaTest {
         )
     }
 
-    private fun traversalResult(): TraversalRunResult =
+    fun traversalResult(): TraversalRunResult =
         TraversalRunResult(
             text("/workspace"),
             BoundedProtocolList.create(
