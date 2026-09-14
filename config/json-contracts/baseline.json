@@ -9666,16 +9666,6 @@
         "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/projection/GeneratedCliProjectionTest.kt",
         "scope": "type:GeneratedCliProjectionTest/fun:qualified read outputs retain structured proof instead of one reason label()/declaration:<anonymous>",
         "kind": "JSON_LITERAL",
-        "sha256": "a41f21105f0824aab6ea1df4ff2aabbd5ac7e7e00cd4f9dde8f88b5e48ea85bf"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/projection/GeneratedCliProjectionTest.kt",
-        "scope": "type:GeneratedCliProjectionTest/fun:qualified read outputs retain structured proof instead of one reason label()/declaration:<anonymous>",
-        "kind": "JSON_LITERAL",
         "sha256": "44a3f3e6c85c39183edb03820c0554b5da75d10be445d0e7ec15978f09e59097"
       },
       "count": 1,

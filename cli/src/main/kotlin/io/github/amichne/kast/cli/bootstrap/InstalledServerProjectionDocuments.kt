@@ -391,6 +391,7 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
             "sourceEntity" to sourceEntitySchema(),
             "sourceTextProjection" to sourceTextProjectionSchema(),
             "sourceQualification" to sourceReadQualificationSchema(),
+            "traversalQualification" to traversalQualificationSchema(),
             "publishedTraversalGraph" to normalizedTraversalGraphSchema(ServerReadEvidenceShape.PUBLISHED),
             "liveTraversalGraph" to normalizedTraversalGraphSchema(ServerReadEvidenceShape.LIVE),
             "diagnostic" to diagnosticSchema(),
