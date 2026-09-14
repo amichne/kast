@@ -51,30 +51,30 @@ class TraversalServiceTest {
     }
 
     @Test
-    fun `public factory charges full one hop time authority before the next read`() {
+    fun `fast relation reads reach the second depth within one request budget`() {
         val requests = mutableListOf<io.github.amichne.kast.relation.contract.RelationRequest>()
         val relations = RelationOperations { request ->
             requests += request
-            fixture.completeRelationResult(
-                request,
-                listOf(fixture.endpoint(request.subject, b)),
-            )
+            val targets = when (request.subject.fingerprint.value) {
+                a.fingerprint.value -> listOf(fixture.endpoint(request.subject, b))
+                b.fingerprint.value -> listOf(fixture.endpoint(request.subject, c))
+                else -> emptyList()
+            }
+            fixture.completeRelationResult(request, targets)
         }
-        val plan =
-            fixture.plan(
-                a,
-                aggregateTime = 10L,
-                oneHop = fixture.relationBudget(time = 10L),
-            )
+        val plan = fixture.plan(
+            a,
+            aggregateTime = 60_000L,
+            oneHop = fixture.relationBudget(time = 60_000L),
+        )
 
-        val result =
-            assertInstanceOf(
-                TraversalResult.Qualified::class.java,
-                runSuspend { traversalOperations(relations).run(plan) },
-            )
+        val result = assertInstanceOf(
+            TraversalResult.Complete::class.java,
+            runSuspend { traversalOperations(relations).run(plan) },
+        )
 
-        assertEquals(setOf(TraversalLimitation.TIME_LIMIT_REACHED), result.qualification.limitations)
-        assertEquals(1, requests.size)
+        assertEquals(listOf(1, 2), result.page.records.map { it.depth.value })
+        assertEquals(3, requests.size)
     }
 
     @Test
