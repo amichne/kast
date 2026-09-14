@@ -163,11 +163,22 @@ def records(tool, response):
 
 
 def payload_parity(tool, observed, baseline):
-    """Full detached records preserve declaration order, occurrence ranges and compiler evidence."""
+    """Keep declaration order; relation pages retain individual occurrence and compiler evidence."""
     if not isinstance(observed, Drained) or not isinstance(baseline, Drained):
         return False
-    if tuple(item for page in observed.pages for item in records(tool, page)) != tuple(
-            item for page in baseline.pages for item in records(tool, page)):
+    actual = tuple(item for page in observed.pages for item in records(tool, page))
+    expected = tuple(item for page in baseline.pages for item in records(tool, page))
+    if tool == 'semantic_query':
+        # Native provider cursors use file/range order; RelationBatch sorts each
+        # admitted page by endpoint fingerprint. Grant changes can change page
+        # boundaries, but must preserve every full occurrence, including duplicates.
+        if Counter(actual) != Counter(expected):
+            return False
+        positions = {record: index for index, record in enumerate(expected)}
+        if any(tuple(positions[item] for item in records(tool, page)) !=
+               tuple(sorted(positions[item] for item in records(tool, page))) for page in observed.pages):
+            return False
+    elif actual != expected:
         return False
     pages = observed.pages + baseline.pages
     if tool == 'source_read':
@@ -230,7 +241,7 @@ def _case(replay, tool, request, low, large):
         'independentLowGrant': independent_grant(first, low),
         'independentLargerGrant': independent_grant(baseline_first, large),
         'effectiveAllowanceIncreased': _effective(baseline_first, large) > _effective(first, low),
-        'orderedPayloadAndCoverage': payload_parity(tool, observed, baseline),
+        'payloadIdentityCoverageAndRequiredOrder': payload_parity(tool, observed, baseline),
     }
     if tool == 'source_read' and isinstance(baseline, Drained):
         path = replay.fixture.workspace / replay.fixture.oracle['declarations']['logger'][0]

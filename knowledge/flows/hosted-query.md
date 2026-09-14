@@ -542,7 +542,7 @@ or replace unchanged-fixture native execution parity for larger grants.
 
 The installed resume-budget helper defines twelve bounded cases per surface:
 query, source and relation reads, each with independently larger elapsed-time,
-work, result and byte allowances. It compares ordered complete drains against
+work, result and byte allowances. It compares complete drains with ordered declarations/source children and full relation occurrence identity against
 an unchanged-fixture baseline, including full relation occurrences and compiler
 evidence, source child order, ranges, snapshots and saved text. Issued upstream
 and retained-output checkpoints keep their distinct request positions and

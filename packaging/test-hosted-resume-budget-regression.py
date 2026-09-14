@@ -206,6 +206,14 @@ class HostedResumeBudgetRegressionTest(unittest.TestCase):
         changed = replace(source, qualification=replace(source.qualification, continuation=Available('wrong')))
         self.assertEqual(DrainRejected(ResumeFailure.CHECKPOINT_REJECTED), admit_progress('source_read', asdict(changed)))
 
+    def test_relation_page_boundaries_preserve_full_occurrence_multiset_and_page_order(self):
+        a, b = Record('a'), Record('b', 'call-2')
+        reference = Drained((asdict(Relation((a, b))),))
+        self.assertTrue(payload_parity('semantic_query',
+            Drained((asdict(Relation((b,))), asdict(Relation((a,))))), reference))
+        for changed in ((a,), (a, a), (a, b, b)):
+            self.assertFalse(payload_parity('semantic_query', Drained((asdict(Relation(changed)),)), reference))
+
     def test_parity_rejects_lost_order_occurrence_proof_source_text_and_range(self):
         records = (Record('a'), Record('b', 'call-2'))
         reference = Drained((asdict(Relation(records)),))
