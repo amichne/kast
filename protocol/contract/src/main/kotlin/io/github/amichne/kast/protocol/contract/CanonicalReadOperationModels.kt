@@ -245,9 +245,15 @@ enum class RelationContinuationDocumentFailure {
 @Serializable(with = RelationContinuationDocumentSerializer::class)
 value class RelationContinuationDocument private constructor(val value: String) {
     companion object {
-        const val TOKEN_PATTERN: String = "^relation-continuation:v[12]:"
+        const val OUTPUT_PREFIX: String = "relation-output:v1:"
+        const val TOKEN_PATTERN: String =
+            "^(relation-continuation:v[12]:|relation-output:v1:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$)"
 
         fun parse(raw: String): Refinement<RelationContinuationDocument, RelationContinuationDocumentFailure> {
+            if (raw.startsWith(OUTPUT_PREFIX)) {
+                return if (Regex(TOKEN_PATTERN).matches(raw)) Refinement.Refined(RelationContinuationDocument(raw))
+                else Refinement.Rejected(RelationContinuationDocumentFailure.INVALID_TOKEN_STRUCTURE)
+            }
             val parts = raw.split(':')
             if (parts.firstOrNull() != RELATION_CONTINUATION_TOKEN_FAMILY) {
                 return Refinement.Rejected(RelationContinuationDocumentFailure.UNKNOWN_TOKEN_FAMILY)
@@ -367,6 +373,8 @@ enum class RelationReadRejection : OperationRejection {
     SELECTOR_STALE,
     RELATION_UNSUPPORTED,
     CONTINUATION_MALFORMED,
+    CONTINUATION_UNAVAILABLE,
+    CONTINUATION_REQUEST_MISMATCH,
     CONTINUATION_SUBJECT_MISMATCH,
     CONTINUATION_RELATION_MISMATCH,
     CONTINUATION_SCOPE_MISMATCH,

@@ -135,6 +135,8 @@ internal enum class RelationReadRejectionWireDocument {
     @SerialName("selector_stale") SELECTOR_STALE,
     @SerialName("relation_unsupported") RELATION_UNSUPPORTED,
     @SerialName("continuation_malformed") CONTINUATION_MALFORMED,
+    @SerialName("continuation_unavailable") CONTINUATION_UNAVAILABLE,
+    @SerialName("continuation_request_mismatch") CONTINUATION_REQUEST_MISMATCH,
     @SerialName("continuation_subject_mismatch") CONTINUATION_SUBJECT_MISMATCH,
     @SerialName("continuation_relation_mismatch") CONTINUATION_RELATION_MISMATCH,
     @SerialName("continuation_scope_mismatch") CONTINUATION_SCOPE_MISMATCH,

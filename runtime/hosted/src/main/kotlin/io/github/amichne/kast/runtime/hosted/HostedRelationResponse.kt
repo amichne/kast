@@ -1,17 +1,146 @@
 package io.github.amichne.kast.runtime.hosted
 
+import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.OperationOutcome
+import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.ResultLimit
+import io.github.amichne.kast.protocol.contract.BoundedProtocolList
+import io.github.amichne.kast.protocol.contract.RelationContinuationDocument
+import io.github.amichne.kast.protocol.contract.RelationKnownMinimumDocument
+import io.github.amichne.kast.protocol.contract.RelationLimitationDocument
 import io.github.amichne.kast.protocol.contract.RelationReadQualification
 import io.github.amichne.kast.protocol.contract.RelationReadRejection
 import io.github.amichne.kast.protocol.contract.RelationReadResult
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 
-internal typealias HostedRelationOutcome = OperationOutcome<RelationReadResult, RelationReadQualification, RelationReadRejection>
+internal typealias HostedRelationOutcome =
+    OperationOutcome<RelationReadResult, RelationReadQualification, RelationReadRejection>
 
-/** Response fitting retains a detached suffix before publishing a prefix. */
+/** Response fitting retains a detached suffix before publishing a nonempty prefix. */
 internal fun encodeHostedRelationResponse(
     semantic: HostedRelationOutcome,
     limits: ReadLimits,
+    maximumResults: ResultLimit = ResultLimit.parse(limits[ReadLimitParameter.SEMANTIC_RESULTS].value).proven(),
     retain: (HostedRelationOutcome) -> HostedOutputRetention,
-): HostedResponse = HostedResponse.Canonical.encode(CanonicalOperationWireBindings.relationRead, semantic, limits)
+): HostedResponse {
+    val original = HostedResponse.Canonical.encode(CanonicalOperationWireBindings.relationRead, semantic, limits)
+    val evidence: EvidenceEnvelope<RelationReadResult>
+    val limitations: List<RelationLimitationDocument>
+    val minimum: RelationKnownMinimumDocument
+    when (semantic) {
+        is OperationOutcome.Complete -> {
+            evidence = semantic.evidence
+            limitations = emptyList()
+            minimum = RelationKnownMinimumDocument.parse(evidence.payload.relations.values.size).proven()
+        }
+        is OperationOutcome.Qualified -> {
+            evidence = semantic.evidence
+            limitations = semantic.qualification.limitations
+            minimum = semantic.qualification.knownMinimum
+        }
+        is OperationOutcome.Rejected -> return original
+    }
+    val size = evidence.payload.relations.values.size
+    if (original !is HostedResponse.Oversized && size <= maximumResults.value) return original
+    val exhausted = buildList {
+        addAll(limitations)
+        if (original is HostedResponse.Oversized) add(RelationLimitationDocument.BYTE_LIMIT_REACHED)
+        if (size > maximumResults.value) add(RelationLimitationDocument.RESULT_LIMIT_REACHED)
+    }
+        .distinct()
+        .sortedBy { it.ordinal }
+    val fitting = RelationPageEncoding(evidence, minimum, exhausted, limits)
+    val count = largestFittingRelationPrefix(minOf(size - 1, maximumResults.value), fitting::placeholder)
+    if (count == 0)
+        return if (original is HostedResponse.Oversized) original
+        else HostedResponse.Rejected(HostedEndpointFailure.RESULT_TOO_LARGE)
+    val remainder =
+        evidence.copy(
+            payload =
+                evidence.payload.copy(
+                    relations = BoundedProtocolList.create(evidence.payload.relations.values.drop(count)).proven()
+                )
+        )
+    val suffix =
+        when (semantic) {
+            is OperationOutcome.Complete -> OperationOutcome.Complete(remainder)
+            is OperationOutcome.Qualified -> OperationOutcome.Qualified(remainder, semantic.qualification)
+            else -> return original
+        }
+    return retain(suffix).encodeRelation { token -> fitting.encode(count, token) }
+}
+
+private fun HostedOutputRetention.encodeRelation(
+    encode: (RelationContinuationDocument) -> HostedResponse
+): HostedResponse =
+    when (this) {
+        is HostedOutputRetention.Retained ->
+            when (val parsed = RelationContinuationDocument.parse(token.value)) {
+                is Refinement.Refined -> encode(parsed.value)
+                is Refinement.Rejected -> HostedResponse.Rejected(HostedEndpointFailure.RESPONSE_REJECTED)
+            }
+        HostedOutputRetention.CapacityExceeded -> HostedResponse.Rejected(HostedEndpointFailure.RESULT_TOO_LARGE)
+        HostedOutputRetention.EncodingRejected -> HostedResponse.Rejected(HostedEndpointFailure.RESPONSE_REJECTED)
+    }
+
+private class RelationPageEncoding(
+    private val evidence: EvidenceEnvelope<RelationReadResult>,
+    private val minimum: RelationKnownMinimumDocument,
+    private val limitations: List<RelationLimitationDocument>,
+    private val limits: ReadLimits,
+) {
+    fun placeholder(count: Int) = encode(count, PLACEHOLDER)
+
+    fun encode(count: Int, token: RelationContinuationDocument): HostedResponse =
+        HostedResponse.Canonical.encode(
+            CanonicalOperationWireBindings.relationRead,
+            OperationOutcome.Qualified(
+                evidence.copy(
+                    payload =
+                        evidence.payload.copy(
+                            relations =
+                                BoundedProtocolList.create(evidence.payload.relations.values.take(count)).proven()
+                        )
+                ),
+                RelationReadQualification.resumable(
+                        minimum,
+                        limitations,
+                        token,
+                    )
+                    .proven(),
+            ),
+            limits,
+        )
+}
+
+private fun largestFittingRelationPrefix(maximum: Int, encode: (Int) -> HostedResponse): Int {
+    var lower = 1
+    var upper = maximum
+    var fitting = 0
+    while (lower <= upper) {
+        val count = lower + (upper - lower) / 2
+        when (encode(count)) {
+            is HostedResponse.Canonical<*, *, *> -> {
+                fitting = count
+                lower = count + 1
+            }
+            is HostedResponse.Oversized -> upper = count - 1
+            else -> return 0
+        }
+    }
+    return fitting
+}
+
+private val PLACEHOLDER =
+    RelationContinuationDocument.parse(
+            RelationContinuationDocument.OUTPUT_PREFIX + "00000000-0000-0000-0000-000000000000"
+        )
+        .proven()
+
+private fun <Value> Refinement<Value, *>.proven(): Value =
+    when (this) {
+        is Refinement.Refined -> value
+        is Refinement.Rejected -> error("A subset of admitted relation evidence violated its contract")
+    }

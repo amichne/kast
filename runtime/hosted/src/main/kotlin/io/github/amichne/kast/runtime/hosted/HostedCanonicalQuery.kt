@@ -13,7 +13,6 @@ import io.github.amichne.kast.query.contract.QueryBudget
 import io.github.amichne.kast.query.contract.QueryByteLimit
 import io.github.amichne.kast.query.protocol.CanonicalDiagnosticCheckProtocol
 import io.github.amichne.kast.query.protocol.CanonicalQueryProtocol
-import io.github.amichne.kast.query.protocol.CanonicalRelationReadProtocol
 import io.github.amichne.kast.query.protocol.CanonicalSourceReadProtocol
 import io.github.amichne.kast.query.protocol.CanonicalSymbolDiscoverProtocol
 import io.github.amichne.kast.query.protocol.CanonicalSymbolInspectProtocol
@@ -70,13 +69,7 @@ internal suspend fun evaluateHostedCanonicalQuery(
                     .execute(request.request, context.authority, budgets.hostedSourceBudget),
                 limits = context.limits,
             )
-        is HostedRequest.Relation ->
-            HostedResponse.Canonical.encode(
-                CanonicalOperationWireBindings.relationRead,
-                CanonicalRelationReadProtocol(relations, references)
-                    .execute(request.request, context.authority, budgets.hostedRelationBudget),
-                limits = context.limits,
-            )
+        is HostedRequest.Relation -> evaluateHostedRelation(project, services, context, request)
         is HostedRequest.Traversal ->
             HostedResponse.Canonical.encode(
                 CanonicalOperationWireBindings.traversalRun,

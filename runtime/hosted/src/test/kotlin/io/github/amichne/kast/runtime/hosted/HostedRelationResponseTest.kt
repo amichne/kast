@@ -18,16 +18,26 @@ class HostedRelationResponseTest {
         val semantic = RelationPagingFixture.live().page() as OperationOutcome.Qualified
         val original = HostedResponse.Canonical.encode(CanonicalOperationWireBindings.relationRead, semantic)
         val maximumBytes = original.document.toByteArray().size - 1
-        val limits = (ReadLimits.resolve(environment = mapOf(
-            "KAST_READ_HOST_RESPONSE_BYTES" to maximumBytes.toString(),
-            "KAST_READ_SEMANTIC_RETURNED_BYTES" to maximumBytes.toString(),
-            "KAST_READ_SOURCE_RETURNED_BYTES" to maximumBytes.toString(),
-        )) as Refinement.Refined).value
+        val limits =
+            (ReadLimits.resolve(
+                    environment =
+                        mapOf(
+                            "KAST_READ_HOST_RESPONSE_BYTES" to maximumBytes.toString(),
+                            "KAST_READ_SEMANTIC_RETURNED_BYTES" to maximumBytes.toString(),
+                            "KAST_READ_SOURCE_RETURNED_BYTES" to maximumBytes.toString(),
+                        )
+                ) as Refinement.Refined)
+                .value
         val retained = mutableListOf<HostedRelationOutcome>()
-        val response = encodeHostedRelationResponse(semantic, limits) {
-            retained.add(it)
-            HostedOutputRetention.Retained((ProtocolText.parse("relation-output:v1:00000000-0000-0000-0000-000000000001") as Refinement.Refined).value)
-        }
+        val response =
+            encodeHostedRelationResponse(semantic, limits) {
+                retained.add(it)
+                HostedOutputRetention.Retained(
+                    (ProtocolText.parse("relation-output:v1:00000000-0000-0000-0000-000000000001")
+                            as Refinement.Refined)
+                        .value
+                )
+            }
         assertTrue(response is HostedResponse.Canonical<*, *, *>)
         assertTrue(response.document.toByteArray().size <= maximumBytes)
         val prefix = (response as HostedResponse.Canonical<*, *, *>).semantic as OperationOutcome.Qualified
@@ -35,8 +45,10 @@ class HostedRelationResponseTest {
         val suffix = retained.single() as OperationOutcome.Qualified
         assertFalse(published.relations.values.isEmpty())
         assertFalse(suffix.evidence.payload.relations.values.isEmpty())
-        assertEquals(semantic.evidence.payload.relations.values,
-            published.relations.values + suffix.evidence.payload.relations.values)
+        assertEquals(
+            semantic.evidence.payload.relations.values,
+            published.relations.values + suffix.evidence.payload.relations.values,
+        )
         assertEquals(semantic.evidence.payload.omissions, suffix.evidence.payload.omissions)
     }
 }

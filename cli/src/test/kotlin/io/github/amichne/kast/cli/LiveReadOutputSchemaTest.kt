@@ -56,6 +56,47 @@ class LiveReadOutputSchemaTest {
     }
 
     @Test
+    fun `every finite relation rejection satisfies its installed schema`() {
+        for (reason in RelationReadRejection.entries) {
+            val document = CanonicalReadCliDocuments.projectRelation(OperationOutcome.Rejected(reason)).document()
+            assertAdmits(CanonicalOperation.RELATION_READ, document)
+            assertEquals(JsonPrimitive(reason.name.lowercase().replace('_', '-')), document["reason"])
+        }
+    }
+
+    @Test
+    fun `hosted output cursor satisfies installed input and output contracts`() = runTest {
+        val fixture = RelationPagingFixture.live()
+        val original = fixture.page() as OperationOutcome.Qualified
+        val cursor =
+            RelationContinuationDocument.parse("relation-output:v1:00000000-0000-0000-0000-000000000001").refined()
+        val qualification =
+            RelationReadQualification.resumable(
+                    original.qualification.knownMinimum,
+                    original.qualification.limitations,
+                    cursor,
+                )
+                .refined()
+        assertAdmits(
+            CanonicalOperation.RELATION_READ,
+            CanonicalReadCliDocuments.projectRelation(OperationOutcome.Qualified(original.evidence, qualification))
+                .document(),
+        )
+        assertTrue(
+            relationInputSchema()
+                .validate(
+                    Json.encodeToString(fixture.request(RelationReadPositionDocument.Resume(cursor))),
+                    InputFormat.JSON,
+                )
+                .isEmpty()
+        )
+        for (raw in
+            listOf(cursor.value + "extra", cursor.value.replace(":v1:", ":v2:"), "relation-output:v1:invalid")) {
+            assertTrue(RelationContinuationDocument.parse(raw) is Refinement.Rejected)
+        }
+    }
+
+    @Test
     fun `owner issued relation continuations satisfy advertised output schemas`() = runTest {
         for (fixture in listOf(RelationPagingFixture.published(), RelationPagingFixture.live())) {
             val outcome = fixture.page() as OperationOutcome.Qualified

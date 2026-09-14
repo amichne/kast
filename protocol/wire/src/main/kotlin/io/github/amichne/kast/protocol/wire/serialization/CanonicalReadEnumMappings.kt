@@ -196,6 +196,9 @@ internal fun RelationReadRejection.toWireDocument(): RelationReadRejectionWireDo
         RelationReadRejection.SELECTOR_STALE -> RelationReadRejectionWireDocument.SELECTOR_STALE
         RelationReadRejection.RELATION_UNSUPPORTED -> RelationReadRejectionWireDocument.RELATION_UNSUPPORTED
         RelationReadRejection.CONTINUATION_MALFORMED -> RelationReadRejectionWireDocument.CONTINUATION_MALFORMED
+        RelationReadRejection.CONTINUATION_UNAVAILABLE -> RelationReadRejectionWireDocument.CONTINUATION_UNAVAILABLE
+        RelationReadRejection.CONTINUATION_REQUEST_MISMATCH ->
+            RelationReadRejectionWireDocument.CONTINUATION_REQUEST_MISMATCH
         RelationReadRejection.CONTINUATION_SUBJECT_MISMATCH ->
             RelationReadRejectionWireDocument.CONTINUATION_SUBJECT_MISMATCH
         RelationReadRejection.CONTINUATION_RELATION_MISMATCH ->
@@ -217,6 +220,9 @@ internal fun RelationReadRejectionWireDocument.toContract(): RelationReadRejecti
         RelationReadRejectionWireDocument.SELECTOR_STALE -> RelationReadRejection.SELECTOR_STALE
         RelationReadRejectionWireDocument.RELATION_UNSUPPORTED -> RelationReadRejection.RELATION_UNSUPPORTED
         RelationReadRejectionWireDocument.CONTINUATION_MALFORMED -> RelationReadRejection.CONTINUATION_MALFORMED
+        RelationReadRejectionWireDocument.CONTINUATION_UNAVAILABLE -> RelationReadRejection.CONTINUATION_UNAVAILABLE
+        RelationReadRejectionWireDocument.CONTINUATION_REQUEST_MISMATCH ->
+            RelationReadRejection.CONTINUATION_REQUEST_MISMATCH
         RelationReadRejectionWireDocument.CONTINUATION_SUBJECT_MISMATCH ->
             RelationReadRejection.CONTINUATION_SUBJECT_MISMATCH
         RelationReadRejectionWireDocument.CONTINUATION_RELATION_MISMATCH ->

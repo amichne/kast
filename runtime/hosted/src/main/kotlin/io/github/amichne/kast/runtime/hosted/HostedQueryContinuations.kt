@@ -5,12 +5,18 @@ import com.intellij.openapi.components.Service
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument
 import io.github.amichne.kast.protocol.contract.QueryRunQualification
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.QueryRunResult
+import io.github.amichne.kast.protocol.contract.RelationContinuationDocument
+import io.github.amichne.kast.protocol.contract.RelationReadPositionDocument
+import io.github.amichne.kast.protocol.contract.RelationReadRejection
+import io.github.amichne.kast.protocol.contract.RelationReadRequest
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.query.protocol.QueryCheckpointStore
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
@@ -69,6 +75,21 @@ internal class HostedQueryContinuations : Disposable {
                 mismatch = QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.CONTINUATION_MISMATCH),
             )
 
+        val relationOutputs =
+            HostedOutputPages(
+                CanonicalOperationWireBindings.relationRead,
+                RelationContinuationDocument.OUTPUT_PREFIX,
+                limits,
+                normalize = { request: RelationReadRequest ->
+                    request.copy(
+                        position = RelationReadPositionDocument.Start,
+                        limit = (ProtocolCount.parse(1) as Refinement.Refined).value,
+                    )
+                },
+                unavailable = RelationReadRejection.CONTINUATION_UNAVAILABLE,
+                mismatch = RelationReadRejection.CONTINUATION_REQUEST_MISMATCH,
+            )
+
         fun issue(
             request: QueryRunRequest,
             lease: SemanticReadAuthority,
@@ -80,6 +101,7 @@ internal class HostedQueryContinuations : Disposable {
 
         fun clear() {
             outputs.clear()
+            relationOutputs.clear()
             checkpoints.clear()
         }
     }

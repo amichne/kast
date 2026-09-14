@@ -9,6 +9,9 @@ code_sources:
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedTransportObservation.kt
   - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmissionTest.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedRelationResponse.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalRelation.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedOutputPages.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryContinuations.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDeadline.kt
   - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijScopedDeclarationEnumeration.kt
@@ -350,3 +353,19 @@ explicit read settings; epoch replacement and disposal clear project state.
 Resumption acquires fresh host admission before state lookup. No checkpoint holds
 PSI, K2 symbols or an IDE observer callback. The serialized output budget is
 checked after compact references and selected projection fields are encoded.
+
+Relation output uses the same detached output-page retention implementation as
+query output. If the full encoded relation response exceeds its byte cap, the
+host retains the suffix before publishing a nonempty fitting prefix. The suffix
+preserves omissions and the provider's original resumable or terminal coverage.
+`relation-output:v1` cursors identify host-owned retained output, while
+`relation-continuation:v1` and `v2` remain provider checkpoints. Restoring output
+cannot prove an unfinished provider scan complete.
+
+Output cursors are replayable until expiry or eviction. Equal retained requests
+and outcomes have equal child identities; replay does not refresh expiry. The
+request identity retains selector and relationship but excludes the page limit
+and position. Changed authority or semantic request is rejected. Each of the
+query checkpoint, query output, and relation output stores has the configured
+entry/byte bound; their aggregate maximum is three times that bound. No retained
+entry contains PSI or K2 state.
