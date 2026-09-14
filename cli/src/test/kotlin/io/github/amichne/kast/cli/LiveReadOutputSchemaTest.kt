@@ -23,6 +23,18 @@ import org.junit.jupiter.api.Test
 
 class LiveReadOutputSchemaTest {
     @Test
+    fun `every finite query execution rejection satisfies its installed schema`() {
+        for (reason in QueryExecutionRejectionDocument.entries) {
+            assertAdmits(
+                CanonicalOperation.QUERY_RUN,
+                CanonicalQueryCliDocuments.project(
+                    OperationOutcome.Rejected(QueryRunRejection.ExecutionRejected(reason))
+                ).document(),
+            )
+        }
+    }
+
+    @Test
     fun `owner issued relation continuations satisfy advertised output schemas`() = runTest {
         for (fixture in listOf(RelationPagingFixture.published(), RelationPagingFixture.live())) {
             val outcome = fixture.page() as OperationOutcome.Qualified
