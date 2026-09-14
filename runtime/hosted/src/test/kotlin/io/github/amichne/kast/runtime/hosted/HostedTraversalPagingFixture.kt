@@ -28,8 +28,7 @@ private constructor(
     val outcome: OperationOutcome.Qualified<TraversalRunResult, TraversalRunQualification>,
 ) {
     companion object {
-        suspend fun create(): HostedTraversalPagingFixture {
-            val owner = RelationPagingFixture.live()
+        suspend fun create(owner: RelationPagingFixture = RelationPagingFixture.live()): HostedTraversalPagingFixture {
             val relation = owner.page() as OperationOutcome.Qualified
             val records =
                 relation.evidence.payload.relations.values.map {
