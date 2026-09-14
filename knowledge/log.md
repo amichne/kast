@@ -2,6 +2,27 @@
 
 ## 2026-09-14
 
+- Reviewed the AR08 follow-up from audited `8c2b16ccb` through integrated
+  `e7de7de28`: impact reported 15 pages, comprising 13 concepts and two reserved
+  files. The prior ten concepts remain in scope; necessary response-byte admission
+  additionally affects [request dispatch](flows/request-dispatch.md), while
+  containment touches [workspace](modules/workspace.md) and the shared response
+  owner bound by [change](modules/change.md). Change lifecycle claims remain valid.
+  Checked strict outer deadline ordering, necessary byte admission, finite
+  rejected-read recovery, source continuation causes, page-local omissions,
+  cross-grant occurrence identity, endpoint-frame and provider-envelope schemas,
+  native source access-order eviction, admitted containment reports,
+  and original-release installer/payload/tool-inventory admission against their
+  current owners. Clarified occurrence multisets and required per-page order;
+  retained source-bound claims that remain accurate.
+- Rechecked 17 navigation owners: 15 generated maps and two authored instruction
+  files. All local links resolve. Added only missing routes for recovery,
+  endpoint frames, raw symbol reads, containment admission and original-release
+  qualification; refreshed
+  the two changed shallow hashes after review. Authored instructions are unchanged.
+  Source, fixture, schema and installer-admission evidence remains separate from
+  the final same-revision native run and the later released-artifact evaluation.
+
 - Recomputed AR08 impact from audited `8c2b16ccb` through integrated
   `14eeaff51`: reviewed all ten affected concepts, including
   [configuration](contracts/configuration.md),

@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-14 | hash: d0f69692804f -->
+<!-- generated: 2026-09-14 | hash: 8a97a3c671ac -->
 
 # packaging
 
@@ -9,6 +9,11 @@ Implements installer support, installed-product acceptance, configuration ingres
 
 ## Key Files
 
+- [hosted_wire_schema.py](hosted_wire_schema.py) - exact staged-jar endpoint schema admission for native peer frames.
+- [hosted_raw_symbol_regression.py](hosted_raw_symbol_regression.py) - raw discovery candidates and compiler refinement through both read surfaces.
+- [released_acceptance_product.py](released_acceptance_product.py) - original release assets through the tagged public installer in an owned fixture.
+- [released_payload_identity.py](released_payload_identity.py) - installed payload comparison against original archive bytes.
+- [released_tool_inventory.py](released_tool_inventory.py) - installed catalog, canonical bindings and saved default inventory.
 - [hosted_transport_observation.py](hosted_transport_observation.py) - bounded native log observations and named transport drain conditions.
 - [hosted_enum_read_regression.py](hosted_enum_read_regression.py) - installed enum exclusion and member identity regression.
 
