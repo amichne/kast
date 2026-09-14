@@ -14,6 +14,7 @@ import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.javaInterop.callableSymbol
 import org.jetbrains.kotlin.analysis.api.javaInterop.namedClassSymbol
@@ -86,7 +87,7 @@ internal class IntellijKotlinCompilerSymbolLookup(
                                 is PsiMember -> declaration.callableSymbol
                                 else -> null
                             }
-                        symbol?.toCompilerProjection() ?: compilerProjectionRejected()
+                        symbol?.toCompilerProjection(this, observation) ?: compilerProjectionRejected()
                     }
             ) {
                 is IntellijCompilerSymbolProjectionResult.Projected -> result.projection
@@ -132,10 +133,14 @@ private sealed interface IntellijCompilerSymbolProjectionResult {
  * identity. Rejection is the closed [IntellijSymbolSelectorRejection.COMPILER_IDENTITY_UNAVAILABLE] state. Raw K2
  * values remain inside the analysis-session receiver.
  */
-private fun KaSymbol.toCompilerProjection(): IntellijCompilerSymbolProjectionResult {
+private fun KaSymbol.toCompilerProjection(
+    session: KaSession,
+    observation: IntellijReadObservation,
+): IntellijCompilerSymbolProjectionResult {
     return when (this) {
         is KaValueParameterSymbol ->
-            generatedPrimaryConstructorProperty?.toCompilerProjection() ?: compilerProjectionRejected()
+            generatedPrimaryConstructorProperty?.toCompilerProjection(session, observation)
+                ?: compilerProjectionRejected()
         is KaConstructorSymbol -> {
             val owner = containingClassId?.asSingleFqName()?.asString() ?: return compilerProjectionRejected()
             projected(
@@ -144,27 +149,27 @@ private fun KaSymbol.toCompilerProjection(): IntellijCompilerSymbolProjectionRes
                 functionSignature("$owner.<init>"),
             )
         }
-        is KaFunctionSymbol -> {
-            val callable = callableId?.asSingleFqName()?.asString() ?: return compilerProjectionRejected()
-            projected(
-                CompilerSymbolKind.FUNCTION,
-                callable,
-                functionSignature(callable),
-            )
-        }
-        is KaKotlinPropertySymbol -> {
-            val callable = callableId?.asSingleFqName()?.asString() ?: return compilerProjectionRejected()
-            projected(
-                CompilerSymbolKind.PROPERTY,
-                callable,
-                CanonicalCompilerSignature.property(
-                    rawQualifiedIdentity = callable,
-                    rawReceiverType = receiverParameter?.returnType?.toString(),
-                    rawContextReceiverTypes = contextReceivers.map { it.type.toString() },
-                    rawReturnType = returnType.toString(),
-                ),
-            )
-        }
+        is KaFunctionSymbol ->
+            compilerCallableIdentity(session).projectCallable(observation) { callable ->
+                projected(
+                    CompilerSymbolKind.FUNCTION,
+                    callable,
+                    functionSignature(callable),
+                )
+            }
+        is KaKotlinPropertySymbol ->
+            compilerCallableIdentity(session).projectCallable(observation) { callable ->
+                projected(
+                    CompilerSymbolKind.PROPERTY,
+                    callable,
+                    CanonicalCompilerSignature.property(
+                        rawQualifiedIdentity = callable,
+                        rawReceiverType = receiverParameter?.returnType?.toString(),
+                        rawContextReceiverTypes = contextReceivers.map { it.type.toString() },
+                        rawReturnType = returnType.toString(),
+                    ),
+                )
+            }
         is KaTypeAliasSymbol -> {
             val className = classId?.asSingleFqName()?.asString() ?: return compilerProjectionRejected()
             projected(
@@ -182,6 +187,26 @@ private fun KaSymbol.toCompilerProjection(): IntellijCompilerSymbolProjectionRes
             )
         }
         else -> compilerProjectionRejected()
+    }
+}
+
+private inline fun IntellijCallableIdentity.projectCallable(
+    observation: IntellijReadObservation,
+    project: (String) -> IntellijCompilerSymbolProjectionResult,
+): IntellijCompilerSymbolProjectionResult {
+    return when (this) {
+        is IntellijCallableIdentity.Native -> {
+            observation.callableIdentity(IntellijCallableIdentityStatus.Native)
+            project(identity.asString())
+        }
+        is IntellijCallableIdentity.EnumEntryMember -> {
+            observation.callableIdentity(IntellijCallableIdentityStatus.EnumEntryMember)
+            project(owner.asSingleFqName().child(name).asString())
+        }
+        is IntellijCallableIdentity.Unavailable -> {
+            observation.callableIdentity(IntellijCallableIdentityStatus.Unavailable(reason))
+            compilerProjectionRejected()
+        }
     }
 }
 
