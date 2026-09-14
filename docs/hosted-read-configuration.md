@@ -166,6 +166,12 @@ apply. Raising a caller allowance cannot extend the configured host or client
 deadline. The admitted time excludes already elapsed model work and reserves
 publication headroom.
 
+A supplied byte allowance must hold at least the serialized canonical schema and
+operation identity. The host rejects smaller allowances before semantic dispatch.
+This necessary bound is derived by the wire owner; passing it does not promise that
+the response body, report, or continuation will fit. Final encoding still measures
+the complete envelope and returns its existing finite outcome when publication cannot fit.
+
 Read result metadata reports the selected default or caller value, operator
 ceiling, effective value, and finite clamping reasons. Relation work units are examined
 semantic relation items; cheap exclusions and replay verification are bounded by

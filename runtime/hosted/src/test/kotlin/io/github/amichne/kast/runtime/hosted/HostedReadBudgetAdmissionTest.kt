@@ -34,9 +34,11 @@ import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.protocol.wire.OperationWireBinding
 import io.github.amichne.kast.protocol.wire.WireEncoding
 import io.github.amichne.kast.query.protocol.RelationPagingFixture
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
@@ -49,18 +51,31 @@ class HostedReadBudgetAdmissionTest {
         val budgetJson = Json.encodeToString(budget)
         for (request in requests(budget)) {
             assertInstanceOf(Refinement.Refined::class.java, decode(request) { providerCalls += 1 })
-            for (axis in listOf("max_elapsed_ms", "max_work_units", "max_results", "max_returned_bytes")) {
-                for (invalid in listOf("0", "-1", "9223372036854775808", "1.5", "\"10\"")) {
-                    // Deliberately malformed boundary scalars must never produce a typed request.
-                    val invalidBudget = "{\"$axis\":$invalid}"
-                    val malformed = request.copy(document = request.document.replace(budgetJson, invalidBudget))
+            for (invalid in listOf("0", "-1", "9223372036854775808", "1.5", "\"10\"")) {
+                val scalar = Json.parseToJsonElement(invalid)
+                for (invalidBudget in
+                    listOf(
+                        InvalidReadBudget(elapsed = scalar),
+                        InvalidReadBudget(work = scalar),
+                        InvalidReadBudget(results = scalar),
+                        InvalidReadBudget(bytes = scalar),
+                    )) {
+                    val malformed =
+                        request.copy(
+                            document = request.document.replace(budgetJson, Json.encodeToString(invalidBudget))
+                        )
                     assertEquals(
                         Refinement.Rejected(HostedEndpointFailure.INVALID_REQUEST),
                         decode(malformed) { providerCalls += 1 },
                     )
                 }
             }
-            for (invalidBudget in listOf("{\"unsupported\":1}", "[]", "\"unknown\"")) {
+            for (invalidBudget in
+                listOf(
+                    Json.encodeToString(UnsupportedReadBudget(1)),
+                    Json.encodeToString(emptyList<String>()),
+                    Json.encodeToString("unknown"),
+                )) {
                 val malformed = request.copy(document = request.document.replace(budgetJson, invalidBudget))
                 assertEquals(
                     Refinement.Rejected(HostedEndpointFailure.INVALID_REQUEST),
@@ -171,3 +186,14 @@ class HostedReadBudgetAdmissionTest {
 }
 
 @Serializable private data class HostedReadInput(val type: String, val document: String, val root: String)
+
+/** Invalid scalar fixtures intentionally remain opaque until the real request decoder rejects them. */
+@Serializable
+private data class InvalidReadBudget(
+    @SerialName("max_elapsed_ms") val elapsed: JsonElement? = null,
+    @SerialName("max_work_units") val work: JsonElement? = null,
+    @SerialName("max_results") val results: JsonElement? = null,
+    @SerialName("max_returned_bytes") val bytes: JsonElement? = null,
+)
+
+@Serializable private data class UnsupportedReadBudget(val unsupported: Int)
