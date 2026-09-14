@@ -3,9 +3,6 @@ package io.github.amichne.kast.source.intellij
 import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.source.contract.Containment
-import io.github.amichne.kast.source.contract.DeclarationVisibility
-import io.github.amichne.kast.source.contract.EntityFilter
 import io.github.amichne.kast.source.contract.EntitySelection
 import io.github.amichne.kast.source.contract.RegionSelection
 import io.github.amichne.kast.source.contract.SourceEntity
@@ -33,7 +30,6 @@ import io.github.amichne.kast.source.contract.SourceTextWithheldReason
 import io.github.amichne.kast.source.contract.TextProjection
 import io.github.amichne.kast.source.contract.Utf16CodeUnitCount
 import io.github.amichne.kast.source.contract.Utf16CodeUnitOffset
-import io.github.amichne.kast.source.contract.VisibilitySelection
 import io.github.amichne.kast.symbol.contract.RevalidatedSymbolSelector
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.symbol.contract.SymbolSelector
@@ -149,49 +145,17 @@ internal sealed interface IntellijSourceEntityPage {
                     Rejected(IntellijSourceReadRejection.CONTRACT_VIOLATION)
                 }
             }
-            selection as EntitySelection.Matching
-            val baseLimitations = emptySet<SourceReadLimitation>()
+            val collector = IntellijSourceEntityPageCollector(selection as EntitySelection.Matching, cursor, limit)
             val iterator = source.iterator()
-            val page = ArrayList<SourceEntity>(limit.value)
             var examined = 0
-            var matched = 0
-            var previous: SourceEntity? = null
-            while (iterator.hasNext()) {
+            while (collector.admission == SourceEntityCollectionAdmission.ACCEPTING && iterator.hasNext()) {
                 if (examined == limits[ReadLimitParameter.SOURCE_ENTITY_WORK].value) {
-                    return Complete(
-                        page.toList(),
-                        cursor.startOrdinal + page.size,
-                        baseLimitations + SourceReadLimitation.WORK_LIMIT_REACHED,
-                    )
+                    return collector.finish().withLimitation(SourceReadLimitation.WORK_LIMIT_REACHED)
                 }
-                val entity = iterator.next()
+                collector.offer(iterator.next())
                 examined += 1
-                if (previous != null && SOURCE_ENTITY_ORDER.compare(previous, entity) > 0) {
-                    return Rejected(IntellijSourceReadRejection.CONTRACT_VIOLATION)
-                }
-                previous = entity
-                if (!entity.matches(selection)) continue
-                if (matched < cursor.startOrdinal) {
-                    matched += 1
-                    continue
-                }
-                if (page.size == limit.value) {
-                    val next = cursor.startOrdinal + page.size
-                    return Prefix(
-                        page.toList(),
-                        next + 1,
-                        baseLimitations + SourceReadLimitation.ENTITY_LIMIT_REACHED,
-                        next,
-                    )
-                }
-                page += entity
-                matched += 1
             }
-            return Complete(
-                page.toList(),
-                cursor.startOrdinal + page.size,
-                baseLimitations,
-            )
+            return collector.finish()
         }
     }
 }
@@ -509,42 +473,6 @@ internal class IntellijSourceReadPort(
         }
     }
 }
-
-private val SOURCE_ENTITY_ORDER: Comparator<SourceEntity> = Comparator { left, right ->
-    compareValues(left.selector.range.startInclusive, right.selector.range.startInclusive).takeIf { it != 0 }
-        ?: compareValues(right.selector.range.endExclusive, left.selector.range.endExclusive).takeIf { it != 0 }
-        ?: compareValues(left.selector.kind.ordinal, right.selector.kind.ordinal).takeIf { it != 0 }
-        ?: compareValues(left.selector.name.sortValue(), right.selector.name.sortValue())
-}
-
-private fun SourceEntity.matches(selection: EntitySelection.Matching): Boolean {
-    when (selection.containment) {
-        Containment.SELF -> if (nestingDepth.value != 0 || selector.range != parentSelector.range) return false
-        Containment.DIRECT -> if (nestingDepth.value != 0) return false
-        Containment.DESCENDANTS -> Unit
-    }
-    return selection.filters.any { filter ->
-        when (filter) {
-            is EntityFilter.Declarations ->
-                this is SourceEntity.Declaration && kind in filter.kinds.values && visibility.matches(filter.visibility)
-            EntityFilter.Parameters -> this is SourceEntity.ValueParameter
-            EntityFilter.Calls -> this is SourceEntity.Call
-            EntityFilter.References -> this is SourceEntity.Reference
-        }
-    }
-}
-
-private fun DeclarationVisibility.matches(selection: VisibilitySelection): Boolean =
-    when (selection) {
-        VisibilitySelection.Any -> true
-        is VisibilitySelection.Exact -> this in selection.values
-    }
-
-private fun io.github.amichne.kast.source.contract.SourceEntityName.sortValue(): String =
-    when (this) {
-        io.github.amichne.kast.source.contract.SourceEntityName.Unavailable -> ""
-        is io.github.amichne.kast.source.contract.SourceEntityName.Present -> value
-    }
 
 private fun IntellijSourceEntityCursor.admits(capture: IntellijSelectedSourceCapture): Boolean =
     expectedSnapshot == null ||

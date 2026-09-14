@@ -11,6 +11,7 @@ code_sources:
   - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/TraversalRunResultWireDocument.kt
   - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/SourceReadOutcomeWireMappings.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/projection/TraversalOutcomeCliDocuments.kt
+  - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceEntityPageCollector.kt
   - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceExecution.kt
   - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/NativeSourceSelections.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/SourceProtocolBudget.kt
@@ -415,3 +416,5 @@ Source requests require an explicit resource grant. Hosted source admission reta
 Source and traversal result projections preserve their admitted execution report through canonical wire decoding and CLI output. Their complete and qualified envelopes share the same closed installed execution schema. Hosted encoding measures the full response, including this report, against the current grant.
 
 Execution-limit reports refine positive numeric amounts and validate caller/default selection, effective bounds, and canonical clamping before decoded fields become report evidence. Private construction prevents a report copy from bypassing those relationships.
+
+Native source enumeration feeds the existing ordered page owner incrementally. It retains only the selected entity page and one ordering/lookahead witness, discards excluded entities and previously delivered ordinals, and stops provider work at eligible lookahead. The attempt-local collector is recreated on an IntelliJ read restart; only the execution meter survives. Sequence-based fixtures use the same filter, ordering, and page owner, with their explicit fixed stream guard. Native collection uses the admitted caller work/time grant and does not reconstruct that guard.
