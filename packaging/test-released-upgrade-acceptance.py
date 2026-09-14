@@ -9,11 +9,12 @@ import shlex
 import shutil
 import sys
 import unittest
+from unittest.mock import patch
 
 from acceptance_idea import digest
 from released_acceptance_product import ReleaseFailure, ReleaseRejected
 from released_session_acceptance import SessionRejected
-from released_upgrade_acceptance import prepare_release_upgrade
+from released_upgrade_acceptance import admit_previous_release, prepare_release_upgrade, _registry_identity
 
 _spec = importlib.util.spec_from_file_location('release_test_fixture', Path(__file__).with_name('test-released-acceptance-product.py'))
 _fixture = importlib.util.module_from_spec(_spec)
@@ -147,6 +148,23 @@ class ReleasedUpgradeTest(unittest.TestCase):
         self.assertEqual(list((f.root / 'workspace').iterdir()), [])
         self.assertEqual(digest(self.target.control), self.target.controlSha256)
         self.assertEqual(digest(self.previous.control), self.previous.controlSha256)
+
+    def test_prior_version_must_be_the_immediately_preceding_patch(self):
+        with patch('released_upgrade_acceptance.subprocess.run') as command:
+            for version in ('1.2.3', '1.2.1', '1.1.2', '2.2.2', '1.2', 'invalid'):
+                with self.subTest(version=version), self.assertRaises(ReleaseRejected) as rejected:
+                    admit_previous_release(self.fixture.repo, self.previous.control.parent, version, self.fixture.idea, self.target)
+                self.assertEqual(rejected.exception.failure, ReleaseFailure.UPGRADE)
+            command.assert_not_called()
+
+    def test_registry_retention_requires_the_populated_exact_owned_workspace(self):
+        f = self.fixture
+        path = f.base / 'registry.json'
+        for roots in ((), ('/unowned/workspace',), (str(f.root / 'workspace'), '/extra/workspace')):
+            path.write_text(json.dumps(asdict(Registry(roots))))
+            with self.subTest(roots=roots), self.assertRaises(ReleaseRejected) as rejected:
+                _registry_identity(path, f.root / 'workspace')
+            self.assertEqual(rejected.exception.failure, ReleaseFailure.UPGRADE)
 
     def test_missing_retirement_observation_rejects_upgrade(self):
         self.observations.write_text(json.dumps(asdict(Observation('PRIOR_ADMISSION'))) + '\n')

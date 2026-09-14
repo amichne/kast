@@ -48,6 +48,20 @@ class ReleaseInputs:
 
 
 @dataclass(frozen=True)
+class ReleaseAssetIdentity:
+    version: str
+    sourceCommit: str
+    installerSha256: str
+    controlSha256: str
+    hostedPluginSha256: str
+
+    @classmethod
+    def from_inputs(cls, inputs: ReleaseInputs):
+        return cls(inputs.version, inputs.commit, inputs.installerSha256,
+                   inputs.controlSha256, inputs.hostedPluginSha256)
+
+
+@dataclass(frozen=True)
 class ReleasedProduct:
     schemaVersion: int
     ownedRoot: str

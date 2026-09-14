@@ -464,6 +464,8 @@ val hostedReadRegressionTest = tasks.register<Exec>("hostedReadRegressionTest") 
         "packaging/released_acceptance_product.py", "packaging/released_payload_identity.py",
         "packaging/released_tool_inventory.py", "packaging/test-released-tool-inventory.py",
         "packaging/test-released-acceptance-product.py",
+        "packaging/released_session_acceptance.py", "packaging/released_upgrade_acceptance.py",
+        "packaging/test-released-upgrade-acceptance.py",
         "packaging/native_provider_qualification.py", "packaging/test-native-provider-qualification.py",
     )
     commandLine("python3", layout.projectDirectory.file("packaging/test-hosted-read-regression.py"))
