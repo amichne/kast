@@ -31,7 +31,10 @@ internal sealed interface IntellijSourceContinuationAdmission {
 }
 
 /** Project-owned bounded registry. Entries retain detached source identity and scope only. */
-class IntellijSourceReadContinuations(private val limits: ReadLimits = ReadLimits.Default) {
+class IntellijSourceReadContinuations(
+    private val limits: ReadLimits = ReadLimits.Default,
+    private val clock: () -> Long = System::nanoTime,
+) {
     private enum class Lifetime {
         ACTIVE,
         RETIRED,

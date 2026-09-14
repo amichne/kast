@@ -39,6 +39,8 @@ enum class ReadLimitParameter(val defaultValue: Int, val unit: ReadLimitUnit, va
     RELATION_CANDIDATES(10_000, ReadLimitUnit.COUNT),
     SOURCE_ENTITY_WORK(10_000, ReadLimitUnit.COUNT),
     SOURCE_CONTINUATIONS(1_024, ReadLimitUnit.COUNT),
+    SOURCE_CONTINUATION_BYTES(32 * 1_024 * 1_024, ReadLimitUnit.BYTES),
+    SOURCE_CONTINUATION_TTL_MILLIS(600_000, ReadLimitUnit.MILLISECONDS),
     SOURCE_ENTITIES(128, ReadLimitUnit.COUNT),
     SOURCE_RETURNED_BYTES(49_152, ReadLimitUnit.BYTES),
     TRAVERSAL_DEPTH(16, ReadLimitUnit.COUNT),
