@@ -3,10 +3,8 @@
 package io.github.amichne.kast.protocol.contract
 
 import io.github.amichne.kast.kernel.AdmittedExecutionBudget
-import io.github.amichne.kast.kernel.AdmittedExecutionLimit
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.ExecutionAllowance
-import io.github.amichne.kast.kernel.ExecutionBudgetClamp
 import io.github.amichne.kast.kernel.RequestedExecutionBudget
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.ReturnedByteLimit
@@ -83,48 +81,6 @@ enum class ExecutionBudgetClampDocument {
     @SerialName("operator_ceiling") OPERATOR_CEILING,
     @SerialName("transport_capacity") TRANSPORT_CAPACITY,
     @SerialName("deadline_remaining") DEADLINE_REMAINING,
-}
-
-@Serializable
-data class ExecutionLimitDocument
-private constructor(
-    val selection: ExecutionBudgetSelectionDocument,
-    @ProtocolIntegerConstraint(minimum = 1) val requested: Long?,
-    @ProtocolIntegerConstraint(minimum = 1) val configuredDefault: Long,
-    @ProtocolIntegerConstraint(minimum = 1) val operatorCeiling: Long,
-    @ProtocolIntegerConstraint(minimum = 1) val effective: Long,
-    val clamping: List<ExecutionBudgetClampDocument>,
-) {
-    companion object {
-        fun <Value> from(limit: AdmittedExecutionLimit<Value>, raw: (Value) -> Long): ExecutionLimitDocument {
-            val selection =
-                when (limit.requested) {
-                    ExecutionAllowance.Default -> ExecutionBudgetSelectionDocument.CONFIGURED_DEFAULT
-                    is ExecutionAllowance.Requested -> ExecutionBudgetSelectionDocument.CALLER
-                }
-            val requested =
-                when (val request = limit.requested) {
-                    ExecutionAllowance.Default -> null
-                    is ExecutionAllowance.Requested -> raw(request.value)
-                }
-            return ExecutionLimitDocument(
-                selection,
-                requested,
-                raw(limit.configuredDefault),
-                raw(limit.operatorCeiling),
-                raw(limit.effective),
-                limit.clamping
-                    .map { cause ->
-                        when (cause) {
-                            ExecutionBudgetClamp.OPERATOR_CEILING -> ExecutionBudgetClampDocument.OPERATOR_CEILING
-                            ExecutionBudgetClamp.TRANSPORT_CAPACITY -> ExecutionBudgetClampDocument.TRANSPORT_CAPACITY
-                            ExecutionBudgetClamp.DEADLINE_REMAINING -> ExecutionBudgetClampDocument.DEADLINE_REMAINING
-                        }
-                    }
-                    .sortedBy { it.ordinal },
-            )
-        }
-    }
 }
 
 /** A wire projection of admitted proof, never a second execution decision. */
