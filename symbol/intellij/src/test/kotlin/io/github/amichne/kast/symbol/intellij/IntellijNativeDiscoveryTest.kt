@@ -715,6 +715,7 @@ class SymbolDiscoveryTest {
         leadingUnrelatedNames: Int = 0,
         leadingMatchingNames: Int = 0,
         all: Boolean = false,
+        pattern: String = "Item",
         directory: String? = null,
         packageName: String? = null,
         itemPackages: Map<String, String> = emptyMap(),
@@ -737,6 +738,7 @@ class SymbolDiscoveryTest {
                 workLimit = workLimit,
                 elapsedMillis = elapsedMillis,
                 all = all,
+                pattern = pattern,
                 directory = directory,
                 packageName = packageName,
                 containment = containment,
@@ -855,6 +857,7 @@ class SymbolDiscoveryTest {
         workLimit: Long,
         elapsedMillis: Long,
         all: Boolean,
+        pattern: String,
         directory: String?,
         packageName: String?,
         containment: SymbolDiscoveryContainment,
@@ -884,7 +887,7 @@ class SymbolDiscoveryTest {
                 } else {
                     SymbolDiscoveryTarget.Name(
                         kind = kind,
-                        pattern = SymbolDiscoveryPattern.parse("Item").refined(),
+                        pattern = SymbolDiscoveryPattern.parse(pattern).refined(),
                         match = SymbolDiscoveryMatch.FUZZY,
                     )
                 },

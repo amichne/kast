@@ -16,6 +16,19 @@ import org.junit.jupiter.api.Test
 
 class ScopedDeclarationDiscoveryTest {
     @Test
+    fun `transposed fuzzy name still reaches scoped declarations`() {
+        val scenario = SymbolDiscoveryTest().fixture(pattern = "AItme", workLimit = 2L)
+        val result = scenario.query.discoverDeclarations(scenario.compiledScope, scenario.request) { _, _, accept ->
+            for (name in listOf("NoMatch", "ZItem", "AItem")) {
+                scenario.contributor.processElementsWithName(name, Processor { accept(it) },
+                    FindSymbolParameters.wrap(name, scenario.scope))
+            }
+            true
+        }.outcome()
+        assertEquals(listOf("AItem"), result.batch().candidates.map { it.name.value })
+    }
+
+    @Test
     fun `excluded files cannot spend scoped file capacity`() {
         val scenario = SymbolDiscoveryTest().fixture(all = true)
         val selected = LightVirtualFile("/workspace/selected.kt")
