@@ -52,15 +52,16 @@ class ReadRejectionSchemaParityTest {
         binding: OperationWireBinding<Request, Result, Qualification, Rejection>,
         reason: Rejection,
         project: (OperationOutcome<Result, Qualification, Rejection>) -> ProjectedCliOutcome,
-    ) where Rejection : Enum<Rejection>, Rejection : OperationRejection = with(fixture) {
-        val outcome = OperationOutcome.Rejected(reason)
-        val wire = binding.encodeOutcome(outcome) as WireEncoding.Encoded
-        assertEquals(WireDecoding.Decoded(outcome), binding.decodeOutcome(wire.document))
-        val document = project(outcome).document()
-        assertEquals("rejected", document.getValue("status").jsonPrimitive.content)
-        assertEquals(reason.name.lowercase().replace('_', '-'), document.getValue("reason").jsonPrimitive.content)
-        assertAdmits(binding.operation, document)
-        // Deliberately incompatible output proves the installed schema is closed, not merely a string shape.
-        assertRejects(binding.operation, document.with("reason", JsonPrimitive("unclassified-test-reason")))
-    }
+    ) where Rejection : Enum<Rejection>, Rejection : OperationRejection =
+        with(fixture) {
+            val outcome = OperationOutcome.Rejected(reason)
+            val wire = binding.encodeOutcome(outcome) as WireEncoding.Encoded
+            assertEquals(WireDecoding.Decoded(outcome), binding.decodeOutcome(wire.document))
+            val document = project(outcome).document()
+            assertEquals("rejected", document.getValue("status").jsonPrimitive.content)
+            assertEquals(reason.name.lowercase().replace('_', '-'), document.getValue("reason").jsonPrimitive.content)
+            assertAdmits(binding.operation, document)
+            // Deliberately incompatible output proves the installed schema is closed, not merely a string shape.
+            assertRejects(binding.operation, document.with("reason", JsonPrimitive("unclassified-test-reason")))
+        }
 }

@@ -261,3 +261,15 @@ references and App Server checks passed (the external raw-display schema test
 still requires the installed harness). This is local encoding evidence; it does
 not establish the remaining source work-buffer, traversal, completion-state,
 finite rejection parity, or installed matrix requirements.
+
+### Closed installed rejection schemas
+
+The installed source, relation, and traversal output schemas accepted arbitrary
+reason strings. `ReadRejectionSchemaParityTest` reproduced all three gaps at RED
+`a393a0bfa`. Each schema now derives its finite reason set from the canonical
+operation enum. The test exercises every enum variant through actual wire
+encoding/decoding and CLI projection, validates the installed provider envelope,
+and rejects an unknown reason. The focused test and full CLI check (including
+native tests), generated references, JSON, architecture, and knowledge checks
+passed. This proves finite projection parity; service-level triggers and recovery
+directions remain separate requirements.
