@@ -15,6 +15,7 @@ Models exact source selection, ranges, snapshots, and identity; serves reads thr
 - [contract/src/main/kotlin/io/github/amichne/kast/source/contract/Utf16Coordinate.kt](contract/src/main/kotlin/io/github/amichne/kast/source/contract/Utf16Coordinate.kt) - coordinate invariant.
 - [service/src/main/kotlin/io/github/amichne/kast/source/service/SourceReadService.kt](service/src/main/kotlin/io/github/amichne/kast/source/service/SourceReadService.kt) - orchestration.
 - [intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceReadPort.kt](intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceReadPort.kt) - platform read boundary.
+- [intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceEntityAttempt.kt](intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceEntityAttempt.kt) - fresh detached collection per read attempt with shared request accounting.
 
 ## Subdirectories
 
