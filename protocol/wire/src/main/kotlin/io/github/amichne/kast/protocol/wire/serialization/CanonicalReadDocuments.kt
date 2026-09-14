@@ -102,6 +102,8 @@ internal sealed interface RelationReadQualificationWireDocument {
         val knownMinimum: Int,
         val limitations: List<RelationLimitationWireDocument>,
         val continuation: String,
+        val checkpoint: io.github.amichne.kast.protocol.contract.RelationCheckpointDocument,
+        @SerialName("next_action") val nextAction: io.github.amichne.kast.protocol.contract.ReadResumeActionDocument,
     ) : RelationReadQualificationWireDocument
 
     @Serializable

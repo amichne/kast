@@ -975,6 +975,16 @@ private fun relationQualificationSchema(): JsonObject =
             ),
             ServerSchemaProperty("limitations", relationLimitationsSchema()),
             ServerSchemaProperty(
+                "checkpoint",
+                generatedRequestSchema(
+                    io.github.amichne.kast.protocol.contract.RelationCheckpointDocument.serializer()
+                ),
+            ),
+            ServerSchemaProperty(
+                "next_action",
+                generatedRequestSchema(io.github.amichne.kast.protocol.contract.ReadResumeActionDocument.serializer()),
+            ),
+            ServerSchemaProperty(
                 "continuation",
                 patternTextSchema(
                     io.github.amichne.kast.protocol.contract.RelationContinuationDocument.TOKEN_PATTERN,

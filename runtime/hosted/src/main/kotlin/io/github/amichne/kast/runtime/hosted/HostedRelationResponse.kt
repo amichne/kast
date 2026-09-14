@@ -8,9 +8,12 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.ReturnedByteLimit
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
+import io.github.amichne.kast.protocol.contract.ReadResumeActionDocument
+import io.github.amichne.kast.protocol.contract.RelationCheckpointDocument
 import io.github.amichne.kast.protocol.contract.RelationContinuationDocument
 import io.github.amichne.kast.protocol.contract.RelationKnownMinimumDocument
 import io.github.amichne.kast.protocol.contract.RelationLimitationDocument
+import io.github.amichne.kast.protocol.contract.RelationPreparedCoverageDocument
 import io.github.amichne.kast.protocol.contract.RelationReadFailure
 import io.github.amichne.kast.protocol.contract.RelationReadQualification
 import io.github.amichne.kast.protocol.contract.RelationReadResult
@@ -56,7 +59,8 @@ internal fun encodeHostedRelationResponse(
     }
         .distinct()
         .sortedBy { it.ordinal }
-    val fitting = RelationPageEncoding(evidence, minimum, exhausted, limits, maximumBytes)
+    val fitting =
+        RelationPageEncoding(evidence, minimum, exhausted, semantic.preparedRelationCoverage(), limits, maximumBytes)
     val count = largestFittingRelationPrefix(minOf(size - 1, maximumResults.value), fitting::placeholder)
     if (count == 0) return original.indivisibleRelation()
     val remainder =
@@ -98,6 +102,7 @@ private class RelationPageEncoding(
     private val evidence: EvidenceEnvelope<RelationReadResult>,
     private val minimum: RelationKnownMinimumDocument,
     private val limitations: List<RelationLimitationDocument>,
+    private val upstream: RelationPreparedCoverageDocument,
     private val limits: ReadLimits,
     private val maximumBytes: ReturnedByteLimit,
 ) {
@@ -114,10 +119,11 @@ private class RelationPageEncoding(
                                 BoundedProtocolList.create(evidence.payload.relations.values.take(count)).proven()
                         )
                 ),
-                RelationReadQualification.resumable(
-                        minimum,
-                        limitations,
-                        token,
+                RelationReadQualification.admitResumable(
+                        knownMinimum = minimum,
+                        limitations = limitations,
+                        checkpoint = RelationCheckpointDocument.RetainedOutput(token, upstream),
+                        nextAction = ReadResumeActionDocument.RESUME,
                     )
                     .proven(),
             ),

@@ -124,6 +124,8 @@ internal fun RelationReadQualification.toWireDocument(): RelationReadQualificati
                 knownMinimum = knownMinimum.value,
                 limitations = limitations.map(RelationLimitationDocument::toWireDocument),
                 continuation = continuation.value,
+                checkpoint = checkpoint,
+                nextAction = nextAction,
             )
         is RelationReadQualification.TerminalIncomplete ->
             RelationReadQualificationWireDocument.TerminalIncomplete(
@@ -139,12 +141,15 @@ internal fun RelationReadQualificationWireDocument.toContract(): WireDocumentCon
                 admittedMinimum ->
                 RelationContinuationDocument.parse(continuation).toWireDocumentConversion().flatMapConverted {
                     admittedContinuation ->
-                    RelationReadQualification.resumable(
-                            admittedMinimum,
-                            limitations.map(RelationLimitationWireDocument::toContract),
-                            admittedContinuation,
-                        )
-                        .toWireDocumentConversion()
+                    if (admittedContinuation != checkpoint.token) WireDocumentConversion.Rejected
+                    else
+                        RelationReadQualification.admitResumable(
+                                knownMinimum = admittedMinimum,
+                                limitations = limitations.map(RelationLimitationWireDocument::toContract),
+                                checkpoint = checkpoint,
+                                nextAction = nextAction,
+                            )
+                            .toWireDocumentConversion()
                 }
             }
         is RelationReadQualificationWireDocument.TerminalIncomplete ->

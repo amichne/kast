@@ -211,6 +211,8 @@ private sealed interface RelationQualificationCliDocument {
         val knownMinimum: Int,
         val limitations: List<String>,
         val continuation: String,
+        val checkpoint: io.github.amichne.kast.protocol.contract.RelationCheckpointDocument,
+        @SerialName("next_action") val nextAction: io.github.amichne.kast.protocol.contract.ReadResumeActionDocument,
     ) : RelationQualificationCliDocument
 
     @Serializable
@@ -318,6 +320,8 @@ private fun RelationReadQualification.toCliDocument(): RelationQualificationCliD
                 knownMinimum = knownMinimum.value,
                 limitations = limitations.map { it.cliName() },
                 continuation = continuation.value,
+                checkpoint = checkpoint,
+                nextAction = nextAction,
             )
         is RelationReadQualification.TerminalIncomplete ->
             RelationQualificationCliDocument.TerminalIncomplete(
