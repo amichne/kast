@@ -18,6 +18,7 @@ code_sources:
     symbols: [OperationWireTable]
   - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/OperationWireBinding.kt
   - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/WireEnvelope.kt
+  - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/WireResponseByteMinimum.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalSourceReadOperationModels.kt
   - path: protocol/contract/src/main/resources/ide-hosted/hosted-endpoint.schema.json
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt
@@ -40,6 +41,11 @@ Protocol has three layers:
 3. `protocol:wire` requires exactly one serializer binding per canonical operation and projects canonical documents.
 
 Unknown identities remain explicit unknown results; neither registry nor wire construction manufactures authority for them. See [operation registry](../contracts/operation-registry.md) for the exact completeness invariant.
+
+Each wire binding derives a necessary response-byte minimum from its serialized
+schema and operation identity. Hosted request admission rejects caller allowances
+below that bound before semantic dispatch. Bodies, reports and continuations remain
+subject to full envelope fitting; the identity bound does not promise they will fit.
 
 Semantic-read admission and projection live in the separate
 [`query:protocol` module](query-protocol.md). Hosts supply current authority and
