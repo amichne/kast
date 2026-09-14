@@ -6,6 +6,7 @@ resource: file://protocol
 tags: [kotlin, protocol, serialization]
 timestamp: 2026-09-14T00:00:00Z
 code_sources:
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReadRecoveryAction.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt
   - path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt
   - path: docs/reviews/live-semantic-read-acceptance.md
@@ -21,6 +22,7 @@ code_sources:
     symbols: [OperationWireTable]
   - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/OperationWireBinding.kt
   - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/WireEnvelope.kt
+  - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/WireResponseByteMinimum.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalSourceReadOperationModels.kt
   - path: protocol/contract/src/main/resources/ide-hosted/hosted-endpoint.schema.json
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt
@@ -43,6 +45,11 @@ Protocol has three layers:
 3. `protocol:wire` requires exactly one serializer binding per canonical operation and projects canonical documents.
 
 Unknown identities remain explicit unknown results; neither registry nor wire construction manufactures authority for them. See [operation registry](../contracts/operation-registry.md) for the exact completeness invariant.
+
+Each wire binding derives a necessary response-byte minimum from its serialized
+schema and operation identity. Hosted request admission rejects caller allowances
+below that bound before semantic dispatch. Bodies, reports and continuations remain
+subject to full envelope fitting; the identity bound does not promise they will fit.
 
 Semantic-read admission and projection live in the separate
 [`query:protocol` module](query-protocol.md). Hosts supply current authority and
@@ -88,3 +95,9 @@ or terminal-incomplete; its only supported next action is draining the output.
 The legacy continuation field is derived from the checkpoint token, and wire
 decoding rejects disagreement between them. Omissions and their finite remediation
 remain unchanged on every fitted page, including the terminal suffix.
+
+`ReadRecoveryAction` derives the rejected read's direction exhaustively from the
+canonical failure, including its admitted wrapper. Wire round trips preserve the
+reason and budget, then CLI projection derives the same action. Installed schemas
+reuse the generated action enum and equal finite-failure evidence definitions to
+retain the unchanged provider qualification byte cap and 4,096-byte headroom.

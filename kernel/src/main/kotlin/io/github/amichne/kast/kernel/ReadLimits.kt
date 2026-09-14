@@ -194,7 +194,14 @@ class ReadLimits private constructor(private val limits: Map<ReadLimitParameter,
                     ReadLimitParameter.PROVIDER_INVOCATION_MILLIS to ReadLimitParameter.PROCESS_TIMEOUT_MILLIS,
                     ReadLimitParameter.PROVIDER_GRAPH_INVOCATION_MILLIS to ReadLimitParameter.PROCESS_TIMEOUT_MILLIS,
                 )) {
-                if (selected.getValue(inner).value > selected.getValue(outer).value) {
+                val requiredOuterMinimum =
+                    selected.getValue(inner).value.toLong() +
+                        when (inner) {
+                            ReadLimitParameter.HOST_CONNECTION_MILLIS,
+                            ReadLimitParameter.CLIENT_EXCHANGE_MILLIS -> 1L
+                            else -> 0L
+                        }
+                if (requiredOuterMinimum > selected.getValue(outer).value) {
                     return Refinement.Rejected(ReadLimitFailure.InconsistentBounds(inner, outer))
                 }
             }

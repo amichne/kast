@@ -371,6 +371,9 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
                 constantSchema(CanonicalOperation.TRAVERSAL_RUN.id.value, "Canonical operation identity."),
             "queryRunOperation" to
                 constantSchema(CanonicalOperation.QUERY_RUN.id.value, "Canonical operation identity."),
+            "finiteFailureEvidence" to textSchema("Finite failure evidence."),
+            "readRecoveryAction" to
+                generatedRequestSchema(io.github.amichne.kast.protocol.contract.ReadRecoveryAction.serializer()),
             "executionBudget" to
                 generatedRequestSchema(io.github.amichne.kast.protocol.contract.ExecutionBudgetReport.serializer()),
             "executionLimit" to
@@ -622,11 +625,13 @@ private fun queryRunDocumentSchema(operation: CanonicalOperation): JsonObject =
             operation,
             "rejected",
             ServerSchemaProperty("rejection", queryRejectionSchema()),
+            readRecoveryActionProperty(),
         ),
         operationOutcomeVariant(
             operation,
             "rejected",
             ServerSchemaProperty("rejection", queryRejectionSchema()),
+            readRecoveryActionProperty(),
             ServerSchemaProperty(
                 "execution_budget",
                 generatedRequestSchema(io.github.amichne.kast.protocol.contract.ExecutionBudgetReport.serializer()),
@@ -940,6 +945,7 @@ private fun proofQualifiedOutcomeSchema(
             operation,
             "rejected",
             ServerSchemaProperty("reason", canonicalReadRejectionSchema(operation)),
+            *readRecoveryActionProperties(operation),
         ),
         *admittedReadRejectionVariants(operation),
     )
@@ -954,6 +960,7 @@ private fun admittedReadRejectionVariants(operation: CanonicalOperation): Array<
                     operation,
                     "rejected",
                     ServerSchemaProperty("reason", canonicalReadRejectionSchema(operation)),
+                    readRecoveryActionProperty(),
                     ServerSchemaProperty(
                         "execution_budget",
                         generatedRequestSchema(
@@ -1940,3 +1947,17 @@ private fun executionBudgetProperty() =
         ),
         required = false,
     )
+
+private fun readRecoveryActionProperty(): ServerSchemaProperty =
+    ServerSchemaProperty(
+        "next_action",
+        generatedRequestSchema(io.github.amichne.kast.protocol.contract.ReadRecoveryAction.serializer()),
+    )
+
+private fun readRecoveryActionProperties(operation: CanonicalOperation): Array<ServerSchemaProperty> =
+    when (operation) {
+        CanonicalOperation.SOURCE_READ,
+        CanonicalOperation.RELATION_READ,
+        CanonicalOperation.TRAVERSAL_RUN -> arrayOf(readRecoveryActionProperty())
+        else -> emptyArray()
+    }

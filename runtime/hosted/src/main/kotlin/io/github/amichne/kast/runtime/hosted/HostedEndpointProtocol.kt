@@ -261,7 +261,7 @@ internal object HostedRequests {
         request: (Value) -> HostedRequest,
     ): Refinement<HostedRequest, HostedEndpointFailure> =
         when (value) {
-            is WireDecoding.Decoded -> Refinement.Refined(request(value.value))
+            is WireDecoding.Decoded -> request(value.value).admitResponseBudget()
             is WireDecoding.Rejected -> Refinement.Rejected(HostedEndpointFailure.INVALID_REQUEST)
         }
 
