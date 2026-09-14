@@ -374,6 +374,10 @@ completion reserve precedes the hard deadline. Exhaustion rejects before semanti
 evaluation, while a cooperative time-limited query can publish qualified results
 after freshness revalidation. Receipts distinguish configured limits from effective
 allowances. Work that exceeds the hard deadline still cancels and drains.
+Configuration also requires client exchange time to strictly exceed host connection
+time, and both provider invocation deadlines to strictly exceed client exchange
+time. These outer boundaries retain positive IPC slack even when operators lower
+their settings; semantic/host configuration equality still uses the completion reserve.
 
 Hosted query continuation stores retain detached task/output state under an exact
 query and semantic snapshot. Entry, byte, per-checkpoint and lifetime limits are
