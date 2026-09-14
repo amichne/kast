@@ -4,27 +4,16 @@
 from __future__ import annotations
 
 import json
-from enum import Enum
+from dataclasses import asdict
+from installed_codex_lifecycle import AcceptanceFailure, qualify_installed_lifecycle
 import hashlib
 import os
-import stat
 from pathlib import Path
-import select
 import shutil
 import subprocess
 import sys
 from acceptance_environment import AcceptanceEnvironment, admitted_tools
-import time
 import zipfile
-
-
-class AcceptanceFailure(Exception):
-    pass
-
-
-class HostObservationPhase(Enum):
-    COORDINATOR_ONLY = "pending"
-    FRONTEND_PREPARED = "prepared"
 
 
 def canonical_json(document: object) -> bytes:
@@ -42,13 +31,6 @@ def sha256_bytes(value: bytes) -> str:
 
 def sha256_file(path: Path) -> str:
     return sha256_bytes(path.read_bytes())
-
-
-def bounded_tail(path: Path, maximum_bytes: int = 4096) -> str:
-    with path.open("rb") as stream:
-        stream.seek(0, os.SEEK_END)
-        stream.seek(max(0, stream.tell() - maximum_bytes))
-        return stream.read(maximum_bytes).decode("utf-8", errors="replace")
 
 
 def codex_protocol_digest(root: Path) -> str:
@@ -78,11 +60,15 @@ def installed_catalog_evidence(kast: Path, environment: dict[str, str]) -> dict:
         contract = json.loads(execution.stdout)
         bootstrap = contract["serverProjection"]["hostedBootstrap"]
         policy = bootstrap["policy"]
-        selected_names = environment.get(
-            "KAST_APP_SERVER_TOOLS",
-            "search_classes,search_functions,search_declarations,check_diagnostics,query_symbols,source_read,semantic_query,impact_analyze,"
-            "change_plan,change_apply,change_recover",
-        ).split(",")
+        configuration = subprocess.run(
+            [str(kast), "config", "show", "--json"], check=True, capture_output=True,
+            text=True, timeout=20, env=environment,
+        )
+        assignments = json.loads(configuration.stdout)["resolvedNextLaunch"]
+        selections = [entry["value"] for entry in assignments if entry["key"] == "KAST_APP_SERVER_TOOLS"]
+        if len(selections) != 1 or not isinstance(selections[0], str):
+            raise AcceptanceFailure("installed Kast tool selection was missing or ambiguous")
+        selected_names = selections[0].split(",")
         if not selected_names or len(selected_names) != len(set(selected_names)):
             raise AcceptanceFailure("configured Kast tool selection was invalid")
         selected = set(selected_names)
@@ -125,51 +111,6 @@ def installed_catalog_evidence(kast: Path, environment: dict[str, str]) -> dict:
     }
 
 
-def receive_response(process: subprocess.Popen[str], request_id: int, timeout: float) -> dict:
-    deadline = time.monotonic() + timeout
-    while time.monotonic() < deadline:
-        readable, _, _ = select.select(
-            [process.stdout], [], [], max(0.0, deadline - time.monotonic())
-        )
-        if not readable:
-            break
-        line = process.stdout.readline()
-        if not line:
-            break
-        try:
-            document = json.loads(line)
-        except json.JSONDecodeError as failure:
-            raise AcceptanceFailure("facade stdout was not JSONL") from failure
-        if document.get("id") == request_id:
-            return document
-    raise AcceptanceFailure(f"response {request_id} was not observed")
-
-
-def send(process: subprocess.Popen[str], document: dict) -> None:
-    process.stdin.write(json.dumps(document, separators=(",", ":")) + "\n")
-    process.stdin.flush()
-
-
-def drain_jsonl_until_exit(process: subprocess.Popen[str], timeout: float) -> int:
-    deadline = time.monotonic() + timeout
-    while time.monotonic() < deadline:
-        readable, _, _ = select.select(
-            [process.stdout], [], [], max(0.0, deadline - time.monotonic())
-        )
-        if not readable:
-            break
-        line = process.stdout.readline()
-        if line:
-            try:
-                json.loads(line)
-            except json.JSONDecodeError as failure:
-                raise AcceptanceFailure("facade stdout was not JSONL") from failure
-            continue
-        if process.poll() is not None:
-            return process.returncode
-    raise AcceptanceFailure("facade did not close stdout within the teardown bound")
-
-
 def executable(candidate: str | None, name: str) -> Path:
     selected = candidate or shutil.which(name)
     if selected is None:
@@ -179,33 +120,6 @@ def executable(candidate: str | None, name: str) -> Path:
     if not path.is_file() or not os.access(path, os.X_OK):
         raise AcceptanceFailure(f"installed {name} executable is unavailable")
     return path
-
-
-def exercise_private_service(kast: Path, environment: dict[str, str], home: Path, project: Path, product: Path, phase: HostObservationPhase) -> dict:
-    socket = product / "state/run/c.sock"
-    ordinary_socket = home / ".codex/app-server-control/app-server-control.sock"
-    if ordinary_socket.exists():
-        raise AcceptanceFailure("Kast occupied the ordinary Codex daemon socket")
-    if not socket.exists() or not stat.S_ISSOCK(socket.stat().st_mode):
-        raise AcceptanceFailure("private Kast service socket is unavailable")
-    status = subprocess.run([str(kast), "app-server", "status"], cwd=project,
-                            env=environment, check=True, capture_output=True, text=True, timeout=15)
-    evidence = home / f"status-{phase.name.lower()}.json"
-    encoded = status.stdout.encode("utf-8")
-    if len(encoded) > 256 * 1024:
-        evidence.write_text(json.dumps({"outcome": "REJECTED", "reason": "STATUS_EVIDENCE_TOO_LARGE"}) + "\n")
-        raise AcceptanceFailure("passive status exceeded bounded fixture evidence capacity")
-    evidence.write_bytes(encoded)
-    evidence.chmod(0o600)
-    document = json.loads(status.stdout)
-    if (document.get("coordinator", {}).get("state") != "ready"
-            or document.get("service", {}).get("ownership") != "matched"
-            or document.get("host", {}).get("attachment") != phase.value
-            or document.get("registry", {}).get("state") != "registered"
-            or document.get("protocol") != "unobserved"
-            or document.get("catalog") != "unobserved"):
-        raise AcceptanceFailure(f"passive status did not match {phase.name.lower()} ownership and registration; bounded evidence: {evidence}")
-    return {"socketPath": str(socket), "ordinaryDaemonSocket": "ABSENT", "phase": phase.name, "statusEvidence": str(evidence), "qualification": document}
 
 
 def main() -> int:
@@ -257,83 +171,7 @@ def main() -> int:
             env=environment,
         )
         protocol_digest = codex_protocol_digest(schemas)
-        try:
-            enabled = subprocess.run([str(kast), "app-server", "enable"], cwd=project, env=environment, capture_output=True, text=True, timeout=90)
-            if enabled.returncode != 0:
-                service_logs = list(product.glob("state/broker/*/service.log"))
-                evidence = bounded_tail(service_logs[0]) if len(service_logs) == 1 else "no unique child service log"
-                raise AcceptanceFailure("persistent service enable failed: " + enabled.stderr[-2048:] + "; " + evidence)
-            private_service = exercise_private_service(kast, environment, home, project, product, HostObservationPhase.COORDINATOR_ONLY)
-            stderr_path = home / "facade.stderr"
-            with stderr_path.open("w+", encoding="utf-8") as stderr_log:
-                process = isolation.spawn(
-                    [str(facade), "-c", "features.code_mode_host=true", "app-server", "--analytics-default-enabled"],
-                    stdin=subprocess.PIPE,
-                    stdout=subprocess.PIPE,
-                    stderr=stderr_log,
-                    text=True,
-                    bufsize=1,
-                    env=environment,
-                    cwd=project,
-                )
-                try:
-                    send(
-                        process,
-                        {
-                            "id": 0,
-                            "method": "initialize",
-                            "params": {
-                                "clientInfo": {
-                                    "name": "kast-installed-host-acceptance",
-                                    "version": "1",
-                                }
-                            },
-                        },
-                    )
-                    initialized = receive_response(process, 0, 45.0)
-                    if not isinstance(initialized.get("result", {}).get("userAgent"), str):
-                        raise AcceptanceFailure("initialize did not return Codex authority")
-                    send(process, {"method": "initialized"})
-                    send(
-                        process,
-                        {
-                            "id": 1,
-                            "method": "thread/start",
-                            "params": {"cwd": str(project)},
-                        },
-                    )
-                    started = receive_response(process, 1, 45.0)
-                    result = started.get("result", {})
-                    thread = result.get("thread", {})
-                    if (
-                        not isinstance(thread.get("id"), str)
-                        or result.get("cwd") != str(project)
-                    ):
-                        raise AcceptanceFailure("thread/start did not retain the exact project")
-                    process.stdin.close()
-                    if drain_jsonl_until_exit(process, 20.0) != 0:
-                        raise AcceptanceFailure(
-                            "facade did not complete cleanly after parent stdio closed"
-                        )
-                except (AcceptanceFailure, OSError, subprocess.SubprocessError) as failure:
-                    stderr_log.flush()
-                    tail = bounded_tail(stderr_path).strip()
-                    detail = f"; bounded stderr tail: {tail}" if tail else ""
-                    raise AcceptanceFailure(f"{failure}{detail}") from failure
-                finally:
-                    if process.poll() is None:
-                        process.terminate()
-                        try:
-                            process.wait(timeout=5)
-                        except subprocess.TimeoutExpired:
-                            process.kill()
-                            process.wait(timeout=5)
-            # Parent stdio termination must preserve the coordinator and its prepared host.
-            private_service = exercise_private_service(kast, environment, home, project, product, HostObservationPhase.FRONTEND_PREPARED)
-        finally:
-            disabled = subprocess.run([str(kast), "app-server", "disable"], cwd=project, env=environment, capture_output=True, text=True, timeout=40)
-            if disabled.returncode != 0:
-                raise AcceptanceFailure("temporary service cleanup failed: " + disabled.stderr[-4096:])
+        lifecycle = qualify_installed_lifecycle(isolation, kast, facade, environment, home, project, product)
 
         document = {
             "schemaVersion": 1,
@@ -350,7 +188,7 @@ def main() -> int:
             "desktopDiscovery": "NOT_REQUIRED",
             "stdoutProtocol": "JSONL_ONLY",
             "codexProtocolSha256": protocol_digest,
-            "privateService": private_service,
+            "privateService": asdict(lifecycle),
             "codexExecutableSha256": sha256_file(codex),
             "kastExecutableSha256": sha256_file(kast),
             "kastFacadeSha256": sha256_file(facade),
