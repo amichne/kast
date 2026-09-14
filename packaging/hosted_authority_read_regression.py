@@ -6,6 +6,7 @@ import json
 import os
 import stat
 import subprocess
+from released_acceptance_product import product_executable
 
 from hosted_change_acceptance import admitted_live, AcceptanceRejected
 from hosted_read_transport import ReadTransportRejected
@@ -187,7 +188,7 @@ def _foreign_refusal(transport, fixture, request):
         and stat.S_IMODE(foreign.stat().st_mode) == 0o700, AuthorityFailure.FOREIGN)
     settings = foreign / 'settings.gradle.kts'
     before = _digest(_source_bytes(settings))
-    result = subprocess.run([str(transport.product / 'bin/kast'), *transport.cli_commands['source_read']],
+    result = subprocess.run([str(product_executable(transport.product, fixture.workspace.parent)), *transport.cli_commands['source_read']],
         cwd=foreign, env=fixture.environment, input=json.dumps(asdict(request)).encode(),
         capture_output=True, timeout=30)
     _demand(result.returncode != 0 and not result.stdout and len(result.stderr) <= 65536,

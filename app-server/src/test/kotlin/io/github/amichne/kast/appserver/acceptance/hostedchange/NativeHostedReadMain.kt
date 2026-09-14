@@ -132,14 +132,12 @@ private class NativeHostedReadTransport(
         suspend fun open(product: Path, workspace: Path): NativeHostedReadTransport {
             val origin = Path.of(Broker::class.java.protectionDomain.codeSource.location.toURI()).toRealPath()
             demand(
-                product.parent == workspace.parent &&
-                    origin.startsWith(product.resolve("lib")) &&
-                    Files.isRegularFile(origin),
+                origin.startsWith(product.resolve("lib")) && Files.isRegularFile(origin),
                 NativeFailure.PRODUCT_CLASS_ORIGIN_REJECTED,
             )
             val options =
                 KastProviderOptions.admit(
-                        executable = product.resolve("bin/kast"),
+                        executable = NativeProductAdmission.executable(product, workspace),
                         qualificationDirectory = workspace,
                         toolSelection = KastToolSelection.admit(readToolNames.joinToString(",")).nativeValue(),
                     )
@@ -159,7 +157,7 @@ private class NativeHostedReadTransport(
 }
 
 private val readToolNames =
-    CanonicalAgentToolDefinitions.defaultAppServerTools
+    CanonicalAgentToolDefinitions.all
         .filter { it.operation.effect in setOf(OperationEffect.NONE, OperationEffect.INTELLIJ_READ) }
         .map { it.name.value }
         .toSet()

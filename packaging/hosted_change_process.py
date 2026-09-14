@@ -3,6 +3,7 @@ import hashlib
 from enum import Enum
 import json
 import os
+from released_acceptance_product import product_executable
 from pathlib import Path
 import selectors
 import re
@@ -74,7 +75,7 @@ class NativeProcesses:
                 if descriptor.get('hostPid') != self.ide.pid:
                     time.sleep(0.1)
                     continue
-                result = subprocess.run([str(self.product / 'bin/kast'), 'tool', 'search_classes'],
+                result = subprocess.run([str(product_executable(self.product, self.fixture.workspace.parent)), 'tool', 'search_classes'],
                     cwd=self.fixture.workspace, env=self.fixture.environment,
                     input=json.dumps({'class_name': 'NativeChangeTarget', 'name_match': None, 'scope': None}),
                     capture_output=True, text=True, timeout=30)

@@ -506,7 +506,8 @@ class HostedReadRegressionTest(unittest.TestCase):
 def load_tests(loader, tests, _pattern):
     for name in ('test-native-provider-qualification.py', 'test-hosted-peer-probe.py', 'test-hosted-wire-schema.py',
                  'test-hosted-authority-read.py', 'test-hosted-budget-read-regression.py',
-                 'test-hosted-resume-budget-regression.py'):
+                 'test-hosted-resume-budget-regression.py', 'test-hosted-raw-symbol-regression.py',
+                 'test-released-acceptance-product.py', 'test-released-tool-inventory.py'):
         spec = importlib.util.spec_from_file_location(name[:-3].replace('-', '_'), Path(__file__).with_name(name))
         module = importlib.util.module_from_spec(spec)
         sys.modules[spec.name] = module

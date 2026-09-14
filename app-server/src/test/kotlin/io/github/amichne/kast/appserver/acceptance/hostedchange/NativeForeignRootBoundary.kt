@@ -25,7 +25,8 @@ internal class NativeForeignRootBoundary(
         Files.writeString(foreign.resolve("settings.gradle.kts"), "rootProject.name = \"foreign-root-refusal\"\n")
         val request =
             BrokerProcessRequest.admit(
-                    executable = BrokerExecutable.admit(product.resolve("bin/kast")).nativeValue(),
+                    executable =
+                        BrokerExecutable.admit(NativeProductAdmission.executable(product, workspace)).nativeValue(),
                     arguments = listOf("change", "plan"),
                     workingDirectory = checkNotNull(CanonicalBrokerDirectory.admit(foreign)),
                     maximumOutputBytes = 64 * 1024,

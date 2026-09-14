@@ -113,7 +113,7 @@ private constructor(
             val privateDirectory = inputs.privateDirectory
             validateProductOrigin(product)
             val trace = NativeProcessTrace(privateDirectory)
-            val options = providerOptions(product, home, trace)
+            val options = providerOptions(product, home, workspace, trace)
             val qualification = KastProviderQualifier.qualify(options).nativeQualified(observeQualification)
             val contracts = NativeControllerProtocol.contracts(schemas, workspace)
             val connecting = Channel<NativeUpstream>(4)
@@ -173,9 +173,14 @@ private constructor(
             )
         }
 
-        private fun providerOptions(product: Path, home: Path, trace: NativeProcessTrace): KastProviderOptions {
+        private fun providerOptions(
+            product: Path,
+            home: Path,
+            workspace: Path,
+            trace: NativeProcessTrace,
+        ): KastProviderOptions {
             return KastProviderOptions.admit(
-                    executable = product.resolve("bin/kast"),
+                    executable = NativeProductAdmission.executable(product, workspace),
                     qualificationDirectory = home,
                     processExecutor = trace,
                     toolSelection =
