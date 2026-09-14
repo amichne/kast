@@ -23,42 +23,53 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 class HostedSourceTraversalBudgetTest {
-    private val budget = ExecutionBudgetDocument(
-        ElapsedTimeLimitMillis.parse(200).proven(),
-        WorkUnitLimit.parse(7).proven(),
-        ResultLimit.parse(2).proven(),
-        ReturnedByteLimit.parse(2048).proven(),
-    )
+    private val budget =
+        ExecutionBudgetDocument(
+            ElapsedTimeLimitMillis.parse(200).proven(),
+            WorkUnitLimit.parse(7).proven(),
+            ResultLimit.parse(2).proven(),
+            ReturnedByteLimit.parse(2048).proven(),
+        )
 
     @Test
     fun `source budget survives canonical wire input and hosted admission`() {
         val fixture = RelationPagingFixture.live()
-        val request = SourceReadRequest(
-            SourceReadAnchorDocument.Symbol(fixture.exact),
-            SourceRegionSelectionDocument.Anchor,
-            SourceEntitySelectionDocument.None,
-            SourceTextRequestDocument.None,
-            SourceEntityLimitDocument.parse(100).proven(),
-            SourceTextByteLimitDocument.parse(65536).proven(),
-            SourceReadPageDocument.First,
-            executionBudget = budget,
-        )
+        val request =
+            SourceReadRequest(
+                SourceReadAnchorDocument.Symbol(fixture.exact),
+                SourceRegionSelectionDocument.Anchor,
+                SourceEntitySelectionDocument.None,
+                SourceTextRequestDocument.None,
+                SourceEntityLimitDocument.parse(100).proven(),
+                SourceTextByteLimitDocument.parse(65536).proven(),
+                SourceReadPageDocument.First,
+                executionBudget = budget,
+            )
         val encoded = Json.encodeToString(SourceReadRequest.serializer(), request)
         val decoded = Json.decodeFromString(SourceReadRequest.serializer(), encoded)
-        assertEquals(budget.requested(), HostedRequest.Source(fixture.authority.workspaceRoot, decoded).executionBudget().requested)
+        assertEquals(
+            budget.requested(),
+            HostedRequest.Source(fixture.authority.workspaceRoot, decoded).executionBudget().requested,
+        )
     }
 
     @Test
     fun `traversal budget survives canonical wire input and hosted admission`() {
         val fixture = RelationPagingFixture.live()
-        val request = TraversalRunRequest(
-            fixture.exact, RelationKindDocument.CALLEES,
-            ProtocolCount.parse(2).proven(), ProtocolCount.parse(100).proven(),
-            executionBudget = budget,
-        )
+        val request =
+            TraversalRunRequest(
+                fixture.exact,
+                RelationKindDocument.CALLEES,
+                ProtocolCount.parse(2).proven(),
+                ProtocolCount.parse(100).proven(),
+                executionBudget = budget,
+            )
         val encoded = Json.encodeToString(TraversalRunRequest.serializer(), request)
         val decoded = Json.decodeFromString(TraversalRunRequest.serializer(), encoded)
-        assertEquals(budget.requested(), HostedRequest.Traversal(fixture.authority.workspaceRoot, decoded).executionBudget().requested)
+        assertEquals(
+            budget.requested(),
+            HostedRequest.Traversal(fixture.authority.workspaceRoot, decoded).executionBudget().requested,
+        )
     }
 
     private fun <Value> Refinement<Value, *>.proven(): Value = (this as Refinement.Refined).value

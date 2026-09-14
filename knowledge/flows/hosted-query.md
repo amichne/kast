@@ -6,6 +6,7 @@ resource: file://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/
 tags: [intellij, kotlin, semantic-query, lifecycle]
 timestamp: 2026-09-13T00:00:00Z
 code_sources:
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceReadOutcomeDocuments.kt
   - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceReadContinuations.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ExecutionBudgetDocument.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryResponse.kt

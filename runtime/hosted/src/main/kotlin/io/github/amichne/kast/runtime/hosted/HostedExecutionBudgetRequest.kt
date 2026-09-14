@@ -13,10 +13,10 @@ internal fun HostedRequest.Read.executionBudget(): HostedExecutionBudgetRequest 
             when (this) {
                 is HostedRequest.Relation -> request.executionBudget?.requested() ?: RequestedExecutionBudget()
                 is HostedRequest.Query -> request.executionBudget?.requested() ?: RequestedExecutionBudget()
+                is HostedRequest.Source -> request.executionBudget?.requested() ?: RequestedExecutionBudget()
+                is HostedRequest.Traversal -> request.executionBudget?.requested() ?: RequestedExecutionBudget()
                 is HostedRequest.Discover,
                 is HostedRequest.Inspect,
-                is HostedRequest.Source,
-                is HostedRequest.Traversal,
                 is HostedRequest.Diagnostic -> RequestedExecutionBudget()
             },
         profile =
