@@ -14,6 +14,18 @@ import org.junit.jupiter.api.io.TempDir
 
 class ConfigurationInspectionTest {
     @Test
+    fun `documented configuration help lists passive inspection commands`(@TempDir root: Path) {
+        val result = launch(root, listOf("config", "--help"), emptyMap())
+        assertEquals(0, result.code, result.error)
+        assertEquals("", result.error)
+        for (command in listOf("schema", "show", "explain", "validate")) {
+            assertTrue(result.output.contains(command), "Missing $command from configuration help: ${result.output}")
+        }
+        assertFalse(Files.exists(root.resolve("runtime")))
+        assertFalse(Files.exists(root.resolve("cache")))
+    }
+
+    @Test
     fun `schema remains passive when saved configuration and heap are malformed`(@TempDir root: Path) {
         val result =
             launch(
