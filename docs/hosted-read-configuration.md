@@ -1,6 +1,6 @@
 # Configure semantic reads and diagnose limits
 
-The existing-IDE read path admits an immutable settings policy when its project service starts. The CLI and provider admit their policy when their processes start. Defaults preserve the previous capacities and deadlines. The authoritative parameter identities, ranges and cross-limit checks are in [ReadLimits.kt](../kernel/src/main/kotlin/io/github/amichne/kast/kernel/ReadLimits.kt); `kast config schema --json` exposes the generated catalogue.
+The existing-IDE read path admits an immutable settings policy when its project service starts. The CLI and provider admit their policy when their processes start. Defaults preserve the previous capacities and deadlines. The authoritative parameter identities, ranges and cross-limit checks are in [ReadLimits.kt](../kernel/src/main/kotlin/io/github/amichne/kast/kernel/ReadLimits.kt); `kast config schema --json` exposes the generated catalogue. Client exchange time must strictly exceed host connection time, and both provider invocation deadlines must strictly exceed client exchange time. Equality rejects configuration so an outer timer cannot expire at the inner boundary. Semantic and hosted query settings may remain equal because hosted admission reserves completion time before selecting the effective semantic grant.
 
 ## Apply a setting
 
