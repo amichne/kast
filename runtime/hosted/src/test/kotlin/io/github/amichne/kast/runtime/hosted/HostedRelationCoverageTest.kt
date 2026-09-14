@@ -18,6 +18,9 @@ import io.github.amichne.kast.protocol.contract.RelationReadResult
 import io.github.amichne.kast.protocol.contract.RelationRemediationDocument
 import io.github.amichne.kast.query.protocol.RelationPagingFixture
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -60,6 +63,24 @@ class HostedRelationCoverageTest {
                 assertEquals(RelationRemediationDocument.RETRY_PROVIDER, omission.remediation)
             }
         }
+
+    @Test
+    fun `retained relation wire identifies upstream coverage and supported resume action`() = runTest {
+        val fixture = RelationPagingFixture.live()
+        val request = fixture.request(RelationReadPositionDocument.Start)
+        val pages = HostedQueryContinuations.Active(fixture.authority, ReadLimits.Default).relationOutputs
+        val response =
+            encodeHostedRelationResponse(terminal(fixture), ReadLimits.Default, ResultLimit.parse(1).proven()) {
+                suffix -> pages.issue(request, fixture.authority, suffix)
+            }
+        val body = Json.parseToJsonElement(response.document).jsonObject.getValue("body").jsonObject
+        val qualification = body.getValue("qualification").jsonObject
+        assertEquals(JsonPrimitive("resume"), qualification["next_action"])
+        val checkpoint = qualification.getValue("checkpoint").jsonObject
+        assertEquals(JsonPrimitive("retained_output"), checkpoint["type"])
+        assertEquals(JsonPrimitive("terminal_incomplete"), checkpoint["upstream"])
+        assertEquals(qualification["continuation"], checkpoint["token"])
+    }
 
     private suspend fun terminal(
         fixture: RelationPagingFixture
