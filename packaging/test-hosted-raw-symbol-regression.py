@@ -40,6 +40,7 @@ class Compiler:
 
 @dataclass(frozen=True)
 class Symbol:
+    kind: str = 'classlike'
     name: str = 'NativeChangeTarget'
     file: str = 'src/main/kotlin/Fixture.kt'
     qualifiedIdentity: str = 'fixture.NativeChangeTarget'
