@@ -117,6 +117,39 @@ class Relation:
     omissions: tuple = ()
 
 
+@dataclass(frozen=True)
+class Unmeasured:
+    type: str = 'unmeasured_on_page'
+
+
+@dataclass(frozen=True)
+class Observed:
+    items: int = 0
+    type: str = 'observed_on_page'
+
+
+@dataclass(frozen=True)
+class Omission:
+    measurement: Unmeasured | Observed = field(default_factory=Unmeasured)
+    provider: str = 'INTELLIJ_REFERENCES_V2'
+    reason: str = 'RESULT_LIMIT_REACHED'
+    samples: tuple = ()
+    remediation: str = 'INCREASE_READ_LIMIT'
+
+
+@dataclass(frozen=True)
+class BudgetQualification(RelationQualification):
+    limitations: tuple[str, ...] = ('result-limit-reached',)
+
+
+@dataclass(frozen=True)
+class BudgetRelationPage:
+    relations: tuple[Record, ...]
+    qualification: BudgetQualification
+    omissions: tuple[Omission, ...] = (Omission(),)
+    status: str = 'qualified'
+
+
 def grant(value):
     return Grant(max_results=Limit(selection='caller', requested=value, effective=value))
 
@@ -213,6 +246,19 @@ class HostedResumeBudgetRegressionTest(unittest.TestCase):
             Drained((asdict(Relation((b,))), asdict(Relation((a,))))), reference))
         for changed in ((a,), (a, a), (a, b, b)):
             self.assertFalse(payload_parity('semantic_query', Drained((asdict(Relation(changed)),)), reference))
+
+    def test_upstream_budget_omission_retains_unknown_work_until_complete_drain(self):
+        a, b = Record('a'), Record('b', 'call-2')
+        qualification = BudgetQualification(Token('cursor'), 'cursor')
+        page = BudgetRelationPage((a,), qualification)
+        tail = asdict(Relation((b,)))
+        reference = Drained((asdict(Relation((a, b))),))
+        self.assertTrue(payload_parity('semantic_query', Drained((asdict(page), tail)), reference))
+        for changed in (replace(page, omissions=(Omission(Observed()),)),
+                replace(page, qualification=replace(qualification, limitations=())),
+                replace(page, omissions=(replace(Omission(), reason='UNRESOLVED_TARGET'),)),
+                replace(page, omissions=(replace(Omission(), remediation='REPAIR_PROVIDER'),))):
+            self.assertFalse(payload_parity('semantic_query', Drained((asdict(changed), tail)), reference))
 
     def test_parity_rejects_lost_order_occurrence_proof_source_text_and_range(self):
         records = (Record('a'), Record('b', 'call-2'))
