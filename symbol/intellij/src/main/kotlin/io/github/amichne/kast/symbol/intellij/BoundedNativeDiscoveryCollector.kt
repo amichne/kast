@@ -2,6 +2,7 @@ package io.github.amichne.kast.symbol.intellij
 
 import com.intellij.navigation.NavigationItem
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.symbol.contract.candidateOrder
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteCount
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidate
@@ -180,7 +181,7 @@ internal class BoundedNativeDiscoveryCollector(
                 nativeQuery = (totalNanoseconds - projectionNanoseconds).coerceAtLeast(0L).elapsedMeasure(),
                 projection = projectionNanoseconds.elapsedMeasure(),
             )
-        val orderedCandidates = candidates.sorted()
+        val orderedCandidates = candidates.sortedWith(request.candidateOrder())
         val batch =
             when (
                 val creation =

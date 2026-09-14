@@ -6,13 +6,13 @@ import com.intellij.navigation.NavigationItem
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.IndexNotReadyException
-import com.intellij.psi.codeStyle.NameUtil
 import com.intellij.util.Processor
 import com.intellij.util.indexing.FindSymbolParameters
 import com.intellij.util.indexing.IdFilter
-import com.intellij.util.text.matching.MatchingMode
 import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.symbol.contract.relevance
+import io.github.amichne.kast.symbol.contract.SymbolNameRelevance
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryMatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualification
@@ -112,19 +112,6 @@ internal class IntellijNativeDiscoveryQuery(
         if (contributors.isEmpty()) {
             return IntellijNativeDiscoveryExecution.Rejected(IntellijNativeDiscoveryRejection.NO_NATIVE_PROVIDERS)
         }
-        val fuzzyMatcher =
-            when (target) {
-                is SymbolDiscoveryTarget.All -> null
-                is SymbolDiscoveryTarget.Name ->
-                    when (target.match) {
-                        SymbolDiscoveryMatch.FUZZY ->
-                            NameUtil.buildMatcher(
-                                "*${target.pattern.value}",
-                                MatchingMode.IGNORE_CASE,
-                            )
-                        SymbolDiscoveryMatch.EXACT_NAME -> null
-                    }
-            }
 
         contributors
             .sortedBy { it.javaClass.name }
@@ -150,7 +137,7 @@ internal class IntellijNativeDiscoveryQuery(
                                     is SymbolDiscoveryTarget.All -> true
                                     is SymbolDiscoveryTarget.Name ->
                                         when (target.match) {
-                                            SymbolDiscoveryMatch.FUZZY -> checkNotNull(fuzzyMatcher).matches(name)
+                                            SymbolDiscoveryMatch.FUZZY -> target.pattern.relevance(name) != SymbolNameRelevance.UNMATCHED
                                             SymbolDiscoveryMatch.EXACT_NAME -> name == target.pattern.value
                                         }
                                 }
@@ -292,17 +279,14 @@ internal class IntellijNativeDiscoveryQuery(
         try {
             var reachedLimit = false
             val target = request.target
-            val fuzzy =
-                if (target is SymbolDiscoveryTarget.Name && target.match == SymbolDiscoveryMatch.FUZZY)
-                    NameUtil.buildMatcher("*${target.pattern.value}", MatchingMode.IGNORE_CASE)
-                else null
+            val fuzzy = (target as? SymbolDiscoveryTarget.Name)?.takeIf { it.match == SymbolDiscoveryMatch.FUZZY }
             val complete =
                 process(collector::observe, collector::qualify) { item ->
                     if (!collector.observe()) return@process false
                     if (fuzzy != null) {
                         observation.count(IntellijReadCounter.NAMES_VISITED, contributor)
                         val name = item.name ?: return@process true
-                        if (!fuzzy.matches(name)) return@process true
+                        if (fuzzy.pattern.relevance(name) == SymbolNameRelevance.UNMATCHED) return@process true
                         observation.count(IntellijReadCounter.NAMES_MATCHED, contributor)
                     }
                     if (
