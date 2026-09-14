@@ -50,6 +50,7 @@ import io.github.amichne.kast.protocol.contract.TraversalRunResult
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertAll
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -366,13 +367,27 @@ class GeneratedCliProjectionTest {
                 )
             },
             {
+                val qualification = traversal.qualification().jsonObject
                 assertEquals(
-                    "{\"type\":\"resumable\",\"limitations\":[\"record-limit-reached\"," +
-                        "\"one-hop-incomplete\"]," +
-                        "\"relationLimitations\":[\"provider-incomplete\"]," +
-                        "\"continuation\":\"${traversalContinuation("cli-projection").value}\"}",
-                    traversal.qualification().toString(),
+                    setOf("type", "limitations", "relationLimitations", "continuation", "checkpoint", "next_action"),
+                    qualification.keys,
                 )
+                assertEquals("resumable", qualification.getValue("type").jsonPrimitive.content)
+                assertEquals(
+                    listOf("record-limit-reached", "one-hop-incomplete"),
+                    qualification.getValue("limitations").jsonArray.map { it.jsonPrimitive.content },
+                )
+                assertEquals(
+                    listOf("provider-incomplete"),
+                    qualification.getValue("relationLimitations").jsonArray.map { it.jsonPrimitive.content },
+                )
+                val token = traversalContinuation("cli-projection").value
+                assertEquals(token, qualification.getValue("continuation").jsonPrimitive.content)
+                val checkpoint = qualification.getValue("checkpoint").jsonObject
+                assertEquals(setOf("type", "token"), checkpoint.keys)
+                assertEquals("upstream", checkpoint.getValue("type").jsonPrimitive.content)
+                assertEquals(token, checkpoint.getValue("token").jsonPrimitive.content)
+                assertEquals("resume", qualification.getValue("next_action").jsonPrimitive.content)
             },
             {
                 assertEquals(
@@ -444,13 +459,14 @@ class GeneratedCliProjectionTest {
             .refined()
 
     private fun traversalQualification(): TraversalRunQualification =
-        TraversalRunQualification.resumable(
+        TraversalRunQualification.admitResumable(
                 listOf(
                     TraversalLimitationDocument.RECORD_LIMIT_REACHED,
                     TraversalLimitationDocument.ONE_HOP_INCOMPLETE,
                 ),
                 listOf(RelationLimitationDocument.PROVIDER_INCOMPLETE),
-                traversalContinuation("cli-projection"),
+                TraversalCheckpointDocument.Upstream(traversalContinuation("cli-projection")),
+                ReadResumeActionDocument.RESUME,
             )
             .refined()
 
