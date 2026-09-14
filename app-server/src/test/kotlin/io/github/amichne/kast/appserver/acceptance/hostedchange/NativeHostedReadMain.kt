@@ -88,6 +88,8 @@ private class NativeHostedReadTransport(
         return when (request) {
             is NativeReadRequest.Invoke -> dispatch(request)
             is NativeReadRequest.Validate -> validateNativeReadOutput(schemas.getValue(request.tool), request.document)
+            is NativeReadRequest.ValidateEnvelope ->
+                validateNativeReadEnvelope(schemas.getValue(request.tool), request.envelope)
         }
     }
 

@@ -15,6 +15,25 @@ import org.junit.jupiter.api.assertThrows
 
 class NativeReadValidationTest {
     @Test
+    fun `actual provider envelope is validated without manufacturing its status`() {
+        val json = Json { encodeDefaults = true }
+        val schema = (CompiledJsonSchema.compile(
+            json.encodeToJsonElement(ValidationSchema.serializer(), ValidationSchema()).jsonObject
+        ) as Refinement.Refined).value
+        val encoded = json.encodeToJsonElement(ActualEnvelope.serializer(), ActualEnvelope())
+        assertTrue(validateNativeReadEnvelope(schema, encoded) is NativeReadResponse.ValidationAccepted)
+        for (malformed in listOf(
+            """{"document":"canonical output"}""",
+            """{"status":"unknown","document":"canonical output"}""",
+            """{"status":"completed","document":"canonical output","extra":true}""",
+            """{"status":"completed","document":1}""",
+        )) {
+            assertTrue(validateNativeReadEnvelope(schema, Json.parseToJsonElement(malformed))
+                is NativeReadResponse.ValidationRejected)
+        }
+    }
+
+    @Test
     fun `validator admits the exact outer envelope and retains bounded failure evidence`() {
         val json = Json { encodeDefaults = true }
         val schema =
@@ -37,6 +56,9 @@ class NativeReadValidationTest {
         assertThrows<SerializationException> { readRequestJson.decodeFromString<NativeReadRequest.Invoke>(encoded) }
     }
 }
+
+@Serializable
+private data class ActualEnvelope(val status: String = "completed", val document: String = "canonical output")
 
 @Serializable
 private data class ValidationSchema(
