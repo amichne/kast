@@ -162,7 +162,7 @@ def records(tool, response):
     return tuple(_freeze(record) for record in response.get(key, []))
 
 
-def payload_parity(tool, observed, baseline):
+def record_parity(tool, observed, baseline):
     """Keep declaration order; relation pages retain individual occurrence and compiler evidence."""
     if not isinstance(observed, Drained) or not isinstance(baseline, Drained):
         return False
@@ -180,14 +180,47 @@ def payload_parity(tool, observed, baseline):
             return False
     elif actual != expected:
         return False
+    return True
+
+
+def coverage_parity(tool, observed, baseline):
+    if not isinstance(observed, Drained) or not isinstance(baseline, Drained):
+        return False
     pages = observed.pages + baseline.pages
     if tool == 'source_read':
         original = baseline.pages[0]
         return all(page.get('snapshot') == original.get('snapshot')
                    and page.get('region') == original.get('region')
                    and page.get('text') == original.get('text') for page in pages)
-    field = 'failures' if tool == 'query_symbols' else 'omissions'
-    return all(page.get(field) == baseline.pages[0].get(field) for page in pages)
+    if tool == 'semantic_query':
+        return relation_coverage_parity(observed, baseline)
+    return all(page.get('failures') == baseline.pages[0].get('failures') for page in pages)
+
+
+def relation_coverage_parity(observed, baseline):
+    # An upstream budget stop correctly reports unmeasured remaining work on
+    # that page. It is not an observed missing occurrence in the final drain.
+    expected = baseline.pages[0].get('omissions')
+    temporary = {'RESULT_LIMIT_REACHED', 'BYTE_LIMIT_REACHED', 'TIME_LIMIT_REACHED', 'WORK_LIMIT_REACHED'}
+    for page in observed.pages:
+        permanent = []
+        for omission in page.get('omissions', []):
+            if omission.get('reason') not in temporary:
+                permanent.append(omission)
+                continue
+            qualification = page.get('qualification', {})
+            if (not isinstance(admit_progress('semantic_query', page), Checkpoint)
+                    or omission['reason'].lower().replace('_', '-') not in qualification.get('limitations', [])
+                    or omission.get('measurement') != {'type': 'unmeasured_on_page'}
+                    or _freeze(omission.get('samples')) != () or omission.get('remediation') != 'INCREASE_READ_LIMIT'):
+                return False
+        if _freeze(permanent) != _freeze(expected):
+            return False
+    return observed.pages[-1].get('omissions') == baseline.pages[-1].get('omissions')
+
+
+def payload_parity(tool, observed, baseline):
+    return record_parity(tool, observed, baseline) and coverage_parity(tool, observed, baseline)
 
 
 def _authored_baseline(replay, tool, result):
@@ -241,7 +274,8 @@ def _case(replay, tool, request, low, large):
         'independentLowGrant': independent_grant(first, low),
         'independentLargerGrant': independent_grant(baseline_first, large),
         'effectiveAllowanceIncreased': _effective(baseline_first, large) > _effective(first, low),
-        'payloadIdentityCoverageAndRequiredOrder': payload_parity(tool, observed, baseline),
+        'recordIdentityAndRequiredOrder': record_parity(tool, observed, baseline),
+        'pageCoveragePreserved': coverage_parity(tool, observed, baseline),
     }
     if tool == 'source_read' and isinstance(baseline, Drained):
         path = replay.fixture.workspace / replay.fixture.oracle['declarations']['logger'][0]

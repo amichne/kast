@@ -32,7 +32,9 @@ class AuthorityFailure(str, Enum):
 
 class AuthorityRefusal(str, Enum):
     STALE_REFERENCE = 'stale-generation'
-    STALE_CONTINUATION = 'continuation-unavailable'
+    STALE_CONTINUATION = 'source-snapshot-mismatch'
+    UNAVAILABLE_CONTINUATION = 'continuation-unavailable'
+    UNEXPECTED = 'unexpected-refusal'
     FOREIGN = 'ide-host-unavailable'
 
 
@@ -72,6 +74,7 @@ class AuthorityCase:
     actualProviderEnvelope: bool
     reason: AuthorityRefusal | None = None
     passed: bool = True
+    observedReason: AuthorityRefusal | None = None
 
 
 @dataclass(frozen=True)
@@ -146,9 +149,15 @@ class _AuthorityReplay:
 
     def reject(self, name, surface, request, reason):
         response, digest = self.call(surface, 'source_read', request)
-        _demand(response.get('status') == 'rejected' and response.get('operation') == 'source.read'
-            and response.get('reason') == reason, AuthorityFailure.REJECTION)
-        self.record(name, surface, digest, reason)
+        passed = (response.get('status') == 'rejected' and response.get('operation') == 'source.read'
+                  and response.get('reason') == reason)
+        try:
+            observed = AuthorityRefusal(response.get('reason'))
+        except (ValueError, TypeError):
+            observed = AuthorityRefusal.UNEXPECTED
+        self.cases.append(AuthorityCase(name, surface, digest, surface is AuthoritySurface.PROVIDER,
+                                        reason, passed, observed))
+        _demand(passed, AuthorityFailure.REJECTION)
 
 
 def _ready(probe, contents):

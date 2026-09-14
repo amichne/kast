@@ -238,17 +238,19 @@ class HostedReadRegressionTest(unittest.TestCase):
                 rendezvous.wait(timeout=5)
                 return {'status': 'complete', 'live': live,
                         'identity': -1 if mix_replies else arguments['identity']}
-            transport = SimpleNamespace(invoke=invoke, validate=lambda *_: 'sha256:' + 'a' * 64)
+            transport = SimpleNamespace(product=self.root, invoke=invoke, validate=lambda *_: 'sha256:' + 'a' * 64)
             observed = Mock()
             observed.completed.return_value = set(range(159))
             if good_observation is None:
                 observed.await_drained.side_effect = TransportWitnessRejected(TransportWitnessFailure.DEADLINE)
             observed.summary.return_value = TransportSummary(good_observation, 177, 176, 159, 1 if good_observation else 2, True, [])
-            def probe(_endpoint, case):
+            def probe(_endpoint, case, schema):
                 terminal = TerminalReply.UNOBSERVED if case is PeerCase.DISCONNECTED else TerminalReply.SINGLE
                 return PeerAttempt(case, PeerOutcome.REJECTED if case is bad_peer else PeerOutcome.PASSED,
-                                   terminal, 5, 0, 1, PeerFailure.SHAPE if case is bad_peer else None)
-            with patch('hosted_concurrent_read.admit_peer_endpoint', return_value=object()), \
+                                   terminal, 5, 0, 1, PeerFailure.SHAPE if case is bad_peer else None,
+                                   schemaDigest=None if case is PeerCase.DISCONNECTED else schema.digest)
+            with patch('hosted_concurrent_read.load_hosted_wire_schema', return_value=SimpleNamespace(digest='c' * 64)), \
+                 patch('hosted_concurrent_read.admit_peer_endpoint', return_value=object()), \
                  patch('hosted_concurrent_read.admission_capacity', return_value=(16, 'sha256:' + 'b' * 64)), \
                  patch('hosted_concurrent_read.NativeTransportWindow', return_value=nullcontext(observed)), \
                  patch('hosted_concurrent_read.connected_peer', side_effect=lambda _: nullcontext(Mock())), \
@@ -502,7 +504,7 @@ class HostedReadRegressionTest(unittest.TestCase):
 
 
 def load_tests(loader, tests, _pattern):
-    for name in ('test-native-provider-qualification.py', 'test-hosted-peer-probe.py',
+    for name in ('test-native-provider-qualification.py', 'test-hosted-peer-probe.py', 'test-hosted-wire-schema.py',
                  'test-hosted-authority-read.py', 'test-hosted-budget-read-regression.py',
                  'test-hosted-resume-budget-regression.py'):
         spec = importlib.util.spec_from_file_location(name[:-3].replace('-', '_'), Path(__file__).with_name(name))

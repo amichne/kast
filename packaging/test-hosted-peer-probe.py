@@ -66,9 +66,21 @@ class PeerProbeTest(unittest.TestCase):
         self.peer = peer
         yield peer
 
-    def probe(self, case, output):
+    def probe(self, case, output, schema=None):
         with patch('hosted_peer_probe.connected_peer', side_effect=lambda _: self.connection(output)):
-            return probe_peer(self.endpoint, case)
+            return probe_peer(self.endpoint, case, schema)
+
+    def test_actual_terminal_frame_requires_schema_admission_and_retains_only_digest(self):
+        schema = Mock(digest='a' * 64)
+        schema.admits.return_value = True
+        result = self.probe(PeerCase.MALFORMED, self.frame(RejectionFixture()), schema)
+        self.assertEqual(PeerOutcome.PASSED, result.outcome)
+        self.assertEqual(schema.digest, result.schemaDigest)
+        schema.admits.assert_called_once_with(asdict(RejectionFixture()))
+        schema.admits.return_value = False
+        result = self.probe(PeerCase.MALFORMED, self.frame(RejectionFixture()), schema)
+        self.assertEqual(PeerFailure.SCHEMA, result.failure)
+        self.assertIsNone(result.schemaDigest)
 
     def test_disconnected_peer_sends_one_complete_typed_request_and_does_not_claim_a_reply(self):
         result = self.probe(PeerCase.DISCONNECTED, b'')
