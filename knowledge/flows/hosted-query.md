@@ -6,6 +6,7 @@ resource: file://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/
 tags: [intellij, kotlin, semantic-query, lifecycle]
 timestamp: 2026-09-13T00:00:00Z
 code_sources:
+  - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceReadContinuations.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ExecutionBudgetDocument.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryResponse.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedExecutionBudgetRequest.kt
@@ -389,3 +390,8 @@ Query pipeline checkpoints and output suffixes exclude caller execution controls
 from semantic identity. Query page result limits also constrain retained output;
 every page preserves known item failures. An explicit query `take` remains part of
 the query identity. Source and traversal caller controls are still unfinished.
+
+Source entity cursors retain typed token keys and exact snapshot, region, and
+selection identity. Their binding excludes entity/text page allowances; an equal
+source cursor position reuses its token. The source continuation owner is separate
+from native entity collection.

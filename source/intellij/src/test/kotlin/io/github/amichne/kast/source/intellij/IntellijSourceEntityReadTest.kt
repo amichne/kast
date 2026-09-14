@@ -160,14 +160,17 @@ class IntellijSourceEntityReadTest {
         assertEquals(2, first.qualification.knownMinimumEntityCount.value)
         val continuation = (first.qualification.continuation as SourceReadContinuationState.Available).continuation
 
-        val final = org.junit.jupiter.api.Assertions.assertInstanceOf(SourceReadResult.Complete::class.java,
-            read(
-                port,
-                fixture,
-                selection,
-                limit = 4,
-                page = SourceReadPage.Continue(continuation),
-            ))
+        val final =
+            org.junit.jupiter.api.Assertions.assertInstanceOf(
+                SourceReadResult.Complete::class.java,
+                read(
+                    port,
+                    fixture,
+                    selection,
+                    limit = 4,
+                    page = SourceReadPage.Continue(continuation),
+                ),
+            )
         assertEquals(listOf("nested"), final.entities.names())
 
         val reference = read(port, fixture, selection, limit = 4) as SourceReadResult.Complete
