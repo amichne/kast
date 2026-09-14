@@ -35,7 +35,8 @@ object BrokerOperationalLimits {
     const val maximumProcessOutputBytes: Int = 64 * 1_024 * 1_024
     const val maximumGradleOutputBytes: Int = 512 * 1_024
     const val maximumKastVersionBytes: Int = 4 * 1_024
-    const val maximumKastSchemaBytes: Int = 512 * 1_024
+    // Schema introspection carries the full catalog, independently of per-read result allowances.
+    const val maximumKastSchemaBytes: Int = maximumCatalogBytes
     const val maximumKastOutputBytes: Int = 512 * 1_024
     const val maximumWorkspaces: Int = 256
     const val maximumRegistryBytes: Int = 1_048_576
