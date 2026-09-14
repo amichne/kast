@@ -5,10 +5,12 @@ from dataclasses import asdict, dataclass, field, replace
 import io
 import json
 from pathlib import Path
-import socket
+import select
 import struct
 import unittest
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
+from threading import Event
 from unittest.mock import Mock, patch
 
 from hosted_peer_probe import (HostedPeerEndpoint, PeerAttempt, PeerCase, PeerFailure, PeerOutcome,
@@ -186,6 +188,27 @@ class TransportObservationTest(unittest.TestCase):
                 window.notifications.control.side_effect = released
                 window.await_drained(1)
                 window.notifications.control.assert_called_once()
+                self.assertEqual(1, len(window.completed(TransportStage.CONNECTION_RELEASE)))
+
+    @unittest.skipUnless(hasattr(select, 'kqueue'), 'Native IDEA log notification requires macOS kqueue')
+    def test_native_log_notification_wakes_on_the_correlated_release_record(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'idea.log'
+            path.touch()
+            with NativeTransportWindow(path) as window, ThreadPoolExecutor(max_workers=1) as executor:
+                native = window.notifications
+                waiting = Event()
+                def wait_for_log(*arguments):
+                    waiting.set()
+                    return native.control(*arguments)
+                window.notifications = Mock(wraps=native)
+                window.notifications.control.side_effect = wait_for_log
+                waiter = executor.submit(window.await_drained, 1)
+                self.assertTrue(waiting.wait(timeout=2))
+                with path.open('ab') as output:
+                    for stage in ('ACCEPT', 'CONNECTION_RELEASE'):
+                        output.write(b'INFO - kast_transport ' + json.dumps(asdict(ObservationFixture(stage=stage))).encode() + b'\n')
+                waiter.result(timeout=2)
                 self.assertEqual(1, len(window.completed(TransportStage.CONNECTION_RELEASE)))
 
     def test_saturated_rejection_does_not_claim_an_admitted_permit(self):
