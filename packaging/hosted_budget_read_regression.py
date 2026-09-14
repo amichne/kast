@@ -248,8 +248,8 @@ def _retained_traversal(replay, low, large):
 
 
 def _retained_result_replay(replay, start, first):
-    # A native result-only page may checkpoint upstream work. Exercise result fitting
-    # on a genuinely issued retained byte suffix, where replay performs no provider work.
+    # A result-only native page may checkpoint upstream work. Reshape only a
+    # genuinely retained byte suffix; a one-record suffix needs no child token.
     checkpoint = traversal_checkpoint(first)
     retained = checkpoint is not None and checkpoint['type'] == 'retained_output'
     checks = {'byteRetainedSuffixAvailable': retained}
@@ -258,30 +258,69 @@ def _retained_result_replay(replay, start, first):
     resume = replace(start, position=TraversalResume(checkpoint['token']), execution_budget=ResultsBudget(1))
     child = _invoke(replay, 'impact_analyze', resume)
     repeated = _invoke(replay, 'impact_analyze', resume)
-    full = _invoke(replay, 'impact_analyze', replace(resume, execution_budget=ResultsBudget(100)))
+    ample = replace(resume, execution_budget=ResultsBudget(100))
+    full, full_valid = _detached_suffix(replay, ample)
+    reference = full[-1]
+    full_records = tuple(record for page in full for record in graph_records(page))
     child_checkpoint = traversal_checkpoint(child)
     child_retained = child_checkpoint is not None and child_checkpoint['type'] == 'retained_output'
     checks.update({
         'identicalRetainedTokenReplay': child == repeated,
         'retainedResultGrant': independent_grant(child, ResultsBudget(1)),
         'oneRetainedResult': len(child.get('graph', {}).get('edges', [])) == 1,
-        'retainedChildIssued': child_retained,
-        'retainedProgressUnchanged': child.get('progress') == full.get('progress') == first.get('progress'),
-        'retainedPartialExpansionsUnchanged': (child.get('partialExpansions') == full.get('partialExpansions')
+        'largerDetachedSuffixDrained': full_valid,
+        'retainedProgressUnchanged': child.get('progress') == reference.get('progress') == first.get('progress'),
+        'retainedPartialExpansionsUnchanged': (child.get('partialExpansions') == reference.get('partialExpansions')
                                               == first.get('partialExpansions')),
-        'retainedAuthorityUnchanged': child.get('live') == full.get('live') == replay.live,
+        'retainedAuthorityUnchanged': child.get('live') == reference.get('live') == replay.live,
     })
+    if len(full_records) == 1 and not child_retained:
+        checks.update({
+            'singleRecordSuffixChildReshapeUnexercised': True,
+            'singleRecordOrderAndProofIdentity': graph_records(child) == full_records,
+            'upstreamCoverageAndActionRestored': child.get('qualification') == reference.get('qualification'),
+        })
+        return checks
+    checks['multipleRecordSuffixChildIssued'] = len(full_records) >= 2 and child_retained
     if child_retained:
-        tail = _invoke(replay, 'impact_analyze', replace(resume, position=TraversalResume(child_checkpoint['token']),
-                                                       execution_budget=ResultsBudget(100)))
+        tail_request = replace(ample, position=TraversalResume(child_checkpoint['token']))
+        tail, tail_valid = _detached_suffix(replay, tail_request)
+        tail_records = tuple(record for page in tail for record in graph_records(page))
         checks.update({
             'retainedChildCoverage': child_checkpoint['upstream'] == checkpoint['upstream'],
-            'largerRetainedGrant': independent_grant(tail, ResultsBudget(100)),
-            'retainedOrderAndProofIdentity': graph_records(child) + graph_records(tail) == graph_records(full),
-            'upstreamCoverageAndActionRestored': tail.get('qualification') == full.get('qualification'),
-            'retainedTailProgress': tail.get('progress') == full.get('progress'),
+            'largerRetainedSuffixDrained': tail_valid,
+            'retainedOrderAndProofIdentity': graph_records(child) + tail_records == full_records,
+            'upstreamCoverageAndActionRestored': tail[-1].get('qualification') == reference.get('qualification'),
+            'retainedTailProgress': tail[-1].get('progress') == reference.get('progress'),
         })
     return checks
+
+
+def _detached_suffix(replay, request):
+    """Drain byte refits only; an upstream checkpoint belongs to later semantic work."""
+    pages, seen = [], set()
+    for _ in range(16):
+        response = _invoke(replay, 'impact_analyze', request)
+        pages.append(response)
+        if (response.get('live') != replay.live or not independent_grant(response, request.execution_budget)
+                or response.get('progress') != pages[0].get('progress')
+                or response.get('partialExpansions') != pages[0].get('partialExpansions')):
+            return tuple(pages), False
+        qualification = response.get('qualification', {})
+        if response.get('status') == 'complete' and 'qualification' not in response:
+            return tuple(pages), True
+        if response.get('status') == 'qualified' and qualification.get('type') == 'terminal_incomplete':
+            return tuple(pages), True
+        checkpoint = traversal_checkpoint(response)
+        if checkpoint is None:
+            return tuple(pages), False
+        if checkpoint['type'] == 'upstream':
+            return tuple(pages), True
+        if checkpoint['token'] in seen:
+            return tuple(pages), False
+        seen.add(checkpoint['token'])
+        request = replace(request, position=TraversalResume(checkpoint['token']))
+    return tuple(pages), False
 
 
 def graph_records(response):

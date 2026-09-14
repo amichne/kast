@@ -2,9 +2,10 @@
 """Independent admission and graph equivalence checks for installed budget evidence."""
 from dataclasses import asdict, dataclass, field, replace
 import unittest
+from types import SimpleNamespace
 
 from hosted_budget_read_regression import (BudgetDeclarationSearch, BudgetSource, BudgetTraversal, ResultsBudget, WorkBudget,
-    graph_records, independent_grant, progress_advances, traversal_checkpoint)
+    graph_records, independent_grant, progress_advances, traversal_checkpoint, _retained_result_replay)
 from hosted_source_read_regression import SymbolAnchor
 
 
@@ -99,7 +100,73 @@ class Progress:
     maximumDepthReached: int
 
 
+@dataclass(frozen=True)
+class DetachedPage:
+    graph: Graph
+    execution_budget: Grant
+    progress: Progress = field(default_factory=lambda: Progress(1, 1, 3, 1))
+    live: str = 'same-authority'
+    partialExpansions: tuple = ()
+    status: str = field(default='complete', init=False)
+
+
+@dataclass(frozen=True)
+class RetainedPage:
+    graph: Graph
+    execution_budget: Grant
+    qualification: Qualification
+    progress: Progress = field(default_factory=lambda: Progress(1, 1, 3, 1))
+    live: str = 'same-authority'
+    partialExpansions: tuple = ()
+    status: str = field(default='qualified', init=False)
+
+
+def detached_page(edges, results=100, checkpoint=None):
+    graph = Graph((Node(0, 'a', 0), Node(1, 'b', 1)), (Proof(0, 'proof-a'), Proof(1, 'proof-b')), edges)
+    grant = Grant(max_results=Limit(selection='caller', requested=results, effective=results))
+    if checkpoint is None:
+        return asdict(DetachedPage(graph, grant))
+    return asdict(RetainedPage(graph, grant, Qualification(checkpoint, checkpoint.token)))
+
+
+class DetachedTransport:
+    def __init__(self, responses):
+        self.responses = iter(responses)
+        self.requests = []
+
+    def invoke(self, surface, tool, request):
+        self.requests.append(request)
+        return next(self.responses)
+
+    def validate(self, tool, response):
+        pass
+
+
 class HostedBudgetReadRegressionTest(unittest.TestCase):
+    def test_one_edge_retained_suffix_is_valid_without_an_unnecessary_child_token(self):
+        edge = (Edge(0, 1, 'last-call'),)
+        child, full = detached_page(edge, results=1), detached_page(edge)
+        transport = DetachedTransport((child, child, full))
+        replay = SimpleNamespace(surface='cli', live='same-authority', transport=transport)
+        first = detached_page((), checkpoint=RetainedCheckpoint())
+        checks = _retained_result_replay(replay, BudgetTraversal('selector', ResultsBudget(100)), first)
+        self.assertTrue(all(checks.values()), checks)
+        self.assertTrue(checks['singleRecordSuffixChildReshapeUnexercised'])
+        self.assertEqual(3, len(transport.requests))
+
+    def test_detached_byte_refits_drain_only_retained_pages_and_stop_before_upstream_work(self):
+        a, b = Edge(0, 1, 'call-a'), Edge(0, 1, 'call-b')
+        child = detached_page((a,), results=1, checkpoint=RetainedCheckpoint('child', 'resumable'))
+        full = detached_page((a,), checkpoint=RetainedCheckpoint('full-next', 'resumable'))
+        tail = detached_page((b,), checkpoint=UpstreamCheckpoint())
+        transport = DetachedTransport((child, child, full, tail, tail))
+        replay = SimpleNamespace(surface='cli', live='same-authority', transport=transport)
+        first = detached_page((), checkpoint=RetainedCheckpoint(upstream='resumable'))
+        checks = _retained_result_replay(replay, BudgetTraversal('selector', ResultsBudget(100)), first)
+        self.assertTrue(all(checks.values()), checks)
+        self.assertEqual(5, len(transport.requests))
+        self.assertEqual('child', transport.requests[-1]['position']['continuation'])
+
     def test_checkpoint_reader_accepts_upstream_and_retained_without_conflating_them(self):
         for checkpoint in (UpstreamCheckpoint(), RetainedCheckpoint(), RetainedCheckpoint(upstream='resumable')):
             qualification = Qualification(checkpoint, checkpoint.token)
