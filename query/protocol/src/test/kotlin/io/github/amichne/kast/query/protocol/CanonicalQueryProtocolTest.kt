@@ -105,7 +105,7 @@ class CanonicalQueryProtocolTest {
     }
 
     @Test
-    fun `checkpoint expiry and capacity release retained state with explicit unavailable outcome`() = runTest {
+    fun `checkpoint replay retains token and expiry without consuming capacity`() = runTest {
         var now = 0L
         val store = QueryCheckpointStore(capacity = 1, maximumBytes = 16384L, clock = { now })
         lateinit var retained: QueryCheckpoint
@@ -126,8 +126,10 @@ class CanonicalQueryProtocolTest {
             )
             .execute(request(), lease, budget)
         val first = store.issue(request(), retained) as QueryCheckpointIssuance.Issued
-        val second = store.issue(request(), retained) as QueryCheckpointIssuance.Issued
-        assertEquals(QueryCheckpointRestoration.Unavailable, store.restore(first.token, request(), lease))
+        now = 300_000_000_000L
+        val second = store.issue(request().copy(executionBudget = largerGrant), retained) as QueryCheckpointIssuance.Issued
+        assertEquals(first, second)
+        assertInstanceOf(QueryCheckpointRestoration.Restored::class.java, store.restore(first.token, request(), lease))
         assertInstanceOf(QueryCheckpointRestoration.Restored::class.java, store.restore(second.token, request(), lease))
         now = 600_000_000_001L
         assertEquals(QueryCheckpointRestoration.Unavailable, store.restore(second.token, request(), lease))
