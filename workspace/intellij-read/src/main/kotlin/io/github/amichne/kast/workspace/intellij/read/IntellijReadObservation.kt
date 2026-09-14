@@ -64,6 +64,7 @@ enum class IntellijReadTermination {
     RELATION_UNRESOLVED_TARGET,
     RELATION_UNSUPPORTED_ITEM,
     RELATION_PROVIDER_INCOMPLETE,
+    RELATION_PROVIDER_STALLED,
 }
 
 enum class IntellijReadStage {

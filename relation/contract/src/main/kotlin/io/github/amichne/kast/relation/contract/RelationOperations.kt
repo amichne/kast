@@ -141,6 +141,7 @@ enum class RelationLimitation {
     UNSUPPORTED_ITEM,
     PROVIDER_FAILURE,
     PROVIDER_INCOMPLETE,
+    PROVIDER_STALLED,
 }
 
 @JvmInline value class RelationExactCount internal constructor(val value: Int)

@@ -1084,6 +1084,7 @@ private fun relationLimitationsSchema(): JsonObject =
                 "unsupported-item",
                 "provider-failure",
                 "provider-incomplete",
+                "provider-stalled",
             ),
             "Every relation coverage limitation.",
         )

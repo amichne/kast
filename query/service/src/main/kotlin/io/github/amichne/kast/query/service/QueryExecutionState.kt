@@ -112,7 +112,8 @@ internal class QueryExecutionState(
                 RelationLimitation.UNRESOLVED_TARGET,
                 RelationLimitation.UNSUPPORTED_ITEM,
                 RelationLimitation.PROVIDER_FAILURE,
-                RelationLimitation.PROVIDER_INCOMPLETE -> Unit
+                RelationLimitation.PROVIDER_INCOMPLETE,
+                RelationLimitation.PROVIDER_STALLED -> Unit
             }
         }
     }

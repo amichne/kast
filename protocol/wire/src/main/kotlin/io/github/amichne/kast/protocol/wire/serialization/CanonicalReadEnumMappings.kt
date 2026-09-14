@@ -173,6 +173,7 @@ private fun RelationLimitationDocument.toWireDocument(): RelationLimitationWireD
         RelationLimitationDocument.UNSUPPORTED_ITEM -> RelationLimitationWireDocument.UNSUPPORTED_ITEM
         RelationLimitationDocument.PROVIDER_FAILURE -> RelationLimitationWireDocument.PROVIDER_FAILURE
         RelationLimitationDocument.PROVIDER_INCOMPLETE -> RelationLimitationWireDocument.PROVIDER_INCOMPLETE
+        RelationLimitationDocument.PROVIDER_STALLED -> RelationLimitationWireDocument.PROVIDER_STALLED
     }
 
 private fun RelationLimitationWireDocument.toContract(): RelationLimitationDocument =
@@ -186,6 +187,7 @@ private fun RelationLimitationWireDocument.toContract(): RelationLimitationDocum
         RelationLimitationWireDocument.UNSUPPORTED_ITEM -> RelationLimitationDocument.UNSUPPORTED_ITEM
         RelationLimitationWireDocument.PROVIDER_FAILURE -> RelationLimitationDocument.PROVIDER_FAILURE
         RelationLimitationWireDocument.PROVIDER_INCOMPLETE -> RelationLimitationDocument.PROVIDER_INCOMPLETE
+        RelationLimitationWireDocument.PROVIDER_STALLED -> RelationLimitationDocument.PROVIDER_STALLED
     }
 
 internal fun RelationReadRejection.toWireDocument(): RelationReadRejectionWireDocument =

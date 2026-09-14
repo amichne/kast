@@ -208,6 +208,7 @@ enum class RelationLimitationDocument {
     UNSUPPORTED_ITEM,
     PROVIDER_FAILURE,
     PROVIDER_INCOMPLETE,
+    PROVIDER_STALLED,
 }
 
 enum class RelationKnownMinimumDocumentFailure {

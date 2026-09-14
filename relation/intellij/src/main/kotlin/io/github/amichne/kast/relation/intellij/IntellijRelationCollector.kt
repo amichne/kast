@@ -248,8 +248,13 @@ internal class IntellijRelationCollector(
             observation.terminated(IntellijReadTermination.COMPLETE)
             return RelationCompilation.complete(batch)
         }
+        val advanced = nextProviderCursor.nextPosition.value > requestedCursor.nextPosition.value
+        if (resumable && !advanced) {
+            limitations += RelationLimitation.PROVIDER_STALLED
+            observation.terminated(IntellijReadTermination.RELATION_PROVIDER_STALLED)
+        }
         val qualified =
-            if (resumable) {
+            if (resumable && advanced) {
                 RelationCompilation.qualifiedResumable(batch, limitations, nextProviderCursor)
             } else {
                 RelationCompilation.qualifiedTerminal(batch, limitations)
@@ -302,4 +307,5 @@ private fun RelationLimitation.observedTermination(): IntellijReadTermination =
         RelationLimitation.UNSUPPORTED_ITEM -> IntellijReadTermination.RELATION_UNSUPPORTED_ITEM
         RelationLimitation.PROVIDER_FAILURE -> IntellijReadTermination.PROVIDER_FAILURE
         RelationLimitation.PROVIDER_INCOMPLETE -> IntellijReadTermination.RELATION_PROVIDER_INCOMPLETE
+        RelationLimitation.PROVIDER_STALLED -> IntellijReadTermination.RELATION_PROVIDER_STALLED
     }

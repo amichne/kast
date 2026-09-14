@@ -399,7 +399,7 @@ class RelationReadTest {
     }
 
     @Test
-    fun `limit before the first provider item rejects instead of issuing a looping cursor`() {
+    fun `limit before the first provider item terminates instead of issuing a looping cursor`() {
         val request = request(RelationMeaning.References)
         var clockRead = 0
         val collector =
@@ -414,14 +414,15 @@ class RelationReadTest {
             IntellijRelationProviderItemAdmission.HALTED,
             collector.beginProviderItem(providerItem("first")),
         )
-        assertEquals(
-            io.github.amichne.kast.relation.contract.RelationCompilerRejection.COMPILER_CONTRACT_VIOLATION,
-            assertInstanceOf(
-                    RelationCompilation.Rejected::class.java,
-                    collector.finish(IntellijRelationTermination.Resumable(emptySet())),
-                )
-                .reason,
+        val result = assertInstanceOf(
+            RelationCompilation.Qualified::class.java,
+            collector.finish(IntellijRelationTermination.Resumable(emptySet())),
         )
+        assertInstanceOf(
+            io.github.amichne.kast.relation.contract.RelationIncompleteCoverage.TerminalIncomplete::class.java,
+            result.coverage,
+        )
+        assertTrue(RelationLimitation.PROVIDER_STALLED in result.coverage.limitations)
     }
 
     @Test

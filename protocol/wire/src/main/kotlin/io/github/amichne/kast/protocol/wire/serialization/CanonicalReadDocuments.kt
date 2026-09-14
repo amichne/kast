@@ -123,6 +123,7 @@ internal enum class RelationLimitationWireDocument {
     @SerialName("unsupported_item") UNSUPPORTED_ITEM,
     @SerialName("provider_failure") PROVIDER_FAILURE,
     @SerialName("provider_incomplete") PROVIDER_INCOMPLETE,
+    @SerialName("provider_stalled") PROVIDER_STALLED,
 }
 
 @Serializable

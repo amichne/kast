@@ -359,6 +359,7 @@ private fun RelationLimitation.protocolDocument(): RelationLimitationDocument =
         RelationLimitation.UNSUPPORTED_ITEM -> RelationLimitationDocument.UNSUPPORTED_ITEM
         RelationLimitation.PROVIDER_FAILURE -> RelationLimitationDocument.PROVIDER_FAILURE
         RelationLimitation.PROVIDER_INCOMPLETE -> RelationLimitationDocument.PROVIDER_INCOMPLETE
+        RelationLimitation.PROVIDER_STALLED -> RelationLimitationDocument.PROVIDER_STALLED
     }
 
 private fun TraversalLimitation.protocolDocument(): TraversalLimitationDocument =
