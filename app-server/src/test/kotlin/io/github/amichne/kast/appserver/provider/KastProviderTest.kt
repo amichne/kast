@@ -216,8 +216,7 @@ class KastProviderTest {
                     )
                 assertEquals(false, result.presentation.success)
                 assertEquals(ObserverPresentation.None, result.presentation.observer)
-                assertEquals(ToolContent("Kast · symbol.discover · rejected"), result.presentation.content.first())
-                val envelope = Json.parseToJsonElement(result.presentation.content.last().text).jsonObject
+                val envelope = Json.parseToJsonElement(result.presentation.content.single().text).jsonObject
                 assertEquals(JsonPrimitive("completed"), envelope["status"])
                 assertEquals(Json.parseToJsonElement(rejection), envelope["document"])
             }
