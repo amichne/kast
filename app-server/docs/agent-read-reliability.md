@@ -273,3 +273,24 @@ and rejects an unknown reason. The focused test and full CLI check (including
 native tests), generated references, JSON, architecture, and knowledge checks
 passed. This proves finite projection parity; service-level triggers and recovery
 directions remain separate requirements.
+
+### Native source collection regression
+
+The small logger page with 100 work units passed at `8ef7a480e`: the full installed
+matrix reported 118/118 read cases and 156/156 concurrent first attempts without
+retries, and all mutation/recovery gates passed. That fixture did not expose
+pre-page buffering, so it remains positive baseline evidence rather than RED.
+
+A separate `ReadPageBudget.kt` fixture contains 64 functions outside the existing
+oracle scopes. At `6310ec2d5`, both staged CLI and provider reproduced
+`source-stop-before-large-tail`: the first entity, cursor, authority, and effective
+100-unit grant were correct, but qualification included both `entity-limit-reached`
+and `work-limit-reached`. The other 120 of 122 read assertions passed. The native
+receipt records those finite causes without source or cursor payloads. This is
+RED evidence for stopping native collection at the eligible page plus lookahead.
+
+The source output replay tests additionally pass for larger result/text/byte
+allowances, exact entity sequence conservation, preserved terminal coverage,
+non-consuming replay, changed scope/projection/authority refusal, retirement,
+capacity refusal, and an indivisible envelope. They characterize the already
+implemented hosted suffix owner; they do not establish native streaming.
