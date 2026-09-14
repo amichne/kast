@@ -263,6 +263,7 @@ private constructor(
     val authority: SemanticReadIdentity,
     val nextProviderCursor: RelationProviderCursor,
     val fingerprint: RelationContinuationFingerprint,
+    val retainedLimitations: Set<RelationLimitation>,
 ) {
     companion object {
         /**
@@ -275,7 +276,9 @@ private constructor(
         fun issue(
             request: RelationRequest,
             nextProviderCursor: RelationProviderCursor,
+            limitations: Set<RelationLimitation> = emptySet(),
         ): RelationContinuation {
+            val retained = (request.retainedLimitations + limitations).filterNot { it in relationPageLimits }.toSet()
             check(nextProviderCursor.provider == RelationProviderKind.forMeaning(request.meaning))
             val scope = request.scopeFingerprint
             return RelationContinuation(
@@ -284,6 +287,7 @@ private constructor(
                 scope = scope,
                 authority = request.subject.lease.identity,
                 nextProviderCursor = nextProviderCursor,
+                retainedLimitations = retained,
                 fingerprint =
                     relationContinuationFingerprint(
                         request.subject.fingerprint,
@@ -291,6 +295,7 @@ private constructor(
                         scope,
                         request.subject.lease.identity,
                         nextProviderCursor,
+                        retained,
                     ),
             )
         }
@@ -303,6 +308,7 @@ private constructor(
             authority: SemanticReadIdentity,
             nextProviderCursor: RelationProviderCursor,
             fingerprint: RelationContinuationFingerprint,
+            retainedLimitations: Set<RelationLimitation> = emptySet(),
         ): Refinement<RelationContinuation, RelationContinuationRestorationFailure> =
             if (
                 fingerprint ==
@@ -312,6 +318,7 @@ private constructor(
                         scope,
                         authority,
                         nextProviderCursor,
+                        retainedLimitations,
                     )
             ) {
                 Refinement.Refined(
@@ -322,6 +329,7 @@ private constructor(
                         authority,
                         nextProviderCursor,
                         fingerprint,
+                        retainedLimitations.toSet(),
                     )
                 )
             } else {
@@ -538,6 +546,7 @@ private fun relationContinuationFingerprint(
     scope: RelationScopeFingerprint,
     authority: SemanticReadIdentity,
     cursor: RelationProviderCursor,
+    retainedLimitations: Set<RelationLimitation>,
 ): RelationContinuationFingerprint {
     val canonical = buildString {
         appendContinuationField(subject.value)
@@ -547,6 +556,7 @@ private fun relationContinuationFingerprint(
         appendContinuationField(cursor.provider.name)
         appendContinuationField(cursor.nextPosition.value.toString())
         appendContinuationField(cursor.consumedPrefixDigest.value)
+        retainedLimitations.sortedBy { it.ordinal }.forEach { appendContinuationField(it.name) }
     }
     return RelationContinuationFingerprint.digest(canonical)
 }
@@ -578,3 +588,13 @@ private fun <Value, Failure> Refinement<Value, Failure>.refinedInvariant(): Valu
         is Refinement.Refined -> value
         is Refinement.Rejected -> error("Internally derived relation value violated its invariant")
     }
+
+/** Page limits can clear on continuation; omitted semantic evidence cannot. */
+val RelationRequest.retainedLimitations: Set<RelationLimitation>
+    get() = when (val read = position) {
+        RelationReadPosition.Start -> emptySet()
+        is RelationReadPosition.Resume -> read.continuation.retainedLimitations
+    }
+
+private val relationPageLimits = setOf(RelationLimitation.RESULT_LIMIT_REACHED, RelationLimitation.BYTE_LIMIT_REACHED,
+    RelationLimitation.WORK_LIMIT_REACHED, RelationLimitation.TIME_LIMIT_REACHED)

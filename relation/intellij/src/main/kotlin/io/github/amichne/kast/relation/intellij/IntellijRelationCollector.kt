@@ -14,6 +14,7 @@ import io.github.amichne.kast.relation.contract.RelationProviderItemDescriptor
 import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.relation.contract.RelationResultCount
 import io.github.amichne.kast.relation.contract.RelationWorkCount
+import io.github.amichne.kast.relation.contract.retainedLimitations
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
@@ -57,7 +58,7 @@ internal class IntellijRelationCollector(
 ) {
     private val startedAt = clockNanoseconds()
     private val facts = mutableListOf<RelationFact>()
-    private val limitations = linkedSetOf<RelationLimitation>()
+    private val limitations = request.retainedLimitations.toMutableSet()
     private val requestedCursor = request.providerCursor
     private var observedPrefix = RelationProviderCursor.start(requestedCursor.provider)
     private var nextProviderCursor = requestedCursor
@@ -200,7 +201,7 @@ internal class IntellijRelationCollector(
     /** Produces exact, resumable, terminal-incomplete, or typed moved-cursor output. */
     fun finish(termination: IntellijRelationTermination): RelationCompilation {
         if (
-            !prefixVerified && state != IntellijRelationCollectionState.ENUMERATION_LIMIT ||
+            !prefixVerified && state == IntellijRelationCollectionState.COLLECTING ||
                 state == IntellijRelationCollectionState.CURSOR_MOVED
         ) {
             return RelationCompilation.Rejected(RelationCompilerRejection.CONTINUATION_CURSOR_MOVED)

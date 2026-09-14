@@ -207,7 +207,7 @@ sealed interface RelationIncompleteCoverage {
                 Resumable(
                     knownMinimum = RelationKnownMinimum(batch.facts.size),
                     limitations = orderedLimitations,
-                    continuation = RelationContinuation.issue(batch.request, nextProviderCursor),
+                    continuation = RelationContinuation.issue(batch.request, nextProviderCursor, orderedLimitations),
                 )
             )
         }

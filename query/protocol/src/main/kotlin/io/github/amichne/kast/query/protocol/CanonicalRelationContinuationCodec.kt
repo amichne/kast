@@ -38,6 +38,7 @@ object CanonicalRelationContinuationCodec {
                     continuation.nextProviderCursor.nextPosition.value.toString(),
                     continuation.nextProviderCursor.consumedPrefixDigest.value,
                     continuation.fingerprint.value,
+                    continuation.retainedLimitations.sortedBy { it.ordinal }.joinToString(",") { it.name },
                 )
                 .joinToString("\n")
                 .toByteArray(StandardCharsets.UTF_8)
@@ -59,7 +60,7 @@ object CanonicalRelationContinuationCodec {
             } catch (_: IllegalArgumentException) {
                 return CanonicalRelationContinuationDecoding.Malformed
             }
-        if (fields.size != CONTINUATION_FIELD_COUNT) {
+        if (fields.size !in setOf(CONTINUATION_FIELD_COUNT, CONTINUATION_FIELD_COUNT + 1)) {
             return CanonicalRelationContinuationDecoding.Malformed
         }
         val subject =
@@ -86,6 +87,19 @@ object CanonicalRelationContinuationCodec {
         val fingerprint =
             RelationContinuationFingerprint.parse(fields[7]).refinedOrNull()
                 ?: return CanonicalRelationContinuationDecoding.Malformed
+        val retained =
+            fields
+                .getOrNull(8)
+                .orEmpty()
+                .takeIf { it.isNotEmpty() }
+                ?.split(',')
+                ?.map { name ->
+                    io.github.amichne.kast.relation.contract.RelationLimitation.entries.singleOrNull { it.name == name }
+                        ?: return CanonicalRelationContinuationDecoding.Malformed
+                }
+                .orEmpty()
+        if (retained != retained.distinct().sortedBy { it.ordinal })
+            return CanonicalRelationContinuationDecoding.Malformed
         val cursor = RelationProviderCursor.restore(provider, position, prefix)
         return when (
             val restored =
@@ -96,6 +110,7 @@ object CanonicalRelationContinuationCodec {
                     authority,
                     cursor,
                     fingerprint,
+                    retained.toSet(),
                 )
         ) {
             is Refinement.Refined -> CanonicalRelationContinuationDecoding.Decoded(restored.value)
