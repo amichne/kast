@@ -59,8 +59,10 @@ class RawSymbolTest(unittest.TestCase):
             return asdict(lookup if tool == 'symbol_lookup' else Inspect())
         def validate(tool, response):
             validations.append(tool)
-            return True
+            return 'a' * 64
         def record(name, tool, checks, count=0, response=None):
+            if not all(type(value) is bool for value in checks.values()):
+                raise AssertionError('receipt assertions require bool values')
             rows.append((name, checks))
         replay = SimpleNamespace(surface='cli', transport=SimpleNamespace(invoke=invoke, validate=validate), record=record)
         run_raw_symbol_regression(replay)

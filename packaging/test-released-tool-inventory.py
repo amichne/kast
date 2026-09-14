@@ -43,7 +43,7 @@ class Schema:
 
 class InventoryTest(unittest.TestCase):
     def setUp(self):
-        self.tools = tuple(Tool(name, operation, 'intellij_mutate' if name.startswith('change_') else 'intellij_read')
+        self.tools = tuple(Tool(name, operation, 'none' if name == 'change_plan' else ('intellij_write' if name.startswith('change_') else 'intellij_read'))
                            for name, operation in OPERATIONS)
         self.cli = Invocations(tuple(Invocation(name, operation) for name, operation in OPERATIONS))
         self.defaults = tuple(name for name, _ in OPERATIONS if not name.startswith('symbol_'))
