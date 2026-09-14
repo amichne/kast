@@ -243,7 +243,7 @@ internal class CodexProtocolAdapter(
                     }
                 ThreadStoreRead.Missing -> null
                 ThreadStoreRead.Rejected -> return ProtocolRouting.Close(ProtocolCloseFailure.ThreadStoreRejected)
-            } ?: return dynamicToolFailure(id, "CATALOG_INCOMPATIBLE")
+            } ?: return dynamicToolFailure(id, CodexToolTerminalFailure.CATALOG_INCOMPATIBLE)
         val context =
             when (
                 val admission =
@@ -260,7 +260,7 @@ internal class CodexProtocolAdapter(
             }
         val invocationId = context.invocationId
         if (!invocationCapacity.tryAcquire()) {
-            return dynamicToolFailure(id, "BROKER_OVERLOADED_IN_FLIGHT_CALLS_PER_CONNECTION")
+            return dynamicToolFailure(id, CodexToolTerminalFailure.BROKER_OVERLOADED_IN_FLIGHT_CALLS_PER_CONNECTION)
         }
         val address = ToolAddress(namespace, tool)
         val operation =
@@ -281,7 +281,7 @@ internal class CodexProtocolAdapter(
         if (existing != null) {
             operation.cancel()
             invocationCapacity.release()
-            return dynamicToolFailure(id, "DUPLICATE_INVOCATION")
+            return dynamicToolFailure(id, CodexToolTerminalFailure.DUPLICATE_INVOCATION)
         }
         if (
             publishActivity(BrokerInvocationActivity.Started(context, address)) ==
@@ -290,7 +290,7 @@ internal class CodexProtocolAdapter(
             activeInvocations.remove(invocationId)
             operation.cancel()
             invocationCapacity.release()
-            return dynamicToolFailure(id, "BROKER_ACTIVITY_UNAVAILABLE")
+            return dynamicToolFailure(id, CodexToolTerminalFailure.BROKER_ACTIVITY_UNAVAILABLE)
         }
         operation.start()
         val dispatch =
@@ -314,13 +314,13 @@ internal class CodexProtocolAdapter(
             publishActivity(BrokerInvocationActivity.Finished(context, address, completion)) ==
                 BrokerInvocationActivityPublication.REJECTED
         ) {
-            return dynamicToolFailure(id, "BROKER_ACTIVITY_UNAVAILABLE")
+            return dynamicToolFailure(id, CodexToolTerminalFailure.BROKER_ACTIVITY_UNAVAILABLE)
         }
         val presentation =
             when (dispatch) {
                 is BrokerDispatch.Completed -> dispatch.presentation
                 is BrokerDispatch.Rejected -> failurePresentation(dispatch.failure)
-                null -> ToolPresentation.text("""{"status":"cancelled","effect":"uncertain"}""", success = false)
+                null -> codexToolCancellationPresentation()
             }
         val reply = dynamicToolReply(id, presentation)
         if (dispatch is BrokerDispatch.Completed && presentation.success && reply is ProtocolRouting.ReplyUpstream) {
@@ -856,15 +856,7 @@ internal class CodexProtocolAdapter(
     }
 
     private fun dynamicToolReply(id: RpcId, presentation: ToolPresentation): ProtocolRouting {
-        var result = presentation.dynamicToolResult()
-        if (canonicalJson(result).toByteArray(Charsets.UTF_8).size > broker.limits.maximumToolResultBytes) {
-            result =
-                ToolPresentation.text(
-                        "BROKER_OVERLOADED_MAXIMUM_TOOL_RESULT_BYTES",
-                        success = false,
-                    )
-                    .dynamicToolResult()
-        }
+        val result = encodeBoundedDynamicToolResult(presentation, broker.limits.maximumToolResultBytes)
         if (!contracts.admits(CodexOwnedSchema.DYNAMIC_TOOL_CALL_RESPONSE, result)) {
             return ProtocolRouting.Close(ProtocolCloseFailure.ResponseSchemaRejected)
         }
@@ -877,25 +869,8 @@ internal class CodexProtocolAdapter(
         )
     }
 
-    private fun ToolPresentation.dynamicToolResult(): JsonObject = buildJsonObject {
-        put("success", success)
-        put(
-            "contentItems",
-            buildJsonArray {
-                content.forEach { item ->
-                    add(
-                        buildJsonObject {
-                            put("type", "inputText")
-                            put("text", item.text)
-                        }
-                    )
-                }
-            },
-        )
-    }
-
-    private fun dynamicToolFailure(id: RpcId, code: String): ProtocolRouting =
-        dynamicToolReply(id, ToolPresentation.text(code, success = false))
+    private fun dynamicToolFailure(id: RpcId, code: CodexToolTerminalFailure): ProtocolRouting =
+        dynamicToolReply(id, codexToolFailurePresentation(code))
 
     private fun ownedRequestFailure(document: JsonObject, code: String): ProtocolRouting {
         val id = RpcId.admit(document["id"]) ?: return ProtocolRouting.Close(ProtocolCloseFailure.OwnedRequestIdMissing)

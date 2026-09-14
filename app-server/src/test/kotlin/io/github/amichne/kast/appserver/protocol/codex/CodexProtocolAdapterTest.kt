@@ -1173,10 +1173,9 @@ class CodexProtocolAdapterTest {
                 .getValue("result")
                 .jsonObject
         assertFalse(result.getValue("success").jsonPrimitive.content.toBoolean())
-        assertEquals(
-            "BROKER_ACTIVITY_UNAVAILABLE",
-            result.getValue("contentItems").jsonArray.single().jsonObject.getValue("text").jsonPrimitive.content,
-        )
+        val rejection = Json.parseToJsonElement(result.getValue("contentItems").jsonArray.single().jsonObject.getValue("text").jsonPrimitive.content).jsonObject
+        assertEquals("rejected", rejection.getValue("status").jsonPrimitive.content)
+        assertEquals("BROKER_ACTIVITY_UNAVAILABLE", rejection.getValue("failure").jsonPrimitive.content)
     }
 
     @Test

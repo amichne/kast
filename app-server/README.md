@@ -116,7 +116,10 @@ Kast executes through `item/tool/call` and returns native dynamic-tool text
 content containing one independently parseable JSON document. The existing CLI
 envelope preserves process completion separately from the canonical
 `complete`, `qualified`, or `rejected` outcome, including its qualifications and
-failure details. No summary prefix or newline splitting is required.
+failure details. No summary prefix or newline splitting is required. Broker
+admission and result-size failures also return a JSON rejection with their exact
+finite failure code. Cancellation retains its cancelled status and uncertain
+effect.
 For display, the broker projects its owned `dynamicToolCall` items into the standard
 expandable `mcpToolCall` shape, with the provider namespace as `server`, unchanged
 arguments, and raw text in `result.content`. A single JSON object from Kast also

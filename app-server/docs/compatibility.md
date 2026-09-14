@@ -154,3 +154,9 @@ single Kast JSON-object payload and keeps the exact original text and dynamic
 item fields. It does not add the field to `DynamicToolCallResponse`. Unsupported
 or malformed display payloads retain their raw content and omit structured
 content; no empty success result is synthesized.
+
+Broker-owned admission and response-size failures also serialize to one JSON
+text item with `status: rejected` and the original finite `failure` code.
+Cancellation serializes its existing `cancelled` status and `uncertain` effect.
+The response-size check still measures the actual escaped native response before
+selecting the bounded overload rejection.

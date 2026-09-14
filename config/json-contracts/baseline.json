@@ -234,16 +234,6 @@
     {
       "fingerprint": {
         "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolAdapter.kt",
-        "scope": "type:CodexProtocolAdapter/fun:fromUpstream(6:String,2:io1:.6:github1:.7:amichne1:.4:kast1:.9:appserver1:.7:runtime1:.24:BrokerInvocationApproval)/val:presentation",
-        "kind": "JSON_LITERAL",
-        "sha256": "7f9c348906114a9e045a0f38233fa4f27ef5da726ca33cd4c463db2f89f1e3ce"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolAdapter.kt",
         "scope": "type:CodexProtocolAdapter/fun:projectToolLifecycle(10:JsonObject,6:String,22:CodexToolCallLifecycle)/val:projected",
         "kind": "JSON_OBJECT",
         "sha256": "f2e289b2feafaf21a73627b1322808426ccc37a4d16bf8f3cdbe7510371d56ba"
@@ -417,36 +407,6 @@
         "scope": "type:CodexProtocolAdapter/fun:dynamicToolReply(5:RpcId,16:ToolPresentation)",
         "kind": "JSON_BUILDER",
         "sha256": "68ed15d478abb69b4b6b34502db4cbf63d75b0cbf5603bb8067e70cb87b9c75c"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolAdapter.kt",
-        "scope": "type:CodexProtocolAdapter/fun:dynamicToolResult()16:ToolPresentation",
-        "kind": "JSON_BUILDER",
-        "sha256": "4b4b2bae2e6fc2e1755f8230266bbb7f45ebe524ce60a58f39540a8e7ab19edb"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolAdapter.kt",
-        "scope": "type:CodexProtocolAdapter/fun:dynamicToolResult()16:ToolPresentation/declaration:<anonymous>",
-        "kind": "JSON_BUILDER",
-        "sha256": "55f55261598d0320f8a3bf91a4d856004d74de0013022764dff9a3939b3e3fd0"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolAdapter.kt",
-        "scope": "type:CodexProtocolAdapter/fun:dynamicToolResult()16:ToolPresentation/declaration:<anonymous>/declaration:<anonymous>/declaration:<anonymous>",
-        "kind": "JSON_BUILDER",
-        "sha256": "2404fb5a813bd54f69c970b4fd284f9d4cad779f87d724d8655b464a694b95e9"
       },
       "count": 1,
       "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
@@ -10327,26 +10287,6 @@
         "scope": "type:CanonicalReadGeneratedSerializationTest/fun:generated request document preserves shape and rejects malformed fields()/val:resumedDocument",
         "kind": "JSON_LITERAL",
         "sha256": "6dee0f32ff8781fe45dce45e67beb965b1b55b495c2c1c6c3d9c30345e4112d1"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "protocol/wire/src/test/kotlin/io/github/amichne/kast/protocol/wire/CanonicalReadGeneratedSerializationTest.kt",
-        "scope": "type:CanonicalReadGeneratedSerializationTest/fun:traversal request round trips closed start and resume positions()/val:startDocument",
-        "kind": "JSON_LITERAL",
-        "sha256": "2065345c61eeb1e24e27a1217f2d9d474f35f1e9e20137c0a6efd049c243178d"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "protocol/wire/src/test/kotlin/io/github/amichne/kast/protocol/wire/CanonicalReadGeneratedSerializationTest.kt",
-        "scope": "type:CanonicalReadGeneratedSerializationTest/fun:traversal request round trips closed start and resume positions()/val:resumeDocument",
-        "kind": "JSON_LITERAL",
-        "sha256": "778da9c04eb9d2e8037add2d0cadc4019f764fb728fd77be5b23974c44fa6936"
       },
       "count": 1,
       "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
