@@ -4,7 +4,6 @@ import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.wire.CompactSourceEntityDocument
 import io.github.amichne.kast.protocol.wire.CompactSourceRegionDocument
 import io.github.amichne.kast.protocol.wire.CompactSourceSelectionEntry
-import io.github.amichne.kast.protocol.wire.CompactSourceSnapshotDocument
 import io.github.amichne.kast.protocol.wire.CompactSourceTextDocument
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -31,7 +30,9 @@ internal fun sourceReadOutputSchema(operation: CanonicalOperation): JsonObject =
         ),
     )
 
-private fun compactSourceContentSchema(): JsonObject =
+internal fun compactSourceContentSchema(
+    basis: ServerReadEvidenceShape = ServerReadEvidenceShape.PUBLISHED
+): JsonObject =
     schemaJson
         .encodeToJsonElement(
             SourceContentTupleSchema.serializer(),
@@ -52,7 +53,7 @@ private fun compactSourceContentSchema(): JsonObject =
                             ),
                             ServerSchemaProperty(
                                 "snapshot",
-                                generatedRequestSchema(CompactSourceSnapshotDocument.serializer()),
+                                sourceSnapshotSchema(basis),
                             ),
                             ServerSchemaProperty(
                                 "region",
