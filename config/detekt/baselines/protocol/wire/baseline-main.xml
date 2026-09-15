@@ -44,7 +44,6 @@
     <ID>NamedArguments:CanonicalQueryDocuments.kt:PlanRejected(it, required.toContract(), actual.toContract(), correction.toContract())</ID>
     <ID>NamedArguments:CanonicalReadDocuments.kt:DiagnosticDocument(severity.toContract(), code, message, location)</ID>
     <ID>NamedArguments:CanonicalReadDocuments.kt:combineConverted( candidateSelector.protocolText(), file.protocolText(), range.toContract(), ::DiagnosticLocationDocument, )</ID>
-    <ID>NamedArguments:CanonicalReadEnumMappings.kt:create( admittedCount, resultLimitReached, admittedFiles, admittedLimitations, )</ID>
     <ID>NamedArguments:CanonicalSourceReadSerializers.kt:Call( admittedDepth, admittedParent, admittedSelection, admittedCallee, admittedTarget, )</ID>
     <ID>NamedArguments:CanonicalSourceReadSerializers.kt:Call( nestingDepth.value, parentSelector.value, selection.toWireDocument(), callee.toWireDocument(), target.toWireDocument(), )</ID>
     <ID>NamedArguments:CanonicalSourceReadSerializers.kt:Declaration( kind, admittedName, visibility, admittedDepth, admittedParent, admittedSelection, admittedIdentity, )</ID>
