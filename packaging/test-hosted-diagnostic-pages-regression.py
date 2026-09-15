@@ -6,7 +6,7 @@ import unittest
 
 from hosted_diagnostic_pages_regression import (
     DiagnosticDrainFailure, DiagnosticDrainRejected, DiagnosticDrained,
-    DiagnosticRequest, drain_diagnostics, run_diagnostic_pages_regression,
+    DiagnosticRequest, drain_diagnostics, run_diagnostic_pages_regression, heavy_file_checks,
 )
 
 
@@ -27,6 +27,7 @@ class Progress:
     stop: str = 'enumeration_file_limit'
     inventory: Enumerating | Exhausted = Enumerating()
     analyzedFiles: tuple[str, ...] = ()
+    knownDiagnosticCount: int = 0
 
 
 @dataclass(frozen=True)
@@ -46,6 +47,26 @@ class Page:
 def document(page):
     import json
     return json.loads(json.dumps(asdict(page)))
+
+
+@dataclass(frozen=True)
+class Range:
+    startInclusive: int
+    endExclusive: int
+
+
+@dataclass(frozen=True)
+class Location:
+    range: Range
+    file: str = '/workspace/src/main/kotlin/ReadDiagnosticPages.kt'
+
+
+@dataclass(frozen=True)
+class Diagnostic:
+    location: Location
+    severity: str = 'warning'
+    code: str = 'DEPRECATION'
+    message: str = 'Diagnostic paging fixture'
 
 
 class DiagnosticPagesTest(unittest.TestCase):
@@ -70,6 +91,18 @@ class DiagnosticPagesTest(unittest.TestCase):
         self.assertEqual({'relative_path', 'max_diagnostics'}, set(requests[0]))
         self.assertTrue(rows[0][2]['legacyRequestReachedScopeCap'])
         self.assertFalse(rows[0][2]['boundedDrainCompleted'])
+
+    def test_heavy_file_preserves_repeated_messages_and_distinct_occurrences(self):
+        files = ('/workspace/src/main/kotlin/ReadDiagnosticPages.kt',)
+        records = tuple(Diagnostic(Location(Range(index, index + 1))) for index in range(3))
+        output = Progress('output', 'output_pending', Exhausted(1), files, 3)
+        finished = Progress('finished', 'finished', Exhausted(1), files, 3)
+        high = Page(finished, None, status='complete', diagnostics=records)
+        first = Page(output, Qualification('first'), diagnostics=records[:1])
+        second = Page(output, Qualification('second'), diagnostics=records[1:2])
+        last = Page(finished, None, status='complete', diagnostics=records[2:])
+        checks = heavy_file_checks(self.replay(high, first, second, second, last, last))
+        self.assertTrue(all(checks.values()), checks)
 
     def test_enumeration_then_exact_complete_coverage(self):
         last = Page(Progress('finished', 'finished', Exhausted(), ('A.kt', 'B.kt', 'C.kt')), None, status='complete')
