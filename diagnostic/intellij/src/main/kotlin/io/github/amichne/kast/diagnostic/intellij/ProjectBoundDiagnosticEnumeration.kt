@@ -49,7 +49,7 @@ internal fun projectBoundDiagnosticEnumeration(
             DiagnosticEnumerationFailure.IndexModeUnsupported
         )
     guardedDiagnosticEnumeration {
-        DiagnosticIndexScope(project, authority, limits, admitsFile).collect(request, allowance)
+        readAction { DiagnosticIndexScope(project, authority, limits, admitsFile).collect(request, allowance) }
     }
 }
 
@@ -70,29 +70,22 @@ private class DiagnosticIndexScope(
             is Refinement.Refined -> Unit
             is Refinement.Rejected -> return DiagnosticEnumerationResult.Rejected(admitted.failure)
         }
-        val collector =
-            when (
-                val admitted =
-                    BoundedDiagnosticEnumeration.create(
-                        request,
-                        allowance,
-                        limits[ReadLimitParameter.QUERY_CHECKPOINT_BYTES].value.toLong(),
-                    )
-            ) {
-                is Refinement.Refined -> admitted.value
-                is Refinement.Rejected -> return DiagnosticEnumerationResult.Rejected(admitted.failure)
-            }
         val scope = diagnosticEnumerationScope(project, request.query, admitsFile)
-        collectIndexedDiagnosticFiles(project, authority, limits, scope, collector)
-        return collector.finish()
+        return diagnosticEnumerationAttempt(
+            request,
+            allowance,
+            limits[ReadLimitParameter.QUERY_CHECKPOINT_BYTES].value.toLong(),
+        ) { collector ->
+            collectIndexedDiagnosticFiles(project, authority, limits, scope, collector)
+        }
     }
 }
 
-private suspend fun guardedDiagnosticEnumeration(
-    block: () -> DiagnosticEnumerationResult
+internal suspend fun guardedDiagnosticEnumeration(
+    block: suspend () -> DiagnosticEnumerationResult
 ): DiagnosticEnumerationResult =
     try {
-        readAction { block() }
+        block()
     } catch (cancelled: ProcessCanceledException) {
         throw cancelled
     } catch (cancelled: CancellationException) {

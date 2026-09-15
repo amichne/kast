@@ -6,6 +6,8 @@ resource: file://query
 tags: [kotlin, semantic, query, compiler]
 timestamp: 2026-09-14T00:00:00Z
 code_sources:
+  - path: diagnostic/intellij/src/main/kotlin/io/github/amichne/kast/diagnostic/intellij/DiagnosticReadAttempts.kt
+  - path: diagnostic/intellij/src/test/kotlin/io/github/amichne/kast/diagnostic/intellij/DiagnosticReadAttemptTest.kt
   - path: diagnostic/intellij/src/main/kotlin/io/github/amichne/kast/diagnostic/intellij/ProjectBoundDiagnosticEnumeration.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/DiagnosticCheckpointStore.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedDiagnosticResponse.kt
@@ -269,3 +271,12 @@ changes. A changed caller grant shapes a distinct execution. Every invocation
 still publishes its own requested/effective report; replay does not reuse an old
 report as current admission. Installed replay checks compare all semantic fields,
 including continuation and evidence, while validating each actual report separately.
+
+The compiler and enumeration `readAction` closures invoke concrete diagnostic
+attempt functions that create fresh collectors inside each attempt. Interrupted
+attempts publish neither facts nor inventory; enumeration retains the request's
+consumed-work allowance across re-entry. Deterministic tests invoke these same
+production blocks with pinned-SDK `ProcessCanceledException` and coroutine
+cancellation after accepted facts or identities, then verify a clean re-entry and
+unchanged cancellation identity. This is simulated scheduling over production
+attempt code, not evidence of native IDE preemption or an executed K2 session.
