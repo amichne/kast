@@ -13,6 +13,16 @@ import org.junit.jupiter.api.Test
 
 class NativeCodexReadinessTest {
     @Test
+    fun `peer channel cancellation remains a finite rejection in an active caller`() = runBlocking {
+        val peer = object : BrokerUpstreamConnection {
+            override suspend fun send(message: String): BrokerUpstreamSend = throw kotlinx.coroutines.CancellationException("peer channel closed")
+            override suspend fun receive(): BrokerUpstreamFrame = BrokerUpstreamFrame.Closed
+            override suspend fun close() = Unit
+        }
+        assertEquals(NativeCodexReadiness.REJECTED, NativeCodexReadiness.exchange(peer))
+    }
+
+    @Test
     fun `readiness completes native initialized only for the correlated successful response`() = runBlocking {
         val peer = Peer(Reply("kast-protocol-readiness", Result("codex-test")))
         assertEquals(NativeCodexReadiness.READY, NativeCodexReadiness.exchange(peer))
