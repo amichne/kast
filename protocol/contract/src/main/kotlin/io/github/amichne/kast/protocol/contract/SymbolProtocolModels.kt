@@ -215,6 +215,9 @@ sealed interface SymbolInspectTarget {
     /** Weaker discovery evidence that must be refined through compiler analysis. */
     @Serializable @SerialName("candidate") data class Candidate(val selector: ProtocolText) : SymbolInspectTarget
 
+    /** Explicit fresh reacquisition; the previous token is only a retained locator. */
+    @Serializable @SerialName("revalidate_exact") data class RevalidateExact(val selector: ProtocolText) : SymbolInspectTarget
+
     /** Already exact compiler selector that must be revalidated before projection. */
     @Serializable @SerialName("exact") data class Exact(val selector: ProtocolText) : SymbolInspectTarget
 }
