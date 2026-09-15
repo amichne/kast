@@ -6,6 +6,10 @@ resource: file://runtime/hosted
 tags: [runtime, protocol, dispatch]
 timestamp: 2026-09-12T00:00:00Z
 code_sources:
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadCompletion.kt
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDeadline.kt
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadTransaction.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedDiagnosticCompletion.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt
   - path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt
   - path: docs/reviews/live-semantic-read-acceptance.md
@@ -66,6 +70,16 @@ For the five reads, a supplied byte limit below the serialized wire schema and
 operation identity rejects before handler selection. No semantic grant is invented
 for this rejection. Satisfying that necessary lower bound does not establish that a
 complete response body can fit; encoded output remains the publication authority.
+
+Diagnostic dispatch selects caller-elapsed completion in the existing deadline
+owner. Semantic admission captures a request-local completion proof with the exact
+effective elapsed allowance. Projection, retained-output restoration and encoding
+run inside that allowance, followed by final host freshness validation and the
+completion check before publication. Exhaustion or a regressed clock rejects with
+`BUDGET_EXCEEDED` and the actual admitted report; this is distinct from a resumable
+diagnostic stage stop. Other read operations retain their existing host-containment
+completion policy. Host timeout and cancellation drainage remain independently
+owned by the existing executor.
 
 Canonical semantic-read handlers delegate request admission, reference codecs,
 and outcome projection to [`query:protocol`](../modules/query-protocol.md).

@@ -260,3 +260,12 @@ That strict native internal-work qualification remains separate from the compile
 callback, replay, exclusion-capacity and elapsed-rejection tests.
 
 Diagnostic resumes preserve the original path, authority and `max_diagnostics` semantic choice. Execution grants may change. Checkpoint admission charges the retained query and authority identity against both the per-checkpoint and aggregate retention bounds. Admitted rejections preserve the actual execution grant report and a finite recovery direction; that direction authorizes no setting change or epoch migration.
+
+Diagnostic response replay keys retain normalized caller grant selections,
+including configured-default selections, rather than an invocation's fluctuating
+host elapsed-time capacity. The same caller request and basis therefore retain
+identical semantic pages and continuation tokens when the host deadline clamp
+changes. A changed caller grant shapes a distinct execution. Every invocation
+still publishes its own requested/effective report; replay does not reuse an old
+report as current admission. Installed replay checks compare all semantic fields,
+including continuation and evidence, while validating each actual report separately.
