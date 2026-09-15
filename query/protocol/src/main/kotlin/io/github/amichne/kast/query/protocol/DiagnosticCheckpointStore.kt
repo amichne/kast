@@ -10,6 +10,7 @@ import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRejection
+import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import java.util.UUID
@@ -26,14 +27,19 @@ internal data class DiagnosticStoredPage(val result: DiagnosticScanResult, val n
 internal sealed interface DiagnosticCheckpointAdmission {
     data class Replay(val page: DiagnosticStoredPage) : DiagnosticCheckpointAdmission
 
-    data class Execute(val request: DiagnosticScanRequest, val key: DiagnosticReplayKey, val createdAt: Long) :
-        DiagnosticCheckpointAdmission
+    data class Execute(
+        val request: DiagnosticScanRequest,
+        val key: DiagnosticReplayKey,
+        val createdAt: Long,
+        val limit: ProtocolCount,
+    ) : DiagnosticCheckpointAdmission
 
     data class Rejected(val reason: DiagnosticCheckRejection) : DiagnosticCheckpointAdmission
 }
 
 internal sealed interface DiagnosticReplayOrigin {
-    data class First(val path: String, val lease: SemanticReadAuthority) : DiagnosticReplayOrigin
+    data class First(val path: String, val lease: SemanticReadAuthority, val limit: ProtocolCount) :
+        DiagnosticReplayOrigin
 
     data class Resume(val token: ProtocolText) : DiagnosticReplayOrigin
 }
@@ -52,12 +58,13 @@ class DiagnosticCheckpointStore(
     ttlMillis: Long = ReadLimitParameter.QUERY_CONTINUATION_TTL_MILLIS.defaultValue.toLong(),
     private val clock: () -> Long = System::nanoTime,
 ) {
-    private data class Checkpoint(val value: DiagnosticScanCheckpoint, val createdAt: Long) {
+    private data class Checkpoint(val value: DiagnosticScanCheckpoint, val createdAt: Long, val limit: ProtocolCount) {
         val bytes = value.retainedBytes + value.query.retainedIdentityBytes() + ENTRY_OVERHEAD
     }
 
     private data class Replay(
         val query: DiagnosticScopeQuery,
+        val limit: ProtocolCount,
         val key: DiagnosticReplayKey,
         val page: DiagnosticStoredPage,
         val createdAt: Long,
@@ -79,17 +86,18 @@ class DiagnosticCheckpointStore(
     internal fun admit(
         query: DiagnosticScopeQuery,
         token: ProtocolText?,
+        limit: ProtocolCount,
         grant: ResourceBudget,
     ): DiagnosticCheckpointAdmission {
         expire()
         if (lifetime == Lifetime.RETIRED) return unavailable()
         val origin =
-            if (token == null) DiagnosticReplayOrigin.First(query.path.toString(), query.lease)
+            if (token == null) DiagnosticReplayOrigin.First(query.path.toString(), query.lease, limit)
             else DiagnosticReplayOrigin.Resume(token)
         val key = DiagnosticReplayKey(origin, grant)
         val replay = replays[key]
         if (replay != null) {
-            when (val admitted = matchingQuery(query, replay.query)) {
+            when (val admitted = matchingQuery(query, replay.query, limit, replay.limit)) {
                 is Refinement.Rejected -> return DiagnosticCheckpointAdmission.Rejected(admitted.failure)
                 is Refinement.Refined -> Unit
             }
@@ -98,13 +106,18 @@ class DiagnosticCheckpointStore(
             return DiagnosticCheckpointAdmission.Replay(replay.page)
         }
         if (token == null)
-            return DiagnosticCheckpointAdmission.Execute(DiagnosticScanRequest.First(query), key, clock())
+            return DiagnosticCheckpointAdmission.Execute(DiagnosticScanRequest.First(query), key, clock(), limit)
         val entry = checkpoints[token] ?: return unavailable()
-        when (val admitted = matchingQuery(query, entry.value.query)) {
+        when (val admitted = matchingQuery(query, entry.value.query, limit, entry.limit)) {
             is Refinement.Rejected -> return DiagnosticCheckpointAdmission.Rejected(admitted.failure)
             is Refinement.Refined -> Unit
         }
-        return DiagnosticCheckpointAdmission.Execute(DiagnosticScanRequest.Resume(entry.value), key, entry.createdAt)
+        return DiagnosticCheckpointAdmission.Execute(
+            DiagnosticScanRequest.Resume(entry.value),
+            key,
+            entry.createdAt,
+            limit,
+        )
     }
 
     @Synchronized
@@ -124,7 +137,7 @@ class DiagnosticCheckpointStore(
                 is Refinement.Rejected -> return issued
             }
         val page = DiagnosticStoredPage(result, next)
-        val replay = Replay(admission.request.query, admission.key, page, admission.createdAt)
+        val replay = Replay(admission.request.query, admission.limit, admission.key, page, admission.createdAt)
         val extraBytes =
             replay.bytes +
                 if (result is DiagnosticScanResult.Advancing)
@@ -134,7 +147,7 @@ class DiagnosticCheckpointStore(
         if (extraEntries > capacity || extraBytes > maximumBytes) return capacityRejected()
         makeCapacity(extraEntries, extraBytes)
         if (next is DiagnosticNextPage.Continue && result is DiagnosticScanResult.Advancing) {
-            checkpoints[next.token] = Checkpoint(result.checkpoint, admission.createdAt)
+            checkpoints[next.token] = Checkpoint(result.checkpoint, admission.createdAt, admission.limit)
         }
         replays[admission.key] = replay
         return Refinement.Refined(page)
@@ -150,7 +163,11 @@ class DiagnosticCheckpointStore(
 
     private fun nextPage(result: DiagnosticScanResult): Refinement<DiagnosticNextPage, DiagnosticCheckRejection> {
         if (result !is DiagnosticScanResult.Advancing) return Refinement.Refined(DiagnosticNextPage.Terminal)
-        if (result.checkpoint.retainedBytes > maximumCheckpointBytes) return capacityRejected()
+        if (
+            result.checkpoint.retainedBytes + result.checkpoint.query.retainedIdentityBytes() + ENTRY_OVERHEAD >
+                maximumCheckpointBytes
+        )
+            return capacityRejected()
         val token =
             when (val parsed = ProtocolText.parse("diagnostic:v1:" + UUID.randomUUID())) {
                 is Refinement.Refined -> parsed.value
@@ -190,10 +207,13 @@ class DiagnosticCheckpointStore(
 private fun matchingQuery(
     current: DiagnosticScopeQuery,
     original: DiagnosticScopeQuery,
+    currentLimit: ProtocolCount,
+    originalLimit: ProtocolCount,
 ): Refinement<Unit, DiagnosticCheckRejection> =
     when {
         current.lease != original.lease -> Refinement.Rejected(DiagnosticCheckRejection.STALE_CONTINUATION)
-        current.path != original.path -> Refinement.Rejected(DiagnosticCheckRejection.CONTINUATION_REQUEST_MISMATCH)
+        current.path != original.path || currentLimit != originalLimit ->
+            Refinement.Rejected(DiagnosticCheckRejection.CONTINUATION_REQUEST_MISMATCH)
         else -> Refinement.Refined(Unit)
     }
 

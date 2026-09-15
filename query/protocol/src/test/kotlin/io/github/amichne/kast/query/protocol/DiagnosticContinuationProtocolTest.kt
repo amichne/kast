@@ -104,7 +104,11 @@ class DiagnosticContinuationProtocolTest {
         }
         val first = protocol.execute(request, lease, budget) as OperationOutcome.Qualified
         val resumedRequest = request.copy(continuation = first.qualification.continuation)
-        val largerGrant = budget.copy(workUnitLimit = WorkUnitLimit.parse(100).refined())
+        val largerGrant =
+            budget.copy(
+                workUnitLimit = WorkUnitLimit.parse(100).refined(),
+                resultLimit = ResultLimit.parse(10).refined(),
+            )
         val last = protocol.execute(resumedRequest, lease, largerGrant)
         assertInstanceOf(OperationOutcome.Complete::class.java, last)
         assertEquals(last, protocol.execute(resumedRequest, lease, largerGrant))
@@ -124,6 +128,10 @@ class DiagnosticContinuationProtocolTest {
         assertEquals(
             OperationOutcome.Rejected(DiagnosticCheckRejection.CONTINUATION_REQUEST_MISMATCH),
             protocol.execute(resumed.copy(path = ProtocolText.parse("other").refined()), lease, budget),
+        )
+        assertEquals(
+            OperationOutcome.Rejected(DiagnosticCheckRejection.CONTINUATION_REQUEST_MISMATCH),
+            protocol.execute(resumed.copy(limit = ProtocolCount.parse(2).refined()), lease, budget),
         )
         val moved = SemanticReadLease(root, EvidenceGeneration.parse(8).refined())
         assertEquals(
@@ -168,7 +176,7 @@ class DiagnosticContinuationProtocolTest {
     }
 
     @Test
-    fun `long request identity is charged before replay publication`() = runTest {
+    fun `long request identity is charged against checkpoint cap before publication`() = runTest {
         val path = "src/" + "a".repeat(10000)
         val longQuery = DiagnosticScopeQuery.parse(lease, path).refined()
         val longCheckpoint =
@@ -177,7 +185,7 @@ class DiagnosticContinuationProtocolTest {
                 override val retainedBytes = 1L
             }
         val protocol =
-            protocol(DiagnosticCheckpointStore(maximumBytes = 10000)) {
+            protocol(DiagnosticCheckpointStore(maximumCheckpointBytes = 10000)) {
                 DiagnosticScanResult.Advancing(emptyPage, longCheckpoint, DiagnosticScanStop.AnalysisPending)
             }
         val result = protocol.execute(request.copy(path = ProtocolText.parse(path).refined()), lease, budget)

@@ -71,7 +71,7 @@ class CanonicalDiagnosticCheckProtocol(
                     }
             )
         val stored =
-            when (val admitted = checkpoints.admit(query, request.continuation, effective)) {
+            when (val admitted = checkpoints.admit(query, request.continuation, request.limit, effective)) {
                 is DiagnosticCheckpointAdmission.Rejected -> return OperationOutcome.Rejected(admitted.reason)
                 is DiagnosticCheckpointAdmission.Replay -> admitted.page
                 is DiagnosticCheckpointAdmission.Execute -> {

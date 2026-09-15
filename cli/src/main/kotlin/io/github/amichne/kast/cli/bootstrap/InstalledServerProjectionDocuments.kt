@@ -951,13 +951,14 @@ private fun admittedReadRejectionVariants(operation: CanonicalOperation): Array<
     when (operation) {
         CanonicalOperation.SOURCE_READ,
         CanonicalOperation.RELATION_READ,
-        CanonicalOperation.TRAVERSAL_RUN ->
+        CanonicalOperation.TRAVERSAL_RUN,
+        CanonicalOperation.DIAGNOSTIC_CHECK ->
             arrayOf(
                 operationOutcomeVariant(
                     operation,
                     "rejected",
                     ServerSchemaProperty("reason", canonicalReadRejectionSchema(operation)),
-                    readRecoveryActionProperty(),
+                    *readRecoveryActionProperties(operation),
                     ServerSchemaProperty(
                         "execution_budget",
                         generatedRequestSchema(
@@ -1957,5 +1958,14 @@ private fun readRecoveryActionProperties(operation: CanonicalOperation): Array<S
         CanonicalOperation.SOURCE_READ,
         CanonicalOperation.RELATION_READ,
         CanonicalOperation.TRAVERSAL_RUN -> arrayOf(readRecoveryActionProperty())
+        CanonicalOperation.DIAGNOSTIC_CHECK ->
+            arrayOf(
+                ServerSchemaProperty(
+                    "next_action",
+                    generatedRequestSchema(
+                        io.github.amichne.kast.protocol.contract.DiagnosticRecoveryAction.serializer()
+                    ),
+                )
+            )
         else -> emptyArray()
     }

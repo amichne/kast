@@ -7,8 +7,8 @@ import io.github.amichne.kast.cli.ProjectedCliOutcome
 import io.github.amichne.kast.kernel.EvidenceBasis
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.contract.DiagnosticCheckFailure
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckQualification
-import io.github.amichne.kast.protocol.contract.DiagnosticCheckRejection
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckResult
 import io.github.amichne.kast.protocol.contract.DiagnosticDocument
 import io.github.amichne.kast.protocol.contract.DiagnosticLimitationDocument
@@ -137,7 +137,7 @@ internal object CanonicalReadCliDocuments {
             OperationOutcome<
                 DiagnosticCheckResult,
                 DiagnosticCheckQualification,
-                DiagnosticCheckRejection,
+                DiagnosticCheckFailure,
             >
     ) =
         projectClosedOutcome(
@@ -164,7 +164,7 @@ internal object CanonicalReadCliDocuments {
                 )
             },
             rejected = { rejection ->
-                canonicalRejectedDocument(CanonicalOperation.DIAGNOSTIC_CHECK, rejection.cliName())
+                canonicalDiagnosticRejectedDocument(rejection)
             },
         )
 }
