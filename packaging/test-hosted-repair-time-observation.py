@@ -3,7 +3,7 @@ from dataclasses import asdict, dataclass, replace
 import json
 import unittest
 
-from hosted_repair_time_observation import ReadStage, ReadStageDuration, admit_native_time, NativeRepairTimeWindow
+from hosted_repair_time_observation import ReadStage, ReadStageDuration, ReadOutcome, admit_native_time, NativeRepairTimeWindow
 from hosted_transport_observation import TransportWitnessRejected
 
 
@@ -58,9 +58,15 @@ class NativeTimeTest(unittest.TestCase):
             replace(Receipt(), durationNanos=1),
             replace(Receipt(), semanticBudget=Budget(semanticMillis=5000)),
             replace(Receipt(), stages=tuple(reversed(Receipt().stages))),
+            replace(Receipt(), outcome=Outcome('UNKNOWN')),
         ):
             with self.assertRaises(TransportWitnessRejected):
                 admit_native_time(json.loads(json.dumps(asdict(receipt))), LIVE)
+
+    def test_closed_host_outcomes_remain_distinct_from_projected_semantic_status(self):
+        for outcome in ReadOutcome:
+            raw = json.loads(json.dumps(asdict(replace(Receipt(), outcome=Outcome(outcome)))))
+            self.assertEqual(outcome, admit_native_time(raw, LIVE).outcome)
 
     def test_second_semantic_record_cannot_be_misattributed_to_one_request(self):
         window = NativeRepairTimeWindow(None, LIVE)

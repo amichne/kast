@@ -18,6 +18,13 @@ class ReadStage(str, Enum):
     RESULT_DETACHED = 'RESULT_DETACHED'
 
 
+class ReadOutcome(str, Enum):
+    EVALUATED = 'EVALUATED'
+    COMPLETE = 'COMPLETE'
+    QUALIFIED = 'QUALIFIED'
+    REJECTED = 'REJECTED'
+
+
 @dataclass(frozen=True)
 class ReadStageDuration:
     stage: ReadStage
@@ -27,6 +34,7 @@ class ReadStageDuration:
 
 @dataclass(frozen=True)
 class NativeTimeEvidence:
+    outcome: ReadOutcome
     durationNanos: int
     remainingHostMillis: int
     completionReserveMillis: int
@@ -41,8 +49,7 @@ def admit_native_time(raw, live):
         return type(value) is int and (1 if positive else 0) <= value <= 2**63 - 1
     if (not isinstance(raw, dict) or raw.get('schemaVersion') != 4
             or raw.get('correlation') != {'type': 'bound', 'host': live.get('host'), 'epoch': live.get('epoch')}
-            or raw.get('outcome') not in ({'type': 'evaluated', 'outcome': 'COMPLETE'},
-                                        {'type': 'evaluated', 'outcome': 'QUALIFIED'})
+            or raw.get('outcome') not in tuple({'type': 'evaluated', 'outcome': value.value} for value in ReadOutcome)
             or not amount(raw.get('durationNanos'))):
         reject()
     budget = raw.get('semanticBudget', {})
@@ -64,7 +71,7 @@ def admit_native_time(raw, live):
         if previous_end > raw['durationNanos']:
             reject()
         admitted.append(ReadStageDuration(expected, stage['startedNanos'], stage['durationNanos']))
-    return NativeTimeEvidence(raw['durationNanos'], budget['remainingHostMillis'],
+    return NativeTimeEvidence(ReadOutcome(raw['outcome']['outcome']), raw['durationNanos'], budget['remainingHostMillis'],
         budget['completionReserveMillis'], budget['semanticMillis'], tuple(admitted))
 
 
