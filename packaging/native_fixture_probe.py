@@ -127,12 +127,14 @@ def validate_response(result: object, request_id: str, command: str) -> dict:
         fields.add("readiness")
         readiness = result.get("readiness")
         expected_imports = {"FINAL_TASKS_OBSERVED"} if command != "AWAIT_REOPEN_READY" else {"FINAL_TASKS_OBSERVED", "NOT_OBSERVED_PERSISTED_MODEL"}
-        if outcome != "SETUP_READY" or not isinstance(readiness, dict) or set(readiness) != {"smartMode", "externalTasks", "gradleModule", "sourceProvenance", "import", "vfsRefresh", "vfsRefreshScope", "quietWindowMillis", "scope", "pushedPropertiesDrain", "indexing", "refreshScanning", "refreshEventProcessing", "generationBeforeRefresh", "generationBefore", "generationAfter"}:
+        if outcome != "SETUP_READY" or not isinstance(readiness, dict) or set(readiness) != {"smartMode", "externalTasks", "gradleModule", "sourceProvenance", "import", "vfsRefresh", "vfsRefreshScope", "dirtyMarkScope", "dirtyMark", "quietWindowMillis", "scope", "pushedPropertiesDrain", "indexing", "refreshScanning", "refreshEventProcessing", "generationBeforeRefresh", "generationBefore", "generationAfter"}:
             raise NativeFixtureProbeError("MALFORMED_RESPONSE")
         expected_provenance = {"AUTHORED", "GENERATED"} if command == "REIMPORT_GRADLE" else {"AUTHORED"}
         if readiness["sourceProvenance"] not in expected_provenance:
             raise NativeFixtureProbeError("MALFORMED_RESPONSE")
         if readiness["smartMode"] != "SMART" or readiness["externalTasks"] != "IDLE" or readiness["gradleModule"] != "OBSERVED" or readiness["import"] not in expected_imports or readiness["vfsRefresh"] != "COMPLETED" or readiness["quietWindowMillis"] != 2000 or readiness["scope"] != "OBSERVED_SETUP_ONLY":
+            raise NativeFixtureProbeError("MALFORMED_RESPONSE")
+        if readiness["dirtyMarkScope"] != "OWNED_SOURCE_DIRECTORY" or readiness["dirtyMark"] != "COMPLETED":
             raise NativeFixtureProbeError("MALFORMED_RESPONSE")
         if readiness["vfsRefreshScope"] != "ALL_CACHED_ROOTS" or readiness["pushedPropertiesDrain"] != "COMPLETED" or any(readiness[key] != "IDLE" for key in ("indexing", "refreshScanning", "refreshEventProcessing")):
             raise NativeFixtureProbeError("MALFORMED_RESPONSE")

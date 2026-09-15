@@ -68,7 +68,7 @@ stamp is never serialized as a workspace generation or source-state identity.
 
 The canonical read revisions are `query.run.v2`, `source.read.v4`, and version 3
 for symbol discovery, symbol inspection, relation reads, traversal, and diagnostics.
-The CLI's App Server projection is version 12, and provider qualification requires
+The CLI's App Server projection is version 13, and provider qualification requires
 that version. Its successful read schemas carry mutually exclusive published and
 live variants, including the corresponding source snapshot shape. The hosted
 endpoint schema is version 3 and advertises the seven canonical read routes plus

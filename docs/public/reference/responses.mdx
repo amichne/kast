@@ -12,9 +12,11 @@ code_sources:
 
 Read every Kast response as **invocation → semantic outcome → payload → coverage**.
 
-Kast supplies one JSON document per model-facing tool reply.
+Kast retains one JSON envelope in the final content item of each model-facing
+tool reply. Compact source reads can precede it with a separate item containing
+the unchanged returned source.
 
-- Decode the document once.
+- Decode the final JSON envelope once.
 - Expect no appended prose summary.
 - Display the same bounded document in clients with native structured output.
 - Preserve closed rejection variants for broker admission and capacity failures.

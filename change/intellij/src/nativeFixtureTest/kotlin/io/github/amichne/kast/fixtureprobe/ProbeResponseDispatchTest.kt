@@ -35,6 +35,8 @@ class ProbeResponseDispatchTest {
             assertEquals(id.toString(), encoded.getValue("id").jsonPrimitive.content)
             val readiness = encoded.getValue("readiness").jsonObject
             assertEquals("ALL_CACHED_ROOTS", readiness.getValue("vfsRefreshScope").jsonPrimitive.content)
+            assertEquals("OWNED_SOURCE_DIRECTORY", readiness.getValue("dirtyMarkScope").jsonPrimitive.content)
+            assertEquals("COMPLETED", readiness.getValue("dirtyMark").jsonPrimitive.content)
             assertEquals("COMPLETED", readiness.getValue("pushedPropertiesDrain").jsonPrimitive.content)
             assertEquals("IDLE", readiness.getValue("indexing").jsonPrimitive.content)
             assertEquals("IDLE", readiness.getValue("refreshScanning").jsonPrimitive.content)
@@ -55,6 +57,13 @@ class ProbeResponseDispatchTest {
                 encoded.getValue("evidence").jsonObject.getValue("savedSha256").jsonPrimitive.content,
             )
         }
+    }
+
+    @Test
+    fun savedCommittedStateWithDifferentDocumentCannotProveSetupReady() {
+        val mismatched = evidence.copy(document = ProbeDigest.observe("stale document".toByteArray()))
+        val result = ready(mismatched)
+        assertEquals(ProbeExecution.Rejected(ProbeFailure.DOCUMENT_IMAGE_CHANGED), result)
     }
 
     @Test
@@ -91,7 +100,7 @@ class ProbeResponseDispatchTest {
             as ProbeRequest
     }
 
-    private fun ready(): ProbeExecution.SetupReady {
+    private fun ready(observed: ProbeEvidence = evidence): ProbeExecution {
         val sample =
             ProbeSetupSample(
                 status = ProbeSetupStatus.CANDIDATE,
@@ -109,11 +118,18 @@ class ProbeResponseDispatchTest {
                         before = sample,
                         after = sample,
                         elapsedNanos = SETUP_QUIET_WINDOW_NANOS,
-                        drain = ProbeSetupDrainState.COMPLETED,
+                        drain =
+                            ProbeSetupRefreshEvidence(
+                                ProbeOwnedSourceDirtyMark(
+                                    ProbeDirtyMarkScope.OWNED_SOURCE_DIRECTORY,
+                                    ProbeDirtyMarkOutcome.COMPLETED,
+                                ),
+                                ProbeSetupDrainState.COMPLETED,
+                            ),
                     ),
                 )
                 .value as ProbeSetupObservation
-        return ProbeExecution.SetupReady(evidence, proof)
+        return ProbeExecution.SetupReady.admit(observed, proof)
     }
 }
 

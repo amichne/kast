@@ -4,6 +4,7 @@ from dataclasses import asdict, dataclass, field, replace
 import hashlib
 import io
 import json
+import re
 from pathlib import Path
 from types import SimpleNamespace
 import tempfile
@@ -11,8 +12,10 @@ import unittest
 from unittest.mock import Mock, patch
 
 from hosted_authority_read_regression import (AuthorityOutcome, AuthorityFailure, AuthorityCaseName,
-    run_authority_read_regression, _foreign_refusal, AuthorityRejected, ForeignBoundaryRefusal)
-from hosted_read_transport import HostedReadTransport
+    run_authority_read_regression, _foreign_refusal, AuthorityRejected, ForeignBoundaryRefusal,
+    InspectionRefusal, InspectionStage, InspectionOutcome, InspectionMismatch,
+    _inspect_observation, _AuthorityReplay, AuthoritySurface)
+from hosted_read_transport import HostedReadTransport, ReadTransportRejected, ReadTransportFailure
 from hosted_source_read_regression import SourceFunctionRequest, SymbolAnchor
 
 
@@ -36,6 +39,21 @@ class SearchFixture:
     live: LiveFixture
     items: tuple[ItemFixture, ...]
     status: str = 'complete'
+
+
+@dataclass(frozen=True)
+class InspectedSymbolSlice:
+    selector: str
+    name: str = 'ReadPageBudget'
+
+
+@dataclass(frozen=True)
+class InspectionSlice:
+    live: LiveFixture
+    symbol: InspectedSymbolSlice
+    acquisition: str
+    status: str = 'complete'
+    operation: str = 'symbol.inspect'
 
 
 @dataclass(frozen=True)
@@ -78,8 +96,15 @@ class PageFixture:
 
 
 @dataclass(frozen=True)
+class UnavailableSymbolReference:
+    type: str = 'reference-rejected'
+    role: str = 'symbol'
+    reason: str = 'unavailable'
+
+
+@dataclass(frozen=True)
 class RejectionFixture:
-    reason: str
+    reason: str | UnavailableSymbolReference
     status: str = 'rejected'
     operation: str = 'source.read'
 
@@ -135,8 +160,11 @@ class AuthorityReadTest(unittest.TestCase):
         selector = 'ref-' + str(self.epoch)
         if tool == 'search_classes':
             document = SearchFixture(live, (ItemFixture(selector),))
+        elif tool == 'symbol_inspect':
+            acquisition = 'reacquired' if arguments['target']['type'] == 'revalidate_exact' else 'strict'
+            document = InspectionSlice(live, InspectedSymbolSlice(selector), acquisition)
         elif arguments['anchor']['selector'] != selector:
-            document = RejectionFixture('stale-generation')
+            document = RejectionFixture(UnavailableSymbolReference())
         elif arguments['page']['type'] == 'continue' and arguments['page']['continuation'] != 'cursor-' + str(self.epoch):
             document = RejectionFixture('source-snapshot-mismatch')
         else:
@@ -164,6 +192,109 @@ class AuthorityReadTest(unittest.TestCase):
         self.assertEqual(2, sum(row.name == AuthorityCaseName.OLD_REFERENCE for row in report.cases))
         self.assertNotIn('ref-', json.dumps(asdict(report)))
         self.assertNotIn('cursor-', json.dumps(asdict(report)))
+
+    def test_explicit_revalidation_retains_fresh_basis_and_strict_successor(self):
+        report = self.run_fixture()
+        self.assertEqual(AuthorityOutcome.PASSED, report.outcome)
+        self.assertEqual(2, sum(row.name == AuthorityCaseName.REVALIDATED for row in report.cases))
+        self.assertEqual(2, sum(row.name == AuthorityCaseName.NEW_STRICT for row in report.cases))
+        for row in report.cases:
+            if row.name in (AuthorityCaseName.REVALIDATED, AuthorityCaseName.NEW_STRICT):
+                self.assertTrue(row.passed)
+                expected = 'revalidate_exact' if row.name == AuthorityCaseName.REVALIDATED else 'exact'
+                self.assertEqual({'stage': expected, 'outcome': 'accepted'}, asdict(row.inspection))
+        invoke = self.invoke
+        def old_basis(surface, tool, arguments):
+            result, digest = invoke(surface, tool, arguments)
+            if tool == 'symbol_inspect':
+                result['live']['epoch'] = 1
+            return result, digest
+        self.epoch = 1
+        self.transport.invoke_observed.side_effect = old_basis
+        rejected = self.run_fixture()
+        self.assertEqual(AuthorityFailure.REVALIDATION, rejected.failure)
+        observed = next(row.inspection for row in rejected.cases if not row.passed)
+        self.assertEqual(InspectionMismatch.LIVE_BASIS, observed.mismatch)
+
+    def test_inspection_refusals_preserve_stage_schema_and_envelope_without_payloads(self):
+        for surface in ('cli', 'provider'):
+            for stage in ('revalidate_exact', 'exact'):
+                with self.subTest(surface=surface, stage=stage):
+                    self.epoch = 1
+                    invoke = self.invoke
+                    def refuse(actual_surface, tool, arguments):
+                        if (actual_surface == surface and tool == 'symbol_inspect'
+                                and arguments['target']['type'] == stage):
+                            return asdict(RejectionFixture('revalidation-content-uncommitted',
+                                operation='symbol.inspect')), 'sha256:' + '2' * 64
+                        return invoke(actual_surface, tool, arguments)
+                    self.transport.invoke_observed.side_effect = refuse
+                    report = self.run_fixture()
+                    self.assertEqual(AuthorityFailure.REVALIDATION, report.failure)
+                    name = (AuthorityCaseName.REVALIDATED if stage == 'revalidate_exact'
+                            else AuthorityCaseName.NEW_STRICT)
+                    rows = [row for row in report.cases if row.name == name and row.surface == surface]
+                    self.assertEqual(1, len(rows))
+                    row = rows[0]
+                    self.assertFalse(row.passed)
+                    self.assertEqual('sha256:' + '2' * 64, row.schemaDigest)
+                    self.assertEqual(surface == 'provider', row.actualProviderEnvelope)
+                    self.assertEqual({'stage': stage, 'outcome': 'wire-rejected',
+                        'refusal': 'revalidation-content-uncommitted'}, asdict(row.inspection))
+                    self.assertNotIn('ref-', json.dumps(asdict(report)))
+                    self.assertNotIn('cursor-', json.dumps(asdict(report)))
+                    self.assertTrue(report.sourceRestored)
+
+    def test_unknown_refusal_is_closed_and_does_not_log_arbitrary_values(self):
+        invoke = self.invoke
+        secret = 'private-token-source-payload-' * 1000
+        def refuse(surface, tool, arguments):
+            if tool == 'symbol_inspect':
+                return asdict(RejectionFixture(secret, operation='symbol.inspect')), 'sha256:' + '3' * 64
+            return invoke(surface, tool, arguments)
+        self.transport.invoke_observed.side_effect = refuse
+        report = self.run_fixture()
+        row = next(row for row in report.cases if not row.passed)
+        self.assertEqual(InspectionOutcome.UNKNOWN_REFUSAL, row.inspection.outcome)
+        self.assertEqual('sha256:' + '3' * 64, row.schemaDigest)
+        self.assertNotIn('private-token-source-payload', json.dumps(asdict(report)))
+        self.assertLess(len(json.dumps(asdict(row.inspection))), 100)
+        self.assertTrue(report.sourceRestored)
+
+    def test_transport_failure_records_attempted_stage_without_claiming_schema_admission(self):
+        for surface in AuthoritySurface:
+            for stage in InspectionStage:
+                with self.subTest(surface=surface, stage=stage):
+                    self.epoch = 1
+                    invoke = self.invoke
+                    def fail(actual_surface, tool, arguments):
+                        if (actual_surface == surface and tool == 'symbol_inspect'
+                                and arguments['target']['type'] == stage):
+                            raise ReadTransportRejected(ReadTransportFailure.TIMEOUT)
+                        return invoke(actual_surface, tool, arguments)
+                    self.transport.invoke_observed.side_effect = fail
+                    report = self.run_fixture()
+                    row = next(row for row in report.cases if not row.passed)
+                    self.assertEqual(AuthorityFailure.TRANSPORT, report.failure)
+                    self.assertEqual(stage, row.inspection.stage)
+                    self.assertEqual(InspectionOutcome.TRANSPORT_REJECTED, row.inspection.outcome)
+                    self.assertEqual(ReadTransportFailure.TIMEOUT, row.inspection.refusal)
+                    self.assertIsNone(row.schemaDigest)
+                    self.assertFalse(row.actualProviderEnvelope)
+                    self.assertTrue(report.sourceRestored)
+
+    def test_restoration_reports_stale_document_separately_from_saved_file_restore(self):
+        ready = self.ready
+        def stale_document(command, digest, **kwargs):
+            result = ready(command, digest, **kwargs)
+            if self.epoch == 3:
+                return asdict(ProbeReadyFixture(ProbeEvidenceFixture(digest, 'a' * 64)))
+            return result
+        self.probe.request.side_effect = stale_document
+        report = self.run_fixture()
+        self.assertEqual('AUTHORITY_RESTORATION_DOCUMENT_IMAGE_CHANGED', report.failure.value)
+        self.assertTrue(report.sourceRestored)
+        self.assertEqual(self.original, self.source.read_bytes())
 
     def test_no_epoch_movement_fails_closed_and_still_restores_source(self):
         self.probe.request.side_effect = lambda command, digest, **kwargs: asdict(
@@ -216,6 +347,58 @@ class AuthorityReadTest(unittest.TestCase):
                     _foreign_refusal(transport, fixture, request)
 
 
+class InspectionObservationTest(unittest.TestCase):
+    def test_every_projected_cli_refusal_is_retained_exactly_for_both_stages(self):
+        source = (Path(__file__).resolve().parent.parent / 'protocol/wire/src/main/kotlin/'
+            'io/github/amichne/kast/protocol/wire/serialization/CanonicalReadDocuments.kt').read_text()
+        enum = source.split('enum class SymbolInspectRejectionWireDocument {', 1)[1].split('}', 1)[0]
+        canonical = {name.replace('_', '-') for name in re.findall(r'@SerialName\("([^"]+)"\)', enum)}
+        self.assertEqual(canonical, {reason.value for reason in InspectionRefusal})
+        for stage in InspectionStage:
+            for reason in canonical:
+                with self.subTest(stage=stage, reason=reason):
+                    observed = _inspect_observation(stage,
+                        asdict(RejectionFixture(reason, operation='symbol.inspect')), None, None, None)
+                    self.assertEqual(InspectionOutcome.WIRE_REJECTED, observed.outcome)
+                    self.assertEqual(reason, observed.refusal.value)
+
+    def test_unknown_missing_nonstring_and_wire_only_refusals_are_never_admitted(self):
+        for reason in (None, '', 'revalidation_content_changed', 'arbitrary-private-value', 1, [], {}):
+            for stage in InspectionStage:
+                observed = _inspect_observation(stage,
+                    asdict(RejectionFixture(reason, operation='symbol.inspect')), None, None, None)
+                self.assertEqual(InspectionOutcome.UNKNOWN_REFUSAL, observed.outcome)
+                self.assertEqual({'stage': stage, 'outcome': 'unknown-refusal'}, asdict(observed))
+        missing = asdict(RejectionFixture('not_found', operation='symbol.inspect'))
+        del missing['reason']
+        self.assertEqual(InspectionOutcome.UNKNOWN_REFUSAL,
+            _inspect_observation(InspectionStage.REVALIDATE, missing, None, None, None).outcome)
+
+    def test_success_invariant_mismatches_report_only_the_finite_condition(self):
+        live = LiveFixture('/owned/workspace', 2)
+        symbol = InspectedSymbolSlice('new-selector')
+        valid = asdict(InspectionSlice(live, symbol, 'reacquired'))
+        cases = (
+            (None, InspectionMismatch.DOCUMENT),
+            ({**valid, 'operation': 'source.read'}, InspectionMismatch.OPERATION),
+            ({**valid, 'status': 'qualified'}, InspectionMismatch.STATUS),
+            ({**valid, 'acquisition': 'strict'}, InspectionMismatch.ACQUISITION),
+            ({**valid, 'live': None}, InspectionMismatch.LIVE_BASIS),
+            ({**valid, 'symbol': None}, InspectionMismatch.SYMBOL),
+            ({**valid, 'symbol': asdict(replace(symbol, selector='old-selector'))}, InspectionMismatch.SELECTOR),
+            ({**valid, 'symbol': asdict(replace(symbol, selector=''))}, InspectionMismatch.SELECTOR),
+            ({**valid, 'symbol': asdict(replace(symbol, name='Other'))}, InspectionMismatch.SYMBOL),
+        )
+        for document, mismatch in cases:
+            observed = _inspect_observation(InspectionStage.REVALIDATE, document,
+                asdict(live), 'old-selector', None)
+            self.assertEqual(InspectionOutcome.CONTRACT_REJECTED, observed.outcome)
+            self.assertEqual(mismatch, observed.mismatch)
+        strict = asdict(InspectionSlice(live, replace(symbol, selector='different'), 'strict'))
+        self.assertEqual(InspectionMismatch.SYMBOL, _inspect_observation(
+            InspectionStage.STRICT, strict, asdict(live), symbol.selector, asdict(symbol)).mismatch)
+
+
 @dataclass(frozen=True)
 class ProviderEnvelopeFixture:
     document: RejectionFixture
@@ -250,6 +433,26 @@ class ActualEnvelopeTransportTest(unittest.TestCase):
         self.assertEqual(asdict(expected.envelope), requests[1]['envelope'])
         self.assertEqual(asdict(expected.envelope.document), document)
         self.assertEqual(SchemaAdmissionFixture().schemaDigest, digest)
+
+    def test_actual_inspection_refusal_envelope_evidence_survives_acceptance_failure(self):
+        transport = HostedReadTransport(None, None, None, None, None)
+        transport.provider = SimpleNamespace(stdin=io.BytesIO())
+        expected = ProviderResponseFixture(ProviderEnvelopeFixture(
+            RejectionFixture('revalidation-capture-unavailable', operation='symbol.inspect')))
+        transport._response = Mock(side_effect=(json.dumps(asdict(expected)).encode(),
+            json.dumps(asdict(SchemaAdmissionFixture())).encode()))
+        replay = _AuthorityReplay(transport, Path('/owned/workspace'), None)
+        with self.assertRaises(AuthorityRejected):
+            replay.revalidate(AuthoritySurface.PROVIDER, 'private-issued-reference', None)
+        row, = replay.cases
+        self.assertFalse(row.passed)
+        self.assertTrue(row.actualProviderEnvelope)
+        self.assertEqual(SchemaAdmissionFixture().schemaDigest, row.schemaDigest)
+        self.assertEqual(InspectionRefusal.REVALIDATION_CAPTURE_UNAVAILABLE, row.inspection.refusal)
+        requests = [json.loads(line) for line in transport.provider.stdin.getvalue().splitlines()]
+        self.assertEqual('symbol_inspect', requests[0]['tool'])
+        self.assertEqual(asdict(expected.envelope), requests[1]['envelope'])
+        self.assertNotIn('private-issued-reference', json.dumps(asdict(row)))
 
 
 if __name__ == '__main__':

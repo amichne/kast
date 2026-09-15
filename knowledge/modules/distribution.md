@@ -6,6 +6,9 @@ resource: file://distribution
 tags: [distribution, configuration, packaging, release]
 timestamp: 2026-09-14T00:00:00Z
 code_sources:
+  - path: change/intellij/src/nativeFixture/kotlin/io/github/amichne/kast/fixtureprobe/ProbeOwnedSourceRescan.kt
+  - path: change/intellij/src/nativeFixture/kotlin/io/github/amichne/kast/fixtureprobe/ProbeSetupReadiness.kt
+  - path: change/intellij/src/nativeFixture/kotlin/io/github/amichne/kast/fixtureprobe/ProbeSetupReadinessDocument.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/BrokerInstallationState.kt
     symbols: [BrokerInstallationState]
   - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/acceptance/hostedchange/NativeHostedReadMain.kt
@@ -91,6 +94,11 @@ Installed read acceptance uses the same staged CLI, provider and hosted-plugin
 identity as the mutation fixture. It records the base matrix, bounded transport
 faults, independent caller grants and ordinary-edit authority transitions before
 mutation starts. Exact source restoration and observed readiness are required.
+The repair matrix emits bounded 10/20-second request receipts with the actual
+configured default, operator ceiling, admitted grant, clamp causes and round-trip
+duration. Executor tests separately verify admission work and completion reserve;
+neither evidence source substitutes for the other. Native readiness rejects a
+saved/document image mismatch even when the IDE reports saved and committed.
 Deterministic fixture tests and schema checks do not themselves qualify a native
 IDE run; [hosted query qualification](../flows/hosted-query.md) keeps those evidence
 boundaries separate.
@@ -134,3 +142,11 @@ owned cleanup. Its schema-2 receipt retains bounded status hashes and distinct
 unqualified Desktop evidence. Original-release acceptance explicitly selects the
 private compatibility policy. These receipts do not prove a model-driven tool
 invocation through the existing IDEA runtime.
+
+Disposable native fixture readiness explicitly marks its fixed, canonical
+`src/main/kotlin` directory for a nonrecursive rescan before the existing cached-root
+refresh. The platform can propagate dirty flags to ancestors. The receipt retains
+the selected dirty-mark scope and completion separately from refresh and native-task
+drain evidence. This fixture lifecycle effect makes direct-child test file creation
+and deletion observable without depending on watcher intake; semantic queries do not
+invoke it. A quiet readiness receipt still does not prove a future epoch is stable.

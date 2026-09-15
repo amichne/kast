@@ -86,6 +86,7 @@ sealed interface RelationSubjectLookup {
 class CanonicalQueryReferences
 private constructor(
     private val transport: QueryReferenceTransport,
+    private val exactIssued: (SymbolSelector, ProtocolText, ProtocolText) -> Unit,
     private val restoreSourceSelector:
         (SourceSelectorToken, SemanticReadAuthority) -> Refinement<SourceSelector, SourceSelectorTokenFailure>,
 ) : QueryReferenceAuthority {
@@ -93,6 +94,7 @@ private constructor(
         transport: QueryReferenceTransport = QueryReferenceTransport.Inline
     ) : this(
         transport,
+        { _, _, _ -> },
         { token, current ->
             when (current) {
                 is LiveSemanticReadAuthority -> SourceSelectorTokenCodec.decode(token, current)
@@ -105,8 +107,10 @@ private constructor(
     constructor(
         model: WorkspaceSearchScopeModel,
         transport: QueryReferenceTransport = QueryReferenceTransport.Inline,
+        exactIssued: (SymbolSelector, ProtocolText, ProtocolText) -> Unit = { _, _, _ -> },
     ) : this(
         transport,
+        exactIssued,
         { token, current ->
             when (current) {
                 is LiveSemanticReadAuthority -> SourceSelectorTokenCodec.decode(token, current, model)
@@ -262,7 +266,11 @@ private constructor(
     /** Issues one self-describing exact selector token. */
     override fun issueExact(selector: SymbolSelector): ExactSelectorIssuance =
         when (val encoded = CanonicalSelectorCodec.encodeExact(selector)) {
-            is CanonicalSelectorEncoding.Encoded -> ExactSelectorIssuance.Issued(transport.issue(encoded.token))
+            is CanonicalSelectorEncoding.Encoded -> {
+                val token = transport.issue(encoded.token)
+                exactIssued(selector, token, encoded.token)
+                ExactSelectorIssuance.Issued(token)
+            }
             is CanonicalSelectorEncoding.Rejected ->
                 ExactSelectorIssuance.Rejected(ExactSelectorIssuanceFailure.TOKEN_REJECTED)
         }

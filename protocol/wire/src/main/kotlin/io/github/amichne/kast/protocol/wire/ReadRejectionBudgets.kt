@@ -1,9 +1,12 @@
 package io.github.amichne.kast.protocol.wire
 
+import io.github.amichne.kast.protocol.contract.AdmittedDiagnosticCheckRejection
 import io.github.amichne.kast.protocol.contract.AdmittedQueryRunRejection
 import io.github.amichne.kast.protocol.contract.AdmittedRelationReadRejection
 import io.github.amichne.kast.protocol.contract.AdmittedSourceReadRejection
 import io.github.amichne.kast.protocol.contract.AdmittedTraversalRunRejection
+import io.github.amichne.kast.protocol.contract.DiagnosticCheckFailure
+import io.github.amichne.kast.protocol.contract.DiagnosticCheckRejection
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetPresence
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
 import io.github.amichne.kast.protocol.contract.QueryRunFailure
@@ -11,7 +14,6 @@ import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.RelationReadFailure
 import io.github.amichne.kast.protocol.contract.RelationReadRejection
 import io.github.amichne.kast.protocol.contract.SourceReadFailure
-import io.github.amichne.kast.protocol.contract.SourceReadRejection
 import io.github.amichne.kast.protocol.contract.TraversalRunFailure
 import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import io.github.amichne.kast.protocol.contract.reason
@@ -25,11 +27,24 @@ internal class RejectionBudgetCodec<Value>(
 )
 
 internal object ReadRejectionBudgets {
+    val diagnostic =
+        RejectionBudgetCodec<DiagnosticCheckFailure>(
+            { value ->
+                when (value) {
+                    is DiagnosticCheckRejection -> ExecutionBudgetPresence.Absent
+                    is AdmittedDiagnosticCheckRejection -> ExecutionBudgetPresence.Present(value.executionBudget)
+                }
+            },
+            { reason, report ->
+                WireDocumentConversion.Converted(AdmittedDiagnosticCheckRejection(reason.reason(), report))
+            },
+        )
+
     val source =
         RejectionBudgetCodec<SourceReadFailure>(
             {
                 when (it) {
-                    is SourceReadRejection -> ExecutionBudgetPresence.Absent
+                    is io.github.amichne.kast.protocol.contract.SourceReadCause -> ExecutionBudgetPresence.Absent
                     is AdmittedSourceReadRejection -> ExecutionBudgetPresence.Present(it.executionBudget)
                 }
             },

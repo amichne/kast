@@ -390,9 +390,14 @@ enum class TraversalRunRejection : TraversalRunFailure {
 data class DiagnosticCheckRequest(
     val path: ProtocolText,
     val limit: ProtocolCount,
+    val continuation: ProtocolText? = null,
+    val executionBudget: ExecutionBudgetDocument? = null,
 ) : OperationRequest
 
-data class DiagnosticCheckResult(val diagnostics: BoundedProtocolList<DiagnosticDocument>) : OperationResult
+data class DiagnosticCheckResult(
+    val diagnostics: BoundedProtocolList<DiagnosticDocument>,
+    val progress: DiagnosticProgressDocument? = null,
+) : OperationResult
 
 enum class DiagnosticSeverityDocument {
     ERROR,
@@ -442,6 +447,7 @@ enum class DiagnosticKnownCountDocumentFailure {
 }
 
 @JvmInline
+@Serializable(with = DiagnosticKnownCountDocumentSerializer::class)
 value class DiagnosticKnownCountDocument private constructor(val value: Int) {
     companion object {
         fun parse(raw: Int): Refinement<DiagnosticKnownCountDocument, DiagnosticKnownCountDocumentFailure> =
@@ -451,6 +457,17 @@ value class DiagnosticKnownCountDocument private constructor(val value: Int) {
                 Refinement.Refined(DiagnosticKnownCountDocument(raw))
             }
     }
+}
+
+internal object DiagnosticKnownCountDocumentSerializer :
+    RefiningIntSerializer<DiagnosticKnownCountDocument>(
+        serialName = "io.github.amichne.kast.protocol.contract.DiagnosticKnownCountDocument",
+        minimum = 0,
+        maximum = Int.MAX_VALUE.toLong(),
+    ) {
+    override fun raw(value: DiagnosticKnownCountDocument): Int = value.value
+
+    override fun refine(raw: Int): Refinement<DiagnosticKnownCountDocument, *> = DiagnosticKnownCountDocument.parse(raw)
 }
 
 enum class DiagnosticLimitationReasonDocument {
@@ -483,6 +500,7 @@ private constructor(
     val resultLimitReached: Boolean,
     val analyzedFiles: List<ProtocolText>,
     val limitations: List<DiagnosticLimitationDocument>,
+    val continuation: ProtocolText? = null,
 ) : OperationQualification {
     companion object {
         fun create(
@@ -490,8 +508,9 @@ private constructor(
             resultLimitReached: Boolean,
             analyzedFiles: List<ProtocolText>,
             limitations: List<DiagnosticLimitationDocument>,
+            continuation: ProtocolText? = null,
         ): Refinement<DiagnosticCheckQualification, DiagnosticCheckQualificationFailure> {
-            if (!resultLimitReached && limitations.isEmpty()) {
+            if (!resultLimitReached && limitations.isEmpty() && continuation == null) {
                 return Refinement.Rejected(DiagnosticCheckQualificationFailure.COMPLETE)
             }
             if (analyzedFiles != analyzedFiles.distinct().sortedBy(ProtocolText::value)) {
@@ -514,13 +533,29 @@ private constructor(
                     resultLimitReached,
                     java.util.List.copyOf(analyzedFiles),
                     java.util.List.copyOf(limitations),
+                    continuation,
                 )
             )
         }
     }
 }
 
-enum class DiagnosticCheckRejection : OperationRejection {
+enum class DiagnosticCheckRejection : DiagnosticCheckFailure {
+    ENUMERATION_INDEX_MODE_UNSUPPORTED,
+    EXECUTION_TIME_GRANT_TOO_SMALL,
+    CONTINUATION_UNAVAILABLE,
+    CONTINUATION_REQUEST_MISMATCH,
+    STALE_CONTINUATION,
+    CONTINUATION_CAPACITY_EXCEEDED,
+    ENUMERATION_WORK_GRANT_TOO_SMALL,
+    ENUMERATION_TIME_GRANT_TOO_SMALL,
+    ENUMERATION_RETENTION_EXCEEDED,
+    COMPILER_UNIT_GRANT_TOO_SMALL,
+    COMPILER_CONTRACT_VIOLATION,
+    WORKSPACE_INDEX_UNAVAILABLE,
+    WORKSPACE_ROOT_MISMATCH,
+    STALE_GENERATION,
+    OUTPUT_GRANT_TOO_SMALL,
     WORKSPACE_NOT_READY,
     SCOPE_REJECTED,
     SCOPE_EMPTY,

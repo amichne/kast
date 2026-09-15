@@ -34,7 +34,7 @@ internal data class SourceSnapshotWireDocument(
 )
 
 @Serializable
-internal enum class SourceCoordinateUnitWireDocument {
+enum class SourceCoordinateUnitWireDocument {
     @SerialName("utf16-code-unit") UTF16_CODE_UNIT
 }
 
@@ -57,7 +57,7 @@ internal data class SourceRegionWireDocument(
 )
 
 @Serializable
-internal enum class SourceRegionKindWireDocument {
+enum class SourceRegionKindWireDocument {
     @SerialName("anchor") ANCHOR,
     @SerialName("declaration") DECLARATION,
     @SerialName("callable-body") CALLABLE_BODY,
@@ -85,7 +85,7 @@ internal sealed interface SourceEntityTargetWireDocument {
 }
 
 @Serializable
-internal enum class SourceUnresolvedReasonWireDocument {
+enum class SourceUnresolvedReasonWireDocument {
     @SerialName("name-not-found") NAME_NOT_FOUND,
     @SerialName("ambiguous") AMBIGUOUS,
     @SerialName("error-type") ERROR_TYPE,
@@ -154,7 +154,7 @@ internal sealed interface SourceTextProjectionWireDocument {
 }
 
 @Serializable
-internal enum class SourceTextWithheldReasonWireDocument {
+enum class SourceTextWithheldReasonWireDocument {
     @SerialName("byte-limit-reached") BYTE_LIMIT_REACHED,
     @SerialName("provider-unavailable") PROVIDER_UNAVAILABLE,
 }
@@ -177,29 +177,6 @@ internal enum class SourceReadLimitationWireDocument {
     @SerialName("semantic-resolution-incomplete") SEMANTIC_RESOLUTION_INCOMPLETE,
     @SerialName("unsupported-entity") UNSUPPORTED_ENTITY,
     @SerialName("provider-failure") PROVIDER_FAILURE,
-}
-
-@Serializable
-internal enum class SourceReadRejectionWireDocument {
-    @SerialName("workspace-not-ready") WORKSPACE_NOT_READY,
-    @SerialName("workspace-root-mismatch") WORKSPACE_ROOT_MISMATCH,
-    @SerialName("stale-generation") STALE_GENERATION,
-    @SerialName("source-state-mismatch") SOURCE_STATE_MISMATCH,
-    @SerialName("candidate-stale") CANDIDATE_STALE,
-    @SerialName("source-selector-stale") SOURCE_SELECTOR_STALE,
-    @SerialName("source-snapshot-mismatch") SOURCE_SNAPSHOT_MISMATCH,
-    @SerialName("source-unavailable") SOURCE_UNAVAILABLE,
-    @SerialName("document-dirty") DOCUMENT_DIRTY,
-    @SerialName("psi-document-uncommitted") PSI_DOCUMENT_UNCOMMITTED,
-    @SerialName("outside-source-scope") OUTSIDE_SOURCE_SCOPE,
-    @SerialName("anchor-not-found") ANCHOR_NOT_FOUND,
-    @SerialName("ambiguous-anchor") AMBIGUOUS_ANCHOR,
-    @SerialName("region-not-applicable") REGION_NOT_APPLICABLE,
-    @SerialName("region-absent") REGION_ABSENT,
-    @SerialName("compiler-analysis-unavailable") COMPILER_ANALYSIS_UNAVAILABLE,
-    @SerialName("contract-violation") CONTRACT_VIOLATION,
-    @SerialName("continuation-unavailable") CONTINUATION_UNAVAILABLE,
-    @SerialName("continuation-request-mismatch") CONTINUATION_REQUEST_MISMATCH,
 }
 
 @Serializable internal data class SourceLineRangeWireDocument(val startInclusive: Long, val endInclusive: Long)

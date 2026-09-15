@@ -236,17 +236,10 @@ internal object KastObserverProjector {
         evidence: ObserverEvidence,
         observerDirectory: ObserverWorkingDirectory,
     ): String? {
+        val acquisition = ObserverSymbolAcquisition.from(document)?.label ?: return null
         val symbol = document["symbol"] as? JsonObject ?: return null
         val name = symbol.strictLabel("name") ?: return null
-        val kind =
-            when (symbol.strictString("kind")) {
-                "classlike" -> "class-like"
-                "constructor" -> "constructor"
-                "function" -> "function"
-                "property" -> "property"
-                "type-alias" -> "type-alias"
-                else -> return null
-            }
+        val kind = ObserverSymbolKind.from(symbol.strictString("kind"))?.label ?: return null
         val file =
             symbol.strictString("file")?.let { raw -> ObserverFilePath.admit(raw, observerDirectory.path) }
                 ?: return null
@@ -261,7 +254,7 @@ internal object KastObserverProjector {
             append(inlineCode(name))
             append(" · ")
             append(kind)
-            if (evidence.coverage == ObserverCoverage.COMPLETE) append(" · compiler-confirmed")
+            if (evidence.coverage == ObserverCoverage.COMPLETE) append(" · $acquisition")
         }
         val body = buildList {
             add(summary)
@@ -277,14 +270,14 @@ internal object KastObserverProjector {
         evidence: ObserverEvidence,
         observerDirectory: ObserverWorkingDirectory,
     ): String? {
-        val snapshot = document["snapshot"] as? JsonObject ?: return null
-        if (document["region"] !is JsonObject || document["entities"] !is JsonArray) return null
+        val parts = sourcePresentationParts(document) ?: return null
+        val snapshot = parts.structure["snapshot"] as? JsonObject ?: return null
         val canonicalRoot = snapshot.strictString("canonicalRoot") ?: return null
         val file =
             snapshot.strictString("file")?.let { raw ->
                 ObserverFilePath.admitSource(raw, canonicalRoot, observerDirectory.path)
             } ?: return null
-        val text = document["text"] as? JsonObject ?: return null
+        val text = parts.text
         val source =
             when (text.strictString("type")) {
                 "returned" -> text.strictString("text") ?: return null

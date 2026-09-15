@@ -60,17 +60,21 @@ private constructor(
     val outcome: OperationOutcome.Qualified<SourceReadResult, SourceReadQualification>,
 ) {
     companion object {
-        suspend fun create(owner: RelationPagingFixture = RelationPagingFixture.live()): HostedSourcePagingFixture {
+        suspend fun create(
+            owner: RelationPagingFixture = RelationPagingFixture.live(),
+            source: String = "parameters",
+            includeText: Boolean = false,
+        ): HostedSourcePagingFixture {
             val basis = (owner.page() as OperationOutcome.Qualified).evidence.basis as EvidenceBasis.Live
             val snapshot =
                 SourceSnapshot.create(
                     SourceReadContext.Live(owner.authority as LiveSemanticReadAuthority),
                     owner.selector.file as SymbolDiscoveryFileIdentity.Workspace,
-                    SourceTextIdentity.fromNormalizedCommittedText("parameters"),
-                    Utf16CodeUnitCount.parse(10).sourceFixtureValue(),
+                    SourceTextIdentity.fromNormalizedCommittedText(source),
+                    Utf16CodeUnitCount.parse(source.length).sourceFixtureValue(),
                     SourceReadScope.ExactFile,
                 )
-            val root = SourceSelector.issueRoot(snapshot.range(0, 10), SourceRegionKind.FILE)
+            val root = SourceSelector.issueRoot(snapshot.range(0, source.length), SourceRegionKind.FILE)
             val result =
                 SourceReadResult(
                     SourceSnapshotDocument(
@@ -79,12 +83,12 @@ private constructor(
                         text("Subject.kt"),
                         text(snapshot.textIdentity.value),
                         SourceCoordinateUnitDocument.UTF16_CODE_UNIT,
-                        SourceLengthDocument.parse(10).sourceFixtureValue(),
+                        SourceLengthDocument.parse(source.length).sourceFixtureValue(),
                     ),
                     SourceRegionDocument(SourceRegionKindDocument.FILE, root.selection()),
                     BoundedProtocolList.create((0 until 6).map { index -> parameter(root, index) })
                         .sourceFixtureValue(),
-                    SourceTextProjectionDocument.NotRequested,
+                    sourceText(root, source, includeText),
                 )
             val qualification =
                 SourceReadQualification.create(
@@ -104,6 +108,23 @@ private constructor(
                 ),
             )
         }
+
+        private fun sourceText(
+            root: SourceSelector,
+            source: String,
+            includeText: Boolean,
+        ): SourceTextProjectionDocument =
+            if (includeText)
+                SourceTextProjectionDocument.Returned(
+                    root.selection(),
+                    io.github.amichne.kast.protocol.contract.ProtocolSourceText.parse(source).sourceFixtureValue(),
+                    io.github.amichne.kast.protocol.contract.SourceLineRangeDocument.parse(
+                            1,
+                            source.dropLast(1).count { it == '\n' }.toLong() + 1,
+                        )
+                        .sourceFixtureValue(),
+                )
+            else SourceTextProjectionDocument.NotRequested
 
         private fun request(root: SourceSelector) =
             SourceReadRequest(

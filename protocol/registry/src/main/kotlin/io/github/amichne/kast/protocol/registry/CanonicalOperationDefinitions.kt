@@ -24,8 +24,8 @@ import io.github.amichne.kast.protocol.contract.ChangeRecoverRejection
 import io.github.amichne.kast.protocol.contract.ChangeRecoverRequest
 import io.github.amichne.kast.protocol.contract.ChangeRecoverResult
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckCapability
+import io.github.amichne.kast.protocol.contract.DiagnosticCheckFailure
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckQualification
-import io.github.amichne.kast.protocol.contract.DiagnosticCheckRejection
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRequest
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckResult
 import io.github.amichne.kast.protocol.contract.IndexSyncCapability
@@ -142,7 +142,7 @@ object CanonicalOperationDefinitions {
             OperationScope.SYMBOL,
             CompletenessPolicy.COMPLETE_REQUIRED,
             HostedExposure.PUBLIC,
-            schema = schema("kast.symbol.inspect.v3"),
+            schema = schema("kast.symbol.inspect.v4"),
         )
 
     val sourceRead =
@@ -159,7 +159,7 @@ object CanonicalOperationDefinitions {
             OperationScope.SOURCE,
             CompletenessPolicy.QUALIFIED_ALLOWED,
             HostedExposure.PUBLIC,
-            schema = schema("kast.source.read.v4"),
+            schema = schema("kast.source.read.v5"),
         )
 
     val relationRead =
@@ -219,7 +219,7 @@ object CanonicalOperationDefinitions {
             DiagnosticCheckRequest::class,
             DiagnosticCheckResult::class,
             DiagnosticCheckQualification::class,
-            DiagnosticCheckRejection::class,
+            DiagnosticCheckFailure::class,
             DiagnosticCheckCapability::class,
             OperationLane.SCOPED_SEMANTIC_READ,
             OperationEffect.INTELLIJ_READ,
@@ -227,7 +227,7 @@ object CanonicalOperationDefinitions {
             OperationScope.PROJECT,
             CompletenessPolicy.QUALIFIED_ALLOWED,
             HostedExposure.PUBLIC,
-            schema = schema("kast.diagnostic.check.v3"),
+            schema = schema("kast.diagnostic.check.v4"),
         )
 
     val changePlan =

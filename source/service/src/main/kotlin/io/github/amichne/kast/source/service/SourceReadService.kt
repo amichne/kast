@@ -45,7 +45,8 @@ class SourceReadService(
                         else admitted.failure
                     )
             }
-        if (initial.lease != expected) return SourceReadResult.Rejected(SourceReadRejection.CONTRACT_VIOLATION)
+        if (initial.lease != expected)
+            return SourceReadResult.Rejected(SourceReadRejection.INTERNAL_CONTEXT_LEASE_MISMATCH)
         if (anchor is SourceReadAnchor.Source && anchor.selector.snapshot.context != initial) {
             return SourceReadResult.Rejected(SourceReadRejection.SOURCE_STATE_MISMATCH)
         }
@@ -75,16 +76,18 @@ class SourceReadService(
                 result is SourceReadResult.Complete &&
                     SourceDeclarationVisibility.admit(anchor.selector, result) is Refinement.Rejected
             ) {
-                return SourceReadResult.Rejected(SourceReadRejection.CONTRACT_VIOLATION)
+                return SourceReadResult.Rejected(SourceReadRejection.INTERNAL_VISIBILITY_MISMATCH)
             }
         }
-        return if (
-            snapshot.context == initial &&
-                snapshot.readScope == anchor.readScope() &&
-                (anchor !is SourceReadAnchor.Source || snapshot == anchor.selector.snapshot)
-        )
-            result
-        else SourceReadResult.Rejected(SourceReadRejection.CONTRACT_VIOLATION)
+        return when {
+            snapshot.context != initial ->
+                SourceReadResult.Rejected(SourceReadRejection.INTERNAL_SNAPSHOT_CONTEXT_MISMATCH)
+            snapshot.readScope != anchor.readScope() ->
+                SourceReadResult.Rejected(SourceReadRejection.INTERNAL_SCOPE_MISMATCH)
+            anchor is SourceReadAnchor.Source && snapshot != anchor.selector.snapshot ->
+                SourceReadResult.Rejected(SourceReadRejection.INTERNAL_SNAPSHOT_MISMATCH)
+            else -> result
+        }
     }
 }
 

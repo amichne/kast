@@ -82,6 +82,7 @@ private fun adapterEpochResources(): List<String> =
             "ProjectReadEpochVfsBatchObservation.class",
             "ProjectReadEpochVfsBatchObservation\$OutsideRoot.class",
             "ProjectReadEpochVfsBatchObservation\$Rejected.class",
+            "ProjectReadEpochVfsBatchObservation\$RelevanceUnknown.class",
             "ProjectReadEpochVfsBatchObservation\$TouchesRoot.class",
             "ProjectReadEpochVfsEvent.class",
             "ProjectReadEpochVfsEvent\$Change.class",

@@ -66,7 +66,7 @@ class ProbeClientTest(unittest.TestCase):
 
     def test_setup_and_reopen_distinguish_observed_import_from_persisted_model(self):
         readiness = {"smartMode": "SMART", "externalTasks": "IDLE", "gradleModule": "OBSERVED", "sourceProvenance": "AUTHORED",
-                     "import": "FINAL_TASKS_OBSERVED", "vfsRefresh": "COMPLETED", "vfsRefreshScope": "ALL_CACHED_ROOTS", "quietWindowMillis": 2000,
+                     "import": "FINAL_TASKS_OBSERVED", "vfsRefresh": "COMPLETED", "vfsRefreshScope": "ALL_CACHED_ROOTS", "dirtyMarkScope": "OWNED_SOURCE_DIRECTORY", "dirtyMark": "COMPLETED", "quietWindowMillis": 2000,
                      "scope": "OBSERVED_SETUP_ONLY", "pushedPropertiesDrain": "COMPLETED", "indexing": "IDLE",
                      "refreshScanning": "IDLE", "refreshEventProcessing": "IDLE",
                      "generationBeforeRefresh": dict.fromkeys(("imports", "roots", "workspace", "vfs", "psi", "dumb"), 1),
@@ -81,7 +81,7 @@ class ProbeClientTest(unittest.TestCase):
         self.assertEqual(reopened, probe.validate_response(reopened, "id", "AWAIT_REOPEN_READY"))
         for key, value in (("smartMode", "DUMB"), ("externalTasks", "ACTIVE"), ("vfsRefresh", "PENDING"),
                            ("quietWindowMillis", 1), ("scope", "FUTURE_STABILITY"), ("vfsRefreshScope", "WORKSPACE_ONLY"),
-                           ("pushedPropertiesDrain", "PENDING"), ("indexing", "SCHEDULED"),
+                           ("dirtyMarkScope", "USER_ROOT"), ("dirtyMark", "PENDING"), ("pushedPropertiesDrain", "PENDING"), ("indexing", "SCHEDULED"),
                            ("refreshScanning", "ACTIVE"), ("refreshEventProcessing", "ACTIVE")):
             with self.assertRaises(probe.NativeFixtureProbeError):
                 probe.validate_response({**first, "readiness": {**readiness, key: value}}, "id", "AWAIT_SETUP_READY")

@@ -24,7 +24,7 @@ Defines canonical workspace identity and read evidence, and admits bounded seman
 ## Subdirectories
 
 - `contract` - roots, identities, readiness and read evidence; historical publication contracts remain for compatibility.
-- `intellij-read` - passive VFS/IDE model reads, read admission, and freshness listeners.
+- `intellij-read` - passive VFS/IDE model reads, read admission, and freshness listeners; oversized VFS batches invalidate conservatively without claiming root relevance.
 
 ## Entry Points
 

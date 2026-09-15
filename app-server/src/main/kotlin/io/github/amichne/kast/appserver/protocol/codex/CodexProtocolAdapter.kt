@@ -332,6 +332,7 @@ internal class CodexProtocolAdapter(
                     when (val failure = dispatch.failure) {
                         is BrokerFailure.UnknownNamespace,
                         is BrokerFailure.UnknownTool,
+                        is BrokerFailure.SourceInputRejected,
                         is BrokerFailure.InvalidArguments,
                         is BrokerFailure.ProviderStartupRejected -> InvocationCertainty.KNOWN
                         is BrokerFailure.Overloaded ->

@@ -348,7 +348,10 @@ Receipts contain event kind, IDE-versus-refresh origin, syntactic path categorie
 counts and the existing host correlation. `OUTSIDE_ROOT` counts expose global
 VFS activity that can schedule project indexing. They contain no file paths or
 source payloads. These diagnostic categories do not change source membership or epoch
-admission; the original epoch listeners remain authoritative.
+admission; the original epoch listeners remain authoritative. Oversized diagnostic
+batches emit `relevance_unknown` with reason `BATCH_LIMIT`, without path categories
+or relevance proof. The epoch listener independently advances its invalidation
+signal conservatively; a diagnostic receipt is not proof of fresh read admission.
 
 Incremental creation, class renaming, and deletion were qualified against the
 same original IDE index. Broader semantic CLI/App Server routing and stronger
@@ -622,3 +625,14 @@ Relation pages retain canonical order within each page. Cross-grant drains
 preserve the full occurrence multiset; changing page boundaries does not promise
 global fingerprint order. A resumable budget stop retains unmeasured work evidence
 until the final complete drain; it never becomes an invented zero omitted count.
+
+Relation observations distinguish confirmed, different and unavailable K2 target
+decisions, and found versus unavailable lexical call owners. These finite counts
+contain no symbol names, source payloads or live handles. A deferred call owner
+is also recorded as `RELATION_CALL_OWNER_UNSUPPORTED`; the returned omission
+retains a bounded source occurrence independently of the diagnostic counter.
+
+Source fitting encodes the selected expanded or compact wire projection for each
+candidate prefix, including its local selection table and retained-output cursor.
+An indivisible source text that prevents any prefix fitting becomes explicitly
+withheld with text-byte qualification; source bytes are never truncated.

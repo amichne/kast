@@ -7,8 +7,8 @@ import io.github.amichne.kast.cli.ProjectedCliOutcome
 import io.github.amichne.kast.kernel.EvidenceBasis
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.contract.DiagnosticCheckFailure
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckQualification
-import io.github.amichne.kast.protocol.contract.DiagnosticCheckRejection
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckResult
 import io.github.amichne.kast.protocol.contract.DiagnosticDocument
 import io.github.amichne.kast.protocol.contract.DiagnosticLimitationDocument
@@ -137,7 +137,7 @@ internal object CanonicalReadCliDocuments {
             OperationOutcome<
                 DiagnosticCheckResult,
                 DiagnosticCheckQualification,
-                DiagnosticCheckRejection,
+                DiagnosticCheckFailure,
             >
     ) =
         projectClosedOutcome(
@@ -148,6 +148,7 @@ internal object CanonicalReadCliDocuments {
                         operation = CanonicalOperation.DIAGNOSTIC_CHECK.id.value,
                         status = "complete",
                         diagnostics = result.diagnostics.values.map { it.toCliDocument() },
+                        progress = result.progress,
                     )
                 )
             },
@@ -157,12 +158,13 @@ internal object CanonicalReadCliDocuments {
                         operation = CanonicalOperation.DIAGNOSTIC_CHECK.id.value,
                         status = "qualified",
                         diagnostics = result.diagnostics.values.map { it.toCliDocument() },
+                        progress = result.progress,
                         qualification = qualification.toCliDocument(),
                     )
                 )
             },
             rejected = { rejection ->
-                canonicalRejectedDocument(CanonicalOperation.DIAGNOSTIC_CHECK, rejection.cliName())
+                canonicalDiagnosticRejectedDocument(rejection)
             },
         )
 }
@@ -215,6 +217,8 @@ private data class DiagnosticCompleteCliDocument(
     val operation: String,
     val status: String,
     val diagnostics: List<DiagnosticCliDocument>,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val progress: io.github.amichne.kast.protocol.contract.DiagnosticProgressDocument? = null,
 )
 
 @Serializable
@@ -222,6 +226,8 @@ private data class DiagnosticQualifiedCliDocument(
     val operation: String,
     val status: String,
     val diagnostics: List<DiagnosticCliDocument>,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val progress: io.github.amichne.kast.protocol.contract.DiagnosticProgressDocument? = null,
     val qualification: DiagnosticQualificationCliDocument,
 )
 
@@ -231,6 +237,8 @@ private data class DiagnosticQualificationCliDocument(
     val resultLimitReached: Boolean,
     val analyzedFiles: List<String>,
     val limitations: List<DiagnosticLimitationCliDocument>,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val continuation: String? = null,
 )
 
 @Serializable
@@ -323,6 +331,7 @@ private fun DiagnosticCheckQualification.toCliDocument() =
         resultLimitReached = resultLimitReached,
         analyzedFiles = analyzedFiles.map { it.value },
         limitations = limitations.map(DiagnosticLimitationDocument::toCliDocument),
+        continuation = continuation?.value,
     )
 
 private fun DiagnosticLimitationDocument.toCliDocument() =

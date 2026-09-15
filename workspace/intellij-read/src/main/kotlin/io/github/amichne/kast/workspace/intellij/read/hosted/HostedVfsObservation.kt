@@ -41,8 +41,12 @@ internal enum class HostedVfsPathCategory {
 
 @Serializable
 internal enum class HostedVfsObservationFailure {
-    BATCH_LIMIT,
-    PATH_UNPROVEN,
+    PATH_UNPROVEN
+}
+
+@Serializable
+internal enum class HostedVfsUnknownRelevanceReason {
+    BATCH_LIMIT
 }
 
 /** Raw platform event paths are confined to observation admission and never enter a receipt. */
@@ -69,6 +73,8 @@ internal data class HostedVfsCount(val coordinate: HostedVfsCoordinate, val path
 internal sealed interface HostedVfsBatchEvidence {
     data object Empty : HostedVfsBatchEvidence
 
+    data class RelevanceUnknown(val reason: HostedVfsUnknownRelevanceReason) : HostedVfsBatchEvidence
+
     class Observed private constructor(val counts: List<HostedVfsCount>) : HostedVfsBatchEvidence {
         companion object {
             fun from(coordinates: List<HostedVfsCoordinate>): HostedVfsBatchEvidence =
@@ -91,7 +97,7 @@ internal fun observeHostedVfsBatch(
     limits: ReadLimits,
 ): HostedVfsBatchEvidence {
     if (events.size > limits[ReadLimitParameter.EPOCH_VFS_EVENTS].value)
-        return HostedVfsBatchEvidence.Rejected(HostedVfsObservationFailure.BATCH_LIMIT)
+        return HostedVfsBatchEvidence.RelevanceUnknown(HostedVfsUnknownRelevanceReason.BATCH_LIMIT)
     val rootIdentity = ProjectReadEpochVfsRoot.from(root)
     val rootPath = Path.of(root.value)
     val coordinates = mutableListOf<HostedVfsCoordinate>()

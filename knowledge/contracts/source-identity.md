@@ -6,6 +6,10 @@ resource: file://source/contract
 tags: [source, identity, workspace, symbol]
 timestamp: 2026-09-13T00:00:00Z
 code_sources:
+  - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/CompactSourceReadDocuments.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/SourceReadFormatProjection.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/projection/CompactSourceReadCliDocuments.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastSourcePresentation.kt
   - path: symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/CanonicalSymbolId.kt
   - path: workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadLease.kt
     symbols: [CanonicalWorkspaceRoot, SemanticReadLease]
@@ -115,7 +119,7 @@ Hosted version-5 symbol handles use bounded short lookup keys; version 4 remains
 accepted. The project-owned table retains detached full tokens for the current
 live read reference. Short-digest collisions retain the existing mapping and
 return the new selector inline. Lookup must succeed before canonical restoration
-validates the current authority. Unknown handles reject as stale; malformed
+validates the current authority. Unknown handles retain an unavailable cause in source reads; malformed
 handles reject as malformed.
 
 `CanonicalSymbolId` separately hashes the full compiler evidence and semantic
@@ -124,3 +128,40 @@ through different admitted scopes share an internal canonical identity. Public q
 results expose only `ref`; `symbol_id` has no public accessor. Exact selectors still bind
 the original scope and constraints; the equality key cannot restore or broaden a
 read capability. Native revalidation remains mandatory after lookup.
+
+## Source output format
+
+`SourceReadRequest.format` defaults to `expanded`. Selecting `compact` changes
+representation without changing source enumeration or reference authority.
+Compact responses return each distinct source selector once in a response-local
+selection table. Integer IDs join selections, parents, callees, and local targets
+to that table; they are not valid follow-up selectors. Pass the table entry's
+`selector` unchanged to another source read. Candidate target tokens remain
+host-issued candidates, independently of table IDs.
+
+Every encoded page carries its own table, snapshot, selected region, ordered
+entities, and text state. Wire decoding expands the table back into the same
+canonical source result and rejects invalid or noncanonical table references.
+Both native and retained-output continuations bind the chosen format. Request a
+new first page when changing formats.
+
+Compact CLI output contains ordered `source` then `structure` content sections.
+The production provider presents returned source bytes before the structured
+result; expanded output retains its existing shape. Hosted fitting measures the
+chosen wire envelope, including table and continuation metadata. If indivisible
+returned text prevents a page from fitting, a qualified `withheld` text state
+retains the selected region and reports the text-byte limitation explicitly.
+
+The production provider receives the process envelope containing the source document.
+Compact presentation reads that admitted inner payload, emits unchanged returned
+source first, and retains the complete original envelope as the final content item.
+The isolated native read harness checks this actual content ordering separately
+from schema validation and reports bounded content byte counts without source text.
+
+## Source failure origin
+
+Source failures preserve their origin through canonical outcomes, admitted budget
+reports, wire serialization, CLI documents, and provider input rejection. See
+[source failures](source-failures.md) for the closed request, reference, and
+internal-obligation contract. Unknown handles do not prove expiry or foreign
+ownership.

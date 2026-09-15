@@ -50,13 +50,13 @@ class CanonicalOperationDefinitionsTest {
         definitions.forEach { definition ->
             val version =
                 when (definition.operation) {
-                    CanonicalOperation.SOURCE_READ -> 4
+                    CanonicalOperation.SOURCE_READ -> 5
+                    CanonicalOperation.SYMBOL_INSPECT,
+                    CanonicalOperation.DIAGNOSTIC_CHECK -> 4
                     CanonicalOperation.QUERY_RUN -> 2
                     CanonicalOperation.SYMBOL_DISCOVER,
-                    CanonicalOperation.SYMBOL_INSPECT,
                     CanonicalOperation.RELATION_READ,
                     CanonicalOperation.TRAVERSAL_RUN,
-                    CanonicalOperation.DIAGNOSTIC_CHECK,
                     CanonicalOperation.CHANGE_APPLY -> 3
                     else -> 2
                 }

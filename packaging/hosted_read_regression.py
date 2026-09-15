@@ -21,6 +21,14 @@ from hosted_resume_budget_regression import run_resume_budget_regression
 from hosted_raw_symbol_regression import run_raw_symbol_regression
 from hosted_read_name_regression import run_read_name_regression
 from hosted_enum_read_regression import run_enum_read_regression
+from hosted_repair_budget_regression import run_repair_time_regression
+from hosted_kotlin_call_regression import run_kotlin_call_regression
+from hosted_compact_source_regression import run_compact_source_regression
+from hosted_vfs_overflow_regression import run_vfs_overflow_regression
+from hosted_read_policy import NativeReadPolicy
+from hosted_source_failure_regression import run_source_failure_regression
+from hosted_diagnostic_pages_regression import (run_diagnostic_pages_regression, DiagnosticRequest,
+    DiagnosticGrant, DiagnosticDrained, drain_diagnostics)
 from hosted_source_read_regression import run_source_paging_regression, source_qualification_observation
 
 
@@ -40,19 +48,29 @@ def _reproduction(repo):
         sys.path.remove(str(directory))
 
 
-def run_read_regression(isolation, fixture, product, java, harness, repo, read_fixture, initial_live):
+def run_read_regression(isolation, fixture, product, java, harness, repo, read_fixture, initial_live,
+                        read_policy=NativeReadPolicy.DEFAULT):
     """Call once after readiness, before the first mutation or external fixture edit."""
     oracle = _reproduction(repo)
     rows, failure, failure_details, unchanged, before = [], None, None, False, False
     qualification = None
     concurrent = None
     authority = None
+    overflow = None
     try:
         before = read_fixture.unchanged()
         with HostedReadTransport(isolation, fixture, product, java, harness).open() as transport:
             qualification = qualification_document(transport.qualification)
+            if read_policy is NativeReadPolicy.OVERFLOW:
+                observed, successor = run_vfs_overflow_regression(isolation, fixture, transport, initial_live)
+                overflow = asdict(observed)
+                if successor is None:
+                    raise ValueError("Owned overflow fixture did not restore fresh authority")
+                initial_live = successor
             for surface in ('cli', 'provider'):
                 replay = _ReadReplay(oracle, read_fixture, initial_live, transport, surface, rows)
+                if read_policy is NativeReadPolicy.DIAGNOSTIC_PAGES:
+                    run_diagnostic_pages_regression(replay)
                 replay.run()
             concurrent = run_concurrent_read_regression(isolation, read_fixture, oracle, transport, initial_live)
             authority = asdict(run_authority_read_regression(isolation, fixture, transport, initial_live))
@@ -69,6 +87,7 @@ def run_read_regression(isolation, fixture, product, java, harness, repo, read_f
         except (OSError, ValueError):
             failure = 'READ_FIXTURE_REJECTED'
     passed = (failure is None and unchanged and bool(rows) and all(row['passed'] for row in rows)
+              and (read_policy is not NativeReadPolicy.OVERFLOW or overflow is not None and overflow['outcome'] == 'passed')
               and concurrent is not None and concurrent['outcome'] == 'passed'
               and authority is not None and authority['outcome'] == 'passed')
     return {'schemaVersion': 1, 'outcome': 'passed' if passed else 'rejected', 'failure': failure,
@@ -78,7 +97,7 @@ def run_read_regression(isolation, fixture, product, java, harness, repo, read_f
             'queryBudgets': 'unchanged-production-policy', 'sourcePayloadsLogged': False,
             'stockCodexUi': 'unqualified', 'caseCount': len(rows),
             'passedCount': sum(row['passed'] for row in rows), 'cases': rows, 'concurrentReplay': concurrent,
-            'authorityReplay': authority}
+            'authorityReplay': authority, 'overflowReplay': overflow}
 
 
 class _ReadReplay:
@@ -96,6 +115,9 @@ class _ReadReplay:
             self.query(case)
         self.roundtrips()
         self.specialists()
+        run_kotlin_call_regression(self)
+        run_compact_source_regression(self)
+        run_source_failure_regression(self)
         run_raw_symbol_regression(self)
 
     def query(self, case):
@@ -139,14 +161,21 @@ class _ReadReplay:
         run_enum_read_regression(self)
         self.relations()
         run_budget_read_regression(self)
+        run_repair_time_regression(self)
         run_resume_budget_regression(self)
         run_read_name_regression(self)
-        response = self.transport.invoke(self.surface, 'check_diagnostics',
-            {'relative_path': 'src/main/kotlin/Fixture.kt', 'max_diagnostics': None})
+        request = DiagnosticRequest('src/main/kotlin/Fixture.kt', 1000,
+            execution_budget=DiagnosticGrant(max_results=1000))
+        first, _ = self.transport.invoke_observed(self.surface, 'check_diagnostics', asdict(request))
+        drained = drain_diagnostics(self, request, first)
+        complete = isinstance(drained, DiagnosticDrained)
+        response = drained.pages[-1] if complete else first
+        facts = tuple(item for page in drained.pages for item in page['diagnostics']) if complete else ()
         self.record('diagnostics-exact-file', 'check_diagnostics', {
-            **self.completed(response), 'diagnosticsPresent': isinstance(response.get('diagnostics'), list),
-            'noCompilerErrors': all(d.get('severity') != 'error' for d in response.get('diagnostics', [])),
-        }, len(response.get('diagnostics', [])), response)
+            **self.completed(response), 'boundedDrainCompleted': complete,
+            'diagnosticsPresent': complete and all(isinstance(page.get('diagnostics'), list) for page in drained.pages),
+            'noCompilerErrors': complete and all(d.get('severity') != 'error' for d in facts),
+        }, len(facts), response)
 
     def source_read(self):
         response = self.transport.invoke(self.surface, 'source_read', {

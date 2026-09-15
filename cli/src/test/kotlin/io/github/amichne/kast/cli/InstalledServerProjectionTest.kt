@@ -69,7 +69,7 @@ class InstalledServerProjectionTest {
                 .jsonArray
                 .map(JsonElement::jsonObject)
 
-        assertEquals(12, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
+        assertEquals(13, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
         assertTrue(
             bootstrap.getValue("policy").jsonPrimitive.content.contains("compiler-grounded Kotlin source intelligence")
         )
@@ -198,7 +198,7 @@ class InstalledServerProjectionTest {
         val internalOperations = HostedOperationProjection.internalDefinitions.map { it.operation.id.value }
 
         assertEquals(13, tools.size)
-        assertEquals(12, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
+        assertEquals(13, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
         assertEquals("kast", projection.getValue("namespace").jsonPrimitive.content)
         assertEquals(
             expectedPublicOperations.toSet(),
@@ -507,17 +507,8 @@ class InstalledServerProjectionTest {
     private fun JsonObject.validate(document: String): Set<String> =
         schemaRegistry.getSchema(toString()).validate(document, InputFormat.JSON).mapTo(linkedSetOf()) { it.message }
 
-    private fun symbolInspectProcessDocument(
-        kind: String,
-        qualifiedIdentity: String,
-        signature: String,
-    ): String =
-        """{"status":"completed","document":{"operation":"symbol.inspect","status":"complete",""" +
-            """"symbol":{"selector":"exact:v1:3:1","kind":"$kind","name":"Controller",""" +
-            """"qualifiedIdentity":$qualifiedIdentity,"file":"src/Controller.kt",""" +
-            """"range":{"startInclusive":0,"endExclusive":10},""" +
-            """"compilerEvidence":{"identity":"canonical-signature-sha256-v1|${"a".repeat(64)}",""" +
-            """"signature":$signature}}}}"""
+    private fun symbolInspectProcessDocument(kind: String, qualifiedIdentity: String, signature: String): String =
+        SymbolInspectionFixture.process(kind, qualifiedIdentity, signature)
 
     private fun JsonObject.completedDocumentSchema(): JsonObject =
         getValue("outputSchema")

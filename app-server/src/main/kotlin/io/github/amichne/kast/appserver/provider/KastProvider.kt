@@ -17,7 +17,6 @@ import io.github.amichne.kast.appserver.core.ProviderVersion
 import io.github.amichne.kast.appserver.core.ToolDescription
 import io.github.amichne.kast.appserver.core.ToolLoading
 import io.github.amichne.kast.appserver.core.ToolName
-import io.github.amichne.kast.appserver.core.ToolPresentation
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.appserver.query.explanation
 import io.github.amichne.kast.appserver.schema.CompiledJsonSchema
@@ -341,6 +340,14 @@ internal object KastProviderQualifier {
             invocationBudget = executionBudget.invocation,
             inputAliases = inputAliases,
             effect = BrokerOperationEffect.Canonical(hostedDefinition.effect),
+            inputRejectionEvidence = { raw ->
+                if (
+                    hostedDefinition.operation ==
+                        io.github.amichne.kast.protocol.contract.CanonicalOperation.SOURCE_READ
+                )
+                    sourceInputRejectionEvidence(raw)
+                else io.github.amichne.kast.appserver.core.BrokerInputRejectionEvidence.Unspecified
+            },
             inputGuidance = { failure ->
                 val guidance =
                     when (failure) {
@@ -353,6 +360,7 @@ internal object KastProviderQualifier {
                             else emptyList()
                         is io.github.amichne.kast.appserver.schema.JsonDomainAdmissionFailure.Domain ->
                             when (val reason = failure.failure) {
+                                is KastToolInputFailure.Source -> emptyList()
                                 is KastToolInputFailure.Facade -> listOf(reason.reason.explanation())
                                 KastToolInputFailure.NotObject,
                                 KastToolInputFailure.SchemaMismatch,
@@ -366,7 +374,7 @@ internal object KastProviderQualifier {
                     }
                 }
             },
-            present = { output -> ToolPresentation.outcome(output.document, success = output.success) },
+            present = { output -> presentKastSourceOrOutcome(output.document, output.success) },
         )
     }
 
@@ -672,4 +680,4 @@ private val invocationJson = Json { encodeDefaults = true }
 /** Diagnostic payloads are admitted by the installed rejection schema before presentation. */
 @Serializable private data class KastRejectedDocument(val diagnostic: JsonElement, val status: String = "rejected")
 
-private const val KAST_SERVER_PROJECTION_VERSION = 12
+private const val KAST_SERVER_PROJECTION_VERSION = 13

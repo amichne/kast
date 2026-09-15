@@ -70,5 +70,31 @@ class BrokerFailureDocumentTest {
         assertFalse(encoded.contains("private-source"))
     }
 
+    @Test
+    fun `source ingress rejection retains typed origin and field in actual broker document`() {
+        val cause =
+            io.github.amichne.kast.protocol.contract.SourceReadFailureDetail.RequestRejected(
+                io.github.amichne.kast.protocol.contract.SourceRequestField(
+                    io.github.amichne.kast.protocol.contract.SourceRequestPath.ANCHOR_TYPE
+                ),
+                io.github.amichne.kast.protocol.contract.SourceRequestRule.REQUIRED,
+            )
+        val encoded = Json.encodeToString(BrokerFailureDocument.from(BrokerFailure.SourceInputRejected(cause)))
+        val output = Json.parseToJsonElement(encoded).jsonObject
+        assertEquals(setOf("failure", "source"), output.keys)
+        assertEquals(
+            "SOURCE_INPUT_REJECTED",
+            (output.getValue("failure") as kotlinx.serialization.json.JsonPrimitive).content,
+        )
+        val source = output.getValue("source").jsonObject
+        assertEquals(setOf("type", "field", "reason", "expected"), source.keys)
+        assertEquals("request-rejected", (source.getValue("type") as kotlinx.serialization.json.JsonPrimitive).content)
+        assertEquals(
+            "anchor.type",
+            (source.getValue("field").jsonObject.getValue("path") as kotlinx.serialization.json.JsonPrimitive).content,
+        )
+        assertEquals("required", (source.getValue("reason") as kotlinx.serialization.json.JsonPrimitive).content)
+    }
+
     private fun <T, F> Refinement<T, F>.refined(): T = (this as Refinement.Refined).value
 }

@@ -43,7 +43,7 @@ internal const val MAXIMUM_PROTOCOL_TEXT_LENGTH = 1_048_576
 internal const val MAXIMUM_WORKSPACE_FILE_LENGTH = 4_096
 internal const val MAXIMUM_PROTOCOL_COUNT = 1_000
 
-private const val SERVER_PROJECTION_SCHEMA_VERSION = 12
+private const val SERVER_PROJECTION_SCHEMA_VERSION = 13
 private const val HOSTED_BOOTSTRAP_SCHEMA_VERSION = 1
 private const val CLI_INVOCATIONS_SCHEMA_VERSION = 3
 
@@ -460,17 +460,12 @@ private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject =
             outcomeSchema(
                 operation,
                 ServerSchemaProperty("symbol", symbolSchema()),
+                ServerSchemaProperty(
+                    "acquisition",
+                    enumSchema(listOf("strict", "reacquired"), "Exact inspection authority acquisition."),
+                ),
             )
-        CanonicalOperation.SOURCE_READ ->
-            proofQualifiedOutcomeSchema(
-                operation,
-                sourceReadQualificationSchema(),
-                executionBudgetProperty(),
-                ServerSchemaProperty("snapshot", sourceSnapshotSchema()),
-                ServerSchemaProperty("region", sourceRegionSchema()),
-                ServerSchemaProperty("entities", arraySchema(sourceEntitySchema())),
-                ServerSchemaProperty("text", sourceTextProjectionSchema()),
-            )
+        CanonicalOperation.SOURCE_READ -> sourceReadOutputSchema(operation)
         CanonicalOperation.RELATION_READ ->
             proofQualifiedOutcomeSchema(
                 operation,
@@ -571,6 +566,13 @@ private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject =
                 operation,
                 diagnosticQualificationSchema(),
                 ServerSchemaProperty("diagnostics", arraySchema(diagnosticSchema())),
+                ServerSchemaProperty(
+                    "progress",
+                    generatedRequestSchema(
+                        io.github.amichne.kast.protocol.contract.DiagnosticProgressDocument.serializer()
+                    ),
+                    required = false,
+                ),
             )
         CanonicalOperation.CHANGE_PLAN ->
             outcomeSchema(
@@ -918,7 +920,7 @@ private fun outcomeSchema(
         *payload,
     )
 
-private fun proofQualifiedOutcomeSchema(
+internal fun proofQualifiedOutcomeSchema(
     operation: CanonicalOperation,
     qualificationSchema: JsonObject,
     vararg payload: ServerSchemaProperty,
@@ -944,13 +946,14 @@ private fun admittedReadRejectionVariants(operation: CanonicalOperation): Array<
     when (operation) {
         CanonicalOperation.SOURCE_READ,
         CanonicalOperation.RELATION_READ,
-        CanonicalOperation.TRAVERSAL_RUN ->
+        CanonicalOperation.TRAVERSAL_RUN,
+        CanonicalOperation.DIAGNOSTIC_CHECK ->
             arrayOf(
                 operationOutcomeVariant(
                     operation,
                     "rejected",
                     ServerSchemaProperty("reason", canonicalReadRejectionSchema(operation)),
-                    readRecoveryActionProperty(),
+                    *readRecoveryActionProperties(operation),
                     ServerSchemaProperty(
                         "execution_budget",
                         generatedRequestSchema(
@@ -1002,7 +1005,7 @@ private fun relationQualificationSchema(): JsonObject =
         ),
     )
 
-private fun sourceReadQualificationSchema(): JsonObject =
+internal fun sourceReadQualificationSchema(): JsonObject =
     objectSchema(
         ServerSchemaProperty(
             "progress",
@@ -1046,7 +1049,7 @@ private fun sourceReadQualificationSchema(): JsonObject =
         ),
     )
 
-private enum class ServerReadEvidenceShape {
+internal enum class ServerReadEvidenceShape {
     PUBLISHED,
     LIVE,
 }
@@ -1085,7 +1088,7 @@ private fun liveReadEvidenceSchema(): JsonObject =
         ServerSchemaProperty("version", integerSchema(1, 1, "Live evidence representation version.")),
     )
 
-private fun sourceSnapshotSchema(basis: ServerReadEvidenceShape = ServerReadEvidenceShape.PUBLISHED): JsonObject =
+internal fun sourceSnapshotSchema(basis: ServerReadEvidenceShape = ServerReadEvidenceShape.PUBLISHED): JsonObject =
     objectSchema(
         ServerSchemaProperty("canonicalRoot", textSchema("Canonical workspace root.")),
         *when (basis) {
@@ -1111,7 +1114,7 @@ private fun sourceSelectionSchema(): JsonObject =
         ServerSchemaProperty("range", diagnosticRangeSchema()),
     )
 
-private fun sourceRegionSchema(): JsonObject =
+internal fun sourceRegionSchema(): JsonObject =
     objectSchema(
         ServerSchemaProperty(
             "kind",
@@ -1123,7 +1126,7 @@ private fun sourceRegionSchema(): JsonObject =
         ServerSchemaProperty("selection", sourceSelectionSchema()),
     )
 
-private fun sourceEntitySchema(): JsonObject =
+internal fun sourceEntitySchema(): JsonObject =
     unionSchema(
         objectSchema(
             ServerSchemaProperty("type", constantSchema("declaration", "Source entity kind.")),
@@ -1199,7 +1202,7 @@ private fun sourceEntityTargetSchema(): JsonObject =
         ),
     )
 
-private fun sourceTextProjectionSchema(): JsonObject =
+internal fun sourceTextProjectionSchema(): JsonObject =
     unionSchema(
         objectSchema(ServerSchemaProperty("type", constantSchema("not-requested", "Text projection state."))),
         objectSchema(
@@ -1298,6 +1301,7 @@ private fun relationLimitationsSchema(): JsonObject =
 
 private fun diagnosticQualificationSchema(): JsonObject =
     objectSchema(
+        ServerSchemaProperty("continuation", textSchema("Retained same-basis diagnostic progress."), required = false),
         ServerSchemaProperty(
             "knownDiagnosticCount",
             integerSchema(0, description = "Known diagnostic count before result truncation."),
@@ -1358,6 +1362,8 @@ internal fun operationOutcomeVariant(
     if (!operation.supportsLiveEvidence() || status !in setOf("complete", "qualified")) return published
     val livePayload = payload.map { property ->
         when {
+            operation == CanonicalOperation.SOURCE_READ && property.name == "content" ->
+                ServerSchemaProperty("content", compactSourceContentSchema(ServerReadEvidenceShape.LIVE))
             operation == CanonicalOperation.SOURCE_READ && property.name == "snapshot" ->
                 ServerSchemaProperty("snapshot", sourceSnapshotSchema(ServerReadEvidenceShape.LIVE))
             operation == CanonicalOperation.TRAVERSAL_RUN && property.name == "graph" ->
@@ -1929,7 +1935,7 @@ private fun relationSchema(): JsonObject =
         description = "One canonical Kast semantic relation.",
     )
 
-private fun executionBudgetProperty() =
+internal fun executionBudgetProperty() =
     ServerSchemaProperty(
         "execution_budget",
         nullableSchema(
@@ -1949,5 +1955,14 @@ private fun readRecoveryActionProperties(operation: CanonicalOperation): Array<S
         CanonicalOperation.SOURCE_READ,
         CanonicalOperation.RELATION_READ,
         CanonicalOperation.TRAVERSAL_RUN -> arrayOf(readRecoveryActionProperty())
+        CanonicalOperation.DIAGNOSTIC_CHECK ->
+            arrayOf(
+                ServerSchemaProperty(
+                    "next_action",
+                    generatedRequestSchema(
+                        io.github.amichne.kast.protocol.contract.DiagnosticRecoveryAction.serializer()
+                    ),
+                )
+            )
         else -> emptyArray()
     }

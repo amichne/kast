@@ -32,6 +32,23 @@ import org.junit.jupiter.api.Test
 
 class SourceContinuationRetentionTest {
     @Test
+    fun `changing output format rejects a native continuation`() {
+        val owner = IntellijSourceReadContinuations()
+        val fixture = fixture()
+        val token = owner.issue(fixture.request, fixture.capture, 1).refined()
+        assertEquals(
+            IntellijSourceContinuationAdmission.Rejected(IntellijSourceContinuationRejection.REQUEST_MISMATCH),
+            owner.admit(
+                fixture.capture.snapshot.context,
+                fixture.request.copy(
+                    page = SourceReadPage.Continue(token),
+                    outputIdentity = io.github.amichne.kast.source.contract.SourceReadOutputIdentity.COMPACT,
+                ),
+            ),
+        )
+    }
+
+    @Test
     fun `replay does not renew expiry and expired continuation cannot restore`() {
         var now = 0L
         val owner =

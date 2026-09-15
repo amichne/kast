@@ -7,12 +7,17 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.RelationLimitation
 import io.github.amichne.kast.relation.contract.RelationProvenance
 import io.github.amichne.kast.relation.contract.RelationProviderItemDescriptor
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
 import org.jetbrains.kotlin.idea.references.KtReference
 import org.jetbrains.kotlin.psi.KtCallElement
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 
 internal sealed interface ContainingDeclaration {
     data class Found(val declaration: PsiNamedElement) : ContainingDeclaration
+
+    data class Deferred(val boundary: PsiElement) : ContainingDeclaration
 
     data object Unsupported : ContainingDeclaration
 }
@@ -36,6 +41,8 @@ internal sealed interface KotlinCallReferences {
 }
 
 internal sealed interface CalleeProviderItem {
+    data class UnsupportedOwner(val call: KtCallElement) : CalleeProviderItem
+
     data class Unresolved(val call: KtCallElement) : CalleeProviderItem
 
     data class Reference(val reference: KtReference) : CalleeProviderItem
@@ -43,6 +50,8 @@ internal sealed interface CalleeProviderItem {
 
 internal fun CalleeProviderItem.descriptor(): RelationProviderItemDescriptor =
     when (this) {
+        is CalleeProviderItem.UnsupportedOwner ->
+            providerItemDescriptor(call, call.textRange.shiftLeft(call.textRange.startOffset), "deferred-call-owner")
         is CalleeProviderItem.Unresolved ->
             providerItemDescriptor(
                 call,
@@ -83,12 +92,57 @@ internal fun providerItemDescriptor(
     }
 }
 
-internal fun PsiElement.nearestDeclaration(): ContainingDeclaration =
-    generateSequence(this as PsiElement?) { it.parent }
-        .filterIsInstance<PsiNamedElement>()
-        .filter { it is KtNamedDeclaration || it is com.intellij.psi.PsiMember }
-        .firstOrNull()
-        ?.let(ContainingDeclaration::Found) ?: ContainingDeclaration.Unsupported
+/** Local initializers execute in their enclosing callable; nested callable bodies keep their own owner. */
+internal fun PsiElement.nearestDeclaration(
+    observation: IntellijReadObservation = IntellijReadObservation.None
+): ContainingDeclaration =
+    lexicalDeclaration().also { owner ->
+        when (owner) {
+            is ContainingDeclaration.Found -> observation.count(IntellijReadCounter.RELATION_CALL_OWNERS_FOUND)
+            is ContainingDeclaration.Deferred,
+            ContainingDeclaration.Unsupported -> {
+                observation.count(IntellijReadCounter.RELATION_CALL_OWNERS_UNAVAILABLE)
+                observation.terminated(IntellijReadTermination.RELATION_CALL_OWNER_UNSUPPORTED)
+            }
+        }
+    }
+
+private fun PsiElement.lexicalDeclaration(): ContainingDeclaration {
+    for (element in generateSequence(this as PsiElement?) { it.parent }) {
+        when (element) {
+            is org.jetbrains.kotlin.psi.KtFunctionLiteral,
+            is org.jetbrains.kotlin.psi.KtPropertyAccessor -> return ContainingDeclaration.Deferred(element)
+            is org.jetbrains.kotlin.psi.KtProperty -> if (!element.isLocal) return ContainingDeclaration.Found(element)
+            is org.jetbrains.kotlin.psi.KtParameter -> Unit
+            is KtNamedDeclaration -> return ContainingDeclaration.Found(element)
+            is com.intellij.psi.PsiMember -> if (element is PsiNamedElement) return ContainingDeclaration.Found(element)
+        }
+    }
+    return ContainingDeclaration.Unsupported
+}
+
+/** A deferred body qualifies its lexical owner but cannot authorize an edge from that owner. */
+internal fun ContainingDeclaration.Deferred.enclosingDeclaration(): ContainingDeclaration {
+    var current: ContainingDeclaration = this
+    while (current is ContainingDeclaration.Deferred) {
+        current = current.boundary.parent.nearestDeclaration()
+    }
+    return current
+}
+
+internal fun PsiElement.nearestSupportedCallable(
+    projection: IntellijK2RelationProjection,
+    observation: IntellijReadObservation = IntellijReadObservation.None,
+): SupportedContainingDeclaration =
+    when (val owner = nearestDeclaration(observation)) {
+        is ContainingDeclaration.Found ->
+            when (val projected = projection.project(owner.declaration)) {
+                is IntellijRelationDeclarationProjection.Projected -> SupportedContainingDeclaration.Found(projected)
+                IntellijRelationDeclarationProjection.Unsupported -> SupportedContainingDeclaration.Unsupported
+            }
+        is ContainingDeclaration.Deferred,
+        ContainingDeclaration.Unsupported -> SupportedContainingDeclaration.Unsupported
+    }
 
 /**
  * Proof transition: `(PsiElement, IntellijK2RelationProjection) -> SupportedContainingDeclaration`.

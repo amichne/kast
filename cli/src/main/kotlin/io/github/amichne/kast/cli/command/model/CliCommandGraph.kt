@@ -45,6 +45,8 @@ internal enum class CliCommandFailure {
 internal fun CliCommandFailure.outputReason(): String = name.lowercase().replace('_', '-')
 
 internal sealed interface CliCommandParsing {
+    data class SourceRejected(val failure: io.github.amichne.kast.protocol.contract.SourceReadCause) : CliCommandParsing
+
     data class Parsed(val action: CliAction) : CliCommandParsing
 
     data class Help(val document: CliTextDocument) : CliCommandParsing
@@ -243,6 +245,8 @@ private class CliCommandGraph(
                                 CliCommandSelection.Ambiguous -> CliCommandSelection.Ambiguous
                             }
                     }
+                    is CliActionResolution.SourceRejected ->
+                        selection = CliCommandSelection.Chosen(CliCommandParsing.SourceRejected(resolution.failure))
                     is CliActionResolution.UsageRejected ->
                         throw UsageError(resolution.failure.message()).also { it.context = command.currentContext }
                     is CliActionResolution.ProjectionRejected ->

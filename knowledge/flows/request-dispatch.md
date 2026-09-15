@@ -62,7 +62,7 @@ host request
 
 Registry construction proves that every canonical operation has one definition. Wire-table construction proves that each has one serializer binding. Hosted dispatch uses those typed bindings; `HostedSemanticServices` supplies the request-scoped domain services. Host adapters may change presentation, but they must preserve qualification and rejection.
 
-For the four reads, a supplied byte limit below the serialized wire schema and
+For the five reads, a supplied byte limit below the serialized wire schema and
 operation identity rejects before handler selection. No semantic grant is invented
 for this rejection. Satisfying that necessary lower bound does not establish that a
 complete response body can fit; encoded output remains the publication authority.
@@ -79,7 +79,7 @@ live envelope against the requested root and admitted descriptor host. A typed h
 rejection can be returned before read authority exists; it does not become a
 successful canonical payload.
 
-App Server provider qualification requires projection version 12 and its exact
+App Server provider qualification requires projection version 13 and its exact
 operation schemas and declared default budgets. Canonical registry input aliases
 resolve to the selected preferred tool route; omitted tools and incompatible
 catalog bindings reject before provider invocation. Invocation continues through the configured CLI
@@ -132,10 +132,17 @@ replay, independent workspaces, and retirement held across cancellation/deadline
 
 `HostedResponse` carries the original typed semantic outcome beside the encoded document until transport ends. Completion, qualification and rejection have separate endpoint observations. Encoding rejection and size rejection retain the semantic value for diagnosis. Read transaction success alone is `EVALUATED`; the canonical path additionally retains semantic `COMPLETE`, `QUALIFIED` or `REJECTED` evidence. Change-storage failures retain their finite cause in schema-admitted `HOST_REJECTED.detail` and in default bounded storage observations.
 
-Model-facing Codex replies carry one JSON document. Terminal broker admission,
+Model-facing Codex replies retain one JSON envelope as their final content item.
+Compact source presentation can precede it with unchanged returned source text.
+Terminal broker admission,
 capacity and cancellation paths also retain typed JSON rejection or cancellation
 data; uncertainty is not converted into success. A supported native desktop
 display receives the same bounded result as structured content. Display parsing
 cannot alter execution authority or the broker's recovery settlement.
 
 An existing-host read failure carries an execution report only after semantic budget admission. Timeout and final revalidation preserve the report together with the finite failure and stage; encoded-output and retention refusal preserve the report at the publication boundary. CLI schema admission then refines the report through the canonical decoder before forwarding the hosted failure document.
+
+Compact source results retain ordered source and structure sections through CLI
+schema admission. The source-specific production-provider presenter emits the
+unchanged returned source first and the structured result afterward. Other
+operation presentations retain their existing dispatch behavior.

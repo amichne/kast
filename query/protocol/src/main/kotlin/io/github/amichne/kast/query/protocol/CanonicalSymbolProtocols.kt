@@ -10,13 +10,19 @@ import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRejection
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverResult
+import io.github.amichne.kast.protocol.contract.SymbolInspectAcquisition
 import io.github.amichne.kast.protocol.contract.SymbolInspectQualification
 import io.github.amichne.kast.protocol.contract.SymbolInspectRejection
 import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
 import io.github.amichne.kast.protocol.contract.SymbolInspectResult
 import io.github.amichne.kast.protocol.contract.SymbolInspectTarget
 import io.github.amichne.kast.query.protocol.*
+import io.github.amichne.kast.symbol.contract.CandidateSelector
+import io.github.amichne.kast.symbol.contract.ExactRevalidationOperations
+import io.github.amichne.kast.symbol.contract.ExactRevalidationRejection
+import io.github.amichne.kast.symbol.contract.ExactRevalidationResult
 import io.github.amichne.kast.symbol.contract.ExactSymbolRequest
+import io.github.amichne.kast.symbol.contract.SymbolDescription
 import io.github.amichne.kast.symbol.contract.SymbolDescriptionResult as DomainDescriptionResult
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBudget
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOperations
@@ -28,6 +34,7 @@ import io.github.amichne.kast.symbol.contract.SymbolExactOperations
 import io.github.amichne.kast.symbol.contract.SymbolExactRejection
 import io.github.amichne.kast.symbol.contract.SymbolResolutionRequest
 import io.github.amichne.kast.symbol.contract.SymbolResolutionResult as DomainResolutionResult
+import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 
 class CanonicalSymbolDiscoverProtocol(
@@ -137,6 +144,10 @@ private fun SymbolDiscoveryQualification.protocolLimitation(): SymbolDiscoverLim
 class CanonicalSymbolInspectProtocol(
     private val operations: SymbolExactOperations,
     private val authority: QueryReferenceAuthority,
+    private val locators: ExactRevalidationReferences = ExactRevalidationReferences.Unavailable,
+    private val revalidation: ExactRevalidationOperations = ExactRevalidationOperations { _, _ ->
+        ExactRevalidationResult.Rejected(ExactRevalidationRejection.UNRETAINED)
+    },
 ) {
     suspend fun execute(
         request: SymbolInspectRequest,
@@ -148,6 +159,7 @@ class CanonicalSymbolInspectProtocol(
     > {
         val exact =
             when (val target = request.target) {
+                is SymbolInspectTarget.RevalidateExact -> return revalidate(target.selector, current)
                 is SymbolInspectTarget.Candidate ->
                     when (val refinement = refineCandidate(target.selector, current)) {
                         is CandidateInspectionRefinement.Refined -> refinement.exact
@@ -162,6 +174,40 @@ class CanonicalSymbolInspectProtocol(
                     }
             }
         return describe(exact)
+    }
+
+    private suspend fun revalidate(
+        token: io.github.amichne.kast.protocol.contract.ProtocolText,
+        current: SemanticReadAuthority,
+    ): OperationOutcome<SymbolInspectResult, SymbolInspectQualification, SymbolInspectRejection> {
+        val locator =
+            when (val located = locators.locate(token)) {
+                is Refinement.Refined -> located.value
+                is Refinement.Rejected ->
+                    return OperationOutcome.Rejected(located.failure.inspectRevalidationProtocol())
+            }
+        val selector =
+            when (val result = revalidation.revalidate(locator, current)) {
+                is ExactRevalidationResult.Reacquired -> result.selector
+                is ExactRevalidationResult.Rejected ->
+                    return OperationOutcome.Rejected(result.reason.inspectRevalidationProtocol())
+            }
+        val issued =
+            when (val result = authority.issueExact(selector)) {
+                is ExactSelectorIssuance.Issued -> result.selector
+                is ExactSelectorIssuance.Rejected ->
+                    return OperationOutcome.Rejected(SymbolInspectRejection.REVALIDATION_CAPTURE_UNAVAILABLE)
+            }
+        val document =
+            SymbolDescription.from(selector).protocolDocument(issued)
+                ?: return OperationOutcome.Rejected(SymbolInspectRejection.NOT_FOUND)
+        return OperationOutcome.Complete(
+            EvidenceEnvelope(
+                CanonicalOperation.SYMBOL_INSPECT.id,
+                current.evidenceBasis(),
+                SymbolInspectResult(document, SymbolInspectAcquisition.REACQUIRED),
+            )
+        )
     }
 
     private suspend fun refineCandidate(
@@ -279,4 +325,28 @@ private fun SelectorLookupRejection.inspectProtocol(): SymbolInspectRejection =
         SelectorLookupRejection.MALFORMED -> SymbolInspectRejection.SELECTOR_MALFORMED
         SelectorLookupRejection.STALE -> SymbolInspectRejection.EXACT_SELECTOR_STALE
         SelectorLookupRejection.WORKSPACE_MISMATCH -> SymbolInspectRejection.SELECTOR_WORKSPACE_MISMATCH
+    }
+
+private fun ExactRevalidationRejection.inspectRevalidationProtocol(): SymbolInspectRejection =
+    when (this) {
+        ExactRevalidationRejection.WRONG_KIND -> SymbolInspectRejection.SELECTOR_WRONG_KIND
+        ExactRevalidationRejection.UNRETAINED -> SymbolInspectRejection.REVALIDATION_UNRETAINED
+        ExactRevalidationRejection.EXPIRED -> SymbolInspectRejection.REVALIDATION_EXPIRED
+        ExactRevalidationRejection.CAPACITY -> SymbolInspectRejection.REVALIDATION_CAPACITY
+        ExactRevalidationRejection.RETIRED -> SymbolInspectRejection.REVALIDATION_RETIRED
+        ExactRevalidationRejection.CAPTURE_UNAVAILABLE -> SymbolInspectRejection.REVALIDATION_CAPTURE_UNAVAILABLE
+        ExactRevalidationRejection.WORKSPACE_MISMATCH -> SymbolInspectRejection.REVALIDATION_WORKSPACE_MISMATCH
+        ExactRevalidationRejection.OWNER_MISMATCH -> SymbolInspectRejection.REVALIDATION_OWNER_MISMATCH
+        ExactRevalidationRejection.WORKSPACE_NOT_READY -> SymbolInspectRejection.REVALIDATION_WORKSPACE_NOT_READY
+        ExactRevalidationRejection.BASIS_MOVED -> SymbolInspectRejection.REVALIDATION_BASIS_MOVED
+        ExactRevalidationRejection.CONTENT_CHANGED -> SymbolInspectRejection.REVALIDATION_CONTENT_CHANGED
+        ExactRevalidationRejection.CONTENT_UNCOMMITTED -> SymbolInspectRejection.REVALIDATION_CONTENT_UNCOMMITTED
+        ExactRevalidationRejection.SCOPE_REJECTED -> SymbolInspectRejection.REVALIDATION_SCOPE_REJECTED
+        ExactRevalidationRejection.DECLARATION_MISSING -> SymbolInspectRejection.REVALIDATION_DECLARATION_MISSING
+        ExactRevalidationRejection.UNSUPPORTED_DECLARATION ->
+            SymbolInspectRejection.REVALIDATION_UNSUPPORTED_DECLARATION
+        ExactRevalidationRejection.AMBIGUOUS -> SymbolInspectRejection.REVALIDATION_AMBIGUOUS
+        ExactRevalidationRejection.COMPILER_IDENTITY_CHANGED ->
+            SymbolInspectRejection.REVALIDATION_COMPILER_IDENTITY_CHANGED
+        ExactRevalidationRejection.COMPILER_UNAVAILABLE -> SymbolInspectRejection.REVALIDATION_COMPILER_UNAVAILABLE
     }

@@ -39,11 +39,11 @@ code_sources:
 
 The authored tool bundle generates Kotlin request DTOs, concrete normalization defaults, closed presentation identities, full admission schemas, Codex registration schemas and separate Responses strict registrations. The same production generator retains the explicit legacy `query run` CLI grammar.
 
-`search_classes`, `search_functions`, `search_declarations` and `check_diagnostics` are eager. `query_symbols` is deferred. Ordinary searches fix or admit declaration kinds and request names, locations and signatures; diagnostics lower to the existing path/limit request. Required nullable controls normalize before canonical construction. Directory/package scope shapes are exclusive, and duplicates and invalid lexical values reject.
+`search_classes`, `search_functions`, `search_declarations` and `check_diagnostics` are eager. `query_symbols` is deferred. Ordinary searches fix or admit declaration kinds and request names, locations and signatures; diagnostics lower to the path, semantic diagnostic limit, optional continuation and execution grant request. Required nullable controls normalize before canonical construction. Directory/package scope shapes are exclusive, and duplicates and invalid lexical values reject.
 
 The advanced pipeline preserves source meaning, step order, repeated steps and empty projections. Expansion returns related declarations; occurrence-oriented relation facts remain the relation-read contract. Query items and per-item failures expose one scalar `ref`, preserving the issued candidate or exact token verbatim. Named output schemas `CandidateRef`, `ExactSymbolRef`, and query-scoped `ContinuationRef` describe these opaque representations. No token spelling creates authority: existing runtime owners re-admit workspace, lifetime, epoch and compiler evidence.
 
-Installed projection 12 and CLI invocation version 3 join by tool name. Repeated canonical operation IDs are allowed only with consistent effect, approval, budget and output metadata. Private admitted requests retain their presentation and schema identities through transport encoding, excluding cross-tool substitution. Old persisted catalogs reject rather than silently accepting a new grammar. Source, relation and traversal defaults remain unchanged. Raw candidate lookup/refinement requires explicit selection. Native-qualified change tools are deferred defaults; `change_plan` has approval policy `NONE`, while apply and recovery retain
+Installed projection 13 and CLI invocation version 3 join by tool name. Repeated canonical operation IDs are allowed only with consistent effect, approval, budget and output metadata. Private admitted requests retain their presentation and schema identities through transport encoding, excluding cross-tool substitution. Old persisted catalogs reject rather than silently accepting a new grammar. Source, relation and traversal defaults remain unchanged. Raw candidate lookup/refinement requires explicit selection. Native-qualified change tools are deferred defaults; `change_plan` has approval policy `NONE`, while apply and recovery retain
 `EXPLICIT` exact-plan approval. The hosted planning schema admits only
 `add-declaration`; unsupported canonical intents do not enter another runtime.
 
@@ -91,8 +91,9 @@ never authorizes the dependent action. Opening permission does not extend to
 cache invalidation, forced synchronization, topology preparation, or unrelated
 IDE restarts. Exact-plan mutation approvals retain their separate requirements.
 
-Kast's Codex response contains one JSON text item with the admitted CLI envelope,
-so clients parse once without splitting a summary prefix. Process completion and
+Kast's Codex response retains the admitted CLI envelope in its final JSON text
+item. Compact source reads with returned text prepend the unchanged source in a
+separate text item; clients parse the final envelope once. Process completion and
 the original complete/qualified/rejected semantic result remain distinct; a
 canonical rejection sets tool success false. The desktop display projection
 retains raw text and exposes a single Kast JSON object through the supported
@@ -134,7 +135,7 @@ Unknown or absent actions fail the installed schema. The
 [outcome contract](operation-outcomes.md) defines the six recovery directions;
 action text does not authorize silent reference refresh or an automatic retry.
 
-Server projection version 12 advertises `read_relations` and `traverse_relations`
+Server projection version 13 advertises `read_relations` and `traverse_relations`
 for the unchanged `relation.read` and `traversal.run` operations. Canonical
 registry definitions own the input-only `semantic_query` and `impact_analyze`
 aliases. Configuration resolves aliases before rejecting duplicate identities;

@@ -278,7 +278,18 @@ internal sealed interface ProbeExecution {
 
     data class IndexingReleased(val evidence: ProbeEvidence) : ProbeExecution
 
-    data class SetupReady(val evidence: ProbeEvidence, val readiness: ProbeSetupObservation) : ProbeExecution
+    class SetupReady private constructor(val evidence: ProbeEvidence, val readiness: ProbeSetupObservation) :
+        ProbeExecution {
+        companion object {
+            fun admit(evidence: ProbeEvidence, readiness: ProbeSetupObservation): ProbeExecution =
+                when {
+                    evidence.documentState != ProbeDocumentState.SAVED_COMMITTED ->
+                        Rejected(ProbeFailure.DOCUMENT_STATE_REJECTED)
+                    evidence.saved != evidence.document -> Rejected(ProbeFailure.DOCUMENT_IMAGE_CHANGED)
+                    else -> SetupReady(evidence, readiness)
+                }
+        }
+    }
 
     data class BarrierArmed(val evidence: ProbeEvidence, val barrierId: UUID) : ProbeExecution
 
