@@ -507,17 +507,8 @@ class InstalledServerProjectionTest {
     private fun JsonObject.validate(document: String): Set<String> =
         schemaRegistry.getSchema(toString()).validate(document, InputFormat.JSON).mapTo(linkedSetOf()) { it.message }
 
-    private fun symbolInspectProcessDocument(
-        kind: String,
-        qualifiedIdentity: String,
-        signature: String,
-    ): String =
-        """{"status":"completed","document":{"operation":"symbol.inspect","status":"complete",""" +
-            """"symbol":{"selector":"exact:v1:3:1","kind":"$kind","name":"Controller",""" +
-            """"qualifiedIdentity":$qualifiedIdentity,"file":"src/Controller.kt",""" +
-            """"range":{"startInclusive":0,"endExclusive":10},""" +
-            """"compilerEvidence":{"identity":"canonical-signature-sha256-v1|${"a".repeat(64)}",""" +
-            """"signature":$signature}}}}"""
+    private fun symbolInspectProcessDocument(kind: String, qualifiedIdentity: String, signature: String): String =
+        SymbolInspectionFixture.process(kind, qualifiedIdentity, signature)
 
     private fun JsonObject.completedDocumentSchema(): JsonObject =
         getValue("outputSchema")

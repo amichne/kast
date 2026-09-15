@@ -4,11 +4,30 @@ import com.networknt.schema.InputFormat
 import com.networknt.schema.SchemaRegistry
 import com.networknt.schema.SpecificationVersion
 import io.github.amichne.kast.cli.projection.CanonicalSymbolCliDocuments
-import io.github.amichne.kast.kernel.*
-import io.github.amichne.kast.protocol.contract.*
+import io.github.amichne.kast.kernel.EvidenceEnvelope
+import io.github.amichne.kast.kernel.EvidenceGeneration
+import io.github.amichne.kast.kernel.OperationOutcome
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.contract.CompilerSignatureDocument
+import io.github.amichne.kast.protocol.contract.CompilerSymbolEvidenceDocument
+import io.github.amichne.kast.protocol.contract.ProtocolOffset
+import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.SourceRangeDocument
+import io.github.amichne.kast.protocol.contract.SymbolDocument
+import io.github.amichne.kast.protocol.contract.SymbolInspectAcquisition
+import io.github.amichne.kast.protocol.contract.SymbolInspectRejection
+import io.github.amichne.kast.protocol.contract.SymbolInspectResult
+import io.github.amichne.kast.protocol.contract.SymbolKindDocument
+import io.github.amichne.kast.protocol.contract.SymbolQualifiedIdentityDocument
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.*
-import org.junit.jupiter.api.Assertions.*
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class SymbolRevalidationSchemaTest {
@@ -17,20 +36,7 @@ class SymbolRevalidationSchemaTest {
 
     @Test
     fun `both acquisition variants are explicit and unknown or missing acquisition rejects`() {
-        val qualified = text("sample.Alias")
-        val symbol =
-            SymbolDocument.create(
-                    text("exact:v5:0123456789abcdef012345"),
-                    SymbolKindDocument.TYPE_ALIAS,
-                    text("Alias"),
-                    SymbolQualifiedIdentityDocument.Available(qualified),
-                    text("src/Alias.kt"),
-                    SourceRangeDocument.create(ProtocolOffset.parse(0).value(), ProtocolOffset.parse(8).value())
-                        .value(),
-                    CompilerSymbolEvidenceDocument.fromSignature(CompilerSignatureDocument.TypeAlias(qualified))
-                        .value(),
-                )
-                .value()
+        val symbol = fixtureSymbol()
         for (acquisition in SymbolInspectAcquisition.entries) {
             val outcome =
                 OperationOutcome.Complete(
@@ -92,6 +98,20 @@ class SymbolRevalidationSchemaTest {
                     .isEmpty()
             )
         }
+    }
+
+    private fun fixtureSymbol(): SymbolDocument {
+        val qualified = text("sample.Alias")
+        return SymbolDocument.create(
+                text("exact:v5:0123456789abcdef012345"),
+                SymbolKindDocument.TYPE_ALIAS,
+                text("Alias"),
+                SymbolQualifiedIdentityDocument.Available(qualified),
+                text("src/Alias.kt"),
+                SourceRangeDocument.create(ProtocolOffset.parse(0).value(), ProtocolOffset.parse(8).value()).value(),
+                CompilerSymbolEvidenceDocument.fromSignature(CompilerSignatureDocument.TypeAlias(qualified)).value(),
+            )
+            .value()
     }
 
     private fun validate(document: JsonObject) =
