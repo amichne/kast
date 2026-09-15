@@ -10,7 +10,8 @@ import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 
 internal sealed interface CoordinatorStatusRead {
-    class Observed(val snapshot: CoordinatorStatusSnapshot) : CoordinatorStatusRead
+    class Observed(val snapshot: CoordinatorStatusSnapshot, val service: BrokerServiceStateDocument.Ready) :
+        CoordinatorStatusRead
 
     data class Rejected(val failure: WorkerControlFailure) : CoordinatorStatusRead
 }

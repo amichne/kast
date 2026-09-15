@@ -9,6 +9,8 @@ code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/BrokerPublicEndpoint.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/PersistentBrokerService.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/NativeCodexReadiness.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledCoordinatorClient.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ConfigurationAppliedInspection.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/AppServerStatus.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/AppServerStatusDocument.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt
@@ -109,7 +111,9 @@ request correlation, thread/controller ownership and native tool refinement.
 An unreachable socket is not an ownership proof and cannot be unlinked by startup.
 
 Status reports lifecycle, endpoint ownership, native protocol, catalog and upstream
-observations separately. It leaves semantic readiness unobserved rather than
+observations separately. Service status requires the requested service identity;
+configuration inspection retains the proven incumbent identity so it can report
+unapplied configuration changes. Status leaves semantic readiness unobserved rather than
 inferring IDEA authority. Installed transport acceptance does not qualify stock
 interactive CLI or Desktop tool exposure; the explicit CLI route and Desktop
 façade remain pending those gates.

@@ -90,7 +90,9 @@ class AppServerStatusTest {
                     assertFalse(Files.exists(root.resolve(".codex")))
                     assertFalse(Files.exists(root.resolve("state/run/u.sock")))
                     val originalReadiness = Files.readString(command.readinessFile)
-                    val ready = BROKER_SERVICE_STATE_JSON.decodeFromString<BrokerServiceStateDocument>(originalReadiness) as BrokerServiceStateDocument.Ready
+                    val ready =
+                        BROKER_SERVICE_STATE_JSON.decodeFromString<BrokerServiceStateDocument>(originalReadiness)
+                            as BrokerServiceStateDocument.Ready
                     try {
                         Files.writeString(
                             command.readinessFile,
@@ -105,7 +107,6 @@ class AppServerStatusTest {
                     } finally {
                         Files.writeString(command.readinessFile, originalReadiness)
                     }
-
                 } finally {
                     running.close()
                 }
