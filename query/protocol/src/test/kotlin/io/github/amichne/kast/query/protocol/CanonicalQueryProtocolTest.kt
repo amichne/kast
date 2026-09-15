@@ -514,7 +514,12 @@ class CanonicalQueryProtocolTest {
                         CanonicalQueryReferences(),
                     )
                     .execute(request, lease, sourceProjectionBudget()) as OperationOutcome.Rejected
-            assertEquals(reason.name, rejected.reason.name)
+            when (val cause = rejected.reason) {
+                is io.github.amichne.kast.protocol.contract.SourceReadRejection -> assertEquals(reason.name, cause.name)
+                is io.github.amichne.kast.protocol.contract.SourceReadFailureDetail.InternalContractFailure ->
+                    assertTrue(reason.name.startsWith("INTERNAL_") || reason.name == "CONTRACT_VIOLATION")
+                else -> error("Unexpected source rejection $cause")
+            }
         }
     }
 

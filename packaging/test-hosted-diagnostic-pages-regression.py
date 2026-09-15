@@ -1,0 +1,292 @@
+#!/usr/bin/env python3
+"""Typed bounded-drain fixtures; no native host is used here."""
+from dataclasses import asdict, dataclass, replace
+from types import SimpleNamespace
+import unittest
+from hosted_read_transport import ReadTransportRejected
+
+from hosted_diagnostic_pages_regression import (
+    DiagnosticDrainFailure, DiagnosticDrainRejected, DiagnosticDrained,
+    DiagnosticRequest, drain_diagnostics, run_diagnostic_pages_regression, heavy_file_checks, independent_budget_checks, _semantic_difference, _valid_report, _legacy_refusal_observations,
+)
+
+
+@dataclass(frozen=True)
+class Enumerating:
+    type: str = 'enumerating'
+
+
+@dataclass(frozen=True)
+class Exhausted:
+    totalFiles: int = 3
+    type: str = 'exhausted'
+
+
+@dataclass(frozen=True)
+class ReportLimit:
+    requested: int
+    effective: int
+
+
+@dataclass(frozen=True)
+class ExecutionReport:
+    max_work_units: ReportLimit = ReportLimit(10000, 10000)
+    max_elapsed_ms: ReportLimit = ReportLimit(10000, 3748)
+    max_results: ReportLimit = ReportLimit(1, 1)
+    max_returned_bytes: ReportLimit = ReportLimit(262144, 49152)
+
+
+@dataclass(frozen=True)
+class Progress:
+    stage: str = 'enumeration'
+    stop: str = 'enumeration_file_limit'
+    inventory: Enumerating | Exhausted = Enumerating()
+    analyzedFiles: tuple[str, ...] = ()
+    knownDiagnosticCount: int = 0
+    execution_budget: ExecutionReport = ExecutionReport()
+
+
+@dataclass(frozen=True)
+class Qualification:
+    continuation: str = 'diagnostic:v1:first'
+
+
+@dataclass(frozen=True)
+class Page:
+    progress: Progress = Progress()
+    qualification: Qualification | None = Qualification()
+    live: str = 'fixture-authority'
+    status: str = 'qualified'
+    diagnostics: tuple = ()
+
+
+def document(page):
+    import json
+    return json.loads(json.dumps(asdict(page)))
+
+
+@dataclass(frozen=True)
+class Range:
+    startInclusive: int
+    endExclusive: int
+
+
+@dataclass(frozen=True)
+class Location:
+    range: Range
+    file: str = '/workspace/src/main/kotlin/ReadDiagnosticPages.kt'
+
+
+@dataclass(frozen=True)
+class Diagnostic:
+    location: Location
+    severity: str = 'warning'
+    code: str = 'DEPRECATION'
+    message: str = 'Diagnostic paging fixture'
+
+
+class DiagnosticPagesTest(unittest.TestCase):
+    def replay(self, *pages):
+        pending = iter(document(page) for page in pages)
+        return SimpleNamespace(live='fixture-authority', surface='provider', transport=SimpleNamespace(
+            invoke=lambda *_: next(pending), validate=lambda *_: None))
+
+    def test_legacy_scope_cap_reaches_domain_before_new_fields(self):
+        @dataclass(frozen=True)
+        class Refused:
+            status: str = 'rejected'
+            reason: str = 'scope-limit-exceeded'
+        requests, rows = [], []
+        def invoke(_surface, _tool, request):
+            requests.append(request)
+            return asdict(Refused())
+        replay = SimpleNamespace(surface='provider', transport=SimpleNamespace(
+            invoke=invoke, validate=lambda *_: None), record=lambda *row: rows.append(row))
+        run_diagnostic_pages_regression(replay)
+        self.assertEqual(1, len(requests))
+        self.assertEqual({'relative_path', 'max_diagnostics'}, set(requests[0]))
+        self.assertTrue(rows[0][2]['legacyRequestReachedScopeCap'])
+        self.assertFalse(rows[0][2]['boundedDrainCompleted'])
+
+    def test_legacy_current_refusal_records_exact_finite_reason_without_old_scope_claim(self):
+        @dataclass(frozen=True)
+        class Refused:
+            status: str = 'rejected'
+            reason: str = 'continuation-unavailable'
+        rows = []
+        replay = SimpleNamespace(surface='provider', transport=SimpleNamespace(
+            invoke=lambda *_: asdict(Refused()), validate=lambda *_: None), record=lambda *row: rows.append(row))
+        run_diagnostic_pages_regression(replay)
+        checks = rows[0][2]
+        self.assertFalse(checks['legacyRequestReachedScopeCap'])
+        self.assertTrue(checks['legacyReason_continuation-unavailable'])
+        self.assertTrue(checks['legacyBoundary_canonical'])
+        self.assertFalse(checks['legacyActualBudgetReportPresent'])
+        self.assertFalse(checks['boundedDrainCompleted'])
+
+    def test_legacy_refusal_reports_configured_grant_presence_without_payload(self):
+        @dataclass(frozen=True)
+        class ConfiguredLimit:
+            requested: None = None
+            effective: int = 1
+        @dataclass(frozen=True)
+        class ConfiguredReport:
+            max_work_units: ConfiguredLimit = ConfiguredLimit()
+            max_elapsed_ms: ConfiguredLimit = ConfiguredLimit()
+            max_results: ConfiguredLimit = ConfiguredLimit()
+            max_returned_bytes: ConfiguredLimit = ConfiguredLimit()
+        @dataclass(frozen=True)
+        class Refused:
+            execution_budget: ConfiguredReport = ConfiguredReport()
+            status: str = 'rejected'
+            reason: str = 'continuation-unavailable'
+        checks = _legacy_refusal_observations(asdict(Refused()))
+        self.assertTrue(checks['legacyActualBudgetReportPresent'])
+        self.assertTrue(checks['legacyConfiguredGrantReportValid'])
+        self.assertTrue(all(type(value) is bool for value in checks.values()))
+
+    def test_heavy_file_preserves_repeated_messages_and_distinct_occurrences(self):
+        files = ('/workspace/src/main/kotlin/ReadDiagnosticPages.kt',)
+        records = tuple(Diagnostic(Location(Range(index, index + 1))) for index in range(3))
+        output = Progress('output', 'output_pending', Exhausted(1), files, 3)
+        finished = Progress('finished', 'finished', Exhausted(1), files, 3)
+        high = Page(replace(finished, execution_budget=ExecutionReport(max_results=ReportLimit(1000, 1000))), None, status='complete', diagnostics=records)
+        first = Page(output, Qualification('first'), diagnostics=records[:1])
+        second = Page(output, Qualification('second'), diagnostics=records[1:2])
+        last = Page(finished, None, status='complete', diagnostics=records[2:])
+        replay = self.replay(high, first, second, second, last, last, first, second, last)
+        requests = []
+        invoke = replay.transport.invoke
+        def observed(surface, tool, request):
+            requests.append(request)
+            return invoke(surface, tool, request)
+        replay.transport.invoke = observed
+        checks = heavy_file_checks(replay)
+        self.assertEqual(1000, requests[0]['max_diagnostics'])
+        self.assertEqual(1000, requests[1]['max_diagnostics'])
+        self.assertEqual(1000, requests[0]['execution_budget']['max_results'])
+        self.assertEqual(1, requests[1]['execution_budget']['max_results'])
+        self.assertEqual(1, requests[6]['max_diagnostics'])
+        self.assertTrue(all(checks.values()), checks)
+
+    def test_independent_limits_preserve_reports_and_name_actual_stops(self):
+        @dataclass(frozen=True)
+        class Limit:
+            requested: int
+            effective: int
+        @dataclass(frozen=True)
+        class Report:
+            max_work_units: Limit = Limit(1, 1)
+            max_elapsed_ms: Limit = Limit(1, 1)
+            max_returned_bytes: Limit = Limit(2048, 2048)
+        @dataclass(frozen=True)
+        class Refused:
+            reason: str
+            execution_budget: Report = Report()
+            status: str = 'rejected'
+            next_action: str = 'increase_execution_budget'
+        @dataclass(frozen=True)
+        class BudgetProgress:
+            stop: str = 'enumeration_work_limit'
+            execution_budget: Report = Report()
+        first = Page(progress=BudgetProgress())
+        last = Page(Progress('finished', 'finished', Exhausted(1), ('A.kt',)), None, status='complete')
+        replay = self.replay(first, Refused('enumeration-work-grant-too-small'), last,
+            Refused('execution-time-grant-too-small'), Refused('output-grant-too-small'))
+        checks = independent_budget_checks(replay)
+        self.assertTrue(all(checks.values()), checks)
+        self.assertIn('timeOneObserved_execution-time-grant-too-small', checks)
+        self.assertIn('bytes2048Observed_output-grant-too-small', checks)
+
+    def test_low_axis_transport_failure_is_recorded_without_claiming_budget_proof(self):
+        first = document(Page(progress=Progress(stop='enumeration_work_limit')))
+        pending = iter((first, document(Page(status='rejected')),
+            document(Page(Progress('finished', 'finished', Exhausted(1), ('A.kt',)), None, status='complete'))))
+        def invoke(*_):
+            try:
+                return next(pending)
+            except StopIteration:
+                raise ReadTransportRejected('READ_CLI_TOOL_REJECTED') from None
+        replay = SimpleNamespace(live='fixture-authority', surface='cli',
+            transport=SimpleNamespace(invoke=invoke, validate=lambda *_: None))
+        checks = independent_budget_checks(replay)
+        self.assertFalse(checks['timeOneReported'])
+        self.assertFalse(checks['bytes2048Reported'])
+        self.assertTrue(checks['timeOneTransportObserved_READ_CLI_TOOL_REJECTED'])
+        self.assertTrue(checks['bytes2048TransportObserved_READ_CLI_TOOL_REJECTED'])
+
+    def test_replay_retains_actual_reports_but_compares_semantic_identity(self):
+        first = document(Page())
+        repeated = document(Page(progress=replace(Progress(), execution_budget=ExecutionReport(
+            max_elapsed_ms=ReportLimit(10000, 3749)))))
+        self.assertEqual((), _semantic_difference(first, repeated))
+        self.assertTrue(_valid_report(first, DiagnosticRequest()))
+        self.assertTrue(_valid_report(repeated, DiagnosticRequest()))
+        self.assertNotEqual(first, repeated)
+        moved = document(Page(progress=replace(Progress(), knownDiagnosticCount=1)))
+        self.assertEqual(('progress.knownDiagnosticCount',), _semantic_difference(first, moved))
+        invalid = document(Page(progress=replace(Progress(), execution_budget=ExecutionReport(
+            max_elapsed_ms=ReportLimit(20000, 3749)))))
+        self.assertFalse(_valid_report(invalid, DiagnosticRequest()))
+
+    def test_replay_distinguishes_absent_and_explicit_null_semantic_fields(self):
+        explicit = document(Page(qualification=None))
+        absent = dict(explicit)
+        del absent['qualification']
+        self.assertEqual(('qualification',), _semantic_difference(explicit, absent))
+        explicit_progress = document(Page())
+        explicit_progress['progress']['knownDiagnosticCount'] = None
+        absent_progress = document(Page())
+        del absent_progress['progress']['knownDiagnosticCount']
+        self.assertEqual(('progress.knownDiagnosticCount',),
+            _semantic_difference(explicit_progress, absent_progress))
+        explicit_progress['progress'] = None
+        del absent_progress['progress']
+        self.assertEqual(('progress',), _semantic_difference(explicit_progress, absent_progress))
+
+    def test_host_time_refusal_retains_actual_report_and_distinct_boundary(self):
+        @dataclass(frozen=True)
+        class HostRefusal:
+            execution_budget: ExecutionReport = ExecutionReport(max_elapsed_ms=ReportLimit(1, 1))
+            outcome: str = 'rejected'
+            failure: str = 'BUDGET_EXCEEDED'
+            stage: str = 'CONTENT_REVALIDATION'
+        first = Page(progress=replace(Progress(), stop='enumeration_work_limit',
+            execution_budget=ExecutionReport(max_work_units=ReportLimit(1, 1))))
+        last = Page(Progress('finished', 'finished', Exhausted(1), ('A.kt',)), None, status='complete')
+        replay = self.replay(first, Page(status='rejected'), last, HostRefusal(),
+            replace(last, progress=replace(last.progress, execution_budget=ExecutionReport(
+                max_results=ReportLimit(1000, 1000), max_returned_bytes=ReportLimit(2048, 2048)))))
+        checks = independent_budget_checks(replay)
+        self.assertTrue(checks['timeOneReported'])
+        self.assertTrue(checks['timeOneFiniteOutcome'])
+        self.assertTrue(checks['timeOneObserved_BUDGET_EXCEEDED'])
+        self.assertTrue(checks['timeOneHostStage_CONTENT_REVALIDATION'])
+
+    def test_enumeration_then_exact_complete_coverage(self):
+        last = Page(Progress('finished', 'finished', Exhausted(), ('A.kt', 'B.kt', 'C.kt')), None, status='complete')
+        result = drain_diagnostics(self.replay(last), DiagnosticRequest(), document(Page()))
+        self.assertIsInstance(result, DiagnosticDrained)
+        self.assertEqual(2, len(result.pages))
+
+    def test_partial_empty_page_is_not_clean(self):
+        partial = Page(status='complete')
+        result = drain_diagnostics(self.replay(), DiagnosticRequest(), document(partial))
+        self.assertEqual(DiagnosticDrainRejected(DiagnosticDrainFailure.COVERAGE), result)
+
+    def test_unchanged_cursor_is_finite_failure(self):
+        result = drain_diagnostics(self.replay(Page()), DiagnosticRequest(), document(Page()))
+        self.assertEqual(DiagnosticDrainRejected(DiagnosticDrainFailure.CHECKPOINT), result)
+
+    def test_basis_movement_rejects(self):
+        result = drain_diagnostics(self.replay(), DiagnosticRequest(), document(Page(live='moved')))
+        self.assertEqual(DiagnosticDrainRejected(DiagnosticDrainFailure.AUTHORITY), result)
+
+    def test_exact_total_cannot_understate_analyzed_files(self):
+        last = Page(Progress('finished', 'finished', Exhausted(2), ('A.kt', 'B.kt', 'C.kt')), None, status='complete')
+        result = drain_diagnostics(self.replay(), DiagnosticRequest(), document(last))
+        self.assertEqual(DiagnosticDrainRejected(DiagnosticDrainFailure.COVERAGE), result)
+
+
+if __name__ == '__main__':
+    unittest.main()

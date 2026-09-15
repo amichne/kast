@@ -18,6 +18,7 @@ from hosted_runtime_observation import OwnedRuntimeObserver
 from hosted_change_probe import stage_native_probe
 from native_fixture_probe import NativeFixtureProbeError
 from hosted_read_fixture import prepare_read_fixture
+from hosted_read_policy import NativeReadPolicy, policy_receipt
 from hosted_generated_fixture import prepare_generated_fixture, finalize_generated_fixture
 from hosted_read_regression import run_read_regression
 from released_acceptance_product import admit_release, install_release, product_executable, ReleaseAssetIdentity, ReleaseRejected
@@ -40,6 +41,7 @@ def main():
     parser.add_argument('--previous-release-assets', type=Path)
     parser.add_argument('--previous-release-version')
     parser.add_argument('--diagnostic-dirty', action='store_true')
+    parser.add_argument('--read-policy', type=NativeReadPolicy, choices=list(NativeReadPolicy), default=NativeReadPolicy.DEFAULT)
     parser.add_argument('--readiness-seconds', type=int, default=600)
     parser.add_argument('--run-seconds', type=int, default=900)
     args = parser.parse_args()
@@ -117,7 +119,8 @@ def main():
             harness, schemas = private / 'harness.jar', private / 'schemas'
             shutil.copyfile(args.harness, harness)
             shutil.copytree(args.schemas, schemas)
-            fixture = prepare_hosted_fixture(isolation, repo, idea, archive, installed_plugins=plugins)
+            fixture = prepare_hosted_fixture(isolation, repo, idea, archive, installed_plugins=plugins, read_policy=args.read_policy)
+            print(json.dumps(asdict(policy_receipt(args.read_policy))), flush=True)
             evidence['artifacts']['testOnlyProbeSha256'] = stage_native_probe(args.probe, isolation.root, fixture.workspace, installed_plugins=plugins)
             read_fixture = prepare_read_fixture(fixture.workspace, repo)
             if ((release is None and (tree_identity(product) != product_identity or tree_identity(args.product) != product_identity))
@@ -154,7 +157,7 @@ def main():
                 record({'event': 'stage', 'stage': 'native-readiness', 'outcome': 'started'})
                 evidence['initialLive'] = processes.start_ide()
                 record({'event': 'stage', 'stage': 'native-readiness', 'outcome': 'completed'})
-                evidence['readRegression'] = run_read_regression(isolation, fixture, product, idea.java, harness, repo, read_fixture, evidence['initialLive'])
+                evidence['readRegression'] = run_read_regression(isolation, fixture, product, idea.java, harness, repo, read_fixture, evidence['initialLive'], args.read_policy)
                 write()
                 if installed:
                     evidence['releasedCoordinator'] = asdict(qualify_released_coordinator(isolation, installed, inventory, fixture))

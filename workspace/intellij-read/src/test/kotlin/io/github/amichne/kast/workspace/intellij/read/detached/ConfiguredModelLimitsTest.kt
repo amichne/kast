@@ -38,9 +38,9 @@ class ConfiguredModelLimitsTest {
             ProjectReadEpochVfsBatchObservation.TouchesRoot,
             observeProjectReadEpochVfsBatch(ProjectReadEpochVfsRoot.from(FIXTURE_ROOT), events),
         )
-        assertTrue(
-            observeProjectReadEpochVfsBatch(ProjectReadEpochVfsRoot.from(FIXTURE_ROOT), events, limits)
-                is ProjectReadEpochVfsBatchObservation.Rejected
+        assertEquals(
+            ProjectReadEpochVfsBatchObservation.RelevanceUnknown,
+            observeProjectReadEpochVfsBatch(ProjectReadEpochVfsRoot.from(FIXTURE_ROOT), events, limits),
         )
     }
 }

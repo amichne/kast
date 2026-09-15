@@ -18,6 +18,7 @@ from xml.sax.saxutils import quoteattr
 
 from acceptance_environment import AcceptanceEnvironment
 from acceptance_idea import digest
+from hosted_read_policy import NativeReadPolicy, policy_receipt
 
 
 class FixtureFailure(Enum):
@@ -122,7 +123,8 @@ def stage_hosted_plugin(archive: Path, destination: Path, idea: HostedIdea) -> s
 
 
 def prepare_hosted_fixture(isolation: AcceptanceEnvironment, repo: Path,
-                           idea: HostedIdea, archive: Path, *, installed_plugins: Path | None = None) -> PreparedHostedFixture:
+                           idea: HostedIdea, archive: Path, *, installed_plugins: Path | None = None,
+                           read_policy: NativeReadPolicy = NativeReadPolicy.DEFAULT) -> PreparedHostedFixture:
     root = isolation.root
     workspace = root / 'workspace'
     if workspace.resolve() != workspace or any(workspace.iterdir()):
@@ -178,6 +180,7 @@ def prepare_hosted_fixture(isolation: AcceptanceEnvironment, repo: Path,
                   '-Dide.experimental.ui.onboarding=false'))
     options.write_text('\n'.join(lines) + '\n')
     environment = dict(isolation.environment)
+    environment.update((item.environmentKey, str(item.value)) for item in policy_receipt(read_policy).overrides)
     environment.update(IDEA_VM_OPTIONS=str(options), JAVA_HOME=str(idea.java.parent.parent))
     receipt = root / 'hosted-inputs.json'
     receipt.write_text(json.dumps({

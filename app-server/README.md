@@ -124,7 +124,9 @@ inside the state tree are deleted as links and never followed.
 ## Presentation and evidence
 
 Kast executes through `item/tool/call` and returns native dynamic-tool text
-content containing one independently parseable JSON document. The existing CLI
+content containing one independently parseable JSON envelope. A compact source
+read with returned text prepends that unchanged source as a separate text item;
+clients parse the final envelope item. The existing CLI
 envelope preserves process completion separately from the canonical
 `complete`, `qualified`, or `rejected` outcome, including its qualifications and
 failure details. No summary prefix or newline splitting is required. Broker

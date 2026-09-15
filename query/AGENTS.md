@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-14 | hash: cb7b0326cfae -->
+<!-- generated: 2026-09-15 | hash: fbcfe24f9532 -->
 
 # query
 
@@ -8,6 +8,9 @@
 Models and executes multi-stage semantic queries while retaining scope, budgets, and evidence through the plan.
 
 ## Key Files
+
+- [DiagnosticCheckpointStore.kt](protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/DiagnosticCheckpointStore.kt) - detached diagnostic progress and immutable replay under bounded retention.
+- [SourceRequestAdmission.kt](protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/SourceRequestAdmission.kt) - source request predicates retain precise field and finite cause.
 
 - [PipelineCheckpoint.kt](service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineCheckpoint.kt) - detached ordered stage tasks and distinct history.
 - [QueryCheckpointStore.kt](protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCheckpointStore.kt) - bounded expiring query state and exact resume admission.

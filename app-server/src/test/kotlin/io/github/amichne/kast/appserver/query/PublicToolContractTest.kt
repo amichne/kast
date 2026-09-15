@@ -217,7 +217,13 @@ class PublicToolSchemaTest {
                     PublicToolContract.generationParameters(identity).getValue("\$defs").jsonObject.keys,
                 )
             }
-        assertFalse("\$defs" in PublicToolContract.generationParameters(PublicToolIdentity.CHECK_DIAGNOSTICS))
+        assertEquals(
+            setOf("ExecutionBudget"),
+            PublicToolContract.generationParameters(PublicToolIdentity.CHECK_DIAGNOSTICS)
+                .getValue("\$defs")
+                .jsonObject
+                .keys,
+        )
     }
 
     @Test

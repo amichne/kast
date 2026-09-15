@@ -425,6 +425,7 @@ def qualified_authority_replay(raw):
     cases = raw.get('cases', [])
     required = {(name, surface) for surface in ('cli', 'provider') for name in (
         'current-authority-issued', 'current-continuation-resumes', 'old-epoch-reference-rejected',
+        'explicit-exact-reacquired-under-fresh-basis', 'reacquired-exact-accepted-by-strict-read',
         'fresh-anchor-old-continuation-rejected', 'fresh-authority-reacquired',
         'restored-source-fresh-authority-reacquired')}
     required.update((name, 'cli') for name in (

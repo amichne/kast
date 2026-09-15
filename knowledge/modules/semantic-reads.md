@@ -6,6 +6,14 @@ resource: file://query
 tags: [kotlin, semantic, query, compiler]
 timestamp: 2026-09-14T00:00:00Z
 code_sources:
+  - path: diagnostic/intellij/src/main/kotlin/io/github/amichne/kast/diagnostic/intellij/DiagnosticReadAttempts.kt
+  - path: diagnostic/intellij/src/test/kotlin/io/github/amichne/kast/diagnostic/intellij/DiagnosticReadAttemptTest.kt
+  - path: diagnostic/intellij/src/main/kotlin/io/github/amichne/kast/diagnostic/intellij/ProjectBoundDiagnosticEnumeration.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/DiagnosticCheckpointStore.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedDiagnosticResponse.kt
+  - path: diagnostic/service/src/main/kotlin/io/github/amichne/kast/diagnostic/service/DiagnosticScanService.kt
+  - path: diagnostic/intellij/src/main/kotlin/io/github/amichne/kast/diagnostic/intellij/BoundedDiagnosticEnumeration.kt
+  - path: diagnostic/contract/src/main/kotlin/io/github/amichne/kast/diagnostic/contract/DiagnosticScan.kt
   - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceEntityAttempt.kt
   - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceEntityPageCollector.kt
   - path: source/intellij/src/test/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceEntityReadTest.kt
@@ -198,3 +206,84 @@ Source continuation admission preserves finite causes before invoking the provid
 missing, expired, evicted, or retired tokens yield `CONTINUATION_UNAVAILABLE`;
 a changed context yields `SOURCE_SNAPSHOT_MISMATCH`; a changed request yields
 `CONTINUATION_REQUEST_MISMATCH`. Provider contract failures remain distinct.
+
+Kotlin one-hop calls use an explicit lexical ownership boundary. Calls in local
+property initializers belong to the enclosing callable. A named nested function
+keeps its own owner even when that owner cannot become a relation endpoint;
+callers do not climb past it. Lambda and accessor bodies retain a deferred owner
+and yield occurrence-scoped `UNSUPPORTED_ITEM` omissions for the enclosing
+callee read, while exact sibling calls remain eligible. Reference and type-use
+ownership is unchanged. PSI tests establish this lexical policy and finite owner
+observations; the compiled installed call fixture separately checks inherited
+static targets, extension overloads and occurrence cardinality. Those tests do
+not establish runtime dispatch or native K2 coverage without an installed run.
+Diagnostic scan progress is separate from `DiagnosticScope` and complete compiler
+coverage. The public scanner advances a detached indexed-file set, analyzes
+one complete file per unit, and drains that file's diagnostic suffix without
+repeating analysis. Every chunk validates the original authority before work
+and publication. An empty intermediate page cannot establish absence, and an
+indivisible compiler unit that overruns its time grant rejects explicitly.
+The complete-scope diagnostic and mutation verification adapters retain their
+existing contracts. The public request carries an opaque continuation and an independent
+execution budget. Qualified replies distinguish enumeration, analysis and retained
+output stops. The inventory has no numeric total until enumeration exhausts.
+Encoded output suffixes retain the original scan continuation, coverage and order.
+
+The directory adapter streams the existing Kotlin file-type index through
+`processValues`, after source-domain and path constraints. It retains only a
+bounded set of identities encountered so far. The complete sorted inventory is
+established after enumeration exhausts; index iteration order is never treated
+as stable. Replayed callbacks consume work. A grant that cannot reach a new
+identity rejects with an increase-grant outcome, and retention saturation rejects
+explicitly. Neither outcome publishes an unchanged continuation. The adapter
+avoids `getContainingFilesIterator`, whose pinned implementation builds a full
+file-ID set before returning its lazily reified virtual files.
+
+Diagnostic checkpoints and replay payloads share one pool bounded by
+`QUERY_CONTINUATION_ENTRIES` and `QUERY_CONTINUATION_BYTES`. Diagnostic encoded
+output uses the existing separate output pool with the same limits. The diagnostic
+aggregate therefore permits twice each configured pool limit (defaults: 128
+entries and 64 MiB), independently of other read owners. Each scan checkpoint
+also obeys `QUERY_CHECKPOINT_BYTES` (default 8 MiB). Identity text, pending file
+sets, diagnostics, coverage, replay keys and object overhead are charged before
+publication. The scan pool inherits the original creation time; output entries
+follow the existing per-entry expiry policy. Project/epoch disposal clears both.
+
+Pinned SDK 262.9437.185 `processValuesInScope` returns immediately when its
+processor returns false. The adapter supplies `IdFilter.ACCEPT_ALL` and its own
+source/path scope; `getProjectIdFilter(project, false)` is deliberately avoided
+because a cache miss builds a complete content-file bit set. The pinned registry
+default `indexing.filetype.over.vfs=false` selects the index implementation;
+its alternate VFS mode is rejected without changing registry state. Native IDs
+excluded by `scope.contains` do not enter the callback work counter. Scope checks
+poll cancellation and the service checks elapsed time before publication, but
+this does not prove a per-ID work bound for a long excluded-only native prefix.
+That strict native internal-work qualification remains separate from the compiled
+callback, replay, exclusion-capacity and elapsed-rejection tests.
+
+Diagnostic resumes preserve the original path, authority and `max_diagnostics` semantic choice. Execution grants may change. Checkpoint admission charges the retained query and authority identity against both the per-checkpoint and aggregate retention bounds. Admitted rejections preserve the actual execution grant report and a finite recovery direction; that direction authorizes no setting change or epoch migration.
+
+Diagnostic response replay keys retain normalized caller grant selections,
+including configured-default selections, rather than an invocation's fluctuating
+host elapsed-time capacity. The same caller request and basis therefore retain
+identical semantic pages and continuation tokens when the host deadline clamp
+changes. A changed caller grant shapes a distinct execution. Every invocation
+still publishes its own requested/effective report; replay does not reuse an old
+report as current admission. Installed replay checks compare all semantic fields,
+including continuation and evidence, while validating each actual report separately.
+
+The compiler and enumeration `readAction` closures invoke concrete diagnostic
+attempt functions that create fresh collectors inside each attempt. Interrupted
+attempts publish neither facts nor inventory; enumeration retains the request's
+consumed-work allowance across re-entry. Deterministic tests invoke these same
+production blocks with pinned-SDK `ProcessCanceledException` and coroutine
+cancellation after accepted facts or identities, then verify a clean re-entry and
+unchanged cancellation identity. This is simulated scheduling over production
+attempt code, not evidence of native IDE preemption or an executed K2 session.
+
+An evicted diagnostic continuation remains unavailable. If its first-page replay
+survives without the required checkpoint, a tokenless request may discard that
+orphaned replay and start a fresh bounded scan. The same retained-child check
+applies during publication, including interleaved admissions. Resume requests do
+not restart implicitly, and expiry, capacity and semantic request checks retain
+their existing authority.

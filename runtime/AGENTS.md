@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-14 | hash: 9b6ab7c209f5 -->
+<!-- generated: 2026-09-15 | hash: d23c97b6e865 -->
 
 # runtime
 
@@ -8,6 +8,12 @@
 Composes semantic services inside an existing IntelliJ project and retains typed outcomes through endpoint transport, diagnostics, planning, and recovery.
 
 ## Key Files
+
+- [HostedDiagnosticCompletion.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedDiagnosticCompletion.kt) - diagnostic caller-elapsed completion policy; other read policies stay explicit.
+
+- [HostedDiagnosticResponse.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedDiagnosticResponse.kt) - full-envelope diagnostic output fitting and retained suffixes.
+
+- [HostedExactRevalidationStore.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedExactRevalidationStore.kt) - detached, bounded, expiring revalidation locators; strict reference lookup remains separate.
 
 - [HostedReadFailureReports.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReadFailureReports.kt) - finite endpoint containment encodings preserve admitted execution reports.
 

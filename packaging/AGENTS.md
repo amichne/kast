@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-14 | hash: fed9c7e3f1cd -->
+<!-- generated: 2026-09-15 | hash: ea6cc05510b9 -->
 
 # packaging
 
@@ -8,6 +8,18 @@
 Implements installer support, installed-product acceptance, configuration ingress generation, and real-environment lifecycle checks.
 
 ## Key Files
+
+- [hosted_repair_time_observation.py](hosted_repair_time_observation.py) - same-request native host stage, grant, reserve and transport timing evidence.
+
+- [hosted_diagnostic_pages_regression.py](hosted_diagnostic_pages_regression.py) - bounded same-basis diagnostic drain and repeated warning occurrences.
+- [hosted_source_failure_regression.py](hosted_source_failure_regression.py) - finite source failure evidence across CLI ingress and provider responses.
+
+- [hosted_compact_source_regression.py](hosted_compact_source_regression.py) - lossless compact source parity and actual provider presentation admission.
+- [hosted_vfs_overflow_regression.py](hosted_vfs_overflow_regression.py) - owned overflow burst, post-burst host receipt, stale refusal and guarded restoration.
+
+- [hosted_read_policy.py](hosted_read_policy.py) - closed private-process presets for native default, enlarged-deadline, overflow and diagnostic paging qualification.
+- [hosted_repair_budget_regression.py](hosted_repair_budget_regression.py) - bounded actual 10/20-second grant receipts across installed surfaces.
+- [hosted_kotlin_call_regression.py](hosted_kotlin_call_regression.py) - compiled Kotlin call ownership and coverage oracle.
 
 - [hosted_read_name_regression.py](hosted_read_name_regression.py) - preferred and legacy provider inputs retain canonical operations, schema and ordered facts.
 - [installed_codex_lifecycle.py](installed_codex_lifecycle.py) - shared real-Codex handshake, private coordinator ownership, detach, and cleanup checks.

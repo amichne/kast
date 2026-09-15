@@ -1,11 +1,5 @@
 package io.github.amichne.kast.protocol.wire
 
-import io.github.amichne.kast.protocol.contract.DiagnosticCheckQualification
-import io.github.amichne.kast.protocol.contract.DiagnosticCheckRejection
-import io.github.amichne.kast.protocol.contract.DiagnosticKnownCountDocument
-import io.github.amichne.kast.protocol.contract.DiagnosticLimitationDocument
-import io.github.amichne.kast.protocol.contract.DiagnosticLimitationReasonDocument
-import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.RelationContinuationDocument
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
 import io.github.amichne.kast.protocol.contract.RelationKnownMinimumDocument
@@ -79,6 +73,34 @@ internal fun SymbolInspectRejection.toWireDocument(): SymbolInspectRejectionWire
         SymbolInspectRejection.EXACT_SELECTOR_STALE -> SymbolInspectRejectionWireDocument.EXACT_SELECTOR_STALE
         SymbolInspectRejection.AMBIGUOUS -> SymbolInspectRejectionWireDocument.AMBIGUOUS
         SymbolInspectRejection.NOT_FOUND -> SymbolInspectRejectionWireDocument.NOT_FOUND
+        SymbolInspectRejection.REVALIDATION_UNRETAINED -> SymbolInspectRejectionWireDocument.REVALIDATION_UNRETAINED
+        SymbolInspectRejection.REVALIDATION_EXPIRED -> SymbolInspectRejectionWireDocument.REVALIDATION_EXPIRED
+        SymbolInspectRejection.REVALIDATION_CAPACITY -> SymbolInspectRejectionWireDocument.REVALIDATION_CAPACITY
+        SymbolInspectRejection.REVALIDATION_RETIRED -> SymbolInspectRejectionWireDocument.REVALIDATION_RETIRED
+        SymbolInspectRejection.REVALIDATION_CAPTURE_UNAVAILABLE ->
+            SymbolInspectRejectionWireDocument.REVALIDATION_CAPTURE_UNAVAILABLE
+        SymbolInspectRejection.REVALIDATION_WORKSPACE_MISMATCH ->
+            SymbolInspectRejectionWireDocument.REVALIDATION_WORKSPACE_MISMATCH
+        SymbolInspectRejection.REVALIDATION_OWNER_MISMATCH ->
+            SymbolInspectRejectionWireDocument.REVALIDATION_OWNER_MISMATCH
+        SymbolInspectRejection.REVALIDATION_WORKSPACE_NOT_READY ->
+            SymbolInspectRejectionWireDocument.REVALIDATION_WORKSPACE_NOT_READY
+        SymbolInspectRejection.REVALIDATION_BASIS_MOVED -> SymbolInspectRejectionWireDocument.REVALIDATION_BASIS_MOVED
+        SymbolInspectRejection.REVALIDATION_CONTENT_CHANGED ->
+            SymbolInspectRejectionWireDocument.REVALIDATION_CONTENT_CHANGED
+        SymbolInspectRejection.REVALIDATION_CONTENT_UNCOMMITTED ->
+            SymbolInspectRejectionWireDocument.REVALIDATION_CONTENT_UNCOMMITTED
+        SymbolInspectRejection.REVALIDATION_SCOPE_REJECTED ->
+            SymbolInspectRejectionWireDocument.REVALIDATION_SCOPE_REJECTED
+        SymbolInspectRejection.REVALIDATION_DECLARATION_MISSING ->
+            SymbolInspectRejectionWireDocument.REVALIDATION_DECLARATION_MISSING
+        SymbolInspectRejection.REVALIDATION_UNSUPPORTED_DECLARATION ->
+            SymbolInspectRejectionWireDocument.REVALIDATION_UNSUPPORTED_DECLARATION
+        SymbolInspectRejection.REVALIDATION_AMBIGUOUS -> SymbolInspectRejectionWireDocument.REVALIDATION_AMBIGUOUS
+        SymbolInspectRejection.REVALIDATION_COMPILER_IDENTITY_CHANGED ->
+            SymbolInspectRejectionWireDocument.REVALIDATION_COMPILER_IDENTITY_CHANGED
+        SymbolInspectRejection.REVALIDATION_COMPILER_UNAVAILABLE ->
+            SymbolInspectRejectionWireDocument.REVALIDATION_COMPILER_UNAVAILABLE
     }
 
 internal fun SymbolInspectRejectionWireDocument.toContract(): SymbolInspectRejection =
@@ -93,6 +115,34 @@ internal fun SymbolInspectRejectionWireDocument.toContract(): SymbolInspectRejec
         SymbolInspectRejectionWireDocument.EXACT_SELECTOR_STALE -> SymbolInspectRejection.EXACT_SELECTOR_STALE
         SymbolInspectRejectionWireDocument.AMBIGUOUS -> SymbolInspectRejection.AMBIGUOUS
         SymbolInspectRejectionWireDocument.NOT_FOUND -> SymbolInspectRejection.NOT_FOUND
+        SymbolInspectRejectionWireDocument.REVALIDATION_UNRETAINED -> SymbolInspectRejection.REVALIDATION_UNRETAINED
+        SymbolInspectRejectionWireDocument.REVALIDATION_EXPIRED -> SymbolInspectRejection.REVALIDATION_EXPIRED
+        SymbolInspectRejectionWireDocument.REVALIDATION_CAPACITY -> SymbolInspectRejection.REVALIDATION_CAPACITY
+        SymbolInspectRejectionWireDocument.REVALIDATION_RETIRED -> SymbolInspectRejection.REVALIDATION_RETIRED
+        SymbolInspectRejectionWireDocument.REVALIDATION_CAPTURE_UNAVAILABLE ->
+            SymbolInspectRejection.REVALIDATION_CAPTURE_UNAVAILABLE
+        SymbolInspectRejectionWireDocument.REVALIDATION_WORKSPACE_MISMATCH ->
+            SymbolInspectRejection.REVALIDATION_WORKSPACE_MISMATCH
+        SymbolInspectRejectionWireDocument.REVALIDATION_OWNER_MISMATCH ->
+            SymbolInspectRejection.REVALIDATION_OWNER_MISMATCH
+        SymbolInspectRejectionWireDocument.REVALIDATION_WORKSPACE_NOT_READY ->
+            SymbolInspectRejection.REVALIDATION_WORKSPACE_NOT_READY
+        SymbolInspectRejectionWireDocument.REVALIDATION_BASIS_MOVED -> SymbolInspectRejection.REVALIDATION_BASIS_MOVED
+        SymbolInspectRejectionWireDocument.REVALIDATION_CONTENT_CHANGED ->
+            SymbolInspectRejection.REVALIDATION_CONTENT_CHANGED
+        SymbolInspectRejectionWireDocument.REVALIDATION_CONTENT_UNCOMMITTED ->
+            SymbolInspectRejection.REVALIDATION_CONTENT_UNCOMMITTED
+        SymbolInspectRejectionWireDocument.REVALIDATION_SCOPE_REJECTED ->
+            SymbolInspectRejection.REVALIDATION_SCOPE_REJECTED
+        SymbolInspectRejectionWireDocument.REVALIDATION_DECLARATION_MISSING ->
+            SymbolInspectRejection.REVALIDATION_DECLARATION_MISSING
+        SymbolInspectRejectionWireDocument.REVALIDATION_UNSUPPORTED_DECLARATION ->
+            SymbolInspectRejection.REVALIDATION_UNSUPPORTED_DECLARATION
+        SymbolInspectRejectionWireDocument.REVALIDATION_AMBIGUOUS -> SymbolInspectRejection.REVALIDATION_AMBIGUOUS
+        SymbolInspectRejectionWireDocument.REVALIDATION_COMPILER_IDENTITY_CHANGED ->
+            SymbolInspectRejection.REVALIDATION_COMPILER_IDENTITY_CHANGED
+        SymbolInspectRejectionWireDocument.REVALIDATION_COMPILER_UNAVAILABLE ->
+            SymbolInspectRejection.REVALIDATION_COMPILER_UNAVAILABLE
     }
 
 internal fun RelationKindDocument.toWireDocument(): RelationKindWireDocument =
@@ -237,93 +287,4 @@ internal fun RelationReadRejectionWireDocument.toContract(): RelationReadRejecti
         RelationReadRejectionWireDocument.CONTINUATION_GENERATION_MISMATCH ->
             RelationReadRejection.CONTINUATION_GENERATION_MISMATCH
         RelationReadRejectionWireDocument.CONTINUATION_CURSOR_MOVED -> RelationReadRejection.CONTINUATION_CURSOR_MOVED
-    }
-
-internal fun DiagnosticCheckQualification.toWireDocument(): DiagnosticCheckQualificationWireDocument =
-    DiagnosticCheckQualificationWireDocument(
-        knownDiagnosticCount = knownDiagnosticCount.value,
-        resultLimitReached = resultLimitReached,
-        analyzedFiles = analyzedFiles.map { it.value },
-        limitations =
-            limitations.map { limitation ->
-                DiagnosticLimitationWireDocument(
-                    limitation.file.value,
-                    limitation.reason.toWireDocument(),
-                )
-            },
-    )
-
-internal fun DiagnosticCheckQualificationWireDocument.toContract():
-    WireDocumentConversion<DiagnosticCheckQualification> =
-    DiagnosticKnownCountDocument.parse(knownDiagnosticCount).toWireDocumentConversion().flatMapConverted { admittedCount
-        ->
-        combineConverted(
-                analyzedFiles.convertEach { raw -> raw.protocolQualificationText() },
-                limitations.convertEach(DiagnosticLimitationWireDocument::toContract),
-            ) { admittedFiles, admittedLimitations ->
-                DiagnosticCheckQualification.create(
-                        admittedCount,
-                        resultLimitReached,
-                        admittedFiles,
-                        admittedLimitations,
-                    )
-                    .toWireDocumentConversion()
-            }
-            .flattenConverted()
-    }
-
-private fun DiagnosticLimitationWireDocument.toContract(): WireDocumentConversion<DiagnosticLimitationDocument> =
-    file.protocolQualificationText().mapConverted { admittedFile ->
-        DiagnosticLimitationDocument(admittedFile, reason.toContract())
-    }
-
-private fun String.protocolQualificationText(): WireDocumentConversion<ProtocolText> =
-    ProtocolText.parse(this).toWireDocumentConversion()
-
-private fun DiagnosticLimitationReasonDocument.toWireDocument(): DiagnosticLimitationReasonWireDocument =
-    when (this) {
-        DiagnosticLimitationReasonDocument.FILE_UNAVAILABLE -> DiagnosticLimitationReasonWireDocument.FILE_UNAVAILABLE
-        DiagnosticLimitationReasonDocument.OUTSIDE_SOURCE_CONTENT ->
-            DiagnosticLimitationReasonWireDocument.OUTSIDE_SOURCE_CONTENT
-        DiagnosticLimitationReasonDocument.INDEXING -> DiagnosticLimitationReasonWireDocument.INDEXING
-        DiagnosticLimitationReasonDocument.PSI_UNAVAILABLE -> DiagnosticLimitationReasonWireDocument.PSI_UNAVAILABLE
-        DiagnosticLimitationReasonDocument.UNSUPPORTED_FILE_KIND ->
-            DiagnosticLimitationReasonWireDocument.UNSUPPORTED_FILE_KIND
-        DiagnosticLimitationReasonDocument.UNSUPPORTED_DIAGNOSTIC ->
-            DiagnosticLimitationReasonWireDocument.UNSUPPORTED_DIAGNOSTIC
-        DiagnosticLimitationReasonDocument.ANALYSIS_UNAVAILABLE ->
-            DiagnosticLimitationReasonWireDocument.ANALYSIS_UNAVAILABLE
-    }
-
-private fun DiagnosticLimitationReasonWireDocument.toContract(): DiagnosticLimitationReasonDocument =
-    when (this) {
-        DiagnosticLimitationReasonWireDocument.FILE_UNAVAILABLE -> DiagnosticLimitationReasonDocument.FILE_UNAVAILABLE
-        DiagnosticLimitationReasonWireDocument.OUTSIDE_SOURCE_CONTENT ->
-            DiagnosticLimitationReasonDocument.OUTSIDE_SOURCE_CONTENT
-        DiagnosticLimitationReasonWireDocument.INDEXING -> DiagnosticLimitationReasonDocument.INDEXING
-        DiagnosticLimitationReasonWireDocument.PSI_UNAVAILABLE -> DiagnosticLimitationReasonDocument.PSI_UNAVAILABLE
-        DiagnosticLimitationReasonWireDocument.UNSUPPORTED_FILE_KIND ->
-            DiagnosticLimitationReasonDocument.UNSUPPORTED_FILE_KIND
-        DiagnosticLimitationReasonWireDocument.UNSUPPORTED_DIAGNOSTIC ->
-            DiagnosticLimitationReasonDocument.UNSUPPORTED_DIAGNOSTIC
-        DiagnosticLimitationReasonWireDocument.ANALYSIS_UNAVAILABLE ->
-            DiagnosticLimitationReasonDocument.ANALYSIS_UNAVAILABLE
-    }
-
-internal fun DiagnosticCheckRejection.toWireDocument(): DiagnosticCheckRejectionWireDocument =
-    when (this) {
-        DiagnosticCheckRejection.WORKSPACE_NOT_READY -> DiagnosticCheckRejectionWireDocument.WORKSPACE_NOT_READY
-        DiagnosticCheckRejection.SCOPE_REJECTED -> DiagnosticCheckRejectionWireDocument.SCOPE_REJECTED
-        DiagnosticCheckRejection.SCOPE_EMPTY -> DiagnosticCheckRejectionWireDocument.SCOPE_EMPTY
-        DiagnosticCheckRejection.SCOPE_LIMIT_EXCEEDED -> DiagnosticCheckRejectionWireDocument.SCOPE_LIMIT_EXCEEDED
-        DiagnosticCheckRejection.SCOPE_UNAVAILABLE -> DiagnosticCheckRejectionWireDocument.SCOPE_UNAVAILABLE
-    }
-
-internal fun DiagnosticCheckRejectionWireDocument.toContract(): DiagnosticCheckRejection =
-    when (this) {
-        DiagnosticCheckRejectionWireDocument.WORKSPACE_NOT_READY -> DiagnosticCheckRejection.WORKSPACE_NOT_READY
-        DiagnosticCheckRejectionWireDocument.SCOPE_REJECTED -> DiagnosticCheckRejection.SCOPE_REJECTED
-        DiagnosticCheckRejectionWireDocument.SCOPE_EMPTY -> DiagnosticCheckRejection.SCOPE_EMPTY
-        DiagnosticCheckRejectionWireDocument.SCOPE_LIMIT_EXCEEDED -> DiagnosticCheckRejection.SCOPE_LIMIT_EXCEEDED
-        DiagnosticCheckRejectionWireDocument.SCOPE_UNAVAILABLE -> DiagnosticCheckRejection.SCOPE_UNAVAILABLE
     }

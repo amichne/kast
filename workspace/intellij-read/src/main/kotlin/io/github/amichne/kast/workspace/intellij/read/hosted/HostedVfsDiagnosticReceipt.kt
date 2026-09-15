@@ -29,6 +29,8 @@ internal fun publishHostedVfsEvidence(
                         )
                     },
                 )
+            is HostedVfsBatchEvidence.RelevanceUnknown ->
+                HostedVfsDiagnosticDocument.RelevanceUnknown(host.value.toString(), evidence.reason)
             is HostedVfsBatchEvidence.Rejected ->
                 HostedVfsDiagnosticDocument.Rejected(host.value.toString(), evidence.failure)
         }
@@ -46,6 +48,14 @@ internal sealed interface HostedVfsDiagnosticDocument {
         val counts: List<HostedVfsCountDocument>,
         @EncodeDefault(EncodeDefault.Mode.ALWAYS) val event: String = "kast_hosted_vfs",
         @EncodeDefault(EncodeDefault.Mode.ALWAYS) val pathCategoriesAreSyntactic: Boolean = true,
+    ) : HostedVfsDiagnosticDocument
+
+    @Serializable
+    @SerialName("relevance_unknown")
+    data class RelevanceUnknown(
+        val host: String,
+        val reason: HostedVfsUnknownRelevanceReason,
+        @EncodeDefault(EncodeDefault.Mode.ALWAYS) val event: String = "kast_hosted_vfs",
     ) : HostedVfsDiagnosticDocument
 
     @Serializable

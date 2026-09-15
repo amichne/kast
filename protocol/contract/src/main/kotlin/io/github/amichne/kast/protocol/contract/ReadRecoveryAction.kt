@@ -16,6 +16,9 @@ enum class ReadRecoveryAction {
 
 fun SourceReadFailure.recoveryAction(): ReadRecoveryAction =
     when (reason()) {
+        is SourceReadFailureDetail.RequestRejected -> ReadRecoveryAction.CORRECT_REQUEST
+        is SourceReadFailureDetail.ReferenceRejected -> ReadRecoveryAction.REACQUIRE_AUTHORITY
+        is SourceReadFailureDetail.InternalContractFailure -> ReadRecoveryAction.REPORT_FAILURE
         SourceReadRejection.WORKSPACE_NOT_READY -> ReadRecoveryAction.WAIT_FOR_WORKSPACE
         SourceReadRejection.WORKSPACE_ROOT_MISMATCH,
         SourceReadRejection.STALE_GENERATION,

@@ -40,12 +40,38 @@ class SourceTraversalBudgetSchemaTest {
         )
 
     @Test
-    fun `source complete and qualified grants survive wire CLI and installed schemas`() {
+    fun `source complete and qualified grants survive wire CLI and installed schemas`() =
+        verifySource(io.github.amichne.kast.protocol.contract.SourceReadFormatDocument.EXPANDED)
+
+    @Test
+    fun `compact complete and qualified grants survive wire CLI and installed schemas`() =
+        verifySource(io.github.amichne.kast.protocol.contract.SourceReadFormatDocument.COMPACT)
+
+    @Test
+    fun `compact live snapshots retain their required live schema`() =
+        verifySource(
+            io.github.amichne.kast.protocol.contract.SourceReadFormatDocument.COMPACT,
+            EvidenceBasis.Live(
+                io.github.amichne.kast.kernel.LiveReadEvidence.create(
+                        "/workspace",
+                        java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"),
+                        7,
+                        io.github.amichne.kast.kernel.LiveReadContentView.SAVED_PSI_COMMITTED,
+                        1,
+                    )
+                    .proven()
+            ),
+        )
+
+    private fun verifySource(
+        format: io.github.amichne.kast.protocol.contract.SourceReadFormatDocument,
+        sourceBasis: EvidenceBasis = basis,
+    ) {
         val evidence =
             EvidenceEnvelope(
                 CanonicalOperation.SOURCE_READ.id,
-                basis,
-                fixture.sourceResult(basis).copy(executionBudget = report),
+                sourceBasis,
+                fixture.sourceResult(sourceBasis).copy(executionBudget = report, format = format),
             )
         val qualification =
             SourceReadQualification.create(
@@ -66,7 +92,41 @@ class SourceTraversalBudgetSchemaTest {
             OperationOutcome.Qualified(evidence, qualification),
             CanonicalSourceReadCliDocuments::project,
         )
+        if (format == io.github.amichne.kast.protocol.contract.SourceReadFormatDocument.COMPACT)
+            with(fixture) {
+                val document = CanonicalSourceReadCliDocuments.project(OperationOutcome.Complete(evidence)).document()
+                val content = document.getValue("content") as kotlinx.serialization.json.JsonArray
+                assertEquals(JsonPrimitive("source"), content.first().jsonObject["type"])
+                assertRejects(
+                    CanonicalOperation.SOURCE_READ,
+                    document.with(
+                        "content",
+                        kotlinx.serialization.json.Json.encodeToJsonElement(
+                            kotlinx.serialization.builtins.ListSerializer(
+                                kotlinx.serialization.json.JsonElement.serializer()
+                            ),
+                            content.reversed(),
+                        ),
+                    ),
+                )
+                assertRejects(CanonicalOperation.SOURCE_READ, document.with("format", JsonPrimitive("invented")))
+                if (sourceBasis is EvidenceBasis.Live) assertMixedSnapshotRejected(document)
+            }
     }
+
+    private fun assertMixedSnapshotRejected(document: kotlinx.serialization.json.JsonObject) =
+        with(fixture) {
+            val content = document.getValue("content") as kotlinx.serialization.json.JsonArray
+            val structure = content[1].jsonObject
+            val snapshot = structure.getValue("snapshot").jsonObject
+            val mixed = structure.with("snapshot", snapshot.with("generation", JsonPrimitive(1)))
+            val invalidContent =
+                kotlinx.serialization.json.Json.encodeToJsonElement(
+                    kotlinx.serialization.builtins.ListSerializer(kotlinx.serialization.json.JsonElement.serializer()),
+                    listOf(content.first(), mixed),
+                )
+            assertRejects(CanonicalOperation.SOURCE_READ, document.with("content", invalidContent))
+        }
 
     @Test
     fun `traversal complete and qualified grants survive wire CLI and installed schemas`() {

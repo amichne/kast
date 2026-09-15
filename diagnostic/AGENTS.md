@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-11 | hash: e9e206c7a991 -->
+<!-- generated: 2026-09-15 | hash: cc0480261d61 -->
 
 # diagnostic
 
@@ -8,6 +8,10 @@
 Models diagnostic queries and outcomes, orchestrates collection, and adapts IntelliJ compiler evidence.
 
 ## Key Files
+
+- [DiagnosticScan.kt](contract/src/main/kotlin/io/github/amichne/kast/diagnostic/contract/DiagnosticScan.kt) - detached enumeration, analysis, and output progress under the original authority.
+- [DiagnosticScanService.kt](service/src/main/kotlin/io/github/amichne/kast/diagnostic/service/DiagnosticScanService.kt) - bounded scan chunks and complete-file diagnostic suffixes.
+- [ProjectBoundDiagnosticEnumeration.kt](intellij/src/main/kotlin/io/github/amichne/kast/diagnostic/intellij/ProjectBoundDiagnosticEnumeration.kt) - existing index callback enumeration with original source ownership.
 
 - [contract/src/main/kotlin/io/github/amichne/kast/diagnostic/contract/DiagnosticOutcome.kt](contract/src/main/kotlin/io/github/amichne/kast/diagnostic/contract/DiagnosticOutcome.kt) - typed result domain.
 - [contract/src/main/kotlin/io/github/amichne/kast/diagnostic/contract/DiagnosticScopeQuery.kt](contract/src/main/kotlin/io/github/amichne/kast/diagnostic/contract/DiagnosticScopeQuery.kt) - request/scope model.

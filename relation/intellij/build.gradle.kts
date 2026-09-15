@@ -76,6 +76,8 @@ dependencies {
     compileOnly("com.jetbrains.intellij.platform:project-model:$ideaPlatformBuild")
     compileOnly(kotlinPluginLibs)
 
+    testImplementation("com.jetbrains.intellij.platform:core-impl:$ideaPlatformBuild")
+    testImplementation(kotlinPluginLibs)
     testImplementation("com.jetbrains.intellij.platform:core:$ideaPlatformBuild")
     testImplementation("com.jetbrains.intellij.platform:analysis:$ideaPlatformBuild")
     testImplementation("com.jetbrains.intellij.platform:indexing:$ideaPlatformBuild")
@@ -83,4 +85,9 @@ dependencies {
     testImplementation("com.jetbrains.intellij.platform:lang-impl:$ideaPlatformBuild")
     testImplementation("com.jetbrains.intellij.platform:util:$ideaPlatformBuild")
     testImplementation("com.jetbrains.intellij.platform:project-model:$ideaPlatformBuild")
+}
+
+// The native call oracle must compile with the repository's compiler before IDE acceptance.
+tasks.named<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>("compileTestKotlin") {
+    source(rootProject.file("experiments/host-observation/semantic-fixture/read-reliability/ReadKotlinCalls.kt"))
 }

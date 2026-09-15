@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-14 | hash: ba0248f76aa7 -->
+<!-- generated: 2026-09-15 | hash: c25f787b9630 -->
 
 # workspace
 
@@ -8,6 +8,8 @@
 Defines canonical workspace identity and read evidence, and admits bounded semantic reads from projects already open in IntelliJ. IDEA owns project import, indexing, and lifetime.
 
 ## Key Files
+
+- [HostedReadCompletion.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadCompletion.kt) - typed operation-selected caller deadline through final freshness and publication.
 
 - [HostedReadPublicationAdmission.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadPublicationAdmission.kt) - pre-provider containment capacity and candidate-versus-admitted budget evidence.
 
@@ -24,7 +26,7 @@ Defines canonical workspace identity and read evidence, and admits bounded seman
 ## Subdirectories
 
 - `contract` - roots, identities, readiness and read evidence; historical publication contracts remain for compatibility.
-- `intellij-read` - passive VFS/IDE model reads, read admission, and freshness listeners.
+- `intellij-read` - passive VFS/IDE model reads, read admission, and freshness listeners; oversized VFS batches invalidate conservatively without claiming root relevance.
 
 ## Entry Points
 

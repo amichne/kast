@@ -105,7 +105,7 @@ class KastPublicQueryProviderTest {
         val invalid =
             listOf(
                 capability(driftSchema = true),
-                schema.replace("\"schemaVersion\":12", "\"schemaVersion\":10"),
+                schema.replace("\"schemaVersion\":13", "\"schemaVersion\":10"),
                 schema.replace(
                     "\"command\":[\"tool\",\"search_classes\"]",
                     "\"command\":[\"tool\",\"search_functions\"]",

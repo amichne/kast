@@ -13,6 +13,8 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
 internal sealed interface KastToolInputFailure {
+    data class Source(val reason: io.github.amichne.kast.protocol.contract.SourceReadCause) : KastToolInputFailure
+
     data class Facade(val reason: PublicToolInputFailure) : KastToolInputFailure
 
     data object NotObject : KastToolInputFailure
@@ -28,12 +30,9 @@ internal fun admitKastInput(
     binding: AgentToolInputBinding = AgentToolInputBinding.Canonical,
 ): Validation<KastInvocationInput, KastToolInputFailure> =
     if (binding is AgentToolInputBinding.Facade) {
-        if (operation != binding.identity.operation) Validation.rejected(KastToolInputFailure.SchemaMismatch)
-        else
-            when (val request = PublicToolContract.admit(binding.identity, admitted)) {
-                is Refinement.Refined -> Validation.validated(KastInvocationInput.Facade(request.value))
-                is Refinement.Rejected -> Validation.rejected(KastToolInputFailure.Facade(request.failure))
-            }
+        admitFacadeInput(operation, admitted, binding)
+    } else if (operation == CanonicalOperation.SOURCE_READ) {
+        admitSourceInput(admitted)
     } else if (operation == CanonicalOperation.QUERY_RUN) {
         when (val query = PublicQueryContract.admit(admitted)) {
             is Refinement.Refined -> Validation.validated(KastInvocationInput.Query(query.value))
@@ -48,6 +47,7 @@ internal fun admitKastInput(
 /** Re-encoding is permitted only at the effect boundary and for the admitted route. */
 internal fun KastInvocationInput.encodeFor(tool: QualifiedKastTool): Refinement<JsonElement, KastToolInputFailure> =
     when (this) {
+        is KastInvocationInput.Source -> encodeSourceFor(tool)
         is KastInvocationInput.Facade ->
             if (
                 tool.inputBinding == AgentToolInputBinding.Facade(request.identity) &&
@@ -78,3 +78,50 @@ internal fun KastInvocationInput.encodeFor(tool: QualifiedKastTool): Refinement<
                 Refinement.Rejected(KastToolInputFailure.SchemaMismatch)
             }
     }
+
+private val sourceRequestJson =
+    kotlinx.serialization.json.Json {
+        classDiscriminator = "type"
+        encodeDefaults = true
+        ignoreUnknownKeys = false
+    }
+
+private fun admitSourceInput(admitted: ValidatedJsonValue): Validation<KastInvocationInput, KastToolInputFailure> =
+    when (
+        val source =
+            io.github.amichne.kast.protocol.contract.SourceRequestIngress.decode(
+                admitted.element,
+                sourceRequestJson,
+            )
+    ) {
+        is Refinement.Refined -> Validation.validated(KastInvocationInput.Source(source.value, admitted.schemaDigest))
+        is Refinement.Rejected -> Validation.rejected(KastToolInputFailure.Source(source.failure))
+    }
+
+private fun KastInvocationInput.Source.encodeSourceFor(
+    tool: QualifiedKastTool
+): Refinement<JsonElement, KastToolInputFailure> =
+    if (
+        tool.inputBinding == AgentToolInputBinding.Canonical &&
+            tool.hostedDefinition.operation == CanonicalOperation.SOURCE_READ &&
+            schemaDigest == tool.inputSchema.digest
+    )
+        Refinement.Refined(
+            sourceRequestJson.encodeToJsonElement(
+                io.github.amichne.kast.protocol.contract.SourceReadRequest.serializer(),
+                request,
+            )
+        )
+    else Refinement.Rejected(KastToolInputFailure.SchemaMismatch)
+
+private fun admitFacadeInput(
+    operation: CanonicalOperation,
+    admitted: ValidatedJsonValue,
+    binding: AgentToolInputBinding.Facade,
+): Validation<KastInvocationInput, KastToolInputFailure> =
+    if (operation != binding.identity.operation) Validation.rejected(KastToolInputFailure.SchemaMismatch)
+    else
+        when (val request = PublicToolContract.admit(binding.identity, admitted)) {
+            is Refinement.Refined -> Validation.validated(KastInvocationInput.Facade(request.value))
+            is Refinement.Rejected -> Validation.rejected(KastToolInputFailure.Facade(request.failure))
+        }

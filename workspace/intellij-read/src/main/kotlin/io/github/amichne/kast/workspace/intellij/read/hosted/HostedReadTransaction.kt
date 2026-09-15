@@ -14,15 +14,19 @@ internal suspend fun <Value> runHostedReadTransaction(
     }
     progress.advance(HostedQueryStage.SEMANTIC_READ)
     val allowance =
-        when (val admitted = progress.admitSemanticTime()) {
+        when (val admitted = progress.admitSemanticRead()) {
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected -> return HostedSemanticRead.Rejected(admitted.failure)
         }
-    val value = evaluate(allowance)
+    val value = evaluate(allowance.allowance)
     progress.advance(HostedQueryStage.CONTENT_REVALIDATION)
     return when (val admitted = validate()) {
         is Refinement.Rejected -> HostedSemanticRead.Rejected(admitted.failure)
         is Refinement.Refined -> {
+            when (val completed = progress.validateCompletion(allowance)) {
+                is Refinement.Rejected -> return HostedSemanticRead.Rejected(completed.failure)
+                is Refinement.Refined -> Unit
+            }
             progress.advance(HostedQueryStage.RESULT_DETACHED)
             HostedSemanticRead.Resolved(value)
         }

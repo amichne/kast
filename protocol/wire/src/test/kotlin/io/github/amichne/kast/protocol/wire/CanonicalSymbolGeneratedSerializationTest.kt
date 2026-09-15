@@ -53,8 +53,12 @@ class CanonicalSymbolGeneratedSerializationTest {
             )
         assertEquals(
             """{"symbol":{"selector":"exact:v1:sample","kind":"type-alias","name":"Sample","qualifiedIdentity":"sample.Sample","file":"src/Sample.kt","range":{"startInclusive":4,"endExclusive":10},"compilerEvidence":{"identity":"${evidence.identity.value}","signature":{"type":"type-alias","qualifiedIdentity":"sample.Sample"}}}}""",
-            CanonicalSymbolSerializers.describeResult.encode(exact, WireValueRole.RESULT).json(),
+            CanonicalSymbolSerializers.describeResult
+                .encode(exact, WireValueRole.RESULT)
+                .json()
+                .replace(",\"acquisition\":\"strict\"", ""),
         )
+        assertAcquisitionVariants(exact)
     }
 
     @Test
@@ -90,6 +94,26 @@ class CanonicalSymbolGeneratedSerializationTest {
                 WireDecoding.Rejected(WireFailure.InvalidPayload(WireValueRole.RESULT)),
                 CanonicalSymbolSerializers.describeResult.decode(
                     wireJson.parseToJsonElement(document),
+                    WireValueRole.RESULT,
+                ),
+            )
+        }
+    }
+
+    private fun assertAcquisitionVariants(exact: SymbolInspectResult) {
+        for (acquisition in io.github.amichne.kast.protocol.contract.SymbolInspectAcquisition.entries) {
+            val encoded =
+                CanonicalSymbolSerializers.describeResult
+                    .encode(exact.copy(acquisition = acquisition), WireValueRole.RESULT)
+                    .json()
+            val expected =
+                if (acquisition == io.github.amichne.kast.protocol.contract.SymbolInspectAcquisition.STRICT) "strict"
+                else "reacquired"
+            org.junit.jupiter.api.Assertions.assertTrue(encoded.endsWith("\"acquisition\":\"$expected\"}"))
+            assertEquals(
+                WireDecoding.Rejected(WireFailure.InvalidPayload(WireValueRole.RESULT)),
+                CanonicalSymbolSerializers.describeResult.decode(
+                    wireJson.parseToJsonElement(encoded.replace("\"$expected\"", "\"unknown-acquisition\"")),
                     WireValueRole.RESULT,
                 ),
             )

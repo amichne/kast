@@ -158,14 +158,17 @@ class NativeTransportWindow:
         lines = (self.pending + data).split(b'\n')
         self.pending = lines.pop()
         for line in lines:
-            _, found, body = line.partition(b'kast_transport ')
-            if found:
-                if len(self.records) == self.MAX_RECORDS:
-                    raise TransportWitnessRejected(TransportWitnessFailure.BOUND)
-                try:
-                    self.records.append(admit_transport_record(json.loads(body)))
-                except (ValueError, UnicodeError):
-                    raise TransportWitnessRejected(TransportWitnessFailure.RECORD) from None
+            self.admit_line(line)
+
+    def admit_line(self, line):
+        _, found, body = line.partition(b'kast_transport ')
+        if found:
+            if len(self.records) == self.MAX_RECORDS:
+                raise TransportWitnessRejected(TransportWitnessFailure.BOUND)
+            try:
+                self.records.append(admit_transport_record(json.loads(body)))
+            except (ValueError, UnicodeError):
+                raise TransportWitnessRejected(TransportWitnessFailure.RECORD) from None
 
     def completed(self, stage):
         return {row.connection for row in self.records

@@ -4,8 +4,12 @@ title: Query protocol
 description: Shared semantic-read admission and projection bind canonical requests and detached references to an authority supplied by the owning host.
 resource: file://query/protocol
 tags: [kotlin, protocol, query, authority]
-timestamp: 2026-09-14T00:00:00Z
+timestamp: 2026-09-15T00:00:00Z
 code_sources:
+  - path: symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/ExactRevalidation.kt
+  - path: symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/ExactRevalidationService.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedExactRevalidationStore.kt
+  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijExactRevalidationCapture.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/RelationCheckpointDocument.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/TraversalCheckpointDocument.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/AdmittedReadRejections.kt
@@ -114,7 +118,7 @@ produces an owner-issued continuation, and resume reaches the fourth fact under
 the unchanged authority without consuming the prefix again. These tests start
 no IntelliJ process and make no native provider-parity claim.
 
-`QueryReferenceTransport` separates detached token representation from canonical decoding. Hosted exact and candidate references normally use version-5 handles (31 and 35 characters); lookup restores the full version-2/3 token before the existing authority, scope and evidence checks. Short-digest collisions return the inline selector and retain the prior handle. Canonical query documents retain `symbol_id` internally for snapshot-local declaration equality across admitted scopes. The public CLI/model projection omits it; explicit `distinct_symbols` uses the canonical equality owner without exposing an equality key. Published test composition retains inline transport by default. Source snapshot tokens retain their codec. Query continuations use a host-supplied bounded checkpoint store. Traversal tokens additionally bind strategy, maximum depth and cumulative progress; older tokens without these witnesses reject. Relation tokens retain earlier-page provider limitations even after the final page.
+`QueryReferenceTransport` separates detached token representation from canonical decoding. Hosted exact and candidate references normally use version-5 handles (31 and 35 characters); lookup restores the full version-2/3 token before the existing authority, scope and evidence checks. Short-digest collisions return the inline selector and retain the prior handle. Canonical query documents retain `symbol_id` internally for snapshot-local declaration equality across admitted scopes. The public CLI/model projection omits it; explicit `distinct_symbols` uses the canonical equality owner without exposing an equality key. Published test composition retains inline transport by default. Source declaration identities and candidate targets use the same host issuer and preserve its returned candidate token unchanged; source-read success does not upgrade candidates to exact references. Source snapshot tokens retain their codec. Query continuations use a host-supplied bounded checkpoint store. Traversal tokens additionally bind strategy, maximum depth and cumulative progress; older tokens without these witnesses reject. Relation tokens retain earlier-page provider limitations even after the final page.
 
 Relation projection retains provider/version, page-local observed or unmeasured
 omissions, bounded source samples and a closed remediation. Budget stops qualify
@@ -160,3 +164,39 @@ Source continuation admission preserves finite causes before invoking the provid
 missing, expired, evicted, or retired tokens yield `CONTINUATION_UNAVAILABLE`;
 a changed context yields `SOURCE_SNAPSHOT_MISMATCH`; a changed request yields
 `CONTINUATION_REQUEST_MISMATCH`. Provider contract failures remain distinct.
+
+Source output can explicitly select compact presentation while expanded remains
+the compatibility default. The protocol maps that choice exhaustively into a
+native continuation compatibility witness; it does not change source semantics.
+See [source identity](../contracts/source-identity.md#source-output-format).
+
+## Explicit exact reacquisition
+
+`symbol.inspect` accepts `revalidate_exact` alongside unchanged `candidate` and
+`exact` targets. The previous exact token is only a key into the running owner's
+separate detached locator store. Current admission, the same host/root and model
+source owner, unchanged saved committed owning-file bytes, and one fresh exact K2
+match are required. The service checks freshness again before new issuance.
+Results encode `acquisition: strict` or `acquisition: reacquired` explicitly.
+No prior source snapshot, relation, continuation or mutation approval becomes
+current through this operation.
+
+Capture is optional for ordinary issuance: it runs inside exact compiler lookup,
+deduplicates at most 64 files per request, and retains no source payload or platform
+object. Each file is limited to 1 MiB and charged one work unit plus one per 4 KiB
+of bytes actually read against the admitted capture allowance. Admission reserves
+room for a single EOF probe byte; length movement rejects with finite data.
+IntelliJ charset/BOM/newline decoding must match both compiler PSI text and any
+cached committed document text before capture can be retained. Saved/committed
+flags alone do not prove this equality. Missing captures remain unavailable.
+
+The hosted store admits at most 256 distinct tokens during a project-service
+lifetime, with a conservative 4 MiB retained-data charge in addition to the
+configured strict-reference table bound. A record is usable for five minutes;
+replay and duplicate issuance never renew it. Expired slots remain occupied until
+project disposal, so capacity exhaustion disables further retention while ordinary
+reads continue. Known expired and unknown tokens have distinct finite failures.
+This conservative first slice does not search moved files, recover candidates,
+persist across owners, or restore tokens issued before capture was installed.
+
+Source reads retain [precise failure origin](../contracts/source-failures.md) through admission and serialization. Their admitted rejection wrapper retains the complete cause, including internal obligations and finite reference lookup evidence.

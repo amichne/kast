@@ -199,6 +199,7 @@ private data class SourceRequestBinding(
     val region: RegionSelection,
     val entities: EntitySelectionBinding,
     val text: TextProjection,
+    val outputIdentity: io.github.amichne.kast.source.contract.SourceReadOutputIdentity,
 )
 
 private sealed interface SourceAnchorBinding {
@@ -242,6 +243,7 @@ private fun SourceReadRequest.binding(): SourceRequestBinding =
         region = region,
         entities = entities.binding(),
         text = text,
+        outputIdentity = outputIdentity,
     )
 
 private fun EntitySelection.binding(): EntitySelectionBinding =

@@ -6,12 +6,14 @@ import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.ReturnedByteLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
+import io.github.amichne.kast.protocol.contract.DiagnosticCheckRequest
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetDocument
 import io.github.amichne.kast.protocol.contract.OperationQualification
 import io.github.amichne.kast.protocol.contract.OperationRejection
 import io.github.amichne.kast.protocol.contract.OperationRequest
 import io.github.amichne.kast.protocol.contract.OperationResult
 import io.github.amichne.kast.protocol.contract.ProtocolCount
+import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryExecutionBudgetDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionKindDocument
@@ -83,7 +85,7 @@ class HostedReadBudgetAdmissionTest {
                 )
             }
         }
-        assertEquals(4, providerCalls, "Only the four valid controls may enter provider dispatch")
+        assertEquals(5, providerCalls, "Only the five valid controls may enter provider dispatch")
     }
 
     @Test
@@ -94,6 +96,18 @@ class HostedReadBudgetAdmissionTest {
             assertEquals(HostedEndpointFailure.INVALID_REQUEST, rejected.failure)
         }
         assertEquals(0, providerCalls)
+    }
+
+    @Test
+    fun `only diagnostic requests select caller elapsed completion`() {
+        for (request in requests(budget())) {
+            val admitted = decode(request) {}.proven() as HostedRequest.Read
+            val expected =
+                if (admitted is HostedRequest.Diagnostic)
+                    io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadCompletionPolicy.CALLER_ELAPSED
+                else io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadCompletionPolicy.HOST_CONTAINMENT
+            assertEquals(expected, admitted.completionPolicy())
+        }
     }
 
     @Test
@@ -111,9 +125,20 @@ class HostedReadBudgetAdmissionTest {
             if (result is Refinement.Refined) provider(result.value)
         }
 
+    private fun diagnosticInput(budget: ExecutionBudgetDocument) =
+        input(
+            CanonicalOperationWireBindings.diagnosticCheck,
+            DiagnosticCheckRequest(
+                ProtocolText.parse(".").proven(),
+                ProtocolCount.parse(1000).proven(),
+                executionBudget = budget,
+            ),
+        )
+
     private fun requests(budget: ExecutionBudgetDocument): List<HostedReadInput> {
         val fixture = RelationPagingFixture.live()
         return listOf(
+            diagnosticInput(budget),
             input(
                 CanonicalOperationWireBindings.queryRun,
                 QueryRunRequest(

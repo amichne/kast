@@ -9,7 +9,7 @@ import subprocess
 from released_acceptance_product import product_executable
 
 from hosted_change_acceptance import admitted_live, AcceptanceRejected
-from hosted_read_transport import ReadTransportRejected
+from hosted_read_transport import ReadTransportRejected, ReadTransportFailure, ReadProviderFailure
 from hosted_source_read_regression import SourceBudgetAnchorSearch, SourceFunctionRequest, SymbolAnchor
 from native_fixture_probe import NativeFixtureProbe, NativeFixtureProbeError
 
@@ -27,16 +27,148 @@ class AuthorityFailure(str, Enum):
     READINESS = 'AUTHORITY_READINESS_REJECTED'
     TRANSPORT = 'AUTHORITY_TRANSPORT_REJECTED'
     FOREIGN = 'AUTHORITY_FOREIGN_ROOT_REJECTED'
+    REVALIDATION = 'AUTHORITY_EXACT_REVALIDATION_REJECTED'
     IO = 'AUTHORITY_IO_REJECTED'
     RESTORATION = 'AUTHORITY_RESTORATION_REJECTED'
+    DOCUMENT_IMAGE = 'AUTHORITY_READINESS_DOCUMENT_IMAGE_CHANGED'
+    RESTORATION_DOCUMENT_IMAGE = 'AUTHORITY_RESTORATION_DOCUMENT_IMAGE_CHANGED'
 
 
 class AuthorityRefusal(str, Enum):
-    STALE_REFERENCE = 'stale-generation'
+    UNAVAILABLE_REFERENCE = 'reference-unavailable'
     STALE_CONTINUATION = 'source-snapshot-mismatch'
     UNAVAILABLE_CONTINUATION = 'continuation-unavailable'
     UNEXPECTED = 'unexpected-refusal'
     FOREIGN = 'ide-host-unavailable'
+
+
+@dataclass(frozen=True)
+class UnavailableSymbolReference:
+    type: str = field(default='reference-rejected', init=False)
+    role: str = field(default='symbol', init=False)
+    reason: str = field(default='unavailable', init=False)
+
+
+class InspectionStage(str, Enum):
+    REVALIDATE = 'revalidate_exact'
+    STRICT = 'exact'
+
+
+class InspectionOutcome(str, Enum):
+    ACCEPTED = 'accepted'
+    WIRE_REJECTED = 'wire-rejected'
+    UNKNOWN_REFUSAL = 'unknown-refusal'
+    CONTRACT_REJECTED = 'contract-rejected'
+    TRANSPORT_REJECTED = 'transport-rejected'
+
+
+class InspectionMismatch(str, Enum):
+    DOCUMENT = 'document'
+    OPERATION = 'operation'
+    STATUS = 'status'
+    ACQUISITION = 'acquisition'
+    LIVE_BASIS = 'live-basis'
+    SELECTOR = 'selector'
+    SYMBOL = 'symbol'
+
+
+class InspectionRefusal(str, Enum):
+    """CLI projection spellings used by both native transport surfaces; wire uses underscores."""
+    WORKSPACE_NOT_READY = 'workspace-not-ready'
+    SELECTOR_WRONG_KIND = 'selector-wrong-kind'
+    SELECTOR_MALFORMED = 'selector-malformed'
+    SELECTOR_WORKSPACE_MISMATCH = 'selector-workspace-mismatch'
+    CANDIDATE_STALE = 'candidate-stale'
+    CANDIDATE_NOT_DECLARATION = 'candidate-not-declaration'
+    EXACT_SELECTOR_STALE = 'exact-selector-stale'
+    AMBIGUOUS = 'ambiguous'
+    NOT_FOUND = 'not-found'
+    REVALIDATION_UNRETAINED = 'revalidation-unretained'
+    REVALIDATION_EXPIRED = 'revalidation-expired'
+    REVALIDATION_CAPACITY = 'revalidation-capacity'
+    REVALIDATION_RETIRED = 'revalidation-retired'
+    REVALIDATION_CAPTURE_UNAVAILABLE = 'revalidation-capture-unavailable'
+    REVALIDATION_WORKSPACE_MISMATCH = 'revalidation-workspace-mismatch'
+    REVALIDATION_OWNER_MISMATCH = 'revalidation-owner-mismatch'
+    REVALIDATION_WORKSPACE_NOT_READY = 'revalidation-workspace-not-ready'
+    REVALIDATION_BASIS_MOVED = 'revalidation-basis-moved'
+    REVALIDATION_CONTENT_CHANGED = 'revalidation-content-changed'
+    REVALIDATION_CONTENT_UNCOMMITTED = 'revalidation-content-uncommitted'
+    REVALIDATION_SCOPE_REJECTED = 'revalidation-scope-rejected'
+    REVALIDATION_DECLARATION_MISSING = 'revalidation-declaration-missing'
+    REVALIDATION_UNSUPPORTED_DECLARATION = 'revalidation-unsupported-declaration'
+    REVALIDATION_AMBIGUOUS = 'revalidation-ambiguous'
+    REVALIDATION_COMPILER_IDENTITY_CHANGED = 'revalidation-compiler-identity-changed'
+    REVALIDATION_COMPILER_UNAVAILABLE = 'revalidation-compiler-unavailable'
+
+
+@dataclass(frozen=True)
+class InspectionAccepted:
+    stage: InspectionStage
+    outcome: InspectionOutcome = field(default=InspectionOutcome.ACCEPTED, init=False)
+
+
+@dataclass(frozen=True)
+class InspectionWireRejected:
+    stage: InspectionStage
+    refusal: InspectionRefusal
+    outcome: InspectionOutcome = field(default=InspectionOutcome.WIRE_REJECTED, init=False)
+
+
+@dataclass(frozen=True)
+class InspectionUnknownRefusal:
+    stage: InspectionStage
+    outcome: InspectionOutcome = field(default=InspectionOutcome.UNKNOWN_REFUSAL, init=False)
+
+
+@dataclass(frozen=True)
+class InspectionContractRejected:
+    stage: InspectionStage
+    mismatch: InspectionMismatch
+    outcome: InspectionOutcome = field(default=InspectionOutcome.CONTRACT_REJECTED, init=False)
+
+
+@dataclass(frozen=True)
+class InspectionTransportRejected:
+    stage: InspectionStage
+    refusal: ReadTransportFailure
+    providerFailure: ReadProviderFailure | None
+    outcome: InspectionOutcome = field(default=InspectionOutcome.TRANSPORT_REJECTED, init=False)
+
+
+InspectionObservation = (InspectionAccepted | InspectionWireRejected | InspectionUnknownRefusal
+    | InspectionContractRejected | InspectionTransportRejected)
+
+
+def _inspect_observation(stage, response, current, old, expected_symbol):
+    if not isinstance(response, dict):
+        return InspectionContractRejected(stage, InspectionMismatch.DOCUMENT)
+    if response.get('operation') != 'symbol.inspect':
+        return InspectionContractRejected(stage, InspectionMismatch.OPERATION)
+    if response.get('status') == 'rejected':
+        try:
+            return InspectionWireRejected(stage, InspectionRefusal(response.get('reason')))
+        except (ValueError, TypeError):
+            return InspectionUnknownRefusal(stage)
+    if response.get('status') != 'complete':
+        return InspectionContractRejected(stage, InspectionMismatch.STATUS)
+    acquisition = 'reacquired' if stage is InspectionStage.REVALIDATE else 'strict'
+    if response.get('acquisition') != acquisition:
+        return InspectionContractRejected(stage, InspectionMismatch.ACQUISITION)
+    if response.get('live') != current:
+        return InspectionContractRejected(stage, InspectionMismatch.LIVE_BASIS)
+    symbol = response.get('symbol')
+    if not isinstance(symbol, dict):
+        return InspectionContractRejected(stage, InspectionMismatch.SYMBOL)
+    if stage is InspectionStage.REVALIDATE:
+        selector = symbol.get('selector')
+        if not isinstance(selector, str) or not selector or selector == old:
+            return InspectionContractRejected(stage, InspectionMismatch.SELECTOR)
+        if symbol.get('name') != 'ReadPageBudget':
+            return InspectionContractRejected(stage, InspectionMismatch.SYMBOL)
+    elif symbol != expected_symbol:
+        return InspectionContractRejected(stage, InspectionMismatch.SYMBOL)
+    return InspectionAccepted(stage)
 
 
 class AuthorityRejected(ValueError):
@@ -54,11 +186,24 @@ class AuthorityCaseName(str, Enum):
     ISSUED = 'current-authority-issued'
     VALID_CURSOR = 'current-continuation-resumes'
     OLD_REFERENCE = 'old-epoch-reference-rejected'
+    REVALIDATED = 'explicit-exact-reacquired-under-fresh-basis'
+    NEW_STRICT = 'reacquired-exact-accepted-by-strict-read'
     OLD_CURSOR = 'fresh-anchor-old-continuation-rejected'
     FRESH = 'fresh-authority-reacquired'
     RESTORED = 'restored-source-fresh-authority-reacquired'
     FOREIGN_REFERENCE = 'foreign-workspace-reference-refused'
     FOREIGN_CURSOR = 'foreign-workspace-continuation-refused'
+
+
+@dataclass(frozen=True)
+class InspectExactTarget:
+    selector: str
+    type: str = 'revalidate_exact'
+
+
+@dataclass(frozen=True)
+class InspectExactRequest:
+    target: InspectExactTarget
 
 
 @dataclass(frozen=True)
@@ -76,6 +221,7 @@ class AuthorityCase:
     reason: AuthorityRefusal | None = None
     passed: bool = True
     observedReason: AuthorityRefusal | None = None
+    inspection: InspectionObservation | None = None
 
 
 @dataclass(frozen=True)
@@ -148,14 +294,40 @@ class _AuthorityReplay:
         self.record(name, surface, digest)
         return token
 
+    def inspect(self, stage, surface, selector, current, expected_symbol=None):
+        name = (AuthorityCaseName.REVALIDATED if stage is InspectionStage.REVALIDATE
+                else AuthorityCaseName.NEW_STRICT)
+        request = InspectExactRequest(InspectExactTarget(selector, stage.value))
+        try:
+            response, digest = self.call(surface, 'symbol_inspect', request)
+        except ReadTransportRejected as error:
+            observation = InspectionTransportRejected(stage, error.reason, error.provider_failure)
+            self.cases.append(AuthorityCase(name, surface, None, False, passed=False,
+                inspection=observation))
+            raise
+        observation = _inspect_observation(stage, response, current, selector, expected_symbol)
+        passed = isinstance(observation, InspectionAccepted)
+        self.cases.append(AuthorityCase(name, surface, digest, surface is AuthoritySurface.PROVIDER,
+            passed=passed, inspection=observation))
+        _demand(passed, AuthorityFailure.REVALIDATION)
+        return response['symbol']
+
+    def revalidate(self, surface, old, current):
+        symbol = self.inspect(InspectionStage.REVALIDATE, surface, old, current)
+        self.inspect(InspectionStage.STRICT, surface, symbol['selector'], current, symbol)
+
     def reject(self, name, surface, request, reason):
         response, digest = self.call(surface, 'source_read', request)
+        raw = response.get('reason')
+        if raw == asdict(UnavailableSymbolReference()):
+            observed = AuthorityRefusal.UNAVAILABLE_REFERENCE
+        else:
+            try:
+                observed = AuthorityRefusal(raw)
+            except (ValueError, TypeError):
+                observed = AuthorityRefusal.UNEXPECTED
         passed = (response.get('status') == 'rejected' and response.get('operation') == 'source.read'
-                  and response.get('reason') == reason)
-        try:
-            observed = AuthorityRefusal(response.get('reason'))
-        except (ValueError, TypeError):
-            observed = AuthorityRefusal.UNEXPECTED
+                  and observed == reason)
         self.cases.append(AuthorityCase(name, surface, digest, surface is AuthoritySurface.PROVIDER,
                                         reason, passed, observed))
         _demand(passed, AuthorityFailure.REJECTION)
@@ -164,10 +336,11 @@ class _AuthorityReplay:
 def _ready(probe, contents):
     observed = probe.request('AWAIT_REOPEN_READY', _digest(contents), timeout=60)
     evidence = observed.get('evidence', {})
+    _demand(observed.get('failure') != 'DOCUMENT_IMAGE_CHANGED', AuthorityFailure.DOCUMENT_IMAGE)
     _demand(observed.get('outcome') == 'SETUP_READY'
         and evidence.get('savedSha256') == _digest(contents)
-        and evidence.get('documentSha256') == _digest(contents)
         and evidence.get('documentState') == 'SAVED_COMMITTED', AuthorityFailure.READINESS)
+    _demand(evidence.get('documentSha256') == _digest(contents), AuthorityFailure.DOCUMENT_IMAGE)
 
 
 @dataclass(frozen=True)
@@ -244,10 +417,11 @@ def run_authority_read_regression(isolation, fixture, transport, initial_live):
             edited_live = current
             report = replace(report, editedEpoch=current['epoch'])
             old, token = issued[surface]
-            replay.reject(AuthorityCaseName.OLD_REFERENCE, surface, old, AuthorityRefusal.STALE_REFERENCE)
+            replay.reject(AuthorityCaseName.OLD_REFERENCE, surface, old, AuthorityRefusal.UNAVAILABLE_REFERENCE)
             replay.reject(AuthorityCaseName.OLD_CURSOR, surface,
                 replace(fresh, page=ContinueSourcePage(token)), AuthorityRefusal.STALE_CONTINUATION)
             replay.page(AuthorityCaseName.FRESH, surface, fresh, current, 'pageItem00')
+            replay.revalidate(surface, old.anchor.selector, current)
         report = replace(report, outcome=AuthorityOutcome.PASSED)
     except AuthorityRejected as error:
         report = replace(report, failure=error.reason)
@@ -262,6 +436,8 @@ def run_authority_read_regression(isolation, fixture, transport, initial_live):
             try:
                 _demand(_source_bytes(source) == edited, AuthorityFailure.RESTORATION)
                 source.write_bytes(original)
+                report = replace(report, sourceRestored=_source_bytes(source) == original,
+                    restoredSha256=_digest(_source_bytes(source)))
                 _ready(probe, original)
                 report = replace(report, readinessTransitions=report.readinessTransitions + 1,
                     sourceRestored=_source_bytes(source) == original, restoredSha256=_digest(_source_bytes(source)))
@@ -273,7 +449,11 @@ def run_authority_read_regression(isolation, fixture, transport, initial_live):
                         _demand(current['epoch'] == report.restoredEpoch, AuthorityFailure.EPOCH)
                     report = replace(report, restoredEpoch=current['epoch'])
                     replay.page(AuthorityCaseName.RESTORED, surface, request, current, 'pageItem00')
-            except (AuthorityRejected, NativeFixtureProbeError, ReadTransportRejected, AcceptanceRejected,
+            except AuthorityRejected as error:
+                cause = (AuthorityFailure.RESTORATION_DOCUMENT_IMAGE
+                    if error.reason == AuthorityFailure.DOCUMENT_IMAGE else AuthorityFailure.RESTORATION)
+                report = replace(report, failure=cause)
+            except (NativeFixtureProbeError, ReadTransportRejected, AcceptanceRejected,
                     OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError):
                 report = replace(report, failure=AuthorityFailure.RESTORATION)
         if replay is not None:

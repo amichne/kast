@@ -64,26 +64,16 @@ internal class IntellijDiagnosticCompilerQuery(private val fileAdmission: (Path)
         if (project.isDisposed) {
             return DiagnosticCompilation.Rejected(DiagnosticCompilerRejection.WORKSPACE_INDEX_UNAVAILABLE)
         }
-        return try {
+        return guardedDiagnosticCompilation {
             readAction {
-                val collector = IntellijDiagnosticCollector(scope)
-                if (DumbService.isDumb(project)) {
-                    scope.files.forEach { file ->
-                        collector.recordLimitation(file, DiagnosticLimitationReason.INDEXING)
-                    }
-                    return@readAction collector.finish()
+                diagnosticCompilationAttempt(scope) { collector ->
+                    if (DumbService.isDumb(project)) {
+                        scope.files.forEach { file ->
+                            collector.recordLimitation(file, DiagnosticLimitationReason.INDEXING)
+                        }
+                    } else scope.files.forEach { file -> collectFile(project, scope, file, collector) }
                 }
-                scope.files.forEach { file -> collectFile(project, scope, file, collector) }
-                collector.finish()
             }
-        } catch (cancelled: ProcessCanceledException) {
-            throw cancelled
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (_: RuntimeException) {
-            DiagnosticCompilation.Rejected(DiagnosticCompilerRejection.WORKSPACE_INDEX_UNAVAILABLE)
-        } catch (_: LinkageError) {
-            DiagnosticCompilation.Rejected(DiagnosticCompilerRejection.WORKSPACE_INDEX_UNAVAILABLE)
         }
     }
 

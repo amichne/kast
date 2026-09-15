@@ -171,7 +171,9 @@ Local generation with `codex-cli 0.154.0` on 2026-09-14 confirms that
 `DynamicToolCallResponse` exposes `success` and `contentItems` with `inputText`,
 `inputImage`, and `inputAudio` variants. It defines no `structuredContent`
 response property. Kast therefore sends the complete admitted CLI envelope in
-one JSON `inputText` item. The canonical complete/qualified/rejected result is
+one JSON `inputText` item. A compact source read with returned text adds a
+preceding `inputText` item containing the unchanged source; the original envelope
+remains the final item. The canonical complete/qualified/rejected result is
 retained inside that envelope; a canonical rejection also sets transport
 `success` to false. Consumers parse the text once and inspect the retained
 semantic result. Schema generation is protocol evidence, not desktop rendering

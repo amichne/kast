@@ -222,12 +222,7 @@ class GeneratedCliProjectionTest {
             ) as ProjectedCliOutcome.Complete
 
         assertEquals(
-            "{\"operation\":\"symbol.inspect\",\"status\":\"complete\"," +
-                "\"symbol\":{\"selector\":\"exact:A\",\"kind\":\"classlike\",\"name\":\"A\"," +
-                "\"qualifiedIdentity\":\"A\",\"file\":\"src/A.kt\"," +
-                "\"range\":{\"startInclusive\":0,\"endExclusive\":7}," +
-                "\"compilerEvidence\":{\"identity\":\"${compilerEvidence.identity.value}\"," +
-                "\"signature\":{\"type\":\"class-like\",\"qualifiedIdentity\":\"A\"}}}}",
+            io.github.amichne.kast.cli.SymbolInspectionFixture.expectedClass(compilerEvidence.identity.value),
             projected.document.value,
         )
     }

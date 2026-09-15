@@ -27,6 +27,7 @@ import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.workspace.intellij.read.IntellijGeneratedSourceState
 import io.github.amichne.kast.workspace.intellij.read.IntellijProjectFileClassification
 import io.github.amichne.kast.workspace.intellij.read.IntellijProjectFileIndexClassifier
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
 import org.jetbrains.kotlin.idea.references.KtReference
@@ -121,15 +122,19 @@ internal class IntellijK2RelationSearch(
                         if (!collector.dismissProviderItem()) return termination(ProviderTermination.HALTED)
                         continue
                     }
-                    when (projection.confirmJavaTarget(reference, request.subject)) {
+                    when (projection.confirmJavaTarget(reference, request.subject).observedBy(observation)) {
                         IntellijK2TargetConfirmation.EXACT_SUBJECT -> {
-                            val related = reference.element.nearestSupportedDeclaration(projection)
+                            val related = reference.element.relatedOwner()
                             val continued =
                                 when (related) {
                                     is SupportedContainingDeclaration.Found ->
                                         emit(related.projection, reference.element, reference.rangeInElement)
                                     SupportedContainingDeclaration.Unsupported ->
-                                        incompleteItem(RelationLimitation.UNSUPPORTED_ITEM)
+                                        incompleteItem(
+                                            RelationLimitation.UNSUPPORTED_ITEM,
+                                            reference.element,
+                                            reference.rangeInElement,
+                                        )
                                 }
                             if (!continued) return termination(ProviderTermination.HALTED)
                         }
@@ -151,7 +156,7 @@ internal class IntellijK2RelationSearch(
                         }
                         is IntellijRelationReferenceAdmission.Admitted -> admission
                     }
-                when (projection.confirmTarget(admitted)) {
+                when (projection.confirmTarget(admitted).observedBy(observation)) {
                     IntellijK2TargetConfirmation.DIFFERENT_SYMBOL -> {
                         val continued =
                             when (admitted) {
@@ -172,10 +177,16 @@ internal class IntellijK2RelationSearch(
                     IntellijK2TargetConfirmation.EXACT_SUBJECT -> Unit
                 }
                 val related =
-                    when (val containing = reference.element.nearestSupportedDeclaration(projection)) {
+                    when (val containing = reference.element.relatedOwner()) {
                         is SupportedContainingDeclaration.Found -> containing.projection
                         SupportedContainingDeclaration.Unsupported -> {
-                            if (!incompleteItem(RelationLimitation.UNSUPPORTED_ITEM)) {
+                            if (
+                                !incompleteItem(
+                                    RelationLimitation.UNSUPPORTED_ITEM,
+                                    reference.element,
+                                    reference.rangeInElement,
+                                )
+                            ) {
                                 return termination(ProviderTermination.HALTED)
                             }
                             continue
@@ -251,6 +262,7 @@ internal class IntellijK2RelationSearch(
             if (subject !is KtNamedDeclaration)
                 return IntellijRelationTermination.TerminalIncomplete(setOf(RelationLimitation.UNSUPPORTED_ITEM))
             val calls = mutableListOf<KtCallElement>()
+            val deferredCalls = mutableListOf<CalleeProviderItem.UnsupportedOwner>()
             val callsExhausted =
                 PsiTreeUtil.processElements(
                     subject,
@@ -259,8 +271,16 @@ internal class IntellijK2RelationSearch(
                         if (!providerEnumerationReady()) return@PsiElementProcessor false
                         val call = element as? KtCallElement ?: return@PsiElementProcessor true
                         val belongsToSubject =
-                            when (val containing = call.nearestDeclaration()) {
+                            when (val containing = call.nearestDeclaration(observation)) {
                                 is ContainingDeclaration.Found -> containing.declaration === subject
+                                is ContainingDeclaration.Deferred -> {
+                                    val outer = containing.enclosingDeclaration()
+                                    if (outer is ContainingDeclaration.Found && outer.declaration === subject) {
+                                        if (!providerCandidateReady()) return@PsiElementProcessor false
+                                        deferredCalls += CalleeProviderItem.UnsupportedOwner(call)
+                                    }
+                                    false
+                                }
                                 ContainingDeclaration.Unsupported -> false
                             }
                         if (belongsToSubject) {
@@ -271,7 +291,7 @@ internal class IntellijK2RelationSearch(
                     },
                 )
             if (!callsExhausted) return termination(ProviderTermination.HALTED)
-            val candidates = mutableListOf<CalleeProviderItem>()
+            val candidates = mutableListOf<CalleeProviderItem>().apply { addAll(deferredCalls) }
             for (call in calls) {
                 cancellationCheck()
                 if (!providerEnumerationReady()) {
@@ -303,6 +323,18 @@ internal class IntellijK2RelationSearch(
                     ProviderItemDisposition.HALTED -> return termination(ProviderTermination.HALTED)
                 }
                 when (val candidate = item.value) {
+                    is CalleeProviderItem.UnsupportedOwner -> {
+                        observation.terminated(IntellijReadTermination.RELATION_CALL_OWNER_UNSUPPORTED)
+                        if (
+                            !incompleteItem(
+                                RelationLimitation.UNSUPPORTED_ITEM,
+                                candidate.call,
+                                candidate.call.textRange.shiftLeft(candidate.call.textRange.startOffset),
+                            )
+                        ) {
+                            return termination(ProviderTermination.HALTED)
+                        }
+                    }
                     is CalleeProviderItem.Unresolved ->
                         if (
                             !incompleteItem(
@@ -315,7 +347,8 @@ internal class IntellijK2RelationSearch(
                         }
                     is CalleeProviderItem.Reference ->
                         when (val resolved = projection.resolve(candidate.reference)) {
-                            IntellijK2ResolvedDeclaration.Unresolved ->
+                            IntellijK2ResolvedDeclaration.Unresolved -> {
+                                observation.count(IntellijReadCounter.RELATION_K2_UNAVAILABLE_TARGETS)
                                 if (
                                     !incompleteItem(
                                         RelationLimitation.UNRESOLVED_TARGET,
@@ -325,7 +358,9 @@ internal class IntellijK2RelationSearch(
                                 ) {
                                     return termination(ProviderTermination.HALTED)
                                 }
+                            }
                             is IntellijK2ResolvedDeclaration.Found -> {
+                                observation.count(IntellijReadCounter.RELATION_K2_CONFIRMED_TARGETS)
                                 val file = resolved.declaration.containingFile?.virtualFile
                                 if (
                                     file != null &&
@@ -367,6 +402,10 @@ internal class IntellijK2RelationSearch(
             }
             return termination(ProviderTermination.TERMINAL)
         }
+
+        private fun PsiElement.relatedOwner(): SupportedContainingDeclaration =
+            if (request.meaning == RelationMeaning.Callers) nearestSupportedCallable(projection, observation)
+            else nearestSupportedDeclaration(projection)
 
         private fun packageDisposition(element: PsiElement): ProviderItemDisposition =
             when (request.searchConstraints.packageName.admitPackage { element.relationPackageEvidence() }) {
