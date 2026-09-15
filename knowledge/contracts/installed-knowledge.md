@@ -59,6 +59,24 @@ matches; it does not read declaration bodies.
 
 The focused parser, projection and CLI tests establish these boundaries.
 `installedProductTest` verifies archive contents and invokes the packaged CLI
-from an unrelated directory in an isolated fixture. See the
-[delivery design](../../docs/plans/installed-knowledge-bundle.md) for commands,
-limits and deferred enrichment work.
+from an unrelated directory in an isolated fixture.
+
+## Read installed documentation
+
+```shell
+kast knowledge KastCli
+kast knowledge manifest.json
+kast knowledge modules/cli/index.json
+kast knowledge guides/root.json
+```
+
+Pass a search result’s `resource` value to `kast knowledge` to read its declaration
+card, or its `governingGuides` resource to read the complete guide. There is no
+`--resource` option. These lookups describe the installed Kast version and require
+no checkout, open IDE, Gradle invocation, or network lookup.
+
+Validate generation and installed reads with:
+
+```shell
+./gradlew :build-logic:test :cli:check verifyJsonContracts installedProductTest
+```

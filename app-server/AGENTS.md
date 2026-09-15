@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-14 | hash: 097fb7581e5a -->
+<!-- generated: 2026-09-15 | hash: 27e0f11eccb0 -->
 
 # app-server
 
@@ -13,7 +13,7 @@ Owns the persistent broker/coordinator, host attachment, existing-IDE invocation
 - [CodexToolTerminalReply.kt](src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexToolTerminalReply.kt) - single-document finite broker failure and cancellation replies.
 - [README.md](README.md) - architecture, lifecycle, status, and public integration behavior.
 - [docs/compatibility.md](docs/compatibility.md) - tested compatibility evidence and open release gates.
-- [docs/public-query-contract.md](docs/public-query-contract.md) - externally visible query semantics.
+- [../knowledge/contracts/public-tools.md](../knowledge/contracts/public-tools.md) - externally visible tool and query semantics.
 - [src/main/kotlin/io/github/amichne/kast/appserver/KastCodexMain.kt](src/main/kotlin/io/github/amichne/kast/appserver/KastCodexMain.kt) - Codex-facing executable entry.
 - [src/main/kotlin/io/github/amichne/kast/appserver/InstalledCoordinator.kt](src/main/kotlin/io/github/amichne/kast/appserver/InstalledCoordinator.kt) - installed coordinator assembly.
 - [src/main/kotlin/io/github/amichne/kast/appserver/runtime/CoordinatorControl.kt](src/main/kotlin/io/github/amichne/kast/appserver/runtime/CoordinatorControl.kt) - passive coordinator status and retired-worker rejection.

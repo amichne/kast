@@ -20,7 +20,10 @@ icon: "scan-search"
 keywords: ["kast.search_classes", "symbol search", "semantic relationships", "agent use"]
 ---
 
-Choose the search tool that matches your intent.
+Ask your agent to use Kast to find a declaration by name. For example:
+**“Use Kast to find OrderService, then show its callers.”**
+
+The examples below show the tool inputs for direct calls or harness integration.
 
 <Note>
   Every search uses the session workspace's saved, indexed IntelliJ state.
@@ -66,22 +69,7 @@ Canonical equality remains internal. To collapse repeated declarations, request
 an explicit `distinct_symbols` query step. The public API does not expose an
 equality key.
 
-### Fuzzy matching
-
-Set `"name_match":"fuzzy"` explicitly.
-
-Fuzzy matching accepts one insertion, deletion, substitution, or adjacent transposition.
-
-Results rank in this order:
-
-1. Exact name
-2. Case-insensitive name
-3. One-edit match
-4. Subsequence match
-
-Scope and declaration-kind filters run before candidate capacity.
-
-A bounded search retains its partial-coverage qualifications.
+### Search properties or mixed kinds
 
 For a property or an unknown declaration kind, call `search_declarations`:
 
@@ -131,21 +119,13 @@ A package scope instead uses semantic Kotlin package names:
 }
 ```
 
-### Scope rules
+Use either directory or package scope, with paths relative to the repository.
+`source_set_names: null` selects `main` and `test`; other source sets must belong
+to the imported Gradle model. Generated and library sources are excluded from
+live discovery. Scope restricts discovery subjects; later relationship expansion
+can reach other declarations.
 
-- Directory and package scopes are exclusive closed shapes.
-- `include_subdirectories: false` selects only files in the named directory.
-- `include_subdirectories: true` also includes descendant directories.
-- `include_subpackages` controls semantic package descendants.
-- Kotlin package declarations determine package membership.
-- Mixed fields, absolute paths, parent traversal, and non-canonical paths reject.
-- `source_set_names: null` means exactly `main` and `test`.
-- Explicit names such as `integrationTest` or `commonMain` require imported ownership.
-- Empty or duplicate source-set selections reject.
-- A known absent source set contributes no declarations.
-- Generated and library sources are excluded from live discovery.
-
-Source-set restrictions apply to discovery subjects, not later expansion destinations.
+Use the **Tool contracts** tab for the complete input schemas.
 
 ## Check diagnostics separately
 
@@ -187,23 +167,3 @@ Use `read_relations` for individual use-site facts.
   - Follow the typed blocker when the host is unready.
   - Repeat discovery when a reference is stale.
 </Accordion>
-
-## Reuse exact references
-
-Hosted references use compact handles:
-
-| Reference | Normal prefix |
-| --- | --- |
-| Exact symbol | 31-character `exact:v5:` handle |
-| Candidate | `candidate:v5:` handle |
-
-- Handles retain scope, source sets, snapshot, and compiler evidence.
-- One declaration can have different references under different admitted scopes.
-- Copy `ref` verbatim for follow-up reads.
-- Use `distinct_symbols` for canonical declaration deduplication.
-- A full reference store emits the complete inline selector.
-- Existing handles remain valid until their snapshot expires.
-
-Compact handles check shorter digests against the full retained selector.
-
-A digest collision falls back to the inline representation.

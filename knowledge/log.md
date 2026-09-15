@@ -2,6 +2,12 @@
 
 ## 2026-09-15
 
+- Simplified public onboarding and moved contributor and installation-recovery
+  instructions out of the README. Consolidated installed-knowledge usage here;
+  removed completed task plans, implementation reviews, and obsolete lifecycle
+  examples. Reviewed operation-outcome and public-tool claims against current
+  source. Native acceptance records remain scoped compatibility evidence.
+
 - Advanced installed projection to 12. Query items and per-item failures expose
   scalar `ref`; `symbol_ref` and `symbol_id` leave the public output. Canonical
   identity remains internal to explicit `distinct_symbols`. Migrated native
@@ -106,7 +112,7 @@
   change-lifecycle and hosted-query concepts against their source bindings.
   Mutation authority and workspace recovery requirements remain unchanged.
 - Recorded synthetic multi-module and graph reproductions in the
-  [composability review](../docs/reviews/composable-tooling-reproduction.md).
+  composability regression tests.
 - Rechecked installed schema definitions and documented the shared process output
   cap and its headroom regression; native reports now retain finite provider
   qualification evidence before invoking tools.
