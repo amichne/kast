@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-14 | hash: 282c47670fbb -->
+<!-- generated: 2026-09-14 | hash: fed9c7e3f1cd -->
 
 # packaging
 
@@ -27,6 +27,7 @@ Implements installer support, installed-product acceptance, configuration ingres
 - [hosted_change_acceptance.py](hosted_change_acceptance.py) - bounded complete artifact inventory admission and native acceptance evidence.
 - [configuration-schema.json](configuration-schema.json) - packaging-side configuration schema.
 - [installation-lifecycle.py](installation-lifecycle.py) - installed lifecycle orchestration.
+- [installation-recovery.py](installation-recovery.py) - typed recovery receipts, inactive plugin storage outside IDEA discovery, and owned legacy migration.
 - [installed_acceptance_product.py](installed_acceptance_product.py) - acceptance product model.
 - [run-installed-product.py](run-installed-product.py) - installed-product runner.
 - [install-local.sh](install-local.sh) and [install-checkout.sh](install-checkout.sh) - packaging shell boundaries.

@@ -272,6 +272,43 @@ class RecoveryTest(unittest.TestCase):
         self.assertEqual(b'prior active plugin', (Path(receipt.plugin.quarantine) / 'bytes').read_bytes())
         self.assertEqual((code, report), self.run_recovery('detach'))
 
+    def test_legacy_pending_candidate_activates_from_retained_storage(self):
+        module = self.recovery_module()
+        plugins, staged = self.plugin_fixture(module, legacy=True)
+        bundle = self.outer / 'recovery' / self.root.name
+        receipt = module.load(bundle / 'receipt.json')
+        old_backup = Path(receipt.plugin.backup)
+        old_backup.rename(self.home / 'unrelated-retained-bytes')
+        candidate = Path(receipt.plugin.candidate)
+        (staged / 'kast-ide-hosted').rename(candidate)
+        active = plugins / 'kast-ide-hosted'
+        pending = module.replace(receipt.plugin, candidateIdentity=module.Identity.observe(candidate),
+                                 priorIdentity=module.Identity.observe(active))
+        module.save(bundle / 'receipt.json', module.replace_stage(receipt, module.Status.PREPARED, pending))
+        candidate_identity = module.Identity.observe(candidate)
+        module.activate_plugin(self.root, staged, plugins)
+        self.assertEqual([active], list(plugins.iterdir()))
+        self.assertEqual(candidate_identity, module.Identity.observe(active))
+        self.assertEqual(b'next plugin', (active / 'bytes').read_bytes())
+        admitted = module.load(bundle / 'receipt.json')
+        self.assertEqual(b'prior active plugin', (Path(admitted.plugin.backup) / 'bytes').read_bytes())
+
+    def test_legacy_detached_quarantine_is_migrated_without_reactivation(self):
+        module = self.recovery_module()
+        plugins, _ = self.plugin_fixture(module, legacy=True)
+        bundle = self.outer / 'recovery' / self.root.name
+        receipt = module.load(bundle / 'receipt.json')
+        active = plugins / 'kast-ide-hosted'
+        identity = module.Identity.observe(active)
+        active.rename(Path(receipt.plugin.quarantine))
+        module.save(bundle / 'receipt.json', module.replace_stage(receipt, module.Status.UNRESOLVED))
+        code, report = self.run_recovery('detach')
+        self.assertEqual('DetachedWithUnresolvedState', report['status'])
+        self.assertEqual([], list(plugins.iterdir()))
+        migrated = module.load(bundle / 'receipt.json')
+        self.assertEqual(identity, module.Identity.observe(Path(migrated.plugin.quarantine)))
+        self.assertEqual(b'prior active plugin', (Path(migrated.plugin.quarantine) / 'bytes').read_bytes())
+
     def test_unknown_receipt_fields_fail_closed(self):
         self.prepare()
         path = self.outer / 'recovery' / self.root.name / 'receipt.json'

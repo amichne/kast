@@ -2,6 +2,13 @@
 
 ## 2026-09-14
 
+- Traced an original-release upgrade/unload failure to retained plugin backups
+  inside IDEA discovery. Moved inactive copies to a same-filesystem private
+  sibling and added strict, interruption-safe migration of receipt-owned legacy
+  candidates, backups and quarantine. Private transaction tests preserve inode
+  identity and prior immutable files; actual old-installer to new-installer
+  migration and native unload remain release qualification gates.
+
 - Reproduced successful passive runtime-identity counters on stderr from the
   original v0.40.15 installation. Routed accepted counters to an explicit typed
   sink for passive reads while preserving startup reporting and finite rejection
