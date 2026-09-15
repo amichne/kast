@@ -562,7 +562,7 @@ def load_tests(loader, tests, _pattern):
                  'test-hosted-authority-read.py', 'test-hosted-budget-read-regression.py',
                  'test-hosted-repair-budget-regression.py',
                  'test-hosted-kotlin-call-regression.py', 'test-hosted-compact-source-regression.py',
-                 'test-hosted-vfs-overflow-regression.py',
+                 'test-hosted-vfs-overflow-regression.py', 'test-hosted-source-failure-regression.py',
                  'test-hosted-resume-budget-regression.py', 'test-hosted-raw-symbol-regression.py',
                  'test-hosted-read-name-regression.py',
                  'test-released-acceptance-product.py', 'test-released-tool-inventory.py',

@@ -96,8 +96,15 @@ class PageFixture:
 
 
 @dataclass(frozen=True)
+class UnavailableSymbolReference:
+    type: str = 'reference-rejected'
+    role: str = 'symbol'
+    reason: str = 'unavailable'
+
+
+@dataclass(frozen=True)
 class RejectionFixture:
-    reason: str
+    reason: str | UnavailableSymbolReference
     status: str = 'rejected'
     operation: str = 'source.read'
 
@@ -157,7 +164,7 @@ class AuthorityReadTest(unittest.TestCase):
             acquisition = 'reacquired' if arguments['target']['type'] == 'revalidate_exact' else 'strict'
             document = InspectionSlice(live, InspectedSymbolSlice(selector), acquisition)
         elif arguments['anchor']['selector'] != selector:
-            document = RejectionFixture('stale-generation')
+            document = RejectionFixture(UnavailableSymbolReference())
         elif arguments['page']['type'] == 'continue' and arguments['page']['continuation'] != 'cursor-' + str(self.epoch):
             document = RejectionFixture('source-snapshot-mismatch')
         else:

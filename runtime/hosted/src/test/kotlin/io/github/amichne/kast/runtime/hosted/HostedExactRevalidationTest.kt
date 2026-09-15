@@ -79,7 +79,7 @@ class HostedExactRevalidationTest {
             .value()
 
     @Test
-    fun `explicit reacquisition after unrelated movement leaves strict old reference stale`() = runBlocking {
+    fun `reacquisition after epoch movement leaves the old strict handle unavailable`() = runBlocking {
         val strict = HostedReferenceStore()
         val records = ExactRevalidationRecords()
         val first = references(strict, original)
@@ -88,7 +88,7 @@ class HostedExactRevalidationTest {
         val current = owner.advance()
         val references = references(strict, current)
         assertEquals(
-            CanonicalSelectorDecodingFailure.STALE_AUTHORITY,
+            CanonicalSelectorDecodingFailure.UNAVAILABLE,
             (references.restoreExact(token, current) as CanonicalSelectorDecoding.Rejected).failure,
         )
         var compilations = 0

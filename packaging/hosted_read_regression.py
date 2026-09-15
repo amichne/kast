@@ -26,6 +26,7 @@ from hosted_kotlin_call_regression import run_kotlin_call_regression
 from hosted_compact_source_regression import run_compact_source_regression
 from hosted_vfs_overflow_regression import run_vfs_overflow_regression
 from hosted_read_policy import NativeReadPolicy
+from hosted_source_failure_regression import run_source_failure_regression
 from hosted_source_read_regression import run_source_paging_regression, source_qualification_observation
 
 
@@ -112,6 +113,7 @@ class _ReadReplay:
         self.specialists()
         run_kotlin_call_regression(self)
         run_compact_source_regression(self)
+        run_source_failure_regression(self)
         run_raw_symbol_regression(self)
 
     def query(self, case):

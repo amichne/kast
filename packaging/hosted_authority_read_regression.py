@@ -35,11 +35,18 @@ class AuthorityFailure(str, Enum):
 
 
 class AuthorityRefusal(str, Enum):
-    STALE_REFERENCE = 'stale-generation'
+    UNAVAILABLE_REFERENCE = 'reference-unavailable'
     STALE_CONTINUATION = 'source-snapshot-mismatch'
     UNAVAILABLE_CONTINUATION = 'continuation-unavailable'
     UNEXPECTED = 'unexpected-refusal'
     FOREIGN = 'ide-host-unavailable'
+
+
+@dataclass(frozen=True)
+class UnavailableSymbolReference:
+    type: str = field(default='reference-rejected', init=False)
+    role: str = field(default='symbol', init=False)
+    reason: str = field(default='unavailable', init=False)
 
 
 class InspectionStage(str, Enum):
@@ -311,12 +318,16 @@ class _AuthorityReplay:
 
     def reject(self, name, surface, request, reason):
         response, digest = self.call(surface, 'source_read', request)
+        raw = response.get('reason')
+        if raw == asdict(UnavailableSymbolReference()):
+            observed = AuthorityRefusal.UNAVAILABLE_REFERENCE
+        else:
+            try:
+                observed = AuthorityRefusal(raw)
+            except (ValueError, TypeError):
+                observed = AuthorityRefusal.UNEXPECTED
         passed = (response.get('status') == 'rejected' and response.get('operation') == 'source.read'
-                  and response.get('reason') == reason)
-        try:
-            observed = AuthorityRefusal(response.get('reason'))
-        except (ValueError, TypeError):
-            observed = AuthorityRefusal.UNEXPECTED
+                  and observed == reason)
         self.cases.append(AuthorityCase(name, surface, digest, surface is AuthoritySurface.PROVIDER,
                                         reason, passed, observed))
         _demand(passed, AuthorityFailure.REJECTION)
@@ -406,7 +417,7 @@ def run_authority_read_regression(isolation, fixture, transport, initial_live):
             edited_live = current
             report = replace(report, editedEpoch=current['epoch'])
             old, token = issued[surface]
-            replay.reject(AuthorityCaseName.OLD_REFERENCE, surface, old, AuthorityRefusal.STALE_REFERENCE)
+            replay.reject(AuthorityCaseName.OLD_REFERENCE, surface, old, AuthorityRefusal.UNAVAILABLE_REFERENCE)
             replay.reject(AuthorityCaseName.OLD_CURSOR, surface,
                 replace(fresh, page=ContinueSourcePage(token)), AuthorityRefusal.STALE_CONTINUATION)
             replay.page(AuthorityCaseName.FRESH, surface, fresh, current, 'pageItem00')
