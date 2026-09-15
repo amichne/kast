@@ -3,22 +3,57 @@ package io.github.amichne.kast.appserver
 import io.github.amichne.kast.appserver.runtime.BrokerUpstreamConnection
 import io.github.amichne.kast.appserver.runtime.BrokerUpstreamFrame
 import io.github.amichne.kast.appserver.runtime.BrokerUpstreamSend
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.supervisorScope
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 
 class NativeCodexReadinessTest {
     @Test
-    fun `peer channel cancellation remains a finite rejection in an active caller`() = runBlocking {
-        val peer = object : BrokerUpstreamConnection {
-            override suspend fun send(message: String): BrokerUpstreamSend = throw kotlinx.coroutines.CancellationException("peer channel closed")
-            override suspend fun receive(): BrokerUpstreamFrame = BrokerUpstreamFrame.Closed
-            override suspend fun close() = Unit
+    fun `readiness does not swallow caller cancellation`() = runBlocking {
+        supervisorScope {
+            var returned = false
+            val peer =
+                object : BrokerUpstreamConnection {
+                    override suspend fun send(message: String): BrokerUpstreamSend {
+                        currentCoroutineContext().cancel()
+                        throw CancellationException("caller cancelled")
+                    }
+
+                    override suspend fun receive(): BrokerUpstreamFrame = BrokerUpstreamFrame.Closed
+
+                    override suspend fun close() = Unit
+                }
+            val caller = async {
+                NativeCodexReadiness.exchange(peer)
+                returned = true
+            }
+            assertThrows<CancellationException> { caller.await() }
+            assertFalse(returned)
         }
+    }
+
+    @Test
+    fun `peer channel cancellation remains a finite rejection in an active caller`() = runBlocking {
+        val peer =
+            object : BrokerUpstreamConnection {
+                override suspend fun send(message: String): BrokerUpstreamSend =
+                    throw kotlinx.coroutines.CancellationException("peer channel closed")
+
+                override suspend fun receive(): BrokerUpstreamFrame = BrokerUpstreamFrame.Closed
+
+                override suspend fun close() = Unit
+            }
         assertEquals(NativeCodexReadiness.REJECTED, NativeCodexReadiness.exchange(peer))
     }
 

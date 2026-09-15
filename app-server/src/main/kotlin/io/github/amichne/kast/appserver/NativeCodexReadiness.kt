@@ -7,6 +7,8 @@ import io.github.amichne.kast.appserver.runtime.BrokerUpstreamSend
 import io.github.amichne.kast.appserver.runtime.connectCodexUnixWebSocket
 import java.nio.file.Path
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -19,24 +21,32 @@ internal enum class NativeCodexReadiness {
     companion object {
         /** Native initialize traverses the broker and private upstream; it creates no thread. */
         suspend fun observe(path: Path, timeoutMillis: Long): NativeCodexReadiness =
-            withTimeoutOrNull(timeoutMillis) {
-                val connection =
-                    when (val connected = connectCodexUnixWebSocket(path, 65_536, timeoutMillis)) {
-                        is BrokerUpstreamConnectionAdmission.Connected -> connected.connection
-                        BrokerUpstreamConnectionAdmission.Rejected -> return@withTimeoutOrNull REJECTED
+            try {
+                withTimeoutOrNull(timeoutMillis) {
+                    val connection =
+                        when (val connected = connectCodexUnixWebSocket(path, 65_536, timeoutMillis)) {
+                            is BrokerUpstreamConnectionAdmission.Connected -> connected.connection
+                            BrokerUpstreamConnectionAdmission.Rejected -> return@withTimeoutOrNull REJECTED
+                        }
+                    try {
+                        exchange(connection)
+                    } finally {
+                        connection.close()
                     }
-                try {
-                    exchange(connection)
-                } finally {
-                    connection.close()
-                }
-            } ?: REJECTED
+                } ?: REJECTED
+            } catch (_: CancellationException) {
+                currentCoroutineContext().ensureActive()
+                REJECTED
+            } catch (_: Exception) {
+                REJECTED
+            }
 
         internal suspend fun exchange(connection: BrokerUpstreamConnection): NativeCodexReadiness =
             try {
                 exchangeNative(connection)
-            } catch (cancelled: CancellationException) {
-                throw cancelled
+            } catch (_: CancellationException) {
+                currentCoroutineContext().ensureActive()
+                REJECTED
             } catch (_: Exception) {
                 REJECTED
             }
