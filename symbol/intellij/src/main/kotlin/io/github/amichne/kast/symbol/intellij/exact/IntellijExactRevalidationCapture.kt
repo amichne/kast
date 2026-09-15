@@ -1,8 +1,8 @@
 package io.github.amichne.kast.symbol.intellij
 
 import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.fileEditor.impl.LoadTextUtil
 import com.intellij.openapi.progress.ProgressManager
-import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiFile
 import io.github.amichne.kast.kernel.Refinement
@@ -93,35 +93,54 @@ class IntellijExactRevalidationCapture(
         )
             return reject(ExactRevalidationRejection.CONTENT_UNCOMMITTED)
         val size = virtual.length
-        val cost = 1 + (size + CHUNK_BYTES - 1) / CHUNK_BYTES
-        if (size < 0 || size > MAX_FILE_BYTES || work + cost > workLimit)
+        // Reserve room for the one-byte EOF probe. Only actual consumed bytes are charged below.
+        val maximumCost = 1 + (size + CHUNK_BYTES) / CHUNK_BYTES
+        if (
+            size < 0 ||
+                size > MAX_FILE_BYTES ||
+                psi.textLength > MAX_FILE_BYTES ||
+                document != null && document.textLength > MAX_FILE_BYTES ||
+                maximumCost > workLimit - work
+        )
             return reject(ExactRevalidationRejection.CAPACITY)
-        work += cost
-        observation.count(IntellijReadCounter.REVALIDATION_WORK_CHARGED, amount = cost.toInt())
-        val hash = hash(virtual)
+        work++
+        observation.count(IntellijReadCounter.REVALIDATION_WORK_CHARGED)
+        var consumedBytes = 0
+        val bytes =
+            when (
+                val read =
+                    virtual.inputStream.use { stream ->
+                        readExactSavedBytes(
+                            stream,
+                            size.toInt(),
+                            bytesRead = { count ->
+                                val previousUnits = (consumedBytes + CHUNK_BYTES - 1) / CHUNK_BYTES
+                                consumedBytes += count
+                                val charged = (consumedBytes + CHUNK_BYTES - 1) / CHUNK_BYTES - previousUnits
+                                work += charged
+                                if (charged > 0)
+                                    observation.count(IntellijReadCounter.REVALIDATION_WORK_CHARGED, amount = charged)
+                            },
+                            cancellationCheck = ProgressManager::checkCanceled,
+                        )
+                    }
+            ) {
+                is ExactSavedBytesRead.Read -> read.bytes
+                is ExactSavedBytesRead.Rejected -> return reject(read.reason)
+            }
+        val hash = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
         observation.count(IntellijReadCounter.REVALIDATION_FILES_HASHED)
-        observation.count(IntellijReadCounter.REVALIDATION_BYTES_HASHED, amount = size.toInt())
+        observation.count(IntellijReadCounter.REVALIDATION_BYTES_HASHED, amount = bytes.size)
+        // Charset overload performs IntelliJ BOM/newline conversion without mutating VirtualFile charset metadata.
+        val saved = LoadTextUtil.getTextByBinaryPresentation(bytes, virtual.charset)
+        when (val matched = admitExactSavedPsiText(saved, psi.text, document?.immutableCharSequence)) {
+            is Refinement.Refined -> Unit
+            is Refinement.Rejected -> return matched
+        }
         return when (val identity = ExactRevalidationTextIdentity.parse(hash)) {
             is Refinement.Refined -> Refinement.Refined(Capture(owner, identity.value))
             is Refinement.Rejected -> identity
         }
-    }
-
-    private fun hash(file: VirtualFile): String {
-        val digest = MessageDigest.getInstance("SHA-256")
-        file.inputStream.use { stream ->
-            val buffer = ByteArray(CHUNK_BYTES)
-            var total = 0
-            while (true) {
-                ProgressManager.checkCanceled()
-                val count = stream.read(buffer)
-                if (count < 0) break
-                total += count
-                check(total <= MAX_FILE_BYTES) { "Saved VFS content exceeded its admitted length" }
-                digest.update(buffer, 0, count)
-            }
-        }
-        return digest.digest().joinToString("") { "%02x".format(it) }
     }
 
     companion object {
