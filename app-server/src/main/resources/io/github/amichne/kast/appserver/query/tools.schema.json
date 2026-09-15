@@ -28,8 +28,7 @@
     },
     "search_fields": [
       "name",
-      "location",
-      "signature"
+      "location"
     ]
   },
   "$defs": {
@@ -241,10 +240,7 @@
         "symbol_refs": {
           "type": "array",
           "items": {
-            "type": "string",
-            "description": "Opaque exact-symbol reference returned by Kast. Copy the token verbatim; do not construct, edit, or substitute a candidate reference.",
-            "minLength": 1,
-            "maxLength": 1048576
+            "$ref": "#/$defs/ExactSymbolRef"
           },
           "minItems": 1,
           "maxItems": 1000
@@ -377,12 +373,29 @@
       },
       "required": [],
       "additionalProperties": false
+    },
+    "ExactSymbolRef": {
+      "type": "string",
+      "description": "Opaque exact-symbol reference returned by Kast. Copy the token verbatim; do not construct, edit, or substitute a candidate reference.",
+      "minLength": 1,
+      "maxLength": 1048576,
+      "x-kotlin-type": "ExactSymbolRef"
+    },
+    "ContinuationRef": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1,
+      "maxLength": 256,
+      "description": "Opaque continuation returned by this exact pipeline. Omit or use null to start. Resume with the same source, steps and return_fields; stale or mismatched state rejects.",
+      "x-kotlin-type": "ContinuationRef"
     }
   },
   "tools": [
     {
       "name": "search_classes",
-      "description": "Find named class-like declarations supported by Kast. This searches declaration names, not use sites or source text. Constructors are not included. Returns names, locations, signatures, opaque symbol references, and completeness evidence. Uses the session workspace's saved, indexed IntelliJ state; unavailable or unready hosts reject the read. No hidden fuzzy retry or scope widening.",
+      "description": "Find named class-like declarations supported by Kast. This searches declaration names, not use sites or source text. Constructors are not included. Returns names, locations, opaque symbol references, and completeness evidence. Request signatures with query_symbols using the returned references. Uses the session workspace's saved, indexed IntelliJ state; unavailable or unready hosts reject the read. No hidden fuzzy retry or scope widening.",
       "deferLoading": false,
       "schema": {
         "type": "object",
@@ -434,7 +447,7 @@
     },
     {
       "name": "search_functions",
-      "description": "Find named functions and methods. This searches declaration names, not call sites or source text. Returns every matching overload separately. Returns names, locations, signatures, opaque symbol references, and completeness evidence. Uses the session workspace's saved, indexed IntelliJ state; unavailable or unready hosts reject the read. No hidden fuzzy retry or scope widening.",
+      "description": "Find named functions and methods. This searches declaration names, not call sites or source text. Returns every matching overload separately. Returns names, locations, opaque symbol references, and completeness evidence. Request signatures with query_symbols using the returned references. Uses the session workspace's saved, indexed IntelliJ state; unavailable or unready hosts reject the read. No hidden fuzzy retry or scope widening.",
       "deferLoading": false,
       "schema": {
         "type": "object",
@@ -486,7 +499,7 @@
     },
     {
       "name": "search_declarations",
-      "description": "Find named declarations when the kind is unknown or when searching properties or type aliases. Prefer search_classes or search_functions when that kind is known. Not a source-text or usage search. Returns names, locations, signatures, opaque symbol references, and completeness evidence. Uses the session workspace's saved, indexed IntelliJ state; unavailable or unready hosts reject the read. No hidden fuzzy retry or scope widening.",
+      "description": "Find named declarations when the kind is unknown or when searching properties or type aliases. Prefer search_classes or search_functions when that kind is known. Not a source-text or usage search. Returns names, locations, opaque symbol references, and completeness evidence. Request signatures with query_symbols using the returned references. Uses the session workspace's saved, indexed IntelliJ state; unavailable or unready hosts reject the read. No hidden fuzzy retry or scope widening.",
       "deferLoading": false,
       "schema": {
         "type": "object",
@@ -649,13 +662,7 @@
             "uniqueItems": true
           },
           "continuation": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "minLength": 1,
-            "maxLength": 256,
-            "description": "Opaque continuation returned by this exact pipeline. Omit or use null to start. Resume with the same source, steps and return_fields; stale or mismatched state rejects."
+            "$ref": "#/$defs/ContinuationRef"
           },
           "execution_budget": {
             "$ref": "#/$defs/ExecutionBudget"

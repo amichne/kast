@@ -103,7 +103,7 @@ internal data class PublicToolAllSource(
 @Serializable
 @SerialName("symbol_refs")
 internal data class PublicToolReferenceSource(
-    val symbol_refs: BoundedProtocolList<ProtocolText>,
+    val symbol_refs: BoundedProtocolList<ExactSymbolRef>,
 ) : PublicToolSource
 
 @Serializable
@@ -164,7 +164,7 @@ internal data class PublicToolQuerySymbols(
     val source: PublicToolSource,
     val steps: BoundedProtocolList<PublicToolStep>?,
     val return_fields: BoundedProtocolList<PublicToolReturnFields>?,
-    val continuation: ProtocolText? = null,
+    val continuation: ContinuationRef? = null,
     @SerialName("execution_budget")
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val executionBudget: ExecutionBudgetDocument? = null,
@@ -183,7 +183,7 @@ internal object PublicToolDefaults {
     val sourceSets = toolDefault(BoundedProtocolList.create(listOf(toolDefault(ProtocolText.parse("main")), toolDefault(ProtocolText.parse("test")))))
     val declarationKinds = toolDefault(BoundedProtocolList.create(listOf(PublicToolDeclarationKinds.CLASS, PublicToolDeclarationKinds.FUNCTION, PublicToolDeclarationKinds.PROPERTY, PublicToolDeclarationKinds.TYPE_ALIAS)))
     val returnFields = toolDefault(BoundedProtocolList.create(listOf(PublicToolReturnFields.NAME, PublicToolReturnFields.LOCATION)))
-    val searchFields = toolDefault(BoundedProtocolList.create(listOf(PublicToolReturnFields.NAME, PublicToolReturnFields.LOCATION, PublicToolReturnFields.SIGNATURE)))
+    val searchFields = toolDefault(BoundedProtocolList.create(listOf(PublicToolReturnFields.NAME, PublicToolReturnFields.LOCATION)))
     val steps: BoundedProtocolList<PublicToolStep> = toolDefault(BoundedProtocolList.create(emptyList()))
     const val maxDiagnostics = 100
     val scope: PublicToolScope = PublicToolDirectoryScope(toolDefault(ProtocolText.parse(".")), true, sourceSets)
