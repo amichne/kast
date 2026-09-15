@@ -91,6 +91,7 @@ class InstallationRequestTest {
             InstallationEnvironment.ENABLE_APP_SERVER.key to "1",
             InstallationEnvironment.APP_SERVER_TOOLS.key to "query_symbols,source_read",
             InstallationEnvironment.REFRESH_APP_SERVER.key to "0",
+            InstallationEnvironment.REPLACE_COMMAND_COLLISIONS.key to "0",
             InstallationEnvironment.MODE.key to "apply",
         )
 }

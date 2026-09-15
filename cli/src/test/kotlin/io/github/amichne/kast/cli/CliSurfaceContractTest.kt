@@ -37,23 +37,6 @@ class CliSurfaceContractTest {
                 CliProductCommand.KNOWLEDGE,
                 CliProductCommand.CODEX_CLI,
                 CliProductCommand.CODEX_DESKTOP,
-                CliProductCommand.INDEX_STATUS,
-                CliProductCommand.INDEX_CLASSES,
-                CliProductCommand.INDEX_SUPERTYPE,
-                CliProductCommand.INDEX_COMPLETION,
-                CliProductCommand.IDE_STATUS,
-                CliProductCommand.IDE_CLASSES,
-                CliProductCommand.IDE_SUPERTYPE,
-                CliProductCommand.IDE_COMPLETION,
-                CliProductCommand.IDE_TRUST_BROKER,
-                CliProductCommand.APP_SERVER_REGISTER,
-                CliProductCommand.APP_SERVER_ENABLE,
-                CliProductCommand.APP_SERVER_REPAIR,
-                CliProductCommand.APP_SERVER_STATUS,
-                CliProductCommand.APP_SERVER_STOP,
-                CliProductCommand.APP_SERVER_DISABLE,
-                CliProductCommand.APP_SERVER_CLAIM,
-                CliProductCommand.APP_SERVER_RELEASE,
             ),
             surface.localCommands,
         )
@@ -104,6 +87,9 @@ class CliSurfaceContractTest {
         assertTrue(helpText.contains("Read compiler diagnostics"))
         assertTrue(helpText.contains("workspace"))
         assertTrue(helpText.contains("change"))
+        assertFalse(helpText.contains("app-server"))
+        assertFalse(helpText.lineSequence().any { it.trimStart().startsWith("ide ") })
+        assertFalse(helpText.lineSequence().any { it.trimStart().startsWith("index ") })
         listOf(CliLifecycleCommand.START, CliLifecycleCommand.STOP).forEach { command ->
             assertFalse(helpText.lineSequence().any { it.trimStart().startsWith(command.command + " ") })
         }

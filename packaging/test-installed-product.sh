@@ -58,13 +58,6 @@ assert document["cliProjection"]["commands"], document
 assert document["cliProjection"]["localCommands"] == [
     "knowledge <query-or-resource>",
     "codex", "codex desktop",
-    "index status [--root <path>]", "index classes <name> [--root <path>]",
-    "index supertype <qualified-name> [--root <path>]", "index generate-completion <shell>",
-    "ide status [--root <path>]", "ide classes <name> [--root <path>]",
-    "ide supertype <qualified-name> [--root <path>]", "ide generate-completion <shell>", "ide trust-broker",
-    "app-server register", "app-server enable", "app-server repair --destructive",
-    "app-server status", "app-server stop", "app-server disable",
-    "app-server control claim", "app-server control release",
 ], document["cliProjection"]["localCommands"]
 projection = document["serverProjection"]
 bootstrap = projection["hostedBootstrap"]
@@ -94,10 +87,10 @@ assert all("invocation" not in tool and "cliUsage" not in tool for tool in boots
 PY
 
 help="$(env "${command_environment[@]}" "$kast" --help)"
-for command in tool symbol source relation traversal diagnostic change knowledge codex index ide; do
+for command in tool symbol source relation traversal diagnostic change knowledge codex; do
   grep -Eq "^  ${command}[[:space:]]" <<<"$help" || fail "missing command: $command"
 done
-for command in start stop topology; do
+for command in start stop topology index ide app-server; do
   if grep -Eq "^  ${command}[[:space:]]" <<<"$help"; then fail "retired command is public: $command"; fi
 done
 

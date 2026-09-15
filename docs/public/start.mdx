@@ -65,14 +65,9 @@ Install the IDEA plugin, connect Codex, and find a declaration in your repositor
     - Wait for Gradle import and indexing to finish.
     - Save edited files before requesting evidence.
 
-    From your repository, check the connection:
-
-    ```console
-    kast ide status
-    ```
-
-    Look for `admission_ready`. If the endpoint is unavailable, follow its
-    recovery guidance or [troubleshoot the connection](/troubleshooting).
+    Kast checks the existing-IDE endpoint when the agent connects. If the
+    endpoint is unavailable, follow the reported recovery guidance or
+    [troubleshoot the connection](/troubleshooting).
   </Step>
   <Step title="Connect from the repository root">
     ```console
@@ -81,8 +76,8 @@ Install the IDEA plugin, connect Codex, and find a declaration in your repositor
     ```
 
     This command enrolls the workspace, qualifies the installed catalog, and
-    starts the included integration. Closing the client leaves the broker running;
-    use `kast app-server stop` to stop it.
+    starts the included integration. Closing the client leaves the managed
+    broker running for later terminal or Desktop sessions.
   </Step>
   <Step title="Ask for a declaration">
     Ask: **“Use Kast to find the class OrderService.”** Replace `OrderService`
@@ -119,6 +114,19 @@ Install the IDEA plugin, connect Codex, and find a declaration in your repositor
 
     Other `262` builds are admitted by policy but lack the same native acceptance
     evidence. See [Compatibility](/reference/compatibility).
+  </Accordion>
+  <Accordion title="Choose installation directories or resolve command collisions">
+    Pass absolute user-owned paths:
+
+    ```shell
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" \
+      -- --install-root "/path/to/kast-data" --bin-dir "/path/to/bin"
+    ```
+
+    When `kast` or `kast-codex` already occupies the selected command directory,
+    an interactive install lists those exact paths and asks before removing them.
+    Non-interactive installs fail closed; pass `--clean-collisions` only when the
+    listed command paths may be replaced.
   </Accordion>
   <Accordion title="Connect Codex Desktop">
     1. Quit any running Desktop instance.
