@@ -1,6 +1,7 @@
 """Disposable diagnostic-pages policy acceptance; bounded payloads stay in memory."""
 from dataclasses import asdict, dataclass, replace
 from enum import Enum
+from hosted_read_transport import ReadTransportRejected
 
 
 @dataclass(frozen=True)
@@ -198,14 +199,21 @@ def independent_budget_checks(replay):
     for axis, value in (('max_elapsed_ms', 1), ('max_returned_bytes', 2048)):
         request = DiagnosticRequest('src/main/kotlin/ReadDiagnosticPages.kt', 1000,
             execution_budget=replace(DiagnosticGrant(max_results=1000), **{axis: value}))
-        response = _invoke(replay, request)
-        for _ in range(8):
-            token = response.get('qualification', {}).get('continuation')
-            if not isinstance(token, str):
-                break
-            request = replace(request, continuation=token)
-            response = _invoke(replay, request)
         label = 'timeOne' if axis == 'max_elapsed_ms' else 'bytes2048'
+        try:
+            response = _invoke(replay, request)
+            for _ in range(8):
+                token = response.get('qualification', {}).get('continuation')
+                if not isinstance(token, str):
+                    break
+                request = replace(request, continuation=token)
+                response = _invoke(replay, request)
+        except ReadTransportRejected as failure:
+            checks[label + 'Reported'] = False
+            checks[label + 'TransportObserved_' + failure.reason.value] = True
+            if failure.provider_failure is not None:
+                checks[label + 'ProviderObserved_' + failure.provider_failure.value] = True
+            continue
         checks[label + 'Reported'] = _reported_limit(response, axis, value)
         checks[label + 'FiniteOutcome'] = response.get('status') in ('complete', 'qualified', 'rejected')
         # Name the actual terminal observation; a naturally completed request is not exhaustion evidence.

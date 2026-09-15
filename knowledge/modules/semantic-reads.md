@@ -6,6 +6,7 @@ resource: file://query
 tags: [kotlin, semantic, query, compiler]
 timestamp: 2026-09-14T00:00:00Z
 code_sources:
+  - path: diagnostic/intellij/src/main/kotlin/io/github/amichne/kast/diagnostic/intellij/ProjectBoundDiagnosticEnumeration.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/DiagnosticCheckpointStore.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedDiagnosticResponse.kt
   - path: diagnostic/service/src/main/kotlin/io/github/amichne/kast/diagnostic/service/DiagnosticScanService.kt
@@ -257,3 +258,5 @@ poll cancellation and the service checks elapsed time before publication, but
 this does not prove a per-ID work bound for a long excluded-only native prefix.
 That strict native internal-work qualification remains separate from the compiled
 callback, replay, exclusion-capacity and elapsed-rejection tests.
+
+Diagnostic resumes preserve the original path, authority and `max_diagnostics` semantic choice. Execution grants may change. Checkpoint admission charges the retained query and authority identity against both the per-checkpoint and aggregate retention bounds. Admitted rejections preserve the actual execution grant report and a finite recovery direction; that direction authorizes no setting change or epoch migration.
