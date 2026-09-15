@@ -70,6 +70,26 @@ class HostedReadTransactionTest {
     }
 
     @Test
+    fun `regressed clock rejects caller completion while containment policy is unchanged`() = runTest {
+        for (policy in HostedReadCompletionPolicy.entries) {
+            var now = 10L
+            val progress = HostedQueryProgress(clock = { now }, completion = policy)
+            val result =
+                runHostedReadTransaction(progress, { Refinement.Refined(Unit) }) {
+                    now = 9L
+                    42
+                }
+            val expected =
+                when (policy) {
+                    HostedReadCompletionPolicy.CALLER_ELAPSED ->
+                        HostedSemanticRead.Rejected(HostedQueryFailure.BUDGET_EXCEEDED)
+                    HostedReadCompletionPolicy.HOST_CONTAINMENT -> HostedSemanticRead.Resolved(42)
+                }
+            assertEquals(expected, result)
+        }
+    }
+
+    @Test
     fun `failed admission never evaluates a plan`() = runTest {
         var evaluated = false
         val result =

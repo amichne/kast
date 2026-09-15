@@ -102,13 +102,12 @@ internal class HostedReadDeadline(
     fun validateCompletion(completion: HostedReadCompletion): Refinement<Unit, HostedQueryFailure> =
         when (completion) {
             HostedReadCompletion.HostContainment -> Refinement.Refined(Unit)
-            is HostedReadCompletion.CallerElapsed ->
-                if (
-                    TimeUnit.NANOSECONDS.toMillis((clock() - completion.startedNanos).coerceAtLeast(0L)) >=
-                        completion.limit.value
-                )
+            is HostedReadCompletion.CallerElapsed -> {
+                val elapsed = clock() - completion.startedNanos
+                if (elapsed < 0L || TimeUnit.NANOSECONDS.toMillis(elapsed) >= completion.limit.value)
                     Refinement.Rejected(HostedQueryFailure.BUDGET_EXCEEDED)
                 else Refinement.Refined(Unit)
+            }
         }
 
     private fun remainingMillis(): Long {
