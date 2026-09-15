@@ -19,3 +19,14 @@ internal sealed interface HostedReadCompletion {
 
     data class CallerElapsed(val startedNanos: Long, val limit: ElapsedTimeLimitMillis) : HostedReadCompletion
 }
+
+internal fun <Value> HostedExecution<HostedSemanticRead<Value>>.semanticReadResult(): HostedSemanticReadResult<Value> =
+    when (this) {
+        is HostedExecution.Rejected -> HostedSemanticReadResult.Rejected(failure, stage, executionBudget)
+        is HostedExecution.Completed ->
+            when (val result = value) {
+                is HostedSemanticRead.Resolved -> HostedSemanticReadResult.Completed(result.evidence)
+                is HostedSemanticRead.Rejected ->
+                    HostedSemanticReadResult.Rejected(result.failure, stage, executionBudget)
+            }
+    }
