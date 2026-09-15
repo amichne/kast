@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-15 | hash: c31154c42845 -->
+<!-- generated: 2026-09-15 | hash: ea6cc05510b9 -->
 
 # packaging
 
@@ -8,6 +8,8 @@
 Implements installer support, installed-product acceptance, configuration ingress generation, and real-environment lifecycle checks.
 
 ## Key Files
+
+- [hosted_repair_time_observation.py](hosted_repair_time_observation.py) - same-request native host stage, grant, reserve and transport timing evidence.
 
 - [hosted_diagnostic_pages_regression.py](hosted_diagnostic_pages_regression.py) - bounded same-basis diagnostic drain and repeated warning occurrences.
 - [hosted_source_failure_regression.py](hosted_source_failure_regression.py) - finite source failure evidence across CLI ingress and provider responses.
