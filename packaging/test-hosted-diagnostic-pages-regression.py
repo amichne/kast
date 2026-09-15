@@ -6,7 +6,7 @@ import unittest
 
 from hosted_diagnostic_pages_regression import (
     DiagnosticDrainFailure, DiagnosticDrainRejected, DiagnosticDrained,
-    DiagnosticRequest, drain_diagnostics, run_diagnostic_pages_regression, heavy_file_checks,
+    DiagnosticRequest, drain_diagnostics, run_diagnostic_pages_regression, heavy_file_checks, independent_budget_checks,
 )
 
 
@@ -103,6 +103,35 @@ class DiagnosticPagesTest(unittest.TestCase):
         last = Page(finished, None, status='complete', diagnostics=records[2:])
         checks = heavy_file_checks(self.replay(high, first, second, second, last, last))
         self.assertTrue(all(checks.values()), checks)
+
+    def test_independent_limits_preserve_reports_and_name_actual_stops(self):
+        @dataclass(frozen=True)
+        class Limit:
+            requested: int
+            effective: int
+        @dataclass(frozen=True)
+        class Report:
+            max_work_units: Limit = Limit(1, 1)
+            max_elapsed_ms: Limit = Limit(1, 1)
+            max_returned_bytes: Limit = Limit(2048, 2048)
+        @dataclass(frozen=True)
+        class Refused:
+            reason: str
+            execution_budget: Report = Report()
+            status: str = 'rejected'
+            next_action: str = 'increase_execution_budget'
+        @dataclass(frozen=True)
+        class BudgetProgress:
+            stop: str = 'enumeration_work_limit'
+            execution_budget: Report = Report()
+        first = Page(progress=BudgetProgress())
+        last = Page(Progress('finished', 'finished', Exhausted(1), ('A.kt',)), None, status='complete')
+        replay = self.replay(first, Refused('enumeration-work-grant-too-small'), last,
+            Refused('execution-time-grant-too-small'), Refused('output-grant-too-small'))
+        checks = independent_budget_checks(replay)
+        self.assertTrue(all(checks.values()), checks)
+        self.assertIn('timeOneObserved_execution-time-grant-too-small', checks)
+        self.assertIn('bytes2048Observed_output-grant-too-small', checks)
 
     def test_enumeration_then_exact_complete_coverage(self):
         last = Page(Progress('finished', 'finished', Exhausted(), ('A.kt', 'B.kt', 'C.kt')), None, status='complete')

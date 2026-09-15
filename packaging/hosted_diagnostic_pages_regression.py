@@ -125,6 +125,7 @@ def run_diagnostic_pages_regression(replay):
     else:
         checks['drain' + result.failure.value] = False
     checks.update(heavy_file_checks(replay))
+    checks.update(independent_budget_checks(replay))
     replay.record('diagnostic-same-basis-pages', 'check_diagnostics', checks, count, first)
 
 
@@ -162,4 +163,52 @@ def heavy_file_checks(replay):
             if page['progress'].get('stage') == 'output'),
         'heavyOutputStageObserved': any(page['progress'].get('stage') == 'output' for page in low.pages),
     })
+    return checks
+
+
+def _reported_limit(response, axis, requested):
+    report = response.get('execution_budget', response.get('progress', {}).get('execution_budget', {}))
+    limit = report.get(axis, {})
+    return (limit.get('requested') == requested and isinstance(limit.get('effective'), int)
+            and 0 < limit['effective'] <= requested)
+
+
+def independent_budget_checks(replay):
+    """Exercise one axis at a time; time/bytes observations do not imply forced exhaustion."""
+    work = DiagnosticRequest(execution_budget=replace(DiagnosticGrant(), max_work_units=1))
+    first = _invoke(replay, work)
+    token = first.get('qualification', {}).get('continuation')
+    checks = {
+        'workOneReported': _reported_limit(first, 'max_work_units', 1),
+        'workOneEnumerationStopObserved': first.get('progress', {}).get('stop') == 'enumeration_work_limit',
+    }
+    if isinstance(token, str):
+        resumed = replace(work, continuation=token)
+        stopped = _invoke(replay, resumed)
+        checks['workPrefixNoProgressRejected'] = (stopped.get('status') == 'rejected'
+            and stopped.get('reason') == 'enumeration-work-grant-too-small'
+            and stopped.get('next_action') == 'increase_execution_budget'
+            and _reported_limit(stopped, 'max_work_units', 1))
+        larger = replace(resumed, execution_budget=DiagnosticGrant())
+        checks['workIncreaseSameCheckpointDrained'] = isinstance(
+            drain_diagnostics(replay, larger, _invoke(replay, larger)), DiagnosticDrained)
+    else:
+        checks['workPrefixNoProgressRejected'] = False
+        checks['workIncreaseSameCheckpointDrained'] = False
+    for axis, value in (('max_elapsed_ms', 1), ('max_returned_bytes', 2048)):
+        request = DiagnosticRequest('src/main/kotlin/ReadDiagnosticPages.kt', 1000,
+            execution_budget=replace(DiagnosticGrant(max_results=1000), **{axis: value}))
+        response = _invoke(replay, request)
+        for _ in range(8):
+            token = response.get('qualification', {}).get('continuation')
+            if not isinstance(token, str):
+                break
+            request = replace(request, continuation=token)
+            response = _invoke(replay, request)
+        label = 'timeOne' if axis == 'max_elapsed_ms' else 'bytes2048'
+        checks[label + 'Reported'] = _reported_limit(response, axis, value)
+        checks[label + 'FiniteOutcome'] = response.get('status') in ('complete', 'qualified', 'rejected')
+        # Name the actual terminal observation; a naturally completed request is not exhaustion evidence.
+        observation = response.get('reason', response.get('progress', {}).get('stop', 'missing'))
+        checks[label + 'Observed_' + observation] = observation != 'missing'
     return checks
