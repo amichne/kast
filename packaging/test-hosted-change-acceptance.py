@@ -14,7 +14,7 @@ import zipfile
 from hosted_change_process import NativeProcesses
 from native_fixture_probe import NativeFixtureProbeError
 from hosted_change_acceptance import (AcceptanceFailure, AcceptanceRejected, admit_event, admit_harness, admitted_live,
-    CASE_NAMES, admit_contract_failure, bounded_native_report, event_observation, native_workflow_qualified, pending_readiness, startup_discovery_state, StartupDiscoveryState, receipt_scope_observation, remaining_matrix_gates, tree_identity)
+    CASE_NAMES, admit_contract_failure, bounded_native_report, event_observation, native_workflow_qualified, pending_readiness, qualified_authority_replay, startup_discovery_state, StartupDiscoveryState, receipt_scope_observation, remaining_matrix_gates, tree_identity)
 
 
 @dataclass(frozen=True)
@@ -105,6 +105,7 @@ class ExpectedAuthorityReplay:
     cases: tuple[ExpectedAuthorityCase, ...] = tuple(
         ExpectedAuthorityCase(name, surface) for surface in ('cli', 'provider') for name in (
             'current-authority-issued', 'current-continuation-resumes', 'old-epoch-reference-rejected',
+            'explicit-exact-reacquired-under-fresh-basis', 'reacquired-exact-accepted-by-strict-read',
             'fresh-anchor-old-continuation-rejected', 'fresh-authority-reacquired',
             'restored-source-fresh-authority-reacquired')) + tuple(
         ExpectedAuthorityCase(name, 'cli') for name in (
@@ -457,6 +458,22 @@ class HostedChangeAcceptanceTest(unittest.TestCase):
         invalid['plan']['verificationScope']['diagnostics'] = [['/foreign/Source.kt']]
         with self.assertRaises(AcceptanceRejected):
             receipt_scope_observation(invalid, 'a' * 64, workspace)
+
+    def test_authority_summary_requires_every_revalidation_case_and_provider_envelope(self):
+        evidence = asdict(ExpectedAuthorityReplay())
+        self.assertEqual(18, len(evidence['cases']))
+        self.assertTrue(qualified_authority_replay(evidence))
+        for index in range(len(evidence['cases'])):
+            missing = copy.deepcopy(evidence)
+            missing['cases'] = missing['cases'][:index] + missing['cases'][index + 1:]
+            self.assertFalse(qualified_authority_replay(missing))
+            failed = copy.deepcopy(evidence)
+            failed['cases'][index]['passed'] = False
+            self.assertFalse(qualified_authority_replay(failed))
+            if evidence['cases'][index]['surface'] == 'provider':
+                unproven = copy.deepcopy(evidence)
+                unproven['cases'][index]['actualProviderEnvelope'] = False
+                self.assertFalse(qualified_authority_replay(unproven))
 
     def test_matrix_clears_only_scenarios_with_complete_named_native_evidence(self):
         native = {'cases': {'psi-structure': {'outcome': 'passed'}}}
