@@ -17,6 +17,7 @@ import io.github.amichne.kast.diagnostic.contract.DiagnosticScopeResolutionFailu
 import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.RequestedExecutionBudget
 import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
@@ -71,7 +72,15 @@ class CanonicalDiagnosticCheckProtocol(
                     }
             )
         val stored =
-            when (val admitted = checkpoints.admit(query, request.continuation, request.limit, effective)) {
+            when (
+                val admitted =
+                    checkpoints.admit(
+                        query,
+                        request.continuation,
+                        request.limit,
+                        request.executionBudget?.requested() ?: RequestedExecutionBudget(),
+                    )
+            ) {
                 is DiagnosticCheckpointAdmission.Rejected -> return OperationOutcome.Rejected(admitted.reason)
                 is DiagnosticCheckpointAdmission.Replay -> admitted.page
                 is DiagnosticCheckpointAdmission.Execute -> {

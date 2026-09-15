@@ -18,10 +18,10 @@ import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRejection
-import io.github.amichne.kast.protocol.contract.ExecutionBudgetDocument
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRequest
 import io.github.amichne.kast.protocol.contract.DiagnosticInventoryDocument
 import io.github.amichne.kast.protocol.contract.DiagnosticProgressStop
+import io.github.amichne.kast.protocol.contract.ExecutionBudgetDocument
 import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
@@ -60,7 +60,11 @@ class DiagnosticContinuationProtocolTest {
             scans++
             DiagnosticScanResult.Advancing(emptyPage, checkpoint, DiagnosticScanStop.AnalysisPending)
         }
-        val selected = request.copy(executionBudget = ExecutionBudgetDocument(maxElapsedMillis = ElapsedTimeLimitMillis.parse(10000).refined()))
+        val selected =
+            request.copy(
+                executionBudget =
+                    ExecutionBudgetDocument(maxElapsedMillis = ElapsedTimeLimitMillis.parse(10000).refined())
+            )
         val before = budget.copy(elapsedTimeLimit = ElapsedTimeLimitMillis.parse(3748).refined())
         val after = budget.copy(elapsedTimeLimit = ElapsedTimeLimitMillis.parse(3749).refined())
         val first = protocol.execute(selected, lease, before) as OperationOutcome.Qualified
@@ -69,8 +73,19 @@ class DiagnosticContinuationProtocolTest {
         val next = protocol.execute(resumed, lease, before)
         assertEquals(next, protocol.execute(resumed, lease, after))
         assertEquals(2, scans)
-        protocol.execute(selected.copy(executionBudget = ExecutionBudgetDocument(maxElapsedMillis = ElapsedTimeLimitMillis.parse(20000).refined())), lease, after)
-        assertEquals(3, scans, "changed caller selection shapes a distinct execution even with the same effective clamp")
+        protocol.execute(
+            selected.copy(
+                executionBudget =
+                    ExecutionBudgetDocument(maxElapsedMillis = ElapsedTimeLimitMillis.parse(20000).refined())
+            ),
+            lease,
+            after,
+        )
+        assertEquals(
+            3,
+            scans,
+            "changed caller selection shapes a distinct execution even with the same effective clamp",
+        )
     }
 
     @Test
