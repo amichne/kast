@@ -216,7 +216,9 @@ sealed interface SymbolInspectTarget {
     @Serializable @SerialName("candidate") data class Candidate(val selector: ProtocolText) : SymbolInspectTarget
 
     /** Explicit fresh reacquisition; the previous token is only a retained locator. */
-    @Serializable @SerialName("revalidate_exact") data class RevalidateExact(val selector: ProtocolText) : SymbolInspectTarget
+    @Serializable
+    @SerialName("revalidate_exact")
+    data class RevalidateExact(val selector: ProtocolText) : SymbolInspectTarget
 
     /** Already exact compiler selector that must be revalidated before projection. */
     @Serializable @SerialName("exact") data class Exact(val selector: ProtocolText) : SymbolInspectTarget
@@ -468,7 +470,16 @@ private fun <Value, Failure> Refinement<Value, Failure>.valueOrNull(): Value? =
         is Refinement.Rejected -> null
     }
 
-data class SymbolInspectResult(val symbol: SymbolDocument) : OperationResult
+@Serializable
+enum class SymbolInspectAcquisition {
+    @SerialName("strict") STRICT,
+    @SerialName("reacquired") REACQUIRED,
+}
+
+data class SymbolInspectResult(
+    val symbol: SymbolDocument,
+    val acquisition: SymbolInspectAcquisition = SymbolInspectAcquisition.STRICT,
+) : OperationResult
 
 enum class SymbolInspectQualification : OperationQualification {
     EVIDENCE_INCOMPLETE
@@ -484,4 +495,21 @@ enum class SymbolInspectRejection : OperationRejection {
     EXACT_SELECTOR_STALE,
     AMBIGUOUS,
     NOT_FOUND,
+    REVALIDATION_UNRETAINED,
+    REVALIDATION_EXPIRED,
+    REVALIDATION_CAPACITY,
+    REVALIDATION_RETIRED,
+    REVALIDATION_CAPTURE_UNAVAILABLE,
+    REVALIDATION_WORKSPACE_MISMATCH,
+    REVALIDATION_OWNER_MISMATCH,
+    REVALIDATION_WORKSPACE_NOT_READY,
+    REVALIDATION_BASIS_MOVED,
+    REVALIDATION_CONTENT_CHANGED,
+    REVALIDATION_CONTENT_UNCOMMITTED,
+    REVALIDATION_SCOPE_REJECTED,
+    REVALIDATION_DECLARATION_MISSING,
+    REVALIDATION_UNSUPPORTED_DECLARATION,
+    REVALIDATION_AMBIGUOUS,
+    REVALIDATION_COMPILER_IDENTITY_CHANGED,
+    REVALIDATION_COMPILER_UNAVAILABLE,
 }

@@ -50,7 +50,13 @@ internal suspend fun evaluateHostedCanonicalQuery(
         is HostedRequest.Inspect ->
             HostedResponse.Canonical.encode(
                 CanonicalOperationWireBindings.symbolInspect,
-                CanonicalSymbolInspectProtocol(exact, references).execute(request.request, context.authority),
+                CanonicalSymbolInspectProtocol(
+                        exact,
+                        references,
+                        services.revalidationReferences,
+                        services.revalidation,
+                    )
+                    .execute(request.request, context.authority),
                 limits = context.limits,
             )
         is HostedRequest.Source -> evaluateHostedSource(project, services, context, request, continuations)

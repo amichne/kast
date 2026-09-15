@@ -54,6 +54,7 @@ internal fun interface IntellijCompilerSymbolLookup {
 internal class IntellijKotlinCompilerSymbolLookup(
     private val psiLookup: IntellijPsiExactDeclarationLookup,
     private val observation: IntellijReadObservation = IntellijReadObservation.None,
+    private val capture: IntellijExactRevalidationCapture? = null,
 ) : IntellijCompilerSymbolLookup {
     /**
      * Proof transition: `(CompiledIntellijSearchScope, IntellijExactDeclarationLookupKey) ->
@@ -108,7 +109,10 @@ internal class IntellijKotlinCompilerSymbolLookup(
                     signature = projection.signature,
                 )
         ) {
-            is Refinement.Refined -> IntellijCompilerSymbolLookupResult.Found(evidence.value)
+            is Refinement.Refined -> {
+                capture?.capture(key.file, declaration.containingFile)
+                IntellijCompilerSymbolLookupResult.Found(evidence.value)
+            }
             is Refinement.Rejected -> rejected(IntellijSymbolSelectorRejection.INTERNAL_INVARIANT)
         }
     }

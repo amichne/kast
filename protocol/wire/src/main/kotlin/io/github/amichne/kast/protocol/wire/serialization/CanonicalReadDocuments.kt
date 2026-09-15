@@ -81,6 +81,23 @@ internal enum class SymbolInspectRejectionWireDocument {
     @SerialName("exact_selector_stale") EXACT_SELECTOR_STALE,
     @SerialName("ambiguous") AMBIGUOUS,
     @SerialName("not_found") NOT_FOUND,
+    @SerialName("revalidation_unretained") REVALIDATION_UNRETAINED,
+    @SerialName("revalidation_expired") REVALIDATION_EXPIRED,
+    @SerialName("revalidation_capacity") REVALIDATION_CAPACITY,
+    @SerialName("revalidation_retired") REVALIDATION_RETIRED,
+    @SerialName("revalidation_capture_unavailable") REVALIDATION_CAPTURE_UNAVAILABLE,
+    @SerialName("revalidation_workspace_mismatch") REVALIDATION_WORKSPACE_MISMATCH,
+    @SerialName("revalidation_owner_mismatch") REVALIDATION_OWNER_MISMATCH,
+    @SerialName("revalidation_workspace_not_ready") REVALIDATION_WORKSPACE_NOT_READY,
+    @SerialName("revalidation_basis_moved") REVALIDATION_BASIS_MOVED,
+    @SerialName("revalidation_content_changed") REVALIDATION_CONTENT_CHANGED,
+    @SerialName("revalidation_content_uncommitted") REVALIDATION_CONTENT_UNCOMMITTED,
+    @SerialName("revalidation_scope_rejected") REVALIDATION_SCOPE_REJECTED,
+    @SerialName("revalidation_declaration_missing") REVALIDATION_DECLARATION_MISSING,
+    @SerialName("revalidation_unsupported_declaration") REVALIDATION_UNSUPPORTED_DECLARATION,
+    @SerialName("revalidation_ambiguous") REVALIDATION_AMBIGUOUS,
+    @SerialName("revalidation_compiler_identity_changed") REVALIDATION_COMPILER_IDENTITY_CHANGED,
+    @SerialName("revalidation_compiler_unavailable") REVALIDATION_COMPILER_UNAVAILABLE,
 }
 
 @Serializable

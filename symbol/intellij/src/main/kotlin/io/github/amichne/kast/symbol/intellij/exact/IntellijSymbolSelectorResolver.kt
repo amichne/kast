@@ -178,6 +178,7 @@ internal class IntellijSymbolSelectorResolver(
     private val scopeQuery: IntellijSearchScopeQueryAdapter = IntellijSearchScopeQueryAdapter(),
     private val observation: IntellijReadObservation = IntellijReadObservation.None,
     private val limits: ReadLimits = ReadLimits.Default,
+    private val capture: IntellijExactRevalidationCapture? = null,
 ) {
     /**
      * Proof transition: `(Project, SemanticReadAuthority, SymbolResolutionRequest,
@@ -261,7 +262,7 @@ internal class IntellijSymbolSelectorResolver(
 
     private fun Project.query(): IntellijSymbolSelectorQuery =
         IntellijSymbolSelectorQuery(
-            lookup = IntellijKotlinCompilerSymbolLookup(IntellijPsiExactDeclarationLookup(this), observation),
+            lookup = IntellijKotlinCompilerSymbolLookup(IntellijPsiExactDeclarationLookup(this), observation, capture),
             environmentState = {
                 when {
                     isDisposed -> IntellijDiscoveryEnvironmentState.DISPOSED
