@@ -151,9 +151,9 @@ private compatibility policy. These receipts do not prove a model-driven tool
 invocation through the existing IDEA runtime.
 
 Disposable native fixture readiness explicitly marks its fixed, canonical
-`src/main/kotlin` directory for a nonrecursive rescan before the existing cached-root
-refresh. The platform can propagate dirty flags to ancestors. The receipt retains
+`src/main/kotlin` directory and `Fixture.kt` file for a nonrecursive rescan before
+the existing cached-root refresh. The platform can propagate dirty flags to ancestors. The receipt retains
 the selected dirty-mark scope and completion separately from refresh and native-task
-drain evidence. This fixture lifecycle effect makes direct-child test file creation
-and deletion observable without depending on watcher intake; semantic queries do not
+drain evidence. This fixture lifecycle effect makes direct-child test file creation,
+deletion and fixture content restoration observable without depending on watcher intake; semantic queries do not
 invoke it. A quiet readiness receipt still does not prove a future epoch is stable.

@@ -35,7 +35,10 @@ class ProbeResponseDispatchTest {
             assertEquals(id.toString(), encoded.getValue("id").jsonPrimitive.content)
             val readiness = encoded.getValue("readiness").jsonObject
             assertEquals("ALL_CACHED_ROOTS", readiness.getValue("vfsRefreshScope").jsonPrimitive.content)
-            assertEquals("OWNED_SOURCE_DIRECTORY", readiness.getValue("dirtyMarkScope").jsonPrimitive.content)
+            assertEquals(
+                "OWNED_SOURCE_DIRECTORY_AND_FIXTURE_FILE",
+                readiness.getValue("dirtyMarkScope").jsonPrimitive.content,
+            )
             assertEquals("COMPLETED", readiness.getValue("dirtyMark").jsonPrimitive.content)
             assertEquals("COMPLETED", readiness.getValue("pushedPropertiesDrain").jsonPrimitive.content)
             assertEquals("IDLE", readiness.getValue("indexing").jsonPrimitive.content)
@@ -121,7 +124,7 @@ class ProbeResponseDispatchTest {
                         drain =
                             ProbeSetupRefreshEvidence(
                                 ProbeOwnedSourceDirtyMark(
-                                    ProbeDirtyMarkScope.OWNED_SOURCE_DIRECTORY,
+                                    ProbeDirtyMarkScope.OWNED_SOURCE_DIRECTORY_AND_FIXTURE_FILE,
                                     ProbeDirtyMarkOutcome.COMPLETED,
                                 ),
                                 ProbeSetupDrainState.COMPLETED,

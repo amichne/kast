@@ -233,7 +233,7 @@ internal class ProbeSetupReadiness(private val project: Project, private val san
         if (LocalFileSystem.getInstance().findFileByNioFile(sandbox.project) == null)
             return ProbeResult.Rejected(ProbeFailure.TARGET_UNAVAILABLE)
         val dirtyMark =
-            when (val marked = markOwnedSourceDirectory(sandbox)) {
+            when (val marked = markOwnedFixtureSources(sandbox)) {
                 is ProbeResult.Accepted -> marked.value
                 is ProbeResult.Rejected -> return marked
             }

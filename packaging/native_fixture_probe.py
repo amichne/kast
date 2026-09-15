@@ -134,7 +134,7 @@ def validate_response(result: object, request_id: str, command: str) -> dict:
             raise NativeFixtureProbeError("MALFORMED_RESPONSE")
         if readiness["smartMode"] != "SMART" or readiness["externalTasks"] != "IDLE" or readiness["gradleModule"] != "OBSERVED" or readiness["import"] not in expected_imports or readiness["vfsRefresh"] != "COMPLETED" or readiness["quietWindowMillis"] != 2000 or readiness["scope"] != "OBSERVED_SETUP_ONLY":
             raise NativeFixtureProbeError("MALFORMED_RESPONSE")
-        if readiness["dirtyMarkScope"] != "OWNED_SOURCE_DIRECTORY" or readiness["dirtyMark"] != "COMPLETED":
+        if readiness["dirtyMarkScope"] != "OWNED_SOURCE_DIRECTORY_AND_FIXTURE_FILE" or readiness["dirtyMark"] != "COMPLETED":
             raise NativeFixtureProbeError("MALFORMED_RESPONSE")
         if readiness["vfsRefreshScope"] != "ALL_CACHED_ROOTS" or readiness["pushedPropertiesDrain"] != "COMPLETED" or any(readiness[key] != "IDLE" for key in ("indexing", "refreshScanning", "refreshEventProcessing")):
             raise NativeFixtureProbeError("MALFORMED_RESPONSE")

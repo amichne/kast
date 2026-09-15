@@ -31,7 +31,7 @@ class ProbeSetupObservationTest {
                     drain =
                         ProbeSetupRefreshEvidence(
                             ProbeOwnedSourceDirtyMark(
-                                ProbeDirtyMarkScope.OWNED_SOURCE_DIRECTORY,
+                                ProbeDirtyMarkScope.OWNED_SOURCE_DIRECTORY_AND_FIXTURE_FILE,
                                 ProbeDirtyMarkOutcome.COMPLETED,
                             ),
                             ProbeSetupDrainState.COMPLETED,
@@ -58,7 +58,7 @@ class ProbeSetupObservationTest {
                 drain =
                     ProbeSetupRefreshEvidence(
                         ProbeOwnedSourceDirtyMark(
-                            ProbeDirtyMarkScope.OWNED_SOURCE_DIRECTORY,
+                            ProbeDirtyMarkScope.OWNED_SOURCE_DIRECTORY_AND_FIXTURE_FILE,
                             ProbeDirtyMarkOutcome.COMPLETED,
                         ),
                         ProbeSetupDrainState.COMPLETED,
@@ -76,7 +76,7 @@ class ProbeSetupObservationTest {
                 drain =
                     ProbeSetupRefreshEvidence(
                         ProbeOwnedSourceDirtyMark(
-                            ProbeDirtyMarkScope.OWNED_SOURCE_DIRECTORY,
+                            ProbeDirtyMarkScope.OWNED_SOURCE_DIRECTORY_AND_FIXTURE_FILE,
                             ProbeDirtyMarkOutcome.COMPLETED,
                         ),
                         ProbeSetupDrainState.COMPLETED,
@@ -101,7 +101,7 @@ class ProbeSetupObservationTest {
                         drain =
                             ProbeSetupRefreshEvidence(
                                 ProbeOwnedSourceDirtyMark(
-                                    ProbeDirtyMarkScope.OWNED_SOURCE_DIRECTORY,
+                                    ProbeDirtyMarkScope.OWNED_SOURCE_DIRECTORY_AND_FIXTURE_FILE,
                                     ProbeDirtyMarkOutcome.COMPLETED,
                                 ),
                                 ProbeSetupDrainState.COMPLETED,
@@ -125,7 +125,7 @@ class ProbeSetupObservationTest {
                     drain =
                         ProbeSetupRefreshEvidence(
                             ProbeOwnedSourceDirtyMark(
-                                ProbeDirtyMarkScope.OWNED_SOURCE_DIRECTORY,
+                                ProbeDirtyMarkScope.OWNED_SOURCE_DIRECTORY_AND_FIXTURE_FILE,
                                 ProbeDirtyMarkOutcome.COMPLETED,
                             ),
                             ProbeSetupDrainState.COMPLETED,
@@ -149,7 +149,7 @@ class ProbeSetupObservationTest {
                     drain =
                         ProbeSetupRefreshEvidence(
                             ProbeOwnedSourceDirtyMark(
-                                ProbeDirtyMarkScope.OWNED_SOURCE_DIRECTORY,
+                                ProbeDirtyMarkScope.OWNED_SOURCE_DIRECTORY_AND_FIXTURE_FILE,
                                 ProbeDirtyMarkOutcome.COMPLETED,
                             ),
                             ProbeSetupDrainState.COMPLETED,
@@ -183,7 +183,7 @@ class ProbeSetupObservationTest {
                     drain =
                         ProbeSetupRefreshEvidence(
                             ProbeOwnedSourceDirtyMark(
-                                ProbeDirtyMarkScope.OWNED_SOURCE_DIRECTORY,
+                                ProbeDirtyMarkScope.OWNED_SOURCE_DIRECTORY_AND_FIXTURE_FILE,
                                 ProbeDirtyMarkOutcome.COMPLETED,
                             ),
                             ProbeSetupDrainState.COMPLETED,
@@ -201,7 +201,7 @@ class ProbeSetupObservationTest {
                 drain =
                     ProbeSetupRefreshEvidence(
                         ProbeOwnedSourceDirtyMark(
-                            ProbeDirtyMarkScope.OWNED_SOURCE_DIRECTORY,
+                            ProbeDirtyMarkScope.OWNED_SOURCE_DIRECTORY_AND_FIXTURE_FILE,
                             ProbeDirtyMarkOutcome.COMPLETED,
                         ),
                         ProbeSetupDrainState.COMPLETED,
@@ -219,7 +219,7 @@ class ProbeSetupObservationTest {
                 drain =
                     ProbeSetupRefreshEvidence(
                         ProbeOwnedSourceDirtyMark(
-                            ProbeDirtyMarkScope.OWNED_SOURCE_DIRECTORY,
+                            ProbeDirtyMarkScope.OWNED_SOURCE_DIRECTORY_AND_FIXTURE_FILE,
                             ProbeDirtyMarkOutcome.COMPLETED,
                         ),
                         ProbeSetupDrainState.COMPLETED,
@@ -242,7 +242,7 @@ class ProbeSetupObservationTest {
                     drain =
                         ProbeSetupRefreshEvidence(
                             ProbeOwnedSourceDirtyMark(
-                                ProbeDirtyMarkScope.OWNED_SOURCE_DIRECTORY,
+                                ProbeDirtyMarkScope.OWNED_SOURCE_DIRECTORY_AND_FIXTURE_FILE,
                                 ProbeDirtyMarkOutcome.COMPLETED,
                             ),
                             ProbeSetupDrainState.COMPLETED,
@@ -268,7 +268,7 @@ class ProbeSetupObservationTest {
                     drain =
                         ProbeSetupRefreshEvidence(
                             ProbeOwnedSourceDirtyMark(
-                                ProbeDirtyMarkScope.OWNED_SOURCE_DIRECTORY,
+                                ProbeDirtyMarkScope.OWNED_SOURCE_DIRECTORY_AND_FIXTURE_FILE,
                                 ProbeDirtyMarkOutcome.COMPLETED,
                             ),
                             ProbeSetupDrainState.COMPLETED,

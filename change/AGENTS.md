@@ -9,7 +9,7 @@ Implements proof-carrying source mutation as explicit planning, application, ver
 
 ## Key Files
 
-- [ProbeOwnedSourceRescan.kt](intellij/src/nativeFixture/kotlin/io/github/amichne/kast/fixtureprobe/ProbeOwnedSourceRescan.kt) - exact owned fixture source directory marking before setup refresh.
+- [ProbeOwnedSourceRescan.kt](intellij/src/nativeFixture/kotlin/io/github/amichne/kast/fixtureprobe/ProbeOwnedSourceRescan.kt) - exact owned source directory and fixture file marking before setup refresh.
 
 - [contract/src/main/kotlin/io/github/amichne/kast/change/contract/admission/ChangeIntent.kt](contract/src/main/kotlin/io/github/amichne/kast/change/contract/admission/ChangeIntent.kt) - closed mutation intent boundary.
 - [contract/src/main/kotlin/io/github/amichne/kast/change/contract/admission/AddDeclarationChangePlan.kt](contract/src/main/kotlin/io/github/amichne/kast/change/contract/admission/AddDeclarationChangePlan.kt) - admitted add-declaration plan.
