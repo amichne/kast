@@ -20,6 +20,44 @@ import org.junit.jupiter.api.io.TempDir
 
 class PersistentBrokerServiceTest {
     @Test
+    fun `endpoint policy changes service identity and is forwarded to launchd`(@TempDir temporary: Path) {
+        val fixture = installedFixture(temporary)
+        val canonical = resolvedCommand(fixture)
+        val private = resolvedCommand(fixture.copy(environment = fixture.environment + ("KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private")))
+        assertTrue(canonical.publicEndpoint is BrokerPublicEndpoint.CodexControl)
+        assertTrue(private.publicEndpoint is BrokerPublicEndpoint.Private)
+        assertNotEquals(canonical.identity, private.identity)
+        assertEquals(canonical.stateDirectory, private.stateDirectory)
+        assertEquals(canonical.serviceLabel, private.serviceLabel)
+        assertTrue(private.childEnvironment.assignments.contains("KAST_APP_SERVER_PUBLIC_ENDPOINT=private"))
+    }
+
+    @Test
+    fun `unreachable incumbent canonical socket rejects before launchd submission`(@TempDir temporary: Path) {
+        val fixture = installedFixture(temporary)
+        val home = Files.createTempDirectory(Path.of("/private/tmp"), "kast-o-")
+        try {
+            val command = resolvedCommand(fixture.copy(environment = fixture.environment + ("CODEX_HOME" to home.toString())))
+            Files.createDirectory(command.publicSocket.parent)
+            ServerSocketChannel.open(StandardProtocolFamily.UNIX).use { it.bind(UnixDomainSocketAddress.of(command.publicSocket)) }
+            val inode = Files.getAttribute(command.publicSocket, "unix:ino")
+            val calls = mutableListOf<String>()
+            val host = MacOsPersistentBrokerServiceHost(
+                launchctl = LaunchctlInvoker { arguments, _ ->
+                    calls += arguments[1]
+                    if (arguments[1] == "list") LaunchctlInvocation.Absent else LaunchctlInvocation.Rejected
+                },
+                socketProbe = BrokerSocketProbe { BrokerSocketReachability.UNREACHABLE },
+            )
+            assertEquals(PersistentBrokerServiceAdmission.Rejected(PersistentBrokerServiceFailure.PUBLIC_SOCKET_OWNED), host.ensure(command))
+            assertEquals(listOf("list"), calls)
+            assertEquals(inode, Files.getAttribute(command.publicSocket, "unix:ino"))
+        } finally {
+            Files.walk(home).use { paths -> paths.sorted(Comparator.reverseOrder()).forEach(Files::delete) }
+        }
+    }
+
+    @Test
     fun `coordinator service admission does not require an enabled or available Codex host`(@TempDir temporary: Path) {
         val fixture = installedFixture(temporary)
         val result =
