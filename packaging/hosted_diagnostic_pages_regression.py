@@ -85,7 +85,7 @@ def drain_diagnostics(replay, request, first, verify_replay=False):
                     or progress.get('stage') != 'finished' or progress.get('stop') != 'finished'):
                 return DiagnosticDrainRejected(DiagnosticDrainFailure.COVERAGE)
             return DiagnosticDrained(tuple(pages))
-        token = response.get('qualification', {}).get('continuation')
+        token = _continuation(response)
         if not isinstance(token, str) or not 1 <= len(token) <= 1048576 or token in seen:
             return DiagnosticDrainRejected(DiagnosticDrainFailure.CHECKPOINT)
         seen.add(token)
@@ -198,7 +198,7 @@ def independent_budget_checks(replay):
     """Exercise one axis at a time; time/bytes observations do not imply forced exhaustion."""
     work = DiagnosticRequest(execution_budget=replace(DiagnosticGrant(), max_work_units=1))
     first = _invoke(replay, work)
-    token = first.get('qualification', {}).get('continuation')
+    token = _continuation(first)
     checks = {
         'workOneReported': _reported_limit(first, 'max_work_units', 1),
         'workOneEnumerationStopObserved': first.get('progress', {}).get('stop') == 'enumeration_work_limit',
@@ -223,7 +223,7 @@ def independent_budget_checks(replay):
         try:
             response = _invoke(replay, request)
             for _ in range(8):
-                token = response.get('qualification', {}).get('continuation')
+                token = _continuation(response)
                 if not isinstance(token, str):
                     break
                 request = replace(request, continuation=token)
@@ -235,9 +235,13 @@ def independent_budget_checks(replay):
                 checks[label + 'ProviderObserved_' + failure.provider_failure.value] = True
             continue
         checks[label + 'Reported'] = _reported_limit(response, axis, value)
-        checks[label + 'FiniteOutcome'] = response.get('status') in ('complete', 'qualified', 'rejected')
+        host_rejected = response.get('outcome') == 'rejected'
+        checks[label + 'FiniteOutcome'] = host_rejected or response.get('status') in ('complete', 'qualified', 'rejected')
+        if host_rejected:
+            checks[label + 'HostBoundaryObserved'] = True
+            checks[label + 'HostStage_' + response.get('stage', 'missing')] = response.get('stage') is not None
         # Name the actual terminal observation; a naturally completed request is not exhaustion evidence.
-        observation = response.get('reason', response.get('progress', {}).get('stop', 'missing'))
+        observation = response.get('failure', response.get('reason', response.get('progress', {}).get('stop', 'missing')))
         checks[label + 'Observed_' + observation] = observation != 'missing'
     return checks
 
@@ -249,11 +253,20 @@ def _valid_report(response, request):
 
 def _semantic_difference(first, repeated):
     """Compare semantic page identity; preserve actual invocation reports on the original responses."""
-    first_progress = first.get('progress', {})
-    repeated_progress = repeated.get('progress', {})
+    def differs(left, right, key):
+        return key not in left or key not in right or left[key] != right[key]
     fields = [key for key in sorted(set(first) | set(repeated))
-        if key not in ('execution_budget', 'progress') and first.get(key) != repeated.get(key)]
-    fields += ['progress.' + key for key in sorted(set(first_progress) | set(repeated_progress))
-        if key != 'execution_budget' and first_progress.get(key) != repeated_progress.get(key)]
+        if key not in ('execution_budget', 'progress') and differs(first, repeated, key)]
+    first_progress, repeated_progress = first.get('progress'), repeated.get('progress')
+    if isinstance(first_progress, dict) and isinstance(repeated_progress, dict):
+        fields += ['progress.' + key for key in sorted(set(first_progress) | set(repeated_progress))
+            if key != 'execution_budget' and differs(first_progress, repeated_progress, key)]
+    elif ('progress' in first or 'progress' in repeated) and differs(first, repeated, 'progress'):
+        fields.append('progress')
     # Only schema field names are retained, with a fixed aggregate bound; no diagnostic text or tokens.
     return tuple(fields[:16])
+
+
+def _continuation(response):
+    qualification = response.get('qualification')
+    return qualification.get('continuation') if isinstance(qualification, dict) else None

@@ -192,6 +192,40 @@ class DiagnosticPagesTest(unittest.TestCase):
             max_elapsed_ms=ReportLimit(20000, 3749)))))
         self.assertFalse(_valid_report(invalid, DiagnosticRequest()))
 
+    def test_replay_distinguishes_absent_and_explicit_null_semantic_fields(self):
+        explicit = document(Page(qualification=None))
+        absent = dict(explicit)
+        del absent['qualification']
+        self.assertEqual(('qualification',), _semantic_difference(explicit, absent))
+        explicit_progress = document(Page())
+        explicit_progress['progress']['knownDiagnosticCount'] = None
+        absent_progress = document(Page())
+        del absent_progress['progress']['knownDiagnosticCount']
+        self.assertEqual(('progress.knownDiagnosticCount',),
+            _semantic_difference(explicit_progress, absent_progress))
+        explicit_progress['progress'] = None
+        del absent_progress['progress']
+        self.assertEqual(('progress',), _semantic_difference(explicit_progress, absent_progress))
+
+    def test_host_time_refusal_retains_actual_report_and_distinct_boundary(self):
+        @dataclass(frozen=True)
+        class HostRefusal:
+            execution_budget: ExecutionReport = ExecutionReport(max_elapsed_ms=ReportLimit(1, 1))
+            outcome: str = 'rejected'
+            failure: str = 'BUDGET_EXCEEDED'
+            stage: str = 'CONTENT_REVALIDATION'
+        first = Page(progress=replace(Progress(), stop='enumeration_work_limit',
+            execution_budget=ExecutionReport(max_work_units=ReportLimit(1, 1))))
+        last = Page(Progress('finished', 'finished', Exhausted(1), ('A.kt',)), None, status='complete')
+        replay = self.replay(first, Page(status='rejected'), last, HostRefusal(),
+            replace(last, progress=replace(last.progress, execution_budget=ExecutionReport(
+                max_results=ReportLimit(1000, 1000), max_returned_bytes=ReportLimit(2048, 2048)))))
+        checks = independent_budget_checks(replay)
+        self.assertTrue(checks['timeOneReported'])
+        self.assertTrue(checks['timeOneFiniteOutcome'])
+        self.assertTrue(checks['timeOneObserved_BUDGET_EXCEEDED'])
+        self.assertTrue(checks['timeOneHostStage_CONTENT_REVALIDATION'])
+
     def test_enumeration_then_exact_complete_coverage(self):
         last = Page(Progress('finished', 'finished', Exhausted(), ('A.kt', 'B.kt', 'C.kt')), None, status='complete')
         result = drain_diagnostics(self.replay(last), DiagnosticRequest(), document(Page()))
