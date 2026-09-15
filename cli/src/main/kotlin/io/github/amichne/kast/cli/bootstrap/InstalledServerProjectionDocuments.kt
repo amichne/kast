@@ -461,16 +461,7 @@ private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject =
                 operation,
                 ServerSchemaProperty("symbol", symbolSchema()),
             )
-        CanonicalOperation.SOURCE_READ ->
-            proofQualifiedOutcomeSchema(
-                operation,
-                sourceReadQualificationSchema(),
-                executionBudgetProperty(),
-                ServerSchemaProperty("snapshot", sourceSnapshotSchema()),
-                ServerSchemaProperty("region", sourceRegionSchema()),
-                ServerSchemaProperty("entities", arraySchema(sourceEntitySchema())),
-                ServerSchemaProperty("text", sourceTextProjectionSchema()),
-            )
+        CanonicalOperation.SOURCE_READ -> sourceReadOutputSchema(operation)
         CanonicalOperation.RELATION_READ ->
             proofQualifiedOutcomeSchema(
                 operation,
@@ -918,7 +909,7 @@ private fun outcomeSchema(
         *payload,
     )
 
-private fun proofQualifiedOutcomeSchema(
+internal fun proofQualifiedOutcomeSchema(
     operation: CanonicalOperation,
     qualificationSchema: JsonObject,
     vararg payload: ServerSchemaProperty,
@@ -1002,7 +993,7 @@ private fun relationQualificationSchema(): JsonObject =
         ),
     )
 
-private fun sourceReadQualificationSchema(): JsonObject =
+internal fun sourceReadQualificationSchema(): JsonObject =
     objectSchema(
         ServerSchemaProperty(
             "progress",
@@ -1046,7 +1037,7 @@ private fun sourceReadQualificationSchema(): JsonObject =
         ),
     )
 
-private enum class ServerReadEvidenceShape {
+internal enum class ServerReadEvidenceShape {
     PUBLISHED,
     LIVE,
 }
@@ -1085,7 +1076,7 @@ private fun liveReadEvidenceSchema(): JsonObject =
         ServerSchemaProperty("version", integerSchema(1, 1, "Live evidence representation version.")),
     )
 
-private fun sourceSnapshotSchema(basis: ServerReadEvidenceShape = ServerReadEvidenceShape.PUBLISHED): JsonObject =
+internal fun sourceSnapshotSchema(basis: ServerReadEvidenceShape = ServerReadEvidenceShape.PUBLISHED): JsonObject =
     objectSchema(
         ServerSchemaProperty("canonicalRoot", textSchema("Canonical workspace root.")),
         *when (basis) {
@@ -1111,7 +1102,7 @@ private fun sourceSelectionSchema(): JsonObject =
         ServerSchemaProperty("range", diagnosticRangeSchema()),
     )
 
-private fun sourceRegionSchema(): JsonObject =
+internal fun sourceRegionSchema(): JsonObject =
     objectSchema(
         ServerSchemaProperty(
             "kind",
@@ -1123,7 +1114,7 @@ private fun sourceRegionSchema(): JsonObject =
         ServerSchemaProperty("selection", sourceSelectionSchema()),
     )
 
-private fun sourceEntitySchema(): JsonObject =
+internal fun sourceEntitySchema(): JsonObject =
     unionSchema(
         objectSchema(
             ServerSchemaProperty("type", constantSchema("declaration", "Source entity kind.")),
@@ -1199,7 +1190,7 @@ private fun sourceEntityTargetSchema(): JsonObject =
         ),
     )
 
-private fun sourceTextProjectionSchema(): JsonObject =
+internal fun sourceTextProjectionSchema(): JsonObject =
     unionSchema(
         objectSchema(ServerSchemaProperty("type", constantSchema("not-requested", "Text projection state."))),
         objectSchema(
@@ -1929,7 +1920,7 @@ private fun relationSchema(): JsonObject =
         description = "One canonical Kast semantic relation.",
     )
 
-private fun executionBudgetProperty() =
+internal fun executionBudgetProperty() =
     ServerSchemaProperty(
         "execution_budget",
         nullableSchema(

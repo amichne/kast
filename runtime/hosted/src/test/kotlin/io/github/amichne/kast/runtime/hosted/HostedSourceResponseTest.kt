@@ -22,9 +22,21 @@ import org.junit.jupiter.api.Test
 
 class HostedSourceResponseTest {
     @Test
-    fun `oversized source page publishes a nonempty fitting entity prefix`() = runTest {
+    fun `oversized source page publishes a nonempty fitting entity prefix`() =
+        verifyPrefix(io.github.amichne.kast.protocol.contract.SourceReadFormatDocument.EXPANDED)
+
+    @Test
+    fun `compact page fits its actual table metadata and continuation envelope`() =
+        verifyPrefix(io.github.amichne.kast.protocol.contract.SourceReadFormatDocument.COMPACT)
+
+    private fun verifyPrefix(format: io.github.amichne.kast.protocol.contract.SourceReadFormatDocument) = runTest {
         val fixture = HostedSourcePagingFixture.create()
-        val original = fixture.outcome
+        val original =
+            fixture.outcome.copy(
+                evidence =
+                    fixture.outcome.evidence.copy(payload = fixture.outcome.evidence.payload.copy(format = format))
+            )
+        val originalRequest = fixture.request.copy(format = format)
         val outputs = hostedSourceOutputPages(ReadLimits.Default)
         val encoded = HostedResponse.Canonical.encode(CanonicalOperationWireBindings.sourceRead, original)
         assertTrue(encoded is HostedResponse.Canonical<*, *, *>)
@@ -36,7 +48,7 @@ class HostedSourceResponseTest {
                 ResultLimit.parse(6).sourceFixtureValue(),
                 maximum,
             ) { remaining ->
-                outputs.issue(fixture.request, fixture.owner.authority, remaining)
+                outputs.issue(originalRequest, fixture.owner.authority, remaining)
             }
         assertTrue(response is HostedResponse.Canonical<*, *, *>, "Expected fitting source prefix, got $response")
         assertTrue(response.document.toByteArray().size <= maximum.value)
@@ -48,7 +60,7 @@ class HostedSourceResponseTest {
         assertTrue(SourceReadLimitationDocument.RETURNED_BYTE_LIMIT_REACHED in qualification.limitations)
         assertTrue(qualification.limitations.containsAll(original.qualification.limitations))
         val token = (qualification.continuation as SourceReadContinuationStateDocument.Available).continuation
-        val request = fixture.request.copy(page = SourceReadPageDocument.Continue(token))
+        val request = originalRequest.copy(page = SourceReadPageDocument.Continue(token))
         val suffix = outputs.restore(token, request, fixture.owner.authority) as OperationOutcome.Qualified
         assertEquals(
             original.evidence.payload.entities.values,
@@ -57,6 +69,52 @@ class HostedSourceResponseTest {
         assertEquals(original.qualification, suffix.qualification)
         assertEquals(original.evidence.payload.text, result.text)
         assertEquals(suffix, outputs.restore(token, request, fixture.owner.authority))
+    }
+
+    @Test
+    fun `indivisible non ASCII source becomes explicitly withheld under encoded byte allowance`() = runTest {
+        val fixture = HostedSourcePagingFixture.create(source = "café🚀 ".repeat(2000), includeText = true)
+        val payload =
+            fixture.outcome.evidence.payload.copy(
+                entities =
+                    io.github.amichne.kast.protocol.contract.BoundedProtocolList.create(
+                            emptyList<io.github.amichne.kast.protocol.contract.SourceEntityDocument>()
+                        )
+                        .sourceFixtureValue(),
+                format = io.github.amichne.kast.protocol.contract.SourceReadFormatDocument.COMPACT,
+            )
+        val original = OperationOutcome.Complete(fixture.outcome.evidence.copy(payload = payload))
+        val withoutText =
+            payload.copy(
+                text =
+                    io.github.amichne.kast.protocol.contract.SourceTextProjectionDocument.Withheld(
+                        io.github.amichne.kast.protocol.contract.SourceTextWithheldReasonDocument.BYTE_LIMIT_REACHED
+                    )
+            )
+        val base =
+            HostedResponse.Canonical.encode(
+                CanonicalOperationWireBindings.sourceRead,
+                OperationOutcome.Complete(fixture.outcome.evidence.copy(payload = withoutText)),
+            )
+        val limit =
+            ReturnedByteLimit.parse(base.document.toByteArray(Charsets.UTF_8).size.toLong() + 1024).sourceFixtureValue()
+        val result =
+            encodeHostedSourceResponse(
+                original,
+                ReadLimits.Default,
+                ResultLimit.parse(6).sourceFixtureValue(),
+                limit,
+            ) {
+                error("Withheld terminal text has no suffix")
+            }
+        assertTrue(result is HostedResponse.Canonical<*, *, *>)
+        assertTrue(result.document.toByteArray(Charsets.UTF_8).size <= limit.value)
+        val semantic = (result as HostedResponse.Canonical<*, *, *>).semantic as OperationOutcome.Qualified
+        assertEquals(withoutText, semantic.evidence.payload)
+        assertTrue(
+            SourceReadLimitationDocument.TEXT_BYTE_LIMIT_REACHED in
+                (semantic.qualification as SourceReadQualification).limitations
+        )
     }
 
     private fun assertTerminalCoverage(qualification: SourceReadQualification) {

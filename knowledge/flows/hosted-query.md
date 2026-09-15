@@ -622,3 +622,8 @@ Relation pages retain canonical order within each page. Cross-grant drains
 preserve the full occurrence multiset; changing page boundaries does not promise
 global fingerprint order. A resumable budget stop retains unmeasured work evidence
 until the final complete drain; it never becomes an invented zero omitted count.
+
+Source fitting encodes the selected expanded or compact wire projection for each
+candidate prefix, including its local selection table and retained-output cursor.
+An indivisible source text that prevents any prefix fitting becomes explicitly
+withheld with text-byte qualification; source bytes are never truncated.

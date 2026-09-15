@@ -10,6 +10,7 @@ import io.github.amichne.kast.protocol.contract.SourceEntityDocument
 import io.github.amichne.kast.protocol.contract.SourceEntityTargetDocument
 import io.github.amichne.kast.protocol.contract.SourceReadContinuationStateDocument
 import io.github.amichne.kast.protocol.contract.SourceReadFailure
+import io.github.amichne.kast.protocol.contract.SourceReadFormatDocument
 import io.github.amichne.kast.protocol.contract.SourceReadQualification
 import io.github.amichne.kast.protocol.contract.SourceReadResult
 import io.github.amichne.kast.protocol.contract.SourceRegionDocument
@@ -24,31 +25,36 @@ internal object CanonicalSourceReadCliDocuments {
         projectClosedOutcome(
             outcome,
             complete = { result ->
-                completeFactory.create(
-                    SourceReadCompleteCliDocument(
-                        operation = CanonicalOperation.SOURCE_READ.id.value,
-                        status = "complete",
-                        snapshot = result.snapshot.toCliDocument(),
-                        region = result.region.toCliDocument(),
-                        entities = result.entities.values.map(SourceEntityDocument::toCliDocument),
-                        text = result.text.toCliDocument(),
-                        executionBudget = result.executionBudget,
+                if (result.format == SourceReadFormatDocument.COMPACT) compactSourceComplete(result)
+                else
+                    completeFactory.create(
+                        SourceReadCompleteCliDocument(
+                            operation = CanonicalOperation.SOURCE_READ.id.value,
+                            status = "complete",
+                            snapshot = result.snapshot.toCliDocument(),
+                            region = result.region.toCliDocument(),
+                            entities = result.entities.values.map(SourceEntityDocument::toCliDocument),
+                            text = result.text.toCliDocument(),
+                            executionBudget = result.executionBudget,
+                        )
                     )
-                )
             },
             qualified = { result, qualification ->
-                qualifiedFactory.create(
-                    SourceReadQualifiedCliDocument(
-                        operation = CanonicalOperation.SOURCE_READ.id.value,
-                        status = "qualified",
-                        snapshot = result.snapshot.toCliDocument(),
-                        region = result.region.toCliDocument(),
-                        entities = result.entities.values.map(SourceEntityDocument::toCliDocument),
-                        text = result.text.toCliDocument(),
-                        executionBudget = result.executionBudget,
-                        qualification = qualification.toCliDocument(),
+                if (result.format == SourceReadFormatDocument.COMPACT)
+                    compactSourceQualified(result, qualification.toCliDocument())
+                else
+                    qualifiedFactory.create(
+                        SourceReadQualifiedCliDocument(
+                            operation = CanonicalOperation.SOURCE_READ.id.value,
+                            status = "qualified",
+                            snapshot = result.snapshot.toCliDocument(),
+                            region = result.region.toCliDocument(),
+                            entities = result.entities.values.map(SourceEntityDocument::toCliDocument),
+                            text = result.text.toCliDocument(),
+                            executionBudget = result.executionBudget,
+                            qualification = qualification.toCliDocument(),
+                        )
                     )
-                )
             },
             rejected = { rejection ->
                 canonicalReadRejectedDocument(rejection)
@@ -218,7 +224,7 @@ private sealed interface SourceTextProjectionCliDocument {
 }
 
 @Serializable
-private data class SourceReadQualificationCliDocument(
+internal data class SourceReadQualificationCliDocument(
     val knownMinimumEntityCount: Int,
     val limitations: List<String>,
     val continuation: SourceReadContinuationCliDocument,
@@ -226,7 +232,7 @@ private data class SourceReadQualificationCliDocument(
 )
 
 @Serializable
-private sealed interface SourceReadContinuationCliDocument {
+internal sealed interface SourceReadContinuationCliDocument {
     @Serializable @SerialName("unavailable") data object Unavailable : SourceReadContinuationCliDocument
 
     @Serializable

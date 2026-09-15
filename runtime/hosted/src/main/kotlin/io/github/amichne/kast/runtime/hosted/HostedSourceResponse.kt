@@ -75,20 +75,77 @@ private fun encodeHostedSourceResponseDocument(
         .sortedBy { it.ordinal }
     val fitting = SourcePageEncoding(evidence, minimum, exhausted, semantic.preparedCoverage(), limits, maximumBytes)
     val count = largestFittingSourcePrefix(minOf(size - 1, maximumResults.value), fitting::placeholder)
-    if (count == 0) return original.indivisibleSource()
-    val remainder =
-        evidence.copy(
-            payload =
-                evidence.payload.copy(
-                    entities = BoundedProtocolList.create(evidence.payload.entities.values.drop(count)).proven()
-                )
+    if (count == 0)
+        return withholdIndivisibleSource(
+            original,
+            semantic,
+            evidence,
+            minimum,
+            exhausted,
+            limits,
+            maximumResults,
+            maximumBytes,
+            retain,
         )
-    val suffix =
-        when (semantic) {
-            is OperationOutcome.Complete -> OperationOutcome.Complete(remainder)
-            is OperationOutcome.Qualified -> OperationOutcome.Qualified(remainder, semantic.qualification)
-        }
-    return retain(suffix).encodeSource { token -> fitting.encode(count, token) }
+    return retain(semantic.sourceSuffix(count)).encodeSource { token -> fitting.encode(count, token) }
+}
+
+private fun HostedSourceOutcome.sourceSuffix(count: Int): HostedSourceOutcome =
+    when (this) {
+        is OperationOutcome.Complete -> OperationOutcome.Complete(evidence.dropSourceEntities(count))
+        is OperationOutcome.Qualified -> OperationOutcome.Qualified(evidence.dropSourceEntities(count), qualification)
+        is OperationOutcome.Rejected -> this
+    }
+
+private fun EvidenceEnvelope<SourceReadResult>.dropSourceEntities(count: Int) =
+    copy(payload = payload.copy(entities = BoundedProtocolList.create(payload.entities.values.drop(count)).proven()))
+
+private fun withholdIndivisibleSource(
+    original: HostedResponse,
+    semantic: HostedSourceOutcome,
+    evidence: EvidenceEnvelope<SourceReadResult>,
+    minimum: SourceEntityCountDocument,
+    exhausted: List<SourceReadLimitationDocument>,
+    limits: ReadLimits,
+    maximumResults: ResultLimit,
+    maximumBytes: ReturnedByteLimit,
+    retain: (HostedSourceOutcome) -> HostedOutputRetention,
+): HostedResponse {
+    if (evidence.payload.text is io.github.amichne.kast.protocol.contract.SourceTextProjectionDocument.Returned) {
+        val withheld =
+            evidence.copy(
+                payload =
+                    evidence.payload.copy(
+                        text =
+                            io.github.amichne.kast.protocol.contract.SourceTextProjectionDocument.Withheld(
+                                io.github.amichne.kast.protocol.contract.SourceTextWithheldReasonDocument
+                                    .BYTE_LIMIT_REACHED
+                            )
+                    )
+            )
+        val textLimitations =
+            (exhausted + SourceReadLimitationDocument.TEXT_BYTE_LIMIT_REACHED).distinct().sortedBy { it.ordinal }
+        val progress =
+            when (semantic) {
+                is OperationOutcome.Qualified -> semantic.qualification.progress
+                is OperationOutcome.Rejected -> return original.indivisibleSource()
+                is OperationOutcome.Complete ->
+                    SourceQualifiedProgressDocument.TerminalIncomplete(
+                        io.github.amichne.kast.protocol.contract.SourceTerminalReasonDocument.TEXT_PROJECTION_WITHHELD
+                    )
+            }
+        return encodeHostedSourceResponseDocument(
+            OperationOutcome.Qualified(
+                withheld,
+                SourceReadQualification.create(minimum, textLimitations, progress).proven(),
+            ),
+            limits,
+            maximumResults,
+            maximumBytes,
+            retain,
+        )
+    }
+    return original.indivisibleSource()
 }
 
 private fun HostedResponse.indivisibleSource(): HostedResponse =

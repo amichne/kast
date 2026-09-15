@@ -139,3 +139,8 @@ display receives the same bounded result as structured content. Display parsing
 cannot alter execution authority or the broker's recovery settlement.
 
 An existing-host read failure carries an execution report only after semantic budget admission. Timeout and final revalidation preserve the report together with the finite failure and stage; encoded-output and retention refusal preserve the report at the publication boundary. CLI schema admission then refines the report through the canonical decoder before forwarding the hosted failure document.
+
+Compact source results retain ordered source and structure sections through CLI
+schema admission. The source-specific production-provider presenter emits the
+unchanged returned source first and the structured result afterward. Other
+operation presentations retain their existing dispatch behavior.
