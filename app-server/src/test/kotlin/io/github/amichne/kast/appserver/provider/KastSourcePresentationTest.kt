@@ -1,5 +1,8 @@
 package io.github.amichne.kast.appserver.provider
 
+import io.github.amichne.kast.appserver.acceptance.hostedchange.NativeSourcePlacement
+import io.github.amichne.kast.appserver.acceptance.hostedchange.nativePresentationEvidence
+import io.github.amichne.kast.appserver.core.ToolPresentation
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -24,11 +27,17 @@ class KastSourcePresentationTest {
                         ),
                     )
             )
-        val document = json.encodeToJsonElement(PresentationEnvelope.serializer(), PresentationEnvelope(fixture)).jsonObject
+        val document =
+            json.encodeToJsonElement(PresentationEnvelope.serializer(), PresentationEnvelope(fixture)).jsonObject
         val presentation = presentKastSourceOrOutcome(document, true)
         assertEquals(source, presentation.content.first().text)
         assertEquals(document, json.parseToJsonElement(presentation.content.last().text))
         assertEquals(2, presentation.content.size)
+        assertEquals(NativeSourcePlacement.VERIFIED, nativePresentationEvidence(presentation).sourcePlacement)
+        assertEquals(
+            NativeSourcePlacement.MISMATCH,
+            nativePresentationEvidence(ToolPresentation.outcome(document, true)).sourcePlacement,
+        )
     }
 }
 

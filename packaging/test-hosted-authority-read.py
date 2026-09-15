@@ -39,6 +39,20 @@ class SearchFixture:
 
 
 @dataclass(frozen=True)
+class InspectedSymbolSlice:
+    selector: str
+    name: str = 'ReadPageBudget'
+
+
+@dataclass(frozen=True)
+class InspectionSlice:
+    live: LiveFixture
+    symbol: InspectedSymbolSlice
+    acquisition: str
+    status: str = 'complete'
+
+
+@dataclass(frozen=True)
 class CursorFixture:
     continuation: str
     type: str = 'available'
@@ -135,6 +149,9 @@ class AuthorityReadTest(unittest.TestCase):
         selector = 'ref-' + str(self.epoch)
         if tool == 'search_classes':
             document = SearchFixture(live, (ItemFixture(selector),))
+        elif tool == 'symbol_inspect':
+            acquisition = 'reacquired' if arguments['target']['type'] == 'revalidate_exact' else 'strict'
+            document = InspectionSlice(live, InspectedSymbolSlice(selector), acquisition)
         elif arguments['anchor']['selector'] != selector:
             document = RejectionFixture('stale-generation')
         elif arguments['page']['type'] == 'continue' and arguments['page']['continuation'] != 'cursor-' + str(self.epoch):
@@ -164,6 +181,21 @@ class AuthorityReadTest(unittest.TestCase):
         self.assertEqual(2, sum(row.name == AuthorityCaseName.OLD_REFERENCE for row in report.cases))
         self.assertNotIn('ref-', json.dumps(asdict(report)))
         self.assertNotIn('cursor-', json.dumps(asdict(report)))
+
+    def test_explicit_revalidation_retains_fresh_basis_and_strict_successor(self):
+        report = self.run_fixture()
+        self.assertEqual(AuthorityOutcome.PASSED, report.outcome)
+        self.assertEqual(2, sum(row.name == AuthorityCaseName.REVALIDATED for row in report.cases))
+        self.assertEqual(2, sum(row.name == AuthorityCaseName.NEW_STRICT for row in report.cases))
+        invoke = self.invoke
+        def old_basis(surface, tool, arguments):
+            result, digest = invoke(surface, tool, arguments)
+            if tool == 'symbol_inspect':
+                result['live']['epoch'] = 1
+            return result, digest
+        self.epoch = 1
+        self.transport.invoke_observed.side_effect = old_basis
+        self.assertEqual(AuthorityFailure.REVALIDATION, self.run_fixture().failure)
 
     def test_restoration_reports_stale_document_separately_from_saved_file_restore(self):
         ready = self.ready

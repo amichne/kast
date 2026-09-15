@@ -63,7 +63,11 @@ internal sealed interface NativeReadResponse {
 
     @Serializable
     @SerialName("completed")
-    data class Completed(val success: Boolean, val envelope: JsonElement) : NativeReadResponse
+    data class Completed(
+        val success: Boolean,
+        val envelope: JsonElement,
+        val presentation: NativePresentationEvidence,
+    ) : NativeReadResponse
 
     @Serializable
     @SerialName("rejected")
@@ -117,6 +121,7 @@ private class NativeHostedReadTransport(
                 NativeReadResponse.Completed(
                     result.presentation.success,
                     Json.parseToJsonElement(result.presentation.content.last().text),
+                    nativePresentationEvidence(result.presentation),
                 )
             is BrokerDispatch.Rejected ->
                 NativeReadResponse.Rejected(

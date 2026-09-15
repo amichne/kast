@@ -8,9 +8,10 @@ import kotlinx.serialization.json.JsonPrimitive
 /** Reads only the already schema-admitted source result; source bytes are never reformatted. */
 internal fun presentKastSourceOrOutcome(document: JsonObject, success: Boolean): ToolPresentation {
     fun JsonObject.string(key: String): String? = (this[key] as? JsonPrimitive)?.takeIf { it.isString }?.content
-    if (document.string("operation") != "source.read" || document.string("format") != "compact")
+    val payload = document["document"] as? JsonObject ?: return ToolPresentation.outcome(document, success)
+    if (payload.string("operation") != "source.read" || payload.string("format") != "compact")
         return ToolPresentation.outcome(document, success)
-    val sections = document["content"] as? JsonArray ?: return ToolPresentation.outcome(document, success)
+    val sections = payload["content"] as? JsonArray ?: return ToolPresentation.outcome(document, success)
     val first = sections.firstOrNull() as? JsonObject ?: return ToolPresentation.outcome(document, success)
     val text = first["text"] as? JsonObject ?: return ToolPresentation.outcome(document, success)
     val source =

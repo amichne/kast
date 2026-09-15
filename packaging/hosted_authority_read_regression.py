@@ -27,6 +27,7 @@ class AuthorityFailure(str, Enum):
     READINESS = 'AUTHORITY_READINESS_REJECTED'
     TRANSPORT = 'AUTHORITY_TRANSPORT_REJECTED'
     FOREIGN = 'AUTHORITY_FOREIGN_ROOT_REJECTED'
+    REVALIDATION = 'AUTHORITY_EXACT_REVALIDATION_REJECTED'
     IO = 'AUTHORITY_IO_REJECTED'
     RESTORATION = 'AUTHORITY_RESTORATION_REJECTED'
     DOCUMENT_IMAGE = 'AUTHORITY_READINESS_DOCUMENT_IMAGE_CHANGED'
@@ -56,11 +57,24 @@ class AuthorityCaseName(str, Enum):
     ISSUED = 'current-authority-issued'
     VALID_CURSOR = 'current-continuation-resumes'
     OLD_REFERENCE = 'old-epoch-reference-rejected'
+    REVALIDATED = 'explicit-exact-reacquired-under-fresh-basis'
+    NEW_STRICT = 'reacquired-exact-accepted-by-strict-read'
     OLD_CURSOR = 'fresh-anchor-old-continuation-rejected'
     FRESH = 'fresh-authority-reacquired'
     RESTORED = 'restored-source-fresh-authority-reacquired'
     FOREIGN_REFERENCE = 'foreign-workspace-reference-refused'
     FOREIGN_CURSOR = 'foreign-workspace-continuation-refused'
+
+
+@dataclass(frozen=True)
+class InspectExactTarget:
+    selector: str
+    type: str = 'revalidate_exact'
+
+
+@dataclass(frozen=True)
+class InspectExactRequest:
+    target: InspectExactTarget
 
 
 @dataclass(frozen=True)
@@ -149,6 +163,19 @@ class _AuthorityReplay:
             and checkpoint.get('type') == 'upstream' and isinstance(token, str) and bool(token), AuthorityFailure.ISSUER)
         self.record(name, surface, digest)
         return token
+
+    def revalidate(self, surface, old, current):
+        response, digest = self.call(surface, 'symbol_inspect', InspectExactRequest(InspectExactTarget(old)))
+        symbol = response.get('symbol', {})
+        selector = symbol.get('selector')
+        _demand(response.get('status') == 'complete' and response.get('acquisition') == 'reacquired'
+            and response.get('live') == current and isinstance(selector, str) and selector != old
+            and symbol.get('name') == 'ReadPageBudget', AuthorityFailure.REVALIDATION)
+        self.record(AuthorityCaseName.REVALIDATED, surface, digest)
+        strict, digest = self.call(surface, 'symbol_inspect', InspectExactRequest(InspectExactTarget(selector, 'exact')))
+        _demand(strict.get('status') == 'complete' and strict.get('acquisition') == 'strict'
+            and strict.get('live') == current and strict.get('symbol') == symbol, AuthorityFailure.REVALIDATION)
+        self.record(AuthorityCaseName.NEW_STRICT, surface, digest)
 
     def reject(self, name, surface, request, reason):
         response, digest = self.call(surface, 'source_read', request)
@@ -251,6 +278,7 @@ def run_authority_read_regression(isolation, fixture, transport, initial_live):
             replay.reject(AuthorityCaseName.OLD_CURSOR, surface,
                 replace(fresh, page=ContinueSourcePage(token)), AuthorityRefusal.STALE_CONTINUATION)
             replay.page(AuthorityCaseName.FRESH, surface, fresh, current, 'pageItem00')
+            replay.revalidate(surface, old.anchor.selector, current)
         report = replace(report, outcome=AuthorityOutcome.PASSED)
     except AuthorityRejected as error:
         report = replace(report, failure=error.reason)

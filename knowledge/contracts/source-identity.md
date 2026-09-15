@@ -151,3 +151,9 @@ result; expanded output retains its existing shape. Hosted fitting measures the
 chosen wire envelope, including table and continuation metadata. If indivisible
 returned text prevents a page from fitting, a qualified `withheld` text state
 retains the selected region and reports the text-byte limitation explicitly.
+
+The production provider receives the process envelope containing the source document.
+Compact presentation reads that admitted inner payload, emits unchanged returned
+source first, and retains the complete original envelope as the final content item.
+The isolated native read harness checks this actual content ordering separately
+from schema validation and reports bounded content byte counts without source text.

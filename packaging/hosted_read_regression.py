@@ -23,6 +23,7 @@ from hosted_read_name_regression import run_read_name_regression
 from hosted_enum_read_regression import run_enum_read_regression
 from hosted_repair_budget_regression import run_repair_time_regression
 from hosted_kotlin_call_regression import run_kotlin_call_regression
+from hosted_compact_source_regression import run_compact_source_regression
 from hosted_source_read_regression import run_source_paging_regression, source_qualification_observation
 
 
@@ -99,6 +100,7 @@ class _ReadReplay:
         self.roundtrips()
         self.specialists()
         run_kotlin_call_regression(self)
+        run_compact_source_regression(self)
         run_raw_symbol_regression(self)
 
     def query(self, case):

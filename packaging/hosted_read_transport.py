@@ -169,7 +169,14 @@ class ReadTransportRejected(ValueError):
 
 def _provider_result(response):
     if response.get('kind') == 'completed':
-        return response['envelope']['document']
+        document = response['envelope']['document']
+        if document.get('format') == 'compact':
+            sections = document.get('content', [])
+            if sections and sections[0].get('text', {}).get('type') == 'returned':
+                evidence = response.get('presentation', {})
+                if evidence.get('items') != 2 or evidence.get('sourcePlacement') != 'VERIFIED':
+                    raise ReadTransportRejected('READ_PROVIDER_PROTOCOL_REJECTED')
+        return document
     if response.get('kind') != 'rejected':
         raise ReadTransportRejected('READ_PROVIDER_PROTOCOL_REJECTED')
     try:
