@@ -21,7 +21,12 @@ icon: "rocket"
 keywords: ["install", "Codex", "IntelliJ", "agent integration"]
 ---
 
-Use the included Codex integration to query one Kotlin repository.
+Install the IDEA plugin, connect Codex, and find a declaration in your repository.
+
+<Note>
+  The Codex integration is a preview. Full Desktop compatibility remains
+  [unqualified](/reference/compatibility).
+</Note>
 
 ## Requirements
 
@@ -42,10 +47,15 @@ Use the included Codex integration to query one Kotlin repository.
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
     ```
 
-    The installer verifies and installs Kast and its IDEA plugin, then registers
-    and starts its per-user launchd service.
+    The installer reports the detected IntelliJ version, verifies Kast and the
+    matching IDEA plugin, and explains the app-server setup. It then asks whether
+    to enable a per-user macOS login LaunchAgent. The LaunchAgent keeps the Kast
+    app server available across logins and restarts it after an unexpected exit.
 
     It does not install IDEA.
+
+    If the Kast release has no plugin for the installed IDEA release line, the
+    installer names the mismatch and installs nothing.
 
     If prompted, add `~/.local/bin` to `PATH`.
   </Step>
@@ -55,7 +65,9 @@ Use the included Codex integration to query one Kotlin repository.
     - Wait for Gradle import and indexing to finish.
     - Save edited files before requesting evidence.
 
-    Reads use the saved project without starting an import or isolated worker.
+    Kast checks the existing-IDE endpoint when the agent connects. If the
+    endpoint is unavailable, follow the reported recovery guidance or
+    [troubleshoot the connection](/troubleshooting).
   </Step>
   <Step title="Connect from the repository root">
     ```console
@@ -64,12 +76,16 @@ Use the included Codex integration to query one Kotlin repository.
     ```
 
     This command enrolls the workspace, qualifies the installed catalog, and
-    starts the included integration.
+    starts the included integration. Closing the client leaves the managed
+    broker running for later terminal or Desktop sessions.
   </Step>
   <Step title="Ask for a declaration">
-    Ask the agent to find a class or function that exists in your project.
+    Ask: **“Use Kast to find the class OrderService.”** Replace `OrderService`
+    with a class in your project.
 
-    Check the returned semantic status, matches, and `symbol_ref` values.
+    A successful request returns matches with names, locations, and reusable
+    `ref` values. Read the semantic status: a qualified result has limits;
+    a rejected request needs the reported problem resolved.
 
     Continue with [Search declarations](/search) or [Read a response](/reference/responses).
   </Step>
@@ -78,6 +94,15 @@ Use the included Codex integration to query one Kotlin repository.
 ## Setup alternatives
 
 <AccordionGroup>
+  <Accordion title="Run without prompts">
+    ```shell
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" \
+      -- --no-interactive
+    ```
+
+    This installs app-server tooling but leaves the login LaunchAgent disabled.
+    Set `KAST_ENABLE_LAUNCHD=1` explicitly when automation should enable it.
+  </Accordion>
   <Accordion title="Choose among multiple IDEA installations">
     ```shell
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" \

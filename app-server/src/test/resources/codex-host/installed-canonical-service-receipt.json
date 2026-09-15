@@ -1,0 +1,51 @@
+{
+  "catalogProjectionSha256": "sha256:62fdf64e929761e1f45274a65315965b0de6ee79d693360f353e3b8348f2d7e3",
+  "catalogToolNames": [
+    "query",
+    "source_read",
+    "semantic_query",
+    "impact_analyze",
+    "diagnostic_check",
+    "change_plan",
+    "change_apply",
+    "change_recover"
+  ],
+  "codexExecutableSha256": "sha256:61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70",
+  "codexProtocolSha256": "sha256:a4e7ee85a1237179f0f8cec1e69dc7085e05e038416f7d8f2a2ccbd780ef2a79",
+  "codexVersion": "codex-cli 0.153.4",
+  "desktopCompatibility": "UNQUALIFIED",
+  "desktopDiscovery": "UNQUALIFIED",
+  "desktopStartupArguments": "VALIDATED",
+  "facadeRole": "app-server-stdio",
+  "initialize": "VALIDATED",
+  "kastContractSha256": "sha256:a1f1d637ab66e8b804a8049c3b23604a9ae6a9d205af422149dec7ea0028aaea",
+  "kastExecutableSha256": "sha256:03a53feb97020f5e49e024bf6dc4a12697583ef362a008b8d2d4241a4d7812bd",
+  "kastFacadeSha256": "sha256:b3755a0a700b85cc0db30b69296d63c281c53229d2e471c3546945c8f07a5805",
+  "outcome": "COMPLETE",
+  "parentClosure": "CLEAN",
+  "persistentServiceAfterDetach": "VALIDATED",
+  "schemaVersion": 2,
+  "stdoutProtocol": "JSONL_ONLY",
+  "taskId": "HOST-08",
+  "threadStart": "VALIDATED",
+  "canonicalService": {
+    "beforeAttachment": {
+      "phase": "prepared",
+      "statusSha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "publicSocketAndOwnership": "VALIDATED",
+      "publicEndpointKind": "codex-control"
+    },
+    "afterDetach": {
+      "phase": "prepared",
+      "statusSha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "publicSocketAndOwnership": "VALIDATED",
+      "publicEndpointKind": "codex-control"
+    },
+    "initialize": "VALIDATED",
+    "threadStart": "VALIDATED",
+    "parentClosure": "VALIDATED",
+    "serviceDisable": "VALIDATED",
+    "stockDesktopUi": "UNQUALIFIED",
+    "ordinaryDaemonDiscovery": "VALIDATED"
+  }
+}

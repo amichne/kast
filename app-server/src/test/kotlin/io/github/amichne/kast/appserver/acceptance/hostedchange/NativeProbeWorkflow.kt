@@ -57,7 +57,7 @@ internal class NativeProbeWorkflow(
         val before = Files.readAllBytes(source)
         val read = NativeChangeRead(peer)
         val found = read.searchClass()
-        val reference = ((found["items"] as JsonArray).single() as JsonObject).textAt("symbol_ref")
+        val reference = ((found["items"] as JsonArray).single() as JsonObject).textAt("ref")
         val created = peer.call("change_plan", nativePlanArguments(reference, "fun acceptanceUndo() = value"))
         demand(!created.rejected(), NativeFailure.PROVIDER_REJECTED)
         val arguments = buildJsonObject { put("planIdentity", created.document().textAt("planIdentity")) }

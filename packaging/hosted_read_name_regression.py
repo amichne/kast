@@ -8,7 +8,7 @@ def run_read_name_regression(replay):
     # CLI command identities never changed; aliases are provider input and configuration spellings.
     if replay.surface != 'provider':
         return
-    token = replay.seeds['helper']['symbol_ref']
+    token = replay.seeds['helper']['ref']
     for preferred, legacy, operation, request, field in (
         ('read_relations', 'semantic_query', 'relation.read', BudgetRelation(token, ElapsedBudget()), 'relations'),
         ('traverse_relations', 'impact_analyze', 'traversal.run', BudgetTraversal(token, ElapsedBudget()), 'graph'),

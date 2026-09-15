@@ -10,7 +10,8 @@ import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 
 internal sealed interface CoordinatorStatusRead {
-    class Observed(val snapshot: CoordinatorStatusSnapshot) : CoordinatorStatusRead
+    class Observed(val snapshot: CoordinatorStatusSnapshot, val service: BrokerServiceStateDocument.Ready) :
+        CoordinatorStatusRead
 
     data class Rejected(val failure: WorkerControlFailure) : CoordinatorStatusRead
 }
@@ -31,7 +32,7 @@ internal enum class CoordinatorHostAttachment {
 
 /** Wire values remain confined to this bounded observation document, never worker admission. */
 @Serializable
-private data class CoordinatorStatusDocument(
+internal data class CoordinatorStatusDocument(
     val status: CoordinatorServiceState,
     val installationId: String,
     val stateEpoch: String,
@@ -60,7 +61,7 @@ internal data class CoordinatorWorkerDocument(
 )
 
 /** Fully validated finite status shape, already correlated with the selected published owner. */
-internal class CoordinatorStatusSnapshot private constructor(private val observed: CoordinatorStatusDocument) {
+internal class CoordinatorStatusSnapshot private constructor(internal val observed: CoordinatorStatusDocument) {
     val hostAttachment: CoordinatorHostAttachment
         get() = observed.hostAttachment
 

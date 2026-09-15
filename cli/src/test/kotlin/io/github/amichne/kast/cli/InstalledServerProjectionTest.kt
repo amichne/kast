@@ -69,7 +69,7 @@ class InstalledServerProjectionTest {
                 .jsonArray
                 .map(JsonElement::jsonObject)
 
-        assertEquals(11, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
+        assertEquals(12, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
         assertTrue(
             bootstrap.getValue("policy").jsonPrimitive.content.contains("compiler-grounded Kotlin source intelligence")
         )
@@ -198,7 +198,7 @@ class InstalledServerProjectionTest {
         val internalOperations = HostedOperationProjection.internalDefinitions.map { it.operation.id.value }
 
         assertEquals(13, tools.size)
-        assertEquals(11, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
+        assertEquals(12, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
         assertEquals("kast", projection.getValue("namespace").jsonPrimitive.content)
         assertEquals(
             expectedPublicOperations.toSet(),

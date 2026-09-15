@@ -35,7 +35,7 @@ class BrokerEndpointAliasTest {
         val receipt = (socket.route as BrokerSocketRoute.PrivateUpstream).receipt
         try {
             assertTrue(
-                layout.publicSocket.toString().toByteArray(StandardCharsets.UTF_8).size < 104,
+                layout.privatePublicSocket.toString().toByteArray(StandardCharsets.UTF_8).size < 104,
                 "selected public Unix transport must fit while physical state stays under the version root",
             )
             assertTrue(
@@ -181,8 +181,11 @@ class BrokerEndpointAliasTest {
     fun `planned absent alias is observed passively without creation`(@TempDir temporary: Path) {
         val physical = temporary.toRealPath().resolve("version-" + "x".repeat(100))
         val layout = BrokerInstallationLayout.from(physical.resolve("bin/kast"), temporary)
-        assertEquals(BrokerSocketPathObservation.Absent, JdkBrokerSocketPathObserver.observe(layout.publicSocket))
-        assertFalse(Files.exists(layout.publicSocket.parent, LinkOption.NOFOLLOW_LINKS))
+        assertEquals(
+            BrokerSocketPathObservation.Absent,
+            JdkBrokerSocketPathObserver.observe(layout.privatePublicSocket),
+        )
+        assertFalse(Files.exists(layout.privatePublicSocket.parent, LinkOption.NOFOLLOW_LINKS))
         assertFalse(Files.exists(physical))
     }
 

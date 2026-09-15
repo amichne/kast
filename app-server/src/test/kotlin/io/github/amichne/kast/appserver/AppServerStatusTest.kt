@@ -5,6 +5,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -23,11 +24,15 @@ class AppServerStatusTest {
                     BrokerStartupActivityPublication.PUBLISHED
                 }
                 val command =
-                    (BrokerServiceLaunchCommand.resolveCoordinator(kast, root, emptyMap())
-                            as BrokerServiceLaunchCommandResolution.Resolved)
+                    (BrokerServiceLaunchCommand.resolveCoordinator(
+                            kast,
+                            root,
+                            mapOf("KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private"),
+                        ) as BrokerServiceLaunchCommandResolution.Resolved)
                         .command
                 val environment =
                     mapOf(
+                        "KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private",
                         "BROKER_SERVICE_IDENTITY" to command.identity.value,
                         "BROKER_READINESS_FILE" to command.readinessFile.toString(),
                     )
@@ -41,7 +46,8 @@ class AppServerStatusTest {
                 val running = (InstalledCoordinator.start(options) as InstalledCoordinatorStart.Started).coordinator
                 try {
                     val result =
-                        InstalledAppServerManager(kast, root, emptyMap()).execute(AppServerAction.Status, workspace)
+                        InstalledAppServerManager(kast, root, mapOf("KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private"))
+                            .execute(AppServerAction.Status, workspace)
                     assertTrue(result is AppServerManagementResult.Completed, result.toString())
                     val document = (result as AppServerManagementResult.Completed).document
                     assertEquals(
@@ -57,6 +63,14 @@ class AppServerStatusTest {
                     assertEquals(
                         "pending",
                         document.getValue("host").jsonObject.getValue("attachment").jsonPrimitive.content,
+                    )
+                    val endpoint = document.getValue("publicEndpoint").jsonObject
+                    assertEquals("private", endpoint.getValue("kind").jsonPrimitive.content)
+                    assertEquals(command.publicSocket.toString(), endpoint.getValue("path").jsonPrimitive.content)
+                    assertEquals("kast", endpoint.getValue("ownership").jsonPrimitive.content)
+                    assertEquals(
+                        "unobserved",
+                        document.getValue("upstream").jsonObject.getValue("state").jsonPrimitive.content,
                     )
                     val paths = document.getValue("paths").jsonObject
                     assertEquals(command.serviceLog.toString(), paths.getValue("serviceLog").jsonPrimitive.content)
@@ -75,6 +89,24 @@ class AppServerStatusTest {
                     assertFalse(activities.any { it.stage == BrokerStartupStage.HOST_ADMISSION })
                     assertFalse(Files.exists(root.resolve(".codex")))
                     assertFalse(Files.exists(root.resolve("state/run/u.sock")))
+                    val originalReadiness = Files.readString(command.readinessFile)
+                    val ready =
+                        BROKER_SERVICE_STATE_JSON.decodeFromString<BrokerServiceStateDocument>(originalReadiness)
+                            as BrokerServiceStateDocument.Ready
+                    try {
+                        Files.writeString(
+                            command.readinessFile,
+                            BROKER_SERVICE_STATE_JSON.encodeToString<BrokerServiceStateDocument>(
+                                ready.copy(serviceIdentity = "sha256:" + "0".repeat(64))
+                            ),
+                        )
+                        assertEquals(
+                            CoordinatorStatusRead.Rejected(WorkerControlFailure.SERVICE_IDENTITY_REJECTED),
+                            InstalledCoordinatorClient(kast).status(command),
+                        )
+                    } finally {
+                        Files.writeString(command.readinessFile, originalReadiness)
+                    }
                 } finally {
                     running.close()
                 }
@@ -84,7 +116,9 @@ class AppServerStatusTest {
     @Test
     fun `passive status reports absent service and empty registry without creating state`() =
         withPayload { root, kast ->
-            val result = InstalledAppServerManager(kast, root, emptyMap()).execute(AppServerAction.Status, root)
+            val result =
+                InstalledAppServerManager(kast, root, mapOf("KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private"))
+                    .execute(AppServerAction.Status, root)
             assertTrue(result is AppServerManagementResult.Completed, result.toString())
             val document = (result as AppServerManagementResult.Completed).document
             assertEquals(
@@ -106,7 +140,8 @@ class AppServerStatusTest {
                         Files.createDirectory(root.resolve("config")).resolve("environment"),
                         "KAST_WORKER_AGGREGATE_MIB=32768\n",
                     )
-                val environment = mapOf("KAST_CONFIGURATION_FILE" to saved.toString())
+                val environment =
+                    mapOf("KAST_CONFIGURATION_FILE" to saved.toString(), "KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private")
                 val command =
                     (BrokerServiceLaunchCommand.resolveCoordinator(kast, root, environment)
                             as BrokerServiceLaunchCommandResolution.Resolved)
@@ -114,6 +149,7 @@ class AppServerStatusTest {
                 val launch =
                     environment +
                         mapOf(
+                            "KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private",
                             "BROKER_SERVICE_IDENTITY" to command.identity.value,
                             "BROKER_READINESS_FILE" to command.readinessFile.toString(),
                         )
@@ -132,6 +168,7 @@ class AppServerStatusTest {
                         InstalledConfigurationAppliedInspection.read(kast, root, environment, next.configuration)
                     assertTrue(pending is AppliedConfigurationInspection.Pending, pending.toString())
                     assertFalse(Files.exists(root.resolve("state/run/u.sock")))
+
                     assertFalse(Files.exists(root.resolve(".codex")))
                 } finally {
                     running.close()

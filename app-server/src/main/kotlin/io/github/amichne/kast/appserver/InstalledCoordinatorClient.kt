@@ -65,7 +65,16 @@ internal sealed interface BrokerServiceDemandContext {
 
 /** Read-only client for the coordinator's own identity and host attachment. */
 internal class InstalledCoordinatorClient(private val kast: Path) {
-    internal suspend fun status(command: BrokerServiceLaunchCommand): CoordinatorStatusRead {
+    internal suspend fun status(command: BrokerServiceLaunchCommand): CoordinatorStatusRead =
+        when (val observed = incumbentStatus(command)) {
+            is CoordinatorStatusRead.Observed ->
+                if (observed.service.serviceIdentity == command.identity.value) observed
+                else CoordinatorStatusRead.Rejected(WorkerControlFailure.SERVICE_IDENTITY_REJECTED)
+            is CoordinatorStatusRead.Rejected -> observed
+        }
+
+    /** Configuration reconciliation must inspect the proven incumbent even when desired configuration changed. */
+    internal suspend fun incumbentStatus(command: BrokerServiceLaunchCommand): CoordinatorStatusRead {
         val publication =
             when (val read = published(command)) {
                 is Refinement.Refined -> read.value
@@ -108,7 +117,8 @@ internal class InstalledCoordinatorClient(private val kast: Path) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> return CoordinatorStatusRead.Rejected(admitted.failure)
             }
-        return if (snapshot.belongsTo(publication.owner, publication.service)) CoordinatorStatusRead.Observed(snapshot)
+        return if (snapshot.belongsTo(publication.owner, publication.service))
+            CoordinatorStatusRead.Observed(snapshot, publication.service)
         else CoordinatorStatusRead.Rejected(WorkerControlFailure.IDENTITY_REJECTED)
     }
 

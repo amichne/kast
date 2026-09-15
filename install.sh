@@ -7,21 +7,75 @@ readonly REPOSITORY="amichne/kast"
 readonly INSTALL_DOWNLOAD_RETRIES=5
 readonly INSTALL_DOWNLOAD_RETRY_DELAY_MILLIS=2000
 
+supports_color() {
+  [[ -z "${NO_COLOR:-}" ]] || return 1
+  [[ "${CLICOLOR_FORCE:-}" != "1" ]] || return 0
+  [[ -t 2 && "${TERM:-}" != "dumb" ]]
+}
+
+supports_unicode() {
+  [[ "${KAST_ASCII:-}" != "1" ]] || return 1
+  case "${LC_ALL:-${LC_CTYPE:-${LANG:-}}}" in
+    C|POSIX) return 1 ;;
+    *) return 0 ;;
+  esac
+}
+
+colorize() {
+  local code="$1"
+  shift
+  if supports_color; then printf '\033[%sm%s\033[0m' "$code" "$*"; else printf '%s' "$*"; fi
+}
+
+ui_glyph() {
+  local kind="$1"
+  if supports_unicode; then
+    case "$kind" in step) printf '◆' ;; success) printf '✓' ;; warning) printf '!' ;; error) printf '×' ;; *) printf '›' ;; esac
+  else
+    case "$kind" in step) printf '*' ;; success) printf '+' ;; warning) printf '!' ;; error) printf 'x' ;; *) printf '>' ;; esac
+  fi
+}
+
+ui_line() {
+  local kind="$1" color="$2"
+  shift 2
+  printf '  %s %s\n' "$(colorize "$color" "$(ui_glyph "$kind")")" "$*" >&2
+}
+
+print_banner() {
+  printf '\n' >&2
+  if supports_unicode; then
+    printf '%s\n' "$(colorize '1;36' '    ██╗  ██╗ █████╗ ███████╗████████╗
+    ██║ ██╔╝██╔══██╗██╔════╝╚══██╔══╝
+    █████╔╝ ███████║███████╗   ██║
+    ██╔═██╗ ██╔══██║╚════██║   ██║
+    ██║  ██║██║  ██║███████║   ██║
+    ╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝   ╚═╝')" >&2
+  else
+    printf '  %s\n' "$(colorize '1;36' "$(ui_glyph step) KAST INSTALLER")" >&2
+  fi
+  printf '  %s\n\n' "$(colorize '2' 'Compiler-grounded Kotlin evidence from your terminal')" >&2
+}
+
 fail() {
-  printf '%s: %s\n' "$PROGRAM" "$*" >&2
+  ui_line error 31 "$PROGRAM: $*"
   exit 1
 }
 
 note() {
-  printf 'kast: %s\n' "$*" >&2
+  ui_line step 36 "$*"
 }
+
+success() { ui_line success 32 "$*"; }
+info() { ui_line info 2 "$*"; }
+warning() { ui_line warning 33 "$*"; }
 
 usage() {
   cat <<'USAGE'
 Install or remove Kast for the current user.
 
 Usage:
-  install.sh [--idea-home <absolute-path>] [--version <major.minor.patch>] [--install-root <absolute-path>] [--bin-dir <absolute-path>] [--clean-collisions] [--dry-run]
+  install.sh [--idea-home <absolute-path>] [--version <major.minor.patch>] [--install-root <absolute-path>] [--bin-dir <absolute-path>] [--clean-collisions] [--dry-run] [--no-interactive]
   install.sh uninstall [--dry-run]
   install.sh --local session [--idea-home <absolute-path>]
   install.sh --local persistent [--idea-home <absolute-path>]
@@ -42,6 +96,10 @@ installation plan without changing installation state.
 When existing `kast` command files are not owned by the selected installation,
 an interactive install offers to remove those exact collisions. In automation,
 pass `--clean-collisions` to make the same explicit choice.
+
+Interactive installs ask whether to create a macOS login LaunchAgent. Pass
+`--no-interactive` to skip that prompt; the LaunchAgent then remains disabled
+unless KAST_ENABLE_LAUNCHD=1 is explicitly provided.
 USAGE
 }
 
@@ -129,15 +187,21 @@ resolve_latest_version() {
 fetch_asset() {
   local name="$1"
   local destination="$2"
+  local unavailable="${3:-}"
   if [[ -n "${KAST_INSTALL_ASSETS_DIRECTORY:-}" ]]; then
     require_absolute_path "assets directory" "$KAST_INSTALL_ASSETS_DIRECTORY"
-    [[ -f "$KAST_INSTALL_ASSETS_DIRECTORY/$name" && ! -L "$KAST_INSTALL_ASSETS_DIRECTORY/$name" ]] ||
+    if [[ ! -f "$KAST_INSTALL_ASSETS_DIRECTORY/$name" || -L "$KAST_INSTALL_ASSETS_DIRECTORY/$name" ]]; then
+      [[ -z "$unavailable" ]] || fail "$unavailable"
       fail "local release asset is unavailable: $name"
+    fi
     cp "$KAST_INSTALL_ASSETS_DIRECTORY/$name" "$destination"
   else
-    curl --fail --location --silent --show-error \
+    if ! curl --fail --location --silent --show-error \
       --retry "$INSTALL_DOWNLOAD_RETRIES" --retry-delay "$((INSTALL_DOWNLOAD_RETRY_DELAY_MILLIS / 1000))" \
-      --output "$destination" "$release_url/$name"
+      --output "$destination" "$release_url/$name"; then
+      [[ -z "$unavailable" ]] || fail "$unavailable"
+      fail "release asset is unavailable: $name"
+    fi
   fi
 }
 
@@ -222,11 +286,14 @@ metadata = Path(sys.argv[1])
 value = json.loads(metadata.read_bytes())
 build = value.get("buildNumber")
 directory = value.get("dataDirectoryName")
+version = value.get("version")
 if not isinstance(build, str) or re.fullmatch(r"[0-9]+(?:\.[0-9]+)+", build) is None:
     raise SystemExit("kast-install: IDEA build identity is invalid")
 if not isinstance(directory, str) or re.fullmatch(r"[A-Za-z0-9._-]+", directory) is None:
     raise SystemExit("kast-install: IDEA data-directory identity is invalid")
-print(f"{build}\t{directory}")
+if not isinstance(version, str) or not version.strip() or "\t" in version or "\n" in version:
+    raise SystemExit("kast-install: IDEA version identity is invalid")
+print(f"{version}\t{build}\t{directory}")
 PYTHON
 }
 
@@ -328,6 +395,7 @@ version="${KAST_VERSION:-}"
 idea_home="${KAST_INSTALL_IDEA_HOME:-}"
 mode=apply
 clean_collisions=ask
+interaction=prompt
 
 if [[ "${1:-}" == uninstall ]]; then
   action=uninstall
@@ -342,6 +410,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --dry-run)
       mode=plan
+      shift
+      ;;
+    --no-interactive)
+      interaction=noninteractive
       shift
       ;;
     --version)
@@ -414,6 +486,9 @@ for command in curl shasum awk sed find python3 cp mktemp uname; do require_comm
 [[ "$(uname -s)" == Darwin ]] || fail "only macOS is supported"
 case "$(uname -m)" in arm64|aarch64) ;; *) fail "only macOS on Apple silicon is supported" ;; esac
 
+print_banner
+note "checking this Mac and the selected IntelliJ installation"
+
 if [[ -n "$idea_home" ]]; then
   require_absolute_path "IDEA home" "$idea_home"
   idea_home="$(canonical_idea_home "$idea_home" || true)"
@@ -422,8 +497,10 @@ else
   idea_home="$(discover_idea_home)"
 fi
 java_home="$idea_home/jbr/Contents/Home"
-IFS=$'\t' read -r idea_build idea_data_directory < <(read_idea_identity "$idea_home")
-[[ -n "$idea_build" && -n "$idea_data_directory" ]] || fail "IDEA product identity is unavailable"
+IFS=$'\t' read -r idea_version idea_build idea_data_directory < <(read_idea_identity "$idea_home")
+[[ -n "$idea_version" && -n "$idea_build" && -n "$idea_data_directory" ]] || fail "IDEA product identity is unavailable"
+success "found IntelliJ IDEA $idea_version (build $idea_build)"
+info "The IntelliJ plugin gives Kast compiler-grounded access to projects opened in this exact IDEA release line."
 if [[ -n "$checkout_mode" ]]; then
   export KAST_INSTALL_IDEA_HOME="$idea_home"
   exec bash "$installer_directory/packaging/install-checkout.sh" "$installer_directory/install.sh" "$checkout_mode" --idea-home "$idea_home"
@@ -450,11 +527,12 @@ trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-note "preparing Kast $version"
-for name in "$control_name" "$control_name.sha256" \
-  "$plugin_name" "$plugin_name.sha256"; do
-  fetch_asset "$name" "$temporary_root/$name"
-done
+note "downloading Kast $version and its IDEA ${idea_build%%.*} plugin"
+for name in "$control_name" "$control_name.sha256"; do fetch_asset "$name" "$temporary_root/$name"; done
+idea_mismatch="not installing Kast: release $version has no matching IDEA ${idea_build%%.*} plugin for IntelliJ IDEA $idea_version (build $idea_build)"
+fetch_asset "$plugin_name" "$temporary_root/$plugin_name" "$idea_mismatch"
+fetch_asset "$plugin_name.sha256" "$temporary_root/$plugin_name.sha256" "$idea_mismatch"
+note "verifying downloaded checksums and plugin compatibility"
 control_digest="$(verify_checksum "$temporary_root/$control_name" "$temporary_root/$control_name.sha256" "$control_name")"
 plugin_digest="$(verify_checksum "$temporary_root/$plugin_name" "$temporary_root/$plugin_name.sha256" "$plugin_name")"
 plugin_stage="$temporary_root/hosted-plugin"
@@ -462,6 +540,20 @@ extract_hosted_plugin "$temporary_root/$plugin_name" "$plugin_stage" "$version" 
 control_root="$temporary_root/control"
 extract_control "$temporary_root/$control_name" "$control_root"
 [[ -x "$control_root/bin/kast" ]] || fail "control archive has no executable installer"
+
+enable_launchd="${KAST_ENABLE_LAUNCHD:-0}"
+if [[ -z "${KAST_ENABLE_LAUNCHD+x}" && "$interaction" == prompt ]]; then
+  info "The app server lets Codex reuse one persistent Kast coordinator across terminal and desktop sessions."
+  info "A macOS login LaunchAgent starts that coordinator at login and restarts it if it exits; uninstalling Kast removes its managed service."
+  printf '  %s ' "$(colorize '1;36' 'Enable the Kast login LaunchAgent? [y/N]')" >&2
+  reply=""
+  IFS= read -r reply || true
+  case "$reply" in y|Y|yes|YES|Yes) enable_launchd=1 ;; *) enable_launchd=0 ;; esac
+elif [[ "$interaction" == noninteractive ]]; then
+  info "Non-interactive mode: app server tooling will be installed; the login LaunchAgent is $([[ "$enable_launchd" == 1 ]] && printf enabled || printf disabled)."
+fi
+case "$enable_launchd" in 0|1) ;; *) fail "KAST_ENABLE_LAUNCHD must be 0 or 1" ;; esac
+note "$([[ "$mode" == plan ]] && printf 'planning' || printf 'installing') app server tooling and command launchers"
 
 export KAST_INSTALL_CONTROL_ROOT="$control_root"
 export KAST_INSTALL_CONTROL_ARCHIVE="$temporary_root/$control_name"
@@ -473,7 +565,7 @@ export KAST_INSTALL_IDEA_HOME="$idea_home"
 export KAST_INSTALL_JAVA_HOME="$java_home"
 export KAST_INSTALL_ROOT="$install_root"
 export KAST_BIN_DIR="$bin_directory"
-export KAST_ENABLE_LAUNCHD="${KAST_ENABLE_LAUNCHD:-1}"
+export KAST_ENABLE_LAUNCHD="$enable_launchd"
 export KAST_ENABLE_APP_SERVER="${KAST_ENABLE_APP_SERVER:-1}"
 export KAST_INSTALL_REFRESH_APP_SERVER="${KAST_INSTALL_REFRESH_APP_SERVER:-1}"
 if [[ "$clean_collisions" == yes ]]; then
@@ -488,8 +580,10 @@ export JAVA_HOME="$java_home"
 
 "$control_root/bin/kast" installation install
 if [[ "$mode" == plan ]]; then
-  note "verified hosted plugin $plugin_digest for IDEA $idea_build; installation planned at $idea_plugin_root/kast-ide-hosted"
+  success "verified hosted plugin $plugin_digest for IntelliJ IDEA $idea_version (build $idea_build)"
+  info "Installation is planned at $install_root; the IDEA plugin is planned at $idea_plugin_root/kast-ide-hosted."
 else
   activate_hosted_plugin "$plugin_stage" "$idea_plugin_root"
-  note "installed hosted plugin for IDEA $idea_build; restart IntelliJ IDEA to activate it"
+  success "installed Kast $version and the plugin for IntelliJ IDEA $idea_version (build $idea_build)"
+  info "Please restart IntelliJ IDEA to activate the plugin, then run 'kast codex' from your repository."
 fi

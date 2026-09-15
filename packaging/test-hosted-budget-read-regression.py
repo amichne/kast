@@ -179,7 +179,7 @@ class HostedBudgetReadRegressionTest(unittest.TestCase):
             transport = DetachedTransport((asdict(DetachedPage(graph, high_grant)), asdict(DetachedPage(graph, low_grant))))
             recorded = []
             replay = SimpleNamespace(surface='cli', live='same-authority', transport=transport,
-                seeds={'helper': {'symbol_ref': 'selector'}}, record=lambda *args: recorded.append(args))
+                seeds={'helper': {'ref': 'selector'}}, record=lambda *args: recorded.append(args))
             _retained_traversal(replay, low, high)
             checks = recorded[0][2]
             self.assertTrue(all(checks.values()), checks)

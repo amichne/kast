@@ -6,11 +6,9 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.put
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Test
@@ -25,9 +23,9 @@ class CodexHostIntegrationManifestMainTest {
         val manifest = Json.parseToJsonElement(Files.readString(output)).jsonObject
         assertEquals("VALIDATED", manifest.getValue("desktopStartupArguments").jsonPrimitive.content)
         assertEquals("UNQUALIFIED", manifest.getValue("desktopCompatibility").jsonPrimitive.content)
-        assertEquals("NOT_REQUIRED", manifest.getValue("desktopDiscovery").jsonPrimitive.content)
-        assertEquals("4", manifest.getValue("schemaVersion").jsonPrimitive.content)
-        assertEquals(installedReceipt().getValue("privateService"), manifest.getValue("privateService"))
+        assertEquals("UNQUALIFIED", manifest.getValue("desktopDiscovery").jsonPrimitive.content)
+        assertEquals("5", manifest.getValue("schemaVersion").jsonPrimitive.content)
+        assertEquals(installedReceipt().getValue("canonicalService"), manifest.getValue("canonicalService"))
         assertFalse("standardAppServer" in manifest)
         assertEquals(
             setOf("CLI_REMOTE_CLIENT", "APP_SERVER_STDIO"),
@@ -41,34 +39,28 @@ class CodexHostIntegrationManifestMainTest {
 
     @Test
     fun `missing desktop startup evidence cannot produce a manifest`(@TempDir temporary: Path) {
-        assertRejected(temporary, JsonObject(installedReceipt() - "desktopStartupArguments"))
+        assertRejected(
+            temporary,
+            installedReceipt().updated(listOf("desktopStartupArguments"), kotlinx.serialization.json.JsonNull),
+        )
     }
 
     @Test
     fun `unvalidated desktop startup evidence cannot produce a manifest`(@TempDir temporary: Path) {
         assertRejected(
             temporary,
-            JsonObject(installedReceipt() + ("desktopStartupArguments" to JsonPrimitive("UNVALIDATED"))),
+            installedReceipt().updated(listOf("desktopStartupArguments"), JsonPrimitive("UNVALIDATED")),
         )
     }
 
     @Test
     fun `unknown receipt fields remain rejected`(@TempDir temporary: Path) {
-        assertRejected(temporary, JsonObject(installedReceipt() + ("unexpectedEvidence" to JsonPrimitive("VALIDATED"))))
+        assertRejected(temporary, installedReceipt().updated(listOf("unexpectedEvidence"), JsonPrimitive("VALIDATED")))
     }
 
     @Test
     fun `legacy daemon evidence cannot substitute for private service receipt`(@TempDir temporary: Path) {
-        val legacy =
-            JsonObject(
-                installedReceipt() - "privateService" +
-                    ("standardDaemon" to
-                        buildJsonObject {
-                            put("socketPath", "/fixture/.codex/app-server-control/app-server-control.sock")
-                            put("cliVersion", "0.153.4")
-                            put("appServerVersion", "0.153.4")
-                        })
-            )
+        val legacy = installedReceipt().updated(listOf("canonicalService"), kotlinx.serialization.json.JsonNull)
         assertRejected(temporary, legacy)
     }
 
@@ -76,11 +68,10 @@ class CodexHostIntegrationManifestMainTest {
     fun `unattached or unowned service evidence remains rejected`(@TempDir temporary: Path) {
         for ((path, value) in
             listOf(
-                listOf("privateService", "ordinaryDaemonSocket") to "PRESENT",
-                listOf("privateService", "phase") to "COORDINATOR_ONLY",
-                listOf("privateService", "qualification", "service", "ownership") to "unobserved",
-                listOf("privateService", "qualification", "coordinator", "observation", "hostAttachment") to "PENDING",
-                listOf("privateService", "socketPath") to "/fixture/.codex/app-server-control/app-server-control.sock",
+                listOf("canonicalService", "beforeAttachment", "phase") to "pending",
+                listOf("canonicalService", "afterDetach", "publicSocketAndOwnership") to "UNQUALIFIED",
+                listOf("canonicalService", "afterDetach", "publicEndpointKind") to "private",
+                listOf("canonicalService", "ordinaryDaemonDiscovery") to "UNQUALIFIED",
             )) assertRejected(temporary, installedReceipt().updated(path, JsonPrimitive(value)))
     }
 
@@ -90,7 +81,7 @@ class CodexHostIntegrationManifestMainTest {
             temporary,
             installedReceipt()
                 .updated(
-                    listOf("privateService", "qualification", "coordinator", "observation", "unexpected"),
+                    listOf("canonicalService", "afterDetach", "unexpected"),
                     JsonPrimitive("VALIDATED"),
                 ),
         )
@@ -112,7 +103,7 @@ class CodexHostIntegrationManifestMainTest {
 
     private fun installedReceipt(): JsonObject =
         Json.parseToJsonElement(
-                requireNotNull(javaClass.getResource("/codex-host/installed-private-service-receipt.json")).readText()
+                requireNotNull(javaClass.getResource("/codex-host/installed-canonical-service-receipt.json")).readText()
             )
             .jsonObject
 

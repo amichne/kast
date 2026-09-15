@@ -120,6 +120,7 @@ handles reject as malformed.
 
 `CanonicalSymbolId` separately hashes the full compiler evidence and semantic
 snapshot with SHA-256. It excludes discovery scope so equal declarations reached
-through different admitted scopes share `symbol_id`. Exact selectors still bind
+through different admitted scopes share an internal canonical identity. Public query
+results expose only `ref`; `symbol_id` has no public accessor. Exact selectors still bind
 the original scope and constraints; the equality key cannot restore or broaden a
 read capability. Native revalidation remains mandatory after lookup.

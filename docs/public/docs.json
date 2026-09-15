@@ -53,6 +53,13 @@
               "reference/symbols",
               "concepts/evidence-boundaries"
             ]
+          },
+          {
+            "group": "Support",
+            "pages": [
+              "troubleshooting",
+              "reference/compatibility"
+            ]
           }
         ]
       },
@@ -63,7 +70,8 @@
           {
             "group": "Integration",
             "pages": [
-              "agent-harnesses"
+              "agent-harnesses",
+              "concepts/runtime-integration-validation"
             ]
           },
           {
@@ -106,19 +114,6 @@
             "pages": [
               "POST /callables/symbol_lookup",
               "POST /callables/symbol_inspect"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "Operate Kast",
-        "groups": [
-          {
-            "group": "Support",
-            "pages": [
-              "troubleshooting",
-              "reference/compatibility",
-              "concepts/runtime-integration-validation"
             ]
           }
         ]

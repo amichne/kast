@@ -66,7 +66,7 @@ class ReadNameRegressionTest(unittest.TestCase):
             return asdict(change(tool, value)), schema(tool)
 
         replay = SimpleNamespace(surface=surface, live='private-live',
-            seeds={'helper': {'symbol_ref': 'private-reference'}},
+            seeds={'helper': {'ref': 'private-reference'}},
             transport=SimpleNamespace(invoke_observed=invoke),
             record=lambda _name, _tool, checks, _count, _response: rows.append(checks))
         run_read_name_regression(replay)

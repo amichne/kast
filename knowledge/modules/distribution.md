@@ -52,6 +52,13 @@ Distribution contracts own configuration keys, defaults, owners, operational lim
 
 Root and packaging scripts orchestrate checkout installation, persistent lifecycle, release layout, and acceptance. Stable releases and local checkout installations include a hosted-plugin ZIP named for the IDEA release line (`idea-262.zip`). Local installation builds the control product and matching hosted plugin before staging their checksums. The public installer verifies its checksum, release version, plugin identity, and descriptor release line before atomically replacing only the Kast directory under IDEA's user plugin root; dry-run validates the archive without writing plugin state. The checked [configuration schema](../../packaging/configuration-schema.json) is a public boundary and must remain aligned with the Kotlin catalogue.
 
+The public installer reports the selected IDEA product version and build before
+fetching release-line-specific plugin bytes. An absent matching plugin is a
+fail-closed compatibility result and precedes installation effects. Interactive
+public installation explains app-server tooling and asks whether to enable the
+per-user login LaunchAgent; `--no-interactive` skips that read and defaults the
+LaunchAgent off unless its existing configuration switch explicitly enables it.
+
 Installation child processes emit `kast_installation` records by default with a closed stage and outcome. Prior admission, retirement, configuration validation, command qualification and App Server enablement retain distinct success, nonzero exit, deadline, I/O and interruption observations. Child admission remains authoritative; these records do not contain command arguments, environment values or filesystem paths.
 
 `ControlDistributionLimits` owns the maximum verified control-product entry count and manifest size used by staged installation and runtime identity admission. The shell bootstrap, installed lifecycle, build verifier, and Kotlin owner are checked for the same entry limit, and release layout verification rejects a product outside that bound before publication. Upgrade admission uses the new, checksum-verified lifecycle implementation to inspect the prior installation, so a valid older product cannot block its own replacement because its validator predates the current product bounds. This retains the resource limits while preventing copied limits from drifting below the product that the build produced.
@@ -119,3 +126,11 @@ The original-release session helper requires the current target's successful
 JVM home/temp options through launcher `JAVA_OPTS`, without filtering stderr or
 relaxing diagnostics. Previous-release sessions retain their historical stderr
 as evidence so an adjacent upgrade can qualify the repaired target.
+
+The source-built Codex host acceptance now selects the canonical control endpoint
+and requires matched ownership, mode 0600, live launchd observation, native protocol
+and catalog readiness, stock daemon version discovery, fresh thread creation and
+owned cleanup. Its schema-2 receipt retains bounded status hashes and distinct
+unqualified Desktop evidence. Original-release acceptance explicitly selects the
+private compatibility policy. These receipts do not prove a model-driven tool
+invocation through the existing IDEA runtime.

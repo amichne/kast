@@ -43,7 +43,7 @@ internal const val MAXIMUM_PROTOCOL_TEXT_LENGTH = 1_048_576
 internal const val MAXIMUM_WORKSPACE_FILE_LENGTH = 4_096
 internal const val MAXIMUM_PROTOCOL_COUNT = 1_000
 
-private const val SERVER_PROJECTION_SCHEMA_VERSION = 11
+private const val SERVER_PROJECTION_SCHEMA_VERSION = 12
 private const val HOSTED_BOOTSTRAP_SCHEMA_VERSION = 1
 private const val CLI_INVOCATIONS_SCHEMA_VERSION = 3
 
@@ -385,8 +385,9 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
             "hostedReadRejection" to HostedRejectionSchemas.read,
             "queryResultItem" to queryResultItemSchema(),
             "queryItemFailure" to queryItemFailureSchema(),
-            "queryExactReference" to queryOutputReferenceSchema("exact-symbol"),
-            "queryCandidateReference" to queryOutputReferenceSchema("declaration-candidate"),
+            "ExactSymbolRef" to queryOutputReferenceSchema("exact-symbol"),
+            "CandidateRef" to queryOutputReferenceSchema("declaration-candidate"),
+            "ContinuationRef" to textSchema("Opaque snapshot and pipeline-bound next page handle."),
             "queryRejection" to queryRejectionSchema(),
             "sourceReadRejection" to canonicalReadRejectionSchema(CanonicalOperation.SOURCE_READ),
             "relationReadRejection" to canonicalReadRejectionSchema(CanonicalOperation.RELATION_READ),
@@ -704,16 +705,6 @@ private fun queryResultItemSchema(): JsonObject =
         ),
         objectSchema(
             ServerSchemaProperty("type", constantSchema("exact-symbol", "Exact-symbol result.")),
-            ServerSchemaProperty(
-                "symbol_ref",
-                textSchema(
-                    "Opaque exact-symbol token. Copy verbatim into query_symbols source.symbol_refs; identical to ref.token."
-                ),
-            ),
-            ServerSchemaProperty(
-                "symbol_id",
-                textSchema("Snapshot-local canonical declaration identity for equality; never a selector."),
-            ),
             ServerSchemaProperty("ref", queryOutputReferenceSchema("exact-symbol")),
             ServerSchemaProperty(
                 "kind",
@@ -747,16 +738,11 @@ private fun queryResultItemSchema(): JsonObject =
         ),
     )
 
+/** Syntax identifies the reference family; only the existing semantic owner can admit its authority. */
 private fun queryOutputReferenceSchema(kind: String): JsonObject =
-    objectSchema(
-        ServerSchemaProperty("kind", constantSchema(kind, "Reference evidence family.")),
-        ServerSchemaProperty(
-            "token",
-            patternTextSchema(
-                if (kind == "exact-symbol") "^exact:v[2345]:" else "^candidate:v[2345]:",
-                "Reusable proof-carrying reference.",
-            ),
-        ),
+    patternTextSchema(
+        if (kind == "exact-symbol") "^exact:v[2345]:" else "^candidate:v[2345]:",
+        "Opaque reference. Copy verbatim into the next request; never decode or reconstruct it.",
     )
 
 private fun queryItemFailureSchema(): JsonObject =

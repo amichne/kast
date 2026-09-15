@@ -21,6 +21,7 @@ enum class PersistentBrokerServiceFailure {
     SERVICE_RETIREMENT_REJECTED,
     SERVICE_SUBMISSION_REJECTED,
     READINESS_REJECTED,
+    NATIVE_PROTOCOL_REJECTED,
     PUBLIC_SOCKET_OWNED,
     SOCKET_PROBE_REJECTED,
     SOCKET_PATH_REJECTED,
@@ -54,6 +55,7 @@ internal fun BrokerServerFailure.persistentServiceFailure(): PersistentBrokerSer
         BrokerServerFailure.THREAD_STORE_REJECTED -> PersistentBrokerServiceFailure.THREAD_STORE_REJECTED
         BrokerServerFailure.UPSTREAM_REJECTED -> PersistentBrokerServiceFailure.UPSTREAM_REJECTED
         BrokerServerFailure.SERVER_REJECTED -> PersistentBrokerServiceFailure.SERVER_REJECTED
+        BrokerServerFailure.NATIVE_PROTOCOL_REJECTED -> PersistentBrokerServiceFailure.NATIVE_PROTOCOL_REJECTED
         BrokerServerFailure.READINESS_REJECTED -> PersistentBrokerServiceFailure.READINESS_REJECTED
         BrokerServerFailure.INTERRUPTED -> PersistentBrokerServiceFailure.INTERRUPTED
     }
