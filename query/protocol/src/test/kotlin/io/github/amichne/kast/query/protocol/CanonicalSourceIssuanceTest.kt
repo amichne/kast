@@ -74,6 +74,43 @@ class CanonicalSourceIssuanceTest {
 
     @Test fun `inline fallback and issuance rejection retain their existing semantics`() = verifyIssuance(false)
 
+    @Test
+    fun `source retains every exact authority rejection without executing provider in either format`() = runTest {
+        val fixture = SourceIssuanceFixture()
+        val references = fixture.references(true)
+        val token =
+            (references.issueDeclarationCandidate(fixture.selection) as CandidateSelectorTokenIssuance.Issued).selector
+        for (format in SourceReadFormatDocument.entries) for (failure in CanonicalSelectorDecodingFailure.entries) {
+            var executed = false
+            val rejecting =
+                object : QueryReferenceAuthority by references {
+                    override fun restoreCandidate(
+                        token: ProtocolText,
+                        current: io.github.amichne.kast.workspace.contract.SemanticReadAuthority,
+                    ): CanonicalSelectorDecoding<CandidateSelector> = CanonicalSelectorDecoding.Rejected(failure)
+                }
+            val result =
+                CanonicalSourceReadProtocol(
+                        SourceReadOperations {
+                            executed = true
+                            error("Rejected reference reached source")
+                        },
+                        rejecting,
+                    )
+                    .execute(fixture.request(token).copy(format = format), fixture.lease, fixture.budget)
+                    as OperationOutcome.Rejected
+            val cause =
+                result.reason as io.github.amichne.kast.protocol.contract.SourceReadFailureDetail.ReferenceRejected
+            assertEquals(io.github.amichne.kast.protocol.contract.SourceReferenceRole.CANDIDATE, cause.role)
+            assertEquals(failure.sourceFailure(), cause.reason)
+            assertTrue(!executed)
+            val encoded =
+                (CanonicalOperationWireBindings.sourceRead.encodeOutcome(result) as WireEncoding.Encoded).document
+            assertEquals(WireDecoding.Decoded(result), CanonicalOperationWireBindings.sourceRead.decodeOutcome(encoded))
+            assertTrue(!encoded.contains(token.value))
+        }
+    }
+
     private fun verifyIssuance(compact: Boolean) = runTest {
         val fixture = SourceIssuanceFixture()
         val references = fixture.references(compact)
@@ -90,7 +127,11 @@ class CanonicalSourceIssuanceTest {
                     CandidateSelectorTokenIssuance.Rejected(CandidateSelectorTokenIssuanceFailure.TOKEN_REJECTED)
             }
         assertEquals(
-            OperationOutcome.Rejected(io.github.amichne.kast.protocol.contract.SourceReadRejection.CONTRACT_VIOLATION),
+            OperationOutcome.Rejected(
+                io.github.amichne.kast.protocol.contract.SourceReadFailureDetail.InternalContractFailure(
+                    io.github.amichne.kast.protocol.contract.SourceInternalObligation.RESULT_PROJECTION
+                )
+            ),
             CanonicalSourceReadProtocol(operations, rejectingIssuer).execute(request, fixture.lease, fixture.budget),
         )
         fixture.verify(outcome.evidence.payload, references, expected)

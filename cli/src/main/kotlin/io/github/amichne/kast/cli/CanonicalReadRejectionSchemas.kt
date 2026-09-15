@@ -12,7 +12,10 @@ import kotlinx.serialization.json.JsonObject
 internal fun canonicalReadRejectionSchema(operation: CanonicalOperation): JsonObject =
     when (operation) {
         CanonicalOperation.SOURCE_READ ->
-            enumSchema(SourceReadRejection.entries.map { it.cliName() }, "Source read rejection.")
+            unionSchema(
+                enumSchema(SourceReadRejection.entries.map { it.cliName() }, "Source read rejection."),
+                generatedRequestSchema(io.github.amichne.kast.protocol.contract.SourceReadFailureDetail.serializer()),
+            )
         CanonicalOperation.RELATION_READ ->
             enumSchema(RelationReadRejection.entries.map { it.cliName() }, "Relation read rejection.")
         CanonicalOperation.TRAVERSAL_RUN ->

@@ -13,8 +13,8 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
-private const val MAX_SOURCE_READ_LINE_COUNT = 1_000
-private const val MAX_SOURCE_READ_ENTITY_LIMIT = 1_000
+internal const val MAX_SOURCE_READ_LINE_COUNT = 1_000
+internal const val MAX_SOURCE_READ_ENTITY_LIMIT = 1_000
 private const val MAX_SOURCE_READ_TEXT_LENGTH = 1_048_576
 
 @Serializable
@@ -249,7 +249,14 @@ internal object SourceReadRequestSerializer : KSerializer<SourceReadRequest> {
     }
 
     override fun deserialize(decoder: Decoder): SourceReadRequest =
-        delegate.deserialize(decoder).requireCanonicalSyntax()
+        when (val json = decoder as? kotlinx.serialization.json.JsonDecoder) {
+            null -> delegate.deserialize(decoder).requireCanonicalSyntax()
+            else ->
+                when (val admitted = SourceRequestIngress.decode(json.decodeJsonElement(), json.json)) {
+                    is Refinement.Refined -> admitted.value
+                    is Refinement.Rejected -> throw SourceRequestSerializationException(admitted.failure)
+                }
+        }
 }
 
 private fun SourceReadRequest.requireCanonicalSyntax(): SourceReadRequest =
@@ -288,17 +295,16 @@ private fun List<SourceEntityFilterDocument>.hasCanonicalSyntax(): Boolean {
             SourceEntityFilterDocument.References -> 3
         }
     }
-    return keys == keys.distinct().sorted()
+    return keys.size == keys.distinct().size
 }
 
 private fun SourceEntityFilterDocument.Declarations.hasCanonicalSyntax(): Boolean =
-    kinds.isNotEmpty() && kinds == kinds.distinct().sortedBy { it.ordinal } && visibility.hasCanonicalSyntax()
+    kinds.isNotEmpty() && kinds.size == kinds.distinct().size && visibility.hasCanonicalSyntax()
 
 private fun SourceVisibilitySelectionDocument.hasCanonicalSyntax(): Boolean =
     when (this) {
         SourceVisibilitySelectionDocument.Any -> true
-        is SourceVisibilitySelectionDocument.Exact ->
-            values.isNotEmpty() && values == values.distinct().sortedBy { it.ordinal }
+        is SourceVisibilitySelectionDocument.Exact -> values.isNotEmpty() && values.size == values.distinct().size
     }
 
 enum class SourceCoordinateUnitDocument {

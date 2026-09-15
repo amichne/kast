@@ -9,73 +9,49 @@ import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolSourceText
 import io.github.amichne.kast.protocol.contract.ProtocolText
-import io.github.amichne.kast.protocol.contract.SourceBodyKindDocument
-import io.github.amichne.kast.protocol.contract.SourceContainmentDocument
 import io.github.amichne.kast.protocol.contract.SourceCoordinateUnitDocument
 import io.github.amichne.kast.protocol.contract.SourceDeclarationKindDocument
 import io.github.amichne.kast.protocol.contract.SourceDeclarationSemanticIdentityDocument
 import io.github.amichne.kast.protocol.contract.SourceDeclarationVisibilityDocument
-import io.github.amichne.kast.protocol.contract.SourceEnclosingRegionKindDocument
 import io.github.amichne.kast.protocol.contract.SourceEntityCountDocument
 import io.github.amichne.kast.protocol.contract.SourceEntityDocument
-import io.github.amichne.kast.protocol.contract.SourceEntityFilterDocument
-import io.github.amichne.kast.protocol.contract.SourceEntitySelectionDocument
 import io.github.amichne.kast.protocol.contract.SourceEntityTargetDocument
+import io.github.amichne.kast.protocol.contract.SourceInternalObligation
 import io.github.amichne.kast.protocol.contract.SourceLengthDocument
 import io.github.amichne.kast.protocol.contract.SourceNestingDepthDocument
-import io.github.amichne.kast.protocol.contract.SourceReadAnchorDocument
+import io.github.amichne.kast.protocol.contract.SourceReadCause
+import io.github.amichne.kast.protocol.contract.SourceReadFailureDetail
 import io.github.amichne.kast.protocol.contract.SourceReadLimitationDocument
-import io.github.amichne.kast.protocol.contract.SourceReadPageDocument
 import io.github.amichne.kast.protocol.contract.SourceReadQualification
 import io.github.amichne.kast.protocol.contract.SourceReadRejection
 import io.github.amichne.kast.protocol.contract.SourceReadRequest
 import io.github.amichne.kast.protocol.contract.SourceReadResult as ProtocolSourceReadResult
 import io.github.amichne.kast.protocol.contract.SourceRegionDocument
 import io.github.amichne.kast.protocol.contract.SourceRegionKindDocument
-import io.github.amichne.kast.protocol.contract.SourceRegionSelectionDocument
 import io.github.amichne.kast.protocol.contract.SourceSelectionDocument
 import io.github.amichne.kast.protocol.contract.SourceSelectionRangeDocument
 import io.github.amichne.kast.protocol.contract.SourceSnapshotContextDocument
 import io.github.amichne.kast.protocol.contract.SourceSnapshotDocument
 import io.github.amichne.kast.protocol.contract.SourceTextProjectionDocument
-import io.github.amichne.kast.protocol.contract.SourceTextRequestDocument
 import io.github.amichne.kast.protocol.contract.SourceTextWithheldReasonDocument
 import io.github.amichne.kast.protocol.contract.SourceUnresolvedReasonDocument
-import io.github.amichne.kast.protocol.contract.SourceVisibilitySelectionDocument
-import io.github.amichne.kast.source.contract.BodyKind
 import io.github.amichne.kast.source.contract.CompilerUnresolvedReason
-import io.github.amichne.kast.source.contract.Containment
 import io.github.amichne.kast.source.contract.DeclarationKind
-import io.github.amichne.kast.source.contract.DeclarationKindSelection
 import io.github.amichne.kast.source.contract.DeclarationSemanticIdentity
 import io.github.amichne.kast.source.contract.DeclarationVisibility
-import io.github.amichne.kast.source.contract.EnclosingRegionKind
-import io.github.amichne.kast.source.contract.EntityFilter
-import io.github.amichne.kast.source.contract.EntitySelection
-import io.github.amichne.kast.source.contract.LineCount
-import io.github.amichne.kast.source.contract.RegionSelection
 import io.github.amichne.kast.source.contract.SourceEntity
-import io.github.amichne.kast.source.contract.SourceEntityLimit
 import io.github.amichne.kast.source.contract.SourceEntityName
 import io.github.amichne.kast.source.contract.SourceEntityTarget
-import io.github.amichne.kast.source.contract.SourceReadAnchor as DomainSourceReadAnchor
 import io.github.amichne.kast.source.contract.SourceReadContext
-import io.github.amichne.kast.source.contract.SourceReadContinuation
 import io.github.amichne.kast.source.contract.SourceReadLimitation
 import io.github.amichne.kast.source.contract.SourceReadOperations
-import io.github.amichne.kast.source.contract.SourceReadPage
 import io.github.amichne.kast.source.contract.SourceReadQualification as DomainSourceReadQualification
 import io.github.amichne.kast.source.contract.SourceReadRejection as DomainSourceReadRejection
-import io.github.amichne.kast.source.contract.SourceReadRequest as DomainSourceReadRequest
 import io.github.amichne.kast.source.contract.SourceReadResult as DomainSourceReadResult
 import io.github.amichne.kast.source.contract.SourceSelector
-import io.github.amichne.kast.source.contract.SourceSelectorToken
 import io.github.amichne.kast.source.contract.SourceSelectorTokenCodec
-import io.github.amichne.kast.source.contract.SourceTextByteLimit
 import io.github.amichne.kast.source.contract.SourceTextProjection
 import io.github.amichne.kast.source.contract.SourceTextWithheldReason
-import io.github.amichne.kast.source.contract.TextProjection
-import io.github.amichne.kast.source.contract.VisibilitySelection
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 
 /** Canonical protocol/domain adapter for the sole authoritative bounded source read. */
@@ -87,7 +63,7 @@ class CanonicalSourceReadProtocol(
         request: SourceReadRequest,
         current: SemanticReadAuthority,
         budget: SourceProtocolBudget,
-    ): OperationOutcome<ProtocolSourceReadResult, SourceReadQualification, SourceReadRejection> {
+    ): OperationOutcome<ProtocolSourceReadResult, SourceReadQualification, SourceReadCause> {
         val domainRequest =
             when (val admitted = request.admit(authority, current, budget)) {
                 is SourceRequestAdmission.Admitted -> admitted.request
@@ -118,170 +94,11 @@ class CanonicalSourceReadProtocol(
                             ),
                             projected.qualification,
                         )
-                    SourceQualifiedResultProjection.Rejected -> contractViolation()
+                    is SourceQualifiedResultProjection.Rejected -> contractViolation(projected.obligation)
                 }
         }
     }
 }
-
-private sealed interface SourceRequestAdmission {
-    data class Admitted(val request: DomainSourceReadRequest) : SourceRequestAdmission
-
-    data class Rejected(val reason: SourceReadRejection) : SourceRequestAdmission
-}
-
-private fun SourceReadRequest.admit(
-    authority: QueryReferenceAuthority,
-    current: SemanticReadAuthority,
-    budget: SourceProtocolBudget,
-): SourceRequestAdmission {
-    val domainAnchor =
-        when (val requested = anchor) {
-            is SourceReadAnchorDocument.Candidate ->
-                when (val lookup = authority.candidate(requested.selector, current)) {
-                    is CandidateSelectorLookup.Found -> DomainSourceReadAnchor.Candidate(lookup.selector)
-                    is CandidateSelectorLookup.Rejected ->
-                        return SourceRequestAdmission.Rejected(SourceReadRejection.CANDIDATE_STALE)
-                }
-            is SourceReadAnchorDocument.Symbol ->
-                when (val lookup = authority.exact(requested.selector, current)) {
-                    is ExactSelectorLookup.Found -> DomainSourceReadAnchor.Symbol(lookup.selector)
-                    is ExactSelectorLookup.Rejected ->
-                        return SourceRequestAdmission.Rejected(SourceReadRejection.STALE_GENERATION)
-                }
-            is SourceReadAnchorDocument.Source -> {
-                val token =
-                    SourceSelectorToken.parse(requested.selector.value).refinedOrNull()
-                        ?: return SourceRequestAdmission.Rejected(SourceReadRejection.SOURCE_SELECTOR_STALE)
-                val selector =
-                    authority.restoreSource(token, current).refinedOrNull()
-                        ?: return SourceRequestAdmission.Rejected(SourceReadRejection.SOURCE_SELECTOR_STALE)
-                DomainSourceReadAnchor.Source(selector)
-            }
-        }
-    val domainRegion =
-        when (val requested = region) {
-            SourceRegionSelectionDocument.Anchor -> RegionSelection.Anchor
-            is SourceRegionSelectionDocument.Body ->
-                RegionSelection.Body(
-                    when (requested.kind) {
-                        SourceBodyKindDocument.CALLABLE -> BodyKind.CALLABLE
-                        SourceBodyKindDocument.CLASS -> BodyKind.CLASS
-                    }
-                )
-            SourceRegionSelectionDocument.File -> RegionSelection.File
-            is SourceRegionSelectionDocument.Enclosing ->
-                RegionSelection.Enclosing(
-                    when (requested.kind) {
-                        SourceEnclosingRegionKindDocument.DECLARATION -> EnclosingRegionKind.DECLARATION
-                        SourceEnclosingRegionKindDocument.CALLABLE_BODY -> EnclosingRegionKind.CALLABLE_BODY
-                        SourceEnclosingRegionKindDocument.CLASS_BODY -> EnclosingRegionKind.CLASS_BODY
-                    }
-                )
-        }
-    val domainEntities =
-        entities.domain() ?: return SourceRequestAdmission.Rejected(SourceReadRejection.CONTRACT_VIOLATION)
-    val domainText =
-        when (val requested = text) {
-            SourceTextRequestDocument.Complete -> TextProjection.Complete
-            SourceTextRequestDocument.None -> TextProjection.None
-            is SourceTextRequestDocument.Window -> {
-                val before =
-                    LineCount.parse(requested.beforeLines.value).refinedOrNull()
-                        ?: return SourceRequestAdmission.Rejected(SourceReadRejection.CONTRACT_VIOLATION)
-                val after =
-                    LineCount.parse(requested.afterLines.value).refinedOrNull()
-                        ?: return SourceRequestAdmission.Rejected(SourceReadRejection.CONTRACT_VIOLATION)
-                TextProjection.window(before, after)
-            }
-        }
-    val domainEntityLimit =
-        SourceEntityLimit.parse(minOf(entityLimit.value, budget.resources.resultLimit.value)).refinedOrNull()
-            ?: return SourceRequestAdmission.Rejected(SourceReadRejection.CONTRACT_VIOLATION)
-    val domainTextByteLimit =
-        SourceTextByteLimit.parse(minOf(textByteLimit.value, budget.maximumTextBytes.value)).refinedOrNull()
-            ?: return SourceRequestAdmission.Rejected(SourceReadRejection.CONTRACT_VIOLATION)
-    val domainPage =
-        when (val requested = page) {
-            SourceReadPageDocument.First -> SourceReadPage.First
-            is SourceReadPageDocument.Continue ->
-                SourceReadPage.Continue(
-                    SourceReadContinuation.parse(requested.continuation.value).refinedOrNull()
-                        ?: return SourceRequestAdmission.Rejected(SourceReadRejection.CONTRACT_VIOLATION)
-                )
-        }
-    return SourceRequestAdmission.Admitted(
-        DomainSourceReadRequest(
-            domainAnchor,
-            domainRegion,
-            domainEntities,
-            domainText,
-            domainEntityLimit,
-            domainTextByteLimit,
-            domainPage,
-            budget.resources,
-            format.domainOutputIdentity(),
-        )
-    )
-}
-
-private fun SourceEntitySelectionDocument.domain(): EntitySelection? =
-    when (this) {
-        SourceEntitySelectionDocument.None -> EntitySelection.None
-        is SourceEntitySelectionDocument.Matching -> {
-            val mapped = filters.map { it.domain() ?: return null }
-            EntitySelection.matching(
-                    when (containment) {
-                        SourceContainmentDocument.DIRECT -> Containment.DIRECT
-                        SourceContainmentDocument.DESCENDANTS -> Containment.DESCENDANTS
-                    },
-                    mapped,
-                )
-                .refinedOrNull()
-        }
-    }
-
-private fun SourceEntityFilterDocument.domain(): EntityFilter? =
-    when (this) {
-        is SourceEntityFilterDocument.Declarations -> {
-            if (kinds != kinds.distinct().sortedBy { it.ordinal }) return null
-            val domainKinds =
-                DeclarationKindSelection.from(kinds.map { it.domain() }.toSet()).refinedOrNull() ?: return null
-            val domainVisibility =
-                when (val requested = visibility) {
-                    SourceVisibilitySelectionDocument.Any -> VisibilitySelection.Any
-                    is SourceVisibilitySelectionDocument.Exact -> {
-                        if (requested.values != requested.values.distinct().sortedBy { it.ordinal }) {
-                            return null
-                        }
-                        VisibilitySelection.exact(requested.values.map { it.domain() }.toSet()).refinedOrNull()
-                            ?: return null
-                    }
-                }
-            EntityFilter.Declarations(domainKinds, domainVisibility)
-        }
-        SourceEntityFilterDocument.Parameters -> EntityFilter.Parameters
-        SourceEntityFilterDocument.Calls -> EntityFilter.Calls
-        SourceEntityFilterDocument.References -> EntityFilter.References
-    }
-
-private fun SourceDeclarationKindDocument.domain(): DeclarationKind =
-    when (this) {
-        SourceDeclarationKindDocument.CLASSLIKE -> DeclarationKind.CLASSLIKE
-        SourceDeclarationKindDocument.CONSTRUCTOR -> DeclarationKind.CONSTRUCTOR
-        SourceDeclarationKindDocument.FUNCTION -> DeclarationKind.FUNCTION
-        SourceDeclarationKindDocument.PROPERTY -> DeclarationKind.PROPERTY
-        SourceDeclarationKindDocument.TYPE_ALIAS -> DeclarationKind.TYPE_ALIAS
-    }
-
-private fun SourceDeclarationVisibilityDocument.domain(): DeclarationVisibility =
-    when (this) {
-        SourceDeclarationVisibilityDocument.PUBLIC -> DeclarationVisibility.PUBLIC
-        SourceDeclarationVisibilityDocument.PROTECTED -> DeclarationVisibility.PROTECTED
-        SourceDeclarationVisibilityDocument.INTERNAL -> DeclarationVisibility.INTERNAL
-        SourceDeclarationVisibilityDocument.PRIVATE -> DeclarationVisibility.PRIVATE
-        SourceDeclarationVisibilityDocument.LOCAL -> DeclarationVisibility.LOCAL
-    }
 
 private sealed interface SourceResultProjection {
     data class Projected(val result: ProtocolSourceReadResult) : SourceResultProjection
@@ -295,7 +112,7 @@ private sealed interface SourceQualifiedResultProjection {
         val qualification: SourceReadQualification,
     ) : SourceQualifiedResultProjection
 
-    data object Rejected : SourceQualifiedResultProjection
+    data class Rejected(val obligation: SourceInternalObligation) : SourceQualifiedResultProjection
 }
 
 private fun DomainSourceReadResult.Complete.project(authority: QueryReferenceAuthority): SourceResultProjection =
@@ -306,8 +123,11 @@ private fun DomainSourceReadResult.Qualified.project(
     authority: QueryReferenceAuthority
 ): SourceQualifiedResultProjection {
     val result =
-        protocolResult(snapshot, region, entities, text, authority) ?: return SourceQualifiedResultProjection.Rejected
-    val protocolQualification = qualification.protocol(entities.size) ?: return SourceQualifiedResultProjection.Rejected
+        protocolResult(snapshot, region, entities, text, authority)
+            ?: return SourceQualifiedResultProjection.Rejected(SourceInternalObligation.RESULT_PROJECTION)
+    val protocolQualification =
+        qualification.protocol(entities.size)
+            ?: return SourceQualifiedResultProjection.Rejected(SourceInternalObligation.QUALIFICATION_PROJECTION)
     return SourceQualifiedResultProjection.Projected(result, protocolQualification)
 }
 
@@ -510,7 +330,7 @@ private fun DeclarationVisibility.protocol(): SourceDeclarationVisibilityDocumen
         DeclarationVisibility.LOCAL -> SourceDeclarationVisibilityDocument.LOCAL
     }
 
-private fun DomainSourceReadRejection.protocol(): SourceReadRejection =
+private fun DomainSourceReadRejection.protocol(): SourceReadCause =
     when (this) {
         DomainSourceReadRejection.WORKSPACE_NOT_READY -> SourceReadRejection.WORKSPACE_NOT_READY
         DomainSourceReadRejection.WORKSPACE_ROOT_MISMATCH -> SourceReadRejection.WORKSPACE_ROOT_MISMATCH
@@ -530,7 +350,18 @@ private fun DomainSourceReadRejection.protocol(): SourceReadRejection =
         DomainSourceReadRejection.REGION_NOT_APPLICABLE -> SourceReadRejection.REGION_NOT_APPLICABLE
         DomainSourceReadRejection.REGION_ABSENT -> SourceReadRejection.REGION_ABSENT
         DomainSourceReadRejection.COMPILER_ANALYSIS_UNAVAILABLE -> SourceReadRejection.COMPILER_ANALYSIS_UNAVAILABLE
-        DomainSourceReadRejection.CONTRACT_VIOLATION -> SourceReadRejection.CONTRACT_VIOLATION
+        DomainSourceReadRejection.CONTRACT_VIOLATION ->
+            SourceReadFailureDetail.InternalContractFailure(SourceInternalObligation.PROVIDER_CONTRACT)
+        DomainSourceReadRejection.INTERNAL_CONTEXT_LEASE_MISMATCH ->
+            SourceReadFailureDetail.InternalContractFailure(SourceInternalObligation.CONTEXT_LEASE)
+        DomainSourceReadRejection.INTERNAL_SNAPSHOT_CONTEXT_MISMATCH ->
+            SourceReadFailureDetail.InternalContractFailure(SourceInternalObligation.SNAPSHOT_CONTEXT)
+        DomainSourceReadRejection.INTERNAL_SCOPE_MISMATCH ->
+            SourceReadFailureDetail.InternalContractFailure(SourceInternalObligation.SNAPSHOT_SCOPE)
+        DomainSourceReadRejection.INTERNAL_SNAPSHOT_MISMATCH ->
+            SourceReadFailureDetail.InternalContractFailure(SourceInternalObligation.ANCHOR_SNAPSHOT)
+        DomainSourceReadRejection.INTERNAL_VISIBILITY_MISMATCH ->
+            SourceReadFailureDetail.InternalContractFailure(SourceInternalObligation.DECLARATION_VISIBILITY)
     }
 
 private fun protocolText(raw: String): ProtocolText? = ProtocolText.parse(raw).refinedOrNull()
@@ -541,5 +372,7 @@ private fun <Value, Failure> Refinement<Value, Failure>.refinedOrNull(): Value? 
         is Refinement.Rejected -> null
     }
 
-private fun contractViolation(): OperationOutcome.Rejected<SourceReadRejection> =
-    OperationOutcome.Rejected(SourceReadRejection.CONTRACT_VIOLATION)
+private fun contractViolation(
+    obligation: SourceInternalObligation = SourceInternalObligation.RESULT_PROJECTION
+): OperationOutcome.Rejected<SourceReadCause> =
+    OperationOutcome.Rejected(SourceReadFailureDetail.InternalContractFailure(obligation))

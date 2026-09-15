@@ -172,6 +172,38 @@ class SourceReadServiceTest {
         assertEquals(1, port.requests.size)
     }
 
+    @Test
+    fun `context port contradiction remains internal before source work`() {
+        val current = published(7, "source-state")
+        val wrong = published(8, "source-state")
+        val port = RecordingSourceReadPort { _, _ -> error("Invalid context reached source") }
+        val service =
+            SourceReadService(
+                io.github.amichne.kast.source.contract.SourceReadContextPort {
+                    Refinement.Refined(SourceReadContext.Published(wrong.readLease, wrong.sourceState))
+                },
+                port,
+            )
+        assertEquals(
+            SourceReadResult.Rejected(SourceReadRejection.INTERNAL_CONTEXT_LEASE_MISMATCH),
+            runSuspend { service.read(request(current, "fun subject() = 1\n")) },
+        )
+        assertEquals(0, port.requests.size)
+    }
+
+    @Test
+    fun `provider snapshot context contradiction remains internal after source work`() {
+        val current = published(7, "source-state")
+        val wrong = published(8, "source-state")
+        val port = RecordingSourceReadPort { _, _ -> complete(request(wrong, "fun subject() = 1\n")) }
+        val service = SourceReadService(WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(current) }, port)
+        assertEquals(
+            SourceReadResult.Rejected(SourceReadRejection.INTERNAL_SNAPSHOT_CONTEXT_MISMATCH),
+            runSuspend { service.read(request(current, "fun subject() = 1\n")) },
+        )
+        assertEquals(1, port.requests.size)
+    }
+
     private fun request(workspace: PublishedWorkspace, text: String): SourceReadRequest {
         val selector = rootSelector(workspace, text)
         return SourceReadRequest(

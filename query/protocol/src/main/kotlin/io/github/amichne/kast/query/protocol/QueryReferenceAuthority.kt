@@ -62,6 +62,9 @@ private fun CanonicalSelectorDecodingFailure.lookupRejection(
 ): SelectorLookupRejection =
     when (this) {
         CanonicalSelectorDecodingFailure.INCOMPATIBLE_WORKSPACE -> SelectorLookupRejection.WORKSPACE_MISMATCH
+        // Existing non-source lookup surfaces retain their compatibility classification.
+        // SOURCE consumes the finite decoding cause directly.
+        CanonicalSelectorDecodingFailure.UNAVAILABLE,
         CanonicalSelectorDecodingFailure.STALE_AUTHORITY,
         CanonicalSelectorDecodingFailure.INCOMPATIBLE_AUTHORITY,
         CanonicalSelectorDecodingFailure.LIVE_AUTHORITY_REQUIRED -> SelectorLookupRejection.STALE

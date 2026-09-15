@@ -75,6 +75,11 @@ internal constructor(
             is CliCommandParsing.Parsed -> executeAction(parsed.action, start)
             is CliCommandParsing.Help -> CliExit.Complete(parsed.document)
             is CliCommandParsing.Rejected -> usageExit(parsed.failure, parsed.diagnostic)
+            is CliCommandParsing.SourceRejected ->
+                CliExit.BoundaryRejected(
+                    CliBoundaryExitStatus.USAGE,
+                    io.github.amichne.kast.cli.projection.canonicalReadRejectedDocument(parsed.failure),
+                )
             is CliCommandParsing.ProjectionRejected -> projectionFailure(parsed.failure)
         }
     }

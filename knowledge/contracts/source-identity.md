@@ -119,7 +119,7 @@ Hosted version-5 symbol handles use bounded short lookup keys; version 4 remains
 accepted. The project-owned table retains detached full tokens for the current
 live read reference. Short-digest collisions retain the existing mapping and
 return the new selector inline. Lookup must succeed before canonical restoration
-validates the current authority. Unknown handles reject as stale; malformed
+validates the current authority. Unknown handles retain an unavailable cause in source reads; malformed
 handles reject as malformed.
 
 `CanonicalSymbolId` separately hashes the full compiler evidence and semantic
@@ -157,3 +157,11 @@ Compact presentation reads that admitted inner payload, emits unchanged returned
 source first, and retains the complete original envelope as the final content item.
 The isolated native read harness checks this actual content ordering separately
 from schema validation and reports bounded content byte counts without source text.
+
+## Source failure origin
+
+Source failures preserve their origin through canonical outcomes, admitted budget
+reports, wire serialization, CLI documents, and provider input rejection. See
+[source failures](source-failures.md) for the closed request, reference, and
+internal-obligation contract. Unknown handles do not prove expiry or foreign
+ownership.

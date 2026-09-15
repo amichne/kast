@@ -198,3 +198,5 @@ project disposal, so capacity exhaustion disables further retention while ordina
 reads continue. Known expired and unknown tokens have distinct finite failures.
 This conservative first slice does not search moved files, recover candidates,
 persist across owners, or restore tokens issued before capture was installed.
+
+Source reads retain [precise failure origin](../contracts/source-failures.md) through admission and serialization. Their admitted rejection wrapper retains the complete cause, including internal obligations and finite reference lookup evidence.

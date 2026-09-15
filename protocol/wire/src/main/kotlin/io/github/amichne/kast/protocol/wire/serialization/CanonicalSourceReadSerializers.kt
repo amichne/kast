@@ -66,9 +66,9 @@ internal object CanonicalSourceReadSerializers {
         )
     val rejection: WireValueCodec<SourceReadFailure> =
         factory.create(
-            SourceReadRejectionWireDocument.serializer(),
-            { value: SourceReadFailure -> value.reason().toWireDocument() },
-            { WireDocumentConversion.Converted(it.toContract()) },
+            io.github.amichne.kast.protocol.contract.SourceReadCause.serializer(),
+            { value: SourceReadFailure -> value.reason() },
+            { WireDocumentConversion.Converted(it) },
         )
 }
 
