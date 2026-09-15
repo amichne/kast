@@ -11,7 +11,7 @@ from io import StringIO
 from hosted_kotlin_call_regression import (KotlinCallRead, KotlinCallSearch, _site, _has_scoped_unsupported,
     CallCycleTraversal, CallPageBudget, CallResume, CallObligation, _scoped_obligations, _drain_call_cycle,
     _cycle_observation, _call_observation, _emit_native_observation, FixtureEndpoint, EndpointCount,
-    ObservedCallStatus, _extended_call_cases)
+    ObservedCallStatus, _extended_call_cases, _same_cycle_graph, _same_cycle_page)
 
 
 @dataclass(frozen=True)
@@ -252,9 +252,16 @@ class KotlinCallRegressionTest(unittest.TestCase):
         self.assertFalse(order.edge_order_equal)
         self.assertTrue(order.edge_multiset_equal)
         self.assertTrue(order.compiler_identities_equal)
+        self.assertTrue(_same_cycle_graph(high, reordered))
+        self.assertTrue(_same_cycle_page(high[0], high[0]))
+        self.assertFalse(_same_cycle_page(high[0], reordered[0]))
+        partitioned = [asdict(GraphPage(replace(graph, edges=(edge,)))) for edge in reversed(graph.edges)]
+        self.assertTrue(_same_cycle_graph(high, partitioned))
+        self.assertFalse(_same_cycle_graph(high, partitioned[:1]))
         changed = replace(graph, proofs=(GraphProof(0, 'different-proof'), graph.proofs[1]))
         proof = _cycle_observation(high, [asdict(GraphPage(changed))])
         self.assertFalse(proof.compiler_identities_equal)
+        self.assertFalse(_same_cycle_graph(high, [asdict(GraphPage(changed))]))
         self.assertTrue(proof.node_selectors_equal)
         changed = replace(graph, nodes=(replace(graph.nodes[0], selector='another-handle'), graph.nodes[1]),
                           edges=(replace(graph.edges[0], occurrence=replace(graph.edges[0].occurrence,
@@ -263,6 +270,7 @@ class KotlinCallRegressionTest(unittest.TestCase):
         self.assertTrue(handles.compiler_identities_equal)
         self.assertFalse(handles.node_selectors_equal)
         self.assertFalse(handles.occurrence_selectors_equal)
+        self.assertFalse(_same_cycle_graph(high, [asdict(GraphPage(changed))]))
         output = StringIO()
         with redirect_stderr(output):
             _emit_native_observation(handles)
@@ -289,7 +297,7 @@ class KotlinCallRegressionTest(unittest.TestCase):
     def test_cycle_drain_rejects_repeated_cursor_and_rejected_branch(self):
         request = CallCycleTraversal('issued-ref', CallPageBudget(1))
         for responses in ((Page(), Page()), (replace(Page(), status='rejected'),)):
-            stream = iter(asdict(page) for page in responses)
+            stream = iter(asdict(page) for page in responses for _ in range(2))
             replay = SimpleNamespace(live='same-test-authority', surface='test',
                                      transport=SimpleNamespace(invoke=lambda *args: next(stream)))
             pages, valid = _drain_call_cycle(replay, request)

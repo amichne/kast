@@ -243,7 +243,12 @@ def _drain_call_cycle(replay, request):
                 or len(response.get('graph', {}).get('edges', [])) > request.execution_budget.max_results):
             return pages, False
         qualification = response.get('qualification', {})
-        if response.get('status') == 'qualified' and qualification.get('type') == 'terminal_incomplete':
+        if response.get('status') != 'qualified':
+            return pages, False
+        repeated = replay.transport.invoke(replay.surface, 'traverse_relations', asdict(request))
+        if not _same_cycle_page(response, repeated):
+            return pages, False
+        if qualification.get('type') == 'terminal_incomplete':
             return pages, (set(qualification.get('relationLimitations', [])) == {'unsupported-item'}
                            and 'one-hop-incomplete' in qualification.get('limitations', []))
         checkpoint = traversal_checkpoint(response)
@@ -264,7 +269,6 @@ def _qualified_partial(pages, source):
 
 
 def _cycle_checks(replay, source):
-    from hosted_budget_read_regression import graph_records
     discovery = replay.transport.invoke(replay.surface, 'search_functions', asdict(KotlinCallSearch('callCycleEntry')))
     items = discovery.get('items', [])
     if discovery.get('status') != 'complete' or len(items) != 1 or not items[0].get('ref'):
@@ -291,8 +295,7 @@ def _cycle_checks(replay, source):
         'cycleBoundedPagination': 1 < len(low) <= 12,
         'cycleQualifiedPartialRetained': _qualified_partial(high, source) and _qualified_partial(low, source),
         'cycleGrantInvariantCompilerProofs': observed.compiler_identities_equal,
-        'cycleGrantInvariantRecordOrder': tuple(record for page in high for record in graph_records(page)) ==
-            tuple(record for page in low for record in graph_records(page)),
+        'cycleGrantInvariantFullGraph': _same_cycle_graph(high, low),
     }
 
 
@@ -470,3 +473,20 @@ def _emit_native_observation(observation: CallNativeObservation | CycleNativeObs
     import json
     import sys
     print(json.dumps(asdict(observation), separators=(',', ':')), file=sys.stderr, flush=True)
+
+
+def _same_cycle_page(first, repeated):
+    """The contract sorts each admitted page; replay must preserve that page's ordered records."""
+    from hosted_budget_read_regression import graph_records
+    return (first.get('status') == repeated.get('status') and first.get('live') == repeated.get('live')
+            and graph_records(first) == graph_records(repeated)
+            and first.get('partialExpansions') == repeated.get('partialExpansions')
+            and all(first.get('qualification', {}).get(key) == repeated.get('qualification', {}).get(key)
+                    for key in ('type', 'limitations', 'relationLimitations')))
+
+
+def _same_cycle_graph(high, low):
+    """Grant partitioning may reorder pages; preserve every full normalized record and its multiplicity."""
+    from hosted_budget_read_regression import graph_records
+    return Counter(record for page in high for record in graph_records(page)) == Counter(
+        record for page in low for record in graph_records(page))
