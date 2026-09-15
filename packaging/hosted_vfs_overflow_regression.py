@@ -91,7 +91,7 @@ def _strict_observation(response):
         return InspectionContractRejected(stage, InspectionMismatch.STATUS)
     # Both native surfaces consume CanonicalSymbolCliDocuments / rejection.cliName(),
     # whose exact transformation is name.lowercase().replace('_', '-'). This is not wire JSON.
-    reasons = {reason.value.replace('_', '-'): reason for reason in InspectionRefusal}
+    reasons = {reason.value: reason for reason in InspectionRefusal}
     refusal = reasons.get(response.get('reason')) if isinstance(response.get('reason'), str) else None
     return (InspectionWireRejected(stage, refusal) if refusal is not None
             else InspectionUnknownRefusal(stage))
