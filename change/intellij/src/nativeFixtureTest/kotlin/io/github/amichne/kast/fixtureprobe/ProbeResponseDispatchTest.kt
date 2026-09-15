@@ -58,6 +58,13 @@ class ProbeResponseDispatchTest {
     }
 
     @Test
+    fun savedCommittedStateWithDifferentDocumentCannotProveSetupReady() {
+        val mismatched = evidence.copy(document = ProbeDigest.observe("stale document".toByteArray()))
+        val result = ready(mismatched)
+        assertEquals(ProbeExecution.Rejected(ProbeFailure.DOCUMENT_IMAGE_CHANGED), result)
+    }
+
+    @Test
     fun readinessFailureCannotFallBackToGenericCompletedObservation() {
         val ports =
             RecordingPorts(
@@ -91,7 +98,7 @@ class ProbeResponseDispatchTest {
             as ProbeRequest
     }
 
-    private fun ready(): ProbeExecution.SetupReady {
+    private fun ready(observed: ProbeEvidence = evidence): ProbeExecution {
         val sample =
             ProbeSetupSample(
                 status = ProbeSetupStatus.CANDIDATE,
@@ -113,7 +120,7 @@ class ProbeResponseDispatchTest {
                     ),
                 )
                 .value as ProbeSetupObservation
-        return ProbeExecution.SetupReady(evidence, proof)
+        return ProbeExecution.SetupReady(observed, proof)
     }
 }
 
