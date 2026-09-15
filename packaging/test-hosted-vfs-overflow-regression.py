@@ -141,6 +141,18 @@ class OverflowHelperTest(unittest.TestCase):
                 self_test.assertEqual('reacquired-2', selector)
                 return expected_symbol
             def call(self, surface, tool, request):
+                if tool == 'symbol_lookup':
+                    return {'status': 'complete', 'items': [{'type': 'declaration', 'name': 'NativeChangeTarget',
+                        'file': str(source), 'candidateSelector': 'issued-candidate'}]}, 'schema-candidate'
+                if tool == 'symbol_inspect' and request.target.type == 'candidate':
+                    return ({'status': 'complete', 'live': live()} if state.epoch == 1 else
+                            {'operation': 'symbol.inspect', 'status': 'rejected', 'reason': 'candidate-stale'}), 'schema-candidate'
+                if tool == 'source_read':
+                    if state.epoch == 1:
+                        return {'status': 'qualified', 'content': [{'type': 'structure',
+                            'snapshot': {'live': live()}, 'selections': [{'selector': 'issued-source'}]}]}, 'schema-source'
+                    return {'operation': 'source.read', 'status': 'rejected',
+                            'reason': {'type': 'reference-rejected', 'role': 'source', 'reason': 'snapshot-rejected'}}, 'schema-source'
                 if tool == 'check_diagnostics':
                     state.diagnostic += 1
                     return (asdict(DiagnosticPage(live=live())) if request.continuation is None
@@ -187,6 +199,8 @@ class OverflowHelperTest(unittest.TestCase):
         self.assertEqual((4, 4), (state.strict, state.cursor))
         self.assertEqual((2, 2, 4), (state.revalidated, state.oldsource, state.diagnostic))
         self.assertEqual(8, len(report.diagnosticObservations))
+        self.assertEqual(4, len(report.referenceObservations))
+        self.assertTrue(all(item.passed for item in report.referenceObservations))
         self.assertEqual(3, report.filesCreated)
         self.assertTrue(report.filesRestored)
         self.assertEqual(subject.OverflowReceipt(HOST), report.receipt)
@@ -306,6 +320,29 @@ class OverflowHelperTest(unittest.TestCase):
         self.assertTrue(all(entry[:2] == ('provider', 'check_diagnostics') for entry in requests))
         self.assertNotIn('fresh-page', json.dumps(asdict(result)))
 
+
+    def test_candidate_and_source_refusal_oracles_keep_families_distinct(self):
+        @dataclass(frozen=True)
+        class SourceReason:
+            reason: str = 'snapshot-rejected'
+            type: str = 'reference-rejected'
+            role: str = 'source'
+        @dataclass(frozen=True)
+        class Refused:
+            operation: str
+            reason: str | SourceReason
+            status: str = 'rejected'
+        surface = subject.AuthoritySurface.PROVIDER
+        source = asdict(Refused('source.read', SourceReason()))
+        candidate = asdict(Refused('symbol.inspect', 'candidate-stale'))
+        self.assertTrue(subject._reference_refusal(subject.ReferenceFamily.SOURCE, surface, source, 'schema').passed)
+        self.assertTrue(subject._reference_refusal(subject.ReferenceFamily.CANDIDATE, surface, candidate, 'schema').passed)
+        source['reason']['role'] = 'symbol'
+        self.assertFalse(subject._reference_refusal(subject.ReferenceFamily.SOURCE, surface, source, 'schema').passed)
+        candidate['reason'] = 'exact-selector-stale'
+        observed = subject._reference_refusal(subject.ReferenceFamily.CANDIDATE, surface, candidate, 'schema')
+        self.assertFalse(observed.passed)
+        self.assertEqual(subject.InspectionRefusal.EXACT_SELECTOR_STALE, observed.refusal)
 
 
 if __name__ == '__main__':
