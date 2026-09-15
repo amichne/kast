@@ -198,3 +198,14 @@ Source continuation admission preserves finite causes before invoking the provid
 missing, expired, evicted, or retired tokens yield `CONTINUATION_UNAVAILABLE`;
 a changed context yields `SOURCE_SNAPSHOT_MISMATCH`; a changed request yields
 `CONTINUATION_REQUEST_MISMATCH`. Provider contract failures remain distinct.
+
+Kotlin one-hop calls use an explicit lexical ownership boundary. Calls in local
+property initializers belong to the enclosing callable. A named nested function
+keeps its own owner even when that owner cannot become a relation endpoint;
+callers do not climb past it. Lambda and accessor bodies retain a deferred owner
+and yield occurrence-scoped `UNSUPPORTED_ITEM` omissions for the enclosing
+callee read, while exact sibling calls remain eligible. Reference and type-use
+ownership is unchanged. PSI tests establish this lexical policy and finite owner
+observations; the compiled installed call fixture separately checks inherited
+static targets, extension overloads and occurrence cardinality. Those tests do
+not establish runtime dispatch or native K2 coverage without an installed run.
