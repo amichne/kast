@@ -755,7 +755,10 @@ internal object InstallationWorkflow {
 
     private fun commandLink(plan: VerifiedInstallationPlan, path: Path, expected: Path): LinkObservation {
         val observed = managedCommandLink(path, expected)
-        if (observed != LinkObservation.Rejected || plan.request.replaceCommandCollisions == InstallationSwitch.DISABLED) {
+        if (
+            observed != LinkObservation.Rejected ||
+                plan.request.replaceCommandCollisions == InstallationSwitch.DISABLED
+        ) {
             return observed
         }
         Files.delete(path)

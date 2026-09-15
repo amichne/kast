@@ -380,24 +380,7 @@ private fun canonicalGraph(
     val semantic = families.flatMap(CommandFamily::semanticCommands)
     val localFamilies =
         listOf(product, knowledge, broker, codex, hostedIndex, ide)
-            .map { family ->
-                val commands = family.commands.filter { it.command.exposure == CliLocalExposure.PUBLIC }
-                val root =
-                    when (val candidate = family.root) {
-                        is LocalKastCommand ->
-                            if (candidate in commands) {
-                                candidate
-                            } else {
-                                ProjectedCommandGroup(candidate).subcommands(commands)
-                            }
-                        else -> ProjectedCommandGroup(candidate).subcommands(commands)
-                    }
-                val projectedRoot =
-                    if (family === hostedIndex || family === ide) {
-                        HiddenProjectedCommandGroup(root).subcommands(commands)
-                    } else root
-                LocalCommandFamily(projectedRoot, commands)
-            }
+            .map { family -> projectedLocalFamily(family, family === hostedIndex || family === ide) }
             .filter { it.commands.isNotEmpty() }
     val root =
         KastRootCommand()
@@ -418,6 +401,18 @@ private fun canonicalGraph(
         lifecycle,
         tools.surface,
     )
+}
+
+private fun projectedLocalFamily(family: LocalCommandFamily, hidden: Boolean): LocalCommandFamily {
+    val commands = family.commands.filter { it.command.exposure == CliLocalExposure.PUBLIC }
+    val root =
+        when (val candidate = family.root) {
+            is LocalKastCommand ->
+                if (candidate in commands) candidate else ProjectedCommandGroup(candidate).subcommands(commands)
+            else -> ProjectedCommandGroup(candidate).subcommands(commands)
+        }
+    val projectedRoot = if (hidden) HiddenProjectedCommandGroup(root).subcommands(commands) else root
+    return LocalCommandFamily(projectedRoot, commands)
 }
 
 internal class CommandFamily(

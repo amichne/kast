@@ -149,11 +149,21 @@ class InstallationWorkflowTest {
         val codexHome = Files.createDirectory(home.resolve(".codex"))
         val collision = Files.writeString(commands.resolve("kast"), "unmanaged")
 
-        val rejected = InstallationWorkflow.execute(releaseRequest(root, installation, commands, home, codexHome, "1.2.3"))
+        val rejected =
+            InstallationWorkflow.execute(releaseRequest(root, installation, commands, home, codexHome, "1.2.3"))
         assertEquals(InstallationOutcome.Rejected(InstallationFailure.RECOVERY_REQUIRED), rejected)
         assertEquals("unmanaged", Files.readString(collision))
 
-        val request = releaseRequest(root, installation, commands, home, codexHome, "1.2.4", replaceCommandCollisions = true)
+        val request =
+            releaseRequest(
+                root,
+                installation,
+                commands,
+                home,
+                codexHome,
+                "1.2.4",
+                replaceCommandCollisions = true,
+            )
         assertInstanceOf(InstallationOutcome.Complete::class.java, InstallationWorkflow.execute(request))
         assertTrue(Files.isSymbolicLink(collision))
     }
