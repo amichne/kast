@@ -222,7 +222,7 @@ internal class ProbeSetupReadiness(private val project: Project, private val san
                 if (sample(request.command, requirement) != expected) {
                     ProbeExecution.Rejected(ProbeFailure.SETUP_MOVING)
                 } else if (source.evidence.documentState == ProbeDocumentState.SAVED_COMMITTED) {
-                    ProbeExecution.SetupReady(source.evidence, proof)
+                    ProbeExecution.SetupReady.admit(source.evidence, proof)
                 } else ProbeExecution.Rejected(ProbeFailure.DOCUMENT_STATE_REJECTED)
             else -> source
         }

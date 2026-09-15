@@ -120,7 +120,7 @@ class ProbeResponseDispatchTest {
                     ),
                 )
                 .value as ProbeSetupObservation
-        return ProbeExecution.SetupReady(observed, proof)
+        return ProbeExecution.SetupReady.admit(observed, proof)
     }
 }
 

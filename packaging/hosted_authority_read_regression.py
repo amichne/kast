@@ -29,6 +29,8 @@ class AuthorityFailure(str, Enum):
     FOREIGN = 'AUTHORITY_FOREIGN_ROOT_REJECTED'
     IO = 'AUTHORITY_IO_REJECTED'
     RESTORATION = 'AUTHORITY_RESTORATION_REJECTED'
+    DOCUMENT_IMAGE = 'AUTHORITY_READINESS_DOCUMENT_IMAGE_CHANGED'
+    RESTORATION_DOCUMENT_IMAGE = 'AUTHORITY_RESTORATION_DOCUMENT_IMAGE_CHANGED'
 
 
 class AuthorityRefusal(str, Enum):
@@ -164,10 +166,11 @@ class _AuthorityReplay:
 def _ready(probe, contents):
     observed = probe.request('AWAIT_REOPEN_READY', _digest(contents), timeout=60)
     evidence = observed.get('evidence', {})
+    _demand(observed.get('failure') != 'DOCUMENT_IMAGE_CHANGED', AuthorityFailure.DOCUMENT_IMAGE)
     _demand(observed.get('outcome') == 'SETUP_READY'
         and evidence.get('savedSha256') == _digest(contents)
-        and evidence.get('documentSha256') == _digest(contents)
         and evidence.get('documentState') == 'SAVED_COMMITTED', AuthorityFailure.READINESS)
+    _demand(evidence.get('documentSha256') == _digest(contents), AuthorityFailure.DOCUMENT_IMAGE)
 
 
 @dataclass(frozen=True)
@@ -262,6 +265,8 @@ def run_authority_read_regression(isolation, fixture, transport, initial_live):
             try:
                 _demand(_source_bytes(source) == edited, AuthorityFailure.RESTORATION)
                 source.write_bytes(original)
+                report = replace(report, sourceRestored=_source_bytes(source) == original,
+                    restoredSha256=_digest(_source_bytes(source)))
                 _ready(probe, original)
                 report = replace(report, readinessTransitions=report.readinessTransitions + 1,
                     sourceRestored=_source_bytes(source) == original, restoredSha256=_digest(_source_bytes(source)))
@@ -273,7 +278,11 @@ def run_authority_read_regression(isolation, fixture, transport, initial_live):
                         _demand(current['epoch'] == report.restoredEpoch, AuthorityFailure.EPOCH)
                     report = replace(report, restoredEpoch=current['epoch'])
                     replay.page(AuthorityCaseName.RESTORED, surface, request, current, 'pageItem00')
-            except (AuthorityRejected, NativeFixtureProbeError, ReadTransportRejected, AcceptanceRejected,
+            except AuthorityRejected as error:
+                cause = (AuthorityFailure.RESTORATION_DOCUMENT_IMAGE
+                    if error.reason == AuthorityFailure.DOCUMENT_IMAGE else AuthorityFailure.RESTORATION)
+                report = replace(report, failure=cause)
+            except (NativeFixtureProbeError, ReadTransportRejected, AcceptanceRejected,
                     OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError):
                 report = replace(report, failure=AuthorityFailure.RESTORATION)
         if replay is not None:
