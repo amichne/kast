@@ -15,6 +15,7 @@ import io.github.amichne.kast.appserver.provider.KastProviderQualifier
 import io.github.amichne.kast.appserver.schema.CompiledJsonSchema
 import io.github.amichne.kast.appserver.schema.JsonSchemaViolationEvidenceDocument
 import io.github.amichne.kast.protocol.contract.SourceReadCause
+import io.github.amichne.kast.protocol.contract.SourceReadFailureDetail
 import io.github.amichne.kast.protocol.registry.CanonicalAgentToolDefinitions
 import io.github.amichne.kast.protocol.registry.OperationEffect
 import java.io.BufferedInputStream
@@ -171,7 +172,9 @@ internal val nativeReadToolNames =
 
 private fun readBrokerFailure(failure: BrokerFailure): String =
     when (failure) {
-        is BrokerFailure.SourceInputRejected -> "SOURCE_INPUT_REJECTED"
+        is BrokerFailure.SourceInputRejected ->
+            if (failure.cause is SourceReadFailureDetail.InternalContractFailure) "SOURCE_INTERNAL_CONTRACT_FAILURE"
+            else "SOURCE_INPUT_REJECTED"
         is BrokerFailure.InvalidArguments -> "INVALID_ARGUMENTS"
         is BrokerFailure.UnknownNamespace -> "UNKNOWN_NAMESPACE"
         is BrokerFailure.UnknownTool -> "UNKNOWN_TOOL"
