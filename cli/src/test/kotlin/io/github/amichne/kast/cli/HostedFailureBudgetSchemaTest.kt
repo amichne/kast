@@ -22,7 +22,7 @@ import org.junit.jupiter.api.Test
 
 class HostedFailureBudgetSchemaTest {
     @Test
-    fun `all four read tool schemas preserve hosted failure reports and reject invalid metadata`() {
+    fun `all five read tool schemas preserve hosted failure reports and reject invalid metadata`() {
         val report = ExecutionBudgetReport.from(hostedSchemaBudgetGrant(ExecutionBudgetDocument()))
         val json = Json { encodeDefaults = true }
         val documents =
@@ -37,6 +37,7 @@ class HostedFailureBudgetSchemaTest {
                     CanonicalOperation.SOURCE_READ,
                     CanonicalOperation.RELATION_READ,
                     CanonicalOperation.TRAVERSAL_RUN,
+                    CanonicalOperation.DIAGNOSTIC_CHECK,
                 )) {
                 for (document in documents) {
                     assertAdmits(operation, document)
@@ -93,6 +94,7 @@ class HostedFailureBudgetSchemaTest {
                         CanonicalOperation.SOURCE_READ,
                         CanonicalOperation.RELATION_READ,
                         CanonicalOperation.TRAVERSAL_RUN,
+                        CanonicalOperation.DIAGNOSTIC_CHECK,
                     )) {
                     assertAdmits(operation, document)
                     assertRejects(operation, unknown)
@@ -151,6 +153,7 @@ class HostedFailureBudgetSchemaTest {
                         CanonicalOperation.SOURCE_READ,
                         CanonicalOperation.RELATION_READ,
                         CanonicalOperation.TRAVERSAL_RUN,
+                        CanonicalOperation.DIAGNOSTIC_CHECK,
                     )) assertions.assertRejects(operation, candidate)
             }
         }
