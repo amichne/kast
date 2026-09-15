@@ -24,7 +24,7 @@ class KastSourcePresentationTest {
                         ),
                     )
             )
-        val document = json.encodeToJsonElement(PresentationFixture.serializer(), fixture).jsonObject
+        val document = json.encodeToJsonElement(PresentationEnvelope.serializer(), PresentationEnvelope(fixture)).jsonObject
         val presentation = presentKastSourceOrOutcome(document, true)
         assertEquals(source, presentation.content.first().text)
         assertEquals(document, json.parseToJsonElement(presentation.content.last().text))
@@ -82,3 +82,6 @@ private data class PresentationSnapshot(
 @Serializable private data class PresentationRange(val startInclusive: Int, val endExclusive: Int)
 
 @Serializable private data class PresentationLines(val startInclusive: Long = 1, val endInclusive: Long = 1)
+
+@Serializable
+private data class PresentationEnvelope(val document: PresentationFixture, val status: String = "completed")
