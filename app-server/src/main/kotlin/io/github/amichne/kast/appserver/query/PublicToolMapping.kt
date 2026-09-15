@@ -42,6 +42,8 @@ internal fun PublicToolDocument.lower(): Refinement<PublicToolCanonical, PublicT
                             DiagnosticCheckRequest(
                                 relative_path,
                                 proven(ProtocolCount.parse(max_diagnostics ?: PublicToolDefaults.maxDiagnostics)),
+                                continuation = continuation,
+                                executionBudget = executionBudget,
                             )
                         )
                     )

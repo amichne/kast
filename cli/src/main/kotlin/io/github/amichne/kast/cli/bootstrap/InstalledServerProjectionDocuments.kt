@@ -571,6 +571,13 @@ private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject =
                 operation,
                 diagnosticQualificationSchema(),
                 ServerSchemaProperty("diagnostics", arraySchema(diagnosticSchema())),
+                ServerSchemaProperty(
+                    "progress",
+                    generatedRequestSchema(
+                        io.github.amichne.kast.protocol.contract.DiagnosticProgressDocument.serializer()
+                    ),
+                    required = false,
+                ),
             )
         CanonicalOperation.CHANGE_PLAN ->
             outcomeSchema(
@@ -944,13 +951,14 @@ private fun admittedReadRejectionVariants(operation: CanonicalOperation): Array<
     when (operation) {
         CanonicalOperation.SOURCE_READ,
         CanonicalOperation.RELATION_READ,
-        CanonicalOperation.TRAVERSAL_RUN ->
+        CanonicalOperation.TRAVERSAL_RUN,
+        CanonicalOperation.DIAGNOSTIC_CHECK ->
             arrayOf(
                 operationOutcomeVariant(
                     operation,
                     "rejected",
                     ServerSchemaProperty("reason", canonicalReadRejectionSchema(operation)),
-                    readRecoveryActionProperty(),
+                    *readRecoveryActionProperties(operation),
                     ServerSchemaProperty(
                         "execution_budget",
                         generatedRequestSchema(
@@ -1298,6 +1306,7 @@ private fun relationLimitationsSchema(): JsonObject =
 
 private fun diagnosticQualificationSchema(): JsonObject =
     objectSchema(
+        ServerSchemaProperty("continuation", textSchema("Retained same-basis diagnostic progress."), required = false),
         ServerSchemaProperty(
             "knownDiagnosticCount",
             integerSchema(0, description = "Known diagnostic count before result truncation."),
@@ -1949,5 +1958,14 @@ private fun readRecoveryActionProperties(operation: CanonicalOperation): Array<S
         CanonicalOperation.SOURCE_READ,
         CanonicalOperation.RELATION_READ,
         CanonicalOperation.TRAVERSAL_RUN -> arrayOf(readRecoveryActionProperty())
+        CanonicalOperation.DIAGNOSTIC_CHECK ->
+            arrayOf(
+                ServerSchemaProperty(
+                    "next_action",
+                    generatedRequestSchema(
+                        io.github.amichne.kast.protocol.contract.DiagnosticRecoveryAction.serializer()
+                    ),
+                )
+            )
         else -> emptyArray()
     }

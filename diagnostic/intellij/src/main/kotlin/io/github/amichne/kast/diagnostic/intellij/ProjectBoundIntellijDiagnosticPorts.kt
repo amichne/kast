@@ -23,6 +23,7 @@ class ProjectBoundIntellijDiagnosticPorts
 private constructor(
     val compiler: DiagnosticCompilerPort,
     val scopes: DiagnosticScopeResolver,
+    val enumeration: io.github.amichne.kast.diagnostic.contract.DiagnosticScopeEnumerator,
 ) {
     companion object {
         fun create(
@@ -44,6 +45,7 @@ private constructor(
                     LoggingIntellijDiagnosticCompilationObserver,
                 )
             return ProjectBoundIntellijDiagnosticPorts(
+                enumeration = projectBoundDiagnosticEnumeration(project, authority, limits, ::admits),
                 compiler =
                     DiagnosticCompilerPort { scope ->
                         if (model.workspaceRoot != authority.workspaceRoot) {

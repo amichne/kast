@@ -72,3 +72,22 @@ fun QueryRunFailure.budgetPresence(): ExecutionBudgetPresence =
         is QueryRunRejection -> ExecutionBudgetPresence.Absent
         is AdmittedQueryRunRejection -> ExecutionBudgetPresence.Present(executionBudget)
     }
+
+sealed interface DiagnosticCheckFailure : OperationRejection
+
+data class AdmittedDiagnosticCheckRejection(
+    val reason: DiagnosticCheckRejection,
+    val executionBudget: ExecutionBudgetReport,
+) : DiagnosticCheckFailure
+
+fun DiagnosticCheckFailure.reason(): DiagnosticCheckRejection =
+    when (this) {
+        is DiagnosticCheckRejection -> this
+        is AdmittedDiagnosticCheckRejection -> reason
+    }
+
+fun DiagnosticCheckFailure.budgetPresence(): ExecutionBudgetPresence =
+    when (this) {
+        is DiagnosticCheckRejection -> ExecutionBudgetPresence.Absent
+        is AdmittedDiagnosticCheckRejection -> ExecutionBudgetPresence.Present(executionBudget)
+    }

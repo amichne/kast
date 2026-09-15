@@ -87,4 +87,11 @@ internal class HostedSemanticServices(private val project: Project, private val 
         )
     }
     val diagnostics by lazy { DiagnosticService(context.validation, diagnosticPorts.compiler) }
+    val diagnosticScans by lazy {
+        io.github.amichne.kast.diagnostic.service.DiagnosticScanService(
+            context.validation,
+            diagnosticPorts.enumeration,
+            diagnostics,
+        )
+    }
 }

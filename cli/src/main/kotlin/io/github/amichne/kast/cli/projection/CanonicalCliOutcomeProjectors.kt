@@ -16,8 +16,8 @@ import io.github.amichne.kast.protocol.contract.ChangePlanResult
 import io.github.amichne.kast.protocol.contract.ChangeRecoverQualification
 import io.github.amichne.kast.protocol.contract.ChangeRecoverRejection
 import io.github.amichne.kast.protocol.contract.ChangeRecoverResult
+import io.github.amichne.kast.protocol.contract.DiagnosticCheckFailure
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckQualification
-import io.github.amichne.kast.protocol.contract.DiagnosticCheckRejection
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckResult
 import io.github.amichne.kast.protocol.contract.IndexSyncQualification
 import io.github.amichne.kast.protocol.contract.IndexSyncRejection
@@ -112,7 +112,7 @@ internal val diagnosticCheckCliProjector =
     CliOutcomeProjector<
         DiagnosticCheckResult,
         DiagnosticCheckQualification,
-        DiagnosticCheckRejection,
+        DiagnosticCheckFailure,
     > { outcome ->
         CanonicalReadCliDocuments.projectDiagnostics(outcome)
     }

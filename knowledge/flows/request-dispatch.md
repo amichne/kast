@@ -62,7 +62,7 @@ host request
 
 Registry construction proves that every canonical operation has one definition. Wire-table construction proves that each has one serializer binding. Hosted dispatch uses those typed bindings; `HostedSemanticServices` supplies the request-scoped domain services. Host adapters may change presentation, but they must preserve qualification and rejection.
 
-For the four reads, a supplied byte limit below the serialized wire schema and
+For the five reads, a supplied byte limit below the serialized wire schema and
 operation identity rejects before handler selection. No semantic grant is invented
 for this rejection. Satisfying that necessary lower bound does not establish that a
 complete response body can fit; encoded output remains the publication authority.

@@ -9,6 +9,8 @@ Defines Kast's human-facing command graph, installed configuration and installat
 
 ## Key Files
 
+- [CanonicalDiagnosticRejectedDocument.kt](src/main/kotlin/io/github/amichne/kast/cli/projection/CanonicalDiagnosticRejectedDocument.kt) - finite diagnostic recovery directions and admitted rejection grants.
+
 - [CanonicalReadRejectedDocument.kt](src/main/kotlin/io/github/amichne/kast/cli/projection/CanonicalReadRejectedDocument.kt) - rejected read shapes retain their derived recovery direction and admitted budget.
 - [CanonicalReadRejectionSchemas.kt](src/main/kotlin/io/github/amichne/kast/cli/CanonicalReadRejectionSchemas.kt) - canonical finite source, relation and traversal rejection schemas.
 - [RelationOmissionSchema.kt](src/main/kotlin/io/github/amichne/kast/cli/RelationOmissionSchema.kt) - bounded provider-omission schema.

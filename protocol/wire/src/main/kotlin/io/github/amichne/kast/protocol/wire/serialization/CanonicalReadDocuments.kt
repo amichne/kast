@@ -1,3 +1,5 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
 package io.github.amichne.kast.protocol.wire
 
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
@@ -16,7 +18,12 @@ import kotlinx.serialization.Serializable
 @Serializable
 internal data class SymbolDiscoverQualificationDocument(val limitations: List<SymbolDiscoverLimitationWireDocument>)
 
-@Serializable internal data class DiagnosticCheckResultDocument(val diagnostics: List<DiagnosticWireDocument>)
+@Serializable
+internal data class DiagnosticCheckResultDocument(
+    val diagnostics: List<DiagnosticWireDocument>,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val progress: io.github.amichne.kast.protocol.contract.DiagnosticProgressDocument? = null,
+)
 
 @Serializable
 internal data class DiagnosticWireDocument(
@@ -204,6 +211,8 @@ internal data class DiagnosticCheckQualificationWireDocument(
     val resultLimitReached: Boolean,
     val analyzedFiles: List<String>,
     val limitations: List<DiagnosticLimitationWireDocument>,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val continuation: io.github.amichne.kast.protocol.contract.ProtocolText? = null,
 )
 
 @Serializable
@@ -225,6 +234,21 @@ internal enum class DiagnosticLimitationReasonWireDocument {
 
 @Serializable
 internal enum class DiagnosticCheckRejectionWireDocument {
+    @SerialName("enumeration_index_mode_unsupported") ENUMERATION_INDEX_MODE_UNSUPPORTED,
+    @SerialName("execution_time_grant_too_small") EXECUTION_TIME_GRANT_TOO_SMALL,
+    @SerialName("continuation_unavailable") CONTINUATION_UNAVAILABLE,
+    @SerialName("continuation_request_mismatch") CONTINUATION_REQUEST_MISMATCH,
+    @SerialName("stale_continuation") STALE_CONTINUATION,
+    @SerialName("continuation_capacity_exceeded") CONTINUATION_CAPACITY_EXCEEDED,
+    @SerialName("enumeration_work_grant_too_small") ENUMERATION_WORK_GRANT_TOO_SMALL,
+    @SerialName("enumeration_time_grant_too_small") ENUMERATION_TIME_GRANT_TOO_SMALL,
+    @SerialName("enumeration_retention_exceeded") ENUMERATION_RETENTION_EXCEEDED,
+    @SerialName("compiler_unit_grant_too_small") COMPILER_UNIT_GRANT_TOO_SMALL,
+    @SerialName("compiler_contract_violation") COMPILER_CONTRACT_VIOLATION,
+    @SerialName("workspace_index_unavailable") WORKSPACE_INDEX_UNAVAILABLE,
+    @SerialName("workspace_root_mismatch") WORKSPACE_ROOT_MISMATCH,
+    @SerialName("stale_generation") STALE_GENERATION,
+    @SerialName("output_grant_too_small") OUTPUT_GRANT_TOO_SMALL,
     @SerialName("workspace_not_ready") WORKSPACE_NOT_READY,
     @SerialName("scope_rejected") SCOPE_REJECTED,
     @SerialName("scope_empty") SCOPE_EMPTY,
@@ -245,7 +269,7 @@ internal fun SymbolDiscoverQualificationDocument.toContract(): WireDocumentConve
     SymbolDiscoverQualification.from(limitations.map { it.toContract() }.toSet()).toWireDocumentConversion()
 
 internal fun DiagnosticCheckResult.toReadDocument(): DiagnosticCheckResultDocument =
-    DiagnosticCheckResultDocument(diagnostics.values.map { it.toWireDocument() })
+    DiagnosticCheckResultDocument(diagnostics.values.map { it.toWireDocument() }, progress)
 
 /**
  * Proof transition: `DiagnosticCheckResultDocument -> DiagnosticCheckResult`.
@@ -259,7 +283,7 @@ internal fun DiagnosticCheckResultDocument.toContract(): WireDocumentConversion<
         .flatMapConverted { values ->
             BoundedProtocolList.create(values).toWireDocumentConversion()
         }
-        .mapConverted(::DiagnosticCheckResult)
+        .mapConverted { DiagnosticCheckResult(it, progress) }
 
 private fun DiagnosticDocument.toWireDocument(): DiagnosticWireDocument =
     DiagnosticWireDocument(
