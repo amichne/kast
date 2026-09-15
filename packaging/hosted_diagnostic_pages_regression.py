@@ -34,6 +34,7 @@ class DiagnosticDrainFailure(str, Enum):
     PAGE_BOUND = 'PAGE_BOUND'
     RECORD_BOUND = 'RECORD_BOUND'
     REPLAY = 'REPLAY'
+    BUDGET_REPORT = 'BUDGET_REPORT'
 
 
 @dataclass(frozen=True)
@@ -44,6 +45,7 @@ class DiagnosticDrained:
 @dataclass(frozen=True)
 class DiagnosticDrainRejected:
     failure: DiagnosticDrainFailure
+    differing_fields: tuple[str, ...] = ()
 
 
 MAXIMUM_PAGES = 128
@@ -64,6 +66,8 @@ def drain_diagnostics(replay, request, first, verify_replay=False):
             return DiagnosticDrainRejected(DiagnosticDrainFailure.AUTHORITY)
         if response.get('status') not in ('complete', 'qualified'):
             return DiagnosticDrainRejected(DiagnosticDrainFailure.OUTCOME)
+        if not _valid_report(response, request):
+            return DiagnosticDrainRejected(DiagnosticDrainFailure.BUDGET_REPORT, ('execution_budget',))
         progress = response.get('progress', {})
         inventory = progress.get('inventory', {})
         current = progress.get('analyzedFiles', [])
@@ -87,8 +91,13 @@ def drain_diagnostics(replay, request, first, verify_replay=False):
         seen.add(token)
         request = replace(request, continuation=token)
         response = _invoke(replay, request)
-        if verify_replay and response != _invoke(replay, request):
-            return DiagnosticDrainRejected(DiagnosticDrainFailure.REPLAY)
+        if verify_replay:
+            repeated = _invoke(replay, request)
+            if not _valid_report(repeated, request):
+                return DiagnosticDrainRejected(DiagnosticDrainFailure.BUDGET_REPORT, ('execution_budget',))
+            differing = _semantic_difference(response, repeated)
+            if differing:
+                return DiagnosticDrainRejected(DiagnosticDrainFailure.REPLAY, differing)
     return DiagnosticDrainRejected(DiagnosticDrainFailure.PAGE_BOUND)
 
 
@@ -112,9 +121,11 @@ def run_diagnostic_pages_regression(replay):
         'firstEnumerationQualified': first.get('status') == 'qualified',
         'firstInventoryUnknown': first.get('progress', {}).get('inventory') == {'type': 'enumerating'},
         'fileCapStoppedEnumeration': first.get('progress', {}).get('stop') == 'enumeration_file_limit',
-        'firstReplyReplayIdentical': first == replayed,
+        'firstReplyReplayIdentical': not _semantic_difference(first, replayed),
+        'firstReplayActualReportsValid': _valid_report(first, request) and _valid_report(replayed, request),
         'boundedDrainCompleted': isinstance(result, DiagnosticDrained),
     }
+    checks.update({'firstReplayField_' + field: False for field in _semantic_difference(first, replayed)})
     count = 0
     if isinstance(result, DiagnosticDrained):
         final = result.pages[-1]
@@ -125,6 +136,7 @@ def run_diagnostic_pages_regression(replay):
         count = sum(len(page.get('diagnostics', [])) for page in result.pages)
     else:
         checks['drain' + result.failure.value] = False
+        checks.update({'drainField_' + field: False for field in result.differing_fields})
     checks.update(heavy_file_checks(replay))
     checks.update(independent_budget_checks(replay))
     replay.record('diagnostic-same-basis-pages', 'check_diagnostics', checks, count, first)
@@ -141,13 +153,20 @@ def heavy_file_checks(replay):
     """The authored deprecated callable has three separate calls with the same warning text."""
     path = 'src/main/kotlin/ReadDiagnosticPages.kt'
     high_request = DiagnosticRequest(path, 1000, execution_budget=replace(DiagnosticGrant(), max_results=1000))
-    low_request = DiagnosticRequest(path)
+    low_request = DiagnosticRequest(path, 1000)
     high = drain_diagnostics(replay, high_request, _invoke(replay, high_request), verify_replay=True)
     low = drain_diagnostics(replay, low_request, _invoke(replay, low_request), verify_replay=True)
+    semantic_request = DiagnosticRequest(path, 1)
+    semantic = drain_diagnostics(replay, semantic_request, _invoke(replay, semantic_request))
     checks = {
+        'heavySemanticLimitDrainCompleted': isinstance(semantic, DiagnosticDrained),
         'heavyHighDrainCompleted': isinstance(high, DiagnosticDrained),
         'heavySingleResultDrainCompleted': isinstance(low, DiagnosticDrained),
     }
+    for label, result in (('heavyHigh', high), ('heavySingleResult', low), ('heavySemanticLimit', semantic)):
+        if isinstance(result, DiagnosticDrainRejected):
+            checks[label + 'Drain_' + result.failure.value] = False
+            checks.update({label + 'Field_' + field: False for field in result.differing_fields})
     if not isinstance(high, DiagnosticDrained) or not isinstance(low, DiagnosticDrained):
         return checks
     expected, observed = _diagnostic_records(high), _diagnostic_records(low)
@@ -157,6 +176,7 @@ def heavy_file_checks(replay):
         'sameMessageDifferentOccurrences': len({item[2] for item in deprecations}) == 1
             and len({item[3:] for item in deprecations}) == 3,
         'heavyOccurrenceOrderParity': expected == observed,
+        'heavySemanticLimitParity': isinstance(semantic, DiagnosticDrained) and expected == _diagnostic_records(semantic),
         'heavyEachPageAtMostOneDiagnostic': all(len(page.get('diagnostics', [])) <= 1 for page in low.pages),
         'heavyCumulativeCountPreserved': low.pages[-1]['progress'].get('knownDiagnosticCount') == len(expected),
         'heavyOutputCoverageUnchanged': all(page['progress']['analyzedFiles']
@@ -220,3 +240,20 @@ def independent_budget_checks(replay):
         observation = response.get('reason', response.get('progress', {}).get('stop', 'missing'))
         checks[label + 'Observed_' + observation] = observation != 'missing'
     return checks
+
+
+def _valid_report(response, request):
+    return all(_reported_limit(response, axis, value)
+        for axis, value in asdict(request.execution_budget).items())
+
+
+def _semantic_difference(first, repeated):
+    """Compare semantic page identity; preserve actual invocation reports on the original responses."""
+    first_progress = first.get('progress', {})
+    repeated_progress = repeated.get('progress', {})
+    fields = [key for key in sorted(set(first) | set(repeated))
+        if key not in ('execution_budget', 'progress') and first.get(key) != repeated.get(key)]
+    fields += ['progress.' + key for key in sorted(set(first_progress) | set(repeated_progress))
+        if key != 'execution_budget' and first_progress.get(key) != repeated_progress.get(key)]
+    # Only schema field names are retained, with a fixed aggregate bound; no diagnostic text or tokens.
+    return tuple(fields[:16])
