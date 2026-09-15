@@ -2,6 +2,7 @@
 """Independent request-shape and occurrence-oracle checks for the call fixture."""
 from dataclasses import asdict, dataclass, replace
 import unittest
+import json
 from types import SimpleNamespace
 from pathlib import Path
 from contextlib import redirect_stderr
@@ -10,7 +11,7 @@ from io import StringIO
 from hosted_kotlin_call_regression import (KotlinCallRead, KotlinCallSearch, _site, _has_scoped_unsupported,
     CallCycleTraversal, CallPageBudget, CallResume, CallObligation, _scoped_obligations, _drain_call_cycle,
     _cycle_observation, _call_observation, _emit_native_observation, FixtureEndpoint, EndpointCount,
-    ObservedCallStatus)
+    ObservedCallStatus, _extended_call_cases)
 
 
 @dataclass(frozen=True)
@@ -33,6 +34,8 @@ class Measurement:
 
 @dataclass(frozen=True)
 class OmissionEvidence:
+    provider: str = 'INTELLIJ_CALLEES_V2'
+    remediation: str = 'USE_SUPPORTED_DECLARATIONS'
     reason: str = 'UNSUPPORTED_ITEM'
     measurement: Measurement = Measurement()
     samples: tuple[Sample, ...] = (Sample(),)
@@ -121,17 +124,70 @@ class GraphPage:
 
 
 @dataclass(frozen=True)
+class NoReceiver:
+    type: str = 'absent'
+
+
+@dataclass(frozen=True)
+class FunctionSignature:
+    qualifiedIdentity: str = 'fixture.calls.BaseClient.fetch'
+    receiver: NoReceiver = NoReceiver()
+    contextReceivers: tuple[str, ...] = ()
+    valueParameters: tuple[str, ...] = ()
+    typeParameterCount: int = 0
+    type: str = 'function'
+
+
+@dataclass(frozen=True)
+class ClassSignature:
+    qualifiedIdentity: str = 'fixture.calls.Fetcher'
+    type: str = 'class-like'
+
+
+@dataclass(frozen=True)
+class CompilerEvidence:
+    signature: FunctionSignature | ClassSignature = FunctionSignature()
+    identity: str = 'canonical-signature-sha256-v1|' + 'a' * 64
+
+
+@dataclass(frozen=True)
+class NativeSymbol:
+    range: Range
+    file: str
+    selector: str = 'secret-symbol-handle'
+    kind: str = 'function'
+    name: str = 'fetch'
+    qualifiedIdentity: str = 'fixture.calls.BaseClient.fetch'
+    compilerEvidence: CompilerEvidence = CompilerEvidence()
+
+
+@dataclass(frozen=True)
 class ObservedFact:
-    target: GraphNode
+    target: NativeSymbol
+    occurrence: GraphOccurrence = GraphOccurrence(Range())
     coverage: str = 'exact-compiler-confirmed'
     provenance: str = 'k2-authored-source'
+    meaning: str = 'callees'
+    source: NativeSymbol = NativeSymbol(Range(100, 150), '/fixture/Calls.kt')
 
 
 @dataclass(frozen=True)
 class ObservedFacts:
     relations: tuple[ObservedFact, ...]
+    live: str = 'same-test-authority'
     status: str = 'complete'
     omissions: tuple[OmissionEvidence, ...] = ()
+
+
+@dataclass(frozen=True)
+class SearchItem:
+    ref: str
+
+
+@dataclass(frozen=True)
+class SearchResponse:
+    items: tuple[SearchItem, ...]
+    status: str = 'complete'
 
 
 class KotlinCallRegressionTest(unittest.TestCase):
@@ -139,6 +195,51 @@ class KotlinCallRegressionTest(unittest.TestCase):
         self.assertTrue(_has_scoped_unsupported([asdict(OmissionEvidence())]))
         self.assertFalse(_has_scoped_unsupported([asdict(OmissionEvidence(samples=()))]))
         self.assertFalse(_has_scoped_unsupported([asdict(OmissionEvidence(reason='unsupported-item'))]))
+
+    def test_native_established_delegated_and_sam_shapes(self):
+        fixture = Path(__file__).resolve().parents[1] / 'experiments/host-observation/semantic-fixture/read-reliability/ReadKotlinCalls.kt'
+        source = fixture.read_text()
+        def fact(declaration, call, prefix, name):
+            start = source.index(call) + len(prefix)
+            target = NativeSymbol(Range(source.index(declaration), source.index(declaration) + len(declaration)),
+                                  file=str(fixture))
+            if declaration == 'operator fun invoke()':
+                target = replace(target, name='invoke', qualifiedIdentity='fixture.calls.Fetcher.invoke',
+                    compilerEvidence=CompilerEvidence(FunctionSignature('fixture.calls.Fetcher.invoke')))
+            if declaration == 'fun interface Fetcher':
+                target = replace(target, kind='classlike', name='Fetcher', qualifiedIdentity='fixture.calls.Fetcher',
+                                 compilerEvidence=CompilerEvidence(ClassSignature()))
+            return ObservedFact(target, GraphOccurrence(Range(start, start + len(name)), file=str(fixture)))
+        def omitted(call, prefix, name):
+            start = source.index(call) + len(prefix)
+            return OmissionEvidence(samples=(Sample(str(fixture), Range(start, start + len(name))),))
+        responses = {
+            'explicitInvoke': ObservedFacts((fact('operator fun invoke()', 'fetcher.invoke()', 'fetcher.', 'invoke'),)),
+            'implicitInvoke': ObservedFacts((), status='qualified',
+                omissions=(omitted('String = fetcher()', 'String = ', 'fetcher'),)),
+            'localFunction': ObservedFacts((), status='qualified',
+                omissions=(omitted('return nested()', 'return ', 'nested'),)),
+            'delegated': ObservedFacts((fact('fun fetch(): String',
+                'fun delegated(client: DelegatingClient): String = client.fetch()',
+                'fun delegated(client: DelegatingClient): String = client.', 'fetch'),)),
+            'sam': ObservedFacts((fact('fun interface Fetcher', '= Fetcher {', '= ', 'Fetcher'),),
+                status='qualified', omissions=(omitted('Fetcher { client.fetch()', 'Fetcher { client.', 'fetch'),)),
+        }
+        def invoke(surface, tool, request):
+            if tool == 'search_functions':
+                return json.loads(json.dumps(asdict(SearchResponse((SearchItem(request['function_name']),)))))
+            return json.loads(json.dumps(asdict(responses[request['exactSelector']])))
+        replay = SimpleNamespace(live='same-test-authority', surface='test', transport=SimpleNamespace(invoke=invoke))
+        with redirect_stderr(StringIO()):
+            checks, count = _extended_call_cases(replay, source, fixture)
+        self.assertTrue(all(checks.values()), checks)
+        self.assertEqual(3, count)
+        responses['sam'] = replace(responses['sam'], omissions=())
+        responses['delegated'] = replace(responses['delegated'], relations=())
+        with redirect_stderr(StringIO()):
+            rejected, _ = _extended_call_cases(replay, source, fixture)
+        self.assertFalse(rejected['samCoverage'])
+        self.assertFalse(rejected['delegatedExactStaticFacts'])
 
     def test_cycle_observation_separates_order_proofs_and_handles(self):
         graph = Graph((GraphNode(0, Range(10, 15), 0), GraphNode(1, Range(20, 25), 1)),
@@ -172,8 +273,8 @@ class KotlinCallRegressionTest(unittest.TestCase):
     def test_call_observation_reports_authored_target_without_payload(self):
         fixture = Path(__file__).resolve().parents[1] / 'experiments/host-observation/semantic-fixture/read-reliability/ReadKotlinCalls.kt'
         source = fixture.read_text()
-        node = GraphNode(0, Range(source.index('fun fetch(): String'), source.index('fun fetch(): String') + 19),
-                         0, file=str(fixture))
+        node = NativeSymbol(Range(source.index('fun fetch(): String'), source.index('fun fetch(): String') + 19),
+                            file=str(fixture))
         observed = _call_observation('delegated', asdict(ObservedFacts((ObservedFact(node),))), fixture, source)
         self.assertEqual(ObservedCallStatus.COMPLETE, observed.status)
         self.assertEqual((EndpointCount(FixtureEndpoint.BASE_FETCH, 1),), observed.endpoints)
