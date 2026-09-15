@@ -89,3 +89,6 @@ private fun SourceTerminalReasonDocument.isSupportedBy(limitations: List<SourceR
         SourceTerminalReasonDocument.TEXT_PROJECTION_WITHHELD ->
             SourceReadLimitationDocument.TEXT_BYTE_LIMIT_REACHED in limitations
     }
+
+internal fun isSourceContinuationSyntax(token: String): Boolean =
+    NATIVE_TOKEN.matches(token) || OUTPUT_TOKEN.matches(token)

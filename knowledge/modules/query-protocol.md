@@ -165,3 +165,5 @@ Source output can explicitly select compact presentation while expanded remains
 the compatibility default. The protocol maps that choice exhaustively into a
 native continuation compatibility witness; it does not change source semantics.
 See [source identity](../contracts/source-identity.md#source-output-format).
+
+Source reads retain [precise failure origin](../contracts/source-failures.md) through admission and serialization. Their admitted rejection wrapper retains the complete cause, including internal obligations and finite reference lookup evidence.

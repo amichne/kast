@@ -29,6 +29,7 @@ class ReadTransportFailure(str, Enum):
 
 
 class ReadProviderFailure(str, Enum):
+    SOURCE_INPUT = 'SOURCE_INPUT_REJECTED'
     INVALID_ARGUMENTS = 'INVALID_ARGUMENTS'
     UNKNOWN_NAMESPACE = 'UNKNOWN_NAMESPACE'
     UNKNOWN_TOOL = 'UNKNOWN_TOOL'
@@ -146,11 +147,12 @@ def _admit_output_violation_evidence(raw):
 
 
 class ReadTransportRejected(ValueError):
-    def __init__(self, reason, provider_failure=None, output_violation_evidence=None, qualification=None):
+    def __init__(self, reason, provider_failure=None, output_violation_evidence=None, qualification=None, source_cause=None):
         self.reason = ReadTransportFailure(reason)
         self.provider_failure = provider_failure
         self.output_violation_evidence = output_violation_evidence
         self.qualification = qualification
+        self.source_cause = source_cause
         self.invocation = None
         super().__init__(self.reason.value)
 
@@ -183,6 +185,13 @@ def _provider_result(response):
         evidence = _admit_output_violation_evidence(response['outputViolationEvidence'])
     if failure is ReadProviderFailure.INVALID_ARGUMENTS:
         return {'failure': failure.value}
+    if failure is ReadProviderFailure.SOURCE_INPUT:
+        from hosted_source_failure_regression import admit_source_failure
+        try:
+            cause = admit_source_failure(response.get('sourceCause'))
+        except (ValueError, TypeError):
+            raise ReadTransportRejected('READ_PROVIDER_PROTOCOL_REJECTED') from None
+        raise ReadTransportRejected('READ_PROVIDER_REJECTED', failure, source_cause=cause)
     raise ReadTransportRejected('READ_PROVIDER_REJECTED', failure, evidence)
 
 

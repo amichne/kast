@@ -30,12 +30,25 @@ private data class ReadRejectedCliDocument(
 
 private val readRejectedFactory = CliJsonDocument.generated(ReadRejectedCliDocument.serializer())
 
+@Serializable
+private data class SourceRejectedCliDocument(
+    val operation: String,
+    val status: String,
+    val reason: io.github.amichne.kast.protocol.contract.SourceReadCause,
+    @SerialName("next_action") val nextAction: ReadRecoveryAction,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    @SerialName("execution_budget")
+    val executionBudget: ExecutionBudgetPresence = ExecutionBudgetPresence.Absent,
+)
+
+private val sourceRejectedFactory = CliJsonDocument.generated(SourceRejectedCliDocument.serializer())
+
 internal fun canonicalReadRejectedDocument(failure: SourceReadFailure): CliJsonDocument =
-    readRejectedFactory.create(
-        ReadRejectedCliDocument(
+    sourceRejectedFactory.create(
+        SourceRejectedCliDocument(
             CanonicalOperation.SOURCE_READ.id.value,
             "rejected",
-            failure.reason().cliName(),
+            failure.reason(),
             failure.recoveryAction(),
             failure.budgetPresence(),
         )

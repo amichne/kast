@@ -80,6 +80,7 @@ internal fun executeExistingIdeCli(
                     parsed.diagnostic,
                 ),
             )
+        is CliCommandParsing.SourceRejected -> sourceRejectedExit(parsed)
         is CliCommandParsing.ProjectionRejected ->
             boundaryExit(CliBoundaryExitStatus.PROTOCOL, "ide-projection-rejected")
         is CliCommandParsing.Parsed ->
@@ -148,3 +149,9 @@ internal fun executeExistingIdeAction(
             boundaryExit(CliBoundaryExitStatus.RUNTIME, "ide-${exchange.failure.name.lowercase().replace('_', '-')}")
     }
 }
+
+private fun sourceRejectedExit(parsed: CliCommandParsing.SourceRejected): CliExit =
+    CliExit.BoundaryRejected(
+        CliBoundaryExitStatus.USAGE,
+        io.github.amichne.kast.cli.projection.canonicalReadRejectedDocument(parsed.failure),
+    )

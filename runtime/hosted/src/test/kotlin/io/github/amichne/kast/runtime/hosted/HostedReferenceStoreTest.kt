@@ -70,11 +70,11 @@ class HostedReferenceStoreTest {
     }
 
     @Test
-    fun `unknown valid handles reject as stale and malformed handles retain syntax failure`() {
+    fun `unknown valid handles reject as unavailable and malformed handles retain syntax failure`() {
         val counts = Counts()
         val transport = HostedReferenceTokens(ReadLimits.Default).transport(counts)
         assertEquals(
-            CanonicalSelectorDecodingFailure.STALE_AUTHORITY,
+            CanonicalSelectorDecodingFailure.UNAVAILABLE,
             (transport.restore(text("exact:v4:" + "0".repeat(64))) as CanonicalSelectorDecoding.Rejected).failure,
         )
         assertEquals(
@@ -106,13 +106,13 @@ class HostedReferenceStoreTest {
                 IntellijReadObservation.None,
             )
         assertEquals(
-            CanonicalSelectorDecodingFailure.STALE_AUTHORITY,
+            CanonicalSelectorDecodingFailure.UNAVAILABLE,
             (next.restore(handle) as CanonicalSelectorDecoding.Rejected).failure,
         )
         val nextHandle = next.issue(text("exact:v3:two"))
         store.dispose()
         assertEquals(
-            CanonicalSelectorDecodingFailure.STALE_AUTHORITY,
+            CanonicalSelectorDecodingFailure.UNAVAILABLE,
             (next.restore(nextHandle) as CanonicalSelectorDecoding.Rejected).failure,
         )
     }

@@ -340,6 +340,14 @@ internal object KastProviderQualifier {
             invocationBudget = executionBudget.invocation,
             inputAliases = inputAliases,
             effect = BrokerOperationEffect.Canonical(hostedDefinition.effect),
+            inputRejectionEvidence = { raw ->
+                if (
+                    hostedDefinition.operation ==
+                        io.github.amichne.kast.protocol.contract.CanonicalOperation.SOURCE_READ
+                )
+                    sourceInputRejectionEvidence(raw)
+                else io.github.amichne.kast.appserver.core.BrokerInputRejectionEvidence.Unspecified
+            },
             inputGuidance = { failure ->
                 val guidance =
                     when (failure) {
@@ -352,6 +360,7 @@ internal object KastProviderQualifier {
                             else emptyList()
                         is io.github.amichne.kast.appserver.schema.JsonDomainAdmissionFailure.Domain ->
                             when (val reason = failure.failure) {
+                                is KastToolInputFailure.Source -> emptyList()
                                 is KastToolInputFailure.Facade -> listOf(reason.reason.explanation())
                                 KastToolInputFailure.NotObject,
                                 KastToolInputFailure.SchemaMismatch,

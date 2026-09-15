@@ -3,7 +3,7 @@ package io.github.amichne.kast.protocol.contract
 /** Admission proof accompanies rejection without changing the finite semantic reason. */
 sealed interface SourceReadFailure : OperationRejection
 
-data class AdmittedSourceReadRejection(val reason: SourceReadRejection, val executionBudget: ExecutionBudgetReport) :
+data class AdmittedSourceReadRejection(val reason: SourceReadCause, val executionBudget: ExecutionBudgetReport) :
     SourceReadFailure
 
 sealed interface RelationReadFailure : OperationRejection
@@ -25,9 +25,9 @@ sealed interface QueryRunFailure : OperationRejection
 data class AdmittedQueryRunRejection(val reason: QueryRunRejection, val executionBudget: ExecutionBudgetReport) :
     QueryRunFailure
 
-fun SourceReadFailure.reason(): SourceReadRejection =
+fun SourceReadFailure.reason(): SourceReadCause =
     when (this) {
-        is SourceReadRejection -> this
+        is SourceReadCause -> this
         is AdmittedSourceReadRejection -> reason
     }
 
@@ -51,7 +51,7 @@ fun QueryRunFailure.reason(): QueryRunRejection =
 
 fun SourceReadFailure.budgetPresence(): ExecutionBudgetPresence =
     when (this) {
-        is SourceReadRejection -> ExecutionBudgetPresence.Absent
+        is SourceReadCause -> ExecutionBudgetPresence.Absent
         is AdmittedSourceReadRejection -> ExecutionBudgetPresence.Present(executionBudget)
     }
 

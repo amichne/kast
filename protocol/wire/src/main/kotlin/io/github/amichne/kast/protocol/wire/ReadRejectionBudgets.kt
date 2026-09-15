@@ -11,7 +11,6 @@ import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.RelationReadFailure
 import io.github.amichne.kast.protocol.contract.RelationReadRejection
 import io.github.amichne.kast.protocol.contract.SourceReadFailure
-import io.github.amichne.kast.protocol.contract.SourceReadRejection
 import io.github.amichne.kast.protocol.contract.TraversalRunFailure
 import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import io.github.amichne.kast.protocol.contract.reason
@@ -29,7 +28,7 @@ internal object ReadRejectionBudgets {
         RejectionBudgetCodec<SourceReadFailure>(
             {
                 when (it) {
-                    is SourceReadRejection -> ExecutionBudgetPresence.Absent
+                    is io.github.amichne.kast.protocol.contract.SourceReadCause -> ExecutionBudgetPresence.Absent
                     is AdmittedSourceReadRejection -> ExecutionBudgetPresence.Present(it.executionBudget)
                 }
             },
