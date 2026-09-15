@@ -142,7 +142,7 @@ object CanonicalOperationDefinitions {
             OperationScope.SYMBOL,
             CompletenessPolicy.COMPLETE_REQUIRED,
             HostedExposure.PUBLIC,
-            schema = schema("kast.symbol.inspect.v3"),
+            schema = schema("kast.symbol.inspect.v4"),
         )
 
     val sourceRead =
@@ -159,7 +159,7 @@ object CanonicalOperationDefinitions {
             OperationScope.SOURCE,
             CompletenessPolicy.QUALIFIED_ALLOWED,
             HostedExposure.PUBLIC,
-            schema = schema("kast.source.read.v4"),
+            schema = schema("kast.source.read.v5"),
         )
 
     val relationRead =

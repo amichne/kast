@@ -79,7 +79,7 @@ live envelope against the requested root and admitted descriptor host. A typed h
 rejection can be returned before read authority exists; it does not become a
 successful canonical payload.
 
-App Server provider qualification requires projection version 12 and its exact
+App Server provider qualification requires projection version 13 and its exact
 operation schemas and declared default budgets. Canonical registry input aliases
 resolve to the selected preferred tool route; omitted tools and incompatible
 catalog bindings reject before provider invocation. Invocation continues through the configured CLI

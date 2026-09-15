@@ -27,6 +27,52 @@ from hosted_generated_fixture import (GENERATED_FILE, GENERATED_SOURCE, MOVEMENT
     prepare_generated_fixture, finalize_generated_fixture, amend_generated_provenance)
 
 
+@dataclass(frozen=True)
+class InvocationFixture:
+    type: str = 'CLI'
+    command: list[str] = field(default_factory=lambda: ['source', 'read'])
+
+
+@dataclass(frozen=True)
+class OperationFixture:
+    toolName: str = 'source_read'
+    operationId: str = 'source.read'
+    invocation: InvocationFixture = field(default_factory=InvocationFixture)
+
+
+@dataclass(frozen=True)
+class InvocationsFixture:
+    schemaVersion: int = 3
+    operations: list[OperationFixture] = field(default_factory=lambda: [OperationFixture()])
+
+
+@dataclass(frozen=True)
+class BootstrapToolFixture:
+    name: str = 'source_read'
+    operationId: str = 'source.read'
+    effect: str = 'intellij_read'
+    approvalPolicy: str = 'none'
+
+
+@dataclass(frozen=True)
+class BootstrapFixture:
+    schemaVersion: int = 1
+    tools: list[BootstrapToolFixture] = field(default_factory=lambda: [BootstrapToolFixture()])
+
+
+@dataclass(frozen=True)
+class ProjectionFixture:
+    schemaVersion: int = 13
+    namespace: str = 'kast'
+    cliInvocations: InvocationsFixture = field(default_factory=InvocationsFixture)
+    hostedBootstrap: BootstrapFixture = field(default_factory=BootstrapFixture)
+
+
+@dataclass(frozen=True)
+class InstalledProjectionFixture:
+    serverProjection: ProjectionFixture = field(default_factory=ProjectionFixture)
+
+
 REPO = Path(__file__).resolve().parent.parent
 
 
@@ -309,13 +355,7 @@ class HostedReadRegressionTest(unittest.TestCase):
 
     @staticmethod
     def schema():
-        return {'serverProjection': {'schemaVersion': 12, 'namespace': 'kast',
-            'cliInvocations': {'schemaVersion': 3, 'operations': [{
-                'toolName': 'source_read', 'operationId': 'source.read',
-                'invocation': {'type': 'CLI', 'command': ['source', 'read']}}]},
-            'hostedBootstrap': {'schemaVersion': 1, 'tools': [{
-                'name': 'source_read', 'operationId': 'source.read', 'effect': 'intellij_read',
-                'approvalPolicy': 'none'}]}}}
+        return asdict(InstalledProjectionFixture())
 
     def test_cli_uses_staged_operation_command_without_guessing_tool_facade(self):
         transport = HostedReadTransport(None, SimpleNamespace(workspace=self.workspace, environment={}),

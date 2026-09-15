@@ -671,4 +671,4 @@ private val invocationJson = Json { encodeDefaults = true }
 /** Diagnostic payloads are admitted by the installed rejection schema before presentation. */
 @Serializable private data class KastRejectedDocument(val diagnostic: JsonElement, val status: String = "rejected")
 
-private const val KAST_SERVER_PROJECTION_VERSION = 12
+private const val KAST_SERVER_PROJECTION_VERSION = 13
