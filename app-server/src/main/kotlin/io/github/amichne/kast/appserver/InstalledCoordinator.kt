@@ -50,12 +50,13 @@ internal object InstalledCoordinatorConfiguration {
         val root = executable.parent.parent
         if (InstallationLifecycleFence.observe(root) != InstallationLifecycleStartAdmission.AVAILABLE)
             return reject(InstalledBrokerServerConfigurationFailure.STATE_DIRECTORY_REJECTED)
-        val configuration =
+        val admittedConfiguration =
             when (val admission = InstalledBrokerConfigurationIngress.admit(environment)) {
-                is Refinement.Refined -> admission.value.configuration
+                is Refinement.Refined -> admission.value
                 is Refinement.Rejected ->
                     return reject(InstalledBrokerServerConfigurationFailure.PROVIDER_CONFIGURATION_REJECTED)
             }
+        val configuration = admittedConfiguration.configuration
         return try {
             if (user.toRealPath() != user || !Files.isDirectory(user, LinkOption.NOFOLLOW_LINKS))
                 return reject(InstalledBrokerServerConfigurationFailure.USER_HOME_REJECTED)
@@ -77,7 +78,7 @@ internal object InstalledCoordinatorConfiguration {
                         return reject(InstalledBrokerServerConfigurationFailure.READINESS_REJECTED)
                 }
             val socket =
-                when (val admission = BrokerSocketPath.prepareInstalled(layout.run.resolve("c.sock"))) {
+                when (val admission = BrokerPublicEndpoint.select(layout, codexHome, admittedConfiguration.publicEndpointMode).prepare()) {
                     is Validation.Validated -> admission.value
                     is Validation.Rejected ->
                         return reject(InstalledBrokerServerConfigurationFailure.SOCKET_PATH_REJECTED)

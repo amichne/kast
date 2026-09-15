@@ -43,6 +43,7 @@ internal value class BrokerServiceIdentity private constructor(val value: String
             executableSearchPath: BrokerExecutableSearchPath,
             toolSelection: KastToolSelection,
             childEnvironment: BrokerChildEnvironment,
+            publicEndpoint: BrokerPublicEndpoint,
         ): BrokerServiceIdentity {
             val source =
                 listOf(
@@ -58,6 +59,7 @@ internal value class BrokerServiceIdentity private constructor(val value: String
                         executableSearchPath.value,
                         toolSelection.environmentValue,
                         childEnvironment.identityValue,
+                        publicEndpoint.identityValue,
                     )
                     .joinToString("\n")
             val digest =
@@ -245,7 +247,7 @@ private constructor(
     val codexHome: Path,
     val stateDirectory: Path,
     val readinessFile: Path,
-    val publicSocket: Path,
+    val publicEndpoint: BrokerPublicEndpoint,
     val serviceLog: Path,
     val launchEnvironment: Path,
     val serviceLock: Path,
@@ -255,6 +257,8 @@ private constructor(
     val childEnvironment: BrokerChildEnvironment,
     val configuration: ResolvedKastConfiguration,
 ) {
+    val publicSocket: Path get() = publicEndpoint.path
+
     companion object {
         fun resolveCoordinator(
             kastCandidate: Path,
@@ -374,6 +378,7 @@ private constructor(
                     is Refinement.Rejected -> return rejected(PersistentBrokerServiceFailure.CONFIGURATION_REJECTED)
                 }
             val installation = BrokerInstallationLayout.from(kast, codexHome)
+            val publicEndpoint = BrokerPublicEndpoint.select(installation, codexHome, admittedConfiguration.publicEndpointMode)
             val stateDirectory = installation.broker
             val kastDigest = sha256(kast) ?: return rejected(PersistentBrokerServiceFailure.KAST_EXECUTABLE_UNAVAILABLE)
             val identity =
@@ -388,6 +393,7 @@ private constructor(
                     executableSearchPath,
                     toolSelection,
                     childEnvironment,
+                    publicEndpoint,
                 )
             return BrokerServiceLaunchCommandResolution.Resolved(
                 BrokerServiceLaunchCommand(
@@ -401,7 +407,7 @@ private constructor(
                     codexHome,
                     stateDirectory,
                     stateDirectory.resolve("service-readiness.json"),
-                    installation.publicSocket,
+                    publicEndpoint,
                     stateDirectory.resolve("service.log"),
                     stateDirectory.resolve("launch-environment"),
                     stateDirectory.resolve("service-start.lock"),
