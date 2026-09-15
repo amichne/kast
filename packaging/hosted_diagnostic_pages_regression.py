@@ -103,14 +103,24 @@ def drain_diagnostics(replay, request, first, verify_replay=False):
 
 def run_diagnostic_pages_regression(replay):
     """Caller selects the typed disposable diagnostic-pages policy before invoking this helper."""
-    legacy = _invoke(replay, LegacyDiagnosticRequest())
+    try:
+        legacy = _invoke(replay, LegacyDiagnosticRequest())
+    except ReadTransportRejected as failure:
+        checks = {'boundedDrainCompleted': False,
+            'legacyTransportObserved_' + failure.reason.value: True,
+            'legacyActualBudgetReportPresent': False}
+        if failure.provider_failure is not None:
+            checks['legacyProviderObserved_' + failure.provider_failure.value] = True
+        replay.record('diagnostic-same-basis-pages', 'check_diagnostics', checks, 0)
+        return
     if legacy.get('status') != 'qualified':
         checks = {
             'legacyRequestReachedScopeCap': legacy.get('status') == 'rejected'
                 and legacy.get('reason') == 'scope-limit-exceeded',
-            'legacyRefusalHasNoContinuation': not legacy.get('qualification', {}).get('continuation'),
+            'legacyRefusalHasNoContinuation': not _continuation(legacy),
             'boundedDrainCompleted': False,
         }
+        checks.update(_legacy_refusal_observations(legacy))
         replay.record('diagnostic-same-basis-pages', 'check_diagnostics', checks, 0, legacy)
         return
     request = DiagnosticRequest()
@@ -270,3 +280,23 @@ def _semantic_difference(first, repeated):
 def _continuation(response):
     qualification = response.get('qualification')
     return qualification.get('continuation') if isinstance(qualification, dict) else None
+
+
+def _legacy_refusal_observations(response):
+    """Only schema-admitted finite codes and report-presence facts enter aggregated evidence."""
+    boundary = ('canonical' if response.get('status') == 'rejected'
+        else 'host-read' if response.get('outcome') == 'rejected'
+        else 'endpoint' if response.get('type') == 'HOST_REJECTED' else 'unexpected-outcome')
+    reason = response.get('reason', response.get('failure'))
+    report = response.get('execution_budget', response.get('progress', {}).get('execution_budget'))
+    checks = {'legacyBoundary_' + boundary: True, 'legacyActualBudgetReportPresent': isinstance(report, dict)}
+    if isinstance(reason, str) and len(reason) <= 80:
+        checks['legacyReason_' + reason] = True
+    else:
+        checks['legacyFiniteReasonObserved'] = False
+    if isinstance(report, dict):
+        checks['legacyConfiguredGrantReportValid'] = all(
+            isinstance(report.get(axis), dict) and report[axis].get('requested') is None
+            and isinstance(report[axis].get('effective'), int) and report[axis]['effective'] > 0
+            for axis in ('max_work_units', 'max_elapsed_ms', 'max_results', 'max_returned_bytes'))
+    return checks
