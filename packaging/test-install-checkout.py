@@ -207,6 +207,7 @@ class BootstrapInstallTest(IsolatedInstallerTest):
         (self.idea / "Resources/product-info.json").write_text(json.dumps({
             "buildNumber": "262.1",
             "dataDirectoryName": "IntelliJIdea2026.2",
+            "version": "2026.2",
         }))
         (self.idea / "jbr/Contents/Home/release").write_text('JAVA_VERSION="25"\nOS_ARCH="aarch64"\n')
         self.write_script(self.idea / "jbr/Contents/Home/bin/java", "#!/bin/bash\nexit 0\n")
@@ -350,6 +351,7 @@ PYTHON
         (self.idea / "Resources/product-info.json").write_text(json.dumps({
             "buildNumber": "262.20000.200",
             "dataDirectoryName": "IntelliJIdea2026.2",
+            "version": "2026.2.1",
         }))
         result = self.run_installer()
         self.assertEqual(0, result.returncode, result.stderr)
@@ -362,6 +364,7 @@ PYTHON
                 (self.idea / "Resources/product-info.json").write_text(json.dumps({
                     "buildNumber": line + ".10315.125",
                     "dataDirectoryName": "IntelliJIdea2026.2",
+                    "version": "2026.2.1",
                 }))
                 wrong_asset = self.assets / f"kast-ide-hosted-v{self.version}-idea-{line}.zip"
                 wrong_asset.write_bytes(self.plugin.read_bytes())
