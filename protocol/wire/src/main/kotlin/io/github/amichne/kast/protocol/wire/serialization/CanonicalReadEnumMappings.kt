@@ -79,6 +79,34 @@ internal fun SymbolInspectRejection.toWireDocument(): SymbolInspectRejectionWire
         SymbolInspectRejection.EXACT_SELECTOR_STALE -> SymbolInspectRejectionWireDocument.EXACT_SELECTOR_STALE
         SymbolInspectRejection.AMBIGUOUS -> SymbolInspectRejectionWireDocument.AMBIGUOUS
         SymbolInspectRejection.NOT_FOUND -> SymbolInspectRejectionWireDocument.NOT_FOUND
+        SymbolInspectRejection.REVALIDATION_UNRETAINED -> SymbolInspectRejectionWireDocument.REVALIDATION_UNRETAINED
+        SymbolInspectRejection.REVALIDATION_EXPIRED -> SymbolInspectRejectionWireDocument.REVALIDATION_EXPIRED
+        SymbolInspectRejection.REVALIDATION_CAPACITY -> SymbolInspectRejectionWireDocument.REVALIDATION_CAPACITY
+        SymbolInspectRejection.REVALIDATION_RETIRED -> SymbolInspectRejectionWireDocument.REVALIDATION_RETIRED
+        SymbolInspectRejection.REVALIDATION_CAPTURE_UNAVAILABLE ->
+            SymbolInspectRejectionWireDocument.REVALIDATION_CAPTURE_UNAVAILABLE
+        SymbolInspectRejection.REVALIDATION_WORKSPACE_MISMATCH ->
+            SymbolInspectRejectionWireDocument.REVALIDATION_WORKSPACE_MISMATCH
+        SymbolInspectRejection.REVALIDATION_OWNER_MISMATCH ->
+            SymbolInspectRejectionWireDocument.REVALIDATION_OWNER_MISMATCH
+        SymbolInspectRejection.REVALIDATION_WORKSPACE_NOT_READY ->
+            SymbolInspectRejectionWireDocument.REVALIDATION_WORKSPACE_NOT_READY
+        SymbolInspectRejection.REVALIDATION_BASIS_MOVED -> SymbolInspectRejectionWireDocument.REVALIDATION_BASIS_MOVED
+        SymbolInspectRejection.REVALIDATION_CONTENT_CHANGED ->
+            SymbolInspectRejectionWireDocument.REVALIDATION_CONTENT_CHANGED
+        SymbolInspectRejection.REVALIDATION_CONTENT_UNCOMMITTED ->
+            SymbolInspectRejectionWireDocument.REVALIDATION_CONTENT_UNCOMMITTED
+        SymbolInspectRejection.REVALIDATION_SCOPE_REJECTED ->
+            SymbolInspectRejectionWireDocument.REVALIDATION_SCOPE_REJECTED
+        SymbolInspectRejection.REVALIDATION_DECLARATION_MISSING ->
+            SymbolInspectRejectionWireDocument.REVALIDATION_DECLARATION_MISSING
+        SymbolInspectRejection.REVALIDATION_UNSUPPORTED_DECLARATION ->
+            SymbolInspectRejectionWireDocument.REVALIDATION_UNSUPPORTED_DECLARATION
+        SymbolInspectRejection.REVALIDATION_AMBIGUOUS -> SymbolInspectRejectionWireDocument.REVALIDATION_AMBIGUOUS
+        SymbolInspectRejection.REVALIDATION_COMPILER_IDENTITY_CHANGED ->
+            SymbolInspectRejectionWireDocument.REVALIDATION_COMPILER_IDENTITY_CHANGED
+        SymbolInspectRejection.REVALIDATION_COMPILER_UNAVAILABLE ->
+            SymbolInspectRejectionWireDocument.REVALIDATION_COMPILER_UNAVAILABLE
     }
 
 internal fun SymbolInspectRejectionWireDocument.toContract(): SymbolInspectRejection =
@@ -93,6 +121,34 @@ internal fun SymbolInspectRejectionWireDocument.toContract(): SymbolInspectRejec
         SymbolInspectRejectionWireDocument.EXACT_SELECTOR_STALE -> SymbolInspectRejection.EXACT_SELECTOR_STALE
         SymbolInspectRejectionWireDocument.AMBIGUOUS -> SymbolInspectRejection.AMBIGUOUS
         SymbolInspectRejectionWireDocument.NOT_FOUND -> SymbolInspectRejection.NOT_FOUND
+        SymbolInspectRejectionWireDocument.REVALIDATION_UNRETAINED -> SymbolInspectRejection.REVALIDATION_UNRETAINED
+        SymbolInspectRejectionWireDocument.REVALIDATION_EXPIRED -> SymbolInspectRejection.REVALIDATION_EXPIRED
+        SymbolInspectRejectionWireDocument.REVALIDATION_CAPACITY -> SymbolInspectRejection.REVALIDATION_CAPACITY
+        SymbolInspectRejectionWireDocument.REVALIDATION_RETIRED -> SymbolInspectRejection.REVALIDATION_RETIRED
+        SymbolInspectRejectionWireDocument.REVALIDATION_CAPTURE_UNAVAILABLE ->
+            SymbolInspectRejection.REVALIDATION_CAPTURE_UNAVAILABLE
+        SymbolInspectRejectionWireDocument.REVALIDATION_WORKSPACE_MISMATCH ->
+            SymbolInspectRejection.REVALIDATION_WORKSPACE_MISMATCH
+        SymbolInspectRejectionWireDocument.REVALIDATION_OWNER_MISMATCH ->
+            SymbolInspectRejection.REVALIDATION_OWNER_MISMATCH
+        SymbolInspectRejectionWireDocument.REVALIDATION_WORKSPACE_NOT_READY ->
+            SymbolInspectRejection.REVALIDATION_WORKSPACE_NOT_READY
+        SymbolInspectRejectionWireDocument.REVALIDATION_BASIS_MOVED -> SymbolInspectRejection.REVALIDATION_BASIS_MOVED
+        SymbolInspectRejectionWireDocument.REVALIDATION_CONTENT_CHANGED ->
+            SymbolInspectRejection.REVALIDATION_CONTENT_CHANGED
+        SymbolInspectRejectionWireDocument.REVALIDATION_CONTENT_UNCOMMITTED ->
+            SymbolInspectRejection.REVALIDATION_CONTENT_UNCOMMITTED
+        SymbolInspectRejectionWireDocument.REVALIDATION_SCOPE_REJECTED ->
+            SymbolInspectRejection.REVALIDATION_SCOPE_REJECTED
+        SymbolInspectRejectionWireDocument.REVALIDATION_DECLARATION_MISSING ->
+            SymbolInspectRejection.REVALIDATION_DECLARATION_MISSING
+        SymbolInspectRejectionWireDocument.REVALIDATION_UNSUPPORTED_DECLARATION ->
+            SymbolInspectRejection.REVALIDATION_UNSUPPORTED_DECLARATION
+        SymbolInspectRejectionWireDocument.REVALIDATION_AMBIGUOUS -> SymbolInspectRejection.REVALIDATION_AMBIGUOUS
+        SymbolInspectRejectionWireDocument.REVALIDATION_COMPILER_IDENTITY_CHANGED ->
+            SymbolInspectRejection.REVALIDATION_COMPILER_IDENTITY_CHANGED
+        SymbolInspectRejectionWireDocument.REVALIDATION_COMPILER_UNAVAILABLE ->
+            SymbolInspectRejection.REVALIDATION_COMPILER_UNAVAILABLE
     }
 
 internal fun RelationKindDocument.toWireDocument(): RelationKindWireDocument =
