@@ -15,6 +15,7 @@ import io.github.amichne.kast.protocol.contract.SourceEntityTargetDocument
 import io.github.amichne.kast.protocol.contract.SourceLengthDocument
 import io.github.amichne.kast.protocol.contract.SourceNestingDepthDocument
 import io.github.amichne.kast.protocol.contract.SourceReadFailure
+import io.github.amichne.kast.protocol.contract.SourceReadFormatDocument
 import io.github.amichne.kast.protocol.contract.SourceReadLimitationDocument
 import io.github.amichne.kast.protocol.contract.SourceReadQualification
 import io.github.amichne.kast.protocol.contract.SourceReadRequest
@@ -30,16 +31,32 @@ import io.github.amichne.kast.protocol.contract.SourceTextProjectionDocument
 import io.github.amichne.kast.protocol.contract.SourceTextWithheldReasonDocument
 import io.github.amichne.kast.protocol.contract.SourceUnresolvedReasonDocument
 import io.github.amichne.kast.protocol.contract.reason
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.encodeToJsonElement
 
 internal object CanonicalSourceReadSerializers {
     private val factory = GeneratedWireCodecFactory(wireJson)
 
     val request = factory.create(SourceReadRequest.serializer())
     val result =
-        factory.create(
-            SourceReadResultWireDocument.serializer(),
-            SourceReadResult::toWireDocument,
-            SourceReadResultWireDocument::toContract,
+        WireValueCodec<SourceReadResult>(
+            encodeValue = { value ->
+                when (value.format) {
+                    SourceReadFormatDocument.EXPANDED ->
+                        wireJson.encodeToJsonElement(SourceReadResultWireDocument.serializer(), value.toWireDocument())
+                    SourceReadFormatDocument.COMPACT ->
+                        wireJson.encodeToJsonElement(
+                            CompactSourceReadDocument.serializer(),
+                            value.compactSourceDocument(),
+                        )
+                }
+            },
+            decodeValue = { element ->
+                if (element is JsonObject && "format" in element)
+                    wireJson.decodeFromJsonElement(CompactSourceReadDocument.serializer(), element).expand()
+                else wireJson.decodeFromJsonElement(SourceReadResultWireDocument.serializer(), element).toContract()
+            },
         )
     val qualification =
         factory.create(
@@ -55,7 +72,7 @@ internal object CanonicalSourceReadSerializers {
         )
 }
 
-private fun SourceReadResult.toWireDocument(): SourceReadResultWireDocument =
+internal fun SourceReadResult.toWireDocument(): SourceReadResultWireDocument =
     SourceReadResultWireDocument(
         snapshot.toWireDocument(),
         region.toWireDocument(),
@@ -64,7 +81,7 @@ private fun SourceReadResult.toWireDocument(): SourceReadResultWireDocument =
         executionBudget,
     )
 
-private fun SourceReadResultWireDocument.toContract(): WireDocumentConversion<SourceReadResult> =
+internal fun SourceReadResultWireDocument.toContract(): WireDocumentConversion<SourceReadResult> =
     snapshot.toContract().flatMapConverted { admittedSnapshot ->
         region.toContract().flatMapConverted { admittedRegion ->
             entities.convertEach(SourceEntityWireDocument::toContract).flatMapConverted { admittedEntities ->

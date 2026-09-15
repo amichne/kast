@@ -66,6 +66,9 @@ class HostedSourceOutputContinuationTest {
                 fixture.request.copy(region = SourceRegionSelectionDocument.Anchor),
                 fixture.request.copy(entities = SourceEntitySelectionDocument.None),
                 fixture.request.copy(text = SourceTextRequestDocument.Complete),
+                fixture.request.copy(
+                    format = io.github.amichne.kast.protocol.contract.SourceReadFormatDocument.COMPACT
+                ),
             )
         changed.forEach { request ->
             assertEquals(

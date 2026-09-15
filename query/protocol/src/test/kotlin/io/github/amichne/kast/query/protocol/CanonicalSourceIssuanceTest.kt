@@ -14,12 +14,17 @@ import io.github.amichne.kast.protocol.contract.SourceEntityLimitDocument
 import io.github.amichne.kast.protocol.contract.SourceEntitySelectionDocument
 import io.github.amichne.kast.protocol.contract.SourceEntityTargetDocument
 import io.github.amichne.kast.protocol.contract.SourceReadAnchorDocument
+import io.github.amichne.kast.protocol.contract.SourceReadFormatDocument
 import io.github.amichne.kast.protocol.contract.SourceReadPageDocument
 import io.github.amichne.kast.protocol.contract.SourceRegionSelectionDocument
 import io.github.amichne.kast.protocol.contract.SourceTextByteLimitDocument
 import io.github.amichne.kast.protocol.contract.SourceTextProjectionDocument
 import io.github.amichne.kast.protocol.contract.SourceTextRequestDocument
 import io.github.amichne.kast.protocol.contract.SourceUnresolvedReasonDocument
+import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
+import io.github.amichne.kast.protocol.wire.WireDecoding
+import io.github.amichne.kast.protocol.wire.WireEncoding
+import io.github.amichne.kast.protocol.wire.compactSourceDocument
 import io.github.amichne.kast.source.contract.CompilerUnresolvedReason
 import io.github.amichne.kast.source.contract.DeclarationKind
 import io.github.amichne.kast.source.contract.DeclarationSemanticIdentity
@@ -36,6 +41,7 @@ import io.github.amichne.kast.source.contract.SourceReadResult as DomainResult
 import io.github.amichne.kast.source.contract.SourceRegion
 import io.github.amichne.kast.source.contract.SourceRegionKind
 import io.github.amichne.kast.source.contract.SourceSelector
+import io.github.amichne.kast.source.contract.SourceSelectorToken
 import io.github.amichne.kast.source.contract.SourceSelectorTokenCodec
 import io.github.amichne.kast.source.contract.SourceSnapshot
 import io.github.amichne.kast.source.contract.SourceTextByteLimit
@@ -56,6 +62,7 @@ import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
+import java.nio.file.Files
 import java.nio.file.Path
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -87,6 +94,7 @@ class CanonicalSourceIssuanceTest {
             CanonicalSourceReadProtocol(operations, rejectingIssuer).execute(request, fixture.lease, fixture.budget),
         )
         fixture.verify(outcome.evidence.payload, references, expected)
+        fixture.verifyCompact(references, expected, compact)
     }
 }
 
@@ -230,6 +238,37 @@ private class SourceIssuanceFixture {
             ),
             SourceTextByteLimit.parse(65536).value(),
         )
+
+    suspend fun verifyCompact(references: CanonicalQueryReferences, expected: ProtocolText, compact: Boolean) {
+        val protocol = CanonicalSourceReadProtocol(operations(), references)
+        val expanded = protocol.execute(request(expected), lease, budget) as OperationOutcome.Complete
+        val compactOutcome =
+            protocol.execute(request(expected).copy(format = SourceReadFormatDocument.COMPACT), lease, budget)
+                as OperationOutcome.Complete
+        val binding = CanonicalOperationWireBindings.sourceRead
+        val expandedEncoded = (binding.encodeOutcome(expanded) as WireEncoding.Encoded).document
+        val compactEncoded = (binding.encodeOutcome(compactOutcome) as WireEncoding.Encoded).document
+        println(
+            "source-fixture transport=$compact expanded=${expandedEncoded.toByteArray(Charsets.UTF_8).size}" +
+                " compact=${compactEncoded.toByteArray(Charsets.UTF_8).size}"
+        )
+        assertTrue(compactEncoded.toByteArray(Charsets.UTF_8).size < expandedEncoded.toByteArray(Charsets.UTF_8).size)
+        val decoded = (binding.decodeOutcome(compactEncoded) as WireDecoding.Decoded).value as OperationOutcome.Complete
+        assertEquals(
+            expanded.evidence,
+            decoded.evidence.copy(payload = decoded.evidence.payload.copy(format = SourceReadFormatDocument.EXPANDED)),
+        )
+        val table = compactOutcome.evidence.payload.compactSourceDocument().selections
+        assertEquals(table.distinct(), table)
+        assertTrue(SourceSelectorToken.parse("0") is Refinement.Rejected)
+        for (entry in table) {
+            val token = SourceSelectorToken.parse(entry.selector).value()
+            assertTrue(references.restoreSource(token, lease) is Refinement.Refined)
+        }
+        val directory = Files.createDirectories(Path.of("build/reports/source-fixture"))
+        Files.writeString(directory.resolve("expanded-$compact.json"), expandedEncoded)
+        Files.writeString(directory.resolve("compact-$compact.json"), compactEncoded)
+    }
 
     fun verify(
         output: io.github.amichne.kast.protocol.contract.SourceReadResult,

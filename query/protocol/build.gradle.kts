@@ -7,6 +7,7 @@ plugins {
 base.archivesName.set("query-protocol")
 
 dependencies {
+    testImplementation(project(":protocol:wire"))
     testFixturesApi(project(":relation:contract"))
     testFixturesApi(project(":symbol:contract"))
     testFixturesApi(project(":protocol:contract"))

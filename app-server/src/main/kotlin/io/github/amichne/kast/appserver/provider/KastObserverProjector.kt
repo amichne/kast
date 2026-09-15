@@ -277,14 +277,14 @@ internal object KastObserverProjector {
         evidence: ObserverEvidence,
         observerDirectory: ObserverWorkingDirectory,
     ): String? {
-        val snapshot = document["snapshot"] as? JsonObject ?: return null
-        if (document["region"] !is JsonObject || document["entities"] !is JsonArray) return null
+        val parts = sourcePresentationParts(document) ?: return null
+        val snapshot = parts.structure["snapshot"] as? JsonObject ?: return null
         val canonicalRoot = snapshot.strictString("canonicalRoot") ?: return null
         val file =
             snapshot.strictString("file")?.let { raw ->
                 ObserverFilePath.admitSource(raw, canonicalRoot, observerDirectory.path)
             } ?: return null
-        val text = document["text"] as? JsonObject ?: return null
+        val text = parts.text
         val source =
             when (text.strictString("type")) {
                 "returned" -> text.strictString("text") ?: return null

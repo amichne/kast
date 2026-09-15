@@ -53,6 +53,14 @@ private constructor(
         internal fun outcome(document: JsonObject, success: Boolean): ToolPresentation =
             ToolPresentation(listOf(ToolContent(canonicalJson(document))), success, ObserverPresentation.None)
 
+        /** Source is the first text item; the independently parseable result follows exactly once. */
+        internal fun source(text: String, document: JsonObject, success: Boolean): ToolPresentation =
+            ToolPresentation(
+                listOf(ToolContent(text), ToolContent(canonicalJson(document))),
+                success,
+                ObserverPresentation.None,
+            )
+
         internal fun text(
             text: String,
             success: Boolean,

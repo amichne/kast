@@ -256,6 +256,12 @@ sealed interface SourceReadPage {
     data class Continue(val continuation: SourceReadContinuation) : SourceReadPage
 }
 
+/** Output compatibility carried through native continuation admission, with no effect on enumeration. */
+enum class SourceReadOutputIdentity {
+    EXPANDED,
+    COMPACT,
+}
+
 data class SourceReadRequest(
     val anchor: SourceReadAnchor,
     val region: RegionSelection,
@@ -265,4 +271,5 @@ data class SourceReadRequest(
     val textByteLimit: SourceTextByteLimit,
     val page: SourceReadPage,
     val resources: io.github.amichne.kast.kernel.ResourceBudget,
+    val outputIdentity: SourceReadOutputIdentity = SourceReadOutputIdentity.EXPANDED,
 )

@@ -17,7 +17,6 @@ import io.github.amichne.kast.appserver.core.ProviderVersion
 import io.github.amichne.kast.appserver.core.ToolDescription
 import io.github.amichne.kast.appserver.core.ToolLoading
 import io.github.amichne.kast.appserver.core.ToolName
-import io.github.amichne.kast.appserver.core.ToolPresentation
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.appserver.query.explanation
 import io.github.amichne.kast.appserver.schema.CompiledJsonSchema
@@ -366,7 +365,7 @@ internal object KastProviderQualifier {
                     }
                 }
             },
-            present = { output -> ToolPresentation.outcome(output.document, success = output.success) },
+            present = { output -> presentKastSourceOrOutcome(output.document, output.success) },
         )
     }
 
