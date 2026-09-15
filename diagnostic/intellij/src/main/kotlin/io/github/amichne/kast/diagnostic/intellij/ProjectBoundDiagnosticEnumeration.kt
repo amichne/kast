@@ -24,7 +24,13 @@ internal fun projectBoundDiagnosticEnumeration(
     admitsDirectory: (Path) -> Boolean,
 ): DiagnosticScopeEnumerator = DiagnosticScopeEnumerator { request, budget ->
     val start = System.nanoTime()
-    val allowance = DiagnosticEnumerationAllowance(budget) { (System.nanoTime() - start) / 1_000_000 }
+    val scopeBudget = diagnosticScopeBudget(limits)
+    val effectiveBudget = io.github.amichne.kast.kernel.ResourceBudget(
+        scopeBudget.resultLimit,
+        if (scopeBudget.workUnitLimit.value < budget.workUnitLimit.value) scopeBudget.workUnitLimit else budget.workUnitLimit,
+        if (scopeBudget.elapsedTimeLimit.value < budget.elapsedTimeLimit.value) scopeBudget.elapsedTimeLimit else budget.elapsedTimeLimit,
+    )
+    val allowance = DiagnosticEnumerationAllowance(effectiveBudget) { (System.nanoTime() - start) / 1_000_000 }
     readAction {
         if (project.isDisposed || request.query.lease != authority)
             return@readAction DiagnosticEnumerationResult.Rejected(DiagnosticScopeResolutionFailure.WORKSPACE_NOT_READY)

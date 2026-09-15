@@ -57,7 +57,7 @@ private sealed interface DiagnosticTraversalPosition {
     data class Directories(val stack: List<DiagnosticDirectoryScan>) : DiagnosticTraversalPosition
 }
 
-private class DetachedDiagnosticEnumerationCursor(
+private data class DetachedDiagnosticEnumerationCursor(
     override val query: DiagnosticScopeQuery,
     val position: DiagnosticTraversalPosition,
 ) : DiagnosticEnumerationCursor {
@@ -130,7 +130,15 @@ internal fun enumerateDiagnosticTree(
                 cursor.position
             }
         }
-    return DiagnosticEnumerationAttempt(request.query, tree, allowance, position).run()
+    val result = DiagnosticEnumerationAttempt(request.query, tree, allowance, position).run()
+    if (result is DiagnosticEnumerationResult.Advancing && result.files.isEmpty()) {
+        val resumed = result.cursor as? DetachedDiagnosticEnumerationCursor
+            ?: return DiagnosticEnumerationResult.Rejected(DiagnosticScopeResolutionFailure.INVALID_SCOPE)
+        if (resumed.position == position) return DiagnosticEnumerationResult.Rejected(
+            DiagnosticScopeResolutionFailure.LIMIT_EXCEEDED,
+        )
+    }
+    return result
 }
 
 private class DiagnosticEnumerationAttempt(
