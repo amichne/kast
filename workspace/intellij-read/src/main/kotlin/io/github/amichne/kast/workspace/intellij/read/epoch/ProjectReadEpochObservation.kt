@@ -45,6 +45,9 @@ internal sealed interface ProjectReadEpochVfsBatchObservation {
 
     data object TouchesRoot : ProjectReadEpochVfsBatchObservation
 
+    /** Batch capacity prevents classification; this is neither root relevance nor exhaustive observation proof. */
+    data object RelevanceUnknown : ProjectReadEpochVfsBatchObservation
+
     data class Rejected(val failure: ProjectReadEpochObservationFailure) : ProjectReadEpochVfsBatchObservation
 }
 
@@ -133,8 +136,8 @@ internal class ProjectReadEpochMetadataCounter {
 /**
  * Proof transition: `(ProjectReadEpochVfsRoot, List<ProjectReadEpochVfsEvent>) -> ProjectReadEpochVfsBatchObservation`.
  *
- * Establishes whether at least one bounded event path is within the exact admitted root. An oversized batch or
- * malformed path is a closed rejection. Raw event strings may be extracted only by the IntelliJ VFS listener; this
+ * Establishes whether at least one bounded event path is within the exact admitted root. An oversized batch retains
+ * unknown relevance and requires conservative invalidation; a malformed bounded path is a closed rejection. Raw event strings may be extracted only by the IntelliJ VFS listener; this
  * projection performs no effect or semantic work.
  */
 internal fun observeProjectReadEpochVfsBatch(
@@ -143,7 +146,7 @@ internal fun observeProjectReadEpochVfsBatch(
     limits: ReadLimits = ReadLimits.Default,
 ): ProjectReadEpochVfsBatchObservation {
     if (events.size > limits[ReadLimitParameter.EPOCH_VFS_EVENTS].value) {
-        return ProjectReadEpochVfsBatchObservation.Rejected(ProjectReadEpochObservationFailure.VfsBatchLimitExceeded)
+        return ProjectReadEpochVfsBatchObservation.RelevanceUnknown
     }
     var touchesRoot = false
     for (event in events) {

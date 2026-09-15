@@ -74,10 +74,10 @@ class HostedVfsObservationTest {
     }
 
     @Test
-    fun `bounds reject before collecting event paths`() {
+    fun `bounds retain unknown relevance before collecting event paths`() {
         val limits = (ReadLimits.resolve(mapOf("KAST_READ_EPOCH_VFS_EVENTS" to "1")) as Refinement.Refined).value
         assertEquals(
-            HostedVfsBatchEvidence.Rejected(HostedVfsObservationFailure.BATCH_LIMIT),
+            HostedVfsBatchEvidence.RelevanceUnknown(HostedVfsUnknownRelevanceReason.BATCH_LIMIT),
             observeHostedVfsBatch(root, listOf(event("/workspace/a.kt"), event("/workspace/b.kt")), limits),
         )
     }
