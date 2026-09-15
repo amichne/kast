@@ -1,0 +1,48 @@
+package io.github.amichne.kast.protocol.contract
+
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
+@Serializable
+enum class SymbolInspectAcquisition {
+    @SerialName("strict") STRICT,
+    @SerialName("reacquired") REACQUIRED,
+}
+
+data class SymbolInspectResult(
+    val symbol: SymbolDocument,
+    val acquisition: SymbolInspectAcquisition = SymbolInspectAcquisition.STRICT,
+) : OperationResult
+
+enum class SymbolInspectQualification : OperationQualification {
+    EVIDENCE_INCOMPLETE
+}
+
+enum class SymbolInspectRejection : OperationRejection {
+    WORKSPACE_NOT_READY,
+    SELECTOR_WRONG_KIND,
+    SELECTOR_MALFORMED,
+    SELECTOR_WORKSPACE_MISMATCH,
+    CANDIDATE_STALE,
+    CANDIDATE_NOT_DECLARATION,
+    EXACT_SELECTOR_STALE,
+    AMBIGUOUS,
+    NOT_FOUND,
+    REVALIDATION_UNRETAINED,
+    REVALIDATION_EXPIRED,
+    REVALIDATION_CAPACITY,
+    REVALIDATION_RETIRED,
+    REVALIDATION_CAPTURE_UNAVAILABLE,
+    REVALIDATION_WORKSPACE_MISMATCH,
+    REVALIDATION_OWNER_MISMATCH,
+    REVALIDATION_WORKSPACE_NOT_READY,
+    REVALIDATION_BASIS_MOVED,
+    REVALIDATION_CONTENT_CHANGED,
+    REVALIDATION_CONTENT_UNCOMMITTED,
+    REVALIDATION_SCOPE_REJECTED,
+    REVALIDATION_DECLARATION_MISSING,
+    REVALIDATION_UNSUPPORTED_DECLARATION,
+    REVALIDATION_AMBIGUOUS,
+    REVALIDATION_COMPILER_IDENTITY_CHANGED,
+    REVALIDATION_COMPILER_UNAVAILABLE,
+}

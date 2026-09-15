@@ -12,6 +12,7 @@ import io.github.amichne.kast.protocol.contract.SymbolDiscoverRejection
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverResult
 import io.github.amichne.kast.protocol.contract.SymbolDiscoveryDocument
 import io.github.amichne.kast.protocol.contract.SymbolDocument
+import io.github.amichne.kast.protocol.contract.SymbolInspectAcquisition
 import io.github.amichne.kast.protocol.contract.SymbolInspectQualification
 import io.github.amichne.kast.protocol.contract.SymbolInspectRejection
 import io.github.amichne.kast.protocol.contract.SymbolInspectResult
@@ -76,6 +77,7 @@ internal object CanonicalSymbolCliDocuments {
                         operation = CanonicalOperation.SYMBOL_INSPECT.id.value,
                         status = "complete",
                         symbol = result.symbol.toCliDocument(),
+                        acquisition = result.acquisition,
                     )
                 )
             },
@@ -85,6 +87,7 @@ internal object CanonicalSymbolCliDocuments {
                         operation = CanonicalOperation.SYMBOL_INSPECT.id.value,
                         status = "qualified",
                         symbol = result.symbol.toCliDocument(),
+                        acquisition = result.acquisition,
                         qualification = qualification.cliName(),
                     )
                 )
@@ -145,6 +148,7 @@ private data class SymbolDescriptionCompleteCliDocument(
     val operation: String,
     val status: String,
     val symbol: SymbolCliDocument,
+    val acquisition: SymbolInspectAcquisition,
 )
 
 @Serializable
@@ -152,6 +156,7 @@ private data class SymbolDescriptionQualifiedCliDocument(
     val operation: String,
     val status: String,
     val symbol: SymbolCliDocument,
+    val acquisition: SymbolInspectAcquisition,
     val qualification: String,
 )
 

@@ -22,6 +22,27 @@ import io.github.amichne.kast.workspace.intellij.read.hosted.HostedSemanticReadC
 /** Ports share one request's admitted authority, model, scope, policy and observation. Never retained across reads. */
 internal class HostedSemanticServices(private val project: Project, private val context: HostedSemanticReadContext) {
     val budgets = HostedSemanticBudgets(context.limits, context.executionBudget)
+    private val capture =
+        io.github.amichne.kast.symbol.intellij.IntellijExactRevalidationCapture(
+            context.model,
+            context.observation,
+            context.executionBudget.work.effective.value,
+            context.limits,
+        )
+    private val revalidationStore = project.getService(HostedExactRevalidationStore::class.java)
+    val revalidationReferences = revalidationStore.references()
+    val revalidation =
+        io.github.amichne.kast.symbol.service.ExactRevalidationService(
+            context.validation,
+            io.github.amichne.kast.symbol.intellij.ProjectBoundExactRevalidationPort(
+                project,
+                context.model,
+                context.sourceFiles,
+                capture,
+                context.observation,
+                context.limits,
+            ),
+        )
     private val symbols by lazy {
         ProjectBoundIntellijSymbolPorts.create(
             project,
@@ -30,6 +51,7 @@ internal class HostedSemanticServices(private val project: Project, private val 
             context.sourceFiles,
             context.observation,
             context.limits,
+            capture,
         )
     }
     val discovery = SymbolDiscoveryService(context.validation, symbols.discovery)
@@ -52,6 +74,23 @@ internal class HostedSemanticServices(private val project: Project, private val 
             project
                 .getService(HostedReferenceStore::class.java)
                 .transport(context.authority.reference, context.limits, context.observation),
+            exactIssued = { selector, token, canonical ->
+                val retained =
+                    when (val locator = capture.locator(selector)) {
+                        is Refinement.Refined -> revalidationStore.retain(token, canonical, locator.value)
+                        is Refinement.Rejected -> locator
+                    }
+                context.observation.count(
+                    when (retained) {
+                        is Refinement.Refined ->
+                            io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
+                                .REVALIDATION_LOCATORS_RETAINED
+                        is Refinement.Rejected ->
+                            io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
+                                .REVALIDATION_LOCATORS_REJECTED
+                    }
+                )
+            },
         )
 
     fun source(continuations: IntellijSourceReadContinuations) =

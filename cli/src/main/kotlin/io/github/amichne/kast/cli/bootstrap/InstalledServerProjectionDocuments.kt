@@ -460,6 +460,10 @@ private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject =
             outcomeSchema(
                 operation,
                 ServerSchemaProperty("symbol", symbolSchema()),
+                ServerSchemaProperty(
+                    "acquisition",
+                    enumSchema(listOf("strict", "reacquired"), "Exact inspection authority acquisition."),
+                ),
             )
         CanonicalOperation.SOURCE_READ ->
             proofQualifiedOutcomeSchema(

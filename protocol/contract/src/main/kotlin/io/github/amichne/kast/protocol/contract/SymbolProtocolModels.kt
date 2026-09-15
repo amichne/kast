@@ -215,6 +215,11 @@ sealed interface SymbolInspectTarget {
     /** Weaker discovery evidence that must be refined through compiler analysis. */
     @Serializable @SerialName("candidate") data class Candidate(val selector: ProtocolText) : SymbolInspectTarget
 
+    /** Explicit fresh reacquisition; the previous token is only a retained locator. */
+    @Serializable
+    @SerialName("revalidate_exact")
+    data class RevalidateExact(val selector: ProtocolText) : SymbolInspectTarget
+
     /** Already exact compiler selector that must be revalidated before projection. */
     @Serializable @SerialName("exact") data class Exact(val selector: ProtocolText) : SymbolInspectTarget
 }
@@ -464,21 +469,3 @@ private fun <Value, Failure> Refinement<Value, Failure>.valueOrNull(): Value? =
         is Refinement.Refined -> value
         is Refinement.Rejected -> null
     }
-
-data class SymbolInspectResult(val symbol: SymbolDocument) : OperationResult
-
-enum class SymbolInspectQualification : OperationQualification {
-    EVIDENCE_INCOMPLETE
-}
-
-enum class SymbolInspectRejection : OperationRejection {
-    WORKSPACE_NOT_READY,
-    SELECTOR_WRONG_KIND,
-    SELECTOR_MALFORMED,
-    SELECTOR_WORKSPACE_MISMATCH,
-    CANDIDATE_STALE,
-    CANDIDATE_NOT_DECLARATION,
-    EXACT_SELECTOR_STALE,
-    AMBIGUOUS,
-    NOT_FOUND,
-}

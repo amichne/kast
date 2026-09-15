@@ -35,6 +35,7 @@ private constructor(
             fileAdmission: IntellijSemanticSourceFileAdmission,
             observation: IntellijReadObservation = IntellijReadObservation.None,
             limits: ReadLimits = ReadLimits.Default,
+            capture: IntellijExactRevalidationCapture? = null,
         ): ProjectBoundIntellijSymbolPorts {
             val compiledModel = WorkspaceSearchScopeModelCompilation.Compiled(model)
             return ProjectBoundIntellijSymbolPorts(
@@ -68,6 +69,7 @@ private constructor(
                                 ),
                                 observation,
                                 limits,
+                                capture,
                             )
                         )
 

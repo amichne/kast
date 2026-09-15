@@ -21,6 +21,7 @@ import io.github.amichne.kast.protocol.contract.SymbolDiscoveryDocument
 import io.github.amichne.kast.protocol.contract.SymbolDiscoveryKindDocument
 import io.github.amichne.kast.protocol.contract.SymbolDiscoveryMatchDocument
 import io.github.amichne.kast.protocol.contract.SymbolDocument
+import io.github.amichne.kast.protocol.contract.SymbolInspectAcquisition
 import io.github.amichne.kast.protocol.contract.SymbolInspectResult
 import io.github.amichne.kast.protocol.contract.SymbolKindDocument
 import io.github.amichne.kast.protocol.contract.SymbolNameKindDocument
@@ -62,7 +63,11 @@ internal sealed interface SymbolDiscoveryWireDocument {
     ) : SymbolDiscoveryWireDocument
 }
 
-@Serializable internal data class SymbolInspectResultWireDocument(val symbol: SymbolWireDocument)
+@Serializable
+internal data class SymbolInspectResultWireDocument(
+    val symbol: SymbolWireDocument,
+    val acquisition: SymbolInspectAcquisition,
+)
 
 @Serializable
 internal data class RelationFactWireDocument(
@@ -249,14 +254,15 @@ private fun SymbolDiscoveryWireDocument.toContract(): WireDocumentConversion<Sym
             }
     }
 
-internal fun SymbolInspectResult.toSymbolWireDocument() = SymbolInspectResultWireDocument(symbol.toWireDocument())
+internal fun SymbolInspectResult.toSymbolWireDocument() =
+    SymbolInspectResultWireDocument(symbol.toWireDocument(), acquisition)
 
 /**
  * `SymbolInspectResultWireDocument -> SymbolInspectResult` establishes one exact symbol; invalid raw fields become
  * `WireFailure.InvalidPayload` at this wire boundary.
  */
 internal fun SymbolInspectResultWireDocument.toContract(): WireDocumentConversion<SymbolInspectResult> =
-    symbol.toContract().mapConverted(::SymbolInspectResult)
+    symbol.toContract().mapConverted { SymbolInspectResult(it, acquisition) }
 
 internal fun RelationFactDocument.toWireDocument(): RelationFactWireDocument =
     RelationFactWireDocument(
