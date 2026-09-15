@@ -84,6 +84,11 @@ Installed read acceptance uses the same staged CLI, provider and hosted-plugin
 identity as the mutation fixture. It records the base matrix, bounded transport
 faults, independent caller grants and ordinary-edit authority transitions before
 mutation starts. Exact source restoration and observed readiness are required.
+The repair matrix emits bounded 10/20-second request receipts with the actual
+configured default, operator ceiling, admitted grant, clamp causes and round-trip
+duration. Executor tests separately verify admission work and completion reserve;
+neither evidence source substitutes for the other. Native readiness rejects a
+saved/document image mismatch even when the IDE reports saved and committed.
 Deterministic fixture tests and schema checks do not themselves qualify a native
 IDE run; [hosted query qualification](../flows/hosted-query.md) keeps those evidence
 boundaries separate.
