@@ -32,6 +32,12 @@ class KotlinCallOwnershipTest {
             val outer = file.declarations.filterIsInstance<KtNamedFunction>().first()
             val call = PsiTreeUtil.findChildOfType(outer, KtCallExpression::class.java)!!
             assertSame(outer, (call.nearestDeclaration() as ContainingDeclaration.Found).declaration)
+            val callback = KtPsiFactory(environment.project).createFile(
+                "fun callback() = { target() }")
+            val callbackCall = PsiTreeUtil.findChildOfType(callback, KtCallExpression::class.java)!!
+            org.junit.jupiter.api.Assertions.assertFalse(
+                callbackCall.nearestDeclaration() is ContainingDeclaration.Found,
+                "A lambda body must not become an unconditional outer invocation")
         } finally {
             com.intellij.openapi.application.ApplicationManager.getApplication().runWriteAction { Disposer.dispose(disposable) }
         }
