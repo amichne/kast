@@ -9,7 +9,7 @@ tags:
   - "workspaces"
   - "validation"
   - "installation"
-timestamp: "2026-09-11T00:00:00-04:00"
+timestamp: "2026-09-14T00:00:00-04:00"
 code_sources:
   - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeCli.kt"
   - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledCoordinator.kt"
@@ -28,9 +28,7 @@ keywords:
   - "runtime ownership"
 ---
 
-Ordinary semantic tools read the repository already open in IDEA. The installed
-broker owns agent connections and routing; the IDEA project owns live compiler
-evidence. Use this distinction when a request fails or when validating a harness.
+The installed broker routes requests to compiler evidence owned by the open IDEA project.
 
 ## Follow a read
 
@@ -42,32 +40,45 @@ flowchart LR
   D --> E[Typed result and coverage]
 ```
 
-A missing or unready host rejects. This path does not open a workspace, import
-Gradle, synchronize an index, or start an isolated worker as a hidden prerequisite.
+A missing or unready host rejects.
+
+The read path never hides these prerequisites:
+
+- opening a workspace
+- importing Gradle
+- synchronizing an index
+- starting an isolated worker
+
 Save source and finish indexing before requesting evidence.
 
-Each live result retains its canonical root, original host incarnation, and
-content/model epoch. Those coordinates distinguish the evidence from an answer
-for another repository or a retired owner. See [Live evidence](/reference/models/live-evidence).
+Each live result retains its root, host incarnation, and content/model epoch.
+
+Those coordinates distinguish another repository or a retired owner.
+
+See [Live evidence](/reference/models/live-evidence) for the complete coordinates.
 
 ## Understand broker ownership
 
-The installation-owned coordinator retains service identity, connection
-admission, workspace registration, invocation lanes and controller approvals.
-Thread bindings retain workspace and installation owners. Ambiguous roots,
-contradictory thread reuse, stale epochs, and stale service generations reject.
+| Owner | Responsibility |
+| --- | --- |
+| Installed coordinator | Service identity, connection admission, workspace registration, invocation lanes, and approvals |
+| Thread binding | Workspace and installation owner identity |
+| IDEA project | Live compiler evidence and project lifecycle |
 
-The shipped runtime contains only the existing-IDE plugin. Coordinator status
-admits zero worker reservations and rejects retired worker-demand messages.
-Workspace enrollment remains routing information and grants no project-opening
-or Gradle-import authority.
+Ambiguous roots, contradictory thread reuse, stale epochs, and stale service generations reject.
+
+The shipped runtime contains only the existing-IDE plugin.
+
+Workspace enrollment provides routing information, not project-opening authority.
 
 <Accordion title="Version-owned state and endpoint cleanup">
-  The version root owns configuration, workspace registration, mutable runtime
-  state, payloads, caches, and socket endpoints. Reset and removal use exact
-  manifests and ownership receipts. Socket aliases retain inode and owner
-  evidence; bind, probe, publication, and cleanup revalidate it. Replaced or
-  otherwise unproven objects remain in place with a recovery-required result.
+  The version root owns configuration, registration, runtime state, payloads,
+  caches, and socket endpoints.
+
+  - Reset and removal use exact manifests and ownership receipts.
+  - Socket aliases retain inode and owner evidence.
+  - Bind, probe, publication, and cleanup revalidate ownership.
+  - Unproven objects remain in place with a recovery-required result.
 </Accordion>
 
 ## Choose evidence for a validation claim
@@ -80,23 +91,27 @@ or Gradle-import authority.
 | Broker workspace-lane tests | Routing separation, settlement and cleanup for the exercised identities |
 | Product build gates | Agreement of the required checks at the tested source revision |
 
-A source implementation is not a passed acceptance run. A small fixture is not a
-capacity guarantee. Consult the repository's
-[existing-IDE acceptance record](https://github.com/amichne/kast/blob/main/docs/reviews/live-semantic-read-acceptance.md)
+A source implementation is not a passed acceptance run.
+
+A small fixture is not a capacity guarantee.
+
+Use the [existing-IDE acceptance record](https://github.com/amichne/kast/blob/main/docs/reviews/live-semantic-read-acceptance.md)
 and [semantic reproduction record](https://github.com/amichne/kast/blob/main/docs/reviews/hosted-semantic-reproduction.md)
-for the observed boundary.
+for observed results.
 
 <Accordion title="How isolated acceptance avoids changing live installations">
-  The acceptance harness creates a private writable root and staged product,
-  with separate homes, configuration, caches, runtime payloads, and temporary
-  files. Children receive explicit executable and environment inputs. It tracks
-  and retires only its own processes and checks endpoint ownership before cleanup.
+  The acceptance harness creates a private writable root and staged product.
 
-  This isolates writable state and process ownership; it is not an OS sandbox.
-  Dependency downloads are an explicit exception in the Gradle fixture. Failed
-  runs retain bounded outcome evidence for diagnosis. Run one Gradle invocation
-  at a time per checkout.
+  It separates homes, configuration, caches, payloads, and temporary files.
+
+  - Child processes receive explicit executable and environment inputs.
+  - Cleanup retires only owned processes and endpoints.
+  - The boundary isolates state but is not an OS sandbox.
+  - The Gradle fixture may download dependencies.
+  - Failed runs retain bounded diagnostic evidence.
+  - Each checkout supports one Gradle invocation at a time.
 </Accordion>
 
-For operational failures, use [Troubleshooting](/troubleshooting); for field-level
-handling, use [Read a response](/reference/responses).
+Use [Troubleshooting](/troubleshooting) for operational failures.
+
+Use [Read a response](/reference/responses) for field-level handling.

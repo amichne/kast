@@ -4,7 +4,7 @@ title: "Troubleshoot Kast"
 description: "Use the reported failure layer to choose a bounded corrective action."
 resource: "file://docs/public/troubleshooting.mdx"
 tags: ["troubleshooting", "failures", "runtime", "support"]
-timestamp: "2026-09-11T00:00:00-04:00"
+timestamp: "2026-09-14T00:00:00-04:00"
 code_sources:
   - path: "workspace/intellij/src/main/kotlin/io/github/amichne/kast/workspace/intellij/InstalledGradleModelInputs.kt"
     symbols: ["InstalledGradleModelInputs"]
@@ -26,8 +26,9 @@ icon: "life-buoy"
 keywords: ["errors", "rejected", "qualified", "bootstrap", "support"]
 ---
 
-Start with the reported result. Select the failing boundary before changing
-runtime state. For response field names, see [Read a response](/reference/responses).
+Select the failing boundary before changing runtime state.
+
+See [Read a response](/reference/responses) for field names and result layers.
 
 ## Choose the next action
 
@@ -48,106 +49,156 @@ kast
 kast app-server status
 ```
 
-Bare `kast` is passive: it does not start, repair, or synchronize the runtime.
-Keep its product version, semantic authority and repository-root observation.
-Run `kast ide status` to inspect the existing project endpoint. App Server status adds exact paths for
-`serviceLog`, `launchEnvironment`, `savedConfiguration`, and `workspaceRegistry`.
+Collect these fields without changing runtime state:
 
-`kast ide status` reports a fresh `readiness` observation without acquiring a
-semantic query permit or spending its search budget. `admission_ready` means the
-exact project is open and initialized, its cached Gradle model is complete,
-indexing is in smart mode, and host admission checks passed. Each subsequent
-query still checks saved documents, its source epoch, and semantic authority.
-`unavailable` retains the observed rejection and its typed recovery guidance.
-An older host that omits `readiness` provides no readiness evidence.
+- Bare `kast` reports product version, semantic authority, and repository root.
+- `kast ide status` reports fresh endpoint readiness.
+- `kast app-server status` adds paths for logs, configuration, and workspace state.
 
-For `GRADLE_MODEL_UNAVAILABLE`, recovery identifies `IDE_STATUS`, the required
-`CACHED_GRADLE_MODEL_COMPLETE` state, and `OBSERVE_IDE_GRADLE_MODEL`. Inspect IDEA's
-existing Gradle project state, then check status again after that state changes.
-Retry the same query after admission becomes ready. A missing cached model does
-not establish that an import is running; Kast neither starts import nor returns
-an empty successful search in its place. If older rejection output omits
-`recovery`, it carries no automated retry instruction.
+`kast ide status` does not acquire a query permit or spend search budget.
 
-If startup itself fails, `kast codex` writes a finite reason to stderr.
-`KAST_DEBUG=1` enables bounded launch-stage output alongside the service log.
+`admission_ready` establishes:
+
+- the exact project is open and initialized
+- its cached Gradle model is complete
+- indexing is in smart mode
+- host admission checks passed
+
+Every query still checks saved documents, source epoch, and semantic authority.
+
+`unavailable` retains its typed recovery guidance.
+
+An older host without `readiness` provides no readiness evidence.
+
+### Recover a missing Gradle model
+
+For `GRADLE_MODEL_UNAVAILABLE`, expect recovery to identify:
+
+- action `IDE_STATUS`
+- required state `CACHED_GRADLE_MODEL_COMPLETE`
+- observation `OBSERVE_IDE_GRADLE_MODEL`
+
+1. Inspect IDEA's existing Gradle project state.
+2. Wait for that state to change.
+3. Check status again.
+4. Retry after admission becomes ready.
+
+A missing cached model does not prove that import is running.
+
+Kast neither starts import nor returns an empty successful search.
+
+Older output without `recovery` provides no automated retry instruction.
+
+If startup fails, `kast codex` writes a finite reason to stderr.
+
+Set `KAST_DEBUG=1` for bounded launch-stage output.
 
 ## Resolve the common boundaries
 
 <AccordionGroup>
   <Accordion title="The Codex integration cannot start">
-    Verify `kast` and `codex` in the launching environment and run from the
-    intended Kotlin Gradle root. If set, `CODEX_EXECUTABLE` must be absolute and
-    executable. `KAST_ENABLE_APP_SERVER` must be `0` or `1`.
+    - Verify `kast` and `codex` in the launch environment.
+    - Run from the intended Kotlin Gradle root.
+    - Require `CODEX_EXECUTABLE` to be absolute and executable when set.
+    - Require `KAST_ENABLE_APP_SERVER` to be `0` or `1`.
+    - Validate `KAST_APP_SERVER_TOOLS` against `kast --schema`.
+    - Recreate obsolete catalogs with the matched broker and executable.
 
-    Validate `KAST_APP_SERVER_TOOLS` against `kast --schema`: it must contain
-    exact, non-empty, unique names. Recreate an obsolete catalog using the
-    matched broker and executable. Do not bypass admission with handwritten
-    definitions. See [Harness configuration](/agent-harnesses#configuration-and-migration).
+    Do not bypass admission with handwritten definitions.
+
+    See [Harness configuration](/agent-harnesses#configuration-and-migration).
   </Accordion>
   <Accordion title="The IDE host is unavailable or source is unready">
-    Open the exact repository in the compatible IDEA installation, ensure the
-    Kast plugin is loaded, finish import and indexing, and save edited files.
-    Search does not open a project or run an import as a hidden prerequisite.
-    Follow the reported host or source reason if readiness still rejects.
+    - Open the exact repository in a compatible IDEA installation.
+    - Confirm that the Kast plugin is loaded.
+    - Finish import and indexing.
+    - Save edited files.
+    - Follow the reported reason when readiness still rejects.
   </Accordion>
   <Accordion title="A search is incomplete">
-    Inspect `qualification.limitations` and `failures[]`. A smaller directory,
-    explicit source set, or narrower discovery before expansion can reduce work.
-    Change a bound only through the admitted configuration or request schema;
-    increasing it does not guarantee complete coverage.
+    Inspect `qualification.limitations` and `failures[]`.
+
+    Reduce work with a smaller directory, explicit source set, or narrower discovery.
+
+    Change bounds only through the admitted configuration or request schema.
   </Accordion>
   <Accordion title="The broker reports WORKSPACE_RECOVERY_REQUIRED">
-    The workspace is blocked, including recovery calls. Replace the broker while
-    retaining its invocation journal and thread store, then request fresh
-    exact-plan recovery approval. Retain the IDE's durable change records.
-    Replacement does not undo an effect or permit replay of an attempted plan.
+    1. Retain the invocation journal, thread store, and IDE change records.
+    2. Replace the broker.
+    3. Request fresh exact-plan recovery approval.
+
+    Broker replacement does not undo an effect or permit replay.
+
     Follow the [change workflow](/change#recover-an-interrupted-change).
   </Accordion>
 </AccordionGroup>
 
 ## Advanced runtime maintenance
 
-These controls concern the installation-owned broker. IDEA owns the project,
-Gradle import and semantic index lifecycle.
+These controls affect the installation-owned broker, not IDEA project state.
 
 <AccordionGroup>
   <Accordion title="Repair installation-owned broker state">
-    `kast codex` already recovers stale or malformed owned readiness as part of
-    ordinary launch. Only use the following reset when the diagnosed problem
-    calls for discarding owned state:
+    `kast codex` recovers stale or malformed owned readiness during ordinary launch.
+
+    Use this reset only when diagnosis requires discarding owned state:
 
     ```console
     kast app-server repair --destructive
     ```
 
-    This retires the active installation's launchd label, deletes its runtime,
-    cache, broker and workspace-registry state, then re-enrolls the workspace and
-    starts clean. It discards broker invocation evidence; it does not rebuild IDEA indexes.
-    Do not use it as recovery for an uncertain source change whose records must
-    be retained. It does not follow symlinks inside the owned state tree.
+    <Warning>
+      This command discards broker invocation evidence. Do not use it while an
+      uncertain source change still needs recovery.
+    </Warning>
+
+    The reset removes installation-owned runtime, cache, broker, and registry state.
+
+    It then re-enrolls the workspace without rebuilding IDEA indexes.
+
+    It does not follow symlinks inside the owned state tree.
   </Accordion>
   <Accordion title="A change store rejects">
-    Keep the complete `HOST_REJECTED.detail` value. Database admission, plan
-    storage, receipt storage and plan lookup are distinct stages. `CORRUPT_RECORD`
-    and `VERSION_UNSUPPORTED` are preserved rather than reported as generic I/O.
-    Retain the durable records and the exact plan identity when investigating.
+    Keep the complete `HOST_REJECTED.detail` value.
+
+    Treat these as distinct stages:
+
+    - database admission
+    - plan storage
+    - receipt storage
+    - plan lookup
+
+    `CORRUPT_RECORD` and `VERSION_UNSUPPORTED` remain distinct from generic I/O.
+
+    Retain durable records and the exact plan identity.
   </Accordion>
   <Accordion title="A retired start or stop command rejects">
-    Kast no longer launches a second IntelliJ workspace. Open the repository in
-    IDEA with the Kast plugin, finish import and indexing, save edited files,
-    and inspect `kast ide status`. Configure IDEA's own memory and Gradle settings
-    through that host when diagnosing an import or indexing problem.
+    Kast no longer launches a second IntelliJ workspace.
+
+    - Open the repository in IDEA with the Kast plugin.
+    - Finish import and indexing.
+    - Save edited files.
+    - Inspect `kast ide status`.
+    - Configure memory and Gradle settings in IDEA.
   </Accordion>
 </AccordionGroup>
 
 ## Report a reproducible defect
 
-Include the Kast version and source revision; observed macOS architecture, IDEA,
-Kotlin plugin and JBR versions; outer diagnostic; semantic status and finite
-reasons; and the passive status report. Add a minimal reproduction. Remove host
-paths or source your organization treats as sensitive before sharing.
+Include:
 
-Broker activity records contain bounded identities and completion states rather
-than tool arguments or source. Apply your host's retention policy to trace files.
+- Kast version and source revision
+- macOS architecture
+- IDEA, Kotlin plugin, and JBR versions
+- outer diagnostic
+- semantic status and finite reasons
+- passive status report
+- minimal reproduction
+
+Remove sensitive host paths or source before sharing.
+
+Apply your host's retention policy to broker trace files.
+
+Broker activity records contain bounded identities and completion states, not tool arguments or source.
+
 Report security issues through [private vulnerability reporting](https://github.com/amichne/kast/security/advisories/new).

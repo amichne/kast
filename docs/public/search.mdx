@@ -4,7 +4,7 @@ title: "Find Kotlin declarations"
 description: "Choose a search tool, narrow its scope, and reuse the exact compiler result."
 resource: "file://docs/public/search.mdx"
 tags: ["search", "query", "agents", "Kotlin"]
-timestamp: "2026-09-11T00:00:00-04:00"
+timestamp: "2026-09-14T00:00:00-04:00"
 code_sources:
   - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt"
     symbols: ["PublicToolContract", "AdmittedPublicTool", "PublicToolRequestSerializer"]
@@ -20,7 +20,11 @@ icon: "scan-search"
 keywords: ["kast.search_classes", "symbol search", "semantic relationships", "agent use"]
 ---
 
-Use the tool that names your intent. Every search uses the session workspace's saved, indexed IntelliJ state and preserves each matching declaration and its compiler evidence.
+Choose the search tool that matches your intent.
+
+<Note>
+  Every search uses the session workspace's saved, indexed IntelliJ state.
+</Note>
 
 | Intent | Tool |
 |---|---|
@@ -38,9 +42,47 @@ Call `kast.search_classes` with:
 {"class_name":"OrderService","name_match":null,"scope":null}
 ```
 
-The same input works with `kast tool search_classes < request.json`. Use `function_name` with `search_functions`. These searches return names, locations, signatures and opaque `symbol_ref` tokens alongside completeness evidence. Every matching overload remains separate. `symbol_ref` repeats the exact bytes in `ref.token`. Results also carry `symbol_id`, a canonical declaration equality key that stays the same across searches and scopes within one saved snapshot. Different overloads and snapshots have different IDs. Use `symbol_ref` to perform another operation; `symbol_id` cannot authorize a read.
+The same input works with `kast tool search_classes < request.json`.
 
-Controls must be present. `null` selects the documented default: exact, case-sensitive name matching and recursive directory `.` in the imported source-set names `main` and `test`. Names are simple declaration identifiers; use a package scope for qualification. Fuzzy matching requires `"name_match":"fuzzy"` and never runs as a hidden retry. It accepts a single insertion, deletion, substitution, or adjacent transposition and ranks exact names, case-insensitive matches, one-edit matches, then subsequence matches. Scope and declaration-kind filters run before candidate capacity; scoped lexical ranking selects the best bounded candidates before compiler refinement. A bounded search retains its partial-coverage qualifications.
+Use these request rules:
+
+- Use `function_name` with `search_functions`.
+- Keep every control field present.
+- Use `null` for exact, case-sensitive matching under recursive directory `.`.
+- Expect the default source sets to be exactly `main` and `test`.
+- Use a package scope when a simple declaration name needs qualification.
+- Set `"name_match":"fuzzy"` explicitly because Kast never retries fuzzily.
+
+Each match retains its name, location, signature, completeness evidence, and
+opaque `symbol_ref`.
+
+Matching overloads remain separate.
+
+`symbol_ref` repeats the exact bytes in `ref.token`.
+
+| Identity | Use |
+| --- | --- |
+| `symbol_ref` | Authorize a later operation within its retained scope |
+| `symbol_id` | Compare the same declaration within one saved snapshot |
+
+Different overloads and snapshots have different `symbol_id` values.
+
+### Fuzzy matching
+
+Set `"name_match":"fuzzy"` explicitly.
+
+Fuzzy matching accepts one insertion, deletion, substitution, or adjacent transposition.
+
+Results rank in this order:
+
+1. Exact name
+2. Case-insensitive name
+3. One-edit match
+4. Subsequence match
+
+Scope and declaration-kind filters run before candidate capacity.
+
+A bounded search retains its partial-coverage qualifications.
 
 For a property or an unknown declaration kind, call `search_declarations`:
 
@@ -53,7 +95,12 @@ For a property or an unknown declaration kind, call `search_declarations`:
 }
 ```
 
-`declaration_kinds: null` includes the supported `class`, `function`, `property` and `type_alias` families. Empty or duplicate kind selections reject. Constructor discovery is not advertised.
+`declaration_kinds: null` includes `class`, `function`, `property`, and
+`type_alias`.
+
+Empty or duplicate selections reject.
+
+Constructor discovery is not advertised.
 
 ## Narrow the search
 
@@ -85,16 +132,21 @@ A package scope instead uses semantic Kotlin package names:
 }
 ```
 
-`include_subdirectories: false` selects files directly in the named directory;
-`true` also includes descendant directories. `include_subpackages` makes the
-same choice for semantic package descendants. A package scope is not a directory
-alias: Kotlin package declarations determine membership. Live discovery includes
-authored Kotlin sources with admitted imported source-set ownership; generated
-and library sources are excluded.
+### Scope rules
 
-The two closed shapes are exclusive. Mixed fields, absolute paths, parent traversal and non-canonical paths reject. `source_set_names: null` means exactly `main` and `test`, not every imported source set. Explicit names such as `integrationTest` or `commonMain` must match imported Gradle ownership. Empty and duplicate selections reject. A known absent source-set name contributes no declarations.
+- Directory and package scopes are exclusive closed shapes.
+- `include_subdirectories: false` selects only files in the named directory.
+- `include_subdirectories: true` also includes descendant directories.
+- `include_subpackages` controls semantic package descendants.
+- Kotlin package declarations determine package membership.
+- Mixed fields, absolute paths, parent traversal, and non-canonical paths reject.
+- `source_set_names: null` means exactly `main` and `test`.
+- Explicit names such as `integrationTest` or `commonMain` require imported ownership.
+- Empty or duplicate source-set selections reject.
+- A known absent source set contributes no declarations.
+- Generated and library sources are excluded from live discovery.
 
-Source-set restrictions intersect the chosen directory or package during discovery. A later `query_symbols` `expand_relation` step uses workspace expansion and does not constrain its destinations to that discovery selection.
+Source-set restrictions apply to discovery subjects, not later expansion destinations.
 
 ## Check diagnostics separately
 
@@ -104,7 +156,13 @@ Call `kast.check_diagnostics`:
 {"relative_path":"src/main/kotlin/orders/OrderService.kt","max_diagnostics":null}
 ```
 
-A path may name a file or directory. Use `.` explicitly for the workspace root. Null selects at most 100 returned entries; the positive maximum is 1000. This request does not build the project. It is independent of diagnostic logging detail and bounded by the host's diagnostic scope policy.
+A path may name a file or directory.
+
+- Use `.` for the workspace root.
+- Use `null` to return at most 100 entries.
+- Use a positive limit up to 1000.
+- Do not treat this request as a project build.
+- Keep the host's diagnostic scope policy separate from logging detail.
 
 ## Use the result
 
@@ -113,21 +171,42 @@ A path may name a file or directory. Use `.` explicitly for the workspace root. 
 3. Retain `symbol_ref` verbatim for a follow-up query or change plan.
 4. Read `failures` and any `qualification` before making a completeness claim.
 
-[Read a response](/reference/responses) explains the layers.
+[Read a response](/reference/responses) explains the result layers.
+
 [Symbol results](/reference/symbols) explains the compiler fields.
 
-For callers, implementations, enumeration, or returned-reference input, continue
-with [Query pipelines](/query-pipelines). A query expansion returns declarations;
-use `read_relations` when you need individual use-site facts.
+Use [Query pipelines](/query-pipelines) for callers, implementations,
+enumeration, or returned-reference input.
+
+Query expansion returns declarations.
+
+Use `read_relations` for individual use-site facts.
 
 <Accordion title="Why did a search miss a saved edit?">
-  Save the file and let IDEA finish indexing. Kast reads the saved, indexed
-  project, not an unsaved editor buffer. If the host is unready, follow its typed
-  blocker. If a reference is stale, repeat discovery and use the new token.
+  - Save the file.
+  - Let IDEA finish indexing.
+  - Follow the typed blocker when the host is unready.
+  - Repeat discovery when a reference is stale.
 </Accordion>
 
 ## Reuse exact references
 
-Hosted exact references use a 31-character `exact:v5:` handle; candidate handles use `candidate:v5:`. Handles retain the original admitted scope, source-set selection, snapshot, and compiler evidence. The same declaration found under different scopes can therefore have different `symbol_ref` values and the same `symbol_id`. Compare `symbol_id` for equality and copy `symbol_ref` verbatim for follow-up reads. When the host's reference store is full, Kast emits the complete inline selector. Existing handles remain valid until their snapshot expires; no handle is evicted to admit another one.
+Hosted references use compact handles:
 
-The `sym:` identity uses the complete SHA-256 digest in URL-safe Base64. Hosted handles use a shorter digest with collision checks against the full retained selector; a collision falls back to the inline representation.
+| Reference | Normal prefix |
+| --- | --- |
+| Exact symbol | 31-character `exact:v5:` handle |
+| Candidate | `candidate:v5:` handle |
+
+- Handles retain scope, source sets, snapshot, and compiler evidence.
+- One declaration can have different references but the same `symbol_id`.
+- Copy `symbol_ref` verbatim for follow-up reads.
+- Compare `symbol_id` only for equality.
+- A full reference store emits the complete inline selector.
+- Existing handles remain valid until their snapshot expires.
+
+The `sym:` identity uses a complete SHA-256 digest in URL-safe Base64.
+
+Compact handles check shorter digests against the full retained selector.
+
+A digest collision falls back to the inline representation.

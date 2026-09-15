@@ -10,7 +10,9 @@ code_sources:
   - path: "query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPlan.kt"
 ---
 
-`kast.query_symbols` handles ordered pipelines. This example filters functions before finding their callers:
+`kast.query_symbols` applies an ordered pipeline to Kotlin declarations.
+
+This example filters public functions before finding their callers:
 
 ```json
 {
@@ -27,27 +29,73 @@ code_sources:
 }
 ```
 
-Sources are `search_declarations`, `all_declarations` and `symbol_refs`. Steps are `filter_visibility`, `expand_relation` and `distinct_symbols`. Their order is meaningful: filtering before expansion selects callers of public functions; filtering after expansion selects public callers. Discovery sources deduplicate canonical symbols after compiler refinement. Kast preserves the order of explicit steps; use `distinct_symbols` to deduplicate downstream results. Diagnostics are a separate tool.
+## Build the pipeline
 
-`steps: null` and `steps: []` both mean no transformations. `return_fields: null` selects name and location; `return_fields: []` requests mandatory identity and kind only. Duplicate projection fields reject.
+| Part | Supported values |
+| --- | --- |
+| Sources | `search_declarations`, `all_declarations`, `symbol_refs` |
+| Steps | `filter_visibility`, `expand_relation`, `distinct_symbols` |
 
-To reuse a result, copy its `symbol_ref` verbatim into `source: {"type":"symbol_refs","symbol_refs":["<returned token>"]}`. Schema admission does not authenticate a token. The original owner re-admits its workspace, lifetime, epoch and scope. Do not construct or shorten references. Use `read_relations` for occurrence-oriented relation facts, including use-site locations; query expansion returns related declaration symbols.
+Step order changes the result:
+
+- Filter before expansion to find callers of public functions.
+- Filter after expansion to keep only public callers.
+- Expect discovery sources to deduplicate after compiler refinement.
+- Add `distinct_symbols` to deduplicate downstream results.
+
+Kast preserves every explicit step in order.
+
+## Choose returned fields
+
+| Input | Result |
+| --- | --- |
+| `steps: null` or `steps: []` | No transformations |
+| `return_fields: null` | Name and location |
+| `return_fields: []` | Mandatory identity and kind only |
+| Duplicate projection fields | Rejected request |
+
+## Reuse an exact symbol
+
+Copy `symbol_ref` verbatim into the `symbol_refs` source:
+
+```json
+{"type":"symbol_refs","symbol_refs":["<returned token>"]}
+```
+
+- Do not construct, shorten, or edit a reference.
+- Expect the original owner to re-admit its workspace, lifetime, epoch, and scope.
+- Use `read_relations` for occurrence-oriented facts such as use-site locations.
+- Use query expansion for related declarations.
 
 
 ## Continue an ordered pipeline
 
-Omit `continuation` or use `null` to start. If a qualified result returns a
-non-null `continuation`, repeat the same source, steps, and return fields with
-that token. Append the returned page in order. The checkpoint retains unfinished
-relation expansion, pending output and each distinct stage's seen identities;
-resuming does not rerun an already emitted prefix.
+Use a returned continuation to resume the same pipeline.
 
-`distinct_symbols` preserves the first occurrence of each canonical symbol at
-that stage, including the connections carried by that occurrence. Later
-occurrences do not add connections to an earlier result. Use `read_relations`
-when you need occurrence coverage rather than distinct declarations.
+1. Omit `continuation` or use `null` for the first page.
+2. Retain a non-null `continuation` from a qualified result.
+3. Repeat the same source, steps, and return fields with that token.
+4. Append each returned page in order.
 
-A null continuation means there is no resumable suffix. Read `terminal_reason`:
+The checkpoint retains:
+
+- unfinished relation expansion
+- pending output
+- identities seen by each distinct stage
+
+Resuming does not rerun an emitted prefix.
+
+`distinct_symbols` keeps the first occurrence and its connections.
+
+Later occurrences do not add connections to that result.
+
+Use `read_relations` when individual occurrences matter.
+
+### Know why continuation stopped
+
+A null continuation means no resumable suffix remains.
+
+Read `terminal_reason` before interpreting the final page:
 
 | Reason | Meaning |
 | --- | --- |
@@ -56,67 +104,111 @@ A null continuation means there is no resumable suffix. Read `terminal_reason`:
 | `checkpoint-capacity-exceeded` | The unfinished state exceeds the configured checkpoint capacity. |
 | `no-progress` | The execution could not prove a progressing checkpoint. |
 
-The transport separately checks actual encoded response bytes. If no response
-prefix fits, the request rejects with `RESULT_TOO_LARGE` instead of returning a
-qualified page with a terminal reason.
+The transport also checks actual encoded response bytes.
 
-A token belongs to one project, source snapshot and exact query. Changed queries
-reject; expired, evicted or stale checkpoints reject. Rediscover after source or
-model changes. Tokens are opaque and cannot be reconstructed. The
-[read-limit settings](https://github.com/amichne/kast/blob/main/docs/hosted-read-configuration.md)
-include checkpoint bytes, store entries, aggregate bytes and lifetime.
+If no prefix fits, the request rejects with `RESULT_TOO_LARGE`.
 
-Read qualification and item failures on every page. For a `query_symbols`
-`expand_relation` step, source-set restrictions select discovery subjects and do
-not restrict expansion destinations. Specialist `read_relations` and
-`traverse_relations` retain the exact subject selector's admitted scope. An incomplete
-upstream result remains incomplete after its buffered output has drained.
+### Keep a continuation valid
+
+- Keep the project, source snapshot, and query unchanged.
+- Expect changed queries to reject.
+- Expect expired, evicted, or stale checkpoints to reject.
+- Rediscover after source or model changes.
+- Never reconstruct an opaque token.
+
+[Read-limit settings](https://github.com/amichne/kast/blob/main/docs/hosted-read-configuration.md)
+define checkpoint size, count, aggregate bytes, and lifetime.
+
+### Check every page
+
+- Read qualification and item failures.
+- Apply source-set restrictions to `query_symbols` discovery subjects only.
+- Keep expansion destinations outside that discovery restriction.
+- Preserve the admitted subject scope for `read_relations` and `traverse_relations`.
+- Keep incomplete upstream coverage after buffered output drains.
 
 ## Traverse a large graph
 
-`traverse_relations` exposes `traversal.run`. Include
-`"strategy": {"type": "breadth_first"}` in tool requests; the direct CLI decoder
-also supplies this strategy when omitted. It finishes a node's resumable relation
-before moving to the next node. Select
-`bounded_fan_out` with `maximumEdgesPerNode` to visit deeper nodes after at most
-that many returned edges per node. This deliberately retains incomplete coverage
-for truncated expansions; it does not establish absence in omitted subtrees.
+`traverse_relations` exposes `traversal.run`.
 
-Traversal pages expose cumulative `progress`: `checkpointSequence`, `totalReads`,
-`totalEdges` and `maximumDepthReached`. A resumable page must advance its
-checkpoint. `no-progress` is terminal. Operational time budgets renew per request;
-the subject, relation, scope, strategy and maximum depth remain bound to the
-continuation. Restart traversal after upgrading from a token format that lacks
-these progress and strategy witnesses.
+Use these strategy rules:
 
-Use [Symbol results](/reference/symbols) to distinguish related declarations from
-occurrence-oriented `connections`. Use [Read a response](/reference/responses)
-before interpreting an empty pipeline result.
+- Include `"strategy": {"type": "breadth_first"}` in tool requests.
+- Expect the direct CLI to supply breadth-first strategy when omitted.
+- Finish one node's resumable relation before moving to the next node.
+- Use `bounded_fan_out` with `maximumEdgesPerNode` to limit each node.
+- Keep truncated fan-out coverage explicitly incomplete.
 
-Elapsed time is an observation, while a read's time allowance is an admitted
-grant. If scheduling or provider work overruns that grant, traversal retains the
-actual elapsed time and proven facts, stops further reads, and qualifies the
-page with `time-limit-reached`. It resumes only when unfinished work remains;
-an exhausted overrun is terminal. An over-budget page cannot claim completion.
+Traversal cannot establish absence in omitted subtrees.
+
+Each page exposes cumulative progress:
+
+| Field | Meaning |
+| --- | --- |
+| `checkpointSequence` | Ordered checkpoint number |
+| `totalReads` | Reads completed so far |
+| `totalEdges` | Edges retained so far |
+| `maximumDepthReached` | Deepest observed traversal level |
+
+- Every resumable page must advance its checkpoint.
+- `no-progress` is terminal.
+- Time budgets renew for each request.
+- Subject, relation, scope, strategy, and depth remain bound to the continuation.
+- Older tokens without progress and strategy witnesses require a restart.
+
+Use [Symbol results](/reference/symbols) to distinguish declarations from connections.
+
+Use [Read a response](/reference/responses) before interpreting an empty result.
+
+### Interpret time limits
+
+Elapsed time is an observation; the time allowance is an admitted grant.
+
+When execution exceeds the grant, traversal:
+
+- retains measured time and proven facts
+- stops further reads
+- returns `time-limit-reached`
+- resumes only when unfinished work remains
+
+An over-budget page cannot claim completion.
 
 ## Keep semantic bounds separate from page budgets
 
-`execution_budget` grants elapsed time, provider work, returned results and
-encoded bytes for one request. A continuation can request a larger grant without
-changing the semantic query. Relation `limit`, traversal `maximumResults`, and
-source `entityLimit` bound returned page capacity; traversal `maximumDepth` and
-`strategy` define the requested exploration and remain bound to its continuation.
-A larger page grant does not increase depth or erase a provider omission.
+Keep operational grants separate from semantic scope:
 
-`source_read` selects a source `region` and an `entities` projection separately.
-For `entities.type: "matching"`, `containment: "direct"` considers direct children;
-`containment: "descendants"` also walks nested elements in that region. The
-`filters` choose declarations, parameters, calls or references. This source
-structure choice is separate from recursive directory/package discovery.
+| Control | Boundary |
+| --- | --- |
+| `execution_budget` | Time, provider work, results, and encoded bytes for one request |
+| Relation `limit` | Relation page capacity |
+| Traversal `maximumResults` | Traversal page capacity |
+| Source `entityLimit` | Source-entity page capacity |
+| Traversal `maximumDepth` | Requested graph depth |
+| Traversal `strategy` | Requested exploration policy |
 
-A relation read preserves individual occurrences, including multiple call sites
-between the same declarations. Query expansion returns declarations and retains
-its connection evidence; `distinct_symbols` changes declaration cardinality.
-Traversal reports bounded reachability with its depth, scope, strategy and
-coverage qualifications. It does not guarantee which edits will break callers or
-which tests must run.
+A continuation may request a larger execution grant without changing its query.
+
+A larger page grant cannot increase depth or erase a provider omission.
+
+### Read source structure
+
+`source_read` selects `region` and `entities` separately.
+
+For `entities.type: "matching"`:
+
+- `containment: "direct"` selects direct children.
+- `containment: "descendants"` also walks nested elements.
+- `filters` select declarations, parameters, calls, or references.
+
+Source containment is separate from recursive directory or package discovery.
+
+### Choose the evidence shape
+
+| Tool | Evidence shape |
+| --- | --- |
+| Query expansion | Related declarations with retained connections |
+| `read_relations` | Individual occurrences, including repeated call sites |
+| `distinct_symbols` | Changed declaration cardinality at its pipeline stage |
+| `traverse_relations` | Bounded reachability with depth, strategy, and coverage |
+
+Traversal does not predict which edits break callers or which tests must run.

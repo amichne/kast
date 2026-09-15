@@ -4,7 +4,7 @@ title: "Integrate an agent harness"
 description: "Load installed tool schemas, bind invocations by name, and preserve evidence and approval."
 resource: "file://docs/public/agent-harnesses.mdx"
 tags: ["agents", "harness", "server projection", "search"]
-timestamp: "2026-09-11T00:00:00-04:00"
+timestamp: "2026-09-14T00:00:00-04:00"
 code_sources:
   - path: "protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt"
     symbols: ["CanonicalAgentToolDefinitions"]
@@ -22,45 +22,55 @@ icon: "bot"
 keywords: ["agent harness", "serverProjection", "query", "tool schemas"]
 ---
 
-A harness should load the contract from the Kast executable it will invoke.
-Run `kast --schema`, then consume `serverProjection`. This supplies the tool
-catalog and argument vectors for that installation.
+A custom harness must load its contract from the Kast executable it invokes.
 
-For the included integration, run `kast codex` from your repository root and
-continue with [Search declarations](/search). The rest of this page is for
-implementing another harness.
+<Note>
+  For the included integration, run `kast codex` from the repository root and
+  continue with [Search declarations](/search).
+</Note>
 
 ## Bind the catalog once at startup
 
 <Steps>
   <Step title="Admit the installed projection">
-    Validate the projection and its versions. Missing, malformed, unsupported,
-    or contradictory data must stop catalog registration. The current server
-    projection is version 11; CLI invocation bindings are version 3. A version
-    number alone does not prove the rest of the contract.
+    Run `kast --schema` and consume `serverProjection`.
+
+    - Require server projection version 11.
+    - Require CLI invocation version 3.
+    - Reject missing, malformed, unsupported, or contradictory data.
+    - Validate the complete contract instead of trusting version numbers alone.
   </Step>
   <Step title="Join by tool name">
-    Match `hostedBootstrap.tools` with `cliInvocations.operations` by `toolName`,
-    then verify the canonical operation ID. Require exactly one binding per
-    tool. Multiple search tools intentionally share `query.run`, so operation
-    identity alone cannot identify an invocation.
+    Match `hostedBootstrap.tools` with `cliInvocations.operations` by `toolName`.
+
+    Require exactly one binding per tool and verify its canonical operation ID.
+
+    Multiple search tools share `query.run`, so operation identity is insufficient.
   </Step>
   <Step title="Register the complete tool definition">
-    Preserve namespace, policy, order, name, description, input/output schemas,
-    effect, approval policy, deferred-loading hint, and execution budget. Use the
-    admitted argument vector and repository root when invoking the executable;
-    do not interpolate input into a shell command.
+    Preserve every declared field:
+
+    - namespace, policy, order, name, and description
+    - input and output schemas
+    - effect and approval policy
+    - deferred-loading hint and execution budget
+
+    Invoke the executable with the admitted argument vector and repository root.
+
+    Never interpolate tool input into a shell command.
   </Step>
   <Step title="Validate and return the whole result">
-    Send one JSON input on stdin. Admit the output against that tool's output
-    schema and preserve both result layers. Give the model the semantic status,
-    payload, qualification, item failures, and unchanged references.
+    Send one JSON input on stdin.
+
+    Admit output against the selected tool's schema and preserve both result layers.
+
+    Return semantic status, payload, qualification, item failures, and unchanged references.
+
     [Read a response](/reference/responses) describes the dispatch rules.
   </Step>
 </Steps>
 
-Requalify when the provider starts. If the executable or projection changes,
-construct a new catalog instead of keeping bindings from the prior installation.
+Requalify whenever the provider starts or the executable changes.
 
 ## Choose what the agent sees
 
@@ -71,70 +81,90 @@ construct a new catalog instead of keeping bindings from the prior installation.
 | Deferred changes | `change_plan`, `change_apply`, `change_recover` | Keep planning and approval attached to stored changes |
 | Explicit opt-in | `symbol_lookup`, `symbol_inspect` | Expose candidate discovery and refinement when required |
 
-Keep lifecycle, synchronization, topology setup, status, and broker administration
-outside the agent tool catalog. Reads use the existing saved IDEA project and
-report a typed blocker when its evidence cannot be admitted.
+Keep these operations outside the agent tool catalog:
+
+- lifecycle and synchronization
+- topology setup and status
+- broker administration
+
+Reads use the saved IDEA project and return a typed blocker when evidence is unavailable.
 
 ## Preserve approval as an operation
 
-`change_plan` needs no approval. `change_apply` and `change_recover` each need
-approval of the exact stored plan. A plan ID or an `EXPLICIT` catalog field does
-not constitute approval.
+Approval follows the operation:
 
-The included integration loads the stored preview, emits a native file-change
-preview, and requests approval from the current controller. Decline,
-cancellation, lost control, and expiration reject before writing. A custom
-harness must implement the approval integration specified by the installed
-contract; an ordinary CLI invocation cannot substitute for it.
+| Operation | Approval |
+| --- | --- |
+| `change_plan` | None |
+| `change_apply` | Exact stored plan |
+| `change_recover` | Exact stored plan, approved separately |
 
-Follow [Change source](/change) for broker trust, plan lifetime, apply states,
-and recovery. Preserve qualified mutation outcomes: `applied_unverified` and
-`recovery_required` cannot be rendered as verified success.
+A plan ID or `EXPLICIT` catalog field is not approval.
+
+The included integration shows the stored preview and asks the current controller.
+
+Decline, cancellation, lost control, and expiration reject before writing.
+
+A custom harness must implement the installed approval contract.
+
+Follow [Change source](/change) for trust, plan lifetime, apply states, and recovery.
+
+Never render `applied_unverified` or `recovery_required` as verified success.
 
 ## Configuration and migration
 
 <AccordionGroup>
   <Accordion title="Configure the selected catalog">
-    `KAST_APP_SERVER_TOOLS` accepts an exact, non-empty, duplicate-free,
-    comma-separated subset of installed tool names. Unknown names reject startup.
-    Its default selection is:
+    `KAST_APP_SERVER_TOOLS` accepts a comma-separated subset of installed tool names.
+
+    The value must be exact, non-empty, and duplicate-free.
+
+    Unknown names reject startup. The default selection is:
 
     ```text
     search_classes,search_functions,search_declarations,query_symbols,source_read,read_relations,traverse_relations,check_diagnostics,change_plan,change_apply,change_recover
     ```
 
-    Catalog selection does not grant mutation authority. Direct candidate tools
-    remain opt-in. Set `KAST_ENABLE_APP_SERVER=0` to disable the integration.
+    - Catalog selection does not grant mutation authority.
+    - Direct candidate tools remain opt-in.
+    - `KAST_ENABLE_APP_SERVER=0` disables the integration.
   </Accordion>
   <Accordion title="Find the configuration used by a launch">
     The installer saves App Server settings in the selected release's
-    `config/environment`, normally reached through
-    `~/.local/share/kast/current/config/environment`. Process values override
-    saved values. Fresh installations materialize defaults, including `KAST_DEBUG=0`.
+    `config/environment`.
 
-    `kast app-server status` reports the resolved `launchEnvironment` snapshot,
-    saved configuration, and service log paths. `KAST_DEBUG=1` also streams
-    bounded launch diagnostics to stderr.
+    The current release is normally available at
+    `~/.local/share/kast/current/config/environment`.
+
+    - Process values override saved values.
+    - Fresh installations materialize defaults such as `KAST_DEBUG=0`.
+    - `kast app-server status` reports configuration and service-log paths.
+    - `KAST_DEBUG=1` also streams bounded launch diagnostics to stderr.
   </Accordion>
   <Accordion title="Migrate an older query integration">
     Recreate persisted catalogs with the matched executable and broker.
-    `kast.query` and `kast.diagnostic_check` are not aliases in the new agent
-    catalog. Use the intent tools. The explicit legacy `kast query run` CLI
-    grammar still exists; it is distinct from the new agent registration.
+
+    - `kast.query` is not an alias in the new agent catalog.
+    - `kast.diagnostic_check` is not an alias in the new agent catalog.
+    - Use the intent tools for new registrations.
+    - Treat legacy `kast query run` as a separate CLI grammar.
   </Accordion>
 </AccordionGroup>
 
 ## Relation tool name compatibility
 
-New catalogs advertise `read_relations` for `relation.read` and
-`traverse_relations` for `traversal.run`. Provider calls and `KAST_APP_SERVER_TOOLS`
-continue accepting `semantic_query` and `impact_analyze` throughout `0.40.x`;
-removal is no earlier than `0.41.0`. Saved selections normalize to the preferred
-names. Selecting both spellings of one tool rejects as a duplicate. An alias
-does not enable a tool omitted from the configured selection.
+Version 11 advertises the preferred relation tool names:
 
-Server projection version 11 advertises only preferred names and retains the
-canonical `kast relation read` and `kast traversal run` CLI commands. An older
-persisted catalog must be requalified before dispatch; aliases do not bypass the
-catalog digest binding. Query and search tools retain their current names and
-canonical query implementation.
+| Operation | Preferred name | `0.40.x` alias |
+| --- | --- | --- |
+| `relation.read` | `read_relations` | `semantic_query` |
+| `traversal.run` | `traverse_relations` | `impact_analyze` |
+
+- Alias removal occurs no earlier than `0.41.0`.
+- Saved selections normalize to the preferred names.
+- Selecting both names for one operation rejects as a duplicate.
+- An alias cannot enable an omitted tool.
+- Older persisted catalogs must requalify before dispatch.
+- Aliases do not bypass catalog digest binding.
+
+The CLI commands remain `kast relation read` and `kast traversal run`.
