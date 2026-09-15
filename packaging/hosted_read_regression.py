@@ -27,6 +27,7 @@ from hosted_compact_source_regression import run_compact_source_regression
 from hosted_vfs_overflow_regression import run_vfs_overflow_regression
 from hosted_read_policy import NativeReadPolicy
 from hosted_source_failure_regression import run_source_failure_regression
+from hosted_diagnostic_pages_regression import run_diagnostic_pages_regression
 from hosted_source_read_regression import run_source_paging_regression, source_qualification_observation
 
 
@@ -67,6 +68,8 @@ def run_read_regression(isolation, fixture, product, java, harness, repo, read_f
                 initial_live = successor
             for surface in ('cli', 'provider'):
                 replay = _ReadReplay(oracle, read_fixture, initial_live, transport, surface, rows)
+                if read_policy is NativeReadPolicy.DIAGNOSTIC_PAGES:
+                    run_diagnostic_pages_regression(replay)
                 replay.run()
             concurrent = run_concurrent_read_regression(isolation, read_fixture, oracle, transport, initial_live)
             authority = asdict(run_authority_read_regression(isolation, fixture, transport, initial_live))
