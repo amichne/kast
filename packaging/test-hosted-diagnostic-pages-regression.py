@@ -136,7 +136,7 @@ class DiagnosticPagesTest(unittest.TestCase):
 
     def test_low_axis_transport_failure_is_recorded_without_claiming_budget_proof(self):
         first = document(Page(progress=Progress(stop='enumeration_work_limit')))
-        pending = iter((first, document(Page(status='rejected')), 
+        pending = iter((first, document(Page(status='rejected')),
             document(Page(Progress('finished', 'finished', Exhausted(1), ('A.kt',)), None, status='complete'))))
         def invoke(*_):
             try:
