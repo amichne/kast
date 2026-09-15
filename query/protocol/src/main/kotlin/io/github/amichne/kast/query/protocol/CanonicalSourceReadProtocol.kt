@@ -342,7 +342,7 @@ private fun protocolResult(
             kind = region.kind.protocol(),
             selection = region.selector.protocolSelection() ?: return null,
         )
-    val entityDocuments = entities.map { it.protocol() ?: return null }
+    val entityDocuments = entities.map { it.protocol(authority) ?: return null }
     val boundedEntities = BoundedProtocolList.create(entityDocuments).refinedOrNull() ?: return null
     val textDocument =
         when (text) {
@@ -370,7 +370,7 @@ private fun protocolResult(
     return ProtocolSourceReadResult(snapshotDocument, regionDocument, boundedEntities, textDocument)
 }
 
-private fun SourceEntity.protocol(): SourceEntityDocument? {
+private fun SourceEntity.protocol(authority: QueryReferenceAuthority): SourceEntityDocument? {
     val depth = SourceNestingDepthDocument.parse(nestingDepth.value).refinedOrNull() ?: return null
     val parent = protocolText(SourceSelectorTokenCodec.encode(parentSelector).value) ?: return null
     val selectionDocument = selector.protocolSelection() ?: return null
@@ -383,7 +383,7 @@ private fun SourceEntity.protocol(): SourceEntityDocument? {
                 depth,
                 parent,
                 selectionDocument,
-                semanticIdentity.protocol() ?: return null,
+                semanticIdentity.protocol(authority) ?: return null,
             )
         is SourceEntity.ValueParameter ->
             SourceEntityDocument.ValueParameter(
@@ -398,7 +398,7 @@ private fun SourceEntity.protocol(): SourceEntityDocument? {
                 parent,
                 selectionDocument,
                 calleeSelector.protocolSelection() ?: return null,
-                target.protocol() ?: return null,
+                target.protocol(authority) ?: return null,
             )
         is SourceEntity.Reference ->
             SourceEntityDocument.Reference(
@@ -406,7 +406,7 @@ private fun SourceEntity.protocol(): SourceEntityDocument? {
                 depth,
                 parent,
                 selectionDocument,
-                target.protocol() ?: return null,
+                target.protocol(authority) ?: return null,
             )
     }
 }
@@ -417,22 +417,24 @@ private fun SourceSelector.Entity.presentName(): ProtocolText? =
         is SourceEntityName.Present -> protocolText(value.value)
     }
 
-private fun DeclarationSemanticIdentity.protocol(): SourceDeclarationSemanticIdentityDocument? =
+private fun DeclarationSemanticIdentity.protocol(
+    authority: QueryReferenceAuthority
+): SourceDeclarationSemanticIdentityDocument? =
     when (this) {
         is DeclarationSemanticIdentity.Candidate ->
-            when (val encoded = CanonicalSelectorCodec.encodeCandidate(selector)) {
-                is CanonicalSelectorEncoding.Encoded ->
-                    SourceDeclarationSemanticIdentityDocument.Candidate(encoded.token)
-                is CanonicalSelectorEncoding.Rejected -> null
+            when (val encoded = authority.issueDeclarationCandidate(selector.selection)) {
+                is CandidateSelectorTokenIssuance.Issued ->
+                    SourceDeclarationSemanticIdentityDocument.Candidate(encoded.selector)
+                is CandidateSelectorTokenIssuance.Rejected -> null
             }
     }
 
-private fun SourceEntityTarget.protocol(): SourceEntityTargetDocument? =
+private fun SourceEntityTarget.protocol(authority: QueryReferenceAuthority): SourceEntityTargetDocument? =
     when (this) {
         is SourceEntityTarget.Candidate ->
-            when (val encoded = CanonicalSelectorCodec.encodeCandidate(selector)) {
-                is CanonicalSelectorEncoding.Encoded -> SourceEntityTargetDocument.Candidate(encoded.token)
-                is CanonicalSelectorEncoding.Rejected -> null
+            when (val encoded = authority.issueDeclarationCandidate(selector.selection)) {
+                is CandidateSelectorTokenIssuance.Issued -> SourceEntityTargetDocument.Candidate(encoded.selector)
+                is CandidateSelectorTokenIssuance.Rejected -> null
             }
         is SourceEntityTarget.Local ->
             SourceEntityTargetDocument.Local(
