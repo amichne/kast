@@ -16,6 +16,7 @@ import kotlinx.serialization.json.JsonPrimitive
 @Serializable(with = SourceReadCauseSerializer::class) sealed interface SourceReadCause : SourceReadFailure
 
 @Serializable
+@kotlinx.serialization.json.JsonClassDiscriminator("type")
 sealed interface SourceReadFailureDetail : SourceReadCause {
     @Serializable
     @SerialName("request-rejected")
@@ -224,6 +225,7 @@ object SourceReadCauseSerializer : KSerializer<SourceReadCause> {
 
 /** Static alternatives and bounds are safe to publish even for malicious inputs. */
 @Serializable
+@kotlinx.serialization.json.JsonClassDiscriminator("type")
 sealed interface SourceRequestExpectation {
     @Serializable @SerialName("rule") data object Rule : SourceRequestExpectation
 

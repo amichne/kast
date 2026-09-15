@@ -15,6 +15,7 @@ from native_provider_qualification import (QualificationRejected, admit_qualific
 
 
 class ReadTransportFailure(str, Enum):
+    SOURCE_CLI_BOUNDARY = 'READ_SOURCE_CLI_BOUNDARY'
     CLI_SCHEMA = 'READ_CLI_SCHEMA_REJECTED'
     CLI_TOOL = 'READ_CLI_TOOL_REJECTED'
     CLI_OUTPUT = 'READ_CLI_OUTPUT_REJECTED'
@@ -154,6 +155,7 @@ class ReadTransportRejected(ValueError):
         self.output_violation_evidence = output_violation_evidence
         self.qualification = qualification
         self.source_cause = source_cause
+        self.source_schema_admitted = False
         self.invocation = None
         super().__init__(self.reason.value)
 
@@ -315,6 +317,20 @@ class HostedReadTransport:
             result = subprocess.run([str(product_executable(self.product, self.fixture.workspace.parent)), *self.cli_commands[tool]],
                 cwd=self.fixture.workspace, env=self.fixture.environment,
                 input=json.dumps(arguments).encode(), capture_output=True, timeout=60)
+            if tool == 'source_read' and not result.stdout:
+                from hosted_source_failure_regression import admit_source_cli_boundary
+                try:
+                    document, cause = admit_source_cli_boundary(result.returncode, result.stdout, result.stderr)
+                except (ValueError, TypeError):
+                    raise ReadTransportRejected('READ_CLI_OUTPUT_REJECTED') from None
+                try:
+                    self.validate(tool, document)
+                except ReadTransportRejected as error:
+                    error.source_cause = cause
+                    raise
+                boundary = ReadTransportRejected('READ_SOURCE_CLI_BOUNDARY', source_cause=cause)
+                boundary.source_schema_admitted = True
+                raise boundary
             if len(result.stdout) > MAXIMUM_RESPONSE_BYTES or not result.stdout:
                 raise ReadTransportRejected('READ_CLI_OUTPUT_REJECTED')
             return json.loads(result.stdout)

@@ -2,6 +2,9 @@ package io.github.amichne.kast.appserver.acceptance.hostedchange
 
 import io.github.amichne.kast.appserver.provider.KastProviderQualification
 import io.github.amichne.kast.appserver.provider.KastQualificationFailure
+import io.github.amichne.kast.protocol.contract.SourceReadFailureDetail
+import io.github.amichne.kast.protocol.contract.SourceReferenceFailure
+import io.github.amichne.kast.protocol.contract.SourceReferenceRole
 import java.io.ByteArrayInputStream
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
@@ -13,6 +16,27 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 
 class NativeReadTransportTest {
+    @Test
+    fun `native response retains canonical source cause discriminator`() {
+        val json = Json { classDiscriminator = "kind" }
+        val response =
+            NativeReadResponse.Rejected(
+                "SOURCE_INPUT_REJECTED",
+                sourceCause =
+                    SourceReadFailureDetail.ReferenceRejected(
+                        SourceReferenceRole.SYMBOL,
+                        SourceReferenceFailure.WRONG_FAMILY,
+                    ),
+            )
+        val cause =
+            json
+                .encodeToJsonElement(NativeReadResponse.serializer(), response)
+                .jsonObject
+                .getValue("sourceCause")
+                .jsonObject
+        assertEquals("reference-rejected", cause["type"]?.jsonPrimitive?.content)
+    }
+
     @Test
     fun `EOF is distinct from an incomplete request`() {
         assertNull(boundedReadRequest(ByteArrayInputStream(byteArrayOf())))

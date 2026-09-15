@@ -2,8 +2,12 @@
 """Independent fixed source failure observations; no native qualification is inferred."""
 from dataclasses import asdict, dataclass, field as dataclass_field
 import unittest
-from hosted_source_failure_regression import admit_source_failure, SourceFailureCause
-from hosted_read_transport import _provider_result, ReadTransportRejected
+import json
+from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
+from hosted_source_failure_regression import admit_source_failure, SourceFailureCause, admit_source_cli_boundary, _observe_source_failure, SourceFailureCase, SourceFailureBoundary, SourceSchemaEvidence
+from hosted_read_transport import _provider_result, ReadTransportRejected, HostedReadTransport, ReadTransportFailure
 
 
 @dataclass(frozen=True)
@@ -45,7 +49,58 @@ class Rejected:
     failure: str = 'SOURCE_INPUT_REJECTED'
 
 
+@dataclass(frozen=True)
+class CliSourceBoundary:
+    reason: RequestCause | ReferenceCause
+    next_action: str = 'correct_request'
+    operation: str = 'source.read'
+    status: str = 'rejected'
+
+
 class SourceFailureTest(unittest.TestCase):
+    def test_cli_usage_stderr_is_distinct_and_schema_checked(self):
+        document = CliSourceBoundary(RequestCause())
+        process = SimpleNamespace(returncode=2, stdout=b'', stderr=json.dumps(asdict(document)).encode())
+        fixture = SimpleNamespace(workspace=Path('/owned-fixture'), environment={})
+        transport = HostedReadTransport(None, fixture, Path('/owned-product'), None, None)
+        transport.cli_commands = {'source_read': ['source', 'read']}
+        with patch('hosted_read_transport.product_executable', return_value=Path('/unused')), patch('hosted_read_transport.subprocess.run', return_value=process), patch.object(transport, 'validate', return_value='digest') as validate:
+            with self.assertRaises(ReadTransportRejected) as caught:
+                transport.invoke('cli', 'source_read', asdict(document))
+        self.assertEqual(ReadTransportFailure.SOURCE_CLI_BOUNDARY, caught.exception.reason)
+        self.assertTrue(caught.exception.source_schema_admitted)
+        self.assertEqual(SourceFailureCause.ANCHOR_TYPE_REQUIRED, caught.exception.source_cause.cause)
+        validate.assert_called_once_with('source_read', json.loads(process.stderr))
+
+    def test_cli_stderr_requires_usage_exit_and_exact_source_envelope(self):
+        stderr = json.dumps(asdict(CliSourceBoundary(RequestCause()))).encode()
+        for exit_code, stdout, body in ((0, b'', stderr), (2, b'other', stderr), (2, b'', b'plain error'), (2, b'', stderr.replace(b'source.read', b'query.run'))):
+            with self.assertRaises(ValueError):
+                admit_source_cli_boundary(exit_code, stdout, body)
+        reference = CliSourceBoundary(ReferenceCause('wrong-family'), next_action='reacquire_authority')
+        self.assertEqual(SourceFailureCause.WRONG_FAMILY, admit_source_cli_boundary(2, b'', json.dumps(asdict(reference)).encode())[1].cause)
+
+    def test_failed_native_assertion_retains_actual_transport_evidence(self):
+        error = ReadTransportRejected('READ_PROVIDER_PROTOCOL_REJECTED')
+        transport = SimpleNamespace(invoke_observed=lambda *args: None)
+        replay = SimpleNamespace(transport=transport, surface='provider')
+        with patch.object(transport, 'invoke_observed', side_effect=error):
+            passed, evidence = _observe_source_failure(replay, SourceFailureCase.WRONG_FAMILY, {}, SourceFailureCause.WRONG_FAMILY)
+        self.assertFalse(passed)
+        self.assertEqual(SourceFailureBoundary.TRANSPORT, evidence.boundary)
+        self.assertEqual(ReadTransportFailure.PROVIDER_PROTOCOL, evidence.transport_failure)
+        self.assertEqual(SourceSchemaEvidence.NOT_CHECKED, evidence.schema)
+
+    def test_known_cause_does_not_turn_schema_rejection_into_success(self):
+        error = ReadTransportRejected('READ_PROVIDER_REJECTED')
+        error.source_cause = admit_source_failure(asdict(ReferenceCause('wrong-family')))
+        transport = SimpleNamespace(invoke_observed=lambda *args: None)
+        replay = SimpleNamespace(transport=transport, surface='cli')
+        with patch.object(transport, 'invoke_observed', side_effect=error):
+            passed, evidence = _observe_source_failure(replay, SourceFailureCase.WRONG_FAMILY, {}, SourceFailureCause.WRONG_FAMILY)
+        self.assertFalse(passed)
+        self.assertEqual(SourceFailureCause.WRONG_FAMILY, evidence.cause.cause)
+
     def test_native_broker_refusal_retains_typed_ingress_origin(self):
         with self.assertRaises(ReadTransportRejected) as caught:
             _provider_result(asdict(Rejected(RequestCause())))
