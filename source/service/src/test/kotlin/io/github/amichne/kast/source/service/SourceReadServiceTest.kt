@@ -144,8 +144,8 @@ class SourceReadServiceTest {
             )
 
         assertEquals(
-            SourceReadResult.Rejected(SourceReadRejection.CONTRACT_VIOLATION),
-            runSuspend { service.read(request) },
+            "INTERNAL_SNAPSHOT_MISMATCH",
+            (runSuspend { service.read(request) } as SourceReadResult.Rejected).reason.name,
         )
     }
 
