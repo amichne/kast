@@ -99,18 +99,12 @@ class DiagnosticEnumerationTest {
     }
 
     @Test
-    fun `time exhaustion performs no probe and preserves resumable root`() {
+    fun `time exhaustion before a probe rejects rather than publishing unchanged cursor`() {
         val tree = tree(2)
-        val result =
-            enumerateDiagnosticTree(
-                DiagnosticEnumerationRequest.First(query),
-                tree,
-                allowance(work = 100, elapsed = 1000),
-            )
-        assertEquals(
-            DiagnosticEnumerationStop.TIME_LIMIT,
-            assertInstanceOf(DiagnosticEnumerationResult.Advancing::class.java, result).reason,
+        val result = enumerateDiagnosticTree(
+            DiagnosticEnumerationRequest.First(query), tree, allowance(work = 100, elapsed = 1000),
         )
+        assertInstanceOf(DiagnosticEnumerationResult.Rejected::class.java, result)
         assertEquals(0, tree.probes)
     }
 
