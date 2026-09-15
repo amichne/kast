@@ -218,7 +218,7 @@ class AuthorityReadTest(unittest.TestCase):
                     def refuse(actual_surface, tool, arguments):
                         if (actual_surface == surface and tool == 'symbol_inspect'
                                 and arguments['target']['type'] == stage):
-                            return asdict(RejectionFixture('revalidation_content_uncommitted',
+                            return asdict(RejectionFixture('revalidation-content-uncommitted',
                                 operation='symbol.inspect')), 'sha256:' + '2' * 64
                         return invoke(actual_surface, tool, arguments)
                     self.transport.invoke_observed.side_effect = refuse
@@ -233,7 +233,7 @@ class AuthorityReadTest(unittest.TestCase):
                     self.assertEqual('sha256:' + '2' * 64, row.schemaDigest)
                     self.assertEqual(surface == 'provider', row.actualProviderEnvelope)
                     self.assertEqual({'stage': stage, 'outcome': 'wire-rejected',
-                        'refusal': 'revalidation_content_uncommitted'}, asdict(row.inspection))
+                        'refusal': 'revalidation-content-uncommitted'}, asdict(row.inspection))
                     self.assertNotIn('ref-', json.dumps(asdict(report)))
                     self.assertNotIn('cursor-', json.dumps(asdict(report)))
                     self.assertTrue(report.sourceRestored)
@@ -341,11 +341,11 @@ class AuthorityReadTest(unittest.TestCase):
 
 
 class InspectionObservationTest(unittest.TestCase):
-    def test_every_canonical_wire_refusal_is_retained_exactly_for_both_stages(self):
+    def test_every_projected_cli_refusal_is_retained_exactly_for_both_stages(self):
         source = (Path(__file__).resolve().parent.parent / 'protocol/wire/src/main/kotlin/'
             'io/github/amichne/kast/protocol/wire/serialization/CanonicalReadDocuments.kt').read_text()
         enum = source.split('enum class SymbolInspectRejectionWireDocument {', 1)[1].split('}', 1)[0]
-        canonical = set(re.findall(r'@SerialName\("([^"]+)"\)', enum))
+        canonical = {name.replace('_', '-') for name in re.findall(r'@SerialName\("([^"]+)"\)', enum)}
         self.assertEqual(canonical, {reason.value for reason in InspectionRefusal})
         for stage in InspectionStage:
             for reason in canonical:
@@ -355,8 +355,8 @@ class InspectionObservationTest(unittest.TestCase):
                     self.assertEqual(InspectionOutcome.WIRE_REJECTED, observed.outcome)
                     self.assertEqual(reason, observed.refusal.value)
 
-    def test_unknown_missing_nonstring_and_hyphenated_refusals_are_never_admitted(self):
-        for reason in (None, '', 'revalidation-content-changed', 'arbitrary-private-value', 1, [], {}):
+    def test_unknown_missing_nonstring_and_wire_only_refusals_are_never_admitted(self):
+        for reason in (None, '', 'revalidation_content_changed', 'arbitrary-private-value', 1, [], {}):
             for stage in InspectionStage:
                 observed = _inspect_observation(stage,
                     asdict(RejectionFixture(reason, operation='symbol.inspect')), None, None, None)
@@ -431,7 +431,7 @@ class ActualEnvelopeTransportTest(unittest.TestCase):
         transport = HostedReadTransport(None, None, None, None, None)
         transport.provider = SimpleNamespace(stdin=io.BytesIO())
         expected = ProviderResponseFixture(ProviderEnvelopeFixture(
-            RejectionFixture('revalidation_capture_unavailable', operation='symbol.inspect')))
+            RejectionFixture('revalidation-capture-unavailable', operation='symbol.inspect')))
         transport._response = Mock(side_effect=(json.dumps(asdict(expected)).encode(),
             json.dumps(asdict(SchemaAdmissionFixture())).encode()))
         replay = _AuthorityReplay(transport, Path('/owned/workspace'), None)
