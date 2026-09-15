@@ -27,7 +27,7 @@ class LiveFixture:
 
 @dataclass(frozen=True)
 class ItemFixture:
-    symbol_ref: str
+    ref: str
     name: str = 'ReadPageBudget'
 
 

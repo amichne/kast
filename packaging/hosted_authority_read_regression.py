@@ -128,10 +128,10 @@ class _AuthorityReplay:
         response, digest = self.call(surface, 'search_classes', SourceBudgetAnchorSearch())
         items = response.get('items', [])
         _demand(response.get('status') == 'complete' and len(items) == 1
-            and isinstance(items[0].get('symbol_ref'), str) and bool(items[0]['symbol_ref']), AuthorityFailure.ISSUER)
+            and isinstance(items[0].get('ref'), str) and bool(items[0]['ref']), AuthorityFailure.ISSUER)
         current = admitted_live(response.get('live'), self.workspace)
         _demand(current['host'] == self.live['host'], AuthorityFailure.EPOCH)
-        return SourceFunctionRequest(SymbolAnchor(items[0]['symbol_ref'])), current
+        return SourceFunctionRequest(SymbolAnchor(items[0]['ref'])), current
 
     def page(self, name, surface, request, live, expected_name):
         response, digest = self.call(surface, 'source_read', request)

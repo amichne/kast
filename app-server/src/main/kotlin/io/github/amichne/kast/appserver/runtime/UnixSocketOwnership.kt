@@ -74,7 +74,10 @@ internal object UnixSocketPathOwnership {
     internal fun acquireLease(socketPath: Path): UnixSocketOwnershipLeaseAcquisition {
         val parent = socketPath.parent ?: return UnixSocketOwnershipLeaseAcquisition.ParentRejected
         try {
-            Files.createDirectories(parent)
+            Files.createDirectories(
+                parent,
+                PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------")),
+            )
             if (parent.toRealPath() != parent || !Files.isDirectory(parent, LinkOption.NOFOLLOW_LINKS)) {
                 return UnixSocketOwnershipLeaseAcquisition.ParentRejected
             }
@@ -158,7 +161,10 @@ internal object UnixSocketPathOwnership {
     private fun preparePhysical(path: Path, transport: Path): UnixSocketPathPreparation {
         val parent = path.parent ?: return UnixSocketPathPreparation.PARENT_REJECTED
         try {
-            Files.createDirectories(parent)
+            Files.createDirectories(
+                parent,
+                PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------")),
+            )
             if (parent.toRealPath() != parent) return UnixSocketPathPreparation.PARENT_REJECTED
             if (!Files.exists(path, LinkOption.NOFOLLOW_LINKS)) {
                 return UnixSocketPathPreparation.PREPARED
@@ -168,10 +174,8 @@ internal object UnixSocketPathOwnership {
             }
             return when (probe(transport)) {
                 UnixSocketReachability.REACHABLE -> UnixSocketPathPreparation.OWNED
-                UnixSocketReachability.UNREACHABLE -> {
-                    Files.delete(path)
-                    UnixSocketPathPreparation.PREPARED
-                }
+                // Connection refusal is liveness evidence, never an ownership grant.
+                UnixSocketReachability.UNREACHABLE -> UnixSocketPathPreparation.REJECTED
                 UnixSocketReachability.REJECTED -> UnixSocketPathPreparation.REJECTED
             }
         } catch (_: IOException) {

@@ -167,6 +167,14 @@ enum class ConfigurationParameter(
         ":app-server",
         "1",
     ),
+    APP_SERVER_PUBLIC_ENDPOINT(
+        "KAST_APP_SERVER_PUBLIC_ENDPOINT",
+        ConfigurationSyntax.OWNER_INPUT,
+        ConfigurationScope.HOST_PROFILE,
+        ":app-server",
+        "codex-control",
+        children = setOf(ConfigurationChild.BROKER),
+    ),
     APP_SERVER_TOOLS(
         "KAST_APP_SERVER_TOOLS",
         ConfigurationSyntax.OWNER_INPUT,

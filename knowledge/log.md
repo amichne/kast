@@ -5,8 +5,15 @@
 - Simplified public onboarding and moved contributor and installation-recovery
   instructions out of the README. Consolidated installed-knowledge usage here;
   removed completed task plans, implementation reviews, and obsolete lifecycle
-  examples. Reviewed operation-outcome claims against the shortened README. Native acceptance
-  records remain scoped evidence for compatibility claims.
+  examples. Reviewed operation-outcome and public-tool claims against current
+  source. Native acceptance records remain scoped compatibility evidence.
+
+- Advanced installed projection to 12. Query items and per-item failures expose
+  scalar `ref`; `symbol_ref` and `symbol_id` leave the public output. Canonical
+  identity remains internal to explicit `distinct_symbols`. Migrated native
+  consumers, their unit fixtures, current contract prose, and the generated
+  callable reference. Reviewed nine impacted concepts; retained unaffected
+  lifecycle and distribution claims. Live native acceptance remains unverified.
 
 ## 2026-09-14
 

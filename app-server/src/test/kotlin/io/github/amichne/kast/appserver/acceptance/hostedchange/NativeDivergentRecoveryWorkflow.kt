@@ -18,7 +18,7 @@ internal class NativeDivergentRecoveryWorkflow(
     suspend fun run(peer: NativeChangePeer) {
         evidence.record("recovery-preserves-divergent-content", NativeCaseOutcome.UNQUALIFIED)
         val found = NativeChangeRead(peer).searchClass()
-        val reference = ((found["items"] as JsonArray).single() as JsonObject).textAt("symbol_ref")
+        val reference = ((found["items"] as JsonArray).single() as JsonObject).textAt("ref")
         val planned = peer.call("change_plan", nativePlanArguments(reference, "fun acceptanceDivergent() = value"))
         demand(!planned.rejected(), NativeFailure.PROVIDER_REJECTED)
         val arguments =

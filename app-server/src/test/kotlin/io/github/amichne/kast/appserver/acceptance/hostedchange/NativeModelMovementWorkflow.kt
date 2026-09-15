@@ -23,7 +23,7 @@ internal class NativeModelMovementWorkflow(
         read.search(tool = "search_classes", field = "class_name", name = "NativeGeneratedTarget", count = 0)
         val found =
             read.search(tool = "search_classes", field = "class_name", name = "NativeModelMovementTarget", count = 1)
-        val reference = ((found["items"] as JsonArray).single() as JsonObject).textAt("symbol_ref")
+        val reference = ((found["items"] as JsonArray).single() as JsonObject).textAt("ref")
         val planned = peer.call("change_plan", nativePlanArguments(reference, "fun modelMoved() = value"))
         demand(!planned.rejected(), NativeFailure.PROVIDER_REJECTED)
         val plan = planned.document()

@@ -193,7 +193,7 @@ def _admit_cli_invocations(document):
     """Keep the staged product's canonical tool/operation/CLI association intact."""
     projection = document['serverProjection']
     cli, bootstrap = projection['cliInvocations'], projection['hostedBootstrap']
-    if (projection['schemaVersion'] != 11 or projection['namespace'] != 'kast'
+    if (projection['schemaVersion'] != 12 or projection['namespace'] != 'kast'
             or cli['schemaVersion'] != 3 or bootstrap['schemaVersion'] != 1
             or not 1 <= len(cli['operations']) <= 64 or not 1 <= len(bootstrap['tools']) <= 64):
         raise ReadTransportRejected('READ_CLI_SCHEMA_REJECTED')

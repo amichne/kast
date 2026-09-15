@@ -49,7 +49,7 @@ Desktop setup, other harnesses, and uninstall instructions.
 
 Reads use saved, indexed IDEA state. A **complete** answer covers its declared
 scope; a **qualified** answer carries limits; a **rejected** request provides no
-successful semantic result. Keep those limits and returned `symbol_ref` values
+successful semantic result. Keep those limits and returned `ref` values
 when following up. See [Read a response](https://kast.michne.com/reference/responses/).
 
 ## Develop Kast

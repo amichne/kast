@@ -57,18 +57,17 @@ Use these request rules:
 - Set `"name_match":"fuzzy"` explicitly because Kast never retries fuzzily.
 
 Each match retains its name, location, signature, completeness evidence, and
-opaque `symbol_ref`.
+opaque `ref`.
 
 Matching overloads remain separate.
 
-`symbol_ref` repeats the exact bytes in `ref.token`.
+Copy `ref` verbatim into subsequent requests. The token retains its original
+scope and requires admission by the owning host. Candidate and exact references
+remain distinct families; no token spelling establishes compiler authority.
 
-| Identity | Use |
-| --- | --- |
-| `symbol_ref` | Authorize a later operation within its retained scope |
-| `symbol_id` | Compare the same declaration within one saved snapshot |
-
-Different overloads and snapshots have different `symbol_id` values.
+Canonical equality remains internal. To collapse repeated declarations, request
+an explicit `distinct_symbols` query step. The public API does not expose an
+equality key.
 
 ### Search properties or mixed kinds
 
@@ -148,7 +147,7 @@ A path may name a file or directory.
 
 1. Read the outer `status`, then the semantic outcome in `document`.
 2. Inspect each match's `kind`, `name`, `location`, and `signature`. Keep overloads separate.
-3. Retain `symbol_ref` verbatim for a follow-up query or change plan.
+3. Retain `ref` verbatim for a follow-up query or change plan.
 4. Read `failures` and any `qualification` before making a completeness claim.
 
 [Read a response](/reference/responses) explains the result layers.

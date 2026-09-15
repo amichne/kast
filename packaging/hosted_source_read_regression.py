@@ -81,15 +81,15 @@ class SourceBudgetAnchorSearch:
 
 
 def run_source_paging_regression(replay):
-    _check_page(replay, 'source-stop-at-eligible-page', replay.seeds['logger']['symbol_ref'], 'loggerFunction')
+    _check_page(replay, 'source-stop-at-eligible-page', replay.seeds['logger']['ref'], 'loggerFunction')
     response = replay.transport.invoke(replay.surface, 'search_classes', asdict(SourceBudgetAnchorSearch()))
     items = response.get('items', [])
-    admitted = response.get('status') == 'complete' and len(items) == 1 and bool(items[0].get('symbol_ref'))
+    admitted = response.get('status') == 'complete' and len(items) == 1 and bool(items[0].get('ref'))
     replay.record('source-budget-fixture-anchor', 'search_classes', {
         'exactAnchor': admitted, 'sameLiveAuthority': response.get('live') == replay.live,
     }, len(items), response)
     if admitted:
-        _check_page(replay, 'source-stop-before-large-tail', items[0]['symbol_ref'], 'pageItem00')
+        _check_page(replay, 'source-stop-before-large-tail', items[0]['ref'], 'pageItem00')
 
 
 def _check_page(replay, name, selector, expected_name):

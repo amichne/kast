@@ -4,6 +4,35 @@ Historical client evidence was recorded on 2026-09-08 UTC; the hosted change
 implementation notes were updated on 2026-09-11 UTC. This record is owned by
 `:app-server`. **Full desktop compatibility has not been established.**
 
+## Canonical endpoint migration — 2026-09-15
+
+`installedCodexHostTest` passed against installed Codex CLI 0.154.0 with an
+unmodified managed executable and a disposable `CODEX_HOME`. The receipt binds
+launchd lifecycle, generation-correlated canonical socket ownership, socket mode
+0600, native initialization, stock `codex app-server daemon version`, fresh
+`thread/start`, service survival after façade detach and owned disablement.
+The selected tool catalog is explicitly taken from the staged product's advertised
+schema; no saved installation defaults are assumed by this fixture.
+
+The canonical native handshake now gates startup readiness. Status independently
+reports lifecycle, endpoint ownership, protocol, catalog and upstream observations.
+Semantic readiness remains unobserved until an IDEA-backed operation succeeds.
+This installed check does **not** qualify a model-driven `item/tool/call`, stock
+interactive CLI tool exposure or Desktop UI discovery. The façade remains available.
+
+Source inspection of [Codex 0.154.0 TUI startup](https://github.com/openai/codex/blob/rust-v0.154.0/codex-rs/tui/src/lib.rs)
+shows implicit canonical discovery for compatible launch settings, and embedded
+App Server fallback on connection failure. Consequently `kast codex` retains
+explicit remote attachment until ordinary interactive discovery and failure
+behavior satisfy the required gate. Removing that attachment now would permit an
+apparently successful unaugmented session after a daemon failure.
+
+The current computer-use attempt also rejected access to `com.openai.codex`;
+Desktop UI acceptance requires a permitted environment or human execution.
+
+The historical observations below retain their original scope; they do not
+supersede this candidate's canonical transport receipt.
+
 ## Stdio desktop launch
 
 The current launch path is `kast codex desktop` → a process-local

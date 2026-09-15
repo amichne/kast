@@ -292,7 +292,7 @@ class KastProviderTest {
         val executable = executable(temporary.resolve("kast"))
         for ((schema, failure) in
             listOf(
-                capabilitySchema().replace("\"schemaVersion\": 11", "\"schemaVersion\": 8") to
+                capabilitySchema().replace("\"schemaVersion\": 12", "\"schemaVersion\": 8") to
                     KastQualificationFailure.SCHEMA_INCOMPATIBLE,
                 capabilitySchema().replace("\"operationMillis\": 60000", "\"operationMillis\": 30000") to
                     KastQualificationFailure.SCHEMA_INCOMPATIBLE,

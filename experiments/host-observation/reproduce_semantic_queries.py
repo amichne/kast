@@ -324,17 +324,17 @@ def assess(case, response, root, expected):
         checks["exactIdentities"] = Counter(actual_ids) == Counter(case.identities)
     checks["resultCount"] = len(items) == len(case.identities)
     checks["exactReferences"] = all(item.get("type") == "exact-symbol" and
-        item.get("ref", {}).get("kind") == "exact-symbol" and item["ref"]["token"].startswith("exact:v") for item in items)
+        isinstance(item.get("ref"), str) and item["ref"].startswith("exact:v") for item in items)
     if case.unique_tokens:
-        checks["distinctTokens"] = len({item["ref"]["token"] for item in items}) == len(items)
+        checks["distinctTokens"] = len({item["ref"] for item in items}) == len(items)
     if case.tokens:
-        checks["opaqueReferencesPreserved"] = sorted(item["ref"]["token"] for item in items) == sorted(case.tokens)
+        checks["opaqueReferencesPreserved"] = sorted(item["ref"] for item in items) == sorted(case.tokens)
     if case.issued:
         # Issuer output is used only to check preservation, never as the semantic oracle.
-        original = {item["ref"]["token"]: item for item in case.issued}
+        original = {item["ref"]: item for item in case.issued}
         checks["issuedProjectionsPreserved"] = len(items) == len(original) and all(
-            item["ref"]["token"] in original and all(item.get(field.lower()) ==
-                original[item["ref"]["token"]].get(field.lower()) for field in case.select) for item in items)
+            item["ref"] in original and all(item.get(field.lower()) ==
+                original[item["ref"]].get(field.lower()) for field in case.select) for item in items)
     for field_name in FIELDS:
         checks["projection-" + field_name] = all((item.get(field_name.lower()) is not None) == (field_name in case.select) for item in items)
     locations = []
@@ -527,13 +527,13 @@ def replay(args):
                 receipts.append(dict(case=name, finding=Finding.BLOCKED.value, prerequisite="Successful exact discovery of " + ", ".join(keys)))
                 continue
             unique = tuple(dict.fromkeys(keys))
-            tokens = tuple(seeds[key]["ref"]["token"] for key in unique)
-            invoke(Case(name, dict(type="REFS", refs=[seeds[key]["ref"]["token"] for key in keys]),
+            tokens = tuple(seeds[key]["ref"] for key in unique)
+            invoke(Case(name, dict(type="REFS", refs=[seeds[key]["ref"] for key in keys]),
                         tuple(expected["declarations"][key][1] for key in unique), steps=({"type": "DISTINCT"},),
                         tokens=tokens, issued=tuple(seeds[key] for key in unique)), "first")
         if "helper" in seeds:
             for projection in FIELDS:
-                token = seeds["helper"]["ref"]["token"]
+                token = seeds["helper"]["ref"]
                 invoke(Case("projection-" + projection.lower(), dict(type="REFS", refs=[token]),
                     (expected["declarations"]["helper"][1],), select=(projection,), tokens=(token,), issued=(seeds["helper"],)), "first")
     write(output / "receipts.json", receipts)

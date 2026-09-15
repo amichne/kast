@@ -195,7 +195,7 @@ class InstalledAppServerManager(
                     Files.deleteIfExists(command.stateDirectory.resolve("stopped"))
                     bootstrap(command)
                 }
-                AppServerAction.Status -> passiveStatus(command, enrollment)
+                AppServerAction.Status -> readAppServerStatus(kast, command, enrollment)
                 AppServerAction.Stop,
                 AppServerAction.Disable -> {
                     val host = MacOsPersistentBrokerServiceHost()
@@ -242,110 +242,6 @@ class InstalledAppServerManager(
         } catch (_: Exception) {
             reject(AppServerManagementFailure.FILESYSTEM_REJECTED)
         }
-    }
-
-    private fun passiveStatus(
-        command: BrokerServiceLaunchCommand,
-        registry: WorkspaceEnrollmentStore,
-    ): AppServerManagementResult {
-        val observed = runBlocking { InstalledCoordinatorClient(kast).status(command) }
-        val service =
-            when (observed) {
-                is CoordinatorStatusRead.Observed -> PassiveServiceState.READY
-                is CoordinatorStatusRead.Rejected ->
-                    when (observed.failure) {
-                        WorkerControlFailure.PAYLOAD_LIMIT_EXCEEDED ->
-                            return AppServerManagementResult.Rejected(AppServerManagementFailure.PAYLOAD_LIMIT_EXCEEDED)
-                        WorkerControlFailure.UNAVAILABLE,
-                        WorkerControlFailure.DEADLINE_EXCEEDED -> PassiveServiceState.UNAVAILABLE
-                        WorkerControlFailure.ISOLATED_RUNTIME_RETIRED,
-                        WorkerControlFailure.INVALID_REQUEST,
-                        WorkerControlFailure.IDENTITY_REJECTED,
-                        WorkerControlFailure.SERVICE_IDENTITY_REJECTED,
-                        WorkerControlFailure.WORKSPACE_CONFIGURATION_REJECTED,
-                        WorkerControlFailure.COORDINATOR_IDENTITY_REJECTED,
-                        WorkerControlFailure.WORKER_BINDING_IDENTITY_REJECTED,
-                        WorkerControlFailure.REGISTRATION_REJECTED,
-                        WorkerControlFailure.RECEIPT_REJECTED,
-                        WorkerControlFailure.LIFECYCLE_TRANSITION,
-                        WorkerControlFailure.RECOVERY_REQUIRED,
-                        WorkerControlFailure.CAPACITY_REJECTED,
-                        WorkerControlFailure.STARTUP_REJECTED,
-                        WorkerControlFailure.RETIREMENT_UNPROVEN -> PassiveServiceState.REJECTED
-                    }
-            }
-        val registered = registry.snapshot()
-        return AppServerManagementResult.Completed(
-            buildJsonObject {
-                put("operation", "app-server.status")
-                put("transport", if (service == PassiveServiceState.READY) "ready" else "unavailable")
-                put("protocol", "unobserved")
-                put("catalog", "unobserved")
-                put("semantic", "unobserved")
-                put("desktop", "unqualified")
-                putJsonObject("coordinator") {
-                    put("state", service.name.lowercase())
-                    when (observed) {
-                        is CoordinatorStatusRead.Observed -> put("observation", observed.snapshot.document())
-                        is CoordinatorStatusRead.Rejected -> put("reason", observed.failure.name)
-                    }
-                }
-                putJsonObject("service") {
-                    put("state", service.name.lowercase())
-                    put("ownership", if (observed is CoordinatorStatusRead.Observed) "matched" else "unobserved")
-                }
-                putJsonObject("host") {
-                    put(
-                        "attachment",
-                        when (observed) {
-                            is CoordinatorStatusRead.Observed -> observed.snapshot.hostAttachment.name.lowercase()
-                            is CoordinatorStatusRead.Rejected -> CoordinatorHostAttachment.UNOBSERVED.name.lowercase()
-                        },
-                    )
-                    put("desktop", "unqualified")
-                }
-                putJsonObject("paths") {
-                    put("serviceLog", command.serviceLog.toString())
-                    put("launchEnvironment", command.launchEnvironment.toString())
-                    put("savedConfiguration", command.kast.parent.parent.resolve("config/environment").toString())
-                    put("workspaceRegistry", command.kast.parent.parent.resolve("config/workspaces.json").toString())
-                }
-                putJsonObject("registry") {
-                    when (registered) {
-                        is WorkspaceRegistryRead.Read -> {
-                            put("state", if (registered.snapshot.workspaces.isEmpty()) "empty" else "registered")
-                            put("revision", registered.snapshot.revision.value)
-                            put("count", registered.snapshot.workspaces.size)
-                            putJsonArray("workspaces") {
-                                registered.snapshot.workspaces.forEach { workspace ->
-                                    add(
-                                        buildJsonObject {
-                                            put("workspaceId", workspace.id.value)
-                                            put("root", workspace.root.path.toString())
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                        is WorkspaceRegistryRead.Rejected -> {
-                            put("state", "rejected")
-                            put("reason", registered.failure.name)
-                        }
-                    }
-                }
-                put(
-                    "enrollment",
-                    when (registered) {
-                        is WorkspaceRegistryRead.Read ->
-                            registered.snapshot.workspaces.singleOrNull()?.let {
-                                JsonPrimitive(it.root.path.toString())
-                            } ?: JsonNull
-                        is WorkspaceRegistryRead.Rejected -> JsonPrimitive("rejected")
-                    },
-                )
-                put("session", JsonNull)
-            }
-        )
     }
 
     private fun bootstrap(command: BrokerServiceLaunchCommand): AppServerManagementResult {

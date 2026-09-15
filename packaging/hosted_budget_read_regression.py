@@ -112,13 +112,13 @@ def run_budget_read_regression(replay):
     for budget in (ElapsedBudget(), WorkBudget(), ResultsBudget(), BytesBudget()):
         axis = next(iter(asdict(budget)))
         cases = (
-            ('query_symbols', BudgetQuery(ExactReferences((replay.seeds['logger']['symbol_ref'],)), budget)),
+            ('query_symbols', BudgetQuery(ExactReferences((replay.seeds['logger']['ref'],)), budget)),
             ('search_classes', BudgetClassSearch(budget)),
             ('search_functions', BudgetFunctionSearch(budget)),
             ('search_declarations', BudgetDeclarationSearch(budget)),
-            ('source_read', BudgetSource(SymbolAnchor(replay.seeds['logger']['symbol_ref']), budget)),
-            ('read_relations', BudgetRelation(replay.seeds['helper']['symbol_ref'], budget)),
-            ('traverse_relations', BudgetTraversal(replay.seeds['helper']['symbol_ref'], budget)),
+            ('source_read', BudgetSource(SymbolAnchor(replay.seeds['logger']['ref']), budget)),
+            ('read_relations', BudgetRelation(replay.seeds['helper']['ref'], budget)),
+            ('traverse_relations', BudgetTraversal(replay.seeds['helper']['ref'], budget)),
         )
         for tool, request in cases:
             response = _invoke(replay, tool, request)
@@ -222,7 +222,7 @@ def _drain_traversal(replay, request, larger, first=None):
 
 def _retained_traversal(replay, low, large):
     tool = 'traverse_relations'
-    start = BudgetTraversal(replay.seeds['helper']['symbol_ref'], large)
+    start = BudgetTraversal(replay.seeds['helper']['ref'], large)
     baseline = _drain_traversal(replay, start, large)
     low_start = replace(start, execution_budget=low)
     first = _invoke(replay, tool, low_start)

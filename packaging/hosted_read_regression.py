@@ -117,14 +117,14 @@ class _ReadReplay:
             if not all(key in self.seeds for key in keys):
                 self.record(name, 'query_symbols', {'issuerAvailable': False})
                 continue
-            tokens = tuple(self.seeds[key]['ref']['token'] for key in unique)
-            self.query(self.oracle.Case(name, {'type': 'REFS', 'refs': [self.seeds[key]['ref']['token'] for key in keys]},
+            tokens = tuple(self.seeds[key]['ref'] for key in unique)
+            self.query(self.oracle.Case(name, {'type': 'REFS', 'refs': [self.seeds[key]['ref'] for key in keys]},
                 tuple(self.fixture.oracle['declarations'][key][1] for key in unique),
                 steps=({'type': 'DISTINCT'},), tokens=tokens, issued=tuple(self.seeds[key] for key in unique)))
         if 'helper' not in self.seeds:
             self.record('separate-field-projections', 'query_symbols', {'issuerAvailable': False})
             return
-        token = self.seeds['helper']['ref']['token']
+        token = self.seeds['helper']['ref']
         for field in self.oracle.FIELDS:
             self.query(self.oracle.Case('projection-' + field.lower(), {'type': 'REFS', 'refs': [token]},
                 (self.fixture.oracle['declarations']['helper'][1],), select=(field,), tokens=(token,),
@@ -150,7 +150,7 @@ class _ReadReplay:
 
     def source_read(self):
         response = self.transport.invoke(self.surface, 'source_read', {
-            'anchor': {'type': 'symbol', 'selector': self.seeds['logger']['symbol_ref']},
+            'anchor': {'type': 'symbol', 'selector': self.seeds['logger']['ref']},
             'region': {'type': 'file'}, 'entities': {'type': 'none'}, 'text': {'type': 'complete'},
             'entityLimit': 100, 'textByteLimit': 65536, 'page': {'type': 'first'}})
         path = self.fixture.workspace / self.fixture.oracle['declarations']['logger'][0]
@@ -164,7 +164,7 @@ class _ReadReplay:
         }, response=response)
 
     def relations(self):
-        token = self.seeds['helper']['symbol_ref']
+        token = self.seeds['helper']['ref']
         response = self.transport.invoke(self.surface, 'read_relations', {
             'exactSelector': token, 'relation': 'callers', 'limit': 100, 'position': {'type': 'start'}})
         relations = response.get('relations', [])

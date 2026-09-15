@@ -19,6 +19,7 @@ internal class InstalledCoordinatorOptions(
     val environment: Map<String, String>,
     val installationRoot: Path,
     val socket: BrokerSocketPath,
+    val publicEndpoint: BrokerPublicEndpoint,
     val serviceDirectory: Path,
     val readiness: BrokerServiceReadiness,
     val configuration: ResolvedKastConfiguration,
@@ -50,12 +51,13 @@ internal object InstalledCoordinatorConfiguration {
         val root = executable.parent.parent
         if (InstallationLifecycleFence.observe(root) != InstallationLifecycleStartAdmission.AVAILABLE)
             return reject(InstalledBrokerServerConfigurationFailure.STATE_DIRECTORY_REJECTED)
-        val configuration =
+        val admittedConfiguration =
             when (val admission = InstalledBrokerConfigurationIngress.admit(environment)) {
-                is Refinement.Refined -> admission.value.configuration
+                is Refinement.Refined -> admission.value
                 is Refinement.Rejected ->
                     return reject(InstalledBrokerServerConfigurationFailure.PROVIDER_CONFIGURATION_REJECTED)
             }
+        val configuration = admittedConfiguration.configuration
         return try {
             if (user.toRealPath() != user || !Files.isDirectory(user, LinkOption.NOFOLLOW_LINKS))
                 return reject(InstalledBrokerServerConfigurationFailure.USER_HOME_REJECTED)
@@ -76,8 +78,10 @@ internal object InstalledCoordinatorConfiguration {
                     BrokerServiceReadinessAdmission.Rejected ->
                         return reject(InstalledBrokerServerConfigurationFailure.READINESS_REJECTED)
                 }
+            val publicEndpoint =
+                BrokerPublicEndpoint.select(layout, codexHome, admittedConfiguration.publicEndpointMode)
             val socket =
-                when (val admission = BrokerSocketPath.prepareInstalled(layout.run.resolve("c.sock"))) {
+                when (val admission = publicEndpoint.prepare()) {
                     is Validation.Validated -> admission.value
                     is Validation.Rejected ->
                         return reject(InstalledBrokerServerConfigurationFailure.SOCKET_PATH_REJECTED)
@@ -89,6 +93,7 @@ internal object InstalledCoordinatorConfiguration {
                     environment.toMap(),
                     root,
                     socket,
+                    publicEndpoint,
                     layout.broker,
                     readiness,
                     configuration,
@@ -233,14 +238,50 @@ private constructor(
                     }
                 }
             activity.completed(stage)
-            stage = BrokerStartupStage.READINESS_PUBLICATION
+            stage = BrokerStartupStage.NATIVE_PROTOCOL
+            if (provePublicReadiness(options, activity) == PublicReadinessGate.REJECTED) {
+                server.close()
+                return reject(BrokerServerFailure.NATIVE_PROTOCOL_REJECTED)
+            }
+            return publishReadiness(server, readiness, activity)
+        }
+
+        private suspend fun provePublicReadiness(
+            options: InstalledCoordinatorOptions,
+            activity: BrokerStartupActivityPublisher,
+        ): PublicReadinessGate {
+            if (options.publicEndpoint is BrokerPublicEndpoint.Private) return PublicReadinessGate.NOT_REQUIRED
+            activity.started(BrokerStartupStage.NATIVE_PROTOCOL)
+            val observed =
+                NativeCodexReadiness.observe(options.socket.path, BrokerOperationalLimits.serviceChildPhases.value)
+            if (observed == NativeCodexReadiness.READY) activity.completed(BrokerStartupStage.NATIVE_PROTOCOL)
+            return when (observed) {
+                NativeCodexReadiness.READY -> PublicReadinessGate.PROVEN
+                NativeCodexReadiness.REJECTED -> PublicReadinessGate.REJECTED
+            }
+        }
+
+        private suspend fun publishReadiness(
+            server: KtorBrokerServer,
+            readiness: OwnedBrokerServiceReadiness?,
+            activity: BrokerStartupActivityPublisher,
+        ): InstalledCoordinatorStart {
+            val stage = BrokerStartupStage.READINESS_PUBLICATION
             activity.started(stage)
             if (readiness?.ready() == BrokerReadinessTransition.Rejected) {
                 server.close()
-                return reject(BrokerServerFailure.READINESS_REJECTED)
+                activity.rejected(stage, BrokerStartupRejection.Coordinator(BrokerServerFailure.READINESS_REJECTED))
+                readiness.reject(BrokerServerFailure.READINESS_REJECTED)
+                return InstalledCoordinatorStart.Rejected(BrokerServerFailure.READINESS_REJECTED)
             }
             activity.completed(stage)
             return InstalledCoordinatorStart.Started(InstalledCoordinator(server, readiness))
         }
     }
+}
+
+private enum class PublicReadinessGate {
+    NOT_REQUIRED,
+    PROVEN,
+    REJECTED,
 }

@@ -90,7 +90,7 @@ object InstalledConfigurationAppliedInspection {
                     return unobserved(AppliedConfigurationUnavailable.OWNER_REJECTED)
             }
         val snapshot =
-            when (val observed = InstalledCoordinatorClient(kast).status(command)) {
+            when (val observed = InstalledCoordinatorClient(kast).incumbentStatus(command)) {
                 is CoordinatorStatusRead.Observed -> observed.snapshot
                 is CoordinatorStatusRead.Rejected ->
                     return unobserved(

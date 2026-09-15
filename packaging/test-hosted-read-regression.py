@@ -66,8 +66,7 @@ class SourceObservationFixture:
 @dataclass(frozen=True)
 class EnumItemStub:
     name: str
-    symbol_ref: str
-    symbol_id: str
+    ref: str
     signature: str
 
 
@@ -93,7 +92,7 @@ class EnumResponseStub:
 def enum_response(names):
     # Transport stubs retain only fields read by the oracle; they are not wire fixtures.
     return json.loads(json.dumps(asdict(EnumResponseStub(tuple(
-        EnumItemStub(name, f'private-reference-{index}', f'private-identity-{index}',
+        EnumItemStub(name, f'private-reference-{index}',
                      f'private-signature-{index}') for index, name in enumerate(names))))))
 
 
@@ -169,17 +168,19 @@ class HostedReadRegressionTest(unittest.TestCase):
 
     def enum_responses(self):
         return [enum_response(names) for names in
-                ((), ('Mode',), ('Mode', 'Nested', 'Ordinary'), ('act', 'act'), ('act', 'act'))]
+                ((), ('Mode',), ('Mode', 'Nested', 'Ordinary'), ('act', 'act'), ('act', 'act'), ('act', 'act'))]
 
     def test_enum_oracle_requires_exclusion_and_preserves_member_references_and_signatures(self):
         replay = self.enum_replay(self.enum_responses())
-        self.assertEqual(5, len(replay.rows))
+        self.assertEqual(6, len(replay.rows))
         self.assertTrue(all(row['passed'] for row in replay.rows))
         requests = [call.args[2] for call in replay.transport.invoke.call_args_list]
         self.assertTrue(all(request['execution_budget']['max_work_units'] == 32 for request in requests))
         self.assertEqual(['private-reference-0', 'private-reference-1'],
-                         list(requests[-1]['source']['symbol_refs']))
+                         list(requests[-2]['source']['symbol_refs']))
         self.assertEqual(('name', 'signature'), requests[-1]['return_fields'])
+        self.assertEqual([{'type': 'distinct_symbols'}], list(requests[-1]['steps']))
+        self.assertEqual(4, len(requests[-1]['source']['symbol_refs']))
         self.assertNotIn('private-', json.dumps(replay.rows))
 
     def test_enum_oracle_rejects_entries_in_any_class_search(self):
@@ -191,17 +192,30 @@ class HostedReadRegressionTest(unittest.TestCase):
                 self.assertFalse(replay.rows[index]['passed'])
 
     def test_enum_oracle_rejects_missing_identity_or_changed_member_projection(self):
-        for field in ('symbol_id', 'symbol_ref', 'signature'):
+        for field in ('ref', 'signature'):
             with self.subTest(field=field):
                 responses = self.enum_responses()
-                responses[-1]['items'][0].pop(field)
+                responses[4]['items'][0].pop(field)
                 replay = self.enum_replay(responses)
-                self.assertFalse(replay.rows[-1]['passed'])
+                self.assertFalse(replay.rows[4]['passed'])
         responses = self.enum_responses()
         responses[3] = enum_response(('act',))
         replay = self.enum_replay(responses)
         self.assertFalse(replay.rows[-1]['passed'])
         self.assertEqual(4, replay.transport.invoke.call_count)
+
+    def test_enum_canonical_equality_rejects_uncollapsed_or_missing_declarations(self):
+        for names in (('act',), ('act', 'act', 'act', 'act')):
+            with self.subTest(names=names):
+                responses = self.enum_responses()
+                responses[-1] = enum_response(names)
+                self.assertFalse(self.enum_replay(responses).rows[-1]['passed'])
+        for field, value in (('status', 'qualified'), ('failures', ['rejected']),
+                             ('live', 'different-authority')):
+            with self.subTest(field=field):
+                responses = self.enum_responses()
+                responses[-1][field] = value
+                self.assertFalse(self.enum_replay(responses).rows[-1]['passed'])
 
     def test_authored_oracle_rejects_missing_results_without_learning_from_output(self):
         fixture = prepare_read_fixture(self.workspace, REPO)
@@ -295,7 +309,7 @@ class HostedReadRegressionTest(unittest.TestCase):
 
     @staticmethod
     def schema():
-        return {'serverProjection': {'schemaVersion': 11, 'namespace': 'kast',
+        return {'serverProjection': {'schemaVersion': 12, 'namespace': 'kast',
             'cliInvocations': {'schemaVersion': 3, 'operations': [{
                 'toolName': 'source_read', 'operationId': 'source.read',
                 'invocation': {'type': 'CLI', 'command': ['source', 'read']}}]},
