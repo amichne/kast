@@ -18,6 +18,7 @@ import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRejection
+import io.github.amichne.kast.protocol.contract.ExecutionBudgetDocument
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRequest
 import io.github.amichne.kast.protocol.contract.DiagnosticInventoryDocument
 import io.github.amichne.kast.protocol.contract.DiagnosticProgressStop
@@ -51,6 +52,26 @@ class DiagnosticContinuationProtocolTest {
             override val query = this@DiagnosticContinuationProtocolTest.query
             override val retainedBytes = 100L
         }
+
+    @Test
+    fun `unchanged caller selection replays across fresh elapsed clamps`() = runTest {
+        var scans = 0
+        val protocol = protocol {
+            scans++
+            DiagnosticScanResult.Advancing(emptyPage, checkpoint, DiagnosticScanStop.AnalysisPending)
+        }
+        val selected = request.copy(executionBudget = ExecutionBudgetDocument(maxElapsedMillis = ElapsedTimeLimitMillis.parse(10000).refined()))
+        val before = budget.copy(elapsedTimeLimit = ElapsedTimeLimitMillis.parse(3748).refined())
+        val after = budget.copy(elapsedTimeLimit = ElapsedTimeLimitMillis.parse(3749).refined())
+        val first = protocol.execute(selected, lease, before) as OperationOutcome.Qualified
+        assertEquals(first, protocol.execute(selected, lease, after))
+        val resumed = selected.copy(continuation = first.qualification.continuation)
+        val next = protocol.execute(resumed, lease, before)
+        assertEquals(next, protocol.execute(resumed, lease, after))
+        assertEquals(2, scans)
+        protocol.execute(selected.copy(executionBudget = ExecutionBudgetDocument(maxElapsedMillis = ElapsedTimeLimitMillis.parse(20000).refined())), lease, after)
+        assertEquals(3, scans, "changed caller selection shapes a distinct execution even with the same effective clamp")
+    }
 
     @Test
     fun `enumeration page retains unknown total and replay does not reexecute`() = runTest {
