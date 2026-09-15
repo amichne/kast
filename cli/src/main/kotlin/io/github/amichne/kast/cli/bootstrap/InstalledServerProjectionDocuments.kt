@@ -1349,6 +1349,8 @@ internal fun operationOutcomeVariant(
     if (!operation.supportsLiveEvidence() || status !in setOf("complete", "qualified")) return published
     val livePayload = payload.map { property ->
         when {
+            operation == CanonicalOperation.SOURCE_READ && property.name == "content" ->
+                ServerSchemaProperty("content", compactSourceContentSchema(ServerReadEvidenceShape.LIVE))
             operation == CanonicalOperation.SOURCE_READ && property.name == "snapshot" ->
                 ServerSchemaProperty("snapshot", sourceSnapshotSchema(ServerReadEvidenceShape.LIVE))
             operation == CanonicalOperation.TRAVERSAL_RUN && property.name == "graph" ->
