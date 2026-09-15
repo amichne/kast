@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """Typed bounded-drain fixtures; no native host is used here."""
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from types import SimpleNamespace
 import unittest
 from hosted_read_transport import ReadTransportRejected
 
 from hosted_diagnostic_pages_regression import (
     DiagnosticDrainFailure, DiagnosticDrainRejected, DiagnosticDrained,
-    DiagnosticRequest, drain_diagnostics, run_diagnostic_pages_regression, heavy_file_checks, independent_budget_checks,
+    DiagnosticRequest, drain_diagnostics, run_diagnostic_pages_regression, heavy_file_checks, independent_budget_checks, _semantic_difference, _valid_report,
 )
 
 
@@ -23,12 +23,27 @@ class Exhausted:
 
 
 @dataclass(frozen=True)
+class ReportLimit:
+    requested: int
+    effective: int
+
+
+@dataclass(frozen=True)
+class ExecutionReport:
+    max_work_units: ReportLimit = ReportLimit(10000, 10000)
+    max_elapsed_ms: ReportLimit = ReportLimit(10000, 3748)
+    max_results: ReportLimit = ReportLimit(1, 1)
+    max_returned_bytes: ReportLimit = ReportLimit(262144, 49152)
+
+
+@dataclass(frozen=True)
 class Progress:
     stage: str = 'enumeration'
     stop: str = 'enumeration_file_limit'
     inventory: Enumerating | Exhausted = Enumerating()
     analyzedFiles: tuple[str, ...] = ()
     knownDiagnosticCount: int = 0
+    execution_budget: ExecutionReport = ExecutionReport()
 
 
 @dataclass(frozen=True)
@@ -98,11 +113,23 @@ class DiagnosticPagesTest(unittest.TestCase):
         records = tuple(Diagnostic(Location(Range(index, index + 1))) for index in range(3))
         output = Progress('output', 'output_pending', Exhausted(1), files, 3)
         finished = Progress('finished', 'finished', Exhausted(1), files, 3)
-        high = Page(finished, None, status='complete', diagnostics=records)
+        high = Page(replace(finished, execution_budget=ExecutionReport(max_results=ReportLimit(1000, 1000))), None, status='complete', diagnostics=records)
         first = Page(output, Qualification('first'), diagnostics=records[:1])
         second = Page(output, Qualification('second'), diagnostics=records[1:2])
         last = Page(finished, None, status='complete', diagnostics=records[2:])
-        checks = heavy_file_checks(self.replay(high, first, second, second, last, last))
+        replay = self.replay(high, first, second, second, last, last, first, second, last)
+        requests = []
+        invoke = replay.transport.invoke
+        def observed(surface, tool, request):
+            requests.append(request)
+            return invoke(surface, tool, request)
+        replay.transport.invoke = observed
+        checks = heavy_file_checks(replay)
+        self.assertEqual(1000, requests[0]['max_diagnostics'])
+        self.assertEqual(1000, requests[1]['max_diagnostics'])
+        self.assertEqual(1000, requests[0]['execution_budget']['max_results'])
+        self.assertEqual(1, requests[1]['execution_budget']['max_results'])
+        self.assertEqual(1, requests[6]['max_diagnostics'])
         self.assertTrue(all(checks.values()), checks)
 
     def test_independent_limits_preserve_reports_and_name_actual_stops(self):
@@ -150,6 +177,20 @@ class DiagnosticPagesTest(unittest.TestCase):
         self.assertFalse(checks['bytes2048Reported'])
         self.assertTrue(checks['timeOneTransportObserved_READ_CLI_TOOL_REJECTED'])
         self.assertTrue(checks['bytes2048TransportObserved_READ_CLI_TOOL_REJECTED'])
+
+    def test_replay_retains_actual_reports_but_compares_semantic_identity(self):
+        first = document(Page())
+        repeated = document(Page(progress=replace(Progress(), execution_budget=ExecutionReport(
+            max_elapsed_ms=ReportLimit(10000, 3749)))))
+        self.assertEqual((), _semantic_difference(first, repeated))
+        self.assertTrue(_valid_report(first, DiagnosticRequest()))
+        self.assertTrue(_valid_report(repeated, DiagnosticRequest()))
+        self.assertNotEqual(first, repeated)
+        moved = document(Page(progress=replace(Progress(), knownDiagnosticCount=1)))
+        self.assertEqual(('progress.knownDiagnosticCount',), _semantic_difference(first, moved))
+        invalid = document(Page(progress=replace(Progress(), execution_budget=ExecutionReport(
+            max_elapsed_ms=ReportLimit(20000, 3749)))))
+        self.assertFalse(_valid_report(invalid, DiagnosticRequest()))
 
     def test_enumeration_then_exact_complete_coverage(self):
         last = Page(Progress('finished', 'finished', Exhausted(), ('A.kt', 'B.kt', 'C.kt')), None, status='complete')
