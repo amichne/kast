@@ -8,7 +8,7 @@ import io.github.amichne.kast.diagnostic.contract.DiagnosticScanResult
 import io.github.amichne.kast.diagnostic.contract.DiagnosticScopeQuery
 import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.kernel.ResourceBudget
+import io.github.amichne.kast.kernel.RequestedExecutionBudget
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRejection
 import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolText
@@ -44,12 +44,13 @@ internal sealed interface DiagnosticReplayOrigin {
     data class Resume(val token: ProtocolText) : DiagnosticReplayOrigin
 }
 
-internal data class DiagnosticReplayKey(val origin: DiagnosticReplayOrigin, val grant: ResourceBudget)
+internal data class DiagnosticReplayKey(val origin: DiagnosticReplayOrigin, val grant: RequestedExecutionBudget)
 
 /**
  * Diagnostic-owned retained progress and response replay, under the existing query retention policy. Every child
  * inherits the scan's creation time. All state is detached; no service or IDE object enters this store. Checkpoints and
- * replay payloads share this store's one combined entry/byte bound.
+ * replay payloads share this store's one combined entry/byte bound. Replay identifies caller/configured selections, not
+ * the host's invocation-specific elapsed clamp. Each invocation projects its own actual admitted report.
  */
 class DiagnosticCheckpointStore(
     private val capacity: Int = ReadLimitParameter.QUERY_CONTINUATION_ENTRIES.defaultValue,
@@ -87,7 +88,7 @@ class DiagnosticCheckpointStore(
         query: DiagnosticScopeQuery,
         token: ProtocolText?,
         limit: ProtocolCount,
-        grant: ResourceBudget,
+        grant: RequestedExecutionBudget,
     ): DiagnosticCheckpointAdmission {
         expire()
         if (lifetime == Lifetime.RETIRED) return unavailable()
