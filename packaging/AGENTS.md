@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-15 | hash: fed9c7e3f1cd -->
+<!-- generated: 2026-09-15 | hash: c31154c42845 -->
 
 # packaging
 
@@ -8,6 +8,9 @@
 Implements installer support, installed-product acceptance, configuration ingress generation, and real-environment lifecycle checks.
 
 ## Key Files
+
+- [hosted_diagnostic_pages_regression.py](hosted_diagnostic_pages_regression.py) - bounded same-basis diagnostic drain and repeated warning occurrences.
+- [hosted_source_failure_regression.py](hosted_source_failure_regression.py) - finite source failure evidence across CLI ingress and provider responses.
 
 - [hosted_compact_source_regression.py](hosted_compact_source_regression.py) - lossless compact source parity and actual provider presentation admission.
 - [hosted_vfs_overflow_regression.py](hosted_vfs_overflow_regression.py) - owned overflow burst, post-burst host receipt, stale refusal and guarded restoration.

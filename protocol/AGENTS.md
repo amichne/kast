@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-15 | hash: d217066e0d36 -->
+<!-- generated: 2026-09-15 | hash: d6efd03fbe07 -->
 
 # protocol
 
@@ -8,6 +8,9 @@
 Defines canonical operation models, authoritative operation/tool registries, and serialized wire documents.
 
 ## Key Files
+
+- [SourceReadFailureDetails.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceReadFailureDetails.kt) - disjoint request, reference, and internal source failure causes.
+- [DiagnosticProgressDocument.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/DiagnosticProgressDocument.kt) - diagnostic inventory, cumulative coverage, and execution stage.
 
 - [SymbolInspectionOutcomes.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SymbolInspectionOutcomes.kt) - strict versus reacquired inspection results and finite revalidation refusals.
 
