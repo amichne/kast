@@ -165,6 +165,19 @@ class AuthorityReadTest(unittest.TestCase):
         self.assertNotIn('ref-', json.dumps(asdict(report)))
         self.assertNotIn('cursor-', json.dumps(asdict(report)))
 
+    def test_restoration_reports_stale_document_separately_from_saved_file_restore(self):
+        ready = self.ready
+        def stale_document(command, digest, **kwargs):
+            result = ready(command, digest, **kwargs)
+            if self.epoch == 3:
+                return asdict(ProbeReadyFixture(ProbeEvidenceFixture(digest, 'a' * 64)))
+            return result
+        self.probe.request.side_effect = stale_document
+        report = self.run_fixture()
+        self.assertEqual('AUTHORITY_RESTORATION_DOCUMENT_IMAGE_CHANGED', report.failure.value)
+        self.assertTrue(report.sourceRestored)
+        self.assertEqual(self.original, self.source.read_bytes())
+
     def test_no_epoch_movement_fails_closed_and_still_restores_source(self):
         self.probe.request.side_effect = lambda command, digest, **kwargs: asdict(
             ProbeReadyFixture(ProbeEvidenceFixture(digest, digest)))
