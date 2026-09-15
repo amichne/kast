@@ -21,6 +21,12 @@ The Codex integration is a preview; full Desktop compatibility remains
    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
    ```
 
+   The installer reports the detected IntelliJ version, verifies its matching
+   plugin, explains the app server, and asks whether to enable its per-user
+   login LaunchAgent. If no matching IDEA plugin exists, it installs nothing.
+   For automation, append `-- --no-interactive`; the LaunchAgent then remains
+   disabled unless `KAST_ENABLE_LAUNCHD=1` is explicitly set.
+
 2. Restart IDEA, open your repository, and wait for Gradle import and indexing.
    Save edited files. Add `~/.local/bin` to `PATH` if the installer requests it.
 

@@ -47,9 +47,15 @@ Install the IDEA plugin, connect Codex, and find a declaration in your repositor
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
     ```
 
-    The installer verifies and installs Kast and its IDEA plugin.
+    The installer reports the detected IntelliJ version, verifies Kast and the
+    matching IDEA plugin, and explains the app-server setup. It then asks whether
+    to enable a per-user macOS login LaunchAgent. The LaunchAgent keeps the Kast
+    app server available across logins and restarts it after an unexpected exit.
 
     It does not install IDEA.
+
+    If the Kast release has no plugin for the installed IDEA release line, the
+    installer names the mismatch and installs nothing.
 
     If prompted, add `~/.local/bin` to `PATH`.
   </Step>
@@ -93,6 +99,15 @@ Install the IDEA plugin, connect Codex, and find a declaration in your repositor
 ## Setup alternatives
 
 <AccordionGroup>
+  <Accordion title="Run without prompts">
+    ```shell
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" \
+      -- --no-interactive
+    ```
+
+    This installs app-server tooling but leaves the login LaunchAgent disabled.
+    Set `KAST_ENABLE_LAUNCHD=1` explicitly when automation should enable it.
+  </Accordion>
   <Accordion title="Choose among multiple IDEA installations">
     ```shell
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" \
