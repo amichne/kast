@@ -89,6 +89,25 @@ class DiagnosticContinuationProtocolTest {
     }
 
     @Test
+    fun `fresh start replaces orphaned first replay without reviving evicted continuation`() = runTest {
+        var scans = 0
+        val protocol = protocol(DiagnosticCheckpointStore(capacity = 3)) {
+            scans++
+            DiagnosticScanResult.Advancing(emptyPage, checkpoint, DiagnosticScanStop.AnalysisPending)
+        }
+        val first = protocol.execute(request, lease, budget) as OperationOutcome.Qualified
+        val old = request.copy(continuation = first.qualification.continuation)
+        protocol.execute(request.copy(limit = ProtocolCount.parse(2).refined()), lease, budget)
+        assertEquals(OperationOutcome.Rejected(DiagnosticCheckRejection.CONTINUATION_UNAVAILABLE), protocol.execute(old, lease, budget))
+        val fresh = protocol.execute(request, lease, budget)
+        assertInstanceOf(OperationOutcome.Qualified::class.java, fresh)
+        assertEquals(3, scans)
+        assertEquals(fresh, protocol.execute(request, lease, budget))
+        assertEquals(OperationOutcome.Rejected(DiagnosticCheckRejection.CONTINUATION_UNAVAILABLE), protocol.execute(old, lease, budget))
+        assertEquals(3, scans)
+    }
+
+    @Test
     fun `enumeration page retains unknown total and replay does not reexecute`() = runTest {
         var scans = 0
         val protocol = protocol {
