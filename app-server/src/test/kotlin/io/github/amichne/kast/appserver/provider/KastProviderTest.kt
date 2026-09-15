@@ -470,35 +470,7 @@ class KastProviderTest {
                 """
                     .trimIndent(),
             )
-        val inspect =
-            observer(
-                "symbol.inspect",
-                """
-                {
-                  "status": "completed",
-                  "document": {
-                    "operation": "symbol.inspect",
-                    "status": "complete",
-                    "symbol": {
-                      "selector": "exact:v2:opaque",
-                      "kind": "classlike",
-                      "name": "EventConsumer",
-                      "qualifiedIdentity": "com.aexp.mobile.one.streaming.events.core.EventConsumer",
-                      "file": "events/core/src/main/kotlin/sample/EventConsumer.kt",
-                      "range": {"startInclusive": 17, "endExclusive": 140},
-                      "compilerEvidence": {
-                        "identity": "canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-                        "signature": {
-                          "type": "class-like",
-                          "qualifiedIdentity": "com.aexp.mobile.one.streaming.events.core.EventConsumer"
-                        }
-                      }
-                    }
-                  }
-                }
-                """
-                    .trimIndent(),
-            )
+        val inspect = observer("symbol.inspect", symbolInspectionObserverFixture())
         val source =
             observer(
                 "source.read",
@@ -593,11 +565,7 @@ class KastProviderTest {
                 "symbol.discover",
                 """{"status":"completed","document":{"operation":"symbol.discover","status":"qualified","items":[{"type":"declaration","candidateSelector":"candidate:v2:opaque","kind":"class","name":"EventConsumer","file":"src/EventConsumer.kt","offset":3}],"qualification":"[result-limit-reached]"}}""",
             )
-        val inspect =
-            observer(
-                "symbol.inspect",
-                """{"status":"completed","document":{"operation":"symbol.inspect","status":"qualified","symbol":{"selector":"exact:v2:opaque","kind":"classlike","name":"EventConsumer","qualifiedIdentity":"sample.EventConsumer","file":"src/EventConsumer.kt","range":{"startInclusive":3,"endExclusive":20},"compilerEvidence":{"identity":"canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","signature":{"type":"class-like","qualifiedIdentity":"sample.EventConsumer"}}},"qualification":"compiler-evidence-incomplete"}}""",
-            )
+        val inspect = observer("symbol.inspect", symbolInspectionObserverFixture(InspectionFixtureCoverage.QUALIFIED))
         val source =
             observer(
                 "source.read",

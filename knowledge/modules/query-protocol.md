@@ -4,8 +4,12 @@ title: Query protocol
 description: Shared semantic-read admission and projection bind canonical requests and detached references to an authority supplied by the owning host.
 resource: file://query/protocol
 tags: [kotlin, protocol, query, authority]
-timestamp: 2026-09-14T00:00:00Z
+timestamp: 2026-09-15T00:00:00Z
 code_sources:
+  - path: symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/exact/ExactRevalidation.kt
+  - path: symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/ExactRevalidationService.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedExactRevalidationStore.kt
+  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/exact/IntellijExactRevalidationCapture.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/RelationCheckpointDocument.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/TraversalCheckpointDocument.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/AdmittedReadRejections.kt
@@ -165,3 +169,28 @@ Source output can explicitly select compact presentation while expanded remains
 the compatibility default. The protocol maps that choice exhaustively into a
 native continuation compatibility witness; it does not change source semantics.
 See [source identity](../contracts/source-identity.md#source-output-format).
+
+## Explicit exact reacquisition
+
+`symbol.inspect` accepts `revalidate_exact` alongside unchanged `candidate` and
+`exact` targets. The previous exact token is only a key into the running owner's
+separate detached locator store. Current admission, the same host/root and model
+source owner, unchanged saved committed owning-file bytes, and one fresh exact K2
+match are required. The service checks freshness again before new issuance.
+Results encode `acquisition: strict` or `acquisition: reacquired` explicitly.
+No prior source snapshot, relation, continuation or mutation approval becomes
+current through this operation.
+
+Capture is optional for ordinary issuance: it runs inside exact compiler lookup,
+deduplicates at most 64 files per request, and retains no source payload or platform
+object. Each file is limited to 1 MiB and charged one work unit plus one per 4 KiB
+against the admitted capture allowance. Missing captures remain unavailable.
+
+The hosted store admits at most 256 distinct tokens during a project-service
+lifetime, with a conservative 4 MiB retained-data charge in addition to the
+configured strict-reference table bound. A record is usable for five minutes;
+replay and duplicate issuance never renew it. Expired slots remain occupied until
+project disposal, so capacity exhaustion disables further retention while ordinary
+reads continue. Known expired and unknown tokens have distinct finite failures.
+This conservative first slice does not search moved files, recover candidates,
+persist across owners, or restore tokens issued before capture was installed.

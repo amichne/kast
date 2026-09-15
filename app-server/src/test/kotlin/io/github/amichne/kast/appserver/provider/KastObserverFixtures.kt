@@ -92,32 +92,7 @@ internal object KastObserverFixtures {
         """
             .trimIndent()
 
-    val symbolInspection =
-        """
-        {
-          "status": "completed",
-          "document": {
-            "operation": "symbol.inspect",
-            "status": "complete",
-            "symbol": {
-              "selector": "exact:v2:opaque",
-              "kind": "classlike",
-              "name": "EventConsumer",
-              "qualifiedIdentity": "com.aexp.mobile.one.streaming.events.core.EventConsumer",
-              "file": "events/core/src/main/kotlin/sample/EventConsumer.kt",
-              "range": {"startInclusive": 17, "endExclusive": 140},
-              "compilerEvidence": {
-                "identity": "canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-                "signature": {
-                  "type": "class-like",
-                  "qualifiedIdentity": "com.aexp.mobile.one.streaming.events.core.EventConsumer"
-                }
-              }
-            }
-          }
-        }
-        """
-            .trimIndent()
+    val symbolInspection = symbolInspectionObserverFixture()
 
     val sourceRead =
         """
