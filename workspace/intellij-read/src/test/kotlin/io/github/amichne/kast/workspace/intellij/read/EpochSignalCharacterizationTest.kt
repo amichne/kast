@@ -303,7 +303,7 @@ class IdeProjectReadEpochTest {
             ),
         )
         assertEquals(
-            ProjectReadEpochSignalSample.Rejected(ProjectReadEpochObservationFailure.VfsBatchLimitExceeded),
+            signal(1),
             observeVfsBatch(
                 List(PROJECT_READ_EPOCH_MAX_VFS_EVENTS_PER_BATCH + 1) {
                     ProjectReadEpochVfsEvent.Change("/workspace/kast/src/A.kt")
@@ -338,7 +338,8 @@ class IdeProjectReadEpochTest {
         val root = ProjectReadEpochVfsRoot.from(FIXTURE_ROOT)
         when (val result = observeProjectReadEpochVfsBatch(root, events)) {
             ProjectReadEpochVfsBatchObservation.OutsideRoot -> Unit
-            ProjectReadEpochVfsBatchObservation.TouchesRoot -> counter.advance()
+            ProjectReadEpochVfsBatchObservation.TouchesRoot,
+            ProjectReadEpochVfsBatchObservation.RelevanceUnknown -> counter.advance()
             is ProjectReadEpochVfsBatchObservation.Rejected -> counter.reject(result.failure)
         }
         return counter.sample()
