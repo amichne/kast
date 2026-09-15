@@ -6,6 +6,9 @@ resource: file://distribution
 tags: [distribution, configuration, packaging, release]
 timestamp: 2026-09-14T00:00:00Z
 code_sources:
+  - path: packaging/hosted_repair_time_observation.py
+  - path: packaging/hosted_repair_budget_regression.py
+  - path: packaging/hosted_transport_observation.py
   - path: change/intellij/src/nativeFixture/kotlin/io/github/amichne/kast/fixtureprobe/ProbeOwnedSourceRescan.kt
   - path: change/intellij/src/nativeFixture/kotlin/io/github/amichne/kast/fixtureprobe/ProbeSetupReadiness.kt
   - path: change/intellij/src/nativeFixture/kotlin/io/github/amichne/kast/fixtureprobe/ProbeSetupReadinessDocument.kt
@@ -96,8 +99,12 @@ faults, independent caller grants and ordinary-edit authority transitions before
 mutation starts. Exact source restoration and observed readiness are required.
 The repair matrix emits bounded 10/20-second request receipts with the actual
 configured default, operator ceiling, admitted grant, clamp causes and round-trip
-duration. Executor tests separately verify admission work and completion reserve;
-neither evidence source substitutes for the other. Native readiness rejects a
+duration. A bounded single-request native log window separately retains ordered
+admission, model, semantic, freshness and detachment durations, the actual grant
+and completion reserve, plus connection admission and release observations. It
+requires one completed connection and one same-authority semantic receipt; extra,
+missing or contradictory evidence fails qualification. Executor tests force
+deadline behavior independently. Native readiness rejects a
 saved/document image mismatch even when the IDE reports saved and committed.
 Deterministic fixture tests and schema checks do not themselves qualify a native
 IDE run; [hosted query qualification](../flows/hosted-query.md) keeps those evidence
