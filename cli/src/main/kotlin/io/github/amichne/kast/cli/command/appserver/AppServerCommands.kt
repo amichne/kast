@@ -22,21 +22,23 @@ internal fun appServerCommandGroup(): LocalCommandFamily {
     val release = ControlLeaf("release", CliProductCommand.APP_SERVER_RELEASE, ControlOperation.RELEASE)
     val control = KastCommandGroup("control", "Manage the controller of an attached task.").subcommands(claim, release)
     val root =
-        object : KastCommandGroup(
-                "app-server",
-                """
-                Manage the persistent Kast App Server.
+        object :
+                KastCommandGroup(
+                    "app-server",
+                    """
+                    Manage the persistent Kast App Server.
 
-                           Diagnostics: the active installation writes service output to
-                           state/broker/<installation-id>/service.log and the complete resolved launch
-                           settings to state/broker/<installation-id>/launch-environment. Set
-                           KAST_DEBUG=1 to also stream bounded
-                           launch diagnostics to the calling process on stderr.
-                """
-                    .trimIndent(),
-            ) {
-            override val hiddenFromHelp: Boolean = true
-        }.subcommands(actions + control)
+                               Diagnostics: the active installation writes service output to
+                               state/broker/<installation-id>/service.log and the complete resolved launch
+                               settings to state/broker/<installation-id>/launch-environment. Set
+                               KAST_DEBUG=1 to also stream bounded
+                               launch diagnostics to the calling process on stderr.
+                    """
+                        .trimIndent(),
+                ) {
+                override val hiddenFromHelp: Boolean = true
+            }
+            .subcommands(actions + control)
     return LocalCommandFamily(root, actions + claim + release)
 }
 

@@ -385,13 +385,12 @@ private fun canonicalGraph(
     val root =
         KastRootCommand()
             .subcommands(
-                families.filter { it.semanticCommands.isNotEmpty() }.map {
-                    if (it.root.commandName == index.root.commandName) HiddenProjectedCommandGroup(it.root) else it.root
-                } +
-                    localFamilies.map { it.root } +
-                    appServer.root +
-                    tools.root +
-                    lifecycle
+                families
+                    .filter { it.semanticCommands.isNotEmpty() }
+                    .map {
+                        if (it.root.commandName == index.root.commandName) HiddenProjectedCommandGroup(it.root)
+                        else it.root
+                    } + localFamilies.map { it.root } + appServer.root + tools.root + lifecycle
             )
     return CliCommandGraph(
         root,
@@ -437,6 +436,7 @@ private class ProjectedCommandGroup(private val source: KastCommand) : KastComma
 
 private class HiddenProjectedCommandGroup(private val source: KastCommand) : KastCommandGroup(source.commandName, "") {
     override val hiddenFromHelp: Boolean = true
+
     override fun help(context: Context): String = source.help(context)
 }
 
