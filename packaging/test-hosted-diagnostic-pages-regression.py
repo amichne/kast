@@ -7,7 +7,7 @@ from hosted_read_transport import ReadTransportRejected
 
 from hosted_diagnostic_pages_regression import (
     DiagnosticDrainFailure, DiagnosticDrainRejected, DiagnosticDrained,
-    DiagnosticRequest, drain_diagnostics, run_diagnostic_pages_regression, heavy_file_checks, independent_budget_checks, _semantic_difference, _valid_report,
+    DiagnosticRequest, drain_diagnostics, run_diagnostic_pages_regression, heavy_file_checks, independent_budget_checks, _semantic_difference, _valid_report, _legacy_refusal_observations,
 )
 
 
@@ -107,6 +107,43 @@ class DiagnosticPagesTest(unittest.TestCase):
         self.assertEqual({'relative_path', 'max_diagnostics'}, set(requests[0]))
         self.assertTrue(rows[0][2]['legacyRequestReachedScopeCap'])
         self.assertFalse(rows[0][2]['boundedDrainCompleted'])
+
+    def test_legacy_current_refusal_records_exact_finite_reason_without_old_scope_claim(self):
+        @dataclass(frozen=True)
+        class Refused:
+            status: str = 'rejected'
+            reason: str = 'continuation-unavailable'
+        rows = []
+        replay = SimpleNamespace(surface='provider', transport=SimpleNamespace(
+            invoke=lambda *_: asdict(Refused()), validate=lambda *_: None), record=lambda *row: rows.append(row))
+        run_diagnostic_pages_regression(replay)
+        checks = rows[0][2]
+        self.assertFalse(checks['legacyRequestReachedScopeCap'])
+        self.assertTrue(checks['legacyReason_continuation-unavailable'])
+        self.assertTrue(checks['legacyBoundary_canonical'])
+        self.assertFalse(checks['legacyActualBudgetReportPresent'])
+        self.assertFalse(checks['boundedDrainCompleted'])
+
+    def test_legacy_refusal_reports_configured_grant_presence_without_payload(self):
+        @dataclass(frozen=True)
+        class ConfiguredLimit:
+            requested: None = None
+            effective: int = 1
+        @dataclass(frozen=True)
+        class ConfiguredReport:
+            max_work_units: ConfiguredLimit = ConfiguredLimit()
+            max_elapsed_ms: ConfiguredLimit = ConfiguredLimit()
+            max_results: ConfiguredLimit = ConfiguredLimit()
+            max_returned_bytes: ConfiguredLimit = ConfiguredLimit()
+        @dataclass(frozen=True)
+        class Refused:
+            execution_budget: ConfiguredReport = ConfiguredReport()
+            status: str = 'rejected'
+            reason: str = 'continuation-unavailable'
+        checks = _legacy_refusal_observations(asdict(Refused()))
+        self.assertTrue(checks['legacyActualBudgetReportPresent'])
+        self.assertTrue(checks['legacyConfiguredGrantReportValid'])
+        self.assertTrue(all(type(value) is bool for value in checks.values()))
 
     def test_heavy_file_preserves_repeated_messages_and_distinct_occurrences(self):
         files = ('/workspace/src/main/kotlin/ReadDiagnosticPages.kt',)
