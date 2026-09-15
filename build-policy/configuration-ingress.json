@@ -22,6 +22,7 @@
     "packaging/install-local.sh",
     "packaging/installation-lifecycle.py",
     "packaging/test-acceptance-environment.py",
+    "packaging/test-hosted-acceptance-fixture.py",
     "packaging/test-install-checkout.py",
     "packaging/test-installed-codex-host.py",
     "packaging/test-installed-product.sh",
