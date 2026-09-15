@@ -41,12 +41,12 @@ internal enum class HostedVfsPathCategory {
 
 @Serializable
 internal enum class HostedVfsObservationFailure {
-    PATH_UNPROVEN,
+    PATH_UNPROVEN
 }
 
 @Serializable
 internal enum class HostedVfsUnknownRelevanceReason {
-    BATCH_LIMIT,
+    BATCH_LIMIT
 }
 
 /** Raw platform event paths are confined to observation admission and never enter a receipt. */
