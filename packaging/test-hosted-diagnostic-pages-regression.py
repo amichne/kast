@@ -6,7 +6,7 @@ import unittest
 
 from hosted_diagnostic_pages_regression import (
     DiagnosticDrainFailure, DiagnosticDrainRejected, DiagnosticDrained,
-    DiagnosticRequest, drain_diagnostics,
+    DiagnosticRequest, drain_diagnostics, run_diagnostic_pages_regression,
 )
 
 
@@ -53,6 +53,23 @@ class DiagnosticPagesTest(unittest.TestCase):
         pending = iter(document(page) for page in pages)
         return SimpleNamespace(live='fixture-authority', surface='provider', transport=SimpleNamespace(
             invoke=lambda *_: next(pending), validate=lambda *_: None))
+
+    def test_legacy_scope_cap_reaches_domain_before_new_fields(self):
+        @dataclass(frozen=True)
+        class Refused:
+            status: str = 'rejected'
+            reason: str = 'scope-limit-exceeded'
+        requests, rows = [], []
+        def invoke(_surface, _tool, request):
+            requests.append(request)
+            return asdict(Refused())
+        replay = SimpleNamespace(surface='provider', transport=SimpleNamespace(
+            invoke=invoke, validate=lambda *_: None), record=lambda *row: rows.append(row))
+        run_diagnostic_pages_regression(replay)
+        self.assertEqual(1, len(requests))
+        self.assertEqual({'relative_path', 'max_diagnostics'}, set(requests[0]))
+        self.assertTrue(rows[0][2]['legacyRequestReachedScopeCap'])
+        self.assertFalse(rows[0][2]['boundedDrainCompleted'])
 
     def test_enumeration_then_exact_complete_coverage(self):
         last = Page(Progress('finished', 'finished', Exhausted(), ('A.kt', 'B.kt', 'C.kt')), None, status='complete')

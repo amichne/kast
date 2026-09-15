@@ -12,6 +12,12 @@ class DiagnosticGrant:
 
 
 @dataclass(frozen=True)
+class LegacyDiagnosticRequest:
+    relative_path: str = 'src/main/kotlin'
+    max_diagnostics: int = 1
+
+
+@dataclass(frozen=True)
 class DiagnosticRequest:
     relative_path: str = 'src/main/kotlin'
     max_diagnostics: int = 1
@@ -84,6 +90,16 @@ def drain_diagnostics(replay, request, first):
 
 def run_diagnostic_pages_regression(replay):
     """Caller selects the typed disposable diagnostic-pages policy before invoking this helper."""
+    legacy = _invoke(replay, LegacyDiagnosticRequest())
+    if legacy.get('status') != 'qualified':
+        checks = {
+            'legacyRequestReachedScopeCap': legacy.get('status') == 'rejected'
+                and legacy.get('reason') == 'scope-limit-exceeded',
+            'legacyRefusalHasNoContinuation': not legacy.get('qualification', {}).get('continuation'),
+            'boundedDrainCompleted': False,
+        }
+        replay.record('diagnostic-same-basis-pages', 'check_diagnostics', checks, 0, legacy)
+        return
     request = DiagnosticRequest()
     first = _invoke(replay, request)
     replayed = _invoke(replay, request)
