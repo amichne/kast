@@ -134,6 +134,7 @@ object CanonicalOperationWireBindings {
                 CanonicalReadSerializers.diagnosticCheckResult,
                 CanonicalReadSerializers.diagnosticCheckQualification,
                 CanonicalReadSerializers.diagnosticCheckRejection,
+                ReadRejectionBudgets.diagnostic,
             ),
         )
     val changePlan =

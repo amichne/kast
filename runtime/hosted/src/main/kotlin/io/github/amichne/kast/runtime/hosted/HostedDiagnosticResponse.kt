@@ -6,7 +6,9 @@ import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.ReturnedByteLimit
+import io.github.amichne.kast.protocol.contract.AdmittedDiagnosticCheckRejection
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
+import io.github.amichne.kast.protocol.contract.DiagnosticCheckFailure
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckQualification
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRejection
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRequest
@@ -16,10 +18,12 @@ import io.github.amichne.kast.protocol.contract.DiagnosticProgressStage
 import io.github.amichne.kast.protocol.contract.DiagnosticProgressStop
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
 import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.budgetPresence
+import io.github.amichne.kast.protocol.contract.reason
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 
 internal typealias HostedDiagnosticOutcome =
-    OperationOutcome<DiagnosticCheckResult, DiagnosticCheckQualification, DiagnosticCheckRejection>
+    OperationOutcome<DiagnosticCheckResult, DiagnosticCheckQualification, DiagnosticCheckFailure>
 
 internal const val DIAGNOSTIC_OUTPUT_PREFIX = "diagnostic-output:v1:"
 
@@ -38,7 +42,10 @@ internal fun HostedDiagnosticOutcome.withDiagnosticBudget(report: ExecutionBudge
         is OperationOutcome.Complete -> OperationOutcome.Complete(evidence.withDiagnosticBudget(report))
         is OperationOutcome.Qualified ->
             OperationOutcome.Qualified(evidence.withDiagnosticBudget(report), qualification)
-        is OperationOutcome.Rejected -> this
+        is OperationOutcome.Rejected ->
+            OperationOutcome.Rejected(
+                if (report == null) reason.reason() else AdmittedDiagnosticCheckRejection(reason.reason(), report)
+            )
     }
 
 private fun EvidenceEnvelope<DiagnosticCheckResult>.withDiagnosticBudget(report: ExecutionBudgetReport?) =
@@ -52,6 +59,22 @@ internal fun encodeHostedDiagnosticResponse(
     maximumResults: ResultLimit =
         ResultLimit.parse(io.github.amichne.kast.protocol.contract.MAX_PROTOCOL_ITEMS).proven(),
     retain: (HostedDiagnosticOutcome) -> HostedOutputRetention,
+): HostedResponse =
+    encodeHostedDiagnosticDocument(semantic, limits, maximumBytes, maximumResults, retain)
+        .withReadBudget(
+            when (semantic) {
+                is OperationOutcome.Complete -> semantic.evidence.payload.progress?.executionBudget.presence()
+                is OperationOutcome.Qualified -> semantic.evidence.payload.progress?.executionBudget.presence()
+                is OperationOutcome.Rejected -> semantic.reason.budgetPresence()
+            }
+        )
+
+private fun encodeHostedDiagnosticDocument(
+    semantic: HostedDiagnosticOutcome,
+    limits: ReadLimits,
+    maximumBytes: ReturnedByteLimit,
+    maximumResults: ResultLimit,
+    retain: (HostedDiagnosticOutcome) -> HostedOutputRetention,
 ): HostedResponse {
     val original =
         HostedResponse.Canonical.encode(CanonicalOperationWireBindings.diagnosticCheck, semantic, limits, maximumBytes)
@@ -64,15 +87,19 @@ internal fun encodeHostedDiagnosticResponse(
         }
     if (original !is HostedResponse.Oversized && evidence.payload.diagnostics.values.size <= maximumResults.value)
         return original
-    val qualification = semantic.outputQualification(evidence)
-    val fitting = DiagnosticPageEncoding(evidence, qualification, limits, maximumBytes)
+    val fitting = DiagnosticPageEncoding(evidence, semantic.outputQualification(evidence), limits, maximumBytes)
     val count =
         largestFittingDiagnosticPrefix(
             minOf(evidence.payload.diagnostics.values.size - 1, maximumResults.value),
             fitting::placeholder,
         )
     if (count == 0)
-        return diagnosticEncodingRejection(DiagnosticCheckRejection.OUTPUT_GRANT_TOO_SMALL, limits, maximumBytes)
+        return diagnosticEncodingRejection(
+            DiagnosticCheckRejection.OUTPUT_GRANT_TOO_SMALL,
+            evidence.payload.progress?.executionBudget,
+            limits,
+            maximumBytes,
+        )
     val remainder =
         evidence.copy(
             payload =
@@ -89,7 +116,12 @@ internal fun encodeHostedDiagnosticResponse(
     return when (val retained = retain(suffix.withDiagnosticBudget(null))) {
         is HostedOutputRetention.Retained -> fitting.encode(count, retained.token)
         HostedOutputRetention.CapacityExceeded ->
-            diagnosticEncodingRejection(DiagnosticCheckRejection.CONTINUATION_CAPACITY_EXCEEDED, limits, maximumBytes)
+            diagnosticEncodingRejection(
+                DiagnosticCheckRejection.CONTINUATION_CAPACITY_EXCEEDED,
+                evidence.payload.progress?.executionBudget,
+                limits,
+                maximumBytes,
+            )
         HostedOutputRetention.EncodingRejected -> HostedResponse.Rejected(HostedEndpointFailure.RESPONSE_REJECTED)
     }
 }
@@ -112,12 +144,13 @@ private fun HostedDiagnosticOutcome.outputQualification(
 
 private fun diagnosticEncodingRejection(
     reason: DiagnosticCheckRejection,
+    report: ExecutionBudgetReport?,
     limits: ReadLimits,
     maximumBytes: ReturnedByteLimit,
 ) =
     HostedResponse.Canonical.encode(
         CanonicalOperationWireBindings.diagnosticCheck,
-        OperationOutcome.Rejected(reason),
+        OperationOutcome.Rejected(reason).withDiagnosticBudget(report),
         limits,
         maximumBytes,
     )

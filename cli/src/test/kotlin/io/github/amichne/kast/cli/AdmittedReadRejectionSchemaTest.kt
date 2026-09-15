@@ -4,11 +4,13 @@ import io.github.amichne.kast.cli.projection.CanonicalQueryCliDocuments
 import io.github.amichne.kast.cli.projection.CanonicalReadCliDocuments
 import io.github.amichne.kast.cli.projection.CanonicalSourceReadCliDocuments
 import io.github.amichne.kast.kernel.OperationOutcome
+import io.github.amichne.kast.protocol.contract.AdmittedDiagnosticCheckRejection
 import io.github.amichne.kast.protocol.contract.AdmittedQueryRunRejection
 import io.github.amichne.kast.protocol.contract.AdmittedRelationReadRejection
 import io.github.amichne.kast.protocol.contract.AdmittedSourceReadRejection
 import io.github.amichne.kast.protocol.contract.AdmittedTraversalRunRejection
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.contract.DiagnosticCheckRejection
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetDocument
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
@@ -62,6 +64,15 @@ class AdmittedReadRejectionSchemaTest {
 
     private fun cases(report: ExecutionBudgetReport): List<Case> =
         listOf(
+            Case(
+                CanonicalOperation.DIAGNOSTIC_CHECK,
+                CanonicalReadCliDocuments.projectDiagnostics(
+                    OperationOutcome.Rejected(
+                        AdmittedDiagnosticCheckRejection(DiagnosticCheckRejection.OUTPUT_GRANT_TOO_SMALL, report)
+                    )
+                ),
+                "output-grant-too-small",
+            ),
             Case(
                 CanonicalOperation.SOURCE_READ,
                 CanonicalSourceReadCliDocuments.project(

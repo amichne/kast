@@ -540,7 +540,7 @@ private constructor(
     }
 }
 
-enum class DiagnosticCheckRejection : OperationRejection {
+enum class DiagnosticCheckRejection : DiagnosticCheckFailure {
     ENUMERATION_INDEX_MODE_UNSUPPORTED,
     EXECUTION_TIME_GRANT_TOO_SMALL,
     CONTINUATION_UNAVAILABLE,

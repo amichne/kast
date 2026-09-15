@@ -24,8 +24,8 @@ import io.github.amichne.kast.protocol.contract.ChangeRecoverRejection
 import io.github.amichne.kast.protocol.contract.ChangeRecoverRequest
 import io.github.amichne.kast.protocol.contract.ChangeRecoverResult
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckCapability
+import io.github.amichne.kast.protocol.contract.DiagnosticCheckFailure
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckQualification
-import io.github.amichne.kast.protocol.contract.DiagnosticCheckRejection
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRequest
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckResult
 import io.github.amichne.kast.protocol.contract.IndexSyncCapability
@@ -219,7 +219,7 @@ object CanonicalOperationDefinitions {
             DiagnosticCheckRequest::class,
             DiagnosticCheckResult::class,
             DiagnosticCheckQualification::class,
-            DiagnosticCheckRejection::class,
+            DiagnosticCheckFailure::class,
             DiagnosticCheckCapability::class,
             OperationLane.SCOPED_SEMANTIC_READ,
             OperationEffect.INTELLIJ_READ,

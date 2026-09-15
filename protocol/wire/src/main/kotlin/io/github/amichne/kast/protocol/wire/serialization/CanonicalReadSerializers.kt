@@ -1,7 +1,7 @@
 package io.github.amichne.kast.protocol.wire
 
+import io.github.amichne.kast.protocol.contract.DiagnosticCheckFailure
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckQualification
-import io.github.amichne.kast.protocol.contract.DiagnosticCheckRejection
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRequest
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckResult
 import io.github.amichne.kast.protocol.contract.RelationReadFailure
@@ -93,10 +93,10 @@ internal object CanonicalReadSerializers {
             DiagnosticCheckQualification::toWireDocument,
             DiagnosticCheckQualificationWireDocument::toContract,
         )
-    val diagnosticCheckRejection =
+    val diagnosticCheckRejection: WireValueCodec<DiagnosticCheckFailure> =
         factory.create(
             DiagnosticCheckRejectionWireDocument.serializer(),
-            DiagnosticCheckRejection::toWireDocument,
+            { value: DiagnosticCheckFailure -> value.reason().toWireDocument() },
             { document -> WireDocumentConversion.Converted(document.toContract()) },
         )
 }
