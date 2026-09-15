@@ -148,6 +148,7 @@ def main() -> int:
             "KAST_REAL_CODEX_EXECUTABLE": str(codex),
             "CODEX_EXECUTABLE": str(codex),
             "KAST_ENABLE_APP_SERVER": "1",
+            "CODEX_HOME": str(home / "c"),
         })
         version = subprocess.run(
             [str(codex), "--version"], check=True, capture_output=True,

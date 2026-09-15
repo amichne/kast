@@ -54,7 +54,7 @@ internal fun interface BrokerSocketPathObserver {
 
 /** Finite Unix socket-path evidence established without following symbolic links. */
 internal sealed interface BrokerSocketPathObservation {
-    /** The leaf or its immediate parent is absent beneath an admitted canonical directory. */
+    /** The leaf or a parent is absent beneath an admitted canonical directory. */
     data object Absent : BrokerSocketPathObservation
 
     data object Socket : BrokerSocketPathObservation
@@ -103,38 +103,27 @@ internal object JdkBrokerSocketPathObserver : BrokerSocketPathObserver {
         }
     }
 
-    private fun admitParent(parent: Path): BrokerSocketParentAdmission =
-        try {
-            if (parent.toRealPath() == parent && Files.isDirectory(parent, LinkOption.NOFOLLOW_LINKS)) {
-                BrokerSocketParentAdmission.Admitted
-            } else {
-                BrokerSocketParentAdmission.Rejected
+    private fun admitParent(parent: Path): BrokerSocketParentAdmission {
+        var candidate = parent
+        var observation = BrokerSocketParentAdmission.Admitted
+        while (true) {
+            try {
+                return if (
+                    candidate.toRealPath() == candidate && Files.isDirectory(candidate, LinkOption.NOFOLLOW_LINKS)
+                )
+                    observation
+                else BrokerSocketParentAdmission.Rejected
+            } catch (_: NoSuchFileException) {
+                if (Files.isSymbolicLink(candidate)) return BrokerSocketParentAdmission.Rejected
+                candidate = candidate.parent ?: return BrokerSocketParentAdmission.Rejected
+                observation = BrokerSocketParentAdmission.Absent
+            } catch (_: IOException) {
+                return BrokerSocketParentAdmission.Rejected
+            } catch (_: SecurityException) {
+                return BrokerSocketParentAdmission.Rejected
             }
-        } catch (_: NoSuchFileException) {
-            if (Files.isSymbolicLink(parent)) {
-                BrokerSocketParentAdmission.Rejected
-            } else {
-                val existingParent = parent.parent ?: return BrokerSocketParentAdmission.Rejected
-                if (canonicalDirectory(existingParent)) {
-                    BrokerSocketParentAdmission.Absent
-                } else {
-                    BrokerSocketParentAdmission.Rejected
-                }
-            }
-        } catch (_: IOException) {
-            BrokerSocketParentAdmission.Rejected
-        } catch (_: SecurityException) {
-            BrokerSocketParentAdmission.Rejected
         }
-
-    private fun canonicalDirectory(path: Path): Boolean =
-        try {
-            path.toRealPath() == path && Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS)
-        } catch (_: IOException) {
-            false
-        } catch (_: SecurityException) {
-            false
-        }
+    }
 
     private const val UNIX_MODE_ATTRIBUTE = "unix:mode"
     private const val UNIX_FILE_TYPE_MASK = 0xF000
