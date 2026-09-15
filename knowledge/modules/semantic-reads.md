@@ -270,3 +270,10 @@ production blocks with pinned-SDK `ProcessCanceledException` and coroutine
 cancellation after accepted facts or identities, then verify a clean re-entry and
 unchanged cancellation identity. This is simulated scheduling over production
 attempt code, not evidence of native IDE preemption or an executed K2 session.
+
+An evicted diagnostic continuation remains unavailable. If its first-page replay
+survives without the required checkpoint, a tokenless request may discard that
+orphaned replay and start a fresh bounded scan. The same retained-child check
+applies during publication, including interleaved admissions. Resume requests do
+not restart implicitly, and expiry, capacity and semantic request checks retain
+their existing authority.
