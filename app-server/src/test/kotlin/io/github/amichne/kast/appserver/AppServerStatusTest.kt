@@ -112,7 +112,7 @@ class AppServerStatusTest {
                         Files.createDirectory(root.resolve("config")).resolve("environment"),
                         "KAST_WORKER_AGGREGATE_MIB=32768\n",
                     )
-                val environment = mapOf("KAST_CONFIGURATION_FILE" to saved.toString())
+                val environment = mapOf("KAST_CONFIGURATION_FILE" to saved.toString(), "KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private")
                 val command =
                     (BrokerServiceLaunchCommand.resolveCoordinator(kast, root, environment)
                             as BrokerServiceLaunchCommandResolution.Resolved)

@@ -275,76 +275,47 @@ class InstalledAppServerManager(
                     }
             }
         val registered = registry.snapshot()
+        val state = service.name.lowercase()
         return AppServerManagementResult.Completed(
-            buildJsonObject {
-                put("operation", "app-server.status")
-                put("transport", if (service == PassiveServiceState.READY) "ready" else "unavailable")
-                put("protocol", "unobserved")
-                put("catalog", "unobserved")
-                put("semantic", "unobserved")
-                put("desktop", "unqualified")
-                putJsonObject("coordinator") {
-                    put("state", service.name.lowercase())
-                    when (observed) {
-                        is CoordinatorStatusRead.Observed -> put("observation", observed.snapshot.document())
-                        is CoordinatorStatusRead.Rejected -> put("reason", observed.failure.name)
-                    }
-                }
-                putJsonObject("service") {
-                    put("state", service.name.lowercase())
-                    put("ownership", if (observed is CoordinatorStatusRead.Observed) "matched" else "unobserved")
-                }
-                putJsonObject("host") {
-                    put(
-                        "attachment",
-                        when (observed) {
-                            is CoordinatorStatusRead.Observed -> observed.snapshot.hostAttachment.name.lowercase()
-                            is CoordinatorStatusRead.Rejected -> CoordinatorHostAttachment.UNOBSERVED.name.lowercase()
-                        },
-                    )
-                    put("desktop", "unqualified")
-                }
-                putJsonObject("paths") {
-                    put("serviceLog", command.serviceLog.toString())
-                    put("launchEnvironment", command.launchEnvironment.toString())
-                    put("savedConfiguration", command.kast.parent.parent.resolve("config/environment").toString())
-                    put("workspaceRegistry", command.kast.parent.parent.resolve("config/workspaces.json").toString())
-                }
-                putJsonObject("registry") {
-                    when (registered) {
-                        is WorkspaceRegistryRead.Read -> {
-                            put("state", if (registered.snapshot.workspaces.isEmpty()) "empty" else "registered")
-                            put("revision", registered.snapshot.revision.value)
-                            put("count", registered.snapshot.workspaces.size)
-                            putJsonArray("workspaces") {
-                                registered.snapshot.workspaces.forEach { workspace ->
-                                    add(
-                                        buildJsonObject {
-                                            put("workspaceId", workspace.id.value)
-                                            put("root", workspace.root.path.toString())
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                        is WorkspaceRegistryRead.Rejected -> {
-                            put("state", "rejected")
-                            put("reason", registered.failure.name)
-                        }
-                    }
-                }
-                put(
-                    "enrollment",
-                    when (registered) {
-                        is WorkspaceRegistryRead.Read ->
-                            registered.snapshot.workspaces.singleOrNull()?.let {
-                                JsonPrimitive(it.root.path.toString())
-                            } ?: JsonNull
-                        is WorkspaceRegistryRead.Rejected -> JsonPrimitive("rejected")
+            AppServerStatusDocument(
+                transport = if (observed is CoordinatorStatusRead.Observed) AppServerEvidence.READY else AppServerEvidence.UNAVAILABLE,
+                publicEndpoint = PublicEndpointStatus(
+                    when (command.publicEndpoint) {
+                        is BrokerPublicEndpoint.Private -> PublicEndpointKind.PRIVATE
+                        is BrokerPublicEndpoint.CodexControl -> PublicEndpointKind.CODEX_CONTROL
                     },
-                )
-                put("session", JsonNull)
-            }
+                    command.publicSocket.toString(),
+                    if (observed is CoordinatorStatusRead.Observed) PublicEndpointOwnership.KAST else PublicEndpointOwnership.UNOBSERVED,
+                ),
+                upstream = UpstreamStatus(AppServerEvidence.UNOBSERVED),
+                coordinator = when (observed) {
+                    is CoordinatorStatusRead.Observed -> CoordinatorStatusPresentation(state, observed.snapshot.observed)
+                    is CoordinatorStatusRead.Rejected -> CoordinatorStatusPresentation(state, reason = observed.failure)
+                },
+                service = ServiceStatusPresentation(state, if (observed is CoordinatorStatusRead.Observed) "matched" else "unobserved"),
+                host = HostStatusPresentation(when (observed) {
+                    is CoordinatorStatusRead.Observed -> observed.snapshot.hostAttachment.name.lowercase()
+                    is CoordinatorStatusRead.Rejected -> "unobserved"
+                }),
+                paths = StatusPaths(
+                    command.serviceLog.toString(), command.launchEnvironment.toString(),
+                    command.kast.parent.parent.resolve("config/environment").toString(),
+                    command.kast.parent.parent.resolve("config/workspaces.json").toString(),
+                ),
+                registry = when (registered) {
+                    is WorkspaceRegistryRead.Read -> RegistryStatusPresentation(
+                        if (registered.snapshot.workspaces.isEmpty()) "empty" else "registered",
+                        registered.snapshot.revision.value,
+                        registered.snapshot.workspaces.size,
+                        registered.snapshot.workspaces.map { RegisteredWorkspaceStatus(it.id.value, it.root.path.toString()) },
+                    )
+                    is WorkspaceRegistryRead.Rejected -> RegistryStatusPresentation("rejected", reason = registered.failure)
+                },
+                enrollment = when (registered) {
+                    is WorkspaceRegistryRead.Read -> registered.snapshot.workspaces.singleOrNull()?.root?.path?.toString()
+                    is WorkspaceRegistryRead.Rejected -> "rejected"
+                },
+            ).document()
         )
     }
 
