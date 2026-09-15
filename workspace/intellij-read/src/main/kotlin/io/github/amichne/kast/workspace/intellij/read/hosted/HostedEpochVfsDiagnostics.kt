@@ -62,7 +62,7 @@ internal class HostedVfsDiagnosticListener(
     override fun after(events: List<VFileEvent>) {
         val evidence =
             if (events.size > limits[ReadLimitParameter.EPOCH_VFS_EVENTS].value) {
-                HostedVfsBatchEvidence.Rejected(HostedVfsObservationFailure.BATCH_LIMIT)
+                HostedVfsBatchEvidence.RelevanceUnknown(HostedVfsUnknownRelevanceReason.BATCH_LIMIT)
             } else observeHostedVfsBatch(root, events.map(::boundary), limits)
         publishHostedVfsEvidence(host, evidence, ::publish)
     }
