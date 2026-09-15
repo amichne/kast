@@ -26,7 +26,9 @@ code_sources:
 
 `SourceReadCause` retains existing finite read conditions and three disjoint
 failure objects. `AdmittedSourceReadRejection` adds the granted budget without
-replacing the cause. Compact and expanded reads use the same failure contract.
+replacing the cause. Compact and expanded reads use the same failure contract. Source cause and
+request-expectation objects own the `type` discriminator, including when nested
+inside a transport whose outer discriminator differs.
 
 - `request-rejected` identifies an authored field path, bounded collection
   positions where needed, a closed rule, and applicable alternatives or bounds.

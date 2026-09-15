@@ -1,6 +1,11 @@
+from __future__ import annotations
 """Source failure observations contain finite labels; input and source bytes stay in memory."""
 from dataclasses import asdict, dataclass, replace
 from enum import Enum
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from hosted_read_transport import ReadProviderFailure, ReadTransportFailure
 from hosted_source_read_regression import SourceFunctionRequest, SymbolAnchor
 
 
@@ -38,7 +43,8 @@ def admit_source_failure(value):
         raise ValueError('SOURCE_FAILURE_EVIDENCE_REJECTED')
     origin = SourceFailureOrigin(value.get('type'))
     if origin is SourceFailureOrigin.REQUEST:
-        if value.get('field', {}).get('path') != 'anchor.type' or value.get('reason') != 'required':
+        field = value.get('field')
+        if not isinstance(field, dict) or field.get('path') != 'anchor.type' or value.get('reason') != 'required':
             raise ValueError('SOURCE_FAILURE_EVIDENCE_REJECTED')
         return SourceFailureObservation(origin, SourceFailureCause.ANCHOR_TYPE_REQUIRED)
     if origin is SourceFailureOrigin.REFERENCE:
@@ -58,29 +64,105 @@ class FormattedFailureRequest(SourceFunctionRequest):
 
 
 def run_source_failure_regression(replay):
-    from hosted_read_transport import ReadTransportRejected
     request = FormattedFailureRequest(SymbolAnchor(replay.seeds['logger']['ref']))
     for mode in ('expanded', 'compact'):
         selected = replace(request, format=mode)
         valid, digest = replay.transport.invoke_observed(replay.surface, 'source_read', asdict(selected))
         checks = {'validSchema': bool(digest), 'validRead': valid.get('status') in ('complete', 'qualified')}
-        for label, token, expected in (
-            ('wrongFamily', 'candidate:v4:' + 'a' * 64, 'wrong-family'),
-            ('unknownReference', 'exact:v4:' + 'a' * 64, 'unavailable'),
+        observations = []
+        for case, token, expected in (
+            (SourceFailureCase.WRONG_FAMILY, 'candidate:v4:' + 'a' * 64, SourceFailureCause.WRONG_FAMILY),
+            (SourceFailureCase.UNKNOWN_REFERENCE, 'exact:v4:' + 'a' * 64, SourceFailureCause.UNAVAILABLE),
         ):
-            arguments = asdict(replace(selected, anchor=SymbolAnchor(token)))
-            try:
-                document, failure_digest = replay.transport.invoke_observed(replay.surface, 'source_read', arguments)
-                observation = admit_source_failure(document.get('reason'))
-                checks[label] = bool(failure_digest) and observation.cause == expected and document.get('next_action') == 'reacquire_authority'
-            except ReadTransportRejected as error:
-                checks[label] = error.source_cause is not None and error.source_cause.cause == expected
+            checks[case.value], observation = _observe_source_failure(replay, case,
+                asdict(replace(selected, anchor=SymbolAnchor(token))), expected)
+            observations.append(observation)
         # Deliberately malformed physical ingress, retaining all otherwise valid fields.
         malformed = asdict(selected)
         del malformed['anchor']['type']
+        checks['physicalField'], observation = _observe_source_failure(replay, SourceFailureCase.PHYSICAL_FIELD,
+            malformed, SourceFailureCause.ANCHOR_TYPE_REQUIRED)
+        observations.append(observation)
+        replay.record('source-finite-failures-' + mode, 'source_read', checks, response=valid)
+        replay.rows[-1]['observation']['sourceFailures'] = [asdict(item) for item in observations]
+
+
+class SourceFailureCase(str, Enum):
+    WRONG_FAMILY = 'wrongFamily'
+    UNKNOWN_REFERENCE = 'unknownReference'
+    PHYSICAL_FIELD = 'physicalField'
+
+
+class SourceFailureBoundary(str, Enum):
+    SEMANTIC = 'semantic-response'
+    CLI = 'cli-usage-stderr'
+    PROVIDER = 'provider-ingress'
+    TRANSPORT = 'transport-rejected'
+    EVIDENCE = 'evidence-rejected'
+
+
+class SourceFailureRecovery(str, Enum):
+    CORRECT = 'correct_request'
+    REACQUIRE = 'reacquire_authority'
+    REPORT = 'report_failure'
+    UNRECOGNIZED = 'unrecognized'
+
+
+class SourceSchemaEvidence(str, Enum):
+    ADMITTED = 'operation-schema-admitted'
+    NOT_CHECKED = 'operation-schema-not-checked'
+
+
+@dataclass(frozen=True)
+class ObservedSourceFailure:
+    case: SourceFailureCase
+    boundary: SourceFailureBoundary
+    schema: SourceSchemaEvidence
+    cause: SourceFailureObservation | None = None
+    provider_failure: ReadProviderFailure | None = None
+    transport_failure: ReadTransportFailure | None = None
+    # Already admitted by the transport schema-evidence boundary; never raw provider JSON.
+    schema_violation_evidence: dict | None = None
+    recovery: SourceFailureRecovery | None = None
+
+
+def admit_source_cli_boundary(exit_code, stdout, stderr):
+    """Usage stderr is a disjoint boundary; the caller subsequently checks the operation schema."""
+    import json
+    if exit_code != 2 or stdout or not stderr or len(stderr) > 4096:
+        raise ValueError('SOURCE_CLI_BOUNDARY_REJECTED')
+    document = json.loads(stderr)
+    if (not isinstance(document, dict) or set(document) != {'operation', 'status', 'reason', 'next_action'}
+            or document['operation'] != 'source.read' or document['status'] != 'rejected'):
+        raise ValueError('SOURCE_CLI_BOUNDARY_REJECTED')
+    cause = admit_source_failure(document['reason'])
+    recovery = {SourceFailureOrigin.REQUEST: 'correct_request', SourceFailureOrigin.REFERENCE: 'reacquire_authority',
+                SourceFailureOrigin.INTERNAL: 'report_failure'}[cause.origin]
+    if document['next_action'] != recovery:
+        raise ValueError('SOURCE_CLI_BOUNDARY_REJECTED')
+    return document, cause
+
+
+def _observe_source_failure(replay, case, arguments, expected):
+    from hosted_read_transport import ReadTransportRejected, ReadTransportFailure, ReadProviderFailure
+    try:
+        document, digest = replay.transport.invoke_observed(replay.surface, 'source_read', arguments)
+        cause = admit_source_failure(document.get('reason'))
         try:
-            document = replay.transport.invoke(replay.surface, 'source_read', malformed)
-            checks['physicalField'] = admit_source_failure(document.get('reason')).cause == 'anchor-type-required'
-        except ReadTransportRejected as error:
-            checks['physicalField'] = error.source_cause is not None and error.source_cause.cause == 'anchor-type-required'
-        replay.record('source-finite-failures-' + mode, 'source_read', checks)
+            recovery = SourceFailureRecovery(document.get('next_action'))
+        except (TypeError, ValueError):
+            recovery = SourceFailureRecovery.UNRECOGNIZED
+        observation = ObservedSourceFailure(case, SourceFailureBoundary.SEMANTIC,
+            SourceSchemaEvidence.ADMITTED if digest else SourceSchemaEvidence.NOT_CHECKED, cause, recovery=recovery)
+        expected_recovery = SourceFailureRecovery.CORRECT if cause.origin is SourceFailureOrigin.REQUEST else SourceFailureRecovery.REACQUIRE
+        return cause.cause == expected and bool(digest) and recovery is expected_recovery, observation
+    except ReadTransportRejected as error:
+        boundary = (SourceFailureBoundary.CLI if error.reason is ReadTransportFailure.SOURCE_CLI_BOUNDARY
+            else SourceFailureBoundary.PROVIDER if error.provider_failure in (ReadProviderFailure.SOURCE_INPUT, ReadProviderFailure.SOURCE_INTERNAL) else SourceFailureBoundary.TRANSPORT)
+        observation = ObservedSourceFailure(case, boundary,
+            SourceSchemaEvidence.ADMITTED if error.source_schema_admitted else SourceSchemaEvidence.NOT_CHECKED,
+            error.source_cause, error.provider_failure, error.reason, error.output_violation_evidence)
+        return (error.source_cause is not None and error.source_cause.cause == expected
+            and (boundary is SourceFailureBoundary.PROVIDER or (boundary is SourceFailureBoundary.CLI and error.source_schema_admitted))), observation
+    except (ValueError, TypeError):
+        return False, ObservedSourceFailure(case, SourceFailureBoundary.EVIDENCE, SourceSchemaEvidence.NOT_CHECKED)
