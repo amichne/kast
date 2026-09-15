@@ -284,6 +284,20 @@ class OverflowHelperTest(unittest.TestCase):
 
     def test_fresh_drain_observes_every_envelope_and_never_sends_old_cursor(self):
         @dataclass(frozen=True)
+        class Limit:
+            requested: int
+            effective: int
+            configuredDefault: int
+            selection: str = 'caller'
+            operatorCeiling: int = 2147483646
+            clamping: tuple = ()
+        @dataclass(frozen=True)
+        class Report:
+            max_work_units: Limit = Limit(10000, 10000, 100000)
+            max_elapsed_ms: Limit = Limit(10000, 10000, 2000)
+            max_results: Limit = Limit(1, 1, 128)
+            max_returned_bytes: Limit = Limit(262144, 262144, 49152)
+        @dataclass(frozen=True)
         class Inventory:
             type: str = 'exhausted'
             totalFiles: int = 1
@@ -293,6 +307,7 @@ class OverflowHelperTest(unittest.TestCase):
             stop: str
             analyzedFiles: tuple[str, ...] = ('Fixture.kt',)
             inventory: Inventory = field(default_factory=Inventory)
+            execution_budget: Report = field(default_factory=Report)
         @dataclass(frozen=True)
         class Page:
             live: dict
