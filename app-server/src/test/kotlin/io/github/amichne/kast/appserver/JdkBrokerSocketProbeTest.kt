@@ -13,6 +13,12 @@ import org.junit.jupiter.api.io.TempDir
 
 class JdkBrokerSocketProbeTest {
     @Test
+    fun `a fresh Codex home is absent rather than an unproven incumbent`(@TempDir temporary: Path) {
+        val socket = temporary.toRealPath().resolve("new-home/app-server-control/app-server-control.sock")
+        assertEquals(BrokerSocketReachability.UNREACHABLE, JdkBrokerSocketProbe.probe(socket))
+    }
+
+    @Test
     fun `real JDK path observation distinguishes absent socket and rejected paths`(@TempDir temporary: Path) {
         val admittedParent = Files.createDirectory(temporary.resolve("admitted")).toRealPath()
         val missingParentSocket = admittedParent.resolve("missing/broker.sock")
