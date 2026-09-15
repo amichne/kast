@@ -96,15 +96,10 @@ class DiagnosticCheckpointStore(
             if (token == null) DiagnosticReplayOrigin.First(query.path.toString(), query.lease, limit)
             else DiagnosticReplayOrigin.Resume(token)
         val key = DiagnosticReplayKey(origin, grant)
-        val replay = replays[key]
-        if (replay != null) {
-            when (val admitted = matchingQuery(query, replay.query, limit, replay.limit)) {
-                is Refinement.Rejected -> return DiagnosticCheckpointAdmission.Rejected(admitted.failure)
-                is Refinement.Refined -> Unit
-            }
-            if (replay.page.next is DiagnosticNextPage.Continue && replay.page.next.token !in checkpoints)
-                return unavailable()
-            return DiagnosticCheckpointAdmission.Replay(replay.page)
+        when (val replay = lookupReplay(key, query, limit)) {
+            ReplayLookup.Missing -> Unit
+            is ReplayLookup.Retained -> return DiagnosticCheckpointAdmission.Replay(replay.page)
+            is ReplayLookup.Rejected -> return DiagnosticCheckpointAdmission.Rejected(replay.reason)
         }
         if (token == null)
             return DiagnosticCheckpointAdmission.Execute(DiagnosticScanRequest.First(query), key, clock(), limit)
@@ -129,8 +124,10 @@ class DiagnosticCheckpointStore(
         expire()
         if (lifetime == Lifetime.RETIRED || clock() - admission.createdAt >= ttl)
             return Refinement.Rejected(DiagnosticCheckRejection.CONTINUATION_UNAVAILABLE)
-        replays[admission.key]?.let {
-            return Refinement.Refined(it.page)
+        when (val replay = lookupReplay(admission.key, admission.request.query, admission.limit)) {
+            ReplayLookup.Missing -> Unit
+            is ReplayLookup.Retained -> return Refinement.Refined(replay.page)
+            is ReplayLookup.Rejected -> return Refinement.Rejected(replay.reason)
         }
         val next =
             when (val issued = nextPage(result)) {
@@ -152,6 +149,36 @@ class DiagnosticCheckpointStore(
         }
         replays[admission.key] = replay
         return Refinement.Refined(page)
+    }
+
+    private sealed interface ReplayLookup {
+        data object Missing : ReplayLookup
+
+        data class Retained(val page: DiagnosticStoredPage) : ReplayLookup
+
+        data class Rejected(val reason: DiagnosticCheckRejection) : ReplayLookup
+    }
+
+    private fun lookupReplay(
+        key: DiagnosticReplayKey,
+        query: DiagnosticScopeQuery,
+        limit: ProtocolCount,
+    ): ReplayLookup {
+        val replay = replays[key] ?: return ReplayLookup.Missing
+        when (val admitted = matchingQuery(query, replay.query, limit, replay.limit)) {
+            is Refinement.Rejected -> return ReplayLookup.Rejected(admitted.failure)
+            is Refinement.Refined -> Unit
+        }
+        val next = replay.page.next
+        if (next !is DiagnosticNextPage.Continue || next.token in checkpoints) return ReplayLookup.Retained(replay.page)
+        return when (key.origin) {
+            is DiagnosticReplayOrigin.Resume -> ReplayLookup.Rejected(DiagnosticCheckRejection.CONTINUATION_UNAVAILABLE)
+            is DiagnosticReplayOrigin.First -> {
+                // An orphaned replay cannot block a new tokenless read or revive an evicted continuation.
+                replays.remove(key)
+                ReplayLookup.Missing
+            }
+        }
     }
 
     private fun makeCapacity(extraEntries: Int, extraBytes: Long) {

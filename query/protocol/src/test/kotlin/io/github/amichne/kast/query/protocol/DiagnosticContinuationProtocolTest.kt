@@ -14,6 +14,7 @@ import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.RequestedExecutionBudget
 import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
@@ -91,20 +92,49 @@ class DiagnosticContinuationProtocolTest {
     @Test
     fun `fresh start replaces orphaned first replay without reviving evicted continuation`() = runTest {
         var scans = 0
-        val protocol = protocol(DiagnosticCheckpointStore(capacity = 3)) {
-            scans++
-            DiagnosticScanResult.Advancing(emptyPage, checkpoint, DiagnosticScanStop.AnalysisPending)
-        }
+        val protocol =
+            protocol(DiagnosticCheckpointStore(capacity = 3)) {
+                scans++
+                DiagnosticScanResult.Advancing(emptyPage, checkpoint, DiagnosticScanStop.AnalysisPending)
+            }
         val first = protocol.execute(request, lease, budget) as OperationOutcome.Qualified
         val old = request.copy(continuation = first.qualification.continuation)
         protocol.execute(request.copy(limit = ProtocolCount.parse(2).refined()), lease, budget)
-        assertEquals(OperationOutcome.Rejected(DiagnosticCheckRejection.CONTINUATION_UNAVAILABLE), protocol.execute(old, lease, budget))
+        assertEquals(
+            OperationOutcome.Rejected(DiagnosticCheckRejection.CONTINUATION_UNAVAILABLE),
+            protocol.execute(old, lease, budget),
+        )
         val fresh = protocol.execute(request, lease, budget)
         assertInstanceOf(OperationOutcome.Qualified::class.java, fresh)
         assertEquals(3, scans)
         assertEquals(fresh, protocol.execute(request, lease, budget))
-        assertEquals(OperationOutcome.Rejected(DiagnosticCheckRejection.CONTINUATION_UNAVAILABLE), protocol.execute(old, lease, budget))
+        assertEquals(
+            OperationOutcome.Rejected(DiagnosticCheckRejection.CONTINUATION_UNAVAILABLE),
+            protocol.execute(old, lease, budget),
+        )
         assertEquals(3, scans)
+    }
+
+    @Test
+    fun `pending fresh publication cannot reuse a concurrently orphaned replay`() {
+        val store = DiagnosticCheckpointStore(capacity = 3)
+        val grant = RequestedExecutionBudget()
+        val pending = store.admit(query, null, request.limit, grant) as DiagnosticCheckpointAdmission.Execute
+        val concurrent = store.admit(query, null, request.limit, grant) as DiagnosticCheckpointAdmission.Execute
+        val result = DiagnosticScanResult.Advancing(emptyPage, checkpoint, DiagnosticScanStop.AnalysisPending)
+        val old = store.publish(concurrent, result).refined().next as DiagnosticNextPage.Continue
+        val other =
+            store.admit(query, null, ProtocolCount.parse(2).refined(), grant) as DiagnosticCheckpointAdmission.Execute
+        store.publish(other, result).refined()
+        val fresh = store.publish(pending, result).refined().next as DiagnosticNextPage.Continue
+        assertInstanceOf(
+            DiagnosticCheckpointAdmission.Execute::class.java,
+            store.admit(query, fresh.token, request.limit, grant),
+        )
+        assertEquals(
+            DiagnosticCheckpointAdmission.Rejected(DiagnosticCheckRejection.CONTINUATION_UNAVAILABLE),
+            store.admit(query, old.token, request.limit, grant),
+        )
     }
 
     @Test
