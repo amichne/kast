@@ -625,3 +625,9 @@ Relation pages retain canonical order within each page. Cross-grant drains
 preserve the full occurrence multiset; changing page boundaries does not promise
 global fingerprint order. A resumable budget stop retains unmeasured work evidence
 until the final complete drain; it never becomes an invented zero omitted count.
+
+Relation observations distinguish confirmed, different and unavailable K2 target
+decisions, and found versus unavailable lexical call owners. These finite counts
+contain no symbol names, source payloads or live handles. A deferred call owner
+is also recorded as `RELATION_CALL_OWNER_UNSUPPORTED`; the returned omission
+retains a bounded source occurrence independently of the diagnostic counter.

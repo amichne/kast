@@ -27,6 +27,7 @@ import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.workspace.intellij.read.IntellijGeneratedSourceState
 import io.github.amichne.kast.workspace.intellij.read.IntellijProjectFileClassification
 import io.github.amichne.kast.workspace.intellij.read.IntellijProjectFileIndexClassifier
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
 import org.jetbrains.kotlin.idea.references.KtReference
@@ -121,7 +122,7 @@ internal class IntellijK2RelationSearch(
                         if (!collector.dismissProviderItem()) return termination(ProviderTermination.HALTED)
                         continue
                     }
-                    when (projection.confirmJavaTarget(reference, request.subject)) {
+                    when (projection.confirmJavaTarget(reference, request.subject).observedBy(observation)) {
                         IntellijK2TargetConfirmation.EXACT_SUBJECT -> {
                             val related = reference.element.relatedOwner()
                             val continued =
@@ -155,7 +156,7 @@ internal class IntellijK2RelationSearch(
                         }
                         is IntellijRelationReferenceAdmission.Admitted -> admission
                     }
-                when (projection.confirmTarget(admitted)) {
+                when (projection.confirmTarget(admitted).observedBy(observation)) {
                     IntellijK2TargetConfirmation.DIFFERENT_SYMBOL -> {
                         val continued =
                             when (admitted) {
@@ -346,7 +347,8 @@ internal class IntellijK2RelationSearch(
                         }
                     is CalleeProviderItem.Reference ->
                         when (val resolved = projection.resolve(candidate.reference)) {
-                            IntellijK2ResolvedDeclaration.Unresolved ->
+                            IntellijK2ResolvedDeclaration.Unresolved -> {
+                                observation.count(IntellijReadCounter.RELATION_K2_UNAVAILABLE_TARGETS)
                                 if (
                                     !incompleteItem(
                                         RelationLimitation.UNRESOLVED_TARGET,
@@ -356,7 +358,9 @@ internal class IntellijK2RelationSearch(
                                 ) {
                                     return termination(ProviderTermination.HALTED)
                                 }
+                            }
                             is IntellijK2ResolvedDeclaration.Found -> {
+                                observation.count(IntellijReadCounter.RELATION_K2_CONFIRMED_TARGETS)
                                 val file = resolved.declaration.containingFile?.virtualFile
                                 if (
                                     file != null &&

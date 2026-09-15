@@ -122,12 +122,13 @@ private fun PsiElement.lexicalDeclaration(): ContainingDeclaration {
 }
 
 /** A deferred body qualifies its lexical owner but cannot authorize an edge from that owner. */
-internal fun ContainingDeclaration.Deferred.enclosingDeclaration(): ContainingDeclaration =
-    when (val outer = boundary.parent.nearestDeclaration()) {
-        is ContainingDeclaration.Deferred -> outer.enclosingDeclaration()
-        is ContainingDeclaration.Found -> outer
-        ContainingDeclaration.Unsupported -> outer
+internal fun ContainingDeclaration.Deferred.enclosingDeclaration(): ContainingDeclaration {
+    var current: ContainingDeclaration = this
+    while (current is ContainingDeclaration.Deferred) {
+        current = current.boundary.parent.nearestDeclaration()
     }
+    return current
+}
 
 internal fun PsiElement.nearestSupportedCallable(
     projection: IntellijK2RelationProjection,
