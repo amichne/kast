@@ -85,7 +85,7 @@ class InstalledBrokerServerTest {
 
         assertEquals(
             BrokerServerRun.Rejected(BrokerServerFailure.STATE_DIRECTORY_REJECTED),
-            InstalledBrokerServerRunner(kast, user, emptyMap()).serve(),
+            InstalledBrokerServerRunner(kast, user, mapOf("KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private")).serve(),
         )
     }
 
@@ -158,7 +158,7 @@ class InstalledBrokerServerTest {
     }
 
     @Test
-    fun `installed clients use the version owned socket namespace`(@TempDir temporary: Path) {
+    fun `installed clients use canonical discovery with a private upstream`(@TempDir temporary: Path) {
         val home = Path.of("/private/tmp/kast-host-" + UUID.randomUUID().toString().take(8))
         Files.createDirectory(home)
         try {
@@ -170,7 +170,7 @@ class InstalledBrokerServerTest {
                 (InstalledBrokerServerConfiguration.admit(kast, user, environment)
                         as InstalledBrokerServerConfiguration.Configured)
                     .options
-            assertEquals(user.resolve("state/run/c.sock"), options.publicSocket.physicalPath)
+            assertEquals(home.resolve("app-server-control/app-server-control.sock"), options.publicSocket.physicalPath)
             assertEquals(user.resolve("state/run/u.sock"), options.upstreamOptions.privateSocket.physicalPath)
         } finally {
             retireOwnedTree(home)

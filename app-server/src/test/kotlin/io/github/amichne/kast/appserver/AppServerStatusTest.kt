@@ -23,11 +23,12 @@ class AppServerStatusTest {
                     BrokerStartupActivityPublication.PUBLISHED
                 }
                 val command =
-                    (BrokerServiceLaunchCommand.resolveCoordinator(kast, root, emptyMap())
+                    (BrokerServiceLaunchCommand.resolveCoordinator(kast, root, mapOf("KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private"))
                             as BrokerServiceLaunchCommandResolution.Resolved)
                         .command
                 val environment =
                     mapOf(
+                        "KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private",
                         "BROKER_SERVICE_IDENTITY" to command.identity.value,
                         "BROKER_READINESS_FILE" to command.readinessFile.toString(),
                     )
@@ -41,7 +42,7 @@ class AppServerStatusTest {
                 val running = (InstalledCoordinator.start(options) as InstalledCoordinatorStart.Started).coordinator
                 try {
                     val result =
-                        InstalledAppServerManager(kast, root, emptyMap()).execute(AppServerAction.Status, workspace)
+                        InstalledAppServerManager(kast, root, mapOf("KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private")).execute(AppServerAction.Status, workspace)
                     assertTrue(result is AppServerManagementResult.Completed, result.toString())
                     val document = (result as AppServerManagementResult.Completed).document
                     assertEquals(
@@ -58,6 +59,11 @@ class AppServerStatusTest {
                         "pending",
                         document.getValue("host").jsonObject.getValue("attachment").jsonPrimitive.content,
                     )
+                    val endpoint = document.getValue("publicEndpoint").jsonObject
+                    assertEquals("private", endpoint.getValue("kind").jsonPrimitive.content)
+                    assertEquals(command.publicSocket.toString(), endpoint.getValue("path").jsonPrimitive.content)
+                    assertEquals("kast", endpoint.getValue("ownership").jsonPrimitive.content)
+                    assertEquals("unobserved", document.getValue("upstream").jsonObject.getValue("state").jsonPrimitive.content)
                     val paths = document.getValue("paths").jsonObject
                     assertEquals(command.serviceLog.toString(), paths.getValue("serviceLog").jsonPrimitive.content)
                     assertEquals(
@@ -84,7 +90,7 @@ class AppServerStatusTest {
     @Test
     fun `passive status reports absent service and empty registry without creating state`() =
         withPayload { root, kast ->
-            val result = InstalledAppServerManager(kast, root, emptyMap()).execute(AppServerAction.Status, root)
+            val result = InstalledAppServerManager(kast, root, mapOf("KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private")).execute(AppServerAction.Status, root)
             assertTrue(result is AppServerManagementResult.Completed, result.toString())
             val document = (result as AppServerManagementResult.Completed).document
             assertEquals(
@@ -114,7 +120,8 @@ class AppServerStatusTest {
                 val launch =
                     environment +
                         mapOf(
-                            "BROKER_SERVICE_IDENTITY" to command.identity.value,
+                            "KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private",
+                        "BROKER_SERVICE_IDENTITY" to command.identity.value,
                             "BROKER_READINESS_FILE" to command.readinessFile.toString(),
                         )
                 val options = (InstalledCoordinatorConfiguration.admit(kast, root, launch) as Refinement.Refined).value
