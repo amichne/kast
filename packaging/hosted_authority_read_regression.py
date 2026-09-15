@@ -9,7 +9,7 @@ import subprocess
 from released_acceptance_product import product_executable
 
 from hosted_change_acceptance import admitted_live, AcceptanceRejected
-from hosted_read_transport import ReadTransportRejected
+from hosted_read_transport import ReadTransportRejected, ReadTransportFailure, ReadProviderFailure
 from hosted_source_read_regression import SourceBudgetAnchorSearch, SourceFunctionRequest, SymbolAnchor
 from native_fixture_probe import NativeFixtureProbe, NativeFixtureProbeError
 
@@ -40,6 +40,128 @@ class AuthorityRefusal(str, Enum):
     UNAVAILABLE_CONTINUATION = 'continuation-unavailable'
     UNEXPECTED = 'unexpected-refusal'
     FOREIGN = 'ide-host-unavailable'
+
+
+class InspectionStage(str, Enum):
+    REVALIDATE = 'revalidate_exact'
+    STRICT = 'exact'
+
+
+class InspectionOutcome(str, Enum):
+    ACCEPTED = 'accepted'
+    WIRE_REJECTED = 'wire-rejected'
+    UNKNOWN_REFUSAL = 'unknown-refusal'
+    CONTRACT_REJECTED = 'contract-rejected'
+    TRANSPORT_REJECTED = 'transport-rejected'
+
+
+class InspectionMismatch(str, Enum):
+    DOCUMENT = 'document'
+    OPERATION = 'operation'
+    STATUS = 'status'
+    ACQUISITION = 'acquisition'
+    LIVE_BASIS = 'live-basis'
+    SELECTOR = 'selector'
+    SYMBOL = 'symbol'
+
+
+class InspectionRefusal(str, Enum):
+    """Exact SymbolInspectRejectionWireDocument spellings, including underscores."""
+    WORKSPACE_NOT_READY = 'workspace_not_ready'
+    SELECTOR_WRONG_KIND = 'selector_wrong_kind'
+    SELECTOR_MALFORMED = 'selector_malformed'
+    SELECTOR_WORKSPACE_MISMATCH = 'selector_workspace_mismatch'
+    CANDIDATE_STALE = 'candidate_stale'
+    CANDIDATE_NOT_DECLARATION = 'candidate_not_declaration'
+    EXACT_SELECTOR_STALE = 'exact_selector_stale'
+    AMBIGUOUS = 'ambiguous'
+    NOT_FOUND = 'not_found'
+    REVALIDATION_UNRETAINED = 'revalidation_unretained'
+    REVALIDATION_EXPIRED = 'revalidation_expired'
+    REVALIDATION_CAPACITY = 'revalidation_capacity'
+    REVALIDATION_RETIRED = 'revalidation_retired'
+    REVALIDATION_CAPTURE_UNAVAILABLE = 'revalidation_capture_unavailable'
+    REVALIDATION_WORKSPACE_MISMATCH = 'revalidation_workspace_mismatch'
+    REVALIDATION_OWNER_MISMATCH = 'revalidation_owner_mismatch'
+    REVALIDATION_WORKSPACE_NOT_READY = 'revalidation_workspace_not_ready'
+    REVALIDATION_BASIS_MOVED = 'revalidation_basis_moved'
+    REVALIDATION_CONTENT_CHANGED = 'revalidation_content_changed'
+    REVALIDATION_CONTENT_UNCOMMITTED = 'revalidation_content_uncommitted'
+    REVALIDATION_SCOPE_REJECTED = 'revalidation_scope_rejected'
+    REVALIDATION_DECLARATION_MISSING = 'revalidation_declaration_missing'
+    REVALIDATION_UNSUPPORTED_DECLARATION = 'revalidation_unsupported_declaration'
+    REVALIDATION_AMBIGUOUS = 'revalidation_ambiguous'
+    REVALIDATION_COMPILER_IDENTITY_CHANGED = 'revalidation_compiler_identity_changed'
+    REVALIDATION_COMPILER_UNAVAILABLE = 'revalidation_compiler_unavailable'
+
+
+@dataclass(frozen=True)
+class InspectionAccepted:
+    stage: InspectionStage
+    outcome: InspectionOutcome = field(default=InspectionOutcome.ACCEPTED, init=False)
+
+
+@dataclass(frozen=True)
+class InspectionWireRejected:
+    stage: InspectionStage
+    refusal: InspectionRefusal
+    outcome: InspectionOutcome = field(default=InspectionOutcome.WIRE_REJECTED, init=False)
+
+
+@dataclass(frozen=True)
+class InspectionUnknownRefusal:
+    stage: InspectionStage
+    outcome: InspectionOutcome = field(default=InspectionOutcome.UNKNOWN_REFUSAL, init=False)
+
+
+@dataclass(frozen=True)
+class InspectionContractRejected:
+    stage: InspectionStage
+    mismatch: InspectionMismatch
+    outcome: InspectionOutcome = field(default=InspectionOutcome.CONTRACT_REJECTED, init=False)
+
+
+@dataclass(frozen=True)
+class InspectionTransportRejected:
+    stage: InspectionStage
+    refusal: ReadTransportFailure
+    providerFailure: ReadProviderFailure | None
+    outcome: InspectionOutcome = field(default=InspectionOutcome.TRANSPORT_REJECTED, init=False)
+
+
+InspectionObservation = (InspectionAccepted | InspectionWireRejected | InspectionUnknownRefusal
+    | InspectionContractRejected | InspectionTransportRejected)
+
+
+def _inspect_observation(stage, response, current, old, expected_symbol):
+    if not isinstance(response, dict):
+        return InspectionContractRejected(stage, InspectionMismatch.DOCUMENT)
+    if response.get('operation') != 'symbol.inspect':
+        return InspectionContractRejected(stage, InspectionMismatch.OPERATION)
+    if response.get('status') == 'rejected':
+        try:
+            return InspectionWireRejected(stage, InspectionRefusal(response.get('reason')))
+        except (ValueError, TypeError):
+            return InspectionUnknownRefusal(stage)
+    if response.get('status') != 'complete':
+        return InspectionContractRejected(stage, InspectionMismatch.STATUS)
+    acquisition = 'reacquired' if stage is InspectionStage.REVALIDATE else 'strict'
+    if response.get('acquisition') != acquisition:
+        return InspectionContractRejected(stage, InspectionMismatch.ACQUISITION)
+    if response.get('live') != current:
+        return InspectionContractRejected(stage, InspectionMismatch.LIVE_BASIS)
+    symbol = response.get('symbol')
+    if not isinstance(symbol, dict):
+        return InspectionContractRejected(stage, InspectionMismatch.SYMBOL)
+    if stage is InspectionStage.REVALIDATE:
+        selector = symbol.get('selector')
+        if not isinstance(selector, str) or not selector or selector == old:
+            return InspectionContractRejected(stage, InspectionMismatch.SELECTOR)
+        if symbol.get('name') != 'ReadPageBudget':
+            return InspectionContractRejected(stage, InspectionMismatch.SYMBOL)
+    elif symbol != expected_symbol:
+        return InspectionContractRejected(stage, InspectionMismatch.SYMBOL)
+    return InspectionAccepted(stage)
 
 
 class AuthorityRejected(ValueError):
@@ -92,6 +214,7 @@ class AuthorityCase:
     reason: AuthorityRefusal | None = None
     passed: bool = True
     observedReason: AuthorityRefusal | None = None
+    inspection: InspectionObservation | None = None
 
 
 @dataclass(frozen=True)
@@ -164,18 +287,27 @@ class _AuthorityReplay:
         self.record(name, surface, digest)
         return token
 
+    def inspect(self, stage, surface, selector, current, expected_symbol=None):
+        name = (AuthorityCaseName.REVALIDATED if stage is InspectionStage.REVALIDATE
+                else AuthorityCaseName.NEW_STRICT)
+        request = InspectExactRequest(InspectExactTarget(selector, stage.value))
+        try:
+            response, digest = self.call(surface, 'symbol_inspect', request)
+        except ReadTransportRejected as error:
+            observation = InspectionTransportRejected(stage, error.reason, error.provider_failure)
+            self.cases.append(AuthorityCase(name, surface, None, False, passed=False,
+                inspection=observation))
+            raise
+        observation = _inspect_observation(stage, response, current, selector, expected_symbol)
+        passed = isinstance(observation, InspectionAccepted)
+        self.cases.append(AuthorityCase(name, surface, digest, surface is AuthoritySurface.PROVIDER,
+            passed=passed, inspection=observation))
+        _demand(passed, AuthorityFailure.REVALIDATION)
+        return response['symbol']
+
     def revalidate(self, surface, old, current):
-        response, digest = self.call(surface, 'symbol_inspect', InspectExactRequest(InspectExactTarget(old)))
-        symbol = response.get('symbol', {})
-        selector = symbol.get('selector')
-        _demand(response.get('status') == 'complete' and response.get('acquisition') == 'reacquired'
-            and response.get('live') == current and isinstance(selector, str) and selector != old
-            and symbol.get('name') == 'ReadPageBudget', AuthorityFailure.REVALIDATION)
-        self.record(AuthorityCaseName.REVALIDATED, surface, digest)
-        strict, digest = self.call(surface, 'symbol_inspect', InspectExactRequest(InspectExactTarget(selector, 'exact')))
-        _demand(strict.get('status') == 'complete' and strict.get('acquisition') == 'strict'
-            and strict.get('live') == current and strict.get('symbol') == symbol, AuthorityFailure.REVALIDATION)
-        self.record(AuthorityCaseName.NEW_STRICT, surface, digest)
+        symbol = self.inspect(InspectionStage.REVALIDATE, surface, old, current)
+        self.inspect(InspectionStage.STRICT, surface, symbol['selector'], current, symbol)
 
     def reject(self, name, surface, request, reason):
         response, digest = self.call(surface, 'source_read', request)
