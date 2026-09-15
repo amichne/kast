@@ -127,15 +127,15 @@ class RecoveryTest(unittest.TestCase):
         with patch.object(Path, 'rename', fail_after_backup):
             with self.assertRaises(OSError):
                 module.activate_plugin(self.root, staged, plugins)
-        self.assertEqual(1, len(list(plugins.glob('.kast-ide-hosted.baseline-*'))))
+        self.assertEqual(1, len(list((plugins.parent / '.kast-plugin-recovery').glob('.kast-ide-hosted.baseline-*'))))
         module.activate_plugin(self.root, staged, plugins)
         self.assertEqual('new plugin', (plugins / 'kast-ide-hosted/new').read_text())
-        self.assertEqual('working baseline', next(plugins.glob('.kast-ide-hosted.baseline-*/old')).read_text())
+        self.assertEqual('working baseline', next((plugins.parent / '.kast-plugin-recovery').glob('.kast-ide-hosted.baseline-*/old')).read_text())
         code, report = self.run_recovery('detach')
         self.assertNotEqual(0, code)
         self.assertIn('IDE_RESTART_REQUIRED', report['unresolved'])
         self.assertFalse((plugins / 'kast-ide-hosted').exists())
-        self.assertEqual('working baseline', next(plugins.glob('.kast-ide-hosted.baseline-*/old')).read_text())
+        self.assertEqual('working baseline', next((plugins.parent / '.kast-plugin-recovery').glob('.kast-ide-hosted.baseline-*/old')).read_text())
 
     def recovery_module(self):
         spec = importlib.util.spec_from_file_location('recovery_retention_test', SCRIPT)
@@ -175,7 +175,8 @@ class RecoveryTest(unittest.TestCase):
         receipt = module.load(bundle / 'receipt.json')
         retained = plugins.parent / '.kast-plugin-recovery'
         self.assertEqual([plugins / 'kast-ide-hosted'], list(plugins.iterdir()))
-        self.assertEqual(retained, Path(receipt.plugin.backup).parent)
+        self.assertEqual([retained] * 3, [Path(raw).parent for raw in
+                         (receipt.plugin.candidate, receipt.plugin.backup, receipt.plugin.quarantine)])
         self.assertEqual(before, module.Identity.observe(Path(receipt.plugin.backup)))
         self.assertEqual(b'prior active plugin', (Path(receipt.plugin.backup) / 'bytes').read_bytes())
         self.assertEqual(retained.stat().st_dev, plugins.stat().st_dev)
@@ -240,6 +241,36 @@ class RecoveryTest(unittest.TestCase):
             module.activate_plugin(self.root, staged, plugins)
         self.assertEqual(module.Failure.OWNERSHIP, rejected.exception.failure)
         self.assertEqual(b'foreign replacement', (backup / 'bytes').read_bytes())
+
+    def test_mixed_or_unrelated_plugin_layout_is_a_finite_receipt_failure(self):
+        module = self.recovery_module()
+        plugins, _ = self.plugin_fixture(module, legacy=True)
+        bundle = self.outer / 'recovery' / self.root.name
+        receipt = module.load(bundle / 'receipt.json')
+        foreign = self.home / 'foreign'
+        foreign.mkdir()
+        for backup in (foreign / Path(receipt.plugin.backup).name,
+                       plugins.parent / '.kast-plugin-recovery' / Path(receipt.plugin.backup).name,
+                       plugins / ('.kast-ide-hosted.baseline-' + 'b' * 32)):
+            with self.subTest(backup=backup):
+                malformed = module.replace(receipt, plugin=module.replace(receipt.plugin, backup=str(backup)))
+                module.save(bundle / 'receipt.json', malformed)
+                code, report = self.run_recovery('detach')
+                self.assertEqual('RecoveryBlocked', report['status'])
+                self.assertEqual(['RECEIPT_REJECTED'], report['unresolved'])
+                self.assertFalse((self.root / '.recovery-detached').exists())
+                self.assertEqual(b'prior active plugin', (plugins / 'kast-ide-hosted/bytes').read_bytes())
+
+    def test_legacy_detach_relocates_backup_and_quarantine_outside_discovery(self):
+        module = self.recovery_module()
+        plugins, _ = self.plugin_fixture(module, legacy=True)
+        code, report = self.run_recovery('detach')
+        self.assertEqual('DetachedWithUnresolvedState', report['status'])
+        self.assertEqual([], list(plugins.iterdir()))
+        receipt = module.load(self.outer / 'recovery' / self.root.name / 'receipt.json')
+        self.assertEqual(b'older retained plugin', (Path(receipt.plugin.backup) / 'bytes').read_bytes())
+        self.assertEqual(b'prior active plugin', (Path(receipt.plugin.quarantine) / 'bytes').read_bytes())
+        self.assertEqual((code, report), self.run_recovery('detach'))
 
     def test_unknown_receipt_fields_fail_closed(self):
         self.prepare()
