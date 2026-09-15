@@ -3,6 +3,7 @@
 from dataclasses import asdict, dataclass
 from types import SimpleNamespace
 import unittest
+from hosted_read_transport import ReadTransportRejected
 
 from hosted_diagnostic_pages_regression import (
     DiagnosticDrainFailure, DiagnosticDrainRejected, DiagnosticDrained,
@@ -132,6 +133,23 @@ class DiagnosticPagesTest(unittest.TestCase):
         self.assertTrue(all(checks.values()), checks)
         self.assertIn('timeOneObserved_execution-time-grant-too-small', checks)
         self.assertIn('bytes2048Observed_output-grant-too-small', checks)
+
+    def test_low_axis_transport_failure_is_recorded_without_claiming_budget_proof(self):
+        first = document(Page(progress=Progress(stop='enumeration_work_limit')))
+        pending = iter((first, document(Page(status='rejected')), 
+            document(Page(Progress('finished', 'finished', Exhausted(1), ('A.kt',)), None, status='complete'))))
+        def invoke(*_):
+            try:
+                return next(pending)
+            except StopIteration:
+                raise ReadTransportRejected('READ_CLI_TOOL_REJECTED') from None
+        replay = SimpleNamespace(live='fixture-authority', surface='cli',
+            transport=SimpleNamespace(invoke=invoke, validate=lambda *_: None))
+        checks = independent_budget_checks(replay)
+        self.assertFalse(checks['timeOneReported'])
+        self.assertFalse(checks['bytes2048Reported'])
+        self.assertTrue(checks['timeOneTransportObserved_READ_CLI_TOOL_REJECTED'])
+        self.assertTrue(checks['bytes2048TransportObserved_READ_CLI_TOOL_REJECTED'])
 
     def test_enumeration_then_exact_complete_coverage(self):
         last = Page(Progress('finished', 'finished', Exhausted(), ('A.kt', 'B.kt', 'C.kt')), None, status='complete')
