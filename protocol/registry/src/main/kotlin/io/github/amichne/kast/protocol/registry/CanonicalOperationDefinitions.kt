@@ -227,7 +227,7 @@ object CanonicalOperationDefinitions {
             OperationScope.PROJECT,
             CompletenessPolicy.QUALIFIED_ALLOWED,
             HostedExposure.PUBLIC,
-            schema = schema("kast.diagnostic.check.v3"),
+            schema = schema("kast.diagnostic.check.v4"),
         )
 
     val changePlan =

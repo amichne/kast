@@ -51,12 +51,12 @@ class CanonicalOperationDefinitionsTest {
             val version =
                 when (definition.operation) {
                     CanonicalOperation.SOURCE_READ -> 5
-                    CanonicalOperation.SYMBOL_INSPECT -> 4
+                    CanonicalOperation.SYMBOL_INSPECT,
+                    CanonicalOperation.DIAGNOSTIC_CHECK -> 4
                     CanonicalOperation.QUERY_RUN -> 2
                     CanonicalOperation.SYMBOL_DISCOVER,
                     CanonicalOperation.RELATION_READ,
                     CanonicalOperation.TRAVERSAL_RUN,
-                    CanonicalOperation.DIAGNOSTIC_CHECK,
                     CanonicalOperation.CHANGE_APPLY -> 3
                     else -> 2
                 }
