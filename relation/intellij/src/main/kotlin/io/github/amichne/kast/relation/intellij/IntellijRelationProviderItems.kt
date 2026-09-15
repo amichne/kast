@@ -87,6 +87,8 @@ internal fun PsiElement.nearestDeclaration(): ContainingDeclaration =
     generateSequence(this as PsiElement?) { it.parent }
         .filterIsInstance<PsiNamedElement>()
         .filter { it is KtNamedDeclaration || it is com.intellij.psi.PsiMember }
+        // A local initializer executes in its enclosing callable; the variable is not a caller.
+        .filterNot { it is org.jetbrains.kotlin.psi.KtProperty && it.isLocal }
         .firstOrNull()
         ?.let(ContainingDeclaration::Found) ?: ContainingDeclaration.Unsupported
 
