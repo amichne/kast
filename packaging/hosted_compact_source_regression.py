@@ -33,7 +33,8 @@ def _rows(entities, table):
         target_fact = None
         if target is not None:
             token = table[target['selection']]['selector'] if 'selection' in target else target.get('selector')
-            target_fact = (target['type'], token, target.get('reason'))
+            target_type = 'candidate' if item['type'] == 'declaration' else target['type']
+            target_fact = (target_type, token, target.get('reason'))
         parent = table[item['parent']]['selector'] if table is not None else item['parentSelector']
         result.append((item['type'], item.get('name'), item.get('kind', '').lower(),
             item.get('visibility', '').lower(), item['nestingDepth'], parent,
@@ -53,22 +54,28 @@ def run_compact_source_regression(replay):
     sections = compact.get('content', [])
     shape = len(sections) == 2 and [section.get('type') for section in sections] == ['source', 'structure']
     checks = {'selectedCompactSections': shape, 'completeBoth': expanded.get('status') == compact.get('status') == 'complete'}
-    if shape and checks['completeBoth']:
-        text, structure = sections[0]['text'], sections[1]
-        table = structure['selections']
-        checks.update(
-            unchangedText=text.get('type') == 'returned' and text.get('text') == expanded['text'].get('text'),
-            textCoordinates=_selection(text['selection'], table) == _selection(expanded['text']['selection'], None),
-            lineCoordinates=text['lines'] == expanded['text']['lines'],
-            sameSnapshot=structure['snapshot'] == expanded['snapshot'],
-            sameRegion=_selection(structure['region']['selection'], table) == _selection(expanded['region']['selection'], None),
-            orderedEntities=_rows(structure['entities'], table) == _rows(expanded['entities'], None),
-            selfContainedTable=bool(table) and len({entry['selector'] for entry in table}) == len(table),
-        )
-        restored = replay.transport.invoke(replay.surface, 'source_read',
-            asdict(replace(request, anchor=SourceAnchor(table[0]['selector']))))
-        checks['canonicalSourceSelectorRestores'] = (restored.get('status') == 'complete'
-            and restored.get('content', [{}])[0].get('text', {}).get('text') == text['text'])
-        # Measures CLI documents only; transport/provider envelope budgets are separate owners.
-        checks['compactDocumentSmaller'] = len(json.dumps(compact, ensure_ascii=False).encode()) < len(json.dumps(expanded, ensure_ascii=False).encode())
+    stage = 'compactShape'
+    try:
+        if shape and checks['completeBoth']:
+            text, structure = sections[0]['text'], sections[1]
+            table = structure['selections']
+            stage = 'losslessProjection'
+            checks.update(
+                unchangedText=text.get('type') == 'returned' and text.get('text') == expanded['text'].get('text'),
+                textCoordinates=_selection(text['selection'], table) == _selection(expanded['text']['selection'], None),
+                lineCoordinates=text['lines'] == expanded['text']['lines'],
+                sameSnapshot=structure['snapshot'] == expanded['snapshot'],
+                sameRegion=_selection(structure['region']['selection'], table) == _selection(expanded['region']['selection'], None),
+                orderedEntities=_rows(structure['entities'], table) == _rows(expanded['entities'], None),
+                selfContainedTable=bool(table) and len({entry['selector'] for entry in table}) == len(table),
+            )
+            stage = 'sourceSelectorRestore'
+            restored = replay.transport.invoke(replay.surface, 'source_read',
+                asdict(replace(request, anchor=SourceAnchor(table[0]['selector']))))
+            checks['canonicalSourceSelectorRestores'] = (restored.get('status') == 'complete'
+                and restored.get('content', [{}])[0].get('text', {}).get('text') == text['text'])
+            # Measures CLI documents only; transport/provider envelope budgets are separate owners.
+            checks['compactDocumentSmaller'] = len(json.dumps(compact, ensure_ascii=False).encode()) < len(json.dumps(expanded, ensure_ascii=False).encode())
+    except (KeyError, TypeError, IndexError):
+        checks[stage + 'Admitted'] = False
     replay.record('compact-source-lossless-installed', 'source_read', checks)

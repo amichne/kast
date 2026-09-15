@@ -459,7 +459,7 @@ val hostedReadRegressionTest = tasks.register<Exec>("hostedReadRegressionTest") 
         "packaging/hosted_wire_schema.py", "packaging/test-hosted-wire-schema.py",
         "packaging/hosted_authority_read_regression.py", "packaging/test-hosted-authority-read.py",
         "packaging/hosted_budget_read_regression.py", "packaging/test-hosted-budget-read-regression.py",
-        "packaging/hosted_compact_source_regression.py",
+        "packaging/hosted_compact_source_regression.py", "packaging/test-hosted-compact-source-regression.py",
         "packaging/hosted_vfs_overflow_regression.py", "packaging/test-hosted-vfs-overflow-regression.py",
         "packaging/hosted_repair_budget_regression.py", "packaging/test-hosted-repair-budget-regression.py",
         "packaging/hosted_kotlin_call_regression.py", "packaging/test-hosted-kotlin-call-regression.py",
