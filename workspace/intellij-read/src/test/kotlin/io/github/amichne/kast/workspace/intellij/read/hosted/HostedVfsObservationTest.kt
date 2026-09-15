@@ -107,6 +107,24 @@ class HostedVfsObservationTest {
         assertTrue(published.isEmpty())
     }
 
+    @Test
+    fun `oversized receipt records unknown relevance without claiming rejection or root classification`() {
+        val limits = (ReadLimits.resolve(mapOf("KAST_READ_EPOCH_VFS_EVENTS" to "1")) as Refinement.Refined).value
+        val host = IdeReadHostLifetime.fromBoundary(UUID.randomUUID())
+        val published = mutableListOf<String>()
+        val events = object : AbstractList<HostedVfsEventBoundary>() {
+            override val size: Int = 2
+            override fun get(index: Int): HostedVfsEventBoundary = error("Overflow must not inspect events")
+        }
+        publishHostedVfsEvidence(host, observeHostedVfsBatch(root, events, limits), published::add)
+        val document = JsonParser.parseString(published.single()).asJsonObject
+        assertEquals("relevance_unknown", document["outcome"].asString)
+        assertEquals("BATCH_LIMIT", document["reason"].asString)
+        assertEquals(setOf("outcome", "host", "reason", "event"), document.keySet())
+        assertEquals("kast_hosted_vfs", document["event"].asString)
+        assertEquals(host.value.toString(), document["host"].asString)
+    }
+
     private fun event(path: String) =
         HostedVfsEventBoundary(HostedVfsEventKind.CONTENT, HostedVfsEventOrigin.REFRESH, listOf(path))
 }
