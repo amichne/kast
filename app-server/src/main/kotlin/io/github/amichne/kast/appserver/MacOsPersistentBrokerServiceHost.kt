@@ -54,7 +54,7 @@ internal fun interface BrokerSocketPathObserver {
 
 /** Finite Unix socket-path evidence established without following symbolic links. */
 internal sealed interface BrokerSocketPathObservation {
-    /** The leaf or its immediate parent is absent beneath an admitted canonical directory. */
+    /** The leaf or a parent is absent beneath an admitted canonical directory. */
     data object Absent : BrokerSocketPathObservation
 
     data object Socket : BrokerSocketPathObservation
@@ -103,38 +103,27 @@ internal object JdkBrokerSocketPathObserver : BrokerSocketPathObserver {
         }
     }
 
-    private fun admitParent(parent: Path): BrokerSocketParentAdmission =
-        try {
-            if (parent.toRealPath() == parent && Files.isDirectory(parent, LinkOption.NOFOLLOW_LINKS)) {
-                BrokerSocketParentAdmission.Admitted
-            } else {
-                BrokerSocketParentAdmission.Rejected
+    private fun admitParent(parent: Path): BrokerSocketParentAdmission {
+        var candidate = parent
+        var observation = BrokerSocketParentAdmission.Admitted
+        while (true) {
+            try {
+                return if (
+                    candidate.toRealPath() == candidate && Files.isDirectory(candidate, LinkOption.NOFOLLOW_LINKS)
+                )
+                    observation
+                else BrokerSocketParentAdmission.Rejected
+            } catch (_: NoSuchFileException) {
+                if (Files.isSymbolicLink(candidate)) return BrokerSocketParentAdmission.Rejected
+                candidate = candidate.parent ?: return BrokerSocketParentAdmission.Rejected
+                observation = BrokerSocketParentAdmission.Absent
+            } catch (_: IOException) {
+                return BrokerSocketParentAdmission.Rejected
+            } catch (_: SecurityException) {
+                return BrokerSocketParentAdmission.Rejected
             }
-        } catch (_: NoSuchFileException) {
-            if (Files.isSymbolicLink(parent)) {
-                BrokerSocketParentAdmission.Rejected
-            } else {
-                val existingParent = parent.parent ?: return BrokerSocketParentAdmission.Rejected
-                if (canonicalDirectory(existingParent)) {
-                    BrokerSocketParentAdmission.Absent
-                } else {
-                    BrokerSocketParentAdmission.Rejected
-                }
-            }
-        } catch (_: IOException) {
-            BrokerSocketParentAdmission.Rejected
-        } catch (_: SecurityException) {
-            BrokerSocketParentAdmission.Rejected
         }
-
-    private fun canonicalDirectory(path: Path): Boolean =
-        try {
-            path.toRealPath() == path && Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS)
-        } catch (_: IOException) {
-            false
-        } catch (_: SecurityException) {
-            false
-        }
+    }
 
     private const val UNIX_MODE_ATTRIBUTE = "unix:mode"
     private const val UNIX_FILE_TYPE_MASK = 0xF000
@@ -319,6 +308,15 @@ internal class MacOsPersistentBrokerServiceHost(
     private val startupTimeoutNanos: Long = DEFAULT_STARTUP_TIMEOUT_NANOS,
     private val retirementTimeoutNanos: Long = DEFAULT_RETIREMENT_TIMEOUT_NANOS,
 ) : PersistentBrokerServiceHost {
+    internal fun observeLifecycle(command: BrokerServiceLaunchCommand): BrokerLifecycleObservation =
+        when (observeService(command.serviceLabel)) {
+            BrokerLaunchdServiceObservation.Present -> BrokerLifecycleObservation.ALIVE
+            BrokerLaunchdServiceObservation.Absent -> BrokerLifecycleObservation.ABSENT
+            BrokerLaunchdServiceObservation.Rejected -> BrokerLifecycleObservation.REJECTED
+            BrokerLaunchdServiceObservation.Interrupted -> BrokerLifecycleObservation.INTERRUPTED
+            BrokerLaunchdServiceObservation.TimedOut -> BrokerLifecycleObservation.TIMED_OUT
+        }
+
     override fun ensure(command: BrokerServiceLaunchCommand): PersistentBrokerServiceAdmission {
         when (prepareStateDirectory(command)) {
             BrokerStateDirectoryPreparation.Prepared -> Unit
@@ -665,8 +663,14 @@ internal class MacOsPersistentBrokerServiceHost(
             BrokerLaunchdServiceObservation.TimedOut -> rejected(PersistentBrokerServiceFailure.LAUNCHCTL_TIMED_OUT)
         }
 
-    private fun submitAndAwait(command: BrokerServiceLaunchCommand): PersistentBrokerServiceAdmission =
-        when (submit(command)) {
+    private fun submitAndAwait(command: BrokerServiceLaunchCommand): PersistentBrokerServiceAdmission {
+        if (
+            command.publicEndpoint is BrokerPublicEndpoint.CodexControl &&
+                Files.exists(command.publicSocket, LinkOption.NOFOLLOW_LINKS)
+        ) {
+            return rejected(PersistentBrokerServiceFailure.PUBLIC_SOCKET_OWNED)
+        }
+        return when (submit(command)) {
             BrokerLaunchdServiceSubmission.Submitted,
             BrokerLaunchdServiceSubmission.Raced -> awaitReadiness(command)
             BrokerLaunchdServiceSubmission.Interrupted -> rejected(PersistentBrokerServiceFailure.INTERRUPTED)
@@ -674,6 +678,7 @@ internal class MacOsPersistentBrokerServiceHost(
                 rejected(PersistentBrokerServiceFailure.SERVICE_SUBMISSION_REJECTED)
             BrokerLaunchdServiceSubmission.TimedOut -> rejected(PersistentBrokerServiceFailure.LAUNCHCTL_TIMED_OUT)
         }
+    }
 
     private fun awaitReadiness(command: BrokerServiceLaunchCommand): PersistentBrokerServiceAdmission {
         val deadline = System.nanoTime() + startupTimeoutNanos

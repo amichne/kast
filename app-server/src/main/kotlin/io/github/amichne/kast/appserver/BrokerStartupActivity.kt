@@ -18,6 +18,7 @@ internal enum class BrokerStartupStage {
     THREAD_STORE,
     UPSTREAM,
     PUBLIC_SERVER,
+    NATIVE_PROTOCOL,
     READINESS_PUBLICATION,
 }
 

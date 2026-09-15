@@ -39,7 +39,7 @@ def qualify_released_coordinator(isolation, installed, inventory, fixture):
     codex = isolation.tools['codex']
     environment = dict(fixture.environment)
     environment.update(KAST_REAL_CODEX_EXECUTABLE=str(codex), CODEX_EXECUTABLE=str(codex),
-        KAST_ENABLE_APP_SERVER='1', KAST_APP_SERVER_TOOLS=','.join(inventory.configuredDefaultTools))
+        KAST_ENABLE_APP_SERVER='1', KAST_APP_SERVER_PUBLIC_ENDPOINT='private', KAST_APP_SERVER_TOOLS=','.join(inventory.configuredDefaultTools))
     try:
         version = subprocess.run([str(codex), '--version'], cwd=fixture.workspace, env=environment,
                                  check=True, capture_output=True, text=True, timeout=10).stdout.strip()
@@ -60,5 +60,5 @@ def coordinator_qualified(receipt):
                 ('initialize', 'threadStart', 'parentClosure', 'serviceDisable'))
             and lifecycle.get('beforeAttachment', {}).get('phase') == 'pending'
             and lifecycle.get('afterDetach', {}).get('phase') == 'prepared'
-            and all(lifecycle.get(name, {}).get('privateSocketAndOwnership') == 'VALIDATED'
+            and all(lifecycle.get(name, {}).get('publicSocketAndOwnership') == 'VALIDATED'
                     for name in ('beforeAttachment', 'afterDetach')))

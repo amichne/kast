@@ -119,3 +119,11 @@ The original-release session helper requires the current target's successful
 JVM home/temp options through launcher `JAVA_OPTS`, without filtering stderr or
 relaxing diagnostics. Previous-release sessions retain their historical stderr
 as evidence so an adjacent upgrade can qualify the repaired target.
+
+The source-built Codex host acceptance now selects the canonical control endpoint
+and requires matched ownership, mode 0600, live launchd observation, native protocol
+and catalog readiness, stock daemon version discovery, fresh thread creation and
+owned cleanup. Its schema-2 receipt retains bounded status hashes and distinct
+unqualified Desktop evidence. Original-release acceptance explicitly selects the
+private compatibility policy. These receipts do not prove a model-driven tool
+invocation through the existing IDEA runtime.

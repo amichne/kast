@@ -363,6 +363,7 @@ private fun PersistentBrokerServiceFailure.launchFailure(): CodexClientLaunchFai
         PersistentBrokerServiceFailure.SERVICE_RETIREMENT_REJECTED,
         PersistentBrokerServiceFailure.SERVICE_SUBMISSION_REJECTED,
         PersistentBrokerServiceFailure.READINESS_REJECTED,
+        PersistentBrokerServiceFailure.NATIVE_PROTOCOL_REJECTED,
         PersistentBrokerServiceFailure.PUBLIC_SOCKET_OWNED,
         PersistentBrokerServiceFailure.SOCKET_PROBE_REJECTED,
         PersistentBrokerServiceFailure.LAUNCHCTL_TIMED_OUT,

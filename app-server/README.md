@@ -9,23 +9,35 @@ for observed evidence, remaining client checks, and reproduction commands.
 
 ## Enable and attach
 
-On the inspected macOS desktop build, run from the workspace to enroll:
+Enable persistent integration from the workspace to enroll:
 
 ```sh
+kast app-server enable
 kast app-server status
 kast codex
-# Alternatively:
-kast codex desktop
 ```
 
-`kast codex` performs enablement automatically: it records the canonical current
-workspace, refreshes the login LaunchAgent, starts or safely recovers the broker,
-and establishes the GUI daemon opt-in before launching the client. Explicit
-`kast app-server enable` remains available for service-only setup. It rejects
-known conflicting overrides and unsupported desktop builds.
-Desktop host-specific configuration and interactive behavior still require the
-release gate below. A currently running desktop process must be restarted by its
-user to pick up the login environment.
+Enabled integration selects the canonical public endpoint at
+`$CODEX_HOME/app-server-control/app-server-control.sock`. Public discovery policy
+is part of service identity. The real Codex upstream stays installation-private
+at `state/run/u.sock` (with the existing owned short-path transport when needed).
+`KAST_APP_SERVER_PUBLIC_ENDPOINT=private` explicitly selects installation-local
+`state/run/c.sock` for isolated or diagnostic use. Disabled host integration also
+retains the private coordinator endpoint.
+
+Enablement never replaces an unknown incumbent. A refused connection grants no
+socket deletion authority. The broker acquires its socket lease, binds the
+endpoint, qualifies the catalog and Codex schemas, completes native
+`initialize` / `initialized` through the private upstream, then publishes
+readiness. Startup rejection retires only the socket captured by this process.
+A canonical path exceeding the platform Unix-socket bound rejects; canonical
+client discovery does not follow Kast's private short-path aliases.
+
+`kast codex` enrolls the workspace and ensures the persistent service. It retains
+explicit `--remote` attachment during client qualification. Stock Codex 0.154.0
+daemon discovery passed installed acceptance; interactive tool execution remains
+a separate gate. Its implicit TUI route can fall back to an embedded server after
+attachment failure, so ordinary launch is not yet a qualified fail-closed route.
 
 `kast codex desktop` launches the desktop with a process-local `CODEX_CLI_PATH`
 pointing to the installed `kast-codex` façade and forces stdio. Quit an already
@@ -62,8 +74,7 @@ server request fails. An observer must first successfully resume the task.
 Stop publishes its suppression marker under the startup lock, removes only the
 identity-proven service, and waits for retirement. Attachments cannot restart it
 for that login. Explicit enable or the next login bootstrap clears suppression.
-Disable additionally removes the Kast-owned login agent and restores only
-Kast-owned daemon environment changes. Enrollment and invocation evidence remain
+Disable additionally removes the Kast-owned login agent. Enrollment and invocation evidence remain
 on disk; disable does not erase execution history.
 
 ## Ownership and recovery
@@ -151,8 +162,12 @@ The raw shape has been validated against schemas from Codex CLI 0.154.0 and the
 desktop-bundled Codex 0.153.4. Desktop renderer source inspection established the missing dynamic content; this does not
 constitute a live visual acceptance test of an installed Kast build.
 
-Status separates transport, protocol, catalog, semantic readiness, and desktop
-qualification. Startup and invocation logs contain typed stage/outcome evidence.
+Status separates launchd lifecycle observation, public endpoint kind/path/ownership,
+transport, native protocol, catalog, upstream and semantic readiness. A live launchd
+label is reported as `alive`, not proof of protocol readiness. Canonical status
+uses an identity-correlated coordinator observation and a fresh native handshake.
+Private coordinator status does not start an optional host. `semantic: unobserved`
+remains explicit: a transport or catalog observation grants no IDEA read authority. Startup and invocation logs contain typed stage/outcome evidence.
 A status document includes the exact service log, saved configuration, workspace
 registry, and `launch-environment` paths. Each service ensure atomically rewrites
 the private launch-environment snapshot with all resolved non-secret settings,

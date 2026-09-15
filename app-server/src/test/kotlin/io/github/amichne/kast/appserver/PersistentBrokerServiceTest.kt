@@ -88,20 +88,6 @@ class PersistentBrokerServiceTest {
     }
 
     @Test
-    fun `two physical installations sharing a host home have disjoint service ownership`(@TempDir temporary: Path) {
-        val first = installedFixture(Files.createDirectory(temporary.resolve("first")))
-        val second = installedFixture(Files.createDirectory(temporary.resolve("second")))
-        val host = first.userHome.resolve(".codex")
-        val a = resolvedCommand(first.copy(environment = first.environment + ("CODEX_HOME" to host.toString())))
-        val b = resolvedCommand(second.copy(environment = second.environment + ("CODEX_HOME" to host.toString())))
-        assertNotEquals(a.stateDirectory, b.stateDirectory)
-        assertNotEquals(a.publicSocket, b.publicSocket)
-        assertNotEquals(a.serviceLabel, b.serviceLabel)
-        assertTrue(a.stateDirectory.startsWith(first.kast.parent.parent))
-        assertFalse(a.stateDirectory.startsWith(host))
-    }
-
-    @Test
     fun `explicit stop fences future startup before retiring the owned service`(@TempDir temporary: Path) {
         val command = resolvedCommand(installedFixture(temporary))
         var present = true

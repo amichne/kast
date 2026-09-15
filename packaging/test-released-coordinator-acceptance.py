@@ -97,10 +97,10 @@ class CoordinatorLifecycleTest(unittest.TestCase):
         return subprocess.CompletedProcess(arguments, 0, '', '')
 
     def observed(self, *_arguments):
-        return ServiceObservation(_arguments[-1], 'sha256:' + 'a' * 64, HostCheck.VALIDATED)
+        return ServiceObservation(_arguments[-1], 'sha256:' + 'a' * 64, HostCheck.VALIDATED, 'private')
 
     def invoke(self):
-        return qualify_installed_lifecycle(self.isolation, self.kast, self.facade, {}, self.home, self.root, self.product)
+        return qualify_installed_lifecycle(self.isolation, self.kast, self.facade, {'KAST_APP_SERVER_PUBLIC_ENDPOINT': 'private'}, self.home, self.root, self.product)
 
     def test_real_frame_sequence_detaches_and_disables_owned_service(self):
         responses = [asdict(Response(Authority())), asdict(Response(Started(str(self.root))))]
@@ -161,14 +161,15 @@ class CoordinatorLifecycleTest(unittest.TestCase):
     def test_status_requires_exact_attachment_and_ownership_without_payload_receipt(self):
         with socket.socket(socket.AF_UNIX) as private:
             private.bind(str(self.product / 'state/run/c.sock'))
+            (self.product / 'state/run/c.sock').chmod(0o600)
             def status(phase):
                 return subprocess.CompletedProcess([], 0, json.dumps(asdict(Status(Attachment(phase)))), '')
             with patch('installed_codex_lifecycle.subprocess.run', return_value=status('pending')):
-                result = exercise_private_service(self.kast, {}, self.home, self.root, self.product, HostObservationPhase.COORDINATOR_ONLY)
-            self.assertEqual({'phase', 'statusSha256', 'privateSocketAndOwnership'}, set(asdict(result)))
+                result = exercise_private_service(self.kast, {'KAST_APP_SERVER_PUBLIC_ENDPOINT': 'private'}, self.home, self.root, self.product, HostObservationPhase.COORDINATOR_ONLY)
+            self.assertEqual({'phase', 'statusSha256', 'publicSocketAndOwnership', 'publicEndpointKind'}, set(asdict(result)))
             with patch('installed_codex_lifecycle.subprocess.run', return_value=status('pending')):
                 with self.assertRaises(AcceptanceFailure):
-                    exercise_private_service(self.kast, {}, self.home, self.root, self.product, HostObservationPhase.FRONTEND_PREPARED)
+                    exercise_private_service(self.kast, {'KAST_APP_SERVER_PUBLIC_ENDPOINT': 'private'}, self.home, self.root, self.product, HostObservationPhase.FRONTEND_PREPARED)
 
     def test_release_facade_matches_original_manifest_and_rejects_changed_bytes(self):
         self.facade.parent.mkdir()
