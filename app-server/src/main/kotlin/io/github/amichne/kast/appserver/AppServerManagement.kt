@@ -195,7 +195,7 @@ class InstalledAppServerManager(
                     Files.deleteIfExists(command.stateDirectory.resolve("stopped"))
                     bootstrap(command)
                 }
-                AppServerAction.Status -> passiveStatus(command, enrollment)
+                AppServerAction.Status -> readAppServerStatus(kast, command, enrollment)
                 AppServerAction.Stop,
                 AppServerAction.Disable -> {
                     val host = MacOsPersistentBrokerServiceHost()
@@ -242,81 +242,6 @@ class InstalledAppServerManager(
         } catch (_: Exception) {
             reject(AppServerManagementFailure.FILESYSTEM_REJECTED)
         }
-    }
-
-    private fun passiveStatus(
-        command: BrokerServiceLaunchCommand,
-        registry: WorkspaceEnrollmentStore,
-    ): AppServerManagementResult {
-        val observed = runBlocking { InstalledCoordinatorClient(kast).status(command) }
-        val service =
-            when (observed) {
-                is CoordinatorStatusRead.Observed -> PassiveServiceState.READY
-                is CoordinatorStatusRead.Rejected ->
-                    when (observed.failure) {
-                        WorkerControlFailure.PAYLOAD_LIMIT_EXCEEDED ->
-                            return AppServerManagementResult.Rejected(AppServerManagementFailure.PAYLOAD_LIMIT_EXCEEDED)
-                        WorkerControlFailure.UNAVAILABLE,
-                        WorkerControlFailure.DEADLINE_EXCEEDED -> PassiveServiceState.UNAVAILABLE
-                        WorkerControlFailure.ISOLATED_RUNTIME_RETIRED,
-                        WorkerControlFailure.INVALID_REQUEST,
-                        WorkerControlFailure.IDENTITY_REJECTED,
-                        WorkerControlFailure.SERVICE_IDENTITY_REJECTED,
-                        WorkerControlFailure.WORKSPACE_CONFIGURATION_REJECTED,
-                        WorkerControlFailure.COORDINATOR_IDENTITY_REJECTED,
-                        WorkerControlFailure.WORKER_BINDING_IDENTITY_REJECTED,
-                        WorkerControlFailure.REGISTRATION_REJECTED,
-                        WorkerControlFailure.RECEIPT_REJECTED,
-                        WorkerControlFailure.LIFECYCLE_TRANSITION,
-                        WorkerControlFailure.RECOVERY_REQUIRED,
-                        WorkerControlFailure.CAPACITY_REJECTED,
-                        WorkerControlFailure.STARTUP_REJECTED,
-                        WorkerControlFailure.RETIREMENT_UNPROVEN -> PassiveServiceState.REJECTED
-                    }
-            }
-        val registered = registry.snapshot()
-        val state = service.name.lowercase()
-        return AppServerManagementResult.Completed(
-            AppServerStatusDocument(
-                transport = if (observed is CoordinatorStatusRead.Observed) AppServerEvidence.READY else AppServerEvidence.UNAVAILABLE,
-                publicEndpoint = PublicEndpointStatus(
-                    when (command.publicEndpoint) {
-                        is BrokerPublicEndpoint.Private -> PublicEndpointKind.PRIVATE
-                        is BrokerPublicEndpoint.CodexControl -> PublicEndpointKind.CODEX_CONTROL
-                    },
-                    command.publicSocket.toString(),
-                    if (observed is CoordinatorStatusRead.Observed) PublicEndpointOwnership.KAST else PublicEndpointOwnership.UNOBSERVED,
-                ),
-                upstream = UpstreamStatus(AppServerEvidence.UNOBSERVED),
-                coordinator = when (observed) {
-                    is CoordinatorStatusRead.Observed -> CoordinatorStatusPresentation(state, observed.snapshot.observed)
-                    is CoordinatorStatusRead.Rejected -> CoordinatorStatusPresentation(state, reason = observed.failure)
-                },
-                service = ServiceStatusPresentation(state, if (observed is CoordinatorStatusRead.Observed) "matched" else "unobserved"),
-                host = HostStatusPresentation(when (observed) {
-                    is CoordinatorStatusRead.Observed -> observed.snapshot.hostAttachment.name.lowercase()
-                    is CoordinatorStatusRead.Rejected -> "unobserved"
-                }),
-                paths = StatusPaths(
-                    command.serviceLog.toString(), command.launchEnvironment.toString(),
-                    command.kast.parent.parent.resolve("config/environment").toString(),
-                    command.kast.parent.parent.resolve("config/workspaces.json").toString(),
-                ),
-                registry = when (registered) {
-                    is WorkspaceRegistryRead.Read -> RegistryStatusPresentation(
-                        if (registered.snapshot.workspaces.isEmpty()) "empty" else "registered",
-                        registered.snapshot.revision.value,
-                        registered.snapshot.workspaces.size,
-                        registered.snapshot.workspaces.map { RegisteredWorkspaceStatus(it.id.value, it.root.path.toString()) },
-                    )
-                    is WorkspaceRegistryRead.Rejected -> RegistryStatusPresentation("rejected", reason = registered.failure)
-                },
-                enrollment = when (registered) {
-                    is WorkspaceRegistryRead.Read -> registered.snapshot.workspaces.singleOrNull()?.root?.path?.toString()
-                    is WorkspaceRegistryRead.Rejected -> "rejected"
-                },
-            ).document()
-        )
     }
 
     private fun bootstrap(command: BrokerServiceLaunchCommand): AppServerManagementResult {

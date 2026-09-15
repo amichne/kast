@@ -36,12 +36,15 @@ private constructor(
                     is Refinement.Rejected ->
                         return Refinement.Rejected(AppServerConfigurationFailure.INVALID_TOOLING_MODE)
                 }
-            val endpointMode = when (inputs["KAST_APP_SERVER_PUBLIC_ENDPOINT"]) {
-                null, "codex-control" -> BrokerPublicEndpointMode.CODEX_CONTROL
-                "private" -> BrokerPublicEndpointMode.PRIVATE
-                else -> return Refinement.Rejected(AppServerConfigurationFailure.INVALID_PUBLIC_ENDPOINT)
-            }
-            val selectedEndpoint = if (mode == AppServerToolingMode.DISABLED) BrokerPublicEndpointMode.PRIVATE else endpointMode
+            val endpointMode =
+                when (inputs["KAST_APP_SERVER_PUBLIC_ENDPOINT"]) {
+                    null,
+                    "codex-control" -> BrokerPublicEndpointMode.CODEX_CONTROL
+                    "private" -> BrokerPublicEndpointMode.PRIVATE
+                    else -> return Refinement.Rejected(AppServerConfigurationFailure.INVALID_PUBLIC_ENDPOINT)
+                }
+            val selectedEndpoint =
+                if (mode == AppServerToolingMode.DISABLED) BrokerPublicEndpointMode.PRIVATE else endpointMode
             val tools = admittedTools.firstOrNull() ?: KastToolSelection.defaults()
             return Refinement.Refined(AdmittedAppServerConfiguration(configuration, mode, tools, selectedEndpoint))
         }

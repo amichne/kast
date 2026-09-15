@@ -29,7 +29,8 @@ class HostCheck(str, Enum):
 class ServiceObservation:
     phase: HostObservationPhase
     statusSha256: str
-    privateSocketAndOwnership: HostCheck
+    publicSocketAndOwnership: HostCheck
+    publicEndpointKind: str
 
 
 @dataclass(frozen=True)
@@ -41,6 +42,7 @@ class HostLifecycleReceipt:
     parentClosure: HostCheck
     serviceDisable: HostCheck
     stockDesktopUi: HostCheck
+    ordinaryDaemonDiscovery: HostCheck
 
 
 def sha256_file(path):
@@ -100,12 +102,14 @@ def drain_jsonl_until_exit(process: subprocess.Popen[str], timeout: float) -> in
 
 
 def exercise_private_service(kast: Path, environment: dict[str, str], home: Path, project: Path, product: Path, phase: HostObservationPhase) -> ServiceObservation:
-    socket = product / "state/run/c.sock"
-    ordinary_socket = home / ".codex/app-server-control/app-server-control.sock"
-    if ordinary_socket.exists():
-        raise AcceptanceFailure("Kast occupied the ordinary Codex daemon socket")
-    if not socket.exists() or not stat.S_ISSOCK(socket.stat().st_mode):
-        raise AcceptanceFailure("private Kast service socket is unavailable")
+    private = environment.get("KAST_APP_SERVER_PUBLIC_ENDPOINT") == "private"
+    kind = "private" if private else "codex-control"
+    codex_home = Path(environment.get("CODEX_HOME", str(home / ".codex")))
+    socket = product / "state/run/c.sock" if private else codex_home / "app-server-control/app-server-control.sock"
+    if socket.is_symlink() or not socket.exists() or not stat.S_ISSOCK(socket.lstat().st_mode):
+        raise AcceptanceFailure("selected Kast service socket is unavailable")
+    if stat.S_IMODE(socket.lstat().st_mode) != 0o600:
+        raise AcceptanceFailure("selected socket permissions are not private")
     status = subprocess.run([str(kast), "app-server", "status"], cwd=project,
                             env=environment, check=True, capture_output=True, text=True, timeout=15)
     evidence = home / f"status-{phase.name.lower()}.json"
@@ -119,20 +123,37 @@ def exercise_private_service(kast: Path, environment: dict[str, str], home: Path
             or document.get("service", {}).get("ownership") != "matched"
             or document.get("host", {}).get("attachment") != phase.value
             or document.get("registry", {}).get("state") != "registered"
-            or document.get("protocol") != "unobserved"
-            or document.get("catalog") != "unobserved"):
+            or document.get("protocol") != ("unobserved" if private else "ready")
+            or document.get("catalog") != ("unobserved" if private else "ready")):
         raise AcceptanceFailure(f"passive status did not match {phase.name.lower()} ownership and registration; bounded evidence: {evidence}")
-    return ServiceObservation(phase, sha256_file(evidence), HostCheck.VALIDATED)
+    if not private and (document.get("lifecycle") != "alive"
+            or document.get("publicEndpoint") != {"kind": kind, "path": str(socket), "ownership": "kast"}
+            or document.get("upstream", {}).get("state") != "ready"):
+        raise AcceptanceFailure("canonical endpoint lacks lifecycle, ownership, protocol or upstream proof")
+    return ServiceObservation(phase, sha256_file(evidence), HostCheck.VALIDATED, kind)
 
 
 def qualify_installed_lifecycle(isolation, kast, facade, environment, home, project, product) -> HostLifecycleReceipt:
+    private = environment.get("KAST_APP_SERVER_PUBLIC_ENDPOINT") == "private"
+    discovery = HostCheck.UNQUALIFIED
     try:
         enabled = subprocess.run([str(kast), "app-server", "enable"], cwd=project, env=environment, capture_output=True, text=True, timeout=90)
         if enabled.returncode != 0:
             service_logs = list(product.glob("state/broker/*/service.log"))
             evidence = bounded_tail(service_logs[0]) if len(service_logs) == 1 else "no unique child service log"
             raise AcceptanceFailure("persistent service enable failed: " + enabled.stderr[-2048:] + "; " + evidence)
-        before = exercise_private_service(kast, environment, home, project, product, HostObservationPhase.COORDINATOR_ONLY)
+        before = exercise_private_service(kast, environment, home, project, product,
+            HostObservationPhase.COORDINATOR_ONLY if private else HostObservationPhase.FRONTEND_PREPARED)
+        if not private:
+            codex = environment.get("CODEX_EXECUTABLE")
+            if not codex:
+                raise AcceptanceFailure("ordinary discovery requires the admitted Codex executable")
+            version = subprocess.run([codex, "app-server", "daemon", "version"], cwd=project,
+                env=environment, check=True, capture_output=True, text=True, timeout=15)
+            authority = json.loads(version.stdout)
+            if not authority.get("appServerVersion") or authority.get("cliVersion") != authority.get("appServerVersion"):
+                raise AcceptanceFailure("ordinary daemon discovery did not reach the admitted Codex version")
+            discovery = HostCheck.VALIDATED
         stderr_path = home / "facade.stderr"
         with stderr_path.open("w+", encoding="utf-8") as stderr_log:
             process = isolation.spawn(
@@ -203,4 +224,4 @@ def qualify_installed_lifecycle(isolation, kast, facade, environment, home, proj
         disabled = subprocess.run([str(kast), "app-server", "disable"], cwd=project, env=environment, capture_output=True, text=True, timeout=40)
         if disabled.returncode != 0:
             raise AcceptanceFailure("temporary service cleanup failed: " + disabled.stderr[-4096:])
-    return HostLifecycleReceipt(before, private_service, HostCheck.VALIDATED, HostCheck.VALIDATED, HostCheck.VALIDATED, HostCheck.VALIDATED, HostCheck.UNQUALIFIED)
+    return HostLifecycleReceipt(before, private_service, HostCheck.VALIDATED, HostCheck.VALIDATED, HostCheck.VALIDATED, HostCheck.VALIDATED, HostCheck.UNQUALIFIED, discovery)

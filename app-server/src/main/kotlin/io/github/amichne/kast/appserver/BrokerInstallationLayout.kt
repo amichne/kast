@@ -14,7 +14,7 @@ private constructor(
     val state: Path = root.resolve("state")
     val broker: Path = state.resolve("broker").resolve(hostProfile)
     val run: Path = state.resolve("run")
-    val publicSocket: Path = BrokerEndpointAliases.transportPath(run.resolve("c.sock"))
+    val privatePublicSocket: Path = BrokerEndpointAliases.transportPath(run.resolve("c.sock"))
     val upstreamSocket: Path = BrokerUpstreamDirectories.transportPath(run.resolve("u.sock"))
 
     companion object {

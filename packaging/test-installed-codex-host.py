@@ -60,6 +60,9 @@ def installed_catalog_evidence(kast: Path, environment: dict[str, str]) -> dict:
         contract = json.loads(execution.stdout)
         bootstrap = contract["serverProjection"]["hostedBootstrap"]
         policy = bootstrap["policy"]
+        # The staged product has no saved installation defaults. Select its advertised
+        # catalog explicitly and retain that exact selection across launchd.
+        environment["KAST_APP_SERVER_TOOLS"] = ",".join(tool["name"] for tool in bootstrap["tools"])
         configuration = subprocess.run(
             [str(kast), "config", "show", "--json"], check=True, capture_output=True,
             text=True, timeout=20, env=environment,
@@ -174,7 +177,7 @@ def main() -> int:
         lifecycle = qualify_installed_lifecycle(isolation, kast, facade, environment, home, project, product)
 
         document = {
-            "schemaVersion": 1,
+            "schemaVersion": 2,
             "taskId": "HOST-08",
             "outcome": "COMPLETE",
             "facadeRole": "app-server-stdio",
@@ -185,10 +188,10 @@ def main() -> int:
             "parentClosure": "CLEAN",
             "persistentServiceAfterDetach": "VALIDATED",
             "desktopCompatibility": "UNQUALIFIED",
-            "desktopDiscovery": "NOT_REQUIRED",
+            "desktopDiscovery": "UNQUALIFIED",
             "stdoutProtocol": "JSONL_ONLY",
             "codexProtocolSha256": protocol_digest,
-            "privateService": asdict(lifecycle),
+            "canonicalService": asdict(lifecycle),
             "codexExecutableSha256": sha256_file(codex),
             "kastExecutableSha256": sha256_file(kast),
             "kastFacadeSha256": sha256_file(facade),
@@ -200,7 +203,7 @@ def main() -> int:
             json.dumps(document, sort_keys=True, separators=(",", ":")) + "\n"
         )
         temporary_report.replace(report)
-        print("installed-codex-host: private service and real Codex stdio handshake passed")
+        print("installed-codex-host: canonical discovery and real Codex stdio handshake passed")
         isolation.mark_passed()
         return 0
 

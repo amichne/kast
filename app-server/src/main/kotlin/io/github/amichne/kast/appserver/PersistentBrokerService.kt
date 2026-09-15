@@ -257,7 +257,8 @@ private constructor(
     val childEnvironment: BrokerChildEnvironment,
     val configuration: ResolvedKastConfiguration,
 ) {
-    val publicSocket: Path get() = publicEndpoint.path
+    val publicSocket: Path
+        get() = publicEndpoint.path
 
     companion object {
         fun resolveCoordinator(
@@ -378,7 +379,8 @@ private constructor(
                     is Refinement.Rejected -> return rejected(PersistentBrokerServiceFailure.CONFIGURATION_REJECTED)
                 }
             val installation = BrokerInstallationLayout.from(kast, codexHome)
-            val publicEndpoint = BrokerPublicEndpoint.select(installation, codexHome, admittedConfiguration.publicEndpointMode)
+            val publicEndpoint =
+                BrokerPublicEndpoint.select(installation, codexHome, admittedConfiguration.publicEndpointMode)
             val stateDirectory = installation.broker
             val kastDigest = sha256(kast) ?: return rejected(PersistentBrokerServiceFailure.KAST_EXECUTABLE_UNAVAILABLE)
             val identity =

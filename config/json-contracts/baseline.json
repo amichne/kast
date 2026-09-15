@@ -1444,56 +1444,6 @@
     {
       "fingerprint": {
         "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/CodexHostIntegrationManifestMainTest.kt",
-        "scope": "type:CodexHostIntegrationManifestMainTest/fun:missing desktop startup evidence cannot produce a manifest(4:Path)",
-        "kind": "JSON_OBJECT",
-        "sha256": "ed337f549f339a4bd2b41a77460095697b76dd2d34eae919f5015cac146e26c8"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/CodexHostIntegrationManifestMainTest.kt",
-        "scope": "type:CodexHostIntegrationManifestMainTest/fun:unvalidated desktop startup evidence cannot produce a manifest(4:Path)",
-        "kind": "JSON_OBJECT",
-        "sha256": "d1e808e88dd7a569a6cc665e70f810501c7e0ac9078d7be7b74c4fae6459220f"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/CodexHostIntegrationManifestMainTest.kt",
-        "scope": "type:CodexHostIntegrationManifestMainTest/fun:unknown receipt fields remain rejected(4:Path)",
-        "kind": "JSON_OBJECT",
-        "sha256": "d9d9fc231d60959b434391e5462422eca7b6d66dcbab14e0ea0b576ba34ba4f7"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/CodexHostIntegrationManifestMainTest.kt",
-        "scope": "type:CodexHostIntegrationManifestMainTest/fun:legacy daemon evidence cannot substitute for private service receipt(4:Path)/val:legacy",
-        "kind": "JSON_OBJECT",
-        "sha256": "befa534d47167f7fabae1056614c5b5984eeab04210b4b7252a4b79ddd9e74ad"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/CodexHostIntegrationManifestMainTest.kt",
-        "scope": "type:CodexHostIntegrationManifestMainTest/fun:legacy daemon evidence cannot substitute for private service receipt(4:Path)/val:legacy",
-        "kind": "JSON_BUILDER",
-        "sha256": "4650d8942e6949563883c9652089c4690079592311bc98d7654d13705fbf8f2c"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/CodexHostIntegrationManifestMainTest.kt",
         "scope": "type:CodexHostIntegrationManifestMainTest/fun:updated(4:List1:<6:String1:>,11:JsonElement)10:JsonObject",
         "kind": "JSON_OBJECT",
         "sha256": "740bf5f3f6e3cad7ac4ae49b953bdac436d0e77576c1680ecf5bc3d70f0d68c8"

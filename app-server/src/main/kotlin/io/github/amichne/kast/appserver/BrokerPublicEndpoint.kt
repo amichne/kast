@@ -11,8 +11,9 @@ internal sealed interface BrokerPublicEndpoint {
     val identityValue: String
 
     class Private internal constructor(private val installation: BrokerInstallationLayout) : BrokerPublicEndpoint {
-        override val path: Path = installation.publicSocket
+        override val path: Path = installation.privatePublicSocket
         override val identityValue: String = "private\n$path"
+
         override fun prepare(): Validation<BrokerSocketPath, BrokerSocketPathFailure> =
             BrokerSocketPath.prepareInstalled(installation.run.resolve("c.sock"))
     }
@@ -20,6 +21,7 @@ internal sealed interface BrokerPublicEndpoint {
     class CodexControl internal constructor(val socket: CodexControlSocketPath) : BrokerPublicEndpoint {
         override val path: Path = socket.path
         override val identityValue: String = "codex-control\n$path"
+
         override fun prepare(): Validation<BrokerSocketPath, BrokerSocketPathFailure> = BrokerSocketPath.admit(path)
     }
 

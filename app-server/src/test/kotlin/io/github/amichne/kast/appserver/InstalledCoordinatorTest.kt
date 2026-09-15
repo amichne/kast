@@ -28,13 +28,20 @@ class InstalledCoordinatorTest {
                 activities += it
                 BrokerStartupActivityPublication.PUBLISHED
             }
-            val options = (InstalledCoordinatorConfiguration.admit(
-                kast, root, mapOf("PATH" to "/usr/bin:/bin"), sink,
-            ) as Refinement.Refined).value
+            val options =
+                (InstalledCoordinatorConfiguration.admit(
+                        kast,
+                        root,
+                        mapOf("PATH" to "/usr/bin:/bin"),
+                        sink,
+                    ) as Refinement.Refined)
+                    .value
             val started = InstalledCoordinator.start(options)
             try {
                 assertTrue(started is InstalledCoordinatorStart.Rejected)
-                assertFalse(activities.contains(BrokerStartupActivity.Completed(BrokerStartupStage.READINESS_PUBLICATION)))
+                assertFalse(
+                    activities.contains(BrokerStartupActivity.Completed(BrokerStartupStage.READINESS_PUBLICATION))
+                )
                 assertFalse(Files.exists(options.socket.path))
             } finally {
                 if (started is InstalledCoordinatorStart.Started) started.coordinator.close()
@@ -45,7 +52,8 @@ class InstalledCoordinatorTest {
     @Test
     fun `coordinator admission does not require a Codex executable`() = withPayload { root, kast ->
         assertTrue(
-            InstalledCoordinatorConfiguration.admit(kast, root, mapOf("KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private")) is Refinement.Refined,
+            InstalledCoordinatorConfiguration.admit(kast, root, mapOf("KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private"))
+                is Refinement.Refined,
             "workspace coordinator must admit an installed payload before any optional Codex host exists",
         )
         assertFalse(Files.exists(root.resolve(".codex")))
@@ -86,7 +94,13 @@ class InstalledCoordinatorTest {
                     BrokerStartupActivityPublication.PUBLISHED
                 }
                 val options =
-                    (InstalledCoordinatorConfiguration.admit(kast, root, mapOf("KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private"), sink) as Refinement.Refined).value
+                    (InstalledCoordinatorConfiguration.admit(
+                            kast,
+                            root,
+                            mapOf("KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private"),
+                            sink,
+                        ) as Refinement.Refined)
+                        .value
                 val start = InstalledCoordinator.start(options)
                 assertTrue(start is InstalledCoordinatorStart.Started, start.toString())
                 val running = (start as InstalledCoordinatorStart.Started).coordinator

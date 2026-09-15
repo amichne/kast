@@ -54,14 +54,14 @@ internal data class AppServerStatusDocument(
     val registry: RegistryStatusPresentation,
     val enrollment: String?,
     val operation: String = "app-server.status",
-    val lifecycle: AppServerEvidence = AppServerEvidence.UNOBSERVED,
+    val lifecycle: BrokerLifecycleObservation,
     val protocol: AppServerEvidence = AppServerEvidence.UNOBSERVED,
     val catalog: AppServerEvidence = AppServerEvidence.UNOBSERVED,
     val semantic: AppServerEvidence = AppServerEvidence.UNOBSERVED,
     val desktop: AppServerEvidence = AppServerEvidence.UNQUALIFIED,
     val session: String? = null,
 ) {
-    fun document(): JsonObject = Json { encodeDefaults = true }.encodeToJsonElement(this).jsonObject
+    fun document(): JsonObject = STATUS_JSON.encodeToJsonElement(this).jsonObject
 }
 
 @Serializable
@@ -71,8 +71,7 @@ internal data class CoordinatorStatusPresentation(
     val reason: WorkerControlFailure? = null,
 )
 
-@Serializable
-internal data class ServiceStatusPresentation(val state: String, val ownership: String)
+@Serializable internal data class ServiceStatusPresentation(val state: String, val ownership: String)
 
 @Serializable
 internal data class HostStatusPresentation(
@@ -97,5 +96,15 @@ internal data class RegistryStatusPresentation(
     val reason: EnrollmentFailure? = null,
 )
 
+@Serializable internal data class RegisteredWorkspaceStatus(val workspaceId: String, val root: String)
+
 @Serializable
-internal data class RegisteredWorkspaceStatus(val workspaceId: String, val root: String)
+internal enum class BrokerLifecycleObservation {
+    @SerialName("alive") ALIVE,
+    @SerialName("absent") ABSENT,
+    @SerialName("rejected") REJECTED,
+    @SerialName("interrupted") INTERRUPTED,
+    @SerialName("timed-out") TIMED_OUT,
+}
+
+private val STATUS_JSON = Json { encodeDefaults = true }

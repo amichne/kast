@@ -319,6 +319,15 @@ internal class MacOsPersistentBrokerServiceHost(
     private val startupTimeoutNanos: Long = DEFAULT_STARTUP_TIMEOUT_NANOS,
     private val retirementTimeoutNanos: Long = DEFAULT_RETIREMENT_TIMEOUT_NANOS,
 ) : PersistentBrokerServiceHost {
+    internal fun observeLifecycle(command: BrokerServiceLaunchCommand): BrokerLifecycleObservation =
+        when (observeService(command.serviceLabel)) {
+            BrokerLaunchdServiceObservation.Present -> BrokerLifecycleObservation.ALIVE
+            BrokerLaunchdServiceObservation.Absent -> BrokerLifecycleObservation.ABSENT
+            BrokerLaunchdServiceObservation.Rejected -> BrokerLifecycleObservation.REJECTED
+            BrokerLaunchdServiceObservation.Interrupted -> BrokerLifecycleObservation.INTERRUPTED
+            BrokerLaunchdServiceObservation.TimedOut -> BrokerLifecycleObservation.TIMED_OUT
+        }
+
     override fun ensure(command: BrokerServiceLaunchCommand): PersistentBrokerServiceAdmission {
         when (prepareStateDirectory(command)) {
             BrokerStateDirectoryPreparation.Prepared -> Unit
@@ -665,8 +674,14 @@ internal class MacOsPersistentBrokerServiceHost(
             BrokerLaunchdServiceObservation.TimedOut -> rejected(PersistentBrokerServiceFailure.LAUNCHCTL_TIMED_OUT)
         }
 
-    private fun submitAndAwait(command: BrokerServiceLaunchCommand): PersistentBrokerServiceAdmission =
-        when (submit(command)) {
+    private fun submitAndAwait(command: BrokerServiceLaunchCommand): PersistentBrokerServiceAdmission {
+        if (
+            command.publicEndpoint is BrokerPublicEndpoint.CodexControl &&
+                Files.exists(command.publicSocket, LinkOption.NOFOLLOW_LINKS)
+        ) {
+            return rejected(PersistentBrokerServiceFailure.PUBLIC_SOCKET_OWNED)
+        }
+        return when (submit(command)) {
             BrokerLaunchdServiceSubmission.Submitted,
             BrokerLaunchdServiceSubmission.Raced -> awaitReadiness(command)
             BrokerLaunchdServiceSubmission.Interrupted -> rejected(PersistentBrokerServiceFailure.INTERRUPTED)
@@ -674,6 +689,7 @@ internal class MacOsPersistentBrokerServiceHost(
                 rejected(PersistentBrokerServiceFailure.SERVICE_SUBMISSION_REJECTED)
             BrokerLaunchdServiceSubmission.TimedOut -> rejected(PersistentBrokerServiceFailure.LAUNCHCTL_TIMED_OUT)
         }
+    }
 
     private fun awaitReadiness(command: BrokerServiceLaunchCommand): PersistentBrokerServiceAdmission {
         val deadline = System.nanoTime() + startupTimeoutNanos

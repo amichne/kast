@@ -6,6 +6,11 @@ resource: file://runtime
 tags: [kotlin, runtime, server, indexer, cli]
 timestamp: 2026-09-14T00:00:00Z
 code_sources:
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/BrokerPublicEndpoint.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/PersistentBrokerService.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/NativeCodexReadiness.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/AppServerStatus.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/AppServerStatusDocument.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedTransportObservation.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReadBudgetReports.kt
@@ -94,3 +99,17 @@ durations and byte counts without request or response payloads. Read rejection
 projection preserves any admitted execution report through fitting and encoding.
 
 Read containment keeps the admitted execution report when a timeout, final freshness check or publication failure rejects the operation. The executor records the report at semantic admission; failure projection does not reconstruct it from defaults. Pre-admission failures carry no grant. Output fitting retains the original semantic outcome internally when publishing an oversized or unencodable response fails.
+
+Enabled persistent Codex integration selects one canonical public socket per
+`CODEX_HOME`; explicit private mode retains installation-local discovery. Endpoint
+policy participates in service identity while the upstream remains private.
+Canonical startup completes the native initialization exchange before readiness
+publication. The existing session hub still owns per-client initialization,
+request correlation, thread/controller ownership and native tool refinement.
+An unreachable socket is not an ownership proof and cannot be unlinked by startup.
+
+Status reports lifecycle, endpoint ownership, native protocol, catalog and upstream
+observations separately. It leaves semantic readiness unobserved rather than
+inferring IDEA authority. Installed transport acceptance does not qualify stock
+interactive CLI or Desktop tool exposure; the explicit CLI route and Desktop
+façade remain pending those gates.

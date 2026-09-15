@@ -162,7 +162,11 @@ internal sealed interface InstalledBrokerServerConfiguration {
                 createBrokerOwnedDirectory(installation.run)
                     ?: return rejected(InstalledBrokerServerConfigurationFailure.STATE_DIRECTORY_REJECTED)
             val publicSocket =
-                when (val admission = BrokerPublicEndpoint.select(installation, codexHome, admittedConfiguration.publicEndpointMode).prepare()) {
+                when (
+                    val admission =
+                        BrokerPublicEndpoint.select(installation, codexHome, admittedConfiguration.publicEndpointMode)
+                            .prepare()
+                ) {
                     is Validation.Validated -> admission.value
                     is Validation.Rejected ->
                         return rejected(InstalledBrokerServerConfigurationFailure.SOCKET_PATH_REJECTED)
