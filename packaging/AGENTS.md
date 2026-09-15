@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-14 | hash: fed9c7e3f1cd -->
+<!-- generated: 2026-09-15 | hash: fed9c7e3f1cd -->
 
 # packaging
 
@@ -8,6 +8,9 @@
 Implements installer support, installed-product acceptance, configuration ingress generation, and real-environment lifecycle checks.
 
 ## Key Files
+
+- [hosted_compact_source_regression.py](hosted_compact_source_regression.py) - lossless compact source parity and actual provider presentation admission.
+- [hosted_vfs_overflow_regression.py](hosted_vfs_overflow_regression.py) - owned overflow burst, post-burst host receipt, stale refusal and guarded restoration.
 
 - [hosted_read_policy.py](hosted_read_policy.py) - closed private-process presets for native default, enlarged-deadline, overflow and diagnostic paging qualification.
 - [hosted_repair_budget_regression.py](hosted_repair_budget_regression.py) - bounded actual 10/20-second grant receipts across installed surfaces.

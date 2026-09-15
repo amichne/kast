@@ -9,6 +9,9 @@ Owns the persistent broker/coordinator, host attachment, existing-IDE invocation
 
 ## Key Files
 
+- [KastSourcePresentation.kt](src/main/kotlin/io/github/amichne/kast/appserver/provider/KastSourcePresentation.kt) - compact returned source precedes the unchanged canonical provider envelope.
+- [NativePresentationEvidence.kt](src/test/kotlin/io/github/amichne/kast/appserver/acceptance/hostedchange/NativePresentationEvidence.kt) - bounded evidence from actual source-first provider content items.
+
 - [NativeReadRequest.kt](src/test/kotlin/io/github/amichne/kast/appserver/acceptance/hostedchange/NativeReadRequest.kt) - actual provider-envelope and canonical payload validation against the qualified schema.
 - [CodexToolTerminalReply.kt](src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexToolTerminalReply.kt) - single-document finite broker failure and cancellation replies.
 - [README.md](README.md) - architecture, lifecycle, status, and public integration behavior.

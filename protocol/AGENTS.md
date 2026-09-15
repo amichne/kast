@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-14 | hash: d217066e0d36 -->
+<!-- generated: 2026-09-15 | hash: d217066e0d36 -->
 
 # protocol
 
@@ -8,6 +8,8 @@
 Defines canonical operation models, authoritative operation/tool registries, and serialized wire documents.
 
 ## Key Files
+
+- [SymbolInspectionOutcomes.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SymbolInspectionOutcomes.kt) - strict versus reacquired inspection results and finite revalidation refusals.
 
 - [ReadRecoveryAction.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReadRecoveryAction.kt) - finite read-failure recovery directions derived from the canonical reason.
 - [RelationCheckpointDocument.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/RelationCheckpointDocument.kt) - upstream versus retained relation coverage.
