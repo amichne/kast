@@ -17,8 +17,12 @@ import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
 import io.github.amichne.kast.protocol.contract.SymbolInspectResult
 import io.github.amichne.kast.protocol.contract.SymbolInspectTarget
 import io.github.amichne.kast.query.protocol.*
-import io.github.amichne.kast.symbol.contract.*
+import io.github.amichne.kast.symbol.contract.CandidateSelector
+import io.github.amichne.kast.symbol.contract.ExactRevalidationOperations
+import io.github.amichne.kast.symbol.contract.ExactRevalidationRejection
+import io.github.amichne.kast.symbol.contract.ExactRevalidationResult
 import io.github.amichne.kast.symbol.contract.ExactSymbolRequest
+import io.github.amichne.kast.symbol.contract.SymbolDescription
 import io.github.amichne.kast.symbol.contract.SymbolDescriptionResult as DomainDescriptionResult
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBudget
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOperations
@@ -30,6 +34,7 @@ import io.github.amichne.kast.symbol.contract.SymbolExactOperations
 import io.github.amichne.kast.symbol.contract.SymbolExactRejection
 import io.github.amichne.kast.symbol.contract.SymbolResolutionRequest
 import io.github.amichne.kast.symbol.contract.SymbolResolutionResult as DomainResolutionResult
+import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 
 class CanonicalSymbolDiscoverProtocol(

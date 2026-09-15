@@ -9,12 +9,14 @@ import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootProvenance
 import java.nio.file.Path
 
+private const val EXACT_REVALIDATION_DIGEST_LENGTH = 64
+
 /** A bounded hash of saved, committed owning-file bytes. Equality is a precondition, never compiler authority. */
 @JvmInline
 value class ExactRevalidationTextIdentity private constructor(val sha256: String) {
     companion object {
         fun parse(raw: String): Refinement<ExactRevalidationTextIdentity, ExactRevalidationRejection> =
-            if (raw.length == 64 && raw.all { it in '0'..'9' || it in 'a'..'f' })
+            if (raw.length == EXACT_REVALIDATION_DIGEST_LENGTH && raw.all { it in '0'..'9' || it in 'a'..'f' })
                 Refinement.Refined(ExactRevalidationTextIdentity(raw))
             else Refinement.Rejected(ExactRevalidationRejection.CAPTURE_UNAVAILABLE)
     }

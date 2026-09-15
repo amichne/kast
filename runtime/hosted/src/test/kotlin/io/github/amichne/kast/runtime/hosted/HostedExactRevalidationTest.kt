@@ -1,14 +1,51 @@
 package io.github.amichne.kast.runtime.hosted
 
-import io.github.amichne.kast.kernel.*
-import io.github.amichne.kast.protocol.contract.*
-import io.github.amichne.kast.query.protocol.*
-import io.github.amichne.kast.symbol.contract.*
+import io.github.amichne.kast.kernel.OperationOutcome
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.SymbolInspectAcquisition
+import io.github.amichne.kast.protocol.contract.SymbolInspectRejection
+import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
+import io.github.amichne.kast.protocol.contract.SymbolInspectTarget
+import io.github.amichne.kast.query.protocol.CanonicalQueryReferences
+import io.github.amichne.kast.query.protocol.CanonicalSelectorDecoding
+import io.github.amichne.kast.query.protocol.CanonicalSelectorDecodingFailure
+import io.github.amichne.kast.query.protocol.CanonicalSymbolInspectProtocol
+import io.github.amichne.kast.query.protocol.ExactSelectorIssuance
+import io.github.amichne.kast.query.protocol.RelationPagingFixture
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
+import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
+import io.github.amichne.kast.symbol.contract.ExactRevalidationCompilation
+import io.github.amichne.kast.symbol.contract.ExactRevalidationCompilerPort
+import io.github.amichne.kast.symbol.contract.ExactRevalidationLocator
+import io.github.amichne.kast.symbol.contract.ExactRevalidationRejection
+import io.github.amichne.kast.symbol.contract.ExactRevalidationResult
+import io.github.amichne.kast.symbol.contract.ExactRevalidationTextIdentity
+import io.github.amichne.kast.symbol.contract.ExactSymbolRequest
+import io.github.amichne.kast.symbol.contract.SymbolDescriptionResult
+import io.github.amichne.kast.symbol.contract.SymbolExactOperations
+import io.github.amichne.kast.symbol.contract.SymbolResolutionRequest
+import io.github.amichne.kast.symbol.contract.SymbolResolutionResult
 import io.github.amichne.kast.symbol.service.ExactRevalidationService
-import io.github.amichne.kast.workspace.contract.*
+import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
+import io.github.amichne.kast.workspace.contract.ImportedWorkspaceModelState
+import io.github.amichne.kast.workspace.contract.LiveSemanticReadAuthority
+import io.github.amichne.kast.workspace.contract.MovingLiveReadAuthorityFixture
+import io.github.amichne.kast.workspace.contract.SemanticReadValidation
+import io.github.amichne.kast.workspace.contract.SemanticReadValidationPort
+import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModel
+import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
+import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootBoundary
+import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootKind
+import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootProvenance
 import java.nio.file.Path
 import kotlinx.coroutines.runBlocking
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertSame
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions.fail
 import org.junit.jupiter.api.Test
 
 class HostedExactRevalidationTest {
@@ -45,27 +82,11 @@ class HostedExactRevalidationTest {
     fun `explicit reacquisition after unrelated movement leaves strict old reference stale`() = runBlocking {
         val strict = HostedReferenceStore()
         val records = ExactRevalidationRecords()
-        val first =
-            CanonicalQueryReferences(
-                model,
-                strict.transport(
-                    original.reference,
-                    ReadLimits.Default,
-                    io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation.None,
-                ),
-            )
+        val first = references(strict, original)
         val token = (first.issueExact(fixture.selector) as ExactSelectorIssuance.Issued).selector
         records.retain(token, fixture.exact, locator).value()
         val current = owner.advance()
-        val references =
-            CanonicalQueryReferences(
-                model,
-                strict.transport(
-                    current.reference,
-                    ReadLimits.Default,
-                    io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation.None,
-                ),
-            )
+        val references = references(strict, current)
         assertEquals(
             CanonicalSelectorDecodingFailure.STALE_AUTHORITY,
             (references.restoreExact(token, current) as CanonicalSelectorDecoding.Rejected).failure,
@@ -217,6 +238,16 @@ class HostedExactRevalidationTest {
         records.dispose()
         assertEquals(Refinement.Rejected(ExactRevalidationRejection.RETIRED), records.locate(fixture.exact))
     }
+
+    private fun references(store: HostedReferenceStore, current: LiveSemanticReadAuthority) =
+        CanonicalQueryReferences(
+            model,
+            store.transport(
+                current.reference,
+                ReadLimits.Default,
+                io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation.None,
+            ),
+        )
 
     private fun text(value: String) = ProtocolText.parse(value).value()
 

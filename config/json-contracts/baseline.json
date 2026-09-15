@@ -8753,16 +8753,6 @@
     },
     {
       "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/InstalledServerProjectionTest.kt",
-        "scope": "type:InstalledServerProjectionTest/fun:symbolInspectProcessDocument(6:String,6:String,6:String)",
-        "kind": "JSON_LITERAL",
-        "sha256": "cf262d60fffae2ab2e052cab79782820dafc6fc07ae4158bf3eb7e7ff3533bdf"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
         "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/LiveReadOutputSchemaTest.kt",
         "scope": "type:LiveReadOutputSchemaTest/fun:source and traversal schemas reject mixed or missing snapshot bases()",
         "kind": "JSON_OBJECT",
@@ -9337,16 +9327,6 @@
         "scope": "type:GeneratedCliProjectionTest/fun:generated discovery serializer preserves every closed item variant()",
         "kind": "JSON_LITERAL",
         "sha256": "64a7b9cdaeefd54aff69fef02f96504bd3b7cf7aecdbd16c051ed50093e81596"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/projection/GeneratedCliProjectionTest.kt",
-        "scope": "type:GeneratedCliProjectionTest/fun:generated symbol serializer preserves coherent compiler evidence()",
-        "kind": "JSON_LITERAL",
-        "sha256": "2ee1cb8d636e5f3f8df0bd17e305bd547a9a431a04ef7fb9e97a7113b2fd1cc3"
       },
       "count": 1,
       "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."

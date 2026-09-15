@@ -1,6 +1,12 @@
 package io.github.amichne.kast.symbol.service
 
-import io.github.amichne.kast.symbol.contract.*
+import io.github.amichne.kast.symbol.contract.ExactRevalidationCompilation
+import io.github.amichne.kast.symbol.contract.ExactRevalidationCompilerPort
+import io.github.amichne.kast.symbol.contract.ExactRevalidationLocator
+import io.github.amichne.kast.symbol.contract.ExactRevalidationOperations
+import io.github.amichne.kast.symbol.contract.ExactRevalidationRejection
+import io.github.amichne.kast.symbol.contract.ExactRevalidationResult
+import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.workspace.contract.LiveSemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.SemanticReadValidation

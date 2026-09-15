@@ -1,13 +1,21 @@
 package io.github.amichne.kast.symbol.intellij
 
+import com.intellij.openapi.editor.Document
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.impl.LoadTextUtil
 import com.intellij.openapi.progress.ProgressManager
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiFile
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.symbol.contract.*
-import io.github.amichne.kast.workspace.contract.*
+import io.github.amichne.kast.symbol.contract.ExactRevalidationLocator
+import io.github.amichne.kast.symbol.contract.ExactRevalidationRejection
+import io.github.amichne.kast.symbol.contract.ExactRevalidationTextIdentity
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
+import io.github.amichne.kast.symbol.contract.SymbolSelector
+import io.github.amichne.kast.workspace.contract.ModelOwnedSourceRoot
+import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModel
+import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootProvenance
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import java.nio.file.Path
@@ -36,7 +44,7 @@ class IntellijExactRevalidationCapture(
                 throw cancelled
             } catch (_: java.io.IOException) {
                 reject(ExactRevalidationRejection.CAPTURE_UNAVAILABLE)
-            } catch (failure: RuntimeException) {
+            } catch (failure: IllegalStateException) {
                 observation.unexpected(
                     io.github.amichne.kast.workspace.intellij.read.IntellijReadUnexpectedFailure.capture(
                         io.github.amichne.kast.workspace.intellij.read.IntellijReadStage.EXACT_REFINEMENT,
@@ -75,63 +83,52 @@ class IntellijExactRevalidationCapture(
         }
 
     private fun read(file: SymbolDiscoveryFileIdentity, psi: PsiFile): Refinement<Capture, ExactRevalidationRejection> {
+        if (entries.size >= MAX_FILES) return reject(ExactRevalidationRejection.CAPACITY)
+        val owner =
+            when (val ownership = owningSource(file)) {
+                is Refinement.Refined -> ownership.value
+                is Refinement.Rejected -> return ownership
+            }
+        return readContent(owner, psi)
+    }
+
+    private fun owningSource(
+        file: SymbolDiscoveryFileIdentity
+    ): Refinement<ModelOwnedSourceRoot, ExactRevalidationRejection> {
         if (file !is SymbolDiscoveryFileIdentity.Workspace)
             return reject(ExactRevalidationRejection.UNSUPPORTED_DECLARATION)
-        if (entries.size >= MAX_FILES) return reject(ExactRevalidationRejection.CAPACITY)
         val path = Path.of(file.path.value)
         val owners = model.sourceRoots.filter { path.startsWith(Path.of(it.sourceRoot.value)) }
         if (owners.size != 1) return reject(ExactRevalidationRejection.OWNER_MISMATCH)
         val owner = owners.single()
-        if (owner.provenance != WorkspaceSourceRootProvenance.AUTHORED)
-            return reject(ExactRevalidationRejection.UNSUPPORTED_DECLARATION)
+        return if (owner.provenance == WorkspaceSourceRootProvenance.AUTHORED) Refinement.Refined(owner)
+        else reject(ExactRevalidationRejection.UNSUPPORTED_DECLARATION)
+    }
+
+    private fun readContent(
+        owner: ModelOwnedSourceRoot,
+        psi: PsiFile,
+    ): Refinement<Capture, ExactRevalidationRejection> {
         val virtual = psi.virtualFile ?: return reject(ExactRevalidationRejection.DECLARATION_MISSING)
         val documents = FileDocumentManager.getInstance()
         val document = documents.getCachedDocument(virtual)
-        if (
-            documents.isFileModified(virtual) ||
-                document != null && !PsiDocumentManager.getInstance(psi.project).isCommitted(document)
-        )
+        if (documents.isFileModified(virtual)) return reject(ExactRevalidationRejection.CONTENT_UNCOMMITTED)
+        if (document != null && !PsiDocumentManager.getInstance(psi.project).isCommitted(document))
             return reject(ExactRevalidationRejection.CONTENT_UNCOMMITTED)
-        val size = virtual.length
-        // Reserve room for the one-byte EOF probe. Only actual consumed bytes are charged below.
-        val maximumCost = 1 + (size + CHUNK_BYTES) / CHUNK_BYTES
-        if (
-            size < 0 ||
-                size > MAX_FILE_BYTES ||
-                psi.textLength > MAX_FILE_BYTES ||
-                document != null && document.textLength > MAX_FILE_BYTES ||
-                maximumCost > workLimit - work
-        )
-            return reject(ExactRevalidationRejection.CAPACITY)
-        work++
-        observation.count(IntellijReadCounter.REVALIDATION_WORK_CHARGED)
-        var consumedBytes = 0
+        val size =
+            when (val admitted = admitContentSize(virtual.length, psi.textLength, document)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return admitted
+            }
         val bytes =
-            when (
-                val read =
-                    virtual.inputStream.use { stream ->
-                        readExactSavedBytes(
-                            stream,
-                            size.toInt(),
-                            bytesRead = { count ->
-                                val previousUnits = (consumedBytes + CHUNK_BYTES - 1) / CHUNK_BYTES
-                                consumedBytes += count
-                                val charged = (consumedBytes + CHUNK_BYTES - 1) / CHUNK_BYTES - previousUnits
-                                work += charged
-                                if (charged > 0)
-                                    observation.count(IntellijReadCounter.REVALIDATION_WORK_CHARGED, amount = charged)
-                            },
-                            cancellationCheck = ProgressManager::checkCanceled,
-                        )
-                    }
-            ) {
+            when (val read = readChargedBytes(virtual, size)) {
                 is ExactSavedBytesRead.Read -> read.bytes
                 is ExactSavedBytesRead.Rejected -> return reject(read.reason)
             }
         val hash = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
         observation.count(IntellijReadCounter.REVALIDATION_FILES_HASHED)
         observation.count(IntellijReadCounter.REVALIDATION_BYTES_HASHED, amount = bytes.size)
-        // Charset overload performs IntelliJ BOM/newline conversion without mutating VirtualFile charset metadata.
+        // Charset overload converts BOM/newlines without mutating VirtualFile charset metadata.
         val saved = LoadTextUtil.getTextByBinaryPresentation(bytes, virtual.charset)
         when (val matched = admitExactSavedPsiText(saved, psi.text, document?.immutableCharSequence)) {
             is Refinement.Refined -> Unit
@@ -140,6 +137,40 @@ class IntellijExactRevalidationCapture(
         return when (val identity = ExactRevalidationTextIdentity.parse(hash)) {
             is Refinement.Refined -> Refinement.Refined(Capture(owner, identity.value))
             is Refinement.Rejected -> identity
+        }
+    }
+
+    private fun admitContentSize(
+        size: Long,
+        psiLength: Int,
+        document: Document?,
+    ): Refinement<Int, ExactRevalidationRejection> {
+        if (size !in 0..MAX_FILE_BYTES) return reject(ExactRevalidationRejection.CAPACITY)
+        if (psiLength > MAX_FILE_BYTES) return reject(ExactRevalidationRejection.CAPACITY)
+        if (document != null && document.textLength > MAX_FILE_BYTES) return reject(ExactRevalidationRejection.CAPACITY)
+        // Reserve the one-byte EOF probe; charge only actual consumed bytes.
+        val maximumCost = 1 + (size + CHUNK_BYTES) / CHUNK_BYTES
+        if (maximumCost > workLimit - work) return reject(ExactRevalidationRejection.CAPACITY)
+        return Refinement.Refined(size.toInt())
+    }
+
+    private fun readChargedBytes(virtual: VirtualFile, size: Int): ExactSavedBytesRead {
+        work++
+        observation.count(IntellijReadCounter.REVALIDATION_WORK_CHARGED)
+        var consumedBytes = 0
+        return virtual.inputStream.use { stream ->
+            readExactSavedBytes(
+                stream,
+                size,
+                bytesRead = { count ->
+                    val previousUnits = (consumedBytes + CHUNK_BYTES - 1) / CHUNK_BYTES
+                    consumedBytes += count
+                    val charged = (consumedBytes + CHUNK_BYTES - 1) / CHUNK_BYTES - previousUnits
+                    work += charged
+                    if (charged > 0) observation.count(IntellijReadCounter.REVALIDATION_WORK_CHARGED, amount = charged)
+                },
+                cancellationCheck = ProgressManager::checkCanceled,
+            )
         }
     }
 

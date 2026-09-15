@@ -31,7 +31,7 @@ class HostedExactRevalidationStore : Disposable {
 internal class ExactRevalidationRecords(
     private val now: () -> Long = System::nanoTime,
     private val maxEntries: Int = 256,
-    private val maxBytes: Long = 4L * 1024 * 1024,
+    private val maxBytes: Long = MAX_REVALIDATION_RETAINED_BYTES,
     private val maxAgeNanos: Long = 300_000_000_000L,
 ) : ExactRevalidationReferences {
     private data class Record(val locator: ExactRevalidationLocator, val created: Long, val bytes: Long)
@@ -93,3 +93,5 @@ internal class ExactRevalidationRecords(
 }
 
 private fun rejected(reason: ExactRevalidationRejection) = Refinement.Rejected(reason)
+
+private const val MAX_REVALIDATION_RETAINED_BYTES = 4L * 1024 * 1024

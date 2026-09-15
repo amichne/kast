@@ -6,10 +6,10 @@ resource: file://query/protocol
 tags: [kotlin, protocol, query, authority]
 timestamp: 2026-09-15T00:00:00Z
 code_sources:
-  - path: symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/exact/ExactRevalidation.kt
+  - path: symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/ExactRevalidation.kt
   - path: symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/ExactRevalidationService.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedExactRevalidationStore.kt
-  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/exact/IntellijExactRevalidationCapture.kt
+  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijExactRevalidationCapture.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/RelationCheckpointDocument.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/TraversalCheckpointDocument.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/AdmittedReadRejections.kt
