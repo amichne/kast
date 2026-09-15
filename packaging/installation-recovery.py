@@ -3,7 +3,7 @@
 The receipt and this executable live outside bin/lib/share. Quarantined evidence
 is never deleted by recovery. An unresolved process is never signalled by PID.
 """
-from dataclasses import asdict, dataclass, fields
+from dataclasses import asdict, dataclass, fields, replace
 from enum import Enum
 from pathlib import Path
 import argparse
@@ -263,17 +263,122 @@ def validate(root, receipt):
         if destination.name != 'kast-ide-hosted' or receipt.pluginRoot != str(destination.parent):
             raise Rejected(Failure.RECEIPT)
         physical(destination.parent)
-        for raw, prefix in ((plugin.candidate, '.kast-ide-hosted.install-'),
-                            (plugin.backup, '.kast-ide-hosted.baseline-'),
-                            (plugin.quarantine, '.kast-ide-hosted.detached-')):
-            path = Path(raw)
-            if path.parent != destination.parent or not path.name.startswith(prefix):
-                raise Rejected(Failure.RECEIPT)
+        plugin_layout(plugin)
     return bundle
 
 
+class PluginLayout(Enum):
+    LEGACY = 'legacy-discovery'
+    RETAINED = 'outside-discovery'
+
+
+PLUGIN_PREFIXES = ('.kast-ide-hosted.install-', '.kast-ide-hosted.baseline-', '.kast-ide-hosted.detached-')
+MAXIMUM_PRIOR_INSTALLATIONS = 128
+
+
+def retention_root(plugins):
+    return plugins.parent / '.kast-plugin-recovery'
+
+
+def plugin_layout(plugin):
+    plugins = Path(plugin.destination).parent
+    paths = tuple(map(Path, (plugin.candidate, plugin.backup, plugin.quarantine)))
+    token = paths[0].name.removeprefix(PLUGIN_PREFIXES[0])
+    if len(token) != 32 or any(character not in '0123456789abcdef' for character in token):
+        raise Rejected(Failure.RECEIPT)
+    if any(path.name != prefix + token for path, prefix in zip(paths, PLUGIN_PREFIXES)):
+        raise Rejected(Failure.RECEIPT)
+    if all(path.parent == plugins for path in paths):
+        return PluginLayout.LEGACY
+    if all(path.parent == retention_root(plugins) for path in paths):
+        return PluginLayout.RETAINED
+    raise Rejected(Failure.RECEIPT)
+
+
+def prepare_retention(plugins):
+    retained = retention_root(plugins)
+    physical(plugins.parent)
+    retained.mkdir(mode=0o700, exist_ok=True)
+    physical(retained)
+    if retained.stat().st_dev != plugins.stat().st_dev:
+        raise Rejected(Failure.FILESYSTEM)
+    return retained
+
+
+def refresh_recovery_script(bundle):
+    # This mutable recovery bundle is outside every immutable version payload.
+    temporary = bundle / ('.recovery-script-' + uuid.uuid4().hex)
+    try:
+        with temporary.open('xb') as target:
+            target.write(Path(__file__).resolve().read_bytes())
+        temporary.chmod(0o600)
+        sync(temporary)
+        os.replace(temporary, retained_script(bundle))
+        sync(bundle)
+    finally:
+        if temporary.exists():
+            temporary.unlink()
+
+
+def relocate_inactive(source, destination, identity):
+    old, new = os.path.lexists(source), os.path.lexists(destination)
+    if not old and not new:
+        return
+    if identity is None or (old and new):
+        raise Rejected(Failure.OWNERSHIP)
+    observed = source if old else destination
+    if Identity.observe(physical(observed)) != identity:
+        raise Rejected(Failure.OWNERSHIP)
+    if old:
+        source.rename(destination)
+        sync(source.parent)
+        sync(destination.parent)
+
+
+def migrate_plugin_receipt(root, receipt):
+    bundle = validate(root, receipt)
+    if receipt.plugin is None:
+        return receipt
+    plugin = receipt.plugin
+    plugins = Path(plugin.destination).parent
+    retained = prepare_retention(plugins)
+    layout = plugin_layout(plugin)
+    if layout is PluginLayout.LEGACY:
+        plugin = replace(plugin, candidate=str(retained / Path(plugin.candidate).name),
+                         backup=str(retained / Path(plugin.backup).name),
+                         quarantine=str(retained / Path(plugin.quarantine).name))
+        receipt = replace(receipt, plugin=plugin)
+        # Persist the trusted resumer before the new location intent. The exact legacy
+        # counterparts remain derivable if interrupted between the receipt and rename.
+        refresh_recovery_script(bundle)
+        save(bundle / 'receipt.json', receipt)
+    for raw, identity in ((plugin.candidate, plugin.candidateIdentity),
+                          (plugin.backup, plugin.priorIdentity),
+                          (plugin.quarantine, plugin.candidateIdentity)):
+        destination = Path(raw)
+        relocate_inactive(plugins / destination.name, destination, identity)
+    return receipt
+
+
+def migrate_plugin_chain(root):
+    current = root
+    seen = set()
+    chain = []
+    while current is not None:
+        if current in seen or len(chain) >= MAXIMUM_PRIOR_INSTALLATIONS or current.parent != root.parent:
+            raise Rejected(Failure.RECEIPT)
+        seen.add(current)
+        _, bundle = location(current)
+        receipt = load(bundle / 'receipt.json')
+        validate(current, receipt)
+        chain.append((current, receipt))
+        current = Path(receipt.priorInstallation) if receipt.priorInstallation is not None else None
+    for current, receipt in reversed(chain):
+        migrate_plugin_receipt(current, receipt)
+    return load(location(root)[1] / 'receipt.json')
+
+
 def replace_stage(receipt, stage, plugin=None):
-    from dataclasses import replace
     return replace(receipt, stage=stage, plugin=receipt.plugin if plugin is None else plugin,
                    pluginRoot=receipt.pluginRoot if plugin is None else str(Path(plugin.destination).parent))
 
@@ -285,11 +390,13 @@ def activate_plugin(root, staged, plugin_root):
     physical(staged)
     plugin_root.mkdir(parents=True, exist_ok=True)
     physical(plugin_root)
+    receipt = migrate_plugin_chain(root)
+    retained = prepare_retention(plugin_root)
     destination = plugin_root / 'kast-ide-hosted'
     if receipt.plugin is None:
         prior = Identity.observe(physical(destination)) if os.path.lexists(destination) else None
         token = uuid.uuid4().hex
-        candidate = plugin_root / ('.kast-ide-hosted.install-' + token)
+        candidate = retained / ('.kast-ide-hosted.install-' + token)
         shutil.copytree(physical(staged / 'kast-ide-hosted'), candidate, symlinks=True)
         # Source archive was admitted by the bootstrap; reject unexpected links on copy as well.
         for current, directories, files in os.walk(candidate, followlinks=False):
@@ -301,8 +408,8 @@ def activate_plugin(root, staged, plugin_root):
                     sync(path)
             sync(Path(current))
         plugin = Plugin(str(destination), str(candidate), Identity.observe(candidate),
-                        str(plugin_root / ('.kast-ide-hosted.baseline-' + token)), prior,
-                        str(plugin_root / ('.kast-ide-hosted.detached-' + token)))
+                        str(retained / ('.kast-ide-hosted.baseline-' + token)), prior,
+                        str(retained / ('.kast-ide-hosted.detached-' + token)))
         receipt = replace_stage(receipt, Status.PREPARED, plugin)
         save(bundle / 'receipt.json', receipt)
     plugin = receipt.plugin
@@ -315,10 +422,12 @@ def activate_plugin(root, staged, plugin_root):
         if Identity.observe(physical(destination)) != plugin.priorIdentity:
             raise Rejected(Failure.OWNERSHIP)
         destination.rename(backup)
+        sync(backup.parent)
         sync(plugin_root)
     if os.path.lexists(destination) or Identity.observe(physical(candidate)) != plugin.candidateIdentity:
         raise Rejected(Failure.OWNERSHIP)
     candidate.rename(destination)
+    sync(candidate.parent)
     sync(plugin_root)
     save(bundle / 'receipt.json', replace_stage(receipt, Status.ACTIVE))
     return Report(Status.ACTIVE, [Failure.RESTART], str(retained_script(bundle)))
@@ -429,6 +538,7 @@ def detach(root, dry_run):
     validate(root, receipt)
     if dry_run:
         return Report(Status.PLANNED, [], str(retained_script(bundle)))
+    receipt = migrate_plugin_chain(root)
     # Fence is independent of payload admission and remains until explicit reinstall.
     fence = root / '.recovery-detached'
     if not os.path.lexists(fence):
@@ -466,11 +576,12 @@ def detach(root, dry_run):
         plugin = receipt.plugin
         destination, quarantine = Path(plugin.destination), Path(plugin.quarantine)
         physical(destination.parent)
-        if quarantine.parent != destination.parent or not quarantine.name.startswith('.kast-ide-hosted.detached-'):
+        if plugin_layout(plugin) is not PluginLayout.RETAINED:
             raise Rejected(Failure.RECEIPT)
         if os.path.lexists(destination):
             if destination.is_dir() and not destination.is_symlink() and Identity.observe(destination) == plugin.candidateIdentity and not os.path.lexists(quarantine):
                 destination.rename(quarantine)
+                sync(quarantine.parent)
                 sync(destination.parent)
             else:
                 unresolved.append(Failure.OWNERSHIP)

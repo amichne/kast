@@ -4,11 +4,17 @@ import com.intellij.ide.plugins.DynamicPlugins
 import com.intellij.ide.plugins.PluginMainDescriptor
 import com.intellij.ide.plugins.PluginManagerCore
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.extensions.PluginId
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.Project
+import com.intellij.platform.ide.progress.ModalTaskOwner
+import com.intellij.platform.ide.progress.TaskCancellation
+import com.intellij.platform.ide.progress.runWithModalProgressBlocking
 import java.util.concurrent.atomic.AtomicReference
+import kotlinx.serialization.json.Json
 
 internal class NativeFixtureProbeControls(private val project: Project, private val sandbox: ProbeSandbox) :
     Disposable {
@@ -52,10 +58,41 @@ internal class NativeFixtureProbeControls(private val project: Project, private 
         val descriptor =
             PluginManagerCore.getPluginSet().findEnabledPlugin(id) as? PluginMainDescriptor
                 ?: return ProbeExecution.Rejected(ProbeFailure.PLUGIN_UNAVAILABLE)
-        if (!DynamicPlugins.checkCanUnloadWithoutRestart(descriptor)) {
-            return ProbeExecution.Rejected(ProbeFailure.PLUGIN_UNLOAD_UNSUPPORTED)
+        return completeProbePluginUnload(
+            evidence,
+            check = { checkUnload(descriptor) },
+            unload = { unload(descriptor, id) },
+            observe = { observation ->
+                Logger.getInstance(NativeFixtureProbeControls::class.java)
+                    .info(
+                        "kast_fixture_unload " + Json.encodeToString(ProbeUnloadObservation.serializer(), observation)
+                    )
+            },
+        )
+    }
+
+    private fun checkUnload(descriptor: PluginMainDescriptor): ProbeResult<Unit> =
+        try {
+            // The platform preflight can block; the modal bridge pumps EDT while it runs on BGT.
+            runWithModalProgressBlocking(
+                ModalTaskOwner.project(project),
+                "Checking Kast fixture plugin unload",
+                cancellation = TaskCancellation.nonCancellable(),
+            ) {
+                ApplicationManager.getApplication().assertIsNonDispatchThread()
+                if (DynamicPlugins.checkCanUnloadWithoutRestart(descriptor)) ProbeResult.Accepted(Unit)
+                else ProbeResult.Rejected(ProbeFailure.PLUGIN_UNLOAD_UNSUPPORTED)
+            }
+        } catch (cancelled: ProcessCanceledException) {
+            throw cancelled
+        } catch (_: Exception) {
+            ProbeResult.Rejected(ProbeFailure.PLUGIN_UNLOAD_REJECTED)
         }
+
+    private fun unload(descriptor: PluginMainDescriptor, id: PluginId): ProbeResult<Unit> {
         return try {
+            ApplicationManager.getApplication().assertIsDispatchThread()
+            if (!sandbox.valid(project)) return ProbeResult.Rejected(ProbeFailure.SANDBOX_REJECTED)
             val options =
                 DynamicPlugins.UnloadPluginOptions()
                     .withSave(false)
@@ -65,12 +102,12 @@ internal class NativeFixtureProbeControls(private val project: Project, private 
                     .withUnloadWaitTimeout(PLUGIN_UNLOAD_WAIT_MILLIS)
             val unloaded = DynamicPlugins.unloadPlugin(descriptor, options)
             if (unloaded && !PluginManagerCore.getPluginSet().isPluginEnabled(id)) {
-                ProbeExecution.LifecycleCompleted(evidence, ProbePluginLifecycle.UNLOADED)
-            } else ProbeExecution.EffectUncertain(ProbeFailure.PLUGIN_UNLOAD_REJECTED)
+                ProbeResult.Accepted(Unit)
+            } else ProbeResult.Rejected(ProbeFailure.PLUGIN_UNLOAD_REJECTED)
         } catch (cancelled: ProcessCanceledException) {
             throw cancelled
         } catch (_: Exception) {
-            ProbeExecution.EffectUncertain(ProbeFailure.PLUGIN_UNLOAD_REJECTED)
+            ProbeResult.Rejected(ProbeFailure.PLUGIN_UNLOAD_REJECTED)
         }
     }
 

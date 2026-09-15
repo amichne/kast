@@ -127,15 +127,187 @@ class RecoveryTest(unittest.TestCase):
         with patch.object(Path, 'rename', fail_after_backup):
             with self.assertRaises(OSError):
                 module.activate_plugin(self.root, staged, plugins)
-        self.assertEqual(1, len(list(plugins.glob('.kast-ide-hosted.baseline-*'))))
+        self.assertEqual(1, len(list((plugins.parent / '.kast-plugin-recovery').glob('.kast-ide-hosted.baseline-*'))))
         module.activate_plugin(self.root, staged, plugins)
         self.assertEqual('new plugin', (plugins / 'kast-ide-hosted/new').read_text())
-        self.assertEqual('working baseline', next(plugins.glob('.kast-ide-hosted.baseline-*/old')).read_text())
+        self.assertEqual('working baseline', next((plugins.parent / '.kast-plugin-recovery').glob('.kast-ide-hosted.baseline-*/old')).read_text())
         code, report = self.run_recovery('detach')
         self.assertNotEqual(0, code)
         self.assertIn('IDE_RESTART_REQUIRED', report['unresolved'])
         self.assertFalse((plugins / 'kast-ide-hosted').exists())
-        self.assertEqual('working baseline', next(plugins.glob('.kast-ide-hosted.baseline-*/old')).read_text())
+        self.assertEqual('working baseline', next((plugins.parent / '.kast-plugin-recovery').glob('.kast-ide-hosted.baseline-*/old')).read_text())
+
+    def recovery_module(self):
+        spec = importlib.util.spec_from_file_location('recovery_retention_test', SCRIPT)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = module
+        spec.loader.exec_module(module)
+        return module
+
+    def plugin_fixture(self, module, *, legacy=False):
+        self.prepare()
+        plugins = self.home / 'plugins'
+        active = plugins / 'kast-ide-hosted'
+        active.mkdir(parents=True)
+        (active / 'bytes').write_bytes(b'prior active plugin')
+        staged = self.home / 'staged'
+        (staged / 'kast-ide-hosted').mkdir(parents=True)
+        (staged / 'kast-ide-hosted/bytes').write_bytes(b'next plugin')
+        if legacy:
+            token = 'a' * 32
+            backup = plugins / ('.kast-ide-hosted.baseline-' + token)
+            backup.mkdir()
+            (backup / 'bytes').write_bytes(b'older retained plugin')
+            bundle = self.outer / 'recovery' / self.root.name
+            receipt = module.load(bundle / 'receipt.json')
+            plugin = module.Plugin(str(active), str(plugins / ('.kast-ide-hosted.install-' + token)),
+                                   module.Identity.observe(active), str(backup), module.Identity.observe(backup),
+                                   str(plugins / ('.kast-ide-hosted.detached-' + token)))
+            module.save(bundle / 'receipt.json', module.replace_stage(receipt, module.Status.ACTIVE, plugin))
+        return plugins, staged
+
+    def test_inactive_plugin_paths_never_enter_discovery(self):
+        module = self.recovery_module()
+        plugins, staged = self.plugin_fixture(module)
+        before = module.Identity.observe(plugins / 'kast-ide-hosted')
+        module.activate_plugin(self.root, staged, plugins)
+        bundle = self.outer / 'recovery' / self.root.name
+        receipt = module.load(bundle / 'receipt.json')
+        retained = plugins.parent / '.kast-plugin-recovery'
+        self.assertEqual([plugins / 'kast-ide-hosted'], list(plugins.iterdir()))
+        self.assertEqual([retained] * 3, [Path(raw).parent for raw in
+                         (receipt.plugin.candidate, receipt.plugin.backup, receipt.plugin.quarantine)])
+        self.assertEqual(before, module.Identity.observe(Path(receipt.plugin.backup)))
+        self.assertEqual(b'prior active plugin', (Path(receipt.plugin.backup) / 'bytes').read_bytes())
+        self.assertEqual(retained.stat().st_dev, plugins.stat().st_dev)
+        code, report = self.run_recovery('detach')
+        self.assertIn('IDE_RESTART_REQUIRED', report['unresolved'])
+        self.assertEqual([], list(plugins.iterdir()))
+        self.assertEqual(b'next plugin', (Path(receipt.plugin.quarantine) / 'bytes').read_bytes())
+        self.assertEqual(b'prior active plugin', (Path(receipt.plugin.backup) / 'bytes').read_bytes())
+
+    def test_adjacent_upgrade_moves_receipted_legacy_backup_without_touching_prior_payload(self):
+        module = self.recovery_module()
+        plugins, staged = self.plugin_fixture(module, legacy=True)
+        prior = self.root
+        (prior / 'installation.json').write_bytes(b'original manifest')
+        (prior / 'config').mkdir()
+        (prior / 'config/environment').write_bytes(b'original config')
+        (prior / 'config/workspaces.json').write_bytes(b'original registry')
+        target = self.outer / 'versions' / ('0.39.4-' + 'b' * 64)
+        target.mkdir()
+        module.prepare(target, self.bin, plugins)
+        module.activate_plugin(target, staged, plugins)
+        self.assertEqual([plugins / 'kast-ide-hosted'], list(plugins.iterdir()))
+        prior_receipt = module.load(self.outer / 'recovery' / prior.name / 'receipt.json')
+        self.assertEqual(b'older retained plugin', (Path(prior_receipt.plugin.backup) / 'bytes').read_bytes())
+        target_receipt = module.load(self.outer / 'recovery' / target.name / 'receipt.json')
+        self.assertEqual(b'prior active plugin', (Path(target_receipt.plugin.backup) / 'bytes').read_bytes())
+        self.assertEqual(b'original manifest', (prior / 'installation.json').read_bytes())
+        self.assertEqual(b'original config', (prior / 'config/environment').read_bytes())
+        self.assertEqual(b'original registry', (prior / 'config/workspaces.json').read_bytes())
+
+    def test_legacy_migration_resumes_after_saved_intent_and_preserves_inode(self):
+        module = self.recovery_module()
+        plugins, staged = self.plugin_fixture(module, legacy=True)
+        backup = next(plugins.glob('.kast-ide-hosted.baseline-*'))
+        identity = module.Identity.observe(backup)
+        original = Path.rename
+        interrupted = False
+        def interrupt(path, target):
+            nonlocal interrupted
+            if path == backup and not interrupted:
+                interrupted = True
+                raise OSError('interruption after migration intent')
+            return original(path, target)
+        with patch.object(Path, 'rename', interrupt):
+            with self.assertRaises(OSError):
+                module.activate_plugin(self.root, staged, plugins)
+        receipt = module.load(self.outer / 'recovery' / self.root.name / 'receipt.json')
+        self.assertEqual(plugins.parent / '.kast-plugin-recovery', Path(receipt.plugin.backup).parent)
+        module.activate_plugin(self.root, staged, plugins)
+        self.assertEqual(identity, module.Identity.observe(Path(receipt.plugin.backup)))
+        self.assertFalse(backup.exists())
+        self.assertEqual([plugins / 'kast-ide-hosted'], list(plugins.iterdir()))
+
+    def test_forged_legacy_backup_is_not_moved(self):
+        module = self.recovery_module()
+        plugins, staged = self.plugin_fixture(module, legacy=True)
+        backup = next(plugins.glob('.kast-ide-hosted.baseline-*'))
+        backup.rename(backup.with_name('foreign-retained'))
+        backup.mkdir()
+        (backup / 'bytes').write_bytes(b'foreign replacement')
+        with self.assertRaises(module.Rejected) as rejected:
+            module.activate_plugin(self.root, staged, plugins)
+        self.assertEqual(module.Failure.OWNERSHIP, rejected.exception.failure)
+        self.assertEqual(b'foreign replacement', (backup / 'bytes').read_bytes())
+
+    def test_mixed_or_unrelated_plugin_layout_is_a_finite_receipt_failure(self):
+        module = self.recovery_module()
+        plugins, _ = self.plugin_fixture(module, legacy=True)
+        bundle = self.outer / 'recovery' / self.root.name
+        receipt = module.load(bundle / 'receipt.json')
+        foreign = self.home / 'foreign'
+        foreign.mkdir()
+        for backup in (foreign / Path(receipt.plugin.backup).name,
+                       plugins.parent / '.kast-plugin-recovery' / Path(receipt.plugin.backup).name,
+                       plugins / ('.kast-ide-hosted.baseline-' + 'b' * 32)):
+            with self.subTest(backup=backup):
+                malformed = module.replace(receipt, plugin=module.replace(receipt.plugin, backup=str(backup)))
+                module.save(bundle / 'receipt.json', malformed)
+                code, report = self.run_recovery('detach')
+                self.assertEqual('RecoveryBlocked', report['status'])
+                self.assertEqual(['RECEIPT_REJECTED'], report['unresolved'])
+                self.assertFalse((self.root / '.recovery-detached').exists())
+                self.assertEqual(b'prior active plugin', (plugins / 'kast-ide-hosted/bytes').read_bytes())
+
+    def test_legacy_detach_relocates_backup_and_quarantine_outside_discovery(self):
+        module = self.recovery_module()
+        plugins, _ = self.plugin_fixture(module, legacy=True)
+        code, report = self.run_recovery('detach')
+        self.assertEqual('DetachedWithUnresolvedState', report['status'])
+        self.assertEqual([], list(plugins.iterdir()))
+        receipt = module.load(self.outer / 'recovery' / self.root.name / 'receipt.json')
+        self.assertEqual(b'older retained plugin', (Path(receipt.plugin.backup) / 'bytes').read_bytes())
+        self.assertEqual(b'prior active plugin', (Path(receipt.plugin.quarantine) / 'bytes').read_bytes())
+        self.assertEqual((code, report), self.run_recovery('detach'))
+
+    def test_legacy_pending_candidate_activates_from_retained_storage(self):
+        module = self.recovery_module()
+        plugins, staged = self.plugin_fixture(module, legacy=True)
+        bundle = self.outer / 'recovery' / self.root.name
+        receipt = module.load(bundle / 'receipt.json')
+        old_backup = Path(receipt.plugin.backup)
+        old_backup.rename(self.home / 'unrelated-retained-bytes')
+        candidate = Path(receipt.plugin.candidate)
+        (staged / 'kast-ide-hosted').rename(candidate)
+        active = plugins / 'kast-ide-hosted'
+        pending = module.replace(receipt.plugin, candidateIdentity=module.Identity.observe(candidate),
+                                 priorIdentity=module.Identity.observe(active))
+        module.save(bundle / 'receipt.json', module.replace_stage(receipt, module.Status.PREPARED, pending))
+        candidate_identity = module.Identity.observe(candidate)
+        module.activate_plugin(self.root, staged, plugins)
+        self.assertEqual([active], list(plugins.iterdir()))
+        self.assertEqual(candidate_identity, module.Identity.observe(active))
+        self.assertEqual(b'next plugin', (active / 'bytes').read_bytes())
+        admitted = module.load(bundle / 'receipt.json')
+        self.assertEqual(b'prior active plugin', (Path(admitted.plugin.backup) / 'bytes').read_bytes())
+
+    def test_legacy_detached_quarantine_is_migrated_without_reactivation(self):
+        module = self.recovery_module()
+        plugins, _ = self.plugin_fixture(module, legacy=True)
+        bundle = self.outer / 'recovery' / self.root.name
+        receipt = module.load(bundle / 'receipt.json')
+        active = plugins / 'kast-ide-hosted'
+        identity = module.Identity.observe(active)
+        active.rename(Path(receipt.plugin.quarantine))
+        module.save(bundle / 'receipt.json', module.replace_stage(receipt, module.Status.UNRESOLVED))
+        code, report = self.run_recovery('detach')
+        self.assertEqual('DetachedWithUnresolvedState', report['status'])
+        self.assertEqual([], list(plugins.iterdir()))
+        migrated = module.load(bundle / 'receipt.json')
+        self.assertEqual(identity, module.Identity.observe(Path(migrated.plugin.quarantine)))
+        self.assertEqual(b'prior active plugin', (Path(migrated.plugin.quarantine) / 'bytes').read_bytes())
 
     def test_unknown_receipt_fields_fail_closed(self):
         self.prepare()

@@ -28,6 +28,7 @@ internal sealed interface ProbeResult<out Value> {
     data class Rejected(val failure: ProbeFailure) : ProbeResult<Nothing>
 }
 
+@kotlinx.serialization.Serializable
 internal enum class ProbeFailure {
     NOT_ENABLED,
     SANDBOX_REJECTED,
