@@ -179,7 +179,11 @@ current through this operation.
 Capture is optional for ordinary issuance: it runs inside exact compiler lookup,
 deduplicates at most 64 files per request, and retains no source payload or platform
 object. Each file is limited to 1 MiB and charged one work unit plus one per 4 KiB
-against the admitted capture allowance. Missing captures remain unavailable.
+of bytes actually read against the admitted capture allowance. Admission reserves
+room for a single EOF probe byte; length movement rejects with finite data.
+IntelliJ charset/BOM/newline decoding must match both compiler PSI text and any
+cached committed document text before capture can be retained. Saved/committed
+flags alone do not prove this equality. Missing captures remain unavailable.
 
 The hosted store admits at most 256 distinct tokens during a project-service
 lifetime, with a conservative 4 MiB retained-data charge in addition to the
