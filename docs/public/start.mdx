@@ -21,7 +21,12 @@ icon: "rocket"
 keywords: ["install", "Codex", "IntelliJ", "agent integration"]
 ---
 
-Use the included Codex integration to query one Kotlin repository.
+Install the IDEA plugin, connect Codex, and find a declaration in your repository.
+
+<Note>
+  The Codex integration is a preview. Full Desktop compatibility remains
+  [unqualified](/reference/compatibility).
+</Note>
 
 ## Requirements
 
@@ -54,7 +59,14 @@ Use the included Codex integration to query one Kotlin repository.
     - Wait for Gradle import and indexing to finish.
     - Save edited files before requesting evidence.
 
-    Reads use the saved project without starting an import or isolated worker.
+    From your repository, check the connection:
+
+    ```console
+    kast ide status
+    ```
+
+    Look for `admission_ready`. If the endpoint is unavailable, follow its
+    recovery guidance or [troubleshoot the connection](/troubleshooting).
   </Step>
   <Step title="Connect from the repository root">
     ```console
@@ -63,12 +75,16 @@ Use the included Codex integration to query one Kotlin repository.
     ```
 
     This command enrolls the workspace, qualifies the installed catalog, and
-    starts the included integration.
+    starts the included integration. Closing the client leaves the broker running;
+    use `kast app-server stop` to stop it.
   </Step>
   <Step title="Ask for a declaration">
-    Ask the agent to find a class or function that exists in your project.
+    Ask: **“Use Kast to find the class OrderService.”** Replace `OrderService`
+    with a class in your project.
 
-    Check the returned semantic status, matches, and `symbol_ref` values.
+    A successful request returns matches with names, locations, and reusable
+    `symbol_ref` values. Read the semantic status: a qualified result has limits;
+    a rejected request needs the reported problem resolved.
 
     Continue with [Search declarations](/search) or [Read a response](/reference/responses).
   </Step>

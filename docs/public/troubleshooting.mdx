@@ -26,7 +26,7 @@ icon: "life-buoy"
 keywords: ["errors", "rejected", "qualified", "bootstrap", "support"]
 ---
 
-Select the failing boundary before changing runtime state.
+Start with the symptom below, then collect status from the affected repository.
 
 See [Read a response](/reference/responses) for field names and result layers.
 
@@ -46,6 +46,7 @@ See [Read a response](/reference/responses) for field names and result layers.
 ```console
 cd /path/to/kotlin-repository
 kast
+kast ide status
 kast app-server status
 ```
 
@@ -132,6 +133,9 @@ Set `KAST_DEBUG=1` for bounded launch-stage output.
     Follow the [change workflow](/change#recover-an-interrupted-change).
   </Accordion>
 </AccordionGroup>
+
+For an installation that cannot start or uninstall, use the [offline recovery
+runbook](https://github.com/amichne/kast/blob/main/docs/installation-recovery.md).
 
 ## Advanced runtime maintenance
 

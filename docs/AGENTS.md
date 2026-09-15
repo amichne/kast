@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-14 | hash: 9255f515b789 -->
+<!-- generated: 2026-09-15 | hash: 1eefcd836756 -->
 
 # docs
 
@@ -9,7 +9,6 @@ Contains the public Mintlify documentation source plus scripts and styles for ob
 
 ## Key Files
 
-- [composable-tooling-reproduction.md](reviews/composable-tooling-reproduction.md) - synthetic scalability and composability regressions with evidence limits.
 - [public/docs.json](public/docs.json) - public documentation navigation and site configuration.
 - [public/index.mdx](public/index.mdx) - product landing documentation.
 - [public/start.mdx](public/start.mdx) - installation and connection guide.
@@ -18,7 +17,8 @@ Contains the public Mintlify documentation source plus scripts and styles for ob
 - [public/troubleshooting.mdx](public/troubleshooting.mdx) - support guidance.
 - [render_kast_observer_snapshots.py](render_kast_observer_snapshots.py) - observer snapshot renderer.
 
-- [plans/installed-knowledge-bundle.md](plans/installed-knowledge-bundle.md) - delivered installed knowledge design, evidence limits and verification commands.
+- [development.md](development.md) - build, local installation, docs preview, and native acceptance.
+- [installation-recovery.md](installation-recovery.md) - offline recovery of damaged installations.
 
 ## Subdirectories
 

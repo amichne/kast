@@ -1,5 +1,13 @@
 # Knowledge-base update log
 
+## 2026-09-15
+
+- Simplified public onboarding and moved contributor and installation-recovery
+  instructions out of the README. Consolidated installed-knowledge usage here;
+  removed completed task plans, implementation reviews, and obsolete lifecycle
+  examples. Reviewed operation-outcome claims against the shortened README. Native acceptance
+  records remain scoped evidence for compatibility claims.
+
 ## 2026-09-14
 
 - Traced an original-release upgrade/unload failure to retained plugin backups
@@ -97,7 +105,7 @@
   change-lifecycle and hosted-query concepts against their source bindings.
   Mutation authority and workspace recovery requirements remain unchanged.
 - Recorded synthetic multi-module and graph reproductions in the
-  [composability review](../docs/reviews/composable-tooling-reproduction.md).
+  composability regression tests.
 - Rechecked installed schema definitions and documented the shared process output
   cap and its headroom regression; native reports now retain finite provider
   qualification evidence before invoking tools.

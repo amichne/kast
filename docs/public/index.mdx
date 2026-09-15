@@ -4,7 +4,7 @@ title: "Kast"
 description: "Find Kotlin declarations, interpret compiler evidence, and make approved source changes."
 resource: "file://docs/public/index.mdx"
 tags: ["Kotlin", "compiler", "agents", "search"]
-timestamp: "2026-09-14T00:00:00-04:00"
+timestamp: "2026-09-15T00:00:00-04:00"
 code_sources:
   - path: "protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt"
     symbols: ["CanonicalAgentToolDefinitions"]
@@ -15,53 +15,46 @@ icon: "scan-search"
 keywords: ["Kotlin", "compiler", "coding agents", "semantic search"]
 ---
 
-Kast gives agents compiler-grounded tools for the Kotlin project open in IntelliJ.
+Kast gives coding agents compiler-grounded search, diagnostics, and approved
+source changes for the Kotlin project open in IntelliJ IDEA.
 
-## What do you need to do?
+## Start with one search
 
-| Task | Start here | You get |
-| --- | --- | --- |
-| Connect a Kotlin repository | [Install and connect](/start) | A working agent tool catalog |
-| Find a class, function, or property | [Search declarations](/search) | Separate matches, compiler signatures, and reusable references |
-| Follow callers or implementations | [Compose a query](/query-pipelines) | Related declarations from an ordered query |
-| Decide what an answer proves | [Read a response](/reference/responses) | Status, coverage, item failures, and the next action |
-| Add a declaration | [Plan and apply a change](/change) | A file preview, exact-plan approval, and verification evidence |
-| Integrate your own agent host | [Harness contract](/agent-harnesses) | Installed schemas and executable bindings |
-
-## Make one useful request
-
-After [setup](/start), ask your agent to find a declaration by its simple name.
-
-```json
-{"class_name":"OrderService","name_match":null,"scope":null}
-```
-
-Use these request rules:
-
-- Replace `OrderService` with a declaration from your project.
-- Keep all three fields because `null` selects a documented default.
-- Expect exact, case-sensitive matching in the imported `main` and `test` source sets.
-
-Read the semantic status before the matches:
-
-| Status | What it means |
-| --- | --- |
-| **complete** | The search can establish absence within its scope. |
-| **qualified** | The answer remains limited by its attached qualifications. |
-| **rejected** | Resolve the reported problem before using the answer. |
-
-## Keep the compiler evidence
-
-A result's `symbol_ref` is its reusable identity.
-
-- Copy `symbol_ref` unchanged into later tools.
-- Use the name, location, and signature for display only.
-- See [Symbol results](/reference/symbols) for field and reuse rules.
+1. [Install Kast and connect your agent](/start).
+2. Ask: **“Use Kast to find the class OrderService.”** Use a class from your project.
+3. Check the returned status and matches, then reuse the result for follow-up work.
 
 <Note>
-  Semantic reads use saved, indexed project state.
-
-  Open the repository in IDEA, finish import and indexing, and save edits before asking again.
-
-  Search returns a blocker instead of opening or importing an unavailable project.
+  Kast reads saved, indexed project state. Keep the repository open in IDEA,
+  finish Gradle import and indexing, and save edits before requesting evidence.
 </Note>
+
+## What can you do next?
+
+<CardGroup cols={2}>
+  <Card title="Find declarations" icon="scan-search" href="/search">
+    Search classes, functions, and properties by name and scope.
+  </Card>
+  <Card title="Follow relationships" icon="network" href="/query-pipelines">
+    Find callers and implementations with reusable compiler references.
+  </Card>
+  <Card title="Change source" icon="file-pen" href="/change">
+    Preview a declaration, approve its exact plan, and inspect verification.
+  </Card>
+  <Card title="Resolve a blocker" icon="life-buoy" href="/troubleshooting">
+    Check the connection and act on the reported failure.
+  </Card>
+</CardGroup>
+
+## Know what an answer proves
+
+| Status | How to use it |
+| --- | --- |
+| **complete** | Rely on the answer within its declared scope and limits. |
+| **qualified** | Read the attached limitations before drawing conclusions. |
+| **rejected** | Resolve the reported problem before using the answer. |
+
+Keep returned `symbol_ref` values unchanged for follow-up tools.
+[Read a response](/reference/responses) explains the result fields.
+
+Building an integration? Start with the [agent harness contract](/agent-harnesses).
