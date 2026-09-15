@@ -112,10 +112,12 @@ class HostedVfsObservationTest {
         val limits = (ReadLimits.resolve(mapOf("KAST_READ_EPOCH_VFS_EVENTS" to "1")) as Refinement.Refined).value
         val host = IdeReadHostLifetime.fromBoundary(UUID.randomUUID())
         val published = mutableListOf<String>()
-        val events = object : AbstractList<HostedVfsEventBoundary>() {
-            override val size: Int = 2
-            override fun get(index: Int): HostedVfsEventBoundary = error("Overflow must not inspect events")
-        }
+        val events =
+            object : AbstractList<HostedVfsEventBoundary>() {
+                override val size: Int = 2
+
+                override fun get(index: Int): HostedVfsEventBoundary = error("Overflow must not inspect events")
+            }
         publishHostedVfsEvidence(host, observeHostedVfsBatch(root, events, limits), published::add)
         val document = JsonParser.parseString(published.single()).asJsonObject
         assertEquals("relevance_unknown", document["outcome"].asString)

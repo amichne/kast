@@ -137,8 +137,8 @@ internal class ProjectReadEpochMetadataCounter {
  * Proof transition: `(ProjectReadEpochVfsRoot, List<ProjectReadEpochVfsEvent>) -> ProjectReadEpochVfsBatchObservation`.
  *
  * Establishes whether at least one bounded event path is within the exact admitted root. An oversized batch retains
- * unknown relevance and requires conservative invalidation; a malformed bounded path is a closed rejection. Raw event strings may be extracted only by the IntelliJ VFS listener; this
- * projection performs no effect or semantic work.
+ * unknown relevance and requires conservative invalidation; a malformed bounded path is a closed rejection. Raw event
+ * strings may be extracted only by the IntelliJ VFS listener; this projection performs no effect or semantic work.
  */
 internal fun observeProjectReadEpochVfsBatch(
     root: ProjectReadEpochVfsRoot,

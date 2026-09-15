@@ -348,7 +348,10 @@ Receipts contain event kind, IDE-versus-refresh origin, syntactic path categorie
 counts and the existing host correlation. `OUTSIDE_ROOT` counts expose global
 VFS activity that can schedule project indexing. They contain no file paths or
 source payloads. These diagnostic categories do not change source membership or epoch
-admission; the original epoch listeners remain authoritative.
+admission; the original epoch listeners remain authoritative. Oversized diagnostic
+batches emit `relevance_unknown` with reason `BATCH_LIMIT`, without path categories
+or relevance proof. The epoch listener independently advances its invalidation
+signal conservatively; a diagnostic receipt is not proof of fresh read admission.
 
 Incremental creation, class renaming, and deletion were qualified against the
 same original IDE index. Broader semantic CLI/App Server routing and stronger
