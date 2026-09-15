@@ -53,6 +53,7 @@ internal class HostedQueryExecutor(
         outcome: (Value) -> HostedDiagnosticOutcome = ::hostedExecutionOutcome,
         executionBudget: HostedExecutionBudgetRequest = HostedExecutionBudgetRequest(),
         publication: HostedReadPublicationAdmission = HostedReadPublicationAdmission.Containment,
+        completion: HostedReadCompletionPolicy = HostedReadCompletionPolicy.HOST_CONTAINMENT,
         computation: suspend (HostedQueryProgress) -> Value,
     ): HostedExecution<Value> {
         val permit =
@@ -63,7 +64,7 @@ internal class HostedQueryExecutor(
                     return HostedExecution.Rejected(admission.failure)
                 }
             }
-        val progress = HostedQueryProgress(limits, clock, executionBudget, publication)
+        val progress = HostedQueryProgress(limits, clock, executionBudget, publication, completion)
         val operation = scope.async {
             withTimeout(limits[ReadLimitParameter.HOST_QUERY_MILLIS].value.toLong()) {
                 progress.observe(diagnostics(limits))
@@ -148,6 +149,7 @@ internal class HostedQueryProgress(
     clock: () -> Long = System::nanoTime,
     executionBudget: HostedExecutionBudgetRequest = HostedExecutionBudgetRequest(),
     publication: HostedReadPublicationAdmission = HostedReadPublicationAdmission.Containment,
+    private val completion: HostedReadCompletionPolicy = HostedReadCompletionPolicy.HOST_CONTAINMENT,
 ) {
     private val deadline = HostedReadDeadline(limits, clock, executionBudget, publication)
 
@@ -162,6 +164,14 @@ internal class HostedQueryProgress(
                     ExecutionBudgetPresence.Present(ExecutionBudgetReport.from(admitted.value.executionBudget))
             }
         }
+
+    fun admitSemanticRead(): Refinement<HostedAdmittedRead, HostedQueryFailure> =
+        when (val admitted = admitSemanticTime()) {
+            is Refinement.Rejected -> admitted
+            is Refinement.Refined -> Refinement.Refined(deadline.admitCompletion(admitted.value, completion))
+        }
+
+    fun validateCompletion(admitted: HostedAdmittedRead) = deadline.validateCompletion(admitted.completion)
 
     @Volatile
     var diagnostics: HostedReadDiagnostics? = null

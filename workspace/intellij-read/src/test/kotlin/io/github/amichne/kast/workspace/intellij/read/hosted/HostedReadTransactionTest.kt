@@ -7,6 +7,18 @@ import org.junit.jupiter.api.Test
 
 class HostedReadTransactionTest {
     @Test
+    fun `caller elapsed limit rejects detached evaluation before publication`() = runTest {
+        var now = 0L
+        val progress = HostedQueryProgress(clock = { now }, completion = HostedReadCompletionPolicy.CALLER_ELAPSED)
+        val result = runHostedReadTransaction(progress, { Refinement.Refined(Unit) }) { allowance ->
+            now += allowance.semantic.value * 1_000_000L
+            42
+        }
+        assertEquals(HostedSemanticRead.Rejected(HostedQueryFailure.BUDGET_EXCEEDED), result)
+        assertEquals(HostedQueryStage.CONTENT_REVALIDATION, progress.stage)
+    }
+
+    @Test
     fun `failed admission never evaluates a plan`() = runTest {
         var evaluated = false
         val result =
