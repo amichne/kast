@@ -6,6 +6,9 @@ resource: file://distribution
 tags: [distribution, configuration, packaging, release]
 timestamp: 2026-09-14T00:00:00Z
 code_sources:
+  - path: change/intellij/src/nativeFixture/kotlin/io/github/amichne/kast/fixtureprobe/ProbeOwnedSourceRescan.kt
+  - path: change/intellij/src/nativeFixture/kotlin/io/github/amichne/kast/fixtureprobe/ProbeSetupReadiness.kt
+  - path: change/intellij/src/nativeFixture/kotlin/io/github/amichne/kast/fixtureprobe/ProbeSetupReadinessDocument.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/BrokerInstallationState.kt
     symbols: [BrokerInstallationState]
   - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/acceptance/hostedchange/NativeHostedReadMain.kt
@@ -139,3 +142,11 @@ owned cleanup. Its schema-2 receipt retains bounded status hashes and distinct
 unqualified Desktop evidence. Original-release acceptance explicitly selects the
 private compatibility policy. These receipts do not prove a model-driven tool
 invocation through the existing IDEA runtime.
+
+Disposable native fixture readiness explicitly marks its fixed, canonical
+`src/main/kotlin` directory for a nonrecursive rescan before the existing cached-root
+refresh. The platform can propagate dirty flags to ancestors. The receipt retains
+the selected dirty-mark scope and completion separately from refresh and native-task
+drain evidence. This fixture lifecycle effect makes direct-child test file creation
+and deletion observable without depending on watcher intake; semantic queries do not
+invoke it. A quiet readiness receipt still does not prove a future epoch is stable.

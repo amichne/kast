@@ -28,7 +28,14 @@ class ProbeSetupObservationTest {
                     before = completed,
                     after = completed,
                     elapsedNanos = SETUP_QUIET_WINDOW_NANOS,
-                    drain = ProbeSetupDrainState.COMPLETED,
+                    drain =
+                        ProbeSetupRefreshEvidence(
+                            ProbeOwnedSourceDirtyMark(
+                                ProbeDirtyMarkScope.OWNED_SOURCE_DIRECTORY,
+                                ProbeDirtyMarkOutcome.COMPLETED,
+                            ),
+                            ProbeSetupDrainState.COMPLETED,
+                        ),
                 ),
             )
         }
@@ -48,7 +55,14 @@ class ProbeSetupObservationTest {
                 before = scheduled,
                 after = scheduled,
                 elapsedNanos = SETUP_QUIET_WINDOW_NANOS,
-                drain = ProbeSetupDrainState.COMPLETED,
+                drain =
+                    ProbeSetupRefreshEvidence(
+                        ProbeOwnedSourceDirtyMark(
+                            ProbeDirtyMarkScope.OWNED_SOURCE_DIRECTORY,
+                            ProbeDirtyMarkOutcome.COMPLETED,
+                        ),
+                        ProbeSetupDrainState.COMPLETED,
+                    ),
             ),
         )
         val unavailable = completed.copy(indexing = ProbeSetupIndexingState.UNAVAILABLE)
@@ -59,7 +73,14 @@ class ProbeSetupObservationTest {
                 before = unavailable,
                 after = unavailable,
                 elapsedNanos = SETUP_QUIET_WINDOW_NANOS,
-                drain = ProbeSetupDrainState.COMPLETED,
+                drain =
+                    ProbeSetupRefreshEvidence(
+                        ProbeOwnedSourceDirtyMark(
+                            ProbeDirtyMarkScope.OWNED_SOURCE_DIRECTORY,
+                            ProbeDirtyMarkOutcome.COMPLETED,
+                        ),
+                        ProbeSetupDrainState.COMPLETED,
+                    ),
             ),
         )
     }
@@ -77,7 +98,14 @@ class ProbeSetupObservationTest {
                         before = busy,
                         after = busy,
                         elapsedNanos = SETUP_QUIET_WINDOW_NANOS,
-                        drain = ProbeSetupDrainState.COMPLETED,
+                        drain =
+                            ProbeSetupRefreshEvidence(
+                                ProbeOwnedSourceDirtyMark(
+                                    ProbeDirtyMarkScope.OWNED_SOURCE_DIRECTORY,
+                                    ProbeDirtyMarkOutcome.COMPLETED,
+                                ),
+                                ProbeSetupDrainState.COMPLETED,
+                            ),
                     ),
                 )
             }
@@ -94,14 +122,21 @@ class ProbeSetupObservationTest {
                     before = completed,
                     after = completed,
                     elapsedNanos = SETUP_QUIET_WINDOW_NANOS,
-                    drain = ProbeSetupDrainState.COMPLETED,
+                    drain =
+                        ProbeSetupRefreshEvidence(
+                            ProbeOwnedSourceDirtyMark(
+                                ProbeDirtyMarkScope.OWNED_SOURCE_DIRECTORY,
+                                ProbeDirtyMarkOutcome.COMPLETED,
+                            ),
+                            ProbeSetupDrainState.COMPLETED,
+                        ),
                 ),
             )
         val observation = result.value as ProbeSetupObservation
         assertEquals(ProbeSetupImportEvidence.FINAL_TASKS_OBSERVED, observation.import)
         assertEquals(completed, observation.before)
         assertEquals(completed, observation.after)
-        assertEquals(ProbeSetupDrainState.COMPLETED, observation.drain)
+        assertEquals(ProbeSetupDrainState.COMPLETED, observation.drain.nativeTasks)
         val restored = completed.copy(import = ProbeImportState.NOT_OBSERVED)
         val reopened =
             assertInstanceOf(
@@ -111,7 +146,14 @@ class ProbeSetupObservationTest {
                     before = restored,
                     after = restored,
                     elapsedNanos = SETUP_QUIET_WINDOW_NANOS,
-                    drain = ProbeSetupDrainState.COMPLETED,
+                    drain =
+                        ProbeSetupRefreshEvidence(
+                            ProbeOwnedSourceDirtyMark(
+                                ProbeDirtyMarkScope.OWNED_SOURCE_DIRECTORY,
+                                ProbeDirtyMarkOutcome.COMPLETED,
+                            ),
+                            ProbeSetupDrainState.COMPLETED,
+                        ),
                 ),
             )
         assertEquals(
@@ -138,7 +180,14 @@ class ProbeSetupObservationTest {
                     before = completed,
                     after = completed.copy(generation = changed),
                     elapsedNanos = SETUP_QUIET_WINDOW_NANOS,
-                    drain = ProbeSetupDrainState.COMPLETED,
+                    drain =
+                        ProbeSetupRefreshEvidence(
+                            ProbeOwnedSourceDirtyMark(
+                                ProbeDirtyMarkScope.OWNED_SOURCE_DIRECTORY,
+                                ProbeDirtyMarkOutcome.COMPLETED,
+                            ),
+                            ProbeSetupDrainState.COMPLETED,
+                        ),
                 ),
             )
         }
@@ -149,7 +198,14 @@ class ProbeSetupObservationTest {
                 before = completed,
                 after = completed,
                 elapsedNanos = SETUP_QUIET_WINDOW_NANOS - 1,
-                drain = ProbeSetupDrainState.COMPLETED,
+                drain =
+                    ProbeSetupRefreshEvidence(
+                        ProbeOwnedSourceDirtyMark(
+                            ProbeDirtyMarkScope.OWNED_SOURCE_DIRECTORY,
+                            ProbeDirtyMarkOutcome.COMPLETED,
+                        ),
+                        ProbeSetupDrainState.COMPLETED,
+                    ),
             ),
         )
         val negative = completed.copy(generation = generation.copy(vfs = -1))
@@ -160,7 +216,14 @@ class ProbeSetupObservationTest {
                 before = negative,
                 after = negative,
                 elapsedNanos = SETUP_QUIET_WINDOW_NANOS,
-                drain = ProbeSetupDrainState.COMPLETED,
+                drain =
+                    ProbeSetupRefreshEvidence(
+                        ProbeOwnedSourceDirtyMark(
+                            ProbeDirtyMarkScope.OWNED_SOURCE_DIRECTORY,
+                            ProbeDirtyMarkOutcome.COMPLETED,
+                        ),
+                        ProbeSetupDrainState.COMPLETED,
+                    ),
             ),
         )
     }
@@ -176,7 +239,14 @@ class ProbeSetupObservationTest {
                     before = busy,
                     after = busy,
                     elapsedNanos = SETUP_QUIET_WINDOW_NANOS,
-                    drain = ProbeSetupDrainState.COMPLETED,
+                    drain =
+                        ProbeSetupRefreshEvidence(
+                            ProbeOwnedSourceDirtyMark(
+                                ProbeDirtyMarkScope.OWNED_SOURCE_DIRECTORY,
+                                ProbeDirtyMarkOutcome.COMPLETED,
+                            ),
+                            ProbeSetupDrainState.COMPLETED,
+                        ),
                 ),
             )
         }
@@ -195,7 +265,14 @@ class ProbeSetupObservationTest {
                     before = incomplete,
                     after = incomplete,
                     elapsedNanos = SETUP_QUIET_WINDOW_NANOS,
-                    drain = ProbeSetupDrainState.COMPLETED,
+                    drain =
+                        ProbeSetupRefreshEvidence(
+                            ProbeOwnedSourceDirtyMark(
+                                ProbeDirtyMarkScope.OWNED_SOURCE_DIRECTORY,
+                                ProbeDirtyMarkOutcome.COMPLETED,
+                            ),
+                            ProbeSetupDrainState.COMPLETED,
+                        ),
                 ),
             )
         }

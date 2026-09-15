@@ -56,7 +56,7 @@ private constructor(
     val beforeRefresh: ProbeSetupSample,
     val before: ProbeSetupSample,
     val after: ProbeSetupSample,
-    val drain: ProbeSetupDrainState,
+    val drain: ProbeSetupRefreshEvidence,
 ) {
     val provenance: ProbeSourceProvenance
         get() = after.provenance
@@ -67,7 +67,7 @@ private constructor(
             before: ProbeSetupSample,
             after: ProbeSetupSample,
             elapsedNanos: Long,
-            drain: ProbeSetupDrainState,
+            drain: ProbeSetupRefreshEvidence,
         ): ProbeResult<ProbeSetupObservation> {
             if (
                 beforeRefresh.status != ProbeSetupStatus.CANDIDATE ||

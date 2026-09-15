@@ -168,7 +168,7 @@ internal class ProbeSetupReadiness(private val project: Project, private val san
         request: ProbeRequest,
         deadline: Long,
         requirement: ProbeImportRequirement,
-        drain: ProbeSetupDrainState,
+        drain: ProbeSetupRefreshEvidence,
         beforeRefresh: ProbeSetupSample,
         observeSource: () -> ProbeExecution,
     ): ProbeExecution {
@@ -228,10 +228,15 @@ internal class ProbeSetupReadiness(private val project: Project, private val san
         }
     }
 
-    private fun refresh(deadline: Long): ProbeResult<ProbeSetupDrainState> {
+    private fun refresh(deadline: Long): ProbeResult<ProbeSetupRefreshEvidence> {
         if (!sandbox.valid(project)) return ProbeResult.Rejected(ProbeFailure.SANDBOX_REJECTED)
         if (LocalFileSystem.getInstance().findFileByNioFile(sandbox.project) == null)
             return ProbeResult.Rejected(ProbeFailure.TARGET_UNAVAILABLE)
+        val dirtyMark =
+            when (val marked = markOwnedSourceDirectory(sandbox)) {
+                is ProbeResult.Accepted -> marked.value
+                is ProbeResult.Rejected -> return marked
+            }
         val manager =
             VirtualFileManager.getInstance() as? PlatformVirtualFileManager
                 ?: return ProbeResult.Rejected(ProbeFailure.SETUP_NATIVE_TASKS_UNAVAILABLE)
@@ -246,7 +251,7 @@ internal class ProbeSetupReadiness(private val project: Project, private val san
         return when (val drained = ProbeSetupNativeTasks.drain(project, deadline)) {
             is ProbeResult.Accepted -> {
                 onEdt(deadline) { Unit }
-                drained
+                ProbeResult.Accepted(ProbeSetupRefreshEvidence(dirtyMark, drained.value))
             }
             is ProbeResult.Rejected -> drained
         }
