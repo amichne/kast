@@ -27,3 +27,8 @@ fun qualified(client: ChildClient): String {
     val callback = { client.fetch() }
     return client.fetch()
 }
+fun callCycleEntry(client: ChildClient): String {
+    callCyclePeer(client)
+    return qualified(client)
+}
+fun callCyclePeer(client: ChildClient): String = callCycleEntry(client)
