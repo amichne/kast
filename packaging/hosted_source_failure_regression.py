@@ -124,23 +124,73 @@ class ObservedSourceFailure:
     # Already admitted by the transport schema-evidence boundary; never raw provider JSON.
     schema_violation_evidence: dict | None = None
     recovery: SourceFailureRecovery | None = None
+    cli_boundary_failure: SourceCliBoundaryFailure | None = None
+    jvm_notices: tuple[SourceJvmNotice, ...] = ()
 
 
-def admit_source_cli_boundary(exit_code, stdout, stderr):
-    """Usage stderr is a disjoint boundary; the caller subsequently checks the operation schema."""
+class SourceJvmNotice(str, Enum):
+    TOOL_OPTIONS = 'java-tool-options'
+    JAVA_OPTIONS = 'java-options'
+
+
+class SourceCliBoundaryFailure(str, Enum):
+    EXIT = 'exit-not-usage'
+    STDOUT = 'stdout-not-empty'
+    STDERR = 'stderr-bound'
+    JSON = 'json-document'
+    ENVELOPE = 'source-envelope'
+    CAUSE = 'source-cause'
+    RECOVERY = 'source-recovery'
+
+
+class SourceCliBoundaryRejected(ValueError):
+    def __init__(self, failure: SourceCliBoundaryFailure):
+        self.failure = failure
+        super().__init__(failure.value)
+
+
+@dataclass(frozen=True)
+class SourceCliBoundaryAdmission:
+    # Canonical source output stays opaque until the transport's operation-schema admission.
+    document: dict
+    cause: SourceFailureObservation
+    notices: tuple[SourceJvmNotice, ...]
+
+
+def admit_source_cli_boundary(exit_code, stdout, stderr, environment=None):
+    """Accept only usage stderr and exact JVM notices proven by this process's private environment."""
     import json
-    if exit_code != 2 or stdout or not stderr or len(stderr) > 4096:
-        raise ValueError('SOURCE_CLI_BOUNDARY_REJECTED')
-    document = json.loads(stderr)
+    if exit_code != 2:
+        raise SourceCliBoundaryRejected(SourceCliBoundaryFailure.EXIT)
+    if stdout:
+        raise SourceCliBoundaryRejected(SourceCliBoundaryFailure.STDOUT)
+    if not stderr or len(stderr) > 4096:
+        raise SourceCliBoundaryRejected(SourceCliBoundaryFailure.STDERR)
+    supplied = environment if environment is not None else {}
+    notices = []
+    for key, notice in (('JAVA_TOOL_OPTIONS', SourceJvmNotice.TOOL_OPTIONS), ('_JAVA_OPTIONS', SourceJvmNotice.JAVA_OPTIONS)):
+        value = supplied.get(key)
+        if isinstance(value, str) and value:
+            prefix = ('Picked up ' + key + ': ' + value + '\n').encode()
+            if stderr.startswith(prefix):
+                stderr = stderr[len(prefix):]
+                notices.append(notice)
+    try:
+        document = json.loads(stderr)
+    except (ValueError, TypeError):
+        raise SourceCliBoundaryRejected(SourceCliBoundaryFailure.JSON) from None
     if (not isinstance(document, dict) or set(document) != {'operation', 'status', 'reason', 'next_action'}
             or document['operation'] != 'source.read' or document['status'] != 'rejected'):
-        raise ValueError('SOURCE_CLI_BOUNDARY_REJECTED')
-    cause = admit_source_failure(document['reason'])
+        raise SourceCliBoundaryRejected(SourceCliBoundaryFailure.ENVELOPE)
+    try:
+        cause = admit_source_failure(document['reason'])
+    except (ValueError, TypeError):
+        raise SourceCliBoundaryRejected(SourceCliBoundaryFailure.CAUSE) from None
     recovery = {SourceFailureOrigin.REQUEST: 'correct_request', SourceFailureOrigin.REFERENCE: 'reacquire_authority',
                 SourceFailureOrigin.INTERNAL: 'report_failure'}[cause.origin]
     if document['next_action'] != recovery:
-        raise ValueError('SOURCE_CLI_BOUNDARY_REJECTED')
-    return document, cause
+        raise SourceCliBoundaryRejected(SourceCliBoundaryFailure.RECOVERY)
+    return SourceCliBoundaryAdmission(document, cause, tuple(notices))
 
 
 def _observe_source_failure(replay, case, arguments, expected):
@@ -161,7 +211,8 @@ def _observe_source_failure(replay, case, arguments, expected):
             else SourceFailureBoundary.PROVIDER if error.provider_failure in (ReadProviderFailure.SOURCE_INPUT, ReadProviderFailure.SOURCE_INTERNAL) else SourceFailureBoundary.TRANSPORT)
         observation = ObservedSourceFailure(case, boundary,
             SourceSchemaEvidence.ADMITTED if error.source_schema_admitted else SourceSchemaEvidence.NOT_CHECKED,
-            error.source_cause, error.provider_failure, error.reason, error.output_violation_evidence)
+            error.source_cause, error.provider_failure, error.reason, error.output_violation_evidence,
+            cli_boundary_failure=error.source_cli_boundary_failure, jvm_notices=error.source_jvm_notices)
         return (error.source_cause is not None and error.source_cause.cause == expected
             and (boundary is SourceFailureBoundary.PROVIDER or (boundary is SourceFailureBoundary.CLI and error.source_schema_admitted))), observation
     except (ValueError, TypeError):
