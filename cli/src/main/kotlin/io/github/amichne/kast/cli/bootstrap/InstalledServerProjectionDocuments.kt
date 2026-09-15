@@ -566,6 +566,13 @@ private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject =
                 operation,
                 diagnosticQualificationSchema(),
                 ServerSchemaProperty("diagnostics", arraySchema(diagnosticSchema())),
+                ServerSchemaProperty(
+                    "progress",
+                    generatedRequestSchema(
+                        io.github.amichne.kast.protocol.contract.DiagnosticProgressDocument.serializer()
+                    ),
+                    required = false,
+                ),
             )
         CanonicalOperation.CHANGE_PLAN ->
             outcomeSchema(
@@ -1293,6 +1300,7 @@ private fun relationLimitationsSchema(): JsonObject =
 
 private fun diagnosticQualificationSchema(): JsonObject =
     objectSchema(
+        ServerSchemaProperty("continuation", textSchema("Retained same-basis diagnostic progress."), required = false),
         ServerSchemaProperty(
             "knownDiagnosticCount",
             integerSchema(0, description = "Known diagnostic count before result truncation."),

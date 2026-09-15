@@ -76,6 +76,15 @@ internal class HostedQueryContinuations : Disposable {
                 mismatch = QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.CONTINUATION_MISMATCH),
             )
 
+        val diagnosticCheckpoints =
+            io.github.amichne.kast.query.protocol.DiagnosticCheckpointStore(
+                capacity = limits[ReadLimitParameter.QUERY_CONTINUATION_ENTRIES].value,
+                maximumBytes = limits[ReadLimitParameter.QUERY_CONTINUATION_BYTES].value.toLong(),
+                maximumCheckpointBytes = limits[ReadLimitParameter.QUERY_CHECKPOINT_BYTES].value.toLong(),
+                ttlMillis = limits[ReadLimitParameter.QUERY_CONTINUATION_TTL_MILLIS].value.toLong(),
+            )
+
+        val diagnosticOutputs = hostedDiagnosticOutputPages(limits)
         val sourceOutputs = hostedSourceOutputPages(limits)
         val traversalOutputs = hostedTraversalOutputPages(limits)
 
@@ -110,6 +119,8 @@ internal class HostedQueryContinuations : Disposable {
             sourceOutputs.clear()
             traversalOutputs.clear()
             checkpoints.clear()
+            diagnosticCheckpoints.retire()
+            diagnosticOutputs.clear()
         }
     }
 }

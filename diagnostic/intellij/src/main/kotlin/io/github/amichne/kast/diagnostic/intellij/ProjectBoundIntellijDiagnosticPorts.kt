@@ -44,19 +44,8 @@ private constructor(
                     IntellijDiagnosticCompilerQuery(::admits),
                     LoggingIntellijDiagnosticCompilationObserver,
                 )
-            val admittedRoots =
-                model.sourceRoots
-                    .map { Path.of(it.sourceRoot.value) }
-                    .filter { fileAdmission.admits(it, SymbolDiscoverySourceSets.All) }
             return ProjectBoundIntellijDiagnosticPorts(
-                enumeration =
-                    projectBoundDiagnosticEnumeration(
-                        project,
-                        authority,
-                        limits,
-                        ::admits,
-                        { path -> admits(path) || admittedRoots.any { it.startsWith(path) } },
-                    ),
+                enumeration = projectBoundDiagnosticEnumeration(project, authority, limits, ::admits),
                 compiler =
                     DiagnosticCompilerPort { scope ->
                         if (model.workspaceRoot != authority.workspaceRoot) {

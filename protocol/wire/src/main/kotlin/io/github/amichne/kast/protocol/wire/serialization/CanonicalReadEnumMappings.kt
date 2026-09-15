@@ -299,6 +299,7 @@ internal fun DiagnosticCheckQualification.toWireDocument(): DiagnosticCheckQuali
     DiagnosticCheckQualificationWireDocument(
         knownDiagnosticCount = knownDiagnosticCount.value,
         resultLimitReached = resultLimitReached,
+        continuation = continuation,
         analyzedFiles = analyzedFiles.map { it.value },
         limitations =
             limitations.map { limitation ->
@@ -322,6 +323,7 @@ internal fun DiagnosticCheckQualificationWireDocument.toContract():
                         resultLimitReached,
                         admittedFiles,
                         admittedLimitations,
+                        continuation,
                     )
                     .toWireDocumentConversion()
             }
@@ -368,6 +370,33 @@ private fun DiagnosticLimitationReasonWireDocument.toContract(): DiagnosticLimit
 
 internal fun DiagnosticCheckRejection.toWireDocument(): DiagnosticCheckRejectionWireDocument =
     when (this) {
+        DiagnosticCheckRejection.ENUMERATION_INDEX_MODE_UNSUPPORTED ->
+            DiagnosticCheckRejectionWireDocument.ENUMERATION_INDEX_MODE_UNSUPPORTED
+        DiagnosticCheckRejection.EXECUTION_TIME_GRANT_TOO_SMALL ->
+            DiagnosticCheckRejectionWireDocument.EXECUTION_TIME_GRANT_TOO_SMALL
+        DiagnosticCheckRejection.CONTINUATION_UNAVAILABLE ->
+            DiagnosticCheckRejectionWireDocument.CONTINUATION_UNAVAILABLE
+        DiagnosticCheckRejection.CONTINUATION_REQUEST_MISMATCH ->
+            DiagnosticCheckRejectionWireDocument.CONTINUATION_REQUEST_MISMATCH
+        DiagnosticCheckRejection.STALE_CONTINUATION -> DiagnosticCheckRejectionWireDocument.STALE_CONTINUATION
+        DiagnosticCheckRejection.CONTINUATION_CAPACITY_EXCEEDED ->
+            DiagnosticCheckRejectionWireDocument.CONTINUATION_CAPACITY_EXCEEDED
+        DiagnosticCheckRejection.ENUMERATION_WORK_GRANT_TOO_SMALL ->
+            DiagnosticCheckRejectionWireDocument.ENUMERATION_WORK_GRANT_TOO_SMALL
+        DiagnosticCheckRejection.ENUMERATION_TIME_GRANT_TOO_SMALL ->
+            DiagnosticCheckRejectionWireDocument.ENUMERATION_TIME_GRANT_TOO_SMALL
+        DiagnosticCheckRejection.ENUMERATION_RETENTION_EXCEEDED ->
+            DiagnosticCheckRejectionWireDocument.ENUMERATION_RETENTION_EXCEEDED
+        DiagnosticCheckRejection.COMPILER_UNIT_GRANT_TOO_SMALL ->
+            DiagnosticCheckRejectionWireDocument.COMPILER_UNIT_GRANT_TOO_SMALL
+        DiagnosticCheckRejection.COMPILER_CONTRACT_VIOLATION ->
+            DiagnosticCheckRejectionWireDocument.COMPILER_CONTRACT_VIOLATION
+        DiagnosticCheckRejection.WORKSPACE_INDEX_UNAVAILABLE ->
+            DiagnosticCheckRejectionWireDocument.WORKSPACE_INDEX_UNAVAILABLE
+        DiagnosticCheckRejection.WORKSPACE_ROOT_MISMATCH -> DiagnosticCheckRejectionWireDocument.WORKSPACE_ROOT_MISMATCH
+        DiagnosticCheckRejection.STALE_GENERATION -> DiagnosticCheckRejectionWireDocument.STALE_GENERATION
+        DiagnosticCheckRejection.OUTPUT_GRANT_TOO_SMALL -> DiagnosticCheckRejectionWireDocument.OUTPUT_GRANT_TOO_SMALL
+
         DiagnosticCheckRejection.WORKSPACE_NOT_READY -> DiagnosticCheckRejectionWireDocument.WORKSPACE_NOT_READY
         DiagnosticCheckRejection.SCOPE_REJECTED -> DiagnosticCheckRejectionWireDocument.SCOPE_REJECTED
         DiagnosticCheckRejection.SCOPE_EMPTY -> DiagnosticCheckRejectionWireDocument.SCOPE_EMPTY
@@ -377,6 +406,33 @@ internal fun DiagnosticCheckRejection.toWireDocument(): DiagnosticCheckRejection
 
 internal fun DiagnosticCheckRejectionWireDocument.toContract(): DiagnosticCheckRejection =
     when (this) {
+        DiagnosticCheckRejectionWireDocument.ENUMERATION_INDEX_MODE_UNSUPPORTED ->
+            DiagnosticCheckRejection.ENUMERATION_INDEX_MODE_UNSUPPORTED
+        DiagnosticCheckRejectionWireDocument.EXECUTION_TIME_GRANT_TOO_SMALL ->
+            DiagnosticCheckRejection.EXECUTION_TIME_GRANT_TOO_SMALL
+        DiagnosticCheckRejectionWireDocument.CONTINUATION_UNAVAILABLE ->
+            DiagnosticCheckRejection.CONTINUATION_UNAVAILABLE
+        DiagnosticCheckRejectionWireDocument.CONTINUATION_REQUEST_MISMATCH ->
+            DiagnosticCheckRejection.CONTINUATION_REQUEST_MISMATCH
+        DiagnosticCheckRejectionWireDocument.STALE_CONTINUATION -> DiagnosticCheckRejection.STALE_CONTINUATION
+        DiagnosticCheckRejectionWireDocument.CONTINUATION_CAPACITY_EXCEEDED ->
+            DiagnosticCheckRejection.CONTINUATION_CAPACITY_EXCEEDED
+        DiagnosticCheckRejectionWireDocument.ENUMERATION_WORK_GRANT_TOO_SMALL ->
+            DiagnosticCheckRejection.ENUMERATION_WORK_GRANT_TOO_SMALL
+        DiagnosticCheckRejectionWireDocument.ENUMERATION_TIME_GRANT_TOO_SMALL ->
+            DiagnosticCheckRejection.ENUMERATION_TIME_GRANT_TOO_SMALL
+        DiagnosticCheckRejectionWireDocument.ENUMERATION_RETENTION_EXCEEDED ->
+            DiagnosticCheckRejection.ENUMERATION_RETENTION_EXCEEDED
+        DiagnosticCheckRejectionWireDocument.COMPILER_UNIT_GRANT_TOO_SMALL ->
+            DiagnosticCheckRejection.COMPILER_UNIT_GRANT_TOO_SMALL
+        DiagnosticCheckRejectionWireDocument.COMPILER_CONTRACT_VIOLATION ->
+            DiagnosticCheckRejection.COMPILER_CONTRACT_VIOLATION
+        DiagnosticCheckRejectionWireDocument.WORKSPACE_INDEX_UNAVAILABLE ->
+            DiagnosticCheckRejection.WORKSPACE_INDEX_UNAVAILABLE
+        DiagnosticCheckRejectionWireDocument.WORKSPACE_ROOT_MISMATCH -> DiagnosticCheckRejection.WORKSPACE_ROOT_MISMATCH
+        DiagnosticCheckRejectionWireDocument.STALE_GENERATION -> DiagnosticCheckRejection.STALE_GENERATION
+        DiagnosticCheckRejectionWireDocument.OUTPUT_GRANT_TOO_SMALL -> DiagnosticCheckRejection.OUTPUT_GRANT_TOO_SMALL
+
         DiagnosticCheckRejectionWireDocument.WORKSPACE_NOT_READY -> DiagnosticCheckRejection.WORKSPACE_NOT_READY
         DiagnosticCheckRejectionWireDocument.SCOPE_REJECTED -> DiagnosticCheckRejection.SCOPE_REJECTED
         DiagnosticCheckRejectionWireDocument.SCOPE_EMPTY -> DiagnosticCheckRejection.SCOPE_EMPTY

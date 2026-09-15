@@ -37,7 +37,9 @@ sealed interface DiagnosticEnumerationResult {
 
     data class Exhausted(override val files: List<DiagnosticSourceFile>) : DiagnosticEnumerationResult
 
-    data class Rejected(val reason: DiagnosticScopeResolutionFailure) : DiagnosticEnumerationResult {
+    data class Rejected(val failure: DiagnosticEnumerationFailure) : DiagnosticEnumerationResult {
+        constructor(reason: DiagnosticScopeResolutionFailure) : this(DiagnosticEnumerationFailure.Scope(reason))
+
         override val files: List<DiagnosticSourceFile> = emptyList()
     }
 }
@@ -45,4 +47,15 @@ sealed interface DiagnosticEnumerationResult {
 /** Each call releases all platform objects. The caller owns same-basis admission and final validation. */
 fun interface DiagnosticScopeEnumerator {
     suspend fun enumerate(request: DiagnosticEnumerationRequest, budget: ResourceBudget): DiagnosticEnumerationResult
+}
+
+/** Retains why a request cannot advance; no unchanged continuation is an expected failure protocol. */
+sealed interface DiagnosticEnumerationFailure {
+    data class Scope(val reason: DiagnosticScopeResolutionFailure) : DiagnosticEnumerationFailure
+
+    data class IncreaseGrant(val reason: DiagnosticEnumerationStop) : DiagnosticEnumerationFailure
+
+    data object RetentionCapacity : DiagnosticEnumerationFailure
+
+    data object IndexModeUnsupported : DiagnosticEnumerationFailure
 }

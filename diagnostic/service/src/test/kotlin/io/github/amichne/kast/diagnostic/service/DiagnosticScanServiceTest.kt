@@ -69,6 +69,7 @@ class DiagnosticScanServiceTest {
                         assertInstanceOf(DiagnosticScanInventory.Exhausted::class.java, result.page.inventory).files,
                     )
                     assertEquals(9, pages.sumOf { it.facts.size })
+                    assertEquals(9, result.page.knownDiagnosticCount.value)
                     assertEquals(3, fixture.analyses)
                     assertEquals((0..8).toList(), pages.flatMap { it.facts }.map { it.location.range.start.value })
                     return

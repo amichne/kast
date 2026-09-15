@@ -6,6 +6,8 @@ resource: file://query
 tags: [kotlin, semantic, query, compiler]
 timestamp: 2026-09-14T00:00:00Z
 code_sources:
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/DiagnosticCheckpointStore.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedDiagnosticResponse.kt
   - path: diagnostic/service/src/main/kotlin/io/github/amichne/kast/diagnostic/service/DiagnosticScanService.kt
   - path: diagnostic/intellij/src/main/kotlin/io/github/amichne/kast/diagnostic/intellij/BoundedDiagnosticEnumeration.kt
   - path: diagnostic/contract/src/main/kotlin/io/github/amichne/kast/diagnostic/contract/DiagnosticScan.kt
@@ -213,17 +215,45 @@ observations; the compiled installed call fixture separately checks inherited
 static targets, extension overloads and occurrence cardinality. Those tests do
 not establish runtime dispatch or native K2 coverage without an installed run.
 Diagnostic scan progress is separate from `DiagnosticScope` and complete compiler
-coverage. The internal scanner advances a detached directory position, analyzes
+coverage. The public scanner advances a detached indexed-file set, analyzes
 one complete file per unit, and drains that file's diagnostic suffix without
 repeating analysis. Every chunk validates the original authority before work
 and publication. An empty intermediate page cannot establish absence, and an
 indivisible compiler unit that overruns its time grant rejects explicitly.
 The complete-scope diagnostic and mutation verification adapters retain their
-existing contracts. Public continuation projection is a separate integration step.
+existing contracts. The public request carries an opaque continuation and an independent
+execution budget. Qualified replies distinguish enumeration, analysis and retained
+output stops. The inventory has no numeric total until enumeration exhausts.
+Encoded output suffixes retain the original scan continuation, coverage and order.
 
-The directory adapter checkpoints lexicographic sibling selection itself. It
-retains directory paths, sibling positions, and detached candidates proportional
-to nesting depth, without capturing the complete scope. Each sibling probe is
-charged, including repeated sibling passes; this bounded-memory ordering costs
-quadratic work in directory width. Excluded directories are rejected before
-child expansion, using the original imported source ownership capability.
+The directory adapter streams the existing Kotlin file-type index through
+`processValues`, after source-domain and path constraints. It retains only a
+bounded set of identities encountered so far. The complete sorted inventory is
+established after enumeration exhausts; index iteration order is never treated
+as stable. Replayed callbacks consume work. A grant that cannot reach a new
+identity rejects with an increase-grant outcome, and retention saturation rejects
+explicitly. Neither outcome publishes an unchanged continuation. The adapter
+avoids `getContainingFilesIterator`, whose pinned implementation builds a full
+file-ID set before returning its lazily reified virtual files.
+
+Diagnostic checkpoints and replay payloads share one pool bounded by
+`QUERY_CONTINUATION_ENTRIES` and `QUERY_CONTINUATION_BYTES`. Diagnostic encoded
+output uses the existing separate output pool with the same limits. The diagnostic
+aggregate therefore permits twice each configured pool limit (defaults: 128
+entries and 64 MiB), independently of other read owners. Each scan checkpoint
+also obeys `QUERY_CHECKPOINT_BYTES` (default 8 MiB). Identity text, pending file
+sets, diagnostics, coverage, replay keys and object overhead are charged before
+publication. The scan pool inherits the original creation time; output entries
+follow the existing per-entry expiry policy. Project/epoch disposal clears both.
+
+Pinned SDK 262.9437.185 `processValuesInScope` returns immediately when its
+processor returns false. The adapter supplies `IdFilter.ACCEPT_ALL` and its own
+source/path scope; `getProjectIdFilter(project, false)` is deliberately avoided
+because a cache miss builds a complete content-file bit set. The pinned registry
+default `indexing.filetype.over.vfs=false` selects the index implementation;
+its alternate VFS mode is rejected without changing registry state. Native IDs
+excluded by `scope.contains` do not enter the callback work counter. Scope checks
+poll cancellation and the service checks elapsed time before publication, but
+this does not prove a per-ID work bound for a long excluded-only native prefix.
+That strict native internal-work qualification remains separate from the compiled
+callback, replay, exclusion-capacity and elapsed-rejection tests.

@@ -1,5 +1,6 @@
 package io.github.amichne.kast.diagnostic.contract
 
+import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResourceBudget
 
 /** Detached diagnostic-owned progress. It cannot satisfy DiagnosticCompleteCoverage or mutation verification. */
@@ -32,6 +33,7 @@ data class DiagnosticScanPage(
     val analyzedFiles: List<DiagnosticSourceFile>,
     val limitations: Set<DiagnosticLimitation>,
     val inventory: DiagnosticScanInventory,
+    val knownDiagnosticCount: DiagnosticFactCount = DiagnosticFactCount.observed(facts),
 )
 
 sealed interface DiagnosticScanStop {
@@ -43,11 +45,15 @@ sealed interface DiagnosticScanStop {
 }
 
 sealed interface DiagnosticScanRejection {
+    data class Enumeration(val failure: DiagnosticEnumerationFailure) : DiagnosticScanRejection
+
     data object StaleBasis : DiagnosticScanRejection
 
     data class Scope(val reason: DiagnosticScopeResolutionFailure) : DiagnosticScanRejection
 
     data class Compiler(val reason: DiagnosticReadRejection) : DiagnosticScanRejection
+
+    data object ExecutionTimeGrantTooSmall : DiagnosticScanRejection
 
     data object IndivisibleUnitExceedsBudget : DiagnosticScanRejection
 }
@@ -68,4 +74,21 @@ sealed interface DiagnosticScanResult {
 
 fun interface DiagnosticScanOperations {
     suspend fun scan(request: DiagnosticScanRequest, budget: ResourceBudget): DiagnosticScanResult
+}
+
+@JvmInline
+value class DiagnosticFactCount private constructor(val value: Int) {
+    fun adding(facts: Collection<DiagnosticFact>): Refinement<DiagnosticFactCount, DiagnosticCountFailure> {
+        val count = value.toLong() + facts.size
+        return if (count > Int.MAX_VALUE) Refinement.Rejected(DiagnosticCountFailure.CAPACITY_EXCEEDED)
+        else Refinement.Refined(DiagnosticFactCount(count.toInt()))
+    }
+
+    companion object {
+        fun observed(facts: Collection<DiagnosticFact>): DiagnosticFactCount = DiagnosticFactCount(facts.size)
+    }
+}
+
+enum class DiagnosticCountFailure {
+    CAPACITY_EXCEEDED
 }
