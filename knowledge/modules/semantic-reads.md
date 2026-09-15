@@ -6,6 +6,9 @@ resource: file://query
 tags: [kotlin, semantic, query, compiler]
 timestamp: 2026-09-14T00:00:00Z
 code_sources:
+  - path: diagnostic/service/src/main/kotlin/io/github/amichne/kast/diagnostic/service/DiagnosticScanService.kt
+  - path: diagnostic/intellij/src/main/kotlin/io/github/amichne/kast/diagnostic/intellij/BoundedDiagnosticEnumeration.kt
+  - path: diagnostic/contract/src/main/kotlin/io/github/amichne/kast/diagnostic/contract/DiagnosticScan.kt
   - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceEntityAttempt.kt
   - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceEntityPageCollector.kt
   - path: source/intellij/src/test/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceEntityReadTest.kt
@@ -198,3 +201,19 @@ Source continuation admission preserves finite causes before invoking the provid
 missing, expired, evicted, or retired tokens yield `CONTINUATION_UNAVAILABLE`;
 a changed context yields `SOURCE_SNAPSHOT_MISMATCH`; a changed request yields
 `CONTINUATION_REQUEST_MISMATCH`. Provider contract failures remain distinct.
+
+Diagnostic scan progress is separate from `DiagnosticScope` and complete compiler
+coverage. The internal scanner advances a detached directory position, analyzes
+one complete file per unit, and drains that file's diagnostic suffix without
+repeating analysis. Every chunk validates the original authority before work
+and publication. An empty intermediate page cannot establish absence, and an
+indivisible compiler unit that overruns its time grant rejects explicitly.
+The complete-scope diagnostic and mutation verification adapters retain their
+existing contracts. Public continuation projection is a separate integration step.
+
+The directory adapter checkpoints lexicographic sibling selection itself. It
+retains directory paths, sibling positions, and detached candidates proportional
+to nesting depth, without capturing the complete scope. Each sibling probe is
+charged, including repeated sibling passes; this bounded-memory ordering costs
+quadratic work in directory width. Excluded directories are rejected before
+child expansion, using the original imported source ownership capability.

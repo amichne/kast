@@ -23,6 +23,7 @@ class ProjectBoundIntellijDiagnosticPorts
 private constructor(
     val compiler: DiagnosticCompilerPort,
     val scopes: DiagnosticScopeResolver,
+    val enumeration: io.github.amichne.kast.diagnostic.contract.DiagnosticScopeEnumerator,
 ) {
     companion object {
         fun create(
@@ -43,7 +44,19 @@ private constructor(
                     IntellijDiagnosticCompilerQuery(::admits),
                     LoggingIntellijDiagnosticCompilationObserver,
                 )
+            val admittedRoots =
+                model.sourceRoots
+                    .map { Path.of(it.sourceRoot.value) }
+                    .filter { fileAdmission.admits(it, SymbolDiscoverySourceSets.All) }
             return ProjectBoundIntellijDiagnosticPorts(
+                enumeration =
+                    projectBoundDiagnosticEnumeration(
+                        project,
+                        authority,
+                        limits,
+                        ::admits,
+                        { path -> admits(path) || admittedRoots.any { it.startsWith(path) } },
+                    ),
                 compiler =
                     DiagnosticCompilerPort { scope ->
                         if (model.workspaceRoot != authority.workspaceRoot) {
