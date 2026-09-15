@@ -91,8 +91,9 @@ never authorizes the dependent action. Opening permission does not extend to
 cache invalidation, forced synchronization, topology preparation, or unrelated
 IDE restarts. Exact-plan mutation approvals retain their separate requirements.
 
-Kast's Codex response contains one JSON text item with the admitted CLI envelope,
-so clients parse once without splitting a summary prefix. Process completion and
+Kast's Codex response retains the admitted CLI envelope in its final JSON text
+item. Compact source reads with returned text prepend the unchanged source in a
+separate text item; clients parse the final envelope once. Process completion and
 the original complete/qualified/rejected semantic result remain distinct; a
 canonical rejection sets tool success false. The desktop display projection
 retains raw text and exposes a single Kast JSON object through the supported
