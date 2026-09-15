@@ -192,18 +192,17 @@ def _scoped_obligations(response, path, obligations):
 
 
 def _extended_call_cases(replay, source, path):
-    """Unavailable synthetic targets are qualified emptiness, never successful absence."""
+    """Check native-established static targets; deferred bodies retain their measured gaps."""
     checks, count = {}, 0
     unsupported = ('UNSUPPORTED_ITEM',)
-    synthetic = ('UNRESOLVED_TARGET', 'UNSUPPORTED_ITEM')
     cases = (
         ('explicitInvoke', (_site(source, 'fetcher.invoke()', 'invoke', 'operator fun invoke()'),), ()),
         ('implicitInvoke', (), (_obligation(source, 'String = fetcher()', 'fetcher', unsupported),)),
-        ('delegated', (), (_obligation(source, 'fun delegated(client: DelegatingClient): String = client.fetch()', 'fetch', synthetic),)),
+        ('delegated', (_site(source, 'fun delegated(client: DelegatingClient): String = client.fetch()',
+                             'fetch', 'fun fetch(): String'),), ()),
         ('localFunction', (), (_obligation(source, 'return nested()', 'nested', unsupported),)),
-        ('sam', (), (
-            _obligation(source, '= Fetcher {', 'Fetcher', synthetic),
-            _obligation(source, 'Fetcher { client.fetch()', 'fetch', unsupported))),
+        ('sam', (_site(source, '= Fetcher {', 'Fetcher', 'fun interface Fetcher'),), (
+            _obligation(source, 'Fetcher { client.fetch()', 'fetch', unsupported),)),
     )
     for name, expected, obligations in cases:
         discovery = replay.transport.invoke(replay.surface, 'search_functions', asdict(KotlinCallSearch(name)))
@@ -281,7 +280,8 @@ def _cycle_checks(replay, source):
         (2, peer, *_site(source, 'String = callCycleEntry(client)', 'callCycleEntry', 'fun callCycleEntry(')),
         (2, qualified, *_site(source, 'return client.fetch()', 'fetch', 'fun fetch(): String')),
     ))
-    _emit_native_observation(_cycle_observation(high, low))
+    observed = _cycle_observation(high, low)
+    _emit_native_observation(observed)
     high_edges = tuple(edge for page in high for edge in _cycle_edges(page))
     low_edges = tuple(edge for page in low for edge in _cycle_edges(page))
     return {
@@ -290,7 +290,8 @@ def _cycle_checks(replay, source):
         'cycleDepthTwoExactSiblingAndBackEdges': Counter(high_edges) == expected == Counter(low_edges),
         'cycleBoundedPagination': 1 < len(low) <= 12,
         'cycleQualifiedPartialRetained': _qualified_partial(high, source) and _qualified_partial(low, source),
-        'cycleGrantInvariantCompilerProofs': tuple(record for page in high for record in graph_records(page)) ==
+        'cycleGrantInvariantCompilerProofs': observed.compiler_identities_equal,
+        'cycleGrantInvariantRecordOrder': tuple(record for page in high for record in graph_records(page)) ==
             tuple(record for page in low for record in graph_records(page)),
     }
 
