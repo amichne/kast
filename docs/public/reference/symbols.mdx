@@ -149,3 +149,25 @@ Preserve relation kind, endpoints, use-site location, and unavailable evidence.
 </Accordion>
 
 Before judging the whole answer, return to [response outcomes](/reference/responses).
+
+## Explicitly reacquire an exact reference
+
+For a reference retained by the running host, `symbol_inspect` can explicitly
+reacquire the declaration after unrelated epoch movement:
+
+```json
+{"target":{"type":"revalidate_exact","selector":"<previous exact ref>"}}
+```
+
+A successful response has `acquisition: "reacquired"`, a newly issued selector,
+and the current evidence basis. The owning file must have unchanged saved,
+committed content, the same imported source owner, and one fresh compiler match.
+The ordinary `exact` target remains strict and still rejects the previous stale
+reference.
+
+This capability is conservative: capture is available only for supported exact
+lookups, records expire after five minutes, and the host retains at most 256
+records during its project-service lifetime. Expired slots remain occupied until
+disposal. An unavailable or expired locator requires fresh discovery. Reacquisition
+does not make an earlier source snapshot, relation, continuation, or approved
+change plan current.
