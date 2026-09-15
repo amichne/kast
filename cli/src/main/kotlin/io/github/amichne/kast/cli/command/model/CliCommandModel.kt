@@ -146,6 +146,9 @@ internal sealed interface CliNodeResolution {
 }
 
 internal sealed interface CliActionResolution : CliNodeResolution {
+    data class SourceRejected(val failure: io.github.amichne.kast.protocol.contract.SourceReadCause) :
+        CliActionResolution
+
     data class Selected(val action: CliAction) : CliActionResolution
 
     data class UsageRejected(val failure: CliUsageFailure) : CliActionResolution
@@ -210,9 +213,20 @@ internal class SemanticKastCommand<Request : OperationRequest>(
         val request =
             try {
                 requestJson.decodeFromString(serializer, document)
+            } catch (failure: io.github.amichne.kast.protocol.contract.SourceRequestSerializationException) {
+                return CliActionResolution.SourceRejected(failure.failure)
             } catch (failure: io.github.amichne.kast.appserver.query.PublicToolSerializationException) {
                 return CliActionResolution.UsageRejected(CliUsageFailure.PublicTool(failure.failure))
             } catch (_: SerializationException) {
+                if (operation == CanonicalOperation.SOURCE_READ)
+                    return CliActionResolution.SourceRejected(
+                        io.github.amichne.kast.protocol.contract.SourceReadFailureDetail.RequestRejected(
+                            io.github.amichne.kast.protocol.contract.SourceRequestField(
+                                io.github.amichne.kast.protocol.contract.SourceRequestPath.DOCUMENT
+                            ),
+                            io.github.amichne.kast.protocol.contract.SourceRequestRule.INVALID_JSON,
+                        )
+                    )
                 return CliActionResolution.UsageRejected(CliUsageFailure.RequestDocument.REJECTED)
             } catch (_: IllegalArgumentException) {
                 return CliActionResolution.UsageRejected(CliUsageFailure.RequestDocument.REJECTED)

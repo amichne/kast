@@ -179,27 +179,4 @@ internal enum class SourceReadLimitationWireDocument {
     @SerialName("provider-failure") PROVIDER_FAILURE,
 }
 
-@Serializable
-internal enum class SourceReadRejectionWireDocument {
-    @SerialName("workspace-not-ready") WORKSPACE_NOT_READY,
-    @SerialName("workspace-root-mismatch") WORKSPACE_ROOT_MISMATCH,
-    @SerialName("stale-generation") STALE_GENERATION,
-    @SerialName("source-state-mismatch") SOURCE_STATE_MISMATCH,
-    @SerialName("candidate-stale") CANDIDATE_STALE,
-    @SerialName("source-selector-stale") SOURCE_SELECTOR_STALE,
-    @SerialName("source-snapshot-mismatch") SOURCE_SNAPSHOT_MISMATCH,
-    @SerialName("source-unavailable") SOURCE_UNAVAILABLE,
-    @SerialName("document-dirty") DOCUMENT_DIRTY,
-    @SerialName("psi-document-uncommitted") PSI_DOCUMENT_UNCOMMITTED,
-    @SerialName("outside-source-scope") OUTSIDE_SOURCE_SCOPE,
-    @SerialName("anchor-not-found") ANCHOR_NOT_FOUND,
-    @SerialName("ambiguous-anchor") AMBIGUOUS_ANCHOR,
-    @SerialName("region-not-applicable") REGION_NOT_APPLICABLE,
-    @SerialName("region-absent") REGION_ABSENT,
-    @SerialName("compiler-analysis-unavailable") COMPILER_ANALYSIS_UNAVAILABLE,
-    @SerialName("contract-violation") CONTRACT_VIOLATION,
-    @SerialName("continuation-unavailable") CONTINUATION_UNAVAILABLE,
-    @SerialName("continuation-request-mismatch") CONTINUATION_REQUEST_MISMATCH,
-}
-
 @Serializable internal data class SourceLineRangeWireDocument(val startInclusive: Long, val endInclusive: Long)

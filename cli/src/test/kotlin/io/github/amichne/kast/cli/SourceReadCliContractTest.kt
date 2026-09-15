@@ -107,7 +107,7 @@ class SourceReadCliContractTest {
                     .parse(
                         listOf("source", "read"),
                         CliRequestDocumentInput.Provided(document),
-                    ) is CliCommandParsing.Rejected
+                    ) is CliCommandParsing.SourceRejected
             )
         }
         assertTrue(
@@ -117,7 +117,7 @@ class SourceReadCliContractTest {
                     CliRequestDocumentInput.Provided(
                         """{"anchor":{"type":"candidate","selector":"unknown:selector"},"region":{"type":"anchor"},"entities":{"type":"none"},"text":{"type":"complete"},"entityLimit":10,"textByteLimit":4096,"page":{"type":"first"}}"""
                     ),
-                ) is CliCommandParsing.Rejected
+                ) is CliCommandParsing.SourceRejected
         )
     }
 

@@ -124,7 +124,7 @@ internal class HostedReferenceTokens(
                     return CanonicalSelectorDecoding.Rejected(CanonicalSelectorDecodingFailure.INVALID_TOKEN_STRUCTURE)
             }
         return entries[handle]?.let { CanonicalSelectorDecoding.Decoded(it) }
-            ?: CanonicalSelectorDecoding.Rejected(CanonicalSelectorDecodingFailure.STALE_AUTHORITY)
+            ?: CanonicalSelectorDecoding.Rejected(CanonicalSelectorDecodingFailure.UNAVAILABLE)
     }
 
     @Synchronized
