@@ -27,14 +27,17 @@ The Codex integration is a preview; full Desktop compatibility remains
    For automation, append `-- --no-interactive`; the LaunchAgent then remains
    disabled unless `KAST_ENABLE_LAUNCHD=1` is explicitly set.
 
+   Choose other absolute user-owned locations with `--install-root` and
+   `--bin-dir`. If a selected command path is occupied, the installer lists it
+   and asks before removal. Automation must opt in with `--clean-collisions`.
+
 2. Restart IDEA, open your repository, and wait for Gradle import and indexing.
-   Save edited files. Add `~/.local/bin` to `PATH` if the installer requests it.
+   Save edited files. Add the selected command directory to `PATH` if needed.
 
 3. Connect from that repository:
 
    ```console
    cd /path/to/kotlin-repository
-   kast ide status
    kast codex
    ```
 

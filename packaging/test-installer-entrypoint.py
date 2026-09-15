@@ -97,6 +97,40 @@ class InstallerEntrypointTest(unittest.TestCase):
             )
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertIn("Usage:", result.stdout)
+        self.assertIn("--clean-collisions", result.stdout)
+
+    def test_noninteractive_collision_fails_closed_at_selected_command_directory(self):
+        with tempfile.TemporaryDirectory(prefix="kast-installer-collision-") as directory:
+            root = Path(directory)
+            commands = root / "custom commands"
+            commands.mkdir()
+            collision = commands / "kast"
+            collision.write_text("foreign command")
+            environment = {"HOME": str(root), "PATH": "/usr/bin:/bin", "NO_COLOR": "1"}
+            result = subprocess.run(
+                [
+                    "/bin/bash",
+                    "-c",
+                    INSTALLER.read_text(),
+                    "--",
+                    "--install-root",
+                    str(root / "custom data"),
+                    "--bin-dir",
+                    str(commands),
+                    "--version",
+                    "1.2.3",
+                ],
+                cwd=ROOT,
+                env=environment,
+                stdin=subprocess.DEVNULL,
+                text=True,
+                capture_output=True,
+                timeout=10,
+            )
+            self.assertNotEqual(0, result.returncode)
+            self.assertIn(str(collision), result.stderr)
+            self.assertIn("--clean-collisions", result.stderr)
+            self.assertEqual("foreign command", collision.read_text())
 
     def test_interactive_install_explains_components_and_prompts_for_launch_agent(self):
         with tempfile.TemporaryDirectory(prefix="kast-installer-entrypoint-") as directory:

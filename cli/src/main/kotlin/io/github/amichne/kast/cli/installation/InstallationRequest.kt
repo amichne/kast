@@ -23,6 +23,7 @@ internal enum class InstallationEnvironment(val key: String) {
     ENABLE_APP_SERVER("KAST_ENABLE_APP_SERVER"),
     APP_SERVER_TOOLS("KAST_APP_SERVER_TOOLS"),
     REFRESH_APP_SERVER("KAST_INSTALL_REFRESH_APP_SERVER"),
+    REPLACE_COMMAND_COLLISIONS("KAST_INSTALL_REPLACE_COMMAND_COLLISIONS"),
     MODE("KAST_INSTALL_MODE"),
 }
 
@@ -148,6 +149,7 @@ private constructor(
     val enableAppServer: InstallationSwitch,
     val appServerTools: AppServerTools,
     val refreshAppServer: InstallationSwitch,
+    val replaceCommandCollisions: InstallationSwitch,
     val mode: InstallationMode,
 ) {
     companion object {
@@ -278,6 +280,11 @@ private constructor(
                     is Refinement.Refined -> refined.value
                     is Refinement.Rejected -> return refined
                 }
+            val replaceCommandCollisions =
+                when (val refined = switch(InstallationEnvironment.REPLACE_COMMAND_COLLISIONS)) {
+                    is Refinement.Refined -> refined.value
+                    is Refinement.Rejected -> return refined
+                }
             val modeRaw =
                 when (val refined = raw(InstallationEnvironment.MODE)) {
                     is Refinement.Refined -> refined.value
@@ -310,6 +317,7 @@ private constructor(
                     enableAppServer,
                     tools,
                     refresh,
+                    replaceCommandCollisions,
                     mode,
                 )
             )
