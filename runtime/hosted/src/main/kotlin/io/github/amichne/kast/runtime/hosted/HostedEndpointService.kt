@@ -216,6 +216,7 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
                     outcome = { it.outcome },
                     executionBudget = request.executionBudget(),
                     publication = hostedReadPublicationAdmission,
+                    completion = request.completionPolicy(),
                 ) { context ->
                     evaluateHostedCanonicalQuery(project, context, request, continuations)
                 }

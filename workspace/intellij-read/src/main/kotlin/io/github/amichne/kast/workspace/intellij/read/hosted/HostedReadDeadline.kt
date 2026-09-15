@@ -6,6 +6,7 @@ import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
+import java.util.concurrent.TimeUnit
 
 /** Positive child allowances bounded below the host time remaining at semantic admission. */
 class HostedSemanticTimeAllowance
@@ -89,12 +90,26 @@ internal class HostedReadDeadline(
     }
 
     fun admitCompletion(allowance: HostedSemanticTimeAllowance, policy: HostedReadCompletionPolicy) =
-        HostedAdmittedRead(allowance, when (policy) {
-            HostedReadCompletionPolicy.HOST_CONTAINMENT -> HostedReadCompletion.HostContainment
-            HostedReadCompletionPolicy.CALLER_ELAPSED -> HostedReadCompletion.CallerElapsed(clock(), allowance.semantic)
-        })
+        HostedAdmittedRead(
+            allowance,
+            when (policy) {
+                HostedReadCompletionPolicy.HOST_CONTAINMENT -> HostedReadCompletion.HostContainment
+                HostedReadCompletionPolicy.CALLER_ELAPSED ->
+                    HostedReadCompletion.CallerElapsed(clock(), allowance.semantic)
+            },
+        )
 
-    fun validateCompletion(completion: HostedReadCompletion): Refinement<Unit, HostedQueryFailure> = Refinement.Refined(Unit)
+    fun validateCompletion(completion: HostedReadCompletion): Refinement<Unit, HostedQueryFailure> =
+        when (completion) {
+            HostedReadCompletion.HostContainment -> Refinement.Refined(Unit)
+            is HostedReadCompletion.CallerElapsed ->
+                if (
+                    TimeUnit.NANOSECONDS.toMillis((clock() - completion.startedNanos).coerceAtLeast(0L)) >=
+                        completion.limit.value
+                )
+                    Refinement.Rejected(HostedQueryFailure.BUDGET_EXCEEDED)
+                else Refinement.Refined(Unit)
+        }
 
     private fun remainingMillis(): Long {
         val elapsedNanos = (clock() - started).coerceAtLeast(0L)
