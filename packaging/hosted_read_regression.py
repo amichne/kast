@@ -24,6 +24,8 @@ from hosted_enum_read_regression import run_enum_read_regression
 from hosted_repair_budget_regression import run_repair_time_regression
 from hosted_kotlin_call_regression import run_kotlin_call_regression
 from hosted_compact_source_regression import run_compact_source_regression
+from hosted_vfs_overflow_regression import run_vfs_overflow_regression
+from hosted_read_policy import NativeReadPolicy
 from hosted_source_read_regression import run_source_paging_regression, source_qualification_observation
 
 
@@ -43,17 +45,25 @@ def _reproduction(repo):
         sys.path.remove(str(directory))
 
 
-def run_read_regression(isolation, fixture, product, java, harness, repo, read_fixture, initial_live):
+def run_read_regression(isolation, fixture, product, java, harness, repo, read_fixture, initial_live,
+                        read_policy=NativeReadPolicy.DEFAULT):
     """Call once after readiness, before the first mutation or external fixture edit."""
     oracle = _reproduction(repo)
     rows, failure, failure_details, unchanged, before = [], None, None, False, False
     qualification = None
     concurrent = None
     authority = None
+    overflow = None
     try:
         before = read_fixture.unchanged()
         with HostedReadTransport(isolation, fixture, product, java, harness).open() as transport:
             qualification = qualification_document(transport.qualification)
+            if read_policy is NativeReadPolicy.OVERFLOW:
+                observed, successor = run_vfs_overflow_regression(isolation, fixture, transport, initial_live)
+                overflow = asdict(observed)
+                if successor is None:
+                    raise ValueError("Owned overflow fixture did not restore fresh authority")
+                initial_live = successor
             for surface in ('cli', 'provider'):
                 replay = _ReadReplay(oracle, read_fixture, initial_live, transport, surface, rows)
                 replay.run()
@@ -72,6 +82,7 @@ def run_read_regression(isolation, fixture, product, java, harness, repo, read_f
         except (OSError, ValueError):
             failure = 'READ_FIXTURE_REJECTED'
     passed = (failure is None and unchanged and bool(rows) and all(row['passed'] for row in rows)
+              and (read_policy is not NativeReadPolicy.OVERFLOW or overflow is not None and overflow['outcome'] == 'passed')
               and concurrent is not None and concurrent['outcome'] == 'passed'
               and authority is not None and authority['outcome'] == 'passed')
     return {'schemaVersion': 1, 'outcome': 'passed' if passed else 'rejected', 'failure': failure,
@@ -81,7 +92,7 @@ def run_read_regression(isolation, fixture, product, java, harness, repo, read_f
             'queryBudgets': 'unchanged-production-policy', 'sourcePayloadsLogged': False,
             'stockCodexUi': 'unqualified', 'caseCount': len(rows),
             'passedCount': sum(row['passed'] for row in rows), 'cases': rows, 'concurrentReplay': concurrent,
-            'authorityReplay': authority}
+            'authorityReplay': authority, 'overflowReplay': overflow}
 
 
 class _ReadReplay:

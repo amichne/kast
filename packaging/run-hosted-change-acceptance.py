@@ -157,7 +157,7 @@ def main():
                 record({'event': 'stage', 'stage': 'native-readiness', 'outcome': 'started'})
                 evidence['initialLive'] = processes.start_ide()
                 record({'event': 'stage', 'stage': 'native-readiness', 'outcome': 'completed'})
-                evidence['readRegression'] = run_read_regression(isolation, fixture, product, idea.java, harness, repo, read_fixture, evidence['initialLive'])
+                evidence['readRegression'] = run_read_regression(isolation, fixture, product, idea.java, harness, repo, read_fixture, evidence['initialLive'], args.read_policy)
                 write()
                 if installed:
                     evidence['releasedCoordinator'] = asdict(qualify_released_coordinator(isolation, installed, inventory, fixture))

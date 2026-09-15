@@ -10,12 +10,14 @@ from unittest.mock import patch
 
 from hosted_read_regression import run_read_regression
 from hosted_authority_read_regression import AuthorityReport, AuthorityOutcome
+from hosted_vfs_overflow_regression import OverflowReport, OverflowOutcome, OverflowFailure
+from hosted_read_policy import NativeReadPolicy
 from hosted_read_transport import HostedReadTransport, ReadTransportRejected
 from native_provider_qualification import QualificationCause
 
 
 class NativeProviderQualificationTest(unittest.TestCase):
-    def run_report(self, event, emit=True):
+    def run_report(self, event, emit=True, policy=NativeReadPolicy.DEFAULT):
         def spawn(_command, **options):
             options.pop('cwd')
             options.pop('env')
@@ -34,7 +36,23 @@ class NativeProviderQualificationTest(unittest.TestCase):
              patch('hosted_read_regression.run_authority_read_regression',
                    return_value=AuthorityReport(AuthorityOutcome.PASSED, sourceRestored=True)):
             return run_read_regression(isolation, fixture, Path('/product'), Path('/java'), Path('/harness'),
-                                       Path('/repo'), read_fixture, {})
+                                       Path('/repo'), read_fixture, {}, policy)
+
+    def test_overflow_policy_requires_receipt_and_preserves_restored_epoch(self):
+        event = {'outcome': 'admitted', 'stage': 'PROVIDER_QUALIFICATION'}
+        for outcome in (OverflowOutcome.PASSED, OverflowOutcome.REJECTED):
+            with self.subTest(outcome=outcome), patch('hosted_read_regression.run_vfs_overflow_regression',
+                    return_value=(OverflowReport(outcome, filesRestored=True), {'epoch': 4})) as overflow:
+                report = self.run_report(event, policy=NativeReadPolicy.OVERFLOW)
+                self.assertEqual(outcome.value, report['outcome'])
+                self.assertEqual(outcome.value, report['overflowReplay']['outcome'])
+                overflow.assert_called_once()
+        with patch('hosted_read_regression.run_vfs_overflow_regression',
+                return_value=(OverflowReport(failure=OverflowFailure.RESTORATION), None)):
+            report = self.run_report(event, policy=NativeReadPolicy.OVERFLOW)
+            self.assertEqual('rejected', report['outcome'])
+            self.assertEqual(0, report['caseCount'])
+            self.assertEqual('OVERFLOW_RESTORATION_REJECTED', report['overflowReplay']['failure'])
 
     def test_successful_startup_enters_report_before_read_cases(self):
         event = {'outcome': 'admitted', 'stage': 'PROVIDER_QUALIFICATION'}
