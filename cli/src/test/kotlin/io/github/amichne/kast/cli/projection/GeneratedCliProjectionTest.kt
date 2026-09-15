@@ -85,15 +85,9 @@ class GeneratedCliProjectionTest {
         val items = Json.parseToJsonElement(projected.document.value).jsonObject.getValue("items").jsonArray
         assertEquals(2, items.size)
         items.zip(tokens).forEach { (item, token) ->
-            assertEquals(
-                kotlinx.serialization.json.JsonPrimitive("sym:" + "A".repeat(43)),
-                item.jsonObject.getValue("symbol_id"),
-            )
-            assertEquals(kotlinx.serialization.json.JsonPrimitive(token), item.jsonObject.getValue("symbol_ref"))
-            assertEquals(
-                item.jsonObject.getValue("symbol_ref"),
-                item.jsonObject.getValue("ref").jsonObject.getValue("token"),
-            )
+            assertEquals(kotlinx.serialization.json.JsonPrimitive(token), item.jsonObject.getValue("ref"))
+            assertTrue("symbol_ref" !in item.jsonObject)
+            assertTrue("symbol_id" !in item.jsonObject)
         }
     }
 

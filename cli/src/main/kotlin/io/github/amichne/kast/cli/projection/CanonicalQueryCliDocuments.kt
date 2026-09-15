@@ -98,14 +98,12 @@ private data class QueryQualificationCliDocument(
     val progress: QueryQualifiedProgressDocument,
 )
 
-@Serializable private data class QueryReferenceCliDocument(val kind: String, val token: String)
-
 @Serializable
 private sealed interface QueryResultItemCliDocument {
     @Serializable
     @SerialName("candidate")
     data class Candidate(
-        val ref: QueryReferenceCliDocument,
+        val ref: String,
         val kind: String,
         val name: String?,
         val location: QueryCandidateLocationCliDocument?,
@@ -114,17 +112,13 @@ private sealed interface QueryResultItemCliDocument {
     @Serializable
     @SerialName("exact-symbol")
     data class ExactSymbol(
-        val ref: QueryReferenceCliDocument,
+        val ref: String,
         val kind: String,
         val name: String?,
         val location: QueryExactLocationCliDocument?,
         val signature: CompilerSignatureCliDocument?,
         val connections: List<RelationFactCliDocument>,
-        @SerialName("symbol_id") val symbolId: String,
-    ) : QueryResultItemCliDocument {
-        // Migration alias is derived from the retained exact reference, never an independent input.
-        val symbol_ref: String = ref.token
-    }
+    ) : QueryResultItemCliDocument
 }
 
 @Serializable private data class QueryCandidateLocationCliDocument(val file: String, val offset: Int)
@@ -135,20 +129,20 @@ private sealed interface QueryResultItemCliDocument {
 private sealed interface QueryItemFailureCliDocument {
     @Serializable
     @SerialName("refinement")
-    data class Refinement(val ref: QueryReferenceCliDocument, val reason: String) : QueryItemFailureCliDocument
+    data class Refinement(val ref: String, val reason: String) : QueryItemFailureCliDocument
 
     @Serializable
     @SerialName("exact-reference")
-    data class ExactReference(val ref: QueryReferenceCliDocument, val reason: String) : QueryItemFailureCliDocument
+    data class ExactReference(val ref: String, val reason: String) : QueryItemFailureCliDocument
 
     @Serializable
     @SerialName("predicate")
-    data class Predicate(val ref: QueryReferenceCliDocument, val reason: String) : QueryItemFailureCliDocument
+    data class Predicate(val ref: String, val reason: String) : QueryItemFailureCliDocument
 
     @Serializable
     @SerialName("relation")
     data class Relation(
-        val ref: QueryReferenceCliDocument,
+        val ref: String,
         val relation: String,
         val reason: String,
     ) : QueryItemFailureCliDocument
@@ -202,7 +196,6 @@ private fun QueryResultItemDocument.toCliDocument(): QueryResultItemCliDocument 
                 },
                 signature?.toCliDocument(),
                 connections.values.map(RelationFactDocument::toCliDocument),
-                symbolId.value,
             )
     }
 
@@ -222,12 +215,8 @@ private fun QueryItemFailureDocument.toCliDocument(): QueryItemFailureCliDocumen
             )
     }
 
-private fun QueryReferenceDocument.toCliDocument(): QueryReferenceCliDocument =
-    when (this) {
-        is QueryReferenceDocument.DeclarationCandidate ->
-            QueryReferenceCliDocument("declaration-candidate", token.value)
-        is QueryReferenceDocument.ExactSymbol -> QueryReferenceCliDocument("exact-symbol", token.value)
-    }
+/** Presentation extracts the issued token verbatim; the retained domain type still owns its family. */
+private fun QueryReferenceDocument.toCliDocument(): String = token.value
 
 private fun QueryRunRejection.toCliDocument(): QueryRejectionCliDocument =
     when (this) {
