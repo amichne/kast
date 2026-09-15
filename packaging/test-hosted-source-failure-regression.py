@@ -33,8 +33,14 @@ class ReferenceCause:
 
 
 @dataclass(frozen=True)
+class InternalCause:
+    type: str = 'internal-contract-failure'
+    obligation: str = 'anchor-snapshot'
+
+
+@dataclass(frozen=True)
 class Rejected:
-    sourceCause: RequestCause
+    sourceCause: RequestCause | InternalCause
     kind: str = 'rejected'
     failure: str = 'SOURCE_INPUT_REJECTED'
 
@@ -45,6 +51,14 @@ class SourceFailureTest(unittest.TestCase):
             _provider_result(asdict(Rejected(RequestCause())))
         self.assertEqual(SourceFailureCause.ANCHOR_TYPE_REQUIRED, caught.exception.source_cause.cause)
         self.assertEqual('anchor-type-required', caught.exception.evidence()['sourceFailure']['cause'])
+
+    def test_native_internal_obligation_is_not_erased_to_request_or_protocol_failure(self):
+        cause = InternalCause()
+        response = Rejected(cause, failure='SOURCE_INTERNAL_CONTRACT_FAILURE')
+        with self.assertRaises(ReadTransportRejected) as caught:
+            _provider_result(asdict(response))
+        self.assertEqual('anchor-snapshot', caught.exception.source_cause.cause)
+        self.assertEqual('internal-contract-failure', caught.exception.source_cause.origin)
 
     def test_known_stale_and_unknown_remain_disjoint(self):
         for reason in ('wrong-family', 'stale-authority', 'unavailable'):

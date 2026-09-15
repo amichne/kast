@@ -15,6 +15,15 @@ class SourceFailureCause(str, Enum):
     WRONG_FAMILY = 'wrong-family'
     UNAVAILABLE = 'unavailable'
     STALE_AUTHORITY = 'stale-authority'
+    CONTEXT_LEASE = 'context-lease'
+    SNAPSHOT_CONTEXT = 'snapshot-context'
+    SNAPSHOT_SCOPE = 'snapshot-scope'
+    ANCHOR_SNAPSHOT = 'anchor-snapshot'
+    DECLARATION_VISIBILITY = 'declaration-visibility'
+    REQUEST_REFINEMENT = 'request-refinement'
+    RESULT_PROJECTION = 'result-projection'
+    QUALIFICATION_PROJECTION = 'qualification-projection'
+    PROVIDER_CONTRACT = 'provider-contract'
 
 
 @dataclass(frozen=True)
@@ -37,7 +46,10 @@ def admit_source_failure(value):
         if value.get('role') != 'symbol' or reason not in ('wrong-family', 'unavailable', 'stale-authority'):
             raise ValueError('SOURCE_FAILURE_EVIDENCE_REJECTED')
         return SourceFailureObservation(origin, SourceFailureCause(reason))
-    raise ValueError('SOURCE_FAILURE_EVIDENCE_REJECTED')
+    obligation = SourceFailureCause(value.get('obligation'))
+    if obligation in (SourceFailureCause.ANCHOR_TYPE_REQUIRED, SourceFailureCause.WRONG_FAMILY, SourceFailureCause.UNAVAILABLE, SourceFailureCause.STALE_AUTHORITY):
+        raise ValueError('SOURCE_FAILURE_EVIDENCE_REJECTED')
+    return SourceFailureObservation(origin, obligation)
 
 
 @dataclass(frozen=True)
@@ -51,7 +63,7 @@ def run_source_failure_regression(replay):
     for mode in ('expanded', 'compact'):
         selected = replace(request, format=mode)
         valid, digest = replay.transport.invoke_observed(replay.surface, 'source_read', asdict(selected))
-        checks = {'validSchema': bool(digest), 'validRead': valid.get('status') in ('complete', 'partial')}
+        checks = {'validSchema': bool(digest), 'validRead': valid.get('status') in ('complete', 'qualified')}
         for label, token, expected in (
             ('wrongFamily', 'candidate:v4:' + 'a' * 64, 'wrong-family'),
             ('unknownReference', 'exact:v4:' + 'a' * 64, 'unavailable'),
