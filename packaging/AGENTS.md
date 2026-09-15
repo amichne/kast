@@ -9,6 +9,10 @@ Implements installer support, installed-product acceptance, configuration ingres
 
 ## Key Files
 
+- [hosted_read_policy.py](hosted_read_policy.py) - closed private-process presets for native default, enlarged-deadline, overflow and diagnostic paging qualification.
+- [hosted_repair_budget_regression.py](hosted_repair_budget_regression.py) - bounded actual 10/20-second grant receipts across installed surfaces.
+- [hosted_kotlin_call_regression.py](hosted_kotlin_call_regression.py) - compiled Kotlin call ownership and coverage oracle.
+
 - [hosted_read_name_regression.py](hosted_read_name_regression.py) - preferred and legacy provider inputs retain canonical operations, schema and ordered facts.
 - [installed_codex_lifecycle.py](installed_codex_lifecycle.py) - shared real-Codex handshake, private coordinator ownership, detach, and cleanup checks.
 - [released_coordinator_acceptance.py](released_coordinator_acceptance.py) - original installed wrapper and explicit Codex admission for coordinator qualification.

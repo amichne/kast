@@ -7,6 +7,7 @@ import tempfile
 import unittest
 import zipfile
 from acceptance_environment import AcceptanceEnvironment
+from hosted_read_policy import NativeReadPolicy, policy_receipt
 from hosted_acceptance_fixture import (FixtureFailure, FixtureRejected, admit_hosted_idea,
                                        prepare_hosted_fixture, stage_hosted_plugin)
 
@@ -106,6 +107,21 @@ class HostedFixtureTest(unittest.TestCase):
                           Path(prepared.environment['IDEA_VM_OPTIONS']).read_text())
             self.assertFalse((isolation.root / 'ide/plugins').exists())
             isolation.mark_passed()
+
+    def test_policy_changes_only_private_process_environment(self):
+        repo = Path(__file__).resolve().parent.parent
+        for policy in NativeReadPolicy:
+            with self.subTest(policy=policy), AcceptanceEnvironment({'python3': Path(sys.executable)}) as isolation:
+                before = dict(isolation.environment)
+                prepared = prepare_hosted_fixture(isolation, repo, self.idea, self.archive, read_policy=policy)
+                self.assertEqual(before, isolation.environment)
+                overrides = {item.environmentKey: str(item.value) for item in policy_receipt(policy).overrides}
+                self.assertEqual(overrides, {key: value for key, value in prepared.environment.items() if key.startswith('KAST_READ_')})
+                self.assertFalse((prepared.workspace / '.kast').exists())
+                if policy == NativeReadPolicy.ENLARGED:
+                    self.assertEqual('30000', prepared.environment['KAST_READ_HOST_QUERY_MILLIS'])
+                    self.assertNotIn('KAST_READ_SEMANTIC_MILLIS', prepared.environment)
+                isolation.mark_passed()
 
     def test_preparation_has_private_paths_and_claims_no_native_success(self):
         repo = Path(__file__).resolve().parent.parent
