@@ -19,6 +19,7 @@ internal class InstalledCoordinatorOptions(
     val environment: Map<String, String>,
     val installationRoot: Path,
     val socket: BrokerSocketPath,
+    val publicEndpoint: BrokerPublicEndpoint,
     val serviceDirectory: Path,
     val readiness: BrokerServiceReadiness,
     val configuration: ResolvedKastConfiguration,
@@ -77,8 +78,9 @@ internal object InstalledCoordinatorConfiguration {
                     BrokerServiceReadinessAdmission.Rejected ->
                         return reject(InstalledBrokerServerConfigurationFailure.READINESS_REJECTED)
                 }
+            val publicEndpoint = BrokerPublicEndpoint.select(layout, codexHome, admittedConfiguration.publicEndpointMode)
             val socket =
-                when (val admission = BrokerPublicEndpoint.select(layout, codexHome, admittedConfiguration.publicEndpointMode).prepare()) {
+                when (val admission = publicEndpoint.prepare()) {
                     is Validation.Validated -> admission.value
                     is Validation.Rejected ->
                         return reject(InstalledBrokerServerConfigurationFailure.SOCKET_PATH_REJECTED)
@@ -90,7 +92,7 @@ internal object InstalledCoordinatorConfiguration {
                     environment.toMap(),
                     root,
                     socket,
-                    layout.broker,
+                    publicEndpoint,                    layout.broker,
                     readiness,
                     configuration,
                     activitySink,
@@ -234,6 +236,15 @@ private constructor(
                     }
                 }
             activity.completed(stage)
+            if (options.publicEndpoint is BrokerPublicEndpoint.CodexControl) {
+                stage = BrokerStartupStage.NATIVE_PROTOCOL
+                activity.started(stage)
+                if (NativeCodexReadiness.observe(options.socket.path, BrokerOperationalLimits.serviceChildPhases.value) != NativeCodexReadiness.READY) {
+                    server.close()
+                    return reject(BrokerServerFailure.NATIVE_PROTOCOL_REJECTED)
+                }
+                activity.completed(stage)
+            }
             stage = BrokerStartupStage.READINESS_PUBLICATION
             activity.started(stage)
             if (readiness?.ready() == BrokerReadinessTransition.Rejected) {
