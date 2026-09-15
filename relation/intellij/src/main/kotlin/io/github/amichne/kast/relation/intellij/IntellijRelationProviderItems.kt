@@ -14,6 +14,8 @@ import org.jetbrains.kotlin.psi.KtNamedDeclaration
 internal sealed interface ContainingDeclaration {
     data class Found(val declaration: PsiNamedElement) : ContainingDeclaration
 
+    data class Deferred(val boundary: PsiElement) : ContainingDeclaration
+
     data object Unsupported : ContainingDeclaration
 }
 
@@ -36,6 +38,8 @@ internal sealed interface KotlinCallReferences {
 }
 
 internal sealed interface CalleeProviderItem {
+    data class UnsupportedOwner(val call: KtCallElement) : CalleeProviderItem
+
     data class Unresolved(val call: KtCallElement) : CalleeProviderItem
 
     data class Reference(val reference: KtReference) : CalleeProviderItem
@@ -43,6 +47,8 @@ internal sealed interface CalleeProviderItem {
 
 internal fun CalleeProviderItem.descriptor(): RelationProviderItemDescriptor =
     when (this) {
+        is CalleeProviderItem.UnsupportedOwner ->
+            providerItemDescriptor(call, call.textRange.shiftLeft(call.textRange.startOffset), "deferred-call-owner")
         is CalleeProviderItem.Unresolved ->
             providerItemDescriptor(
                 call,
@@ -83,14 +89,41 @@ internal fun providerItemDescriptor(
     }
 }
 
-internal fun PsiElement.nearestDeclaration(): ContainingDeclaration =
-    generateSequence(this as PsiElement?) { it.parent }
-        .filterIsInstance<PsiNamedElement>()
-        .filter { it is KtNamedDeclaration || it is com.intellij.psi.PsiMember }
-        // A local initializer executes in its enclosing callable; the variable is not a caller.
-        .filterNot { it is org.jetbrains.kotlin.psi.KtProperty && it.isLocal }
-        .firstOrNull()
-        ?.let(ContainingDeclaration::Found) ?: ContainingDeclaration.Unsupported
+/** Local initializers execute in their enclosing callable; nested callable bodies keep their own owner. */
+internal fun PsiElement.nearestDeclaration(): ContainingDeclaration {
+    for (element in generateSequence(this as PsiElement?) { it.parent }) {
+        when (element) {
+            is org.jetbrains.kotlin.psi.KtFunctionLiteral,
+            is org.jetbrains.kotlin.psi.KtPropertyAccessor -> return ContainingDeclaration.Deferred(element)
+            is org.jetbrains.kotlin.psi.KtProperty ->
+                if (!element.isLocal) return ContainingDeclaration.Found(element)
+            is org.jetbrains.kotlin.psi.KtParameter -> Unit
+            is KtNamedDeclaration -> return ContainingDeclaration.Found(element)
+            is com.intellij.psi.PsiMember -> if (element is PsiNamedElement) return ContainingDeclaration.Found(element)
+        }
+    }
+    return ContainingDeclaration.Unsupported
+}
+
+/** A deferred body qualifies its lexical owner but cannot authorize an edge from that owner. */
+internal fun ContainingDeclaration.Deferred.enclosingDeclaration(): ContainingDeclaration =
+    when (val outer = boundary.parent.nearestDeclaration()) {
+        is ContainingDeclaration.Deferred -> outer.enclosingDeclaration()
+        is ContainingDeclaration.Found -> outer
+        ContainingDeclaration.Unsupported -> outer
+    }
+
+internal fun PsiElement.nearestSupportedCallable(
+    projection: IntellijK2RelationProjection,
+): SupportedContainingDeclaration =
+    when (val owner = nearestDeclaration()) {
+        is ContainingDeclaration.Found -> when (val projected = projection.project(owner.declaration)) {
+            is IntellijRelationDeclarationProjection.Projected -> SupportedContainingDeclaration.Found(projected)
+            IntellijRelationDeclarationProjection.Unsupported -> SupportedContainingDeclaration.Unsupported
+        }
+        is ContainingDeclaration.Deferred,
+        ContainingDeclaration.Unsupported -> SupportedContainingDeclaration.Unsupported
+    }
 
 /**
  * Proof transition: `(PsiElement, IntellijK2RelationProjection) -> SupportedContainingDeclaration`.
