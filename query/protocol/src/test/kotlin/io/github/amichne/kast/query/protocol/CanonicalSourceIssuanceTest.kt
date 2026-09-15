@@ -1,14 +1,65 @@
 package io.github.amichne.kast.query.protocol
 
-import io.github.amichne.kast.kernel.*
-import io.github.amichne.kast.protocol.contract.*
-import io.github.amichne.kast.source.contract.*
+import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
+import io.github.amichne.kast.kernel.EvidenceGeneration
+import io.github.amichne.kast.kernel.OperationOutcome
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.ResourceBudget
+import io.github.amichne.kast.kernel.ResultLimit
+import io.github.amichne.kast.kernel.WorkUnitLimit
+import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.SourceDeclarationSemanticIdentityDocument
+import io.github.amichne.kast.protocol.contract.SourceEntityDocument
+import io.github.amichne.kast.protocol.contract.SourceEntityLimitDocument
+import io.github.amichne.kast.protocol.contract.SourceEntitySelectionDocument
+import io.github.amichne.kast.protocol.contract.SourceEntityTargetDocument
+import io.github.amichne.kast.protocol.contract.SourceReadAnchorDocument
+import io.github.amichne.kast.protocol.contract.SourceReadPageDocument
+import io.github.amichne.kast.protocol.contract.SourceRegionSelectionDocument
+import io.github.amichne.kast.protocol.contract.SourceTextByteLimitDocument
+import io.github.amichne.kast.protocol.contract.SourceTextProjectionDocument
+import io.github.amichne.kast.protocol.contract.SourceTextRequestDocument
+import io.github.amichne.kast.protocol.contract.SourceUnresolvedReasonDocument
+import io.github.amichne.kast.source.contract.CompilerUnresolvedReason
+import io.github.amichne.kast.source.contract.DeclarationKind
+import io.github.amichne.kast.source.contract.DeclarationSemanticIdentity
+import io.github.amichne.kast.source.contract.DeclarationVisibility
+import io.github.amichne.kast.source.contract.NonEmptySourceRange
+import io.github.amichne.kast.source.contract.SourceEntity
+import io.github.amichne.kast.source.contract.SourceEntityKind
+import io.github.amichne.kast.source.contract.SourceEntityName
+import io.github.amichne.kast.source.contract.SourceEntityTarget
+import io.github.amichne.kast.source.contract.SourceNestingDepth
+import io.github.amichne.kast.source.contract.SourceRange
+import io.github.amichne.kast.source.contract.SourceReadOperations
 import io.github.amichne.kast.source.contract.SourceReadResult as DomainResult
-import io.github.amichne.kast.symbol.contract.*
-import io.github.amichne.kast.workspace.contract.*
+import io.github.amichne.kast.source.contract.SourceRegion
+import io.github.amichne.kast.source.contract.SourceRegionKind
+import io.github.amichne.kast.source.contract.SourceSelector
+import io.github.amichne.kast.source.contract.SourceSelectorTokenCodec
+import io.github.amichne.kast.source.contract.SourceSnapshot
+import io.github.amichne.kast.source.contract.SourceTextByteLimit
+import io.github.amichne.kast.source.contract.SourceTextIdentity
+import io.github.amichne.kast.source.contract.SourceTextProjection
+import io.github.amichne.kast.source.contract.Utf16CodeUnitCount
+import io.github.amichne.kast.source.contract.Utf16CodeUnitOffset
+import io.github.amichne.kast.symbol.contract.CandidateSelector
+import io.github.amichne.kast.symbol.contract.CanonicalWorkspaceFilePath
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidate
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryKind
+import io.github.amichne.kast.symbol.contract.SymbolDiscoverySelection
+import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
+import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
+import io.github.amichne.kast.symbol.contract.SymbolSearchScope
+import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
+import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
+import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
 import java.nio.file.Path
 import kotlinx.coroutines.test.runTest
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class CanonicalSourceIssuanceTest {
@@ -17,139 +68,15 @@ class CanonicalSourceIssuanceTest {
     @Test fun `inline fallback and issuance rejection retain their existing semantics`() = verifyIssuance(false)
 
     private fun verifyIssuance(compact: Boolean) = runTest {
-        val root = CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).value()
-        val lease = SemanticReadLease(root, EvidenceGeneration.parse(7).value())
-        val path = Path.of("/workspace/Subject.kt")
-        val candidate =
-            SymbolDiscoveryCandidate.fromBoundary(
-                    SymbolDiscoveryKind.SYMBOL,
-                    "café",
-                    lease,
-                    path,
-                    path.toUri().toString(),
-                    0,
-                )
-                .value()
-        val scope =
-            SymbolSearchScope.Workspace(
-                SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
-                SymbolGeneratedSourcePolicy.EXCLUDE,
-                SymbolLibraryPolicy.EXCLUDE,
-            )
-        val selection = SymbolDiscoverySelection.restore(lease, scope, candidate).value()
-        val declaration = CandidateSelector.declaration(selection).value()
-        val source = "fun café() { café(); café(); local; missing }\n"
-        val snapshot =
-            SourceSnapshot.create(
-                lease,
-                WorkspaceStateIdentity.parse("state").value(),
-                SymbolDiscoveryFileIdentity.Workspace(CanonicalWorkspaceFilePath.fromCanonicalPath(root, path).value()),
-                SourceTextIdentity.fromNormalizedCommittedText(source),
-                Utf16CodeUnitCount.parse(source.length).value(),
-            )
-        fun range(start: Int, end: Int) =
-            SourceRange.create(
-                    snapshot,
-                    Utf16CodeUnitOffset.parse(start).value(),
-                    Utf16CodeUnitOffset.parse(end).value(),
-                )
-                .value()
-        val region = SourceSelector.issueRoot(range(0, source.length), SourceRegionKind.FILE)
-        fun entity(parent: SourceSelector, start: Int, end: Int, kind: SourceEntityKind) =
-            SourceSelector.issueEntity(
-                    parent,
-                    NonEmptySourceRange.create(range(start, end)).value(),
-                    kind,
-                    SourceEntityName.present("café").value(),
-                )
-                .value()
-        val depth = SourceNestingDepth.parse(0).value()
-        val decl = entity(region, 0, source.length - 1, SourceEntityKind.DECLARATION_FUNCTION)
-        val entities = buildList {
-            add(
-                SourceEntity.Declaration.create(
-                        decl,
-                        depth,
-                        DeclarationKind.FUNCTION,
-                        DeclarationVisibility.PUBLIC,
-                        DeclarationSemanticIdentity.Candidate(declaration),
-                    )
-                    .value()
-            )
-            for (start in listOf(13, 21)) {
-                val call = entity(region, start, start + 6, SourceEntityKind.CALL)
-                add(
-                    SourceEntity.Call.create(
-                            call,
-                            depth,
-                            entity(call, start, start + 4, SourceEntityKind.CALLEE),
-                            SourceEntityTarget.Candidate(declaration),
-                        )
-                        .value()
-                )
-            }
-            add(
-                SourceEntity.Reference.create(
-                        entity(region, 29, 34, SourceEntityKind.REFERENCE),
-                        depth,
-                        SourceEntityTarget.Local(decl),
-                    )
-                    .value()
-            )
-            add(
-                SourceEntity.Reference.create(
-                        entity(region, 36, 43, SourceEntityKind.REFERENCE),
-                        depth,
-                        SourceEntityTarget.Unresolved(CompilerUnresolvedReason.NAME_NOT_FOUND),
-                    )
-                    .value()
-            )
-        }
-        val retained = mutableMapOf<ProtocolText, ProtocolText>()
-        val references =
-            CanonicalQueryReferences(
-                object : QueryReferenceTransport {
-                    override fun issue(canonical: ProtocolText): ProtocolText =
-                        (if (compact) compactSymbolReference(canonical).token else canonical).also {
-                            retained[it] = canonical
-                        }
-
-                    override fun restore(token: ProtocolText): CanonicalSelectorDecoding<ProtocolText> =
-                        CanonicalSelectorDecoding.Decoded(retained[token] ?: token)
-                }
-            )
+        val fixture = SourceIssuanceFixture()
+        val references = fixture.references(compact)
         val expected =
-            (references.issueDeclarationCandidate(selection) as CandidateSelectorTokenIssuance.Issued).selector
-        val operations = SourceReadOperations {
-            DomainResult.Complete.create(
-                    snapshot,
-                    SourceRegion.create(SourceRegionKind.FILE, region).value(),
-                    entities,
-                    SourceTextProjection.returned(region, source).value(),
-                )
-                .value()
-        }
-        val protocol = CanonicalSourceReadProtocol(operations, references)
-        val request =
-            io.github.amichne.kast.protocol.contract.SourceReadRequest(
-                SourceReadAnchorDocument.Candidate(expected),
-                SourceRegionSelectionDocument.File,
-                SourceEntitySelectionDocument.None,
-                SourceTextRequestDocument.Complete,
-                SourceEntityLimitDocument.parse(20).value(),
-                SourceTextByteLimitDocument.parse(65536).value(),
-                SourceReadPageDocument.First,
-            )
-        val budget =
-            SourceProtocolBudget(
-                ResourceBudget(
-                    ResultLimit.parse(20).value(),
-                    WorkUnitLimit.parse(1000).value(),
-                    ElapsedTimeLimitMillis.parse(1000).value(),
-                ),
-                SourceTextByteLimit.parse(65536).value(),
-            )
-        val outcome = protocol.execute(request, lease, budget) as OperationOutcome.Complete
+            (references.issueDeclarationCandidate(fixture.selection) as CandidateSelectorTokenIssuance.Issued).selector
+        val operations = fixture.operations()
+        val request = fixture.request(expected)
+        val outcome =
+            CanonicalSourceReadProtocol(operations, references).execute(request, fixture.lease, fixture.budget)
+                as OperationOutcome.Complete
         val rejectingIssuer =
             object : QueryReferenceAuthority by references {
                 override fun issueDeclarationCandidate(selection: SymbolDiscoverySelection) =
@@ -157,9 +84,158 @@ class CanonicalSourceIssuanceTest {
             }
         assertEquals(
             OperationOutcome.Rejected(io.github.amichne.kast.protocol.contract.SourceReadRejection.CONTRACT_VIOLATION),
-            CanonicalSourceReadProtocol(operations, rejectingIssuer).execute(request, lease, budget),
+            CanonicalSourceReadProtocol(operations, rejectingIssuer).execute(request, fixture.lease, fixture.budget),
         )
-        val output = outcome.evidence.payload
+        fixture.verify(outcome.evidence.payload, references, expected)
+    }
+}
+
+private class SourceIssuanceFixture {
+    val root = CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).value()
+    val lease = SemanticReadLease(root, EvidenceGeneration.parse(7).value())
+    val path = Path.of("/workspace/Subject.kt")
+    val candidate =
+        SymbolDiscoveryCandidate.fromBoundary(
+                SymbolDiscoveryKind.SYMBOL,
+                "café",
+                lease,
+                path,
+                path.toUri().toString(),
+                0,
+            )
+            .value()
+    val scope =
+        SymbolSearchScope.Workspace(
+            SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
+            SymbolGeneratedSourcePolicy.EXCLUDE,
+            SymbolLibraryPolicy.EXCLUDE,
+        )
+    val selection = SymbolDiscoverySelection.restore(lease, scope, candidate).value()
+    val declaration = CandidateSelector.declaration(selection).value()
+    val source = "fun café() { café(); café(); local; missing }\n"
+    val snapshot =
+        SourceSnapshot.create(
+            lease,
+            WorkspaceStateIdentity.parse("state").value(),
+            SymbolDiscoveryFileIdentity.Workspace(CanonicalWorkspaceFilePath.fromCanonicalPath(root, path).value()),
+            SourceTextIdentity.fromNormalizedCommittedText(source),
+            Utf16CodeUnitCount.parse(source.length).value(),
+        )
+
+    private fun range(start: Int, end: Int) =
+        SourceRange.create(
+                snapshot,
+                Utf16CodeUnitOffset.parse(start).value(),
+                Utf16CodeUnitOffset.parse(end).value(),
+            )
+            .value()
+
+    val region = SourceSelector.issueRoot(range(0, source.length), SourceRegionKind.FILE)
+
+    private fun entity(parent: SourceSelector, start: Int, end: Int, kind: SourceEntityKind) =
+        SourceSelector.issueEntity(
+                parent,
+                NonEmptySourceRange.create(range(start, end)).value(),
+                kind,
+                SourceEntityName.present("café").value(),
+            )
+            .value()
+
+    val depth = SourceNestingDepth.parse(0).value()
+    val decl = entity(region, 0, source.length - 1, SourceEntityKind.DECLARATION_FUNCTION)
+
+    fun entities() = buildList {
+        add(
+            SourceEntity.Declaration.create(
+                    decl,
+                    depth,
+                    DeclarationKind.FUNCTION,
+                    DeclarationVisibility.PUBLIC,
+                    DeclarationSemanticIdentity.Candidate(declaration),
+                )
+                .value()
+        )
+        for (start in listOf(13, 21)) {
+            val call = entity(region, start, start + 6, SourceEntityKind.CALL)
+            add(
+                SourceEntity.Call.create(
+                        call,
+                        depth,
+                        entity(call, start, start + 4, SourceEntityKind.CALLEE),
+                        SourceEntityTarget.Candidate(declaration),
+                    )
+                    .value()
+            )
+        }
+        add(
+            SourceEntity.Reference.create(
+                    entity(region, 29, 34, SourceEntityKind.REFERENCE),
+                    depth,
+                    SourceEntityTarget.Local(decl),
+                )
+                .value()
+        )
+        add(
+            SourceEntity.Reference.create(
+                    entity(region, 36, 43, SourceEntityKind.REFERENCE),
+                    depth,
+                    SourceEntityTarget.Unresolved(CompilerUnresolvedReason.NAME_NOT_FOUND),
+                )
+                .value()
+        )
+    }
+
+    fun references(compact: Boolean): CanonicalQueryReferences {
+        val retained = mutableMapOf<ProtocolText, ProtocolText>()
+        return CanonicalQueryReferences(
+            object : QueryReferenceTransport {
+                override fun issue(canonical: ProtocolText): ProtocolText =
+                    (if (compact) compactSymbolReference(canonical).token else canonical).also {
+                        retained[it] = canonical
+                    }
+
+                override fun restore(token: ProtocolText): CanonicalSelectorDecoding<ProtocolText> =
+                    CanonicalSelectorDecoding.Decoded(retained[token] ?: token)
+            }
+        )
+    }
+
+    fun operations() = SourceReadOperations {
+        DomainResult.Complete.create(
+                snapshot,
+                SourceRegion.create(SourceRegionKind.FILE, region).value(),
+                entities(),
+                SourceTextProjection.returned(region, source).value(),
+            )
+            .value()
+    }
+
+    fun request(expected: ProtocolText) =
+        io.github.amichne.kast.protocol.contract.SourceReadRequest(
+            SourceReadAnchorDocument.Candidate(expected),
+            SourceRegionSelectionDocument.File,
+            SourceEntitySelectionDocument.None,
+            SourceTextRequestDocument.Complete,
+            SourceEntityLimitDocument.parse(20).value(),
+            SourceTextByteLimitDocument.parse(65536).value(),
+            SourceReadPageDocument.First,
+        )
+
+    val budget =
+        SourceProtocolBudget(
+            ResourceBudget(
+                ResultLimit.parse(20).value(),
+                WorkUnitLimit.parse(1000).value(),
+                ElapsedTimeLimitMillis.parse(1000).value(),
+            ),
+            SourceTextByteLimit.parse(65536).value(),
+        )
+
+    fun verify(
+        output: io.github.amichne.kast.protocol.contract.SourceReadResult,
+        references: CanonicalQueryReferences,
+        expected: ProtocolText,
+    ) {
         val identity =
             (output.entities.values.first() as SourceEntityDocument.Declaration).semanticIdentity
                 as SourceDeclarationSemanticIdentityDocument.Candidate
@@ -186,10 +262,10 @@ class CanonicalSourceIssuanceTest {
         assertTrue(references.restoreExact(expected, lease) is CanonicalSelectorDecoding.Rejected)
         assertEquals(source, (output.text as SourceTextProjectionDocument.Returned).text.value)
     }
-
-    private fun <T, E> Refinement<T, E>.value(): T =
-        when (this) {
-            is Refinement.Refined -> value
-            is Refinement.Rejected -> error("Fixture rejected: $failure")
-        }
 }
+
+private fun <T, E> Refinement<T, E>.value(): T =
+    when (this) {
+        is Refinement.Refined -> value
+        is Refinement.Rejected -> error("Fixture rejected: $failure")
+    }
