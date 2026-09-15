@@ -11,9 +11,11 @@ import subprocess
 from hosted_authority_read_regression import (
     _AuthorityReplay, _ready, _source_bytes, AuthorityCase, AuthorityCaseName,
     AuthorityFailure, AuthorityRefusal, AuthorityRejected, AuthoritySurface, ContinueSourcePage,
+    InspectionStage, InspectionMismatch, InspectionRefusal, InspectionObservation,
+    InspectionWireRejected, InspectionUnknownRefusal, InspectionContractRejected, InspectionTransportRejected,
 )
 from hosted_change_acceptance import admitted_live, AcceptanceRejected
-from hosted_read_transport import ReadTransportRejected
+from hosted_read_transport import ReadTransportRejected, ReadTransportFailure
 from native_fixture_probe import NativeFixtureProbe, NativeFixtureProbeError
 
 
@@ -61,12 +63,52 @@ class OverflowReceipt:
     event: str = field(default='kast_hosted_vfs', init=False)
 
 
+class RestorationStage(str, Enum):
+    SOURCE_GUARD = 'source-image-guard'
+    OWNED_FILES = 'owned-file-restoration'
+    READINESS = 'restored-readiness'
+    SEARCH = 'restored-search'
+    EPOCH_ADVANCE = 'restored-epoch-advance'
+    BASIS_AGREEMENT = 'restored-surface-basis-agreement'
+    SOURCE_PAGE = 'restored-source-page'
+    COMPLETE = 'complete'
+
+
+@dataclass(frozen=True)
+class StrictObservation:
+    surface: AuthoritySurface
+    schemaDigest: str | None
+    observation: InspectionObservation
+
+
+def _strict_observation(response):
+    stage = InspectionStage.STRICT
+    if not isinstance(response, dict):
+        return InspectionContractRejected(stage, InspectionMismatch.DOCUMENT)
+    if response.get('operation') != 'symbol.inspect':
+        return InspectionContractRejected(stage, InspectionMismatch.OPERATION)
+    if response.get('status') != 'rejected':
+        return InspectionContractRejected(stage, InspectionMismatch.STATUS)
+    # Both native surfaces consume CanonicalSymbolCliDocuments / rejection.cliName(),
+    # whose exact transformation is name.lowercase().replace('_', '-'). This is not wire JSON.
+    reasons = {reason.value: reason for reason in InspectionRefusal}
+    refusal = reasons.get(response.get('reason')) if isinstance(response.get('reason'), str) else None
+    return (InspectionWireRejected(stage, refusal) if refusal is not None
+            else InspectionUnknownRefusal(stage))
+
+
 @dataclass(frozen=True)
 class OverflowReport:
     outcome: OverflowOutcome = OverflowOutcome.REJECTED
     failure: OverflowFailure | None = None
     authorityFailure: AuthorityFailure | None = None
     restorationFailure: OverflowFailure | None = None
+    restorationStage: RestorationStage | None = None
+    restorationSurface: AuthoritySurface | None = None
+    restorationObservedEpoch: int | None = None
+    restorationAuthorityFailure: AuthorityFailure | None = None
+    restorationTransportFailure: ReadTransportFailure | None = None
+    strictObservations: tuple[StrictObservation, ...] = ()
     receipt: OverflowReceipt | None = None
     cases: tuple[AuthorityCase, ...] = ()
     strictSchemaDigests: tuple[str, ...] = ()
@@ -202,9 +244,18 @@ def run_vfs_overflow_regression(isolation, fixture, transport, live):
             moved = observed
             report = replace(report, overflowEpoch=observed['epoch'])
             old, token = issued[surface]
-            refused, digest = replay.call(surface, 'symbol_inspect', StrictRequest(StrictTarget(old.anchor.selector)))
-            _require(refused.get('status') == 'rejected' and refused.get('operation') == 'symbol.inspect'
-                     and refused.get('reason') == 'exact_selector_stale', OverflowFailure.STRICT)
+            try:
+                refused, digest = replay.call(surface, 'symbol_inspect', StrictRequest(StrictTarget(old.anchor.selector)))
+            except ReadTransportRejected as error:
+                observation = InspectionTransportRejected(InspectionStage.STRICT, error.reason, error.provider_failure)
+                report = replace(report, strictObservations=report.strictObservations +
+                    (StrictObservation(surface, None, observation),))
+                raise
+            observation = _strict_observation(refused)
+            report = replace(report, strictObservations=report.strictObservations +
+                (StrictObservation(surface, digest, observation),))
+            _require(isinstance(observation, InspectionWireRejected)
+                     and observation.refusal is InspectionRefusal.EXACT_SELECTOR_STALE, OverflowFailure.STRICT)
             strict_digests.append(digest)
             replay.reject(AuthorityCaseName.OLD_CURSOR, surface,
                           replace(fresh, page=ContinueSourcePage(token)), AuthorityRefusal.STALE_CONTINUATION)
@@ -223,21 +274,35 @@ def run_vfs_overflow_regression(isolation, fixture, transport, live):
     finally:
         if owned:
             try:
+                report = replace(report, restorationStage=RestorationStage.SOURCE_GUARD)
                 _require(_source_bytes(source) == original, OverflowFailure.RESTORATION)
+                report = replace(report, restorationStage=RestorationStage.OWNED_FILES)
                 _restore_burst(owned)
+                report = replace(report, restorationStage=RestorationStage.READINESS)
                 _ready(probe, original)
                 report = replace(report, filesRestored=True, readinessTransitions=report.readinessTransitions + 1)
                 for surface in AuthoritySurface:
+                    report = replace(report, restorationStage=RestorationStage.SEARCH, restorationSurface=surface)
                     fresh, observed = replay.search(surface)
-                    _require(observed['epoch'] > (report.overflowEpoch or report.beforeEpoch)
-                             and (successor is None or observed == successor), OverflowFailure.EPOCH)
+                    report = replace(report, restorationStage=RestorationStage.EPOCH_ADVANCE,
+                                     restorationObservedEpoch=observed['epoch'])
+                    _require(observed['epoch'] > (report.overflowEpoch or report.beforeEpoch), OverflowFailure.EPOCH)
+                    report = replace(report, restorationStage=RestorationStage.BASIS_AGREEMENT)
+                    _require(successor is None or observed == successor, OverflowFailure.EPOCH)
                     successor = observed
+                    report = replace(report, restorationStage=RestorationStage.SOURCE_PAGE)
                     replay.page(AuthorityCaseName.RESTORED, surface, fresh, observed, 'pageItem00')
-                report = replace(report, restoredEpoch=successor['epoch'])
+                report = replace(report, restoredEpoch=successor['epoch'], restorationStage=RestorationStage.COMPLETE)
             except (OverflowRejected, AuthorityRejected, NativeFixtureProbeError, ReadTransportRejected,
-                    AcceptanceRejected, OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError):
+                    AcceptanceRejected, OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as error:
+                cause = (error.failure if isinstance(error, OverflowRejected) else
+                         OverflowFailure.AUTHORITY if isinstance(error, AuthorityRejected) else
+                         OverflowFailure.TRANSPORT if isinstance(error, (ReadTransportRejected, AcceptanceRejected)) else
+                         OverflowFailure.READINESS if isinstance(error, NativeFixtureProbeError) else OverflowFailure.IO)
                 report = replace(report, failure=report.failure or OverflowFailure.RESTORATION,
-                                 restorationFailure=OverflowFailure.RESTORATION)
+                                 restorationFailure=cause,
+                                 restorationAuthorityFailure=error.reason if isinstance(error, AuthorityRejected) else None,
+                                 restorationTransportFailure=error.reason if isinstance(error, ReadTransportRejected) else None)
                 successor = None
         if replay is not None:
             report = replace(report, cases=tuple(replay.cases), filesCreated=len(owned))
