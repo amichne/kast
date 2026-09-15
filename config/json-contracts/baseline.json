@@ -4664,16 +4664,6 @@
     {
       "fingerprint": {
         "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/KastObserverFixtures.kt",
-        "scope": "type:KastObserverFixtures/val:symbolInspection",
-        "kind": "JSON_LITERAL",
-        "sha256": "5e2ec021166f5028a3d73110473f194cec9c687015255de2d979107a339a4fc5"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/KastObserverFixtures.kt",
         "scope": "type:KastObserverFixtures/val:sourceRead",
         "kind": "JSON_LITERAL",
         "sha256": "334d8a8bbaae0d7c6b85650f29d5f16da0934495c6eb27723d0af73bffbb879c"
@@ -5004,16 +4994,6 @@
     {
       "fingerprint": {
         "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/KastProviderTest.kt",
-        "scope": "type:KastProviderTest/fun:supported Kast operations produce selector-free observer Markdown()/val:inspect",
-        "kind": "JSON_LITERAL",
-        "sha256": "441b8e17af5b52c48e999c5760e7adf3eac30b4a87d8687fe832a1051d0ec7b8"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/KastProviderTest.kt",
         "scope": "type:KastProviderTest/fun:supported Kast operations produce selector-free observer Markdown()/val:source",
         "kind": "JSON_LITERAL",
         "sha256": "c3fbb77a23addb57bf4e773800fa4d47e089644ea0dd99603cd7e87062fde5a7"
@@ -5027,16 +5007,6 @@
         "scope": "type:KastProviderTest/fun:qualified Kast observations remain visibly incomplete()/val:discover",
         "kind": "JSON_LITERAL",
         "sha256": "e7dd382dfc65ccbefc18c47f137a51485e8b1dc010fde21ff972759e3e610ac9"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/KastProviderTest.kt",
-        "scope": "type:KastProviderTest/fun:qualified Kast observations remain visibly incomplete()/val:inspect",
-        "kind": "JSON_LITERAL",
-        "sha256": "fe64eabab2f9ecc97db0ceabb6657d3e1bc7c9d7f669d75017a3abfb596e198f"
       },
       "count": 1,
       "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."

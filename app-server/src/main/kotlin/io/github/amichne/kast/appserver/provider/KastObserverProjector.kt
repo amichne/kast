@@ -236,6 +236,12 @@ internal object KastObserverProjector {
         evidence: ObserverEvidence,
         observerDirectory: ObserverWorkingDirectory,
     ): String? {
+        val acquisition =
+            when (document.strictString("acquisition")) {
+                "strict" -> "compiler-confirmed"
+                "reacquired" -> "freshly reacquired"
+                else -> return null
+            }
         val symbol = document["symbol"] as? JsonObject ?: return null
         val name = symbol.strictLabel("name") ?: return null
         val kind =
@@ -261,7 +267,7 @@ internal object KastObserverProjector {
             append(inlineCode(name))
             append(" · ")
             append(kind)
-            if (evidence.coverage == ObserverCoverage.COMPLETE) append(" · compiler-confirmed")
+            if (evidence.coverage == ObserverCoverage.COMPLETE) append(" · $acquisition")
         }
         val body = buildList {
             add(summary)
