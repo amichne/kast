@@ -164,6 +164,8 @@ class ReadTransportRejected(ValueError):
             result['outputViolationEvidence'] = self.output_violation_evidence
         if self.qualification is not None:
             result['providerQualification'] = qualification_document(self.qualification)
+        if self.source_cause is not None:
+            result['sourceFailure'] = asdict(self.source_cause)
         if self.invocation is not None:
             result['surface'], result['tool'] = self.invocation
         return result

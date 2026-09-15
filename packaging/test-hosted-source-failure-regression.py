@@ -44,6 +44,7 @@ class SourceFailureTest(unittest.TestCase):
         with self.assertRaises(ReadTransportRejected) as caught:
             _provider_result(asdict(Rejected(RequestCause())))
         self.assertEqual(SourceFailureCause.ANCHOR_TYPE_REQUIRED, caught.exception.source_cause.cause)
+        self.assertEqual('anchor-type-required', caught.exception.evidence()['sourceFailure']['cause'])
 
     def test_known_stale_and_unknown_remain_disjoint(self):
         for reason in ('wrong-family', 'stale-authority', 'unavailable'):
