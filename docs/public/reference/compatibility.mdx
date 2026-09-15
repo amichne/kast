@@ -4,7 +4,7 @@ title: "Compatibility and upgrades"
 description: "Supported hosts, installed agent contracts, and upgrade behavior."
 resource: "file://docs/public/reference/compatibility.mdx"
 tags: ["compatibility", "releases", "upgrades", "hosts"]
-timestamp: "2026-09-11T00:00:00-04:00"
+timestamp: "2026-09-14T00:00:00-04:00"
 code_sources:
   - path: "gradle/libs.versions.toml"
   - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt"
@@ -14,8 +14,9 @@ icon: "shield-check"
 keywords: ["compatibility", "upgrade", "preview", "rollback"]
 ---
 
-Check host admission, tool-schema compatibility, and evidence lifetime
-separately. Passing one does not establish the others.
+Check host admission, schema compatibility, and evidence lifetime separately.
+
+Passing one boundary does not establish another.
 
 ## Supported host
 
@@ -27,31 +28,41 @@ separately. Passing one does not establish the others.
 | JBR | Java 25 bundled with the selected IDEA |
 | Native acceptance baseline | IDEA `262.10315.125`, Kotlin `262.10315.125-IJ` |
 
-Other `262` builds are admitted by policy; the baseline remains the recorded
-native acceptance evidence. Other release lines, Linux, Intel macOS, and other
-languages are outside the current support contract. Full observed build
-identities remain in runtime evidence. Protocol, schema, and artifact integrity
-checks remain exact.
+- Other `262` builds are admitted by policy without the same native acceptance evidence.
+- Other release lines, Linux, Intel macOS, and other languages are unsupported.
+- Runtime evidence retains the complete observed build identities.
+- Protocol, schema, and artifact-integrity checks remain exact.
 
 ## Installed agent contract
 
-Load `serverProjection` from the executable's `kast --schema` output. The current
-projection is version 11 and its CLI-invocation projection is version 3. Validate
-the complete catalog, schemas, policies, and bindings at provider startup.
-Several tool names share a canonical operation; bind invocations by tool name.
-[Harness integration](/agent-harnesses) gives the sequence.
+Load `serverProjection` from the executable's `kast --schema` output.
 
-The Codex App Server integration is a preview while its upstream protocol is
-experimental. Full Desktop UI compatibility remains unqualified. Consult the
-[source-backed compatibility record](https://github.com/amichne/kast/blob/main/app-server/docs/compatibility.md)
-for the exact tested boundary.
+| Contract | Version |
+| --- | --- |
+| Server projection | 11 |
+| CLI invocation projection | 3 |
+
+- Validate the catalog, schemas, policies, and bindings at provider startup.
+- Bind invocations by tool name because several tools share an operation.
+- Follow [Harness integration](/agent-harnesses) for the full sequence.
+
+<Note>
+  The Codex App Server integration remains a preview, and full Desktop UI
+  compatibility remains unqualified.
+</Note>
+
+See the [source-backed compatibility record](https://github.com/amichne/kast/blob/main/app-server/docs/compatibility.md)
+for the tested boundary.
 
 ## Upgrade a matched installation
 
-Run the [installer](/start) for the selected release, then restart IDEA so the
-matched plugin loads. The installer verifies the control and
-IDEA plugin payloads before activation. Repository source and unrelated
-JetBrains state are preserved.
+1. Run the [installer](/start) for the selected release.
+2. Restart IDEA so the matched plugin loads.
+3. Requalify the agent catalog.
+
+The installer verifies control and plugin payloads before activation.
+
+Repository source and unrelated JetBrains state remain unchanged.
 
 <Accordion title="Pin an approved release">
   Run the installer from the same explicit tag passed to `--version`:
@@ -62,18 +73,22 @@ JetBrains state are preserved.
     -- --version "$release_tag"
   ```
 
-  Replace the example with your approved, published release. The example is a
-  pinning pattern, not a recommendation to downgrade.
+  Replace the example with your approved, published release.
+
+  The example shows a pinning pattern, not a downgrade recommendation.
 </Accordion>
 
-Requalify the agent catalog after an executable upgrade. Do not reuse metadata
-from a different installation. If startup or repository admission fails, retain
-the reported boundary and use [Troubleshooting](/troubleshooting).
+Do not reuse metadata from a different installation.
+
+Use [Troubleshooting](/troubleshooting) when startup or repository admission fails.
 
 ## Refresh evidence after changes
 
-Compatible tool schemas do not keep a reference alive indefinitely. Saved source,
-imported-model changes, and owner replacement can invalidate old references.
-Search again when a reference rejects. Never reinterpret its token to make it fit
-new evidence. [Evidence outcomes](/concepts/evidence-boundaries) explains the
-claims retained by complete, qualified, and rejected results.
+Compatible schemas do not keep a reference alive indefinitely.
+
+Search again after saved-source changes, imported-model changes, owner replacement,
+or stale-reference rejection.
+
+Never reinterpret a token to fit new evidence.
+
+[Evidence outcomes](/concepts/evidence-boundaries) explains each semantic status.

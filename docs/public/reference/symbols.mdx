@@ -10,9 +10,9 @@ code_sources:
   - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/MintlifyCallableReference.kt"
 ---
 
-A query item describes either a discovered **candidate** or an **exact symbol**.
-Read `type` first. Ordinary intent searches refine to exact symbols; the shared
-query schema also preserves candidate results for lower-level query use.
+A query item is either a discovered **candidate** or an **exact symbol**.
+
+Read `type` before every other field.
 
 ## Inspect an exact symbol
 
@@ -28,28 +28,30 @@ query schema also preserves candidate results for lower-level query use.
 | `signature` | A closed signature variant, or `null` | Distinguishing compiler identities and callable shapes |
 | `connections` | Array of relation facts | Reading projected semantic relationships |
 
-These fields are required by the exact-symbol schema even when a projection is
-`null`. A missing projection is not an empty name, an empty signature, or failed
-identity. `return_fields: []` requests mandatory identity and kind only; the
-nullable projection fields remain represented in the wire document.
+Every field remains present when a projection is `null`.
+
+- `null` does not mean an empty name or signature.
+- `null` does not weaken the exact identity.
+- `return_fields: []` requests only mandatory identity and kind values.
 
 [Open the complete query-item model](/reference/models/query-item).
 
 ## Read a compiler signature
 
-Dispatch on `signature.type`. The wire vocabulary differs from `item.kind`:
-`class-like` is the signature tag; `classlike` is the item kind.
+Dispatch on `signature.type`.
+
+The signature tag is `class-like`, while the item kind is `classlike`.
 
 <Tabs>
   <Tab title="Function">
-    `qualifiedIdentity` is the compiler-qualified callable identity.
-    `valueParameters` is an ordered array of compiler type strings;
-    `contextReceivers` is an ordered array of compiler type strings.
-    `typeParameterCount` is a nonnegative integer.
+    - `qualifiedIdentity` is the compiler-qualified callable identity.
+    - `valueParameters` contains ordered compiler type strings.
+    - `contextReceivers` contains ordered compiler type strings.
+    - `typeParameterCount` is a nonnegative integer.
+    - `receiver` is an `absent` or `present` variant.
+    - A function signature does not expose its return type.
 
-    `receiver` is `{ "type": "absent" }` or a `present` variant with
-    `compilerType`. The signature does not expose a function return-type field.
-    Do not infer parameter names or default values from the type array.
+    Do not infer parameter names or defaults from type strings.
 
     This illustrative signature preserves a function's ordered parameter types:
 
@@ -65,62 +67,87 @@ Dispatch on `signature.type`. The wire vocabulary differs from `item.kind`:
     ```
   </Tab>
   <Tab title="Property">
-    A property signature has `qualifiedIdentity`, the same receiver variants,
-    `contextReceivers`, and `returnType`, a compiler-rendered type string.
-    Preserve the string as returned rather than parsing it as a full type AST.
+    A property signature contains:
+
+    - `qualifiedIdentity`
+    - the same receiver variants
+    - `contextReceivers`
+    - compiler-rendered `returnType`
+
+    Preserve `returnType` instead of parsing it as a full type AST.
   </Tab>
   <Tab title="Class or type alias">
     `class-like` and `type-alias` signatures carry `qualifiedIdentity`.
-    The absence of callable fields is part of these variants; it does not mean
-    the response has an arbitrary shape. Use related-symbol queries or source
-    reads for further detail.
+
+    Their missing callable fields are part of the closed variants.
+
+    Use related-symbol queries or source reads for more detail.
   </Tab>
 </Tabs>
 
-Compiler type strings are the deliberate textual boundary here. The enclosing
-signature, receiver, item, failure, and relation variants remain structured.
+Compiler type strings are a deliberate textual boundary.
+
+Signature, receiver, item, failure, and relation variants remain structured.
+
 Neither a rendered type nor a qualified name can replace `symbol_ref`.
 
 ## Reuse identity
 
-Copy a returned `symbol_ref` unchanged into the `symbol_refs` source of
-`query_symbols`. Keep overloads separate even when their names and files match.
+Reuse rules:
+
+- Copy `symbol_ref` unchanged into the `symbol_refs` source of `query_symbols`.
+- Keep overloads separate even when their names and files match.
+- Expect re-admission against workspace, owner lifetime, epoch, and scope.
+- Repeat discovery after saved-source or imported-model changes.
+- Never reconstruct a token from its location.
+- Do not treat syntax-valid tokens as admission proof.
+
+`symbol_id` is an equality key within one semantic snapshot.
+
+- It stays independent of discovery scope.
+- It does not authorize a read.
+- Two references may share one `symbol_id` while retaining different scopes.
+- Hosted exact references normally use 31-character handles.
+- Digest collisions fall back to the full token.
+
 See [Query pipelines](/query-pipelines) for the request shape.
-
-`symbol_id` is independent of the discovery scope within the same semantic
-snapshot. It is an equality key, not a read capability. `symbol_ref` retains the
-original authority and scope; two references may have different bytes while
-sharing one `symbol_id`. Hosted exact references normally use a 31-character
-handle. A digest collision safely falls back to the full token.
-
-References are re-admitted by the runtime against workspace, owner lifetime,
-epoch, and scope. After saved source or imported-model changes, a stale token
-may reject. Repeat discovery; do not edit the token or reconstruct it from the
-location. A syntactically valid token is not proof that the runtime will admit it.
 
 ## Read locations and relationships
 
-Convenience query and search locations use a workspace-relative `file`. Raw
-`symbol_lookup` and `symbol_inspect` canonical locations retain absolute physical
-file paths. An exact location includes a half-open `range`:
-`startInclusive` belongs to the range; `endExclusive` does not. Treat these as
-source offsets, not line numbers. Use them only with the corresponding source
-state. A candidate location has an `offset` rather than the exact-symbol range.
+| Tool family | `file` value |
+| --- | --- |
+| Convenience query and search | Workspace-relative path |
+| `symbol_lookup` and `symbol_inspect` | Absolute physical path |
 
-A query `expand_relation` step returns related **declarations**. A relation fact
-can describe a particular **use site**. Use `read_relations` for occurrence-oriented
-facts and inspect its tagged [relation model](/reference/models/relation-fact).
-Do not turn every relation into an unlabelled pair of names: keep its relation
-kind, endpoints, use-site location, and any unavailable evidence represented by
-that variant.
+An exact location also contains a half-open `range`.
+
+- `startInclusive` belongs to the range.
+- `endExclusive` does not belong to the range.
+- The values are source offsets, not line numbers.
+- A candidate has one `offset` instead of an exact range.
+- Use locations only with the corresponding source state.
+
+An `expand_relation` step returns related **declarations**.
+
+A relation fact can describe one **use site**.
+
+Use `read_relations` for occurrence-oriented facts and inspect the tagged
+[relation model](/reference/models/relation-fact).
+
+Preserve relation kind, endpoints, use-site location, and unavailable evidence.
 
 <Accordion title="Candidate results carry weaker evidence">
-  The candidate variant has `ref.kind: "declaration-candidate"`, candidate
-  `kind: "class"` or `"symbol"`, and nullable name and location. It does not carry
-  the exact symbol's `symbol_ref`, compiler signature, or connections. Refine the
-  candidate through the supported lower-level operation before using it where
-  an exact symbol is required. Candidate discovery alone does not establish
-  overload identity.
+  A candidate has:
+
+  - `ref.kind: "declaration-candidate"`
+  - `kind: "class"` or `"symbol"`
+  - nullable name and location
+
+  It lacks `symbol_ref`, compiler signature, and connections.
+
+  Refine it before using an operation that requires exact identity.
+
+  Candidate discovery alone does not establish overload identity.
 </Accordion>
 
 Before judging the whole answer, return to [response outcomes](/reference/responses).

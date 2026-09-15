@@ -5,7 +5,7 @@ sidebarTitle: "Install and connect"
 description: "Install Kast and make compiler-grounded Kotlin search available to an agent."
 resource: "file://docs/public/start.mdx"
 tags: ["installation", "agents", "Codex", "IntelliJ"]
-timestamp: "2026-09-11T00:00:00-04:00"
+timestamp: "2026-09-14T00:00:00-04:00"
 code_sources:
   - path: "install.sh"
   - path: "gradle/libs.versions.toml"
@@ -21,10 +21,18 @@ icon: "rocket"
 keywords: ["install", "Codex", "IntelliJ", "agent integration"]
 ---
 
-Get one Kotlin repository answering semantic questions through the included Codex
-integration. You need macOS on Apple silicon, an on-disk Kotlin Gradle repository,
-IntelliJ IDEA in the `262` release line with its bundled Kotlin plugin and Java 25
-JBR, and a `codex` executable on `PATH`.
+Use the included Codex integration to query one Kotlin repository.
+
+## Requirements
+
+| Boundary | Requirement |
+| --- | --- |
+| Platform | macOS on Apple silicon |
+| Repository | An on-disk Kotlin Gradle repository |
+| IDE | IntelliJ IDEA in the `262` release line |
+| Kotlin | The Kotlin plugin bundled with that IDEA installation |
+| Runtime | The Java 25 JBR bundled with IDEA |
+| Agent | A `codex` executable on `PATH` |
 
 <Steps>
   <Step title="Install the matched release">
@@ -34,13 +42,19 @@ JBR, and a `codex` executable on `PATH`.
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
     ```
 
-    The installer verifies and installs Kast and its IDEA plugin. It does not
-    install IDEA. If prompted, add `~/.local/bin` to `PATH`.
+    The installer verifies and installs Kast and its IDEA plugin.
+
+    It does not install IDEA.
+
+    If prompted, add `~/.local/bin` to `PATH`.
   </Step>
   <Step title="Prepare IDEA">
-    Restart IDEA to load the plugin, open your repository, and wait for Gradle
-    import and indexing to finish. Save edited files. Reads use the existing
-    saved project; they do not start an import or isolated worker for you.
+    - Restart IDEA to load the plugin.
+    - Open your repository.
+    - Wait for Gradle import and indexing to finish.
+    - Save edited files before requesting evidence.
+
+    Reads use the saved project without starting an import or isolated worker.
   </Step>
   <Step title="Connect from the repository root">
     ```console
@@ -48,13 +62,13 @@ JBR, and a `codex` executable on `PATH`.
     kast codex
     ```
 
-    This enrolls the workspace, qualifies the installed catalog, and starts the
-    included integration. A separate App Server enable command is unnecessary.
+    This command enrolls the workspace, qualifies the installed catalog, and
+    starts the included integration.
   </Step>
   <Step title="Ask for a declaration">
-    Ask the agent to find a class or function that exists in your project. It
-    should use `kast.search_classes` or `kast.search_functions`. Expand the tool
-    result and check its semantic status, matches, and `symbol_ref` values.
+    Ask the agent to find a class or function that exists in your project.
+
+    Check the returned semantic status, matches, and `symbol_ref` values.
 
     Continue with [Search declarations](/search) or [Read a response](/reference/responses).
   </Step>
@@ -69,20 +83,27 @@ JBR, and a `codex` executable on `PATH`.
       -- --idea-home "/Applications/IntelliJ IDEA.app"
     ```
 
-    The build baseline is IDEA `262.10315.125` and Kotlin plugin
-    `262.10315.125-IJ`. Other `262` builds are admitted by policy; recorded native
-    acceptance is limited to the baseline. See [Compatibility](/reference/compatibility).
+    The recorded baseline is IDEA `262.10315.125` with Kotlin plugin
+    `262.10315.125-IJ`.
+
+    Other `262` builds are admitted by policy but lack the same native acceptance
+    evidence. See [Compatibility](/reference/compatibility).
   </Accordion>
   <Accordion title="Connect Codex Desktop">
-    Quit any running Desktop instance, then run `kast codex desktop` from the
-    repository root. Kast launches Desktop with its installed App Server façade;
-    the façade connects to the same persistent broker as the terminal integration.
-    Closing Desktop leaves the broker running. Full Desktop UI compatibility
-    remains unqualified in the [compatibility record](https://github.com/amichne/kast/blob/main/app-server/docs/compatibility.md).
+    1. Quit any running Desktop instance.
+    2. Run `kast codex desktop` from the repository root.
+
+    Desktop connects to the same persistent broker as the terminal integration.
+
+    Closing Desktop leaves the broker running.
+
+    Full Desktop UI compatibility remains unqualified in the
+    [compatibility record](https://github.com/amichne/kast/blob/main/app-server/docs/compatibility.md).
   </Accordion>
   <Accordion title="Use an explicit Codex executable or another harness">
-    Set `CODEX_EXECUTABLE` to an absolute executable path if `codex` is not on
-    `PATH`. For another agent host, consume `kast --schema` as described in the
+    Set `CODEX_EXECUTABLE` to an absolute path when `codex` is not on `PATH`.
+
+    Other agent hosts should consume `kast --schema` through the
     [harness contract](/agent-harnesses).
   </Accordion>
   <Accordion title="Uninstall Kast">
@@ -92,9 +113,14 @@ JBR, and a `codex` executable on `PATH`.
     ```
 
     Uninstall removes Kast-owned commands, installations, runtime state,
-    configuration, and services. Repositories and unrelated JetBrains state remain.
+    configuration, and services.
+
+    Repositories and unrelated JetBrains state remain.
   </Accordion>
 </AccordionGroup>
 
-If tools are absent or the first request rejects, use [Troubleshooting](/troubleshooting).
-For source changes, complete the separate broker-trust step in [Change source](/change).
+## Next steps
+
+- Continue with [Search declarations](/search) when the first request succeeds.
+- Use [Troubleshooting](/troubleshooting) when tools are absent or a request rejects.
+- Complete the broker-trust step in [Change source](/change) before a source change.

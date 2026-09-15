@@ -4,7 +4,7 @@ title: "Kast"
 description: "Find Kotlin declarations, interpret compiler evidence, and make approved source changes."
 resource: "file://docs/public/index.mdx"
 tags: ["Kotlin", "compiler", "agents", "search"]
-timestamp: "2026-09-11T00:00:00-04:00"
+timestamp: "2026-09-14T00:00:00-04:00"
 code_sources:
   - path: "protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt"
     symbols: ["CanonicalAgentToolDefinitions"]
@@ -15,9 +15,7 @@ icon: "scan-search"
 keywords: ["Kotlin", "compiler", "coding agents", "semantic search"]
 ---
 
-Kast lets an agent find Kotlin declarations, follow compiler-resolved relationships,
-read source, check diagnostics, and plan an approved declaration change in your
-open IntelliJ project.
+Kast gives agents compiler-grounded tools for the Kotlin project open in IntelliJ.
 
 ## What do you need to do?
 
@@ -33,28 +31,37 @@ open IntelliJ project.
 ## Make one useful request
 
 After [setup](/start), ask your agent to find a declaration by its simple name.
-For a class named `OrderService`, the tool input is:
 
 ```json
 {"class_name":"OrderService","name_match":null,"scope":null}
 ```
 
-`kast.search_classes` searches exact, case-sensitive names in the imported `main`
-and `test` source sets by default. `null` is an explicit default; keep all three
-fields. Use your project's declaration name when trying this example.
+Use these request rules:
 
-Read the returned semantic status before the matches. A **complete** search can
-establish absence within its scope. A **qualified** search carries limits that
-must accompany the answer. A **rejected** search needs the reported problem
-resolved before it can answer the question.
+- Replace `OrderService` with a declaration from your project.
+- Keep all three fields because `null` selects a documented default.
+- Expect exact, case-sensitive matching in the imported `main` and `test` source sets.
+
+Read the semantic status before the matches:
+
+| Status | What it means |
+| --- | --- |
+| **complete** | The search can establish absence within its scope. |
+| **qualified** | The answer remains limited by its attached qualifications. |
+| **rejected** | Resolve the reported problem before using the answer. |
 
 ## Keep the compiler evidence
 
-A result's `symbol_ref` is the reusable identity. Copy it into later tools;
-`name`, file location, and a printed signature help a person understand the match
-but cannot replace that reference. [Inspect a symbol result](/reference/symbols)
-for the fields, signature variants, and reuse rules.
+A result's `symbol_ref` is its reusable identity.
 
-Semantic reads use saved, indexed project state. Open the repository in IDEA,
-finish import and indexing, and save edits before asking again. An unavailable
-host returns a blocker; a search does not open or import the project for you.
+- Copy `symbol_ref` unchanged into later tools.
+- Use the name, location, and signature for display only.
+- See [Symbol results](/reference/symbols) for field and reuse rules.
+
+<Note>
+  Semantic reads use saved, indexed project state.
+
+  Open the repository in IDEA, finish import and indexing, and save edits before asking again.
+
+  Search returns a blocker instead of opening or importing an unavailable project.
+</Note>
