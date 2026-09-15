@@ -88,6 +88,14 @@ internal class HostedReadDeadline(
         return result
     }
 
+    fun admitCompletion(allowance: HostedSemanticTimeAllowance, policy: HostedReadCompletionPolicy) =
+        HostedAdmittedRead(allowance, when (policy) {
+            HostedReadCompletionPolicy.HOST_CONTAINMENT -> HostedReadCompletion.HostContainment
+            HostedReadCompletionPolicy.CALLER_ELAPSED -> HostedReadCompletion.CallerElapsed(clock(), allowance.semantic)
+        })
+
+    fun validateCompletion(completion: HostedReadCompletion): Refinement<Unit, HostedQueryFailure> = Refinement.Refined(Unit)
+
     private fun remainingMillis(): Long {
         val elapsedNanos = (clock() - started).coerceAtLeast(0L)
         val elapsedMillis = elapsedNanos / 1_000_000L + if (elapsedNanos % 1_000_000L == 0L) 0L else 1L
