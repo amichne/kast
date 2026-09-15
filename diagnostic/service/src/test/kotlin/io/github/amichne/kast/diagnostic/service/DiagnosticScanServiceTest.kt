@@ -26,11 +26,13 @@ import io.github.amichne.kast.workspace.contract.SemanticReadLease
 import io.github.amichne.kast.workspace.contract.SemanticReadValidation
 import io.github.amichne.kast.workspace.contract.SemanticReadValidationPort
 import java.nio.file.Path
+import java.util.concurrent.CancellationException
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.startCoroutine
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -147,16 +149,54 @@ class DiagnosticScanServiceTest {
         assertEquals(1, fixture.analyses)
     }
 
+    @Test
+    fun `final authority observation consuming time rejects before publication`() {
+        val fixture = Fixture()
+        fixture.elapsedDuringFinalValidation = 2_000_000_000
+        val result = runSuspend { fixture.service.scan(DiagnosticScanRequest.First(query), budget) }
+        assertEquals(
+            DiagnosticScanRejection.ExecutionTimeGrantTooSmall,
+            assertInstanceOf(DiagnosticScanResult.Rejected::class.java, result).reason,
+        )
+        assertEquals(0, fixture.analyses)
+    }
+
+    @Test
+    fun `cancelled enumeration publishes no checkpoint and retry starts independently`() {
+        val fixture = Fixture()
+        fixture.cancelEnumeration = true
+        assertThrows(CancellationException::class.java) {
+            runSuspend { fixture.service.scan(DiagnosticScanRequest.First(query), budget) }
+        }
+        fixture.cancelEnumeration = false
+        val retry = runSuspend { fixture.service.scan(DiagnosticScanRequest.First(query), budget) }
+        assertInstanceOf(DiagnosticScanResult.Advancing::class.java, retry)
+        assertEquals(0, fixture.analyses)
+        assertEquals(2, fixture.enumerations)
+    }
+
     private inner class Fixture {
         var analyses = 0
+        var validations = 0
+        var enumerations = 0
+        var cancelEnumeration = false
+        var elapsedDuringFinalValidation = 0L
         var validation = SemanticReadValidation.CURRENT
         var moveDuringAnalysis = false
         var elapsedDuringAnalysis = 0L
         var now = 0L
         val service =
             DiagnosticScanService(
-                SemanticReadValidationPort { validation },
-                DiagnosticScopeEnumerator { _, _ -> DiagnosticEnumerationResult.Exhausted(files) },
+                SemanticReadValidationPort {
+                    validations++
+                    if (validations % 2 == 0) now += elapsedDuringFinalValidation
+                    validation
+                },
+                DiagnosticScopeEnumerator { _, _ ->
+                    enumerations++
+                    if (cancelEnumeration) throw CancellationException("fixture cancellation")
+                    DiagnosticEnumerationResult.Exhausted(files)
+                },
                 DiagnosticOperations { request ->
                     val index = analyses++
                     val batch =
