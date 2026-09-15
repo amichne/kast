@@ -100,6 +100,18 @@ class SymbolRevalidationSchemaTest {
         }
     }
 
+    @Test
+    fun `installed inspection refusal uses CLI spelling rather than wire enum spelling`() {
+        val result =
+            CanonicalSymbolCliDocuments.projectInspection(
+                OperationOutcome.Rejected(SymbolInspectRejection.EXACT_SELECTOR_STALE)
+            ) as ProjectedCliOutcome.Rejected
+        assertEquals(
+            "exact-selector-stale",
+            Json.parseToJsonElement(result.document.value).jsonObject.getValue("reason").jsonPrimitive.content,
+        )
+    }
+
     private fun fixtureSymbol(): SymbolDocument {
         val qualified = text("sample.Alias")
         return SymbolDocument.create(
