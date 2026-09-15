@@ -32,6 +32,7 @@ class DiagnosticDrainFailure(str, Enum):
     CHECKPOINT = 'CHECKPOINT'
     PAGE_BOUND = 'PAGE_BOUND'
     RECORD_BOUND = 'RECORD_BOUND'
+    REPLAY = 'REPLAY'
 
 
 @dataclass(frozen=True)
@@ -54,7 +55,7 @@ def _invoke(replay, request):
     return response
 
 
-def drain_diagnostics(replay, request, first):
+def drain_diagnostics(replay, request, first, verify_replay=False):
     pages, seen, analyzed = [], set(), set()
     response = first
     for _ in range(MAXIMUM_PAGES):
@@ -85,6 +86,8 @@ def drain_diagnostics(replay, request, first):
         seen.add(token)
         request = replace(request, continuation=token)
         response = _invoke(replay, request)
+        if verify_replay and response != _invoke(replay, request):
+            return DiagnosticDrainRejected(DiagnosticDrainFailure.REPLAY)
     return DiagnosticDrainRejected(DiagnosticDrainFailure.PAGE_BOUND)
 
 
@@ -121,4 +124,42 @@ def run_diagnostic_pages_regression(replay):
         count = sum(len(page.get('diagnostics', [])) for page in result.pages)
     else:
         checks['drain' + result.failure.value] = False
+    checks.update(heavy_file_checks(replay))
     replay.record('diagnostic-same-basis-pages', 'check_diagnostics', checks, count, first)
+
+
+def _diagnostic_records(drained):
+    return tuple((item['severity'], item['code'], item['message'],
+        item['location']['file'], item['location']['range']['startInclusive'],
+        item['location']['range']['endExclusive'])
+        for page in drained.pages for item in page.get('diagnostics', []))
+
+
+def heavy_file_checks(replay):
+    """The authored deprecated callable has three separate calls with the same warning text."""
+    path = 'src/main/kotlin/ReadDiagnosticPages.kt'
+    high_request = DiagnosticRequest(path, 1000, execution_budget=replace(DiagnosticGrant(), max_results=1000))
+    low_request = DiagnosticRequest(path)
+    high = drain_diagnostics(replay, high_request, _invoke(replay, high_request), verify_replay=True)
+    low = drain_diagnostics(replay, low_request, _invoke(replay, low_request), verify_replay=True)
+    checks = {
+        'heavyHighDrainCompleted': isinstance(high, DiagnosticDrained),
+        'heavySingleResultDrainCompleted': isinstance(low, DiagnosticDrained),
+    }
+    if not isinstance(high, DiagnosticDrained) or not isinstance(low, DiagnosticDrained):
+        return checks
+    expected, observed = _diagnostic_records(high), _diagnostic_records(low)
+    deprecations = tuple(item for item in expected if item[1] == 'DEPRECATION')
+    checks.update({
+        'authoredThreeDeprecationOccurrences': len(deprecations) == 3,
+        'sameMessageDifferentOccurrences': len({item[2] for item in deprecations}) == 1
+            and len({item[3:] for item in deprecations}) == 3,
+        'heavyOccurrenceOrderParity': expected == observed,
+        'heavyEachPageAtMostOneDiagnostic': all(len(page.get('diagnostics', [])) <= 1 for page in low.pages),
+        'heavyCumulativeCountPreserved': low.pages[-1]['progress'].get('knownDiagnosticCount') == len(expected),
+        'heavyOutputCoverageUnchanged': all(page['progress']['analyzedFiles']
+            == low.pages[-1]['progress']['analyzedFiles'] for page in low.pages
+            if page['progress'].get('stage') == 'output'),
+        'heavyOutputStageObserved': any(page['progress'].get('stage') == 'output' for page in low.pages),
+    })
+    return checks
