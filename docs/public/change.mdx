@@ -49,7 +49,7 @@ The command creates or preserves a matching private approval key pair in
 ## Plan, review, and apply
 
 1. [Search](/search) for the target declaration.
-2. Pass its unchanged `symbol_ref` to `change_plan` as `intent.exactTarget`.
+2. Pass its unchanged `ref` to `change_plan` as `intent.exactTarget`.
 3. Include `intent.kind: "add-declaration"` and the Kotlin source in `intent.declaration`.
 4. Review declaration placement in the stored file preview.
 5. Retain the immutable plan identity.
@@ -69,7 +69,7 @@ Use this planning shape with a returned token and the intended Kotlin source:
 {
   "intent": {
     "kind": "add-declaration",
-    "exactTarget": "<returned symbol_ref>",
+    "exactTarget": "<returned ref>",
     "declaration": "fun retryLimit(): Int = 3"
   }
 }

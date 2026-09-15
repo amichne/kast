@@ -41,9 +41,9 @@ The authored tool bundle generates Kotlin request DTOs, concrete normalization d
 
 `search_classes`, `search_functions`, `search_declarations` and `check_diagnostics` are eager. `query_symbols` is deferred. Ordinary searches fix or admit declaration kinds and request names, locations and signatures; diagnostics lower to the existing path/limit request. Required nullable controls normalize before canonical construction. Directory/package scope shapes are exclusive, and duplicates and invalid lexical values reject.
 
-The advanced pipeline preserves source meaning, step order, repeated steps and empty projections. Expansion returns related declarations; occurrence-oriented relation facts remain the relation-read contract. `symbol_ref` is derived from the exact result token and is equal to the retained migration field `ref.token`. No token spelling creates authority: existing runtime owners re-admit workspace, lifetime, epoch and compiler evidence.
+The advanced pipeline preserves source meaning, step order, repeated steps and empty projections. Expansion returns related declarations; occurrence-oriented relation facts remain the relation-read contract. Query items and per-item failures expose one scalar `ref`, preserving the issued candidate or exact token verbatim. Named output schemas `CandidateRef`, `ExactSymbolRef`, and query-scoped `ContinuationRef` describe these opaque representations. No token spelling creates authority: existing runtime owners re-admit workspace, lifetime, epoch and compiler evidence.
 
-Installed projection 11 and CLI invocation version 3 join by tool name. Repeated canonical operation IDs are allowed only with consistent effect, approval, budget and output metadata. Private admitted requests retain their presentation and schema identities through transport encoding, excluding cross-tool substitution. Old persisted catalogs reject rather than silently accepting a new grammar. Source, relation and traversal defaults remain unchanged. Raw candidate lookup/refinement requires explicit selection. Native-qualified change tools are deferred defaults; `change_plan` has approval policy `NONE`, while apply and recovery retain
+Installed projection 12 and CLI invocation version 3 join by tool name. Repeated canonical operation IDs are allowed only with consistent effect, approval, budget and output metadata. Private admitted requests retain their presentation and schema identities through transport encoding, excluding cross-tool substitution. Old persisted catalogs reject rather than silently accepting a new grammar. Source, relation and traversal defaults remain unchanged. Raw candidate lookup/refinement requires explicit selection. Native-qualified change tools are deferred defaults; `change_plan` has approval policy `NONE`, while apply and recovery retain
 `EXPLICIT` exact-plan approval. The hosted planning schema admits only
 `add-declaration`; unsupported canonical intents do not enter another runtime.
 
@@ -104,7 +104,8 @@ manufacturing an empty object.
 `query_symbols` accepts optional nullable `continuation`; omission or null starts
 a query. It preserves the opaque token through public lowering. Qualified query
 output derives nullable `continuation` and `terminal_reason` from its required closed qualification progress state, while exact items
-include `symbol_id` independently of the retained `symbol_ref` capability.
+expose only the scalar `ref` capability. Canonical equality remains internal to
+`distinct_symbols`; `symbol_id` has no public accessor.
 Traversal output includes progress, strategy and page-local partial expansions.
 Relation output separates exact returned-fact soundness from bounded provider
 omission evidence, with measured or explicitly unmeasured page counts.
@@ -133,7 +134,7 @@ Unknown or absent actions fail the installed schema. The
 [outcome contract](operation-outcomes.md) defines the six recovery directions;
 action text does not authorize silent reference refresh or an automatic retry.
 
-Server projection version 11 advertises `read_relations` and `traverse_relations`
+Server projection version 12 advertises `read_relations` and `traverse_relations`
 for the unchanged `relation.read` and `traversal.run` operations. Canonical
 registry definitions own the input-only `semantic_query` and `impact_analyze`
 aliases. Configuration resolves aliases before rejecting duplicate identities;

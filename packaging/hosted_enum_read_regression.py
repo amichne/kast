@@ -58,9 +58,14 @@ class EnumMemberReferences:
 @dataclass(frozen=True)
 class EnumMemberRoundtrip:
     source: EnumMemberReferences
-    steps: None = field(default=None, init=False)
+    steps: tuple['DistinctSymbols', ...] = ()
     return_fields: tuple[str, ...] = field(default=('name', 'signature'), init=False)
     execution_budget: EnumBudget = field(default_factory=EnumBudget, init=False)
+
+
+@dataclass(frozen=True)
+class DistinctSymbols:
+    type: str = field(default='distinct_symbols', init=False)
 
 
 def run_enum_read_regression(replay):
@@ -73,12 +78,12 @@ def run_enum_read_regression(replay):
     for name, tool, request, expected in cases:
         response = replay.transport.invoke(replay.surface, tool, asdict(request))
         items = response.get('items', [])
-        references = [item.get('symbol_ref') for item in items]
+        references = [item.get('ref') for item in items]
         replay.record(name, tool, {
             'complete': response.get('status') == 'complete',
             'exactEligibleNames': Counter(item.get('name') for item in items) == Counter(expected),
             'allCandidatesRefined': response.get('failures') == [] and all(references),
-            'distinctDeclarations': len(set(references)) == len(expected),
+            'distinctReferences': len(set(references)) == len(expected),
             'sameLiveAuthority': response.get('live') == replay.live,
             'boundedWorkRetained': response.get('execution_budget', {}).get('max_work_units', {}).get('effective') == 32,
         }, len(items), response)
@@ -88,7 +93,7 @@ def run_enum_read_regression(replay):
 
 def _roundtrip_members(replay, discovery):
     items = discovery.get('items', [])
-    references = tuple(item.get('symbol_ref') for item in items)
+    references = tuple(item.get('ref') for item in items)
     if len(references) != 2 or not all(isinstance(value, str) and value for value in references):
         replay.record('enum-entry-member-reference-reuse', 'query_symbols', {'issuerAvailable': False})
         return
@@ -97,12 +102,25 @@ def _roundtrip_members(replay, discovery):
     exact = response.get('items', [])
     replay.record('enum-entry-member-reference-reuse', 'query_symbols', {
         'complete': response.get('status') == 'complete',
-        'sameDeclarations': all(item.get('symbol_id') for item in items) and
-            [item.get('symbol_id') for item in exact] == [item.get('symbol_id') for item in items],
-        'sameReferences': tuple(item.get('symbol_ref') for item in exact) == references,
+        'sameReferences': tuple(item.get('ref') for item in exact) == references,
         'exactEligibleNames': [item.get('name') for item in exact] == ['act', 'act'],
         'allReferencesRestored': response.get('failures') == [] and len(exact) == 2,
         'sameLiveAuthority': response.get('live') == replay.live,
         'signaturesPreserved': all(item.get('signature') for item in items) and
             [item.get('signature') for item in exact] == [item.get('signature') for item in items],
     }, len(exact), response)
+
+    # Ask the canonical equality owner to collapse original and restored declarations.
+    restored = tuple(item.get('ref') for item in exact)
+    if len(restored) != 2 or not all(isinstance(value, str) and value for value in restored):
+        replay.record('enum-entry-member-canonical-equality', 'query_symbols', {'issuerAvailable': False})
+        return
+    distinct = replay.transport.invoke(replay.surface, 'query_symbols',
+        asdict(EnumMemberRoundtrip(EnumMemberReferences(references + restored), (DistinctSymbols(),))))
+    unique = distinct.get('items', [])
+    replay.record('enum-entry-member-canonical-equality', 'query_symbols', {
+        'complete': distinct.get('status') == 'complete',
+        'sameDeclarations': len(unique) == 2 and distinct.get('failures') == [],
+        'firstOccurrenceOrder': tuple(item.get('ref') for item in unique) == references,
+        'sameLiveAuthority': distinct.get('live') == replay.live,
+    }, len(unique), distinct)

@@ -46,7 +46,7 @@ class SemanticReproductionTest(unittest.TestCase):
 
     def test_equal_counts_with_wrong_identities_fail(self):
         case = r.Case("same-name", r.search("sharedOperation"), tuple(self.expected["sameName"]))
-        items = [dict(type="exact-symbol", kind="function", ref=dict(kind="exact-symbol", token=f"exact:v3:test-{i}"),
+        items = [dict(type="exact-symbol", kind="function", ref=f"exact:v3:test-{i}",
                       signature=dict(qualifiedIdentity="wrong")) for i in range(5)]
         result = r.assess(case, dict(status="complete", items=items), r.FIXTURE, self.expected)
         self.assertFalse(result["assertions"]["exactIdentities"])
@@ -70,7 +70,7 @@ class SemanticReproductionTest(unittest.TestCase):
 
     def test_returned_token_must_be_preserved_verbatim(self):
         case = r.Case("roundtrip", dict(type="REFS", refs=["exact:v3:issued"]), tokens=("exact:v3:issued",), select=())
-        item = dict(type="exact-symbol", kind="function", ref=dict(kind="exact-symbol", token="exact:v3:replacement"))
+        item = dict(type="exact-symbol", kind="function", ref="exact:v3:replacement")
         result = r.assess(case, dict(status="complete", items=[item]), r.FIXTURE, self.expected)
         self.assertFalse(result["assertions"]["opaqueReferencesPreserved"])
 
@@ -81,7 +81,7 @@ class SemanticReproductionTest(unittest.TestCase):
         self.assertIn("Stable host", result["prerequisite"])
 
     def test_preserved_token_does_not_excuse_changed_projection(self):
-        issued = dict(type="exact-symbol", ref=dict(kind="exact-symbol", token="exact:v3:issued"), name="helper")
+        issued = dict(type="exact-symbol", ref="exact:v3:issued", name="helper")
         case = r.Case("projection", dict(type="REFS", refs=["exact:v3:issued"]), select=("NAME",), issued=(issued,))
         result = r.assess(case, dict(status="complete", items=[{**issued, "name": "changed"}]), r.FIXTURE, self.expected)
         self.assertFalse(result["assertions"]["issuedProjectionsPreserved"])

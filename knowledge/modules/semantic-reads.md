@@ -180,7 +180,9 @@ a finite compiler-identity rejection.
 
 The installed enum fixture checks exact, fuzzy and scoped class searches, both
 `act` declarations, and reuse of their exact references and signatures through
-CLI and provider surfaces. The scoped fixture retains an explicit 32-work-unit
+CLI and provider surfaces. An explicit `distinct_symbols` request verifies canonical
+equality of original and restored declarations without a public equality key.
+The scoped fixture retains an explicit 32-work-unit
 grant to qualify enum exclusion before candidate capacity. This does not establish
 the separate source-enumeration compiler-work ordering gate.
 

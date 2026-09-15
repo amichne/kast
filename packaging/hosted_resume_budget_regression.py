@@ -228,8 +228,8 @@ def _authored_baseline(replay, tool, result):
         return False
     if tool == 'query_symbols':
         items = tuple(item for page in result.pages for item in page.get('items', []))
-        return tuple(item.get('symbol_ref') for item in items) == tuple(
-            replay.seeds[key]['symbol_ref'] for key in ('logger', 'helper'))
+        return tuple(item.get('ref') for item in items) == tuple(
+            replay.seeds[key]['ref'] for key in ('logger', 'helper'))
     if tool == 'read_relations':
         relations = tuple(item for page in result.pages for item in page.get('relations', []))
         return (Counter(item.get('source', {}).get('qualifiedIdentity') for item in relations)
@@ -247,11 +247,11 @@ def _effective(response, budget):
 def run_resume_budget_regression(replay):
     """Twelve receipt cases per surface; internal pages never consume receipt rows."""
     requests = (
-        ('query_symbols', ResumeQuery(ExactReferences(tuple(replay.seeds[key]['symbol_ref']
+        ('query_symbols', ResumeQuery(ExactReferences(tuple(replay.seeds[key]['ref']
             for key in ('logger', 'helper'))), ResultsBudget(),
             return_fields=('name', 'location', 'signature'))),
-        ('source_read', ResumeSource(SymbolAnchor(replay.seeds['logger']['symbol_ref']), ResultsBudget())),
-        ('read_relations', BudgetRelation(replay.seeds['helper']['symbol_ref'], ResultsBudget())),
+        ('source_read', ResumeSource(SymbolAnchor(replay.seeds['logger']['ref']), ResultsBudget())),
+        ('read_relations', BudgetRelation(replay.seeds['helper']['ref'], ResultsBudget())),
     )
     for low, large in ((ElapsedBudget(1000), ElapsedBudget(3000)),
                        (WorkBudget(100), WorkBudget(100000)),

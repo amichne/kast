@@ -260,7 +260,7 @@ internal class NativeChangeWorkflow(
     private suspend fun searchFunction(name: String, count: Int) = NativeChangeRead(peer).searchFunction(name, count)
 
     private fun reference(search: JsonObject): String =
-        ((search["items"] as JsonArray).single() as JsonObject).textAt("symbol_ref")
+        ((search["items"] as JsonArray).single() as JsonObject).textAt("ref")
 
     private fun identity() = buildJsonObject { put("planIdentity", planId) }
 

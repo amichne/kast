@@ -128,7 +128,7 @@ internal class NativeLifecycleWorkflow(
     suspend fun unloadWithPendingApproval(peer: NativeChangePeer): NativeBrokerStoreSnapshot {
         val before = Files.readAllBytes(source)
         val found = NativeChangeRead(peer).searchClass()
-        val reference = (found["items"] as JsonArray).single().jsonObject.textAt("symbol_ref")
+        val reference = (found["items"] as JsonArray).single().jsonObject.textAt("ref")
         val planned = peer.call("change_plan", nativePlanArguments(reference, "fun acceptanceUnloaded() = value"))
         demand(!planned.rejected(), NativeFailure.PROVIDER_REJECTED)
         val arguments = buildJsonObject { put("planIdentity", planned.document().textAt("planIdentity")) }
@@ -143,7 +143,7 @@ internal class NativeLifecycleWorkflow(
 
     private suspend fun plan(peer: NativeChangePeer): JsonObject {
         val found = NativeChangeRead(peer).searchClass()
-        val reference = (found["items"] as JsonArray).single().jsonObject.textAt("symbol_ref")
+        val reference = (found["items"] as JsonArray).single().jsonObject.textAt("ref")
         val planned = peer.call("change_plan", nativePlanArguments(reference, "fun acceptanceAdded(): String = value"))
         demand(!planned.rejected(), NativeFailure.PROVIDER_REJECTED)
         return buildJsonObject { put("planIdentity", planned.document().textAt("planIdentity")) }
