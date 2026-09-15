@@ -5,6 +5,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -88,6 +89,23 @@ class AppServerStatusTest {
                     assertFalse(activities.any { it.stage == BrokerStartupStage.HOST_ADMISSION })
                     assertFalse(Files.exists(root.resolve(".codex")))
                     assertFalse(Files.exists(root.resolve("state/run/u.sock")))
+                    val originalReadiness = Files.readString(command.readinessFile)
+                    val ready = BROKER_SERVICE_STATE_JSON.decodeFromString<BrokerServiceStateDocument>(originalReadiness) as BrokerServiceStateDocument.Ready
+                    try {
+                        Files.writeString(
+                            command.readinessFile,
+                            BROKER_SERVICE_STATE_JSON.encodeToString<BrokerServiceStateDocument>(
+                                ready.copy(serviceIdentity = "sha256:" + "0".repeat(64))
+                            ),
+                        )
+                        assertEquals(
+                            CoordinatorStatusRead.Rejected(WorkerControlFailure.SERVICE_IDENTITY_REJECTED),
+                            InstalledCoordinatorClient(kast).status(command),
+                        )
+                    } finally {
+                        Files.writeString(command.readinessFile, originalReadiness)
+                    }
+
                 } finally {
                     running.close()
                 }
@@ -149,6 +167,7 @@ class AppServerStatusTest {
                         InstalledConfigurationAppliedInspection.read(kast, root, environment, next.configuration)
                     assertTrue(pending is AppliedConfigurationInspection.Pending, pending.toString())
                     assertFalse(Files.exists(root.resolve("state/run/u.sock")))
+
                     assertFalse(Files.exists(root.resolve(".codex")))
                 } finally {
                     running.close()
