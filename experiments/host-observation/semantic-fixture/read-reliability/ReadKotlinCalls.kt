@@ -23,3 +23,7 @@ fun explicitInvoke(fetcher: Fetcher): String = fetcher.invoke()
 fun implicitInvoke(fetcher: Fetcher): String = fetcher()
 fun sam(client: ChildClient): Fetcher = Fetcher { client.fetch() }
 fun integerExtension(value: Int): String = value.adapt()
+fun qualified(client: ChildClient): String {
+    val callback = { client.fetch() }
+    return client.fetch()
+}

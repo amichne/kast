@@ -7,6 +7,9 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.RelationLimitation
 import io.github.amichne.kast.relation.contract.RelationProvenance
 import io.github.amichne.kast.relation.contract.RelationProviderItemDescriptor
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
 import org.jetbrains.kotlin.idea.references.KtReference
 import org.jetbrains.kotlin.psi.KtCallElement
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
@@ -90,13 +93,26 @@ internal fun providerItemDescriptor(
 }
 
 /** Local initializers execute in their enclosing callable; nested callable bodies keep their own owner. */
-internal fun PsiElement.nearestDeclaration(): ContainingDeclaration {
+internal fun PsiElement.nearestDeclaration(
+    observation: IntellijReadObservation = IntellijReadObservation.None
+): ContainingDeclaration =
+    lexicalDeclaration().also { owner ->
+        when (owner) {
+            is ContainingDeclaration.Found -> observation.count(IntellijReadCounter.RELATION_CALL_OWNERS_FOUND)
+            is ContainingDeclaration.Deferred,
+            ContainingDeclaration.Unsupported -> {
+                observation.count(IntellijReadCounter.RELATION_CALL_OWNERS_UNAVAILABLE)
+                observation.terminated(IntellijReadTermination.RELATION_CALL_OWNER_UNSUPPORTED)
+            }
+        }
+    }
+
+private fun PsiElement.lexicalDeclaration(): ContainingDeclaration {
     for (element in generateSequence(this as PsiElement?) { it.parent }) {
         when (element) {
             is org.jetbrains.kotlin.psi.KtFunctionLiteral,
             is org.jetbrains.kotlin.psi.KtPropertyAccessor -> return ContainingDeclaration.Deferred(element)
-            is org.jetbrains.kotlin.psi.KtProperty ->
-                if (!element.isLocal) return ContainingDeclaration.Found(element)
+            is org.jetbrains.kotlin.psi.KtProperty -> if (!element.isLocal) return ContainingDeclaration.Found(element)
             is org.jetbrains.kotlin.psi.KtParameter -> Unit
             is KtNamedDeclaration -> return ContainingDeclaration.Found(element)
             is com.intellij.psi.PsiMember -> if (element is PsiNamedElement) return ContainingDeclaration.Found(element)
@@ -115,12 +131,14 @@ internal fun ContainingDeclaration.Deferred.enclosingDeclaration(): ContainingDe
 
 internal fun PsiElement.nearestSupportedCallable(
     projection: IntellijK2RelationProjection,
+    observation: IntellijReadObservation = IntellijReadObservation.None,
 ): SupportedContainingDeclaration =
-    when (val owner = nearestDeclaration()) {
-        is ContainingDeclaration.Found -> when (val projected = projection.project(owner.declaration)) {
-            is IntellijRelationDeclarationProjection.Projected -> SupportedContainingDeclaration.Found(projected)
-            IntellijRelationDeclarationProjection.Unsupported -> SupportedContainingDeclaration.Unsupported
-        }
+    when (val owner = nearestDeclaration(observation)) {
+        is ContainingDeclaration.Found ->
+            when (val projected = projection.project(owner.declaration)) {
+                is IntellijRelationDeclarationProjection.Projected -> SupportedContainingDeclaration.Found(projected)
+                IntellijRelationDeclarationProjection.Unsupported -> SupportedContainingDeclaration.Unsupported
+            }
         is ContainingDeclaration.Deferred,
         ContainingDeclaration.Unsupported -> SupportedContainingDeclaration.Unsupported
     }

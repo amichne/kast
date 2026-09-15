@@ -129,7 +129,11 @@ internal class IntellijK2RelationSearch(
                                     is SupportedContainingDeclaration.Found ->
                                         emit(related.projection, reference.element, reference.rangeInElement)
                                     SupportedContainingDeclaration.Unsupported ->
-                                        incompleteItem(RelationLimitation.UNSUPPORTED_ITEM)
+                                        incompleteItem(
+                                            RelationLimitation.UNSUPPORTED_ITEM,
+                                            reference.element,
+                                            reference.rangeInElement,
+                                        )
                                 }
                             if (!continued) return termination(ProviderTermination.HALTED)
                         }
@@ -175,7 +179,13 @@ internal class IntellijK2RelationSearch(
                     when (val containing = reference.element.relatedOwner()) {
                         is SupportedContainingDeclaration.Found -> containing.projection
                         SupportedContainingDeclaration.Unsupported -> {
-                            if (!incompleteItem(RelationLimitation.UNSUPPORTED_ITEM)) {
+                            if (
+                                !incompleteItem(
+                                    RelationLimitation.UNSUPPORTED_ITEM,
+                                    reference.element,
+                                    reference.rangeInElement,
+                                )
+                            ) {
                                 return termination(ProviderTermination.HALTED)
                             }
                             continue
@@ -260,7 +270,7 @@ internal class IntellijK2RelationSearch(
                         if (!providerEnumerationReady()) return@PsiElementProcessor false
                         val call = element as? KtCallElement ?: return@PsiElementProcessor true
                         val belongsToSubject =
-                            when (val containing = call.nearestDeclaration()) {
+                            when (val containing = call.nearestDeclaration(observation)) {
                                 is ContainingDeclaration.Found -> containing.declaration === subject
                                 is ContainingDeclaration.Deferred -> {
                                     val outer = containing.enclosingDeclaration()
@@ -314,8 +324,13 @@ internal class IntellijK2RelationSearch(
                 when (val candidate = item.value) {
                     is CalleeProviderItem.UnsupportedOwner -> {
                         observation.terminated(IntellijReadTermination.RELATION_CALL_OWNER_UNSUPPORTED)
-                        if (!incompleteItem(RelationLimitation.UNSUPPORTED_ITEM, candidate.call,
-                                candidate.call.textRange.shiftLeft(candidate.call.textRange.startOffset))) {
+                        if (
+                            !incompleteItem(
+                                RelationLimitation.UNSUPPORTED_ITEM,
+                                candidate.call,
+                                candidate.call.textRange.shiftLeft(candidate.call.textRange.startOffset),
+                            )
+                        ) {
                             return termination(ProviderTermination.HALTED)
                         }
                     }
@@ -385,7 +400,7 @@ internal class IntellijK2RelationSearch(
         }
 
         private fun PsiElement.relatedOwner(): SupportedContainingDeclaration =
-            if (request.meaning == RelationMeaning.Callers) nearestSupportedCallable(projection)
+            if (request.meaning == RelationMeaning.Callers) nearestSupportedCallable(projection, observation)
             else nearestSupportedDeclaration(projection)
 
         private fun packageDisposition(element: PsiElement): ProviderItemDisposition =
