@@ -3,9 +3,14 @@
 from dataclasses import asdict, dataclass, replace
 import unittest
 from types import SimpleNamespace
+from pathlib import Path
+from contextlib import redirect_stderr
+from io import StringIO
 
 from hosted_kotlin_call_regression import (KotlinCallRead, KotlinCallSearch, _site, _has_scoped_unsupported,
-    CallCycleTraversal, CallPageBudget, CallResume, CallObligation, _scoped_obligations, _drain_call_cycle)
+    CallCycleTraversal, CallPageBudget, CallResume, CallObligation, _scoped_obligations, _drain_call_cycle,
+    _cycle_observation, _call_observation, _emit_native_observation, FixtureEndpoint, EndpointCount,
+    ObservedCallStatus)
 
 
 @dataclass(frozen=True)
@@ -71,11 +76,114 @@ class Page:
     qualification: Qualification = Qualification()
 
 
+@dataclass(frozen=True)
+class GraphNode:
+    id: int
+    range: Range
+    proof: int
+    selector: str = 'secret-node-handle'
+    file: str = '/secret/workspace/Calls.kt'
+
+
+@dataclass(frozen=True)
+class GraphProof:
+    id: int
+    identity: str
+
+
+@dataclass(frozen=True)
+class GraphOccurrence:
+    range: Range
+    candidateSelector: str = 'secret-occurrence-handle'
+    file: str = '/secret/workspace/Calls.kt'
+
+
+@dataclass(frozen=True)
+class GraphEdge:
+    source: int
+    target: int
+    occurrence: GraphOccurrence
+    depth: int = 1
+    coverage: str = 'exact-compiler-confirmed'
+    provenance: str = 'k2-authored-source'
+
+
+@dataclass(frozen=True)
+class Graph:
+    nodes: tuple[GraphNode, ...]
+    proofs: tuple[GraphProof, ...]
+    edges: tuple[GraphEdge, ...]
+
+
+@dataclass(frozen=True)
+class GraphPage:
+    graph: Graph
+
+
+@dataclass(frozen=True)
+class ObservedFact:
+    target: GraphNode
+    coverage: str = 'exact-compiler-confirmed'
+    provenance: str = 'k2-authored-source'
+
+
+@dataclass(frozen=True)
+class ObservedFacts:
+    relations: tuple[ObservedFact, ...]
+    status: str = 'complete'
+    omissions: tuple[OmissionEvidence, ...] = ()
+
+
 class KotlinCallRegressionTest(unittest.TestCase):
     def test_scoped_omission_uses_authored_enum_spelling(self):
         self.assertTrue(_has_scoped_unsupported([asdict(OmissionEvidence())]))
         self.assertFalse(_has_scoped_unsupported([asdict(OmissionEvidence(samples=()))]))
         self.assertFalse(_has_scoped_unsupported([asdict(OmissionEvidence(reason='unsupported-item'))]))
+
+    def test_cycle_observation_separates_order_proofs_and_handles(self):
+        graph = Graph((GraphNode(0, Range(10, 15), 0), GraphNode(1, Range(20, 25), 1)),
+                      (GraphProof(0, 'secret-proof-a'), GraphProof(1, 'secret-proof-b')),
+                      (GraphEdge(0, 1, GraphOccurrence(Range(30, 35))),
+                       GraphEdge(1, 0, GraphOccurrence(Range(40, 45)), depth=2)))
+        high = [asdict(GraphPage(graph))]
+        reordered = [asdict(GraphPage(replace(graph, edges=tuple(reversed(graph.edges)))))]
+        order = _cycle_observation(high, reordered)
+        self.assertFalse(order.edge_order_equal)
+        self.assertTrue(order.edge_multiset_equal)
+        self.assertTrue(order.compiler_identities_equal)
+        changed = replace(graph, proofs=(GraphProof(0, 'different-proof'), graph.proofs[1]))
+        proof = _cycle_observation(high, [asdict(GraphPage(changed))])
+        self.assertFalse(proof.compiler_identities_equal)
+        self.assertTrue(proof.node_selectors_equal)
+        changed = replace(graph, nodes=(replace(graph.nodes[0], selector='another-handle'), graph.nodes[1]),
+                          edges=(replace(graph.edges[0], occurrence=replace(graph.edges[0].occurrence,
+                                 candidateSelector='another-occurrence')), graph.edges[1]))
+        handles = _cycle_observation(high, [asdict(GraphPage(changed))])
+        self.assertTrue(handles.compiler_identities_equal)
+        self.assertFalse(handles.node_selectors_equal)
+        self.assertFalse(handles.occurrence_selectors_equal)
+        output = StringIO()
+        with redirect_stderr(output):
+            _emit_native_observation(handles)
+        self.assertNotIn('secret', output.getvalue())
+        self.assertNotIn('another', output.getvalue())
+        self.assertIn('kast-authored-cycle-observation-v1', output.getvalue())
+
+    def test_call_observation_reports_authored_target_without_payload(self):
+        fixture = Path(__file__).resolve().parents[1] / 'experiments/host-observation/semantic-fixture/read-reliability/ReadKotlinCalls.kt'
+        source = fixture.read_text()
+        node = GraphNode(0, Range(source.index('fun fetch(): String'), source.index('fun fetch(): String') + 19),
+                         0, file=str(fixture))
+        observed = _call_observation('delegated', asdict(ObservedFacts((ObservedFact(node),))), fixture, source)
+        self.assertEqual(ObservedCallStatus.COMPLETE, observed.status)
+        self.assertEqual((EndpointCount(FixtureEndpoint.BASE_FETCH, 1),), observed.endpoints)
+        self.assertEqual(1, observed.exact_authored_facts)
+        output = StringIO()
+        with redirect_stderr(output):
+            _emit_native_observation(observed)
+        self.assertNotIn(str(fixture), output.getvalue())
+        self.assertNotIn('secret', output.getvalue())
+        self.assertIn('base-fetch', output.getvalue())
 
     def test_cycle_drain_rejects_repeated_cursor_and_rejected_branch(self):
         request = CallCycleTraversal('issued-ref', CallPageBudget(1))
