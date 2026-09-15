@@ -305,7 +305,7 @@ private class CliCommandGraph(
             }
         val localCounts = local.groupingBy(LocalKastCommand::command).eachCount()
         CliProductCommand.entries
-            .filter { it.exposure == CliLocalExposure.PUBLIC }
+            .filter { it.exposure == CliLocalExposure.PUBLIC && it !in hiddenImplementationCommands }
             .forEach { command ->
                 when (localCounts[command] ?: 0) {
                     0 -> add(CliCommandGraphFailure.MissingLocal(command))
@@ -392,13 +392,19 @@ private fun canonicalGraph(
                             }
                         else -> ProjectedCommandGroup(candidate).subcommands(commands)
                     }
-                LocalCommandFamily(root, commands)
+                val projectedRoot =
+                    if (family === hostedIndex || family === ide) {
+                        HiddenProjectedCommandGroup(root).subcommands(commands)
+                    } else root
+                LocalCommandFamily(projectedRoot, commands)
             }
             .filter { it.commands.isNotEmpty() }
     val root =
         KastRootCommand()
             .subcommands(
-                families.filter { it.semanticCommands.isNotEmpty() }.map { it.root } +
+                families.filter { it.semanticCommands.isNotEmpty() }.map {
+                    if (it.root.commandName == index.root.commandName) HiddenProjectedCommandGroup(it.root) else it.root
+                } +
                     localFamilies.map { it.root } +
                     appServer.root +
                     tools.root +
@@ -407,7 +413,8 @@ private fun canonicalGraph(
     return CliCommandGraph(
         root,
         semantic,
-        localFamilies.flatMap { it.commands } + appServer.commands,
+        localFamilies.flatMap { it.commands }.filterNot { it.command in hiddenImplementationCommands } +
+            appServer.commands.filter { it.command.exposure == CliLocalExposure.PUBLIC },
         lifecycle,
         tools.surface,
     )
@@ -432,6 +439,24 @@ internal fun CommandFamily.projectPublicDefinitions(
 private class ProjectedCommandGroup(private val source: KastCommand) : KastCommandGroup(source.commandName, "") {
     override fun help(context: Context): String = source.help(context)
 }
+
+private class HiddenProjectedCommandGroup(private val source: KastCommand) : KastCommandGroup(source.commandName, "") {
+    override val hiddenFromHelp: Boolean = true
+    override fun help(context: Context): String = source.help(context)
+}
+
+private val hiddenImplementationCommands =
+    setOf(
+        CliProductCommand.INDEX_STATUS,
+        CliProductCommand.INDEX_CLASSES,
+        CliProductCommand.INDEX_SUPERTYPE,
+        CliProductCommand.INDEX_COMPLETION,
+        CliProductCommand.IDE_TRUST_BROKER,
+        CliProductCommand.IDE_STATUS,
+        CliProductCommand.IDE_CLASSES,
+        CliProductCommand.IDE_SUPERTYPE,
+        CliProductCommand.IDE_COMPLETION,
+    )
 
 private fun KastCommand.formatted(failure: CliktError): CliTextDocument =
     (getFormattedHelp(failure) ?: "").renderedHelpDocument()

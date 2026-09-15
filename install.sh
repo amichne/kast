@@ -21,7 +21,7 @@ usage() {
 Install or remove Kast for the current user.
 
 Usage:
-  install.sh [--idea-home <absolute-path>] [--version <major.minor.patch>] [--dry-run]
+  install.sh [--idea-home <absolute-path>] [--version <major.minor.patch>] [--install-root <absolute-path>] [--bin-dir <absolute-path>] [--clean-collisions] [--dry-run]
   install.sh uninstall [--dry-run]
   install.sh --local session [--idea-home <absolute-path>]
   install.sh --local persistent [--idea-home <absolute-path>]
@@ -38,6 +38,10 @@ Pass arguments to a downloaded installer after Bash's `$0` separator:
 
 `--dry-run` downloads and verifies the matched release, then prints the exact
 installation plan without changing installation state.
+
+When existing `kast` command files are not owned by the selected installation,
+an interactive install offers to remove those exact collisions. In automation,
+pass `--clean-collisions` to make the same explicit choice.
 USAGE
 }
 
@@ -323,6 +327,7 @@ action=install
 version="${KAST_VERSION:-}"
 idea_home="${KAST_INSTALL_IDEA_HOME:-}"
 mode=apply
+clean_collisions=ask
 
 if [[ "${1:-}" == uninstall ]]; then
   action=uninstall
@@ -349,15 +354,51 @@ while [[ $# -gt 0 ]]; do
       idea_home="$2"
       shift 2
       ;;
+    --install-root)
+      [[ $# -ge 2 ]] || fail "--install-root requires a value"
+      install_root="$2"
+      shift 2
+      ;;
+    --bin-dir)
+      [[ $# -ge 2 ]] || fail "--bin-dir requires a value"
+      bin_directory="$2"
+      shift 2
+      ;;
+    --clean-collisions)
+      clean_collisions=yes
+      shift
+      ;;
     *) fail "unknown argument: $1" ;;
   esac
 done
 
 [[ -n "${HOME:-}" ]] || fail "HOME is unavailable"
-install_root="${KAST_INSTALL_ROOT:-${XDG_DATA_HOME:-$HOME/.local/share}/kast}"
-bin_directory="${KAST_BIN_DIR:-$HOME/.local/bin}"
+install_root="${install_root:-${KAST_INSTALL_ROOT:-${XDG_DATA_HOME:-$HOME/.local/share}/kast}}"
+bin_directory="${bin_directory:-${KAST_BIN_DIR:-$HOME/.local/bin}}"
 require_absolute_path "install root" "$install_root"
 require_absolute_path "binary directory" "$bin_directory"
+
+command_collisions=()
+for command_name in kast kast-codex; do
+  command_path="$bin_directory/$command_name"
+  expected="$install_root/current/bin/$command_name-complete"
+  if [[ -e "$command_path" || -L "$command_path" ]]; then
+    if [[ ! -L "$command_path" || "$(readlink "$command_path")" != "$expected" ]]; then
+      command_collisions+=("$command_path")
+    fi
+  fi
+done
+if [[ "$action" == install && "$mode" == apply && ${#command_collisions[@]} -gt 0 && "$clean_collisions" == ask ]]; then
+  printf '%s\n' 'kast-install: existing command paths collide with this installation:' >&2
+  printf '  %s\n' "${command_collisions[@]}" >&2
+  if [[ -t 0 ]]; then
+    printf '%s' 'Remove only these paths and continue? [y/N] ' >&2
+    IFS= read -r answer
+    case "$answer" in y|Y|yes|YES) clean_collisions=yes ;; *) fail 'installation cancelled; no collisions were removed' ;; esac
+  else
+    fail 'command collisions require an interactive choice or --clean-collisions'
+  fi
+fi
 
 if [[ "$action" == uninstall ]]; then
   command="$install_root/current/bin/kast-complete"
@@ -432,9 +473,14 @@ export KAST_INSTALL_IDEA_HOME="$idea_home"
 export KAST_INSTALL_JAVA_HOME="$java_home"
 export KAST_INSTALL_ROOT="$install_root"
 export KAST_BIN_DIR="$bin_directory"
-export KAST_ENABLE_LAUNCHD="${KAST_ENABLE_LAUNCHD:-0}"
+export KAST_ENABLE_LAUNCHD="${KAST_ENABLE_LAUNCHD:-1}"
 export KAST_ENABLE_APP_SERVER="${KAST_ENABLE_APP_SERVER:-1}"
-export KAST_INSTALL_REFRESH_APP_SERVER="${KAST_INSTALL_REFRESH_APP_SERVER:-0}"
+export KAST_INSTALL_REFRESH_APP_SERVER="${KAST_INSTALL_REFRESH_APP_SERVER:-1}"
+if [[ "$clean_collisions" == yes ]]; then
+  export KAST_INSTALL_REPLACE_COMMAND_COLLISIONS=1
+else
+  export KAST_INSTALL_REPLACE_COMMAND_COLLISIONS=0
+fi
 export KAST_INSTALL_MODE="$mode"
 export CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
 export JAVA="$java_home/bin/java"

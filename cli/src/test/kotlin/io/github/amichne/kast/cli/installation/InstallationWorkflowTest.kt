@@ -139,6 +139,24 @@ class InstallationWorkflowTest {
             Files.getPosixFilePermissions(lock),
         )
     }
+
+    @Test
+    fun `approved command collisions are removed while default policy fails closed`(@TempDir temporary: Path) {
+        val root = temporary.toRealPath()
+        val installation = root.resolve("installation")
+        val commands = Files.createDirectory(root.resolve("commands"))
+        val home = Files.createDirectory(root.resolve("home"))
+        val codexHome = Files.createDirectory(home.resolve(".codex"))
+        val collision = Files.writeString(commands.resolve("kast"), "unmanaged")
+
+        val rejected = InstallationWorkflow.execute(releaseRequest(root, installation, commands, home, codexHome, "1.2.3"))
+        assertEquals(InstallationOutcome.Rejected(InstallationFailure.RECOVERY_REQUIRED), rejected)
+        assertEquals("unmanaged", Files.readString(collision))
+
+        val request = releaseRequest(root, installation, commands, home, codexHome, "1.2.4", replaceCommandCollisions = true)
+        assertInstanceOf(InstallationOutcome.Complete::class.java, InstallationWorkflow.execute(request))
+        assertTrue(Files.isSymbolicLink(collision))
+    }
 }
 
 internal fun releaseRequest(
@@ -151,6 +169,7 @@ internal fun releaseRequest(
     controlFileCount: Int = 5,
     mode: InstallationMode = InstallationMode.APPLY,
     lifecycleInspectionExit: Int = 0,
+    replaceCommandCollisions: Boolean = false,
 ): InstallationRequest {
     val product = releaseFixture(fixture, version, controlFileCount, lifecycleInspectionExit)
     val parsed =
@@ -163,6 +182,7 @@ internal fun releaseRequest(
                 home,
                 codexHome,
                 mode,
+                replaceCommandCollisions,
             )
         )
     return when (parsed) {
@@ -272,6 +292,7 @@ private fun installationEnvironment(
     home: Path,
     codexHome: Path,
     mode: InstallationMode,
+    replaceCommandCollisions: Boolean = false,
 ): Map<String, String> =
     mapOf(
         InstallationEnvironment.CONTROL_ROOT.key to product.controlRoot.toString(),
@@ -291,6 +312,7 @@ private fun installationEnvironment(
         InstallationEnvironment.APP_SERVER_TOOLS.key to "query_symbols,source_read",
         InstallationEnvironment.REFRESH_APP_SERVER.key to "0",
         InstallationEnvironment.MODE.key to mode.name.lowercase(),
+        InstallationEnvironment.REPLACE_COMMAND_COLLISIONS.key to if (replaceCommandCollisions) "1" else "0",
     )
 
 private data class ReleaseFixture(

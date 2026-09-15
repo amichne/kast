@@ -22,7 +22,7 @@ internal fun appServerCommandGroup(): LocalCommandFamily {
     val release = ControlLeaf("release", CliProductCommand.APP_SERVER_RELEASE, ControlOperation.RELEASE)
     val control = KastCommandGroup("control", "Manage the controller of an attached task.").subcommands(claim, release)
     val root =
-        KastCommandGroup(
+        object : KastCommandGroup(
                 "app-server",
                 """
                 Manage the persistent Kast App Server.
@@ -34,8 +34,9 @@ internal fun appServerCommandGroup(): LocalCommandFamily {
                            launch diagnostics to the calling process on stderr.
                 """
                     .trimIndent(),
-            )
-            .subcommands(actions + control)
+            ) {
+            override val hiddenFromHelp: Boolean = true
+        }.subcommands(actions + control)
     return LocalCommandFamily(root, actions + claim + release)
 }
 

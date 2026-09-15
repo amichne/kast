@@ -67,13 +67,20 @@ Install the latest published release:
 
 The installer discovers the supported IntelliJ runtime, verifies the matched
 Kast payloads, installs the existing-IDE plugin for the `262` release line, and installs the
-integration entrypoints. Restart IDEA after installation to activate the plugin. If discovery is
+integration entrypoints. It also registers and starts the per-user App Server through launchd.
+Restart IDEA after installation to activate the plugin. If discovery is
 ambiguous, select IDEA explicitly:
 
 ```shell
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" \
   -- --idea-home "/Applications/IntelliJ IDEA.app"
 ```
+
+Choose any absolute user-owned installation and command directories with
+`--install-root` and `--bin-dir`. If either command path is occupied by an
+unrelated file, an interactive install lists the exact collisions and asks
+before removing them. Automated installs fail closed unless
+`--clean-collisions` is passed explicitly.
 
 See [Install and connect Kast](https://kast.michne.com/start/) for the complete
 host contract and uninstall path.
@@ -152,18 +159,12 @@ cd /path/to/kotlin-repository
 kast codex
 ```
 
-`kast codex` now enrolls the current workspace, installs or refreshes the login
-bootstrap, recovers stale owned broker state, and starts the persistent service
-before launching Codex. `kast codex desktop` performs the same preparation and
-attaches to that service. Client closure leaves the service running. Use
-`kast app-server status`, `stop`, or `disable` to manage its lifecycle.
-
-`kast app-server status` reports the exact service-log and resolved launch-
-environment paths. Set `KAST_DEBUG=1` for bounded launch stages on the calling
-process's stderr. If normal ownership recovery cannot converge, the explicit
-`kast app-server repair --destructive` command deletes only the active
-installation's owned runtime, cache, broker, and workspace-registry state,
-re-enrolls the current workspace, and starts clean.
+The installer owns registration and the per-user launchd lifecycle. `kast codex`
+enrolls the current workspace, verifies that managed service, recovers stale
+owned broker state, and launches Codex. `kast codex desktop` performs the same
+preparation and attaches to that service. Client closure leaves the service
+running. Low-level app-server, IDE, and index lifecycle commands are internal
+implementation details and are omitted from the public CLI surface.
 
 Desktop build-specific discovery is checked, but full desktop compatibility is
 still unqualified. See the module's [compatibility and blocker record](app-server/docs/compatibility.md)

@@ -42,7 +42,8 @@ Use the included Codex integration to query one Kotlin repository.
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
     ```
 
-    The installer verifies and installs Kast and its IDEA plugin.
+    The installer verifies and installs Kast and its IDEA plugin, then registers
+    and starts its per-user launchd service.
 
     It does not install IDEA.
 
@@ -88,6 +89,19 @@ Use the included Codex integration to query one Kotlin repository.
 
     Other `262` builds are admitted by policy but lack the same native acceptance
     evidence. See [Compatibility](/reference/compatibility).
+  </Accordion>
+  <Accordion title="Choose installation directories or resolve command collisions">
+    Pass absolute user-owned paths:
+
+    ```shell
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" \
+      -- --install-root "/path/to/kast-data" --bin-dir "/path/to/bin"
+    ```
+
+    When `kast` or `kast-codex` already occupies the selected command directory,
+    an interactive install lists those exact paths and asks before removing them.
+    Non-interactive installs fail closed; pass `--clean-collisions` only when the
+    listed command paths may be replaced.
   </Accordion>
   <Accordion title="Connect Codex Desktop">
     1. Quit any running Desktop instance.

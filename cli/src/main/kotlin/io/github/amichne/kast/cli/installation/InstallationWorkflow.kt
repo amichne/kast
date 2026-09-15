@@ -360,6 +360,10 @@ internal object InstallationWorkflow {
                         is PriorSelection.Rejected ->
                             return InstallationOutcome.Rejected(InstallationFailure.PREVIOUS_INSTALLATION_REJECTED)
                     }
+                if (plan.request.replaceCommandCollisions == InstallationSwitch.ENABLED) {
+                    removeCommandCollision(plan.commandLink, plan.currentLink.resolve("bin/kast-complete"))
+                    removeCommandCollision(plan.codexCommandLink, plan.currentLink.resolve("bin/kast-codex-complete"))
+                }
                 when (prepareInstallationRecovery(plan.targetRoot, plan.commandLink, plan.codexCommandLink)) {
                     InstallationRecoveryPreparation.Prepared -> Unit
                     InstallationRecoveryPreparation.Rejected ->
@@ -708,8 +712,8 @@ internal object InstallationWorkflow {
 
     private fun activate(plan: VerifiedInstallationPlan): ActivationResult {
         val priorCurrent = linkTarget(plan.currentLink)
-        val priorCommand = managedCommandLink(plan.commandLink, plan.currentLink.resolve("bin/kast-complete"))
-        val priorCodex = managedCommandLink(plan.codexCommandLink, plan.currentLink.resolve("bin/kast-codex-complete"))
+        val priorCommand = commandLink(plan, plan.commandLink, plan.currentLink.resolve("bin/kast-complete"))
+        val priorCodex = commandLink(plan, plan.codexCommandLink, plan.currentLink.resolve("bin/kast-codex-complete"))
         if (
             priorCurrent is LinkObservation.Rejected ||
                 priorCommand is LinkObservation.Rejected ||
@@ -747,6 +751,15 @@ internal object InstallationWorkflow {
                     .all { it == LinkRestoration.RESTORED }
             if (restored) ActivationResult.Rejected else ActivationResult.RecoveryRequired
         }
+    }
+
+    private fun commandLink(plan: VerifiedInstallationPlan, path: Path, expected: Path): LinkObservation {
+        val observed = managedCommandLink(path, expected)
+        if (observed != LinkObservation.Rejected || plan.request.replaceCommandCollisions == InstallationSwitch.DISABLED) {
+            return observed
+        }
+        Files.delete(path)
+        return LinkObservation.Absent
     }
 
     private fun enableAppServer(plan: VerifiedInstallationPlan): Boolean =
@@ -968,6 +981,10 @@ private fun managedCommandLink(path: Path, expected: Path): LinkObservation =
         is LinkObservation.Present -> if (observed.target == expected) observed else LinkObservation.Rejected
         LinkObservation.Rejected -> observed
     }
+
+private fun removeCommandCollision(path: Path, expected: Path) {
+    if (managedCommandLink(path, expected) == LinkObservation.Rejected) Files.delete(path)
+}
 
 private fun replaceLink(path: Path, target: Path) {
     Files.createDirectories(path.parent)
