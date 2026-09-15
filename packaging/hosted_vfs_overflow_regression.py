@@ -19,6 +19,8 @@ from hosted_diagnostic_pages_regression import (
     DiagnosticRequest, DiagnosticDrainFailure, DiagnosticDrained, drain_diagnostics,
 )
 from hosted_source_read_regression import SymbolAnchor
+from hosted_raw_symbol_regression import DiscoverRequest, CandidateTarget, InspectRequest
+from hosted_compact_source_regression import FormattedSourceRequest, SourceAnchor
 from hosted_read_transport import ReadTransportRejected, ReadTransportFailure
 from native_fixture_probe import NativeFixtureProbe, NativeFixtureProbeError
 
@@ -41,6 +43,7 @@ class OverflowFailure(str, Enum):
     IO = 'OVERFLOW_IO_REJECTED'
     RESTORATION = 'OVERFLOW_RESTORATION_REJECTED'
     DIAGNOSTIC = 'OVERFLOW_DIAGNOSTIC_QUALIFICATION_REJECTED'
+    REFERENCE = 'OVERFLOW_REFERENCE_QUALIFICATION_REJECTED'
 
 
 class OverflowRejected(ValueError):
@@ -221,6 +224,72 @@ def _drain_fresh_diagnostics(transport, surface, live, phase):
         diagnosticCount=sum(len(page.get('diagnostics', [])) for page in result.pages))
 
 
+class ReferenceFamily(str, Enum):
+    CANDIDATE = 'candidate'
+    SOURCE = 'source'
+
+
+class ReferencePhase(str, Enum):
+    DISCOVER = 'candidate-discovery'
+    CANDIDATE_CURRENT = 'current-candidate-inspection'
+    SOURCE_ISSUE = 'compact-source-issuance'
+    SOURCE_CURRENT = 'current-source-anchor-read'
+    OLD_CANDIDATE = 'old-candidate-refusal'
+    OLD_SOURCE = 'old-source-anchor-refusal'
+
+
+class SourceReferenceRefusal(str, Enum):
+    WRONG_FAMILY = 'wrong-family'
+    MALFORMED = 'malformed'
+    INVALID_PAYLOAD_ENCODING = 'invalid-payload-encoding'
+    PAYLOAD_DIGEST_MISMATCH = 'payload-digest-mismatch'
+    INVALID_DOCUMENT = 'invalid-document'
+    FOREIGN_WORKSPACE = 'foreign-workspace'
+    INCOMPATIBLE_AUTHORITY = 'incompatible-authority'
+    STALE_AUTHORITY = 'stale-authority'
+    UNSUPPORTED_VERSION = 'unsupported-version'
+    LIVE_AUTHORITY_REQUIRED = 'live-authority-required'
+    UNAVAILABLE = 'unavailable'
+    TOKEN_TOO_LONG = 'token-too-long'
+    SNAPSHOT_REJECTED = 'snapshot-rejected'
+    SELECTOR_REJECTED = 'selector-rejected'
+    SELECTOR_TOO_DEEP = 'selector-too-deep'
+
+
+@dataclass(frozen=True)
+class ReferenceEvidence:
+    family: ReferenceFamily
+    surface: AuthoritySurface
+    passed: bool
+    schemaDigest: str
+    refusal: InspectionRefusal | SourceReferenceRefusal | None = None
+    mismatch: InspectionMismatch | None = None
+
+
+def _reference_refusal(family, surface, response, digest):
+    mismatch, refusal = None, None
+    operation = 'symbol.inspect' if family is ReferenceFamily.CANDIDATE else 'source.read'
+    if not isinstance(response, dict):
+        mismatch = InspectionMismatch.DOCUMENT
+    elif response.get('operation') != operation:
+        mismatch = InspectionMismatch.OPERATION
+    elif response.get('status') != 'rejected':
+        mismatch = InspectionMismatch.STATUS
+    else:
+        raw = response.get('reason')
+        try:
+            if family is ReferenceFamily.CANDIDATE:
+                refusal = InspectionRefusal(raw)
+            elif isinstance(raw, dict) and set(raw) == {'type', 'role', 'reason'} and \
+                    raw['type'] == 'reference-rejected' and raw['role'] == 'source':
+                refusal = SourceReferenceRefusal(raw['reason'])
+        except (ValueError, TypeError):
+            pass
+    expected = (InspectionRefusal.CANDIDATE_STALE if family is ReferenceFamily.CANDIDATE
+                else SourceReferenceRefusal.SNAPSHOT_REJECTED)
+    return ReferenceEvidence(family, surface, mismatch is None and refusal is expected, digest, refusal, mismatch)
+
+
 @dataclass(frozen=True)
 class OverflowReport:
     outcome: OverflowOutcome = OverflowOutcome.REJECTED
@@ -234,6 +303,9 @@ class OverflowReport:
     restorationTransportFailure: ReadTransportFailure | None = None
     strictObservations: tuple[StrictObservation, ...] = ()
     diagnosticObservations: tuple[DiagnosticEvidence, ...] = ()
+    referenceObservations: tuple[ReferenceEvidence, ...] = ()
+    referencePhase: ReferencePhase | None = None
+    referenceSurface: AuthoritySurface | None = None
     receipt: OverflowReceipt | None = None
     cases: tuple[AuthorityCase, ...] = ()
     strictSchemaDigests: tuple[str, ...] = ()
@@ -350,10 +422,42 @@ def run_vfs_overflow_regression(isolation, fixture, transport, live):
         probe = NativeFixtureProbe(isolation.root, workspace)
         report = replace(report, beforeEpoch=current['epoch'])
         issued = {}
+        issued_references = {}
         for surface in AuthoritySurface:
             request, observed = replay.search(surface)
             _require(observed == current, OverflowFailure.EPOCH)
             token = replay.page(AuthorityCaseName.ISSUED, surface, request, current, 'pageItem00')
+            report = replace(report, referencePhase=ReferencePhase.DISCOVER, referenceSurface=surface)
+            candidates, _ = replay.call(surface, 'symbol_lookup', DiscoverRequest())
+            items = candidates.get('items', [])
+            candidate = items[0] if len(items) == 1 else {}
+            _require(candidates.get('status') == 'complete' and candidate.get('name') == 'NativeChangeTarget'
+                     and candidate.get('file') == str(source) and candidate.get('type') == 'declaration'
+                     and isinstance(candidate.get('candidateSelector'), str) and bool(candidate['candidateSelector']),
+                     OverflowFailure.REFERENCE)
+            candidate_request = InspectRequest(CandidateTarget(candidate['candidateSelector']))
+            report = replace(report, referencePhase=ReferencePhase.CANDIDATE_CURRENT)
+            inspected, _ = replay.call(surface, 'symbol_inspect', candidate_request)
+            _require(inspected.get('status') == 'complete' and inspected.get('live') == current,
+                     OverflowFailure.REFERENCE)
+            compact_request = FormattedSourceRequest(request.anchor)
+            report = replace(report, referencePhase=ReferencePhase.SOURCE_ISSUE)
+            compact, _ = replay.call(surface, 'source_read', compact_request)
+            structures = [section for section in compact.get('content', []) if section.get('type') == 'structure']
+            structure = structures[0] if len(structures) == 1 else {}
+            table = structure.get('selections', [])
+            _require(compact.get('status') in ('complete', 'qualified')
+                     and structure.get('snapshot', {}).get('live') == current and bool(table)
+                     and isinstance(table[0].get('selector'), str) and bool(table[0]['selector']),
+                     OverflowFailure.REFERENCE)
+            source_request = replace(compact_request, anchor=SourceAnchor(table[0]['selector']))
+            report = replace(report, referencePhase=ReferencePhase.SOURCE_CURRENT)
+            restored, _ = replay.call(surface, 'source_read', source_request)
+            _require(restored.get('status') in ('complete', 'qualified')
+                     and any(section.get('type') == 'structure'
+                             and section.get('snapshot', {}).get('live') == current
+                             for section in restored.get('content', [])), OverflowFailure.REFERENCE)
+            issued_references[surface] = candidate_request, source_request
             diagnostic_request = DiagnosticRequest()
             diagnostic, digest = replay.call(surface, 'check_diagnostics', diagnostic_request)
             evidence = _diagnostic_evidence(surface, DiagnosticPhase.ISSUED, diagnostic, digest, current)
@@ -409,6 +513,17 @@ def run_vfs_overflow_regression(isolation, fixture, transport, live):
             evidence = _diagnostic_evidence(surface, DiagnosticPhase.STALE, diagnostic, digest, observed)
             report = replace(report, diagnosticObservations=report.diagnosticObservations + (evidence,))
             _require(evidence.passed, OverflowFailure.DIAGNOSTIC)
+            candidate_request, source_request = issued_references[surface]
+            for family, tool, reference_request in (
+                (ReferenceFamily.CANDIDATE, 'symbol_inspect', candidate_request),
+                (ReferenceFamily.SOURCE, 'source_read', source_request),
+            ):
+                report = replace(report, referenceSurface=surface, referencePhase=
+                    ReferencePhase.OLD_CANDIDATE if family is ReferenceFamily.CANDIDATE else ReferencePhase.OLD_SOURCE)
+                refused, digest = replay.call(surface, tool, reference_request)
+                evidence = _reference_refusal(family, surface, refused, digest)
+                report = replace(report, referenceObservations=report.referenceObservations + (evidence,))
+                _require(evidence.passed, OverflowFailure.REFERENCE)
             for phase in (DiagnosticPhase.FILE, DiagnosticPhase.DIRECTORY):
                 evidence = _drain_fresh_diagnostics(transport, surface, observed, phase)
                 report = replace(report, diagnosticObservations=report.diagnosticObservations + (evidence,))
