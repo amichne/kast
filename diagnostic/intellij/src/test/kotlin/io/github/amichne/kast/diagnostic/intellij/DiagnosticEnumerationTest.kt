@@ -1,10 +1,12 @@
 package io.github.amichne.kast.diagnostic.intellij
 
+import io.github.amichne.kast.diagnostic.contract.DiagnosticEnumerationFailure
 import io.github.amichne.kast.diagnostic.contract.DiagnosticEnumerationRequest
 import io.github.amichne.kast.diagnostic.contract.DiagnosticEnumerationResult
 import io.github.amichne.kast.diagnostic.contract.DiagnosticEnumerationStop
 import io.github.amichne.kast.diagnostic.contract.DiagnosticScope
 import io.github.amichne.kast.diagnostic.contract.DiagnosticScopeQuery
+import io.github.amichne.kast.diagnostic.contract.DiagnosticSourceFile
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
@@ -16,9 +18,7 @@ import io.github.amichne.kast.workspace.contract.SemanticReadLease
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.Assertions.fail
 import org.junit.jupiter.api.Test
 
 class DiagnosticEnumerationTest {
@@ -28,128 +28,168 @@ class DiagnosticEnumerationTest {
             EvidenceGeneration.parse(19).refined(),
         )
     private val query = DiagnosticScopeQuery.parse(lease, "src").refined()
+    private val files =
+        DiagnosticScope.fromCanonicalPaths(
+                lease,
+                (0 until 37).map {
+                    Path.of("/workspace/src/File%02d.kt".format(it))
+                },
+            )
+            .refined()
+            .files
 
     @Test
-    fun `wide directory resumes with one probe per page in canonical order`() {
-        val tree = tree(37)
+    fun `small file allowance resumes regardless of native callback order`() {
         var request: DiagnosticEnumerationRequest = DiagnosticEnumerationRequest.First(query)
-        val files = mutableListOf<String>()
-        var pages = 0
-        while (true) {
-            val before = tree.probes
-            val result = enumerateDiagnosticTree(request, tree, allowance(work = 1))
-            assertTrue(tree.probes - before <= 1)
-            files += result.files.map { it.value }
-            pages += 1
-            assertTrue(pages < 2000, "continuation must advance inside sibling scanning")
-            when (result) {
-                is DiagnosticEnumerationResult.Advancing -> request = DiagnosticEnumerationRequest.Resume(result.cursor)
-                is DiagnosticEnumerationResult.Exhausted -> break
-                is DiagnosticEnumerationResult.Rejected -> fail("unexpected rejection: ${result.reason}")
+        repeat(30) { page ->
+            val source = if (page % 2 == 0) files.reversed() else files
+            when (val result = enumerate(request, source, fileLimit = 2)) {
+                is DiagnosticEnumerationResult.Advancing -> {
+                    assertTrue(result.files.isEmpty(), "canonical inventory is not established before exhaustion")
+                    request = DiagnosticEnumerationRequest.Resume(result.cursor)
+                }
+                is DiagnosticEnumerationResult.Exhausted -> {
+                    assertEquals(files, result.files)
+                    assertEquals(18, page)
+                    return
+                }
+                is DiagnosticEnumerationResult.Rejected -> error(result.failure.toString())
             }
         }
-        assertEquals((0 until 37).map { "/workspace/src/File%02d.kt".format(it) }, files)
-        val reference =
-            enumerateDiagnosticTree(DiagnosticEnumerationRequest.First(query), tree(37), allowance(work = 10000))
-        assertInstanceOf(DiagnosticEnumerationResult.Exhausted::class.java, reference)
-        assertEquals(reference.files.map { it.value }, files)
+        error("bounded enumeration did not finish")
     }
 
     @Test
-    fun `empty intermediate page never exhausts directory`() {
-        val result = enumerateDiagnosticTree(DiagnosticEnumerationRequest.First(query), tree(3), allowance(work = 1))
-        assertInstanceOf(DiagnosticEnumerationResult.Advancing::class.java, result)
-        assertTrue(result.files.isEmpty())
-    }
-
-    @Test
-    fun `replaying immutable cursor yields identical file page`() {
-        val first = enumerateDiagnosticTree(DiagnosticEnumerationRequest.First(query), tree(3), allowance(work = 2))
-        val cursor = assertInstanceOf(DiagnosticEnumerationResult.Advancing::class.java, first).cursor
-        val one = enumerateDiagnosticTree(DiagnosticEnumerationRequest.Resume(cursor), tree(3), allowance(work = 100))
-        val two = enumerateDiagnosticTree(DiagnosticEnumerationRequest.Resume(cursor), tree(3), allowance(work = 100))
-        assertEquals(one.files, two.files)
-    }
-
-    @Test
-    fun `excluded directories are not expanded and cannot consume file capacity`() {
-        val tree = tree(2, ignoredDirectories = 100)
-        val result =
-            enumerateDiagnosticTree(DiagnosticEnumerationRequest.First(query), tree, allowance(work = 10000, files = 2))
-        assertEquals(2, result.files.size)
-        assertEquals(setOf(query.path), tree.directories)
-        assertInstanceOf(DiagnosticEnumerationResult.Advancing::class.java, result)
-    }
-
-    @Test
-    fun `cancelled attempt cannot add files to retained position`() {
-        val first = enumerateDiagnosticTree(DiagnosticEnumerationRequest.First(query), tree(3), allowance(work = 2))
-        val request =
-            DiagnosticEnumerationRequest.Resume(
-                assertInstanceOf(DiagnosticEnumerationResult.Advancing::class.java, first).cursor
+    fun `grant unable to cross replay prefix rejects without unchanged cursor`() {
+        val first =
+            assertInstanceOf(
+                DiagnosticEnumerationResult.Advancing::class.java,
+                enumerate(DiagnosticEnumerationRequest.First(query), files, work = 2, fileLimit = 2),
             )
-        val interrupted = tree(3)
-        interrupted.cancelAfter = 6
-        assertThrows(java.util.concurrent.CancellationException::class.java) {
-            enumerateDiagnosticTree(request, interrupted, allowance(work = 100))
-        }
-        val result = enumerateDiagnosticTree(request, tree(3), allowance(work = 100))
-        assertEquals(3, result.files.size)
-        assertEquals(3, result.files.distinct().size)
+        val result = enumerate(DiagnosticEnumerationRequest.Resume(first.cursor), files, work = 2, fileLimit = 2)
+        assertEquals(
+            DiagnosticEnumerationFailure.IncreaseGrant(DiagnosticEnumerationStop.WORK_LIMIT),
+            assertInstanceOf(DiagnosticEnumerationResult.Rejected::class.java, result).failure,
+        )
+        val larger = enumerate(DiagnosticEnumerationRequest.Resume(first.cursor), files, work = 100, fileLimit = 100)
+        assertEquals(files, assertInstanceOf(DiagnosticEnumerationResult.Exhausted::class.java, larger).files)
     }
 
     @Test
-    fun `time exhaustion before a probe rejects rather than publishing unchanged cursor`() {
-        val tree = tree(2)
-        val result = enumerateDiagnosticTree(
-            DiagnosticEnumerationRequest.First(query), tree, allowance(work = 100, elapsed = 1000),
-        )
-        assertInstanceOf(DiagnosticEnumerationResult.Rejected::class.java, result)
-        assertEquals(0, tree.probes)
-    }
-
-    private fun tree(count: Int, ignoredDirectories: Int = 0): Tree =
-        Tree(
-            (0 until count).reversed().map { index ->
-                DiagnosticTreeEntry.File(
-                    DiagnosticScope.fromCanonicalPaths(
-                            lease,
-                            listOf(Path.of("/workspace/src/File%02d.kt".format(index))),
-                        )
-                        .refined()
-                        .files
-                        .single()
-                )
-            } + List(ignoredDirectories) { DiagnosticTreeEntry.Ignored }
-        )
-
-    private inner class Tree(private val entries: List<DiagnosticTreeEntry>) : DiagnosticTreeProbe {
-        var probes = 0
-        var cancelAfter = Int.MAX_VALUE
-        val directories = mutableSetOf<Path>()
-
-        override fun root(): DiagnosticTreeEntry {
-            probes++
-            return DiagnosticTreeEntry.Directory(query.path)
-        }
-
-        override fun child(directory: Path, ordinal: Int): DiagnosticTreeEntry {
-            directories.add(directory)
-            if (++probes >= cancelAfter) throw java.util.concurrent.CancellationException()
-            return entries.getOrElse(ordinal) { DiagnosticTreeEntry.End }
-        }
-    }
-
-    private fun allowance(work: Long, files: Int = 100, elapsed: Long = 0) =
-        DiagnosticEnumerationAllowance(
-            ResourceBudget(
-                ResultLimit.parse(files).refined(),
-                WorkUnitLimit.parse(work).refined(),
-                ElapsedTimeLimitMillis.parse(1000).refined(),
+    fun `replaying cursor preserves inventory even when callback order changes`() {
+        val first =
+            assertInstanceOf(
+                DiagnosticEnumerationResult.Advancing::class.java,
+                enumerate(DiagnosticEnumerationRequest.First(query), files, fileLimit = 2),
             )
-        ) {
-            elapsed
+        val request = DiagnosticEnumerationRequest.Resume(first.cursor)
+        val one = enumerate(request, files, fileLimit = 100)
+        val two = enumerate(request, files.reversed(), fileLimit = 100)
+        assertEquals(one, two)
+    }
+
+    @Test
+    fun `discarded read attempt cannot add its files to retained cursor`() {
+        val first =
+            assertInstanceOf(
+                DiagnosticEnumerationResult.Advancing::class.java,
+                enumerate(DiagnosticEnumerationRequest.First(query), files, fileLimit = 2),
+            )
+        val request = DiagnosticEnumerationRequest.Resume(first.cursor)
+        val abandoned = collector(request, work = 100, fileLimit = 100)
+        files.take(8).forEach { file -> abandoned.accept { Refinement.Refined(file) } }
+        // A retry creates a new collector from the original immutable cursor.
+        val retry = enumerate(request, files.reversed(), fileLimit = 100)
+        assertEquals(files, assertInstanceOf(DiagnosticEnumerationResult.Exhausted::class.java, retry).files)
+    }
+
+    @Test
+    fun `time exhaustion before a callback rejects instead of publishing unchanged cursor`() {
+        val result = enumerate(DiagnosticEnumerationRequest.First(query), files, elapsed = 1000)
+        assertEquals(
+            DiagnosticEnumerationFailure.IncreaseGrant(DiagnosticEnumerationStop.TIME_LIMIT),
+            assertInstanceOf(DiagnosticEnumerationResult.Rejected::class.java, result).failure,
+        )
+    }
+
+    @Test
+    fun `retention capacity rejects before a cursor can be published`() {
+        val collector = collector(DiagnosticEnumerationRequest.First(query), maximumBytes = 400)
+        collector.accept { Refinement.Refined(files.first()) }
+        assertEquals(
+            DiagnosticEnumerationFailure.RetentionCapacity,
+            assertInstanceOf(DiagnosticEnumerationResult.Rejected::class.java, collector.finish()).failure,
+        )
+    }
+
+    @Test
+    fun `work admission precedes file classification`() {
+        val collector = collector(DiagnosticEnumerationRequest.First(query), work = 1)
+        var classifications = 0
+        files.take(2).forEach { file ->
+            collector.accept {
+                classifications++
+                Refinement.Refined(file)
+            }
         }
+        assertEquals(1, classifications)
+        assertInstanceOf(DiagnosticEnumerationResult.Advancing::class.java, collector.finish())
+    }
+
+    @Test
+    fun `excluded nested owner does not fall back to an admitted ancestor or consume file capacity`() {
+        val collector = collector(DiagnosticEnumerationRequest.First(query), work = 2, fileLimit = 2)
+        val excluded = (0 until 100).map { Path.of("/workspace/src/foreign/Noise$it.kt") }
+        val admission: (Path) -> Boolean = { path -> !path.startsWith(Path.of("/workspace/src/foreign")) }
+        val candidates = excluded + files.take(2).map { Path.of(it.value) }
+        for (candidate in candidates) {
+            if (diagnosticIndexContains(query.path, candidate, admission)) {
+                collector.accept {
+                    Refinement.Refined(
+                        DiagnosticScope.fromCanonicalPaths(lease, listOf(candidate)).refined().files.single()
+                    )
+                }
+            }
+        }
+        assertEquals(
+            files.take(2),
+            assertInstanceOf(DiagnosticEnumerationResult.Exhausted::class.java, collector.finish()).files,
+        )
+    }
+
+    private fun enumerate(
+        request: DiagnosticEnumerationRequest,
+        source: List<DiagnosticSourceFile>,
+        work: Long = 100,
+        fileLimit: Int = 2,
+        elapsed: Long = 0,
+    ): DiagnosticEnumerationResult {
+        val collector = collector(request, work, fileLimit, elapsed)
+        for (file in source) if (!collector.accept { Refinement.Refined(file) }) break
+        return collector.finish()
+    }
+
+    private fun collector(
+        request: DiagnosticEnumerationRequest,
+        work: Long = 100,
+        fileLimit: Int = 2,
+        elapsed: Long = 0,
+        maximumBytes: Long = 1_000_000,
+    ): BoundedDiagnosticEnumeration =
+        BoundedDiagnosticEnumeration.create(
+                request,
+                DiagnosticEnumerationAllowance(
+                    ResourceBudget(
+                        ResultLimit.parse(fileLimit).refined(),
+                        WorkUnitLimit.parse(work).refined(),
+                        ElapsedTimeLimitMillis.parse(1000).refined(),
+                    )
+                ) {
+                    elapsed
+                },
+                maximumBytes,
+            )
+            .refined()
 
     private fun <T, F> Refinement<T, F>.refined(): T =
         when (this) {

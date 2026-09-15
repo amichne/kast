@@ -157,6 +157,10 @@ internal data class PublicToolSearchDeclarations(
 internal data class PublicToolCheckDiagnostics(
     val relative_path: ProtocolText,
     val max_diagnostics: Int?,
+    val continuation: ProtocolText? = null,
+    @SerialName("execution_budget")
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val executionBudget: ExecutionBudgetDocument? = null,
 ) : PublicToolDocument
 
 @Serializable

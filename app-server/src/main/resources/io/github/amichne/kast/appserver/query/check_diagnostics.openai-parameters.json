@@ -13,11 +13,73 @@
       "minimum": 1,
       "maximum": 1000,
       "description": "Maximum diagnostic entries to return. null selects 100. This limits results, not module admission, indexing, or compiler work; incomplete coverage remains explicit."
+    },
+    "continuation": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Opaque same-basis diagnostic continuation. Omit or use null to start. Resume the same relative_path; increase execution_budget if a grant cannot cross the enumeration prefix."
+    },
+    "execution_budget": {
+      "$ref": "#/$defs/ExecutionBudget"
     }
   },
   "required": [
     "relative_path",
-    "max_diagnostics"
+    "max_diagnostics",
+    "continuation",
+    "execution_budget"
   ],
-  "additionalProperties": false
+  "additionalProperties": false,
+  "$defs": {
+    "ExecutionBudget": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "Optional execution allowances. Null or omitted dimensions use configured defaults; positive values are independently clamped to operator and transport ceilings. These controls do not alter query take, scope, or projection.",
+      "properties": {
+        "max_elapsed_ms": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 9223372036854775807
+        },
+        "max_work_units": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 9223372036854775807
+        },
+        "max_results": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "max_returned_bytes": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 9223372036854775807
+        }
+      },
+      "required": [
+        "max_elapsed_ms",
+        "max_work_units",
+        "max_results",
+        "max_returned_bytes"
+      ],
+      "additionalProperties": false
+    }
+  }
 }

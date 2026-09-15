@@ -56,7 +56,7 @@ internal suspend fun evaluateHostedCanonicalQuery(
         is HostedRequest.Source -> evaluateHostedSource(project, services, context, request, continuations)
         is HostedRequest.Relation -> evaluateHostedRelation(project, services, context, request)
         is HostedRequest.Traversal -> evaluateHostedTraversal(project, services, context, request)
-        is HostedRequest.Diagnostic -> evaluateHostedDiagnostic(services, context, request)
+        is HostedRequest.Diagnostic -> evaluateHostedDiagnostic(project, services, context, request)
     }
 }
 
@@ -100,16 +100,35 @@ private suspend fun evaluateHostedQuery(
 }
 
 private suspend fun evaluateHostedDiagnostic(
+    project: Project,
     services: HostedSemanticServices,
     context: HostedSemanticReadContext,
     request: HostedRequest.Diagnostic,
-): HostedResponse =
-    HostedResponse.Canonical.encode(
-        CanonicalOperationWireBindings.diagnosticCheck,
-        CanonicalDiagnosticCheckProtocol(services.diagnostics, services.references, services.diagnosticPorts.scopes)
-            .execute(request.request, context.authority, services.budgets.hostedQueryBudget.resources.resultLimit),
-        limits = context.limits,
-    )
+): HostedResponse {
+    val retained = project.service<HostedQueryContinuations>().forEpoch(context.authority, context.limits)
+    val token = request.request.continuation
+    val outcome =
+        if (token != null && token.value.startsWith(DIAGNOSTIC_OUTPUT_PREFIX)) {
+            retained.diagnosticOutputs.restore(token, request.request, context.authority)
+        } else {
+            CanonicalDiagnosticCheckProtocol(
+                    services.diagnosticScans,
+                    services.references,
+                    retained.diagnosticCheckpoints,
+                )
+                .execute(request.request, context.authority, services.budgets.hostedQueryBudget.resources)
+        }
+    return encodeHostedDiagnosticResponse(
+        outcome.withDiagnosticBudget(
+            io.github.amichne.kast.protocol.contract.ExecutionBudgetReport.from(context.executionBudget)
+        ),
+        context.limits,
+        context.executionBudget.returnedBytes.effective,
+        context.executionBudget.results.effective,
+    ) { remaining ->
+        retained.diagnosticOutputs.issue(request.request, context.authority, remaining)
+    }
+}
 
 /** Budgets are projected only from an admitted, immutable policy. */
 internal class HostedSemanticBudgets(

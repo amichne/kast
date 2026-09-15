@@ -5,6 +5,7 @@ import io.github.amichne.kast.diagnostic.contract.DiagnosticCheckResult
 import io.github.amichne.kast.diagnostic.contract.DiagnosticEnumerationRequest
 import io.github.amichne.kast.diagnostic.contract.DiagnosticEnumerationResult
 import io.github.amichne.kast.diagnostic.contract.DiagnosticFact
+import io.github.amichne.kast.diagnostic.contract.DiagnosticFactCount
 import io.github.amichne.kast.diagnostic.contract.DiagnosticLimitation
 import io.github.amichne.kast.diagnostic.contract.DiagnosticOperations
 import io.github.amichne.kast.diagnostic.contract.DiagnosticScanCheckpoint
@@ -37,6 +38,7 @@ class DiagnosticScanService(
     override suspend fun scan(request: DiagnosticScanRequest, budget: ResourceBudget): DiagnosticScanResult {
         val start = clock()
         if (authorities.validate(request.query.lease) != SemanticReadValidation.CURRENT) return stale()
+        if (TimeUnit.NANOSECONDS.toMillis(clock() - start) >= budget.elapsedTimeLimit.value) return timeGrantRejected()
         val checkpoint =
             when (request) {
                 is DiagnosticScanRequest.First ->
@@ -55,7 +57,8 @@ class DiagnosticScanService(
                 DiagnosticScanWork.Finished -> scopeRejected()
             }
         if (authorities.validate(request.query.lease) != SemanticReadValidation.CURRENT) return stale()
-        if (TimeUnit.NANOSECONDS.toMillis(clock() - start) >= budget.elapsedTimeLimit.value) return increaseBudget()
+        if (advanced is DiagnosticScanResult.Rejected) return advanced
+        if (TimeUnit.NANOSECONDS.toMillis(clock() - start) >= budget.elapsedTimeLimit.value) return timeGrantRejected()
         return advanced
     }
 
@@ -66,7 +69,7 @@ class DiagnosticScanService(
     ): DiagnosticScanResult {
         val result = enumeration.enumerate(work.request, budget)
         if (result is DiagnosticEnumerationResult.Rejected)
-            return DiagnosticScanResult.Rejected(DiagnosticScanRejection.Scope(result.reason))
+            return DiagnosticScanResult.Rejected(DiagnosticScanRejection.Enumeration(result.failure))
         val files = result.files
         if (!checkpoint.admitsEnumeration(files)) return scopeRejected()
         val next =
@@ -112,19 +115,32 @@ class DiagnosticScanService(
             }
         val result = diagnostics.check(DiagnosticCheckRequest(scope))
         if (TimeUnit.NANOSECONDS.toMillis(clock() - start) >= budget.elapsedTimeLimit.value) return increaseBudget()
+        val facts =
+            when (result) {
+                is DiagnosticCheckResult.Complete -> result.batch.facts
+                is DiagnosticCheckResult.Qualified -> result.batch.facts
+                is DiagnosticCheckResult.Rejected ->
+                    return DiagnosticScanResult.Rejected(DiagnosticScanRejection.Compiler(result.reason))
+            }
+        val count =
+            when (val admitted = checkpoint.knownDiagnosticCount.adding(facts)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return scopeRejected()
+            }
         val next = if (work.files.size == 1) work.next else work.copy(files = work.files.drop(1))
         return when (result) {
             is DiagnosticCheckResult.Rejected ->
                 DiagnosticScanResult.Rejected(DiagnosticScanRejection.Compiler(result.reason))
             is DiagnosticCheckResult.Complete ->
                 checkpoint
-                    .copy(analyzed = checkpoint.analyzed + result.coverage.analyzedFiles)
+                    .copy(analyzed = checkpoint.analyzed + result.coverage.analyzedFiles, knownDiagnosticCount = count)
                     .publish(result.batch.facts, next, budget.resultLimit.value)
             is DiagnosticCheckResult.Qualified ->
                 checkpoint
                     .copy(
                         analyzed = checkpoint.analyzed + result.coverage.analyzedFiles,
                         limitations = checkpoint.limitations + result.coverage.limitations,
+                        knownDiagnosticCount = count,
                     )
                     .publish(result.batch.facts, next, budget.resultLimit.value)
         }
@@ -146,6 +162,7 @@ private data class DetachedDiagnosticScan(
     val work: DiagnosticScanWork,
     val analyzed: List<DiagnosticSourceFile> = emptyList(),
     val limitations: Set<DiagnosticLimitation> = emptySet(),
+    val knownDiagnosticCount: DiagnosticFactCount = DiagnosticFactCount.observed(emptyList()),
 ) : DiagnosticScanCheckpoint {
     override val retainedBytes: Long
         get() =
@@ -183,7 +200,8 @@ private data class DetachedDiagnosticScan(
                         (analyzed + limitations.map { it.file } + work.pendingFiles()).sortedBy { it.value }
                     )
             }
-        val page = DiagnosticScanPage(facts.toList(), analyzed.toList(), limitations.toSet(), inventory)
+        val page =
+            DiagnosticScanPage(facts.toList(), analyzed.toList(), limitations.toSet(), inventory, knownDiagnosticCount)
         return when {
             work != DiagnosticScanWork.Finished -> DiagnosticScanResult.Advancing(page, this, stop)
             limitations.isNotEmpty() -> DiagnosticScanResult.Qualified(page)
@@ -246,3 +264,6 @@ private const val RETAINED_CHECKPOINT_OVERHEAD = 256L
 private const val RETAINED_LIMITATION_OVERHEAD = 192L
 private const val RETAINED_NODE_OVERHEAD = 128L
 private const val RETAINED_CHARACTER_BYTES = 4L
+
+private fun timeGrantRejected(): DiagnosticScanResult =
+    DiagnosticScanResult.Rejected(DiagnosticScanRejection.ExecutionTimeGrantTooSmall)
