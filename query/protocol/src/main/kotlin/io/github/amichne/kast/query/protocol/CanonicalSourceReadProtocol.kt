@@ -102,7 +102,7 @@ class CanonicalSourceReadProtocol(
                             EvidenceEnvelope(
                                 CanonicalOperation.SOURCE_READ.id,
                                 result.snapshot.lease.evidenceBasis(),
-                                projected.result,
+                                projected.result.copy(format = request.format),
                             )
                         )
                     SourceResultProjection.Rejected -> contractViolation()
@@ -114,7 +114,7 @@ class CanonicalSourceReadProtocol(
                             EvidenceEnvelope(
                                 CanonicalOperation.SOURCE_READ.id,
                                 result.snapshot.lease.evidenceBasis(),
-                                projected.result,
+                                projected.result.copy(format = request.format),
                             ),
                             projected.qualification,
                         )
@@ -220,6 +220,7 @@ private fun SourceReadRequest.admit(
             domainTextByteLimit,
             domainPage,
             budget.resources,
+            format.domainOutputIdentity(),
         )
     )
 }

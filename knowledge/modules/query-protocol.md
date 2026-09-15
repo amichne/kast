@@ -160,3 +160,8 @@ Source continuation admission preserves finite causes before invoking the provid
 missing, expired, evicted, or retired tokens yield `CONTINUATION_UNAVAILABLE`;
 a changed context yields `SOURCE_SNAPSHOT_MISMATCH`; a changed request yields
 `CONTINUATION_REQUEST_MISMATCH`. Provider contract failures remain distinct.
+
+Source output can explicitly select compact presentation while expanded remains
+the compatibility default. The protocol maps that choice exhaustively into a
+native continuation compatibility witness; it does not change source semantics.
+See [source identity](../contracts/source-identity.md#source-output-format).

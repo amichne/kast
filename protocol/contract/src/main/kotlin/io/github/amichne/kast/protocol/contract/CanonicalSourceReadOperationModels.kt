@@ -215,8 +215,15 @@ sealed interface SourceReadPageDocument {
     @Serializable @SerialName("continue") data class Continue(val continuation: ProtocolText) : SourceReadPageDocument
 }
 
+@Serializable
+enum class SourceReadFormatDocument {
+    @SerialName("expanded") EXPANDED,
+    @SerialName("compact") COMPACT,
+}
+
 @Serializable(with = SourceReadRequestSerializer::class)
 @KeepGeneratedSerializer
+@OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
 data class SourceReadRequest(
     val anchor: SourceReadAnchorDocument,
     val region: SourceRegionSelectionDocument,
@@ -228,6 +235,8 @@ data class SourceReadRequest(
     @SerialName("execution_budget")
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val executionBudget: ExecutionBudgetDocument? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val format: SourceReadFormatDocument = SourceReadFormatDocument.EXPANDED,
 ) : OperationRequest
 
 internal object SourceReadRequestSerializer : KSerializer<SourceReadRequest> {

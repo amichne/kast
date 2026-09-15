@@ -631,3 +631,8 @@ decisions, and found versus unavailable lexical call owners. These finite counts
 contain no symbol names, source payloads or live handles. A deferred call owner
 is also recorded as `RELATION_CALL_OWNER_UNSUPPORTED`; the returned omission
 retains a bounded source occurrence independently of the diagnostic counter.
+
+Source fitting encodes the selected expanded or compact wire projection for each
+candidate prefix, including its local selection table and retained-output cursor.
+An indivisible source text that prevents any prefix fitting becomes explicitly
+withheld with text-byte qualification; source bytes are never truncated.

@@ -40,12 +40,19 @@ class SourceTraversalBudgetSchemaTest {
         )
 
     @Test
-    fun `source complete and qualified grants survive wire CLI and installed schemas`() {
+    fun `source complete and qualified grants survive wire CLI and installed schemas`() =
+        verifySource(io.github.amichne.kast.protocol.contract.SourceReadFormatDocument.EXPANDED)
+
+    @Test
+    fun `compact complete and qualified grants survive wire CLI and installed schemas`() =
+        verifySource(io.github.amichne.kast.protocol.contract.SourceReadFormatDocument.COMPACT)
+
+    private fun verifySource(format: io.github.amichne.kast.protocol.contract.SourceReadFormatDocument) {
         val evidence =
             EvidenceEnvelope(
                 CanonicalOperation.SOURCE_READ.id,
                 basis,
-                fixture.sourceResult(basis).copy(executionBudget = report),
+                fixture.sourceResult(basis).copy(executionBudget = report, format = format),
             )
         val qualification =
             SourceReadQualification.create(
@@ -66,6 +73,25 @@ class SourceTraversalBudgetSchemaTest {
             OperationOutcome.Qualified(evidence, qualification),
             CanonicalSourceReadCliDocuments::project,
         )
+        if (format == io.github.amichne.kast.protocol.contract.SourceReadFormatDocument.COMPACT)
+            with(fixture) {
+                val document = CanonicalSourceReadCliDocuments.project(OperationOutcome.Complete(evidence)).document()
+                val content = document.getValue("content") as kotlinx.serialization.json.JsonArray
+                assertEquals(JsonPrimitive("source"), content.first().jsonObject["type"])
+                assertRejects(
+                    CanonicalOperation.SOURCE_READ,
+                    document.with(
+                        "content",
+                        kotlinx.serialization.json.Json.encodeToJsonElement(
+                            kotlinx.serialization.builtins.ListSerializer(
+                                kotlinx.serialization.json.JsonElement.serializer()
+                            ),
+                            content.reversed(),
+                        ),
+                    ),
+                )
+                assertRejects(CanonicalOperation.SOURCE_READ, document.with("format", JsonPrimitive("invented")))
+            }
     }
 
     @Test

@@ -34,7 +34,7 @@ internal data class SourceSnapshotWireDocument(
 )
 
 @Serializable
-internal enum class SourceCoordinateUnitWireDocument {
+enum class SourceCoordinateUnitWireDocument {
     @SerialName("utf16-code-unit") UTF16_CODE_UNIT
 }
 
@@ -57,7 +57,7 @@ internal data class SourceRegionWireDocument(
 )
 
 @Serializable
-internal enum class SourceRegionKindWireDocument {
+enum class SourceRegionKindWireDocument {
     @SerialName("anchor") ANCHOR,
     @SerialName("declaration") DECLARATION,
     @SerialName("callable-body") CALLABLE_BODY,
@@ -85,7 +85,7 @@ internal sealed interface SourceEntityTargetWireDocument {
 }
 
 @Serializable
-internal enum class SourceUnresolvedReasonWireDocument {
+enum class SourceUnresolvedReasonWireDocument {
     @SerialName("name-not-found") NAME_NOT_FOUND,
     @SerialName("ambiguous") AMBIGUOUS,
     @SerialName("error-type") ERROR_TYPE,
@@ -154,7 +154,7 @@ internal sealed interface SourceTextProjectionWireDocument {
 }
 
 @Serializable
-internal enum class SourceTextWithheldReasonWireDocument {
+enum class SourceTextWithheldReasonWireDocument {
     @SerialName("byte-limit-reached") BYTE_LIMIT_REACHED,
     @SerialName("provider-unavailable") PROVIDER_UNAVAILABLE,
 }
