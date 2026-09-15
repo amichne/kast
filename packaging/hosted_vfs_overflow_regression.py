@@ -15,6 +15,10 @@ from hosted_authority_read_regression import (
     InspectionWireRejected, InspectionUnknownRefusal, InspectionContractRejected, InspectionTransportRejected,
 )
 from hosted_change_acceptance import admitted_live, AcceptanceRejected
+from hosted_diagnostic_pages_regression import (
+    DiagnosticRequest, DiagnosticDrainFailure, DiagnosticDrained, drain_diagnostics,
+)
+from hosted_source_read_regression import SymbolAnchor
 from hosted_read_transport import ReadTransportRejected, ReadTransportFailure
 from native_fixture_probe import NativeFixtureProbe, NativeFixtureProbeError
 
@@ -36,6 +40,7 @@ class OverflowFailure(str, Enum):
     TRANSPORT = 'OVERFLOW_TRANSPORT_REJECTED'
     IO = 'OVERFLOW_IO_REJECTED'
     RESTORATION = 'OVERFLOW_RESTORATION_REJECTED'
+    DIAGNOSTIC = 'OVERFLOW_DIAGNOSTIC_QUALIFICATION_REJECTED'
 
 
 class OverflowRejected(ValueError):
@@ -97,6 +102,125 @@ def _strict_observation(response):
             else InspectionUnknownRefusal(stage))
 
 
+class DiagnosticPhase(str, Enum):
+    ISSUED = 'before-overflow-cursor'
+    STALE = 'old-cursor-after-revalidation'
+    FILE = 'fresh-one-file-scan'
+    DIRECTORY = 'fresh-directory-scan'
+
+
+class DiagnosticRefusal(str, Enum):
+    UNAVAILABLE = 'continuation-unavailable'
+    STALE = 'stale-continuation'
+    ENUMERATION_INDEX_MODE_UNSUPPORTED = 'enumeration-index-mode-unsupported'
+    EXECUTION_TIME_GRANT_TOO_SMALL = 'execution-time-grant-too-small'
+    CONTINUATION_REQUEST_MISMATCH = 'continuation-request-mismatch'
+    CONTINUATION_CAPACITY_EXCEEDED = 'continuation-capacity-exceeded'
+    ENUMERATION_WORK_GRANT_TOO_SMALL = 'enumeration-work-grant-too-small'
+    ENUMERATION_TIME_GRANT_TOO_SMALL = 'enumeration-time-grant-too-small'
+    ENUMERATION_RETENTION_EXCEEDED = 'enumeration-retention-exceeded'
+    COMPILER_UNIT_GRANT_TOO_SMALL = 'compiler-unit-grant-too-small'
+    COMPILER_CONTRACT_VIOLATION = 'compiler-contract-violation'
+    WORKSPACE_INDEX_UNAVAILABLE = 'workspace-index-unavailable'
+    WORKSPACE_ROOT_MISMATCH = 'workspace-root-mismatch'
+    STALE_GENERATION = 'stale-generation'
+    OUTPUT_GRANT_TOO_SMALL = 'output-grant-too-small'
+    WORKSPACE_NOT_READY = 'workspace-not-ready'
+    SCOPE_REJECTED = 'scope-rejected'
+    SCOPE_EMPTY = 'scope-empty'
+    SCOPE_LIMIT_EXCEEDED = 'scope-limit-exceeded'
+    SCOPE_UNAVAILABLE = 'scope-unavailable'
+
+
+class DiagnosticMismatch(str, Enum):
+    DOCUMENT = 'document'
+    OPERATION = 'operation'
+    STATUS = 'status'
+    BASIS = 'basis'
+    CURSOR = 'cursor'
+    REFUSAL = 'refusal'
+    RESTART = 'restart-guidance'
+    HISTORICAL_OUTPUT = 'historical-output'
+
+
+@dataclass(frozen=True)
+class DiagnosticEvidence:
+    phase: DiagnosticPhase
+    surface: AuthoritySurface
+    passed: bool
+    schemaDigests: tuple[str, ...]
+    mismatch: DiagnosticMismatch | None = None
+    refusal: DiagnosticRefusal | None = None
+    drainFailure: DiagnosticDrainFailure | None = None
+    pages: int = 0
+    analyzedFiles: int = 0
+    diagnosticCount: int = 0
+
+
+@dataclass
+class _DiagnosticTransport:
+    delegate: object
+    digests: list[str]
+
+    def invoke(self, surface, tool, request):
+        result, digest = self.delegate.invoke_observed(surface, tool, request)
+        self.digests.append(digest)
+        return result
+
+    def validate(self, tool, response):
+        return self.delegate.validate(tool, response)
+
+
+@dataclass(frozen=True)
+class _DiagnosticReplay:
+    transport: _DiagnosticTransport
+    surface: str
+    live: dict
+
+
+def _diagnostic_evidence(surface, phase, response, digest, live):
+    mismatch, refusal = None, None
+    if not isinstance(response, dict):
+        mismatch = DiagnosticMismatch.DOCUMENT
+    elif response.get('operation') != 'diagnostic.check':
+        mismatch = DiagnosticMismatch.OPERATION
+    elif phase is DiagnosticPhase.ISSUED:
+        token = response.get('qualification', {}).get('continuation')
+        if response.get('status') != 'qualified':
+            mismatch = DiagnosticMismatch.STATUS
+        elif response.get('live') != live:
+            mismatch = DiagnosticMismatch.BASIS
+        elif not isinstance(token, str) or not 1 <= len(token) <= 1048576:
+            mismatch = DiagnosticMismatch.CURSOR
+    elif response.get('status') != 'rejected':
+        mismatch = DiagnosticMismatch.STATUS
+    else:
+        try:
+            refusal = DiagnosticRefusal(response.get('reason'))
+        except (ValueError, TypeError):
+            mismatch = DiagnosticMismatch.REFUSAL
+        if mismatch is None and refusal not in (DiagnosticRefusal.UNAVAILABLE, DiagnosticRefusal.STALE):
+            mismatch = DiagnosticMismatch.REFUSAL
+        if mismatch is None and response.get('next_action') != 'restart_read':
+            mismatch = DiagnosticMismatch.RESTART
+        if mismatch is None and any(key in response for key in ('live', 'diagnostics', 'progress', 'qualification')):
+            mismatch = DiagnosticMismatch.HISTORICAL_OUTPUT
+    return DiagnosticEvidence(phase, surface, mismatch is None, (digest,), mismatch, refusal)
+
+
+def _drain_fresh_diagnostics(transport, surface, live, phase):
+    request = DiagnosticRequest('src/main/kotlin/Fixture.kt' if phase is DiagnosticPhase.FILE else 'src/main/kotlin')
+    adapter = _DiagnosticTransport(transport, [])
+    replay = _DiagnosticReplay(adapter, surface.value, live)
+    first = adapter.invoke(surface.value, 'check_diagnostics', asdict(request))
+    result = drain_diagnostics(replay, request, first)
+    if not isinstance(result, DiagnosticDrained):
+        return DiagnosticEvidence(phase, surface, False, tuple(adapter.digests), drainFailure=result.failure)
+    return DiagnosticEvidence(phase, surface, True, tuple(adapter.digests), pages=len(result.pages),
+        analyzedFiles=len(result.pages[-1]['progress']['analyzedFiles']),
+        diagnosticCount=sum(len(page.get('diagnostics', [])) for page in result.pages))
+
+
 @dataclass(frozen=True)
 class OverflowReport:
     outcome: OverflowOutcome = OverflowOutcome.REJECTED
@@ -109,6 +233,7 @@ class OverflowReport:
     restorationAuthorityFailure: AuthorityFailure | None = None
     restorationTransportFailure: ReadTransportFailure | None = None
     strictObservations: tuple[StrictObservation, ...] = ()
+    diagnosticObservations: tuple[DiagnosticEvidence, ...] = ()
     receipt: OverflowReceipt | None = None
     cases: tuple[AuthorityCase, ...] = ()
     strictSchemaDigests: tuple[str, ...] = ()
@@ -229,7 +354,13 @@ def run_vfs_overflow_regression(isolation, fixture, transport, live):
             request, observed = replay.search(surface)
             _require(observed == current, OverflowFailure.EPOCH)
             token = replay.page(AuthorityCaseName.ISSUED, surface, request, current, 'pageItem00')
-            issued[surface] = request, token
+            diagnostic_request = DiagnosticRequest()
+            diagnostic, digest = replay.call(surface, 'check_diagnostics', diagnostic_request)
+            evidence = _diagnostic_evidence(surface, DiagnosticPhase.ISSUED, diagnostic, digest, current)
+            report = replace(report, diagnosticObservations=report.diagnosticObservations + (evidence,))
+            _require(evidence.passed, OverflowFailure.DIAGNOSTIC)
+            issued[surface] = request, token, replace(diagnostic_request,
+                continuation=diagnostic['qualification']['continuation'])
         with OverflowLogWindow(isolation.root / 'ide/log/idea.log') as window:
             _create_burst(source.parent, owned)
             report = replace(report, filesCreated=len(owned))
@@ -243,7 +374,7 @@ def run_vfs_overflow_regression(isolation, fixture, transport, live):
                      OverflowFailure.EPOCH)
             moved = observed
             report = replace(report, overflowEpoch=observed['epoch'])
-            old, token = issued[surface]
+            old, token, old_diagnostic = issued[surface]
             try:
                 refused, digest = replay.call(surface, 'symbol_inspect', StrictRequest(StrictTarget(old.anchor.selector)))
             except ReadTransportRejected as error:
@@ -260,6 +391,28 @@ def run_vfs_overflow_regression(isolation, fixture, transport, live):
             replay.reject(AuthorityCaseName.OLD_CURSOR, surface,
                           replace(fresh, page=ContinueSourcePage(token)), AuthorityRefusal.STALE_CONTINUATION)
             replay.page(AuthorityCaseName.FRESH, surface, fresh, observed, 'pageItem00')
+            # The old selector is a locator only in this explicit operation; no search result is substituted.
+            symbol = replay.inspect(InspectionStage.REVALIDATE, surface, old.anchor.selector, observed)
+            replay.inspect(InspectionStage.STRICT, surface, symbol['selector'], observed, symbol)
+            reacquired = replace(old, anchor=SymbolAnchor(symbol['selector']))
+            replay.page(AuthorityCaseName.FRESH, surface, reacquired, observed, 'pageItem00')
+            refused, digest = replay.call(surface, 'symbol_inspect', StrictRequest(StrictTarget(old.anchor.selector)))
+            observation = _strict_observation(refused)
+            report = replace(report, strictObservations=report.strictObservations +
+                (StrictObservation(surface, digest, observation),))
+            _require(isinstance(observation, InspectionWireRejected)
+                     and observation.refusal is InspectionRefusal.EXACT_SELECTOR_STALE, OverflowFailure.STRICT)
+            replay.reject(AuthorityCaseName.OLD_REFERENCE, surface, old, AuthorityRefusal.UNAVAILABLE_REFERENCE)
+            replay.reject(AuthorityCaseName.OLD_CURSOR, surface,
+                          replace(reacquired, page=ContinueSourcePage(token)), AuthorityRefusal.STALE_CONTINUATION)
+            diagnostic, digest = replay.call(surface, 'check_diagnostics', old_diagnostic)
+            evidence = _diagnostic_evidence(surface, DiagnosticPhase.STALE, diagnostic, digest, observed)
+            report = replace(report, diagnosticObservations=report.diagnosticObservations + (evidence,))
+            _require(evidence.passed, OverflowFailure.DIAGNOSTIC)
+            for phase in (DiagnosticPhase.FILE, DiagnosticPhase.DIRECTORY):
+                evidence = _drain_fresh_diagnostics(transport, surface, observed, phase)
+                report = replace(report, diagnosticObservations=report.diagnosticObservations + (evidence,))
+                _require(evidence.passed, OverflowFailure.DIAGNOSTIC)
         report = replace(report, outcome=OverflowOutcome.PASSED, strictSchemaDigests=tuple(strict_digests))
     except OverflowRejected as error:
         report = replace(report, failure=error.failure)

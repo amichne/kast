@@ -1,5 +1,5 @@
 """Portable helper proof only: these fakes do not qualify a native IDE."""
-from dataclasses import asdict
+from dataclasses import asdict, dataclass, field
 import json
 from pathlib import Path
 import tempfile
@@ -11,6 +11,27 @@ import hosted_vfs_overflow_regression as subject
 from hosted_source_read_regression import SourceFunctionRequest, SymbolAnchor
 
 HOST = '10000000-0000-0000-0000-000000000001'
+
+
+@dataclass(frozen=True)
+class DiagnosticQualification:
+    continuation: str = 'retained-diagnostic-cursor'
+
+
+@dataclass(frozen=True)
+class DiagnosticPage:
+    live: dict
+    qualification: DiagnosticQualification = field(default_factory=DiagnosticQualification)
+    operation: str = 'diagnostic.check'
+    status: str = 'qualified'
+
+
+@dataclass(frozen=True)
+class DiagnosticRefused:
+    reason: str = 'continuation-unavailable'
+    next_action: str = 'restart_read'
+    operation: str = 'diagnostic.check'
+    status: str = 'rejected'
 
 
 class OverflowHelperTest(unittest.TestCase):
@@ -97,7 +118,7 @@ class OverflowHelperTest(unittest.TestCase):
         self.log = self.root / 'ide/log/idea.log'
         self.log.parent.mkdir(parents=True)
         self.log.write_bytes(b'')
-        state = SimpleNamespace(epoch=1, ready=0, strict=0, cursor=0)
+        state = SimpleNamespace(epoch=1, ready=0, strict=0, cursor=0, revalidated=0, oldsource=0, diagnostic=0)
         live = lambda: {'host': HOST, 'epoch': state.epoch}
         class Replay:
             def __init__(self, *_):
@@ -112,7 +133,18 @@ class OverflowHelperTest(unittest.TestCase):
                 if state.ready == 2 and restoration == 'page':
                     raise subject.AuthorityRejected(subject.AuthorityFailure.ISSUER)
                 return 'opaque-cursor'
+            def inspect(self, stage, surface, selector, current, expected_symbol=None):
+                if stage is subject.InspectionStage.REVALIDATE:
+                    self_test.assertEqual('opaque-1', selector)
+                    state.revalidated += 1
+                    return {'selector': 'reacquired-2', 'name': 'ReadPageBudget'}
+                self_test.assertEqual('reacquired-2', selector)
+                return expected_symbol
             def call(self, surface, tool, request):
+                if tool == 'check_diagnostics':
+                    state.diagnostic += 1
+                    return (asdict(DiagnosticPage(live=live())) if request.continuation is None
+                            else asdict(DiagnosticRefused())), 'sha256:' + 'b' * 64
                 self_test.assertEqual('symbol_inspect', tool)
                 self_test.assertEqual('exact', request.target.type)
                 self_test.assertEqual('opaque-1', request.target.selector)
@@ -120,9 +152,13 @@ class OverflowHelperTest(unittest.TestCase):
                 return {'status': 'rejected' if strict else 'complete', 'operation': 'symbol.inspect',
                         'reason': 'exact-selector-stale'}, 'sha256:' + 'a' * 64
             def reject(self, name, surface, request, reason):
-                self_test.assertEqual('opaque-cursor', request.page.continuation)
-                self_test.assertEqual('opaque-2', request.anchor.selector)
-                state.cursor += 1
+                if name is subject.AuthorityCaseName.OLD_REFERENCE:
+                    self_test.assertEqual('opaque-1', request.anchor.selector)
+                    state.oldsource += 1
+                else:
+                    self_test.assertEqual('opaque-cursor', request.page.continuation)
+                    self_test.assertIn(request.anchor.selector, ('opaque-2', 'reacquired-2'))
+                    state.cursor += 1
         self_test = self
         def ready(*_):
             state.epoch += 1
@@ -133,7 +169,10 @@ class OverflowHelperTest(unittest.TestCase):
                 self.append(asdict(subject.OverflowReceipt(HOST)))
         with patch.object(subject, '_AuthorityReplay', Replay), patch.object(subject, '_ready', ready), \
                 patch.object(subject, 'admitted_live', lambda value, _: value), \
-                patch.object(subject, 'NativeFixtureProbe', lambda *_: object()):
+                patch.object(subject, 'NativeFixtureProbe', lambda *_: object()), \
+                patch.object(subject, '_drain_fresh_diagnostics', lambda transport, surface, live, phase:
+                    subject.DiagnosticEvidence(phase, surface, True, ('sha256:' + 'c' * 64,), pages=2, analyzedFiles=1)):
+
             result = subject.run_vfs_overflow_regression(SimpleNamespace(root=self.root),
                          SimpleNamespace(workspace=workspace), object(), live())
         self.assertEqual([], list(source.parent.glob('KastOverflowAcceptance*.kt')))
@@ -145,7 +184,9 @@ class OverflowHelperTest(unittest.TestCase):
         (report, successor), state = self.run_fake()
         self.assertEqual(subject.OverflowOutcome.PASSED, report.outcome)
         self.assertEqual(3, successor['epoch'])
-        self.assertEqual((2, 2), (state.strict, state.cursor))
+        self.assertEqual((4, 4), (state.strict, state.cursor))
+        self.assertEqual((2, 2, 4), (state.revalidated, state.oldsource, state.diagnostic))
+        self.assertEqual(8, len(report.diagnosticObservations))
         self.assertEqual(3, report.filesCreated)
         self.assertTrue(report.filesRestored)
         self.assertEqual(subject.OverflowReceipt(HOST), report.receipt)
@@ -197,6 +238,74 @@ class OverflowHelperTest(unittest.TestCase):
                                  report.strictObservations[0].observation.mismatch)
                 if cause is subject.OverflowFailure.AUTHORITY:
                     self.assertEqual(subject.AuthorityFailure.ISSUER, report.restorationAuthorityFailure)
+
+    def test_diagnostic_cursor_rejection_preserves_only_proven_restart_causes(self):
+        phase, surface = subject.DiagnosticPhase.STALE, subject.AuthoritySurface.CLI
+        for reason in ('continuation-unavailable', 'stale-continuation'):
+            evidence = subject._diagnostic_evidence(surface, phase, asdict(DiagnosticRefused(reason)), 'digest', {})
+            self.assertTrue(evidence.passed)
+            self.assertEqual(reason, evidence.refusal.value)
+        for raw, mismatch in [
+            (asdict(DiagnosticRefused('source-snapshot-mismatch')), subject.DiagnosticMismatch.REFUSAL),
+            (asdict(DiagnosticRefused(next_action='resume')), subject.DiagnosticMismatch.RESTART),
+            (dict(asdict(DiagnosticRefused()), diagnostics=[]), subject.DiagnosticMismatch.HISTORICAL_OUTPUT),
+            (dict(asdict(DiagnosticRefused()), live={'epoch': 1}), subject.DiagnosticMismatch.HISTORICAL_OUTPUT),
+        ]:
+            evidence = subject._diagnostic_evidence(surface, phase, raw, 'digest', {})
+            self.assertFalse(evidence.passed)
+            self.assertEqual(mismatch, evidence.mismatch)
+
+    def test_preburst_diagnostic_cursor_requires_same_basis_and_retained_token(self):
+        live = {'epoch': 1}
+        raw = asdict(DiagnosticPage(live))
+        args = (subject.AuthoritySurface.PROVIDER, subject.DiagnosticPhase.ISSUED)
+        self.assertTrue(subject._diagnostic_evidence(*args, raw, 'digest', live).passed)
+        raw['live'] = {'epoch': 2}
+        self.assertEqual(subject.DiagnosticMismatch.BASIS,
+                         subject._diagnostic_evidence(*args, raw, 'digest', live).mismatch)
+        raw['live'] = live
+        raw['qualification']['continuation'] = ''
+        self.assertEqual(subject.DiagnosticMismatch.CURSOR,
+                         subject._diagnostic_evidence(*args, raw, 'digest', live).mismatch)
+
+    def test_fresh_drain_observes_every_envelope_and_never_sends_old_cursor(self):
+        @dataclass(frozen=True)
+        class Inventory:
+            type: str = 'exhausted'
+            totalFiles: int = 1
+        @dataclass(frozen=True)
+        class Progress:
+            stage: str
+            stop: str
+            analyzedFiles: tuple[str, ...] = ('Fixture.kt',)
+            inventory: Inventory = field(default_factory=Inventory)
+        @dataclass(frozen=True)
+        class Page:
+            live: dict
+            status: str
+            progress: Progress
+            qualification: DiagnosticQualification | None
+            operation: str = 'diagnostic.check'
+            diagnostics: tuple = ()
+        live = {'epoch': 2}
+        pages = iter([Page(live, 'qualified', Progress('output', 'output_pending'), DiagnosticQualification('fresh-page')),
+                      Page(live, 'complete', Progress('finished', 'finished'), None)])
+        requests = []
+        class Transport:
+            def invoke_observed(self, surface, tool, request):
+                requests.append((surface, tool, request))
+                return json.loads(json.dumps(asdict(next(pages)))), 'schema-' + str(len(requests))
+            def validate(self, *_):
+                return 'validated'
+        result = subject._drain_fresh_diagnostics(Transport(), subject.AuthoritySurface.PROVIDER,
+                                                 live, subject.DiagnosticPhase.FILE)
+        self.assertTrue(result.passed)
+        self.assertEqual(('schema-1', 'schema-2'), result.schemaDigests)
+        self.assertEqual((2, 1), (result.pages, result.analyzedFiles))
+        self.assertEqual([None, 'fresh-page'], [entry[2]['continuation'] for entry in requests])
+        self.assertTrue(all(entry[:2] == ('provider', 'check_diagnostics') for entry in requests))
+        self.assertNotIn('fresh-page', json.dumps(asdict(result)))
+
 
 
 if __name__ == '__main__':
