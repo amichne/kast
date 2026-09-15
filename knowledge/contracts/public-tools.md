@@ -4,7 +4,7 @@ title: Public intent tools
 description: Schema-bound search and diagnostics presentations lower into existing canonical operations without transferring compiler authority.
 resource: file://app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json
 tags: [tools, query, protocol, agents]
-timestamp: 2026-09-14T00:00:00Z
+timestamp: 2026-09-15T00:00:00Z
 code_sources:
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReadRecoveryAction.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceQualifiedProgressDocument.kt
@@ -18,6 +18,9 @@ code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt
     symbols: [PublicToolContract, AdmittedPublicTool, PublicToolCanonical]
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolMapping.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/ExactSymbolRef.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/ContinuationRef.kt
+  - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicReferenceSurfaceTest.kt
   - path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt
   - path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastQueryInput.kt
@@ -39,7 +42,11 @@ code_sources:
 
 The authored tool bundle generates Kotlin request DTOs, concrete normalization defaults, closed presentation identities, full admission schemas, Codex registration schemas and separate Responses strict registrations. The same production generator retains the explicit legacy `query run` CLI grammar.
 
-`search_classes`, `search_functions`, `search_declarations` and `check_diagnostics` are eager. `query_symbols` is deferred. Ordinary searches fix or admit declaration kinds and request names, locations and signatures; diagnostics lower to the existing path/limit request. Required nullable controls normalize before canonical construction. Directory/package scope shapes are exclusive, and duplicates and invalid lexical values reject.
+`search_classes`, `search_functions`, `search_declarations` and `check_diagnostics` are eager. `query_symbols` is deferred. Ordinary searches fix or admit declaration kinds and request names and locations; diagnostics lower to the existing path/limit request. Required nullable controls normalize before canonical construction. Directory/package scope shapes are exclusive, and duplicates and invalid lexical values reject.
+
+Search leaves the existing nullable `signature` field unprojected. Request `return_fields: ["signature"]` from `query_symbols` with the returned `symbol_ref` to retrieve it without another name search or candidate refinement. Existing output field names, mandatory identities and coverage evidence remain unchanged in this first slice.
+
+The public schema names `ExactSymbolRef` and `ContinuationRef`, and generated Kotlin inputs keep these as distinct string-serialized value types. They retain bounded opaque text, not proof of issuance: canonical owners still validate family, host, workspace, lifetime and pipeline. The existing nullable continuation definition represents the query start control, not permission to resume another operation. See the [iterative reference surface contract](../../app-server/docs/reference-surface.md) for scope and remaining output migration.
 
 The advanced pipeline preserves source meaning, step order, repeated steps and empty projections. Expansion returns related declarations; occurrence-oriented relation facts remain the relation-read contract. `symbol_ref` is derived from the exact result token and is equal to the retained migration field `ref.token`. No token spelling creates authority: existing runtime owners re-admit workspace, lifetime, epoch and compiler evidence.
 

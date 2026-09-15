@@ -13,10 +13,10 @@ class PublicToolContractTest {
         val token = (ProtocolText.parse("query:v1:EXAMPLE_NOT_ISSUED") as Refinement.Refined).value
         val refs =
             (BoundedProtocolList.create(
-                    listOf((ProtocolText.parse("NON_ISSUED_SCHEMA_TEST_ONLY") as Refinement.Refined).value)
+                    listOf(ExactSymbolRef((ProtocolText.parse("NON_ISSUED_SCHEMA_TEST_ONLY") as Refinement.Refined).value))
                 ) as Refinement.Refined)
                 .value
-        val document = PublicToolQuerySymbols(PublicToolReferenceSource(refs), null, null, token)
+        val document = PublicToolQuerySymbols(PublicToolReferenceSource(refs), null, null, ContinuationRef(token))
         val encoded = Json.encodeToJsonElement(PublicToolQuerySymbols.serializer(), document)
         val admitted = PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, encoded) as Refinement.Refined
         val canonical = (admitted.value.canonical as PublicToolCanonical.Query).request
@@ -44,7 +44,6 @@ class PublicToolContractTest {
             listOf(
                 QuerySymbolFieldDocument.NAME,
                 QuerySymbolFieldDocument.LOCATION,
-                QuerySymbolFieldDocument.SIGNATURE,
             ),
             (request.output as QueryOutputDocument.Symbols).fields.values,
         )

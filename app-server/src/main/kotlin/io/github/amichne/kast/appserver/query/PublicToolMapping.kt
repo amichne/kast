@@ -55,7 +55,7 @@ internal fun PublicToolDocument.lower(): Refinement<PublicToolCanonical, PublicT
                             from.value,
                             (steps ?: PublicToolDefaults.steps).values.map { it.lower() },
                             (return_fields ?: PublicToolDefaults.returnFields).values,
-                            continuation,
+                            continuation?.token,
                             executionBudget,
                         )
                     )
@@ -122,7 +122,7 @@ private fun PublicToolSource.lower(): Refinement<QueryFromDocument, PublicToolIn
                     bounded(
                         symbol_refs.values.map {
                             // The exact-reference owner admits authenticity, generation and workspace at execution.
-                            QueryReferenceDocument.ExactSymbol(it)
+                            QueryReferenceDocument.ExactSymbol(it.token)
                         }
                     )
                 )

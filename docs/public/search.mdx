@@ -4,7 +4,7 @@ title: "Find Kotlin declarations"
 description: "Choose a search tool, narrow its scope, and reuse the exact compiler result."
 resource: "file://docs/public/search.mdx"
 tags: ["search", "query", "agents", "Kotlin"]
-timestamp: "2026-09-14T00:00:00-04:00"
+timestamp: "2026-09-15T00:00:00-04:00"
 code_sources:
   - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt"
     symbols: ["PublicToolContract", "AdmittedPublicTool", "PublicToolRequestSerializer"]
@@ -53,8 +53,9 @@ Use these request rules:
 - Use a package scope when a simple declaration name needs qualification.
 - Set `"name_match":"fuzzy"` explicitly because Kast never retries fuzzily.
 
-Each match retains its name, location, signature, completeness evidence, and
-opaque `symbol_ref`.
+Each match retains its name, location, completeness evidence, and opaque
+`symbol_ref`. The nullable `signature` field is unprojected by default; retrieve
+it explicitly with `query_symbols` using the returned reference.
 
 Matching overloads remain separate.
 
@@ -167,7 +168,7 @@ A path may name a file or directory.
 ## Use the result
 
 1. Read the outer `status`, then the semantic outcome in `document`.
-2. Inspect each match's `kind`, `name`, `location`, and `signature`. Keep overloads separate.
+2. Inspect each match's `kind`, `name`, and `location`. Request `signature` when needed to compare overloads; keep overloads separate.
 3. Retain `symbol_ref` verbatim for a follow-up query or change plan.
 4. Read `failures` and any `qualification` before making a completeness claim.
 
@@ -188,6 +189,29 @@ Use `read_relations` for individual use-site facts.
   - Follow the typed blocker when the host is unready.
   - Repeat discovery when a reference is stale.
 </Accordion>
+
+## Retrieve detail without another search
+
+Start a new `query_symbols` request with the returned token and an explicit projection:
+
+```json
+{
+  "source": {
+    "type": "symbol_refs",
+    "symbol_refs": ["<copy the returned symbol_ref verbatim>"]
+  },
+  "steps": null,
+  "return_fields": ["signature"],
+  "continuation": null
+}
+```
+
+Replace the placeholder with an actually returned reference. This retrieves the
+signature without rediscovery or candidate refinement. The original result shape
+is preserved; unrequested name and location fields are null. Do not reuse a
+search continuation for this new detail query: continuations retain their original
+source, steps and projection. The public schema names exact references and
+continuations separately; both remain opaque strings on the wire.
 
 ## Reuse exact references
 

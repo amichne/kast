@@ -22,6 +22,8 @@ import org.junit.jupiter.api.Test
 class PublicExecutionBudgetTest {
     private val json = Json { encodeDefaults = true }
     private val name = (ProtocolText.parse("Service") as Refinement.Refined).value
+    private val publicRefs =
+        (BoundedProtocolList.create(listOf(ExactSymbolRef(name))) as Refinement.Refined).value
     private val budget =
         ExecutionBudgetDocument(
             maxElapsedMillis = (ElapsedTimeLimitMillis.parse(3000) as Refinement.Refined).value,
@@ -59,7 +61,7 @@ class PublicExecutionBudgetTest {
                     json.encodeToJsonElement(PublicToolSearchDeclarations(name, null, null, null, budget)),
                 PublicToolIdentity.QUERY_SYMBOLS to
                     json.encodeToJsonElement(
-                        PublicToolQuerySymbols(PublicToolReferenceSource(refs), null, null, null, budget)
+                        PublicToolQuerySymbols(PublicToolReferenceSource(publicRefs), null, null, null, budget)
                     ),
             )
         for ((identity, document) in cases) {
@@ -87,7 +89,6 @@ class PublicExecutionBudgetTest {
 
     @Test
     fun `all query backed facades reject every malformed budget dimension before canonical lowering`() {
-        val refs = (BoundedProtocolList.create(listOf(name)) as Refinement.Refined).value
         val inputs =
             listOf(
                 PublicToolIdentity.SEARCH_CLASSES to
@@ -98,7 +99,7 @@ class PublicExecutionBudgetTest {
                     json.encodeToJsonElement(PublicToolSearchDeclarations(name, null, null, null, budget)),
                 PublicToolIdentity.QUERY_SYMBOLS to
                     json.encodeToJsonElement(
-                        PublicToolQuerySymbols(PublicToolReferenceSource(refs), null, null, null, budget)
+                        PublicToolQuerySymbols(PublicToolReferenceSource(publicRefs), null, null, null, budget)
                     ),
             )
         val encodedBudget = json.encodeToString(ExecutionBudgetDocument.serializer(), budget)

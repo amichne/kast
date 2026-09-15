@@ -55,11 +55,7 @@
       "description": "null returns name and location, [] requests mandatory identity and kind only. Symbol references and completeness evidence are always retained. Duplicate fields are rejected by server admission."
     },
     "continuation": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "description": "Opaque continuation returned by this exact pipeline. Omit or use null to start. Resume with the same source, steps and return_fields; stale or mismatched state rejects."
+      "$ref": "#/$defs/ContinuationRef"
     },
     "execution_budget": {
       "$ref": "#/$defs/ExecutionBudget"
@@ -268,8 +264,7 @@
         "symbol_refs": {
           "type": "array",
           "items": {
-            "type": "string",
-            "description": "Opaque exact-symbol reference returned by Kast. Copy the token verbatim; do not construct, edit, or substitute a candidate reference."
+            "$ref": "#/$defs/ExactSymbolRef"
           },
           "minItems": 1,
           "maxItems": 1000
@@ -405,6 +400,17 @@
         "max_returned_bytes"
       ],
       "additionalProperties": false
+    },
+    "ExactSymbolRef": {
+      "type": "string",
+      "description": "Opaque exact-symbol reference returned by Kast. Copy the token verbatim; do not construct, edit, or substitute a candidate reference."
+    },
+    "ContinuationRef": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Opaque continuation returned by this exact pipeline. Omit or use null to start. Resume with the same source, steps and return_fields; stale or mismatched state rejects."
     }
   }
 }
