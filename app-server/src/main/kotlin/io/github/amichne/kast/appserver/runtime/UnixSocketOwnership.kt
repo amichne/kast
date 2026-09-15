@@ -168,10 +168,8 @@ internal object UnixSocketPathOwnership {
             }
             return when (probe(transport)) {
                 UnixSocketReachability.REACHABLE -> UnixSocketPathPreparation.OWNED
-                UnixSocketReachability.UNREACHABLE -> {
-                    Files.delete(path)
-                    UnixSocketPathPreparation.PREPARED
-                }
+                // Connection refusal is liveness evidence, never an ownership grant.
+                UnixSocketReachability.UNREACHABLE -> UnixSocketPathPreparation.REJECTED
                 UnixSocketReachability.REJECTED -> UnixSocketPathPreparation.REJECTED
             }
         } catch (_: IOException) {
