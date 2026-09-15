@@ -48,6 +48,10 @@ def _facts(response):
                    for fact in response.get('relations', []))
 
 
+def _has_scoped_unsupported(omissions):
+    return any(item.get('reason') == 'UNSUPPORTED_ITEM' and item.get('samples') for item in omissions)
+
+
 def run_kotlin_call_regression(replay):
     """Requires the compiled ReadKotlinCalls.kt in the owned fixture root source set."""
     path = replay.fixture.workspace / 'src/main/kotlin/ReadKotlinCalls.kt'
@@ -85,8 +89,7 @@ def run_kotlin_call_regression(replay):
                 and fact.get('provenance') == 'k2-authored-source'
                 and fact.get('occurrence', {}).get('file') == str(path) for fact in facts),
             'scopedUnsupportedOwner': (status == 'complete' and omissions == []) or
-                (status == 'qualified' and any(item.get('reason') == 'unsupported-item'
-                    and item.get('samples') for item in omissions)),
+                (status == 'qualified' and _has_scoped_unsupported(omissions)),
             'sameLiveAuthority': response.get('live') == replay.live,
         }, len(facts), response)
         if name == 'outer':
