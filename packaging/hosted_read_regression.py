@@ -27,7 +27,8 @@ from hosted_compact_source_regression import run_compact_source_regression
 from hosted_vfs_overflow_regression import run_vfs_overflow_regression
 from hosted_read_policy import NativeReadPolicy
 from hosted_source_failure_regression import run_source_failure_regression
-from hosted_diagnostic_pages_regression import run_diagnostic_pages_regression
+from hosted_diagnostic_pages_regression import (run_diagnostic_pages_regression, DiagnosticRequest,
+    DiagnosticGrant, DiagnosticDrained, drain_diagnostics)
 from hosted_source_read_regression import run_source_paging_regression, source_qualification_observation
 
 
@@ -163,12 +164,18 @@ class _ReadReplay:
         run_repair_time_regression(self)
         run_resume_budget_regression(self)
         run_read_name_regression(self)
-        response = self.transport.invoke(self.surface, 'check_diagnostics',
-            {'relative_path': 'src/main/kotlin/Fixture.kt', 'max_diagnostics': None})
+        request = DiagnosticRequest('src/main/kotlin/Fixture.kt', 1000,
+            execution_budget=DiagnosticGrant(max_results=1000))
+        first, _ = self.transport.invoke_observed(self.surface, 'check_diagnostics', asdict(request))
+        drained = drain_diagnostics(self, request, first)
+        complete = isinstance(drained, DiagnosticDrained)
+        response = drained.pages[-1] if complete else first
+        facts = tuple(item for page in drained.pages for item in page['diagnostics']) if complete else ()
         self.record('diagnostics-exact-file', 'check_diagnostics', {
-            **self.completed(response), 'diagnosticsPresent': isinstance(response.get('diagnostics'), list),
-            'noCompilerErrors': all(d.get('severity') != 'error' for d in response.get('diagnostics', [])),
-        }, len(response.get('diagnostics', [])), response)
+            **self.completed(response), 'boundedDrainCompleted': complete,
+            'diagnosticsPresent': complete and all(isinstance(page.get('diagnostics'), list) for page in drained.pages),
+            'noCompilerErrors': complete and all(d.get('severity') != 'error' for d in facts),
+        }, len(facts), response)
 
     def source_read(self):
         response = self.transport.invoke(self.surface, 'source_read', {
