@@ -290,3 +290,5 @@ orphaned replay and start a fresh bounded scan. The same retained-child check
 applies during publication, including interleaved admissions. Resume requests do
 not restart implicitly, and expiry, capacity and semantic request checks retain
 their existing authority.
+
+Exact symbol lookup rejects invalid PSI as stale and a matching declaration without a source range as unsupported. Unexpected native failures remain distinct from genuine index unavailability through symbol inspection and wire projection; the existing native diagnostic receipt retains the correlated failure stage and class. Neither rejection becomes a complete empty result.

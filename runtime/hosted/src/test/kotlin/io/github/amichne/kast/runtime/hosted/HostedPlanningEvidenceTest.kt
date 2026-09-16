@@ -5,6 +5,7 @@ import com.networknt.schema.SchemaRegistry
 import com.networknt.schema.SpecificationVersion
 import io.github.amichne.kast.diagnostic.contract.DiagnosticBatch
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCheckResult
+import io.github.amichne.kast.diagnostic.contract.DiagnosticCompilation
 import io.github.amichne.kast.diagnostic.contract.DiagnosticIncompleteCoverage
 import io.github.amichne.kast.diagnostic.contract.DiagnosticLimitation
 import io.github.amichne.kast.diagnostic.contract.DiagnosticLimitationReason
@@ -23,6 +24,13 @@ import io.github.amichne.kast.relation.contract.RelationReadResult
 import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.relation.contract.RelationResultCount
 import io.github.amichne.kast.relation.contract.RelationWorkCount
+import io.github.amichne.kast.traversal.contract.TraversalBudget
+import io.github.amichne.kast.traversal.contract.TraversalByteLimit
+import io.github.amichne.kast.traversal.contract.TraversalDepthLimit
+import io.github.amichne.kast.traversal.contract.TraversalFrontierLimit
+import io.github.amichne.kast.traversal.contract.TraversalLimitation
+import io.github.amichne.kast.traversal.contract.TraversalPage
+import io.github.amichne.kast.traversal.contract.TraversalPlan
 import io.github.amichne.kast.traversal.contract.TraversalRejection
 import io.github.amichne.kast.traversal.contract.TraversalResult
 import java.nio.file.Path
@@ -109,6 +117,51 @@ class HostedPlanningEvidenceTest {
             assertEquals(HostedPlanningEvidenceFailure.DiagnosticIncomplete(setOf(reason)), failure)
             assertSchema(failure)
         }
+    }
+
+    @Test
+    fun `only complete traversal and diagnostic proofs advance planning`() {
+        val fixture = RelationPagingFixture.live()
+        val plan =
+            TraversalPlan.start(
+                    fixture.selector,
+                    RelationMeaning.References,
+                    TraversalBudget(
+                        fixture.budget.resources.resultLimit,
+                        TraversalByteLimit.parse(fixture.budget.returnedBytes.value).proven(),
+                        fixture.budget.resources.workUnitLimit,
+                        fixture.budget.resources.elapsedTimeLimit,
+                        TraversalDepthLimit.parse(1).proven(),
+                        TraversalFrontierLimit.parse(1).proven(),
+                        fixture.budget,
+                    ),
+                )
+                .proven()
+        val page = TraversalPage.fromBoundary(plan, emptyList(), 0, 0, 0, 0).proven()
+        val complete = TraversalResult.complete(page)
+        assertSame(complete, complete.planningEvidence().proven())
+        val partial =
+            TraversalResult.qualifiedTerminal(
+                    page,
+                    setOf(TraversalLimitation.ONE_HOP_INCOMPLETE),
+                    setOf(RelationLimitation.UNRESOLVED_TARGET, RelationLimitation.UNSUPPORTED_ITEM),
+                )
+                .proven()
+        val failure = partial.planningEvidence().failure()
+        assertEquals(
+            HostedPlanningEvidenceFailure.TraversalIncomplete(
+                setOf(TraversalLimitation.ONE_HOP_INCOMPLETE),
+                setOf(RelationLimitation.UNRESOLVED_TARGET, RelationLimitation.UNSUPPORTED_ITEM),
+                HostedPlanningContinuation.TERMINAL_INCOMPLETE,
+            ),
+            failure,
+        )
+        assertSchema(failure)
+        val scope =
+            DiagnosticScope.fromCanonicalPaths(fixture.authority, listOf(Path.of("/workspace/Subject.kt"))).proven()
+        val compiled = DiagnosticCompilation.complete(DiagnosticBatch.empty(scope))
+        val diagnostic = DiagnosticCheckResult.Complete(compiled.batch, compiled.coverage)
+        assertSame(diagnostic, diagnostic.planningEvidence().proven())
     }
 
     private fun batch(request: RelationRequest) =
