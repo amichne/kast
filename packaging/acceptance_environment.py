@@ -156,6 +156,19 @@ class AcceptanceEnvironment:
             environment["NO_PROXY"] = environment["no_proxy"] = "127.0.0.1,localhost,::1"
         self.environment = MappingProxyType(environment)
 
+    def saved_configuration_probe_environment(self, base: Mapping[str, str], saved: Path) -> dict[str, str]:
+        """Only an owned saved source can select a configuration for the read-only native probe."""
+        if not saved.is_relative_to(self.root) or saved.resolve(strict=True) != saved or not saved.is_file():
+            raise EnvironmentRejected(EnvironmentFailure.INVALID_INPUT)
+        environment = dict(base)
+        environment['KAST_CONFIGURATION_FILE'] = str(saved)
+        environment['KAST_APP_SERVER_TOOLS'] = 'semantic_query,impact_analyze'
+        options = environment.pop('_JAVA_OPTIONS', None)
+        tool_options = environment.pop('JAVA_TOOL_OPTIONS', None)
+        if options is not None and options == tool_options:
+            environment['JAVA_OPTS'] = options
+        return environment
+
     def stage_product(self, source: Path) -> Path:
         if (not source.is_absolute() or not source.is_dir()
                 or self.root.is_relative_to(source.resolve())):

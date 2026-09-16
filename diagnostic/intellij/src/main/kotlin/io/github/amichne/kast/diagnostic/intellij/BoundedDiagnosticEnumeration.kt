@@ -5,6 +5,7 @@ import io.github.amichne.kast.diagnostic.contract.DiagnosticEnumerationFailure
 import io.github.amichne.kast.diagnostic.contract.DiagnosticEnumerationRequest
 import io.github.amichne.kast.diagnostic.contract.DiagnosticEnumerationResult
 import io.github.amichne.kast.diagnostic.contract.DiagnosticEnumerationStop
+import io.github.amichne.kast.diagnostic.contract.DiagnosticEnumerationWork
 import io.github.amichne.kast.diagnostic.contract.DiagnosticScopeQuery
 import io.github.amichne.kast.diagnostic.contract.DiagnosticScopeResolutionFailure
 import io.github.amichne.kast.diagnostic.contract.DiagnosticSourceFile
@@ -23,18 +24,19 @@ internal class DiagnosticEnumerationAllowance(
     private val budget: ResourceBudget,
     private val elapsedMillis: () -> Long,
 ) {
-    private var work = 0L
+    var consumedWork = DiagnosticEnumerationWork.NONE
+        private set
 
     fun admit(newFiles: Int): DiagnosticEnumerationAdmission =
         when {
             elapsedMillis() >= budget.elapsedTimeLimit.value ->
                 DiagnosticEnumerationAdmission.Stop(DiagnosticEnumerationStop.TIME_LIMIT)
-            work >= budget.workUnitLimit.value ->
+            consumedWork.value >= budget.workUnitLimit.value ->
                 DiagnosticEnumerationAdmission.Stop(DiagnosticEnumerationStop.WORK_LIMIT)
             newFiles >= budget.resultLimit.value ->
                 DiagnosticEnumerationAdmission.Stop(DiagnosticEnumerationStop.FILE_LIMIT)
             else -> {
-                work += 1
+                consumedWork = consumedWork.incremented()
                 DiagnosticEnumerationAdmission.Continue
             }
         }
@@ -101,7 +103,8 @@ private constructor(
         }
         if (admission == DiagnosticEnumerationAdmission.Continue) admission = allowance.publication()
         return when (val stopped = admission) {
-            DiagnosticEnumerationAdmission.Continue -> DiagnosticEnumerationResult.Exhausted(seen.sortedBy { it.value })
+            DiagnosticEnumerationAdmission.Continue ->
+                DiagnosticEnumerationResult.Exhausted(seen.sortedBy { it.value }, allowance.consumedWork)
             is DiagnosticEnumerationAdmission.Stop -> {
                 if (seen.size == initialCount)
                     DiagnosticEnumerationResult.Rejected(DiagnosticEnumerationFailure.IncreaseGrant(stopped.reason))

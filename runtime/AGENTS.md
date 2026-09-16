@@ -9,6 +9,8 @@ Composes semantic services inside an existing IntelliJ project and retains typed
 
 ## Key Files
 
+- [workspace](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace) - explicit asynchronous refresh, exact task-success policy, and project-owned lifecycle status.
+
 - [HostedDiagnosticCompletion.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedDiagnosticCompletion.kt) - diagnostic caller-elapsed completion policy; other read policies stay explicit.
 
 - [HostedDiagnosticResponse.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedDiagnosticResponse.kt) - full-envelope diagnostic output fitting and retained suffixes.

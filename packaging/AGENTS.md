@@ -9,6 +9,10 @@ Implements installer support, installed-product acceptance, configuration ingres
 
 ## Key Files
 
+- [hosted_configuration_continuity.py](hosted_configuration_continuity.py) - private saved-selector and inherited-tool continuity through the staged CLI.
+
+- [hosted_workspace_refresh_regression.py](hosted_workspace_refresh_regression.py) - disposable native file-refresh and Gradle-module reload acceptance, including failed import restoration.
+
 - [hosted_repair_time_observation.py](hosted_repair_time_observation.py) - same-request native host stage, grant, reserve and transport timing evidence.
 
 - [hosted_diagnostic_pages_regression.py](hosted_diagnostic_pages_regression.py) - bounded same-basis diagnostic drain and repeated warning occurrences.

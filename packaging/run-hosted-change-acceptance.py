@@ -20,7 +20,9 @@ from native_fixture_probe import NativeFixtureProbeError
 from hosted_read_fixture import prepare_read_fixture
 from hosted_read_policy import NativeReadPolicy, policy_receipt
 from hosted_generated_fixture import prepare_generated_fixture, finalize_generated_fixture
+from hosted_configuration_continuity import inspect_configuration_continuity
 from hosted_read_regression import run_read_regression
+from hosted_workspace_refresh_regression import run_workspace_refresh_regression
 from released_acceptance_product import admit_release, install_release, product_executable, ReleaseAssetIdentity, ReleaseRejected
 from released_session_acceptance import SessionRejected, inspect_shell_sessions
 from released_upgrade_acceptance import admit_previous_release, prepare_release_upgrade
@@ -41,6 +43,7 @@ def main():
     parser.add_argument('--previous-release-assets', type=Path)
     parser.add_argument('--previous-release-version')
     parser.add_argument('--diagnostic-dirty', action='store_true')
+    parser.add_argument('--workspace-refresh-only', action='store_true')
     parser.add_argument('--read-policy', type=NativeReadPolicy, choices=list(NativeReadPolicy), default=NativeReadPolicy.DEFAULT)
     parser.add_argument('--readiness-seconds', type=int, default=600)
     parser.add_argument('--run-seconds', type=int, default=900)
@@ -134,6 +137,9 @@ def main():
             runtime_observer = OwnedRuntimeObserver(isolation.root, product, fixture.workspace, isolation.tools['ps'])
             native_report = private / 'report.private.json'
             try:
+                evidence['configurationContinuity'] = inspect_configuration_continuity(isolation, fixture, product)
+                record({'event': 'stage', 'stage': 'configuration-continuity',
+                        'outcome': 'completed' if evidence['configurationContinuity']['outcome'] == 'passed' else 'rejected'})
                 record({'event': 'stage', 'stage': 'generated-fixture-setup', 'outcome': 'started'})
                 generated_setup = prepare_generated_fixture(read_fixture)
                 with private_file(private / 'generated-setup.private.log') as output:
@@ -157,14 +163,21 @@ def main():
                 record({'event': 'stage', 'stage': 'native-readiness', 'outcome': 'started'})
                 evidence['initialLive'] = processes.start_ide()
                 record({'event': 'stage', 'stage': 'native-readiness', 'outcome': 'completed'})
-                evidence['readRegression'] = run_read_regression(isolation, fixture, product, idea.java, harness, repo, read_fixture, evidence['initialLive'], args.read_policy)
+                if not args.workspace_refresh_only:
+                    evidence['readRegression'] = run_read_regression(isolation, fixture, product, idea.java, harness, repo, read_fixture, evidence['initialLive'], args.read_policy)
                 write()
+                record({'event': 'stage', 'stage': 'workspace-refresh', 'outcome': 'started'})
+                evidence['workspaceRefresh'] = run_workspace_refresh_regression(
+                    isolation, fixture, product, idea.java, harness, evidence['initialLive'])
+                record({'event': 'stage', 'stage': 'workspace-refresh',
+                        'outcome': 'completed' if evidence['workspaceRefresh']['outcome'] == 'passed' else 'rejected'})
                 if installed:
                     evidence['releasedCoordinator'] = asdict(qualify_released_coordinator(isolation, installed, inventory, fixture))
                     write()
-                processes.run(idea.java, harness, schemas, private, native_report, args.run_seconds, record)
-                evidence['native'] = bounded_native_report(native_report, fixture.workspace)
-                evidence['durableReceipts'] = durable_receipt_scopes(isolation.root / 'home', fixture.workspace)
+                if not args.workspace_refresh_only:
+                    processes.run(idea.java, harness, schemas, private, native_report, args.run_seconds, record)
+                    evidence['native'] = bounded_native_report(native_report, fixture.workspace)
+                    evidence['durableReceipts'] = durable_receipt_scopes(isolation.root / 'home', fixture.workspace)
                 evidence['status'] = 'observed-with-unqualified-matrix'
             finally:
                 processes.retire()

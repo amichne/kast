@@ -511,10 +511,9 @@ internal object InstallationWorkflow {
             |installation_root=${'$'}(CDPATH= cd -- "${'$'}script_dir/.." && pwd -P)
             |$dispatch
             |config_file=${shellQuote(plan.configuration.toString())}
-            |if [ -n "${'$'}{KAST_CONFIGURATION_FILE+x}" ] && [ "${'$'}KAST_CONFIGURATION_FILE" != "${'$'}config_file" ]; then
-            |  export KAST_SAVED_CONFIGURATION_FAILURE=configuration-selector-conflict
+            |if [ -z "${'$'}{KAST_CONFIGURATION_FILE+x}" ]; then
+            |  export KAST_CONFIGURATION_FILE="${'$'}config_file"
             |fi
-            |export KAST_CONFIGURATION_FILE="${'$'}config_file"
             |control_executable="${'$'}script_dir/$executable"
             |[ -x "${'$'}control_executable" ] || { printf '%s\n' 'kast: installed payload is incomplete' >&2; exit 1; }
             |export JAVA=${shellQuote(plan.request.javaHome.value.resolve("bin/java").toString())}

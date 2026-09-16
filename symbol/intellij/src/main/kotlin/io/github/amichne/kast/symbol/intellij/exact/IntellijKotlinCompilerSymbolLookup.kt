@@ -76,6 +76,7 @@ internal class IntellijKotlinCompilerSymbolLookup(
                     return IntellijCompilerSymbolLookupResult.Rejected(lookup.reason.toSymbolSelectorRejection())
             }
         val declaration = live.declaration
+        if (!declaration.isValid) return rejected(IntellijSymbolSelectorRejection.STALE_LOCATION)
         observation.count(IntellijReadCounter.COMPILER_REFINEMENTS)
         val projection =
             when (
@@ -101,8 +102,8 @@ internal class IntellijKotlinCompilerSymbolLookup(
             val evidence =
                 CompilerGroundedSymbolEvidence.fromBoundary(
                     file = key.file,
-                    rawStartInclusive = declaration.textRange.startOffset,
-                    rawEndExclusive = declaration.textRange.endOffset,
+                    rawStartInclusive = live.evidence.range.startInclusive,
+                    rawEndExclusive = live.evidence.range.endExclusive,
                     rawName = declaration.name.orEmpty(),
                     rawQualifiedIdentity = projection.qualifiedIdentity,
                     kind = projection.kind,

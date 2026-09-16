@@ -152,8 +152,8 @@ class KastCleanSlatePolicyTest {
                 ForbiddenEffect.SOURCE_FILESYSTEM_WRITE to emptySet(),
                 ForbiddenEffect.JDBC to setOf(ModuleId.EVIDENCE_SQLITE, ModuleId.EVIDENCE_TOPOLOGY_SQLITE),
                 ForbiddenEffect.GRADLE_PLATFORM to emptySet(),
-                ForbiddenEffect.GRADLE_IMPORT to emptySet(),
-                ForbiddenEffect.RECURSIVE_VFS_REFRESH to emptySet(),
+                ForbiddenEffect.GRADLE_IMPORT to setOf(ModuleId.RUNTIME_HOSTED),
+                ForbiddenEffect.RECURSIVE_VFS_REFRESH to setOf(ModuleId.RUNTIME_HOSTED),
                 ForbiddenEffect.TOPOLOGY_SOURCE_ROOT_VFS_SYNCHRONIZATION to
                     setOf(ModuleId.TOPOLOGY_INTELLIJ),
                 ForbiddenEffect.INDEXING_CYCLE to emptySet(),

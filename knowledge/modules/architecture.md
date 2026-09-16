@@ -95,3 +95,5 @@ Read [runtime and hosts](runtime-hosts.md) for process ownership or [protocol](p
 The [installed knowledge contract](../contracts/installed-knowledge.md) describes
 `kast knowledge`, its isolated PSI extraction, verified module ownership and
 scoped guide resources staged with the control product.
+
+The explicit hosted workspace refresh adapter is the sole scoped caller permitted to perform native Gradle model reload and recursive VFS refresh. These capabilities are not granted to `workspace:intellij-read` or the general hosted runtime. Architecture regression tests retain rejection of passive-read callers and of unrelated lifecycle authority such as project opening/linking and cache/index rebuilding.

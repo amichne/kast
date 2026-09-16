@@ -117,3 +117,5 @@ unapplied configuration changes. Status leaves semantic readiness unobserved rat
 inferring IDEA authority. Installed transport acceptance does not qualify stock
 interactive CLI or Desktop tool exposure; the explicit CLI route and Desktop
 façade remain pending those gates.
+
+The hosted endpoint also composes an explicit workspace refresh owner outside `workspace:intellij-read`. Its existing socket accepts file refresh, Gradle model reload, bounded status and one per-host opt-in task-success rule. `index refresh` and `ide refresh` expose the typed control documents. This path never opens or links projects; semantic read admission remains passive.

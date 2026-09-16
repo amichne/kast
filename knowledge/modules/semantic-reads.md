@@ -220,8 +220,11 @@ not establish runtime dispatch or native K2 coverage without an installed run.
 Diagnostic scan progress is separate from `DiagnosticScope` and complete compiler
 coverage. The public scanner advances a detached indexed-file set, analyzes
 one complete file per unit, and drains that file's diagnostic suffix without
-repeating analysis. Every chunk validates the original authority before work
-and publication. An empty intermediate page cannot establish absence, and an
+repeating analysis. Enumeration, analysis, and output advance in the same call
+while the original work, elapsed-time, and result grants remain. Exhausted
+enumeration reports its consumed callback work, including replayed identities
+and interrupted attempts; analysis spends one remaining unit per complete file.
+Every stage validates the original authority before further work and publication. An empty intermediate page cannot establish absence, and an
 indivisible compiler unit that overruns its time grant rejects explicitly.
 The complete-scope diagnostic and mutation verification adapters retain their
 existing contracts. The public request carries an opaque continuation and an independent
@@ -287,3 +290,5 @@ orphaned replay and start a fresh bounded scan. The same retained-child check
 applies during publication, including interleaved admissions. Resume requests do
 not restart implicitly, and expiry, capacity and semantic request checks retain
 their existing authority.
+
+Exact symbol lookup rejects invalid PSI as stale and a matching declaration without a source range as unsupported. Unexpected native failures remain distinct from genuine index unavailability through symbol inspection and wire projection; the existing native diagnostic receipt retains the correlated failure stage and class. Neither rejection becomes a complete empty result.

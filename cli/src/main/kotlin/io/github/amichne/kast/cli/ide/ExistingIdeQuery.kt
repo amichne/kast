@@ -12,6 +12,7 @@ import io.github.amichne.kast.protocol.contract.ChangeIntentDocument
 enum class ExistingIdeFailure {
     CONFIGURATION_REJECTED,
     INVALID_NAME,
+    INVALID_REQUEST,
     HOST_UNAVAILABLE,
     DESCRIPTOR_REJECTED,
     RESPONSE_REJECTED,
@@ -39,6 +40,9 @@ class ExistingIdeClassName private constructor(val value: String) {
 
 sealed interface ExistingIdeOperation {
     data object Status : ExistingIdeOperation
+
+    data class Refresh(val command: io.github.amichne.kast.protocol.contract.WorkspaceRefreshCommand) :
+        ExistingIdeOperation
 
     data class Classes(val name: ExistingIdeClassName) : ExistingIdeOperation
 
@@ -91,6 +95,7 @@ sealed interface ExistingIdeOperation {
 }
 
 /** Exactly the semantic reads supported by the existing-project host. */
+@kotlinx.serialization.Serializable
 enum class ExistingIdeReadOperation(val canonical: CanonicalOperation) {
     QUERY_RUN(CanonicalOperation.QUERY_RUN),
     SYMBOL_DISCOVER(CanonicalOperation.SYMBOL_DISCOVER),

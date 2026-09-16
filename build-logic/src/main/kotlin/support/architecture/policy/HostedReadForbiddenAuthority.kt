@@ -57,6 +57,7 @@ internal enum class HostedReadForbiddenAuthority(
     GUAVA_HASHER(ForbiddenEffect.SOURCE_CONTENT_HASH, "com/google/common/hash/Hasher", "putBytes", nameMatch = HostedReadMemberMatch.ANY),
     GUAVA_HASH_FUNCTION(ForbiddenEffect.SOURCE_CONTENT_HASH, "com/google/common/hash/HashFunction", "hashBytes", nameMatch = HostedReadMemberMatch.ANY),
     GUAVA_HASHING(ForbiddenEffect.SOURCE_CONTENT_HASH, "com/google/common/hash/Hashing", "sha256", nameMatch = HostedReadMemberMatch.ANY),
+    VFS_UTIL_DIRTY_TREE(ForbiddenEffect.RECURSIVE_VFS_REFRESH, "com/intellij/openapi/vfs/VfsUtil", "markDirty"),
     VFS_UTIL_MARK_DIRTY(ForbiddenEffect.RECURSIVE_VFS_REFRESH, "com/intellij/openapi/vfs/VfsUtil", "markDirtyAndRefresh", roles = READ_TRANSITION_ROLES),
     LOCAL_FILE_SYSTEM_REFRESH_FIND(ForbiddenEffect.RECURSIVE_VFS_REFRESH, "com/intellij/openapi/vfs/LocalFileSystem", "refreshAndFind", nameMatch = HostedReadMemberMatch.PREFIX),
     LOCAL_FILE_SYSTEM_REFRESH(ForbiddenEffect.RECURSIVE_VFS_REFRESH, "com/intellij/openapi/vfs/LocalFileSystem", "refresh"),

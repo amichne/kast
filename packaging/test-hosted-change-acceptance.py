@@ -493,7 +493,7 @@ class HostedChangeAcceptanceTest(unittest.TestCase):
                         ExpectedQualificationAdmitted(), {name: {'outcome': 'passed'} for name in CASE_NAMES})),
                     'readRegression': asdict(ExpectedReadQualification(ExpectedQualificationAdmitted())),
                     'events': [{'event': 'stage', 'stage': name, 'outcome': 'completed'} for name in (
-                        'post-save-interrupted', 'plugin-owner-retired', 'fixture-broker-process-replaced')]}
+                        'post-save-interrupted', 'plugin-owner-retired', 'fixture-broker-process-replaced', 'workspace-refresh', 'configuration-continuity')]}
         self.assertTrue(native_workflow_qualified(evidence))
         for path, value in ((('readRegression', 'outcome'), 'rejected'),
                             (('readRegression', 'authorityReplay'), None),

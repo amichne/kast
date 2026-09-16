@@ -636,3 +636,5 @@ Source fitting encodes the selected expanded or compact wire projection for each
 candidate prefix, including its local selection table and retained-output cursor.
 An indivisible source text that prevents any prefix fitting becomes explicitly
 withheld with text-byte qualification; source bytes are never truncated.
+
+The `WORKSPACE_REFRESH` control request is dispatched separately from semantic reads. `index refresh` and `ide refresh` carry typed request/status/configuration documents over the existing owned socket. Response admission validates the control schema, workspace root, host and request identity. Pending results remain qualified; failures remain rejections. The [workspace lifecycle owner](../modules/workspace.md) describes its asynchronous effects and opt-in task rule.

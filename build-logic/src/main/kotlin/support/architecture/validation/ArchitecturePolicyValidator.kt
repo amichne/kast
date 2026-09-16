@@ -97,6 +97,8 @@ object ArchitecturePolicyValidator {
     }
 
     private val EXCLUSIVE_EFFECT_OWNERS = mapOf(
+        ForbiddenEffect.GRADLE_IMPORT to setOf(ModuleId.RUNTIME_HOSTED),
+        ForbiddenEffect.RECURSIVE_VFS_REFRESH to setOf(ModuleId.RUNTIME_HOSTED),
         ForbiddenEffect.PROJECT_FILE_INDEX_AUTHORITY to
             setOf(ModuleId.WORKSPACE_INTELLIJ_READ),
         ForbiddenEffect.PROJECT_READ_EPOCH_AUTHORITY to

@@ -48,6 +48,7 @@ class HostedPlanIdentity private constructor(val value: String) {
     }
 }
 
+@kotlinx.serialization.Serializable
 enum class HostedMutationOperation(val canonical: CanonicalOperation) {
     CHANGE_APPLY(CanonicalOperation.CHANGE_APPLY),
     CHANGE_RECOVER(CanonicalOperation.CHANGE_RECOVER),

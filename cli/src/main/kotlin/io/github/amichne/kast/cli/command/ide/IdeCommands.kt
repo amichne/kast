@@ -27,6 +27,7 @@ internal fun hostedIndexCommandGroup(): LocalCommandFamily = hostedCommandGroup(
 private enum class HostedCommandFamily(
     val group: String,
     val status: CliProductCommand,
+    val refresh: CliProductCommand,
     val classes: CliProductCommand,
     val supertype: CliProductCommand,
     val completion: CliProductCommand,
@@ -34,6 +35,7 @@ private enum class HostedCommandFamily(
     INDEX(
         "index",
         CliProductCommand.INDEX_STATUS,
+        CliProductCommand.INDEX_REFRESH,
         CliProductCommand.INDEX_CLASSES,
         CliProductCommand.INDEX_SUPERTYPE,
         CliProductCommand.INDEX_COMPLETION,
@@ -41,6 +43,7 @@ private enum class HostedCommandFamily(
     IDE(
         "ide",
         CliProductCommand.IDE_STATUS,
+        CliProductCommand.IDE_REFRESH,
         CliProductCommand.IDE_CLASSES,
         CliProductCommand.IDE_SUPERTYPE,
         CliProductCommand.IDE_COMPLETION,
@@ -51,6 +54,7 @@ private fun hostedCommandGroup(family: HostedCommandFamily): LocalCommandFamily 
     val commands =
         listOf(
             IdeStatusCommand(family.status),
+            IdeRefreshCommand(family.refresh),
             IdeClassesCommand(family.classes),
             IdeSupertypeCommand(family.supertype),
             IdeCompletionCommand(family.completion),
@@ -133,4 +137,20 @@ private class IdeTrustBrokerCommand : LocalKastCommand("trust-broker", CliProduc
     override fun help(context: Context) = "Explicitly enroll this user's broker approval key for hosted changes."
 
     override fun resolveAction() = CliActionResolution.Selected(CliAction.Local.TrustBroker)
+}
+
+private class IdeRefreshCommand(command: CliProductCommand) : IdeCommand("refresh", command) {
+    private val request by
+        argument("DOCUMENT", help = "Typed refresh request, status, or configure JSON document.").convert {
+            when (val parsed = ExistingIdeDocuments.admitRefreshCommand(it)) {
+                is Refinement.Refined -> parsed.value
+                is Refinement.Rejected ->
+                    fail("Expected an unambiguous workspace refresh request, status, or configure document")
+            }
+        }
+
+    override fun help(context: Context) =
+        "Explicitly refresh files or reload the linked Gradle model, inspect status, or configure an exact task-success rule."
+
+    override fun resolveAction() = action(ExistingIdeOperation.Refresh(request))
 }

@@ -73,6 +73,10 @@ internal fun SymbolInspectRejection.toWireDocument(): SymbolInspectRejectionWire
         SymbolInspectRejection.EXACT_SELECTOR_STALE -> SymbolInspectRejectionWireDocument.EXACT_SELECTOR_STALE
         SymbolInspectRejection.AMBIGUOUS -> SymbolInspectRejectionWireDocument.AMBIGUOUS
         SymbolInspectRejection.NOT_FOUND -> SymbolInspectRejectionWireDocument.NOT_FOUND
+        SymbolInspectRejection.UNSUPPORTED_DECLARATION -> SymbolInspectRejectionWireDocument.UNSUPPORTED_DECLARATION
+        SymbolInspectRejection.WORKSPACE_INDEX_UNAVAILABLE ->
+            SymbolInspectRejectionWireDocument.WORKSPACE_INDEX_UNAVAILABLE
+        SymbolInspectRejection.NATIVE_FAILURE -> SymbolInspectRejectionWireDocument.NATIVE_FAILURE
         SymbolInspectRejection.REVALIDATION_UNRETAINED -> SymbolInspectRejectionWireDocument.REVALIDATION_UNRETAINED
         SymbolInspectRejection.REVALIDATION_EXPIRED -> SymbolInspectRejectionWireDocument.REVALIDATION_EXPIRED
         SymbolInspectRejection.REVALIDATION_CAPACITY -> SymbolInspectRejectionWireDocument.REVALIDATION_CAPACITY
@@ -115,6 +119,10 @@ internal fun SymbolInspectRejectionWireDocument.toContract(): SymbolInspectRejec
         SymbolInspectRejectionWireDocument.EXACT_SELECTOR_STALE -> SymbolInspectRejection.EXACT_SELECTOR_STALE
         SymbolInspectRejectionWireDocument.AMBIGUOUS -> SymbolInspectRejection.AMBIGUOUS
         SymbolInspectRejectionWireDocument.NOT_FOUND -> SymbolInspectRejection.NOT_FOUND
+        SymbolInspectRejectionWireDocument.UNSUPPORTED_DECLARATION -> SymbolInspectRejection.UNSUPPORTED_DECLARATION
+        SymbolInspectRejectionWireDocument.WORKSPACE_INDEX_UNAVAILABLE ->
+            SymbolInspectRejection.WORKSPACE_INDEX_UNAVAILABLE
+        SymbolInspectRejectionWireDocument.NATIVE_FAILURE -> SymbolInspectRejection.NATIVE_FAILURE
         SymbolInspectRejectionWireDocument.REVALIDATION_UNRETAINED -> SymbolInspectRejection.REVALIDATION_UNRETAINED
         SymbolInspectRejectionWireDocument.REVALIDATION_EXPIRED -> SymbolInspectRejection.REVALIDATION_EXPIRED
         SymbolInspectRejectionWireDocument.REVALIDATION_CAPACITY -> SymbolInspectRejection.REVALIDATION_CAPACITY

@@ -35,7 +35,10 @@ sealed interface DiagnosticEnumerationResult {
         val reason: DiagnosticEnumerationStop,
     ) : DiagnosticEnumerationResult
 
-    data class Exhausted(override val files: List<DiagnosticSourceFile>) : DiagnosticEnumerationResult
+    data class Exhausted(
+        override val files: List<DiagnosticSourceFile>,
+        val consumedWork: DiagnosticEnumerationWork,
+    ) : DiagnosticEnumerationResult
 
     data class Rejected(val failure: DiagnosticEnumerationFailure) : DiagnosticEnumerationResult {
         constructor(reason: DiagnosticScopeResolutionFailure) : this(DiagnosticEnumerationFailure.Scope(reason))
@@ -58,4 +61,14 @@ sealed interface DiagnosticEnumerationFailure {
     data object RetentionCapacity : DiagnosticEnumerationFailure
 
     data object IndexModeUnsupported : DiagnosticEnumerationFailure
+}
+
+/** Callback work includes replayed identities and interrupted read attempts. */
+@JvmInline
+value class DiagnosticEnumerationWork private constructor(val value: Long) {
+    fun incremented(): DiagnosticEnumerationWork = DiagnosticEnumerationWork(Math.addExact(value, 1))
+
+    companion object {
+        val NONE = DiagnosticEnumerationWork(0)
+    }
 }

@@ -1,0 +1,44 @@
+[
+  {
+    "root": "/fixture",
+    "host": "00000000-0000-0000-0000-000000000001",
+    "result": {
+      "type": "unknown",
+      "requestId": "fixture-request"
+    }
+  },
+  {
+    "root": "/fixture",
+    "host": "00000000-0000-0000-0000-000000000001",
+    "result": {
+      "type": "complete",
+      "requestId": "fixture-request",
+      "stage": "EFFECT"
+    }
+  },
+  {
+    "root": "/fixture",
+    "host": "00000000-0000-0000-0000-000000000001",
+    "result": {
+      "type": "failed",
+      "requestId": "fixture-request",
+      "reason": "UNKNOWN"
+    }
+  },
+  {
+    "root": "/fixture",
+    "host": "00000000-0000-0000-0000-000000000001",
+    "result": {
+      "type": "pending",
+      "requestId": "fixture-request",
+      "stage": "UNKNOWN"
+    }
+  },
+  {
+    "root": "/fixture",
+    "host": "00000000-0000-0000-0000-000000000001",
+    "result": {
+      "type": "complete"
+    }
+  }
+]

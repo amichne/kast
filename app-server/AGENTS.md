@@ -9,6 +9,8 @@ Owns the persistent broker/coordinator, host attachment, existing-IDE invocation
 
 ## Key Files
 
+- [InstalledConfigurationAlias.kt](src/main/kotlin/io/github/amichne/kast/appserver/InstalledConfigurationAlias.kt) - owned current-alias resolution under the installation activation lock.
+
 - [KastSourcePresentation.kt](src/main/kotlin/io/github/amichne/kast/appserver/provider/KastSourcePresentation.kt) - compact returned source precedes the unchanged canonical provider envelope.
 - [NativePresentationEvidence.kt](src/test/kotlin/io/github/amichne/kast/appserver/acceptance/hostedchange/NativePresentationEvidence.kt) - bounded evidence from actual source-first provider content items.
 

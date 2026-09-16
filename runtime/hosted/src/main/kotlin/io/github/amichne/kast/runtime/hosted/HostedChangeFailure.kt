@@ -19,6 +19,10 @@ import kotlinx.serialization.json.Json
 @Serializable
 internal sealed interface HostedChangeFailure {
     @Serializable
+    @SerialName("PLANNING_EVIDENCE")
+    data class PlanningEvidence(val cause: HostedPlanningEvidenceFailure) : HostedChangeFailure
+
+    @Serializable
     @SerialName("STATE_ROOT")
     data class StateRoot(val cause: KastUserStateRootFailure) : HostedChangeFailure
 
@@ -119,6 +123,7 @@ internal value class HostedChangeRejectionCode private constructor(private val v
         fun from(detail: HostedChangeFailure): HostedChangeRejectionCode =
             HostedChangeRejectionCode(
                 when (detail) {
+                    is HostedChangeFailure.PlanningEvidence -> "CHANGE_PLANNING_EVIDENCE_REJECTED"
                     is HostedChangeFailure.Endpoint -> detail.cause.name
                     HostedChangeFailure.PlanMissing -> HostedEndpointFailure.INVALID_REQUEST.name
                     is HostedChangeFailure.StateRoot,

@@ -15,6 +15,7 @@ Defines reusable Gradle conventions, module roles, publication behavior, generat
 - [src/main/kotlin/kast.runtime-app.gradle.kts](src/main/kotlin/kast.runtime-app.gradle.kts) - runtime application convention.
 - [src/main/kotlin/support/architecture/ArchitectureModel.kt](src/main/kotlin/support/architecture/ArchitectureModel.kt) - architecture model.
 - [src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt](src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt) - admitted module topology.
+- [src/main/kotlin/support/architecture/policy/HostedWorkspaceRefreshAuthority.kt](src/main/kotlin/support/architecture/policy/HostedWorkspaceRefreshAuthority.kt) - exact native effect targets for the explicit workspace refresh adapter.
 
 - [src/main/kotlin/kast.kotlin-quality.gradle.kts](src/main/kotlin/kast.kotlin-quality.gradle.kts) - shared formatting, Detekt, and structural gates.
 - [src/main/kotlin/conventions/KotlinFileLengthTask.kt](src/main/kotlin/conventions/KotlinFileLengthTask.kt) - production/test file-length enforcement.

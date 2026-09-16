@@ -36,6 +36,7 @@ code_sources:
   - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedInstallationOwnedTree.kt
     symbols: [ManagedInstallationOwnedTree]
   - path: packaging/configuration-schema.json
+  - path: packaging/installation-lifecycle.py
   - path: packaging/installation-recovery.py
   - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/InstallationRecoveryReceipt.kt
   - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ControlPayloadInventory.kt
@@ -64,6 +65,15 @@ fail-closed compatibility result and precedes installation effects. Interactive
 public installation explains app-server tooling and asks whether to enable the
 per-user login LaunchAgent; `--no-interactive` skips that read and defaults the
 LaunchAgent off unless its existing configuration switch explicitly enables it.
+
+Hosted-only schema-2 installations retire their coordinator without invoking
+the retired isolated-workspace `stop` command. Legacy schema-1 installations
+retain that obligation. Lifecycle rejection reports identify the bounded stage
+and outcome, including unresolved worker receipts; failed retirement preserves
+the existing transition journal and state. Successful plugin installation still
+requires the separately reported IDEA restart. Retired CLI start/stop guidance
+identifies the IDE lifecycle as user-managed rather than claiming a replacement
+operation.
 
 Installation child processes emit `kast_installation` records by default with a closed stage and outcome. Prior admission, retirement, configuration validation, command qualification and App Server enablement retain distinct success, nonzero exit, deadline, I/O and interruption observations. Child admission remains authoritative; these records do not contain command arguments, environment values or filesystem paths.
 

@@ -77,6 +77,31 @@ class InstallationWorkflowTest {
             assertTrue(values.containsKey(declaration.key), declaration.key)
         }
         assertEquals("0", values["KAST_DEBUG"])
+        assertLauncherSelection(selected, root, installation)
+    }
+
+    private fun assertLauncherSelection(selected: Path, root: Path, installation: Path) {
+        Files.writeString(
+            selected.resolve("bin/kast"),
+            "#!/bin/sh\n" +
+                "printf '%s\\n' \"${'$'}KAST_CONFIGURATION_FILE\" \"${'$'}{KAST_SAVED_CONFIGURATION_FAILURE-}\"\n",
+        )
+        val launcher = selected.resolve("bin/kast-complete").toString()
+        val alternate = root.resolve("alternate-environment").toString()
+        val inherited = installation.resolve("versions/prior/config/environment").toString()
+        for (selector in listOf(null, alternate, inherited)) {
+            val process =
+                ProcessBuilder(launcher)
+                    .apply {
+                        environment().remove("KAST_CONFIGURATION_FILE")
+                        environment().remove("KAST_SAVED_CONFIGURATION_FAILURE")
+                        if (selector != null) environment()["KAST_CONFIGURATION_FILE"] = selector
+                    }
+                    .start()
+            val lines = process.inputStream.bufferedReader().readLines()
+            assertEquals(0, process.waitFor())
+            assertEquals(listOf(selector ?: selected.resolve("config/environment").toString(), ""), lines)
+        }
     }
 
     @Test

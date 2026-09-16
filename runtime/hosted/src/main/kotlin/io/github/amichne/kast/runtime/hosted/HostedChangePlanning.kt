@@ -10,7 +10,6 @@ import io.github.amichne.kast.change.contract.LiveAddDeclarationPlanningFailure
 import io.github.amichne.kast.change.intellij.HostedLiveAddDeclarationCompiler
 import io.github.amichne.kast.change.plan.PureAddDeclarationPlanningService
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCheckRequest
-import io.github.amichne.kast.diagnostic.contract.DiagnosticCheckResult
 import io.github.amichne.kast.diagnostic.contract.DiagnosticScope
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ChangeIntentDocument
@@ -18,14 +17,12 @@ import io.github.amichne.kast.protocol.contract.ChangePlanRejection
 import io.github.amichne.kast.protocol.contract.ChangePlanRequest
 import io.github.amichne.kast.query.protocol.CanonicalSelectorDecoding
 import io.github.amichne.kast.relation.contract.RelationMeaning
-import io.github.amichne.kast.relation.contract.RelationReadResult
 import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.symbol.contract.ExactSymbolRequest
 import io.github.amichne.kast.symbol.contract.SymbolDescriptionResult
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.traversal.contract.TraversalPlan
-import io.github.amichne.kast.traversal.contract.TraversalResult
 import io.github.amichne.kast.traversal.service.traversalOperations
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedSemanticReadContext
 import java.nio.file.Path
@@ -35,22 +32,23 @@ internal suspend fun prepareHostedAddDeclaration(
     project: Project,
     context: HostedSemanticReadContext,
     request: ChangePlanRequest,
-): Refinement<LiveAddDeclarationChangePlan, ChangePlanRejection> {
+): Refinement<LiveAddDeclarationChangePlan, HostedChangePlanningFailure> {
     val services = HostedSemanticServices(project, context)
     val intent =
         when (val admitted = admitAddDeclarationIntent(request)) {
             is Refinement.Refined -> admitted.value
-            is Refinement.Rejected -> return admitted
+            is Refinement.Rejected -> return canonicalRejected(admitted.failure)
         }
     val selector =
         when (val restored = restoreHostedChangeTarget(services, context, intent.exactTarget)) {
             is Refinement.Refined -> restored.value
-            is Refinement.Rejected -> return restored
+            is Refinement.Rejected -> return canonicalRejected(restored.failure)
         }
     val file =
         when (val value = selector.file) {
             is SymbolDiscoveryFileIdentity.Workspace -> value
-            is SymbolDiscoveryFileIdentity.External -> return rejected(ChangePlanRejection.EDITABLE_TARGET_REQUIRED)
+            is SymbolDiscoveryFileIdentity.External ->
+                return canonicalRejected(ChangePlanRejection.EDITABLE_TARGET_REQUIRED)
         }
     val compiled =
         when (
@@ -63,7 +61,7 @@ internal suspend fun prepareHostedAddDeclaration(
                 )
         ) {
             is LiveAddDeclarationCompilation.Compiled -> result
-            is LiveAddDeclarationCompilation.Rejected -> return rejected(ChangePlanRejection.INTENT_REJECTED)
+            is LiveAddDeclarationCompilation.Rejected -> return canonicalRejected(ChangePlanRejection.INTENT_REJECTED)
         }
     val evidence =
         when (
@@ -71,7 +69,7 @@ internal suspend fun prepareHostedAddDeclaration(
                 observeHostedPlanningEvidence(services = services, context = context, selector = selector, file = file)
         ) {
             is Refinement.Refined -> observed.value
-            is Refinement.Rejected -> return observed
+            is Refinement.Rejected -> return Refinement.Rejected(HostedChangePlanningFailure.Evidence(observed.failure))
         }
     return issueHostedPlan(
         LiveAddDeclarationPlanRequest(
@@ -85,6 +83,15 @@ internal suspend fun prepareHostedAddDeclaration(
     )
 }
 
+internal sealed interface HostedChangePlanningFailure {
+    data class Canonical(val reason: ChangePlanRejection) : HostedChangePlanningFailure
+
+    data class Evidence(val reason: HostedPlanningEvidenceFailure) : HostedChangePlanningFailure
+}
+
+private fun canonicalRejected(reason: ChangePlanRejection) =
+    Refinement.Rejected(HostedChangePlanningFailure.Canonical(reason))
+
 private fun admitAddDeclarationIntent(
     request: ChangePlanRequest
 ): Refinement<ChangeIntentDocument.AddDeclaration, ChangePlanRejection> =
@@ -97,11 +104,11 @@ private fun admitAddDeclarationIntent(
 
 private fun issueHostedPlan(
     request: LiveAddDeclarationPlanRequest
-): Refinement<LiveAddDeclarationChangePlan, ChangePlanRejection> =
+): Refinement<LiveAddDeclarationChangePlan, HostedChangePlanningFailure> =
     when (val result = PureAddDeclarationPlanningService().plan(request)) {
         is LiveAddDeclarationPlanResult.Planned -> Refinement.Refined(result.plan)
         is LiveAddDeclarationPlanResult.Rejected ->
-            rejected(
+            canonicalRejected(
                 when (result.failure) {
                     is LiveAddDeclarationPlanningFailure.Target -> ChangePlanRejection.EDITABLE_TARGET_REQUIRED
                     is LiveAddDeclarationPlanningFailure.Basis -> ChangePlanRejection.EXACT_SYMBOL_REQUIRED
@@ -133,26 +140,49 @@ private suspend fun observeHostedPlanningEvidence(
     context: HostedSemanticReadContext,
     selector: SymbolSelector,
     file: SymbolDiscoveryFileIdentity.Workspace,
-): Refinement<AddDeclarationPlanningEvidenceInput, ChangePlanRejection> {
+): Refinement<AddDeclarationPlanningEvidenceInput, HostedPlanningEvidenceFailure> {
     val budgets = services.budgets
     val relations = services.relations
     val relation =
-        relations.read(RelationRequest.start(selector, RelationMeaning.References, budgets.hostedRelationBudget))
-    if (relation !is RelationReadResult.Complete) return rejected(ChangePlanRejection.RELATION_READ_REQUIRED)
+        when (
+            val result =
+                relations
+                    .read(RelationRequest.start(selector, RelationMeaning.References, budgets.hostedRelationBudget))
+                    .planningEvidence()
+        ) {
+            is Refinement.Refined -> result.value
+            is Refinement.Rejected -> return result
+        }
     val traversalPlan =
         when (val result = TraversalPlan.start(selector, RelationMeaning.References, budgets.hostedTraversalBudget)) {
             is Refinement.Refined -> result.value
-            is Refinement.Rejected -> return rejected(ChangePlanRejection.REQUIRED_TRAVERSAL_INCOMPLETE)
+            is Refinement.Rejected ->
+                return Refinement.Rejected(
+                    HostedPlanningEvidenceFailure.TraversalRejected(
+                        HostedPlanningTraversalRejection.TRAVERSAL_CONTRACT_VIOLATION
+                    )
+                )
         }
-    val traversal = traversalOperations(relations).run(traversalPlan)
-    if (traversal !is TraversalResult.Complete) return rejected(ChangePlanRejection.REQUIRED_TRAVERSAL_INCOMPLETE)
+    val traversal =
+        when (val result = traversalOperations(relations).run(traversalPlan).planningEvidence()) {
+            is Refinement.Refined -> result.value
+            is Refinement.Rejected -> return result
+        }
     val scope =
         when (val result = DiagnosticScope.fromCanonicalPaths(context.authority, listOf(Path.of(file.path.value)))) {
             is Refinement.Refined -> result.value
-            is Refinement.Rejected -> return rejected(ChangePlanRejection.DIAGNOSTIC_CHECK_REQUIRED)
+            is Refinement.Rejected ->
+                return Refinement.Rejected(
+                    HostedPlanningEvidenceFailure.DiagnosticRejected(
+                        io.github.amichne.kast.diagnostic.contract.DiagnosticReadRejection.SCOPE_REJECTED
+                    )
+                )
         }
-    val diagnostic = services.diagnostics.check(DiagnosticCheckRequest(scope))
-    if (diagnostic !is DiagnosticCheckResult.Complete) return rejected(ChangePlanRejection.DIAGNOSTIC_CHECK_REQUIRED)
+    val diagnostic =
+        when (val result = services.diagnostics.check(DiagnosticCheckRequest(scope)).planningEvidence()) {
+            is Refinement.Refined -> result.value
+            is Refinement.Rejected -> return result
+        }
     return Refinement.Refined(
         AddDeclarationPlanningEvidenceInput(listOf(relation), listOf(traversal), listOf(diagnostic))
     )

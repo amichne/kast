@@ -58,6 +58,26 @@ import org.junit.jupiter.api.Test
 
 class SymbolExactServiceTest {
     @Test
+    fun `native and index failures remain distinct public rejections`() {
+        val workspace = published(7L)
+        val request = SymbolResolutionRequest(selection(workspace.readLease))
+        for ((native, expected) in
+            listOf(
+                io.github.amichne.kast.symbol.contract.SymbolExactCompilerRejection.NATIVE_FAILURE to
+                    SymbolExactRejection.NATIVE_FAILURE,
+                io.github.amichne.kast.symbol.contract.SymbolExactCompilerRejection.WORKSPACE_INDEX_UNAVAILABLE to
+                    SymbolExactRejection.WORKSPACE_INDEX_UNAVAILABLE,
+            )) {
+            val service =
+                SymbolExactService(
+                    WorkspaceInspectionOperations { WorkspaceRuntimeState.Ready(workspace) },
+                    RecordingExactCompiler(resolveResult = SymbolResolutionCompilation.Rejected(native)),
+                )
+            assertEquals(SymbolResolutionResult.Rejected(expected), runSuspend { service.resolve(request) })
+        }
+    }
+
+    @Test
     fun `resolve admits only the current published selection`() {
         val workspace = published(7L)
         val request = SymbolResolutionRequest(selection(workspace.readLease))

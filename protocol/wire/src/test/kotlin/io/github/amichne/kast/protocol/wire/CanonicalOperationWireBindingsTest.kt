@@ -100,6 +100,24 @@ import org.junit.jupiter.api.Test
 
 class CanonicalOperationWireBindingsTest {
     @Test
+    fun `exact native index and unsupported failures have distinct encoded causes`() {
+        for ((reason, code) in
+            listOf(
+                SymbolInspectRejection.NATIVE_FAILURE to "native_failure",
+                SymbolInspectRejection.WORKSPACE_INDEX_UNAVAILABLE to "workspace_index_unavailable",
+                SymbolInspectRejection.UNSUPPORTED_DECLARATION to "unsupported_declaration",
+            )) {
+            val outcome = OperationOutcome.Rejected(reason)
+            val document = CanonicalOperationWireBindings.symbolInspect.encodeOutcome(outcome).encodedDocument()
+            org.junit.jupiter.api.Assertions.assertTrue(document.contains("\"rejection\":\"$code\""), document)
+            assertEquals(
+                WireDecoding.Decoded(outcome),
+                CanonicalOperationWireBindings.symbolInspect.decodeOutcome(document),
+            )
+        }
+    }
+
+    @Test
     fun `production serializer table covers the exact canonical operation set`() {
         assertEquals(
             CanonicalOperation.entries,

@@ -20,6 +20,8 @@ import io.github.amichne.kast.cli.projection.CliLocalMetadata
 import io.github.amichne.kast.cli.projection.ProductInspectionDocuments
 import java.nio.file.Path
 
+private const val RETIRED_RUNTIME_GUIDANCE = "isolated-runtime-retired-ide-lifecycle-is-user-managed"
+
 /** Pure orchestration of the closed CLI boundaries and their explicit outer effects. */
 class KastCli
 internal constructor(
@@ -57,7 +59,7 @@ internal constructor(
         requestInput: CliRequestDocumentInput,
     ): CliExit {
         if (argv == listOf("start") || argv == listOf("stop")) {
-            return boundaryExit(CliBoundaryExitStatus.RUNTIME, "isolated-runtime-retired-use-ide-status")
+            return boundaryExit(CliBoundaryExitStatus.RUNTIME, RETIRED_RUNTIME_GUIDANCE)
         }
         if (
             io.github.amichne.kast.cli.ide.selectCliRuntimePath(argv) ==
@@ -133,8 +135,7 @@ internal constructor(
             is CliAction.Lifecycle ->
                 when (action) {
                     CliAction.Lifecycle.Start,
-                    CliAction.Lifecycle.Stop ->
-                        boundaryExit(CliBoundaryExitStatus.RUNTIME, "isolated-runtime-retired-use-ide-status")
+                    CliAction.Lifecycle.Stop -> boundaryExit(CliBoundaryExitStatus.RUNTIME, RETIRED_RUNTIME_GUIDANCE)
                     CliAction.Lifecycle.Status ->
                         io.github.amichne.kast.cli.ide.executeExistingIdeCli(
                             listOf("ide", "status"),

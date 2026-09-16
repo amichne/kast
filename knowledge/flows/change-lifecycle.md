@@ -6,6 +6,7 @@ resource: file://change
 tags: [change, mutation, verification, recovery]
 timestamp: 2026-09-13T00:00:00Z
 code_sources:
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedPlanningEvidenceFailure.kt
   - path: change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/admission/ChangeIntent.kt
     symbols: [ChangeIntent]
   - path: change/plan/src/main/kotlin/io/github/amichne/kast/change/plan/PureAddDeclarationPlanningService.kt
@@ -127,3 +128,5 @@ Change tools are deferred defaults after the installed workflow passed the
 and the [App Server compatibility record](../../app-server/docs/compatibility.md).
 
 Hosted change planning restores its exact target through the same project-owned reference transport as semantic reads. A compact handle is expanded and subjected to canonical authority validation before exact description and planning evidence acquisition. Handle lookup does not authorize applying a plan.
+
+Hosted `AddDeclaration` planning acquires its own current relation, traversal and diagnostic evidence. Complete evidence alone can issue an executable plan. Rejected or incomplete evidence retains all finite reasons in the bounded hosted planning detail. A page continuation is not a complete evidence proof: the current planning boundary reports `COMPLETE_EVIDENCE_ACCUMULATION_UNAVAILABLE` rather than treating a terminal page as the complete relation set. Prior public reads do not satisfy or alter planning prerequisites.

@@ -9,6 +9,8 @@ Defines canonical operation models, authoritative operation/tool registries, and
 
 ## Key Files
 
+- [WorkspaceRefreshDocuments.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/WorkspaceRefreshDocuments.kt) - typed explicit workspace lifecycle control documents, separate from canonical reads.
+
 - [SourceReadFailureDetails.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceReadFailureDetails.kt) - disjoint request, reference, and internal source failure causes.
 - [DiagnosticProgressDocument.kt](contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/DiagnosticProgressDocument.kt) - diagnostic inventory, cumulative coverage, and execution stage.
 

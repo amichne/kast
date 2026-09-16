@@ -4,6 +4,7 @@ import io.github.amichne.kast.diagnostic.contract.DiagnosticBatch
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCheckResult
 import io.github.amichne.kast.diagnostic.contract.DiagnosticCompilation
 import io.github.amichne.kast.diagnostic.contract.DiagnosticEnumerationResult
+import io.github.amichne.kast.diagnostic.contract.DiagnosticEnumerationWork
 import io.github.amichne.kast.diagnostic.contract.DiagnosticFact
 import io.github.amichne.kast.diagnostic.contract.DiagnosticOperations
 import io.github.amichne.kast.diagnostic.contract.DiagnosticScanInventory
@@ -51,6 +52,103 @@ class DiagnosticScanServiceTest {
         )
     private val files =
         DiagnosticScope.fromCanonicalPaths(lease, (1..3).map { Path.of("/workspace/src/File$it.kt") }).refined().files
+
+    @Test
+    fun `funded call advances enumeration analysis and output to completion`() {
+        val fixture = Fixture()
+        val funded =
+            ResourceBudget(
+                ResultLimit.parse(20).refined(),
+                WorkUnitLimit.parse(20).refined(),
+                budget.elapsedTimeLimit,
+            )
+        val result = runSuspend { fixture.service.scan(DiagnosticScanRequest.First(query), funded) }
+        val complete = assertInstanceOf(DiagnosticScanResult.Complete::class.java, result)
+        assertEquals(files, complete.page.analyzedFiles)
+        assertEquals((0..8).toList(), complete.page.facts.map { it.location.range.start.value })
+        assertEquals(3, fixture.analyses)
+        assertEquals(1, fixture.enumerations)
+    }
+
+    @Test
+    fun `small clean scope completes in one funded call`() {
+        val fixture = Fixture()
+        fixture.diagnosticsPerFile = 0
+        val funded =
+            ResourceBudget(ResultLimit.parse(20).refined(), WorkUnitLimit.parse(20).refined(), budget.elapsedTimeLimit)
+        val complete =
+            assertInstanceOf(
+                DiagnosticScanResult.Complete::class.java,
+                runSuspend { fixture.service.scan(DiagnosticScanRequest.First(query), funded) },
+            )
+        assertEquals(files, complete.page.analyzedFiles)
+        assertTrue(complete.page.facts.isEmpty())
+        assertEquals(0, complete.page.knownDiagnosticCount.value)
+    }
+
+    @Test
+    fun `enumeration and analysis share work grant and resumed pages match funded scan`() {
+        val fixture = Fixture()
+        val strict =
+            ResourceBudget(ResultLimit.parse(20).refined(), WorkUnitLimit.parse(2).refined(), budget.elapsedTimeLimit)
+        val first =
+            assertInstanceOf(
+                DiagnosticScanResult.Advancing::class.java,
+                runSuspend { fixture.service.scan(DiagnosticScanRequest.First(query), strict) },
+            )
+        assertEquals(1, fixture.analyses)
+        assertEquals(3, first.page.facts.size)
+        val last =
+            assertInstanceOf(
+                DiagnosticScanResult.Complete::class.java,
+                runSuspend { fixture.service.scan(DiagnosticScanRequest.Resume(first.checkpoint), strict) },
+            )
+        val uninterrupted =
+            assertInstanceOf(
+                DiagnosticScanResult.Complete::class.java,
+                runSuspend {
+                    Fixture()
+                        .service
+                        .scan(
+                            DiagnosticScanRequest.First(query),
+                            strict.copy(workUnitLimit = WorkUnitLimit.parse(20).refined()),
+                        )
+                },
+            )
+        assertEquals(
+            uninterrupted.page.facts.map { it.location },
+            (first.page.facts + last.page.facts).map { it.location },
+        )
+        assertEquals(uninterrupted.page.analyzedFiles, last.page.analyzedFiles)
+        assertEquals(uninterrupted.page.knownDiagnosticCount, last.page.knownDiagnosticCount)
+        assertEquals(1, fixture.enumerations)
+    }
+
+    @Test
+    fun `output grant is shared across analyzed files and retained suffixes`() {
+        val fixture = Fixture()
+        val strict =
+            ResourceBudget(ResultLimit.parse(4).refined(), WorkUnitLimit.parse(20).refined(), budget.elapsedTimeLimit)
+        val facts = mutableListOf<DiagnosticFact>()
+        var request: DiagnosticScanRequest = DiagnosticScanRequest.First(query)
+        repeat(3) {
+            when (val result = runSuspend { fixture.service.scan(request, strict) }) {
+                is DiagnosticScanResult.Advancing -> {
+                    assertEquals(4, result.page.facts.size)
+                    facts += result.page.facts
+                    request = DiagnosticScanRequest.Resume(result.checkpoint)
+                }
+                is DiagnosticScanResult.Complete -> {
+                    facts += result.page.facts
+                    assertEquals((0..8).toList(), facts.map { it.location.range.start.value })
+                    assertEquals(3, fixture.analyses)
+                    return
+                }
+                else -> error("Unexpected $result")
+            }
+        }
+        error("scan failed to finish")
+    }
 
     @Test
     fun `heavy file output drains without repeated compiler analysis and final coverage is exact`() {
@@ -177,6 +275,7 @@ class DiagnosticScanServiceTest {
 
     private inner class Fixture {
         var analyses = 0
+        var diagnosticsPerFile = 3
         var validations = 0
         var enumerations = 0
         var cancelEnumeration = false
@@ -195,14 +294,14 @@ class DiagnosticScanServiceTest {
                 DiagnosticScopeEnumerator { _, _ ->
                     enumerations++
                     if (cancelEnumeration) throw CancellationException("fixture cancellation")
-                    DiagnosticEnumerationResult.Exhausted(files)
+                    DiagnosticEnumerationResult.Exhausted(files, DiagnosticEnumerationWork.NONE.incremented())
                 },
                 DiagnosticOperations { request ->
                     val index = analyses++
                     val batch =
                         DiagnosticBatch.create(
                                 request.scope,
-                                (0..2).map { offset ->
+                                (0 until diagnosticsPerFile).map { offset ->
                                     DiagnosticFact.fromBoundary(
                                             request.scope,
                                             request.scope.files.single(),

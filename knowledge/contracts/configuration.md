@@ -6,6 +6,9 @@ resource: file://distribution/contract
 tags: [configuration, distribution, installation]
 timestamp: 2026-09-14T00:00:00Z
 code_sources:
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledConfigurationAlias.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/SavedConfigurationIngress.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/BrokerOperationalLimits.kt
   - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/KastSchemaOutputBudgetTest.kt
   - path: kernel/src/main/kotlin/io/github/amichne/kast/kernel/ReadLimits.kt
@@ -32,6 +35,18 @@ code_sources:
 The Kotlin catalogue owns typed keys, value parsing, defaults, and consuming component ownership. Installed-runtime composition admits saved configuration, then projects it to runtime owners instead of reading it ambiently throughout the system. Mutation commands retain this admission before connecting to the existing IDE. The default semantic read entry point selects the existing IDE before installed composition, admits saved/environment configuration, and then opens its socket. Invalid configuration returns a configuration rejection without starting a worker. The IDE separately retains validated JVM/environment read limits for its project-service lifetime. The process-boundary checks cover both paths and verify that rejection creates no runtime/cache directories.
 
 Two checked artifacts enforce the boundary: [configuration-schema.json](../../packaging/configuration-schema.json) describes the external document and [configuration-ingress.json](../../build-policy/configuration-ingress.json) declares permitted ingress owners. Root verification rejects undeclared ambient reads.
+
+Launchers select their pinned installation configuration only when
+`KAST_CONFIGURATION_FILE` is absent. An inherited selector, including an older
+installation or an intentional alternate, retains its value and environment
+provenance; unset it to choose the invoked launcher's default. Strict ingress
+still rejects invalid or unavailable selections.
+
+The exact installation-owned `current/config/environment` alias may resolve to
+its manifest-declared immutable sibling under `versions`. Admission requires
+the current anchor, canonical target, matching ownership and a nonblocking shared
+activation lock. The alias and target identities are checked again after the
+pinned configuration read. Other symlinks remain rejected.
 
 See [distribution](../modules/distribution.md).
 

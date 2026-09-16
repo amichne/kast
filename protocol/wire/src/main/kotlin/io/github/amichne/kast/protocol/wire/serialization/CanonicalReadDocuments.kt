@@ -79,6 +79,9 @@ internal enum class SymbolInspectQualificationWireDocument {
 
 @Serializable
 internal enum class SymbolInspectRejectionWireDocument {
+    @SerialName("workspace_index_unavailable") WORKSPACE_INDEX_UNAVAILABLE,
+    @SerialName("native_failure") NATIVE_FAILURE,
+    @SerialName("unsupported_declaration") UNSUPPORTED_DECLARATION,
     @SerialName("workspace_not_ready") WORKSPACE_NOT_READY,
     @SerialName("selector_wrong_kind") SELECTOR_WRONG_KIND,
     @SerialName("selector_malformed") SELECTOR_MALFORMED,
