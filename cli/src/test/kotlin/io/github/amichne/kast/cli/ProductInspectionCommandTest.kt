@@ -47,7 +47,7 @@ class ProductInspectionCommandTest {
             val result = cli().execute(listOf(command), Path.of("/missing")) as CliExit.BoundaryRejected
             assertEquals(CliBoundaryExitStatus.RUNTIME, result.status)
             assertEquals(
-                JsonPrimitive("isolated-runtime-retired-use-ide-status"),
+                JsonPrimitive("isolated-runtime-retired-ide-lifecycle-is-user-managed"),
                 Json.parseToJsonElement(result.document.value).jsonObject["reason"],
             )
         }
