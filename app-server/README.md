@@ -140,10 +140,11 @@ finite failure code. Cancellation retains its cancelled status and uncertain
 effect.
 For display, the broker projects its owned `dynamicToolCall` items into the standard
 expandable `mcpToolCall` shape, with the provider namespace as `server`, unchanged
-arguments, and raw text in `result.content`. A single JSON object from Kast also
-projects into the supported `result.structuredContent` field. Multiple content
-items, malformed JSON, and non-object payloads remain raw text without a
-manufactured structured result. This is a display adaptation, not an
+arguments, and raw text in `result.content`. The final JSON envelope from Kast also
+projects into the supported `result.structuredContent` field. When unchanged
+source text precedes that envelope, both original text items remain in
+`result.content`. Malformed and non-object final payloads remain raw text without
+a manufactured structured result. This is a display adaptation, not an
 MCP execution backend. The installed desktop client's generic dynamic-tool row
 only displays a name and discards result content.
 

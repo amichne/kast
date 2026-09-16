@@ -1,5 +1,7 @@
 package io.github.amichne.kast.appserver.protocol.codex
 
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
@@ -75,6 +77,34 @@ class NativeToolIdentityTest {
     }
 
     @Test
+    fun `source text before final JSON envelope retains text and exposes structured display content`() {
+        val envelope = SourceEnvelopeFixture(SourceDocumentFixture(operation = "source.read", status = "complete"))
+        val encodedEnvelope = displayFixtureJson.encodeToJsonElement(envelope)
+        val item =
+            displayFixtureJson
+                .encodeToJsonElement(
+                    DynamicToolDisplayFixture(
+                        id = "call-source",
+                        tool = "read_source",
+                        contentItems =
+                            listOf(
+                                DynamicToolTextFixture("class Example"),
+                                DynamicToolTextFixture(displayFixtureJson.encodeToString(envelope)),
+                            ),
+                    )
+                )
+                .jsonObject
+
+        val projected = (CodexToolCallProjector.projectCompleted(item) as CodexToolCallProjection.Projected).item
+
+        assertRawToolDisplay(item, projected)
+        assertEquals(
+            encodedEnvelope,
+            projected.getValue("result").jsonObject.getValue("structuredContent"),
+        )
+    }
+
+    @Test
     fun `unsupported single content remains raw without manufactured structured result`() {
         for (name in listOf("plain", "array", "null", "malformed")) {
             val item =
@@ -92,6 +122,29 @@ class NativeToolIdentityTest {
         original.filterKeys { it != "type" }.forEach { (key, value) -> assertEquals(value, projected[key], key) }
     }
 }
+
+@Serializable
+private data class DynamicToolDisplayFixture(
+    val id: String,
+    val tool: String,
+    val contentItems: List<DynamicToolTextFixture>,
+    val type: String = "dynamicToolCall",
+    val namespace: String = "kast",
+    val arguments: DynamicToolArgumentsFixture = DynamicToolArgumentsFixture(),
+    val status: String = "completed",
+    val success: Boolean = true,
+)
+
+@Serializable private data class DynamicToolTextFixture(val text: String, val type: String = "inputText")
+
+@Serializable private class DynamicToolArgumentsFixture
+
+@Serializable
+private data class SourceEnvelopeFixture(val document: SourceDocumentFixture, val status: String = "completed")
+
+@Serializable private data class SourceDocumentFixture(val operation: String, val status: String)
+
+private val displayFixtureJson = Json { encodeDefaults = true }
 
 /** Checks retained upstream evidence and the native client's raw, expandable content surface. */
 internal fun assertRawToolDisplay(original: JsonObject, displayed: JsonObject) {

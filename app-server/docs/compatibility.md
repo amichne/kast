@@ -65,7 +65,7 @@ applies.
 | Standard daemon discovery | Stock `codex app-server daemon version` reached the broker in a disposable home and reported CLI and server version `0.153.4`. |
 | Persistent lifecycle | Staged-product acceptance enabled launchd, completed initialize and thread/start via `kast-codex app-server`, closed parent stdio, rediscovered the running service, then disabled it. |
 | Session ownership | Module tests cover reused request IDs, blocked writers, ordered repeated deltas, observer authorization, detached exactly-once execution, pending approval correlation, source loss, and explicit control handoff. These are protocol tests, not desktop UI evidence. |
-| Native representation | Native started/completed and history items retain their complete original documents. Exact-plan approval uses a distinct `fileChange` preview and `item/fileChange/requestApproval`, admitted against the generated Codex schemas. Contract tests do not establish desktop rendering. |
+| Native representation | Broker-owned dynamic calls project to the schema-admitted `mcpToolCall` display shape while retaining their complete original fields. Exact-plan approval uses a distinct `fileChange` preview and `item/fileChange/requestApproval`, admitted against the generated Codex schemas. Contract tests do not establish desktop rendering. |
 | Installed product | `installedProductTest` and `installedCodexHostTest` passed. The executable and contract hashes are recorded in `build/reports/installed-product/codex-host.json`; its desktop field remains `UNQUALIFIED`. |
 
 ## Blockers and limitations
@@ -78,7 +78,7 @@ applies.
 | Stock TUI | `codex --remote unix://<isolated-home>/.codex/app-server-control/app-server-control.sock --no-alt-screen` rendered Codex `0.153.4`, loaded the repository directory, then required sign-in in the disposable home. The client was closed and the service disabled successfully. No credentials were copied. | TUI authentication and real model execution | Use an authorized authenticated test profile to exercise Kast, native tools, approvals, history, and reconnect. Transport/rendered startup is observed; the full TUI gate remains unqualified. |
 | Desktop UI automation | `cua.getApp("/Applications/ChatGPT.app")` returned: `Computer Use is not allowed to use the app 'com.openai.codex' for safety reasons.` No UI test was performed or bypass attempted. User permission cannot override this tool restriction. | Execution environment's computer-use policy | A human performs the desktop checklist, or an authorized desktop testing environment executes it and records evidence. |
 | Former lifecycle split | Source now routes facade attachment through the persistent service. There is no per-frontend broker launch/close in `runInstalledCodex`. | App-server host/lifecycle | Covered by service and installed attachment tests; keep detach-versus-stop regression coverage. |
-| Former presentation relabeling | Live/history preserve dynamic calls unchanged. Hosted approval emits a separate stored-plan file-change preview; it does not relabel the dynamic call. Native identity tests cover exact preservation. | App-server protocol adapters | Keep real desktop rendering/history acceptance alongside these contract tests. |
+| Tool-result display projection | Live and history carriers project broker-owned dynamic calls to `mcpToolCall`, retain their original fields, and expose exact text plus any final Kast JSON envelope through standard MCP result fields. Hosted approval separately emits a stored-plan file-change preview. | App-server protocol adapters | Keep real desktop rendering/history acceptance alongside these contract tests. |
 | Post-start catalog updates | [Codex registry update issue 24808](https://github.com/openai/codex/issues/24808). Target generated schema admits `dynamicTools` on start, not resume/fork. No post-start mutation is injected. | Upstream Codex experimental protocol | Test a changed catalog with a fresh thread, and verify bound resume rejects catalog drift. Upstream support must be separately qualified before implementation promises registry updates. |
 | Clean-context subagent inheritance | [Codex inheritance issue 42565](https://github.com/openai/codex/issues/42565). This session has not established an upstream fix. | Upstream Codex subagent tool inheritance | Run the clean-context subagent reproduction on the pinned client and record actual tools/invocation. It remains a release limitation until observed. |
 | Shared-client precedent | [OpenClaw issue 80618](https://github.com/openclaw/openclaw/issues/80618) was closed as not planned. Its scenario motivates the multi-client tests. | Regression scenario, not Codex authority | Retain two-client request-ID, disconnect, and stream-order tests. Do not infer a Codex defect from the OpenClaw report. |
@@ -180,11 +180,12 @@ semantic result. Schema generation is protocol evidence, not desktop rendering
 or a real model-call acceptance result.
 
 The same generated bundle defines `McpToolCallResult.structuredContent`. The
-broker's existing desktop display adaptation uses that supported field for a
-single Kast JSON-object payload and keeps the exact original text and dynamic
-item fields. It does not add the field to `DynamicToolCallResponse`. Unsupported
-or malformed display payloads retain their raw content and omit structured
-content; no empty success result is synthesized.
+broker's desktop display adaptation uses that supported field for the final Kast
+JSON-object envelope and keeps every original text and dynamic-item field. A
+compact source result therefore retains its leading source text while its final
+envelope becomes structured content. The broker does not add the field to
+`DynamicToolCallResponse`. Unsupported or malformed final payloads retain their
+raw content and omit structured content; no empty success result is synthesized.
 
 Broker-owned admission and response-size failures also serialize to one JSON
 text item with `status: rejected` and the original finite `failure` code.

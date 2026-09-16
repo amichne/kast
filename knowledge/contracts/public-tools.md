@@ -96,11 +96,12 @@ item. Compact source reads with returned text prepend the unchanged source in a
 separate text item; clients parse the final envelope once. Process completion and
 the original complete/qualified/rejected semantic result remain distinct; a
 canonical rejection sets tool success false. The desktop display projection
-retains raw text and exposes a single Kast JSON object through the supported
+retains raw text and exposes the final Kast JSON envelope through the supported
 `McpToolCallResult.structuredContent` field. The model-facing dynamic-tool response
 has no such property in the locally generated Codex 0.154.0 schema. Malformed,
-mixed, and non-object display results omit structured content rather than
-manufacturing an empty object.
+missing, and non-object final display results omit structured content rather than
+manufacturing an empty object. A compact source result retains its unchanged
+leading source text while its final canonical envelope supplies structured content.
 
 `query_symbols` accepts optional nullable `continuation`; omission or null starts
 a query. It preserves the opaque token through public lowering. Qualified query

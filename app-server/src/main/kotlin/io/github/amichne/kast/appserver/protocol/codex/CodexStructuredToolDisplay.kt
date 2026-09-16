@@ -26,17 +26,17 @@ internal fun encodeStructuredToolDisplayResult(
         )
     )
 
-/** Syntax projection of one owned machine payload; original content remains the display authority. */
+/** Syntax projection of the final owned machine payload; preceding content remains unchanged display context. */
 private fun admitStructuredResult(items: JsonArray, namespace: ProviderNamespace): StructuredToolResult {
     if (namespace.value != "kast") return StructuredToolResult.Unavailable(StructuredToolResultUnavailable.NOT_KAST)
     val item =
-        items.singleOrNull() as? JsonObject
-            ?: return StructuredToolResult.Unavailable(StructuredToolResultUnavailable.NOT_SINGLE_TEXT)
+        items.lastOrNull() as? JsonObject
+            ?: return StructuredToolResult.Unavailable(StructuredToolResultUnavailable.FINAL_TEXT_MISSING)
     if (item.displayString("type") != "inputText")
-        return StructuredToolResult.Unavailable(StructuredToolResultUnavailable.NOT_SINGLE_TEXT)
+        return StructuredToolResult.Unavailable(StructuredToolResultUnavailable.FINAL_TEXT_MISSING)
     val text =
         item.displayString("text")
-            ?: return StructuredToolResult.Unavailable(StructuredToolResultUnavailable.NOT_SINGLE_TEXT)
+            ?: return StructuredToolResult.Unavailable(StructuredToolResultUnavailable.FINAL_TEXT_MISSING)
     val parsed =
         try {
             Json.parseToJsonElement(text)
@@ -59,7 +59,7 @@ private sealed interface StructuredToolResult {
 
 private enum class StructuredToolResultUnavailable {
     NOT_KAST,
-    NOT_SINGLE_TEXT,
+    FINAL_TEXT_MISSING,
     INVALID_JSON,
     NOT_OBJECT,
 }
