@@ -71,3 +71,25 @@ Codex Desktop compatibility. See the [native change acceptance
 record](reviews/plugin-native-change-acceptance.md) for the tested boundary.
 
 For a damaged installation, use the [recovery runbook](installation-recovery.md).
+
+## Run native lifecycle smoke
+
+Build the matched development artifacts, then use the existing disposable graphical
+IDEA fixture. This stages a private profile and two trusted fixture roots; it does
+not control your regular IDEA process or profile.
+
+```shell
+./gradlew stageKastControlProduct :runtime:hosted:hostedPlugin
+python3 packaging/run-hosted-lifecycle-smoke.py \
+  --idea-home '/absolute/path/IntelliJ IDEA.app/Contents' \
+  --product build/control-product \
+  --plugin runtime/hosted/build/distributions/kast-ide-hosted-v<VERSION>-idea-262.zip \
+  --report /absolute/path/to/lifecycle-smoke.json
+```
+
+Use the version from the staged product metadata. The bounded smoke checks
+zero-project control, existing-settings import, first linking, separate project
+identities, reuse, reload, release, normal closure, and retained closure status.
+It does not establish focus behavior, cold launch into the normal user profile,
+or interactive veto and unsaved-editor behavior. See the
+[lifecycle verification record](reviews/ide-lifecycle-acceptance.md).

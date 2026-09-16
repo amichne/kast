@@ -139,7 +139,7 @@ class KastCleanSlatePolicyTest {
                     setOf(ModuleId.WORKSPACE_INTELLIJ_READ),
                 ForbiddenEffect.UDS_BIND to setOf(ModuleId.RUNTIME_HOSTED),
                 ForbiddenEffect.ENDPOINT_DESCRIPTOR_WRITE to setOf(ModuleId.RUNTIME_HOSTED),
-                ForbiddenEffect.PROJECT_OPEN to emptySet(),
+                ForbiddenEffect.PROJECT_OPEN to setOf(ModuleId.RUNTIME_HOSTED),
                 ForbiddenEffect.INTELLIJ_WRITE to setOf(ModuleId.CHANGE_INTELLIJ),
                 ForbiddenEffect.FILESYSTEM_WRITE to setOf(
                     ModuleId.APP_SERVER,

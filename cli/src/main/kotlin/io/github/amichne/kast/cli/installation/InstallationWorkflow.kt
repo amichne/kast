@@ -88,6 +88,7 @@ internal data class InstallationReport(
     val controlSha256: String,
     val hostedPluginSha256: String,
     val ideaHome: String,
+    val ideaLaunch: io.github.amichne.kast.distribution.managed.SelectedIdeLaunch,
     val changes: List<String>,
 )
 
@@ -152,6 +153,8 @@ private data class VerifiedInstallationPlan(
             controlSha256 = "sha256:${request.controlDigest.value}",
             hostedPluginSha256 = "sha256:${request.pluginDigest.value}",
             ideaHome = request.ideaHome.value.toString(),
+            ideaLaunch =
+                io.github.amichne.kast.distribution.managed.SelectedIdeInstallation.resolve(request.ideaHome.value),
             changes =
                 listOf(
                     "install-immutable-payload",
@@ -393,6 +396,15 @@ internal object InstallationWorkflow {
             writeLauncher(plan, staged, "kast")
             if (regularExecutable(staged.resolve("bin/kast-codex"))) writeLauncher(plan, staged, "kast-codex")
             writeConfiguration(plan, staged.resolve("config/environment"))
+            Files.writeString(
+                staged.resolve("config/selected-ide.json"),
+                Json { encodeDefaults = true }
+                    .encodeToString(
+                        io.github.amichne.kast.distribution.managed.SelectedIdeLaunch.serializer(),
+                        plan.report("installed").ideaLaunch,
+                    ),
+                StandardOpenOption.CREATE_NEW,
+            )
             Files.writeString(staged.resolve(".kast-control-sha256"), "${plan.request.controlDigest.value}\n")
             Files.writeString(staged.resolve(".kast-plugin-sha256"), "${plan.request.pluginDigest.value}\n")
             if (!writeManifest(plan, staged)) {
@@ -440,6 +452,7 @@ internal object InstallationWorkflow {
                 .associate { declaration -> declaration.key to checkNotNull(declaration.defaultValue) }
                 .plus(
                     mapOf(
+                        "KAST_INSTALL_IDEA_HOME" to request.ideaHome.value.toString(),
                         "KAST_RUNTIME_DIRECTORY" to target.resolve("state/run").toString(),
                         "KAST_ENABLE_LAUNCHD" to request.enableLaunchd.wireValue(),
                         "KAST_ENABLE_APP_SERVER" to request.enableAppServer.wireValue(),

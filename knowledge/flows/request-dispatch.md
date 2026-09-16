@@ -4,8 +4,9 @@ title: Request dispatch
 description: Hosted requests retain canonical outcomes through native evaluation, bounded encoding and host projection.
 resource: file://runtime/hosted
 tags: [runtime, protocol, dispatch]
-timestamp: 2026-09-12T00:00:00Z
+timestamp: 2026-09-16T00:00:00Z
 code_sources:
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/BrokerLifecycleApprovals.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadCompletion.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDeadline.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadTransaction.kt
@@ -162,3 +163,5 @@ unchanged returned source first and the structured result afterward. Other
 operation presentations retain their existing dispatch behavior.
 
 Workspace refresh is a separate typed hosted control path, not a canonical semantic read. Its request and response DTOs retain request identity and finite pending, complete, failed, rejected or configured outcomes. The CLI uses typed serialization for the hosted transport, validates the independent refresh schema, and binds the response to the admitted host and root.
+
+Explicit lifecycle dispatch uses the installed `workspace lifecycle` route and the selected application control endpoint. For `request_user_close`, the existing controller lease receives a native command-approval item naming the exact host, project incarnation and root. Only one acceptance for that invocation permits enrolled signing; session-wide acceptance does not. The invocation transports the signed assertion privately and preserves finite lifecycle blockers through the output schema. Semantic dispatch never invokes this route.

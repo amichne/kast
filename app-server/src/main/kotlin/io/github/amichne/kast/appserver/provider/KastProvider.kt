@@ -436,6 +436,7 @@ internal object KastProviderQualifier {
             when (tool.approvalPolicy) {
                 KastApprovalPolicy.NONE -> HostedApprovalPolicy.NONE
                 KastApprovalPolicy.EXPLICIT -> HostedApprovalPolicy.EXPLICIT
+                KastApprovalPolicy.EXACT_PROJECT_CLOSE -> HostedApprovalPolicy.EXACT_PROJECT_CLOSE
             }
         if (approval != canonicalDefinition.approval) return null
         if (tool.deferLoading != (canonicalDefinition.loading == HostedToolLoading.DEFERRED)) return null

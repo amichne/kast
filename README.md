@@ -47,6 +47,19 @@ The Codex integration is a preview; full Desktop compatibility remains
 See [Install and connect](https://kast.michne.com/start/) for IDE selection,
 Desktop setup, other harnesses, and uninstall instructions.
 
+## Open a worktree explicitly
+
+`kast workspace open /absolute/worktree` reuses the selected IDEA or launches it
+without deliberate activation, then opens a separate project with quiet Gradle
+import. Background behavior is best effort. Trust and unsaved documents require
+user resolution; semantic reads never open or import projects implicitly.
+
+`kast workspace lifecycle '{"type":"inspect"}'` reports exact project identities.
+The `workspace_lifecycle` agent tool exposes the same actions, including status,
+presentation, sync, release and safe close. Release never closes a project.
+Borrowed or presented projects require exact-target controller approval to close.
+See [project lifecycle](docs/public/workspaces.mdx).
+
 ## Work with Kotlin
 
 | Task | Guide |

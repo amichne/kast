@@ -3,6 +3,8 @@ package io.github.amichne.kast.appserver.protocol.codex
 internal enum class CodexOwnedSchema(val fileName: String) {
     DYNAMIC_TOOL_CALL_PARAMS("DynamicToolCallParams.json"),
     DYNAMIC_TOOL_CALL_RESPONSE("DynamicToolCallResponse.json"),
+    COMMAND_EXECUTION_REQUEST_APPROVAL_PARAMS("CommandExecutionRequestApprovalParams.json"),
+    COMMAND_EXECUTION_REQUEST_APPROVAL_RESPONSE("CommandExecutionRequestApprovalResponse.json"),
     FILE_CHANGE_REQUEST_APPROVAL_PARAMS("FileChangeRequestApprovalParams.json"),
     FILE_CHANGE_REQUEST_APPROVAL_RESPONSE("FileChangeRequestApprovalResponse.json"),
     SERVER_REQUEST_RESOLVED_NOTIFICATION("ServerRequestResolvedNotification.json"),

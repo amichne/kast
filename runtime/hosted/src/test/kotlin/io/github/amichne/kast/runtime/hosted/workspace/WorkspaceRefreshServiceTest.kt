@@ -61,6 +61,8 @@ class WorkspaceRefreshServiceTest {
     fun `failed and cancelled imports remain terminal and do not stop independent queued work`() {
         for ((result, failure) in
             listOf(
+                WorkspaceRefreshEffectResult.UNSAVED_DOCUMENTS to WorkspaceRefreshFailure.UNSAVED_DOCUMENTS,
+                WorkspaceRefreshEffectResult.UNLINKED_BUILD to WorkspaceRefreshFailure.UNLINKED_BUILD,
                 WorkspaceRefreshEffectResult.FAILED to WorkspaceRefreshFailure.EFFECT_FAILED,
                 WorkspaceRefreshEffectResult.CANCELLED to WorkspaceRefreshFailure.CANCELLED,
             )) {

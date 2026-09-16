@@ -13,17 +13,6 @@ import java.nio.file.InvalidPathException
 import java.nio.file.Path
 import kotlinx.serialization.Serializable
 
-/** Raw inputs exist only until admission. Lists deliberately preserve duplicate saved assignments. */
-data class ConfigurationSources(
-    val environment: Map<String, String> = emptyMap(),
-    val savedInstallation: List<Pair<String, String>> = emptyList(),
-    val savedWorkspace: List<Pair<String, String>> = emptyList(),
-    val commandLine: List<Pair<String, String>> = emptyList(),
-) {
-    override fun toString(): String =
-        "ConfigurationSources(environmentKeys=${environment.keys.size}, savedInstallationAssignments=${savedInstallation.size}, savedWorkspaceAssignments=${savedWorkspace.size}, commandLineAssignments=${commandLine.size})"
-}
-
 @Serializable
 enum class ConfigurationFailure {
     UNKNOWN_KEY,
@@ -165,6 +154,9 @@ private constructor(
     val readLimits: ReadLimits,
     private val delegatedEnvironment: GradleImportEnvironment,
 ) {
+    val selectedIdeHome: ConfigurationPathSelection
+        get() = path(ConfigurationParameter.INSTALL_IDEA_HOME)
+
     val runtimeArchive: ConfigurationPathSelection
         get() = path(ConfigurationParameter.RUNTIME_ARCHIVE)
 

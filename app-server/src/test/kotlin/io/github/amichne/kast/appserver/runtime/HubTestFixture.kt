@@ -78,6 +78,9 @@ internal class HubTestFixture(
     executionPolicy: WorkspaceExecutionPolicy = WorkspaceExecutionPolicy.Default,
     cancellationRetirement: CompletableDeferred<Unit>? = null,
     planGateway: HostedPlanApprovalGateway? = null,
+    closeSigner:
+        ((ControllerApprovedProjectClose) -> Refinement<ProjectCloseApprovalGrant, HostedPlanApprovalFailure>)? =
+        null,
 ) {
     val root: Path = root.toRealPath()
     val activities = java.util.concurrent.CopyOnWriteArrayList<SessionActivity>()
@@ -130,8 +133,22 @@ internal class HubTestFixture(
             encode = { it },
             present = { ToolPresentation.text(it.toString(), true) },
         )
+    private val lifecycleTool: BrokerTool<Unit, JsonElement, JsonElement, Nothing> =
+        BrokerTool(
+            name = ToolName.admit("workspace_lifecycle").refined(),
+            description = ToolDescription.admit("Exact project lifecycle").refined(),
+            loading = ToolLoading.EAGER,
+            input = JsonDomainDefinition(schema, RefinementDefinition { Validation.validated(it.element) }),
+            outputSchema = schema,
+            invoke = { _, input, context ->
+                approvedInvocations.add(context.approval)
+                ProviderCall.Completed(input)
+            },
+            encode = { it },
+            present = { ToolPresentation.text(it.toString(), true) },
+        )
     private val bootstrap =
-        if (planGateway == null) null
+        if (planGateway == null && closeSigner == null) null
         else {
             val canonical = CanonicalAgentToolDefinitions.changeApply
             val apply =
@@ -154,9 +171,19 @@ internal class HubTestFixture(
                     approval = HostedApprovalPolicy.NONE,
                 )
             (AgentSessionBootstrap.qualify(
-                    listOf(query, apply),
+                    listOf(query, apply) +
+                        if (closeSigner == null) emptyList()
+                        else
+                            listOf(
+                                apply.copy(
+                                    operation = CanonicalOperation.WORKSPACE_LIFECYCLE,
+                                    name = CanonicalAgentToolDefinitions.workspaceLifecycle.name,
+                                    approval = HostedApprovalPolicy.NONE,
+                                )
+                            ),
                     CanonicalAgentToolDefinitions.policy,
-                    setOf(tool.name, changeTool.name),
+                    setOf(tool.name, changeTool.name) +
+                        if (closeSigner == null) emptySet() else setOf(lifecycleTool.name),
                 ) as AgentSessionBootstrapQualification.Qualified)
                 .bootstrap
         }
@@ -166,7 +193,11 @@ internal class HubTestFixture(
                     ProviderRegistration.define(
                             namespace = ProviderNamespace.admit("kast").refined(),
                             version = ProviderVersion.admit("1").refined(),
-                            tools = if (planGateway == null) listOf(tool) else listOf(tool, changeTool),
+                            tools =
+                                if (planGateway == null && closeSigner == null) listOf(tool)
+                                else
+                                    listOf(tool, changeTool) +
+                                        if (closeSigner == null) emptyList() else listOf(lifecycleTool),
                             start = { ProviderStartup.Started(Unit) },
                         )
                         .validated()
@@ -197,6 +228,8 @@ internal class HubTestFixture(
                 enrollment = enrollment,
                 sessionBootstrap = bootstrap,
                 planApprovalGateway = planGateway ?: HostedPlanApprovalGateway.Unavailable,
+                projectCloseSigner =
+                    closeSigner ?: { Refinement.Rejected(HostedPlanApprovalFailure.SIGNING_UNAVAILABLE) },
                 invocationJournal = invocationJournal,
                 sessionActivitySink = SessionActivitySink { activities.add(it) },
             ),

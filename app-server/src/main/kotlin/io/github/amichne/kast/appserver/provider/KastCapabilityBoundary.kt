@@ -62,6 +62,7 @@ internal data class KastExecutionBudgetBoundary(
 internal enum class KastApprovalPolicy {
     @SerialName("none") NONE,
     @SerialName("explicit") EXPLICIT,
+    @SerialName("exact_project_close") EXACT_PROJECT_CLOSE,
 }
 
 @Serializable

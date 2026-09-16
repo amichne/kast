@@ -22,6 +22,7 @@ internal fun canonicalReadRejectionSchema(operation: CanonicalOperation): JsonOb
             enumSchema(TraversalRunRejection.entries.map { it.cliName() }, "Traversal rejection.")
         CanonicalOperation.SYMBOL_INSPECT ->
             enumSchema(SymbolInspectRejection.entries.map { it.cliName() }, "Symbol inspection rejection.")
+        CanonicalOperation.WORKSPACE_LIFECYCLE,
         CanonicalOperation.INDEX_SYNC,
         CanonicalOperation.TOPOLOGY_BUILD,
         CanonicalOperation.QUERY_RUN,

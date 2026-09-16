@@ -23,6 +23,7 @@ internal enum class NativeContractKind {
     INITIALIZE_MUTATION_INCOMPATIBLE,
     TOOL_CALL_PROJECTION_INCOMPATIBLE,
     PLAN_APPROVAL_INCOMPATIBLE,
+    PROJECT_CLOSE_APPROVAL_INCOMPATIBLE,
     PAYLOAD_REJECTED,
 }
 
@@ -92,4 +93,6 @@ private fun CodexProtocolContractFailure.observation(): NativeContractObservatio
                 NativeContractKind.PLAN_APPROVAL_INCOMPATIBLE,
                 schema,
             )
+        is CodexProtocolContractFailure.ProjectCloseApprovalIncompatible ->
+            NativeContractObservation(NativeContractKind.PROJECT_CLOSE_APPROVAL_INCOMPATIBLE, schema)
     }

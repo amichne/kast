@@ -161,5 +161,7 @@ private constructor(
 internal sealed interface BrokerInvocationApproval {
     data object Absent : BrokerInvocationApproval
 
+    data class ProjectClose(val grant: ProjectCloseApprovalGrant) : BrokerInvocationApproval
+
     data class Granted(val grant: HostedPlanApprovalGrant) : BrokerInvocationApproval
 }

@@ -120,7 +120,7 @@ class InstalledBrokerServerTest {
                 configured(base).upstreamOptions.appServerArguments.withOwnedTransport("unix:///test.sock"),
             )
             assertEquals(
-                "search_classes,search_functions,search_declarations,query_symbols," +
+                "workspace_lifecycle,search_classes,search_functions,search_declarations,query_symbols," +
                     "source_read,read_relations,traverse_relations,check_diagnostics," +
                     "change_plan,change_apply,change_recover",
                 configured(base).kastOptions.toolSelection.environmentValue,
@@ -366,6 +366,7 @@ class InstalledBrokerServerTest {
                         .single { it.getValue("name").jsonPrimitive.content == "kast" }
                 assertEquals(
                     listOf(
+                        "workspace_lifecycle",
                         "search_classes",
                         "search_functions",
                         "search_declarations",

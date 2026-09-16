@@ -44,6 +44,7 @@ internal fun installedKastCatalogFixture(): String =
                             when (definition.approval) {
                                 HostedApprovalPolicy.NONE -> KastApprovalPolicy.NONE
                                 HostedApprovalPolicy.EXPLICIT -> KastApprovalPolicy.EXPLICIT
+                                HostedApprovalPolicy.EXACT_PROJECT_CLOSE -> KastApprovalPolicy.EXACT_PROJECT_CLOSE
                             },
                             KastExecutionBudgetBoundary(
                                 OperationExecutionBudget.WORKSPACE_READINESS.value,

@@ -19,7 +19,7 @@ val platform =
     files(
         sdk.map { home ->
             fileTree(home) {
-                include("lib/**/*.jar")
+                include("lib/**/*.jar", "plugins/gradle*/lib/**/*.jar")
                 exclude("lib/intellij.libraries.kotlinx.serialization.*.jar", "lib/intellij.libraries.ktor.utils.jar")
             }
         }

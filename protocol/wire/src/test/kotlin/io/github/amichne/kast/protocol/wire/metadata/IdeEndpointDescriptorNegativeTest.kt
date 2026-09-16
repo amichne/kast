@@ -148,7 +148,7 @@ class IdeEndpointDescriptorNegativeTest {
             candidate.copy(capabilities = candidate.capabilities + candidate.capabilities.first()),
             hostedCapabilityFailure(
                 HostedCapabilitySetFailure.DuplicateOperation(
-                    io.github.amichne.kast.protocol.contract.CanonicalOperation.QUERY_RUN
+                    io.github.amichne.kast.protocol.contract.CanonicalOperation.WORKSPACE_LIFECYCLE
                 )
             ),
         )

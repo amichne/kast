@@ -25,6 +25,7 @@ class InstalledServerChangeProjectionTest {
 
         assertEquals(
             listOf(
+                "workspace_lifecycle",
                 "search_classes",
                 "search_functions",
                 "search_declarations",
@@ -52,7 +53,10 @@ class InstalledServerChangeProjectionTest {
         )
         assertTrue(
             tools
-                .filterNot { it.getValue("name").jsonPrimitive.content.startsWith("change_") }
+                .filterNot {
+                    it.getValue("name").jsonPrimitive.content.startsWith("change_") ||
+                        it.getValue("name").jsonPrimitive.content == "workspace_lifecycle"
+                }
                 .all { tool ->
                     tool.getValue("approvalPolicy").jsonPrimitive.content == HostedApprovalPolicy.NONE.name.lowercase()
                 }

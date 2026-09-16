@@ -78,6 +78,21 @@ import kotlin.reflect.KClass
 
 /** Sole metadata catalog for canonical operations and their explicit publication authority. */
 object CanonicalOperationDefinitions {
+    val workspaceLifecycle =
+        definition(
+            CanonicalOperation.WORKSPACE_LIFECYCLE,
+            io.github.amichne.kast.protocol.contract.WorkspaceLifecycleRequest::class,
+            io.github.amichne.kast.protocol.contract.IdeLifecycleResult::class,
+            io.github.amichne.kast.protocol.contract.IdeLifecycleQualification::class,
+            io.github.amichne.kast.protocol.contract.IdeLifecycleFailure::class,
+            io.github.amichne.kast.protocol.contract.IdeLifecycleCapability::class,
+            OperationLane.REGISTERED_LONG_WORK,
+            OperationEffect.INTELLIJ_READ_AND_PERSISTENCE_WRITE,
+            OperationCost.PHYSICAL_EFFECT,
+            OperationScope.WORKSPACE,
+            CompletenessPolicy.QUALIFIED_ALLOWED,
+            HostedExposure.PUBLIC,
+        )
     val indexSync =
         definition(
             CanonicalOperation.INDEX_SYNC,
@@ -282,6 +297,7 @@ object CanonicalOperationDefinitions {
 
     val all: List<OperationDefinition<*, *, *, *, *>> =
         listOf(
+            workspaceLifecycle,
             indexSync,
             topologyBuild,
             queryRun,

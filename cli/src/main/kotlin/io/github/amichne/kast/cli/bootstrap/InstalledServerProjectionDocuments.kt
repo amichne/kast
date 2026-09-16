@@ -26,7 +26,6 @@ import io.github.amichne.kast.protocol.registry.HostedOperationProjection
 import io.github.amichne.kast.protocol.registry.HostedToolLoading
 import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
 import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -46,66 +45,6 @@ internal const val MAXIMUM_PROTOCOL_COUNT = 1_000
 private const val SERVER_PROJECTION_SCHEMA_VERSION = 13
 private const val HOSTED_BOOTSTRAP_SCHEMA_VERSION = 1
 private const val CLI_INVOCATIONS_SCHEMA_VERSION = 3
-
-/** One closed server-facing projection owned by this installed command graph. */
-@Serializable
-internal data class InstalledServerProjectionDocument(
-    val schemaVersion: Int,
-    val namespace: String,
-    val hostedBootstrap: InstalledHostedBootstrapDocument,
-    val cliInvocations: InstalledCliInvocationsDocument,
-)
-
-@Serializable
-internal data class InstalledHostedBootstrapDocument(
-    val schemaVersion: Int,
-    val policy: String,
-    val tools: List<InstalledHostedToolDocument>,
-)
-
-@Serializable
-internal data class InstalledHostedToolDocument(
-    val operationId: String,
-    val name: String,
-    val description: String,
-    val deferLoading: Boolean,
-    val effect: String,
-    val approvalPolicy: String,
-    val executionBudget: InstalledServerExecutionBudgetDocument,
-    val inputSchema: JsonElement,
-    val outputSchema: JsonElement,
-)
-
-@Serializable
-internal data class InstalledServerExecutionBudgetDocument(
-    val readinessMillis: Long,
-    val operationMillis: Long,
-)
-
-@Serializable
-internal data class InstalledCliInvocationsDocument(
-    val schemaVersion: Int,
-    val operations: List<InstalledCliOperationInvocationDocument>,
-)
-
-@Serializable
-internal data class InstalledCliOperationInvocationDocument(
-    val toolName: String,
-    val operationId: String,
-    val cliUsage: String,
-    val invocation: InstalledServerCliInvocationDocument,
-)
-
-@Serializable
-internal data class InstalledServerCliInvocationDocument(
-    val type: InstalledServerInvocationType,
-    val command: List<String>,
-)
-
-@Serializable
-internal enum class InstalledServerInvocationType {
-    CLI
-}
 
 /** One public hosted tool retained with its canonical operation and exact CLI invocation. */
 internal class InstalledServerBinding
@@ -131,7 +70,15 @@ private constructor(
                             AgentToolInputBinding.Canonical ->
                                 tool.cliInvocationDocument(
                                     definition.name.value,
-                                    commandByOperation.getValue(operation).usage,
+                                    if (operation == CanonicalOperation.WORKSPACE_LIFECYCLE)
+                                        commandSurface.localCommands
+                                            .single {
+                                                it ==
+                                                    io.github.amichne.kast.cli.command.CliProductCommand
+                                                        .WORKSPACE_LIFECYCLE
+                                            }
+                                            .usage
+                                    else commandByOperation.getValue(operation).usage,
                                 )
                             is AgentToolInputBinding.Facade ->
                                 InstalledCliOperationInvocationDocument(
@@ -206,6 +153,11 @@ private enum class InstalledServerTool(
     private val requestSerializer: KSerializer<*>,
     private val command: List<String>,
 ) {
+    WORKSPACE_LIFECYCLE(
+        operation = CanonicalOperation.WORKSPACE_LIFECYCLE,
+        requestSerializer = io.github.amichne.kast.protocol.contract.WorkspaceLifecycleRequest.serializer(),
+        command = listOf("workspace", "lifecycle"),
+    ),
     INDEX_SYNC(
         operation = CanonicalOperation.INDEX_SYNC,
         requestSerializer = IndexSyncRequest.serializer(),
@@ -316,7 +268,7 @@ internal fun installedServerOutputSchema(operation: CanonicalOperation): JsonObj
             ),
             objectSchema(
                 ServerSchemaProperty("status", constantSchema("rejected", "Process outcome.")),
-                ServerSchemaProperty("diagnostic", processDiagnosticSchema()),
+                ServerSchemaProperty("diagnostic", operationProcessDiagnosticSchema(operation)),
             ),
         )
         .withLocalOutputDefinitions()
@@ -429,6 +381,14 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
         }
 }
 
+private fun operationProcessDiagnosticSchema(operation: CanonicalOperation): JsonObject =
+    if (operation == CanonicalOperation.WORKSPACE_LIFECYCLE)
+        unionSchema(
+            processDiagnosticSchema(),
+            generatedRequestSchema(io.github.amichne.kast.protocol.contract.IdeLifecycleRejection.serializer()),
+        )
+    else processDiagnosticSchema()
+
 private fun operationProcessDocumentSchema(operation: CanonicalOperation): JsonObject =
     if (operation.supportsLiveEvidence()) {
         unionSchema(
@@ -442,6 +402,8 @@ private fun operationProcessDocumentSchema(operation: CanonicalOperation): JsonO
 
 private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject =
     when (operation) {
+        CanonicalOperation.WORKSPACE_LIFECYCLE ->
+            generatedRequestSchema(io.github.amichne.kast.protocol.contract.IdeLifecycleResult.serializer())
         CanonicalOperation.INDEX_SYNC ->
             outcomeSchema(
                 operation,

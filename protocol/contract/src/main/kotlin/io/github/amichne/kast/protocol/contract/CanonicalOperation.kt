@@ -5,6 +5,7 @@ import io.github.amichne.kast.kernel.Refinement
 
 /** The complete and only public operation identity set. */
 enum class CanonicalOperation(val id: OperationId) {
+    WORKSPACE_LIFECYCLE(canonicalOperationId("workspace.lifecycle")),
     INDEX_SYNC(canonicalOperationId("index.sync")),
     TOPOLOGY_BUILD(canonicalOperationId("topology.build")),
     QUERY_RUN(canonicalOperationId("query.run")),

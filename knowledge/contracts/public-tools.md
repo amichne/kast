@@ -6,6 +6,7 @@ resource: file://app-server/src/main/resources/io/github/amichne/kast/appserver/
 tags: [tools, query, protocol, agents]
 timestamp: 2026-09-16T00:00:00Z
 code_sources:
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/WorkspaceLifecycleRequest.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReadRecoveryAction.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceQualifiedProgressDocument.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/CanonicalReadRejectionSchemas.kt
@@ -148,3 +149,5 @@ Provider registration rejects advertised-name and alias collisions, while catalo
 publication includes only preferred names. Legacy inputs remain supported through
 0.40.x, with removal no earlier than 0.41.0. Catalog digest binding remains
 required before either input spelling dispatches.
+
+`workspace_lifecycle` is an eager canonical effectful tool with action-specific tagged inputs for inspect, open, present, sync, release, close, request_user_close and status. Host selection comes from installed configuration; caller identity comes from the coordinator thread. The `EXACT_PROJECT_CLOSE` approval policy applies to the explicit user-close branch. Ordinary managed cleanup still enforces ownership and shared use, while source-change `EXPLICIT` approval is unchanged.

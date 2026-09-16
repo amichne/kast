@@ -14,6 +14,7 @@ internal object HostedEndpointReclamation {
         root: CanonicalWorkspaceRoot,
         lock: FileLock,
         observer: HostedEndpointObserver,
+        advertisement: HostedEndpointAdvertisement = HostedEndpointAdvertisement.SEMANTIC,
     ): Refinement<Unit, HostedEndpointFailure> {
         val socket = directory.resolve("host.sock")
         val descriptor = directory.resolve("endpoint.json")
@@ -21,7 +22,7 @@ internal object HostedEndpointReclamation {
             return Refinement.Refined(Unit)
         observer.observe(HostedEndpointStage.RECLAMATION_ADMISSION, HostedEndpointOutcome.STARTED)
         return try {
-            when (val admitted = DeadHostedEndpoint.admit(directory, root, lock)) {
+            when (val admitted = DeadHostedEndpoint.admit(directory, root, lock, advertisement)) {
                 is Refinement.Rejected -> reject(observer)
                 is Refinement.Refined -> {
                     observer.observe(HostedEndpointStage.RECLAMATION_ADMISSION, HostedEndpointOutcome.COMPLETED)
@@ -78,6 +79,7 @@ private constructor(
             directory: Path,
             root: CanonicalWorkspaceRoot,
             lock: FileLock,
+            advertisement: HostedEndpointAdvertisement = HostedEndpointAdvertisement.SEMANTIC,
         ): Refinement<DeadHostedEndpoint, HostedEndpointFailure> {
             if (!lock.isValid) return rejected()
             val parent =
@@ -105,7 +107,7 @@ private constructor(
                 }
             if (listOf(lockFile, socket, descriptor).any { it.owner != parent.owner }) return rejected()
             val owner =
-                when (val parsed = DeadHostedEndpointOwner.read(descriptor.path, root, socket.path)) {
+                when (val parsed = DeadHostedEndpointOwner.read(descriptor.path, root, socket.path, advertisement)) {
                     is Refinement.Refined -> parsed.value
                     is Refinement.Rejected -> return parsed
                 }

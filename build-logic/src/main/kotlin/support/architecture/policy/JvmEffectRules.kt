@@ -184,7 +184,7 @@ internal object EffectRules {
     }
 
     private fun isProjectOpenAuthority(owner: String, name: String): Boolean =
-        owner == "com/intellij/openapi/project/ex/ProjectManagerEx" && name == "openProject" ||
+        owner == "com/intellij/openapi/project/ex/ProjectManagerEx" && name in setOf("openProject", "openProjectAsync") ||
             owner == "com/intellij/ide/impl/ProjectUtil" && name in setOf("openOrImport", "openProject") ||
             owner == "com/intellij/ide/impl/OpenProjectTask"
 

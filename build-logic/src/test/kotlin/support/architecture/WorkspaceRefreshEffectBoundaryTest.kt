@@ -28,7 +28,15 @@ class WorkspaceRefreshEffectBoundaryTest {
     }
 
     @Test
-    fun `refresh permission cannot open link reconfigure rebuild or refresh all projects`() {
+    fun `initial link remains confined to the existing refresh owner`() {
+        val link = JvmMember.of("com/intellij/openapi/externalSystem/util/ExternalSystemUtil", "linkExternalProject", "(Lcom/intellij/openapi/externalSystem/settings/ExternalProjectSettings;Lcom/intellij/openapi/externalSystem/importing/ImportSpecBuilder;)V")
+        assertInstanceOf<ArchitectureAdmission.Accepted>(admit(ModuleId.RUNTIME_HOSTED, refreshOwner, link))
+        assertInstanceOf<ArchitectureAdmission.Rejected>(admit(ModuleId.WORKSPACE_INTELLIJ_READ, "io/github/amichne/kast/workspace/intellij/read/PassiveRead", link))
+        assertInstanceOf<ArchitectureAdmission.Rejected>(admit(ModuleId.RUNTIME_HOSTED, "io/github/amichne/kast/runtime/hosted/HostedSemanticServices", link))
+    }
+
+    @Test
+    fun `refresh permission cannot open reconfigure rebuild or refresh all projects`() {
         for (target in listOf(
             refresh.copy(name = JvmMemberName("linkExternalProject")),
             refresh.copy(name = JvmMemberName("refreshProjects")),

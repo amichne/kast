@@ -37,6 +37,17 @@ internal class BrokerSessionHub(
             publish = activity::publish,
             waitMillis = options.planApprovalWaitMillis,
         )
+    private val lifecycleApprovals =
+        BrokerLifecycleApprovals(scope, tasks, options) { client, message ->
+            sessions[client]?.emitApproval(message) ?: PlanApprovalSend.UNAVAILABLE
+        }
+
+    private fun respondApproval(id: ClientConnectionId, doc: JsonObject): BrokerPlanApprovalReply =
+        when (val response = lifecycleApprovals.respond(id, doc)) {
+            BrokerPlanApprovalReply.Unowned -> planApprovals.respond(id, doc)
+            else -> response
+        }
+
     private val approvedExecutions = BrokerApprovedExecutions(scope, planApprovals)
     private val planAdmission = BrokerPlanApprovalAdmission(options, approvedExecutions)
 
@@ -184,7 +195,7 @@ internal class BrokerSessionHub(
                 }
             }
             if (method == null) {
-                when (val approvalReply = planApprovals.respond(id, doc)) {
+                when (val approvalReply = respondApproval(id, doc)) {
                     BrokerPlanApprovalReply.Unowned -> Unit
                     BrokerPlanApprovalReply.Handled -> return
                     is BrokerPlanApprovalReply.Rejected -> {
@@ -216,6 +227,7 @@ internal class BrokerSessionHub(
                 // Schema validation above and shared-task authorization precede cancellation.
                 val turn = params?.text("turnId")?.let(io.github.amichne.kast.appserver.core.BrokerTurnId::admit)
                 if (turn != null && tasks.authorize(thread, id) == ControlResult.Accepted) {
+                    lifecycleApprovals.cancel(thread, turn)
                     approvedExecutions.cancel(thread, turn)
                     when (val bound = adapter.boundWorkspace(thread)) {
                         is io.github.amichne.kast.kernel.Refinement.Refined ->
@@ -381,13 +393,20 @@ internal class BrokerSessionHub(
                                                 }
                                         }
                                     }
-                                planAdmission.submit(
-                                    id = id,
-                                    binding = WorkspaceInvocationBinding(bound.value, identity),
-                                    params = params,
-                                    document = doc,
-                                    submit = submit,
+                                lifecycleApprovals.submit(
+                                    id,
+                                    WorkspaceInvocationBinding(bound.value, identity),
+                                    params,
+                                    doc,
+                                    submit,
                                 )
+                                    ?: planAdmission.submit(
+                                        id = id,
+                                        binding = WorkspaceInvocationBinding(bound.value, identity),
+                                        params = params,
+                                        document = doc,
+                                        submit = submit,
+                                    )
                             }
                         }
                     else null
@@ -606,6 +625,7 @@ internal class BrokerSessionHub(
         suspend fun detach() = transitions.withLock {
             activity.publish(SessionActivity(id, SessionStage.SUBSCRIPTION, SessionOutcome.DETACHED))
             attached = false
+            lifecycleApprovals.disconnect(id)
             planApprovals.disconnect(id)
             output.close()
             serverRequests.entries
@@ -627,6 +647,7 @@ internal class BrokerSessionHub(
 
         suspend fun close() {
             if (!retired.compareAndSet(false, true)) return
+            lifecycleApprovals.disconnect(id)
             approvedExecutions.retire(id)
             activity.publish(SessionActivity(id, SessionStage.TRANSPORT, SessionOutcome.RETIRED))
             serverRequests.entries

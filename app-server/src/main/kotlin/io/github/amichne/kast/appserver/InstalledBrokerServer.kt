@@ -606,6 +606,10 @@ internal object InstalledBrokerHost {
                         options.kastOptions,
                         options.kastOptions.qualificationDirectory.path,
                     ),
+                projectCloseSigner =
+                    io.github.amichne.kast.appserver.provider.EnrolledPlanApprovalSigner(
+                        options.kastOptions.qualificationDirectory.path
+                    )::signProjectClose,
                 enrollment = enrollment,
                 bindingOwner = owner,
                 sessionActivitySink = io.github.amichne.kast.appserver.runtime.JsonLineSessionActivitySink(System.err),

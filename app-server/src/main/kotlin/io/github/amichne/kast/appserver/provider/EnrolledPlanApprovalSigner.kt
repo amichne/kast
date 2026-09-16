@@ -3,6 +3,7 @@ package io.github.amichne.kast.appserver.provider
 import io.github.amichne.kast.appserver.runtime.ControllerApprovedPlan
 import io.github.amichne.kast.appserver.runtime.HostedPlanApprovalFailure
 import io.github.amichne.kast.appserver.runtime.HostedPlanApprovalGrant
+import io.github.amichne.kast.appserver.runtime.payload
 import io.github.amichne.kast.kernel.Refinement
 import java.io.IOException
 import java.nio.file.Files
@@ -78,6 +79,41 @@ internal class EnrolledPlanApprovalSigner(private val userHome: Path) {
                     "${encoder.encodeToString(payload)}.${encoder.encodeToString(signed)}",
                 )
             }
+        } catch (_: GeneralSecurityException) {
+            Refinement.Rejected(HostedPlanApprovalFailure.SIGNING_REJECTED)
+        }
+    }
+
+    fun signProjectClose(
+        approval: io.github.amichne.kast.appserver.runtime.ControllerApprovedProjectClose
+    ): Refinement<io.github.amichne.kast.appserver.runtime.ProjectCloseApprovalGrant, HostedPlanApprovalFailure> {
+        val keys =
+            when (val loaded = load()) {
+                is Refinement.Rejected -> return loaded
+                is Refinement.Refined -> loaded.value
+            }
+        val payload = json.encodeToString(approval.payload()).toByteArray(Charsets.UTF_8)
+        return try {
+            val signature =
+                Signature.getInstance("Ed25519").run {
+                    initSign(keys.privateKey)
+                    update(payload)
+                    sign()
+                }
+            val coherent =
+                Signature.getInstance("Ed25519").run {
+                    initVerify(keys.publicKey)
+                    update(payload)
+                    verify(signature)
+                }
+            if (!coherent) return Refinement.Rejected(HostedPlanApprovalFailure.SIGNING_REJECTED)
+            val encoder = Base64.getUrlEncoder().withoutPadding()
+            Refinement.Refined(
+                io.github.amichne.kast.appserver.runtime.ProjectCloseApprovalGrant.signed(
+                    approval,
+                    "${encoder.encodeToString(payload)}.${encoder.encodeToString(signature)}",
+                )
+            )
         } catch (_: GeneralSecurityException) {
             Refinement.Rejected(HostedPlanApprovalFailure.SIGNING_REJECTED)
         }

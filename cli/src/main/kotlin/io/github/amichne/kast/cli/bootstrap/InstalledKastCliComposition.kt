@@ -13,6 +13,7 @@ import io.github.amichne.kast.cli.projection.CliLocalMetadata
 import io.github.amichne.kast.cli.projection.CliLocalMetadataAdmission
 import io.github.amichne.kast.cli.projection.CliLocalMetadataFailure
 import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
+import io.github.amichne.kast.distribution.contract.configuration.ConfigurationPathSelection
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationRejection
 import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
 import io.github.amichne.kast.kernel.Refinement
@@ -109,6 +110,15 @@ internal class InstalledKastCliComposition : KastCliComposition {
                 rootDiscovery = FilesystemCanonicalRootDiscovery,
                 localMetadata = metadata,
                 productVersion = version,
+                lifecycleClient =
+                    io.github.amichne.kast.cli.ide.IdeLifecycleClient(
+                        userHome,
+                        when (val selected = configuration.selectedIdeHome) {
+                            is ConfigurationPathSelection.Selected -> selected.path
+                            ConfigurationPathSelection.OwnerDefault ->
+                                Path.of(System.getProperty("java.home")).parent.parent.parent
+                        },
+                    ),
                 existingIdeClient =
                     io.github.amichne.kast.cli.ide.ExistingIdeSocketClient(userHome, configuration.readLimits),
                 appServerManager = InstalledAppServerManager(executable, userHome),

@@ -20,7 +20,9 @@ class CliSurfaceContractTest {
         val surface = commandGraphFactory().surface
 
         assertEquals(
-            io.github.amichne.kast.protocol.registry.HostedOperationProjection.publicDefinitions.map { it.operation },
+            io.github.amichne.kast.protocol.registry.HostedOperationProjection.publicDefinitions
+                .map { it.operation }
+                .filterNot { it == CanonicalOperation.WORKSPACE_LIFECYCLE },
             surface.semanticCommands.map { it.operation },
         )
         assertEquals(
@@ -37,6 +39,8 @@ class CliSurfaceContractTest {
                 CliProductCommand.KNOWLEDGE,
                 CliProductCommand.CODEX_CLI,
                 CliProductCommand.CODEX_DESKTOP,
+                CliProductCommand.WORKSPACE_OPEN,
+                CliProductCommand.WORKSPACE_LIFECYCLE,
             ),
             surface.localCommands,
         )

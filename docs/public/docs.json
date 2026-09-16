@@ -35,7 +35,8 @@
             "group": "Start",
             "pages": [
               "index",
-              "start"
+              "start",
+            "workspaces"
             ]
           },
           {
@@ -77,7 +78,8 @@
           {
             "group": "Search and diagnostics",
             "pages": [
-              "POST /callables/search_classes",
+              "POST /callables/workspace_lifecycle",
+            "POST /callables/search_classes",
               "POST /callables/search_functions",
               "POST /callables/search_declarations",
               "POST /callables/check_diagnostics"
