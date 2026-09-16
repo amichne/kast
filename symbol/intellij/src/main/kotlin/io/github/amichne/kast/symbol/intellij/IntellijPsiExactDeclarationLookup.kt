@@ -106,6 +106,9 @@ internal class IntellijPsiExactDeclarationLookup(private val project: Project) :
         val psiFile =
             PsiManager.getInstance(project).findFile(file)
                 ?: return liveRejected(IntellijExactDeclarationLookupRejection.UNSUPPORTED_DECLARATION)
+        if (!psiFile.isValid) {
+            return liveRejected(IntellijExactDeclarationLookupRejection.STALE_LOCATION)
+        }
         when (key.constraints.packageName.admitPackage { psiFile.packageEvidence() }) {
             IntellijDiscoveryItemAdmission.ADMITTED -> Unit
             IntellijDiscoveryItemAdmission.FILTERED ->
@@ -116,37 +119,53 @@ internal class IntellijPsiExactDeclarationLookup(private val project: Project) :
         val leaf =
             psiFile.findElementAt(key.offset.value)
                 ?: return liveRejected(IntellijExactDeclarationLookupRejection.STALE_LOCATION)
-        val matches = mutableListOf<Pair<PsiNamedElement, ExactDeclarationEvidence>>()
-        var element: PsiElement? = leaf
-        while (element != null) {
-            val named = element as? PsiNamedElement
-            if (named != null && named.name == key.name.value && element.textRange.startOffset == key.offset.value) {
-                val evidence =
-                    ExactDeclarationEvidence.fromBoundary(
-                        file = key.file,
-                        rawStartInclusive = element.textRange.startOffset,
-                        rawEndExclusive = element.textRange.endOffset,
-                        rawName = named.name.orEmpty(),
-                        rawQualifiedIdentity = (named as? PsiQualifiedNamedElement)?.qualifiedName,
-                        rawRuntimeType = named.javaClass.name,
-                    )
-                when (evidence) {
-                    is Refinement.Refined -> matches += named to evidence.value
-                    is Refinement.Rejected ->
-                        return liveRejected(IntellijExactDeclarationLookupRejection.UNSUPPORTED_DECLARATION)
-                }
-            }
-            element = element.parent
+        return findExactDeclarationAncestor(leaf, key)
+    }
+}
+
+internal fun findExactDeclarationAncestor(
+    leaf: PsiElement,
+    key: IntellijExactDeclarationLookupKey,
+): IntellijLiveExactDeclarationLookupResult {
+    val matches = mutableListOf<Pair<PsiNamedElement, ExactDeclarationEvidence>>()
+    var element: PsiElement? = leaf
+    while (element != null) {
+        if (!element.isValid) {
+            return liveRejected(IntellijExactDeclarationLookupRejection.STALE_LOCATION)
         }
-        val declarations = matches.distinct()
-        return when (declarations.size) {
-            0 -> liveRejected(IntellijExactDeclarationLookupRejection.UNSUPPORTED_DECLARATION)
-            1 -> {
-                val (declaration, evidence) = declarations.single()
-                IntellijLiveExactDeclarationLookupResult.Found(declaration, evidence)
+        val named = element as? PsiNamedElement
+        if (named != null && named.name == key.name.value) {
+            val range =
+                named.textRange ?: return liveRejected(IntellijExactDeclarationLookupRejection.UNSUPPORTED_DECLARATION)
+            if (range.startOffset != key.offset.value) {
+                element = element.parent
+                continue
             }
-            else -> liveRejected(IntellijExactDeclarationLookupRejection.AMBIGUOUS_DECLARATION)
+            val evidence =
+                ExactDeclarationEvidence.fromBoundary(
+                    file = key.file,
+                    rawStartInclusive = range.startOffset,
+                    rawEndExclusive = range.endOffset,
+                    rawName = named.name.orEmpty(),
+                    rawQualifiedIdentity = (named as? PsiQualifiedNamedElement)?.qualifiedName,
+                    rawRuntimeType = named.javaClass.name,
+                )
+            when (evidence) {
+                is Refinement.Refined -> matches += named to evidence.value
+                is Refinement.Rejected ->
+                    return liveRejected(IntellijExactDeclarationLookupRejection.UNSUPPORTED_DECLARATION)
+            }
         }
+        element = element.parent
+    }
+    val declarations = matches.distinct()
+    return when (declarations.size) {
+        0 -> liveRejected(IntellijExactDeclarationLookupRejection.UNSUPPORTED_DECLARATION)
+        1 -> {
+            val (declaration, evidence) = declarations.single()
+            IntellijLiveExactDeclarationLookupResult.Found(declaration, evidence)
+        }
+        else -> liveRejected(IntellijExactDeclarationLookupRejection.AMBIGUOUS_DECLARATION)
     }
 }
 

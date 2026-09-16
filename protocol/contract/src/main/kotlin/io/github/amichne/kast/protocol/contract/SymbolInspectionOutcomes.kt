@@ -20,6 +20,9 @@ enum class SymbolInspectQualification : OperationQualification {
 
 enum class SymbolInspectRejection : OperationRejection {
     WORKSPACE_NOT_READY,
+    WORKSPACE_INDEX_UNAVAILABLE,
+    NATIVE_FAILURE,
+    UNSUPPORTED_DECLARATION,
     SELECTOR_WRONG_KIND,
     SELECTOR_MALFORMED,
     SELECTOR_WORKSPACE_MISMATCH,

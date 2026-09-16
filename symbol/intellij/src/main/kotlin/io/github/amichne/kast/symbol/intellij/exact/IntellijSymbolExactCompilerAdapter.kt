@@ -71,14 +71,14 @@ class IntellijSymbolExactCompilerAdapter internal constructor(private val resolv
         }
 }
 
-private fun IntellijSymbolSelectorRejection.toCompilerRejection(): SymbolExactCompilerRejection =
+internal fun IntellijSymbolSelectorRejection.toCompilerRejection(): SymbolExactCompilerRejection =
     when (this) {
         IntellijSymbolSelectorRejection.WORKSPACE_ROOT_MISMATCH -> SymbolExactCompilerRejection.WORKSPACE_ROOT_MISMATCH
         IntellijSymbolSelectorRejection.GENERATION_MOVED -> SymbolExactCompilerRejection.GENERATION_MOVED
         IntellijSymbolSelectorRejection.SCOPE_REJECTED -> SymbolExactCompilerRejection.SCOPE_REJECTED
         IntellijSymbolSelectorRejection.DUMB_MODE,
-        IntellijSymbolSelectorRejection.PROJECT_DISPOSED,
-        IntellijSymbolSelectorRejection.NATIVE_FAILURE -> SymbolExactCompilerRejection.WORKSPACE_INDEX_UNAVAILABLE
+        IntellijSymbolSelectorRejection.PROJECT_DISPOSED -> SymbolExactCompilerRejection.WORKSPACE_INDEX_UNAVAILABLE
+        IntellijSymbolSelectorRejection.NATIVE_FAILURE -> SymbolExactCompilerRejection.NATIVE_FAILURE
         IntellijSymbolSelectorRejection.STALE_LOCATION -> SymbolExactCompilerRejection.STALE_LOCATION
         IntellijSymbolSelectorRejection.OUTSIDE_SCOPE -> SymbolExactCompilerRejection.OUTSIDE_SCOPE
         IntellijSymbolSelectorRejection.AMBIGUOUS_DECLARATION -> SymbolExactCompilerRejection.AMBIGUOUS_DECLARATION

@@ -45,6 +45,59 @@ import org.junit.jupiter.api.Test
 
 class IntellijExactSelectorTest {
     @Test
+    fun `native failure keeps its diagnostic evidence and does not become index unavailability`() {
+        val selected = SymbolDiscoverySelection.select(batch(7), 0).refined()
+        val failures = mutableListOf<io.github.amichne.kast.workspace.intellij.read.IntellijReadUnexpectedFailure>()
+        val query =
+            IntellijSymbolSelectorQuery(
+                lookup = IntellijCompilerSymbolLookup { _, _ -> error("must not enter diagnostics") },
+                environmentState = { IntellijDiscoveryEnvironmentState.READY },
+                cancellationCheck = {},
+                observation =
+                    object :
+                        io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation by io.github.amichne.kast
+                            .workspace
+                            .intellij
+                            .read
+                            .IntellijReadObservation
+                            .None {
+                        override fun unexpected(
+                            failure: io.github.amichne.kast.workspace.intellij.read.IntellijReadUnexpectedFailure
+                        ) {
+                            failures += failure
+                        }
+                    },
+            )
+        val result =
+            query.resolve(compiled(selected.lease, selected.scope), selected)
+                as IntellijSymbolSelectorResolution.Rejected
+        assertEquals(
+            io.github.amichne.kast.symbol.contract.SymbolExactCompilerRejection.NATIVE_FAILURE,
+            result.reason.toCompilerRejection(),
+        )
+        assertEquals(
+            io.github.amichne.kast.workspace.intellij.read.IntellijReadStage.EXACT_REFINEMENT,
+            failures.single().stage,
+        )
+        assertEquals("java.lang.IllegalStateException", failures.single().exceptionType)
+        assertEquals(
+            io.github.amichne.kast.symbol.contract.SymbolExactCompilerRejection.WORKSPACE_INDEX_UNAVAILABLE,
+            IntellijSymbolSelectorRejection.DUMB_MODE.toCompilerRejection(),
+        )
+        org.junit.jupiter.api.assertThrows<com.intellij.openapi.progress.ProcessCanceledException> {
+            IntellijSymbolSelectorQuery(
+                    lookup =
+                        IntellijCompilerSymbolLookup { _, _ ->
+                            throw com.intellij.openapi.progress.ProcessCanceledException()
+                        },
+                    environmentState = { IntellijDiscoveryEnvironmentState.READY },
+                    cancellationCheck = {},
+                )
+                .resolve(compiled(selected.lease, selected.scope), selected)
+        }
+    }
+
+    @Test
     fun `compiler signatures keep same name overloads exact`() {
         val first = SymbolDiscoverySelection.select(batch(7, 41), 0).refined()
         val second = SymbolDiscoverySelection.select(batch(7, 41), 1).refined()

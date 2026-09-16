@@ -179,6 +179,7 @@ private fun SymbolExactCompilerRejection.toPublicRejection(): SymbolExactRejecti
         SymbolExactCompilerRejection.GENERATION_MOVED -> SymbolExactRejection.STALE_GENERATION
         SymbolExactCompilerRejection.SCOPE_REJECTED -> SymbolExactRejection.SCOPE_REJECTED
         SymbolExactCompilerRejection.WORKSPACE_INDEX_UNAVAILABLE -> SymbolExactRejection.WORKSPACE_INDEX_UNAVAILABLE
+        SymbolExactCompilerRejection.NATIVE_FAILURE -> SymbolExactRejection.NATIVE_FAILURE
         SymbolExactCompilerRejection.STALE_LOCATION -> SymbolExactRejection.STALE_LOCATION
         SymbolExactCompilerRejection.OUTSIDE_SCOPE -> SymbolExactRejection.OUTSIDE_SCOPE
         SymbolExactCompilerRejection.AMBIGUOUS_DECLARATION -> SymbolExactRejection.AMBIGUOUS_DECLARATION

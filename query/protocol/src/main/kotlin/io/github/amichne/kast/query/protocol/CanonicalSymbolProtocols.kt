@@ -290,15 +290,16 @@ private fun DomainDiscoveryRejection.protocol(): SymbolDiscoverRejection =
 private fun SymbolExactRejection.inspectCandidateProtocol(): SymbolInspectRejection =
     when (this) {
         SymbolExactRejection.WORKSPACE_NOT_READY -> SymbolInspectRejection.WORKSPACE_NOT_READY
+        SymbolExactRejection.WORKSPACE_INDEX_UNAVAILABLE -> SymbolInspectRejection.WORKSPACE_INDEX_UNAVAILABLE
+        SymbolExactRejection.NATIVE_FAILURE -> SymbolInspectRejection.NATIVE_FAILURE
+        SymbolExactRejection.UNSUPPORTED_DECLARATION -> SymbolInspectRejection.UNSUPPORTED_DECLARATION
         SymbolExactRejection.WORKSPACE_ROOT_MISMATCH -> SymbolInspectRejection.SELECTOR_WORKSPACE_MISMATCH
         SymbolExactRejection.STALE_GENERATION,
         SymbolExactRejection.STALE_LOCATION,
         SymbolExactRejection.DECLARATION_MOVED_OR_CHANGED -> SymbolInspectRejection.CANDIDATE_STALE
         SymbolExactRejection.AMBIGUOUS_DECLARATION -> SymbolInspectRejection.AMBIGUOUS
         SymbolExactRejection.SCOPE_REJECTED,
-        SymbolExactRejection.WORKSPACE_INDEX_UNAVAILABLE,
         SymbolExactRejection.OUTSIDE_SCOPE,
-        SymbolExactRejection.UNSUPPORTED_DECLARATION,
         SymbolExactRejection.COMPILER_IDENTITY_UNAVAILABLE,
         SymbolExactRejection.COMPILER_CONTRACT_VIOLATION -> SymbolInspectRejection.NOT_FOUND
     }
@@ -306,15 +307,16 @@ private fun SymbolExactRejection.inspectCandidateProtocol(): SymbolInspectReject
 private fun SymbolExactRejection.inspectExactProtocol(): SymbolInspectRejection =
     when (this) {
         SymbolExactRejection.WORKSPACE_NOT_READY -> SymbolInspectRejection.WORKSPACE_NOT_READY
+        SymbolExactRejection.WORKSPACE_INDEX_UNAVAILABLE -> SymbolInspectRejection.WORKSPACE_INDEX_UNAVAILABLE
+        SymbolExactRejection.NATIVE_FAILURE -> SymbolInspectRejection.NATIVE_FAILURE
+        SymbolExactRejection.UNSUPPORTED_DECLARATION -> SymbolInspectRejection.UNSUPPORTED_DECLARATION
         SymbolExactRejection.WORKSPACE_ROOT_MISMATCH -> SymbolInspectRejection.SELECTOR_WORKSPACE_MISMATCH
         SymbolExactRejection.STALE_GENERATION,
         SymbolExactRejection.STALE_LOCATION,
         SymbolExactRejection.DECLARATION_MOVED_OR_CHANGED -> SymbolInspectRejection.EXACT_SELECTOR_STALE
         SymbolExactRejection.SCOPE_REJECTED,
-        SymbolExactRejection.WORKSPACE_INDEX_UNAVAILABLE,
         SymbolExactRejection.OUTSIDE_SCOPE,
         SymbolExactRejection.AMBIGUOUS_DECLARATION,
-        SymbolExactRejection.UNSUPPORTED_DECLARATION,
         SymbolExactRejection.COMPILER_IDENTITY_UNAVAILABLE,
         SymbolExactRejection.COMPILER_CONTRACT_VIOLATION -> SymbolInspectRejection.NOT_FOUND
     }

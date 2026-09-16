@@ -48,6 +48,34 @@ import org.junit.jupiter.api.assertThrows
 
 class IntellijExactSelectorResolutionTest {
     @Test
+    fun `invalid and rangeless matching PSI reject without omitting the declaration`() {
+        val selection = SymbolDiscoverySelection.select(batch(7), 0).refined()
+        fun declaration(valid: Boolean, range: com.intellij.openapi.util.TextRange?) =
+            java.lang.reflect.Proxy.newProxyInstance(
+                com.intellij.psi.PsiNamedElement::class.java.classLoader,
+                arrayOf(com.intellij.psi.PsiNamedElement::class.java),
+            ) { _, method, _ ->
+                when (method.name) {
+                    "isValid" -> valid
+                    "getName" -> "service"
+                    "getTextRange" -> range
+                    "getParent" -> null
+                    else -> error("unexpected PSI access: ${method.name}")
+                }
+            } as com.intellij.psi.PsiNamedElement
+        assertEquals(
+            IntellijLiveExactDeclarationLookupResult.Rejected(IntellijExactDeclarationLookupRejection.STALE_LOCATION),
+            findExactDeclarationAncestor(declaration(false, null), selection.lookupKey()),
+        )
+        assertEquals(
+            IntellijLiveExactDeclarationLookupResult.Rejected(
+                IntellijExactDeclarationLookupRejection.UNSUPPORTED_DECLARATION
+            ),
+            findExactDeclarationAncestor(declaration(true, null), selection.lookupKey()),
+        )
+    }
+
+    @Test
     fun `exact lookup retains package admission after native scope compilation`() {
         val selected = SymbolDiscoverySelection.select(batch(7), 0).refined()
         val constraints =
