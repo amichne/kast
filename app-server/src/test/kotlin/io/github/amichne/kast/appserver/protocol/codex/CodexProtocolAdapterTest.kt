@@ -1284,14 +1284,12 @@ class CodexProtocolAdapterTest {
         }
 
     @Test
-    fun `registered thread start keeps its selected root and rejects an upstream retarget`(@TempDir temporary: Path) =
+    fun `thread start automatically registers its selected root and rejects an upstream retarget`(@TempDir temporary: Path) =
         runBlocking {
             val root = temporary.toRealPath()
             val first = Files.createDirectory(root.resolve("first"))
             val second = Files.createDirectory(root.resolve("second"))
             val registry = io.github.amichne.kast.appserver.WorkspaceEnrollmentStore(root.resolve("workspaces.json"))
-            registry.enroll(first)
-            registry.enroll(second)
             val enrollment = (registry.read() as io.github.amichne.kast.appserver.EnrollmentRead.Read).enrollment
             val owner =
                 io.github.amichne.kast.appserver.protocol.ThreadBindingOwner.admit(

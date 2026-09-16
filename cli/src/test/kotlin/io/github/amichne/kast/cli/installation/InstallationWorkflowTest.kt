@@ -133,6 +133,27 @@ class InstallationWorkflowTest {
     }
 
     @Test
+    fun `upgrade replaces a prior installation that fails admission or retirement`(@TempDir temporary: Path) {
+        for (brokenRetirement in listOf(false, true)) {
+            val root = Files.createDirectory(temporary.resolve("case-$brokenRetirement")).toRealPath()
+            val installation = root.resolve("installation")
+            val commands = root.resolve("commands")
+            val home = Files.createDirectory(root.resolve("home"))
+            val codexHome = Files.createDirectory(home.resolve(".codex"))
+            assertInstanceOf(InstallationOutcome.Complete::class.java,
+                InstallationWorkflow.execute(releaseRequest(root, installation, commands, home, codexHome, "1.2.3")))
+            val prior = installation.resolve(Files.readSymbolicLink(installation.resolve("current")))
+            if (brokenRetirement) Files.writeString(prior.resolve("bin/kast"), "#!/bin/sh\nexit 17\n")
+            val upgraded = InstallationWorkflow.execute(releaseRequest(root, installation, commands, home, codexHome,
+                "1.2.4", lifecycleInspectionExit = if (brokenRetirement) 0 else 17))
+            assertInstanceOf(InstallationOutcome.Complete::class.java, upgraded)
+            val selected = installation.resolve(Files.readSymbolicLink(installation.resolve("current")))
+            assertTrue(selected.fileName.toString().startsWith("1.2.4-"))
+            assertTrue(Files.isExecutable(commands.resolve("kast")))
+        }
+    }
+
+    @Test
     fun `prior service retirement reconstructs the enabled owner configuration`() {
         val prior = Path.of("/fixture/versions/1.2.3-payload")
 
