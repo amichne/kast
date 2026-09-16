@@ -4,7 +4,8 @@ from dataclasses import asdict, dataclass, field
 from unittest.mock import patch, Mock
 import unittest
 
-from hosted_workspace_refresh_regression import RefreshEffect, RefreshRequest, await_refresh, observe_visibility, VisibilityReason
+from hosted_workspace_refresh_regression import RefreshEffect, RefreshRequest, await_refresh, observe_visibility, VisibilityReason, RefreshStage, refresh_rejection
+from hosted_read_transport import ReadTransportRejected, ReadProviderFailure
 from hosted_change_acceptance import remaining_matrix_gates
 
 
@@ -42,6 +43,14 @@ class SearchResponse:
 
 
 class NativeWorkspaceRefreshTest(unittest.TestCase):
+    def test_boundary_rejection_preserves_stage_and_typed_transport_cause(self):
+        error = ReadTransportRejected('READ_PROVIDER_REJECTED', ReadProviderFailure.OUTPUT_CONTRACT)
+        self.assertEqual({'stage': 'model_visibility', 'cause': 'READ_PROVIDER_REJECTED',
+                          'providerFailure': 'OUTPUT_CONTRACT_REJECTED'},
+                         asdict(refresh_rejection(RefreshStage.MODEL_VISIBILITY, error)))
+        self.assertEqual({'stage': 'model_effect', 'cause': 'value_rejected', 'providerFailure': None},
+                         asdict(refresh_rejection(RefreshStage.MODEL_EFFECT, ValueError('private payload'))))
+
     def test_pending_effect_and_admission_must_reach_actual_completion(self):
         request = RefreshRequest('test-request', RefreshEffect.GRADLE_MODEL_RELOAD)
         replies = [asdict(Pending(request.requestId, 'ADMISSION')), asdict(Complete(request.requestId))]

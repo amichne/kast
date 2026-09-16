@@ -8,8 +8,40 @@ import time
 import uuid
 
 from hosted_peer_probe import admit_peer_endpoint, connected_peer, receive_terminal_reply
-from hosted_read_transport import HostedReadTransport
+from hosted_read_transport import HostedReadTransport, ReadTransportRejected, ReadTransportFailure, ReadProviderFailure
 from hosted_repair_budget_regression import SemanticOutcome
+
+
+class RefreshStage(str, Enum):
+    PROVIDER = 'provider'
+    FILE_EFFECT = 'file_effect'
+    FILE_VISIBILITY = 'file_visibility'
+    MODEL_EFFECT = 'model_effect'
+    MODEL_VISIBILITY = 'model_visibility'
+    FAILED_IMPORT = 'failed_import'
+
+
+class RefreshBoundaryFailure(str, Enum):
+    IO = 'io_rejected'
+    VALUE = 'value_rejected'
+    TYPE = 'type_rejected'
+    KEY = 'key_rejected'
+
+
+@dataclass(frozen=True)
+class RefreshBoundaryRejection:
+    stage: RefreshStage
+    cause: RefreshBoundaryFailure | ReadTransportFailure
+    providerFailure: ReadProviderFailure | None = None
+
+
+def refresh_rejection(stage, error):
+    if isinstance(error, ReadTransportRejected):
+        return RefreshBoundaryRejection(stage, error.reason, error.provider_failure)
+    cause = next(reason for kind, reason in ((OSError, RefreshBoundaryFailure.IO),
+        (ValueError, RefreshBoundaryFailure.VALUE), (TypeError, RefreshBoundaryFailure.TYPE),
+        (KeyError, RefreshBoundaryFailure.KEY)) if isinstance(error, kind))
+    return RefreshBoundaryRejection(stage, cause)
 
 
 class RefreshEffect(str, Enum):
@@ -113,6 +145,7 @@ class RefreshReceipt:
     restorationFailure: RefreshEffectFailure | None = None
     fileObservation: VisibilityReceipt | None = None
     moduleObservation: VisibilityReceipt | None = None
+    rejection: RefreshBoundaryRejection | None = None
 
 
 def exchange_refresh(endpoint, command, schema):
@@ -169,8 +202,11 @@ def run_workspace_refresh_regression(isolation, fixture, product, java, harness,
     file_visible = model_visible = duplicate = conflict = failed_import = restored = False
     observations, failure, effect_failure, restoration_failure = 0, None, None, None
     file_observation = module_observation = None
+    rejection = None
+    stage = RefreshStage.PROVIDER
     try:
         with HostedReadTransport(isolation, fixture, product, java, harness).open() as transport:
+            stage = RefreshStage.FILE_EFFECT
             external.write_text('package fixture\nclass NativeRefreshExternal\n')
             request = RefreshRequest(str(uuid.uuid4()), RefreshEffect.FILE_REFRESH)
             first = exchange_refresh(endpoint, request, schema)
@@ -179,16 +215,20 @@ def run_workspace_refresh_regression(isolation, fixture, product, java, harness,
             conflicting = exchange_refresh(endpoint, RefreshRequest(request.requestId, RefreshEffect.GRADLE_MODEL_RELOAD), schema)
             conflict = conflicting == {'type': 'rejected', 'reason': 'REQUEST_CONFLICT'}
             observations += await_refresh(endpoint, request, first, schema)
+            stage = RefreshStage.FILE_VISIBILITY
             file_observation = observe_visibility(transport, 'NativeRefreshExternal')
             file_visible = file_observation.visible
+            stage = RefreshStage.MODEL_EFFECT
             (module / 'src/main/kotlin').mkdir(parents=True)
             (module / 'build.gradle.kts').write_text('plugins { kotlin("jvm") }\nrepositories { mavenCentral() }\n')
             (module / 'src/main/kotlin/NativeRefreshModule.kt').write_text('package refresh.module\nclass NativeRefreshModule\n')
             settings.write_bytes(baseline + b'\ninclude(":native-refresh-module")\n')
             request = RefreshRequest(str(uuid.uuid4()), RefreshEffect.GRADLE_MODEL_RELOAD)
             observations += await_refresh(endpoint, request, exchange_refresh(endpoint, request, schema), schema)
+            stage = RefreshStage.MODEL_VISIBILITY
             module_observation = observe_visibility(transport, 'NativeRefreshModule')
             model_visible = module_observation.visible
+            stage = RefreshStage.FAILED_IMPORT
             (module / 'build.gradle.kts').write_text('this is deliberately invalid Gradle Kotlin fixture syntax !\n')
             request = RefreshRequest(str(uuid.uuid4()), RefreshEffect.GRADLE_MODEL_RELOAD)
             rejected, pending = wait_refresh(endpoint, request, exchange_refresh(endpoint, request, schema), schema)
@@ -196,7 +236,8 @@ def run_workspace_refresh_regression(isolation, fixture, product, java, harness,
             failed_import = rejected.get('type') == 'failed' and rejected.get('reason') == 'EFFECT_FAILED'
     except RefreshEffectRejected as error:
         failure, effect_failure = RefreshFixtureFailure.REJECTED, error.reason
-    except (OSError, ValueError, TypeError, KeyError):
+    except (OSError, ValueError, TypeError, KeyError) as error:
+        rejection = refresh_rejection(stage, error)
         failure = RefreshFixtureFailure.REJECTED
     finally:
         settings.write_bytes(baseline)
@@ -214,7 +255,7 @@ def run_workspace_refresh_regression(isolation, fixture, product, java, harness,
     passed = all((file_visible, model_visible, duplicate, conflict, failed_import, restored)) and failure is None
     return asdict(RefreshReceipt('passed' if passed else 'rejected', file_visible, model_visible,
                                duplicate, conflict, failed_import, restored, observations, failure, effect_failure, restoration_failure,
-                               file_observation, module_observation))
+                               file_observation, module_observation, rejection))
 
 
 def observe_visibility(transport, name):
