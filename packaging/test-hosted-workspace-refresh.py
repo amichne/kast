@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Finite native refresh polling and qualification gates, without launching an IDE."""
 from dataclasses import asdict, dataclass, field
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 import unittest
 
-from hosted_workspace_refresh_regression import RefreshEffect, RefreshRequest, await_refresh
+from hosted_workspace_refresh_regression import RefreshEffect, RefreshRequest, await_refresh, observe_visibility, VisibilityReason
 from hosted_change_acceptance import remaining_matrix_gates
 
 
@@ -28,6 +28,19 @@ class Failed:
     type: str = field(default='failed', init=False)
 
 
+@dataclass(frozen=True)
+class ClassItem:
+    name: str
+
+
+@dataclass(frozen=True)
+class SearchResponse:
+    status: str
+    items: tuple[ClassItem, ...] = ()
+    qualification: str | None = None
+    reason: str | None = None
+
+
 class NativeWorkspaceRefreshTest(unittest.TestCase):
     def test_pending_effect_and_admission_must_reach_actual_completion(self):
         request = RefreshRequest('test-request', RefreshEffect.GRADLE_MODEL_RELOAD)
@@ -48,6 +61,22 @@ class NativeWorkspaceRefreshTest(unittest.TestCase):
         with patch('hosted_workspace_refresh_regression.time.monotonic', side_effect=[0, 2]):
             with self.assertRaisesRegex(ValueError, 'REFRESH_FIXTURE_TIMEOUT'):
                 await_refresh(None, request, asdict(Pending(request.requestId, 'EFFECT')), None, timeout=1)
+
+    def test_visibility_retains_complete_empty_and_finite_qualifications(self):
+        transport = Mock()
+        for response, expected, reasons in (
+            (SearchResponse('complete', (ClassItem('Expected'),)), True, ()),
+            (SearchResponse('complete'), False, ()),
+            (SearchResponse('qualified', qualification='[time-limit, unsupported-item]'), False,
+             (VisibilityReason.TIME_LIMIT, VisibilityReason.UNSUPPORTED_ITEM)),
+            (SearchResponse('rejected', reason='workspace-not-ready'), False,
+             (VisibilityReason.WORKSPACE_NOT_READY,)),
+        ):
+            transport.invoke_observed.return_value = asdict(response), 'schema'
+            receipt = observe_visibility(transport, 'Expected')
+            self.assertEqual(expected, receipt.visible)
+            self.assertEqual(reasons, receipt.reasons)
+            self.assertGreaterEqual(receipt.roundTripNanos, 0)
 
     def test_absent_refresh_acceptance_remains_unqualified(self):
         names = {item['scenario'] for item in remaining_matrix_gates()}

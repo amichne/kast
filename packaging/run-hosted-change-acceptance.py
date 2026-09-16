@@ -43,6 +43,7 @@ def main():
     parser.add_argument('--previous-release-assets', type=Path)
     parser.add_argument('--previous-release-version')
     parser.add_argument('--diagnostic-dirty', action='store_true')
+    parser.add_argument('--workspace-refresh-only', action='store_true')
     parser.add_argument('--read-policy', type=NativeReadPolicy, choices=list(NativeReadPolicy), default=NativeReadPolicy.DEFAULT)
     parser.add_argument('--readiness-seconds', type=int, default=600)
     parser.add_argument('--run-seconds', type=int, default=900)
@@ -162,7 +163,8 @@ def main():
                 record({'event': 'stage', 'stage': 'native-readiness', 'outcome': 'started'})
                 evidence['initialLive'] = processes.start_ide()
                 record({'event': 'stage', 'stage': 'native-readiness', 'outcome': 'completed'})
-                evidence['readRegression'] = run_read_regression(isolation, fixture, product, idea.java, harness, repo, read_fixture, evidence['initialLive'], args.read_policy)
+                if not args.workspace_refresh_only:
+                    evidence['readRegression'] = run_read_regression(isolation, fixture, product, idea.java, harness, repo, read_fixture, evidence['initialLive'], args.read_policy)
                 write()
                 record({'event': 'stage', 'stage': 'workspace-refresh', 'outcome': 'started'})
                 evidence['workspaceRefresh'] = run_workspace_refresh_regression(
@@ -172,9 +174,10 @@ def main():
                 if installed:
                     evidence['releasedCoordinator'] = asdict(qualify_released_coordinator(isolation, installed, inventory, fixture))
                     write()
-                processes.run(idea.java, harness, schemas, private, native_report, args.run_seconds, record)
-                evidence['native'] = bounded_native_report(native_report, fixture.workspace)
-                evidence['durableReceipts'] = durable_receipt_scopes(isolation.root / 'home', fixture.workspace)
+                if not args.workspace_refresh_only:
+                    processes.run(idea.java, harness, schemas, private, native_report, args.run_seconds, record)
+                    evidence['native'] = bounded_native_report(native_report, fixture.workspace)
+                    evidence['durableReceipts'] = durable_receipt_scopes(isolation.root / 'home', fixture.workspace)
                 evidence['status'] = 'observed-with-unqualified-matrix'
             finally:
                 processes.retire()

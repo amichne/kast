@@ -9,6 +9,7 @@ import uuid
 
 from hosted_peer_probe import admit_peer_endpoint, connected_peer, receive_terminal_reply
 from hosted_read_transport import HostedReadTransport
+from hosted_repair_budget_regression import SemanticOutcome
 
 
 class RefreshEffect(str, Enum):
@@ -69,6 +70,34 @@ class RefreshClassSearch:
     scope: None = None
 
 
+class VisibilityReason(str, Enum):
+    WORKSPACE_NOT_READY = 'workspace-not-ready'
+    QUERY_REJECTED = 'query-rejected'
+    RESULT_LIMIT = 'result-limit'
+    BYTE_LIMIT = 'byte-limit'
+    WORK_LIMIT = 'work-limit'
+    TIME_LIMIT = 'time-limit'
+    DUMB_MODE_TRANSITION = 'dumb-mode-transition'
+    PROVIDER_FAILURE = 'provider-failure'
+    UNSCOPED_PROVIDER = 'unscoped-provider'
+    UNSUPPORTED_ITEM = 'unsupported-item'
+    EXACT_DEFINITION_UNAVAILABLE = 'exact-definition-unavailable'
+
+
+@dataclass(frozen=True)
+class VisibilityReceipt:
+    status: SemanticOutcome
+    reasons: tuple[VisibilityReason, ...]
+    resultCount: int
+    exactNameMatches: int
+    effectiveMillis: int | None
+    roundTripNanos: int
+
+    @property
+    def visible(self):
+        return self.status == SemanticOutcome.COMPLETE and self.resultCount == self.exactNameMatches == 1
+
+
 @dataclass(frozen=True)
 class RefreshReceipt:
     outcome: str
@@ -82,6 +111,8 @@ class RefreshReceipt:
     failure: RefreshFixtureFailure | None = None
     effectFailure: RefreshEffectFailure | None = None
     restorationFailure: RefreshEffectFailure | None = None
+    fileObservation: VisibilityReceipt | None = None
+    moduleObservation: VisibilityReceipt | None = None
 
 
 def exchange_refresh(endpoint, command, schema):
@@ -137,6 +168,7 @@ def run_workspace_refresh_regression(isolation, fixture, product, java, harness,
         raise ValueError('REFRESH_FIXTURE_OWNERSHIP_REJECTED')
     file_visible = model_visible = duplicate = conflict = failed_import = restored = False
     observations, failure, effect_failure, restoration_failure = 0, None, None, None
+    file_observation = module_observation = None
     try:
         with HostedReadTransport(isolation, fixture, product, java, harness).open() as transport:
             external.write_text('package fixture\nclass NativeRefreshExternal\n')
@@ -147,14 +179,16 @@ def run_workspace_refresh_regression(isolation, fixture, product, java, harness,
             conflicting = exchange_refresh(endpoint, RefreshRequest(request.requestId, RefreshEffect.GRADLE_MODEL_RELOAD), schema)
             conflict = conflicting == {'type': 'rejected', 'reason': 'REQUEST_CONFLICT'}
             observations += await_refresh(endpoint, request, first, schema)
-            file_visible = visible(transport, 'NativeRefreshExternal')
+            file_observation = observe_visibility(transport, 'NativeRefreshExternal')
+            file_visible = file_observation.visible
             (module / 'src/main/kotlin').mkdir(parents=True)
             (module / 'build.gradle.kts').write_text('plugins { kotlin("jvm") }\nrepositories { mavenCentral() }\n')
             (module / 'src/main/kotlin/NativeRefreshModule.kt').write_text('package refresh.module\nclass NativeRefreshModule\n')
             settings.write_bytes(baseline + b'\ninclude(":native-refresh-module")\n')
             request = RefreshRequest(str(uuid.uuid4()), RefreshEffect.GRADLE_MODEL_RELOAD)
             observations += await_refresh(endpoint, request, exchange_refresh(endpoint, request, schema), schema)
-            model_visible = visible(transport, 'NativeRefreshModule')
+            module_observation = observe_visibility(transport, 'NativeRefreshModule')
+            model_visible = module_observation.visible
             (module / 'build.gradle.kts').write_text('this is deliberately invalid Gradle Kotlin fixture syntax !\n')
             request = RefreshRequest(str(uuid.uuid4()), RefreshEffect.GRADLE_MODEL_RELOAD)
             rejected, pending = wait_refresh(endpoint, request, exchange_refresh(endpoint, request, schema), schema)
@@ -179,10 +213,25 @@ def run_workspace_refresh_regression(isolation, fixture, product, java, harness,
             failure = RefreshFixtureFailure.RESTORATION_REJECTED
     passed = all((file_visible, model_visible, duplicate, conflict, failed_import, restored)) and failure is None
     return asdict(RefreshReceipt('passed' if passed else 'rejected', file_visible, model_visible,
-                               duplicate, conflict, failed_import, restored, observations, failure, effect_failure, restoration_failure))
+                               duplicate, conflict, failed_import, restored, observations, failure, effect_failure, restoration_failure,
+                               file_observation, module_observation))
 
 
-def visible(transport, name):
-    response = transport.invoke('cli', 'search_classes', asdict(RefreshClassSearch(name)))
-    return (response.get('status') == 'complete' and len(response.get('items', [])) == 1
-            and response['items'][0].get('name') == name)
+def observe_visibility(transport, name):
+    started = time.monotonic_ns()
+    response, _ = transport.invoke_observed('cli', 'search_classes', asdict(RefreshClassSearch(name)))
+    elapsed = time.monotonic_ns() - started
+    items = response.get('items', [])
+    qualification = response.get('qualification')
+    if qualification is None:
+        reasons = ()
+    elif isinstance(qualification, str) and qualification.startswith('[') and qualification.endswith(']'):
+        reasons = tuple(VisibilityReason(value.strip()) for value in qualification[1:-1].split(',') if value.strip())
+    else:
+        raise ValueError('VISIBILITY_QUALIFICATION_REJECTED')
+    rejection = response.get('reason')
+    if rejection is not None:
+        reasons += (VisibilityReason(rejection),)
+    grant = response.get('execution_budget', {}).get('max_elapsed_ms', {}).get('effective')
+    return VisibilityReceipt(SemanticOutcome(response['status']), reasons, len(items),
+        sum(item.get('name') == name for item in items), grant, elapsed)
