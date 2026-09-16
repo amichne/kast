@@ -472,6 +472,7 @@ private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject =
                 relationQualificationSchema(),
                 ServerSchemaProperty("relations", arraySchema(relationFactSchema())),
                 executionBudgetProperty(),
+                referenceAcquisitionsProperty(),
                 ServerSchemaProperty("omissions", arraySchema(relationOmissionSchema())),
                 ServerSchemaProperty(
                     "soundness",
@@ -486,6 +487,7 @@ private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject =
                 operation,
                 traversalQualificationSchema(),
                 executionBudgetProperty(),
+                referenceAcquisitionsProperty(),
                 ServerSchemaProperty("graph", normalizedTraversalGraphSchema()),
                 ServerSchemaProperty(
                     "partialExpansions",
@@ -607,6 +609,7 @@ private fun queryRunDocumentSchema(operation: CanonicalOperation): JsonObject =
             "complete",
             ServerSchemaProperty("items", arraySchema(queryResultItemSchema())),
             executionBudgetProperty(),
+            referenceAcquisitionsProperty(),
             ServerSchemaProperty("failures", arraySchema(queryItemFailureSchema())),
         ),
         operationOutcomeVariant(
@@ -622,6 +625,7 @@ private fun queryRunDocumentSchema(operation: CanonicalOperation): JsonObject =
             ),
             ServerSchemaProperty("items", arraySchema(queryResultItemSchema())),
             executionBudgetProperty(),
+            referenceAcquisitionsProperty(),
             ServerSchemaProperty("failures", arraySchema(queryItemFailureSchema())),
             ServerSchemaProperty(
                 "qualification",
@@ -866,15 +870,7 @@ private fun queryRejectionSchema(): JsonObject =
             ServerSchemaProperty(
                 "reason",
                 enumSchema(
-                    listOf(
-                        "wrong-kind",
-                        "malformed",
-                        "incompatible-workspace",
-                        "stale-generation",
-                        "stale-authority",
-                        "incompatible-authority",
-                        "incompatible-reference-version",
-                    ),
+                    io.github.amichne.kast.protocol.contract.QueryReferenceRejectionReason.entries.map { it.cliName() },
                     "Exact reference rejection reason.",
                 ),
             ),
@@ -975,6 +971,12 @@ private fun relationQualificationSchema(): JsonObject =
             ),
             ServerSchemaProperty("limitations", relationLimitationsSchema()),
             ServerSchemaProperty(
+                "recovery",
+                arraySchema(
+                    generatedRequestSchema(io.github.amichne.kast.protocol.contract.ReadRecoveryGuidance.serializer())
+                ),
+            ),
+            ServerSchemaProperty(
                 "checkpoint",
                 generatedRequestSchema(
                     io.github.amichne.kast.protocol.contract.RelationCheckpointDocument.serializer()
@@ -1002,6 +1004,12 @@ private fun relationQualificationSchema(): JsonObject =
                 integerSchema(0, description = "Known minimum relation count."),
             ),
             ServerSchemaProperty("limitations", relationLimitationsSchema()),
+            ServerSchemaProperty(
+                "recovery",
+                arraySchema(
+                    generatedRequestSchema(io.github.amichne.kast.protocol.contract.ReadRecoveryGuidance.serializer())
+                ),
+            ),
         ),
     )
 
@@ -1244,6 +1252,12 @@ private fun traversalQualificationSchema(): JsonObject =
                 generatedRequestSchema(io.github.amichne.kast.protocol.contract.ReadResumeActionDocument.serializer()),
             ),
             ServerSchemaProperty("limitations", traversalLimitationsSchema()),
+            ServerSchemaProperty(
+                "recovery",
+                arraySchema(
+                    generatedRequestSchema(io.github.amichne.kast.protocol.contract.ReadRecoveryGuidance.serializer())
+                ),
+            ),
             ServerSchemaProperty("relationLimitations", relationLimitationsSchema()),
             ServerSchemaProperty(
                 "continuation",
@@ -1259,6 +1273,12 @@ private fun traversalQualificationSchema(): JsonObject =
                 constantSchema("terminal_incomplete", "Coverage state."),
             ),
             ServerSchemaProperty("limitations", traversalLimitationsSchema()),
+            ServerSchemaProperty(
+                "recovery",
+                arraySchema(
+                    generatedRequestSchema(io.github.amichne.kast.protocol.contract.ReadRecoveryGuidance.serializer())
+                ),
+            ),
             ServerSchemaProperty("relationLimitations", relationLimitationsSchema()),
         ),
     )
@@ -1966,3 +1986,10 @@ private fun readRecoveryActionProperties(operation: CanonicalOperation): Array<S
             )
         else -> emptyArray()
     }
+
+internal fun referenceAcquisitionsProperty() =
+    ServerSchemaProperty(
+        "reference_acquisitions",
+        generatedRequestSchema(io.github.amichne.kast.protocol.contract.ReadReferenceAcquisitions.serializer()),
+        required = false,
+    )

@@ -323,6 +323,37 @@ private fun SymbolExactRejection.inspectExactProtocol(): SymbolInspectRejection 
 
 private fun SelectorLookupRejection.inspectProtocol(): SymbolInspectRejection =
     when (this) {
+        SelectorLookupRejection.REVALIDATION_WRONG_KIND -> SymbolInspectRejection.SELECTOR_WRONG_KIND
+        SelectorLookupRejection.REVALIDATION_UNRETAINED -> SymbolInspectRejection.REVALIDATION_UNRETAINED
+        SelectorLookupRejection.REVALIDATION_EXPIRED -> SymbolInspectRejection.REVALIDATION_EXPIRED
+        SelectorLookupRejection.REVALIDATION_CAPACITY -> SymbolInspectRejection.REVALIDATION_CAPACITY
+        SelectorLookupRejection.REVALIDATION_WORK_LIMIT_REACHED ->
+            SymbolInspectRejection.REVALIDATION_WORK_LIMIT_REACHED
+        SelectorLookupRejection.REVALIDATION_TIME_LIMIT_REACHED ->
+            SymbolInspectRejection.REVALIDATION_TIME_LIMIT_REACHED
+        SelectorLookupRejection.REVALIDATION_RETIRED -> SymbolInspectRejection.REVALIDATION_RETIRED
+        SelectorLookupRejection.REVALIDATION_CAPTURE_UNAVAILABLE ->
+            SymbolInspectRejection.REVALIDATION_CAPTURE_UNAVAILABLE
+        SelectorLookupRejection.REVALIDATION_WORKSPACE_MISMATCH ->
+            SymbolInspectRejection.REVALIDATION_WORKSPACE_MISMATCH
+        SelectorLookupRejection.REVALIDATION_OWNER_MISMATCH -> SymbolInspectRejection.REVALIDATION_OWNER_MISMATCH
+        SelectorLookupRejection.REVALIDATION_WORKSPACE_NOT_READY ->
+            SymbolInspectRejection.REVALIDATION_WORKSPACE_NOT_READY
+        SelectorLookupRejection.REVALIDATION_BASIS_MOVED -> SymbolInspectRejection.REVALIDATION_BASIS_MOVED
+        SelectorLookupRejection.REVALIDATION_CONTENT_CHANGED -> SymbolInspectRejection.REVALIDATION_CONTENT_CHANGED
+        SelectorLookupRejection.REVALIDATION_CONTENT_UNCOMMITTED ->
+            SymbolInspectRejection.REVALIDATION_CONTENT_UNCOMMITTED
+        SelectorLookupRejection.REVALIDATION_SCOPE_REJECTED -> SymbolInspectRejection.REVALIDATION_SCOPE_REJECTED
+        SelectorLookupRejection.REVALIDATION_DECLARATION_MISSING ->
+            SymbolInspectRejection.REVALIDATION_DECLARATION_MISSING
+        SelectorLookupRejection.REVALIDATION_UNSUPPORTED_DECLARATION ->
+            SymbolInspectRejection.REVALIDATION_UNSUPPORTED_DECLARATION
+        SelectorLookupRejection.REVALIDATION_AMBIGUOUS -> SymbolInspectRejection.REVALIDATION_AMBIGUOUS
+        SelectorLookupRejection.REVALIDATION_COMPILER_IDENTITY_CHANGED ->
+            SymbolInspectRejection.REVALIDATION_COMPILER_IDENTITY_CHANGED
+        SelectorLookupRejection.REVALIDATION_COMPILER_UNAVAILABLE ->
+            SymbolInspectRejection.REVALIDATION_COMPILER_UNAVAILABLE
+
         SelectorLookupRejection.WRONG_KIND -> SymbolInspectRejection.SELECTOR_WRONG_KIND
         SelectorLookupRejection.MALFORMED -> SymbolInspectRejection.SELECTOR_MALFORMED
         SelectorLookupRejection.STALE -> SymbolInspectRejection.EXACT_SELECTOR_STALE
@@ -335,6 +366,8 @@ private fun ExactRevalidationRejection.inspectRevalidationProtocol(): SymbolInsp
         ExactRevalidationRejection.UNRETAINED -> SymbolInspectRejection.REVALIDATION_UNRETAINED
         ExactRevalidationRejection.EXPIRED -> SymbolInspectRejection.REVALIDATION_EXPIRED
         ExactRevalidationRejection.CAPACITY -> SymbolInspectRejection.REVALIDATION_CAPACITY
+        ExactRevalidationRejection.WORK_LIMIT_REACHED -> SymbolInspectRejection.REVALIDATION_WORK_LIMIT_REACHED
+        ExactRevalidationRejection.TIME_LIMIT_REACHED -> SymbolInspectRejection.REVALIDATION_TIME_LIMIT_REACHED
         ExactRevalidationRejection.RETIRED -> SymbolInspectRejection.REVALIDATION_RETIRED
         ExactRevalidationRejection.CAPTURE_UNAVAILABLE -> SymbolInspectRejection.REVALIDATION_CAPTURE_UNAVAILABLE
         ExactRevalidationRejection.WORKSPACE_MISMATCH -> SymbolInspectRejection.REVALIDATION_WORKSPACE_MISMATCH

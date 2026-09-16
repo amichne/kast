@@ -1,3 +1,5 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
 package io.github.amichne.kast.protocol.wire
 
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
@@ -95,6 +97,9 @@ internal data class RelationReadResultWireDocument(
     val soundness: io.github.amichne.kast.protocol.contract.RelationSoundnessDocument,
     @kotlinx.serialization.SerialName("execution_budget")
     val executionBudget: io.github.amichne.kast.protocol.contract.ExecutionBudgetReport? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @kotlinx.serialization.SerialName("reference_acquisitions")
+    val referenceAcquisitions: io.github.amichne.kast.protocol.contract.ReadReferenceAcquisitions? = null,
 )
 
 internal fun RelationReadResult.toSymbolWireDocument() =
@@ -103,6 +108,7 @@ internal fun RelationReadResult.toSymbolWireDocument() =
         omissions.values.map { it.toWireDocument() },
         soundness,
         executionBudget,
+        referenceAcquisitions,
     )
 
 /**
@@ -117,5 +123,5 @@ internal fun RelationReadResultWireDocument.toContract(): WireDocumentConversion
             omissions
                 .convertEach { it.toContract() }
                 .flatMapConverted { BoundedProtocolList.create(it).toWireDocumentConversion() }
-                .mapConverted { RelationReadResult(relations, it, executionBudget) }
+                .mapConverted { RelationReadResult(relations, it, executionBudget, referenceAcquisitions) }
         }

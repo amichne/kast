@@ -25,8 +25,8 @@ class HostedExactRevalidationStore : Disposable {
 }
 
 /**
- * Fixed 256 entries / 4 MiB charge / 5 minutes. Expired slots remain until disposal so replay can never renew creation
- * time.
+ * Fixed 256 entries / 4 MiB charge / 5 minutes. Replays do not renew retained entries. When capacity is needed, older
+ * epochs are evicted before current-epoch locators; evicted tokens become explicitly unretained.
  */
 internal class ExactRevalidationRecords(
     private val now: () -> Long = System::nanoTime,
@@ -65,11 +65,27 @@ internal class ExactRevalidationRecords(
                         owner.project.projectPath.value.length +
                         owner.sourceSet.value.length +
                         owner.sourceRoot.value.length)
+        if (bytes > maxBytes) return rejected(ExactRevalidationRejection.CAPACITY)
+        evictHistorical(locator, bytes)
         if (entries.size >= maxEntries || bytes > maxBytes - retainedBytes)
             return rejected(ExactRevalidationRejection.CAPACITY)
         entries[token] = Record(locator, tick, bytes)
         retainedBytes += bytes
         return Refinement.Refined(Unit)
+    }
+
+    private fun evictHistorical(locator: ExactRevalidationLocator, bytes: Long) {
+        val historical =
+            entries.entries
+                .filter { (_, record) ->
+                    record.locator.host == locator.host && record.locator.epoch.value < locator.epoch.value
+                }
+                .sortedBy { it.value.created }
+        for ((key, record) in historical) {
+            if (entries.size < maxEntries && bytes <= maxBytes - retainedBytes) break
+            entries.remove(key)
+            retainedBytes -= record.bytes
+        }
     }
 
     @Synchronized

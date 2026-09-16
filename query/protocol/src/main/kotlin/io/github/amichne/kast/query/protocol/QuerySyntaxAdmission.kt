@@ -336,11 +336,48 @@ fun SemanticReadAuthority.evidenceBasis(): EvidenceBasis =
             }
     }
 
-private fun CanonicalSelectorDecodingFailure.queryRejection(
+internal fun CanonicalSelectorDecodingFailure.queryRejection(
     token: ProtocolText,
     expectedExact: Boolean,
 ): QueryReferenceRejectionReason =
     when (this) {
+        CanonicalSelectorDecodingFailure.REVALIDATION_WRONG_KIND ->
+            QueryReferenceRejectionReason.REVALIDATION_WRONG_KIND
+        CanonicalSelectorDecodingFailure.REVALIDATION_UNRETAINED ->
+            QueryReferenceRejectionReason.REVALIDATION_UNRETAINED
+        CanonicalSelectorDecodingFailure.REVALIDATION_EXPIRED -> QueryReferenceRejectionReason.REVALIDATION_EXPIRED
+        CanonicalSelectorDecodingFailure.REVALIDATION_CAPACITY -> QueryReferenceRejectionReason.REVALIDATION_CAPACITY
+        CanonicalSelectorDecodingFailure.REVALIDATION_WORK_LIMIT_REACHED ->
+            QueryReferenceRejectionReason.REVALIDATION_WORK_LIMIT_REACHED
+        CanonicalSelectorDecodingFailure.REVALIDATION_TIME_LIMIT_REACHED ->
+            QueryReferenceRejectionReason.REVALIDATION_TIME_LIMIT_REACHED
+        CanonicalSelectorDecodingFailure.REVALIDATION_RETIRED -> QueryReferenceRejectionReason.REVALIDATION_RETIRED
+        CanonicalSelectorDecodingFailure.REVALIDATION_CAPTURE_UNAVAILABLE ->
+            QueryReferenceRejectionReason.REVALIDATION_CAPTURE_UNAVAILABLE
+        CanonicalSelectorDecodingFailure.REVALIDATION_WORKSPACE_MISMATCH ->
+            QueryReferenceRejectionReason.REVALIDATION_WORKSPACE_MISMATCH
+        CanonicalSelectorDecodingFailure.REVALIDATION_OWNER_MISMATCH ->
+            QueryReferenceRejectionReason.REVALIDATION_OWNER_MISMATCH
+        CanonicalSelectorDecodingFailure.REVALIDATION_WORKSPACE_NOT_READY ->
+            QueryReferenceRejectionReason.REVALIDATION_WORKSPACE_NOT_READY
+        CanonicalSelectorDecodingFailure.REVALIDATION_BASIS_MOVED ->
+            QueryReferenceRejectionReason.REVALIDATION_BASIS_MOVED
+        CanonicalSelectorDecodingFailure.REVALIDATION_CONTENT_CHANGED ->
+            QueryReferenceRejectionReason.REVALIDATION_CONTENT_CHANGED
+        CanonicalSelectorDecodingFailure.REVALIDATION_CONTENT_UNCOMMITTED ->
+            QueryReferenceRejectionReason.REVALIDATION_CONTENT_UNCOMMITTED
+        CanonicalSelectorDecodingFailure.REVALIDATION_SCOPE_REJECTED ->
+            QueryReferenceRejectionReason.REVALIDATION_SCOPE_REJECTED
+        CanonicalSelectorDecodingFailure.REVALIDATION_DECLARATION_MISSING ->
+            QueryReferenceRejectionReason.REVALIDATION_DECLARATION_MISSING
+        CanonicalSelectorDecodingFailure.REVALIDATION_UNSUPPORTED_DECLARATION ->
+            QueryReferenceRejectionReason.REVALIDATION_UNSUPPORTED_DECLARATION
+        CanonicalSelectorDecodingFailure.REVALIDATION_AMBIGUOUS -> QueryReferenceRejectionReason.REVALIDATION_AMBIGUOUS
+        CanonicalSelectorDecodingFailure.REVALIDATION_COMPILER_IDENTITY_CHANGED ->
+            QueryReferenceRejectionReason.REVALIDATION_COMPILER_IDENTITY_CHANGED
+        CanonicalSelectorDecodingFailure.REVALIDATION_COMPILER_UNAVAILABLE ->
+            QueryReferenceRejectionReason.REVALIDATION_COMPILER_UNAVAILABLE
+
         CanonicalSelectorDecodingFailure.INCOMPATIBLE_WORKSPACE -> QueryReferenceRejectionReason.INCOMPATIBLE_WORKSPACE
         CanonicalSelectorDecodingFailure.STALE_AUTHORITY ->
             if (token.value.startsWith("exact:v2:") || token.value.startsWith("candidate:v2:"))

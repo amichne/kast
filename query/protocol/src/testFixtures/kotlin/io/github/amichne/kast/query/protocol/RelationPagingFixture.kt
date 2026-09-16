@@ -50,7 +50,8 @@ class RelationPagingFixture(val authority: SemanticReadAuthority, subjectName: S
             RelationByteLimit.parse(100_000).refined(),
         )
     val consumed = mutableListOf<Long>()
-    val protocol = CanonicalRelationReadProtocol(RelationOperations(::read), references)
+    val operations = RelationOperations(::read)
+    val protocol = CanonicalRelationReadProtocol(operations, references)
     private val startRequest = RelationRequest.start(selector, RelationMeaning.References, budget)
     private val cursors =
         (0L..3L).runningFold(startRequest.providerCursor) { cursor, index ->

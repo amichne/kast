@@ -96,6 +96,22 @@ class PageFixture:
 
 
 @dataclass(frozen=True)
+class ReacquiredReferenceFixture:
+    previous: str
+    current: str
+
+
+@dataclass(frozen=True)
+class ReferenceAcquisitionsFixture:
+    references: tuple[ReacquiredReferenceFixture, ...]
+
+
+@dataclass(frozen=True, kw_only=True)
+class ReacquiredPageFixture(PageFixture):
+    reference_acquisitions: ReferenceAcquisitionsFixture
+
+
+@dataclass(frozen=True)
 class UnavailableSymbolReference:
     type: str = 'reference-rejected'
     role: str = 'symbol'
@@ -163,22 +179,25 @@ class AuthorityReadTest(unittest.TestCase):
         elif tool == 'symbol_inspect':
             acquisition = 'reacquired' if arguments['target']['type'] == 'revalidate_exact' else 'strict'
             document = InspectionSlice(live, InspectedSymbolSlice(selector), acquisition)
-        elif arguments['anchor']['selector'] != selector:
-            document = RejectionFixture(UnavailableSymbolReference())
         elif arguments['page']['type'] == 'continue' and arguments['page']['continuation'] != 'cursor-' + str(self.epoch):
             document = RejectionFixture('source-snapshot-mismatch')
         else:
             name = 'pageItem01' if arguments['page']['type'] == 'continue' else 'pageItem00'
             token = 'cursor-' + str(self.epoch)
-            document = PageFixture(live, (EntityFixture(name),),
-                QualificationFixture(CursorFixture(token), ProgressFixture(CheckpointFixture(token))))
+            qualification = QualificationFixture(CursorFixture(token), ProgressFixture(CheckpointFixture(token)))
+            previous = arguments['anchor']['selector']
+            if previous != selector:
+                document = ReacquiredPageFixture(live, (EntityFixture(name),), qualification,
+                    reference_acquisitions=ReferenceAcquisitionsFixture((ReacquiredReferenceFixture(previous, selector),)))
+            else:
+                document = PageFixture(live, (EntityFixture(name),), qualification)
         return json.loads(json.dumps(asdict(document))), 'sha256:' + '1' * 64
 
     def run_fixture(self):
         return run_authority_read_regression(SimpleNamespace(root=self.root),
             SimpleNamespace(workspace=self.workspace, environment={}), self.transport, asdict(self.live))
 
-    def test_edit_changes_epoch_rejects_old_authority_and_restores_exact_source(self):
+    def test_edit_reacquires_read_handle_rejects_old_cursor_and_restores_exact_source(self):
         report = self.run_fixture()
         self.assertEqual(AuthorityOutcome.PASSED, report.outcome)
         self.assertEqual((1, 2, 3), (report.beforeEpoch, report.editedEpoch, report.restoredEpoch))
@@ -304,7 +323,7 @@ class AuthorityReadTest(unittest.TestCase):
         self.assertEqual(AuthorityFailure.EPOCH, report.failure)
         self.assertEqual(self.original, self.source.read_bytes())
 
-    def test_unexpected_stale_success_fails_and_restores_source(self):
+    def test_reacquisition_without_handle_metadata_fails_and_restores_source(self):
         original = self.invoke
         def accept_stale(surface, tool, arguments):
             if tool == 'source_read' and arguments['anchor']['selector'] == 'ref-1' and self.epoch == 2:
@@ -312,7 +331,7 @@ class AuthorityReadTest(unittest.TestCase):
             return original(surface, tool, arguments)
         self.transport.invoke_observed.side_effect = accept_stale
         report = self.run_fixture()
-        self.assertEqual(AuthorityFailure.REJECTION, report.failure)
+        self.assertEqual(AuthorityFailure.REVALIDATION, report.failure)
         self.assertEqual(self.original, self.source.read_bytes())
 
     def test_unexpected_intervening_source_is_not_overwritten_during_restore(self):

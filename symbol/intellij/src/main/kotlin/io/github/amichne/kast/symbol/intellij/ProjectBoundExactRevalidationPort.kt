@@ -29,7 +29,13 @@ class ProjectBoundExactRevalidationPort(
     private val capture: IntellijExactRevalidationCapture,
     private val observation: IntellijReadObservation = IntellijReadObservation.None,
     private val limits: io.github.amichne.kast.kernel.ReadLimits = io.github.amichne.kast.kernel.ReadLimits.Default,
+    private val policy: io.github.amichne.kast.symbol.contract.ExactRevalidationPolicy =
+        io.github.amichne.kast.symbol.contract.ExactRevalidationPolicy.ORIGINAL_DOCUMENT,
+    private val acquisitionBudget: io.github.amichne.kast.kernel.ResourceBudget = revalidationBudget(limits),
 ) : ExactRevalidationCompilerPort {
+    var examinedReacquisitionWork: Long = 0L
+        private set
+
     override suspend fun confirm(
         locator: ExactRevalidationLocator,
         current: SemanticReadAuthority,
@@ -88,7 +94,21 @@ class ProjectBoundExactRevalidationPort(
                     SymbolSearchScopeRequest(current, locator.scope),
                     WorkspaceSearchScopeModelCompilation.Compiled(model),
                 ) { compiled ->
-                    confirmScoped(locator, compiled, key)
+                    when (policy) {
+                        io.github.amichne.kast.symbol.contract.ExactRevalidationPolicy.ORIGINAL_DOCUMENT ->
+                            confirmScoped(locator, compiled, key)
+                        io.github.amichne.kast.symbol.contract.ExactRevalidationPolicy.CURRENT_DECLARATION ->
+                            confirmCurrentDeclaration(
+                                project,
+                                locator,
+                                compiled,
+                                capture,
+                                observation,
+                                acquisitionBudget,
+                            ) {
+                                examinedReacquisitionWork++
+                            }
+                    }
                 }
         ) {
             is IntellijScopedQueryResult.Completed -> result.value
@@ -130,7 +150,7 @@ private fun IntellijExactDeclarationLookupRejection.revalidationFailure(): Exact
             ExactRevalidationRejection.UNSUPPORTED_DECLARATION
     }
 
-private fun IntellijSymbolSelectorRejection.revalidationFailure(): ExactRevalidationRejection =
+internal fun IntellijSymbolSelectorRejection.revalidationFailure(): ExactRevalidationRejection =
     when (this) {
         IntellijSymbolSelectorRejection.WORKSPACE_ROOT_MISMATCH -> ExactRevalidationRejection.WORKSPACE_MISMATCH
         IntellijSymbolSelectorRejection.GENERATION_MOVED -> ExactRevalidationRejection.BASIS_MOVED
@@ -148,3 +168,16 @@ private fun IntellijSymbolSelectorRejection.revalidationFailure(): ExactRevalida
         IntellijSymbolSelectorRejection.NATIVE_FAILURE,
         IntellijSymbolSelectorRejection.INTERNAL_INVARIANT -> ExactRevalidationRejection.COMPILER_UNAVAILABLE
     }
+
+private fun revalidationBudget(limits: io.github.amichne.kast.kernel.ReadLimits) =
+    io.github.amichne.kast.kernel.ResourceBudget(
+        (io.github.amichne.kast.kernel.ResultLimit.parse(1) as Refinement.Refined).value,
+        (io.github.amichne.kast.kernel.WorkUnitLimit.parse(
+                limits[io.github.amichne.kast.kernel.ReadLimitParameter.SEMANTIC_WORK].value.toLong()
+            ) as Refinement.Refined)
+            .value,
+        (io.github.amichne.kast.kernel.ElapsedTimeLimitMillis.parse(
+                limits[io.github.amichne.kast.kernel.ReadLimitParameter.SEMANTIC_MILLIS].value.toLong()
+            ) as Refinement.Refined)
+            .value,
+    )

@@ -20,6 +20,7 @@ internal object CanonicalQueryCliDocuments {
                         result.items.values.map(QueryResultItemDocument::toCliDocument),
                         result.failures.values.map(QueryItemFailureDocument::toCliDocument),
                         result.executionBudget,
+                        referenceAcquisitions = result.referenceAcquisitions,
                     )
                 )
             },
@@ -38,6 +39,7 @@ internal object CanonicalQueryCliDocuments {
                         qualification.progress.continuationToken?.value,
                         qualification.progress.terminalReason?.cliName(),
                         result.executionBudget,
+                        referenceAcquisitions = result.referenceAcquisitions,
                     )
                 )
             },
@@ -64,6 +66,9 @@ private data class QueryCompleteCliDocument(
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     @SerialName("execution_budget")
     val executionBudget: ExecutionBudgetReport? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @kotlinx.serialization.SerialName("reference_acquisitions")
+    val referenceAcquisitions: io.github.amichne.kast.protocol.contract.ReadReferenceAcquisitions? = null,
 )
 
 @Serializable
@@ -78,6 +83,9 @@ private data class QueryQualifiedCliDocument(
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     @SerialName("execution_budget")
     val executionBudget: ExecutionBudgetReport? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @kotlinx.serialization.SerialName("reference_acquisitions")
+    val referenceAcquisitions: io.github.amichne.kast.protocol.contract.ReadReferenceAcquisitions? = null,
 )
 
 @Serializable

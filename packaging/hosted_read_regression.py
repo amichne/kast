@@ -4,7 +4,10 @@ Only bounded assertions and counts survive in the receipt. Returned references,
 source text and canonical payloads are used in memory and are never logged.
 """
 from collections import Counter
-from dataclasses import asdict, replace
+from dataclasses import asdict, dataclass, replace
+from enum import Enum
+from hosted_peer_probe import EndpointAdmissionFailure, EndpointAdmissionRejected
+from hosted_wire_schema import HostedWireSchemaFailure, HostedWireSchemaRejected
 import hashlib
 import importlib.util
 import json
@@ -32,6 +35,55 @@ from hosted_diagnostic_pages_regression import (run_diagnostic_pages_regression,
 from hosted_source_read_regression import run_source_paging_regression, source_qualification_observation
 
 
+MAX_READ_RECEIPTS = 512  # Two surfaces, each bounded to 256 authored cases.
+
+
+class ReadReceiptFailure(str, Enum):
+    CAPACITY = 'receipt_capacity_exceeded'
+    ASSERTION = 'receipt_assertion_rejected'
+    COUNT = 'receipt_count_rejected'
+
+
+class ReadReceiptRejected(ValueError):
+    def __init__(self, failure):
+        self.failure = failure
+        super().__init__(failure.value)
+
+
+class ReadRegressionStage(str, Enum):
+    FIXTURE = 'fixture'
+    PROVIDER = 'provider'
+    OVERFLOW = 'overflow'
+    SEMANTIC = 'semantic'
+    CONCURRENT = 'concurrent'
+    AUTHORITY = 'authority'
+
+
+class ReadRegressionFailure(str, Enum):
+    IO = 'io_rejected'
+    VALUE = 'value_rejected'
+    TYPE = 'type_rejected'
+    KEY = 'key_rejected'
+    PROCESS = 'process_rejected'
+
+
+@dataclass(frozen=True)
+class ReadRegressionRejection:
+    stage: ReadRegressionStage
+    cause: ReadRegressionFailure | ReadReceiptFailure | EndpointAdmissionFailure | HostedWireSchemaFailure
+
+
+def regression_rejection(stage, error):
+    if isinstance(error, (ReadReceiptRejected, EndpointAdmissionRejected, HostedWireSchemaRejected)):
+        cause = error.failure
+    else:
+        cause = next(reason for kind, reason in (
+            (OSError, ReadRegressionFailure.IO), (ValueError, ReadRegressionFailure.VALUE),
+            (TypeError, ReadRegressionFailure.TYPE), (KeyError, ReadRegressionFailure.KEY),
+            (subprocess.SubprocessError, ReadRegressionFailure.PROCESS)) if isinstance(error, kind))
+    return asdict(ReadRegressionRejection(stage, cause))
+
+
 def _reproduction(repo):
     directory = repo / 'experiments/host-observation'
     name = 'kast_native_semantic_oracle'
@@ -57,29 +109,36 @@ def run_read_regression(isolation, fixture, product, java, harness, repo, read_f
     concurrent = None
     authority = None
     overflow = None
+    stage = ReadRegressionStage.FIXTURE
     try:
         before = read_fixture.unchanged()
+        stage = ReadRegressionStage.PROVIDER
         with HostedReadTransport(isolation, fixture, product, java, harness).open() as transport:
             qualification = qualification_document(transport.qualification)
             if read_policy is NativeReadPolicy.OVERFLOW:
+                stage = ReadRegressionStage.OVERFLOW
                 observed, successor = run_vfs_overflow_regression(isolation, fixture, transport, initial_live)
                 overflow = asdict(observed)
                 if successor is None:
                     raise ValueError("Owned overflow fixture did not restore fresh authority")
                 initial_live = successor
+            stage = ReadRegressionStage.SEMANTIC
             for surface in ('cli', 'provider'):
                 replay = _ReadReplay(oracle, read_fixture, initial_live, transport, surface, rows)
                 if read_policy is NativeReadPolicy.DIAGNOSTIC_PAGES:
                     run_diagnostic_pages_regression(replay)
                 replay.run()
+            stage = ReadRegressionStage.CONCURRENT
             concurrent = run_concurrent_read_regression(isolation, read_fixture, oracle, transport, initial_live)
+            stage = ReadRegressionStage.AUTHORITY
             authority = asdict(run_authority_read_regression(isolation, fixture, transport, initial_live))
     except ReadTransportRejected as error:
         failure = 'READ_TRANSPORT_REJECTED'
         failure_details = error.evidence()
         if error.qualification is not None:
             qualification = qualification_document(error.qualification)
-    except (OSError, ValueError, TypeError, KeyError, subprocess.SubprocessError):
+    except (OSError, ValueError, TypeError, KeyError, subprocess.SubprocessError) as error:
+        failure_details = regression_rejection(stage, error)
         failure = 'READ_RESULT_OR_FIXTURE_REJECTED'
     finally:
         try:
@@ -251,9 +310,12 @@ class _ReadReplay:
         return {'complete': response.get('status') == 'complete', 'sameLiveAuthority': response.get('live') == self.live}
 
     def record(self, name, tool, checks, count=0, response=None):
-        if (len(self.rows) >= 256 or not all(type(value) is bool for value in checks.values())
-                or type(count) is not int or not 0 <= count <= 1000):
-            raise ValueError('READ_RECEIPT_REJECTED')
+        if len(self.rows) >= MAX_READ_RECEIPTS:
+            raise ReadReceiptRejected(ReadReceiptFailure.CAPACITY)
+        if not all(type(value) is bool for value in checks.values()):
+            raise ReadReceiptRejected(ReadReceiptFailure.ASSERTION)
+        if type(count) is not int or not 0 <= count <= 1000:
+            raise ReadReceiptRejected(ReadReceiptFailure.COUNT)
         self.rows.append({'case': name, 'tool': tool, 'surface': self.surface,
             'passed': all(value is True for value in checks.values()), 'assertions': checks, 'resultCount': count,
             'observation': _read_observation(response)})

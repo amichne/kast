@@ -50,13 +50,29 @@ class CanonicalRelationReadProtocol(
         val resultLimit =
             ResultLimit.parse(minOf(request.limit.value, maximum.resources.resultLimit.value)).refinedOrNull()
                 ?: return OperationOutcome.Rejected(RelationReadRejection.RELATION_UNSUPPORTED)
-        val budget = maximum.copy(resources = maximum.resources.copy(resultLimit = resultLimit))
         val meaning = request.relation.graphMeaning()
         val subject =
-            when (val lookup = authority.exact(request.exactSelector, current)) {
+            when (
+                val lookup =
+                    if (request.position == RelationReadPositionDocument.Start)
+                        authority.acquireReadExact(request.exactSelector, current)
+                    else authority.exact(request.exactSelector, current)
+            ) {
                 is ExactSelectorLookup.Found -> lookup.selector
                 is ExactSelectorLookup.Rejected -> return OperationOutcome.Rejected(lookup.reason.relationProtocol())
             }
+        val resources =
+            when (val remaining = authority.remainingReadBudget(maximum.resources)) {
+                is Refinement.Refined -> remaining.value
+                is Refinement.Rejected ->
+                    return OperationOutcome.Rejected(
+                        remaining.failure
+                            .decodingFailure()
+                            .lookupRejection(request.exactSelector, true)
+                            .relationProtocol()
+                    )
+            }
+        val budget = maximum.copy(resources = resources.copy(resultLimit = resultLimit))
         val domainRequest =
             when (val position = request.position) {
                 RelationReadPositionDocument.Start -> DomainRelationRequest.start(subject, meaning, budget)
@@ -130,6 +146,7 @@ class CanonicalRelationReadProtocol(
                             is RelationProjection.Qualified -> projection.coverage.limitations
                         }
                     ) ?: return OperationOutcome.Rejected(RelationReadRejection.RELATION_UNSUPPORTED),
+                    referenceAcquisitions = authority.readAcquisitions(),
                 ),
             )
         return when (projection) {
@@ -253,12 +270,12 @@ private fun DomainRelationRejection.protocol(): RelationReadRejection =
         DomainRelationRejection.STALE_GENERATION,
         DomainRelationRejection.STALE_SELECTOR -> RelationReadRejection.SELECTOR_STALE
         DomainRelationRejection.UNSUPPORTED_SUBJECT -> RelationReadRejection.RELATION_UNSUPPORTED
-        DomainRelationRejection.SCOPE_REJECTED,
-        DomainRelationRejection.WORKSPACE_INDEX_UNAVAILABLE,
-        DomainRelationRejection.OUTSIDE_SCOPE,
-        DomainRelationRejection.AMBIGUOUS_SUBJECT,
-        DomainRelationRejection.COMPILER_IDENTITY_UNAVAILABLE,
-        DomainRelationRejection.COMPILER_CONTRACT_VIOLATION -> RelationReadRejection.RELATION_UNSUPPORTED
+        DomainRelationRejection.SCOPE_REJECTED -> RelationReadRejection.SCOPE_REJECTED
+        DomainRelationRejection.WORKSPACE_INDEX_UNAVAILABLE -> RelationReadRejection.WORKSPACE_INDEX_UNAVAILABLE
+        DomainRelationRejection.OUTSIDE_SCOPE -> RelationReadRejection.OUTSIDE_SCOPE
+        DomainRelationRejection.AMBIGUOUS_SUBJECT -> RelationReadRejection.AMBIGUOUS_SUBJECT
+        DomainRelationRejection.COMPILER_IDENTITY_UNAVAILABLE -> RelationReadRejection.COMPILER_IDENTITY_UNAVAILABLE
+        DomainRelationRejection.COMPILER_CONTRACT_VIOLATION -> RelationReadRejection.COMPILER_CONTRACT_VIOLATION
         DomainRelationRejection.CONTINUATION_CURSOR_MOVED -> RelationReadRejection.CONTINUATION_CURSOR_MOVED
     }
 
@@ -279,16 +296,52 @@ internal fun TraversalRejection.protocol(): TraversalRunRejection =
                 DomainRelationRejection.WORKSPACE_ROOT_MISMATCH -> TraversalRunRejection.SELECTOR_WORKSPACE_MISMATCH
                 DomainRelationRejection.STALE_GENERATION,
                 DomainRelationRejection.STALE_SELECTOR -> TraversalRunRejection.SELECTOR_STALE
-                else -> TraversalRunRejection.PLAN_REJECTED
+                DomainRelationRejection.SCOPE_REJECTED -> TraversalRunRejection.SCOPE_REJECTED
+                DomainRelationRejection.WORKSPACE_INDEX_UNAVAILABLE -> TraversalRunRejection.WORKSPACE_INDEX_UNAVAILABLE
+                DomainRelationRejection.OUTSIDE_SCOPE -> TraversalRunRejection.OUTSIDE_SCOPE
+                DomainRelationRejection.AMBIGUOUS_SUBJECT -> TraversalRunRejection.AMBIGUOUS_SUBJECT
+                DomainRelationRejection.COMPILER_IDENTITY_UNAVAILABLE ->
+                    TraversalRunRejection.COMPILER_IDENTITY_UNAVAILABLE
+                DomainRelationRejection.COMPILER_CONTRACT_VIOLATION -> TraversalRunRejection.COMPILER_CONTRACT_VIOLATION
+                DomainRelationRejection.CONTINUATION_CURSOR_MOVED -> TraversalRunRejection.CONTINUATION_CURSOR_MOVED
+                DomainRelationRejection.UNSUPPORTED_SUBJECT -> TraversalRunRejection.RELATION_UNSUPPORTED
             }
         TraversalRejection.RequiredEvidenceUnavailable,
         TraversalRejection.RequiredEvidenceStale -> TraversalRunRejection.TOPOLOGY_BUILD_REQUIRED
-        TraversalRejection.ReaderContractViolation,
-        TraversalRejection.TraversalContractViolation -> TraversalRunRejection.PLAN_REJECTED
+        TraversalRejection.ReaderContractViolation -> TraversalRunRejection.READER_CONTRACT_VIOLATION
+        TraversalRejection.TraversalContractViolation -> TraversalRunRejection.TRAVERSAL_CONTRACT_VIOLATION
     }
 
 private fun SelectorLookupRejection.relationProtocol(): RelationReadRejection =
     when (this) {
+        SelectorLookupRejection.REVALIDATION_WRONG_KIND -> RelationReadRejection.REVALIDATION_WRONG_KIND
+        SelectorLookupRejection.REVALIDATION_UNRETAINED -> RelationReadRejection.REVALIDATION_UNRETAINED
+        SelectorLookupRejection.REVALIDATION_EXPIRED -> RelationReadRejection.REVALIDATION_EXPIRED
+        SelectorLookupRejection.REVALIDATION_CAPACITY -> RelationReadRejection.REVALIDATION_CAPACITY
+        SelectorLookupRejection.REVALIDATION_WORK_LIMIT_REACHED -> RelationReadRejection.REVALIDATION_WORK_LIMIT_REACHED
+        SelectorLookupRejection.REVALIDATION_TIME_LIMIT_REACHED -> RelationReadRejection.REVALIDATION_TIME_LIMIT_REACHED
+        SelectorLookupRejection.REVALIDATION_RETIRED -> RelationReadRejection.REVALIDATION_RETIRED
+        SelectorLookupRejection.REVALIDATION_CAPTURE_UNAVAILABLE ->
+            RelationReadRejection.REVALIDATION_CAPTURE_UNAVAILABLE
+        SelectorLookupRejection.REVALIDATION_WORKSPACE_MISMATCH -> RelationReadRejection.REVALIDATION_WORKSPACE_MISMATCH
+        SelectorLookupRejection.REVALIDATION_OWNER_MISMATCH -> RelationReadRejection.REVALIDATION_OWNER_MISMATCH
+        SelectorLookupRejection.REVALIDATION_WORKSPACE_NOT_READY ->
+            RelationReadRejection.REVALIDATION_WORKSPACE_NOT_READY
+        SelectorLookupRejection.REVALIDATION_BASIS_MOVED -> RelationReadRejection.REVALIDATION_BASIS_MOVED
+        SelectorLookupRejection.REVALIDATION_CONTENT_CHANGED -> RelationReadRejection.REVALIDATION_CONTENT_CHANGED
+        SelectorLookupRejection.REVALIDATION_CONTENT_UNCOMMITTED ->
+            RelationReadRejection.REVALIDATION_CONTENT_UNCOMMITTED
+        SelectorLookupRejection.REVALIDATION_SCOPE_REJECTED -> RelationReadRejection.REVALIDATION_SCOPE_REJECTED
+        SelectorLookupRejection.REVALIDATION_DECLARATION_MISSING ->
+            RelationReadRejection.REVALIDATION_DECLARATION_MISSING
+        SelectorLookupRejection.REVALIDATION_UNSUPPORTED_DECLARATION ->
+            RelationReadRejection.REVALIDATION_UNSUPPORTED_DECLARATION
+        SelectorLookupRejection.REVALIDATION_AMBIGUOUS -> RelationReadRejection.REVALIDATION_AMBIGUOUS
+        SelectorLookupRejection.REVALIDATION_COMPILER_IDENTITY_CHANGED ->
+            RelationReadRejection.REVALIDATION_COMPILER_IDENTITY_CHANGED
+        SelectorLookupRejection.REVALIDATION_COMPILER_UNAVAILABLE ->
+            RelationReadRejection.REVALIDATION_COMPILER_UNAVAILABLE
+
         SelectorLookupRejection.WRONG_KIND -> RelationReadRejection.SELECTOR_WRONG_KIND
         SelectorLookupRejection.MALFORMED -> RelationReadRejection.SELECTOR_MALFORMED
         SelectorLookupRejection.STALE -> RelationReadRejection.SELECTOR_STALE
@@ -297,6 +350,34 @@ private fun SelectorLookupRejection.relationProtocol(): RelationReadRejection =
 
 internal fun SelectorLookupRejection.traversalProtocol(): TraversalRunRejection =
     when (this) {
+        SelectorLookupRejection.REVALIDATION_WRONG_KIND -> TraversalRunRejection.REVALIDATION_WRONG_KIND
+        SelectorLookupRejection.REVALIDATION_UNRETAINED -> TraversalRunRejection.REVALIDATION_UNRETAINED
+        SelectorLookupRejection.REVALIDATION_EXPIRED -> TraversalRunRejection.REVALIDATION_EXPIRED
+        SelectorLookupRejection.REVALIDATION_CAPACITY -> TraversalRunRejection.REVALIDATION_CAPACITY
+        SelectorLookupRejection.REVALIDATION_WORK_LIMIT_REACHED -> TraversalRunRejection.REVALIDATION_WORK_LIMIT_REACHED
+        SelectorLookupRejection.REVALIDATION_TIME_LIMIT_REACHED -> TraversalRunRejection.REVALIDATION_TIME_LIMIT_REACHED
+        SelectorLookupRejection.REVALIDATION_RETIRED -> TraversalRunRejection.REVALIDATION_RETIRED
+        SelectorLookupRejection.REVALIDATION_CAPTURE_UNAVAILABLE ->
+            TraversalRunRejection.REVALIDATION_CAPTURE_UNAVAILABLE
+        SelectorLookupRejection.REVALIDATION_WORKSPACE_MISMATCH -> TraversalRunRejection.REVALIDATION_WORKSPACE_MISMATCH
+        SelectorLookupRejection.REVALIDATION_OWNER_MISMATCH -> TraversalRunRejection.REVALIDATION_OWNER_MISMATCH
+        SelectorLookupRejection.REVALIDATION_WORKSPACE_NOT_READY ->
+            TraversalRunRejection.REVALIDATION_WORKSPACE_NOT_READY
+        SelectorLookupRejection.REVALIDATION_BASIS_MOVED -> TraversalRunRejection.REVALIDATION_BASIS_MOVED
+        SelectorLookupRejection.REVALIDATION_CONTENT_CHANGED -> TraversalRunRejection.REVALIDATION_CONTENT_CHANGED
+        SelectorLookupRejection.REVALIDATION_CONTENT_UNCOMMITTED ->
+            TraversalRunRejection.REVALIDATION_CONTENT_UNCOMMITTED
+        SelectorLookupRejection.REVALIDATION_SCOPE_REJECTED -> TraversalRunRejection.REVALIDATION_SCOPE_REJECTED
+        SelectorLookupRejection.REVALIDATION_DECLARATION_MISSING ->
+            TraversalRunRejection.REVALIDATION_DECLARATION_MISSING
+        SelectorLookupRejection.REVALIDATION_UNSUPPORTED_DECLARATION ->
+            TraversalRunRejection.REVALIDATION_UNSUPPORTED_DECLARATION
+        SelectorLookupRejection.REVALIDATION_AMBIGUOUS -> TraversalRunRejection.REVALIDATION_AMBIGUOUS
+        SelectorLookupRejection.REVALIDATION_COMPILER_IDENTITY_CHANGED ->
+            TraversalRunRejection.REVALIDATION_COMPILER_IDENTITY_CHANGED
+        SelectorLookupRejection.REVALIDATION_COMPILER_UNAVAILABLE ->
+            TraversalRunRejection.REVALIDATION_COMPILER_UNAVAILABLE
+
         SelectorLookupRejection.WRONG_KIND -> TraversalRunRejection.SELECTOR_WRONG_KIND
         SelectorLookupRejection.MALFORMED -> TraversalRunRejection.SELECTOR_MALFORMED
         SelectorLookupRejection.STALE -> TraversalRunRejection.SELECTOR_STALE

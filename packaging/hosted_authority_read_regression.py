@@ -89,6 +89,8 @@ class InspectionRefusal(str, Enum):
     REVALIDATION_UNRETAINED = 'revalidation-unretained'
     REVALIDATION_EXPIRED = 'revalidation-expired'
     REVALIDATION_CAPACITY = 'revalidation-capacity'
+    REVALIDATION_WORK_LIMIT_REACHED = 'revalidation-work-limit-reached'
+    REVALIDATION_TIME_LIMIT_REACHED = 'revalidation-time-limit-reached'
     REVALIDATION_RETIRED = 'revalidation-retired'
     REVALIDATION_CAPTURE_UNAVAILABLE = 'revalidation-capture-unavailable'
     REVALIDATION_WORKSPACE_MISMATCH = 'revalidation-workspace-mismatch'
@@ -188,7 +190,7 @@ class AuthoritySurface(str, Enum):
 class AuthorityCaseName(str, Enum):
     ISSUED = 'current-authority-issued'
     VALID_CURSOR = 'current-continuation-resumes'
-    OLD_REFERENCE = 'old-epoch-reference-rejected'
+    OLD_REFERENCE = 'old-epoch-reference-reacquired'
     REVALIDATED = 'explicit-exact-reacquired-under-fresh-basis'
     NEW_STRICT = 'reacquired-exact-accepted-by-strict-read'
     OLD_CURSOR = 'fresh-anchor-old-continuation-rejected'
@@ -282,7 +284,7 @@ class _AuthorityReplay:
         _demand(current['host'] == self.live['host'], AuthorityFailure.EPOCH)
         return SourceFunctionRequest(SymbolAnchor(items[0]['ref'])), current
 
-    def page(self, name, surface, request, live, expected_name):
+    def page(self, name, surface, request, live, expected_name, reacquired_from=None):
         response, digest = self.call(surface, 'source_read', request)
         qualification = response.get('qualification', {})
         progress = qualification.get('progress', {})
@@ -294,6 +296,11 @@ class _AuthorityReplay:
             and current == live and qualification.get('limitations') == ['entity-limit-reached']
             and progress.get('type') == 'resumable' and progress.get('next_action') == 'resume'
             and checkpoint.get('type') == 'upstream' and isinstance(token, str) and bool(token), AuthorityFailure.ISSUER)
+        if reacquired_from is not None:
+            acquired = response.get('reference_acquisitions', {}).get('references', [])
+            _demand(len(acquired) == 1 and acquired[0].get('previous') == reacquired_from
+                and isinstance(acquired[0].get('current'), str) and bool(acquired[0]['current'])
+                and acquired[0]['current'] != reacquired_from, AuthorityFailure.REVALIDATION)
         self.record(name, surface, digest)
         return token
 
@@ -420,7 +427,7 @@ def run_authority_read_regression(isolation, fixture, transport, initial_live):
             edited_live = current
             report = replace(report, editedEpoch=current['epoch'])
             old, token = issued[surface]
-            replay.reject(AuthorityCaseName.OLD_REFERENCE, surface, old, AuthorityRefusal.UNAVAILABLE_REFERENCE)
+            replay.page(AuthorityCaseName.OLD_REFERENCE, surface, old, current, 'pageItem00', old.anchor.selector)
             replay.reject(AuthorityCaseName.OLD_CURSOR, surface,
                 replace(fresh, page=ContinueSourcePage(token)), AuthorityRefusal.STALE_CONTINUATION)
             replay.page(AuthorityCaseName.FRESH, surface, fresh, current, 'pageItem00')

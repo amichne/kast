@@ -4,8 +4,9 @@ title: Source failure origin
 description: Source reads distinguish invalid fields, rejected references, and failed internal obligations without disclosing input bytes.
 resource: file://protocol/contract
 tags: [source, failure, protocol]
-timestamp: 2026-09-15T00:00:00Z
+timestamp: 2026-09-16T00:00:00Z
 code_sources:
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/SourceReadReferenceAdmission.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceExecutionBudgetIngress.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/SourceRequestAdmission.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceRequestFieldReader.kt
@@ -53,8 +54,10 @@ grant no implicit refresh, retry, or reacquisition effect.
 
 The source service checks its admitted context and returned snapshot before
 publication. Snapshot contradictions remain internal failures. Projection failures
-retain separate result and qualification obligations. Existing source result
-shapes and source enumeration do not change in this contract.
+retain separate result and qualification obligations. Source enumeration retains its coverage contract. Fresh symbol-anchored reads
+may carry optional refreshed-handle metadata; expanded and compact projections
+preserve it. Reacquisition failures retain their exact reason, including work
+and time exhaustion, and do not become generic stale-source errors.
 
 This contract does not establish the cause of any unobserved enterprise failure.
 Installed and released-byte qualification remains separate from unit and schema

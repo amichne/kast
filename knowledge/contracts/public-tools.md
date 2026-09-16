@@ -4,7 +4,7 @@ title: Public intent tools
 description: Schema-bound search and diagnostics presentations lower into existing canonical operations without transferring compiler authority.
 resource: file://app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json
 tags: [tools, query, protocol, agents]
-timestamp: 2026-09-14T00:00:00Z
+timestamp: 2026-09-16T00:00:00Z
 code_sources:
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReadRecoveryAction.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceQualifiedProgressDocument.kt
@@ -111,10 +111,14 @@ Traversal output includes progress, strategy and page-local partial expansions.
 Relation output separates exact returned-fact soundness from bounded provider
 omission evidence, with measured or explicitly unmeasured page counts.
 
-Query reference rejection schemas retain all seven canonical reasons, including
-`stale-authority`, `incompatible-authority`, and `incompatible-reference-version`.
-Unknown reason strings remain invalid. Reacquire reference authority explicitly;
-a rejected reference is never refreshed by spelling or converted to success.
+Query reference rejection schemas retain the finite lookup and reacquisition
+reasons, including work/time exhaustion, missing retained locators, changed
+compiler identity and incompatible authority. Unknown reasons remain invalid.
+Fresh reads may perform bounded exact-handle reacquisition inside the invocation;
+returned `reference_acquisitions` identifies the refreshed handles. When that
+lookup cannot establish current identity, rejection retains its specific cause.
+Continuations and source snapshots remain strict. See
+[query protocol](../modules/query-protocol.md#automatic-acquisition-for-fresh-reads).
 
 Installed source, relation, and traversal rejection schemas enumerate their canonical finite reasons. Wire decode and CLI projection preserve each reason; an unknown rejection string is incompatible with the installed tool envelope.
 

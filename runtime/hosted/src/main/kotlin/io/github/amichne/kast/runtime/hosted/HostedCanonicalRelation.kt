@@ -34,7 +34,7 @@ internal suspend fun evaluateHostedRelation(
                 }
             pages.restore(token, request.request, context.authority)
         } else {
-            CanonicalRelationReadProtocol(services.relations, services.references)
+            CanonicalRelationReadProtocol(services.relations, services.readReferences)
                 .execute(request.request, context.authority, services.budgets.hostedRelationBudget)
         }
     val maximum =

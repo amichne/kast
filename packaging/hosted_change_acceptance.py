@@ -424,7 +424,7 @@ def qualified_authority_replay(raw):
         return False
     cases = raw.get('cases', [])
     required = {(name, surface) for surface in ('cli', 'provider') for name in (
-        'current-authority-issued', 'current-continuation-resumes', 'old-epoch-reference-rejected',
+        'current-authority-issued', 'current-continuation-resumes', 'old-epoch-reference-reacquired',
         'explicit-exact-reacquired-under-fresh-basis', 'reacquired-exact-accepted-by-strict-read',
         'fresh-anchor-old-continuation-rejected', 'fresh-authority-reacquired',
         'restored-source-fresh-authority-reacquired')}
@@ -485,7 +485,7 @@ def remaining_matrix_gates(native: dict | None = None, read_regression: dict | N
          'Requires the full authored semantic matrix and all eight default read tools through staged CLI/provider.'),
         ('ordinary-edit-live-read-authority',
          qualified_authority_replay((read_regression or {}).get('authorityReplay')),
-         'Requires observed edited and restored epochs, stale-reference and continuation refusal, foreign-root refusal, fresh acquisition and actual provider-envelope validation.'),
+         'Requires observed edited and restored epochs, automatic stale-reference reacquisition, stale-continuation refusal, foreign-root refusal, fresh acquisition and actual provider-envelope validation.'),
         ('barrier-controlled-installed-reads',
          concurrent.get('outcome') == 'passed' and concurrent.get('clients') == 12
          and concurrent.get('rounds') == 13 and concurrent.get('firstAttempts') == 156

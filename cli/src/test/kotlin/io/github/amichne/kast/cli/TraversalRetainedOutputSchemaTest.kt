@@ -55,6 +55,14 @@ class TraversalRetainedOutputSchemaTest {
                     assertEquals(JsonPrimitive(token.value), checkpoint["token"])
                     assertEquals(checkpoint["token"], qualification["continuation"])
                     assertEquals(JsonPrimitive("resume"), qualification["next_action"])
+                    assertEquals(
+                        JsonPrimitive("resume"),
+                        qualification
+                            .getValue("recovery")
+                            .let { (it as kotlinx.serialization.json.JsonArray).first() }
+                            .jsonObject
+                            .getValue("action"),
+                    )
                     assertInvalidCheckpoints(document, qualification, checkpoint)
                 }
             }

@@ -23,7 +23,7 @@ internal suspend fun evaluateHostedSource(
         if (page is SourceReadPageDocument.Continue && page.continuation.value.startsWith(SOURCE_OUTPUT_PREFIX)) {
             outputs.restore(page.continuation, request.request, context.authority)
         } else {
-            CanonicalSourceReadProtocol(services.source(continuations), services.references)
+            CanonicalSourceReadProtocol(services.source(continuations), services.readReferences)
                 .execute(request.request, context.authority, services.budgets.hostedSourceBudget)
         }
     val maximumResults =

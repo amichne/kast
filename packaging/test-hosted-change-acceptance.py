@@ -104,7 +104,7 @@ class ExpectedAuthorityReplay:
     sourceRestored: bool = True
     cases: tuple[ExpectedAuthorityCase, ...] = tuple(
         ExpectedAuthorityCase(name, surface) for surface in ('cli', 'provider') for name in (
-            'current-authority-issued', 'current-continuation-resumes', 'old-epoch-reference-rejected',
+            'current-authority-issued', 'current-continuation-resumes', 'old-epoch-reference-reacquired',
             'explicit-exact-reacquired-under-fresh-basis', 'reacquired-exact-accepted-by-strict-read',
             'fresh-anchor-old-continuation-rejected', 'fresh-authority-reacquired',
             'restored-source-fresh-authority-reacquired')) + tuple(

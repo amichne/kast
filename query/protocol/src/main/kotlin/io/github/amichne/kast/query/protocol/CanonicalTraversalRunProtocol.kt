@@ -39,28 +39,28 @@ class CanonicalTraversalRunProtocol(
         TraversalRunQualification,
         TraversalRunRejection,
     > {
+        if (request.maximumDepth.value > maximum.depth.value)
+            return OperationOutcome.Rejected(TraversalRunRejection.DEPTH_LIMIT_EXCEEDED)
         val selector =
-            when (val lookup = authority.exact(request.exactSelector, current)) {
+            when (
+                val lookup =
+                    if (request.position == TraversalRunPositionDocument.Start)
+                        authority.acquireReadExact(request.exactSelector, current)
+                    else authority.exact(request.exactSelector, current)
+            ) {
                 is ExactSelectorLookup.Found -> lookup.selector
                 is ExactSelectorLookup.Rejected -> return OperationOutcome.Rejected(lookup.reason.traversalProtocol())
             }
-        if (request.maximumDepth.value > maximum.depth.value)
-            return OperationOutcome.Rejected(TraversalRunRejection.PLAN_REJECTED)
-        val records =
-            ResultLimit.parse(minOf(request.maximumResults.value, maximum.records.value)).refinedOrNull()
-                ?: return OperationOutcome.Rejected(TraversalRunRejection.PLAN_REJECTED)
-        val depth =
-            TraversalDepthLimit.parse(request.maximumDepth.value).refinedOrNull()
-                ?: return OperationOutcome.Rejected(TraversalRunRejection.PLAN_REJECTED)
-        val oneHopRecords =
-            ResultLimit.parse(minOf(records.value, maximum.oneHop.resources.resultLimit.value)).refinedOrNull()
-                ?: return OperationOutcome.Rejected(TraversalRunRejection.PLAN_REJECTED)
+        val resources =
+            when (val remaining = remainingResources(request, maximum)) {
+                is Refinement.Refined -> remaining.value
+                is Refinement.Rejected -> return OperationOutcome.Rejected(remaining.failure)
+            }
         val budget =
-            maximum.copy(
-                records = records,
-                depth = depth,
-                oneHop = maximum.oneHop.copy(resources = maximum.oneHop.resources.copy(resultLimit = oneHopRecords)),
-            )
+            when (val admitted = admitBudget(request, maximum, resources)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return OperationOutcome.Rejected(admitted.failure)
+            }
         val strategy =
             admitStrategy(request.strategy) ?: return OperationOutcome.Rejected(TraversalRunRejection.PLAN_REJECTED)
         val plan =
@@ -83,6 +83,52 @@ class CanonicalTraversalRunProtocol(
                     TraversalProjection.Qualified(result.qualification),
                 )
         }
+    }
+
+    private fun remainingResources(
+        request: TraversalRunRequest,
+        maximum: TraversalBudget,
+    ): Refinement<io.github.amichne.kast.kernel.ResourceBudget, TraversalRunRejection> =
+        when (
+            val remaining =
+                authority.remainingReadBudget(
+                    io.github.amichne.kast.kernel.ResourceBudget(
+                        maximum.records,
+                        maximum.workUnits,
+                        maximum.elapsedTime,
+                    )
+                )
+        ) {
+            is Refinement.Refined -> remaining
+            is Refinement.Rejected ->
+                Refinement.Rejected(
+                    remaining.failure.decodingFailure().lookupRejection(request.exactSelector, true).traversalProtocol()
+                )
+        }
+
+    private fun admitBudget(
+        request: TraversalRunRequest,
+        maximum: TraversalBudget,
+        resources: io.github.amichne.kast.kernel.ResourceBudget,
+    ): Refinement<TraversalBudget, TraversalRunRejection> {
+        val records =
+            ResultLimit.parse(minOf(request.maximumResults.value, maximum.records.value)).refinedOrNull()
+                ?: return Refinement.Rejected(TraversalRunRejection.PLAN_REJECTED)
+        val depth =
+            TraversalDepthLimit.parse(request.maximumDepth.value).refinedOrNull()
+                ?: return Refinement.Rejected(TraversalRunRejection.PLAN_REJECTED)
+        val oneHopRecords =
+            ResultLimit.parse(minOf(records.value, maximum.oneHop.resources.resultLimit.value)).refinedOrNull()
+                ?: return Refinement.Rejected(TraversalRunRejection.PLAN_REJECTED)
+        return Refinement.Refined(
+            maximum.copy(
+                records = records,
+                workUnits = resources.workUnitLimit,
+                elapsedTime = resources.elapsedTimeLimit,
+                depth = depth,
+                oneHop = maximum.oneHop.copy(resources = maximum.oneHop.resources.copy(resultLimit = oneHopRecords)),
+            )
+        )
     }
 
     private fun admitPlan(
@@ -115,6 +161,8 @@ class CanonicalTraversalRunProtocol(
                             return Refinement.Rejected(TraversalRunRejection.CONTINUATION_SUBJECT_MISMATCH)
                         CanonicalTraversalContinuationDecoding.AuthorityMismatch ->
                             return Refinement.Rejected(TraversalRunRejection.CONTINUATION_GENERATION_MISMATCH)
+                        is CanonicalTraversalContinuationDecoding.ReferenceRejected ->
+                            return Refinement.Rejected(decoded.reason.traversalProtocol())
                         CanonicalTraversalContinuationDecoding.Malformed ->
                             return Refinement.Rejected(TraversalRunRejection.CONTINUATION_MALFORMED)
                     }
@@ -191,6 +239,7 @@ class CanonicalTraversalRunProtocol(
                             )
                     },
                     partialExpansions = partials,
+                    referenceAcquisitions = authority.readAcquisitions(),
                 ),
             )
         return when (projection) {

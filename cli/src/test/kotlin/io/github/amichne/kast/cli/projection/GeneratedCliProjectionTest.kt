@@ -357,7 +357,15 @@ class GeneratedCliProjectionTest {
             {
                 val qualification = traversal.qualification().jsonObject
                 assertEquals(
-                    setOf("type", "limitations", "relationLimitations", "continuation", "checkpoint", "next_action"),
+                    setOf(
+                        "type",
+                        "limitations",
+                        "relationLimitations",
+                        "continuation",
+                        "checkpoint",
+                        "next_action",
+                        "recovery",
+                    ),
                     qualification.keys,
                 )
                 assertEquals("resumable", qualification.getValue("type").jsonPrimitive.content)

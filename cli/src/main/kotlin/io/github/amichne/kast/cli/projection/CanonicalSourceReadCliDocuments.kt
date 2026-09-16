@@ -36,6 +36,7 @@ internal object CanonicalSourceReadCliDocuments {
                             entities = result.entities.values.map(SourceEntityDocument::toCliDocument),
                             text = result.text.toCliDocument(),
                             executionBudget = result.executionBudget,
+                            referenceAcquisitions = result.referenceAcquisitions,
                         )
                     )
             },
@@ -52,6 +53,7 @@ internal object CanonicalSourceReadCliDocuments {
                             entities = result.entities.values.map(SourceEntityDocument::toCliDocument),
                             text = result.text.toCliDocument(),
                             executionBudget = result.executionBudget,
+                            referenceAcquisitions = result.referenceAcquisitions,
                             qualification = qualification.toCliDocument(),
                         )
                     )
@@ -73,6 +75,9 @@ private data class SourceReadCompleteCliDocument(
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     @SerialName("execution_budget")
     val executionBudget: io.github.amichne.kast.protocol.contract.ExecutionBudgetReport? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @kotlinx.serialization.SerialName("reference_acquisitions")
+    val referenceAcquisitions: io.github.amichne.kast.protocol.contract.ReadReferenceAcquisitions? = null,
 )
 
 @Serializable
@@ -87,6 +92,9 @@ private data class SourceReadQualifiedCliDocument(
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     @SerialName("execution_budget")
     val executionBudget: io.github.amichne.kast.protocol.contract.ExecutionBudgetReport? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @kotlinx.serialization.SerialName("reference_acquisitions")
+    val referenceAcquisitions: io.github.amichne.kast.protocol.contract.ReadReferenceAcquisitions? = null,
 )
 
 @Serializable

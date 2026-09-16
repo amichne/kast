@@ -37,7 +37,7 @@ internal suspend fun evaluateHostedCanonicalQuery(
     val budgets = services.budgets
     val discovery = services.discovery
     val exact = services.exact
-    val references = services.references
+    val references = services.readReferences
     return when (request) {
         is HostedRequest.Query -> evaluateHostedQuery(project, services, context, request, continuations)
         is HostedRequest.Discover ->
@@ -86,7 +86,7 @@ private suspend fun evaluateHostedQuery(
                         source = services.source(continuations),
                         relations = services.relations,
                     ),
-                    services.references,
+                    services.readReferences,
                     queryContinuations.checkpoints,
                 )
                 .execute(request.request, context.authority, services.budgets.hostedQueryBudget)
@@ -119,7 +119,7 @@ private suspend fun evaluateHostedDiagnostic(
         } else {
             CanonicalDiagnosticCheckProtocol(
                     services.diagnosticScans,
-                    services.references,
+                    services.readReferences,
                     retained.diagnosticCheckpoints,
                 )
                 .execute(request.request, context.authority, services.budgets.hostedQueryBudget.resources)

@@ -4,8 +4,11 @@ title: Query protocol
 description: Shared semantic-read admission and projection bind canonical requests and detached references to an authority supplied by the owning host.
 resource: file://query/protocol
 tags: [kotlin, protocol, query, authority]
-timestamp: 2026-09-15T00:00:00Z
+timestamp: 2026-09-16T00:00:00Z
 code_sources:
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ReacquiringQueryReferences.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/ReadAcquisitionAccounting.kt
+  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/CurrentDeclarationReacquisition.kt
   - path: symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/ExactRevalidation.kt
   - path: symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/ExactRevalidationService.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedExactRevalidationStore.kt
@@ -190,13 +193,31 @@ IntelliJ charset/BOM/newline decoding must match both compiler PSI text and any
 cached committed document text before capture can be retained. Saved/committed
 flags alone do not prove this equality. Missing captures remain unavailable.
 
-The hosted store admits at most 256 distinct tokens during a project-service
-lifetime, with a conservative 4 MiB retained-data charge in addition to the
-configured strict-reference table bound. A record is usable for five minutes;
-replay and duplicate issuance never renew it. Expired slots remain occupied until
-project disposal, so capacity exhaustion disables further retention while ordinary
-reads continue. Known expired and unknown tokens have distinct finite failures.
-This conservative first slice does not search moved files, recover candidates,
-persist across owners, or restore tokens issued before capture was installed.
+The hosted store retains at most 256 tokens with a conservative 4 MiB charge.
+Records remain usable for five minutes; replay does not renew retained entries.
+When a new epoch needs capacity, older-epoch records are evicted before current
+records. Expired retained tokens and evicted or unknown tokens have distinct
+failures. This store does not search moved files, recover candidates, persist
+across owners, or restore tokens issued before capture was installed.
+
+## Automatic acquisition for fresh reads
+
+Fresh relation, traversal, source-symbol and query-reference reads use
+`ReacquiringQueryReferences`. A missing or stale exact handle can trigger one
+bounded lookup per handle in the same invocation. The original owner, file,
+scope, kind, name and constraints remain fixed. Exact-name native indexes are
+restricted to the owning file before candidate collection. K2 must find one
+matching declaration identity and signature; changed offsets or body contents
+are allowed. Missing, ambiguous, unsupported and changed compiler identities
+remain finite rejections. Compiler refinement runs outside native index callbacks.
+
+Capture, candidate work and elapsed recovery time consume the same request grant
+as the semantic operation. Exhaustion remains a distinct work- or time-limit
+failure. Successful results optionally carry `reference_acquisitions`, including
+qualified partial results, so the caller can retain the fresh handle.
+
+Continuation restoration, explicit original-document inspection, source snapshots
+and change planning retain strict authority. A refreshed read handle cannot
+refresh a previous page or authorize a write against changed document content.
 
 Source reads retain [precise failure origin](../contracts/source-failures.md) through admission and serialization. Their admitted rejection wrapper retains the complete cause, including internal obligations and finite reference lookup evidence.

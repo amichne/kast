@@ -3,9 +3,12 @@
 package io.github.amichne.kast.cli.projection
 
 import io.github.amichne.kast.cli.CliJsonDocument
+import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
+import io.github.amichne.kast.protocol.contract.ReadRecoveryGuidance
 import io.github.amichne.kast.protocol.contract.TraversalProgressDocument
 import io.github.amichne.kast.protocol.contract.TraversalRunQualification
 import io.github.amichne.kast.protocol.contract.TraversalStrategyDocument
+import io.github.amichne.kast.protocol.contract.recoveryGuidance
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -20,6 +23,9 @@ internal data class TraversalCompleteCliDocument(
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     @SerialName("execution_budget")
     val executionBudget: io.github.amichne.kast.protocol.contract.ExecutionBudgetReport? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @kotlinx.serialization.SerialName("reference_acquisitions")
+    val referenceAcquisitions: io.github.amichne.kast.protocol.contract.ReadReferenceAcquisitions? = null,
 )
 
 @Serializable
@@ -34,6 +40,9 @@ internal data class TraversalQualifiedCliDocument(
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     @SerialName("execution_budget")
     val executionBudget: io.github.amichne.kast.protocol.contract.ExecutionBudgetReport? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @kotlinx.serialization.SerialName("reference_acquisitions")
+    val referenceAcquisitions: io.github.amichne.kast.protocol.contract.ReadReferenceAcquisitions? = null,
 )
 
 @Serializable
@@ -42,6 +51,7 @@ internal sealed interface TraversalQualificationCliDocument {
     @SerialName("resumable")
     data class Resumable(
         val limitations: List<String>,
+        val recovery: List<ReadRecoveryGuidance>,
         val relationLimitations: List<String>,
         val continuation: String,
         val checkpoint: io.github.amichne.kast.protocol.contract.TraversalCheckpointDocument,
@@ -52,15 +62,19 @@ internal sealed interface TraversalQualificationCliDocument {
     @SerialName("terminal_incomplete")
     data class TerminalIncomplete(
         val limitations: List<String>,
+        val recovery: List<ReadRecoveryGuidance>,
         val relationLimitations: List<String>,
     ) : TraversalQualificationCliDocument
 }
 
-internal fun TraversalRunQualification.toCliDocument(): TraversalQualificationCliDocument =
+internal fun TraversalRunQualification.toCliDocument(
+    report: ExecutionBudgetReport?
+): TraversalQualificationCliDocument =
     when (this) {
         is TraversalRunQualification.Resumable ->
             TraversalQualificationCliDocument.Resumable(
                 limitations = limitations.map { it.cliName() },
+                recovery = recoveryGuidance(report),
                 relationLimitations = relationLimitations.map { it.cliName() },
                 continuation = continuation.value,
                 checkpoint = checkpoint,
@@ -69,6 +83,7 @@ internal fun TraversalRunQualification.toCliDocument(): TraversalQualificationCl
         is TraversalRunQualification.TerminalIncomplete ->
             TraversalQualificationCliDocument.TerminalIncomplete(
                 limitations = limitations.map { it.cliName() },
+                recovery = recoveryGuidance(report),
                 relationLimitations = relationLimitations.map { it.cliName() },
             )
     }

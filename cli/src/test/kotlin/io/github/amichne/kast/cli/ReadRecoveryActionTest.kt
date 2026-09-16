@@ -59,7 +59,7 @@ class ReadRecoveryActionTest {
                     ),
                 ),
             ) +
-                QueryReferenceRejectionReason.entries.map { reason ->
+                QueryReferenceRejectionReason.entries.filter(::requiresReacquisition).map { reason ->
                     Case(
                         CanonicalOperation.QUERY_RUN,
                         CanonicalQueryCliDocuments.project(
@@ -170,6 +170,10 @@ class ReadRecoveryActionTest {
         val operation: String = "query.run",
         val status: String = "rejected",
     )
+
+    private fun requiresReacquisition(reason: QueryReferenceRejectionReason): Boolean =
+        QueryRunRejection.ReferenceRejected((ProtocolOffset.parse(0) as Refinement.Refined).value, reason)
+            .recoveryAction() == ReadRecoveryAction.REACQUIRE_AUTHORITY
 
     private data class Case(val operation: CanonicalOperation, val projected: ProjectedCliOutcome)
 }

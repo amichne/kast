@@ -5,6 +5,7 @@ import io.github.amichne.kast.diagnostic.intellij.ProjectBoundIntellijDiagnostic
 import io.github.amichne.kast.diagnostic.service.DiagnosticService
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.query.protocol.CanonicalQueryReferences
+import io.github.amichne.kast.query.protocol.decodingFailure
 import io.github.amichne.kast.relation.intellij.ProjectBoundIntellijRelationPort
 import io.github.amichne.kast.relation.service.RelationService
 import io.github.amichne.kast.source.contract.SourceReadContext
@@ -92,6 +93,72 @@ internal class HostedSemanticServices(private val project: Project, private val 
                 )
             },
         )
+
+    private val acquisitionAccounting = ReadAcquisitionAccounting()
+    val readReferences =
+        io.github.amichne.kast.query.protocol.ReacquiringQueryReferences(
+            references,
+            io.github.amichne.kast.query.protocol.ExactReferenceReacquisition { token, current ->
+                reacquireRead(token, current)
+            },
+            acquisitionAccounting::remaining,
+        )
+
+    private suspend fun reacquireRead(
+        token: io.github.amichne.kast.protocol.contract.ProtocolText,
+        current: io.github.amichne.kast.workspace.contract.SemanticReadAuthority,
+    ): io.github.amichne.kast.query.protocol.CanonicalSelectorDecoding<
+        io.github.amichne.kast.symbol.contract.SymbolSelector
+    > {
+        val budget =
+            when (val remaining = acquisitionAccounting.remaining(context.executionBudget.resources)) {
+                is Refinement.Refined -> remaining.value
+                is Refinement.Rejected ->
+                    return io.github.amichne.kast.query.protocol.CanonicalSelectorDecoding.Rejected(
+                        remaining.failure.decodingFailure()
+                    )
+            }
+        val locator =
+            when (val located = revalidationReferences.locate(token)) {
+                is Refinement.Refined -> located.value
+                is Refinement.Rejected ->
+                    return io.github.amichne.kast.query.protocol.CanonicalSelectorDecoding.Rejected(
+                        located.failure.decodingFailure()
+                    )
+            }
+        val port =
+            io.github.amichne.kast.symbol.intellij.ProjectBoundExactRevalidationPort(
+                project,
+                context.model,
+                context.sourceFiles,
+                capture,
+                context.observation,
+                context.limits,
+                io.github.amichne.kast.symbol.contract.ExactRevalidationPolicy.CURRENT_DECLARATION,
+                budget,
+            )
+        val service =
+            io.github.amichne.kast.symbol.service.ExactRevalidationService(
+                context.validation,
+                port,
+                io.github.amichne.kast.symbol.contract.ExactRevalidationPolicy.CURRENT_DECLARATION,
+            )
+        val started = System.nanoTime()
+        val capturedWork = capture.chargedWork
+        val result = service.revalidate(locator, current)
+        acquisitionAccounting.record(
+            capture.chargedWork - capturedWork + port.examinedReacquisitionWork,
+            (System.nanoTime() - started).coerceAtLeast(0L),
+        )
+        return when (result) {
+            is io.github.amichne.kast.symbol.contract.ExactRevalidationResult.Reacquired ->
+                io.github.amichne.kast.query.protocol.CanonicalSelectorDecoding.Decoded(result.selector)
+            is io.github.amichne.kast.symbol.contract.ExactRevalidationResult.Rejected ->
+                io.github.amichne.kast.query.protocol.CanonicalSelectorDecoding.Rejected(
+                    result.reason.decodingFailure()
+                )
+        }
+    }
 
     fun source(continuations: IntellijSourceReadContinuations) =
         SourceReadService(

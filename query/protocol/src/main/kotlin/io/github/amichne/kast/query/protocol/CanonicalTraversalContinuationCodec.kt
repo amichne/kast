@@ -34,6 +34,8 @@ import kotlinx.serialization.json.Json
 sealed interface CanonicalTraversalContinuationDecoding {
     data class Decoded(val continuation: TraversalContinuation) : CanonicalTraversalContinuationDecoding
 
+    data class ReferenceRejected(val reason: SelectorLookupRejection) : CanonicalTraversalContinuationDecoding
+
     data object Malformed : CanonicalTraversalContinuationDecoding
 
     data object SubjectMismatch : CanonicalTraversalContinuationDecoding
@@ -191,6 +193,7 @@ object CanonicalTraversalContinuationCodec {
                         SelectorLookupRejection.STALE -> CanonicalTraversalContinuationDecoding.AuthorityMismatch
                         SelectorLookupRejection.WRONG_KIND,
                         SelectorLookupRejection.MALFORMED -> malformed()
+                        else -> CanonicalTraversalContinuationDecoding.ReferenceRejected(lookup.reason)
                     }
             }
         val meaning = payload.relation.relationMeaningOrNull() ?: return malformed()
