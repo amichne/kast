@@ -21,14 +21,17 @@ import io.github.amichne.kast.diagnostic.contract.DiagnosticScopeEnumerator
 import io.github.amichne.kast.diagnostic.contract.DiagnosticScopeQuery
 import io.github.amichne.kast.diagnostic.contract.DiagnosticScopeResolutionFailure
 import io.github.amichne.kast.diagnostic.contract.DiagnosticSourceFile
+import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResourceBudget
+import io.github.amichne.kast.kernel.ResultLimit
+import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.workspace.contract.SemanticReadValidation
 import io.github.amichne.kast.workspace.contract.SemanticReadValidationPort
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 
-/** One bounded traversal page, one complete compiler unit, or one detached output page per call. */
+/** Advances detached stages under one request grant, retaining complete-file output between calls. */
 class DiagnosticScanService(
     private val authorities: SemanticReadValidationPort,
     private val enumeration: DiagnosticScopeEnumerator,
@@ -49,25 +52,86 @@ class DiagnosticScanService(
                 is DiagnosticScanRequest.Resume ->
                     request.checkpoint as? DetachedDiagnosticScan ?: return scopeRejected()
             }
-        val advanced =
-            when (val work = checkpoint.work) {
-                is DiagnosticScanWork.Enumerate -> enumerate(checkpoint, work, budget)
-                is DiagnosticScanWork.Analyze -> analyze(checkpoint, work, budget, start)
-                is DiagnosticScanWork.Drain -> checkpoint.publish(work.facts, work.next, budget.resultLimit.value)
-                DiagnosticScanWork.Finished -> scopeRejected()
-            }
-        if (authorities.validate(request.query.lease) != SemanticReadValidation.CURRENT) return stale()
-        if (advanced is DiagnosticScanResult.Rejected) return advanced
-        if (TimeUnit.NANOSECONDS.toMillis(clock() - start) >= budget.elapsedTimeLimit.value) return timeGrantRejected()
-        return advanced
+        return progress(checkpoint, budget, start)
     }
 
-    private suspend fun enumerate(
-        checkpoint: DetachedDiagnosticScan,
-        work: DiagnosticScanWork.Enumerate,
+    private suspend fun progress(
+        initial: DetachedDiagnosticScan,
         budget: ResourceBudget,
+        start: Long,
     ): DiagnosticScanResult {
-        val result = enumeration.enumerate(work.request, budget)
+        var checkpoint = initial
+        val allowance = DiagnosticScanAllowance(budget)
+        while (true) {
+            val remaining =
+                when (val grant = allowance.remaining(TimeUnit.NANOSECONDS.toMillis(clock() - start))) {
+                    is Refinement.Refined -> grant.value
+                    is Refinement.Rejected -> return DiagnosticScanResult.Rejected(grant.failure)
+                }
+            val advanced =
+                validatePublication(checkpoint, advance(checkpoint, allowance, remaining, start), budget, start)
+            when (advanced) {
+                is DiagnosticScanResult.Advancing -> {
+                    allowance.facts += advanced.page.facts
+                    if (allowance.remainingWork == 0L || allowance.facts.size == budget.resultLimit.value) {
+                        return advanced.copy(page = advanced.page.copy(facts = allowance.facts.toList()))
+                    }
+                    checkpoint = advanced.checkpoint as? DetachedDiagnosticScan ?: return scopeRejected()
+                }
+                is DiagnosticScanResult.Complete ->
+                    return advanced.copy(page = advanced.page.copy(facts = allowance.facts + advanced.page.facts))
+                is DiagnosticScanResult.Qualified ->
+                    return advanced.copy(page = advanced.page.copy(facts = allowance.facts + advanced.page.facts))
+                is DiagnosticScanResult.Rejected -> return advanced
+            }
+        }
+    }
+
+    private suspend fun validatePublication(
+        checkpoint: DetachedDiagnosticScan,
+        advanced: DiagnosticScanResult,
+        budget: ResourceBudget,
+        start: Long,
+    ): DiagnosticScanResult =
+        when {
+            authorities.validate(checkpoint.query.lease) != SemanticReadValidation.CURRENT -> stale()
+            advanced is DiagnosticScanResult.Rejected -> advanced
+            TimeUnit.NANOSECONDS.toMillis(clock() - start) >= budget.elapsedTimeLimit.value -> timeGrantRejected()
+            else -> advanced
+        }
+
+    private suspend fun advance(
+        checkpoint: DetachedDiagnosticScan,
+        allowance: DiagnosticScanAllowance,
+        remaining: ResourceBudget,
+        start: Long,
+    ): DiagnosticScanResult =
+        when (val work = checkpoint.work) {
+            is DiagnosticScanWork.Enumerate -> {
+                val enumerated = enumeration.enumerate(work.request, remaining)
+                val consumed =
+                    when (enumerated) {
+                        is DiagnosticEnumerationResult.Exhausted -> enumerated.consumedWork.value
+                        else -> allowance.remainingWork
+                    }
+                if (consumed > allowance.remainingWork) scopeRejected()
+                else {
+                    allowance.remainingWork -= consumed
+                    enumerate(checkpoint, enumerated)
+                }
+            }
+            is DiagnosticScanWork.Analyze -> {
+                allowance.remainingWork--
+                analyze(checkpoint, work, allowance.budget.copy(resultLimit = remaining.resultLimit), start)
+            }
+            is DiagnosticScanWork.Drain -> checkpoint.publish(work.facts, work.next, remaining.resultLimit.value)
+            DiagnosticScanWork.Finished -> scopeRejected()
+        }
+
+    private fun enumerate(
+        checkpoint: DetachedDiagnosticScan,
+        result: DiagnosticEnumerationResult,
+    ): DiagnosticScanResult {
         if (result is DiagnosticEnumerationResult.Rejected)
             return DiagnosticScanResult.Rejected(DiagnosticScanRejection.Enumeration(result.failure))
         val files = result.files
@@ -144,6 +208,37 @@ class DiagnosticScanService(
                     )
                     .publish(result.batch.facts, next, budget.resultLimit.value)
         }
+    }
+}
+
+/** Request-local accounting; detached checkpoints never retain or replenish a grant. */
+private class DiagnosticScanAllowance(val budget: ResourceBudget) {
+    var remainingWork = budget.workUnitLimit.value
+    val facts = mutableListOf<DiagnosticFact>()
+
+    fun remaining(elapsedMillis: Long): Refinement<ResourceBudget, DiagnosticScanRejection> {
+        val resultLimit =
+            when (val limit = ResultLimit.parse(budget.resultLimit.value - facts.size)) {
+                is Refinement.Refined -> limit.value
+                is Refinement.Rejected ->
+                    return Refinement.Rejected(
+                        DiagnosticScanRejection.Scope(DiagnosticScopeResolutionFailure.INVALID_SCOPE)
+                    )
+            }
+        val workLimit =
+            when (val limit = WorkUnitLimit.parse(remainingWork)) {
+                is Refinement.Refined -> limit.value
+                is Refinement.Rejected ->
+                    return Refinement.Rejected(
+                        DiagnosticScanRejection.Scope(DiagnosticScopeResolutionFailure.INVALID_SCOPE)
+                    )
+            }
+        val timeLimit =
+            when (val limit = ElapsedTimeLimitMillis.parse(budget.elapsedTimeLimit.value - elapsedMillis)) {
+                is Refinement.Refined -> limit.value
+                is Refinement.Rejected -> return Refinement.Rejected(DiagnosticScanRejection.ExecutionTimeGrantTooSmall)
+            }
+        return Refinement.Refined(ResourceBudget(resultLimit, workLimit, timeLimit))
     }
 }
 

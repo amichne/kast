@@ -39,6 +39,21 @@ class DiagnosticEnumerationTest {
             .files
 
     @Test
+    fun `exhaustion reports callback work including replayed identities`() {
+        val first =
+            assertInstanceOf(
+                DiagnosticEnumerationResult.Advancing::class.java,
+                enumerate(DiagnosticEnumerationRequest.First(query), files, fileLimit = 2),
+            )
+        val complete =
+            assertInstanceOf(
+                DiagnosticEnumerationResult.Exhausted::class.java,
+                enumerate(DiagnosticEnumerationRequest.Resume(first.cursor), files, work = 100, fileLimit = 100),
+            )
+        assertEquals(files.size.toLong(), complete.consumedWork.value)
+    }
+
+    @Test
     fun `small file allowance resumes regardless of native callback order`() {
         var request: DiagnosticEnumerationRequest = DiagnosticEnumerationRequest.First(query)
         repeat(30) { page ->
