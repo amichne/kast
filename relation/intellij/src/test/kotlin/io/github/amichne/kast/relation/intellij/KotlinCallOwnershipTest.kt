@@ -72,6 +72,36 @@ class KotlinCallOwnershipTest {
         )
     }
 
+    @Test
+    fun `owner admission preserves named proof and finite unavailable observations`(@TempDir home: Path) =
+        withParser(home) { factory ->
+            val declaration = factory.createFile("fun named() = 1").declarations.single() as KtNamedFunction
+            val lexical = ContainingDeclaration.Found(declaration)
+            val observation = RecordedObservation()
+            val admitted = refineCallOwnership(lexical, observation)
+            assertSame(lexical, (admitted as io.github.amichne.kast.kernel.Refinement.Refined).value)
+            assertEquals(
+                io.github.amichne.kast.kernel.Refinement.Rejected(CallOwnershipFailure.UNSUPPORTED_BOUNDARY),
+                refineCallOwnership(ContainingDeclaration.Unsupported, observation),
+            )
+            assertEquals(
+                mapOf(
+                    IntellijReadCounter.RELATION_CALL_OWNERS_FOUND to 1,
+                    IntellijReadCounter.RELATION_CALL_OWNERS_UNAVAILABLE to 1,
+                ),
+                observation.counts,
+            )
+            assertEquals(setOf(IntellijReadTermination.RELATION_CALL_OWNER_UNSUPPORTED), observation.reasons)
+            assertEquals(
+                io.github.amichne.kast.relation.contract.RelationLimitation.UNSUPPORTED_ITEM,
+                CallOwnershipFailure.UNSUPPORTED_BOUNDARY.limitation,
+            )
+            assertEquals(
+                io.github.amichne.kast.relation.contract.RelationLimitation.UNRESOLVED_TARGET,
+                CallOwnershipFailure.UNRESOLVED_ARGUMENT_MAPPING.limitation,
+            )
+        }
+
     private fun assertNestedOwner(factory: KtPsiFactory) {
         val file = factory.createFile("fun outer() {\n fun nested() = target()\n nested()\n }")
         assertNull(PsiTreeUtil.findChildOfType(file, PsiErrorElement::class.java))

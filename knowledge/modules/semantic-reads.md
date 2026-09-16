@@ -69,6 +69,7 @@ code_sources:
   - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijPsiExactDeclarationLookup.kt
   - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijRelationScopeCompiler.kt
   - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijRelationPackageAdmission.kt
+  - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijK2CallOwnership.kt
   - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijK2RelationProjection.kt
   - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijK2RelationSearch.kt
   - path: relation/service/src/main/kotlin/io/github/amichne/kast/relation/service/RelationService.kt
@@ -210,13 +211,24 @@ a changed context yields `SOURCE_SNAPSHOT_MISMATCH`; a changed request yields
 Kotlin one-hop calls use an explicit lexical ownership boundary. Calls in local
 property initializers belong to the enclosing callable. A named nested function
 keeps its own owner even when that owner cannot become a relation endpoint;
-callers do not climb past it. Lambda and accessor bodies retain a deferred owner
-and yield occurrence-scoped `UNSUPPORTED_ITEM` omissions for the enclosing
-callee read, while exact sibling calls remain eligible. Reference and type-use
-ownership is unchanged. PSI tests establish this lexical policy and finite owner
-observations; the compiled installed call fixture separately checks inherited
-static targets, extension overloads and occurrence cardinality. Those tests do
-not establish runtime dispatch or native K2 coverage without an installed run.
+callers do not climb past it. Both directions refine a literal lambda boundary
+only when a successful K2 call maps that argument to an ordinary function
+parameter of the selected inline callable. Each intervening boundary must pass;
+returned/stored lambdas, non-inline callbacks, `noinline`, `crossinline`, and
+accessors remain unsupported. Unresolved/ambiguous argument mappings retain
+`UNRESOLVED_TARGET`. The admitted named owner survives until endpoint projection;
+the inner occurrence, independent target resolution, scope and lifetime remain
+unchanged. Existing finite owner counters and omission samples describe both
+admitted and unavailable ownership. Reference and type-use ownership is unchanged.
+PSI tests prove lexical boundaries only; the native call oracle checks compiler
+ownership, forward/inverse occurrence parity, independent omissions and pagination.
+Exact static relations make no claim about runtime execution.
+
+Qualified exact edges continue through query stages and the traversal frontier.
+Recording-reader regressions distinguish downstream reads from emitted edge
+depth: reading a leaf increases `totalReads` without increasing
+`maximumDepthReached`. Terminal omissions survive parent pagination; draining a
+recoverable child result limit does not manufacture permanent incompleteness.
 Diagnostic scan progress is separate from `DiagnosticScope` and complete compiler
 coverage. The public scanner advances a detached indexed-file set, analyzes
 one complete file per unit, and drains that file's diagnostic suffix without

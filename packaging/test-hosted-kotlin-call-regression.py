@@ -10,7 +10,7 @@ from io import StringIO
 
 from hosted_kotlin_call_regression import (KotlinCallRead, KotlinCallSearch, _site, _has_scoped_unsupported,
     CallCycleTraversal, CallPageBudget, CallResume, CallObligation, _scoped_obligations, _drain_call_cycle,
-    _cycle_observation, _call_observation, _emit_native_observation, FixtureEndpoint, EndpointCount,
+    InlineCallRead, _inline_key, _cycle_observation, _call_observation, _emit_native_observation, FixtureEndpoint, EndpointCount,
     ObservedCallStatus, _extended_call_cases, _same_cycle_graph, _same_cycle_page)
 
 
@@ -191,6 +191,17 @@ class SearchResponse:
 
 
 class KotlinCallRegressionTest(unittest.TestCase):
+    def test_inline_relation_resume_shape_and_canonical_parity_key(self):
+        request = InlineCallRead('opaque', limit=1, position=CallResume('next'))
+        self.assertEqual({'exactSelector': 'opaque', 'relation': 'callees', 'limit': 1,
+                          'position': {'type': 'resume', 'continuation': 'next'}}, asdict(request))
+        fact = ObservedFact(NativeSymbol(Range(), '/fixture/Calls.kt'))
+        inverse = replace(fact, meaning='callers', target=replace(fact.target, selector='new-handle'))
+        self.assertEqual(_inline_key(asdict(fact)), _inline_key(asdict(inverse)))
+        changed = replace(fact, target=replace(fact.target,
+                          compilerEvidence=CompilerEvidence(identity='canonical-signature-sha256-v1|' + 'b' * 64)))
+        self.assertNotEqual(_inline_key(asdict(fact)), _inline_key(asdict(changed)))
+
     def test_scoped_omission_uses_authored_enum_spelling(self):
         self.assertTrue(_has_scoped_unsupported([asdict(OmissionEvidence())]))
         self.assertFalse(_has_scoped_unsupported([asdict(OmissionEvidence(samples=()))]))

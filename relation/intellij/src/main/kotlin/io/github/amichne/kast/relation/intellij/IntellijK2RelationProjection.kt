@@ -90,6 +90,9 @@ internal class IntellijK2RelationProjection(
     private val workspaceRoot: CanonicalWorkspaceRoot,
     private val observation: IntellijReadObservation = IntellijReadObservation.None,
 ) {
+    fun callOwner(lexical: ContainingDeclaration): Refinement<ContainingDeclaration.Found, CallOwnershipFailure> =
+        refineCallOwnership(lexical, observation)
+
     /**
      * Proof transition: `(CompiledRelationScope, RelationEndpoint) -> IntellijRelationSubjectLookup`.
      *

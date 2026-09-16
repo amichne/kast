@@ -519,7 +519,7 @@ def _drain_inline(replay, selector, meaning, limit):
     for _ in range(32):
         response = replay.transport.invoke(replay.surface, 'read_relations', asdict(request))
         pages.append(response)
-        token = response.get('continuation')
+        token = response.get('qualification', {}).get('continuation')
         if not token:
             return pages
         if token in tokens:
@@ -540,14 +540,17 @@ def _inline_key(fact):
             bounds.get('startInclusive'), bounds.get('endExclusive'), fact.get('coverage'), fact.get('provenance'))
 
 
-def run_inline_ownership_regression(replay, source, path):
+def run_inline_ownership_regression(replay, source, path, *, unresolved_path=None):
     """K2 acceptance oracle; Python-only tests do not establish ownership admission."""
     positive = ('stdlibInline', 'explicitInline', 'nestedInline', 'repeatedInline', 'mixedInline')
     negative = ('returnedInline', 'storedInline', 'callbackInline', 'homonymousInline',
                 'noinlineBoundary', 'crossinlineBoundary', 'unsupportedOuter', 'localInline')
     target_start = source.index('fun inlineTarget(')
     target_selector, forward, expected_callers = None, [], []
-    for name in positive + negative:
+    unresolved_source = unresolved_path.read_text() if unresolved_path is not None else ''
+    unresolved = ('unresolvedMapping', 'ambiguousMapping') if unresolved_path is not None else ()
+    for name in positive + negative + unresolved:
+        occurrence_source, occurrence_path = (unresolved_source, unresolved_path) if name in unresolved else (source, path)
         discovered = replay.transport.invoke(replay.surface, 'search_functions', asdict(KotlinCallSearch(name)))
         items = discovered.get('items', [])
         if discovered.get('status') != 'complete' or len(items) != 1 or not items[0].get('ref'):
@@ -557,24 +560,27 @@ def run_inline_ownership_regression(replay, source, path):
         low = _drain_inline(replay, items[0]['ref'], KotlinCallMeaning.CALLEES, 1)
         facts = [fact for page in high for fact in page.get('relations', [])]
         inner = [fact for fact in facts if fact.get('target', {}).get('range', {}).get('startInclusive') == target_start]
-        sites = _inline_sites(source, name)
+        sites = _inline_sites(occurrence_source, name)
         supported = sites[-1:] if name == 'mixedInline' else sites if name in positive else []
         expected_callers.extend(supported)
         actual = [(fact.get('source', {}).get('range', {}).get('startInclusive'),
                    fact.get('occurrence', {}).get('range', {}).get('startInclusive'),
                    fact.get('occurrence', {}).get('range', {}).get('endExclusive')) for fact in inner]
         omissions = [omission for page in high for omission in page.get('omissions', [])]
-        deferred = name in negative or name == 'mixedInline'
+        deferred = name in negative + unresolved or name == 'mixedInline'
+        owner_reason = 'UNRESOLVED_TARGET' if name in unresolved else 'UNSUPPORTED_ITEM'
         # Local named functions retain their owner, even if no detached local endpoint is supported.
         obligation_sites = sites[:1] if deferred and name != 'localInline' else []
         checks = {
             'exactInnerOccurrenceAndOwner': Counter(actual) == Counter(supported),
-            'unsupportedOwnershipEvidence': not deferred or _has_scoped_unsupported(omissions),
-            'supportedSitesHaveNoOmission': all(not (sample.get('file') == str(path)
+            'unsupportedOwnershipEvidence': not deferred or any(omission.get('reason') == owner_reason
+                and omission.get('measurement', {}).get('type') == 'observed_on_page' and omission.get('samples')
+                for omission in omissions),
+            'supportedSitesHaveNoOmission': all(not (sample.get('file') == str(occurrence_path)
                 and sample.get('range', {}).get('startInclusive', -1) <= site[1]
                 and sample.get('range', {}).get('endExclusive', -1) >= site[2])
                 for site in supported for omission in omissions for sample in omission.get('samples', [])),
-            'deferredSitesHaveOmissions': all(any(sample.get('file') == str(path)
+            'deferredSitesHaveOmissions': all(any(sample.get('file') == str(occurrence_path)
                 and sample.get('range', {}).get('startInclusive', -1) <= site[1]
                 and sample.get('range', {}).get('endExclusive', -1) >= site[2]
                 for omission in omissions for sample in omission.get('samples', [])) for site in obligation_sites),
@@ -583,7 +589,11 @@ def run_inline_ownership_regression(replay, source, path):
             'sameAuthority': all(page.get('live') == replay.live for page in high + low),
             'qualifiedOmissions': not deferred or high[-1].get('status') == 'qualified',
             'authoredExactEvidence': all(fact.get('coverage') == 'exact-compiler-confirmed'
-                and fact.get('provenance') == 'k2-authored-source' for fact in inner),
+                and fact.get('provenance') == 'k2-authored-source'
+                and fact.get('source', {}).get('qualifiedIdentity') == 'fixture.calls.' + name
+                and fact.get('target', {}).get('qualifiedIdentity') == 'fixture.calls.inlineTarget'
+                and all(fact.get(end, {}).get('compilerEvidence', {}).get('identity', '').startswith('canonical-signature-sha256-v1|')
+                    for end in ('source', 'target')) for fact in inner),
         }
         replay.record('inline-' + name, 'read_relations', checks, len(inner), high[-1])
         forward.extend(inner)

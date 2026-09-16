@@ -61,42 +61,9 @@ class QueryQualifiedCompositionTest {
     fun `terminal omissions survive distinct multi output pages and child cursors`() = runTest {
         QueryServiceTest().apply {
             val selected = selector(selection())
-            suspend fun drain(
-                capacity: Int,
-                terminal: Boolean,
-            ): Pair<List<io.github.amichne.kast.query.contract.QuerySymbol>, List<Pair<String, Long>>> {
-                val reads = mutableListOf<Pair<String, Long>>()
-                val service = recordingService(selected, reads, terminal = terminal, repeated = true)
-                val first = request(twoHopPlan(selected), workLimit = 100L, resultLimit = capacity)
-                var next = first
-                val symbols = mutableListOf<io.github.amichne.kast.query.contract.QuerySymbol>()
-                repeat(10) {
-                    val page = service.run(next)
-                    val result =
-                        when (page) {
-                            is QueryExecutionResult.Complete -> page.result
-                            is QueryExecutionResult.Qualified -> {
-                                assertEquals(terminal, QueryLimitation.RELATION_INCOMPLETE in page.coverage.limitations)
-                                page.result
-                            }
-                            is QueryExecutionResult.Rejected -> error(page.toString())
-                        }
-                    symbols += (result.items as io.github.amichne.kast.query.contract.QueryResultSet.Symbols).values
-                    val continuation = (page as? QueryExecutionResult.Qualified)?.continuation
-                    if (continuation is io.github.amichne.kast.query.contract.QueryContinuationState.Resumable) {
-                        next =
-                            QueryExecutionRequest.create(first.plan, first.lease, first.budget, continuation.checkpoint)
-                                .refined()
-                    } else {
-                        assertEquals(terminal, page is QueryExecutionResult.Qualified)
-                        return symbols to reads
-                    }
-                }
-                error("Query did not drain")
-            }
             for (terminal in listOf(true, false)) {
-                val (wide, _) = drain(20, terminal)
-                val (paged, reads) = drain(1, terminal)
+                val (wide, _) = drain(selected, 20, terminal)
+                val (paged, reads) = drain(selected, 1, terminal)
                 assertEquals(listOf("C", "D"), paged.map { it.description.name.value }.sorted())
                 assertEquals(
                     wide.map { it.selector.fingerprint to it.connections.map(RelationFact::canonicalProjection) },
@@ -105,6 +72,41 @@ class QueryQualifiedCompositionTest {
                 assertEquals(listOf("PaymentService" to 0L, "B" to 0L, "B" to 1L, "B" to 2L), reads)
             }
         }
+    }
+
+    private suspend fun QueryServiceTest.drain(
+        selected: io.github.amichne.kast.symbol.contract.SymbolSelector,
+        capacity: Int,
+        terminal: Boolean,
+    ): Pair<List<io.github.amichne.kast.query.contract.QuerySymbol>, List<Pair<String, Long>>> {
+        val reads = mutableListOf<Pair<String, Long>>()
+        val service = recordingService(selected, reads, terminal = terminal, repeated = true)
+        val first = request(twoHopPlan(selected), workLimit = 100L, resultLimit = capacity)
+        var next = first
+        val symbols = mutableListOf<io.github.amichne.kast.query.contract.QuerySymbol>()
+        repeat(10) {
+            val page = service.run(next)
+            val result =
+                when (page) {
+                    is QueryExecutionResult.Complete -> page.result
+                    is QueryExecutionResult.Qualified -> {
+                        assertEquals(terminal, QueryLimitation.RELATION_INCOMPLETE in page.coverage.limitations)
+                        page.result
+                    }
+                    is QueryExecutionResult.Rejected -> error(page.toString())
+                }
+            symbols += (result.items as io.github.amichne.kast.query.contract.QueryResultSet.Symbols).values
+            val continuation = (page as? QueryExecutionResult.Qualified)?.continuation
+            if (continuation is io.github.amichne.kast.query.contract.QueryContinuationState.Resumable) {
+                next =
+                    QueryExecutionRequest.create(first.plan, first.lease, first.budget, continuation.checkpoint)
+                        .refined()
+            } else {
+                assertEquals(terminal, page is QueryExecutionResult.Qualified)
+                return symbols to reads
+            }
+        }
+        error("Query did not drain")
     }
 
     private fun QueryServiceTest.twoHopPlan(selected: io.github.amichne.kast.symbol.contract.SymbolSelector) =
@@ -132,87 +134,100 @@ class QueryQualifiedCompositionTest {
             ),
             SourceReadOperations { error("No source expected") },
             RelationOperations { read ->
-                val position = read.providerCursor.nextPosition.value
-                reads += read.subject.name.value to position
-                val names =
-                    when (read.subject.name.value) {
-                        "PaymentService" -> listOf("B")
-                        "B" -> if (leaf) emptyList() else if (repeated) listOf("C", "C", "D") else listOf("C")
-                        else -> error("Unexpected subject")
-                    }
-                val facts =
-                    names
-                        .mapIndexed { index, name ->
-                            val evidence =
-                                io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence.fromBoundary(
-                                        selected.file,
-                                        30 + name.single().code,
-                                        31 + name.single().code,
-                                        name,
-                                        "sample.$name",
-                                        io.github.amichne.kast.symbol.contract.CompilerSymbolKind.CLASSLIKE,
-                                        io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature.classLike(
-                                                "sample.$name"
-                                            )
-                                            .refined(),
-                                    )
-                                    .refined()
-                            val target =
-                                io.github.amichne.kast.relation.contract.RelationEndpoint.resolve(
-                                        read.subject.lease,
-                                        read.subject.scope,
-                                        evidence,
-                                    )
-                                    .refined()
-                            RelationFact.create(
-                                    read,
-                                    read.subject,
-                                    target,
-                                    RelationOccurrence.fromBoundary(selected.file, 200 + index, 201 + index).refined(),
-                                    RelationProvenance.K2_AUTHORED_SOURCE,
-                                )
-                                .refined()
-                        }
-                        .sorted()
-                val page = facts.drop(position.toInt()).take(read.budget.resources.resultLimit.value)
-                val batch =
-                    RelationBatch.create(
-                            read,
-                            page,
-                            RelationByteCount.parse(
-                                    page.sumOf { it.canonicalProjection().toByteArray(Charsets.UTF_8).size.toLong() }
-                                )
-                                .refined(),
-                            RelationWorkCount.parse(page.size.toLong()).refined(),
-                            RelationResultCount.parse(page.size).refined(),
-                        )
-                        .refined()
-                val compilation =
-                    when {
-                        read.subject.name.value == "PaymentService" && terminal ->
-                            RelationCompilation.qualifiedTerminal(batch, setOf(RelationLimitation.UNSUPPORTED_ITEM))
-                                .refined()
-                        position + page.size < facts.size ->
-                            RelationCompilation.qualifiedResumable(
-                                    batch,
-                                    setOf(RelationLimitation.RESULT_LIMIT_REACHED),
-                                    page.fold(read.providerCursor) { cursor, fact ->
-                                        cursor.advance(
-                                            RelationProviderItemDescriptor.parse(fact.canonicalProjection()).refined()
-                                        )
-                                    },
-                                )
-                                .refined()
-                        else -> RelationCompilation.complete(batch)
-                    }
-                when (compilation) {
-                    is RelationCompilation.Complete -> RelationReadResult.Complete(batch, compilation.coverage)
-                    is RelationCompilation.Qualified -> RelationReadResult.Qualified(batch, compilation.coverage)
-                    is RelationCompilation.Rejected -> error(compilation.toString())
-                }
+                reads += read.subject.name.value to read.providerCursor.nextPosition.value
+                recordingRead(read, selected, leaf, terminal, repeated)
             },
             clock = QueryNanoClock { 0L },
         )
+
+    private fun recordingRead(
+        read: io.github.amichne.kast.relation.contract.RelationRequest,
+        selected: io.github.amichne.kast.symbol.contract.SymbolSelector,
+        leaf: Boolean,
+        terminal: Boolean,
+        repeated: Boolean,
+    ): RelationReadResult {
+        val position = read.providerCursor.nextPosition.value
+        val names =
+            when (read.subject.name.value) {
+                "PaymentService" -> listOf("B")
+                "B" -> if (leaf) emptyList() else if (repeated) listOf("C", "C", "D") else listOf("C")
+                else -> error("Unexpected subject")
+            }
+        val facts = facts(read, selected, names)
+        val page = facts.drop(position.toInt()).take(read.budget.resources.resultLimit.value)
+        val batch =
+            RelationBatch.create(
+                    read,
+                    page,
+                    RelationByteCount.parse(
+                            page.sumOf { it.canonicalProjection().toByteArray(Charsets.UTF_8).size.toLong() }
+                        )
+                        .refined(),
+                    RelationWorkCount.parse(page.size.toLong()).refined(),
+                    RelationResultCount.parse(page.size).refined(),
+                )
+                .refined()
+        val compilation =
+            when {
+                read.subject.name.value == "PaymentService" && terminal ->
+                    RelationCompilation.qualifiedTerminal(batch, setOf(RelationLimitation.UNSUPPORTED_ITEM)).refined()
+                position + page.size < facts.size ->
+                    RelationCompilation.qualifiedResumable(
+                            batch,
+                            setOf(RelationLimitation.RESULT_LIMIT_REACHED),
+                            page.fold(read.providerCursor) { cursor, fact ->
+                                cursor.advance(
+                                    RelationProviderItemDescriptor.parse(fact.canonicalProjection()).refined()
+                                )
+                            },
+                        )
+                        .refined()
+                else -> RelationCompilation.complete(batch)
+            }
+        return when (compilation) {
+            is RelationCompilation.Complete -> RelationReadResult.Complete(batch, compilation.coverage)
+            is RelationCompilation.Qualified -> RelationReadResult.Qualified(batch, compilation.coverage)
+            is RelationCompilation.Rejected -> error(compilation.toString())
+        }
+    }
+
+    private fun facts(
+        read: io.github.amichne.kast.relation.contract.RelationRequest,
+        selected: io.github.amichne.kast.symbol.contract.SymbolSelector,
+        names: List<String>,
+    ): List<RelationFact> =
+        names
+            .mapIndexed { index, name ->
+                val evidence =
+                    io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence.fromBoundary(
+                            selected.file,
+                            30 + name.single().code,
+                            31 + name.single().code,
+                            name,
+                            "sample.$name",
+                            io.github.amichne.kast.symbol.contract.CompilerSymbolKind.CLASSLIKE,
+                            io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature.classLike("sample.$name")
+                                .refined(),
+                        )
+                        .refined()
+                val target =
+                    io.github.amichne.kast.relation.contract.RelationEndpoint.resolve(
+                            read.subject.lease,
+                            read.subject.scope,
+                            evidence,
+                        )
+                        .refined()
+                RelationFact.create(
+                        read,
+                        read.subject,
+                        target,
+                        RelationOccurrence.fromBoundary(selected.file, 200 + index, 201 + index).refined(),
+                        RelationProvenance.K2_AUTHORED_SOURCE,
+                    )
+                    .refined()
+            }
+            .sorted()
 
     private fun <Value, Failure> io.github.amichne.kast.kernel.Refinement<Value, Failure>.refined(): Value =
         when (this) {
