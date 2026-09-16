@@ -596,6 +596,8 @@ def run_inline_ownership_regression(replay, source, path, *, unresolved_path=Non
                     for end in ('source', 'target')) for fact in inner),
         }
         replay.record('inline-' + name, 'read_relations', checks, len(inner), high[-1])
+        if name == 'stdlibInline':
+            run_inline_composition(replay, items[0]['ref'])
         forward.extend(inner)
         if inner:
             target_selector = inner[0].get('target', {}).get('selector')
@@ -618,3 +620,43 @@ def run_inline_ownership_regression(replay, source, path, *, unresolved_path=Non
             'retainedUnsupportedEvidence': _has_scoped_unsupported([omission for page in high for omission in page.get('omissions', [])]),
             'sameAuthority': all(page.get('live') == replay.live for page in high + low),
         }, len(facts), high[-1])
+
+
+@dataclass(frozen=True)
+class InlineExpansion:
+    type: str = field(default='expand_relation', init=False)
+    relation: str = field(default='callees', init=False)
+
+
+@dataclass(frozen=True)
+class InlineQuery:
+    source: 'ExactReferences'
+    steps: tuple[InlineExpansion, ...] = (InlineExpansion(), InlineExpansion())
+    return_fields: tuple[str, ...] = ('name', 'location', 'signature')
+    execution_budget: CallPageBudget = field(default_factory=lambda: CallPageBudget(100))
+
+
+def run_inline_composition(replay, selector):
+    from hosted_budget_read_regression import ExactReferences
+    query = replay.transport.invoke(replay.surface, 'query_symbols', asdict(InlineQuery(ExactReferences((selector,)))))
+    items = query.get('items', [])
+    connections = [fact for item in items for fact in item.get('connections', [])]
+    chain = Counter((fact.get('source', {}).get('qualifiedIdentity'), fact.get('target', {}).get('qualifiedIdentity'))
+                    for fact in connections)
+    expected = Counter((('fixture.calls.stdlibInline', 'fixture.calls.inlineTarget'),
+                        ('fixture.calls.inlineTarget', 'fixture.calls.inlineLeaf')))
+    traversal = replay.transport.invoke(replay.surface, 'traverse_relations',
+                                        asdict(CallCycleTraversal(selector, CallPageBudget(100))))
+    graph = traversal.get('graph', {})
+    nodes = {node['id']: node for node in graph.get('nodes', [])}
+    edges = graph.get('edges', [])
+    replay.record('inline-two-hop-composition', 'query_symbols', {
+        'completeQuery': query.get('status') == 'complete',
+        'exactLeaf': len(items) == 1 and items[0].get('signature', {}).get('qualifiedIdentity') == 'fixture.calls.inlineLeaf',
+        'bothConnections': chain == expected,
+        'bothTraversalEdges': Counter((nodes[edge['source']].get('qualifiedIdentity'),
+                                      nodes[edge['target']].get('qualifiedIdentity')) for edge in edges) == expected,
+        'witnessedDepthTwo': traversal.get('progress', {}).get('maximumDepthReached') == 2,
+        'retainedDepthCutoff': traversal.get('qualification', {}).get('limitations') == ['depth-limit-reached'],
+        'sameAuthority': query.get('live') == traversal.get('live') == replay.live,
+    }, len(items), query)
