@@ -139,6 +139,12 @@ Use these strategy rules:
 - Use `bounded_fan_out` with `maximumEdgesPerNode` to limit each node.
 - Keep truncated fan-out coverage explicitly incomplete.
 
+An exact edge from a terminal-qualified relation remains eligible for later query
+stages and traversal reads. Its omission stays attached to the aggregate after
+known work and buffered output finish. A terminal child has no continuation of
+its own; the parent can still have resumable downstream work. Fully consuming a
+child limited only by page capacity does not leave permanent incompleteness.
+
 Traversal cannot establish absence in omitted subtrees.
 
 Each page exposes cumulative progress:
@@ -148,7 +154,12 @@ Each page exposes cumulative progress:
 | `checkpointSequence` | Ordered checkpoint number |
 | `totalReads` | Reads completed so far |
 | `totalEdges` | Edges retained so far |
-| `maximumDepthReached` | Deepest observed traversal level |
+| `maximumDepthReached` | Deepest returned edge, cumulative across pages |
+
+Reading a depth-1 leaf with no outgoing edges increases `totalReads` without
+producing depth-2 evidence. An empty second expansion therefore does not prove
+that the service skipped a read. A `not_explored` remainder describes omitted
+relation output at that node, not the exploration state of every returned target.
 
 - Every resumable page must advance its checkpoint.
 - `no-progress` is terminal.
@@ -212,3 +223,17 @@ Source containment is separate from recursive directory or package discovery.
 | `traverse_relations` | Bounded reachability with depth, strategy, and coverage |
 
 Traversal does not predict which edits break callers or which tests must run.
+
+## Calls inside inline lambda arguments
+
+Callers and callees attribute an inner call to the enclosing supported callable
+when K2 maps the literal lambda argument to an ordinary function parameter of
+the selected inline callable. This includes standard-library and user-defined
+helpers; names do not authorize ownership. Every intervening lambda must pass
+that check. The original inner occurrence and exact endpoints remain unchanged.
+
+Returned or stored lambdas, ordinary callbacks, `noinline`, `crossinline`,
+unresolved or ambiguous mappings, and accessor boundaries remain unsupported
+or unresolved. A local named function retains its own owner. Independent
+omissions remain qualified beside supported edges. Exact static ownership does
+not establish runtime execution or invocation frequency.

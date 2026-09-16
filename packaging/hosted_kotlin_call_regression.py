@@ -102,6 +102,7 @@ def run_kotlin_call_regression(replay):
             else:
                 replay.record('kotlin-call-inherited-callers', 'read_relations', {'exactIssuerAvailable': False})
 
+    run_inline_ownership_regression(replay, source, path)
     _run_extended_calls(replay, source, path)
 
 def _inherited_callers(replay, source, reference):
@@ -490,3 +491,172 @@ def _same_cycle_graph(high, low):
     from hosted_budget_read_regression import graph_records
     return Counter(record for page in high for record in graph_records(page)) == Counter(
         record for page in low for record in graph_records(page))
+
+
+@dataclass(frozen=True)
+class InlineCallRead:
+    exactSelector: str
+    relation: KotlinCallMeaning = KotlinCallMeaning.CALLEES
+    limit: int = 100
+    position: CallStart | CallResume = field(default_factory=CallStart)
+
+
+def _inline_sites(source, name):
+    start = source.index('fun ' + name + '(')
+    end = source.find('\n', start)
+    fragment = source[start:end if end >= 0 else len(source)]
+    sites, offset = [], 0
+    while (offset := fragment.find('inlineTarget()', offset)) >= 0:
+        sites.append((start, start + offset, start + offset + len('inlineTarget')))
+        offset += len('inlineTarget')
+    return sites
+
+
+def _drain_inline(replay, selector, meaning, limit):
+    from dataclasses import replace
+    request = InlineCallRead(selector, meaning, limit)
+    pages, tokens = [], set()
+    for _ in range(32):
+        response = replay.transport.invoke(replay.surface, 'read_relations', asdict(request))
+        pages.append(response)
+        token = response.get('qualification', {}).get('continuation')
+        if not token:
+            return pages
+        if token in tokens:
+            raise ValueError('Inline relation continuation did not advance')
+        tokens.add(token)
+        request = replace(request, position=CallResume(token))
+    raise ValueError('Inline relation pages did not drain')
+
+
+def _inline_key(fact):
+    def endpoint(key):
+        value = fact.get(key, {})
+        return (value.get('file'), value.get('range', {}).get('startInclusive'),
+                value.get('range', {}).get('endExclusive'), value.get('compilerEvidence', {}).get('identity'))
+    occurrence = fact.get('occurrence', {})
+    bounds = occurrence.get('range', {})
+    return (endpoint('source'), endpoint('target'), occurrence.get('file'),
+            bounds.get('startInclusive'), bounds.get('endExclusive'), fact.get('coverage'), fact.get('provenance'))
+
+
+def run_inline_ownership_regression(replay, source, path, *, unresolved_path=None):
+    """K2 acceptance oracle; Python-only tests do not establish ownership admission."""
+    positive = ('stdlibInline', 'explicitInline', 'nestedInline', 'repeatedInline', 'mixedInline')
+    negative = ('returnedInline', 'storedInline', 'callbackInline', 'homonymousInline',
+                'noinlineBoundary', 'crossinlineBoundary', 'unsupportedOuter', 'localInline')
+    target_start = source.index('fun inlineTarget(')
+    target_selector, forward, expected_callers = None, [], []
+    unresolved_source = unresolved_path.read_text() if unresolved_path is not None else ''
+    unresolved = ('unresolvedMapping', 'ambiguousMapping') if unresolved_path is not None else ()
+    for name in positive + negative + unresolved:
+        occurrence_source, occurrence_path = (unresolved_source, unresolved_path) if name in unresolved else (source, path)
+        discovered = replay.transport.invoke(replay.surface, 'search_functions', asdict(KotlinCallSearch(name)))
+        items = discovered.get('items', [])
+        if discovered.get('status') != 'complete' or len(items) != 1 or not items[0].get('ref'):
+            replay.record('inline-' + name, 'search_functions', {'exactIssuerAvailable': False})
+            continue
+        high = _drain_inline(replay, items[0]['ref'], KotlinCallMeaning.CALLEES, 100)
+        low = _drain_inline(replay, items[0]['ref'], KotlinCallMeaning.CALLEES, 1)
+        facts = [fact for page in high for fact in page.get('relations', [])]
+        inner = [fact for fact in facts if fact.get('target', {}).get('range', {}).get('startInclusive') == target_start]
+        sites = _inline_sites(occurrence_source, name)
+        supported = sites[-1:] if name == 'mixedInline' else sites if name in positive else []
+        expected_callers.extend(supported)
+        actual = [(fact.get('source', {}).get('range', {}).get('startInclusive'),
+                   fact.get('occurrence', {}).get('range', {}).get('startInclusive'),
+                   fact.get('occurrence', {}).get('range', {}).get('endExclusive')) for fact in inner]
+        omissions = [omission for page in high for omission in page.get('omissions', [])]
+        deferred = name in negative + unresolved or name == 'mixedInline'
+        owner_reason = 'UNRESOLVED_TARGET' if name in unresolved else 'UNSUPPORTED_ITEM'
+        # Local named functions retain their owner, even if no detached local endpoint is supported.
+        obligation_sites = sites[:1] if deferred and name != 'localInline' else []
+        checks = {
+            'exactInnerOccurrenceAndOwner': Counter(actual) == Counter(supported),
+            'unsupportedOwnershipEvidence': not deferred or any(omission.get('reason') == owner_reason
+                and omission.get('measurement', {}).get('type') == 'observed_on_page' and omission.get('samples')
+                for omission in omissions),
+            'supportedSitesHaveNoOmission': all(not (sample.get('file') == str(occurrence_path)
+                and sample.get('range', {}).get('startInclusive', -1) <= site[1]
+                and sample.get('range', {}).get('endExclusive', -1) >= site[2])
+                for site in supported for omission in omissions for sample in omission.get('samples', [])),
+            'deferredSitesHaveOmissions': all(any(sample.get('file') == str(occurrence_path)
+                and sample.get('range', {}).get('startInclusive', -1) <= site[1]
+                and sample.get('range', {}).get('endExclusive', -1) >= site[2]
+                for omission in omissions for sample in omission.get('samples', [])) for site in obligation_sites),
+            'paginationPreservesExactOccurrences': Counter(map(_inline_key, facts)) == Counter(
+                _inline_key(fact) for page in low for fact in page.get('relations', [])),
+            'sameAuthority': all(page.get('live') == replay.live for page in high + low),
+            'qualifiedOmissions': not deferred or high[-1].get('status') == 'qualified',
+            'authoredExactEvidence': all(fact.get('coverage') == 'exact-compiler-confirmed'
+                and fact.get('provenance') == 'k2-authored-source'
+                and fact.get('source', {}).get('qualifiedIdentity') == 'fixture.calls.' + name
+                and fact.get('target', {}).get('qualifiedIdentity') == 'fixture.calls.inlineTarget'
+                and all(fact.get(end, {}).get('compilerEvidence', {}).get('identity', '').startswith('canonical-signature-sha256-v1|')
+                    for end in ('source', 'target')) for fact in inner),
+        }
+        replay.record('inline-' + name, 'read_relations', checks, len(inner), high[-1])
+        if name == 'stdlibInline':
+            run_inline_composition(replay, items[0]['ref'])
+        forward.extend(inner)
+        if inner:
+            target_selector = inner[0].get('target', {}).get('selector')
+    if target_selector is None:
+        discovered = replay.transport.invoke(replay.surface, 'search_functions', asdict(KotlinCallSearch('inlineTarget')))
+        items = discovered.get('items', [])
+        target_selector = items[0].get('ref') if len(items) == 1 else None
+    if target_selector:
+        high = _drain_inline(replay, target_selector, KotlinCallMeaning.CALLERS, 100)
+        low = _drain_inline(replay, target_selector, KotlinCallMeaning.CALLERS, 1)
+        facts = [fact for page in high for fact in page.get('relations', [])]
+        actual = [(fact.get('source', {}).get('range', {}).get('startInclusive'),
+                   fact.get('occurrence', {}).get('range', {}).get('startInclusive'),
+                   fact.get('occurrence', {}).get('range', {}).get('endExclusive')) for fact in facts]
+        replay.record('inline-inverse-parity', 'read_relations', {
+            'expectedOwnersAndOccurrences': Counter(actual) == Counter(expected_callers),
+            'forwardInverseParity': Counter(map(_inline_key, forward)) == Counter(map(_inline_key, facts)),
+            'paginationPreservesExactOccurrences': Counter(map(_inline_key, facts)) == Counter(
+                _inline_key(fact) for page in low for fact in page.get('relations', [])),
+            'retainedUnsupportedEvidence': _has_scoped_unsupported([omission for page in high for omission in page.get('omissions', [])]),
+            'sameAuthority': all(page.get('live') == replay.live for page in high + low),
+        }, len(facts), high[-1])
+
+
+@dataclass(frozen=True)
+class InlineExpansion:
+    type: str = field(default='expand_relation', init=False)
+    relation: str = field(default='callees', init=False)
+
+
+@dataclass(frozen=True)
+class InlineQuery:
+    source: 'ExactReferences'
+    steps: tuple[InlineExpansion, ...] = (InlineExpansion(), InlineExpansion())
+    return_fields: tuple[str, ...] = ('name', 'location', 'signature')
+    execution_budget: CallPageBudget = field(default_factory=lambda: CallPageBudget(100))
+
+
+def run_inline_composition(replay, selector):
+    from hosted_budget_read_regression import ExactReferences
+    query = replay.transport.invoke(replay.surface, 'query_symbols', asdict(InlineQuery(ExactReferences((selector,)))))
+    items = query.get('items', [])
+    connections = [fact for item in items for fact in item.get('connections', [])]
+    chain = Counter((fact.get('source', {}).get('qualifiedIdentity'), fact.get('target', {}).get('qualifiedIdentity'))
+                    for fact in connections)
+    expected = Counter((('fixture.calls.stdlibInline', 'fixture.calls.inlineTarget'),
+                        ('fixture.calls.inlineTarget', 'fixture.calls.inlineLeaf')))
+    traversal = replay.transport.invoke(replay.surface, 'traverse_relations',
+                                        asdict(CallCycleTraversal(selector, CallPageBudget(100))))
+    graph = traversal.get('graph', {})
+    nodes = {node['id']: node for node in graph.get('nodes', [])}
+    edges = graph.get('edges', [])
+    replay.record('inline-two-hop-composition', 'query_symbols', {
+        'completeQuery': query.get('status') == 'complete',
+        'exactLeaf': len(items) == 1 and items[0].get('signature', {}).get('qualifiedIdentity') == 'fixture.calls.inlineLeaf',
+        'bothConnections': chain == expected,
+        'bothTraversalEdges': Counter((nodes[edge['source']].get('qualifiedIdentity'),
+                                      nodes[edge['target']].get('qualifiedIdentity')) for edge in edges) == expected,
+        'witnessedDepthTwo': traversal.get('progress', {}).get('maximumDepthReached') == 2,
+        'retainedDepthCutoff': traversal.get('qualification', {}).get('limitations') == ['depth-limit-reached'],
+        'sameAuthority': query.get('live') == traversal.get('live') == replay.live,
+    }, len(items), query)

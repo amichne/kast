@@ -276,12 +276,13 @@ internal class TraversalTestFixture {
     fun terminalRelationResult(
         request: RelationRequest,
         targets: List<RelationEndpoint.Resolved> = emptyList(),
+        limitation: RelationLimitation = RelationLimitation.UNRESOLVED_TARGET,
     ): RelationReadResult.Qualified {
         val batch = batch(request, targets.map { target -> fact(request, target) }.sorted())
         val qualified =
             RelationCompilation.qualifiedTerminal(
                     batch,
-                    setOf(RelationLimitation.UNRESOLVED_TARGET),
+                    setOf(limitation),
                 )
                 .refined()
         return RelationReadResult.Qualified(batch, qualified.coverage)

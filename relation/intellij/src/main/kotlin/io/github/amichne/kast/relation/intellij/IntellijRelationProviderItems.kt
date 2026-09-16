@@ -14,6 +14,11 @@ import org.jetbrains.kotlin.idea.references.KtReference
 import org.jetbrains.kotlin.psi.KtCallElement
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 
+internal enum class CallOwnershipFailure(val limitation: RelationLimitation) {
+    UNSUPPORTED_BOUNDARY(RelationLimitation.UNSUPPORTED_ITEM),
+    UNRESOLVED_ARGUMENT_MAPPING(RelationLimitation.UNRESOLVED_TARGET),
+}
+
 internal sealed interface ContainingDeclaration {
     data class Found(val declaration: PsiNamedElement) : ContainingDeclaration
 
@@ -26,6 +31,8 @@ internal sealed interface SupportedContainingDeclaration {
     data class Found(val projection: IntellijRelationDeclarationProjection.Projected) : SupportedContainingDeclaration
 
     data object Unsupported : SupportedContainingDeclaration
+
+    data object Unresolved : SupportedContainingDeclaration
 }
 
 internal sealed interface OccurrenceProvenance {
@@ -41,17 +48,15 @@ internal sealed interface KotlinCallReferences {
 }
 
 internal sealed interface CalleeProviderItem {
-    data class UnsupportedOwner(val call: KtCallElement) : CalleeProviderItem
+    val owner: ContainingDeclaration
 
-    data class Unresolved(val call: KtCallElement) : CalleeProviderItem
+    data class Unresolved(val call: KtCallElement, override val owner: ContainingDeclaration) : CalleeProviderItem
 
-    data class Reference(val reference: KtReference) : CalleeProviderItem
+    data class Reference(val reference: KtReference, override val owner: ContainingDeclaration) : CalleeProviderItem
 }
 
 internal fun CalleeProviderItem.descriptor(): RelationProviderItemDescriptor =
     when (this) {
-        is CalleeProviderItem.UnsupportedOwner ->
-            providerItemDescriptor(call, call.textRange.shiftLeft(call.textRange.startOffset), "deferred-call-owner")
         is CalleeProviderItem.Unresolved ->
             providerItemDescriptor(
                 call,
@@ -130,18 +135,21 @@ internal fun ContainingDeclaration.Deferred.enclosingDeclaration(): ContainingDe
     return current
 }
 
+/** Both call directions consume the same retained K2 ownership admission. */
 internal fun PsiElement.nearestSupportedCallable(
-    projection: IntellijK2RelationProjection,
-    observation: IntellijReadObservation = IntellijReadObservation.None,
+    projection: IntellijK2RelationProjection
 ): SupportedContainingDeclaration =
-    when (val owner = nearestDeclaration(observation)) {
-        is ContainingDeclaration.Found ->
-            when (val projected = projection.project(owner.declaration)) {
+    when (val owner = projection.callOwner(nearestDeclaration())) {
+        is Refinement.Refined ->
+            when (val projected = projection.project(owner.value.declaration)) {
                 is IntellijRelationDeclarationProjection.Projected -> SupportedContainingDeclaration.Found(projected)
                 IntellijRelationDeclarationProjection.Unsupported -> SupportedContainingDeclaration.Unsupported
             }
-        is ContainingDeclaration.Deferred,
-        ContainingDeclaration.Unsupported -> SupportedContainingDeclaration.Unsupported
+        is Refinement.Rejected ->
+            when (owner.failure) {
+                CallOwnershipFailure.UNSUPPORTED_BOUNDARY -> SupportedContainingDeclaration.Unsupported
+                CallOwnershipFailure.UNRESOLVED_ARGUMENT_MAPPING -> SupportedContainingDeclaration.Unresolved
+            }
     }
 
 /**
