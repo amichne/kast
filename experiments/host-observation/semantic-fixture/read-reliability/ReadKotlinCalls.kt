@@ -32,3 +32,28 @@ fun callCycleEntry(client: ChildClient): String {
     return qualified(client)
 }
 fun callCyclePeer(client: ChildClient): String = callCycleEntry(client)
+
+fun inlineLeaf(): String = "inline"
+fun inlineTarget(): String = inlineLeaf()
+inline fun ordinaryInline(block: () -> String): String = block()
+fun ordinaryInline(marker: Int, block: () -> String): String = block() + marker
+fun ordinaryCallback(block: () -> String): String = block()
+inline fun noinlineHelper(noinline block: () -> String): String = block()
+inline fun crossinlineHelper(crossinline block: () -> String): String = block()
+fun stdlibInline(values: List<Int>): String? = values.firstNotNullOfOrNull { inlineTarget() }
+fun explicitInline(): String = ordinaryInline(block = { inlineTarget() })
+fun nestedInline(): String = ordinaryInline { ordinaryInline { inlineTarget() } }
+fun repeatedInline(): String = ordinaryInline { inlineTarget() + inlineTarget() }
+fun returnedInline(): () -> String = { inlineTarget() }
+fun storedInline(): String { val stored = { inlineTarget() }; return stored() }
+fun callbackInline(): String = ordinaryCallback { inlineTarget() }
+fun homonymousInline(): String = ordinaryInline(1) { inlineTarget() }
+fun noinlineBoundary(): String = noinlineHelper { inlineTarget() }
+fun crossinlineBoundary(): String = crossinlineHelper { inlineTarget() }
+fun unsupportedOuter(): String = ordinaryCallback { ordinaryInline { inlineTarget() } }
+fun localInline(): String {
+    fun local(): String = ordinaryInline { inlineTarget() }
+    return local()
+}
+fun mixedInline(): String { val stored = { inlineTarget() }; return ordinaryInline { inlineTarget() } }
+val accessorInline: String get() = ordinaryInline { inlineTarget() }
