@@ -100,8 +100,13 @@ response/resolution mapping. Kast never chooses an approval decision.
 
 One workspace execution mutex serializes Kast reads and mutations while the
 existing runtime remains authoritative for semantic validation. Workspace
-admission follows canonical filesystem identity. Unenrolled thread creation and
-unknown thread resume/fork traffic receive no Kast catalog or binding.
+admission follows canonical filesystem identity. A new thread automatically
+registers its canonical working directory when no registered root contains it;
+`kastWorkspaceRoot` can select and register an explicit containing root. No
+separate registration command is required. Existing overlapping registrations
+still require an explicit root. Resume, fork, and invocation validation remain
+read-only and require the durable binding. Unknown threads receive no Kast
+catalog or binding.
 
 The service stores enrollment, thread/catalog bindings, and digest-only
 invocation intent under `CODEX_HOME/broker`. It does not store conversation

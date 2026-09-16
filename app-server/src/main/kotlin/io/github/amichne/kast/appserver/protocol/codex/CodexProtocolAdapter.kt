@@ -26,6 +26,7 @@ import io.github.amichne.kast.appserver.protocol.ThreadCatalogBinding
 import io.github.amichne.kast.appserver.protocol.ThreadCatalogStore
 import io.github.amichne.kast.appserver.protocol.ThreadStoreRead
 import io.github.amichne.kast.appserver.protocol.ThreadStoreWrite
+import io.github.amichne.kast.appserver.selectForStart
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.Validation
 import java.nio.file.Path
@@ -506,22 +507,22 @@ internal class CodexProtocolAdapter(
                         ?: return ownedRequestFailure(document, "WORKSPACE_SELECTION_REJECTED")
                 else -> return ownedRequestFailure(document, "WORKSPACE_SELECTION_REJECTED")
             }
+        val params = JsonObject(rawParams - "kastWorkspaceRoot")
+        if (!contracts.admits(CodexOwnedSchema.THREAD_START_PARAMS, params)) {
+            return ownedRequestFailure(document, "THREAD_START_SCHEMA_REJECTED")
+        }
         val pendingBinding =
             if (enrollment == WorkspaceEnrollment.ProtocolFixture) {
                 PendingWorkspaceBinding.ProtocolFixture
             } else {
                 if (bindingOwner !is ThreadBindingOwner.Installation)
                     return ownedRequestFailure(document, "BINDING_OWNER_UNPROVEN")
-                when (val selected = enrollment.select(rawParams.string("cwd"), explicitRoot)) {
+                when (val selected = enrollment.selectForStart(rawParams.string("cwd"), explicitRoot)) {
                     is WorkspaceSelection.Selected -> PendingWorkspaceBinding.Selected(selected)
                     is WorkspaceSelection.Rejected ->
                         return ownedRequestFailure(document, "WORKSPACE_${selected.failure.name}")
                 }
             }
-        val params = JsonObject(rawParams - "kastWorkspaceRoot")
-        if (!contracts.admits(CodexOwnedSchema.THREAD_START_PARAMS, params)) {
-            return ownedRequestFailure(document, "THREAD_START_SCHEMA_REJECTED")
-        }
         val paramsObject = params
         val existing =
             when (val dynamic = paramsObject["dynamicTools"]) {

@@ -1284,7 +1284,7 @@ class CodexProtocolAdapterTest {
         }
 
     @Test
-    fun `thread start automatically registers its selected root and rejects an upstream retarget`(@TempDir temporary: Path) =
+    fun `registered thread start keeps its selected root and rejects an upstream retarget`(@TempDir temporary: Path) =
         runBlocking {
             val root = temporary.toRealPath()
             val first = Files.createDirectory(root.resolve("first"))
