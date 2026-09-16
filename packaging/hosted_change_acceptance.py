@@ -460,6 +460,8 @@ def remaining_matrix_gates(native: dict | None = None, read_regression: dict | N
     stages = {event.get('stage') for event in events or []
               if event.get('event') == 'stage' and event.get('outcome') == 'completed'}
     checks = (
+        ('saved-configuration-and-inherited-tools', 'configuration-continuity' in stages,
+         'Requires actual private saved-configuration admission with inherited legacy tool names and retained selector/provenance.'),
         ('explicit-workspace-file-and-model-refresh', 'workspace-refresh' in stages,
          'Requires production file refresh, a real imported module, retained duplicate requests, conflicting request refusal, failed import, and exact fixture restoration.'),
         ('complete-workflow-and-exact-approval',

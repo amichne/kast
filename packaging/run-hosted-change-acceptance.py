@@ -20,6 +20,7 @@ from native_fixture_probe import NativeFixtureProbeError
 from hosted_read_fixture import prepare_read_fixture
 from hosted_read_policy import NativeReadPolicy, policy_receipt
 from hosted_generated_fixture import prepare_generated_fixture, finalize_generated_fixture
+from hosted_configuration_continuity import inspect_configuration_continuity
 from hosted_read_regression import run_read_regression
 from hosted_workspace_refresh_regression import run_workspace_refresh_regression
 from released_acceptance_product import admit_release, install_release, product_executable, ReleaseAssetIdentity, ReleaseRejected
@@ -135,6 +136,9 @@ def main():
             runtime_observer = OwnedRuntimeObserver(isolation.root, product, fixture.workspace, isolation.tools['ps'])
             native_report = private / 'report.private.json'
             try:
+                evidence['configurationContinuity'] = inspect_configuration_continuity(isolation, fixture, product)
+                record({'event': 'stage', 'stage': 'configuration-continuity',
+                        'outcome': 'completed' if evidence['configurationContinuity']['outcome'] == 'passed' else 'rejected'})
                 record({'event': 'stage', 'stage': 'generated-fixture-setup', 'outcome': 'started'})
                 generated_setup = prepare_generated_fixture(read_fixture)
                 with private_file(private / 'generated-setup.private.log') as output:
