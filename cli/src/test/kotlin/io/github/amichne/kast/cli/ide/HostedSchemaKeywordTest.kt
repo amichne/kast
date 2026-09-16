@@ -15,15 +15,22 @@ class HostedSchemaKeywordTest {
 
     @Test
     fun `all hosted endpoint keywords have explicit validator semantics`() {
-        val schema = requireNotNull(javaClass.getResourceAsStream("/ide-hosted/hosted-endpoint.schema.json"))
-            .bufferedReader().use { it.readText() }
+        val schema =
+            requireNotNull(javaClass.getResourceAsStream("/ide-hosted/hosted-endpoint.schema.json"))
+                .bufferedReader()
+                .use { it.readText() }
         strictRegistry.getSchema(schema).initializeValidators()
     }
 
     @Test
     fun `accidental unknown keywords remain detectable`() {
         assertThrows(RuntimeException::class.java) {
-            strictRegistry.getSchema("""{"type":"object","discriminatr":{"propertyName":"type"}}""")
+            strictRegistry
+                .getSchema(
+                    requireNotNull(javaClass.getResourceAsStream("/unknown-hosted-keyword.schema.json"))
+                        .bufferedReader()
+                        .use { it.readText() }
+                )
                 .initializeValidators()
         }
     }
