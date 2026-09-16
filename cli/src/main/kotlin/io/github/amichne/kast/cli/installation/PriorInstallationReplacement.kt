@@ -1,5 +1,7 @@
 package io.github.amichne.kast.cli.installation
 
+import io.github.amichne.kast.distribution.managed.PriorInstallationPreparation
+import io.github.amichne.kast.distribution.managed.preparePriorInstallationReplacement
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.LinkOption
@@ -17,16 +19,10 @@ internal fun replacePriorInstallation(
 ): InstallationChildOutcome {
     val outcome =
         try {
-            if (Files.isDirectory(prior, LinkOption.NOFOLLOW_LINKS) && prior.toRealPath() == prior) {
-                Files.newByteChannel(
-                        prior.resolve(".recovery-detached"),
-                        java.nio.file.StandardOpenOption.CREATE,
-                        java.nio.file.StandardOpenOption.WRITE,
-                        LinkOption.NOFOLLOW_LINKS,
-                    )
-                    .use {}
+            when (preparePriorInstallationReplacement(prior, home)) {
+                PriorInstallationPreparation.PREPARED -> retirePriorServices(prior, home)
+                PriorInstallationPreparation.FILESYSTEM_REJECTED -> InstallationChildOutcome.IO_REJECTED
             }
-            retirePriorServices(prior, home)
         } catch (_: java.io.IOException) {
             InstallationChildOutcome.IO_REJECTED
         } catch (_: InterruptedException) {
@@ -70,7 +66,6 @@ private fun retireLaunchServices(prior: Path, home: Path): InstallationChildOutc
         val stopped = retireLaunchService(service, uid)
         if (stopped != InstallationChildOutcome.COMPLETED) return stopped
     }
-    Files.deleteIfExists(home.resolve("Library/LaunchAgents/$label.login.plist"))
     return InstallationChildOutcome.COMPLETED
 }
 

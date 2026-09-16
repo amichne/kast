@@ -6,6 +6,7 @@ resource: file://distribution
 tags: [distribution, configuration, packaging, release]
 timestamp: 2026-09-14T00:00:00Z
 code_sources:
+  - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/PriorInstallationPreparation.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationChild.kt
     symbols: [executeInstallationChild]
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/PriorInstallationReplacement.kt
