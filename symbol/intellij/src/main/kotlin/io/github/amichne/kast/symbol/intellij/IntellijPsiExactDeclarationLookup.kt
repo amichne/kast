@@ -158,6 +158,12 @@ internal fun findExactDeclarationAncestor(
         }
         element = element.parent
     }
+    return resolveExactDeclarationMatches(matches)
+}
+
+private fun resolveExactDeclarationMatches(
+    matches: List<Pair<PsiNamedElement, ExactDeclarationEvidence>>
+): IntellijLiveExactDeclarationLookupResult {
     val declarations = matches.distinct()
     return when (declarations.size) {
         0 -> liveRejected(IntellijExactDeclarationLookupRejection.UNSUPPORTED_DECLARATION)
