@@ -104,13 +104,16 @@ records the final distribution's complete/qualified native matrix and a successf
 production provider invocation with direct CLI evidence equality. The provider
 harness does not establish full Codex WebSocket or multi-client acceptance.
 
-Broker-owned dynamic tools retain their original live and history documents.
-The former MCP display relabeling has been removed. For change apply/recovery,
+Broker-owned dynamic tools project into the schema-admitted `mcpToolCall` display
+shape in live and history carriers while retaining the original dynamic fields.
+Their raw content remains intact, and the final Kast JSON envelope additionally
+uses the supported structured-result field. For change apply/recovery,
 `CodexPlanApprovalProjection` emits a separate native `fileChange` item containing
 the stored plan's preview and requests approval from the current controller.
 `HostedPlanApprovalGateway` signs only a correlated controller-approved challenge;
-the original dynamic item remains unchanged. Native schema admission and module
-tests establish the protocol shapes, while desktop rendering remains unqualified.
+the tool-result projection and approval preview remain distinct. Native schema
+admission and module tests establish the protocol shapes, while desktop rendering
+remains unqualified.
 
 The entire `change` CLI family routes to the existing-IDE path before installed
 bootstrap. Hosted ingress admits `AddDeclaration` planning and requires the
