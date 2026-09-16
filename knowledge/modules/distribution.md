@@ -6,6 +6,11 @@ resource: file://distribution
 tags: [distribution, configuration, packaging, release]
 timestamp: 2026-09-14T00:00:00Z
 code_sources:
+  - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/PriorInstallationPreparation.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationChild.kt
+    symbols: [executeInstallationChild]
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/PriorInstallationReplacement.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationRegistryObservation.kt
   - path: packaging/hosted_repair_time_observation.py
   - path: packaging/hosted_repair_budget_regression.py
   - path: packaging/hosted_transport_observation.py
@@ -42,7 +47,7 @@ code_sources:
   - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ControlPayloadInventory.kt
   - path: install.sh
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt
-    symbols: [InstallationWorkflow, executeInstallationChild]
+    symbols: [InstallationWorkflow]
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationRequest.kt
     symbols: [InstallationRequest, AppServerTools]
   - path: build-logic/src/main/kotlin/support/tasks/control/GenerateControlMetadataTask.kt
@@ -75,13 +80,13 @@ requires the separately reported IDEA restart. Retired CLI start/stop guidance
 identifies the IDE lifecycle as user-managed rather than claiming a replacement
 operation.
 
-Installation child processes emit `kast_installation` records by default with a closed stage and outcome. Prior admission, retirement, configuration validation, command qualification and App Server enablement retain distinct success, nonzero exit, deadline, I/O and interruption observations. Child admission remains authoritative; these records do not contain command arguments, environment values or filesystem paths.
+Installation child processes emit `kast_installation` records by default with a closed stage and outcome. Prior admission, retirement, configuration validation, command qualification and App Server enablement retain distinct success, nonzero exit, deadline, I/O and interruption observations. New-payload admission remains authoritative; these records do not contain command arguments, environment values or filesystem paths. Prior admission or retirement failure triggers automatic replacement using the exact installation-derived launchd labels and processes whose executable or argument path belongs to that installation. Failed prior validation cannot veto the upgrade. Replacement has its own bounded stage and outcome. Damaged same-version payloads and recovery bundles move aside before restaging; unrelated paths are not recursively deleted.
 
-`ControlDistributionLimits` owns the maximum verified control-product entry count and manifest size used by staged installation and runtime identity admission. The shell bootstrap, installed lifecycle, build verifier, and Kotlin owner are checked for the same entry limit, and release layout verification rejects a product outside that bound before publication. Upgrade admission uses the new, checksum-verified lifecycle implementation to inspect the prior installation, so a valid older product cannot block its own replacement because its validator predates the current product bounds. This retains the resource limits while preventing copied limits from drifting below the product that the build produced.
+`ControlDistributionLimits` owns the maximum verified control-product entry count and manifest size used by staged installation and runtime identity admission. The shell bootstrap, installed lifecycle, build verifier, and Kotlin owner are checked for the same entry limit, and release layout verification rejects a product outside that bound before publication. Upgrade admission uses the new, checksum-verified lifecycle implementation to inspect the prior installation. If inspection or ordinary retirement fails, replacement proceeds without executing the prior payload. This retains the resource limits while preventing copied limits from drifting below the product that the build produced.
 
 `ControlPayloadInventory` counts paths globally, including the three payload roots, before sorting or hashing. Installer and broker use that same admission; `verifyReleaseRuntimeAdmission` exercises the runtime identity owner on the actual staged control product. Limit diagnostics retain the resource and observed lower bound. The hosted-plugin ZIP has a separate archive budget.
 
-Before activation, `prepareInstallationRecovery` saves a typed receipt and an offline Python bundle outside the immutable version payload. Active plugin bytes alone occupy `plugins/kast-ide-hosted`; candidate, baseline and detached copies remain in the private sibling `.kast-plugin-recovery` on the same filesystem. Recovery admits exactly the legacy discovery-root layout or this retained layout, with one shared token and inode ownership proofs. On activation or detach it migrates receipt-listed legacy copies through the exact prior-installation chain; it saves the updated recovery script and location intent before atomic renames so interruption can resume. Missing, cyclic, oversized or corrupt chains and foreign replacement identities fail closed. Only mutable recovery metadata and owned plugin paths change: prior payloads, configuration, installation manifests and workspace registries remain unchanged. `installation-recovery.py detach` fences launches, detaches matching command links and receipted plugin directories, and retains previous plugin backups outside discovery. It executes retirement only after full payload admission. Verified retired state is quarantined; uncertain processes and journals remain preserved and produce `DetachedWithUnresolvedState`. A missing plugin ownership witness cannot produce a clean result. The standalone `prepare` operation supports older installations without requiring their executable to run. Python and JVM installation transitions use compatible POSIX record locks.
+Before activation, `prepareInstallationRecovery` saves a typed receipt and an offline Python bundle outside the immutable version payload. Active plugin bytes alone occupy `plugins/kast-ide-hosted`; candidate, baseline and detached copies remain in the private sibling `.kast-plugin-recovery` on the same filesystem. Recovery admits exactly the legacy discovery-root layout or this retained layout, with one shared token and inode ownership proofs. The installer disconnects the prior-installation recovery chain, so old or corrupt receipts cannot block the new plugin. Standalone recovery on retained historical receipts still migrates receipt-listed legacy copies through the exact prior-installation chain; it saves the updated recovery script and location intent before atomic renames so interruption can resume. Standalone recovery rejects missing, cyclic, oversized or corrupt chains and foreign replacement identities. Installation replaces unusable target recovery metadata and prepares a fresh receipt instead. Only mutable recovery metadata and owned plugin paths change: prior payloads, configuration, installation manifests and workspace registries remain unchanged. `installation-recovery.py detach` fences launches, detaches matching command links and receipted plugin directories, and retains previous plugin backups outside discovery. It executes retirement only after full payload admission. Verified retired state is quarantined; uncertain processes and journals remain preserved and produce `DetachedWithUnresolvedState`. A missing plugin ownership witness cannot produce a clean result. The standalone `prepare` operation supports older installations without requiring their executable to run. Python and JVM installation transitions use compatible POSIX record locks.
 
 The staged Kotlin installer selects default tools directly from the canonical agent catalog. The shell bootstrap preserves an explicit selection and supplies no copied default list. Explicit selections must contain current, unique tool names; installation retains their admitted definitions in canonical catalog order before writing configuration.
 
@@ -167,3 +172,10 @@ the selected dirty-mark scope and completion separately from refresh and native-
 drain evidence. This fixture lifecycle effect makes direct-child test file creation,
 deletion and fixture content restoration observable without depending on watcher intake; semantic queries do not
 invoke it. A quiet readiness receipt still does not prove a future epoch is stable.
+
+Workspace registry retention is best-effort during replacement. Its bounded
+`kast_installation_registry` observation preserves the exact retention outcome.
+Rejected source registries stay in the prior installation; fresh sessions register
+their canonical workspace automatically. Failure to stop an exact prior service,
+filesystem failure, and interruption remain explicit failures, rather than being
+reported as successful retirement.

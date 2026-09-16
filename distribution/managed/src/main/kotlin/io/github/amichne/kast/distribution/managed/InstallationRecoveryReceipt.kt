@@ -53,10 +53,20 @@ sealed interface InstallationRecoveryPreparation {
     data object Rejected : InstallationRecoveryPreparation
 }
 
+enum class InstallationRecoveryHistory {
+    RETAIN,
+    REPLACE,
+}
+
 /** Called with the activation lock held, before replacing any launcher. */
-fun prepareInstallationRecovery(root: Path, command: Path, codex: Path): InstallationRecoveryPreparation =
+fun prepareInstallationRecovery(
+    root: Path,
+    command: Path,
+    codex: Path,
+    history: InstallationRecoveryHistory = InstallationRecoveryHistory.RETAIN,
+): InstallationRecoveryPreparation =
     try {
-        prepareRecoveryFiles(root, command, codex)
+        prepareRecoveryFiles(root, command, codex, history)
         InstallationRecoveryPreparation.Prepared
     } catch (_: java.io.IOException) {
         InstallationRecoveryPreparation.Rejected
@@ -66,16 +76,24 @@ fun prepareInstallationRecovery(root: Path, command: Path, codex: Path): Install
         InstallationRecoveryPreparation.Rejected
     }
 
-private fun prepareRecoveryFiles(root: Path, command: Path, codex: Path) {
+private fun prepareRecoveryFiles(root: Path, command: Path, codex: Path, history: InstallationRecoveryHistory) {
     val recovery = root.parent.parent.resolve("recovery")
     val bundle = recovery.resolve(root.fileName)
     listOf(recovery, bundle).forEach(::prepareRecoveryDirectory)
     val receipt = bundle.resolve("receipt.json")
     if (Files.exists(receipt, LinkOption.NOFOLLOW_LINKS)) {
-        validateExistingReceipt(root, receipt)
+        val existing = validateExistingReceipt(root, receipt)
+        if (history == InstallationRecoveryHistory.REPLACE && existing.priorInstallation != null)
+            writeRecoveryReceipt(receipt, existing.copy(priorInstallation = null))
         return
     }
-    val document = recoveryReceipt(root, command, codex)
+    val document =
+        recoveryReceipt(root, command, codex).let {
+            when (history) {
+                InstallationRecoveryHistory.RETAIN -> it
+                InstallationRecoveryHistory.REPLACE -> it.copy(priorInstallation = null)
+            }
+        }
     copyRecoveryBundle(root, bundle)
     writeRecoveryReceipt(receipt, document)
     FileChannel.open(recovery, StandardOpenOption.READ).use { it.force(true) }
@@ -89,7 +107,7 @@ private fun prepareRecoveryDirectory(directory: Path) {
     Files.setPosixFilePermissions(directory, PosixFilePermissions.fromString("rwx------"))
 }
 
-private fun validateExistingReceipt(root: Path, receipt: Path) {
+private fun validateExistingReceipt(root: Path, receipt: Path): PreparedRecoveryReceipt {
     if (
         !Files.isRegularFile(receipt, LinkOption.NOFOLLOW_LINKS) || Files.size(receipt) > MAXIMUM_RECOVERY_RECEIPT_BYTES
     ) {
@@ -105,6 +123,7 @@ private fun validateExistingReceipt(root: Path, receipt: Path) {
     ) {
         throw java.io.IOException("recovery receipt rejected")
     }
+    return existing
 }
 
 private fun recoveryLinkTarget(path: Path): String? =
@@ -160,7 +179,7 @@ private fun writeRecoveryReceipt(receipt: Path, document: PreparedRecoveryReceip
         )
         Files.setPosixFilePermissions(temporary, PosixFilePermissions.fromString("rw-------"))
         forceRecoveryFile(temporary)
-        Files.move(temporary, receipt, StandardCopyOption.ATOMIC_MOVE)
+        Files.move(temporary, receipt, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
         FileChannel.open(bundle, StandardOpenOption.READ).use { it.force(true) }
     } finally {
         Files.deleteIfExists(temporary)

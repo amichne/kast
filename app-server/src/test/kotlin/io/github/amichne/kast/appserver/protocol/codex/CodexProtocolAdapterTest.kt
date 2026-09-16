@@ -1290,8 +1290,6 @@ class CodexProtocolAdapterTest {
             val first = Files.createDirectory(root.resolve("first"))
             val second = Files.createDirectory(root.resolve("second"))
             val registry = io.github.amichne.kast.appserver.WorkspaceEnrollmentStore(root.resolve("workspaces.json"))
-            registry.enroll(first)
-            registry.enroll(second)
             val enrollment = (registry.read() as io.github.amichne.kast.appserver.EnrollmentRead.Read).enrollment
             val owner =
                 io.github.amichne.kast.appserver.protocol.ThreadBindingOwner.admit(

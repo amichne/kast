@@ -31,14 +31,6 @@ internal data class WorkspaceRegistration(val root: CanonicalBrokerDirectory) {
     val id: BrokerWorkspaceId = BrokerWorkspaceId.derive(root)
 }
 
-internal enum class WorkspaceSelectionFailure {
-    PATH_REJECTED,
-    REGISTRY_REJECTED,
-    UNREGISTERED,
-    AMBIGUOUS,
-    WORKING_DIRECTORY_OUTSIDE_ROOT,
-}
-
 internal sealed interface WorkspaceSelection {
     class Selected
     private constructor(
@@ -67,6 +59,10 @@ internal sealed interface WorkspaceEnrollment {
     /** Each selection reads the current bounded registry; registration does not restart sessions. */
     class Registered internal constructor(private val store: WorkspaceEnrollmentStore) : WorkspaceEnrollment {
         internal fun snapshot(): WorkspaceRegistryRead = store.snapshot()
+
+        internal fun register(
+            root: CanonicalBrokerDirectory
+        ): Refinement<WorkspaceRegistrationAcknowledgement, EnrollmentFailure> = store.enroll(root.path)
     }
 
     /** Unit fixtures can exercise the protocol without enrolling a real installation. */
@@ -112,6 +108,7 @@ internal sealed interface WorkspaceEnrollment {
         }
 }
 
+@kotlinx.serialization.Serializable
 internal enum class EnrollmentFailure {
     PATH_REJECTED,
     DOCUMENT_REJECTED,

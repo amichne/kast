@@ -2,7 +2,6 @@ package io.github.amichne.kast.cli.installation
 
 import io.github.amichne.kast.appserver.InstalledWorkspaceRegistryRetention
 import io.github.amichne.kast.appserver.PublishedBrokerServiceCommand
-import io.github.amichne.kast.appserver.WorkspaceRegistryRetention
 import io.github.amichne.kast.distribution.contract.ControlDistributionLimits
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationSource
 import io.github.amichne.kast.distribution.contract.configuration.InstallationOperationalLimits
@@ -15,6 +14,7 @@ import io.github.amichne.kast.distribution.managed.ControlPayloadInventory
 import io.github.amichne.kast.distribution.managed.InstallationRecoveryPreparation
 import io.github.amichne.kast.distribution.managed.endpoint.InstalledUpstreamDirectories
 import io.github.amichne.kast.distribution.managed.prepareInstallationRecovery
+import io.github.amichne.kast.kernel.Refinement
 import java.io.IOException
 import java.nio.channels.FileChannel
 import java.nio.channels.OverlappingFileLockException
@@ -37,71 +37,6 @@ import kotlinx.serialization.json.Json
 
 private const val MAXIMUM_UNIX_SOCKET_PATH_BYTES = 104
 private const val SOCKET_NAME_DIGEST_CHARACTERS = 43
-
-@Serializable
-internal enum class InstallationChildStage {
-    PRIOR_ADMISSION,
-    PRIOR_RETIREMENT,
-    CONFIGURATION_VALIDATION,
-    COMMAND_QUALIFICATION,
-    APP_SERVER_ENABLE,
-}
-
-@Serializable
-internal enum class InstallationChildOutcome {
-    COMPLETED,
-    EXIT_REJECTED,
-    DEADLINE_EXCEEDED,
-    IO_REJECTED,
-    INTERRUPTED,
-}
-
-@Serializable
-internal data class InstallationChildObservation(
-    val event: String = "kast_installation",
-    val stage: InstallationChildStage,
-    val outcome: InstallationChildOutcome,
-) {
-    fun toJson(): String = Json { encodeDefaults = true }.encodeToString(serializer(), this)
-}
-
-/** The child retains admission authority; the parent records only its bounded process outcome. */
-internal fun executeInstallationChild(
-    stage: InstallationChildStage,
-    command: List<String>,
-    environment: Map<String, String>,
-    observe: (InstallationChildObservation) -> Unit = { System.err.println(it.toJson()) },
-): InstallationChildOutcome {
-    var child: Process? = null
-    val outcome =
-        try {
-            val process =
-                ProcessBuilder(command)
-                    .redirectInput(ProcessBuilder.Redirect.INHERIT)
-                    .redirectOutput(ProcessBuilder.Redirect.DISCARD)
-                    .redirectError(ProcessBuilder.Redirect.INHERIT)
-                    .apply {
-                        environment().clear()
-                        environment().putAll(environment)
-                    }
-                    .start()
-            child = process
-            if (!process.waitFor(Duration.ofMillis(InstallationOperationalLimits.retirementChildTimeoutMillis))) {
-                process.destroyForcibly()
-                process.waitFor()
-                InstallationChildOutcome.DEADLINE_EXCEEDED
-            } else if (process.exitValue() == 0) InstallationChildOutcome.COMPLETED
-            else InstallationChildOutcome.EXIT_REJECTED
-        } catch (_: IOException) {
-            InstallationChildOutcome.IO_REJECTED
-        } catch (_: InterruptedException) {
-            child?.destroyForcibly()
-            Thread.currentThread().interrupt()
-            InstallationChildOutcome.INTERRUPTED
-        }
-    observe(InstallationChildObservation(stage = stage, outcome = outcome))
-    return outcome
-}
 
 /** Reconstruct the only supported transient enabled owner of an opt-out installation. */
 internal fun priorServiceRetirementEnvironment(
@@ -127,11 +62,10 @@ internal enum class InstallationFailure {
     IDEA_REJECTED,
     INSTALLATION_ROOT_REJECTED,
     ACTIVATION_LOCK_REJECTED,
-    EXISTING_INSTALLATION_REJECTED,
     CONFIGURATION_REJECTED,
-    PREVIOUS_INSTALLATION_REJECTED,
-    RETIREMENT_REJECTED,
-    REGISTRY_RETENTION_REJECTED,
+    REPLACEMENT_EXIT_REJECTED,
+    REPLACEMENT_DEADLINE_EXCEEDED,
+    REPLACEMENT_IO_REJECTED,
     ACTIVATION_REJECTED,
     RECOVERY_REQUIRED,
     APP_SERVER_ENABLE_REJECTED,
@@ -345,9 +279,21 @@ internal object InstallationWorkflow {
                 }
                 val existing = Files.exists(plan.targetRoot, LinkOption.NOFOLLOW_LINKS)
                 if (existing && !admitExisting(plan)) {
-                    return InstallationOutcome.Rejected(InstallationFailure.EXISTING_INSTALLATION_REJECTED)
+                    val replacement = replacePriorInstallation(plan.targetRoot, plan.request.home.value)
+                    when (val replaced = admitReplacement(replacement)) {
+                        is Refinement.Refined -> Unit
+                        is Refinement.Rejected -> return InstallationOutcome.Rejected(replaced.failure)
+                    }
+                    quarantine(plan.targetRoot)
+                    val recovery = plan.request.installRoot.value.resolve("recovery").resolve(plan.targetRoot.fileName)
+                    if (Files.exists(recovery, LinkOption.NOFOLLOW_LINKS)) quarantine(recovery)
+                    if (
+                        linkTarget(plan.currentLink) ==
+                            LinkObservation.Present(Path.of("versions/${plan.targetRoot.fileName}"))
+                    )
+                        Files.delete(plan.currentLink)
                 }
-                if (!existing) {
+                if (!Files.exists(plan.targetRoot, LinkOption.NOFOLLOW_LINKS)) {
                     when (val staged = stage(plan)) {
                         StageResult.Complete -> Unit
                         is StageResult.Rejected -> return InstallationOutcome.Rejected(staged.failure)
@@ -357,31 +303,58 @@ internal object InstallationWorkflow {
                     when (val selected = selectedInstallation(plan)) {
                         is PriorSelection.Absent -> null
                         is PriorSelection.Selected -> selected.root
-                        is PriorSelection.Rejected ->
-                            return InstallationOutcome.Rejected(InstallationFailure.PREVIOUS_INSTALLATION_REJECTED)
+                        is PriorSelection.Rejected -> {
+                            quarantine(plan.currentLink)
+                            null
+                        }
                     }
                 if (plan.request.replaceCommandCollisions == InstallationSwitch.ENABLED) {
                     removeCommandCollision(plan.commandLink, plan.currentLink.resolve("bin/kast-complete"))
                     removeCommandCollision(plan.codexCommandLink, plan.currentLink.resolve("bin/kast-codex-complete"))
                 }
-                when (prepareInstallationRecovery(plan.targetRoot, plan.commandLink, plan.codexCommandLink)) {
-                    InstallationRecoveryPreparation.Prepared -> Unit
-                    InstallationRecoveryPreparation.Rejected ->
-                        return InstallationOutcome.Rejected(InstallationFailure.RECOVERY_REQUIRED)
-                }
                 if (prior != null && prior != plan.targetRoot) {
-                    if (!admitPrior(prior, plan) || !retire(prior, plan.request)) {
-                        return InstallationOutcome.Rejected(InstallationFailure.RETIREMENT_REJECTED)
+                    val admitted = physicalDirectory(prior) && admitPrior(prior, plan)
+                    val retired = admitted && retire(prior, plan.request)
+                    if (!retired) {
+                        when (
+                            val replaced = admitReplacement(replacePriorInstallation(prior, plan.request.home.value))
+                        ) {
+                            is Refinement.Refined -> Unit
+                            is Refinement.Rejected -> return InstallationOutcome.Rejected(replaced.failure)
+                        }
+                        // Sever the old recovery chain: an incompatible prior receipt cannot veto the new plugin.
+                        Files.deleteIfExists(plan.currentLink)
                     }
-                    when (
+                    val retention =
                         InstalledWorkspaceRegistryRetention.retain(
                             source = prior.resolve("config/workspaces.json"),
                             destination = plan.targetRoot.resolve("config/workspaces.json"),
                         )
-                    ) {
-                        WorkspaceRegistryRetention.Retained -> Unit
-                        is WorkspaceRegistryRetention.Rejected ->
-                            return InstallationOutcome.Rejected(InstallationFailure.REGISTRY_RETENTION_REJECTED)
+                    reportRegistryRetention(retention)
+                    // A rejected prior registry stays in the prior installation; new threads enroll automatically.
+                }
+                when (
+                    prepareInstallationRecovery(
+                        plan.targetRoot,
+                        plan.commandLink,
+                        plan.codexCommandLink,
+                        io.github.amichne.kast.distribution.managed.InstallationRecoveryHistory.REPLACE,
+                    )
+                ) {
+                    InstallationRecoveryPreparation.Prepared -> Unit
+                    InstallationRecoveryPreparation.Rejected -> {
+                        val bundle =
+                            plan.request.installRoot.value.resolve("recovery").resolve(plan.targetRoot.fileName)
+                        if (Files.exists(bundle, LinkOption.NOFOLLOW_LINKS)) quarantine(bundle)
+                        if (
+                            prepareInstallationRecovery(
+                                plan.targetRoot,
+                                plan.commandLink,
+                                plan.codexCommandLink,
+                                io.github.amichne.kast.distribution.managed.InstallationRecoveryHistory.REPLACE,
+                            ) != InstallationRecoveryPreparation.Prepared
+                        )
+                            return InstallationOutcome.Rejected(InstallationFailure.RECOVERY_REQUIRED)
                     }
                 }
                 if (!validateConfiguration(plan)) {
@@ -639,13 +612,21 @@ internal object InstallationWorkflow {
             manifest.payloadFiles == payloadFiles(plan.targetRoot)
     }
 
+    private fun quarantine(path: Path) {
+        Files.move(
+            path,
+            path.resolveSibling(".replaced-${path.fileName}-${java.util.UUID.randomUUID()}"),
+            StandardCopyOption.ATOMIC_MOVE,
+        )
+    }
+
     private fun selectedInstallation(plan: VerifiedInstallationPlan): PriorSelection {
         if (!Files.exists(plan.currentLink, LinkOption.NOFOLLOW_LINKS)) return PriorSelection.Absent
         if (!Files.isSymbolicLink(plan.currentLink)) return PriorSelection.Rejected
         val target = Files.readSymbolicLink(plan.currentLink)
         if (target.nameCount != 2 || target.getName(0).toString() != "versions") return PriorSelection.Rejected
         val resolved = plan.request.installRoot.value.resolve(target).normalize()
-        if (resolved.parent != plan.versionsRoot || !physicalDirectory(resolved)) return PriorSelection.Rejected
+        if (resolved.parent != plan.versionsRoot) return PriorSelection.Rejected
         return PriorSelection.Selected(resolved)
     }
 

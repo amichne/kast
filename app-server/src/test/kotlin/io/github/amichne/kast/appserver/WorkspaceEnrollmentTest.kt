@@ -10,6 +10,77 @@ import org.junit.jupiter.api.io.TempDir
 
 class WorkspaceEnrollmentTest {
     @Test
+    fun `automatic registration reports persisted success and exact write failure`(@TempDir temporary: Path) {
+        val root = temporary.toRealPath()
+        val first = Files.createDirectory(root.resolve("first"))
+        val second = Files.createDirectory(root.resolve("second"))
+        val store = WorkspaceEnrollmentStore(root.resolve("config/workspaces.json"))
+        val enrollment = (store.read() as EnrollmentRead.Read).enrollment
+        val observations = mutableListOf<WorkspaceStartupObservation>()
+        assertInstanceOf(
+            WorkspaceSelection.Selected::class.java,
+            enrollment.selectForStart(first.toString(), observe = observations::add),
+        )
+        val lock = root.resolve("config/workspaces.json.lock")
+        Files.delete(lock)
+        Files.createSymbolicLink(lock, root.resolve("foreign"))
+        assertEquals(
+            WorkspaceSelectionFailure.REGISTRATION_WRITE_REJECTED,
+            (enrollment.selectForStart(second.toString(), observe = observations::add) as WorkspaceSelection.Rejected)
+                .failure,
+        )
+        assertEquals(
+            listOf(
+                WorkspaceStartupOutcome.Registered,
+                WorkspaceStartupOutcome.Rejected(EnrollmentFailure.WRITE_REJECTED),
+            ),
+            observations.map { it.outcome },
+        )
+        val json = kotlinx.serialization.json.Json { encodeDefaults = true }
+        val encoded =
+            json.parseToJsonElement(json.encodeToString(WorkspaceStartupObservation.serializer(), observations.last()))
+        val document = encoded as kotlinx.serialization.json.JsonObject
+        assertEquals(setOf("event", "outcome"), document.keys)
+        assertEquals(
+            "kast_workspace_registration",
+            (document.getValue("event") as kotlinx.serialization.json.JsonPrimitive).content,
+        )
+        val outcome = document.getValue("outcome") as kotlinx.serialization.json.JsonObject
+        assertEquals(setOf("type", "failure"), outcome.keys)
+        assertEquals("rejected", (outcome.getValue("type") as kotlinx.serialization.json.JsonPrimitive).content)
+        assertEquals(
+            "WRITE_REJECTED",
+            (outcome.getValue("failure") as kotlinx.serialization.json.JsonPrimitive).content,
+        )
+    }
+
+    @Test
+    fun `thread admission registers once and read only selection never registers`(@TempDir temporary: Path) {
+        val root = temporary.toRealPath()
+        val workspace = Files.createDirectory(root.resolve("workspace"))
+        val child = Files.createDirectory(workspace.resolve("child"))
+        val store = WorkspaceEnrollmentStore(root.resolve("config/workspaces.json"))
+        val enrollment = (store.read() as EnrollmentRead.Read).enrollment
+        assertInstanceOf(WorkspaceSelection.Rejected::class.java, enrollment.select(workspace.toString()))
+        assertEquals(0, (store.snapshot() as WorkspaceRegistryRead.Read).snapshot.workspaces.size)
+        repeat(2) {
+            val selected =
+                enrollment.selectForStart(child.toString(), workspace.toString()) as WorkspaceSelection.Selected
+            assertEquals(workspace, selected.workspace.root.path)
+        }
+        assertEquals(1, (store.snapshot() as WorkspaceRegistryRead.Read).snapshot.revision.value)
+        assertInstanceOf(WorkspaceSelection.Selected::class.java, enrollment.select(child.toString()))
+        assertEquals(
+            WorkspaceSelectionFailure.WORKING_DIRECTORY_OUTSIDE_ROOT,
+            (enrollment.selectForStart(root.toString(), child.toString()) as WorkspaceSelection.Rejected).failure,
+        )
+        assertEquals(1, (store.snapshot() as WorkspaceRegistryRead.Read).snapshot.workspaces.size)
+        Files.writeString(root.resolve("config/workspaces.json"), "broken registry")
+        assertInstanceOf(WorkspaceSelection.Rejected::class.java, enrollment.selectForStart(root.toString()))
+        assertEquals("broken registry", Files.readString(root.resolve("config/workspaces.json")))
+    }
+
+    @Test
     fun `live registry rejects a replaced parent without reading foreign registrations`(@TempDir directory: Path) {
         val root = directory.toRealPath()
         val first = Files.createDirectory(root.resolve("a"))
