@@ -396,11 +396,19 @@ val hostObservationTest = tasks.register<Exec>("hostObservationTest") {
 tasks.named("check") { dependsOn(verifyConfigurationIngress, verifyKnowledgeBase, hostObservationTest) }
 
 // Native change acceptance is explicit and never part of the build-classpath verification gate.
+val hostedWorkspaceRefreshTest = tasks.register<Exec>("hostedWorkspaceRefreshTest") {
+    group = "verification"
+    description = "Checks bounded native workspace refresh evidence without launching an IDE."
+    inputs.files("packaging/hosted_workspace_refresh_regression.py", "packaging/test-hosted-workspace-refresh.py")
+    commandLine("python3", layout.projectDirectory.file("packaging/test-hosted-workspace-refresh.py"))
+}
+
 val hostedChangeAcceptanceTest = tasks.register<Exec>("hostedChangeAcceptanceTest") {
+    dependsOn(hostedWorkspaceRefreshTest)
     group = "verification"
     description = "Checks native change fixture admission and bounded receipt projection without launching an IDE."
     inputs.files(fileTree("packaging") { include("hosted_change_*.py", "test-hosted-change-acceptance.py", "native_provider_qualification.py") })
-    inputs.file("packaging/hosted_generated_fixture.py")
+    inputs.files("packaging/hosted_generated_fixture.py", "packaging/hosted_workspace_refresh_regression.py", "packaging/test-hosted-workspace-refresh.py")
     commandLine("python3", layout.projectDirectory.file("packaging/test-hosted-change-acceptance.py"))
 }
 

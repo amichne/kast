@@ -29,8 +29,7 @@ class HostedWireSchema:
         return self.validator.is_valid(document)
 
 
-def load_hosted_wire_schema(product):
-    resource = 'ide-hosted/hosted-endpoint.schema.json'
+def load_hosted_wire_schema(product, resource='ide-hosted/hosted-endpoint.schema.json'):
     documents = []
     try:
         for jar in sorted((product / 'lib').glob('*.jar')):

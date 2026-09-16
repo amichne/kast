@@ -15,7 +15,6 @@ import java.nio.file.Path
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.attribute.PosixFilePermissions
 import java.security.MessageDigest
-import kotlinx.serialization.json.*
 
 /** Read-only descriptor admission and one exact-socket exchange. No runtime startup dependency. */
 class ExistingIdeSocketClient(private val home: Path, private val limits: ReadLimits = ReadLimits.Default) :
@@ -57,46 +56,7 @@ class ExistingIdeSocketClient(private val home: Path, private val limits: ReadLi
             val key = attributes.fileKey() ?: return rejected(ExistingIdeFailure.DESCRIPTOR_REJECTED)
             if (!attributes.isOther || attributes.isSymbolicLink)
                 return rejected(ExistingIdeFailure.DESCRIPTOR_REJECTED)
-            val request = buildJsonObject {
-                put("root", root.path.toString())
-                when (operation) {
-                    ExistingIdeOperation.Status -> put("type", "DESCRIBE")
-                    is ExistingIdeOperation.Classes -> {
-                        put("type", "CLASS_LOOKUP")
-                        put("name", operation.name.value)
-                    }
-                    is ExistingIdeOperation.Supertype -> {
-                        put("type", "DIRECT_SUPERTYPE")
-                        put("qualifiedName", operation.name.value)
-                    }
-                    is ExistingIdeOperation.Plan -> {
-                        put("type", "CHANGE_PLAN")
-                        put("document", operation.request.document)
-                    }
-                    is ExistingIdeOperation.ApprovalPreparation -> {
-                        put("type", "CHANGE_APPROVAL_PREPARE")
-                        put(
-                            "document",
-                            buildJsonObject {
-                                put("operation", operation.kind.name)
-                                put("planIdentity", operation.identity.value)
-                            }
-                                .toString(),
-                        )
-                    }
-                    is ExistingIdeOperation.ApprovedMutation -> {
-                        put("type", operation.kind.name)
-                        put("document", operation.request.document)
-                        put("approval", operation.assertion.value)
-                    }
-                    is ExistingIdeOperation.Read -> {
-                        put("type", operation.kind.name)
-                        put("document", operation.request.document)
-                    }
-                }
-            }
-                .toString()
-                .toByteArray(Charsets.UTF_8)
+            val request = operation.encodeControlRequest(root)
             if (request.size > limits[ReadLimitParameter.HOST_REQUEST_BYTES].value)
                 return rejected(ExistingIdeFailure.REQUEST_TOO_LARGE)
             SocketChannel.open(StandardProtocolFamily.UNIX).use { channel ->

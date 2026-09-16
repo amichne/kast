@@ -8063,26 +8063,6 @@
     },
     {
       "fingerprint": {
-        "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeSocketClient.kt",
-        "scope": "type:ExistingIdeSocketClient/fun:query(13:CanonicalRoot,20:ExistingIdeOperation)/val:request",
-        "kind": "JSON_BUILDER",
-        "sha256": "058227f9a57405efb422ccbf9eba2c863e1d43bd50bece31b032e878cdd6f52d"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeSocketClient.kt",
-        "scope": "type:ExistingIdeSocketClient/fun:query(13:CanonicalRoot,20:ExistingIdeOperation)/val:request/declaration:<anonymous>",
-        "kind": "JSON_BUILDER",
-        "sha256": "970c145565790ee354c67e01f57d585b1487b47de66f9932f820e49e9ec002f9"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
         "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/projection/CanonicalChangeCliDocuments.kt",
         "scope": "type:CanonicalChangeCliDocuments/fun:projectApplication(16:OperationOutcome1:<17:ChangeApplyResult1:,24:ChangeApplyQualification1:,20:ChangeApplyRejection1:>)/declaration:<anonymous>",
         "kind": "JSON_BUILDER",

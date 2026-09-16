@@ -21,6 +21,7 @@ from hosted_read_fixture import prepare_read_fixture
 from hosted_read_policy import NativeReadPolicy, policy_receipt
 from hosted_generated_fixture import prepare_generated_fixture, finalize_generated_fixture
 from hosted_read_regression import run_read_regression
+from hosted_workspace_refresh_regression import run_workspace_refresh_regression
 from released_acceptance_product import admit_release, install_release, product_executable, ReleaseAssetIdentity, ReleaseRejected
 from released_session_acceptance import SessionRejected, inspect_shell_sessions
 from released_upgrade_acceptance import admit_previous_release, prepare_release_upgrade
@@ -159,6 +160,11 @@ def main():
                 record({'event': 'stage', 'stage': 'native-readiness', 'outcome': 'completed'})
                 evidence['readRegression'] = run_read_regression(isolation, fixture, product, idea.java, harness, repo, read_fixture, evidence['initialLive'], args.read_policy)
                 write()
+                record({'event': 'stage', 'stage': 'workspace-refresh', 'outcome': 'started'})
+                evidence['workspaceRefresh'] = run_workspace_refresh_regression(
+                    isolation, fixture, product, idea.java, harness, evidence['initialLive'])
+                record({'event': 'stage', 'stage': 'workspace-refresh',
+                        'outcome': 'completed' if evidence['workspaceRefresh']['outcome'] == 'passed' else 'rejected'})
                 if installed:
                     evidence['releasedCoordinator'] = asdict(qualify_released_coordinator(isolation, installed, inventory, fixture))
                     write()

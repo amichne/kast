@@ -64,6 +64,11 @@ internal sealed interface HostedRequest {
 
     data class Describe(override val root: CanonicalWorkspaceRoot) : HostedRequest
 
+    data class Refresh(
+        override val root: CanonicalWorkspaceRoot,
+        val command: io.github.amichne.kast.protocol.contract.WorkspaceRefreshCommand,
+    ) : HostedRequest
+
     data class Classes(val lookup: HostedClassLookup) : HostedRequest {
         override val root
             get() = lookup.root
@@ -151,6 +156,12 @@ internal object HostedRequests {
                     is Refinement.Rejected -> return rejected
                 }
             return when (text("type")) {
+                "WORKSPACE_REFRESH" -> {
+                    if (json.keySet() != setOf("type", "root", "document")) return rejected
+                    val command =
+                        io.github.amichne.kast.runtime.hosted.workspace.decodeWorkspaceRefreshCommand(text("document"))
+                    Refinement.Refined(HostedRequest.Refresh(root, command))
+                }
                 "CHANGE_APPROVAL_PREPARE" -> {
                     if (json.keySet() != setOf("type", "root", "document")) return rejected
                     decodeHostedApprovalPreparation(root, text("document"))

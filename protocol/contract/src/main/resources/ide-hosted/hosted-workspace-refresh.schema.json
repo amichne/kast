@@ -1,0 +1,190 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "root": {
+      "type": "string",
+      "minLength": 1
+    },
+    "host": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "result": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "pending"
+            },
+            "requestId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "stage": {
+              "type": "string",
+              "enum": [
+                "QUEUED",
+                "EFFECT",
+                "ADMISSION"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "requestId",
+            "stage"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "complete"
+            },
+            "requestId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          "required": [
+            "type",
+            "requestId"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "failed"
+            },
+            "requestId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "reason": {
+              "type": "string",
+              "enum": [
+                "INVALID_REQUEST",
+                "UNLINKED_BUILD",
+                "UNSAVED_DOCUMENTS",
+                "DISPOSED",
+                "CAPACITY",
+                "UNKNOWN_REQUEST",
+                "REQUEST_CONFLICT",
+                "EFFECT_FAILED",
+                "CANCELLED",
+                "DEADLINE_EXCEEDED",
+                "ADMISSION_REJECTED",
+                "NEWER_CHANGE"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "requestId",
+            "reason"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "rejected"
+            },
+            "reason": {
+              "type": "string",
+              "enum": [
+                "INVALID_REQUEST",
+                "UNLINKED_BUILD",
+                "UNSAVED_DOCUMENTS",
+                "DISPOSED",
+                "CAPACITY",
+                "UNKNOWN_REQUEST",
+                "REQUEST_CONFLICT",
+                "EFFECT_FAILED",
+                "CANCELLED",
+                "DEADLINE_EXCEEDED",
+                "ADMISSION_REJECTED",
+                "NEWER_CHANGE"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "reason"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "configured"
+            },
+            "rule": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "type": {
+                      "const": "off"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "type": {
+                      "const": "task_success"
+                    },
+                    "task": {
+                      "type": "string",
+                      "maxLength": 512,
+                      "pattern": "^:[A-Za-z0-9_.-]+(?::[A-Za-z0-9_.-]+)*$"
+                    },
+                    "effect": {
+                      "type": "string",
+                      "enum": [
+                        "FILE_REFRESH",
+                        "GRADLE_MODEL_RELOAD"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "task",
+                    "effect"
+                  ]
+                }
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "rule"
+          ]
+        }
+      ]
+    }
+  },
+  "required": [
+    "root",
+    "host",
+    "result"
+  ]
+}

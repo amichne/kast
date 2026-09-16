@@ -446,11 +446,13 @@ private class HiddenProjectedCommandGroup(private val source: KastCommand) : Kas
 
 private val hiddenImplementationCommands =
     setOf(
+        CliProductCommand.INDEX_REFRESH,
         CliProductCommand.INDEX_STATUS,
         CliProductCommand.INDEX_CLASSES,
         CliProductCommand.INDEX_SUPERTYPE,
         CliProductCommand.INDEX_COMPLETION,
         CliProductCommand.IDE_TRUST_BROKER,
+        CliProductCommand.IDE_REFRESH,
         CliProductCommand.IDE_STATUS,
         CliProductCommand.IDE_CLASSES,
         CliProductCommand.IDE_SUPERTYPE,

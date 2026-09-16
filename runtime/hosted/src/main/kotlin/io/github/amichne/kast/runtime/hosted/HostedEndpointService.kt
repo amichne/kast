@@ -65,7 +65,7 @@ internal fun interface HostedEndpointObserver {
     }
 }
 
-/** Platform-owned carrier; it opens no project, imports no model, and creates no isolated worker. */
+/** Project-owned carrier composing passive reads and an explicitly requested workspace lifecycle. */
 @Service(Service.Level.PROJECT)
 class HostedEndpointService(private val project: Project, private val scope: CoroutineScope) : Disposable {
     private val query = project.getService(HostedQueryService::class.java)
@@ -136,16 +136,19 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
                         return@launch
                     }
                 }
+            val refresh =
+                io.github.amichne.kast.runtime.hosted.workspace.HostedWorkspaceRefresh(project, root, query, scope)
             observer.observe(HostedEndpointStage.BIND, HostedEndpointOutcome.COMPLETED)
             try {
                 serveHostedListener(owner.server, observer, limits) { request ->
-                    dispatch(root, request, continuations, limits)
+                    dispatch(root, request, continuations, limits, refresh)
                 }
             } finally {
                 withContext(NonCancellable) {
                     observer.observe(HostedEndpointStage.RETIREMENT, HostedEndpointOutcome.STARTED)
                     try {
                         try {
+                            refresh.dispose()
                             changes.close()
                             query.detach()
                         } finally {
@@ -165,11 +168,13 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
         request: HostedRequest,
         continuations: io.github.amichne.kast.source.intellij.IntellijSourceReadContinuations,
         limits: io.github.amichne.kast.kernel.ReadLimits,
+        refresh: io.github.amichne.kast.runtime.hosted.workspace.HostedWorkspaceRefresh,
     ): HostedResponse {
         if (request.root != root) {
             return HostedResponse.Rejected(HostedEndpointFailure.WRONG_ROOT)
         }
         return when (request) {
+            is HostedRequest.Refresh -> HostedResponse.Completed(Json.encodeToString(refresh.execute(request.command)))
             is HostedRequest.PrepareApproval -> changes.prepare(request)
             is HostedRequest.ApplyChange -> changes.apply(request)
             is HostedRequest.RecoverChange -> changes.recover(request)

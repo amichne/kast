@@ -61,6 +61,23 @@ internal object ExistingIdeDocuments {
         }
     }
 
+    fun admitRefreshCommand(
+        raw: String
+    ): Refinement<io.github.amichne.kast.protocol.contract.WorkspaceRefreshCommand, ExistingIdeFailure> =
+        try {
+            mapper.readTree(raw)
+            Refinement.Refined(
+                Json.decodeFromString(
+                    io.github.amichne.kast.protocol.contract.WorkspaceRefreshCommand.serializer(),
+                    raw,
+                )
+            )
+        } catch (_: RuntimeException) {
+            Refinement.Rejected(ExistingIdeFailure.INVALID_REQUEST)
+        } catch (_: java.io.IOException) {
+            Refinement.Rejected(ExistingIdeFailure.INVALID_REQUEST)
+        }
+
     fun descriptor(
         raw: ByteArray,
         root: CanonicalRoot,
@@ -108,11 +125,50 @@ internal object ExistingIdeDocuments {
         if (host is Refinement.Refined) return hostResponse(host.value, operation, context)
         return when (operation) {
             ExistingIdeOperation.Status -> responseRejected()
+            is ExistingIdeOperation.Refresh -> refreshResponse(raw, operation, context)
             is ExistingIdeOperation.ApprovalPreparation -> preparationResponse(raw, operation, context)
             is ExistingIdeOperation.Change -> changeResponse(raw, operation, context)
             is ExistingIdeOperation.Read -> readResponse(raw, operation, context)
             is ExistingIdeOperation.Classes,
             is ExistingIdeOperation.Supertype -> legacyResponse(raw, operation, root)
+        }
+    }
+
+    private fun refreshResponse(
+        raw: ByteArray,
+        operation: ExistingIdeOperation.Refresh,
+        context: ResponseContext,
+    ): ExistingIdeExchange {
+        when (val validation = read(raw, "hosted-workspace-refresh.schema.json")) {
+            is Refinement.Rejected -> return ExistingIdeExchange.Rejected(validation.failure)
+            is Refinement.Refined -> Unit
+        }
+        val response =
+            try {
+                Json.decodeFromString(
+                    io.github.amichne.kast.protocol.contract.WorkspaceRefreshResponse.serializer(),
+                    raw.toString(Charsets.UTF_8),
+                )
+            } catch (_: kotlinx.serialization.SerializationException) {
+                return responseRejected()
+            } catch (_: IllegalArgumentException) {
+                return responseRejected()
+            }
+        if (response.root != context.root.path.toString() || response.host != context.descriptor.host.toString())
+            return responseRejected()
+        if (!operation.command.admits(response.result)) return responseRejected()
+        val document =
+            CliJsonDocument.generated(io.github.amichne.kast.protocol.contract.WorkspaceRefreshResponse.serializer())
+                .create(response)
+        return when (response.result) {
+            is io.github.amichne.kast.protocol.contract.WorkspaceRefreshResult.Complete,
+            is io.github.amichne.kast.protocol.contract.WorkspaceRefreshResult.Configured ->
+                ExistingIdeExchange.Received(document)
+            is io.github.amichne.kast.protocol.contract.WorkspaceRefreshResult.Pending ->
+                ExistingIdeExchange.Semantic(io.github.amichne.kast.cli.ProjectedCliOutcome.Qualified(document))
+            is io.github.amichne.kast.protocol.contract.WorkspaceRefreshResult.Failed,
+            is io.github.amichne.kast.protocol.contract.WorkspaceRefreshResult.Rejected ->
+                ExistingIdeExchange.Semantic(io.github.amichne.kast.cli.ProjectedCliOutcome.Rejected(document))
         }
     }
 
