@@ -200,8 +200,9 @@ sealed interface ArchitectureAdmission {
             val forbiddenEffects = observation.effects
                 .filterNot { effect ->
                     val module = policy.modules.getValue(effect.module)
-                    effect.effect in module.allowedEffects ||
-                        effect.caller.owner in module.allowedScopedEffectCallers[effect.effect].orEmpty()
+                    (effect.effect in module.allowedEffects ||
+                        effect.caller.owner in module.allowedScopedEffectCallers[effect.effect].orEmpty()) &&
+                        HostedWorkspaceRefreshAuthority.retainsBoundary(effect)
                 }
                 .map(ArchitectureViolation::ForbiddenEffectUse)
             val forbiddenExports = observation.exportedProjectDependencies.mapNotNull { edge ->

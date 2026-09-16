@@ -413,6 +413,8 @@ internal object KastCleanSlateModules {
                     JvmClassName("io/github/amichne/kast/runtime/hosted/DeadHostedEndpointOwner\$Companion"),
                 ),
                 ForbiddenEffect.SOURCE_CONTENT_HASH to setOf(JvmClassName("io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint\$Companion")),
+                ForbiddenEffect.GRADLE_IMPORT to setOf(HostedWorkspaceRefreshAuthority.owner),
+                ForbiddenEffect.RECURSIVE_VFS_REFRESH to setOf(HostedWorkspaceRefreshAuthority.owner),
             ),
         ),
         ModulePolicy(ModuleId.INDEXER, ModuleLifecycle.RETIRED, ModuleRole.INDEXER_HOST, emptySet(), emptySet()),

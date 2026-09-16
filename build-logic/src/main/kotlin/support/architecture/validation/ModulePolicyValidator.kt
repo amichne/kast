@@ -253,7 +253,8 @@ private object ModuleRoleBoundaries {
                 ForbiddenEffect.UDS_BIND,
                 ForbiddenEffect.ENDPOINT_DESCRIPTOR_WRITE,
             ),
-            allowedScopedEffects = setOf(ForbiddenEffect.FILESYSTEM_WRITE, ForbiddenEffect.PHYSICAL_SOURCE_READ, ForbiddenEffect.SOURCE_CONTENT_HASH),
+            allowedScopedEffects = setOf(ForbiddenEffect.FILESYSTEM_WRITE, ForbiddenEffect.PHYSICAL_SOURCE_READ, ForbiddenEffect.SOURCE_CONTENT_HASH,
+                ForbiddenEffect.GRADLE_IMPORT, ForbiddenEffect.RECURSIVE_VFS_REFRESH),
         )
         ModuleRole.INTELLIJ_READ_ADAPTER -> boundary(
             role,
