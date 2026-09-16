@@ -27,18 +27,11 @@ def inspect_configuration_continuity(isolation, fixture, product):
     directory = isolation.root / 'configuration-continuity'
     directory.mkdir(mode=0o700)
     saved = directory / 'alternate.environment'
-    # The canonical environment format permits a comment-only saved source; the owner supplies every default.
-    saved.write_text('# Private native fixture saved configuration.\n')
+    # A public saved marker proves this alternate source was loaded; the selector itself is intentionally redacted.
+    saved.write_text('# Private native fixture saved configuration.\nKAST_ASCII=1\n')
     saved.chmod(0o600)
     before = hashlib.sha256(saved.read_bytes()).digest()
-    environment = dict(fixture.environment)
-    environment['KAST_CONFIGURATION_FILE'] = str(saved)
-    environment['KAST_APP_SERVER_TOOLS'] = 'semantic_query,impact_analyze'
-    # Preserve private JVM paths through the wrapper without VM injection notices on stderr.
-    options = environment.pop('_JAVA_OPTIONS', None)
-    tool_options = environment.pop('JAVA_TOOL_OPTIONS', None)
-    if options is not None and options == tool_options:
-        environment['JAVA_OPTS'] = options
+    environment = isolation.saved_configuration_probe_environment(fixture.environment, saved)
     executable = str(product_executable(product, isolation.root))
     validated = subprocess.run([executable, 'config', 'validate', '--file', str(saved), '--json'],
         cwd=fixture.workspace, env=environment, capture_output=True, timeout=30)
@@ -52,7 +45,10 @@ def inspect_configuration_continuity(isolation, fixture, product):
                         and validation.get('status') == 'complete')
             values = {value['key']: value for value in document.get('resolvedNextLaunch', [])}
             selector = (shown.returncode == 0 and document.get('desiredSavedConfiguration') == 'LOADED'
-                        and values['KAST_CONFIGURATION_FILE']['value'] == str(saved))
+                        and values['KAST_CONFIGURATION_FILE']['value'] == '<path>'
+                        and values['KAST_CONFIGURATION_FILE']['source'] == 'PROCESS_ENVIRONMENT'
+                        and values['KAST_ASCII']['value'] == '1'
+                        and values['KAST_ASCII']['source'] == 'SAVED_INSTALLATION')
             provenance = (values['KAST_APP_SERVER_TOOLS']['source'] == 'PROCESS_ENVIRONMENT'
                           and values['KAST_APP_SERVER_TOOLS']['value'] == 'semantic_query,impact_analyze')
         except (ValueError, TypeError, KeyError):
