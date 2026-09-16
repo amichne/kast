@@ -18,6 +18,9 @@ internal data class SourceReadResultWireDocument(
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     @SerialName("execution_budget")
     val executionBudget: io.github.amichne.kast.protocol.contract.ExecutionBudgetReport? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @kotlinx.serialization.SerialName("reference_acquisitions")
+    val referenceAcquisitions: io.github.amichne.kast.protocol.contract.ReadReferenceAcquisitions? = null,
 )
 
 @Serializable

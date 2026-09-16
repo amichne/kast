@@ -4,7 +4,7 @@ title: Existing-IDE semantic query
 description: An existing IDEA project owns seven canonical read operations, with bounded live authority and scoped native CLI/provider acceptance.
 resource: file://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted
 tags: [intellij, kotlin, semantic-query, lifecycle]
-timestamp: 2026-09-14T00:00:00Z
+timestamp: 2026-09-16T00:00:00Z
 code_sources:
   - path: packaging/hosted_wire_schema.py
   - path: packaging/hosted_peer_probe.py
@@ -638,3 +638,11 @@ An indivisible source text that prevents any prefix fitting becomes explicitly
 withheld with text-byte qualification; source bytes are never truncated.
 
 The `WORKSPACE_REFRESH` control request is dispatched separately from semantic reads. `index refresh` and `ide refresh` carry typed request/status/configuration documents over the existing owned socket. Response admission validates the control schema, workspace root, host and request identity. Pending results remain qualified; failures remain rejections. The [workspace lifecycle owner](../modules/workspace.md) describes its asynchronous effects and opt-in task rule.
+
+Fresh exact-symbol reads use the request-local acquisition wrapper described in
+[query protocol](../modules/query-protocol.md#automatic-acquisition-for-fresh-reads).
+Recovery shares the semantic work/time grant and can return refreshed-handle
+metadata with qualified results. Graph hop failures retain their distinct scope,
+index, compiler and contract causes. Hosted time exhaustion and cancellation
+produce separate recovery guidance; neither turns an unvalidated accumulator
+into successful evidence.

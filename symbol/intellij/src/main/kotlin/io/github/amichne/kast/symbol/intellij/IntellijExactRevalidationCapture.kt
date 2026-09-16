@@ -32,6 +32,8 @@ class IntellijExactRevalidationCapture(
 
     private val entries = mutableMapOf<SymbolDiscoveryFileIdentity, Refinement<Capture, ExactRevalidationRejection>>()
     private var work = 0L
+    val chargedWork: Long
+        get() = work
 
     internal fun capture(file: SymbolDiscoveryFileIdentity, psi: PsiFile) {
         if (entries.containsKey(file)) return
@@ -66,14 +68,21 @@ class IntellijExactRevalidationCapture(
                 ExactRevalidationLocator.capture(selector, captured.value.owner, captured.value.identity)
         }
 
-    internal fun check(locator: ExactRevalidationLocator, psi: PsiFile): Refinement<Unit, ExactRevalidationRejection> =
-        when (val current = read(locator.evidence.file, psi)) {
+    internal fun check(
+        locator: ExactRevalidationLocator,
+        psi: PsiFile,
+        policy: io.github.amichne.kast.symbol.contract.ExactRevalidationPolicy =
+            io.github.amichne.kast.symbol.contract.ExactRevalidationPolicy.ORIGINAL_DOCUMENT,
+        maximumWork: Long = workLimit - work,
+    ): Refinement<Unit, ExactRevalidationRejection> =
+        when (val current = read(locator.evidence.file, psi, maximumWork)) {
             is Refinement.Rejected -> current
             is Refinement.Refined ->
                 when {
                     current.value.owner != locator.owner ->
                         Refinement.Rejected(ExactRevalidationRejection.OWNER_MISMATCH)
-                    current.value.identity != locator.text ->
+                    policy == io.github.amichne.kast.symbol.contract.ExactRevalidationPolicy.ORIGINAL_DOCUMENT &&
+                        current.value.identity != locator.text ->
                         Refinement.Rejected(ExactRevalidationRejection.CONTENT_CHANGED)
                     else -> {
                         entries[locator.evidence.file] = current
@@ -82,14 +91,18 @@ class IntellijExactRevalidationCapture(
                 }
         }
 
-    private fun read(file: SymbolDiscoveryFileIdentity, psi: PsiFile): Refinement<Capture, ExactRevalidationRejection> {
+    private fun read(
+        file: SymbolDiscoveryFileIdentity,
+        psi: PsiFile,
+        maximumWork: Long = workLimit - work,
+    ): Refinement<Capture, ExactRevalidationRejection> {
         if (entries.size >= MAX_FILES) return reject(ExactRevalidationRejection.CAPACITY)
         val owner =
             when (val ownership = owningSource(file)) {
                 is Refinement.Refined -> ownership.value
                 is Refinement.Rejected -> return ownership
             }
-        return readContent(owner, psi)
+        return readContent(owner, psi, maximumWork)
     }
 
     private fun owningSource(
@@ -108,6 +121,7 @@ class IntellijExactRevalidationCapture(
     private fun readContent(
         owner: ModelOwnedSourceRoot,
         psi: PsiFile,
+        maximumWork: Long,
     ): Refinement<Capture, ExactRevalidationRejection> {
         val virtual = psi.virtualFile ?: return reject(ExactRevalidationRejection.DECLARATION_MISSING)
         val documents = FileDocumentManager.getInstance()
@@ -116,7 +130,7 @@ class IntellijExactRevalidationCapture(
         if (document != null && !PsiDocumentManager.getInstance(psi.project).isCommitted(document))
             return reject(ExactRevalidationRejection.CONTENT_UNCOMMITTED)
         val size =
-            when (val admitted = admitContentSize(virtual.length, psi.textLength, document)) {
+            when (val admitted = admitContentSize(virtual.length, psi.textLength, document, maximumWork)) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> return admitted
             }
@@ -144,13 +158,15 @@ class IntellijExactRevalidationCapture(
         size: Long,
         psiLength: Int,
         document: Document?,
+        maximumWork: Long,
     ): Refinement<Int, ExactRevalidationRejection> {
         if (size !in 0..MAX_FILE_BYTES) return reject(ExactRevalidationRejection.CAPACITY)
         if (psiLength > MAX_FILE_BYTES) return reject(ExactRevalidationRejection.CAPACITY)
         if (document != null && document.textLength > MAX_FILE_BYTES) return reject(ExactRevalidationRejection.CAPACITY)
         // Reserve the one-byte EOF probe; charge only actual consumed bytes.
         val maximumCost = 1 + (size + CHUNK_BYTES) / CHUNK_BYTES
-        if (maximumCost > workLimit - work) return reject(ExactRevalidationRejection.CAPACITY)
+        if (maximumCost > minOf(workLimit - work, maximumWork))
+            return reject(ExactRevalidationRejection.WORK_LIMIT_REACHED)
         return Refinement.Refined(size.toInt())
     }
 

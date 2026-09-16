@@ -4,7 +4,7 @@ title: Runtime and process hosts
 description: The existing IDEA plugin owns semantic execution; CLI and App Server own installation, transport, sessions and approval.
 resource: file://runtime
 tags: [kotlin, runtime, server, indexer, cli]
-timestamp: 2026-09-14T00:00:00Z
+timestamp: 2026-09-16T00:00:00Z
 code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/WorkspaceStartupEnrollment.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/BrokerPublicEndpoint.kt
@@ -120,3 +120,11 @@ interactive CLI or Desktop tool exposure; the explicit CLI route and Desktop
 façade remain pending those gates.
 
 The hosted endpoint also composes an explicit workspace refresh owner outside `workspace:intellij-read`. Its existing socket accepts file refresh, Gradle model reload, bounded status and one per-host opt-in task-success rule. `index refresh` and `ide refresh` expose the typed control documents. This path never opens or links projects; semantic read admission remains passive.
+
+Fresh semantic reads additionally use `ReacquiringQueryReferences`, backed by the
+separate detached exact-locator store. Its request-local accounting charges
+recovery work and elapsed time before admitting the remaining semantic budget.
+Older-epoch locators can be evicted to retain current handles. Continuation stores
+and mutation planning do not use this capability. The
+[query protocol](query-protocol.md#automatic-acquisition-for-fresh-reads) specifies
+the identity checks and returned handle metadata.

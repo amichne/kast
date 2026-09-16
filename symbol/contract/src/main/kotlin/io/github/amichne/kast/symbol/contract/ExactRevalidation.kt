@@ -27,6 +27,7 @@ class ExactRevalidationLocator
 private constructor(
     val root: CanonicalWorkspaceRoot,
     val host: IdeReadHostLifetime,
+    val epoch: io.github.amichne.kast.workspace.contract.IdeReadEpochRevision,
     val scope: SymbolSearchScope,
     val constraints: SymbolDiscoveryConstraints,
     val evidence: CompilerGroundedSymbolEvidence,
@@ -54,6 +55,7 @@ private constructor(
                 ExactRevalidationLocator(
                     live.workspaceRoot,
                     live.reference.host,
+                    live.reference.epoch,
                     selector.scope,
                     selector.constraints,
                     CompilerGroundedSymbolEvidence.fromSelector(selector),
@@ -70,6 +72,8 @@ enum class ExactRevalidationRejection {
     UNRETAINED,
     EXPIRED,
     CAPACITY,
+    WORK_LIMIT_REACHED,
+    TIME_LIMIT_REACHED,
     RETIRED,
     CAPTURE_UNAVAILABLE,
     WORKSPACE_MISMATCH,
@@ -106,3 +110,17 @@ sealed interface ExactRevalidationResult {
 fun interface ExactRevalidationOperations {
     suspend fun revalidate(locator: ExactRevalidationLocator, current: SemanticReadAuthority): ExactRevalidationResult
 }
+
+/** Strict inspection retains the old preimage; a new read can identify the same declaration in current content. */
+enum class ExactRevalidationPolicy {
+    ORIGINAL_DOCUMENT,
+    CURRENT_DECLARATION,
+}
+
+fun CompilerGroundedSymbolEvidence.sameDeclaration(other: CompilerGroundedSymbolEvidence): Boolean =
+    file == other.file &&
+        name == other.name &&
+        qualifiedIdentity == other.qualifiedIdentity &&
+        kind == other.kind &&
+        signature == other.signature &&
+        compilerIdentity == other.compilerIdentity

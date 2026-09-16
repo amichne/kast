@@ -12,6 +12,8 @@ import io.github.amichne.kast.protocol.contract.DiagnosticCheckQualification
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckResult
 import io.github.amichne.kast.protocol.contract.DiagnosticDocument
 import io.github.amichne.kast.protocol.contract.DiagnosticLimitationDocument
+import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
+import io.github.amichne.kast.protocol.contract.ReadRecoveryGuidance
 import io.github.amichne.kast.protocol.contract.RelationFactDocument
 import io.github.amichne.kast.protocol.contract.RelationReadFailure
 import io.github.amichne.kast.protocol.contract.RelationReadQualification
@@ -20,6 +22,7 @@ import io.github.amichne.kast.protocol.contract.SourceRangeDocument
 import io.github.amichne.kast.protocol.contract.TraversalRunFailure
 import io.github.amichne.kast.protocol.contract.TraversalRunQualification
 import io.github.amichne.kast.protocol.contract.TraversalRunResult
+import io.github.amichne.kast.protocol.contract.recoveryGuidance
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -43,6 +46,7 @@ internal object CanonicalReadCliDocuments {
                         omissions = result.omissions.values.map { it.toCliDocument() },
                         soundness = result.soundness,
                         executionBudget = result.executionBudget,
+                        referenceAcquisitions = result.referenceAcquisitions,
                     )
                 )
             },
@@ -55,7 +59,8 @@ internal object CanonicalReadCliDocuments {
                         omissions = result.omissions.values.map { it.toCliDocument() },
                         soundness = result.soundness,
                         executionBudget = result.executionBudget,
-                        qualification = qualification.toCliDocument(),
+                        referenceAcquisitions = result.referenceAcquisitions,
+                        qualification = qualification.toCliDocument(result.executionBudget),
                     )
                 )
             },
@@ -94,6 +99,7 @@ internal object CanonicalReadCliDocuments {
                     operation = CanonicalOperation.TRAVERSAL_RUN.id.value,
                     progress = result.progress,
                     executionBudget = result.executionBudget,
+                    referenceAcquisitions = result.referenceAcquisitions,
                     partialExpansions = result.partialExpansions.values.map { it.toCliDocument() },
                     strategy = result.strategy,
                     status = "complete",
@@ -118,6 +124,7 @@ internal object CanonicalReadCliDocuments {
                     operation = CanonicalOperation.TRAVERSAL_RUN.id.value,
                     progress = result.progress,
                     executionBudget = result.executionBudget,
+                    referenceAcquisitions = result.referenceAcquisitions,
                     partialExpansions = result.partialExpansions.values.map { it.toCliDocument() },
                     strategy = result.strategy,
                     status = "qualified",
@@ -127,7 +134,7 @@ internal object CanonicalReadCliDocuments {
                             basis,
                             result.records.values,
                         ),
-                    qualification = qualification.toCliDocument(),
+                    qualification = qualification.toCliDocument(result.executionBudget),
                 )
             )
             .withEvidence(basis)
@@ -178,6 +185,9 @@ private data class RelationCompleteCliDocument(
     val soundness: io.github.amichne.kast.protocol.contract.RelationSoundnessDocument,
     @SerialName("execution_budget")
     val executionBudget: io.github.amichne.kast.protocol.contract.ExecutionBudgetReport? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @kotlinx.serialization.SerialName("reference_acquisitions")
+    val referenceAcquisitions: io.github.amichne.kast.protocol.contract.ReadReferenceAcquisitions? = null,
 )
 
 @Serializable
@@ -189,6 +199,9 @@ private data class RelationQualifiedCliDocument(
     val soundness: io.github.amichne.kast.protocol.contract.RelationSoundnessDocument,
     @SerialName("execution_budget")
     val executionBudget: io.github.amichne.kast.protocol.contract.ExecutionBudgetReport? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @kotlinx.serialization.SerialName("reference_acquisitions")
+    val referenceAcquisitions: io.github.amichne.kast.protocol.contract.ReadReferenceAcquisitions? = null,
     val qualification: RelationQualificationCliDocument,
 )
 
@@ -199,6 +212,7 @@ private sealed interface RelationQualificationCliDocument {
     data class Resumable(
         val knownMinimum: Int,
         val limitations: List<String>,
+        val recovery: List<ReadRecoveryGuidance>,
         val continuation: String,
         val checkpoint: io.github.amichne.kast.protocol.contract.RelationCheckpointDocument,
         @SerialName("next_action") val nextAction: io.github.amichne.kast.protocol.contract.ReadResumeActionDocument,
@@ -209,6 +223,7 @@ private sealed interface RelationQualificationCliDocument {
     data class TerminalIncomplete(
         val knownMinimum: Int,
         val limitations: List<String>,
+        val recovery: List<ReadRecoveryGuidance>,
     ) : RelationQualificationCliDocument
 }
 
@@ -308,12 +323,13 @@ private fun DiagnosticDocument.toCliDocument(): DiagnosticCliDocument =
         ),
     )
 
-private fun RelationReadQualification.toCliDocument(): RelationQualificationCliDocument =
+private fun RelationReadQualification.toCliDocument(report: ExecutionBudgetReport?): RelationQualificationCliDocument =
     when (this) {
         is RelationReadQualification.Resumable ->
             RelationQualificationCliDocument.Resumable(
                 knownMinimum = knownMinimum.value,
                 limitations = limitations.map { it.cliName() },
+                recovery = recoveryGuidance(report),
                 continuation = continuation.value,
                 checkpoint = checkpoint,
                 nextAction = nextAction,
@@ -322,6 +338,7 @@ private fun RelationReadQualification.toCliDocument(): RelationQualificationCliD
             RelationQualificationCliDocument.TerminalIncomplete(
                 knownMinimum = knownMinimum.value,
                 limitations = limitations.map { it.cliName() },
+                recovery = recoveryGuidance(report),
             )
     }
 

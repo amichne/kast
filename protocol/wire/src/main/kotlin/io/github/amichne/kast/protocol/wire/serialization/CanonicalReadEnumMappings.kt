@@ -5,11 +5,12 @@ import io.github.amichne.kast.protocol.contract.RelationKindDocument
 import io.github.amichne.kast.protocol.contract.RelationKnownMinimumDocument
 import io.github.amichne.kast.protocol.contract.RelationLimitationDocument
 import io.github.amichne.kast.protocol.contract.RelationReadQualification
-import io.github.amichne.kast.protocol.contract.RelationReadRejection
+import io.github.amichne.kast.protocol.contract.RelationReadRejection as RelationCause
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverLimitation
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRejection
 import io.github.amichne.kast.protocol.contract.SymbolInspectQualification
 import io.github.amichne.kast.protocol.contract.SymbolInspectRejection
+import io.github.amichne.kast.protocol.wire.RelationReadRejectionWireDocument as RelationCode
 
 internal fun SymbolDiscoverLimitation.toWireDocument(): SymbolDiscoverLimitationWireDocument =
     when (this) {
@@ -80,6 +81,10 @@ internal fun SymbolInspectRejection.toWireDocument(): SymbolInspectRejectionWire
         SymbolInspectRejection.REVALIDATION_UNRETAINED -> SymbolInspectRejectionWireDocument.REVALIDATION_UNRETAINED
         SymbolInspectRejection.REVALIDATION_EXPIRED -> SymbolInspectRejectionWireDocument.REVALIDATION_EXPIRED
         SymbolInspectRejection.REVALIDATION_CAPACITY -> SymbolInspectRejectionWireDocument.REVALIDATION_CAPACITY
+        SymbolInspectRejection.REVALIDATION_WORK_LIMIT_REACHED ->
+            SymbolInspectRejectionWireDocument.REVALIDATION_WORK_LIMIT_REACHED
+        SymbolInspectRejection.REVALIDATION_TIME_LIMIT_REACHED ->
+            SymbolInspectRejectionWireDocument.REVALIDATION_TIME_LIMIT_REACHED
         SymbolInspectRejection.REVALIDATION_RETIRED -> SymbolInspectRejectionWireDocument.REVALIDATION_RETIRED
         SymbolInspectRejection.REVALIDATION_CAPTURE_UNAVAILABLE ->
             SymbolInspectRejectionWireDocument.REVALIDATION_CAPTURE_UNAVAILABLE
@@ -126,6 +131,10 @@ internal fun SymbolInspectRejectionWireDocument.toContract(): SymbolInspectRejec
         SymbolInspectRejectionWireDocument.REVALIDATION_UNRETAINED -> SymbolInspectRejection.REVALIDATION_UNRETAINED
         SymbolInspectRejectionWireDocument.REVALIDATION_EXPIRED -> SymbolInspectRejection.REVALIDATION_EXPIRED
         SymbolInspectRejectionWireDocument.REVALIDATION_CAPACITY -> SymbolInspectRejection.REVALIDATION_CAPACITY
+        SymbolInspectRejectionWireDocument.REVALIDATION_WORK_LIMIT_REACHED ->
+            SymbolInspectRejection.REVALIDATION_WORK_LIMIT_REACHED
+        SymbolInspectRejectionWireDocument.REVALIDATION_TIME_LIMIT_REACHED ->
+            SymbolInspectRejection.REVALIDATION_TIME_LIMIT_REACHED
         SymbolInspectRejectionWireDocument.REVALIDATION_RETIRED -> SymbolInspectRejection.REVALIDATION_RETIRED
         SymbolInspectRejectionWireDocument.REVALIDATION_CAPTURE_UNAVAILABLE ->
             SymbolInspectRejection.REVALIDATION_CAPTURE_UNAVAILABLE
@@ -249,50 +258,94 @@ internal fun RelationLimitationWireDocument.toContract(): RelationLimitationDocu
         RelationLimitationWireDocument.PROVIDER_STALLED -> RelationLimitationDocument.PROVIDER_STALLED
     }
 
-internal fun RelationReadRejection.toWireDocument(): RelationReadRejectionWireDocument =
+internal fun RelationCause.toWireDocument(): RelationCode =
     when (this) {
-        RelationReadRejection.WORKSPACE_NOT_READY -> RelationReadRejectionWireDocument.WORKSPACE_NOT_READY
-        RelationReadRejection.SELECTOR_WRONG_KIND -> RelationReadRejectionWireDocument.SELECTOR_WRONG_KIND
-        RelationReadRejection.SELECTOR_MALFORMED -> RelationReadRejectionWireDocument.SELECTOR_MALFORMED
-        RelationReadRejection.SELECTOR_WORKSPACE_MISMATCH ->
-            RelationReadRejectionWireDocument.SELECTOR_WORKSPACE_MISMATCH
-        RelationReadRejection.SELECTOR_STALE -> RelationReadRejectionWireDocument.SELECTOR_STALE
-        RelationReadRejection.RELATION_UNSUPPORTED -> RelationReadRejectionWireDocument.RELATION_UNSUPPORTED
-        RelationReadRejection.CONTINUATION_MALFORMED -> RelationReadRejectionWireDocument.CONTINUATION_MALFORMED
-        RelationReadRejection.CONTINUATION_UNAVAILABLE -> RelationReadRejectionWireDocument.CONTINUATION_UNAVAILABLE
-        RelationReadRejection.CONTINUATION_REQUEST_MISMATCH ->
-            RelationReadRejectionWireDocument.CONTINUATION_REQUEST_MISMATCH
-        RelationReadRejection.CONTINUATION_SUBJECT_MISMATCH ->
-            RelationReadRejectionWireDocument.CONTINUATION_SUBJECT_MISMATCH
-        RelationReadRejection.CONTINUATION_RELATION_MISMATCH ->
-            RelationReadRejectionWireDocument.CONTINUATION_RELATION_MISMATCH
-        RelationReadRejection.CONTINUATION_SCOPE_MISMATCH ->
-            RelationReadRejectionWireDocument.CONTINUATION_SCOPE_MISMATCH
-        RelationReadRejection.CONTINUATION_GENERATION_MISMATCH ->
-            RelationReadRejectionWireDocument.CONTINUATION_GENERATION_MISMATCH
-        RelationReadRejection.CONTINUATION_CURSOR_MOVED -> RelationReadRejectionWireDocument.CONTINUATION_CURSOR_MOVED
+        RelationCause.REVALIDATION_WRONG_KIND -> RelationCode.REVALIDATION_WRONG_KIND
+        RelationCause.REVALIDATION_UNRETAINED -> RelationCode.REVALIDATION_UNRETAINED
+        RelationCause.REVALIDATION_EXPIRED -> RelationCode.REVALIDATION_EXPIRED
+        RelationCause.REVALIDATION_CAPACITY -> RelationCode.REVALIDATION_CAPACITY
+        RelationCause.REVALIDATION_WORK_LIMIT_REACHED -> RelationCode.REVALIDATION_WORK_LIMIT_REACHED
+        RelationCause.REVALIDATION_TIME_LIMIT_REACHED -> RelationCode.REVALIDATION_TIME_LIMIT_REACHED
+        RelationCause.REVALIDATION_RETIRED -> RelationCode.REVALIDATION_RETIRED
+        RelationCause.REVALIDATION_CAPTURE_UNAVAILABLE -> RelationCode.REVALIDATION_CAPTURE_UNAVAILABLE
+        RelationCause.REVALIDATION_WORKSPACE_MISMATCH -> RelationCode.REVALIDATION_WORKSPACE_MISMATCH
+        RelationCause.REVALIDATION_OWNER_MISMATCH -> RelationCode.REVALIDATION_OWNER_MISMATCH
+        RelationCause.REVALIDATION_WORKSPACE_NOT_READY -> RelationCode.REVALIDATION_WORKSPACE_NOT_READY
+        RelationCause.REVALIDATION_BASIS_MOVED -> RelationCode.REVALIDATION_BASIS_MOVED
+        RelationCause.REVALIDATION_CONTENT_CHANGED -> RelationCode.REVALIDATION_CONTENT_CHANGED
+        RelationCause.REVALIDATION_CONTENT_UNCOMMITTED -> RelationCode.REVALIDATION_CONTENT_UNCOMMITTED
+        RelationCause.REVALIDATION_SCOPE_REJECTED -> RelationCode.REVALIDATION_SCOPE_REJECTED
+        RelationCause.REVALIDATION_DECLARATION_MISSING -> RelationCode.REVALIDATION_DECLARATION_MISSING
+        RelationCause.REVALIDATION_UNSUPPORTED_DECLARATION -> RelationCode.REVALIDATION_UNSUPPORTED_DECLARATION
+        RelationCause.REVALIDATION_AMBIGUOUS -> RelationCode.REVALIDATION_AMBIGUOUS
+        RelationCause.REVALIDATION_COMPILER_IDENTITY_CHANGED -> RelationCode.REVALIDATION_COMPILER_IDENTITY_CHANGED
+        RelationCause.REVALIDATION_COMPILER_UNAVAILABLE -> RelationCode.REVALIDATION_COMPILER_UNAVAILABLE
+
+        RelationCause.SCOPE_REJECTED -> RelationCode.SCOPE_REJECTED
+        RelationCause.WORKSPACE_INDEX_UNAVAILABLE -> RelationCode.WORKSPACE_INDEX_UNAVAILABLE
+        RelationCause.OUTSIDE_SCOPE -> RelationCode.OUTSIDE_SCOPE
+        RelationCause.AMBIGUOUS_SUBJECT -> RelationCode.AMBIGUOUS_SUBJECT
+        RelationCause.COMPILER_IDENTITY_UNAVAILABLE -> RelationCode.COMPILER_IDENTITY_UNAVAILABLE
+        RelationCause.COMPILER_CONTRACT_VIOLATION -> RelationCode.COMPILER_CONTRACT_VIOLATION
+
+        RelationCause.WORKSPACE_NOT_READY -> RelationCode.WORKSPACE_NOT_READY
+        RelationCause.SELECTOR_WRONG_KIND -> RelationCode.SELECTOR_WRONG_KIND
+        RelationCause.SELECTOR_MALFORMED -> RelationCode.SELECTOR_MALFORMED
+        RelationCause.SELECTOR_WORKSPACE_MISMATCH -> RelationCode.SELECTOR_WORKSPACE_MISMATCH
+        RelationCause.SELECTOR_STALE -> RelationCode.SELECTOR_STALE
+        RelationCause.RELATION_UNSUPPORTED -> RelationCode.RELATION_UNSUPPORTED
+        RelationCause.CONTINUATION_MALFORMED -> RelationCode.CONTINUATION_MALFORMED
+        RelationCause.CONTINUATION_UNAVAILABLE -> RelationCode.CONTINUATION_UNAVAILABLE
+        RelationCause.CONTINUATION_REQUEST_MISMATCH -> RelationCode.CONTINUATION_REQUEST_MISMATCH
+        RelationCause.CONTINUATION_SUBJECT_MISMATCH -> RelationCode.CONTINUATION_SUBJECT_MISMATCH
+        RelationCause.CONTINUATION_RELATION_MISMATCH -> RelationCode.CONTINUATION_RELATION_MISMATCH
+        RelationCause.CONTINUATION_SCOPE_MISMATCH -> RelationCode.CONTINUATION_SCOPE_MISMATCH
+        RelationCause.CONTINUATION_GENERATION_MISMATCH -> RelationCode.CONTINUATION_GENERATION_MISMATCH
+        RelationCause.CONTINUATION_CURSOR_MOVED -> RelationCode.CONTINUATION_CURSOR_MOVED
     }
 
-internal fun RelationReadRejectionWireDocument.toContract(): RelationReadRejection =
+internal fun RelationCode.toContract(): RelationCause =
     when (this) {
-        RelationReadRejectionWireDocument.WORKSPACE_NOT_READY -> RelationReadRejection.WORKSPACE_NOT_READY
-        RelationReadRejectionWireDocument.SELECTOR_WRONG_KIND -> RelationReadRejection.SELECTOR_WRONG_KIND
-        RelationReadRejectionWireDocument.SELECTOR_MALFORMED -> RelationReadRejection.SELECTOR_MALFORMED
-        RelationReadRejectionWireDocument.SELECTOR_WORKSPACE_MISMATCH ->
-            RelationReadRejection.SELECTOR_WORKSPACE_MISMATCH
-        RelationReadRejectionWireDocument.SELECTOR_STALE -> RelationReadRejection.SELECTOR_STALE
-        RelationReadRejectionWireDocument.RELATION_UNSUPPORTED -> RelationReadRejection.RELATION_UNSUPPORTED
-        RelationReadRejectionWireDocument.CONTINUATION_MALFORMED -> RelationReadRejection.CONTINUATION_MALFORMED
-        RelationReadRejectionWireDocument.CONTINUATION_UNAVAILABLE -> RelationReadRejection.CONTINUATION_UNAVAILABLE
-        RelationReadRejectionWireDocument.CONTINUATION_REQUEST_MISMATCH ->
-            RelationReadRejection.CONTINUATION_REQUEST_MISMATCH
-        RelationReadRejectionWireDocument.CONTINUATION_SUBJECT_MISMATCH ->
-            RelationReadRejection.CONTINUATION_SUBJECT_MISMATCH
-        RelationReadRejectionWireDocument.CONTINUATION_RELATION_MISMATCH ->
-            RelationReadRejection.CONTINUATION_RELATION_MISMATCH
-        RelationReadRejectionWireDocument.CONTINUATION_SCOPE_MISMATCH ->
-            RelationReadRejection.CONTINUATION_SCOPE_MISMATCH
-        RelationReadRejectionWireDocument.CONTINUATION_GENERATION_MISMATCH ->
-            RelationReadRejection.CONTINUATION_GENERATION_MISMATCH
-        RelationReadRejectionWireDocument.CONTINUATION_CURSOR_MOVED -> RelationReadRejection.CONTINUATION_CURSOR_MOVED
+        RelationCode.REVALIDATION_WRONG_KIND -> RelationCause.REVALIDATION_WRONG_KIND
+        RelationCode.REVALIDATION_UNRETAINED -> RelationCause.REVALIDATION_UNRETAINED
+        RelationCode.REVALIDATION_EXPIRED -> RelationCause.REVALIDATION_EXPIRED
+        RelationCode.REVALIDATION_CAPACITY -> RelationCause.REVALIDATION_CAPACITY
+        RelationCode.REVALIDATION_WORK_LIMIT_REACHED -> RelationCause.REVALIDATION_WORK_LIMIT_REACHED
+        RelationCode.REVALIDATION_TIME_LIMIT_REACHED -> RelationCause.REVALIDATION_TIME_LIMIT_REACHED
+        RelationCode.REVALIDATION_RETIRED -> RelationCause.REVALIDATION_RETIRED
+        RelationCode.REVALIDATION_CAPTURE_UNAVAILABLE -> RelationCause.REVALIDATION_CAPTURE_UNAVAILABLE
+        RelationCode.REVALIDATION_WORKSPACE_MISMATCH -> RelationCause.REVALIDATION_WORKSPACE_MISMATCH
+        RelationCode.REVALIDATION_OWNER_MISMATCH -> RelationCause.REVALIDATION_OWNER_MISMATCH
+        RelationCode.REVALIDATION_WORKSPACE_NOT_READY -> RelationCause.REVALIDATION_WORKSPACE_NOT_READY
+        RelationCode.REVALIDATION_BASIS_MOVED -> RelationCause.REVALIDATION_BASIS_MOVED
+        RelationCode.REVALIDATION_CONTENT_CHANGED -> RelationCause.REVALIDATION_CONTENT_CHANGED
+        RelationCode.REVALIDATION_CONTENT_UNCOMMITTED -> RelationCause.REVALIDATION_CONTENT_UNCOMMITTED
+        RelationCode.REVALIDATION_SCOPE_REJECTED -> RelationCause.REVALIDATION_SCOPE_REJECTED
+        RelationCode.REVALIDATION_DECLARATION_MISSING -> RelationCause.REVALIDATION_DECLARATION_MISSING
+        RelationCode.REVALIDATION_UNSUPPORTED_DECLARATION -> RelationCause.REVALIDATION_UNSUPPORTED_DECLARATION
+        RelationCode.REVALIDATION_AMBIGUOUS -> RelationCause.REVALIDATION_AMBIGUOUS
+        RelationCode.REVALIDATION_COMPILER_IDENTITY_CHANGED -> RelationCause.REVALIDATION_COMPILER_IDENTITY_CHANGED
+        RelationCode.REVALIDATION_COMPILER_UNAVAILABLE -> RelationCause.REVALIDATION_COMPILER_UNAVAILABLE
+
+        RelationCode.SCOPE_REJECTED -> RelationCause.SCOPE_REJECTED
+        RelationCode.WORKSPACE_INDEX_UNAVAILABLE -> RelationCause.WORKSPACE_INDEX_UNAVAILABLE
+        RelationCode.OUTSIDE_SCOPE -> RelationCause.OUTSIDE_SCOPE
+        RelationCode.AMBIGUOUS_SUBJECT -> RelationCause.AMBIGUOUS_SUBJECT
+        RelationCode.COMPILER_IDENTITY_UNAVAILABLE -> RelationCause.COMPILER_IDENTITY_UNAVAILABLE
+        RelationCode.COMPILER_CONTRACT_VIOLATION -> RelationCause.COMPILER_CONTRACT_VIOLATION
+
+        RelationCode.WORKSPACE_NOT_READY -> RelationCause.WORKSPACE_NOT_READY
+        RelationCode.SELECTOR_WRONG_KIND -> RelationCause.SELECTOR_WRONG_KIND
+        RelationCode.SELECTOR_MALFORMED -> RelationCause.SELECTOR_MALFORMED
+        RelationCode.SELECTOR_WORKSPACE_MISMATCH -> RelationCause.SELECTOR_WORKSPACE_MISMATCH
+        RelationCode.SELECTOR_STALE -> RelationCause.SELECTOR_STALE
+        RelationCode.RELATION_UNSUPPORTED -> RelationCause.RELATION_UNSUPPORTED
+        RelationCode.CONTINUATION_MALFORMED -> RelationCause.CONTINUATION_MALFORMED
+        RelationCode.CONTINUATION_UNAVAILABLE -> RelationCause.CONTINUATION_UNAVAILABLE
+        RelationCode.CONTINUATION_REQUEST_MISMATCH -> RelationCause.CONTINUATION_REQUEST_MISMATCH
+        RelationCode.CONTINUATION_SUBJECT_MISMATCH -> RelationCause.CONTINUATION_SUBJECT_MISMATCH
+        RelationCode.CONTINUATION_RELATION_MISMATCH -> RelationCause.CONTINUATION_RELATION_MISMATCH
+        RelationCode.CONTINUATION_SCOPE_MISMATCH -> RelationCause.CONTINUATION_SCOPE_MISMATCH
+        RelationCode.CONTINUATION_GENERATION_MISMATCH -> RelationCause.CONTINUATION_GENERATION_MISMATCH
+        RelationCode.CONTINUATION_CURSOR_MOVED -> RelationCause.CONTINUATION_CURSOR_MOVED
     }

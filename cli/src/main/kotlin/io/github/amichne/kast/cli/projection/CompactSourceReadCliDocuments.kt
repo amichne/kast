@@ -10,7 +10,11 @@ import kotlinx.serialization.Serializable
 
 internal fun compactSourceComplete(result: SourceReadResult): CliJsonDocument =
     compactCompleteFactory.create(
-        CompactSourceCompleteCliDocument(content = result.compactContent(), executionBudget = result.executionBudget)
+        CompactSourceCompleteCliDocument(
+            content = result.compactContent(),
+            executionBudget = result.executionBudget,
+            referenceAcquisitions = result.referenceAcquisitions,
+        )
     )
 
 internal fun compactSourceQualified(
@@ -22,6 +26,7 @@ internal fun compactSourceQualified(
             content = result.compactContent(),
             qualification = qualification,
             executionBudget = result.executionBudget,
+            referenceAcquisitions = result.referenceAcquisitions,
         )
     )
 
@@ -53,6 +58,9 @@ internal data class CompactSourceCompleteCliDocument(
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     @SerialName("execution_budget")
     val executionBudget: io.github.amichne.kast.protocol.contract.ExecutionBudgetReport? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @kotlinx.serialization.SerialName("reference_acquisitions")
+    val referenceAcquisitions: io.github.amichne.kast.protocol.contract.ReadReferenceAcquisitions? = null,
 )
 
 @Serializable
@@ -66,6 +74,9 @@ internal data class CompactSourceQualifiedCliDocument(
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     @SerialName("execution_budget")
     val executionBudget: io.github.amichne.kast.protocol.contract.ExecutionBudgetReport? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @kotlinx.serialization.SerialName("reference_acquisitions")
+    val referenceAcquisitions: io.github.amichne.kast.protocol.contract.ReadReferenceAcquisitions? = null,
 )
 
 private fun SourceReadResult.compactContent(): List<CompactSourceContentDocument> {

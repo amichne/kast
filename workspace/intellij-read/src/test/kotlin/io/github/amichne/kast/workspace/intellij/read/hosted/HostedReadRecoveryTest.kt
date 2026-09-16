@@ -9,6 +9,24 @@ import org.junit.jupiter.api.Test
 
 class HostedReadRecoveryTest {
     @Test
+    fun `exhaustion and cancellation have different actionable recovery`() {
+        for ((failure, expected) in
+            listOf(
+                HostedQueryFailure.BUDGET_EXCEEDED to "reduce_read_work",
+                HostedQueryFailure.CANCELLED to "cancelled",
+                HostedQueryFailure.DIRTY_DOCUMENTS to "save_source",
+                HostedQueryFailure.BUSY to "wait_for_capacity",
+            )) {
+            val document =
+                Json.parseToJsonElement(
+                        HostedQueryWire.encode(HostedQueryResult.Rejected(failure, HostedQueryStage.SEMANTIC_READ))
+                    )
+                    .jsonObject
+            assertEquals(expected, document.getValue("recovery").jsonObject.getValue("kind").jsonPrimitive.content)
+        }
+    }
+
+    @Test
     fun `unavailable Gradle model retains rejection and points to observed readiness`() {
         val document =
             Json.parseToJsonElement(

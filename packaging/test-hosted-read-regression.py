@@ -20,7 +20,9 @@ from hosted_transport_observation import TransportSummary, TransportWitnessFailu
 
 from hosted_read_fixture import ReadFixtureRejected, prepare_read_fixture
 from hosted_enum_read_regression import run_enum_read_regression
-from hosted_read_regression import _ReadReplay, _read_observation, _reproduction
+from hosted_read_regression import (_ReadReplay, _read_observation, _reproduction,
+    ReadRegressionStage, regression_rejection)
+from hosted_peer_probe import EndpointAdmissionRejected, EndpointAdmissionFailure
 from hosted_read_transport import (HostedReadTransport, ReadTransportRejected, _admit_cli_invocations,
     _admit_output_violation_evidence, _provider_result)
 from hosted_generated_fixture import (GENERATED_FILE, GENERATED_SOURCE, MOVEMENT_FILE, MOVEMENT_SOURCE,
@@ -143,6 +145,15 @@ def enum_response(names):
 
 
 class HostedReadRegressionTest(unittest.TestCase):
+    def test_rejection_retains_stage_and_finite_cause_without_exception_payload(self):
+        for error, expected in (
+                (ValueError('private payload'), 'value_rejected'),
+                (KeyError('private token'), 'key_rejected'),
+                (EndpointAdmissionRejected(EndpointAdmissionFailure.HOST), 'endpoint_host_mismatch')):
+            observed = regression_rejection(ReadRegressionStage.CONCURRENT, error)
+            self.assertEqual({'stage': 'concurrent', 'cause': expected}, observed)
+            self.assertNotIn('private', json.dumps(observed))
+
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)

@@ -4,9 +4,11 @@ import io.github.amichne.kast.symbol.contract.ExactRevalidationCompilation
 import io.github.amichne.kast.symbol.contract.ExactRevalidationCompilerPort
 import io.github.amichne.kast.symbol.contract.ExactRevalidationLocator
 import io.github.amichne.kast.symbol.contract.ExactRevalidationOperations
+import io.github.amichne.kast.symbol.contract.ExactRevalidationPolicy
 import io.github.amichne.kast.symbol.contract.ExactRevalidationRejection
 import io.github.amichne.kast.symbol.contract.ExactRevalidationResult
 import io.github.amichne.kast.symbol.contract.SymbolSelector
+import io.github.amichne.kast.symbol.contract.sameDeclaration
 import io.github.amichne.kast.workspace.contract.LiveSemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.SemanticReadValidation
@@ -16,6 +18,7 @@ import io.github.amichne.kast.workspace.contract.SemanticReadValidationPort
 class ExactRevalidationService(
     private val validation: SemanticReadValidationPort,
     private val compiler: ExactRevalidationCompilerPort,
+    private val policy: ExactRevalidationPolicy = ExactRevalidationPolicy.ORIGINAL_DOCUMENT,
 ) : ExactRevalidationOperations {
     override suspend fun revalidate(
         locator: ExactRevalidationLocator,
@@ -35,7 +38,12 @@ class ExactRevalidationService(
                 is ExactRevalidationCompilation.Confirmed -> result.evidence
                 is ExactRevalidationCompilation.Rejected -> return rejected(result.reason)
             }
-        if (evidence != locator.evidence) return rejected(ExactRevalidationRejection.COMPILER_IDENTITY_CHANGED)
+        val matches =
+            when (policy) {
+                ExactRevalidationPolicy.ORIGINAL_DOCUMENT -> evidence == locator.evidence
+                ExactRevalidationPolicy.CURRENT_DECLARATION -> evidence.sameDeclaration(locator.evidence)
+            }
+        if (!matches) return rejected(ExactRevalidationRejection.COMPILER_IDENTITY_CHANGED)
         when (validation.validate(current)) {
             SemanticReadValidation.CURRENT -> Unit
             SemanticReadValidation.ROOT_MISMATCH -> return rejected(ExactRevalidationRejection.WORKSPACE_MISMATCH)

@@ -197,17 +197,6 @@ internal enum class QuerySourceRejectionReasonWireDocument {
     @SerialName("unsupported-declaration-kind") UNSUPPORTED_DECLARATION_KIND
 }
 
-@Serializable
-internal enum class QueryReferenceRejectionReasonWireDocument {
-    @SerialName("wrong-kind") WRONG_KIND,
-    @SerialName("malformed") MALFORMED,
-    @SerialName("incompatible-workspace") INCOMPATIBLE_WORKSPACE,
-    @SerialName("stale-generation") STALE_GENERATION,
-    @SerialName("stale-authority") STALE_AUTHORITY,
-    @SerialName("incompatible-authority") INCOMPATIBLE_AUTHORITY,
-    @SerialName("incompatible-reference-version") INCOMPATIBLE_REFERENCE_VERSION,
-}
-
 internal object CanonicalQuerySerializers {
     private val factory = GeneratedWireCodecFactory(wireJson)
     val request = factory.create(QueryRunRequest.serializer())
@@ -250,6 +239,7 @@ private fun QueryRunResult.toQueryWireDocument() =
         items = items.values.map(QueryResultItemDocument::toWire),
         failures = failures.values.map(QueryItemFailureDocument::toWire),
         executionBudget = executionBudget,
+        referenceAcquisitions = referenceAcquisitions,
     )
 
 private fun QueryRunResultWireDocument.toContract(): WireDocumentConversion<QueryRunResult> =
@@ -262,6 +252,7 @@ private fun QueryRunResultWireDocument.toContract(): WireDocumentConversion<Quer
                             items = boundedItems,
                             failures = boundedFailures,
                             executionBudget = executionBudget,
+                            referenceAcquisitions = referenceAcquisitions,
                         )
                     )
                 }

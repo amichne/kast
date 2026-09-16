@@ -20,6 +20,9 @@ internal data class TraversalRunResultWireDocument(
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     @SerialName("execution_budget")
     val executionBudget: io.github.amichne.kast.protocol.contract.ExecutionBudgetReport? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @kotlinx.serialization.SerialName("reference_acquisitions")
+    val referenceAcquisitions: io.github.amichne.kast.protocol.contract.ReadReferenceAcquisitions? = null,
 )
 
 internal fun TraversalRunResult.toSymbolWireDocument() =
@@ -30,6 +33,7 @@ internal fun TraversalRunResult.toSymbolWireDocument() =
         strategy = strategy,
         partialExpansions = partialExpansions.values.map { it.toWireDocument() },
         executionBudget = executionBudget,
+        referenceAcquisitions = referenceAcquisitions,
     )
 
 /**
@@ -43,7 +47,14 @@ internal fun TraversalRunResultWireDocument.toContract(): WireDocumentConversion
                 .convertEach { it.toContract() }
                 .flatMapConverted { values -> BoundedProtocolList.create(values).toWireDocumentConversion() },
             { root, records ->
-                TraversalRunResult(root, records, progress, strategy, executionBudget = executionBudget)
+                TraversalRunResult(
+                    root,
+                    records,
+                    progress,
+                    strategy,
+                    executionBudget = executionBudget,
+                    referenceAcquisitions = referenceAcquisitions,
+                )
             },
         )
         .flatMapConverted { result ->

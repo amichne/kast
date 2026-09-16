@@ -79,6 +79,46 @@ class HostedExactRevalidationTest {
             .value()
 
     @Test
+    fun `current read reacquires moved declaration range while strict inspection preserves old content identity`() =
+        runBlocking {
+            val current = owner.advance()
+            val prior = locator.evidence
+            val moved =
+                CompilerGroundedSymbolEvidence.fromBoundary(
+                        prior.file,
+                        prior.range.startInclusive + 10,
+                        prior.range.endExclusive + 30,
+                        prior.name.value,
+                        "sample.subject",
+                        prior.kind,
+                        prior.signature,
+                    )
+                    .value()
+            for (policy in io.github.amichne.kast.symbol.contract.ExactRevalidationPolicy.entries) {
+                val service =
+                    ExactRevalidationService(
+                        SemanticReadValidationPort { SemanticReadValidation.CURRENT },
+                        ExactRevalidationCompilerPort { _, _ -> ExactRevalidationCompilation.Confirmed(moved) },
+                        policy,
+                    )
+                when (policy) {
+                    io.github.amichne.kast.symbol.contract.ExactRevalidationPolicy.ORIGINAL_DOCUMENT ->
+                        assertEquals(
+                            ExactRevalidationResult.Rejected(ExactRevalidationRejection.COMPILER_IDENTITY_CHANGED),
+                            service.revalidate(locator, current),
+                        )
+                    io.github.amichne.kast.symbol.contract.ExactRevalidationPolicy.CURRENT_DECLARATION -> {
+                        val result = service.revalidate(locator, current) as ExactRevalidationResult.Reacquired
+                        assertEquals(moved.range, result.selector.range)
+                        assertEquals(locator.scope, result.selector.scope)
+                        assertEquals(locator.constraints, result.selector.constraints)
+                        assertSame(current, result.selector.lease)
+                    }
+                }
+            }
+        }
+
+    @Test
     fun `reacquisition after epoch movement leaves the old strict handle unavailable`() = runBlocking {
         val strict = HostedReferenceStore()
         val records = ExactRevalidationRecords()
@@ -209,6 +249,22 @@ class HostedExactRevalidationTest {
         } catch (actual: java.util.concurrent.CancellationException) {
             assertSame(cancelled, actual)
         }
+    }
+
+    @Test
+    fun `new epoch evicts historical locator without evicting current locators`() {
+        val records = ExactRevalidationRecords(maxEntries = 1)
+        records.retain(fixture.exact, fixture.exact, locator).value()
+        val next = RelationPagingFixture(owner.advance())
+        val current = ExactRevalidationLocator.capture(next.selector, model.sourceRoots.single(), locator.text).value()
+        records.retain(next.exact, next.exact, current).value()
+        assertEquals(Refinement.Rejected(ExactRevalidationRejection.UNRETAINED), records.locate(fixture.exact))
+        assertSame(current, records.locate(next.exact).value())
+        assertEquals(
+            Refinement.Rejected(ExactRevalidationRejection.CAPACITY),
+            records.retain(text("exact:another-current"), next.exact, current),
+        )
+        assertSame(current, records.locate(next.exact).value())
     }
 
     @Test

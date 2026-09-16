@@ -145,7 +145,7 @@ class SourceFailureTest(unittest.TestCase):
         self.assertEqual('internal-contract-failure', caught.exception.source_cause.origin)
 
     def test_known_stale_and_unknown_remain_disjoint(self):
-        for reason in ('wrong-family', 'stale-authority', 'unavailable'):
+        for reason in ('wrong-family', 'stale-authority', 'unavailable', 'revalidation-unretained'):
             self.assertEqual(reason, admit_source_failure(asdict(ReferenceCause(reason))).cause)
         with self.assertRaises(ValueError):
             admit_source_failure(asdict(ReferenceCause('arbitrary caller bytes')))

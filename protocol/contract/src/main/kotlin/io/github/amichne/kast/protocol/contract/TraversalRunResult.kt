@@ -9,4 +9,5 @@ data class TraversalRunResult(
     val partialExpansions: BoundedProtocolList<TraversalPartialExpansionDocument> =
         TraversalPartialExpansionDocument.Empty,
     val executionBudget: ExecutionBudgetReport? = null,
+    val referenceAcquisitions: ReadReferenceAcquisitions? = null,
 ) : OperationResult

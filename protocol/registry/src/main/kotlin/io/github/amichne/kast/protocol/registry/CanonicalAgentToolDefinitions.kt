@@ -211,7 +211,10 @@ object CanonicalAgentToolDefinitions {
                 Use kast.check_diagnostics for compiler diagnostics, deferred kast.query_symbols
                 for enumeration and ordered pipelines, and read_relations for occurrence facts.
                 Preserve returned symbol references verbatim, including compact host handles.
-                Do not decode or reconstruct them; refresh stale handles with a scoped search.
+                Do not reconstruct handles. Reads may reacquire retained exact handles;
+                keep reference_acquisitions. If unavailable, use a scoped search.
+                Continuations and source snapshots remain strict. Keep qualified partial facts
+                with their limitations; follow recovery guidance and execution_budget.
 
                 Reads require the repository's saved, indexed IntelliJ state. An unavailable or
                 unready host rejects. If the user authorized opening or reopening this repository

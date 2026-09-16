@@ -3,6 +3,8 @@
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field, replace
 import io
+import hashlib
+from types import SimpleNamespace
 import json
 from pathlib import Path
 import select
@@ -14,7 +16,7 @@ from threading import Event
 from unittest.mock import Mock, patch
 
 from hosted_peer_probe import (HostedPeerEndpoint, PeerAttempt, PeerCase, PeerFailure, PeerOutcome,
-    TerminalReply, probe_peer)
+    TerminalReply, probe_peer, admit_peer_endpoint, EndpointAdmissionFailure, EndpointAdmissionRejected)
 from hosted_transport_observation import (EndpointFailure, NativeTransportWindow, TransportOutcome,
     TransportRecord, TransportStage, admit_transport_record)
 
@@ -42,6 +44,16 @@ class HostFixture:
 
 
 @dataclass(frozen=True)
+class EndpointFixture:
+    root: str
+    socket: str
+    host: str = 'private-host'
+    protocol: int = 3
+    querySchema: str = 'kast.query.run.v2'
+    type: str = 'KAST_IDE_ENDPOINT'
+
+
+@dataclass(frozen=True)
 class ObservationFixture:
     connectionId: str = '00000000-0000-0000-0000-000000000001'
     stage: str = 'ACCEPT'
@@ -53,6 +65,31 @@ class ObservationFixture:
 
 class PeerProbeTest(unittest.TestCase):
     endpoint = HostedPeerEndpoint('/private/workspace', 'private-host', '/private/socket', 3, 'kast.query.run.v2')
+
+    def test_endpoint_admission_retains_exact_failure_without_descriptor_payload(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workspace = root / 'workspace'
+            digest = hashlib.sha256(str(workspace).encode()).hexdigest()[:32]
+            descriptor = root / 'home/.kast/ide-hosted' / digest / 'endpoint.json'
+            descriptor.parent.mkdir(parents=True)
+            isolation = SimpleNamespace(root=root)
+            live = {'host': 'private-host'}
+            with self.assertRaises(EndpointAdmissionRejected) as rejected:
+                admit_peer_endpoint(isolation, workspace, live)
+            self.assertIs(EndpointAdmissionFailure.DESCRIPTOR, rejected.exception.failure)
+            expected = EndpointFixture(str(workspace), str(descriptor.parent / 'host.sock'))
+            descriptor.write_text(json.dumps(asdict(expected)))
+            self.assertEqual(expected.socket, admit_peer_endpoint(isolation, workspace, live).socket)
+            for changed, failure in ((replace(expected, root='/foreign'), EndpointAdmissionFailure.ROOT),
+                    (replace(expected, host='foreign'), EndpointAdmissionFailure.HOST),
+                    (replace(expected, socket='/foreign'), EndpointAdmissionFailure.SOCKET),
+                    (replace(expected, protocol=4), EndpointAdmissionFailure.CONTRACT)):
+                descriptor.write_text(json.dumps(asdict(changed)))
+                with self.assertRaises(EndpointAdmissionRejected) as rejected:
+                    admit_peer_endpoint(isolation, workspace, live)
+                self.assertIs(failure, rejected.exception.failure)
+                self.assertNotIn('foreign', str(rejected.exception))
 
     def frame(self, document):
         body = json.dumps(asdict(document)).encode()

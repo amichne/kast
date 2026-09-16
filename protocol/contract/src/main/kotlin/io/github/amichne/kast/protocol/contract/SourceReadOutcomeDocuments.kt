@@ -9,6 +9,7 @@ data class SourceReadResult(
     val text: SourceTextProjectionDocument,
     val executionBudget: ExecutionBudgetReport? = null,
     val format: SourceReadFormatDocument = SourceReadFormatDocument.EXPANDED,
+    val referenceAcquisitions: ReadReferenceAcquisitions? = null,
 ) : OperationResult
 
 enum class SourceReadLimitationDocument {

@@ -48,7 +48,7 @@ internal suspend fun evaluateHostedTraversal(
             val token = (ProtocolText.parse(position.continuation.value) as Refinement.Refined).value
             outputs.restore(token, request.request, context.authority)
         } else {
-            CanonicalTraversalRunProtocol(traversalOperations(services.relations), services.references)
+            CanonicalTraversalRunProtocol(traversalOperations(services.relations), services.readReferences)
                 .execute(request.request, context.authority, services.budgets.hostedTraversalBudget)
         }
     return encodeHostedTraversalResponse(

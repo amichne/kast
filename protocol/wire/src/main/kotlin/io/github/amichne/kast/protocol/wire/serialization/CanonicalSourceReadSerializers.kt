@@ -79,6 +79,7 @@ internal fun SourceReadResult.toWireDocument(): SourceReadResultWireDocument =
         entities.values.map(SourceEntityDocument::toWireDocument),
         text.toWireDocument(),
         executionBudget,
+        referenceAcquisitions = referenceAcquisitions,
     )
 
 internal fun SourceReadResultWireDocument.toContract(): WireDocumentConversion<SourceReadResult> =
@@ -98,6 +99,7 @@ internal fun SourceReadResultWireDocument.toContract(): WireDocumentConversion<S
                                     boundedEntities,
                                     admittedText,
                                     executionBudget,
+                                    referenceAcquisitions = referenceAcquisitions,
                                 )
                             )
                         }

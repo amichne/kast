@@ -33,6 +33,20 @@ class PeerFailure(str, Enum):
     SCHEMA = 'response_schema_rejected'
 
 
+class EndpointAdmissionFailure(str, Enum):
+    DESCRIPTOR = 'endpoint_descriptor_rejected'
+    ROOT = 'endpoint_root_mismatch'
+    HOST = 'endpoint_host_mismatch'
+    SOCKET = 'endpoint_socket_mismatch'
+    CONTRACT = 'endpoint_contract_rejected'
+
+
+class EndpointAdmissionRejected(ValueError):
+    def __init__(self, failure):
+        self.failure = failure
+        super().__init__(failure.value)
+
+
 class TerminalReply(str, Enum):
     UNOBSERVED = 'unobserved_after_disconnect'
     SINGLE = 'one_complete_frame_then_eof'
@@ -88,13 +102,21 @@ def admit_peer_endpoint(isolation, workspace, live):
     root_digest = hashlib.sha256(str(workspace).encode()).hexdigest()[:32]
     descriptor = isolation.root / 'home/.kast/ide-hosted' / root_digest / 'endpoint.json'
     if descriptor.is_symlink() or not descriptor.is_file() or descriptor.stat().st_size > 16384:
-        raise ValueError('CONCURRENT_ENDPOINT_REJECTED')
-    endpoint = json.loads(descriptor.read_text())
-    if (endpoint.get('root') != str(workspace) or endpoint.get('host') != live['host']
-            or endpoint.get('socket') != str(descriptor.parent / 'host.sock')
-            or endpoint.get('type') != 'KAST_IDE_ENDPOINT' or endpoint.get('protocol') != 3
-            or not isinstance(endpoint.get('querySchema'), str)):
-        raise ValueError('CONCURRENT_ENDPOINT_REJECTED')
+        raise EndpointAdmissionRejected(EndpointAdmissionFailure.DESCRIPTOR)
+    try:
+        endpoint = json.loads(descriptor.read_text())
+    except (ValueError, UnicodeError):
+        raise EndpointAdmissionRejected(EndpointAdmissionFailure.CONTRACT) from None
+    if not isinstance(endpoint, dict):
+        raise EndpointAdmissionRejected(EndpointAdmissionFailure.CONTRACT)
+    for admitted, failure in (
+            (endpoint.get('root') == str(workspace), EndpointAdmissionFailure.ROOT),
+            (endpoint.get('host') == live['host'], EndpointAdmissionFailure.HOST),
+            (endpoint.get('socket') == str(descriptor.parent / 'host.sock'), EndpointAdmissionFailure.SOCKET),
+            (endpoint.get('type') == 'KAST_IDE_ENDPOINT' and endpoint.get('protocol') == 3
+             and isinstance(endpoint.get('querySchema'), str), EndpointAdmissionFailure.CONTRACT)):
+        if not admitted:
+            raise EndpointAdmissionRejected(failure)
     return HostedPeerEndpoint(str(workspace), live['host'], endpoint['socket'],
                               endpoint['protocol'], endpoint['querySchema'])
 

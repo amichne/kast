@@ -94,6 +94,8 @@ internal enum class SymbolInspectRejectionWireDocument {
     @SerialName("revalidation_unretained") REVALIDATION_UNRETAINED,
     @SerialName("revalidation_expired") REVALIDATION_EXPIRED,
     @SerialName("revalidation_capacity") REVALIDATION_CAPACITY,
+    @SerialName("revalidation_work_limit_reached") REVALIDATION_WORK_LIMIT_REACHED,
+    @SerialName("revalidation_time_limit_reached") REVALIDATION_TIME_LIMIT_REACHED,
     @SerialName("revalidation_retired") REVALIDATION_RETIRED,
     @SerialName("revalidation_capture_unavailable") REVALIDATION_CAPTURE_UNAVAILABLE,
     @SerialName("revalidation_workspace_mismatch") REVALIDATION_WORKSPACE_MISMATCH,
@@ -156,24 +158,6 @@ internal enum class RelationLimitationWireDocument {
 }
 
 @Serializable
-internal enum class RelationReadRejectionWireDocument {
-    @SerialName("workspace_not_ready") WORKSPACE_NOT_READY,
-    @SerialName("selector_wrong_kind") SELECTOR_WRONG_KIND,
-    @SerialName("selector_malformed") SELECTOR_MALFORMED,
-    @SerialName("selector_workspace_mismatch") SELECTOR_WORKSPACE_MISMATCH,
-    @SerialName("selector_stale") SELECTOR_STALE,
-    @SerialName("relation_unsupported") RELATION_UNSUPPORTED,
-    @SerialName("continuation_malformed") CONTINUATION_MALFORMED,
-    @SerialName("continuation_unavailable") CONTINUATION_UNAVAILABLE,
-    @SerialName("continuation_request_mismatch") CONTINUATION_REQUEST_MISMATCH,
-    @SerialName("continuation_subject_mismatch") CONTINUATION_SUBJECT_MISMATCH,
-    @SerialName("continuation_relation_mismatch") CONTINUATION_RELATION_MISMATCH,
-    @SerialName("continuation_scope_mismatch") CONTINUATION_SCOPE_MISMATCH,
-    @SerialName("continuation_generation_mismatch") CONTINUATION_GENERATION_MISMATCH,
-    @SerialName("continuation_cursor_moved") CONTINUATION_CURSOR_MOVED,
-}
-
-@Serializable
 internal sealed interface TraversalRunQualificationWireDocument {
     val limitations: List<TraversalLimitationWireDocument>
     val relationLimitations: List<RelationLimitationWireDocument>
@@ -205,24 +189,6 @@ internal enum class TraversalLimitationWireDocument {
     @SerialName("frontier_limit_reached") FRONTIER_LIMIT_REACHED,
     @SerialName("one_hop_incomplete") ONE_HOP_INCOMPLETE,
     @SerialName("no_progress") NO_PROGRESS,
-}
-
-@Serializable
-internal enum class TraversalRunRejectionWireDocument {
-    @SerialName("continuation_unavailable") CONTINUATION_UNAVAILABLE,
-    @SerialName("continuation_request_mismatch") CONTINUATION_REQUEST_MISMATCH,
-    @SerialName("workspace_not_ready") WORKSPACE_NOT_READY,
-    @SerialName("selector_wrong_kind") SELECTOR_WRONG_KIND,
-    @SerialName("selector_malformed") SELECTOR_MALFORMED,
-    @SerialName("selector_workspace_mismatch") SELECTOR_WORKSPACE_MISMATCH,
-    @SerialName("selector_stale") SELECTOR_STALE,
-    @SerialName("topology_build_required") TOPOLOGY_BUILD_REQUIRED,
-    @SerialName("plan_rejected") PLAN_REJECTED,
-    @SerialName("continuation_malformed") CONTINUATION_MALFORMED,
-    @SerialName("continuation_subject_mismatch") CONTINUATION_SUBJECT_MISMATCH,
-    @SerialName("continuation_relation_mismatch") CONTINUATION_RELATION_MISMATCH,
-    @SerialName("continuation_scope_mismatch") CONTINUATION_SCOPE_MISMATCH,
-    @SerialName("continuation_generation_mismatch") CONTINUATION_GENERATION_MISMATCH,
 }
 
 @Serializable

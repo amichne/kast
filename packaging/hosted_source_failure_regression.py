@@ -19,6 +19,7 @@ class SourceFailureCause(str, Enum):
     ANCHOR_TYPE_REQUIRED = 'anchor-type-required'
     WRONG_FAMILY = 'wrong-family'
     UNAVAILABLE = 'unavailable'
+    REVALIDATION_UNRETAINED = 'revalidation-unretained'
     STALE_AUTHORITY = 'stale-authority'
     CONTEXT_LEASE = 'context-lease'
     SNAPSHOT_CONTEXT = 'snapshot-context'
@@ -49,11 +50,11 @@ def admit_source_failure(value):
         return SourceFailureObservation(origin, SourceFailureCause.ANCHOR_TYPE_REQUIRED)
     if origin is SourceFailureOrigin.REFERENCE:
         reason = value.get('reason')
-        if value.get('role') != 'symbol' or reason not in ('wrong-family', 'unavailable', 'stale-authority'):
+        if value.get('role') != 'symbol' or reason not in ('wrong-family', 'unavailable', 'stale-authority', 'revalidation-unretained'):
             raise ValueError('SOURCE_FAILURE_EVIDENCE_REJECTED')
         return SourceFailureObservation(origin, SourceFailureCause(reason))
     obligation = SourceFailureCause(value.get('obligation'))
-    if obligation in (SourceFailureCause.ANCHOR_TYPE_REQUIRED, SourceFailureCause.WRONG_FAMILY, SourceFailureCause.UNAVAILABLE, SourceFailureCause.STALE_AUTHORITY):
+    if obligation in (SourceFailureCause.ANCHOR_TYPE_REQUIRED, SourceFailureCause.WRONG_FAMILY, SourceFailureCause.UNAVAILABLE, SourceFailureCause.STALE_AUTHORITY, SourceFailureCause.REVALIDATION_UNRETAINED):
         raise ValueError('SOURCE_FAILURE_EVIDENCE_REJECTED')
     return SourceFailureObservation(origin, obligation)
 
@@ -72,7 +73,7 @@ def run_source_failure_regression(replay):
         observations = []
         for case, token, expected in (
             (SourceFailureCase.WRONG_FAMILY, 'candidate:v4:' + 'a' * 64, SourceFailureCause.WRONG_FAMILY),
-            (SourceFailureCase.UNKNOWN_REFERENCE, 'exact:v4:' + 'a' * 64, SourceFailureCause.UNAVAILABLE),
+            (SourceFailureCase.UNKNOWN_REFERENCE, 'exact:v4:' + 'a' * 64, SourceFailureCause.REVALIDATION_UNRETAINED),
         ):
             checks[case.value], observation = _observe_source_failure(replay, case,
                 asdict(replace(selected, anchor=SymbolAnchor(token))), expected)

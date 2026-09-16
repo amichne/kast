@@ -38,6 +38,65 @@ sealed interface HostedReadRecovery {
         val remediation: HostedReadinessRemediation = HostedReadinessRemediation.WAIT_FOR_IDE_INDEXING
     }
 
+    @Serializable
+    @SerialName("reduce_read_work")
+    class ReduceReadWork private constructor() : HostedReadRecovery {
+        companion object {
+            val Required = ReduceReadWork()
+        }
+
+        @kotlinx.serialization.EncodeDefault
+        val instruction: String =
+            "The hosted read exhausted its time allowance before publishing a validated result. Narrow the file, directory, source-set or traversal scope. Inspect execution_budget for caller limits and host clamps before increasing max_elapsed_ms."
+    }
+
+    @Serializable
+    @SerialName("cancelled")
+    class Cancelled private constructor() : HostedReadRecovery {
+        companion object {
+            val Required = Cancelled()
+        }
+
+        @kotlinx.serialization.EncodeDefault
+        val instruction: String =
+            "The read was cancelled. Start a new read only if the result is still needed; cancellation does not prove budget exhaustion."
+    }
+
+    @Serializable
+    @SerialName("save_source")
+    class SaveSource private constructor() : HostedReadRecovery {
+        companion object {
+            val Required = SaveSource()
+        }
+
+        @kotlinx.serialization.EncodeDefault
+        val instruction: String =
+            "Save the affected documents and allow IDE document-to-PSI synchronization, then start a new read."
+    }
+
+    @Serializable
+    @SerialName("wait_for_capacity")
+    class WaitForCapacity private constructor() : HostedReadRecovery {
+        companion object {
+            val Required = WaitForCapacity()
+        }
+
+        @kotlinx.serialization.EncodeDefault
+        val instruction: String = "Allow the active read to finish before issuing another request to this host."
+    }
+
+    @Serializable
+    @SerialName("restart_read")
+    class RestartRead private constructor() : HostedReadRecovery {
+        companion object {
+            val Required = RestartRead()
+        }
+
+        @kotlinx.serialization.EncodeDefault
+        val instruction: String =
+            "The model or source changed during the read. Start a fresh read; a continuation from the old epoch cannot establish current evidence."
+    }
+
     @Serializable @SerialName("review_failure") data object ReviewFailure : HostedReadRecovery
 }
 
@@ -85,6 +144,15 @@ internal fun HostedQueryFailure.recovery(): HostedReadRecovery =
                     }
                 else -> HostedReadRecovery.ReviewFailure
             }
+        HostedQueryFailure.BUDGET_EXCEEDED -> HostedReadRecovery.ReduceReadWork.Required
+        HostedQueryFailure.CANCELLED -> HostedReadRecovery.Cancelled.Required
+        HostedQueryFailure.DIRTY_DOCUMENTS,
+        HostedQueryFailure.UNCOMMITTED_DOCUMENTS -> HostedReadRecovery.SaveSource.Required
+        HostedQueryFailure.BUSY -> HostedReadRecovery.WaitForCapacity.Required
+        HostedQueryFailure.STALE_REQUEST,
+        HostedQueryFailure.CONTENT_MOVED,
+        HostedQueryFailure.MODEL_MOVED,
+        HostedQueryFailure.READ_PREEMPTED -> HostedReadRecovery.RestartRead.Required
         HostedQueryFailure.INDEXING -> HostedReadRecovery.Indexing.Required
         else -> HostedReadRecovery.ReviewFailure
     }

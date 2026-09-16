@@ -45,8 +45,9 @@ class CanonicalQueryProtocol(
         budget: QueryBudget,
         checkpoint: QueryCheckpoint?,
     ): OperationOutcome<QueryRunResult, QueryRunQualification, QueryRunRejection> {
+        val admissionAuthority = admissionAuthority(request, lease, checkpoint)
         val syntax =
-            when (val admission = request.admitSyntax(lease, authority)) {
+            when (val admission = request.admitSyntax(lease, admissionAuthority)) {
                 is QuerySyntaxAdmission.Admitted -> admission.syntax
                 is QuerySyntaxAdmission.ReferenceRejected ->
                     return OperationOutcome.Rejected(
@@ -62,13 +63,18 @@ class CanonicalQueryProtocol(
                 is QueryPlanAdmission.Admitted -> admitted.plan
                 is QueryPlanAdmission.Rejected -> return OperationOutcome.Rejected(admitted.failure.protocolRejection())
             }
+        val resources =
+            when (val remaining = remainingResources(budget)) {
+                is Refinement.Refined -> remaining.value
+                is Refinement.Rejected -> return OperationOutcome.Rejected(remaining.failure)
+            }
         val execution =
             when (
                 val admitted =
                     QueryExecutionRequest.create(
                         plan = checkpoint?.plan ?: plan,
                         lease = lease,
-                        budget = budget,
+                        budget = if (resources == budget.resources) budget else budget.copy(resources = resources),
                         checkpoint = checkpoint,
                     )
             ) {
@@ -80,6 +86,41 @@ class CanonicalQueryProtocol(
             }
         return projectExecution(request, lease, operations.run(execution))
     }
+
+    private fun remainingResources(
+        budget: QueryBudget
+    ): Refinement<io.github.amichne.kast.kernel.ResourceBudget, QueryRunRejection> =
+        when (val remaining = authority.remainingReadBudget(budget.resources)) {
+            is Refinement.Refined -> remaining
+            is Refinement.Rejected ->
+                Refinement.Rejected(
+                    QueryRunRejection.ReferenceRejected(
+                        queryPosition(0),
+                        when (remaining.failure) {
+                            ReadReacquisitionBudgetFailure.WORK_LIMIT_REACHED ->
+                                QueryReferenceRejectionReason.REVALIDATION_WORK_LIMIT_REACHED
+                            ReadReacquisitionBudgetFailure.TIME_LIMIT_REACHED ->
+                                QueryReferenceRejectionReason.REVALIDATION_TIME_LIMIT_REACHED
+                        },
+                    )
+                )
+        }
+
+    private suspend fun admissionAuthority(
+        request: QueryRunRequest,
+        lease: SemanticReadAuthority,
+        checkpoint: QueryCheckpoint?,
+    ): QueryReferenceAuthority =
+        if (checkpoint == null && request.from is QueryFromDocument.References)
+            authority.admitReadReferences(
+                (request.from as QueryFromDocument.References)
+                    .values
+                    .values
+                    .filterIsInstance<QueryReferenceDocument.ExactSymbol>()
+                    .map { it.token },
+                lease,
+            )
+        else authority
 
     private fun projectExecution(
         request: QueryRunRequest,
@@ -135,6 +176,7 @@ class CanonicalQueryProtocol(
                 QueryRunResult(
                     items = boundedItems,
                     failures = boundedFailures,
+                    referenceAcquisitions = authority.readAcquisitions(),
                 ),
             )
         if (coverage == null) {

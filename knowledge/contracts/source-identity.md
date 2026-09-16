@@ -4,7 +4,7 @@ title: Source and workspace identity
 description: Semantic reads preserve published or live authority, constrained selectors, coordinates, and source content views without converting IDE stamps into publication identity.
 resource: file://source/contract
 tags: [source, identity, workspace, symbol]
-timestamp: 2026-09-13T00:00:00Z
+timestamp: 2026-09-16T00:00:00Z
 code_sources:
   - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/CompactSourceReadDocuments.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/SourceReadFormatProjection.kt
@@ -165,3 +165,9 @@ reports, wire serialization, CLI documents, and provider input rejection. See
 [source failures](source-failures.md) for the closed request, reference, and
 internal-obligation contract. Unknown handles do not prove expiry or foreign
 ownership.
+
+Fresh symbol-anchored source reads can reacquire a retained exact symbol in the
+same invocation and return `reference_acquisitions`. This is a new read of the
+current declaration, not restoration of the prior source snapshot. Source-anchor
+and continuation reads keep their original snapshot checks. See
+[automatic acquisition](../modules/query-protocol.md#automatic-acquisition-for-fresh-reads).

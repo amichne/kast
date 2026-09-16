@@ -4,8 +4,10 @@ title: Operation outcomes
 description: Semantic success is complete or explicitly qualified and carries either published or live evidence; rejection carries no successful payload.
 resource: file://kernel/src/main/kotlin/io/github/amichne/kast/kernel/OperationOutcome.kt
 tags: [outcome, evidence, failure]
-timestamp: 2026-09-14T00:00:00Z
+timestamp: 2026-09-16T00:00:00Z
 code_sources:
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReadRecoveryGuidance.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReadReferenceAcquisitions.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReadRecoveryAction.kt
   - path: kernel/src/main/kotlin/io/github/amichne/kast/kernel/OperationOutcome.kt
     symbols: [OperationOutcome]
@@ -50,6 +52,7 @@ than accepting a separate action as authority.
 | --- | --- |
 | `reacquire_authority` | Obtain fresh authority for a stale, foreign, malformed or otherwise unusable opaque reference; do not repair its text. |
 | `restart_read` | Start a new read without an unavailable continuation, under fresh admission. |
+| `adjust_budget_or_scope` | Inspect the reported work or time exhaustion and effective grant; narrow the request or increase a caller limit within its ceiling. |
 | `correct_request` | Correct unsupported controls or restore the original continuation-bound request; changed semantics require a new read. |
 | `wait_for_workspace` | Observe workspace readiness before a later request. |
 | `save_source` | Save source and allow IDE document-to-PSI synchronization before a later request. |
@@ -58,3 +61,16 @@ than accepting a separate action as authority.
 These directions grant no automatic retry, source write, workspace opening,
 import, or refresh capability. Qualified progress keeps its separate continuation
 actions; rejection recovery does not assert successful or complete output.
+
+Relation and traversal qualifications retain accumulated facts with explicit
+incomplete coverage. Their `recovery` list names the exhausted field and offers
+budget increases only when the reported effective limit is below the operator
+ceiling without a clamp. Otherwise it recommends reducing scope. Resumable
+qualifications direct the caller to the supplied continuation. Depth, frontier,
+indexing, omissions and provider failures have distinct guidance. None of this
+promises that a larger budget will establish completeness.
+
+Hosted hard deadline exhaustion cannot publish an unvalidated result. It returns
+`reduce_read_work` with the available admission budget; cancellation is separately
+identified and does not claim a timeout. A semantic provider that stops within
+its grant can return accumulated facts as qualified evidence.

@@ -26,6 +26,9 @@ data class CompactSourceReadDocument(
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     @SerialName("execution_budget")
     val executionBudget: ExecutionBudgetReport? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @kotlinx.serialization.SerialName("reference_acquisitions")
+    val referenceAcquisitions: io.github.amichne.kast.protocol.contract.ReadReferenceAcquisitions? = null,
 )
 
 @Serializable
@@ -243,6 +246,7 @@ private class SourceCompaction {
                 selections = table.keys.map(::CompactSourceSelectionEntry),
                 entities = rows,
                 executionBudget = executionBudget,
+                referenceAcquisitions = referenceAcquisitions,
             )
         }
 }
@@ -351,6 +355,7 @@ private class SourceExpansion(private val document: CompactSourceReadDocument) {
                 rows,
                 expandedText,
                 executionBudget,
+                referenceAcquisitions = referenceAcquisitions,
             )
         }
 }

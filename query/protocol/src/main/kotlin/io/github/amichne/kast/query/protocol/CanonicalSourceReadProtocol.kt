@@ -65,11 +65,18 @@ class CanonicalSourceReadProtocol(
         budget: SourceProtocolBudget,
     ): OperationOutcome<ProtocolSourceReadResult, SourceReadQualification, SourceReadCause> {
         val domainRequest =
-            when (val admitted = request.admit(authority, current, budget)) {
+            when (val admitted = request.admitFreshRead(authority, current, budget)) {
                 is SourceRequestAdmission.Admitted -> admitted.request
                 is SourceRequestAdmission.Rejected -> return OperationOutcome.Rejected(admitted.reason)
             }
-        return when (val result = operations.read(domainRequest)) {
+        return project(request, operations.read(domainRequest))
+    }
+
+    private fun project(
+        request: SourceReadRequest,
+        result: DomainSourceReadResult,
+    ): OperationOutcome<ProtocolSourceReadResult, SourceReadQualification, SourceReadCause> {
+        return when (result) {
             is DomainSourceReadResult.Rejected -> OperationOutcome.Rejected(result.reason.protocol())
             is DomainSourceReadResult.Complete ->
                 when (val projected = result.project(authority)) {
@@ -78,7 +85,10 @@ class CanonicalSourceReadProtocol(
                             EvidenceEnvelope(
                                 CanonicalOperation.SOURCE_READ.id,
                                 result.snapshot.lease.evidenceBasis(),
-                                projected.result.copy(format = request.format),
+                                projected.result.copy(
+                                    format = request.format,
+                                    referenceAcquisitions = authority.readAcquisitions(),
+                                ),
                             )
                         )
                     SourceResultProjection.Rejected -> contractViolation()
@@ -90,7 +100,10 @@ class CanonicalSourceReadProtocol(
                             EvidenceEnvelope(
                                 CanonicalOperation.SOURCE_READ.id,
                                 result.snapshot.lease.evidenceBasis(),
-                                projected.result.copy(format = request.format),
+                                projected.result.copy(
+                                    format = request.format,
+                                    referenceAcquisitions = authority.readAcquisitions(),
+                                ),
                             ),
                             projected.qualification,
                         )
