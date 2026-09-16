@@ -169,6 +169,14 @@ class LifecycleTest(unittest.TestCase):
         self.assertEqual('RECOVERY_REJECTED', result['failure'])
         self.assertEqual(original, json.loads(journal.read_text()))
         self.assertFalse(self.log.exists())
+    def test_hosted_installation_retires_coordinator_without_retired_workspace_stop(self):
+        self.manifest['schemaVersion'] = 2
+        self.manifest['hostedPluginSha256'] = 'sha256:' + 'b' * 64
+        (self.root / 'installation.json').write_text(json.dumps(self.manifest))
+        code, result = self.invoke('reset')
+        self.assertEqual(0, code, result)
+        self.assertEqual(['app-server disable'], self.log.read_text().splitlines())
+
     def test_failed_retirement_preserves_state(self):
         self.kast.write_text('#!/bin/sh\nexit 7\n')
         self.manifest['payloadFiles'] = self.inventory()
@@ -176,6 +184,7 @@ class LifecycleTest(unittest.TestCase):
         code, result = self.invoke('reset')
         self.assertNotEqual(0, code)
         self.assertEqual('RETIREMENT_UNPROVEN', result['failure'])
+        self.assertEqual({'stage': 'coordinator-retirement', 'outcome': 'exit-rejected'}, result['retirement'])
         self.assertEqual(self.epoch, json.loads((self.root / 'state/epoch.json').read_text()))
         self.assertTrue((self.root / '.lifecycle-transition.json').is_file())
         events = [json.loads(line) for line in self.last_stderr.splitlines()]

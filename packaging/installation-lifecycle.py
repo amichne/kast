@@ -33,9 +33,10 @@ class Failure(str, Enum):
     RECOVERY_REJECTED = 'RECOVERY_REJECTED'
 
 class Rejected(Exception):
-    def __init__(self, failure, limit=None):
+    def __init__(self, failure, limit=None, retirement=None):
         self.failure = failure
         self.limit = limit
+        self.retirement = retirement
 
 class ControlResource(str, Enum):
     TRAVERSED_ENTRIES = 'TRAVERSED_ENTRIES'
@@ -52,6 +53,7 @@ class ControlLimit:
 class LifecycleRejection:
     failure: Failure
     limit: Optional[ControlLimit] = None
+    retirement: Optional['RetirementRejection'] = None
     status: str = 'rejected'
 
 @dataclass(frozen=True)
@@ -63,6 +65,8 @@ class PayloadFile:
 class RetirementStage(str, Enum):
     COORDINATOR = 'coordinator-retirement'
     WORKSPACE = 'workspace-retirement'
+    ADMISSION = 'retirement-admission'
+    WORKER_RECEIPTS = 'worker-receipts'
 
 class RetirementOutcome(str, Enum):
     STARTED = 'started'
@@ -70,6 +74,18 @@ class RetirementOutcome(str, Enum):
     EXIT_REJECTED = 'exit-rejected'
     DEADLINE_EXCEEDED = 'deadline-exceeded'
     IO_REJECTED = 'io-rejected'
+    EXECUTABLE_UNAVAILABLE = 'executable-unavailable'
+    HOME_REJECTED = 'home-rejected'
+    TEMPORARY_DIRECTORY_REJECTED = 'temporary-directory-rejected'
+    OWNERSHIP_UNRESOLVED = 'ownership-unresolved'
+
+@dataclass(frozen=True)
+class RetirementRejection:
+    stage: RetirementStage
+    outcome: RetirementOutcome
+
+def retirement_unproven(stage, outcome):
+    return Rejected(Failure.RETIREMENT_UNPROVEN, retirement=RetirementRejection(stage, outcome))
 
 def observe_retirement(stage, outcome, root):
     event = {'component': 'kast-installation', 'stage': stage.value, 'outcome': outcome.value}
@@ -85,13 +101,13 @@ def retire_child(executable, arguments, root, environment, stage):
                                 check=False, timeout=RETIREMENT_CHILD_TIMEOUT_MILLIS / 1000)
     except subprocess.TimeoutExpired:
         observe_retirement(stage, RetirementOutcome.DEADLINE_EXCEEDED, root)
-        raise Rejected(Failure.RETIREMENT_UNPROVEN) from None
+        raise retirement_unproven(stage, RetirementOutcome.DEADLINE_EXCEEDED) from None
     except OSError:
         observe_retirement(stage, RetirementOutcome.IO_REJECTED, root)
-        raise Rejected(Failure.RETIREMENT_UNPROVEN) from None
+        raise retirement_unproven(stage, RetirementOutcome.IO_REJECTED) from None
     if result.returncode != 0:
         observe_retirement(stage, RetirementOutcome.EXIT_REJECTED, root)
-        raise Rejected(Failure.RETIREMENT_UNPROVEN)
+        raise retirement_unproven(stage, RetirementOutcome.EXIT_REJECTED)
     observe_retirement(stage, RetirementOutcome.COMPLETED, root)
 
 @dataclass(frozen=True)
@@ -337,7 +353,7 @@ def execute_read_only_recovery(installation, dry_run):
     installation.revalidate()
     worker_receipts = installation.root / 'state/workers'
     if worker_receipts.exists() and any(worker_receipts.iterdir()):
-        raise Rejected(Failure.RETIREMENT_UNPROVEN)
+        raise retirement_unproven(RetirementStage.WORKER_RECEIPTS, RetirementOutcome.OWNERSHIP_UNRESOLVED)
     observed = recovery_candidates(installation)
     if len(observed) != len(candidates):
         raise Rejected(Failure.RECOVERY_REJECTED)
@@ -490,16 +506,16 @@ def owned_upstream_directories(installation):
 def retire(installation, roots):
     executable = installation.root / 'bin/kast-complete'
     if executable.is_symlink() or not executable.is_file() or not os.access(executable, os.X_OK):
-        raise Rejected(Failure.RETIREMENT_UNPROVEN)
+        raise retirement_unproven(RetirementStage.ADMISSION, RetirementOutcome.EXECUTABLE_UNAVAILABLE)
     environment = {key: os.environ[key] for key in ('PATH', 'HOME', 'JAVA_HOME', 'CODEX_EXECUTABLE') if key in os.environ}
     # Java does not derive user.home from HOME. Preserve an admitted private home
     # across exact retirement children without forwarding arbitrary JVM options.
     home = environment.get('HOME')
     if home is None or not Path(home).is_absolute() or any(character in home for character in ('"', '\n', '\r', '\x00')):
-        raise Rejected(Failure.RETIREMENT_UNPROVEN)
+        raise retirement_unproven(RetirementStage.ADMISSION, RetirementOutcome.HOME_REJECTED)
     temporary = os.environ.get('TMPDIR', '/tmp')
     if not Path(temporary).is_absolute() or any(character in temporary for character in ('"', '\n', '\r', '\x00')):
-        raise Rejected(Failure.RETIREMENT_UNPROVEN)
+        raise retirement_unproven(RetirementStage.ADMISSION, RetirementOutcome.TEMPORARY_DIRECTORY_REJECTED)
     environment['TMPDIR'] = temporary
     environment['JAVA_TOOL_OPTIONS'] = f'-Duser.home="{home}" -Djava.io.tmpdir="{temporary}"'
     environment['KAST_CONFIGURATION_FILE'] = str(installation.root / 'config/environment')
@@ -511,8 +527,11 @@ def retire(installation, roots):
     # local opt-out. Retirement must reconstruct that exact possible owner, not disabled identity.
     coordinator_environment['KAST_ENABLE_APP_SERVER'] = '1'
     retire_child(executable, ['app-server', 'disable'], installation.root, coordinator_environment, RetirementStage.COORDINATOR)
-    for root in roots:
-        retire_child(executable, ['stop'], root, environment, RetirementStage.WORKSPACE)
+    # Hosted-only manifests own no isolated workspace process. IDEA remains user-owned;
+    # plugin activation requires the separate, explicit IDE restart after installation.
+    if installation.manifest['schemaVersion'] == 1:
+        for root in roots:
+            retire_child(executable, ['stop'], root, environment, RetirementStage.WORKSPACE)
 
 
 def delete_tree(path):
@@ -543,7 +562,7 @@ def execute(installation, operation, dry_run):
         raise Rejected(Failure.STATE_REJECTED)
     worker_receipts = installation.root / "state/workers"
     if worker_receipts.exists() and any(worker_receipts.iterdir()):
-        raise Rejected(Failure.RETIREMENT_UNPROVEN)
+        raise retirement_unproven(RetirementStage.WORKER_RECEIPTS, RetirementOutcome.OWNERSHIP_UNRESOLVED)
     if owned_aliases(installation) != aliases:
         raise Rejected(Failure.ANCHOR_OWNERSHIP_UNPROVEN)
     if owned_upstream_directories(installation) != upstream_directories:
@@ -703,7 +722,7 @@ def main():
         print(json.dumps(report, separators=(',', ':')))
         return 0
     except Rejected as rejected:
-        print(json.dumps(asdict(LifecycleRejection(rejected.failure, rejected.limit))))
+        print(json.dumps(asdict(LifecycleRejection(rejected.failure, rejected.limit, rejected.retirement))))
         return 1
     except (OSError, ValueError, TypeError, KeyError):
         print(json.dumps(asdict(LifecycleRejection(Failure.FILESYSTEM_REJECTED))))
