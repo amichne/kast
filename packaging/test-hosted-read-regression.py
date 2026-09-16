@@ -21,7 +21,7 @@ from hosted_transport_observation import TransportSummary, TransportWitnessFailu
 from hosted_read_fixture import ReadFixtureRejected, prepare_read_fixture
 from hosted_enum_read_regression import run_enum_read_regression
 from hosted_read_regression import (_ReadReplay, _read_observation, _reproduction,
-    ReadRegressionStage, regression_rejection)
+    ReadRegressionStage, regression_rejection, MAX_READ_RECEIPTS, ReadReceiptRejected, ReadReceiptFailure)
 from hosted_peer_probe import EndpointAdmissionRejected, EndpointAdmissionFailure
 from hosted_read_transport import (HostedReadTransport, ReadTransportRejected, _admit_cli_invocations,
     _admit_output_violation_evidence, _provider_result)
@@ -145,6 +145,29 @@ def enum_response(names):
 
 
 class HostedReadRegressionTest(unittest.TestCase):
+    def test_receipt_capacity_covers_both_surfaces_and_rejects_overflow_explicitly(self):
+        rows = []
+        for surface in ('cli', 'provider'):
+            replay = _ReadReplay(None, None, None, None, surface, rows)
+            for index in range(MAX_READ_RECEIPTS // 2):
+                replay.record('authored-case', 'source_read', {'proven': True})
+        self.assertEqual(MAX_READ_RECEIPTS, len(rows))
+        with self.assertRaises(ReadReceiptRejected) as caught:
+            replay.record('overflow', 'source_read', {'proven': True})
+        self.assertIs(ReadReceiptFailure.CAPACITY, caught.exception.failure)
+        self.assertEqual({'stage': 'semantic', 'cause': 'receipt_capacity_exceeded'},
+                         regression_rejection(ReadRegressionStage.SEMANTIC, caught.exception))
+        self.assertEqual(MAX_READ_RECEIPTS, len(rows))
+
+    def test_receipt_rejects_unproven_assertions_and_invalid_counts(self):
+        for checks, count, failure in (({'fact': 1}, 0, ReadReceiptFailure.ASSERTION),
+                                      ({'fact': True}, -1, ReadReceiptFailure.COUNT)):
+            replay = _ReadReplay(None, None, None, None, 'cli', [])
+            with self.assertRaises(ReadReceiptRejected) as caught:
+                replay.record('case', 'source_read', checks, count)
+            self.assertIs(failure, caught.exception.failure)
+            self.assertEqual([], replay.rows)
+
     def test_rejection_retains_stage_and_finite_cause_without_exception_payload(self):
         for error, expected in (
                 (ValueError('private payload'), 'value_rejected'),

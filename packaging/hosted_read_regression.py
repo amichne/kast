@@ -35,6 +35,21 @@ from hosted_diagnostic_pages_regression import (run_diagnostic_pages_regression,
 from hosted_source_read_regression import run_source_paging_regression, source_qualification_observation
 
 
+MAX_READ_RECEIPTS = 512  # Two surfaces, each bounded to 256 authored cases.
+
+
+class ReadReceiptFailure(str, Enum):
+    CAPACITY = 'receipt_capacity_exceeded'
+    ASSERTION = 'receipt_assertion_rejected'
+    COUNT = 'receipt_count_rejected'
+
+
+class ReadReceiptRejected(ValueError):
+    def __init__(self, failure):
+        self.failure = failure
+        super().__init__(failure.value)
+
+
 class ReadRegressionStage(str, Enum):
     FIXTURE = 'fixture'
     PROVIDER = 'provider'
@@ -55,11 +70,11 @@ class ReadRegressionFailure(str, Enum):
 @dataclass(frozen=True)
 class ReadRegressionRejection:
     stage: ReadRegressionStage
-    cause: ReadRegressionFailure | EndpointAdmissionFailure | HostedWireSchemaFailure
+    cause: ReadRegressionFailure | ReadReceiptFailure | EndpointAdmissionFailure | HostedWireSchemaFailure
 
 
 def regression_rejection(stage, error):
-    if isinstance(error, (EndpointAdmissionRejected, HostedWireSchemaRejected)):
+    if isinstance(error, (ReadReceiptRejected, EndpointAdmissionRejected, HostedWireSchemaRejected)):
         cause = error.failure
     else:
         cause = next(reason for kind, reason in (
@@ -295,9 +310,12 @@ class _ReadReplay:
         return {'complete': response.get('status') == 'complete', 'sameLiveAuthority': response.get('live') == self.live}
 
     def record(self, name, tool, checks, count=0, response=None):
-        if (len(self.rows) >= 256 or not all(type(value) is bool for value in checks.values())
-                or type(count) is not int or not 0 <= count <= 1000):
-            raise ValueError('READ_RECEIPT_REJECTED')
+        if len(self.rows) >= MAX_READ_RECEIPTS:
+            raise ReadReceiptRejected(ReadReceiptFailure.CAPACITY)
+        if not all(type(value) is bool for value in checks.values()):
+            raise ReadReceiptRejected(ReadReceiptFailure.ASSERTION)
+        if type(count) is not int or not 0 <= count <= 1000:
+            raise ReadReceiptRejected(ReadReceiptFailure.COUNT)
         self.rows.append({'case': name, 'tool': tool, 'surface': self.surface,
             'passed': all(value is True for value in checks.values()), 'assertions': checks, 'resultCount': count,
             'observation': _read_observation(response)})
