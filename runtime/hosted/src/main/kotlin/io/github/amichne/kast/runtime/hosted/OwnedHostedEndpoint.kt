@@ -1,6 +1,5 @@
 package io.github.amichne.kast.runtime.hosted
 
-import com.google.gson.Gson
 import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
@@ -18,6 +17,8 @@ import java.nio.file.StandardOpenOption
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.attribute.PosixFilePermissions
 import java.security.MessageDigest
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 
 /** One lock-held endpoint; retirement removes only the exact files created by this owner. */
 internal class OwnedHostedEndpoint
@@ -67,6 +68,7 @@ private constructor(
             host: IdeReadHostLifetime,
             observer: HostedEndpointObserver = HostedEndpointObserver { _, _ -> },
             limits: ReadLimits = ReadLimits.Default,
+            advertisement: HostedEndpointAdvertisement = HostedEndpointAdvertisement.SEMANTIC,
         ): Refinement<OwnedHostedEndpoint, HostedEndpointFailure> {
             val socket = directory.resolve("host.sock")
             val descriptor = directory.resolve("endpoint.json")
@@ -108,7 +110,10 @@ private constructor(
                     channel.close()
                     return Refinement.Rejected(HostedEndpointFailure.OWNERSHIP_CONFLICT)
                 }
-                if (HostedEndpointReclamation.prepare(directory, root, lock, observer) is Refinement.Rejected) {
+                if (
+                    HostedEndpointReclamation.prepare(directory, root, lock, observer, advertisement)
+                        is Refinement.Rejected
+                ) {
                     lock.release()
                     channel.close()
                     return Refinement.Rejected(HostedEndpointFailure.OWNERSHIP_CONFLICT)
@@ -130,17 +135,14 @@ private constructor(
                     try {
                         Files.writeString(
                             descriptor,
-                            Gson()
-                                .toJson(
-                                    mapOf(
-                                        "type" to "KAST_IDE_ENDPOINT",
-                                        "protocol" to HostedEndpointCapabilities.protocol,
-                                        "root" to root.value,
-                                        "socket" to socket.toString(),
-                                        "hostPid" to ProcessHandle.current().pid(),
-                                        "host" to host.value.toString(),
-                                        "querySchema" to HostedReadCapabilities.querySchema,
-                                        "operations" to HostedEndpointCapabilities.operations,
+                            Json { encodeDefaults = true }
+                                .encodeToString(
+                                    HostedEndpointDescriptorDocument.create(
+                                        root,
+                                        socket,
+                                        ProcessHandle.current().pid(),
+                                        host.value.toString(),
+                                        advertisement,
                                     )
                                 ),
                             StandardOpenOption.CREATE_NEW,
@@ -170,5 +172,48 @@ private constructor(
         private fun key(path: Path): Any =
             Files.readAttributes(path, BasicFileAttributes::class.java, NOFOLLOW_LINKS).fileKey()
                 ?: throw java.io.IOException("File identity unavailable")
+    }
+}
+
+internal enum class HostedEndpointAdvertisement {
+    SEMANTIC,
+    LIFECYCLE,
+}
+
+@Serializable
+internal data class HostedEndpointDescriptorDocument(
+    val type: String,
+    val protocol: Int,
+    val root: String,
+    val socket: String,
+    val hostPid: Long,
+    val host: String,
+    val querySchema: String,
+    val operations: List<String>,
+) {
+    companion object {
+        fun create(
+            root: CanonicalWorkspaceRoot,
+            socket: Path,
+            pid: Long,
+            host: String,
+            advertisement: HostedEndpointAdvertisement,
+        ) =
+            HostedEndpointDescriptorDocument(
+                "KAST_IDE_ENDPOINT",
+                HostedEndpointCapabilities.protocol,
+                root.value,
+                socket.toString(),
+                pid,
+                host,
+                when (advertisement) {
+                    HostedEndpointAdvertisement.SEMANTIC -> HostedReadCapabilities.querySchema
+                    HostedEndpointAdvertisement.LIFECYCLE -> "kast.workspace.lifecycle.v2"
+                },
+                when (advertisement) {
+                    HostedEndpointAdvertisement.SEMANTIC -> HostedEndpointCapabilities.operations
+                    HostedEndpointAdvertisement.LIFECYCLE -> listOf("WORKSPACE_LIFECYCLE")
+                },
+            )
     }
 }

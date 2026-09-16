@@ -24,6 +24,8 @@ internal sealed interface CodexProtocolContractFailure {
 
     data class ToolCallProjectionIncompatible(val schema: CodexOwnedSchema) : CodexProtocolContractFailure
 
+    data class ProjectCloseApprovalIncompatible(val schema: CodexOwnedSchema) : CodexProtocolContractFailure
+
     data class PlanApprovalIncompatible(val schema: CodexOwnedSchema) : CodexProtocolContractFailure
 }
 
@@ -54,6 +56,10 @@ private constructor(private val contracts: Map<CodexOwnedSchema, CompiledJsonSch
             }
             val initialize = compiled[CodexOwnedSchema.INITIALIZE_PARAMS]
             if (failures.isEmpty()) {
+                CodexProjectCloseApprovalProjection.qualificationWitnesses().forEach { (schema, witness) ->
+                    if (compiled.getValue(schema).admit(witness) !is Validation.Validated)
+                        failures += CodexProtocolContractFailure.ProjectCloseApprovalIncompatible(schema)
+                }
                 CodexPlanApprovalProjection.qualificationWitnesses().forEach { (schema, witness) ->
                     if (compiled.getValue(schema).admit(witness) !is Validation.Validated)
                         failures += CodexProtocolContractFailure.PlanApprovalIncompatible(schema)

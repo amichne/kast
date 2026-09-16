@@ -1,0 +1,67 @@
+---
+title: "Open and manage worktrees"
+description: "Explicit project lifecycle in the selected local IntelliJ application."
+---
+
+Use `kast workspace open /absolute/worktree` or the agent's `workspace_lifecycle`
+tool to open a separate project in the installer-selected IDEA. The compatible
+platform is `262.*`; an exact minor or patch version is not required.
+
+Opening first checks the selected live host. If absent, it launches that selected
+application without deliberate activation and requests no splash or restoration
+of unrelated projects. A running IDEA with an unavailable Kast plugin requires
+user resolution; Kast does not restart it or open a second process.
+
+Background opening is best effort. Ordinary IDEA project opening may cause
+transient focus changes. Kast imports in the background without activating the
+Build tool window on start or failure, or navigating automatically to errors.
+
+## Requests and identities
+
+The CLI accepts the same tagged request documents as the agent tool:
+
+```shell
+kast workspace lifecycle '{"type":"inspect"}'
+kast workspace lifecycle '{"type":"open","root":"/absolute/worktree","requestId":"open-worktree-1"}'
+```
+
+An asynchronous result contains `host`, `requestId` and `stage`. Use `status` with the
+host returned by the pending result and that request ID. Preserve returned `target`
+objects exactly: they contain the host incarnation, project incarnation and root.
+A reopened root is a different target. Keep a request ID stable when retrying the
+same operation; different input with that ID rejects.
+
+| Action | Required input and behavior |
+| --- | --- |
+| `inspect` | No additional fields. Passive host, capabilities, projects and ownership. |
+| `open` | `root`, `requestId`. Reuses without activation or reimport; otherwise links, imports and waits for semantic admission. |
+| `present` | `target`, `requestId`. Reveals the existing window and protects it from cleanup. |
+| `sync` | `target`, `requestId`, `effect`: `FILE_REFRESH` or `GRADLE_MODEL_RELOAD`. Uses the existing refresh owner. |
+| `release` | `target`, `requestId`. Removes this caller's interest without closing. |
+| `close` | `target`, `requestId`. Closes only an eligible managed project with no other clients. |
+| `request_user_close` | `target`, `requestId`. Agent broker requests exact-target user approval for a borrowed/presented project. Direct CLI requests have no approval authority. |
+| `status` | `host`, `requestId`. Retained progress or terminal result, including after closure. |
+
+Agent use is attributed to its coordinator thread. Terminal `workspace open`
+accepts `--client` for a stable caller identity; control requests also accept `--client`. Both use the `cli` identity by default. Release the same caller's interest when done.
+
+## Resolve blockers
+
+| Blocker | Next action |
+| --- | --- |
+| `TRUST_REQUIRED` | Review and trust the exact project in IDEA, then submit a new open request. |
+| `UNSAVED_DOCUMENTS` | Resolve unsaved documents across the application yourself; native refresh and close can save all documents, so Kast blocks them. |
+| `LAUNCH_METADATA_UNAVAILABLE` / `LAUNCH_METADATA_INVALID` / `LAUNCHER_MISSING` / `LAUNCHER_AMBIGUOUS` / `LAUNCHER_INVALID` / `LAUNCH_EXECUTABLE_UNAVAILABLE` | Repair or reselect the IDEA installation. An already-running compatible host remains attachable without launch metadata. |
+| `PLUGIN_UNAVAILABLE` | Load the installed plugin using IDEA's normal restart flow. Kast never restarts the application. |
+| `PROJECT_BUSY` | Let native work finish; inspect the existing operation before requesting new work. |
+| `OTHER_CLIENTS` | Other active callers must release their project use. Approval does not override shared use. |
+| `USER_AUTHORIZATION_REQUIRED` | Use the agent's `request_user_close` flow for the exact target. Session-wide approval is insufficient. |
+| `IMPORT_FAILED` / `UNLINKED_BUILD` | Inspect IDEA's native Gradle errors/settings, correct the cause, and request sync explicitly. |
+| `CLOSE_VETOED` | Resolve the native close veto; the project remains available. |
+| `WRONG_HOST` / `STALE_PROJECT` | Inspect again and acquire the current target; do not reuse an old incarnation. |
+| `CAPACITY` | The application has reached its bounded operation capacity; no new work was admitted. |
+
+Closing uses IDEA's normal veto-respecting path. Kast never saves or discards
+buffers to make it succeed, force-closes a project, kills IDEA, or stops shared
+Gradle daemons. Closing the last project leaves application control available.
+Semantic reads remain passive and use the existing project-scoped compiler state.

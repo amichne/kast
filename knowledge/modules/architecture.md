@@ -4,8 +4,9 @@ title: Verified module architecture
 description: Gradle verifies module roles, dependencies, exports, and scoped agent guidance before projecting module knowledge.
 resource: file://settings.gradle.kts
 tags: [kotlin, gradle, architecture]
-timestamp: 2026-09-12T00:00:00Z
+timestamp: 2026-09-16T00:00:00Z
 code_sources:
+  - path: build-logic/src/main/kotlin/support/architecture/policy/HostedWorkspaceRefreshAuthority.kt
   - path: docs/reviews/live-semantic-read-acceptance.md
   - path: build-logic/src/main/kotlin/kast.kotlin-library.gradle.kts
   - path: build-logic/src/main/kotlin/kast.kotlin-quality.gradle.kts
@@ -50,7 +51,7 @@ The IntelliJ read adapter also depends on symbol contracts for the existing-IDE
 without introducing an isolated workspace opener or importing implementation
 dependencies from semantic service modules.
 
-`runtime:hosted` is the sole active semantic host. Its declared dependencies include the semantic contracts, services, read adapters and controlled change adapters used by the plugin. The former composition, server, telemetry, indexer and workspace importer/coordinator remain explicit retired policy entries with no dependencies or effects. No active module can acquire a retired owner through its production dependency graph. Project opening and Gradle import have no permitted owner. The four topology modules and `evidence:topology-sqlite` remain active and buildable for upcoming graph work, outside the plugin, CLI and coordinator dependency graphs. Topology build, bounded source-root synchronization and snapshot publication retain their exclusive owners in these modules.
+`runtime:hosted` is the sole active semantic host. Its declared dependencies include the semantic contracts, services, read adapters and controlled change adapters used by the plugin. The former composition, server, telemetry, indexer and workspace importer/coordinator remain explicit retired policy entries with no dependencies or effects. No active module can acquire a retired owner through its production dependency graph. Explicit application lifecycle opening and the project refresh adapter have narrowly scoped native effect owners. The four topology modules and `evidence:topology-sqlite` remain active and buildable for upcoming graph work, outside the plugin, CLI and coordinator dependency graphs. Topology build, bounded source-root synchronization and snapshot publication retain their exclusive owners in these modules.
 
 `change:protocol` similarly owns planning-request lowering and detached previews.
 It depends only on `kernel`, `protocol:contract`, and `change:contract`; the
@@ -96,4 +97,6 @@ The [installed knowledge contract](../contracts/installed-knowledge.md) describe
 `kast knowledge`, its isolated PSI extraction, verified module ownership and
 scoped guide resources staged with the control product.
 
-The explicit hosted workspace refresh adapter is the sole scoped caller permitted to perform native Gradle model reload and recursive VFS refresh. These capabilities are not granted to `workspace:intellij-read` or the general hosted runtime. Architecture regression tests retain rejection of passive-read callers and of unrelated lifecycle authority such as project opening/linking and cache/index rebuilding.
+The explicit hosted workspace refresh adapter is the sole scoped caller permitted to perform native Gradle model reload and recursive VFS refresh. These capabilities are not granted to `workspace:intellij-read` or the general hosted runtime. Architecture regression tests retain rejection of passive-read callers and of unapproved native import entry points and cache/index rebuilding.
+
+The native lifecycle adapter alone has scoped project-manager authority. The existing refresh adapter alone can create initial Gradle link settings and call the narrow native link-plus-refresh seam; its shared spec builder has only the exact quiet import-spec methods. Approval-key reads are confined to the exact lifecycle verification owner. Passive workspace reads retain no project-open, link, import, or lifecycle-control authority.

@@ -68,6 +68,63 @@ internal fun interface HostedEndpointObserver {
 /** Project-owned carrier composing passive reads and an explicitly requested workspace lifecycle. */
 @Service(Service.Level.PROJECT)
 class HostedEndpointService(private val project: Project, private val scope: CoroutineScope) : Disposable {
+    private enum class EndpointRetirement {
+        LIVE,
+        RETIRED,
+    }
+
+    private val endpointRetirement = java.util.concurrent.atomic.AtomicReference(EndpointRetirement.LIVE)
+
+    internal fun lifecycleEndpointRetired(): Boolean = endpointRetirement.get() == EndpointRetirement.RETIRED
+
+    internal val lifecycleAdmission = io.github.amichne.kast.runtime.hosted.lifecycle.HostedProjectAdmission()
+
+    private sealed interface RefreshOwner {
+        data object Starting : RefreshOwner
+
+        data class Available(val value: io.github.amichne.kast.runtime.hosted.workspace.HostedWorkspaceRefresh) :
+            RefreshOwner
+
+        data object Retired : RefreshOwner
+    }
+
+    private val refreshOwner = java.util.concurrent.atomic.AtomicReference<RefreshOwner>(RefreshOwner.Starting)
+
+    internal fun lifecycleInitialImport(
+        requestId: String
+    ): io.github.amichne.kast.protocol.contract.WorkspaceRefreshResult =
+        when (val owner = refreshOwner.get()) {
+            is RefreshOwner.Available -> owner.value.initialImport(requestId)
+            else ->
+                io.github.amichne.kast.protocol.contract.WorkspaceRefreshResult.Rejected(
+                    io.github.amichne.kast.protocol.contract.WorkspaceRefreshFailure.ADMISSION_REJECTED
+                )
+        }
+
+    internal fun lifecycleHasWork(): Boolean =
+        when (val owner = refreshOwner.get()) {
+            RefreshOwner.Starting -> true
+            RefreshOwner.Retired -> false
+            is RefreshOwner.Available -> owner.value.hasWork()
+        }
+
+    internal fun lifecycleRefreshReady(): Boolean = refreshOwner.get() is RefreshOwner.Available
+
+    internal fun lifecycleRefresh(
+        command: io.github.amichne.kast.protocol.contract.WorkspaceRefreshCommand
+    ): io.github.amichne.kast.protocol.contract.WorkspaceRefreshResult =
+        when (val owner = refreshOwner.get()) {
+            RefreshOwner.Starting ->
+                io.github.amichne.kast.protocol.contract.WorkspaceRefreshResult.Rejected(
+                    io.github.amichne.kast.protocol.contract.WorkspaceRefreshFailure.ADMISSION_REJECTED
+                )
+            RefreshOwner.Retired ->
+                io.github.amichne.kast.protocol.contract.WorkspaceRefreshResult.Rejected(
+                    io.github.amichne.kast.protocol.contract.WorkspaceRefreshFailure.DISPOSED
+                )
+            is RefreshOwner.Available -> owner.value.execute(command).result
+        }
+
     private val query = project.getService(HostedQueryService::class.java)
     private val changes = HostedChangeCoordinator(project, query)
     private val observer =
@@ -138,22 +195,31 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
                 }
             val refresh =
                 io.github.amichne.kast.runtime.hosted.workspace.HostedWorkspaceRefresh(project, root, query, scope)
+            refreshOwner.set(RefreshOwner.Available(refresh))
             observer.observe(HostedEndpointStage.BIND, HostedEndpointOutcome.COMPLETED)
             try {
                 serveHostedListener(owner.server, observer, limits) { request ->
-                    dispatch(root, request, continuations, limits, refresh)
+                    if (!lifecycleAdmission.enter()) HostedResponse.Rejected(HostedEndpointFailure.PLATFORM_UNAVAILABLE)
+                    else
+                        try {
+                            dispatch(root, request, continuations, limits, refresh)
+                        } finally {
+                            lifecycleAdmission.leave()
+                        }
                 }
             } finally {
                 withContext(NonCancellable) {
                     observer.observe(HostedEndpointStage.RETIREMENT, HostedEndpointOutcome.STARTED)
                     try {
                         try {
+                            refreshOwner.set(RefreshOwner.Retired)
                             refresh.dispose()
                             changes.close()
                             query.detach()
                         } finally {
                             continuations.retire()
                             owner.close()
+                            endpointRetirement.set(EndpointRetirement.RETIRED)
                         }
                         observer.observe(HostedEndpointStage.RETIREMENT, HostedEndpointOutcome.COMPLETED)
                     } catch (_: java.io.IOException) {

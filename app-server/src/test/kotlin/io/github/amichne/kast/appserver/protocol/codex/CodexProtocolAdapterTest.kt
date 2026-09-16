@@ -1618,28 +1618,7 @@ class CodexProtocolAdapterTest {
 
     private fun protocolContractsWithoutAgentMessages(): CodexProtocolContracts {
         val objectSchema = Json.parseToJsonElement("""{"type":"object"}""").jsonObject
-        val completedSchema =
-            Json.parseToJsonElement(
-                    """
-                    {
-                      "type": "object",
-                      "required": ["threadId", "turnId", "item"],
-                      "properties": {
-                        "threadId": {"type": "string"},
-                        "turnId": {"type": "string"},
-                        "item": {
-                          "type": "object",
-                          "required": ["type"],
-                          "properties": {
-                            "type": {"enum": ["dynamicToolCall", "mcpToolCall", "fileChange"]}
-                          }
-                        }
-                      }
-                    }
-                    """
-                        .trimIndent()
-                )
-                .jsonObject
+        val completedSchema = completedWithoutAgentMessagesSchema()
         return CodexProtocolContracts.define(
                 CodexOwnedSchema.entries.associateWith { schema ->
                     if (schema == CodexOwnedSchema.ITEM_COMPLETED_NOTIFICATION) completedSchema else objectSchema

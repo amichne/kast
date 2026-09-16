@@ -58,11 +58,14 @@ assert document["cliProjection"]["commands"], document
 assert document["cliProjection"]["localCommands"] == [
     "knowledge <query-or-resource>",
     "codex", "codex desktop",
+    "workspace open <root> [--request-id <id>] [--client <id>]",
+    "workspace lifecycle <document>",
 ], document["cliProjection"]["localCommands"]
 projection = document["serverProjection"]
 bootstrap = projection["hostedBootstrap"]
 invocations = projection["cliInvocations"]["operations"]
 expected_tools = [
+    "workspace_lifecycle",
     "search_classes",
     "search_functions",
     "search_declarations",
@@ -87,7 +90,7 @@ assert all("invocation" not in tool and "cliUsage" not in tool for tool in boots
 PY
 
 help="$(env "${command_environment[@]}" "$kast" --help)"
-for command in tool symbol source relation traversal diagnostic change knowledge codex; do
+for command in tool symbol source relation traversal diagnostic change knowledge codex workspace; do
   grep -Eq "^  ${command}[[:space:]]" <<<"$help" || fail "missing command: $command"
 done
 for command in start stop topology index ide app-server; do

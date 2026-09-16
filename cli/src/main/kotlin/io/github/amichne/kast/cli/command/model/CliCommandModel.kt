@@ -26,6 +26,8 @@ enum class CliProductCommand(
     val usage: String,
     val exposure: CliLocalExposure = CliLocalExposure.INTERNAL,
 ) {
+    WORKSPACE_OPEN("workspace open <root> [--request-id <id>] [--client <id>]", CliLocalExposure.PUBLIC),
+    WORKSPACE_LIFECYCLE("workspace lifecycle <document>", CliLocalExposure.PUBLIC),
     APP_SERVER_REGISTER("app-server register"),
     APP_SERVER_ENABLE("app-server enable"),
     APP_SERVER_REPAIR("app-server repair --destructive"),
@@ -80,6 +82,10 @@ sealed interface CliAction {
         data object CodexCli : Local
 
         data object CodexDesktop : Local
+
+        data class WorkspaceLifecycle(
+            val action: io.github.amichne.kast.cli.command.workspace.WorkspaceLifecycleAction
+        ) : Local
 
         data object TrustBroker : Local
 

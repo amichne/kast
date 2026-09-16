@@ -129,6 +129,7 @@ canonical_idea_home() {
   [[ -d "$candidate" ]] || return 1
   physical="$(CDPATH='' cd -- "$candidate" && pwd -P)" || return 1
   [[ -f "$physical/Resources/build.txt" ]] || return 1
+  [[ "$(cat "$physical/Resources/build.txt")" =~ ^(IU-|IC-)?262\. ]] || return 1
   [[ -d "$physical/plugins/Kotlin" ]] || return 1
   [[ -x "$physical/jbr/Contents/Home/bin/java" ]] || return 1
   release="$physical/jbr/Contents/Home/release"
@@ -494,7 +495,21 @@ if [[ -n "$idea_home" ]]; then
   idea_home="$(canonical_idea_home "$idea_home" || true)"
   [[ -n "$idea_home" ]] || fail "IDEA home is incompatible"
 else
-  idea_home="$(discover_idea_home)"
+  # Reuse the prior literal selector; never execute saved configuration as shell.
+  selected_configuration="$install_root/current/config/environment"
+  if [[ -f "$selected_configuration" ]]; then
+    idea_home="$(python3 - "$selected_configuration" <<'PYTHON'
+from pathlib import Path
+import sys
+lines = Path(sys.argv[1]).read_text().splitlines()
+values = [line.partition("=")[2] for line in lines if line.startswith("KAST_INSTALL_IDEA_HOME=")]
+if len(values) == 1:
+    print(values[0])
+PYTHON
+)"
+    idea_home="$(canonical_idea_home "$idea_home" || true)"
+  fi
+  [[ -n "$idea_home" ]] || idea_home="$(discover_idea_home)"
 fi
 java_home="$idea_home/jbr/Contents/Home"
 IFS=$'\t' read -r idea_version idea_build idea_data_directory < <(read_idea_identity "$idea_home")

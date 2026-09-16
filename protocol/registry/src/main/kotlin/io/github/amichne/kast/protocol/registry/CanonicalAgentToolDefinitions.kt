@@ -52,6 +52,7 @@ value class AgentToolInputName private constructor(val value: String) {
 enum class HostedApprovalPolicy {
     NONE,
     EXPLICIT,
+    EXACT_PROJECT_CLOSE,
 }
 
 /** Canonical initial-availability policy retained by every hosted projection. */
@@ -93,6 +94,18 @@ value class AgentToolPolicy private constructor(val text: String) {
 
 /** Sole canonical hosted-agent metadata and policy authority. */
 object CanonicalAgentToolDefinitions {
+    val workspaceLifecycle =
+        tool(
+            CanonicalOperationDefinitions.workspaceLifecycle,
+            "workspace_lifecycle",
+            "Explicitly inspect, open, present, sync, release or close an exact local IDEA project, or inspect an " +
+                "operation. Opening is background best effort. Preserve returned host and project identities. " +
+                "Pending " +
+                "work requires status, not repeated open or sync. Unsaved documents and trust require user " +
+                "resolution. Release never closes a project. Borrowed or presented projects are protected from agent " +
+                "cleanup; request_user_close requests exact-target controller approval.",
+            approval = HostedApprovalPolicy.EXACT_PROJECT_CLOSE,
+        )
     val query = facade(PublicToolIdentity.QUERY_SYMBOLS)
     val searchClasses = facade(PublicToolIdentity.SEARCH_CLASSES)
     val searchFunctions = facade(PublicToolIdentity.SEARCH_FUNCTIONS)
@@ -166,6 +179,7 @@ object CanonicalAgentToolDefinitions {
 
     val all: List<AgentToolDefinition> =
         listOf(
+            workspaceLifecycle,
             searchClasses,
             searchFunctions,
             searchDeclarations,

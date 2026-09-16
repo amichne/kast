@@ -34,6 +34,7 @@ internal constructor(
     private val brokerServerRunner: BrokerServerRunner = UnavailableBrokerServerRunner,
     private val codexClientLauncher: CodexClientLauncher = UnavailableCodexClientLauncher,
     private val knowledgeReader: KnowledgeReader = DiscoveringInstalledKnowledgeReader,
+    private val lifecycleClient: io.github.amichne.kast.cli.ide.IdeLifecycleClient? = null,
     private val existingIdeClient: io.github.amichne.kast.cli.ide.ExistingIdeClient =
         io.github.amichne.kast.cli.ide.ExistingIdeClient { _, _ ->
             io.github.amichne.kast.cli.ide.ExistingIdeExchange.Rejected(
@@ -128,6 +129,7 @@ internal constructor(
                 }
             CliAction.Local.CodexCli -> launchCodex(codexClientLauncher, CodexClientLaunch.Cli)
             CliAction.Local.CodexDesktop -> launchCodex(codexClientLauncher, CodexClientLaunch.Desktop)
+            is CliAction.Local.WorkspaceLifecycle -> executeLifecycle(action.action)
             CliAction.Local.TrustBroker -> boundaryExit(CliBoundaryExitStatus.RUNTIME, "ide-trust-unavailable")
             is CliAction.Local.ExistingIde ->
                 io.github.amichne.kast.cli.ide.executeExistingIdeAction(action, start, rootDiscovery, existingIdeClient)
@@ -145,6 +147,30 @@ internal constructor(
                         )
                 }
         }
+
+    private fun executeLifecycle(
+        action: io.github.amichne.kast.cli.command.workspace.WorkspaceLifecycleAction
+    ): CliExit {
+
+        val result =
+            when (val control = action) {
+                is io.github.amichne.kast.cli.command.workspace.WorkspaceLifecycleAction.ApprovedClose ->
+                    lifecycleClient?.approvedClose(control.invocation, control.client)
+                is io.github.amichne.kast.cli.command.workspace.WorkspaceLifecycleAction.Open ->
+                    lifecycleClient?.open(control.root, control.requestId, control.client)
+                is io.github.amichne.kast.cli.command.workspace.WorkspaceLifecycleAction.Control ->
+                    lifecycleClient?.execute(control.command, control.client)
+            }
+                ?: io.github.amichne.kast.protocol.contract.IdeLifecycleResult.Blocked(
+                    io.github.amichne.kast.protocol.contract.IdeLifecycleFailure.SELECTED_IDE_UNAVAILABLE
+                )
+        val document =
+            CliJsonDocument.generated(io.github.amichne.kast.protocol.contract.IdeLifecycleResult.serializer())
+                .create(result)
+        return if (result is io.github.amichne.kast.protocol.contract.IdeLifecycleResult.Blocked)
+            CliExit.BoundaryRejected(CliBoundaryExitStatus.RUNTIME, document)
+        else CliExit.Complete(document)
+    }
 
     private fun projectionFailure(failure: CliProjectionFailure): CliExit =
         when (failure) {

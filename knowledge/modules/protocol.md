@@ -4,8 +4,9 @@ title: Protocol
 description: Canonical operation contracts are completed by an exact registry and projected into generated wire documents.
 resource: file://protocol
 tags: [kotlin, protocol, serialization]
-timestamp: 2026-09-14T00:00:00Z
+timestamp: 2026-09-16T00:00:00Z
 code_sources:
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/IdeLifecycleDocuments.kt
   - path: cli/src/test/kotlin/io/github/amichne/kast/cli/HostedFailureBudgetSchemaTest.kt
   - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointEncodingFixtureTest.kt
   - path: workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedFailureEncodingFixtureTest.kt
@@ -118,3 +119,5 @@ Hosted endpoint and hosted read rejection projections preserve an optional execu
 Hosted configuration rejections retain three closed detail shapes: an unknown parameter cause, an invalid-value cause with its parameter, or inconsistent bounds with their inner and outer parameters. The packaged schema binds parameter identities to the exact `ReadLimitParameter.environmentKey` set. Configuration details cannot appear under an unrelated failure code. Checked-in typed fixture documents are byte-compared with actual workspace and endpoint encoders, then validated against packaged and installed schemas; unknown causes, missing/null fields, unknown parameter keys and extra fields reject. Each producing test declares those shared fixture bytes as an input, so changes invalidate its cached result.
 
 Symbol inspection preserves native failure, genuine index unavailability and unsupported declaration as distinct finite wire rejections. Hosted `AddDeclaration` planning failures retain all finite relation, traversal and diagnostic limitations in the hosted endpoint detail. The separate workspace-refresh control schema preserves typed lifecycle outcomes without adding a canonical semantic operation.
+
+The canonical `workspace.lifecycle.v2` operation has one tagged request family and closed application lifecycle outcomes. Its `workspace_lifecycle` agent projection uses the explicit local control route rather than a semantic endpoint. Blocked lifecycle outcomes retain their finite reasons in the rejected process envelope through the separate `IdeLifecycleRejection` serializer; completed and pending outcomes retain their distinct discriminants.

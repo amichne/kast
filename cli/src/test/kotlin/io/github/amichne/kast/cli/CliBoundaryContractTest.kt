@@ -82,6 +82,7 @@ class CliBoundaryContractTest {
         assertEquals(
             io.github.amichne.kast.protocol.registry.HostedOperationProjection.publicDefinitions
                 .map { it.operation }
+                .filterNot { it == CanonicalOperation.WORKSPACE_LIFECYCLE }
                 .toSet(),
             commands.map { it.operation }.toSet(),
         )

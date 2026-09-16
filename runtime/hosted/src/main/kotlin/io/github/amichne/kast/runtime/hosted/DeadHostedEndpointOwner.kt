@@ -1,6 +1,6 @@
 package io.github.amichne.kast.runtime.hosted
 
-import com.google.gson.Gson
+import com.google.gson.JsonParser
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import java.nio.ByteBuffer
@@ -9,6 +9,7 @@ import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption.READ
 import java.util.UUID
+import kotlinx.serialization.json.Json
 
 /** A descriptor proves only an absent PID. A live or reused PID is always a conflict. */
 internal class DeadHostedEndpointOwner private constructor(private val pid: Long) {
@@ -19,6 +20,7 @@ internal class DeadHostedEndpointOwner private constructor(private val pid: Long
             path: Path,
             root: CanonicalWorkspaceRoot,
             socket: Path,
+            advertisement: HostedEndpointAdvertisement = HostedEndpointAdvertisement.SEMANTIC,
         ): Refinement<DeadHostedEndpointOwner, HostedEndpointFailure> {
             return try {
                 val raw =
@@ -36,19 +38,12 @@ internal class DeadHostedEndpointOwner private constructor(private val pid: Long
                 val host = descriptor.get("host").asString
                 if (UUID.fromString(host).toString() != host) return rejected()
                 val expected =
-                    Gson()
-                        .toJsonTree(
-                            mapOf(
-                                "type" to "KAST_IDE_ENDPOINT",
-                                "protocol" to HostedEndpointCapabilities.protocol,
-                                "root" to root.value,
-                                "socket" to socket.toString(),
-                                "hostPid" to pid,
-                                "host" to host,
-                                "querySchema" to HostedReadCapabilities.querySchema,
-                                "operations" to HostedEndpointCapabilities.operations,
+                    JsonParser.parseString(
+                        Json { encodeDefaults = true }
+                            .encodeToString(
+                                HostedEndpointDescriptorDocument.create(root, socket, pid, host, advertisement)
                             )
-                        )
+                    )
                 if (descriptor != expected) return rejected()
                 Refinement.Refined(DeadHostedEndpointOwner(pid))
             } catch (_: java.io.IOException) {

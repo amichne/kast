@@ -410,10 +410,15 @@ internal object KastCleanSlateModules {
                 ForbiddenEffect.PHYSICAL_SOURCE_READ to setOf(
                     JvmClassName("io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint\$Companion"),
                     JvmClassName("io/github/amichne/kast/runtime/hosted/HostedChangeApprovalsKt"),
+                    JvmClassName("io/github/amichne/kast/runtime/hosted/lifecycle/ProjectCloseAuthorityKt"),
                     JvmClassName("io/github/amichne/kast/runtime/hosted/DeadHostedEndpointOwner\$Companion"),
                 ),
                 ForbiddenEffect.SOURCE_CONTENT_HASH to setOf(JvmClassName("io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint\$Companion")),
-                ForbiddenEffect.GRADLE_IMPORT to setOf(HostedWorkspaceRefreshAuthority.owner),
+                ForbiddenEffect.GRADLE_IMPORT to setOf(HostedWorkspaceRefreshAuthority.owner, HostedWorkspaceRefreshAuthority.specOwner),
+                ForbiddenEffect.PROJECT_OPEN to setOf(
+                    JvmClassName("io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleNative"),
+                    JvmClassName("io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleNative\$close\$result\$1"),
+                ),
                 ForbiddenEffect.RECURSIVE_VFS_REFRESH to setOf(HostedWorkspaceRefreshAuthority.owner),
             ),
         ),

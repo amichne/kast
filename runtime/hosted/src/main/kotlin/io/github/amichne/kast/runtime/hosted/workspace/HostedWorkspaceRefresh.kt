@@ -27,6 +27,18 @@ internal class HostedWorkspaceRefresh(
     private val service = WorkspaceRefreshService(port)
     private val triggers = WorkspaceRefreshTaskTrigger(project, root, scope) { command -> execute(command) }
 
+    fun initialImport(requestId: String): WorkspaceRefreshResult =
+        when (val prepared = port.prepareInitialLink()) {
+            is Refinement.Rejected -> WorkspaceRefreshResult.Rejected(prepared.failure)
+            is Refinement.Refined ->
+                admittedRequest(
+                    WorkspaceRefreshCommand.Request(
+                        requestId,
+                        io.github.amichne.kast.protocol.contract.WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD,
+                    )
+                )
+        }
+
     fun execute(command: WorkspaceRefreshCommand): WorkspaceRefreshResponse {
         val result =
             when (command) {
@@ -47,11 +59,18 @@ internal class HostedWorkspaceRefresh(
             is Refinement.Refined -> triggers.configure(rule)
         }
 
-    private fun admittedRequest(command: WorkspaceRefreshCommand.Request): WorkspaceRefreshResult =
-        when (val admission = port.admission()) {
+    private fun admittedRequest(command: WorkspaceRefreshCommand.Request): WorkspaceRefreshResult {
+        val id =
+            when (val parsed = WorkspaceRefreshRequestId.parse(command.requestId)) {
+                is Refinement.Rejected -> return WorkspaceRefreshResult.Rejected(PublicFailure.INVALID_REQUEST)
+                is Refinement.Refined -> parsed.value
+            }
+        if (service.contains(id)) return withId(command.requestId) { service.submit(it, command.effect) }
+        return when (val admission = port.admission()) {
             is Refinement.Rejected -> WorkspaceRefreshResult.Rejected(admission.failure)
             is Refinement.Refined -> withId(command.requestId) { service.submit(it, command.effect) }
         }
+    }
 
     private fun withId(
         raw: String,
@@ -75,6 +94,9 @@ internal class HostedWorkspaceRefresh(
                         WorkspaceRefreshResult.Failed(
                             raw,
                             when (status.reason) {
+                                WorkspaceRefreshFailure.BUSY -> PublicFailure.NEWER_CHANGE
+                                WorkspaceRefreshFailure.UNSAVED_DOCUMENTS -> PublicFailure.UNSAVED_DOCUMENTS
+                                WorkspaceRefreshFailure.UNLINKED_BUILD -> PublicFailure.UNLINKED_BUILD
                                 WorkspaceRefreshFailure.EFFECT_FAILED -> PublicFailure.EFFECT_FAILED
                                 WorkspaceRefreshFailure.CANCELLED -> PublicFailure.CANCELLED
                                 WorkspaceRefreshFailure.DISPOSED -> PublicFailure.DISPOSED
@@ -93,6 +115,8 @@ internal class HostedWorkspaceRefresh(
                         )
                 }
         }
+
+    fun hasWork(): Boolean = service.hasWork()
 
     override fun dispose() {
         triggers.dispose()

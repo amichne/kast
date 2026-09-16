@@ -22,6 +22,7 @@ internal class KastInvocationTransport private constructor(val command: List<Str
         ): Refinement<KastInvocationTransport, ProviderFailureCode> {
             val operation = tool.hostedDefinition.operation
             val approval = context.approval
+            if (operation == CanonicalOperation.WORKSPACE_LIFECYCLE) return lifecycle(tool, arguments, context)
             if (tool.hostedDefinition.approval != HostedApprovalPolicy.EXPLICIT) {
                 return if (approval == BrokerInvocationApproval.Absent)
                     Refinement.Refined(KastInvocationTransport(tool.command, arguments))
@@ -43,6 +44,46 @@ internal class KastInvocationTransport private constructor(val command: List<Str
                     ),
                 )
             )
+        }
+
+        private fun lifecycle(
+            tool: QualifiedKastTool,
+            arguments: JsonElement,
+            context: BrokerInvocationContext,
+        ): Refinement<KastInvocationTransport, ProviderFailureCode> {
+            val approval = context.approval
+
+            val request =
+                try {
+                    Json.decodeFromJsonElement(
+                        io.github.amichne.kast.protocol.contract.WorkspaceLifecycleRequest.serializer(),
+                        arguments,
+                    )
+                } catch (_: kotlinx.serialization.SerializationException) {
+                    return Refinement.Rejected(ProviderFailureCode.APPROVAL_BINDING_REJECTED)
+                }
+            val command = tool.command + listOf("--lifecycle-client", context.threadId.value)
+            if (request is io.github.amichne.kast.protocol.contract.WorkspaceLifecycleRequest.RequestUserClose) {
+                if (approval !is BrokerInvocationApproval.ProjectClose)
+                    return Refinement.Rejected(ProviderFailureCode.APPROVAL_REQUIRED)
+                if (!approval.grant.matches(context, request))
+                    return Refinement.Rejected(ProviderFailureCode.APPROVAL_BINDING_REJECTED)
+                return Refinement.Refined(
+                    KastInvocationTransport(
+                        command + "--lifecycle-approved-close",
+                        Json.encodeToJsonElement(
+                            io.github.amichne.kast.protocol.contract.ApprovedProjectCloseInvocation.serializer(),
+                            io.github.amichne.kast.protocol.contract.ApprovedProjectCloseInvocation(
+                                request,
+                                approval.grant.assertion,
+                            ),
+                        ),
+                    )
+                )
+            }
+            return if (approval == BrokerInvocationApproval.Absent)
+                Refinement.Refined(KastInvocationTransport(command, arguments))
+            else Refinement.Rejected(ProviderFailureCode.APPROVAL_BINDING_REJECTED)
         }
     }
 }

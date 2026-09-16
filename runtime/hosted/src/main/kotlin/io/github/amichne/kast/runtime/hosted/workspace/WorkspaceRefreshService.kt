@@ -33,6 +33,9 @@ internal enum class WorkspaceRefreshRejection {
 }
 
 internal enum class WorkspaceRefreshFailure {
+    BUSY,
+    UNSAVED_DOCUMENTS,
+    UNLINKED_BUILD,
     EFFECT_FAILED,
     CANCELLED,
     DISPOSED,
@@ -52,6 +55,9 @@ internal enum class WorkspaceRefreshReadiness {
 }
 
 internal enum class WorkspaceRefreshEffectResult {
+    BUSY,
+    UNSAVED_DOCUMENTS,
+    UNLINKED_BUILD,
     SUCCEEDED,
     FAILED,
     CANCELLED,
@@ -158,6 +164,12 @@ internal class WorkspaceRefreshService(
         }
     }
 
+    @Synchronized fun contains(id: WorkspaceRefreshRequestId): Boolean = entries.containsKey(id)
+
+    @Synchronized
+    fun hasWork(): Boolean =
+        active != null || queue.isNotEmpty() || entries.values.any { it.status is WorkspaceRefreshStatus.Pending }
+
     @Synchronized
     fun dispose() {
         disposed = true
@@ -195,6 +207,11 @@ internal class WorkspaceRefreshService(
         active = null
         val outcome =
             when (result) {
+                WorkspaceRefreshEffectResult.BUSY -> WorkspaceRefreshStatus.Failed(WorkspaceRefreshFailure.BUSY)
+                WorkspaceRefreshEffectResult.UNSAVED_DOCUMENTS ->
+                    WorkspaceRefreshStatus.Failed(WorkspaceRefreshFailure.UNSAVED_DOCUMENTS)
+                WorkspaceRefreshEffectResult.UNLINKED_BUILD ->
+                    WorkspaceRefreshStatus.Failed(WorkspaceRefreshFailure.UNLINKED_BUILD)
                 WorkspaceRefreshEffectResult.SUCCEEDED ->
                     WorkspaceRefreshStatus.Pending(WorkspaceRefreshStage.ADMISSION)
                 WorkspaceRefreshEffectResult.FAILED ->

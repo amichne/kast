@@ -42,6 +42,20 @@ object CanonicalOperationWireBindings {
         print(operationRegistryDocument)
     }
 
+    val workspaceLifecycle =
+        OperationWireBinding(
+            CanonicalOperationDefinitions.workspaceLifecycle,
+            GeneratedOperationSerializers(
+                GeneratedWireCodecFactory(wireJson)
+                    .create(io.github.amichne.kast.protocol.contract.WorkspaceLifecycleRequest.serializer()),
+                GeneratedWireCodecFactory(wireJson)
+                    .create(io.github.amichne.kast.protocol.contract.IdeLifecycleResult.serializer()),
+                GeneratedWireCodecFactory(wireJson)
+                    .create(io.github.amichne.kast.protocol.contract.IdeLifecycleQualification.serializer()),
+                GeneratedWireCodecFactory(wireJson)
+                    .create(io.github.amichne.kast.protocol.contract.IdeLifecycleFailure.serializer()),
+            ),
+        )
     val indexSync =
         OperationWireBinding(
             CanonicalOperationDefinitions.indexSync,
@@ -173,6 +187,7 @@ object CanonicalOperationWireBindings {
             val construction =
                 OperationWireTable.create(
                     listOf(
+                        workspaceLifecycle,
                         indexSync,
                         topologyBuild,
                         queryRun,

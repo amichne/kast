@@ -4,8 +4,9 @@ title: Distribution and packaging
 description: Typed configuration and runtime identity contracts constrain managed installation effects, release assembly, and acceptance harnesses.
 resource: file://distribution
 tags: [distribution, configuration, packaging, release]
-timestamp: 2026-09-14T00:00:00Z
+timestamp: 2026-09-16T00:00:00Z
 code_sources:
+  - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/SelectedIdeInstallation.kt
   - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/PriorInstallationPreparation.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationChild.kt
     symbols: [executeInstallationChild]
@@ -77,8 +78,7 @@ retain that obligation. Lifecycle rejection reports identify the bounded stage
 and outcome, including unresolved worker receipts; failed retirement preserves
 the existing transition journal and state. Successful plugin installation still
 requires the separately reported IDEA restart. Retired CLI start/stop guidance
-identifies the IDE lifecycle as user-managed rather than claiming a replacement
-operation.
+does not claim authority to stop IDEA. Explicit project lifecycle actions are available through `workspace lifecycle`.
 
 Installation child processes emit `kast_installation` records by default with a closed stage and outcome. Prior admission, retirement, configuration validation, command qualification and App Server enablement retain distinct success, nonzero exit, deadline, I/O and interruption observations. New-payload admission remains authoritative; these records do not contain command arguments, environment values or filesystem paths. Prior admission or retirement failure triggers automatic replacement using the exact installation-derived launchd labels and processes whose executable or argument path belongs to that installation. Failed prior validation cannot veto the upgrade. Replacement has its own bounded stage and outcome. Damaged same-version payloads and recovery bundles move aside before restaging; unrelated paths are not recursively deleted.
 
@@ -179,3 +179,5 @@ Rejected source registries stay in the prior installation; fresh sessions regist
 their canonical workspace automatically. Failure to stop an exact prior service,
 filesystem failure, and interruption remain explicit failures, rather than being
 reported as successful retirement.
+
+Selected IDEA discovery retains one canonical home across upgrades. Typed metadata resolution identifies its macOS ARM bundle and executable, rejects ambiguity and escapes, and admits the 262 release line rather than an exact patch. Installation inspection includes the launch observation and persists the derived receipt. A legacy selection can still attach to its live lifecycle endpoint when cold-launch metadata is unavailable.

@@ -104,6 +104,7 @@ class InstalledServerProjectionTest {
 
         assertEquals(
             listOf(
+                "workspace.lifecycle",
                 "query.run",
                 "query.run",
                 "query.run",
@@ -197,7 +198,7 @@ class InstalledServerProjectionTest {
         val expectedPublicOperations = HostedOperationProjection.publicDefinitions.map { it.operation.id.value }
         val internalOperations = HostedOperationProjection.internalDefinitions.map { it.operation.id.value }
 
-        assertEquals(13, tools.size)
+        assertEquals(14, tools.size)
         assertEquals(13, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
         assertEquals("kast", projection.getValue("namespace").jsonPrimitive.content)
         assertEquals(
@@ -206,6 +207,7 @@ class InstalledServerProjectionTest {
         )
         assertEquals(
             listOf(
+                "workspace_lifecycle",
                 "search_classes",
                 "search_functions",
                 "search_declarations",
@@ -260,6 +262,7 @@ class InstalledServerProjectionTest {
         )
         assertEquals(
             linkedMapOf(
+                "workspace_lifecycle" to listOf("workspace", "lifecycle"),
                 "search_classes" to listOf("tool", "search_classes"),
                 "search_functions" to listOf("tool", "search_functions"),
                 "search_declarations" to listOf("tool", "search_declarations"),
@@ -279,7 +282,7 @@ class InstalledServerProjectionTest {
             },
         )
         assertTrue(invocations.all { "bindings" !in it.getValue("invocation").jsonObject })
-        assertEquals(10, tools.map { it.getValue("outputSchema") }.distinct().size)
+        assertEquals(11, tools.map { it.getValue("outputSchema") }.distinct().size)
 
         assertTrue(
             tools

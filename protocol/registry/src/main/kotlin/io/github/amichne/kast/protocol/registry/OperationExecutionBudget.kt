@@ -23,6 +23,7 @@ enum class OperationExecutionBudget(operationMillis: Long) {
             when (operation) {
                 CanonicalOperation.TOPOLOGY_BUILD,
                 CanonicalOperation.TRAVERSAL_RUN -> GRAPH_BUILD
+                CanonicalOperation.WORKSPACE_LIFECYCLE,
                 CanonicalOperation.INDEX_SYNC,
                 CanonicalOperation.SYMBOL_DISCOVER,
                 CanonicalOperation.SYMBOL_INSPECT,

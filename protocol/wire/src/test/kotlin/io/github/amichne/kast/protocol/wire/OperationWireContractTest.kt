@@ -43,7 +43,7 @@ class OperationWireContractTest {
         )
         assertEquals(
             OperationWireTableConstruction.Rejected(
-                setOf(OperationWireTableFailure.DuplicateSerializerBinding(CanonicalOperation.INDEX_SYNC))
+                setOf(OperationWireTableFailure.DuplicateSerializerBinding(CanonicalOperation.WORKSPACE_LIFECYCLE))
             ),
             OperationWireTable.create(bindings + bindings.first()),
         )

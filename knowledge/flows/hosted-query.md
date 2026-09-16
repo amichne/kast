@@ -6,6 +6,7 @@ resource: file://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/
 tags: [intellij, kotlin, semantic-query, lifecycle]
 timestamp: 2026-09-16T00:00:00Z
 code_sources:
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostedProjectAdmission.kt
   - path: packaging/hosted_wire_schema.py
   - path: packaging/hosted_peer_probe.py
   - path: packaging/hosted_concurrent_read.py
@@ -646,3 +647,5 @@ metadata with qualified results. Graph hop failures retain their distinct scope,
 index, compiler and contract causes. Hosted time exhaustion and cancellation
 produce separate recovery guidance; neither turns an unvalidated accumulator
 into successful evidence.
+
+Application-requested project closure fences the existing project endpoint before native disposal. Already admitted dispatch prevents closure until it leaves; a failed/vetoed close restores admission. Semantic reads do not invoke application lifecycle operations. Project endpoint retirement is observed on that exact service, so a successor project at the same root cannot be mistaken for the retired owner.

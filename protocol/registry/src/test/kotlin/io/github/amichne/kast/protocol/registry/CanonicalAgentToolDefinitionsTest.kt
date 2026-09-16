@@ -32,9 +32,10 @@ class CanonicalAgentToolDefinitionsTest {
     }
 
     @Test
-    fun `agent tools preserve canonical hosted semantics and lifecycle free policy`() {
+    fun `agent tools preserve canonical effects and exact project close policy`() {
         assertEquals(
             listOf(
+                CanonicalOperation.WORKSPACE_LIFECYCLE,
                 CanonicalOperation.QUERY_RUN,
                 CanonicalOperation.QUERY_RUN,
                 CanonicalOperation.QUERY_RUN,
@@ -53,6 +54,7 @@ class CanonicalAgentToolDefinitionsTest {
         )
         assertEquals(
             listOf(
+                "workspace_lifecycle",
                 "search_classes",
                 "search_functions",
                 "search_declarations",
@@ -69,8 +71,13 @@ class CanonicalAgentToolDefinitionsTest {
             ),
             CanonicalAgentToolDefinitions.all.map { it.name.value },
         )
+    }
+
+    @Test
+    fun `default tools retain lifecycle authorization and omit raw symbols`() {
         assertEquals(
             listOf(
+                "workspace_lifecycle",
                 "search_classes",
                 "search_functions",
                 "search_declarations",
@@ -84,6 +91,10 @@ class CanonicalAgentToolDefinitionsTest {
                 "change_recover",
             ),
             CanonicalAgentToolDefinitions.defaultAppServerTools.map { it.name.value },
+        )
+        assertEquals(
+            HostedApprovalPolicy.EXACT_PROJECT_CLOSE,
+            CanonicalAgentToolDefinitions.workspaceLifecycle.approval,
         )
         assertEquals(HostedApprovalPolicy.NONE, CanonicalAgentToolDefinitions.symbolLookup.approval)
         assertEquals(HostedToolLoading.DEFERRED, CanonicalAgentToolDefinitions.query.loading)

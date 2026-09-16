@@ -18,8 +18,8 @@ class NativeProductAdmissionTest {
     fun `native explicit selection covers catalog while installed defaults omit raw symbols`() {
         val catalog = CanonicalAgentToolDefinitions.all
         val defaults = CanonicalAgentToolDefinitions.defaultAppServerTools
-        assertEquals(13, catalog.size)
-        assertEquals(11, defaults.size)
+        assertEquals(14, catalog.size)
+        assertEquals(12, defaults.size)
         assertEquals(10, nativeReadToolNames.size)
         assertEquals(
             emptySet<String>(),

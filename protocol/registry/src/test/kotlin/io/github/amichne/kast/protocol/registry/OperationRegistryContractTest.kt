@@ -41,6 +41,7 @@ class OperationRegistryContractTest {
     fun `canonical public operation set is exact and ordered`() {
         assertEquals(
             listOf(
+                "workspace.lifecycle",
                 "index.sync",
                 "topology.build",
                 "query.run",
