@@ -86,13 +86,35 @@ For `GRADLE_MODEL_UNAVAILABLE`, expect recovery to identify:
 
 A missing cached model does not prove that import is running.
 
-Kast neither starts import nor returns an empty successful search.
+Semantic reads do not start import or return an empty successful search. You can request an explicit refresh through the separate lifecycle command below.
 
 Older output without `recovery` provides no automated retry instruction.
 
 If startup fails, `kast codex` writes a finite reason to stderr.
 
 Set `KAST_DEBUG=1` for bounded launch-stage output.
+
+## Refresh an already linked workspace
+
+Use file refresh to make external file changes visible, or Gradle model reload after changing dependencies or modules. The project must already be open, trusted and linked at the selected root. Save your editor changes first; Kast does not save or discard them.
+
+```shell
+kast index refresh '{"type":"request","requestId":"refresh-files-1","effect":"FILE_REFRESH"}'
+kast index refresh '{"type":"status","requestId":"refresh-files-1"}'
+kast index refresh '{"type":"request","requestId":"reload-model-1","effect":"GRADLE_MODEL_RELOAD"}'
+kast index refresh '{"type":"status","requestId":"reload-model-1"}'
+```
+
+A pending response names `QUEUED`, `EFFECT` or `ADMISSION`. Poll the same request ID. Completion requires the native effect to finish and fresh workspace admission to succeed. A deadline or failed import remains an explicit failure. Repeating a request ID does not repeat its effect; use a new ID for a newer change. Search again after refresh to acquire current references.
+
+Automatic refresh is off for every new IDE host. To opt in for one exact Gradle task executed successfully by IDEA:
+
+```shell
+kast index refresh '{"type":"configure","rule":{"type":"task_success","task":":generateSources","effect":"FILE_REFRESH"}}'
+kast index refresh '{"type":"configure","rule":{"type":"off"}}'
+```
+
+The rule applies to this host and its linked root. It matches an invocation containing exactly that one task. Terminal builds and Gradle imports do not trigger the rule. You can select `GRADLE_MODEL_RELOAD` instead of `FILE_REFRESH`.
 
 ## Resolve the common boundaries
 

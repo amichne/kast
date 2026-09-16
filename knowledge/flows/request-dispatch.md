@@ -160,3 +160,5 @@ Compact source results retain ordered source and structure sections through CLI
 schema admission. The source-specific production-provider presenter emits the
 unchanged returned source first and the structured result afterward. Other
 operation presentations retain their existing dispatch behavior.
+
+Workspace refresh is a separate typed hosted control path, not a canonical semantic read. Its request and response DTOs retain request identity and finite pending, complete, failed, rejected or configured outcomes. The CLI uses typed serialization for the hosted transport, validates the independent refresh schema, and binds the response to the admitted host and root.
