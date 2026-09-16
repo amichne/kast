@@ -44,10 +44,11 @@ private fun retirePriorServices(prior: Path, home: Path): InstallationChildOutco
     val services = retireLaunchServices(prior, home)
     if (services != InstallationChildOutcome.COMPLETED) return services
     // Historical workers may not belong to launchd. Match complete path components, never PID receipts or substrings.
+    val installer = ProcessHandle.current()
+    val protectedProcesses = generateSequence(installer) { it.parent().orElse(null) }.map(ProcessHandle::pid).toSet()
     val processes =
         ProcessHandle.allProcesses().use { all ->
-            all.filter { process -> process.pid() != ProcessHandle.current().pid() && ownsProcess(process, prior) }
-                .toList()
+            all.filter { process -> process.pid() !in protectedProcesses && ownsProcess(process, prior) }.toList()
         }
     for (process in processes) {
         if (!process.isAlive || !ownsProcess(process, prior)) continue
