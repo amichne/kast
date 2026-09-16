@@ -12,14 +12,17 @@ internal object HostedWorkspaceRefreshAuthority {
         JvmMember.of(BUILDER, "withCallback", "(Lcom/intellij/openapi/externalSystem/service/project/ExternalProjectRefreshCallback;)L$BUILDER;"),
         JvmMember.of("com/intellij/openapi/externalSystem/util/ExternalSystemUtil", "refreshProject", "(Ljava/lang/String;L$BUILDER;)V"),
     )
-    private val fileTarget = JvmMember.of("com/intellij/openapi/vfs/newvfs/RefreshQueue", "refresh",
-        "(ZZLjava/lang/Runnable;[Lcom/intellij/openapi/vfs/VirtualFile;)V")
+    private val fileTargets = setOf(JvmMember.of("com/intellij/openapi/vfs/newvfs/RefreshQueue", "refresh",
+        "(ZZLjava/lang/Runnable;[Lcom/intellij/openapi/vfs/VirtualFile;)V"),
+        JvmMember.of("com/intellij/openapi/vfs/VfsUtil", "markDirty",
+            "(ZZ[Lcom/intellij/openapi/vfs/VirtualFile;)Ljava/util/List;"),
+    )
 
     fun retainsBoundary(effect: EffectObservation): Boolean {
         if (effect.caller.owner != owner) return true
         return when (effect.effect) {
             ForbiddenEffect.GRADLE_IMPORT -> effect.target in importTargets
-            ForbiddenEffect.RECURSIVE_VFS_REFRESH -> effect.target == fileTarget
+            ForbiddenEffect.RECURSIVE_VFS_REFRESH -> effect.target in fileTargets
             else -> true
         }
     }

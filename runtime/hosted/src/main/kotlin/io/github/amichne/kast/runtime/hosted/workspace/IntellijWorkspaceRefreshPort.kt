@@ -11,6 +11,7 @@ import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.newvfs.RefreshQueue
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshEffect
@@ -78,6 +79,8 @@ internal class IntellijWorkspaceRefreshPort(
             complete(WorkspaceRefreshEffectResult.FAILED)
             return
         }
+        // Explicit disk refresh cannot depend on the native watcher having reported the change yet.
+        VfsUtil.markDirty(true, false, directory)
         RefreshQueue.getInstance()
             .refresh(
                 true,

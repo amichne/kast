@@ -11,11 +11,15 @@ class WorkspaceRefreshEffectBoundaryTest {
     private val files = JvmMember.of("com/intellij/openapi/vfs/newvfs/RefreshQueue", "refresh",
         "(ZZLjava/lang/Runnable;[Lcom/intellij/openapi/vfs/VirtualFile;)V")
 
+    private val dirty = JvmMember.of("com/intellij/openapi/vfs/VfsUtil", "markDirty",
+        "(ZZ[Lcom/intellij/openapi/vfs/VirtualFile;)Ljava/util/List;")
+
     @Test
     fun `only explicit adapter calls may reload one linked build or refresh files`() {
         assertInstanceOf<ArchitectureAdmission.Accepted>(admit(ModuleId.RUNTIME_HOSTED, refreshOwner, refresh))
         assertInstanceOf<ArchitectureAdmission.Accepted>(admit(ModuleId.RUNTIME_HOSTED, refreshOwner, files))
-        for (target in listOf(refresh, files)) {
+        for (target in listOf(refresh, files, dirty)) {
+            assertInstanceOf<ArchitectureAdmission.Accepted>(admit(ModuleId.RUNTIME_HOSTED, refreshOwner, target))
             assertInstanceOf<ArchitectureAdmission.Rejected>(admit(ModuleId.RUNTIME_HOSTED,
                 "io/github/amichne/kast/runtime/hosted/HostedSemanticServices", target))
             assertInstanceOf<ArchitectureAdmission.Rejected>(admit(ModuleId.WORKSPACE_INTELLIJ_READ,
