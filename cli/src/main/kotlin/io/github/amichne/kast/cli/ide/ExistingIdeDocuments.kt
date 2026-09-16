@@ -1,7 +1,9 @@
 package io.github.amichne.kast.cli.ide
 
 import com.networknt.schema.SchemaRegistry
+import com.networknt.schema.Specification
 import com.networknt.schema.SpecificationVersion
+import com.networknt.schema.dialect.Dialect
 import io.github.amichne.kast.cli.CanonicalRoot
 import io.github.amichne.kast.cli.CliJsonDocument
 import io.github.amichne.kast.cli.CliProjectionCompletion
@@ -27,7 +29,8 @@ internal object ExistingIdeDocuments {
             .enable(StreamReadFeature.STRICT_DUPLICATE_DETECTION)
             .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
             .build()
-    private val registry = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12)
+    internal val schemaDialect: Dialect = Specification.getDialect(SpecificationVersion.DRAFT_2020_12)
+    private val registry = SchemaRegistry.withDialect(schemaDialect)
 
     private fun read(raw: ByteArray, schema: String): Refinement<tools.jackson.databind.JsonNode, ExistingIdeFailure> {
         return try {
