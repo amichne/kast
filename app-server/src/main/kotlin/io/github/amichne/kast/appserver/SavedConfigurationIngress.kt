@@ -72,10 +72,17 @@ object InstalledSavedConfigurationIngress {
         if (selector.isBlank() || selector.length > 4096 || !path.isAbsolute || path.normalize() != path) {
             return rejected(SavedConfigurationIngressFailure.INVALID_SELECTOR)
         }
+        if (path.endsWith(Path.of("current/config/environment")) && Files.isSymbolicLink(path.parent.parent)) {
+            return InstalledConfigurationAlias.read(path, environment)
+        }
+        return readPinned(path, environment)
+    }
+
+    private fun readPinned(path: Path, environment: Map<String, String>): SavedConfigurationIngress {
         val bytes =
             try {
                 val before = Files.readAttributes(path, BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
-                if (!before.isRegularFile || before.isSymbolicLink || path.toRealPath() != path) {
+                if (!before.isRegularFile || path.toRealPath() != path) {
                     return rejected(SavedConfigurationIngressFailure.NOT_REGULAR)
                 }
                 if (before.size() > SavedConfigurationDocument.MAXIMUM_BYTES) {
