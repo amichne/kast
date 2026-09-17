@@ -39,23 +39,7 @@ class BrokerPublicEndpointTest {
                             "bootstrap" -> {
                                 submissions += 1
                                 present = true
-                                Files.createDirectories(command.readinessFile.parent)
-                                Files.writeString(
-                                    command.readinessFile,
-                                    kotlinx.serialization.json
-                                        .Json {
-                                            classDiscriminator = "state"
-                                            encodeDefaults = true
-                                        }
-                                        .encodeToString<BrokerServiceStateDocument>(
-                                            BrokerServiceStateDocument.Ready(
-                                                BROKER_SERVICE_STATE_SCHEMA_VERSION,
-                                                command.identity.value,
-                                                "123e4567-e89b-42d3-a456-426614174000",
-                                                VENDORED_BROKER_VERSION,
-                                            )
-                                        ),
-                                )
+                                publishReadiness(command)
                                 LaunchctlInvocation.Completed
                             }
                             else -> error("Unexpected lifecycle operation")
@@ -83,6 +67,26 @@ class BrokerPublicEndpointTest {
         assertEquals(PersistentBrokerServiceAdmission.Ready, host.ensure(command))
         assertEquals(1, submissions)
         assertTrue(probes > 0)
+    }
+
+    private fun publishReadiness(command: BrokerServiceLaunchCommand) {
+        Files.createDirectories(command.readinessFile.parent)
+        Files.writeString(
+            command.readinessFile,
+            kotlinx.serialization.json
+                .Json {
+                    classDiscriminator = "state"
+                    encodeDefaults = true
+                }
+                .encodeToString<BrokerServiceStateDocument>(
+                    BrokerServiceStateDocument.Ready(
+                        BROKER_SERVICE_STATE_SCHEMA_VERSION,
+                        command.identity.value,
+                        "123e4567-e89b-42d3-a456-426614174000",
+                        VENDORED_BROKER_VERSION,
+                    )
+                ),
+        )
     }
 
     @Test
