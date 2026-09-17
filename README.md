@@ -31,8 +31,8 @@ The Codex integration is a preview; full Desktop compatibility remains
    `--bin-dir`. If a selected command path is occupied, the installer lists it
    and asks before removal. Automation must opt in with `--clean-collisions`.
 
-2. Restart IDEA, open your repository, and wait for Gradle import and indexing.
-   Save edited files. Add the selected command directory to `PATH` if needed.
+2. Restart IDEA to load the plugin and save edited files.
+   Add the selected command directory to `PATH` if needed.
 
 3. Connect from that repository:
 
@@ -47,18 +47,10 @@ The Codex integration is a preview; full Desktop compatibility remains
 See [Install and connect](https://kast.michne.com/start/) for IDE selection,
 Desktop setup, other harnesses, and uninstall instructions.
 
-## Open a worktree explicitly
-
-`kast workspace open /absolute/worktree` reuses the selected IDEA or launches it
-without deliberate activation, then opens a separate project with quiet Gradle
-import. Background behavior is best effort. Trust and unsaved documents require
-user resolution; semantic reads never open or import projects implicitly.
-
-`kast workspace lifecycle '{"type":"inspect"}'` reports exact project identities.
-The `workspace_lifecycle` agent tool exposes the same actions, including status,
-presentation, sync, release and safe close. Release never closes a project.
-Borrowed or presented projects require exact-target controller approval to close.
-See [project lifecycle](docs/public/workspaces.mdx).
+The agent can prepare a repository or worktree for compiler-backed queries through
+its workspace setup tool. You do not need to manage project lifecycle commands.
+Kast asks for help only when setup encounters a user-owned decision such as project
+trust or unsaved documents.
 
 ## Work with Kotlin
 

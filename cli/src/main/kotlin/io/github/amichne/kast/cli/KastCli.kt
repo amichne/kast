@@ -156,8 +156,6 @@ internal constructor(
             when (val control = action) {
                 is io.github.amichne.kast.cli.command.workspace.WorkspaceLifecycleAction.ApprovedClose ->
                     lifecycleClient?.approvedClose(control.invocation, control.client)
-                is io.github.amichne.kast.cli.command.workspace.WorkspaceLifecycleAction.Open ->
-                    lifecycleClient?.open(control.root, control.requestId, control.client)
                 is io.github.amichne.kast.cli.command.workspace.WorkspaceLifecycleAction.Control ->
                     lifecycleClient?.execute(control.command, control.client)
             }

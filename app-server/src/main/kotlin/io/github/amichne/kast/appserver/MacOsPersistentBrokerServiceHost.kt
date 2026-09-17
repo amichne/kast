@@ -558,8 +558,17 @@ internal class MacOsPersistentBrokerServiceHost(
         return rejected(PersistentBrokerServiceFailure.SERVICE_RETIREMENT_REJECTED)
     }
 
-    private fun reconcileAbsent(command: BrokerServiceLaunchCommand): PersistentBrokerServiceAdmission =
-        when (val readiness = observeReadiness(command)) {
+    private fun reconcileAbsent(command: BrokerServiceLaunchCommand): PersistentBrokerServiceAdmission {
+        // An absent Kast service has no authority over an incumbent discovery endpoint.
+        // Native Codex does not implement Kast's status protocol; probing it loses the
+        // stronger path-occupancy evidence and misreports an ownership conflict.
+        if (
+            command.publicEndpoint is BrokerPublicEndpoint.CodexControl &&
+                Files.exists(command.publicSocket, LinkOption.NOFOLLOW_LINKS)
+        ) {
+            return rejected(PersistentBrokerServiceFailure.PUBLIC_SOCKET_OWNED)
+        }
+        return when (val readiness = observeReadiness(command)) {
             BrokerReadinessObservation.Missing ->
                 when (probeSocket(command)) {
                     BrokerSocketReachability.UNREACHABLE -> submitAndAwait(command)
@@ -587,6 +596,7 @@ internal class MacOsPersistentBrokerServiceHost(
                         }
                 }
         }
+    }
 
     private fun recoverOrphanedInvalidReadiness(command: BrokerServiceLaunchCommand): PersistentBrokerServiceAdmission =
         when (probeSocket(command)) {

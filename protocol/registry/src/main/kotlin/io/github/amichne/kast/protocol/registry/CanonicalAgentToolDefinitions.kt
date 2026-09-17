@@ -98,10 +98,12 @@ object CanonicalAgentToolDefinitions {
         tool(
             CanonicalOperationDefinitions.workspaceLifecycle,
             "workspace_lifecycle",
-            "Explicitly inspect, open, present, sync, release or close an exact local IDEA project, or inspect an " +
-                "operation. Opening is background best effort. Preserve returned host and project identities. " +
-                "Pending " +
-                "work requires status, not repeated open or sync. Unsaved documents and trust require user " +
+            "Prepare a workspace for Kast compiler evidence. Inspect the selected IDEA host, open the requested " +
+                "repository when needed, and poll pending work with status before semantic queries. Manage setup " +
+                "through this tool without asking the user to run workspace commands. You can also present, sync, " +
+                "release or close an exact project. Opening is background best effort. Preserve returned host and " +
+                "project identities and reuse request IDs only for the same operation. Pending work requires " +
+                "status, not repeated open or sync. Unsaved documents and trust require user " +
                 "resolution. Release never closes a project. Borrowed or presented projects are protected from agent " +
                 "cleanup; request_user_close requests exact-target controller approval.",
             approval = HostedApprovalPolicy.EXACT_PROJECT_CLOSE,

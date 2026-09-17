@@ -8,6 +8,20 @@ import org.junit.jupiter.api.Test
 
 class InstallationRequestTest {
     @Test
+    fun `endpoint defaults to private and rejects unknown explicit selections`() {
+        val default = InstallationRequest.parse(validEnvironment()) as Refinement.Refined
+        assertEquals(io.github.amichne.kast.appserver.BrokerPublicEndpointMode.PRIVATE, default.value.publicEndpoint)
+        for (invalid in listOf("", "unknown")) {
+            assertEquals(
+                Refinement.Rejected(InstallationRequestFailure.InvalidValue(InstallationEnvironment.PUBLIC_ENDPOINT)),
+                InstallationRequest.parse(
+                    validEnvironment() + (InstallationEnvironment.PUBLIC_ENDPOINT.key to invalid)
+                ),
+            )
+        }
+    }
+
+    @Test
     fun `absent bootstrap tool selection uses the current canonical catalog`() {
         val result = InstallationRequest.parse(validEnvironment() - InstallationEnvironment.APP_SERVER_TOOLS.key)
         val request =
