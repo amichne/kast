@@ -32,3 +32,7 @@ claim retirement. Recovery never signals an unproven PID or discards a mutation
 journal. Retired state is quarantined only after verification; otherwise it stays
 in place behind a launch fence. Restart IDEA after plugin detachment. Disk loss or
 revoked filesystem permissions cannot be repaired by these commands.
+
+The accepted [resumable recovery plan](recovery-plan.md) extends this boundary to
+service restoration and user-confirmed IntelliJ restart. That extension is not
+implemented by the detachment commands above.

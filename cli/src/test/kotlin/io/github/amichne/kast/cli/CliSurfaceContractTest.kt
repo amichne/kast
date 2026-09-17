@@ -39,8 +39,6 @@ class CliSurfaceContractTest {
                 CliProductCommand.KNOWLEDGE,
                 CliProductCommand.CODEX_CLI,
                 CliProductCommand.CODEX_DESKTOP,
-                CliProductCommand.WORKSPACE_OPEN,
-                CliProductCommand.WORKSPACE_LIFECYCLE,
             ),
             surface.localCommands,
         )

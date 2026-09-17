@@ -1,29 +1,38 @@
 ---
-title: "Open and manage worktrees"
-description: "Explicit project lifecycle in the selected local IntelliJ application."
+title: "Agent workspace setup"
+description: "Prepare and manage a workspace through the agent tool contract."
 ---
 
-Use `kast workspace open /absolute/worktree` or the agent's `workspace_lifecycle`
-tool to open a separate project in the installer-selected IDEA. The compatible
-platform is `262.*`; an exact minor or patch version is not required.
+`workspace_lifecycle` is an agent setup capability. Use it to prepare the requested
+repository or worktree for compiler-backed queries; do not ask the user to run
+workspace commands or manage lifecycle identifiers.
 
-Opening first checks the selected live host. If absent, it launches that selected
-application without deliberate activation and requests no splash or restoration
-of unrelated projects. A running IDEA with an unavailable Kast plugin requires
-user resolution; Kast does not restart it or open a second process.
+## Setup sequence
 
-Background opening is best effort. Ordinary IDEA project opening may cause
-transient focus changes. Kast imports in the background without activating the
-Build tool window on start or failure, or navigating automatically to errors.
+1. Inspect the selected host and existing projects.
+2. Open the requested absolute repository root if it is not already available.
+3. Poll a pending operation with `status`, preserving its host and request ID.
+4. Wait for an opened result before requesting semantic evidence. Handle any
+   reported blocker according to its finite reason.
+5. Release the caller's interest when the workspace is no longer needed. Release
+   does not close a project; close only eligible agent-managed projects.
+
+Opening reuses the installer-selected IDEA or launches it when absent. It imports
+and waits for semantic admission without deliberately activating the window.
+Background behavior is best effort. A running IDEA with an unavailable plugin,
+project trust, and unsaved documents can require user intervention. Semantic reads
+do not open projects implicitly.
 
 ## Requests and identities
 
-The CLI accepts the same tagged request documents as the agent tool:
+Send tagged request documents through the agent tool. For example:
 
-```shell
-kast workspace lifecycle '{"type":"inspect"}'
-kast workspace lifecycle '{"type":"open","root":"/absolute/worktree","requestId":"open-worktree-1"}'
+```json
+{"type":"open","root":"/absolute/worktree","requestId":"open-worktree-1"}
 ```
+
+Harnesses use the invocation binding supplied by `kast --schema`; its private CLI
+transport is an implementation detail, not a user setup interface.
 
 An asynchronous result contains `host`, `requestId` and `stage`. Use `status` with the
 host returned by the pending result and that request ID. Preserve returned `target`
@@ -42,8 +51,8 @@ same operation; different input with that ID rejects.
 | `request_user_close` | `target`, `requestId`. Agent broker requests exact-target user approval for a borrowed/presented project. Direct CLI requests have no approval authority. |
 | `status` | `host`, `requestId`. Retained progress or terminal result, including after closure. |
 
-Agent use is attributed to its coordinator thread. Terminal `workspace open`
-accepts `--client` for a stable caller identity; control requests also accept `--client`. Both use the `cli` identity by default. Release the same caller's interest when done.
+Agent use is attributed to its coordinator thread. Preserve that caller identity
+through setup and cleanup; release the same caller's interest when done.
 
 ## Resolve blockers
 

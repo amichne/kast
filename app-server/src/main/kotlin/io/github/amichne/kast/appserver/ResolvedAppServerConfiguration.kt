@@ -37,11 +37,9 @@ private constructor(
                         return Refinement.Rejected(AppServerConfigurationFailure.INVALID_TOOLING_MODE)
                 }
             val endpointMode =
-                when (inputs["KAST_APP_SERVER_PUBLIC_ENDPOINT"]) {
-                    null,
-                    "codex-control" -> BrokerPublicEndpointMode.CODEX_CONTROL
-                    "private" -> BrokerPublicEndpointMode.PRIVATE
-                    else -> return Refinement.Rejected(AppServerConfigurationFailure.INVALID_PUBLIC_ENDPOINT)
+                when (val admission = BrokerPublicEndpointMode.admit(inputs["KAST_APP_SERVER_PUBLIC_ENDPOINT"])) {
+                    is Refinement.Refined -> admission.value
+                    is Refinement.Rejected -> return admission
                 }
             val selectedEndpoint =
                 if (mode == AppServerToolingMode.DISABLED) BrokerPublicEndpointMode.PRIVATE else endpointMode

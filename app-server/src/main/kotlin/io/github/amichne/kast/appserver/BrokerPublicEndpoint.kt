@@ -48,8 +48,3 @@ internal class CodexControlSocketPath private constructor(val path: Path) {
             CodexControlSocketPath(codexHome.resolve("app-server-control/app-server-control.sock"))
     }
 }
-
-internal enum class BrokerPublicEndpointMode {
-    PRIVATE,
-    CODEX_CONTROL,
-}

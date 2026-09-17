@@ -63,12 +63,12 @@ internal enum class InstallationFailure {
     INSTALLATION_ROOT_REJECTED,
     ACTIVATION_LOCK_REJECTED,
     CONFIGURATION_REJECTED,
+    CANDIDATE_QUALIFICATION_REJECTED,
     REPLACEMENT_EXIT_REJECTED,
     REPLACEMENT_DEADLINE_EXCEEDED,
     REPLACEMENT_IO_REJECTED,
     ACTIVATION_REJECTED,
     RECOVERY_REQUIRED,
-    APP_SERVER_ENABLE_REJECTED,
     FILESYSTEM_REJECTED,
     INTERRUPTED,
 }
@@ -78,19 +78,6 @@ internal sealed interface InstallationOutcome {
 
     data class Rejected(val failure: InstallationFailure, val limit: ControlLimitExceeded? = null) : InstallationOutcome
 }
-
-@Serializable
-internal data class InstallationReport(
-    val operation: String = "installation.install",
-    val status: String,
-    val semanticVersion: String,
-    val installation: String,
-    val controlSha256: String,
-    val hostedPluginSha256: String,
-    val ideaHome: String,
-    val ideaLaunch: io.github.amichne.kast.distribution.managed.SelectedIdeLaunch,
-    val changes: List<String>,
-)
 
 @Serializable
 private data class InstallationManifest(
@@ -145,9 +132,9 @@ private data class VerifiedInstallationPlan(
     val configuration: Path
         get() = targetRoot.resolve("config/environment")
 
-    fun report(status: String): InstallationReport =
+    fun report(activation: InstallationActivation): InstallationReport =
         InstallationReport(
-            status = status,
+            activation = activation,
             semanticVersion = request.version.toString(),
             installation = targetRoot.toString(),
             controlSha256 = "sha256:${request.controlDigest.value}",
@@ -164,10 +151,13 @@ private data class VerifiedInstallationPlan(
                     "replace-current-link",
                     "replace-command-links",
                 ) +
-                    if (request.refreshAppServer == InstallationSwitch.ENABLED) {
-                        listOf("enable-app-server")
-                    } else {
-                        emptyList()
+                    when (activation) {
+                        InstallationActivation.Ready -> listOf("enable-app-server")
+                        is InstallationActivation.Pending -> listOf("defer-app-server-activation")
+                        InstallationActivation.Planned ->
+                            if (request.refreshAppServer == InstallationSwitch.ENABLED) listOf("enable-app-server")
+                            else emptyList()
+                        InstallationActivation.NotRequested -> emptyList()
                     },
         )
 }
@@ -181,7 +171,7 @@ internal object InstallationWorkflow {
                 is PlanVerification.Rejected -> return InstallationOutcome.Rejected(verified.failure, verified.limit)
             }
         if (request.mode == InstallationMode.PLAN) {
-            return InstallationOutcome.Complete(plan.report("planned"))
+            return InstallationOutcome.Complete(plan.report(InstallationActivation.Planned))
         }
         return try {
             apply(plan)
@@ -302,6 +292,12 @@ internal object InstallationWorkflow {
                         is StageResult.Rejected -> return InstallationOutcome.Rejected(staged.failure)
                     }
                 }
+                if (!validateConfiguration(plan)) {
+                    return InstallationOutcome.Rejected(InstallationFailure.CONFIGURATION_REJECTED)
+                }
+                if (qualifyCandidate(plan) != InstallationChildOutcome.COMPLETED) {
+                    return InstallationOutcome.Rejected(InstallationFailure.CANDIDATE_QUALIFICATION_REJECTED)
+                }
                 val prior =
                     when (val selected = selectedInstallation(plan)) {
                         is PriorSelection.Absent -> null
@@ -360,9 +356,6 @@ internal object InstallationWorkflow {
                             return InstallationOutcome.Rejected(InstallationFailure.RECOVERY_REQUIRED)
                     }
                 }
-                if (!validateConfiguration(plan)) {
-                    return InstallationOutcome.Rejected(InstallationFailure.CONFIGURATION_REJECTED)
-                }
                 val activation = activate(plan)
                 if (activation is ActivationResult.RecoveryRequired) {
                     return InstallationOutcome.Rejected(InstallationFailure.RECOVERY_REQUIRED)
@@ -372,10 +365,11 @@ internal object InstallationWorkflow {
                 }
             }
         }
-        if (plan.request.refreshAppServer == InstallationSwitch.ENABLED && !enableAppServer(plan)) {
-            return InstallationOutcome.Rejected(InstallationFailure.APP_SERVER_ENABLE_REJECTED)
-        }
-        return InstallationOutcome.Complete(plan.report("installed"))
+        val activation =
+            if (plan.request.refreshAppServer == InstallationSwitch.ENABLED) {
+                InstallationActivation.fromChild(enableAppServer(plan))
+            } else InstallationActivation.NotRequested
+        return InstallationOutcome.Complete(plan.report(activation))
     }
 
     private fun stage(plan: VerifiedInstallationPlan): StageResult {
@@ -401,7 +395,9 @@ internal object InstallationWorkflow {
                 Json { encodeDefaults = true }
                     .encodeToString(
                         io.github.amichne.kast.distribution.managed.SelectedIdeLaunch.serializer(),
-                        plan.report("installed").ideaLaunch,
+                        io.github.amichne.kast.distribution.managed.SelectedIdeInstallation.resolve(
+                            plan.request.ideaHome.value
+                        ),
                     ),
                 StandardOpenOption.CREATE_NEW,
             )
@@ -457,6 +453,7 @@ internal object InstallationWorkflow {
                         "KAST_ENABLE_LAUNCHD" to request.enableLaunchd.wireValue(),
                         "KAST_ENABLE_APP_SERVER" to request.enableAppServer.wireValue(),
                         "KAST_APP_SERVER_TOOLS" to request.appServerTools.value,
+                        "KAST_APP_SERVER_PUBLIC_ENDPOINT" to request.publicEndpoint.configurationValue,
                     )
                 )
         val content = buildString {
@@ -703,6 +700,16 @@ internal object InstallationWorkflow {
             ),
         ) == InstallationChildOutcome.COMPLETED
 
+    private fun qualifyCandidate(plan: VerifiedInstallationPlan): InstallationChildOutcome =
+        executeInstallationChild(
+            InstallationChildStage.CANDIDATE_QUALIFICATION,
+            listOf(plan.targetRoot.resolve("bin/kast-complete").toString(), "--version"),
+            mapOf(
+                "HOME" to plan.request.home.value.toString(),
+                "PATH" to (System.getenv("PATH") ?: "/usr/bin:/bin"),
+            ),
+        )
+
     private fun activate(plan: VerifiedInstallationPlan): ActivationResult {
         val priorCurrent = linkTarget(plan.currentLink)
         val priorCommand = commandLink(plan, plan.commandLink, plan.currentLink.resolve("bin/kast-complete"))
@@ -757,7 +764,7 @@ internal object InstallationWorkflow {
         return LinkObservation.Absent
     }
 
-    private fun enableAppServer(plan: VerifiedInstallationPlan): Boolean =
+    private fun enableAppServer(plan: VerifiedInstallationPlan): InstallationChildOutcome =
         executeInstallationChild(
             InstallationChildStage.APP_SERVER_ENABLE,
             listOf(plan.commandLink.toString(), "app-server", "enable"),
@@ -766,7 +773,7 @@ internal object InstallationWorkflow {
                 "PATH" to (System.getenv("PATH") ?: "/usr/bin:/bin"),
                 "CODEX_HOME" to plan.request.codexHome.value.toString(),
             ),
-        ) == InstallationChildOutcome.COMPLETED
+        )
 
     private fun acquire(channel: FileChannel): java.nio.channels.FileLock? {
         val deadline =

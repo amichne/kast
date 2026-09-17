@@ -151,4 +151,10 @@ publication includes only preferred names. Legacy inputs remain supported throug
 0.40.x, with removal no earlier than 0.41.0. Catalog digest binding remains
 required before either input spelling dispatches.
 
+Workspace setup belongs to the agent catalog, separately from the user CLI surface.
+The private invocation binding remains available to the harness, while root help
+and public local-command metadata omit it and the convenience `workspace open`
+command is absent. Tool guidance directs the agent through inspect, open and status
+before semantic queries, retaining exact identities and finite blockers.
+
 `workspace_lifecycle` is an eager canonical effectful tool with action-specific tagged inputs for inspect, open, present, sync, release, close, request_user_close and status. Host selection comes from installed configuration; caller identity comes from the coordinator thread. The `EXACT_PROJECT_CLOSE` approval policy applies to the explicit user-close branch. Ordinary managed cleanup still enforces ownership and shared use, while source-change `EXPLICIT` approval is unchanged.

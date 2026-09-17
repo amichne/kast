@@ -71,7 +71,7 @@ private constructor(
                                 tool.cliInvocationDocument(
                                     definition.name.value,
                                     if (operation == CanonicalOperation.WORKSPACE_LIFECYCLE)
-                                        commandSurface.localCommands
+                                        commandSurface.agentCommands
                                             .single {
                                                 it ==
                                                     io.github.amichne.kast.cli.command.CliProductCommand

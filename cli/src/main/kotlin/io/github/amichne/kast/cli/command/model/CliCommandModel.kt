@@ -19,6 +19,7 @@ enum class CliLocalMetadataCommand {
 
 enum class CliLocalExposure {
     PUBLIC,
+    AGENT,
     INTERNAL,
 }
 
@@ -26,8 +27,7 @@ enum class CliProductCommand(
     val usage: String,
     val exposure: CliLocalExposure = CliLocalExposure.INTERNAL,
 ) {
-    WORKSPACE_OPEN("workspace open <root> [--request-id <id>] [--client <id>]", CliLocalExposure.PUBLIC),
-    WORKSPACE_LIFECYCLE("workspace lifecycle <document>", CliLocalExposure.PUBLIC),
+    WORKSPACE_LIFECYCLE("workspace lifecycle <document>", CliLocalExposure.AGENT),
     APP_SERVER_REGISTER("app-server register"),
     APP_SERVER_ENABLE("app-server enable"),
     APP_SERVER_REPAIR("app-server repair --destructive"),
