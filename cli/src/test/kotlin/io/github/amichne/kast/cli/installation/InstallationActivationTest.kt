@@ -6,7 +6,10 @@ import java.nio.file.Path
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
@@ -76,20 +79,7 @@ class InstallationActivationTest {
         )
         val result = InstallationWorkflow.execute(request)
         val complete = assertInstanceOf(InstallationOutcome.Complete::class.java, result)
-        assertEquals(InstallationReportStatus.INSTALLED_ACTIVATION_PENDING, complete.report.status)
-        assertEquals(
-            InstallationActivation.Pending(InstallationActivationFailure.EXIT_REJECTED),
-            complete.report.activation,
-        )
-        assertFalse("enable-app-server" in complete.report.changes)
-        val encoded =
-            Json.parseToJsonElement(
-                    CliJsonDocument.generated(InstallationReport.serializer()).create(complete.report).value
-                )
-                .jsonObject
-        assertEquals("installation.install", encoded.getValue("operation").jsonPrimitive.content)
-        assertEquals("installed-activation-pending", encoded.getValue("status").jsonPrimitive.content)
-        assertEquals("pending", encoded.getValue("activation").jsonObject.getValue("type").jsonPrimitive.content)
+        verifyPendingReport(complete.report)
         val selected = install.resolve("current").toRealPath()
         assertTrue(Files.exists(selected.resolve("installation.json")))
         assertTrue(Files.readString(selected.resolve("config/environment")).contains("KAST_ENABLE_APP_SERVER=1"))
@@ -105,5 +95,20 @@ class InstallationActivationTest {
         assertEquals(selected, install.resolve("current").toRealPath())
         assertEquals(configuration, Files.readString(selected.resolve("config/environment")))
         assertEquals(identity, Files.readString(selected.resolve("installation.json")))
+    }
+
+    private fun verifyPendingReport(report: InstallationReport) {
+        assertEquals(InstallationReportStatus.INSTALLED_ACTIVATION_PENDING, report.status)
+        assertEquals(
+            InstallationActivation.Pending(InstallationActivationFailure.EXIT_REJECTED),
+            report.activation,
+        )
+        assertFalse("enable-app-server" in report.changes)
+        val encoded =
+            Json.parseToJsonElement(CliJsonDocument.generated(InstallationReport.serializer()).create(report).value)
+                .jsonObject
+        assertEquals("installation.install", encoded.getValue("operation").jsonPrimitive.content)
+        assertEquals("installed-activation-pending", encoded.getValue("status").jsonPrimitive.content)
+        assertEquals("pending", encoded.getValue("activation").jsonObject.getValue("type").jsonPrimitive.content)
     }
 }
