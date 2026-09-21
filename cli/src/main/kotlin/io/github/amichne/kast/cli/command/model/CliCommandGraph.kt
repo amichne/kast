@@ -1,7 +1,6 @@
 package io.github.amichne.kast.cli.command
 
 import com.github.ajalt.clikt.core.CliktError
-import com.github.ajalt.clikt.core.Context
 import com.github.ajalt.clikt.core.PrintHelpMessage
 import com.github.ajalt.clikt.core.UsageError
 import com.github.ajalt.clikt.core.subcommands
@@ -69,6 +68,7 @@ internal class CliCommandSurface
 internal constructor(
     val localFlags: List<String>,
     val localCommands: List<CliProductCommand>,
+    val agentCommands: List<CliProductCommand>,
     val lifecycleCommands: List<CliLifecycleCommand>,
     val semanticCommands: List<CliSemanticCommandSurface>,
     val toolCommands: List<io.github.amichne.kast.cli.command.tool.CliToolCommandSurface>,
@@ -312,7 +312,7 @@ private class CliCommandGraph(
             }
         val localCounts = local.groupingBy(LocalKastCommand::command).eachCount()
         CliProductCommand.entries
-            .filter { it.exposure == CliLocalExposure.PUBLIC && it !in hiddenImplementationCommands }
+            .filter { it.exposure != CliLocalExposure.INTERNAL && it !in hiddenImplementationCommands }
             .forEach { command ->
                 when (localCounts[command] ?: 0) {
                     0 -> add(CliCommandGraphFailure.MissingLocal(command))
@@ -336,7 +336,8 @@ private class CliCommandGraph(
         CliCommandSurface(
             toolCommands = tools,
             localFlags = listOf("--help", "--version", "--schema"),
-            localCommands = local.map(LocalKastCommand::command),
+            localCommands = local.map(LocalKastCommand::command).filter { it.exposure == CliLocalExposure.PUBLIC },
+            agentCommands = local.map(LocalKastCommand::command).filter { it.exposure == CliLocalExposure.AGENT },
             lifecycleCommands = lifecycle.map(LifecycleKastCommand::command),
             semanticCommands =
                 semantic.map { command ->
@@ -417,18 +418,6 @@ private fun canonicalGraph(
     )
 }
 
-private fun projectedLocalFamily(family: LocalCommandFamily, hidden: Boolean): LocalCommandFamily {
-    val commands = family.commands.filter { it.command.exposure == CliLocalExposure.PUBLIC }
-    val root =
-        when (val candidate = family.root) {
-            is LocalKastCommand ->
-                if (candidate in commands) candidate else ProjectedCommandGroup(candidate).subcommands(commands)
-            else -> ProjectedCommandGroup(candidate).subcommands(commands)
-        }
-    val projectedRoot = if (hidden) HiddenProjectedCommandGroup(root).subcommands(commands) else root
-    return LocalCommandFamily(projectedRoot, commands)
-}
-
 internal class CommandFamily(
     val root: KastCommandGroup,
     val semanticCommands: List<SemanticKastCommand<*>>,
@@ -443,32 +432,6 @@ internal fun CommandFamily.projectPublicDefinitions(
     val commands = semanticCommands.filter { it.operation in publicOperations }
     return CommandFamily(ProjectedCommandGroup(root).subcommands(commands), commands)
 }
-
-/** Rebuilds a plain family group before registration, retaining its name and help description. */
-private class ProjectedCommandGroup(private val source: KastCommand) : KastCommandGroup(source.commandName, "") {
-    override fun help(context: Context): String = source.help(context)
-}
-
-private class HiddenProjectedCommandGroup(private val source: KastCommand) : KastCommandGroup(source.commandName, "") {
-    override val hiddenFromHelp: Boolean = true
-
-    override fun help(context: Context): String = source.help(context)
-}
-
-private val hiddenImplementationCommands =
-    setOf(
-        CliProductCommand.INDEX_REFRESH,
-        CliProductCommand.INDEX_STATUS,
-        CliProductCommand.INDEX_CLASSES,
-        CliProductCommand.INDEX_SUPERTYPE,
-        CliProductCommand.INDEX_COMPLETION,
-        CliProductCommand.IDE_TRUST_BROKER,
-        CliProductCommand.IDE_REFRESH,
-        CliProductCommand.IDE_STATUS,
-        CliProductCommand.IDE_CLASSES,
-        CliProductCommand.IDE_SUPERTYPE,
-        CliProductCommand.IDE_COMPLETION,
-    )
 
 private fun KastCommand.formatted(failure: CliktError): CliTextDocument =
     (getFormattedHelp(failure) ?: "").renderedHelpDocument()

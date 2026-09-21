@@ -78,9 +78,18 @@ retain that obligation. Lifecycle rejection reports identify the bounded stage
 and outcome, including unresolved worker receipts; failed retirement preserves
 the existing transition journal and state. Successful plugin installation still
 requires the separately reported IDEA restart. Retired CLI start/stop guidance
-does not claim authority to stop IDEA. Explicit project lifecycle actions are available through `workspace lifecycle`.
+does not claim authority to stop IDEA. Agents prepare workspaces through `workspace_lifecycle`; the transport command is absent from user help.
 
-Installation child processes emit `kast_installation` records by default with a closed stage and outcome. Prior admission, retirement, configuration validation, command qualification and App Server enablement retain distinct success, nonzero exit, deadline, I/O and interruption observations. New-payload admission remains authoritative; these records do not contain command arguments, environment values or filesystem paths. Prior admission or retirement failure triggers automatic replacement using the exact installation-derived launchd labels and processes whose executable or argument path belongs to that installation. Failed prior validation cannot veto the upgrade. Replacement has its own bounded stage and outcome. Damaged same-version payloads and recovery bundles move aside before restaging; unrelated paths are not recursively deleted.
+Installation defaults to a private coordinator endpoint and persists an explicitly
+selected public endpoint policy. Candidate configuration and executable qualification
+precede prior-service retirement. Committed installation and service activation have
+separate outcomes: ready, not requested, or pending with a finite child-process
+failure and a resume command. Pending activation does not prevent the shell bootstrap
+from installing the verified IDEA plugin. Saved configuration and installed launchers
+retain the desired state; `kast codex` resumes enrollment and service reconciliation
+without repeating installation. The pending report does not claim service readiness.
+
+Installation child processes emit `kast_installation` records by default with a closed stage and outcome. Prior admission, retirement, configuration validation, candidate and activated-command qualification, and App Server enablement retain distinct success, nonzero exit, deadline, I/O and interruption observations. New-payload admission remains authoritative; these records do not contain command arguments, environment values or filesystem paths. Prior admission or retirement failure triggers automatic replacement using the exact installation-derived launchd labels and processes whose executable or argument path belongs to that installation. Failed prior validation cannot veto the upgrade. Replacement has its own bounded stage and outcome. Damaged same-version payloads and recovery bundles move aside before restaging; unrelated paths are not recursively deleted.
 
 `ControlDistributionLimits` owns the maximum verified control-product entry count and manifest size used by staged installation and runtime identity admission. The shell bootstrap, installed lifecycle, build verifier, and Kotlin owner are checked for the same entry limit, and release layout verification rejects a product outside that bound before publication. Upgrade admission uses the new, checksum-verified lifecycle implementation to inspect the prior installation. If inspection or ordinary retirement fails, replacement proceeds without executing the prior payload. This retains the resource limits while preventing copied limits from drifting below the product that the build produced.
 

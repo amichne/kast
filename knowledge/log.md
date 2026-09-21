@@ -9,6 +9,17 @@
   six impacted concepts; hosted-query and runtime-host claims remain unchanged
   because their build edits preserve task inputs and dependencies.
 
+## 2026-09-16
+
+- Defaulted coordinator discovery to its private installation endpoint, retained
+  explicit canonical selection, and separated committed installation from pending
+  activation. Candidate validation and launch checks precede prior-service
+  retirement; subsequent client launch reconciles activation from saved state.
+- Kept workspace setup in the agent catalog and its private invocation binding,
+  removed the user convenience command, and moved setup instructions into agent
+  integration documentation. Reviewed all nine impacted concepts; semantic-query,
+  query-protocol and semantic outcome contracts remain unchanged.
+
 ## 2026-09-15
 
 - Simplified public onboarding and moved contributor and installation-recovery

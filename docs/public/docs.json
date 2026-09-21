@@ -35,8 +35,7 @@
             "group": "Start",
             "pages": [
               "index",
-              "start",
-            "workspaces"
+              "start"
             ]
           },
           {
@@ -72,14 +71,15 @@
             "group": "Integration",
             "pages": [
               "agent-harnesses",
-              "concepts/runtime-integration-validation"
+              "concepts/runtime-integration-validation",
+              "workspaces",
+              "POST /callables/workspace_lifecycle"
             ]
           },
           {
             "group": "Search and diagnostics",
             "pages": [
-              "POST /callables/workspace_lifecycle",
-            "POST /callables/search_classes",
+              "POST /callables/search_classes",
               "POST /callables/search_functions",
               "POST /callables/search_declarations",
               "POST /callables/check_diagnostics"

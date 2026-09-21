@@ -52,6 +52,12 @@ the current anchor, canonical target, matching ownership and a nonblocking share
 activation lock. The alias and target identities are checked again after the
 pinned configuration read. Other symlinks remain rejected.
 
+`KAST_APP_SERVER_PUBLIC_ENDPOINT` defaults to `private`. Installation admits and
+persists an explicit `codex-control` selection through the same broker-owned type;
+unknown or empty selections reject. Private routing lets the native Codex daemon
+retain its own discovery endpoint. Saved installation configuration remains the
+desired state when post-install activation is pending.
+
 See [distribution](../modules/distribution.md).
 
 `kast config --help` (or `-h`) lists schema, show, explain and validate before

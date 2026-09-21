@@ -1,5 +1,6 @@
 package io.github.amichne.kast.cli.installation
 
+import io.github.amichne.kast.appserver.BrokerPublicEndpointMode
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.registry.AgentToolDefinition
 import io.github.amichne.kast.protocol.registry.CanonicalAgentToolDefinitions
@@ -22,6 +23,7 @@ internal enum class InstallationEnvironment(val key: String) {
     ENABLE_LAUNCHD("KAST_ENABLE_LAUNCHD"),
     ENABLE_APP_SERVER("KAST_ENABLE_APP_SERVER"),
     APP_SERVER_TOOLS("KAST_APP_SERVER_TOOLS"),
+    PUBLIC_ENDPOINT("KAST_APP_SERVER_PUBLIC_ENDPOINT"),
     REFRESH_APP_SERVER("KAST_INSTALL_REFRESH_APP_SERVER"),
     REPLACE_COMMAND_COLLISIONS("KAST_INSTALL_REPLACE_COMMAND_COLLISIONS"),
     MODE("KAST_INSTALL_MODE"),
@@ -151,6 +153,7 @@ private constructor(
     val refreshAppServer: InstallationSwitch,
     val replaceCommandCollisions: InstallationSwitch,
     val mode: InstallationMode,
+    val publicEndpoint: BrokerPublicEndpointMode,
 ) {
     companion object {
         fun parse(environment: Map<String, String>): Refinement<InstallationRequest, InstallationRequestFailure> {
@@ -275,6 +278,17 @@ private constructor(
                             InstallationRequestFailure.InvalidValue(InstallationEnvironment.APP_SERVER_TOOLS)
                         )
                 }
+            val endpoint =
+                when (
+                    val admitted =
+                        BrokerPublicEndpointMode.admit(environment[InstallationEnvironment.PUBLIC_ENDPOINT.key])
+                ) {
+                    is Refinement.Refined -> admitted.value
+                    is Refinement.Rejected ->
+                        return Refinement.Rejected(
+                            InstallationRequestFailure.InvalidValue(InstallationEnvironment.PUBLIC_ENDPOINT)
+                        )
+                }
             val refresh =
                 when (val refined = switch(InstallationEnvironment.REFRESH_APP_SERVER)) {
                     is Refinement.Refined -> refined.value
@@ -319,6 +333,7 @@ private constructor(
                     refresh,
                     replaceCommandCollisions,
                     mode,
+                    endpoint,
                 )
             )
         }

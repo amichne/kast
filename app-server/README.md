@@ -17,21 +17,34 @@ kast app-server status
 kast codex
 ```
 
-Enabled integration selects the canonical public endpoint at
-`$CODEX_HOME/app-server-control/app-server-control.sock`. Public discovery policy
-is part of service identity. The real Codex upstream stays installation-private
-at `state/run/u.sock` (with the existing owned short-path transport when needed).
-`KAST_APP_SERVER_PUBLIC_ENDPOINT=private` explicitly selects installation-local
-`state/run/c.sock` for isolated or diagnostic use. Disabled host integration also
-retains the private coordinator endpoint.
+Enabled integration defaults to the installation-owned endpoint at `state/run/c.sock`
+(with the owned short-path transport when needed). `kast codex` explicitly selects
+that endpoint; the desktop façade attaches to the same coordinator. A standalone
+Codex daemon can keep its own public socket without blocking Kast. The real Codex
+upstream remains installation-private at `state/run/u.sock`.
 
-Enablement never replaces an unknown incumbent. A refused connection grants no
-socket deletion authority. The broker acquires its socket lease, binds the
-endpoint, qualifies the catalog and Codex schemas, completes native
-`initialize` / `initialized` through the private upstream, then publishes
-readiness. Startup rejection retires only the socket captured by this process.
-A canonical path exceeding the platform Unix-socket bound rejects; canonical
-client discovery does not follow Kast's private short-path aliases.
+`KAST_APP_SERVER_PUBLIC_ENDPOINT=codex-control` explicitly selects the canonical
+public endpoint at `$CODEX_HOME/app-server-control/app-server-control.sock` for
+stock-client discovery. Installation persists an explicit selection; endpoint
+policy participates in service identity. Disabled host integration always retains
+the private coordinator endpoint.
+
+Canonical mode never replaces an unknown incumbent. An occupied endpoint reports
+`public-socket-owned` before attempting Kast's status protocol. To transfer that
+endpoint from a standalone Codex daemon, stop it with `codex app-server daemon stop`
+and retry enablement. A refused connection grants no socket deletion authority.
+Canonical startup acquires its socket lease, binds the endpoint, qualifies the
+catalog and Codex schemas, and completes native `initialize` / `initialized` before
+publishing readiness. The private coordinator publishes its control readiness
+independently; client attachment still requires host and protocol qualification.
+
+Installation validates the candidate configuration and executable before retiring
+the previous service. Once installation is committed, activation failure reports
+`installed-activation-pending`, with a finite process failure and `kast codex` as
+the resume command. The saved configuration and installed launchers remain usable.
+The next launch re-runs enrollment and bounded service reconciliation without
+reinstalling; a client starts only after service readiness succeeds. Installation
+with activation disabled reports `not-requested` rather than implying readiness.
 
 `kast codex` enrolls the workspace and ensures the persistent service. It retains
 explicit `--remote` attachment during client qualification. Stock Codex 0.154.0

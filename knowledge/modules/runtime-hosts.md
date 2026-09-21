@@ -104,13 +104,17 @@ projection preserves any admitted execution report through fitting and encoding.
 
 Read containment keeps the admitted execution report when a timeout, final freshness check or publication failure rejects the operation. The executor records the report at semantic admission; failure projection does not reconstruct it from defaults. Pre-admission failures carry no grant. Output fitting retains the original semantic outcome internally when publishing an oversized or unencodable response fails.
 
-Enabled persistent Codex integration selects one canonical public socket per
-`CODEX_HOME`; explicit private mode retains installation-local discovery. Endpoint
-policy participates in service identity while the upstream remains private.
-Canonical startup completes the native initialization exchange before readiness
-publication. The existing session hub still owns per-client initialization,
-request correlation, thread/controller ownership and native tool refinement.
-An unreachable socket is not an ownership proof and cannot be unlinked by startup.
+Enabled persistent Codex integration defaults to installation-owned private discovery.
+The CLI supplies its endpoint explicitly and the desktop façade attaches to the
+same coordinator, so a standalone native Codex daemon can coexist. Explicit
+`codex-control` mode selects one canonical public socket per `CODEX_HOME`.
+Endpoint policy participates in service identity while the upstream remains private.
+Canonical startup completes native initialization before readiness publication;
+the private coordinator qualifies host attachment separately. The existing session
+hub owns per-client initialization, request correlation, thread/controller ownership
+and native tool refinement. An unreachable socket is not ownership proof and cannot
+be unlinked by startup. An absent Kast service rejects an occupied canonical endpoint
+before sending the Kast status protocol.
 
 Status reports lifecycle, endpoint ownership, native protocol, catalog and upstream
 observations separately. Service status requires the requested service identity;
@@ -130,4 +134,4 @@ and mutation planning do not use this capability. The
 [query protocol](query-protocol.md#automatic-acquisition-for-fresh-reads) specifies
 the identity checks and returned handle metadata.
 
-The plugin additionally owns one `IdeLifecycleApplication` service and user-scoped control endpoint per selected graphical application home. It remains available with zero projects, advertises actual build, host incarnation and capabilities, and retains at most 256 operation records. The endpoint reuses existing ownership and framed transport. Project semantic services remain project-scoped. Explicit `workspace lifecycle` and the canonical `workspace_lifecycle` tool expose inspect/open/present/sync/release/close/status. `request_user_close` uses the existing controller lease and enrolled signing authority to approve one exact target; session-wide approval is insufficient. No semantic read acquires this capability.
+The plugin additionally owns one `IdeLifecycleApplication` service and user-scoped control endpoint per selected graphical application home. It remains available with zero projects, advertises actual build, host incarnation and capabilities, and retains at most 256 operation records. The endpoint reuses existing ownership and framed transport. Project semantic services remain project-scoped. The agent-only `workspace_lifecycle` tool and its private CLI transport expose inspect/open/present/sync/release/close/status. `request_user_close` uses the existing controller lease and enrolled signing authority to approve one exact target; session-wide approval is insufficient. No semantic read acquires this capability.

@@ -61,13 +61,12 @@ Install the IDEA plugin, connect Codex, and find a declaration in your repositor
   </Step>
   <Step title="Prepare IDEA">
     - Restart IDEA to load the plugin.
-    - Open your repository.
-    - Wait for Gradle import and indexing to finish.
     - Save edited files before requesting evidence.
 
-    Kast checks the existing-IDE endpoint when the agent connects. If the
-    endpoint is unavailable, follow the reported recovery guidance or
-    [troubleshoot the connection](/troubleshooting).
+    The agent can open the requested repository and wait for Gradle import and
+    indexing through its workspace setup tool. You do not need to run workspace
+    lifecycle commands. Resolve project trust or unsaved-document blockers if the
+    agent reports them; see [troubleshooting](/troubleshooting).
   </Step>
   <Step title="Connect from the repository root">
     ```console

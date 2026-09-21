@@ -165,7 +165,12 @@ class InstalledBrokerServerTest {
             val user = temporary.toRealPath()
             val kast = executable(Files.createDirectories(user.resolve("bin")).resolve("kast"))
             val codex = executable(user.resolve("codex"))
-            val environment = mapOf("CODEX_HOME" to home.toString(), "CODEX_EXECUTABLE" to codex.toString())
+            val environment =
+                mapOf(
+                    "CODEX_HOME" to home.toString(),
+                    "CODEX_EXECUTABLE" to codex.toString(),
+                    "KAST_APP_SERVER_PUBLIC_ENDPOINT" to "codex-control",
+                )
             val options =
                 (InstalledBrokerServerConfiguration.admit(kast, user, environment)
                         as InstalledBrokerServerConfiguration.Configured)

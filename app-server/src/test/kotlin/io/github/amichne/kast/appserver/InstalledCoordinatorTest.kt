@@ -21,6 +21,32 @@ import org.junit.jupiter.api.Test
 
 class InstalledCoordinatorTest {
     @Test
+    fun `default coordinator serves status alongside a live native Codex endpoint`() = withPayload { root, kast ->
+        runBlocking {
+            val native = root.resolve(".codex/app-server-control/app-server-control.sock")
+            Files.createDirectories(native.parent)
+            java.nio.channels.ServerSocketChannel.open(java.net.StandardProtocolFamily.UNIX).use { incumbent ->
+                incumbent.bind(java.net.UnixDomainSocketAddress.of(native))
+                val inode = Files.getAttribute(native, "unix:ino")
+                val options =
+                    (InstalledCoordinatorConfiguration.admit(kast, root, emptyMap()) as Refinement.Refined).value
+                val start = InstalledCoordinator.start(options)
+                assertTrue(start is InstalledCoordinatorStart.Started, start.toString())
+                val running = (start as InstalledCoordinatorStart.Started).coordinator
+                try {
+                    assertNotEquals(native, options.socket.path)
+                    assertEquals(BrokerSocketReachability.REACHABLE, JdkBrokerSocketProbe.probe(options.socket.path))
+                    assertTrue(incumbent.isOpen)
+                    assertEquals(inode, Files.getAttribute(native, "unix:ino"))
+                } finally {
+                    running.close()
+                }
+                assertEquals(inode, Files.getAttribute(native, "unix:ino"))
+            }
+        }
+    }
+
+    @Test
     fun `canonical service cannot publish readiness without native Codex protocol`() = withPayload { root, kast ->
         runBlocking {
             val activities = java.util.concurrent.CopyOnWriteArrayList<BrokerStartupActivity>()
@@ -32,7 +58,7 @@ class InstalledCoordinatorTest {
                 (InstalledCoordinatorConfiguration.admit(
                         kast,
                         root,
-                        mapOf("PATH" to "/usr/bin:/bin"),
+                        mapOf("PATH" to "/usr/bin:/bin", "KAST_APP_SERVER_PUBLIC_ENDPOINT" to "codex-control"),
                         sink,
                     ) as Refinement.Refined)
                     .value

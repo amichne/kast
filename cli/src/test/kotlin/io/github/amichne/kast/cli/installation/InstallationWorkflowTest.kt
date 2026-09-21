@@ -293,6 +293,7 @@ internal fun releaseRequest(
     mode: InstallationMode = InstallationMode.APPLY,
     lifecycleInspectionExit: Int = 0,
     replaceCommandCollisions: Boolean = false,
+    environmentOverrides: Map<String, String> = emptyMap(),
 ): InstallationRequest {
     val product = releaseFixture(fixture, version, controlFileCount, lifecycleInspectionExit)
     val parsed =
@@ -306,7 +307,7 @@ internal fun releaseRequest(
                 codexHome,
                 mode,
                 replaceCommandCollisions,
-            )
+            ) + environmentOverrides
         )
     return when (parsed) {
         is Refinement.Refined -> parsed.value
