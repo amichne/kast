@@ -13,20 +13,20 @@ base {
 
 private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
 private val ideaPlatformBuild = catalog.findVersion("idea-platform-build").get().requiredVersion
-private val ideaDistributionVersion = catalog.findVersion("idea-indexer").get().requiredVersion
 
-val diagnosticIdeaDistribution: Configuration by configurations.creating {
-    isCanBeConsumed = false
-    isCanBeResolved = true
-}
+val diagnosticIdeaDistribution =
+    configurations.create("diagnosticIdeaDistribution") {
+        isCanBeConsumed = false
+        isCanBeResolved = true
+    }
 
 private val extractedKotlinPluginDirectory =
     objects.directoryProperty().apply {
-        set(file(gradle.gradleUserHomeDir.resolve("kast/diagnostic-intellij-kotlin-plugin/$ideaDistributionVersion")))
+        set(file(gradle.gradleUserHomeDir.resolve("kast/diagnostic-intellij-kotlin-plugin/$ideaPlatformBuild")))
     }
 
-val extractDiagnosticKotlinPlugin by
-    tasks.registering(Sync::class) {
+val extractDiagnosticKotlinPlugin =
+    tasks.register<Sync>("extractDiagnosticKotlinPlugin") {
         from({ zipTree(diagnosticIdeaDistribution.singleFile) }) {
             include("**/plugins/Kotlin/lib/**/*.jar")
             include("**/plugins/java/lib/**/*.jar")
@@ -62,7 +62,7 @@ dependencies {
     implementation(project(":workspace:contract"))
     implementation(project(":workspace:intellij-read"))
 
-    diagnosticIdeaDistribution("com.jetbrains.intellij.idea:ideaIC:$ideaDistributionVersion@zip") {
+    diagnosticIdeaDistribution("com.jetbrains.intellij.idea:ideaIC:$ideaPlatformBuild@zip") {
         isTransitive = false
     }
 

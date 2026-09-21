@@ -4,8 +4,11 @@ title: Installation configuration
 description: Every external configuration input has declared ownership, parsing, defaults, and projection before it can affect the broker, installation or existing-IDE request.
 resource: file://distribution/contract
 tags: [configuration, distribution, installation]
-timestamp: 2026-09-16T00:00:00Z
+timestamp: 2026-09-21T00:00:00Z
 code_sources:
+  - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt
+  - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationMetadata.kt
+  - path: distribution/contract/src/test/kotlin/io/github/amichne/kast/distribution/contract/configuration/RetiredRuntimeConfigurationTest.kt
   - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/SelectedIdeInstallation.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledConfigurationAlias.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/SavedConfigurationIngress.kt
@@ -99,3 +102,5 @@ serialized. Saturation returns a finite admission rejection when a connection
 has reached the application; the OS backlog is a separate finite capacity.
 
 The existing `KAST_INSTALL_IDEA_HOME` selection also identifies the lifecycle host. Installation saves that home in its environment and a derived `config/selected-ide.json` receipt containing the bundle and real executable (or a finite resolution failure). These are derived observations, not independently configurable launch paths. Explicit opening revalidates product metadata and the executable, allowing any supported `262.*` patch update. Inspection and installation never launch IDEA.
+
+The catalogue rejects removed isolated-runtime setup inputs as `UNKNOWN_KEY` at every source: `KAST_NETWORK_CONFIG`, `KAST_TRUST_DONOR_JAVA_HOME`, `KAST_IDE_CONFIG_HOME`, `KAST_INSTALL_RUNTIME_ARCHIVE`, `KAST_INSTALL_RUNTIME_SHA256`, `KAST_RUNTIME_BASE_URL`, `KAST_LOCAL_RUNTIME_ARCHIVE`, and `KAST_SEMANTIC_RUNTIME_ARCHIVE`. Remove these assignments from saved configuration and the calling environment. The catalogue no longer advertises indexer transport limits or derived JVM settings owned by the retired indexer and workspace importer.

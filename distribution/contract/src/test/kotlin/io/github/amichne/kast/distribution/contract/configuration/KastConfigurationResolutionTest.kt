@@ -71,14 +71,13 @@ class KastConfigurationResolutionTest {
     }
 
     @Test
-    fun `child projection preserves heap network and explicitly delegated environment only`() {
+    fun `child projection preserves heap and explicitly delegated environment only`() {
         val resolved =
             admitted(
                 ConfigurationSources(
                     environment =
                         mapOf(
                             "KAST_INDEXER_MAX_HEAP" to "8g",
-                            "KAST_IDE_CONFIG_HOME" to "/fixture/idea-config",
                             "KAST_GRADLE_IMPORT_VARIABLES" to "REPOSITORY_TOKEN",
                             "REPOSITORY_TOKEN" to "private-value",
                             "UNSELECTED_TOKEN" to "unselected-value",
@@ -88,7 +87,6 @@ class KastConfigurationResolutionTest {
             )
         val broker = resolved.childEnvironment(ConfigurationChild.BROKER)
         assertEquals("8192m", broker["KAST_INDEXER_MAX_HEAP"])
-        assertEquals("/fixture/idea-config", broker["KAST_IDE_CONFIG_HOME"])
         assertEquals("/fixture/gradle", broker["GRADLE_USER_HOME"])
         assertEquals("private-value", broker["REPOSITORY_TOKEN"])
         assertFalse(broker.containsKey("UNSELECTED_TOKEN"))

@@ -1,5 +1,14 @@
 # Knowledge-base update log
 
+## 2026-09-21
+
+- Removed unused isolated-runtime realization and network adapters, obsolete setup
+  selectors and derived catalogue entries, and unconsumed Maven publication
+  conventions. Restored strict dependency verification, replaced deprecated Gradle
+  registration syntax, and consolidated the IDEA compilation pin. Reviewed all
+  six impacted concepts; hosted-query and runtime-host claims remain unchanged
+  because their build edits preserve task inputs and dependencies.
+
 ## 2026-09-16
 
 - Defaulted coordinator discovery to its private installation endpoint, retained

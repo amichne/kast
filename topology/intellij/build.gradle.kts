@@ -13,20 +13,20 @@ base {
 
 private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
 private val ideaPlatformBuild = catalog.findVersion("idea-platform-build").get().requiredVersion
-private val ideaDistributionVersion = catalog.findVersion("idea-indexer").get().requiredVersion
 
-val topologyIdeaDistribution: Configuration by configurations.creating {
-    isCanBeConsumed = false
-    isCanBeResolved = true
-}
+val topologyIdeaDistribution =
+    configurations.create("topologyIdeaDistribution") {
+        isCanBeConsumed = false
+        isCanBeResolved = true
+    }
 
 private val extractedKotlinPluginDirectory =
     objects.directoryProperty().apply {
-        set(file(gradle.gradleUserHomeDir.resolve("kast/topology-intellij-kotlin-plugin/$ideaDistributionVersion")))
+        set(file(gradle.gradleUserHomeDir.resolve("kast/topology-intellij-kotlin-plugin/$ideaPlatformBuild")))
     }
 
-val extractTopologyKotlinPlugin by
-    tasks.registering(Sync::class) {
+val extractTopologyKotlinPlugin =
+    tasks.register<Sync>("extractTopologyKotlinPlugin") {
         from({ zipTree(topologyIdeaDistribution.singleFile) }) {
             include("**/plugins/Kotlin/lib/**/*.jar")
             include("**/plugins/java/lib/**/*.jar")
@@ -61,7 +61,7 @@ dependencies {
     implementation(project(":workspace:intellij-read"))
     implementation(project(":symbol:contract"))
 
-    topologyIdeaDistribution("com.jetbrains.intellij.idea:ideaIC:$ideaDistributionVersion@zip") {
+    topologyIdeaDistribution("com.jetbrains.intellij.idea:ideaIC:$ideaPlatformBuild@zip") {
         isTransitive = false
     }
 

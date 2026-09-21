@@ -7,7 +7,7 @@ val releaseDirectory = layout.buildDirectory.dir("release/v${project.version}")
 val controlArchive = tasks.named<Tar>("assembleKastControlDist")
 val pluginArchive = project(":runtime:hosted").tasks.named<Zip>("hostedPlugin")
 
-val assembleRelease by tasks.registering(Sync::class) {
+val assembleRelease = tasks.register<Sync>("assembleRelease") {
     group = "distribution"
     description =
         "Publishes the control and existing-IDE plugin assets for one matched product."

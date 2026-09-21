@@ -1,8 +1,6 @@
 package io.github.amichne.kast.distribution.contract.configuration
 
 import io.github.amichne.kast.distribution.contract.IndexerHeapSize
-import io.github.amichne.kast.distribution.contract.network.KastNetworkPropertyNamespace
-import io.github.amichne.kast.distribution.contract.network.NetworkProperty
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -84,36 +82,6 @@ internal object DerivedConfigurationDeclarations {
     val all: List<ConfigurationDeclaration> =
         listOf(
             derived(
-                "kast.bootstrap.state.path",
-                ":indexer",
-                ConfigurationSyntax.ABSOLUTE_PATH,
-                ConfigurationSource.JVM_PROPERTY,
-            ),
-            derived(
-                "kast.bootstrap.attempt.id",
-                ":indexer",
-                ConfigurationSyntax.OWNER_INPUT,
-                ConfigurationSource.JVM_PROPERTY,
-            ),
-            derived(
-                "kast.cache.state.path",
-                ":indexer",
-                ConfigurationSyntax.ABSOLUTE_PATH,
-                ConfigurationSource.JVM_PROPERTY,
-            ),
-            derived(
-                "kast.network.cache.root",
-                ":workspace:intellij",
-                ConfigurationSyntax.ABSOLUTE_PATH,
-                ConfigurationSource.JVM_PROPERTY,
-            ),
-            derived(
-                "kast.network.workspace.root",
-                ":workspace:intellij",
-                ConfigurationSyntax.ABSOLUTE_PATH,
-                ConfigurationSource.JVM_PROPERTY,
-            ),
-            derived(
                 "BROKER_SERVICE_IDENTITY",
                 ":app-server",
                 ConfigurationSyntax.OWNER_INPUT,
@@ -125,22 +93,7 @@ internal object DerivedConfigurationDeclarations {
                 ConfigurationSyntax.ABSOLUTE_PATH,
                 ConfigurationSource.PROCESS_ENVIRONMENT,
             ),
-        ) +
-            NetworkProperty.entries.map { property ->
-                derived(
-                        KastNetworkPropertyNamespace.DAEMON_PREFIX + property.key,
-                        ":workspace:intellij",
-                        ConfigurationSyntax.OWNER_INPUT,
-                        ConfigurationSource.JVM_PROPERTY,
-                    )
-                    .copy(
-                        disclosure =
-                            if (property == NetworkProperty.TRUST_STORE_PASSWORD)
-                                ConfigurationDisclosure.SECRET_PRESENCE
-                            else ConfigurationDisclosure.PUBLIC,
-                        admittedRange = ConfigurationAdmittedRange(ownerAdmission = "NetworkConfiguration.parse"),
-                    )
-            }
+        )
 
     private fun derived(key: String, owner: String, syntax: ConfigurationSyntax, source: ConfigurationSource) =
         ConfigurationDeclaration(

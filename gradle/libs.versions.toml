@@ -2,19 +2,15 @@
 kotlin = "2.4.20"
 clikt = "5.1.0"
 shadow = "9.4.1"
-vanniktech-maven-publish-plugin = "0.37.0"
 coroutines = "1.10.2"
 serialization = "1.11.0"
 junit = "6.1.3"
-junit4 = "4.13.2"
 jimfs = "1.3.1"
 slf4j = "2.0.18"
 logback = "1.5.34"
-idea-indexer = "262.9437.185"
 idea-platform-build = "262.9437.185"
 ide-host-build = "262.10315.125"
 ide-kotlin-plugin-build = "262.10315.125-IJ"
-gradle-tooling-api = "9.4.0"
 sqlite-jdbc = "3.53.2.0"
 json-schema-validator = "3.0.3"
 ktor = "3.5.2"
@@ -23,20 +19,16 @@ ktor = "3.5.2"
 coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 clikt-core = { module = "com.github.ajalt.clikt:clikt-core", version.ref = "clikt" }
 coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
-coroutines-jdk8 = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-jdk8", version.ref = "coroutines" }
 serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
 junit-jupiter-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit" }
 junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit" }
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junit" }
-junit4 = { module = "junit:junit", version.ref = "junit4" }
 jimfs = { module = "com.google.jimfs:jimfs", version.ref = "jimfs" }
 slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
-gradle-tooling-api = { module = "org.gradle:gradle-tooling-api", version.ref = "gradle-tooling-api" }
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 kotlin-serialization-plugin = { module = "org.jetbrains.kotlin:kotlin-serialization", version.ref = "kotlin" }
-vanniktech-maven-publish-plugin = { module = "com.vanniktech:gradle-maven-publish-plugin", version.ref = "vanniktech-maven-publish-plugin" }
 sqlite-jdbc = { module = "org.xerial:sqlite-jdbc", version.ref = "sqlite-jdbc" }
 json-schema-validator = { module = "com.networknt:json-schema-validator", version.ref = "json-schema-validator" }
 ktor-server-core = { module = "io.ktor:ktor-server-core-jvm", version.ref = "ktor" }
@@ -50,11 +42,6 @@ ktor-client-websockets = { module = "io.ktor:ktor-client-websockets-jvm", versio
 test = [
     "junit-jupiter",
     "coroutines-test",
-]
-
-coroutines = [
-    "coroutines-core",
-    "coroutines-jdk8",
 ]
 
 ktor-broker = [

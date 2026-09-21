@@ -27,18 +27,19 @@ private val ideHostBuild =
         checkNotNull((groovy.json.JsonSlurper().parseText(metadata) as Map<*, *>)["buildNumber"]) as String
     } else catalog.findVersion("ide-host-build").get().requiredVersion
 
-val workspaceReadIdeaDistribution: Configuration by configurations.creating {
-    isCanBeConsumed = false
-    isCanBeResolved = true
-}
+val workspaceReadIdeaDistribution =
+    configurations.create("workspaceReadIdeaDistribution") {
+        isCanBeConsumed = false
+        isCanBeResolved = true
+    }
 
 private val extractedIdeaDistributionDirectory =
     objects.directoryProperty().apply {
         set(file(gradle.gradleUserHomeDir.resolve("kast/workspace-intellij-read-idea-distributions/$ideHostBuild")))
     }
 
-val extractWorkspaceReadIdeaDistribution by
-    tasks.registering(ExtractIdeaDistributionTask::class) {
+val extractWorkspaceReadIdeaDistribution =
+    tasks.register<ExtractIdeaDistributionTask>("extractWorkspaceReadIdeaDistribution") {
         archives.from(workspaceReadIdeaDistribution)
         ideaVersion.set(ideHostBuild)
         outputDirectory.set(extractedIdeaDistributionDirectory)
@@ -103,8 +104,8 @@ tasks.withType<Test>().configureEach {
 }
 
 // Opt-in manual semantic proof payload. The ordinary read library has no plugin descriptor.
-val hostedQueryPluginJar by
-    tasks.registering(Jar::class) {
+val hostedQueryPluginJar =
+    tasks.register<Jar>("hostedQueryPluginJar") {
         archiveBaseName.set("kast-hosted-query")
         archiveVersion.set("0.1.0")
         from(sourceSets.main.get().output)
@@ -136,8 +137,8 @@ val hostedQueryPluginJar by
         }
     }
 
-val hostedQueryPlugin by
-    tasks.registering(Zip::class) {
+val hostedQueryPlugin =
+    tasks.register<Zip>("hostedQueryPlugin") {
         group = "distribution"
         description = "Packages the manually activated existing-IDE semantic proof."
         archiveBaseName.set("kast-hosted-query")

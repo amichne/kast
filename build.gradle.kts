@@ -13,7 +13,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization) apply false
 }
 // Parser dependencies are resolved only for the isolated verification process, never the KGP classloader.
-val jsonContractParser by configurations.creating {
+val jsonContractParser = configurations.create("jsonContractParser") {
     isCanBeConsumed = false
     isCanBeResolved = true
 }
@@ -66,7 +66,7 @@ val generatedOperationRegistry = project(":protocol:wire").layout.buildDirectory
 val generatedConfigurationCatalogue = project(":cli").layout.buildDirectory.file(
     "generated/configuration/configuration-schema.json",
 )
-val generateKastControlMetadata by tasks.registering(GenerateControlMetadataTask::class) {
+val generateKastControlMetadata = tasks.register<GenerateControlMetadataTask>("generateKastControlMetadata") {
     group = "distribution"
     description = "Generates the existing-IDE plugin manifest and public schemas."
     dependsOn(":runtime:hosted:hostedPlugin", ":protocol:wire:generateOperationRegistry", ":cli:generateConfigurationCatalogue")
@@ -81,7 +81,7 @@ val generateKastControlMetadata by tasks.registering(GenerateControlMetadataTask
 }
 
 val controlProductDirectory = layout.buildDirectory.dir("control-product")
-val stageKastControlProduct by tasks.registering(Sync::class) {
+val stageKastControlProduct = tasks.register<Sync>("stageKastControlProduct") {
     group = "distribution"
     description = "Stages the Kast control installation for the existing IDE."
     dependsOn(":cli:installDist", generateKastControlMetadata)
@@ -95,7 +95,7 @@ val stageKastControlProduct by tasks.registering(Sync::class) {
     from(listOf("packaging/installation-lifecycle.py", "packaging/installation-recovery.py")) { into("share/kast") }
 }
 
-val assembleKastControlDist by tasks.registering(Tar::class) {
+val assembleKastControlDist = tasks.register<Tar>("assembleKastControlDist") {
     group = "distribution"
     description = "Builds the public CLI, lifecycle, schema, broker, and wire-control archive."
     dependsOn(stageKastControlProduct)
@@ -112,7 +112,7 @@ val assembleKastControlDist by tasks.registering(Tar::class) {
 
 val controlDistributionMaximumEntries = 16_384
 
-val verifyKastControlDistLayout by tasks.registering(VerifyControlDistributionTask::class) {
+val verifyKastControlDistLayout = tasks.register<VerifyControlDistributionTask>("verifyKastControlDistLayout") {
     group = "verification"
     description = "Rejects oversized or semantic-payload-bearing control archives."
     dependsOn(assembleKastControlDist)
@@ -131,7 +131,7 @@ tasks.register("verifyDistributionContent") {
     dependsOn(verifyKastControlDistLayout, ":runtime:hosted:hostedPlugin", ":app-server:verifyReleaseRuntimeAdmission")
 }
 
-val stageInstalledProduct by tasks.registering(Sync::class) {
+val stageInstalledProduct = tasks.register<Sync>("stageInstalledProduct") {
     group = "distribution"
     description = "Stages the control-only installed Kotlin product."
     dependsOn(stageKastControlProduct)
@@ -287,7 +287,7 @@ val localInstallationTest = tasks.register<Exec>("localInstallationTest") {
     commandLine("python3", layout.projectDirectory.file("packaging/test-install-local.py"))
 }
 
-val productBuildGate by tasks.registering {
+val productBuildGate = tasks.register("productBuildGate") {
     group = "verification"
     description = "Builds every module and verifies deterministic contracts, architecture and packaging without runtime qualification."
     dependsOn(

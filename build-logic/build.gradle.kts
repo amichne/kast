@@ -28,7 +28,7 @@ repositories {
 private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
 
 // Compile PSI scanning separately: KGP embeds relocated compiler classes that must not bind this code.
-val jsonContracts by sourceSets.creating
+val jsonContracts = sourceSets.create("jsonContracts")
 
 kotlin.sourceSets.named(jsonContracts.name) {
     kotlin.srcDir("src/main/kotlin")
@@ -47,7 +47,7 @@ sourceSets.test {
     runtimeClasspath += jsonContracts.output
 }
 
-val jsonContractsTest by sourceSets.creating {
+val jsonContractsTest = sourceSets.create("jsonContractsTest") {
     compileClasspath += jsonContracts.output
     runtimeClasspath += jsonContracts.output
 }
@@ -87,7 +87,6 @@ dependencies {
     implementation(catalog.findLibrary("kotlin-serialization-plugin").get())
     implementation(catalog.findLibrary("serialization-json").get())
     implementation(catalog.findLibrary("json-schema-validator").get())
-    implementation(catalog.findLibrary("vanniktech-maven-publish-plugin").get())
     implementation(
         "com.gradleup.shadow:com.gradleup.shadow.gradle.plugin:${catalog.findVersion("shadow").get().requiredVersion}"
     )

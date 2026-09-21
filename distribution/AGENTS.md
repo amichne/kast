@@ -9,17 +9,15 @@ Defines installation/runtime configuration contracts, safe managed filesystem re
 
 ## Key Files
 
-- [contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/SemanticRuntimeContract.kt](contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/SemanticRuntimeContract.kt) - retained compatibility contract; no isolated runtime is shipped.
 - [contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationSchemaDocument.kt](contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationSchemaDocument.kt) - configuration model.
 - [contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/IndexerHeapSize.kt](contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/IndexerHeapSize.kt) - historical heap input admission.
 - [managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedInstallationOwnedTree.kt](managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedInstallationOwnedTree.kt) - owned installation tree.
-- [managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/SafeRuntimeArchive.kt](managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/SafeRuntimeArchive.kt) - retained legacy archive admission.
 - [release/plugin-release.gradle.kts](release/plugin-release.gradle.kts) - control distribution and IDEA plugin release wiring.
 
 ## Subdirectories
 
-- `contract` - bootstrap, configuration, network, transport, and runtime identity types.
-- `managed` - filesystem, endpoint, archive, network, and runtime-store effects.
+- `contract` - bootstrap, configuration, transport qualification, and runtime identity types.
+- `managed` - owned installation trees, recovery receipts, selected IDE discovery, and endpoint effects.
 - `release` - Python/Gradle release and SBOM utilities.
 
 ## Entry Points

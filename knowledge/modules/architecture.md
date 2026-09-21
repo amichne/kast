@@ -4,8 +4,11 @@ title: Verified module architecture
 description: Gradle verifies module roles, dependencies, exports, and scoped agent guidance before projecting module knowledge.
 resource: file://settings.gradle.kts
 tags: [kotlin, gradle, architecture]
-timestamp: 2026-09-16T00:00:00Z
+timestamp: 2026-09-21T00:00:00Z
 code_sources:
+  - path: gradle.properties
+  - path: gradle/libs.versions.toml
+  - path: build-logic/settings.gradle.kts
   - path: build-logic/src/main/kotlin/support/architecture/policy/HostedWorkspaceRefreshAuthority.kt
   - path: docs/reviews/live-semantic-read-acceptance.md
   - path: build-logic/src/main/kotlin/kast.kotlin-library.gradle.kts
@@ -100,3 +103,5 @@ scoped guide resources staged with the control product.
 The explicit hosted workspace refresh adapter is the sole scoped caller permitted to perform native Gradle model reload and recursive VFS refresh. These capabilities are not granted to `workspace:intellij-read` or the general hosted runtime. Architecture regression tests retain rejection of passive-read callers and of unapproved native import entry points and cache/index rebuilding.
 
 The native lifecycle adapter alone has scoped project-manager authority. The existing refresh adapter alone can create initial Gradle link settings and call the narrow native link-plus-refresh seam; its shared spec builder has only the exact quiet import-spec methods. Approval-key reads are confined to the exact lifecycle verification owner. Passive workspace reads retain no project-open, link, import, or lifecycle-control authority.
+
+Builds use strict dependency verification against the checked checksum metadata. Task registration uses the explicit Gradle Kotlin DSL API, retaining lazy task providers without the deprecated delegated registration syntax. The IDEA distribution and platform compilation artifacts share `idea-platform-build`; `ide-host-build` independently pins the packaged host. Unused Maven publication conventions and their plugin dependency have been removed; release delivery remains the GitHub release assembly.

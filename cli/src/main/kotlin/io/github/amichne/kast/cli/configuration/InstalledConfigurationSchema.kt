@@ -2,7 +2,6 @@ package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.appserver.CoordinatorStatusProtocol
-import io.github.amichne.kast.distribution.contract.IndexerTransportLimits
 import io.github.amichne.kast.distribution.contract.WireRuntimeQualification
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationOperationalLimit
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationSchemaDocument
@@ -77,35 +76,6 @@ object InstalledConfigurationSchema {
                                 WireRuntimeQualification.maximumBytes.toLong(),
                                 ConfigurationUnit.BYTES,
                                 "WireRuntimeQualification.maximumBytes",
-                            )
-                        )
-                        add(
-                            limit(
-                                "indexer.frame.maximum_bytes",
-                                ":distribution:contract",
-                                IndexerTransportLimits.maximumFrameBytes.toLong(),
-                                ConfigurationUnit.BYTES,
-                                "IndexerTransportLimits.maximumFrameBytes",
-                            )
-                        )
-                        add(
-                            limit(
-                                "indexer.connections.default",
-                                ":distribution:contract",
-                                IndexerTransportLimits.defaultConnections.toLong(),
-                                ConfigurationUnit.COUNT,
-                                "IndexerTransportLimits.defaultConnections",
-                                ConfigurationScope.WORKSPACE,
-                            )
-                        )
-                        add(
-                            limit(
-                                "indexer.connections.maximum",
-                                ":distribution:contract",
-                                IndexerTransportLimits.maximumConnections.toLong(),
-                                ConfigurationUnit.COUNT,
-                                "IndexerTransportLimits.maximumConnections",
-                                ConfigurationScope.WORKSPACE,
                             )
                         )
                         add(

@@ -9493,16 +9493,6 @@
     },
     {
       "fingerprint": {
-        "path": "distribution/contract/src/test/kotlin/io/github/amichne/kast/distribution/contract/SemanticRuntimeManifestTest.kt",
-        "scope": "type:SemanticRuntimeManifestTest/type:Companion/val:VALID_MANIFEST",
-        "kind": "JSON_LITERAL",
-        "sha256": "276e65bb1d45ad88172919f4d41d5e0b88e3c8d35756edd5e016195a2aa6fda9"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
         "path": "distribution/contract/src/test/kotlin/io/github/amichne/kast/distribution/contract/bootstrap/SemanticRuntimeBootstrapTest.kt",
         "scope": "type:SemanticRuntimeBootstrapTest/fun:structured input causes round trip and malformed evidence fails closed()",
         "kind": "JSON_LITERAL",
@@ -9577,46 +9567,6 @@
         "scope": "type:SemanticRuntimeBootstrapTest/fun:legacy bootstrap document cannot prove phase and is rejected as unsupported()",
         "kind": "JSON_LITERAL",
         "sha256": "f984cb188b264558421b0705c7919b33bd920761a4e804c7b43c1e7c4df9de5d"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/launch/IndexerHeapObservation.kt",
-        "scope": "type:IndexerHeapObservation/fun:boundaryDocument()",
-        "kind": "JSON_BUILDER",
-        "sha256": "b95736c188fd5b5e3d3391b4960b1871d26a9565265052b8dff373f4b3054824"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "distribution/managed/src/test/kotlin/io/github/amichne/kast/distribution/managed/ManagedSemanticRuntimeProviderTest.kt",
-        "scope": "type:ManagedSemanticRuntimeProviderTest/fun:runtimeArchive(4:Path,4:Pair1:<6:String1:,6:String1:>)/declaration:<anonymous>/val:entries",
-        "kind": "JSON_LITERAL",
-        "sha256": "e951e0529a48f403ef1751f1c42d135f4e10447002446e0a84c5458be8e84ce7"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "distribution/managed/src/test/kotlin/io/github/amichne/kast/distribution/managed/ManagedSemanticRuntimeProviderTest.kt",
-        "scope": "type:ManagedSemanticRuntimeProviderTest/fun:manifestFor(4:Path,6:String)/val:raw",
-        "kind": "JSON_LITERAL",
-        "sha256": "420445fc10c3cffd53028eaf4e44abbbdacb51ab4808e99761bfc5d9262c8e35"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "distribution/managed/src/test/kotlin/io/github/amichne/kast/distribution/managed/launch/IndexerHeapObservationTest.kt",
-        "scope": "type:IndexerHeapObservationTest/fun:running JVM evidence retains admitted and actually observed maxima()",
-        "kind": "JSON_LITERAL",
-        "sha256": "18ea7137d61aba634d81e672817e32fdb3f1b87dd4dfa70d9b0c6d9c0e930c57"
       },
       "count": 1,
       "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."

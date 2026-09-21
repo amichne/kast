@@ -53,7 +53,7 @@ val shadowJarArchive = shadowJar.flatMap(ShadowJar::getArchiveFile)
 
 val mainJar = tasks.named<Jar>("jar")
 
-val syncRuntimeLibs by tasks.registering(SyncRuntimeLibsTask::class) {
+val syncRuntimeLibs = tasks.register<SyncRuntimeLibsTask>("syncRuntimeLibs") {
     dependsOn(mainJar)
     appJar.set(mainJar.flatMap(Jar::getArchiveFile))
     runtimeJars.from(configurations.runtimeClasspath)
@@ -61,22 +61,21 @@ val syncRuntimeLibs by tasks.registering(SyncRuntimeLibsTask::class) {
     classpathFile.set(layout.buildDirectory.file("runtime-libs/classpath.txt"))
 }
 
-val writeWrapperScript by tasks.registering(WriteWrapperScriptTask::class) {
+val writeWrapperScript = tasks.register<WriteWrapperScriptTask>("writeWrapperScript") {
     dependsOn(syncRuntimeLibs)
 
     jarFileName.set(shadowJar.flatMap(ShadowJar::getArchiveFileName))
     outputFile.set(layout.buildDirectory.file("scripts/$applicationName"))
 }
 
-val syncPortableDist by tasks.registering(Sync::class) {
+val syncPortableDist = tasks.register<Sync>("syncPortableDist") {
     dependsOn(writeWrapperScript)
     into(layout.buildDirectory.dir("portable-dist/$applicationName"))
     duplicatesStrategy = DuplicatesStrategy.FAIL
 
     from(writeWrapperScript)
     // runtime-libs is intentionally absent here: consumers must explicitly wire their
-    // own runtime-libs source so that classpath.txt references the correct daemon jars.
-    // See indexer/build.gradle.kts for the shipped indexer distribution.
+    // own runtime-libs source so that classpath.txt references the correct application jars.
 }
 
 afterEvaluate {
@@ -92,7 +91,7 @@ afterEvaluate {
     }
 }
 
-val portableDistZip by tasks.registering(Zip::class) {
+val portableDistZip = tasks.register<Zip>("portableDistZip") {
     val archiveRoot = applicationName
     dependsOn(syncPortableDist)
     archiveBaseName.set(applicationName)

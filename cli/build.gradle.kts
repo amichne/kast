@@ -16,12 +16,11 @@ dependencies {
     implementation(libs.json.schema.validator)
     // Preserve the version previously selected by the broker's direct Ktor dependency.
     constraints {
-        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.11.0")
         implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
     }
     implementation(project(":app-server"))
     implementation(libs.clikt.core)
-    implementation(libs.bundles.coroutines)
+    implementation(libs.coroutines.core)
     runtimeOnly(libs.logback.classic)
     implementation(project(":distribution:contract"))
     implementation(project(":distribution:managed"))
@@ -37,8 +36,8 @@ tasks.named<Test>("test") {
     }
 }
 
-val nativeTest by
-    tasks.registering(Test::class) {
+val nativeTest =
+    tasks.register<Test>("nativeTest") {
         description = "Runs native UDS CLI boundary tests."
         group = "verification"
         testClassesDirs = sourceSets.test.get().output.classesDirs
@@ -52,8 +51,8 @@ tasks.named("check") {
     dependsOn(nativeTest)
 }
 
-val codexIntegrationStartScripts by
-    tasks.registering(CreateStartScripts::class) {
+val codexIntegrationStartScripts =
+    tasks.register<CreateStartScripts>("codexIntegrationStartScripts") {
         applicationName = "kast-codex"
         mainClass = "io.github.amichne.kast.cli.KastCodexMain"
         outputDir = layout.buildDirectory.dir("codex-integration-scripts").get().asFile
@@ -85,8 +84,8 @@ val projectedMintlifyCallableReference = layout.buildDirectory.file("generated/d
 val publishedMintlifyCallableReference =
     rootProject.layout.projectDirectory.file("docs/public/reference/callables.openapi.json")
 
-val projectMintlifyCallableReference by
-    tasks.registering(support.tasks.WriteJavaProcessOutputTask::class) {
+val projectMintlifyCallableReference =
+    tasks.register<support.tasks.WriteJavaProcessOutputTask>("projectMintlifyCallableReference") {
         group = "documentation"
         description = "Projects the Mintlify reference for every public installed callable."
         dependsOn(tasks.named("classes"))
@@ -95,8 +94,8 @@ val projectMintlifyCallableReference by
         outputFile.set(projectedMintlifyCallableReference)
     }
 
-val generateMintlifyCallableReference by
-    tasks.registering(support.tasks.WriteJavaProcessOutputTask::class) {
+val generateMintlifyCallableReference =
+    tasks.register<support.tasks.WriteJavaProcessOutputTask>("generateMintlifyCallableReference") {
         group = "documentation"
         description = "Updates the checked-in Mintlify callable reference."
         dependsOn(tasks.named("classes"))
@@ -105,8 +104,8 @@ val generateMintlifyCallableReference by
         outputFile.set(publishedMintlifyCallableReference)
     }
 
-val verifyMintlifyCallableReference by
-    tasks.registering(Exec::class) {
+val verifyMintlifyCallableReference =
+    tasks.register<Exec>("verifyMintlifyCallableReference") {
         group = "verification"
         description = "Rejects drift in the checked-in Mintlify callable reference; regenerate on failure."
         dependsOn(projectMintlifyCallableReference)

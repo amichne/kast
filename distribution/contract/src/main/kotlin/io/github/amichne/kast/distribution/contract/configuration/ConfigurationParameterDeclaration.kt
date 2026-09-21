@@ -35,10 +35,7 @@ internal fun ConfigurationParameter.baseDeclaration(): ConfigurationDeclaration 
             ConfigurationParameter.GRADLE_JAVA_HOME,
             ConfigurationParameter.GRADLE_IMPORT_VARIABLES,
             ConfigurationParameter.GRADLE_IMPORT_PATH,
-            ConfigurationParameter.GRADLE_USER_HOME,
-            ConfigurationParameter.NETWORK_CONFIG,
-            ConfigurationParameter.TRUST_DONOR_JAVA_HOME,
-            ConfigurationParameter.IDE_CONFIG_HOME -> ConfigurationImpact.MODEL
+            ConfigurationParameter.GRADLE_USER_HOME -> ConfigurationImpact.MODEL
             ConfigurationParameter.APP_SERVER_TOOLS,
             ConfigurationParameter.CODEX_HOME -> ConfigurationImpact.ROUTING
             else -> ConfigurationImpact.LAUNCH_ONLY
