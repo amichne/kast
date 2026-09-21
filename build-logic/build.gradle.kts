@@ -92,7 +92,7 @@ dependencies {
     )
     implementation("com.diffplug.spotless:com.diffplug.spotless.gradle.plugin:8.10.2")
     implementation("dev.detekt:detekt-gradle-plugin:2.0.0-alpha.6")
-    implementation("org.ow2.asm:asm:9.9.1")
+    implementation("org.ow2.asm:asm:9.10.1")
     testImplementation(catalog.findLibrary("junit-jupiter").get())
     testImplementation(gradleTestKit())
     testRuntimeOnly(catalog.findLibrary("junit-platform-launcher").get())
