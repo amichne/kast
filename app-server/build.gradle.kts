@@ -31,7 +31,7 @@ plugins {
 
 dependencies {
     testImplementation(libs.jimfs)
-    implementation(libs.bundles.coroutines)
+    implementation(libs.coroutines.core)
     implementation(libs.serialization.json)
     implementation(libs.json.schema.validator)
     implementation(libs.bundles.ktor.broker)
@@ -50,8 +50,8 @@ tasks.named<Test>("test") {
 
 val kastObserverSnapshotManifest = layout.buildDirectory.file("observer-snapshots/kast-observer-presentations.json")
 
-val generateKastObserverSnapshotManifest by
-    tasks.registering(JavaExec::class) {
+val generateKastObserverSnapshotManifest =
+    tasks.register<JavaExec>("generateKastObserverSnapshotManifest") {
         description = "Projects deterministic Kast observer fixtures without starting Codex."
         group = "documentation"
         classpath = sourceSets.test.get().runtimeClasspath
@@ -159,8 +159,8 @@ tasks.register<Jar>("hostedChangeHarnessJar") {
     manifest.attributes("Kast-Acceptance-Source-Commit" to hostedChangeSourceCommit.get())
 }
 
-val verifyReleaseRuntimeAdmission by
-    tasks.registering(JavaExec::class) {
+val verifyReleaseRuntimeAdmission =
+    tasks.register<JavaExec>("verifyReleaseRuntimeAdmission") {
         group = "verification"
         dependsOn(tasks.named("testClasses"), rootProject.tasks.named("stageKastControlProduct"))
         classpath = sourceSets.test.get().runtimeClasspath

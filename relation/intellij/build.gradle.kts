@@ -13,20 +13,20 @@ base {
 
 private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
 private val ideaPlatformBuild = catalog.findVersion("idea-platform-build").get().requiredVersion
-private val ideaDistributionVersion = catalog.findVersion("idea-indexer").get().requiredVersion
 
-val relationIdeaDistribution: Configuration by configurations.creating {
-    isCanBeConsumed = false
-    isCanBeResolved = true
-}
+val relationIdeaDistribution =
+    configurations.create("relationIdeaDistribution") {
+        isCanBeConsumed = false
+        isCanBeResolved = true
+    }
 
 private val extractedKotlinPluginDirectory =
     objects.directoryProperty().apply {
-        set(file(gradle.gradleUserHomeDir.resolve("kast/relation-intellij-kotlin-plugin/$ideaDistributionVersion")))
+        set(file(gradle.gradleUserHomeDir.resolve("kast/relation-intellij-kotlin-plugin/$ideaPlatformBuild")))
     }
 
-val extractRelationKotlinPlugin by
-    tasks.registering(Sync::class) {
+val extractRelationKotlinPlugin =
+    tasks.register<Sync>("extractRelationKotlinPlugin") {
         inputs.property("pluginLibrarySets", listOf("Kotlin", "java"))
         from({ zipTree(relationIdeaDistribution.singleFile) }) {
             include("**/plugins/Kotlin/lib/**/*.jar")
@@ -62,7 +62,7 @@ dependencies {
     implementation(project(":workspace:contract"))
     implementation(project(":workspace:intellij-read"))
 
-    relationIdeaDistribution("com.jetbrains.intellij.idea:ideaIC:$ideaDistributionVersion@zip") {
+    relationIdeaDistribution("com.jetbrains.intellij.idea:ideaIC:$ideaPlatformBuild@zip") {
         isTransitive = false
     }
 

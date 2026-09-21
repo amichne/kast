@@ -36,8 +36,7 @@ detekt {
     parallel = true
 }
 
-val checkMainKotlinFileLength by
-    tasks.registering(KotlinFileLengthTask::class) {
+val checkMainKotlinFileLength = tasks.register<KotlinFileLengthTask>("checkMainKotlinFileLength") {
         group = "verification"
         description = "Rejects production Kotlin files larger than the structural reading budget."
         sourceFiles.from(fileTree("src/main") { include("**/*.kt") })
@@ -45,8 +44,7 @@ val checkMainKotlinFileLength by
         baselineFile.set(rootProject.layout.projectDirectory.file("config/kotlin/file-length-baseline.tsv"))
     }
 
-val checkTestKotlinFileLength by
-    tasks.registering(KotlinFileLengthTask::class) {
+val checkTestKotlinFileLength = tasks.register<KotlinFileLengthTask>("checkTestKotlinFileLength") {
         group = "verification"
         description = "Rejects test Kotlin files larger than the test reading budget."
         sourceFiles.from(fileTree("src/test") { include("**/*.kt") })

@@ -229,27 +229,6 @@ enum class ConfigurationParameter(
         disclosure = ConfigurationDisclosure.SENSITIVE_PATH,
         children = setOf(ConfigurationChild.BROKER, ConfigurationChild.SIDECAR),
     ),
-    NETWORK_CONFIG(
-        "KAST_NETWORK_CONFIG",
-        ConfigurationSyntax.ABSOLUTE_PATH,
-        owner = ":distribution:managed",
-        disclosure = ConfigurationDisclosure.SENSITIVE_PATH,
-        children = setOf(ConfigurationChild.BROKER, ConfigurationChild.SIDECAR),
-    ),
-    TRUST_DONOR_JAVA_HOME(
-        "KAST_TRUST_DONOR_JAVA_HOME",
-        ConfigurationSyntax.ABSOLUTE_PATH,
-        owner = ":distribution:managed",
-        disclosure = ConfigurationDisclosure.SENSITIVE_PATH,
-        children = setOf(ConfigurationChild.BROKER, ConfigurationChild.SIDECAR),
-    ),
-    IDE_CONFIG_HOME(
-        "KAST_IDE_CONFIG_HOME",
-        ConfigurationSyntax.ABSOLUTE_PATH,
-        owner = ":distribution:managed",
-        disclosure = ConfigurationDisclosure.SENSITIVE_PATH,
-        children = setOf(ConfigurationChild.BROKER, ConfigurationChild.SIDECAR),
-    ),
     INSTALL_MIGRATE_CONFIGURATION(
         "KAST_INSTALL_MIGRATE_CONFIGURATION",
         ConfigurationSyntax.ABSOLUTE_PATH,
@@ -329,20 +308,6 @@ enum class ConfigurationParameter(
         ":cli",
         mutability = ConfigurationMutability.DERIVED,
     ),
-    INSTALL_RUNTIME_ARCHIVE(
-        "KAST_INSTALL_RUNTIME_ARCHIVE",
-        ConfigurationSyntax.ABSOLUTE_PATH,
-        ConfigurationScope.INSTALLATION,
-        ":cli",
-        mutability = ConfigurationMutability.DERIVED,
-    ),
-    INSTALL_RUNTIME_SHA256(
-        "KAST_INSTALL_RUNTIME_SHA256",
-        ConfigurationSyntax.OWNER_INPUT,
-        ConfigurationScope.INSTALLATION,
-        ":cli",
-        mutability = ConfigurationMutability.DERIVED,
-    ),
     INSTALL_VERSION(
         "KAST_INSTALL_VERSION",
         ConfigurationSyntax.OWNER_INPUT,
@@ -389,13 +354,6 @@ enum class ConfigurationParameter(
         disclosure = ConfigurationDisclosure.SECRET_PRESENCE,
         mutability = ConfigurationMutability.DERIVED,
     ),
-    RUNTIME_BASE_URL(
-        "KAST_RUNTIME_BASE_URL",
-        ConfigurationSyntax.OWNER_INPUT,
-        ConfigurationScope.BUILD,
-        ":build-logic",
-        mutability = ConfigurationMutability.BUILD_SETTING,
-    ),
     LOCAL_PREFIX(
         "KAST_LOCAL_PREFIX",
         ConfigurationSyntax.ABSOLUTE_PATH,
@@ -412,13 +370,6 @@ enum class ConfigurationParameter(
     ),
     LOCAL_HOSTED_PLUGIN_ARCHIVE(
         "KAST_LOCAL_HOSTED_PLUGIN_ARCHIVE",
-        ConfigurationSyntax.ABSOLUTE_PATH,
-        ConfigurationScope.BUILD,
-        ":build-logic",
-        mutability = ConfigurationMutability.BUILD_SETTING,
-    ),
-    LOCAL_RUNTIME_ARCHIVE(
-        "KAST_LOCAL_RUNTIME_ARCHIVE",
         ConfigurationSyntax.ABSOLUTE_PATH,
         ConfigurationScope.BUILD,
         ":build-logic",
@@ -461,13 +412,6 @@ enum class ConfigurationParameter(
     ),
     CONTROL_ARCHIVE(
         "KAST_CONTROL_ARCHIVE",
-        ConfigurationSyntax.ABSOLUTE_PATH,
-        ConfigurationScope.TEST,
-        ":build-logic",
-        mutability = ConfigurationMutability.TEST_ONLY,
-    ),
-    SEMANTIC_RUNTIME_ARCHIVE(
-        "KAST_SEMANTIC_RUNTIME_ARCHIVE",
         ConfigurationSyntax.ABSOLUTE_PATH,
         ConfigurationScope.TEST,
         ":build-logic",

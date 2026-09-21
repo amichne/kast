@@ -248,10 +248,10 @@ class ConfigurationInspectionTest {
     fun `schema declares derived identities and operational limits with ranges and units`(@TempDir root: Path) {
         val result = launch(root, listOf("config", "schema", "--json"), emptyMap())
         val document = Json.parseToJsonElement(result.output).jsonObject
-        assertTrue(result.output.contains("kast.bootstrap.attempt.id"), result.output)
+        assertFalse(result.output.contains("kast.bootstrap.attempt.id"))
         assertTrue(result.output.contains("BROKER_SERVICE_IDENTITY"))
         assertTrue(result.output.contains("operation.graph_build.invocation"))
-        assertTrue(result.output.contains("indexer.frame.maximum_bytes"))
+        assertFalse(result.output.contains("indexer.frame.maximum_bytes"))
         assertTrue(result.output.contains("admittedRange"))
         assertTrue(result.output.contains("MILLISECONDS"))
         assertTrue(document.containsKey("operationalLimits"))

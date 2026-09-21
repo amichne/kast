@@ -2,7 +2,5 @@
 <SmellBaseline>
   <ManuallySuppressedIssues/>
   <CurrentIssues>
-    <ID>NamedArguments:EnterpriseNetworkPolicyTest.kt:EnterpriseNetworkPolicyTest$TrustStoreDonor( trust.path, TrustProvenance.EXPLICIT_KAST, trust.type, trust.provider, trust.password, )</ID>
-    <ID>WildcardImport:EnterpriseNetworkPolicyTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
   </CurrentIssues>
 </SmellBaseline>

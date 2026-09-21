@@ -2,7 +2,7 @@ plugins {
     base
 }
 
-val verifyPublicQueryGeneration by tasks.registering(Exec::class) {
+val verifyPublicQueryGeneration = tasks.register<Exec>("verifyPublicQueryGeneration") {
     group = "verification"
     description = "Rejects drift between the public query schema, Kotlin syntax/defaults, and provider projections."
     val generator = rootProject.layout.projectDirectory.file("packaging/generate-public-query.py")

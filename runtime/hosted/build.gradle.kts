@@ -94,8 +94,8 @@ dependencies {
     testImplementation(libs.json.schema.validator)
 }
 
-val hostedPlugin by
-    tasks.registering(Zip::class) {
+val hostedPlugin =
+    tasks.register<Zip>("hostedPlugin") {
         group = "distribution"
         description = "Packages the project-owned existing-IDE index endpoint."
         archiveFileName.set("kast-ide-hosted-v${project.version}-idea-$ideReleaseLine.zip")

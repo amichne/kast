@@ -13,20 +13,21 @@ base {
 }
 
 private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
-private val ideaDistributionVersion = catalog.findVersion("idea-indexer").get().requiredVersion
+private val ideaDistributionVersion = catalog.findVersion("idea-platform-build").get().requiredVersion
 
-val changeIdeaDistribution: Configuration by configurations.creating {
-    isCanBeConsumed = false
-    isCanBeResolved = true
-}
+val changeIdeaDistribution =
+    configurations.create("changeIdeaDistribution") {
+        isCanBeConsumed = false
+        isCanBeResolved = true
+    }
 
 private val extractedIdeaDistributionDirectory =
     objects.directoryProperty().apply {
         set(file(gradle.gradleUserHomeDir.resolve("kast/change-intellij-idea-distributions/$ideaDistributionVersion")))
     }
 
-val extractChangeIdeaDistribution by
-    tasks.registering(ExtractIdeaDistributionTask::class) {
+val extractChangeIdeaDistribution =
+    tasks.register<ExtractIdeaDistributionTask>("extractChangeIdeaDistribution") {
         archives.from(changeIdeaDistribution)
         ideaVersion.set(ideaDistributionVersion)
         outputDirectory.set(extractedIdeaDistributionDirectory)
@@ -80,8 +81,8 @@ dependencies {
 }
 
 // Deliberately separate from main: the native acceptance probe is never shipped in the product plugin.
-val nativeFixture by sourceSets.creating
-val nativeFixtureTest by sourceSets.creating
+val nativeFixture = sourceSets.create("nativeFixture")
+val nativeFixtureTest = sourceSets.create("nativeFixtureTest")
 
 kotlin.target.compilations
     .getByName("nativeFixtureTest")
@@ -101,8 +102,8 @@ dependencies {
     add(nativeFixtureTest.implementationConfigurationName, catalog.findLibrary("serialization-json").get())
 }
 
-val nativeFixtureJar by
-    tasks.registering(Jar::class) {
+val nativeFixtureJar =
+    tasks.register<Jar>("nativeFixtureJar") {
         group = "verification"
         description = "Builds the isolated-IDE test probe only; never a production plugin dependency."
         archiveBaseName.set("kast-native-fixture-probe")

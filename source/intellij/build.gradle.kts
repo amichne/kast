@@ -13,22 +13,22 @@ base {
 
 private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
 private val ideaPlatformBuild = catalog.findVersion("idea-platform-build").get().requiredVersion
-private val ideaDistributionVersion = catalog.findVersion("idea-indexer").get().requiredVersion
 
-val sourceIdeaDistribution: Configuration by configurations.creating {
-    isCanBeConsumed = false
-    isCanBeResolved = true
-}
+val sourceIdeaDistribution =
+    configurations.create("sourceIdeaDistribution") {
+        isCanBeConsumed = false
+        isCanBeResolved = true
+    }
 
 private val extractedIdeaDistributionDirectory =
     objects.directoryProperty().apply {
-        set(file(gradle.gradleUserHomeDir.resolve("kast/source-intellij-idea-distributions/$ideaDistributionVersion")))
+        set(file(gradle.gradleUserHomeDir.resolve("kast/source-intellij-idea-distributions/$ideaPlatformBuild")))
     }
 
-val extractSourceIdeaDistribution by
-    tasks.registering(ExtractIdeaDistributionTask::class) {
+val extractSourceIdeaDistribution =
+    tasks.register<ExtractIdeaDistributionTask>("extractSourceIdeaDistribution") {
         archives.from(sourceIdeaDistribution)
-        ideaVersion.set(ideaDistributionVersion)
+        ideaVersion.set(ideaPlatformBuild)
         outputDirectory.set(extractedIdeaDistributionDirectory)
     }
 
@@ -60,7 +60,7 @@ dependencies {
     implementation(project(":workspace:contract"))
     implementation(project(":workspace:intellij-read"))
 
-    sourceIdeaDistribution("com.jetbrains.intellij.idea:ideaIC:$ideaDistributionVersion@zip") {
+    sourceIdeaDistribution("com.jetbrains.intellij.idea:ideaIC:$ideaPlatformBuild@zip") {
         isTransitive = false
     }
 

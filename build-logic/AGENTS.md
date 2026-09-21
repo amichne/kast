@@ -5,7 +5,7 @@
 
 ## Purpose
 
-Defines reusable Gradle conventions, module roles, publication behavior, generated contracts, and mechanical architecture policy.
+Defines reusable Gradle conventions, module roles, release assembly, generated contracts, and mechanical architecture policy.
 
 ## Key Files
 
@@ -47,4 +47,4 @@ Defines reusable Gradle conventions, module roles, publication behavior, generat
 - For formatting or lint failures, start with `kast.kotlin-quality.gradle.kts`, then the reported rule or file-length task. Schema-generated Kotlin remains owned by its generator.
 - For existing structural debt, see [baseline policy](../config/README.md). Checks reject new findings and growth beyond recorded file ceilings; they never regenerate allowances.
 - For a dependency-direction failure, start with the applied `kast/role` convention, then the policy validator.
-- For generated artifacts or publication, start in `src/main/kotlin/support/tasks` or `src/main/kotlin/support/publishing`.
+- For generated artifacts, start in `src/main/kotlin/support/tasks`; GitHub release assembly is owned by `distribution/release` and `.github/scripts/release`.

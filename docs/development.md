@@ -6,10 +6,26 @@ Read [AGENTS.md](../AGENTS.md) before making changes. The
 
 ## Build and install the checkout
 
+Prepare the same Python test dependencies used by CI before running Gradle:
+
 ```shell
-./gradlew build
-./gradlew assembleRelease
+python3.12 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r experiments/host-observation/requirements-test.txt
 ```
+
+Keep that environment active for the build. Use a fresh Gradle process so Python
+checks inherit its executable search path; a daemon started before activation can
+retain the earlier interpreter.
+
+```shell
+./gradlew --no-daemon build
+./gradlew --no-daemon assembleRelease
+```
+
+Dependency verification uses the checked `gradle/verification-metadata.xml` in strict mode.
+For an intentional dependency update, review newly generated checksums against the
+publisher before committing the metadata; keep verification enabled for builds and IDE sync.
 
 Choose a local installation from the repository root:
 

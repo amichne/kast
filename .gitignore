@@ -54,3 +54,6 @@ skills-lock.json
 /.kast/
 /.graphify/
 /.agents/mintlify*/*
+
+# Local Python test dependencies
+.venv/

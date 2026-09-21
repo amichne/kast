@@ -7,26 +7,16 @@
     <ID>CognitiveComplexMethod:KastConfigurationResolution.kt:ResolvedKastConfiguration$private fun childProjection: Map&lt;String, String></ID>
     <ID>CognitiveComplexMethod:KastConfigurationResolution.kt:ResolvedKastConfiguration.Companion$fun resolve: Refinement&lt;ResolvedKastConfiguration, ConfigurationRejection></ID>
     <ID>CognitiveComplexMethod:KastConfigurationResolution.kt:private fun parse: Refinement&lt;ConfigurationValue, ConfigurationRejection></ID>
-    <ID>CognitiveComplexMethod:NetworkConfiguration.kt:NetworkConfiguration.Companion$fun parse: Refinement&lt;NetworkConfiguration, NetworkConfigurationFailure></ID>
-    <ID>CognitiveComplexMethod:SemanticRuntimeContract.kt:private fun ManifestDocument.admit: SemanticRuntimeManifestAdmission</ID>
     <ID>ComplexCondition:GradleImportEnvironment.kt:GradleImportExecutableDirectory.Companion$raw.isNotBlank() &amp;&amp; raw.length &lt;= 4096 &amp;&amp; ':' !in raw &amp;&amp; '\n' !in raw &amp;&amp; '\r' !in raw &amp;&amp; path.isAbsolute &amp;&amp; path.normalize() == path</ID>
     <ID>ComplexCondition:KastConfigurationResolution.kt:ResolvedKastConfiguration$child in assignment.parameter.children &amp;&amp; (!reloadSaved || assignment.source != ConfigurationSource.DEFAULT) &amp;&amp; !(reloadInstallation &amp;&amp; assignment.source == ConfigurationSource.SAVED_INSTALLATION)</ID>
     <ID>ComplexCondition:KastConfigurationResolution.kt:raw.isBlank() || raw.length > 4096 || !path.isAbsolute || path.normalize() != path</ID>
     <ID>ComplexCondition:KastConfigurationResolution.kt:raw.length > 32 * 1024 || raw.any { it == '\u0000' || it == '\n' || it == '\r' }</ID>
-    <ID>ComplexCondition:NetworkConfiguration.kt:NetworkConfiguration.Companion$(NetworkProperty.HTTP_PORT in values &amp;&amp; NetworkProperty.HTTP_HOST !in values) || (NetworkProperty.HTTPS_PORT in values &amp;&amp; NetworkProperty.HTTPS_HOST !in values)</ID>
-    <ID>ComplexCondition:NetworkConfiguration.kt:NetworkConfiguration.Companion$value.length > 8192 || value.any { it == '\u0000' || it == '\n' || it == '\r' }</ID>
-    <ID>ComplexCondition:SemanticRuntimeContract.kt:schemaVersion != MANIFEST_SCHEMA_VERSION || platform != RuntimePlatform.MACOS.wireValue || architecture != RuntimeArchitecture.AARCH64.wireValue || layout.requiredEntries.isEmpty() || layout.executableEntries.isEmpty()</ID>
-    <ID>ComplexCondition:SemanticRuntimeValues.kt:RuntimeLayoutEntry.Companion$normalized.isNotBlank() &amp;&amp; SAFE_ENTRY_PATTERN.matches(raw) &amp;&amp; !raw.startsWith('/') &amp;&amp; normalized.split('/').none { it.isBlank() || it == "." || it == ".." }</ID>
     <ID>CyclomaticComplexMethod:KastConfigurationResolution.kt:ResolvedKastConfiguration$private fun childProjection: Map&lt;String, String></ID>
     <ID>CyclomaticComplexMethod:KastConfigurationResolution.kt:ResolvedKastConfiguration.Companion$fun resolve: Refinement&lt;ResolvedKastConfiguration, ConfigurationRejection></ID>
     <ID>CyclomaticComplexMethod:KastConfigurationResolution.kt:private fun parse: Refinement&lt;ConfigurationValue, ConfigurationRejection></ID>
-    <ID>CyclomaticComplexMethod:NetworkConfiguration.kt:NetworkConfiguration.Companion$fun parse: Refinement&lt;NetworkConfiguration, NetworkConfigurationFailure></ID>
-    <ID>CyclomaticComplexMethod:SemanticRuntimeContract.kt:private fun ManifestDocument.admit: SemanticRuntimeManifestAdmission</ID>
     <ID>LongMethod:KastConfigurationCatalogue.kt:ConfigurationParameter$private fun baseDeclaration: ConfigurationDeclaration</ID>
     <ID>LongMethod:KastConfigurationResolution.kt:ResolvedKastConfiguration.Companion$fun resolve: Refinement&lt;ResolvedKastConfiguration, ConfigurationRejection></ID>
     <ID>LongMethod:KastConfigurationResolution.kt:private fun parse: Refinement&lt;ConfigurationValue, ConfigurationRejection></ID>
-    <ID>LongMethod:NetworkConfiguration.kt:NetworkConfiguration.Companion$fun parse: Refinement&lt;NetworkConfiguration, NetworkConfigurationFailure></ID>
-    <ID>LongMethod:SemanticRuntimeContract.kt:private fun ManifestDocument.admit: SemanticRuntimeManifestAdmission</ID>
     <ID>MagicNumber:ConfigurationMetadata.kt:32</ID>
     <ID>MagicNumber:ConfigurationMetadata.kt:64</ID>
     <ID>MagicNumber:GradleImportEnvironment.kt:0xff</ID>
@@ -45,8 +35,6 @@
     <ID>MagicNumber:ModelInputFailure.kt:ModelInputPath.Companion$127</ID>
     <ID>MagicNumber:ModelInputFailure.kt:ModelInputPath.Companion$32</ID>
     <ID>MagicNumber:ModelInputFailure.kt:ModelInputPath.Companion$4096</ID>
-    <ID>MagicNumber:NetworkConfiguration.kt:NetworkConfiguration.Companion$65535</ID>
-    <ID>MagicNumber:NetworkConfiguration.kt:NetworkConfiguration.Companion$8192</ID>
     <ID>MaxLineLength:SemanticRuntimeBootstrapPhase.kt:SemanticRuntimeBootstrapCorrectiveAction.CORRECT_MODEL_INPUTS$"Repair the reported Gradle input: targets must exist, remain inside the workspace, be readable, and contain no link cycles; then run kast start again."</ID>
     <ID>MaxLineLength:SemanticRuntimeBootstrapPhase.kt:SemanticRuntimeBootstrapCorrectiveAction.VERIFY_GRADLE_TOOLING_PAYLOAD$"Update Kast to a build with Gradle tooling payloads compatible with the project JVM, then run kast start again."</ID>
     <ID>MaxLineLength:SemanticRuntimeBootstrapPhase.kt:SemanticRuntimeBootstrapCorrectiveAction.VERIFY_NETWORK_CACHE$"Verify that the private Kast cache is writable and contains no conflicting network artifacts, then run kast start again."</ID>
