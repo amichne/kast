@@ -31,6 +31,10 @@ internal class InvocationResponses(
     private val completed = linkedMapOf<InvocationIdentity, OwnedInvocation>()
 
     @Synchronized
+    fun upgradeBlockers(): Set<UpgradeBlocker> =
+        if (active.isEmpty()) emptySet() else setOf(UpgradeBlocker.INVOCATION_ACTIVE)
+
+    @Synchronized
     fun begin(
         identity: InvocationIdentity,
         fingerprint: InvocationFingerprint,

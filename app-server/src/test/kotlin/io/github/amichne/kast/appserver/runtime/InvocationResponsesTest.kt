@@ -59,6 +59,7 @@ class InvocationResponsesTest {
         val responses =
             InvocationResponses(InvocationFence(null, maximumActive = limit(2)), maximumCompleted = limit(1))
         val pending = started(responses, "pending")
+        assertEquals(setOf(UpgradeBlocker.INVOCATION_ACTIVE), responses.upgradeBlockers())
         repeat(3) { ordinal -> started(responses, "completed-$ordinal").complete(reply("done")) }
         val duplicate = assertInstanceOf(InvocationResponseAdmission.Existing::class.java, begin(responses, "pending"))
         assertSame(pending.result, duplicate.result)
@@ -73,6 +74,7 @@ class InvocationResponsesTest {
         pending.complete(result)
         assertEquals(result, duplicate.result.await())
         second.complete(reply("second result"))
+        assertEquals(emptySet<UpgradeBlocker>(), responses.upgradeBlockers())
     }
 
     @Test

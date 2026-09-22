@@ -15,7 +15,6 @@ app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastObserve
 app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastProvider.kt	743
 app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/BrokerSessionHub.kt	856
 app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/KtorBrokerServer.kt	597
-app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceExecution.kt	408
 app-server/src/test/kotlin/io/github/amichne/kast/appserver/PersistentBrokerServiceTest.kt	806
 app-server/src/test/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolAdapterTest.kt	1779
 app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/KastProviderTest.kt	931

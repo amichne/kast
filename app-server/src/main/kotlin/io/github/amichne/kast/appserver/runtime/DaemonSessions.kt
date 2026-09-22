@@ -5,6 +5,11 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 internal interface DaemonSessions {
+    val upgrades: DaemonUpgradeControl
+        get() = DaemonUpgradeControl.Unavailable
+
+    fun upgradeBlockers(): Set<UpgradeBlocker> = emptySet()
+
     fun inspectSessions(): DaemonSessionInspection
 
     fun controlSession(action: AppServerAction.Control): ControlResult

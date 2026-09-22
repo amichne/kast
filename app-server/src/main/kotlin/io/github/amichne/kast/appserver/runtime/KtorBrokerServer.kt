@@ -310,15 +310,20 @@ private constructor(
 
         internal suspend fun frontend(
             options: KtorBrokerServerOptions,
+            upgrades: DaemonUpgradeGate = DaemonUpgradeGate(),
             afterClose: suspend () -> Unit = {},
         ): BrokerFrontendAdmission {
-            val hub = BrokerSessionHub(options)
+            val hub = BrokerSessionHub(options, upgrades = upgrades)
             if (hub.initialization() is InvocationAdmission.Rejected) {
                 hub.close()
                 return BrokerFrontendAdmission.Rejected
             }
             return BrokerFrontendAdmission.Prepared(
                 object : BrokerFrontend {
+                    override val upgrades = hub.upgrades
+
+                    override fun upgradeBlockers() = hub.upgradeBlockers()
+
                     override fun inspectSessions() = hub.inspectSessions()
 
                     override fun controlSession(action: io.github.amichne.kast.appserver.AppServerAction.Control) =

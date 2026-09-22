@@ -4,7 +4,6 @@ import io.github.amichne.kast.appserver.AppServerAction
 import io.ktor.server.websocket.DefaultWebSocketServerSession
 import io.ktor.websocket.CloseReason
 import io.ktor.websocket.close
-import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 internal interface BrokerFrontend : DaemonSessions {
@@ -27,8 +26,10 @@ internal enum class BrokerFrontendObservation {
 }
 
 /** Optional host qualification is performed once, when the first frontend actually attaches. */
-internal class DeferredBrokerFrontend(private val prepare: suspend () -> BrokerFrontendAdmission) : BrokerFrontend {
-    private val transition = Mutex()
+internal class DeferredBrokerFrontend(private val prepare: suspend (DaemonUpgradeGate) -> BrokerFrontendAdmission) :
+    BrokerFrontend {
+    override val upgrades = DaemonUpgradeGate()
+    private val transition = upgrades.transition
 
     private sealed interface State {
         data object Pending : State
@@ -66,11 +67,23 @@ internal class DeferredBrokerFrontend(private val prepare: suspend () -> BrokerF
             State.Closed -> ControlResult.Rejected(ControlFailure.HOST_UNAVAILABLE)
         }
 
+    override fun upgradeBlockers(): Set<UpgradeBlocker> =
+        when (val selected = state) {
+            is State.Prepared -> selected.frontend.upgradeBlockers()
+            State.Pending,
+            State.Rejected,
+            State.Closed -> emptySet()
+        }
+
     override suspend fun connect(session: DefaultWebSocketServerSession) {
         val selected = transition.withLock {
+            if (upgrades.admitWork() is io.github.amichne.kast.kernel.Refinement.Rejected) {
+                session.close(CloseReason(CloseReason.Codes.TRY_AGAIN_LATER, "Daemon update admission sealed"))
+                return
+            }
             if (state == State.Pending)
                 state =
-                    when (val admission = prepare()) {
+                    when (val admission = prepare(upgrades)) {
                         is BrokerFrontendAdmission.Prepared -> State.Prepared(admission.frontend)
                         BrokerFrontendAdmission.Rejected -> State.Rejected
                     }
