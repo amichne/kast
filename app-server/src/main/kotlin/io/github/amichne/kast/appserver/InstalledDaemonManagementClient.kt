@@ -7,6 +7,9 @@ import io.github.amichne.kast.appserver.runtime.BrokerUpstreamConnectionAdmissio
 import io.github.amichne.kast.appserver.runtime.BrokerUpstreamFrame
 import io.github.amichne.kast.appserver.runtime.BrokerUpstreamSend
 import io.github.amichne.kast.appserver.runtime.DaemonSessionInspection
+import io.github.amichne.kast.appserver.runtime.DaemonUpgradeDocument
+import io.github.amichne.kast.appserver.runtime.UpgradeCandidate
+import io.github.amichne.kast.appserver.runtime.UpgradeRequestId
 import io.github.amichne.kast.appserver.runtime.connectCodexUnixWebSocket
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
@@ -80,6 +83,97 @@ internal class InstalledDaemonManagementClient(private val kast: Path) {
         }
     }
 
+    suspend fun prepareUpdate(
+        command: BrokerServiceLaunchCommand,
+        candidate: String,
+    ): Refinement<QualifiedDaemonUpdate, DaemonManagementRejection> {
+        val target =
+            when (val admitted = target(command)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return admitted
+            }
+        return when (
+            val result = update(command, DaemonManagementRequest.PrepareUpdate(target, candidate), target, candidate)
+        ) {
+            is Refinement.Rejected -> Refinement.Rejected(result.failure)
+            is Refinement.Refined -> Refinement.Refined(QualifiedDaemonUpdate(target, result.value))
+        }
+    }
+
+    suspend fun commitUpdate(
+        command: BrokerServiceLaunchCommand,
+        target: DaemonManagementTarget,
+        sealed: DaemonUpgradeDocument.Sealed,
+    ): Refinement<DaemonUpgradeDocument.Committed, DaemonManagementRejection> =
+        when (
+            val result =
+                update(
+                    command,
+                    DaemonManagementRequest.CommitUpdate(target, sealed.requestId),
+                    target,
+                    sealed.candidate,
+                    sealed.requestId,
+                )
+        ) {
+            is Refinement.Rejected -> Refinement.Rejected(result.failure)
+            is Refinement.Refined ->
+                when (val document = result.value) {
+                    is DaemonUpgradeDocument.Committed -> Refinement.Refined(document)
+                    else -> rejected(DaemonManagementFailure.RESPONSE_REJECTED)
+                }
+        }
+
+    suspend fun observeUpdate(
+        command: BrokerServiceLaunchCommand,
+        target: DaemonManagementTarget,
+        requestId: String,
+        candidate: String,
+    ): Refinement<DaemonUpgradeDocument, DaemonManagementRejection> =
+        update(
+            command,
+            DaemonManagementRequest.UpdateStatus(target, requestId),
+            target,
+            candidate,
+            requestId,
+        )
+
+    suspend fun cancelUpdate(
+        command: BrokerServiceLaunchCommand,
+        target: DaemonManagementTarget,
+        sealed: DaemonUpgradeDocument.Sealed,
+    ): Refinement<DaemonUpgradeDocument.Cancelled, DaemonManagementRejection> =
+        when (
+            val result =
+                update(
+                    command,
+                    DaemonManagementRequest.CancelUpdate(target, sealed.requestId),
+                    target,
+                    sealed.candidate,
+                    sealed.requestId,
+                )
+        ) {
+            is Refinement.Rejected -> Refinement.Rejected(result.failure)
+            is Refinement.Refined ->
+                when (val document = result.value) {
+                    is DaemonUpgradeDocument.Cancelled -> Refinement.Refined(document)
+                    else -> rejected(DaemonManagementFailure.RESPONSE_REJECTED)
+                }
+        }
+
+    private suspend fun update(
+        command: BrokerServiceLaunchCommand,
+        request: DaemonManagementRequest,
+        target: DaemonManagementTarget,
+        candidate: String,
+        requestId: String? = null,
+    ): Refinement<DaemonUpgradeDocument, DaemonManagementRejection> =
+        exchange(command.publicSocket) { connection ->
+            when (val response = exchangeDaemonManagement(connection, request)) {
+                is Refinement.Rejected -> response
+                is Refinement.Refined -> admitDaemonUpdate(response.value, target, candidate, requestId)
+            }
+        }
+
     private suspend fun target(
         command: BrokerServiceLaunchCommand
     ): Refinement<DaemonManagementTarget, DaemonManagementRejection> =
@@ -117,6 +211,35 @@ internal class InstalledDaemonManagementClient(private val kast: Path) {
 
     private fun rejected(failure: DaemonManagementFailure) =
         Refinement.Rejected(DaemonManagementRejection.Protocol(failure))
+}
+
+internal data class QualifiedDaemonUpdate(
+    val target: DaemonManagementTarget,
+    val document: DaemonUpgradeDocument,
+)
+
+internal fun admitDaemonUpdate(
+    response: DaemonManagementResponse,
+    target: DaemonManagementTarget,
+    candidate: String,
+    requestId: String? = null,
+): Refinement<DaemonUpgradeDocument, DaemonManagementRejection> {
+    if (response is DaemonManagementResponse.Rejected) return Refinement.Rejected(response.reason)
+    val update =
+        (response as? DaemonManagementResponse.Update)?.takeIf { it.target == target }?.update
+            ?: return Refinement.Rejected(DaemonManagementRejection.Protocol(DaemonManagementFailure.RESPONSE_REJECTED))
+    if (update.candidate != candidate || (requestId != null && update.requestId != requestId))
+        return Refinement.Rejected(DaemonManagementRejection.Protocol(DaemonManagementFailure.RESPONSE_REJECTED))
+    if (UpgradeCandidate.admit(update.candidate) is Refinement.Rejected)
+        return Refinement.Rejected(DaemonManagementRejection.Protocol(DaemonManagementFailure.RESPONSE_REJECTED))
+    if (UpgradeRequestId.admit(update.requestId) is Refinement.Rejected)
+        return Refinement.Rejected(DaemonManagementRejection.Protocol(DaemonManagementFailure.RESPONSE_REJECTED))
+    if (
+        update is DaemonUpgradeDocument.Pending &&
+            (update.blockers.isEmpty() || update.blockers.distinct() != update.blockers)
+    )
+        return Refinement.Rejected(DaemonManagementRejection.Protocol(DaemonManagementFailure.RESPONSE_REJECTED))
+    return Refinement.Refined(update)
 }
 
 internal suspend fun exchangeDaemonRegistration(

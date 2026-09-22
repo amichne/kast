@@ -23,6 +23,48 @@ class DaemonUpgradeProtocolTest {
     private val target = DaemonManagementTarget("installation", "epoch", "generation", "configuration")
     private val candidate = "a".repeat(64)
 
+    @Test
+    fun `client retains exact update identity and typed daemon rejection`() {
+        val requestId = "00000000-0000-0000-0000-000000000001"
+        val sealed = DaemonUpgradeDocument.Sealed(requestId, candidate)
+        val response = DaemonManagementResponse.Update(target, sealed)
+        assertEquals(Refinement.Refined(sealed), admitDaemonUpdate(response, target, candidate))
+        assertEquals(Refinement.Refined(sealed), admitDaemonUpdate(response, target, candidate, requestId))
+
+        val rejected =
+            Refinement.Rejected<DaemonManagementRejection>(
+                DaemonManagementRejection.Protocol(DaemonManagementFailure.RESPONSE_REJECTED)
+            )
+        assertEquals(rejected, admitDaemonUpdate(response, target.copy(stateEpoch = "other"), candidate))
+        assertEquals(rejected, admitDaemonUpdate(response, target, "b".repeat(64)))
+        assertEquals(rejected, admitDaemonUpdate(response, target, candidate, "00000000-0000-0000-0000-000000000002"))
+        assertEquals(
+            rejected,
+            admitDaemonUpdate(
+                DaemonManagementResponse.Update(target, DaemonUpgradeDocument.Sealed("invalid", candidate)),
+                target,
+                candidate,
+            ),
+        )
+        assertEquals(
+            rejected,
+            admitDaemonUpdate(
+                DaemonManagementResponse.Update(
+                    target,
+                    DaemonUpgradeDocument.Pending(requestId, candidate, emptyList()),
+                ),
+                target,
+                candidate,
+            ),
+        )
+        assertEquals(rejected, admitDaemonUpdate(DaemonManagementResponse.Status(status), target, candidate))
+        val daemonRejection = DaemonManagementRejection.Upgrade(DaemonUpgradeFailure.NOT_QUIESCENT)
+        assertEquals(
+            Refinement.Rejected(daemonRejection),
+            admitDaemonUpdate(DaemonManagementResponse.Rejected(daemonRejection), target, candidate),
+        )
+    }
+
     private val status =
         CoordinatorStatusDocument(
             CoordinatorServiceState.READY,
