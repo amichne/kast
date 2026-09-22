@@ -177,7 +177,7 @@ private constructor(
                     BrokerServiceReadiness.Standalone -> BrokerServiceGeneration.fresh()
                 }
             val preparation = InstalledWorkspacePreparation(options, owner)
-            val frontend = DeferredBrokerFrontend {
+            val frontend = DeferredBrokerFrontend { upgrades ->
                 activity.started(BrokerStartupStage.HOST_ADMISSION)
                 when (val configuration = options.admitHost(preparation.demand)) {
                     is InstalledBrokerServerConfiguration.Rejected -> {
@@ -199,7 +199,9 @@ private constructor(
                             is InstalledBrokerHostStart.Prepared ->
                                 when (
                                     val admission =
-                                        KtorBrokerServer.frontend(prepared.options) { prepared.upstream.close() }
+                                        KtorBrokerServer.frontend(prepared.options, upgrades) {
+                                            prepared.upstream.close()
+                                        }
                                 ) {
                                     is BrokerFrontendAdmission.Prepared -> admission
                                     BrokerFrontendAdmission.Rejected -> {

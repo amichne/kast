@@ -190,6 +190,7 @@ private fun admitDaemonRegistration(
     fun reject() = Refinement.Rejected(DaemonManagementRejection.Protocol(DaemonManagementFailure.RESPONSE_REJECTED))
     return when (response) {
         is DaemonManagementResponse.Rejected -> Refinement.Rejected(response.reason)
+        is DaemonManagementResponse.Update,
         is DaemonManagementResponse.WorkspacePreparation,
         is DaemonManagementResponse.Status,
         is DaemonManagementResponse.Sessions,

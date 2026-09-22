@@ -40,6 +40,29 @@ class DaemonManagementTest {
         )
 
     @Test
+    fun `update admission without a session owner retains unavailable failure`() {
+        val management =
+            DaemonManagement(target, { true }, { status }, UnavailableDaemonSessions) {
+                error("update admission must not enroll a workspace")
+            }
+        val request = UpdateAdmissionRequest("prepare_update", 1, target, "c".repeat(64))
+        val result = Json.parseToJsonElement(management.exchange(Json.encodeToString(request))).jsonObject
+        assertEquals("rejected", result.getValue("type").jsonPrimitive.content)
+        val reason = result.getValue("reason").jsonObject
+        assertEquals("upgrade", reason.getValue("type").jsonPrimitive.content)
+        assertEquals("UNAVAILABLE", reason.getValue("failure").jsonPrimitive.content)
+    }
+
+    /** Independent request boundary for the new private management operation. */
+    @Serializable
+    private data class UpdateAdmissionRequest(
+        val type: String,
+        val version: Int,
+        val target: DaemonManagementTarget,
+        val candidate: String,
+    )
+
+    @Test
     fun `foreign identity dimensions reject before enrollment or path observation`() {
         var effects = 0
         val management =

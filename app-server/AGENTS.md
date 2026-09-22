@@ -9,6 +9,8 @@ Owns the persistent broker/coordinator, host attachment, existing-IDE invocation
 
 ## Key Files
 
+- [DaemonUpgradeGate.kt](src/main/kotlin/io/github/amichne/kast/appserver/runtime/DaemonUpgradeGate.kt) - shared session, lazy frontend and management admission; `DaemonUpgradeAdmission` owns pending/sealed/committed transitions.
+
 - [FileThreadCatalogStore.kt](src/main/kotlin/io/github/amichne/kast/appserver/protocol/FileThreadCatalogStore.kt) - lazy thread-binding shards and legacy conversation migration; `ThreadBindingDocuments` owns stored identities and refinement.
 - [PrivateRecordFiles.kt](src/main/kotlin/io/github/amichne/kast/appserver/storage/PrivateRecordFiles.kt) - shared private-file, lock, atomic-write and directory-sync boundary for durable records.
 

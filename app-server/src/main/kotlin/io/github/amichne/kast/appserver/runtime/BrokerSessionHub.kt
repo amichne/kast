@@ -11,7 +11,6 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.*
 
@@ -19,7 +18,9 @@ import kotlinx.serialization.json.*
 internal class BrokerSessionHub(
     private val options: KtorBrokerServerOptions,
     private val executionPolicy: WorkspaceExecutionPolicy = WorkspaceExecutionPolicy.Default,
+    override val upgrades: DaemonUpgradeGate = DaemonUpgradeGate(),
 ) : DaemonSessions {
+    private val messages = BrokerSessionMessages(options.maximumMessageBytes)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val sessions = ConcurrentHashMap<ClientConnectionId, Session>()
     val tasks = SharedTaskSessions()
@@ -57,18 +58,7 @@ internal class BrokerSessionHub(
 
     fun initialization(): InvocationAdmission = fence.initialization()
 
-    private fun rejectedInvocation(
-        document: JsonObject,
-        failure: InvocationFenceFailure,
-    ): ProtocolRouting.ReplyUpstream =
-        ProtocolRouting.ReplyUpstream(
-            toolFailure(document, failure.name),
-            if (failure == InvocationFenceFailure.OUTCOME_UNCERTAIN)
-                io.github.amichne.kast.appserver.protocol.codex.InvocationCertainty.UNCERTAIN
-            else io.github.amichne.kast.appserver.protocol.codex.InvocationCertainty.KNOWN,
-        )
-
-    private val transitions = Mutex()
+    private val transitions = upgrades.transition
     private val registration = Any()
     private val closed = AtomicBoolean(false)
     private val admission = kotlinx.coroutines.sync.Semaphore(options.maximumConnections)
@@ -87,6 +77,7 @@ internal class BrokerSessionHub(
         var phase: RequestPhase = RequestPhase.AWAITING_CLIENT,
     )
 
+    private val upgradeUncertainty = ConcurrentHashMap.newKeySet<UpgradeBlocker>()
     private val serverRequests = ConcurrentHashMap<String, ServerRequest>()
 
     inner class Session
@@ -111,10 +102,15 @@ internal class BrokerSessionHub(
         @Volatile private var handshake = Handshake.RESPONSE_PENDING
         @Volatile private var attached = true
         private val calls = AtomicInteger()
-        private val retired = AtomicBoolean(false)
         private val controlCommands = ConcurrentHashMap<String, Pair<BrokerThreadId, String>>()
         private val pendingThreads = ConcurrentHashMap<String, String>()
-        private var reader: Job? = null
+        private val requests = SessionRequests()
+
+        internal fun upgradeBlockers(): Set<UpgradeBlocker> = buildSet {
+            if (handshake != Handshake.READY) add(UpgradeBlocker.SESSION_INITIALIZING)
+            if (calls.get() != 0) add(UpgradeBlocker.REQUEST_PENDING)
+            addAll(requests.upgradeBlockers())
+        }
 
         private fun awaitInvocationResponse(response: Deferred<ProtocolRouting>, doc: JsonObject) {
             calls.incrementAndGet()
@@ -139,7 +135,7 @@ internal class BrokerSessionHub(
         }
 
         suspend fun start(message: String) {
-            if (retired.get()) return
+            if (requests.admit(null) is io.github.amichne.kast.kernel.Refinement.Rejected) return
             activity.publish(SessionActivity(id, SessionStage.ADMISSION, SessionOutcome.STARTED))
             scope.launch {
                 try {
@@ -155,7 +151,7 @@ internal class BrokerSessionHub(
                 }
             }
             route(adapter.fromDownstream(message))
-            reader = scope.launch {
+            scope.launch {
                 try {
                     while (isActive) {
                         when (val frame = upstream.receive()) {
@@ -177,8 +173,15 @@ internal class BrokerSessionHub(
         suspend fun accept(message: String) = transitions.withLock { acceptLocked(message) }
 
         private suspend fun acceptLocked(message: String) {
-            val doc = parse(message) ?: return close()
+            val doc = messages.parse(message) ?: return close()
             val method = doc.text("method")
+            if (
+                method != "kast/appServer/status" &&
+                    upgrades.admitWork() is io.github.amichne.kast.kernel.Refinement.Rejected
+            ) {
+                emit(messages.rejection(doc, DaemonUpgradeFailure.ADMISSION_SEALED.name))
+                return
+            }
             if (method == "initialize" || handshake == Handshake.RESPONSE_PENDING || handshake == Handshake.CLOSED)
                 return close()
             if (handshake == Handshake.INITIALIZED_PENDING) {
@@ -201,26 +204,20 @@ internal class BrokerSessionHub(
                     options.threadStore.read(thread.value) is ThreadStoreRead.Found
             ) {
                 if (method != "thread/resume") {
-                    emit(rejection(doc, "TASK_ATTACHMENT_REQUIRED"))
+                    emit(messages.rejection(doc, "TASK_ATTACHMENT_REQUIRED"))
                     return
                 }
             }
             if (thread != null && tasks.contains(thread)) {
                 if (method == "thread/unsubscribe") {
                     tasks.unsubscribe(thread, id)
-                    emit(
-                        buildJsonObject {
-                            put("id", doc["id"] ?: JsonNull)
-                            put("result", buildJsonObject { put("status", "unsubscribed") })
-                        }
-                            .toString()
-                    )
+                    emit(messages.unsubscribed(doc))
                     return
                 }
                 if (method !in BrokerSessionMethodPolicy.readMethods && method != null) {
                     val admission = tasks.authorize(thread, id)
                     if (admission is ControlResult.Rejected) {
-                        emit(rejection(doc, admission.failure.name))
+                        emit(messages.rejection(doc, admission.failure.name))
                         return
                     }
                     val requestKey = doc["id"]?.toString() ?: return close()
@@ -231,7 +228,7 @@ internal class BrokerSessionHub(
                     BrokerPlanApprovalReply.Unowned -> Unit
                     BrokerPlanApprovalReply.Handled -> return
                     is BrokerPlanApprovalReply.Rejected -> {
-                        emit(rejection(doc, approvalReply.failure.name))
+                        emit(messages.rejection(doc, approvalReply.failure.name))
                         return
                     }
                 }
@@ -239,11 +236,11 @@ internal class BrokerSessionHub(
                 val pending = serverRequests[key]
                 if (pending != null) {
                     if (pending.recipient != id) {
-                        emit(rejection(doc, "NOT_RESPONSIBLE_CLIENT"))
+                        emit(messages.rejection(doc, "NOT_RESPONSIBLE_CLIENT"))
                         return
                     }
                     if (pending.phase != RequestPhase.AWAITING_CLIENT) {
-                        emit(rejection(doc, "REQUEST_ALREADY_ANSWERED"))
+                        emit(messages.rejection(doc, "REQUEST_ALREADY_ANSWERED"))
                         return
                     }
                     pending.phase = RequestPhase.ANSWER_SENT
@@ -251,6 +248,14 @@ internal class BrokerSessionHub(
                     return
                 }
             }
+            val admittedRequest =
+                when (val admission = requests.admit(if (method == null) null else doc["id"] ?: JsonNull)) {
+                    is io.github.amichne.kast.kernel.Refinement.Rejected -> {
+                        emit(messages.rejection(doc, admission.failure.name))
+                        return
+                    }
+                    is io.github.amichne.kast.kernel.Refinement.Refined -> admission.value
+                }
             if (method in setOf("thread/start", "thread/resume", "thread/fork")) {
                 doc["id"]?.toString()?.let { pendingThreads[it] = method!! }
             }
@@ -265,7 +270,8 @@ internal class BrokerSessionHub(
                         is io.github.amichne.kast.kernel.Refinement.Refined ->
                             workspaceExecution.cancel(bound.value.id, thread, turn)
                         is io.github.amichne.kast.kernel.Refinement.Rejected -> {
-                            emit(rejection(doc, bound.failure.code))
+                            requests.abandon(admittedRequest)
+                            emit(messages.rejection(doc, bound.failure.code))
                             return
                         }
                     }
@@ -278,13 +284,20 @@ internal class BrokerSessionHub(
                     controlCommands[requestKey] = thread to method
                 }
             }
+            if (routing !is ProtocolRouting.ForwardUpstream) requests.abandon(admittedRequest)
             route(routing)
         }
 
         private suspend fun receive(message: String) = transitions.withLock { receiveLocked(message) }
 
         private suspend fun receiveLocked(message: String) {
-            val doc = parse(message) ?: return close()
+            val doc = messages.parse(message) ?: return close()
+            if (upgrades.admitWork() is io.github.amichne.kast.kernel.Refinement.Rejected) {
+                if (doc.text("method") == "item/tool/call")
+                    sendUpstream(toolFailure(doc, DaemonUpgradeFailure.ADMISSION_SEALED.name))
+                else close()
+                return
+            }
             if (handshake == Handshake.RESPONSE_PENDING && doc["id"] == initializeId && doc.text("method") == null) {
                 if (doc.containsKey("error")) {
                     emit(message)
@@ -326,7 +339,7 @@ internal class BrokerSessionHub(
                     invocations.begin(
                         identity,
                         fingerprint,
-                        reject = { failure -> rejectedInvocation(doc, failure) },
+                        reject = { failure -> messages.rejectedInvocation(doc, failure) },
                         settled = { certainty ->
                             activity.publish(
                                 SessionActivity(
@@ -346,7 +359,7 @@ internal class BrokerSessionHub(
                     when (admission) {
                         is InvocationResponseAdmission.Rejected -> {
                             activity.publish(SessionActivity(id, SessionStage.INVOCATION, SessionOutcome.REJECTED))
-                            sendUpstream(rejectedInvocation(doc, admission.failure).message)
+                            sendUpstream(messages.rejectedInvocation(doc, admission.failure).message)
                             return
                         }
                         is InvocationResponseAdmission.Existing -> admission.result
@@ -382,7 +395,7 @@ internal class BrokerSessionHub(
                                                             invocation.settle(dispatched)
                                                         } catch (failure: Exception) {
                                                             invocation.settle(
-                                                                rejectedInvocation(
+                                                                messages.rejectedInvocation(
                                                                     doc,
                                                                     InvocationFenceFailure.OUTCOME_UNCERTAIN,
                                                                 )
@@ -410,7 +423,7 @@ internal class BrokerSessionHub(
                                 } catch (_: Exception) {
                                     CompletableDeferred(
                                         WorkspaceExecutionResult.Completed(
-                                            rejectedInvocation(doc, InvocationFenceFailure.OUTCOME_UNCERTAIN)
+                                            messages.rejectedInvocation(doc, InvocationFenceFailure.OUTCOME_UNCERTAIN)
                                         )
                                     )
                                 }
@@ -428,12 +441,12 @@ internal class BrokerSessionHub(
                                     invocation.complete(result)
                                 } catch (failure: CancellationException) {
                                     invocation.complete(
-                                        rejectedInvocation(doc, InvocationFenceFailure.OUTCOME_UNCERTAIN)
+                                        messages.rejectedInvocation(doc, InvocationFenceFailure.OUTCOME_UNCERTAIN)
                                     )
                                     throw failure
                                 } catch (_: Exception) {
                                     invocation.complete(
-                                        rejectedInvocation(doc, InvocationFenceFailure.OUTCOME_UNCERTAIN)
+                                        messages.rejectedInvocation(doc, InvocationFenceFailure.OUTCOME_UNCERTAIN)
                                     )
                                 }
                             }
@@ -450,11 +463,11 @@ internal class BrokerSessionHub(
                     else id
                 val recipient = recipientId?.let(sessions::get)
                 if (recipient == null || !recipient.attached) {
-                    sendUpstream(rejection(doc, "RESPONDER_DISCONNECTED"))
+                    sendUpstream(messages.rejection(doc, "RESPONDER_DISCONNECTED"))
                     return
                 }
                 if (serverRequests.size >= BrokerOperationalLimits.maximumServerRequests) {
-                    sendUpstream(rejection(doc, "REQUEST_CAPACITY_EXCEEDED"))
+                    sendUpstream(messages.rejection(doc, "REQUEST_CAPACITY_EXCEEDED"))
                     return
                 }
                 val routedId = JsonPrimitive("kast-request-${java.util.UUID.randomUUID()}")
@@ -510,6 +523,7 @@ internal class BrokerSessionHub(
                     }
                 }
             val routing = adapter.fromUpstream(message)
+            requests.resolveReply(doc, routing)
             val lifecycleItem = params?.get("item") as? JsonObject
             if (
                 method in setOf("item/started", "item/completed") &&
@@ -534,7 +548,7 @@ internal class BrokerSessionHub(
                     val newTask = !tasks.contains(returned)
                     val attachment = tasks.attach(returned, id)
                     if (attachment is ControlResult.Rejected) {
-                        emit(rejection(doc, attachment.failure.name))
+                        emit(messages.rejection(doc, attachment.failure.name))
                         return
                     }
                     val turns = ((result?.get("thread") as? JsonObject)?.get("turns") as? JsonArray).orEmpty()
@@ -623,7 +637,7 @@ internal class BrokerSessionHub(
                 .filter { it.value.recipient == id && it.value.phase == RequestPhase.AWAITING_CLIENT }
                 .forEach { (key, request) ->
                     request.source.sendUpstream(
-                        rejection(buildJsonObject { put("id", request.originalId) }, "RESPONDER_DISCONNECTED")
+                        messages.rejection(buildJsonObject { put("id", request.originalId) }, "RESPONDER_DISCONNECTED")
                     )
                     request.phase = RequestPhase.ANSWER_SENT
                 }
@@ -632,12 +646,17 @@ internal class BrokerSessionHub(
         }
 
         private suspend fun retireIfIdle() {
+            if (requests.upgradeBlockers().isNotEmpty()) return
             val ownsPendingRequest = serverRequests.values.any { it.source == this }
             if (!attached && calls.get() == 0 && !tasks.hasWork(id) && !ownsPendingRequest) close()
         }
 
         suspend fun close() {
-            if (!retired.compareAndSet(false, true)) return
+            when (requests.retire()) {
+                SessionRetirement.ALREADY_RETIRED -> return
+                SessionRetirement.UNCERTAIN -> upgradeUncertainty.add(UpgradeBlocker.RECONCILIATION_REQUIRED)
+                SessionRetirement.IDLE -> Unit
+            }
             lifecycleApprovals.disconnect(id)
             approvedExecutions.retire(id)
             activity.publish(SessionActivity(id, SessionStage.TRANSPORT, SessionOutcome.RETIRED))
@@ -680,10 +699,13 @@ internal class BrokerSessionHub(
         }
     }
 
-    suspend fun attach(initialize: String): Session? {
+    suspend fun attach(initialize: String): Session? = transitions.withLock { attachLocked(initialize) }
+
+    private suspend fun attachLocked(initialize: String): Session? {
+        if (upgrades.admitWork() is io.github.amichne.kast.kernel.Refinement.Rejected) return null
         if (closed.get() || !admission.tryAcquire()) return null
         val doc =
-            parse(initialize)
+            messages.parse(initialize)
                 ?: run {
                     admission.release()
                     return null
@@ -747,6 +769,15 @@ internal class BrokerSessionHub(
         }
     }
 
+    override fun upgradeBlockers(): Set<UpgradeBlocker> = buildSet {
+        sessions.values.forEach { addAll(it.upgradeBlockers()) }
+        addAll(tasks.upgradeBlockers())
+        if (serverRequests.isNotEmpty()) add(UpgradeBlocker.REQUEST_PENDING)
+        addAll(invocations.upgradeBlockers())
+        addAll(workspaceExecution.upgradeBlockers())
+        addAll(upgradeUncertainty)
+    }
+
     override fun inspectSessions(): DaemonSessionInspection =
         synchronized(registration) {
             if (closed.get()) DaemonSessionInspection.Closed
@@ -807,7 +838,7 @@ internal class BrokerSessionHub(
                         },
                     )
                 }
-            else return rejection(doc, ControlFailure.UNSUPPORTED_OPERATION.name)
+            else return messages.rejection(doc, ControlFailure.UNSUPPORTED_OPERATION.name)
         return buildJsonObject {
             put("id", doc["id"] ?: JsonNull)
             put("result", result)
@@ -815,32 +846,11 @@ internal class BrokerSessionHub(
             .toString()
     }
 
-    private fun parse(message: String): JsonObject? =
-        if (message.toByteArray().size > options.maximumMessageBytes) null
-        else
-            try {
-                Json.parseToJsonElement(message) as? JsonObject
-            } catch (_: Exception) {
-                null
-            }
-
     private fun JsonObject.text(key: String) = (get(key) as? JsonPrimitive)?.contentOrNull
-
-    private fun rejection(doc: JsonObject, reason: String) = buildJsonObject {
-        put("id", doc["id"] ?: JsonNull)
-        put(
-            "error",
-            buildJsonObject {
-                put("code", -32040)
-                put("message", reason)
-            },
-        )
-    }
-        .toString()
 
     private fun withResponseId(result: ProtocolRouting, id: JsonElement?): ProtocolRouting =
         if (result is ProtocolRouting.ReplyUpstream && id != null) {
-            val doc = parse(result.message)
+            val doc = messages.parse(result.message)
             if (doc == null) result else result.copy(message = JsonObject(doc + ("id" to id)).toString())
         } else result
 }

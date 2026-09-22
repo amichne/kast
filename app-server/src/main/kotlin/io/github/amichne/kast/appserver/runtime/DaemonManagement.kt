@@ -53,19 +53,64 @@ internal class DaemonManagement(
         if (!available()) return reject(DaemonManagementFailure.LIFECYCLE_TRANSITION)
         return when (request) {
             is DaemonManagementRequest.Status -> DaemonManagementResponse.Status(status())
-            is DaemonManagementRequest.RegisterWorkspace -> register(request)
+            is DaemonManagementRequest.RegisterWorkspace -> manage { register(request) }
             is DaemonManagementRequest.Sessions ->
                 if (request.target != target) reject(DaemonManagementFailure.IDENTITY_REJECTED)
                 else DaemonManagementResponse.Sessions(target, sessions.inspectSessions())
-            is DaemonManagementRequest.Control -> control(request)
+            is DaemonManagementRequest.Control -> manage { control(request) }
+            is DaemonManagementRequest.PrepareUpdate -> prepareUpdate(request)
+            is DaemonManagementRequest.UpdateStatus ->
+                update(request.target, request.requestId, sessions.upgrades::observe)
+            is DaemonManagementRequest.CancelUpdate ->
+                update(request.target, request.requestId, sessions.upgrades::cancel)
+            is DaemonManagementRequest.CommitUpdate ->
+                update(request.target, request.requestId, sessions.upgrades::commit)
             is DaemonManagementRequest.PrepareWorkspace ->
                 if (request.target != target) reject(DaemonManagementFailure.IDENTITY_REJECTED)
-                else preparation.prepare(request.root).response(target)
+                else manage { preparation.prepare(request.root).response(target) }
             is DaemonManagementRequest.WorkspacePreparationStatus ->
                 if (request.target != target) reject(DaemonManagementFailure.IDENTITY_REJECTED)
                 else preparation.observe(request.requestId).response(target)
         }
     }
+
+    private fun prepareUpdate(request: DaemonManagementRequest.PrepareUpdate): DaemonManagementResponse {
+        if (request.target != target) return reject(DaemonManagementFailure.IDENTITY_REJECTED)
+        return when (val admitted = UpgradeCandidate.admit(request.candidate)) {
+            is Refinement.Rejected ->
+                DaemonManagementResponse.Rejected(DaemonManagementRejection.Upgrade(admitted.failure))
+            is Refinement.Refined ->
+                sessions.upgrades
+                    .prepare(admitted.value) { sessions.upgradeBlockers() + preparation.upgradeBlockers() }
+                    .response()
+        }
+    }
+
+    private fun update(
+        requestedTarget: DaemonManagementTarget,
+        requestId: String,
+        action: (UpgradeRequestId) -> Refinement<UpgradeStatus.Requested, DaemonUpgradeFailure>,
+    ): DaemonManagementResponse {
+        if (requestedTarget != target) return reject(DaemonManagementFailure.IDENTITY_REJECTED)
+        return when (val admitted = UpgradeRequestId.admit(requestId)) {
+            is Refinement.Rejected ->
+                DaemonManagementResponse.Rejected(DaemonManagementRejection.Upgrade(admitted.failure))
+            is Refinement.Refined -> action(admitted.value).response()
+        }
+    }
+
+    private fun Refinement<UpgradeStatus.Requested, DaemonUpgradeFailure>.response(): DaemonManagementResponse =
+        when (this) {
+            is Refinement.Refined -> DaemonManagementResponse.Update(target, value.document())
+            is Refinement.Rejected -> DaemonManagementResponse.Rejected(DaemonManagementRejection.Upgrade(failure))
+        }
+
+    private fun manage(action: () -> DaemonManagementResponse): DaemonManagementResponse =
+        when (val result = sessions.upgrades.manage(action)) {
+            is Refinement.Refined -> result.value
+            is Refinement.Rejected ->
+                DaemonManagementResponse.Rejected(DaemonManagementRejection.Upgrade(result.failure))
+        }
 
     private fun control(request: DaemonManagementRequest.Control): DaemonManagementResponse {
         if (request.target != target) return reject(DaemonManagementFailure.IDENTITY_REJECTED)

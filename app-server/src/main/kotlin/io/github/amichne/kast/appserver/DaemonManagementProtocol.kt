@@ -74,6 +74,38 @@ internal sealed interface DaemonManagementRequest {
     ) : DaemonManagementRequest
 
     @Serializable
+    @SerialName("prepare_update")
+    data class PrepareUpdate(
+        val target: DaemonManagementTarget,
+        val candidate: String,
+        @Required override val version: Int = DaemonManagementProtocol.version,
+    ) : DaemonManagementRequest
+
+    @Serializable
+    @SerialName("update_status")
+    data class UpdateStatus(
+        val target: DaemonManagementTarget,
+        val requestId: String,
+        @Required override val version: Int = DaemonManagementProtocol.version,
+    ) : DaemonManagementRequest
+
+    @Serializable
+    @SerialName("cancel_update")
+    data class CancelUpdate(
+        val target: DaemonManagementTarget,
+        val requestId: String,
+        @Required override val version: Int = DaemonManagementProtocol.version,
+    ) : DaemonManagementRequest
+
+    @Serializable
+    @SerialName("commit_update")
+    data class CommitUpdate(
+        val target: DaemonManagementTarget,
+        val requestId: String,
+        @Required override val version: Int = DaemonManagementProtocol.version,
+    ) : DaemonManagementRequest
+
+    @Serializable
     @SerialName("register_workspace")
     data class RegisterWorkspace(
         val target: DaemonManagementTarget,
@@ -84,6 +116,13 @@ internal sealed interface DaemonManagementRequest {
 
 @Serializable
 internal sealed interface DaemonManagementResponse {
+    @Serializable
+    @SerialName("update")
+    data class Update(
+        val target: DaemonManagementTarget,
+        val update: io.github.amichne.kast.appserver.runtime.DaemonUpgradeDocument,
+    ) : DaemonManagementResponse
+
     @Serializable
     @SerialName("status")
     data class Status(val coordinator: CoordinatorStatusDocument) : DaemonManagementResponse
@@ -123,6 +162,11 @@ internal sealed interface DaemonManagementResponse {
 
 @Serializable
 sealed interface DaemonManagementRejection {
+    @Serializable
+    @SerialName("upgrade")
+    data class Upgrade(val failure: io.github.amichne.kast.appserver.runtime.DaemonUpgradeFailure) :
+        DaemonManagementRejection
+
     @Serializable
     @SerialName("root")
     data class Root(val failure: io.github.amichne.kast.appserver.ide.CanonicalRootFailure) : DaemonManagementRejection
@@ -168,6 +212,7 @@ internal data class WorkspaceRegistrationDocument(
 
 fun DaemonManagementRejection.diagnosticCode(): String =
     when (this) {
+            is DaemonManagementRejection.Upgrade -> "daemon-upgrade-${failure.name}"
             is DaemonManagementRejection.Root -> "workspace-root-${failure.name}"
             is DaemonManagementRejection.Preparation -> "workspace-preparation-${failure.name}"
             is DaemonManagementRejection.Protocol -> "daemon-management-${failure.name}"

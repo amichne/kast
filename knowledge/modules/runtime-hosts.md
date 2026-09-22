@@ -6,6 +6,13 @@ resource: file://runtime
 tags: [kotlin, runtime, server, indexer, cli]
 timestamp: 2026-09-16T00:00:00Z
 code_sources:
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/SessionRequests.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/DaemonUpgradeAdmission.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/DaemonUpgradeGate.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/DaemonUpgradeDocument.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/DaemonUpgradeObservation.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/BrokerSessionMessages.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceExecutionPolicy.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/FileThreadCatalogStore.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/ThreadBindingDocuments.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/ThreadCatalogStore.kt
@@ -231,3 +238,12 @@ new binding. Codex history is outside this store. Read/write failures retain the
 finite causes through broker projection. Both durable stores share the scoped
 `PrivateRecordFiles` effect owner; their record schemas and transition rules remain
 separate.
+
+Private update preparation retains a candidate and request identity while active
+owners supply finite blockers. Status alone never seals. The quiescence check and
+seal share the mutex used by lazy frontend creation, session ingress and management
+mutations. A seal rejects new work; cancellation reopens only an uncommitted seal,
+and commit is idempotent. Pending upstream requests are bounded and lost requests
+retain reconciliation uncertainty. Structured update observations contain finite
+stages/outcomes without identities or payloads. Installer activation has not yet
+been connected to this admission contract.

@@ -1015,26 +1015,6 @@
       "fingerprint": {
         "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/BrokerSessionHub.kt",
         "scope": "type:BrokerSessionHub/type:Session/fun:acceptLocked(6:String)",
-        "kind": "JSON_BUILDER",
-        "sha256": "e3be009e7e04ac9e44634d0fee62dbb6b585578b5ed7f96bd2120ade15b31e1f"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/BrokerSessionHub.kt",
-        "scope": "type:BrokerSessionHub/type:Session/fun:acceptLocked(6:String)/declaration:<anonymous>",
-        "kind": "JSON_BUILDER",
-        "sha256": "fa3d2a4c31c4a27fc15e3bb60f7aff3df3877a9418feffd7c7b8819c57c8a842"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/BrokerSessionHub.kt",
-        "scope": "type:BrokerSessionHub/type:Session/fun:acceptLocked(6:String)",
         "kind": "JSON_OBJECT",
         "sha256": "646b5331506b4390451a866d5036e7f599dd28a4f3e6eb6f1329a738e4c9d62a"
       },
@@ -1167,26 +1147,6 @@
         "scope": "type:BrokerSessionHub/fun:control(10:JsonObject)",
         "kind": "JSON_BUILDER",
         "sha256": "eaa388a838a04d4f11213b423270c073e40194128eb79dd8102282c6d1e1cd54"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/BrokerSessionHub.kt",
-        "scope": "type:BrokerSessionHub/fun:rejection(10:JsonObject,6:String)",
-        "kind": "JSON_BUILDER",
-        "sha256": "9f8a71492ce7b6d9142acd309bb8a2f34770440d2e02cdee6aed4920a0896d81"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/BrokerSessionHub.kt",
-        "scope": "type:BrokerSessionHub/fun:rejection(10:JsonObject,6:String)/declaration:<anonymous>",
-        "kind": "JSON_BUILDER",
-        "sha256": "1ffdc4941084282e5c2d7543f7cf0c20086de7589d267a195e044504b09a3fb9"
       },
       "count": 1,
       "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."

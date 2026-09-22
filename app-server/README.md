@@ -113,6 +113,17 @@ identity; the daemon rejects a mismatched target or lifecycle fence before
 registration. The registration acknowledgment retains the exact canonical root,
 workspace identity and registry revision. Registration remains idempotent.
 
+The private update protocol prepares a candidate, observes its request, cancels a
+seal, or commits it. Active turns, approvals, requests, invocations, workspace
+execution, pending preparation and uncertain outcomes keep the request pending.
+Repeated preparation retains its request ID and may seal only after those owners
+are quiescent. Sealing shares the admission mutex with lazy host creation, session
+ingress and management mutations; new work cannot race the proof. Passive status
+remains available. Cancellation can reopen an uncommitted seal; commit is
+idempotent and cannot reopen admission. Lost upstream requests retain uncertainty.
+Bounded outcome logs exclude paths, request IDs and candidate hashes. This is the
+daemon admission contract; installer activation does not yet consume it.
+
 Each connection accepts one request. Management and runtime status share the
 existing control connection limit. Requests and replies have a 16 KiB bound;
 registration reserves enough reply space before writing. Lost replies report

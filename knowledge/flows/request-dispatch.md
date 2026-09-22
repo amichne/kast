@@ -198,3 +198,11 @@ Resume, fork and tool dispatch retain `NEW_CONVERSATION_REQUIRED` rather than
 silently rebinding those identities. New conversations receive current records;
 missing or corrupt unrelated historical records do not enter an exact thread
 lookup. Store failures preserve their finite cause through the owning projection.
+
+Private update preparation reads the live session, invocation, workspace and
+preparation owners under the same admission mutex used by frontend creation,
+session ingress and management mutations. A quiescent seal rejects new work while
+passive status remains available. Pending upstream requests survive frontend
+detachment; transport retirement with an unresolved request retains uncertainty
+and cannot supply a quiescence proof. Status observation never repeats preparation
+or seals admission.

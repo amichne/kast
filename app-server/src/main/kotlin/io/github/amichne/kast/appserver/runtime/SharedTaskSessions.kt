@@ -239,6 +239,18 @@ internal class SharedTaskSessions(private val capacity: Int = BrokerOperationalL
     }
 
     @Synchronized
+    fun upgradeBlockers(): Set<UpgradeBlocker> = buildSet {
+        sessions.values.forEach { task ->
+            when (task.activity) {
+                TaskActivity.Idle -> Unit
+                is TaskActivity.Active -> add(UpgradeBlocker.ACTIVE_TURN)
+                is TaskActivity.ReconciliationRequired -> add(UpgradeBlocker.RECONCILIATION_REQUIRED)
+            }
+            if (task.pending.isNotEmpty()) add(UpgradeBlocker.REQUEST_PENDING)
+        }
+    }
+
+    @Synchronized
     fun hasWork(client: ClientConnectionId) =
         sessions.values.any { it.controller == client && (it.activity != TaskActivity.Idle || it.pending.isNotEmpty()) }
 

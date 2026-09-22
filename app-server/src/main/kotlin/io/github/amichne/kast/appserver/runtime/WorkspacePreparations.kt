@@ -37,6 +37,12 @@ internal class WorkspacePreparations(
     }
 
     @Synchronized
+    fun upgradeBlockers(): Set<UpgradeBlocker> =
+        if (records.values.any { it.state.value is WorkspacePreparationOutcome.Pending })
+            setOf(UpgradeBlocker.PREPARATION_ACTIVE)
+        else emptySet()
+
+    @Synchronized
     fun prepare(root: CanonicalRoot): Refinement<WorkspacePreparation, WorkspacePreparationFailure> {
         if (closed || !worker.isActive) return Refinement.Rejected(WorkspacePreparationFailure.CLOSED)
         entries[root]?.let {

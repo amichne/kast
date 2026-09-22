@@ -9,6 +9,8 @@ import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
 
 internal interface DaemonWorkspacePreparation {
+    fun upgradeBlockers(): Set<UpgradeBlocker> = emptySet()
+
     fun prepare(root: String): Refinement<WorkspacePreparationDocument, DaemonManagementRejection>
 
     fun observe(requestId: String): Refinement<WorkspacePreparationDocument, DaemonManagementRejection>
@@ -25,6 +27,8 @@ internal interface DaemonWorkspacePreparation {
 
 internal class ManagedDaemonWorkspacePreparation(private val owner: WorkspacePreparations) :
     DaemonWorkspacePreparation {
+    override fun upgradeBlockers() = owner.upgradeBlockers()
+
     override fun prepare(root: String): Refinement<WorkspacePreparationDocument, DaemonManagementRejection> {
         val path =
             try {

@@ -8,59 +8,11 @@ import io.github.amichne.kast.appserver.core.BrokerTurnId
 import io.github.amichne.kast.appserver.protocol.codex.InvocationCertainty
 import io.github.amichne.kast.appserver.protocol.codex.ProtocolRouting
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
-import io.github.amichne.kast.kernel.Refinement
 import kotlin.time.Duration
 import kotlin.time.TimeMark
 import kotlin.time.TimeSource
 import kotlinx.coroutines.*
 import kotlinx.serialization.json.*
-
-internal enum class WorkspaceExecutionPolicyFailure {
-    QUEUED_LIMIT_REJECTED,
-    WAIT_LIMIT_REJECTED,
-    INTERACTION_LIMIT_REJECTED,
-}
-
-/** Queue allowance is part of one aggregate interaction allowance, never a renewed execution budget. */
-internal class WorkspaceExecutionPolicy
-private constructor(
-    val maximumQueued: Int,
-    val queueWait: ElapsedTimeLimitMillis,
-    val interaction: ElapsedTimeLimitMillis,
-) {
-    companion object {
-        val Default =
-            WorkspaceExecutionPolicy(
-                BrokerOperationalLimits.defaultWorkspaceQueued,
-                BrokerOperationalLimits.workspaceQueueWait,
-                BrokerOperationalLimits.workspaceInteraction,
-            )
-
-        fun admit(
-            maximumQueued: Int,
-            queueWaitMillis: Long,
-            interactionMillis: Long,
-        ): Refinement<WorkspaceExecutionPolicy, WorkspaceExecutionPolicyFailure> {
-            if (maximumQueued !in 0..BrokerOperationalLimits.maximumWorkspaceQueued)
-                return Refinement.Rejected(WorkspaceExecutionPolicyFailure.QUEUED_LIMIT_REJECTED)
-            val queueWait =
-                when (val admitted = ElapsedTimeLimitMillis.parse(queueWaitMillis)) {
-                    is Refinement.Refined -> admitted.value
-                    is Refinement.Rejected ->
-                        return Refinement.Rejected(WorkspaceExecutionPolicyFailure.WAIT_LIMIT_REJECTED)
-                }
-            val interaction =
-                when (val admitted = ElapsedTimeLimitMillis.parse(interactionMillis)) {
-                    is Refinement.Refined -> admitted.value
-                    is Refinement.Rejected ->
-                        return Refinement.Rejected(WorkspaceExecutionPolicyFailure.INTERACTION_LIMIT_REJECTED)
-                }
-            if (queueWait.value > interaction.value)
-                return Refinement.Rejected(WorkspaceExecutionPolicyFailure.WAIT_LIMIT_REJECTED)
-            return Refinement.Refined(WorkspaceExecutionPolicy(maximumQueued, queueWait, interaction))
-        }
-    }
-}
 
 internal data class WorkspaceExecutionIdentity(
     val workspace: BrokerWorkspaceId,
@@ -348,6 +300,18 @@ internal class WorkspaceExecution(
             )
         )
     }
+
+    @Synchronized
+    fun upgradeBlockers(): Set<UpgradeBlocker> =
+        lanes.values
+            .mapNotNull { lane ->
+                when (lane) {
+                    Lane.Idle -> null
+                    is Lane.Busy -> UpgradeBlocker.WORKSPACE_EXECUTION_ACTIVE
+                    is Lane.RecoveryRequired -> UpgradeBlocker.WORKSPACE_RECOVERY_REQUIRED
+                }
+            }
+            .toSet()
 
     @Synchronized
     fun snapshot(): JsonObject = buildJsonObject {

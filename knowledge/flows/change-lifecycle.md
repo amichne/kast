@@ -102,6 +102,8 @@ attempted write. The latter two remain qualified results.
 
 An uncertain broker invocation leaves its workspace in `WORKSPACE_RECOVERY_REQUIRED`.
 The broker rejects further operations for that workspace, including recovery.
+Private update admission also retains this recovery state as a blocker; it cannot
+clear uncertainty or authorize forced replacement.
 Replace the broker while retaining its invocation journal and thread store before
 requesting separately approved recovery. The IDE's durable mutation records remain
 authoritative; replacing the broker does not make an attempted plan executable again.
