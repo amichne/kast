@@ -9,6 +9,9 @@ Owns the persistent broker/coordinator, host attachment, existing-IDE invocation
 
 ## Key Files
 
+- [DaemonManagementProtocol.kt](src/main/kotlin/io/github/amichne/kast/appserver/DaemonManagementProtocol.kt) - versioned local management requests and finite rejections.
+- [InstalledDaemonManagementClient.kt](src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonManagementClient.kt) - ownership-qualified registration client without Codex initialization.
+
 - [KastCatalogSource.kt](src/main/kotlin/io/github/amichne/kast/appserver/provider/KastCatalogSource.kt) - bounded packaged provider-contract reads without a Kast subprocess.
 
 - [InstalledConfigurationAlias.kt](src/main/kotlin/io/github/amichne/kast/appserver/InstalledConfigurationAlias.kt) - owned current-alias resolution under the installation activation lock.

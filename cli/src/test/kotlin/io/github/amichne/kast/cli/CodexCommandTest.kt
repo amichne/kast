@@ -3,6 +3,10 @@ package io.github.amichne.kast.cli
 import io.github.amichne.kast.appserver.AppServerAction
 import io.github.amichne.kast.appserver.AppServerManagementResult
 import io.github.amichne.kast.appserver.AppServerManager
+import io.github.amichne.kast.appserver.DaemonManagementFailure
+import io.github.amichne.kast.appserver.DaemonManagementRejection
+import io.github.amichne.kast.appserver.EnrollmentFailure
+import io.github.amichne.kast.appserver.WorkerControlFailure
 import io.github.amichne.kast.appserver.host.CodexClientLaunch
 import io.github.amichne.kast.appserver.host.CodexClientLaunchRun
 import io.github.amichne.kast.appserver.host.CodexClientLauncher
@@ -13,6 +17,8 @@ import io.github.amichne.kast.cli.projection.CliLocalMetadata
 import io.github.amichne.kast.cli.projection.CliLocalMetadataAdmission
 import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
 import java.nio.file.Path
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -85,6 +91,35 @@ class CodexCommandTest {
             cli.execute(listOf("app-server", "repair", "--destructive"), Path.of("/missing")) is CliExit.Complete
         )
         assertEquals(listOf(AppServerAction.Repair), actions)
+    }
+
+    @Test
+    fun `registration preserves daemon coordinator and enrollment rejection codes`() {
+        val cases =
+            listOf(
+                DaemonManagementRejection.Protocol(DaemonManagementFailure.OUTCOME_UNOBSERVED) to
+                    "daemon-management-outcome-unobserved",
+                DaemonManagementRejection.Coordinator(WorkerControlFailure.SERVICE_IDENTITY_REJECTED) to
+                    "coordinator-service-identity-rejected",
+                DaemonManagementRejection.Enrollment(EnrollmentFailure.DOCUMENT_REJECTED) to
+                    "enrollment-document-rejected",
+            )
+        cases.forEach { (reason, code) ->
+            var calls = 0
+            val manager = AppServerManager { action, _ ->
+                assertEquals(AppServerAction.Register, action)
+                calls++
+                AppServerManagementResult.DaemonRejected(reason)
+            }
+            val result =
+                testCli(CodexClientLauncher { error("registration cannot launch Codex") }, manager)
+                    .execute(listOf("app-server", "register"), Path.of("/workspace"))
+            assertTrue(result is CliExit.BoundaryRejected)
+            val document =
+                kotlinx.serialization.json.Json.parseToJsonElement((result as CliExit.BoundaryRejected).document.value)
+            assertEquals(code, document.jsonObject.getValue("reason").jsonPrimitive.content)
+            assertEquals(1, calls)
+        }
     }
 
     private fun testCli(

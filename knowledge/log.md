@@ -1,5 +1,14 @@
 # Knowledge-base update log
 
+## 2026-09-22 — Daemon-owned workspace registration
+
+Added bounded typed management status and registration on the existing owned Unix
+socket. Registration verifies the published owner and exact daemon generation,
+retains canonical workspace identity and registry revision, and remains available
+without optional Codex host admission. The CLI no longer writes registration
+state offline; installation bootstrap remains explicit.
+
+
 ## 2026-09-22
 
 - Replaced runtime Kast CLI qualification with a bounded packaged hosted catalog,

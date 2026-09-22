@@ -378,24 +378,7 @@ private constructor(
                             maxFrameSize = maximumMessageBytes.toLong()
                         }
                         routing {
-                            if (runtimeControl != null) {
-                                val controlConnections = AtomicInteger(0)
-                                webSocket("/kast-runtime") {
-                                    val count = controlConnections.incrementAndGet()
-                                    try {
-                                        if (count > BrokerOperationalLimits.maximumRuntimeConnections)
-                                            close(
-                                                CloseReason(
-                                                    CloseReason.Codes.TRY_AGAIN_LATER,
-                                                    "runtime connection limit exceeded",
-                                                )
-                                            )
-                                        else runtimeControl.handle(this)
-                                    } finally {
-                                        controlConnections.decrementAndGet()
-                                    }
-                                }
-                            }
+                            if (runtimeControl != null) coordinatorRoutes(runtimeControl)
                             BrokerWebSocketRoute.entries.forEach { route ->
                                 webSocket(route.path) {
                                     val count = connectionCount.incrementAndGet()

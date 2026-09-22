@@ -97,6 +97,31 @@ for that login. Explicit enable or the next login bootstrap clears suppression.
 Disable additionally removes the Kast-owned login agent. Enrollment and invocation evidence remain
 on disk; disable does not erase execution history.
 
+## Daemon management
+
+`kast app-server register` registers the current workspace through the running
+coordinator. Start it with `kast app-server enable` first. Registration no longer
+writes the registry from a standalone CLI process. Initial enable/repair and
+login bootstrap retain their existing installation responsibilities.
+
+The owned Unix socket serves a versioned, bounded `/kast-management` WebSocket
+route for passive coordinator status and workspace registration. It uses no
+Codex handshake and does not admit the optional host. The client first verifies
+the published installation owner, state epoch, service generation and service
+identity; the daemon rejects a mismatched target or lifecycle fence before
+registration. The registration acknowledgment retains the exact canonical root,
+workspace identity and registry revision. Registration remains idempotent.
+
+Each connection accepts one request. Management and runtime status share the
+existing control connection limit. Requests and replies have a 16 KiB bound;
+registration reserves enough reply space before writing. Lost replies report
+an unobserved outcome and are never retried automatically. Protocol, coordinator
+and enrollment failures retain their finite codes through the CLI.
+
+This is the first management migration slice. Controller claim/release still use
+the existing initialized session route. Service lifecycle, automatic workspace
+preparation, deferred updates and durable storage migration remain separate work.
+
 ## Ownership and recovery
 
 ```mermaid
@@ -107,8 +132,7 @@ flowchart LR
   Public --> Hub[Service-owned sessions and controller routing]
   Hub --> Upstream[One private Codex App Server process]
   Hub --> Fence[Durable invocation fence]
-  Fence --> Kast[Installed Kast CLI]
-  Kast --> Workspace[Existing IDEA project plugin]
+  Fence --> Workspace[Existing IDEA project plugin]
 ```
 
 Each connection completes its own initialize/initialized exchange and retains its
