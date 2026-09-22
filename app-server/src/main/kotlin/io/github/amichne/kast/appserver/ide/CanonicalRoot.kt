@@ -22,6 +22,7 @@ sealed interface CanonicalRootDiscovery {
     data class Rejected(val failure: CanonicalRootFailure) : CanonicalRootDiscovery
 }
 
+@kotlinx.serialization.Serializable
 enum class CanonicalRootFailure {
     START_UNAVAILABLE,
     START_NOT_DIRECTORY,

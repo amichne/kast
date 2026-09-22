@@ -6,6 +6,10 @@ resource: file://runtime
 tags: [kotlin, runtime, server, indexer, cli]
 timestamp: 2026-09-16T00:00:00Z
 code_sources:
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparation.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/DaemonWorkspacePreparation.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparationActivity.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/DaemonManagementProtocol.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonManagementClient.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/DaemonManagement.kt
@@ -171,3 +175,15 @@ active turns and pending approvals. Native clients cannot assert another client'
 identity to claim or release control. Public status reads existing session state
 passively; it does not initialize or probe Codex. Initial installation bootstrap
 retains its existing owner.
+
+The coordinator retains workspace preparation operations independently of Codex
+admission and management connection lifetimes. Exact canonical settings roots
+coalesce to one request ID and native open operation. Native pending observations
+must preserve host/request identity and advance monotonically through opening,
+importing and admission. Completed records retain root, host and project identity;
+they are historical observations, not authority to skip fresh native admission.
+Blocked operations and elapsed deadlines do not automatically replay opening.
+A bounded 256-record table rejects excess roots without discarding evidence. Close
+settles pending records without closing IDEA projects. Preparation events expose
+bounded typed stage/outcome evidence without roots or payloads. Tool-demand
+integration remains separate from these management operations.
