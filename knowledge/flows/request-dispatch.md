@@ -192,3 +192,9 @@ lane can advance. The response owner publishes once, preserves uncertain outcome
 and keeps active results separate from its bounded completed cache. Eviction
 removes response bytes only; the durable fingerprint and phase continue to reject
 replay and conflicting inputs.
+
+Thread-store migration preserves historical bindings as non-executable records.
+Resume, fork and tool dispatch retain `NEW_CONVERSATION_REQUIRED` rather than
+silently rebinding those identities. New conversations receive current records;
+missing or corrupt unrelated historical records do not enter an exact thread
+lookup. Store failures preserve their finite cause through the owning projection.

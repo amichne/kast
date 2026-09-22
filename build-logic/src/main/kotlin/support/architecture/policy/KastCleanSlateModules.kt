@@ -305,7 +305,7 @@ internal object KastCleanSlateModules {
                     JvmClassName("io/github/amichne/kast/appserver/BrokerInstallationState"),
                     JvmClassName("io/github/amichne/kast/appserver/InstalledCoordinatorConfiguration"),
                     JvmClassName("io/github/amichne/kast/appserver/WorkspaceEnrollmentStore"),
-                    JvmClassName("io/github/amichne/kast/appserver/runtime/InvocationStoreFiles"),
+                    JvmClassName("io/github/amichne/kast/appserver/storage/PrivateRecordFiles"),
                     JvmClassName(
                         "io/github/amichne/kast/appserver/MacOsPersistentBrokerServiceHost",
                     ),
@@ -316,9 +316,6 @@ internal object KastCleanSlateModules {
                     JvmClassName("io/github/amichne/kast/appserver/OwnedBrokerServiceReadiness"),
                     JvmClassName(
                         "io/github/amichne/kast/appserver/protocol/codex/CodexProtocolQualifier\$retireTemporaryTree\$1\$1",
-                    ),
-                    JvmClassName(
-                        "io/github/amichne/kast/appserver/protocol/FileThreadCatalogStore",
                     ),
                     JvmClassName("io/github/amichne/kast/appserver/runtime/OwnedUnixSocket"),
                     JvmClassName(

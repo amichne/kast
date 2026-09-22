@@ -9,6 +9,9 @@ Owns the persistent broker/coordinator, host attachment, existing-IDE invocation
 
 ## Key Files
 
+- [FileThreadCatalogStore.kt](src/main/kotlin/io/github/amichne/kast/appserver/protocol/FileThreadCatalogStore.kt) - lazy thread-binding shards and legacy conversation migration; `ThreadBindingDocuments` owns stored identities and refinement.
+- [PrivateRecordFiles.kt](src/main/kotlin/io/github/amichne/kast/appserver/storage/PrivateRecordFiles.kt) - shared private-file, lock, atomic-write and directory-sync boundary for durable records.
+
 - [InvocationFence.kt](src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationFence.kt) - active admission and durable replay settlement; `FileInvocationRecords` owns sharded storage and legacy migration.
 
 - [InstalledWorkspacePreparation.kt](src/main/kotlin/io/github/amichne/kast/appserver/InstalledWorkspacePreparation.kt) - shared installed preparation owner and native-bound semantic demand.
@@ -44,6 +47,7 @@ Owns the persistent broker/coordinator, host attachment, existing-IDE invocation
 - `src/main/kotlin/io/github/amichne/kast/appserver/protocol` - Codex and Copilot projections plus thread catalog state.
 - `src/main/kotlin/io/github/amichne/kast/appserver/provider` - process, Gradle, invocation, and observer boundaries.
 - `src/main/kotlin/io/github/amichne/kast/appserver/runtime` - workspace registration, broker sessions, and invocation control.
+- `src/main/kotlin/io/github/amichne/kast/appserver/storage` - shared private-file admission, locking and atomic durable-record writes.
 - `src/test` - focused behavior tests; [native acceptance](src/test/kotlin/io/github/amichne/kast/appserver/acceptance) contains integration harnesses.
 
 ## Entry Points

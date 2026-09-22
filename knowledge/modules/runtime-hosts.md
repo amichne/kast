@@ -6,12 +6,16 @@ resource: file://runtime
 tags: [kotlin, runtime, server, indexer, cli]
 timestamp: 2026-09-16T00:00:00Z
 code_sources:
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/FileThreadCatalogStore.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/ThreadBindingDocuments.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/ThreadCatalogStore.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/ThreadMigrationObservation.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationResponses.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationCapacityLimit.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationFence.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationRecords.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/FileInvocationRecords.kt
-  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationStoreFiles.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/storage/PrivateRecordFiles.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationMigrationObservation.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledWorkspacePreparation.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceDemand.kt
@@ -215,3 +219,15 @@ An evicted completed response cannot authorize another prompt or execution. Lega
 locked stage before publishing the layout marker and retains the original
 journal. Incomplete migration, unsafe paths, malformed records and lock contention
 remain typed failures. Migration observations contain only stage and outcome.
+
+Thread bindings use private digest shards and lazy per-thread validation. A missing
+historical workspace does not prevent opening the daemon or using another bound
+workspace. Current records retain catalog, working directory, workspace and typed
+installation/epoch ownership; conflicting rewrites reject. Locked legacy migration
+validates historical identity without claiming current filesystem authority,
+verifies a stage, publishes its version marker atomically and retains the source.
+Legacy records return `NEW_CONVERSATION_REQUIRED` and cannot be overwritten by a
+new binding. Codex history is outside this store. Read/write failures retain their
+finite causes through broker projection. Both durable stores share the scoped
+`PrivateRecordFiles` effect owner; their record schemas and transition rules remain
+separate.

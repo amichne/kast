@@ -17,6 +17,13 @@ import org.junit.jupiter.api.io.TempDir
 
 class InvocationFileStoreTest {
     @Test
+    fun `malformed private journal retains decoding failure`(@TempDir root: Path) {
+        val file = root.toRealPath().resolve("invocations.json")
+        privateWrite(file, "broken journal")
+        assertEquals(rejected(InvocationFenceFailure.DOCUMENT_MALFORMED), InvocationFence(file).initialization())
+    }
+
+    @Test
     fun `completed history does not consume active capacity`(@TempDir root: Path) {
         val file = root.toRealPath().resolve("invocations.json")
         val fence = InvocationFence(file, maximumActive = limit(1))

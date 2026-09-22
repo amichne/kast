@@ -12,8 +12,35 @@ import org.junit.jupiter.api.io.TempDir
 
 class FileThreadCatalogStoreTest {
     @Test
+    fun `unrelated missing workspace does not block opening or reading another binding`(@TempDir temporary: Path) =
+        runBlocking {
+            val state = Files.createDirectory(temporary.resolve("state")).toRealPath()
+            Files.setPosixFilePermissions(state, java.nio.file.attribute.PosixFilePermissions.fromString("rwx------"))
+            Files.setPosixFilePermissions(state, java.nio.file.attribute.PosixFilePermissions.fromString("rwx------"))
+            val removed = Files.createDirectory(temporary.resolve("removed")).toRealPath()
+            val surviving = Files.createDirectory(temporary.resolve("surviving")).toRealPath()
+            val path = state.resolve("threads.json")
+            val digest = CatalogDigest.admit("sha256:${"a".repeat(64)}")!!
+            val store = (FileThreadCatalogStore.open(path) as FileThreadCatalogStoreOpen.Opened).store
+            assertEquals(
+                ThreadStoreWrite.Written,
+                store.write(ThreadCatalogBinding.admit("removed", digest, removed).refinedValue()),
+            )
+            assertEquals(
+                ThreadStoreWrite.Written,
+                store.write(ThreadCatalogBinding.admit("surviving", digest, surviving).refinedValue()),
+            )
+            Files.delete(removed)
+            val reopened =
+                assertInstanceOf(FileThreadCatalogStoreOpen.Opened::class.java, FileThreadCatalogStore.open(path)).store
+            assertInstanceOf(ThreadStoreRead.Found::class.java, reopened.read("surviving"))
+            assertEquals(ThreadStoreRead.Rejected(ThreadCatalogStoreFailure.BINDING_REJECTED), reopened.read("removed"))
+        }
+
+    @Test
     fun `thread bindings survive restart through an atomic versioned store`(@TempDir temporary: Path) = runBlocking {
         val state = Files.createDirectory(temporary.resolve("state")).toRealPath()
+        Files.setPosixFilePermissions(state, java.nio.file.attribute.PosixFilePermissions.fromString("rwx------"))
         val cwd = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
         val path = state.resolve("threads.json")
         val child = Files.createDirectory(cwd.resolve("child"))
@@ -29,7 +56,7 @@ class FileThreadCatalogStoreTest {
                 .refinedValue()
         val opened = (FileThreadCatalogStore.open(path) as FileThreadCatalogStoreOpen.Opened).store
 
-        assertEquals(ThreadStoreWrite.WRITTEN, opened.write(binding))
+        assertEquals(ThreadStoreWrite.Written, opened.write(binding))
 
         val reopened = (FileThreadCatalogStore.open(path) as FileThreadCatalogStoreOpen.Opened).store
         val found = assertInstanceOf(ThreadStoreRead.Found::class.java, reopened.read("thread-1"))
@@ -38,26 +65,47 @@ class FileThreadCatalogStoreTest {
         assertEquals(binding.workingDirectory.path, found.binding.workingDirectory.path)
         assertEquals(binding.workspace, found.binding.workspace)
         assertEquals(owner, found.binding.owner)
-        assertEquals("rw-------", Files.getPosixFilePermissions(path).permissionText())
+        assertEquals(
+            "rw-------",
+            Files.getPosixFilePermissions(
+                    path
+                        .resolveSibling("threads.json.d")
+                        .resolve("records-v3")
+                        .resolve(threadRecordDigest("thread-1").take(2))
+                        .resolve("${threadRecordDigest("thread-1")}.json")
+                )
+                .permissionText(),
+        )
     }
 
     @Test
     fun `duplicate thread identities fail closed`(@TempDir temporary: Path) {
         val state = Files.createDirectory(temporary.resolve("state")).toRealPath()
+        Files.setPosixFilePermissions(state, java.nio.file.attribute.PosixFilePermissions.fromString("rwx------"))
         val cwd = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
         val path = state.resolve("threads.json")
+        val workspace =
+            io.github.amichne.kast.appserver.WorkspaceRegistration(
+                io.github.amichne.kast.appserver.core.CanonicalBrokerDirectory.admit(cwd)!!
+            )
+        val first =
+            LegacyThreadBindingDocument(
+                "thread-1",
+                "sha256:${"a".repeat(64)}",
+                cwd.toString(),
+                cwd.toString(),
+                workspace.id.value,
+                "protocolFixture",
+            )
         val document =
-            """
-            {
-              "version": 2,
-              "bindings": [
-                {"threadId":"thread-1","catalogDigest":"sha256:${"a".repeat(64)}","cwd":"$cwd","workspaceRoot":"$cwd","workspaceId":"${io.github.amichne.kast.appserver.WorkspaceRegistration(io.github.amichne.kast.appserver.core.CanonicalBrokerDirectory.admit(cwd)!!).id.value}","ownerKind":"protocolFixture"},
-                {"threadId":"thread-1","catalogDigest":"sha256:${"b".repeat(64)}","cwd":"$cwd","workspaceRoot":"$cwd","workspaceId":"${io.github.amichne.kast.appserver.WorkspaceRegistration(io.github.amichne.kast.appserver.core.CanonicalBrokerDirectory.admit(cwd)!!).id.value}","ownerKind":"protocolFixture"}
-              ]
-            }
-        """
-                .trimIndent()
-        Files.writeString(path, document)
+            LegacyThreadStoreDocument(2, listOf(first, first.copy(catalogDigest = "sha256:${"b".repeat(64)}")))
+        Files.writeString(
+            path,
+            kotlinx.serialization.json
+                .Json { explicitNulls = false }
+                .encodeToString(LegacyThreadStoreDocument.serializer(), document),
+        )
+        Files.setPosixFilePermissions(path, java.nio.file.attribute.PosixFilePermissions.fromString("rw-------"))
 
         val rejection = FileThreadCatalogStore.open(path) as FileThreadCatalogStoreOpen.Rejected
 
@@ -75,9 +123,12 @@ class FileThreadCatalogStoreTest {
         val file =
             (FileThreadCatalogStore.open(root.resolve("threads.json")) as FileThreadCatalogStoreOpen.Opened).store
         for (store in listOf(MemoryThreadCatalogStore(), file)) {
-            assertEquals(ThreadStoreWrite.WRITTEN, store.write(original))
-            assertEquals(ThreadStoreWrite.WRITTEN, store.write(original))
-            assertEquals(ThreadStoreWrite.REJECTED, store.write(replacement))
+            assertEquals(ThreadStoreWrite.Written, store.write(original))
+            assertEquals(ThreadStoreWrite.Written, store.write(original))
+            assertEquals(
+                ThreadStoreWrite.Rejected(ThreadCatalogStoreFailure.BINDING_CONFLICT),
+                store.write(replacement),
+            )
             assertEquals(first, (store.read("thread-1") as ThreadStoreRead.Found).binding.workingDirectory.path)
         }
     }
@@ -100,8 +151,10 @@ class FileThreadCatalogStoreTest {
         val file =
             (FileThreadCatalogStore.open(root.resolve("threads.json")) as FileThreadCatalogStoreOpen.Opened).store
         for (store in listOf(MemoryThreadCatalogStore(), file)) {
-            assertEquals(ThreadStoreWrite.WRITTEN, store.write(original))
-            candidates.forEach { assertEquals(ThreadStoreWrite.REJECTED, store.write(it)) }
+            assertEquals(ThreadStoreWrite.Written, store.write(original))
+            candidates.forEach {
+                assertEquals(ThreadStoreWrite.Rejected(ThreadCatalogStoreFailure.BINDING_CONFLICT), store.write(it))
+            }
             val retained = (store.read("thread-1") as ThreadStoreRead.Found).binding
             assertEquals(original.workspace, retained.workspace)
             assertEquals(owner, retained.owner)

@@ -6,6 +6,7 @@ import java.nio.file.Path
 @kotlinx.serialization.Serializable
 internal enum class InvocationFenceFailure {
     STORE_REJECTED,
+    DOCUMENT_MALFORMED,
     CAPACITY_EXCEEDED,
     INPUT_CONFLICT,
     ALREADY_COMPLETED,

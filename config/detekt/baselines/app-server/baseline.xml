@@ -50,9 +50,6 @@
     <ID>CognitiveComplexMethod:ManagedCodexUpstream.kt:ManagedCodexUpstream.Companion$internal suspend fun start: ManagedCodexUpstreamStart</ID>
     <ID>CognitiveComplexMethod:PersistentBrokerService.kt:BrokerServiceLaunchCommand.Companion$fun resolve: BrokerServiceLaunchCommandResolution</ID>
     <ID>CognitiveComplexMethod:PublishedBrokerServiceCommand.kt:PublishedBrokerServiceCommand$private fun readEnvironment: Map&lt;String, String>?</ID>
-    <ID>CognitiveComplexMethod:ThreadCatalogStore.kt:FileThreadCatalogStore$private fun flush: Boolean</ID>
-    <ID>CognitiveComplexMethod:ThreadCatalogStore.kt:FileThreadCatalogStore.Companion$internal fun open: FileThreadCatalogStoreOpen</ID>
-    <ID>CognitiveComplexMethod:ThreadCatalogStore.kt:FileThreadCatalogStore.Companion$private fun readDocument: ThreadStoreDocumentRead</ID>
     <ID>CognitiveComplexMethod:WorkerSeedConsentTest.kt:WorkerSeedConsentTest$@Test fun `original runtime connection grants measured seed consent and disconnect never grants`</ID>
     <ID>CognitiveComplexMethod:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore$fun enroll: Refinement&lt;WorkspaceRegistrationAcknowledgement, EnrollmentFailure></ID>
     <ID>CognitiveComplexMethod:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore$internal fun retainTo: WorkspaceRegistryRetention</ID>
@@ -158,9 +155,6 @@
     <ID>CyclomaticComplexMethod:PublishedBrokerServiceCommand.kt:PublishedBrokerServiceCommand$fun retirementEnvironment: PublishedBrokerServiceEnvironment?</ID>
     <ID>CyclomaticComplexMethod:PublishedBrokerServiceCommand.kt:PublishedBrokerServiceCommand$private fun readEnvironment: Map&lt;String, String>?</ID>
     <ID>CyclomaticComplexMethod:SavedConfigurationIngress.kt:InstalledSavedConfigurationIngress$fun read: SavedConfigurationIngress</ID>
-    <ID>CyclomaticComplexMethod:ThreadCatalogStore.kt:FileThreadCatalogStore$private fun flush: Boolean</ID>
-    <ID>CyclomaticComplexMethod:ThreadCatalogStore.kt:FileThreadCatalogStore.Companion$internal fun open: FileThreadCatalogStoreOpen</ID>
-    <ID>CyclomaticComplexMethod:ThreadCatalogStore.kt:FileThreadCatalogStore.Companion$private fun readDocument: ThreadStoreDocumentRead</ID>
     <ID>CyclomaticComplexMethod:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore$fun enroll: Refinement&lt;WorkspaceRegistrationAcknowledgement, EnrollmentFailure></ID>
     <ID>CyclomaticComplexMethod:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore$internal fun retainTo: WorkspaceRegistryRetention</ID>
     <ID>CyclomaticComplexMethod:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore$internal fun snapshot: WorkspaceRegistryRead</ID>
@@ -264,9 +258,6 @@
     <ID>LongMethod:PublishedBrokerServiceCommand.kt:PublishedBrokerServiceCommand$private fun readEnvironment: Map&lt;String, String>?</ID>
     <ID>LongMethod:PublishedBrokerServiceCommandTest.kt:PublishedBrokerServiceCommandTest$@Test fun `owned launch receipt recovers only its exact published command`</ID>
     <ID>LongMethod:SavedConfigurationIngress.kt:InstalledSavedConfigurationIngress$fun read: SavedConfigurationIngress</ID>
-    <ID>LongMethod:ThreadCatalogStore.kt:FileThreadCatalogStore$private fun flush: Boolean</ID>
-    <ID>LongMethod:ThreadCatalogStore.kt:FileThreadCatalogStore.Companion$internal fun open: FileThreadCatalogStoreOpen</ID>
-    <ID>LongMethod:ThreadCatalogStore.kt:FileThreadCatalogStore.Companion$private fun readDocument: ThreadStoreDocumentRead</ID>
     <ID>LongMethod:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore$fun enroll: Refinement&lt;WorkspaceRegistrationAcknowledgement, EnrollmentFailure></ID>
     <ID>LongMethod:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore$internal fun retainTo: WorkspaceRegistryRetention</ID>
     <ID>LongMethod:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore$private fun retain: WorkspaceRegistryRetention</ID>
@@ -402,7 +393,6 @@
     <ID>NestedBlockDepth:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$private fun reconcileAbsent: PersistentBrokerServiceAdmission</ID>
     <ID>NestedBlockDepth:ManagedCodexUpstream.kt:ManagedCodexUpstream.Companion$internal suspend fun start: ManagedCodexUpstreamStart</ID>
     <ID>NestedBlockDepth:PersistentBrokerService.kt:BrokerServiceLaunchCommand.Companion$private fun sha256: String?</ID>
-    <ID>NestedBlockDepth:ThreadCatalogStore.kt:FileThreadCatalogStore.Companion$private fun readDocument: ThreadStoreDocumentRead</ID>
     <ID>NestedBlockDepth:WorkerStopReply.kt:WorkerStopReply.Companion$fun decode: InstalledWorkerStop</ID>
     <ID>NestedBlockDepth:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore$internal fun snapshot: WorkspaceRegistryRead</ID>
     <ID>NestedBlockDepth:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl$private fun receipt: Boolean</ID>
