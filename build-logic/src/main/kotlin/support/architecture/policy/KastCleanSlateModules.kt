@@ -305,7 +305,7 @@ internal object KastCleanSlateModules {
                     JvmClassName("io/github/amichne/kast/appserver/BrokerInstallationState"),
                     JvmClassName("io/github/amichne/kast/appserver/InstalledCoordinatorConfiguration"),
                     JvmClassName("io/github/amichne/kast/appserver/WorkspaceEnrollmentStore"),
-                    JvmClassName("io/github/amichne/kast/appserver/runtime/InvocationFence"),
+                    JvmClassName("io/github/amichne/kast/appserver/runtime/InvocationStoreFiles"),
                     JvmClassName(
                         "io/github/amichne/kast/appserver/MacOsPersistentBrokerServiceHost",
                     ),

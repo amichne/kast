@@ -6,6 +6,11 @@ resource: file://runtime
 tags: [kotlin, runtime, server, indexer, cli]
 timestamp: 2026-09-16T00:00:00Z
 code_sources:
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationFence.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationRecords.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/FileInvocationRecords.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationStoreFiles.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationMigrationObservation.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledWorkspacePreparation.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceDemand.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt
@@ -196,3 +201,12 @@ semantic request. Preparation rejection retains its finite cause and operation I
 as known pre-execution failure evidence.
 
 Launchd invokes the private daemon entry point without the public CLI command graph. The managed readiness environment is required at ingress and then qualified by the existing coordinator. Exact published-command recovery admits both the private path and the earlier `kast broker serve` form for retirement.
+
+Invocation replay evidence lives in private hash-sharded records. The store reads
+only the addressed digest, preserves its input fingerprint and finite phase, and
+rejects attempts to settle a terminal record or a historical admission owned by a
+previous process. Active capacity is separate from durable history; the response
+cache still has its own fixed bound. Legacy migration validates and verifies a
+locked stage before publishing the layout marker and retains the original
+journal. Incomplete migration, unsafe paths, malformed records and lock contention
+remain typed failures. Migration observations contain only stage and outcome.

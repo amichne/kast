@@ -4,6 +4,8 @@ import io.github.amichne.kast.appserver.runtime.InvocationAdmission
 import io.github.amichne.kast.appserver.runtime.InvocationFence
 import io.github.amichne.kast.appserver.runtime.InvocationFenceFailure
 import io.github.amichne.kast.appserver.runtime.InvocationPhase
+import io.github.amichne.kast.appserver.runtime.InvocationRecordDocument
+import io.github.amichne.kast.appserver.runtime.InvocationSettlement
 import io.github.amichne.kast.appserver.runtime.WorkspaceExecutionFailure
 import io.github.amichne.kast.appserver.runtime.toolFailure
 import java.nio.file.Files
@@ -68,16 +70,15 @@ class NativeBrokerReplacementTest {
     fun `replacement retains uncertain journal evidence while new records accumulate`(@TempDir root: Path) {
         stores(root, InvocationPhase.UNCERTAIN)
         val retained = NativeBrokerStoreSnapshot.capture(root)
-        val reopened = InvocationFence(root.resolve("invocations.json"))
+        val reopened = InvocationFence(root.toRealPath().resolve("invocations.json"))
         assertEquals(InvocationAdmission.Admitted, reopened.initialization())
         assertEquals(
             InvocationAdmission.Rejected(InvocationFenceFailure.OUTCOME_UNCERTAIN),
             reopened.admit("uncertain-call", "c".repeat(64)),
         )
         retained.requireUnchanged(root)
-        val initial = journal(InvocationPhase.UNCERTAIN)
-        val appended = initial.copy(records = initial.records + ("b".repeat(64) to record(InvocationPhase.COMPLETED)))
-        Files.writeString(root.resolve("invocations.json"), Json.encodeToString(appended))
+        assertEquals(InvocationAdmission.Admitted, reopened.admit("appended-call", "c".repeat(64)))
+        assertEquals(InvocationAdmission.Admitted, reopened.finish("appended-call", InvocationSettlement.COMPLETED))
         retained.requireRecordsRetained(root)
         assertThrows(NativeRejected::class.java) { retained.requireUnchanged(root) }
         stores(root, InvocationPhase.COMPLETED)
@@ -106,16 +107,10 @@ class NativeBrokerReplacementTest {
         val beforeUnload = NativeBrokerStoreSnapshot.capture(root)
         assertThrows(NativeRejected::class.java) { beforeUnload.requireNewUncertainInvocationSince(beforeUnload) }
         val unloadKey = InvocationFence.digest("unload-call")
-        val afterUnload =
-            journal(InvocationPhase.UNCERTAIN)
-                .copy(
-                    records =
-                        journal(InvocationPhase.UNCERTAIN).records + (unloadKey to record(InvocationPhase.UNCERTAIN))
-                )
-        Files.writeString(root.resolve("invocations.json"), Json.encodeToString(afterUnload))
+        writeRecord(root, unloadKey, InvocationPhase.UNCERTAIN)
         val retained = NativeBrokerStoreSnapshot.capture(root)
         retained.requireNewUncertainInvocationSince(beforeUnload)
-        val reopened = InvocationFence(root.resolve("invocations.json"))
+        val reopened = InvocationFence(root.toRealPath().resolve("invocations.json"))
         assertEquals(InvocationAdmission.Admitted, reopened.initialization())
         assertEquals(
             InvocationAdmission.Rejected(InvocationFenceFailure.OUTCOME_UNCERTAIN),
@@ -124,31 +119,33 @@ class NativeBrokerReplacementTest {
         retained.requireUnchanged(root)
         NativeBrokerStoreSnapshot.capture(root).requireNewUncertainInvocationSince(beforeUnload)
         for (phase in listOf(InvocationPhase.COMPLETED, InvocationPhase.STARTED)) {
-            Files.writeString(
-                root.resolve("invocations.json"),
-                Json.encodeToString(afterUnload.copy(records = afterUnload.records + (unloadKey to record(phase)))),
-            )
+            writeRecord(root, unloadKey, phase)
             assertThrows(NativeRejected::class.java) {
                 NativeBrokerStoreSnapshot.capture(root).requireNewUncertainInvocationSince(beforeUnload)
             }
         }
-        val extra =
-            afterUnload.copy(records = afterUnload.records + ("d".repeat(64) to record(InvocationPhase.UNCERTAIN)))
-        Files.writeString(root.resolve("invocations.json"), Json.encodeToString(extra))
+        writeRecord(root, unloadKey, InvocationPhase.UNCERTAIN)
+        writeRecord(root, "d".repeat(64), InvocationPhase.UNCERTAIN)
         assertThrows(NativeRejected::class.java) {
             NativeBrokerStoreSnapshot.capture(root).requireNewUncertainInvocationSince(beforeUnload)
         }
     }
 
     private fun stores(root: Path, phase: InvocationPhase) {
-        Files.writeString(root.resolve("invocations.json"), Json.encodeToString(journal(phase)))
+        val file = root.toRealPath().resolve("invocations.json")
+        assertEquals(InvocationAdmission.Admitted, InvocationFence(file).initialization())
+        writeRecord(root, InvocationFence.digest("uncertain-call"), phase)
         Files.writeString(root.resolve("threads.json"), Json.encodeToString(EmptyThreadCatalog(2, emptyList())))
     }
 
-    private fun journal(phase: InvocationPhase) =
-        NativeRetainedInvocationJournal(1, mapOf(InvocationFence.digest("uncertain-call") to record(phase)))
-
-    private fun record(phase: InvocationPhase) = NativeRetainedInvocation("c".repeat(64), phase)
+    private fun writeRecord(root: Path, key: String, phase: InvocationPhase) {
+        val shard = root.resolve("invocations.json.d/records-v2").resolve(key.take(2))
+        Files.createDirectories(shard)
+        Files.setPosixFilePermissions(shard, java.nio.file.attribute.PosixFilePermissions.fromString("rwx------"))
+        val path = shard.resolve("$key.json")
+        Files.writeString(path, Json.encodeToString(InvocationRecordDocument(2, key, "c".repeat(64), phase)))
+        Files.setPosixFilePermissions(path, java.nio.file.attribute.PosixFilePermissions.fromString("rw-------"))
+    }
 
     @Serializable private data class RequestId(val id: Int)
 

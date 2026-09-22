@@ -1263,36 +1263,6 @@
     },
     {
       "fingerprint": {
-        "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationFence.kt",
-        "scope": "type:InvocationFence/fun:flush()/val:bytes",
-        "kind": "JSON_BUILDER",
-        "sha256": "9dcefa885705040803d3983f4af80c6a3c417c48363812bd7d1f80c9b5ea585d"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationFence.kt",
-        "scope": "type:InvocationFence/fun:flush()/val:bytes/declaration:<anonymous>",
-        "kind": "JSON_BUILDER",
-        "sha256": "438fdf9055b3fae67a8aec00618d81cf89c10096f000bd0758237fd379f1b596"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationFence.kt",
-        "scope": "type:InvocationFence/fun:flush()/val:bytes/declaration:<anonymous>/declaration:<anonymous>/declaration:<anonymous>",
-        "kind": "JSON_BUILDER",
-        "sha256": "2925eb08a1220f6277f59dbbb7f594d0115f55b3ef51a75b788fc5d4172e27a6"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
         "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceExecution.kt",
         "scope": "type:WorkspaceExecution/fun:snapshot()",
         "kind": "JSON_BUILDER",
@@ -10090,6 +10060,16 @@
       },
       "count": 1,
       "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
+    },
+    {
+      "fingerprint": {
+        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/InvocationFileStoreTest.kt",
+        "scope": "type:InvocationFileStoreTest/fun:malformed duplicate legacy fields never publish migrated evidence(4:Path)",
+        "kind": "JSON_LITERAL",
+        "sha256": "7d0abd085562d7c6cd8407a641b780df8060ff6c4d8038f41c3b71dd620b8a63"
+      },
+      "count": 1,
+      "justification": "Deliberately contradictory duplicate schemaVersion fields prove legacy invocation migration rejects lossy decoding before publishing a layout. Exact negative fixture; not a valid contract construction."
     }
   ]
 }

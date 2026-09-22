@@ -1,7 +1,10 @@
 package io.github.amichne.kast.appserver.acceptance.hostedchange
 
 import io.github.amichne.kast.appserver.runtime.InvocationPhase
+import io.github.amichne.kast.appserver.runtime.InvocationRecordDocument
+import io.github.amichne.kast.appserver.runtime.InvocationStoreLayout
 import java.nio.file.Files
+import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.Path
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -15,7 +18,7 @@ private constructor(
 ) {
     fun requireUnchanged(directory: Path) {
         demand(
-            sha256(Files.readAllBytes(directory.resolve("invocations.json"))) == invocationJournalSha256 &&
+            journalDigest(directory) == invocationJournalSha256 &&
                 sha256(Files.readAllBytes(directory.resolve("threads.json"))) == threadStoreSha256,
             NativeFailure.RESULT_SHAPE_REJECTED,
         )
@@ -53,29 +56,54 @@ private constructor(
             }
             demand(retained.values.none { it.phase == InvocationPhase.STARTED }, NativeFailure.RESULT_SHAPE_REJECTED)
             return NativeBrokerStoreSnapshot(
-                invocationJournalSha256 = sha256(Files.readAllBytes(directory.resolve("invocations.json"))),
+                invocationJournalSha256 = journalDigest(directory),
                 threadStoreSha256 = sha256(Files.readAllBytes(directory.resolve("threads.json"))),
                 retainedRecords = retained,
             )
         }
 
+        private fun journalFiles(directory: Path): List<Path> {
+            val store = directory.resolve("invocations.json.d")
+            val layout = store.resolve("layout.json")
+            demand(
+                Json.decodeFromString<InvocationStoreLayout>(Files.readString(layout)).schemaVersion == 2,
+                NativeFailure.RESULT_SHAPE_REJECTED,
+            )
+            val records = store.resolve("records-v2")
+            val paths =
+                Files.walk(records).use { entries ->
+                    entries.filter { !Files.isDirectory(it, NOFOLLOW_LINKS) }.sorted().toList()
+                }
+            demand(paths.all { Files.isRegularFile(it, NOFOLLOW_LINKS) }, NativeFailure.RESULT_SHAPE_REJECTED)
+            return listOf(layout) + paths
+        }
+
+        private fun journalDigest(directory: Path): String =
+            sha256(
+                journalFiles(directory)
+                    .joinToString("\n") { path ->
+                        "${directory.relativize(path)}:${sha256(Files.readAllBytes(path))}"
+                    }
+                    .toByteArray()
+            )
+
         private fun records(directory: Path): Map<String, NativeRetainedInvocation> {
-            val journal =
-                Json.decodeFromString<NativeRetainedInvocationJournal>(
-                    Files.readString(directory.resolve("invocations.json"))
+            val files = journalFiles(directory).drop(1)
+            val records = files.associate { path ->
+                val record = Json.decodeFromString<InvocationRecordDocument>(Files.readString(path))
+                demand(
+                    record.schemaVersion == 2 &&
+                        path.fileName.toString() == "${record.key}.json" &&
+                        path.parent.fileName.toString() == record.key.take(2),
+                    NativeFailure.RESULT_SHAPE_REJECTED,
                 )
-            demand(journal.schemaVersion == 1, NativeFailure.RESULT_SHAPE_REJECTED)
-            return journal.records
+                record.key to NativeRetainedInvocation(record.fingerprint, record.phase)
+            }
+            demand(records.size == files.size, NativeFailure.RESULT_SHAPE_REJECTED)
+            return records
         }
     }
 }
-
-@Serializable
-internal data class NativeRetainedInvocationJournal(
-    val schemaVersion: Int,
-    // Keys are contract-defined dynamic invocation digests; record shape is fixed.
-    val records: Map<String, NativeRetainedInvocation>,
-)
 
 @Serializable internal data class NativeRetainedInvocation(val fingerprint: String, val phase: InvocationPhase)
 

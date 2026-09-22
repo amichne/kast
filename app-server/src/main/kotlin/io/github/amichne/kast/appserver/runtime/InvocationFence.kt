@@ -1,29 +1,21 @@
 package io.github.amichne.kast.appserver.runtime
 
 import io.github.amichne.kast.appserver.BrokerOperationalLimits
-import java.nio.ByteBuffer
-import java.nio.channels.FileChannel
-import java.nio.file.Files
-import java.nio.file.LinkOption
+import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
-import java.nio.file.StandardCopyOption
-import java.nio.file.StandardOpenOption
-import java.nio.file.attribute.PosixFilePermissions
-import java.security.MessageDigest
-import kotlinx.serialization.json.*
 
-internal enum class InvocationPhase {
-    STARTED,
-    COMPLETED,
-    UNCERTAIN,
-}
-
+@kotlinx.serialization.Serializable
 internal enum class InvocationFenceFailure {
     STORE_REJECTED,
     CAPACITY_EXCEEDED,
     INPUT_CONFLICT,
     ALREADY_COMPLETED,
     OUTCOME_UNCERTAIN,
+    INPUT_REJECTED,
+    TRANSITION_REJECTED,
+    STORE_BUSY,
+    VERSION_UNSUPPORTED,
+    MIGRATION_REJECTED,
 }
 
 internal sealed interface InvocationAdmission {
@@ -32,132 +24,58 @@ internal sealed interface InvocationAdmission {
     data class Rejected(val failure: InvocationFenceFailure) : InvocationAdmission
 }
 
-/** Persist intent before executing. Recovered intent never authorizes a second execution. */
-internal class InvocationFence(private val file: Path?) {
-    private data class Record(val fingerprint: String, val phase: InvocationPhase)
-
-    private val records = linkedMapOf<String, Record>()
-    private var healthy = true
-
-    init {
-        if (file != null)
-            try {
-                if (Files.isSymbolicLink(file)) healthy = false
-                else if (Files.exists(file, LinkOption.NOFOLLOW_LINKS)) {
-                    if (
-                        !Files.isRegularFile(file) ||
-                            Files.size(file) > BrokerOperationalLimits.maximumInvocationJournalBytes
-                    )
-                        healthy = false
-                    else {
-                        val doc = Json.parseToJsonElement(Files.readString(file)).jsonObject
-                        if (doc.keys != setOf("schemaVersion", "records") || doc["schemaVersion"] != JsonPrimitive(1))
-                            healthy = false
-                        val items = doc.getValue("records").jsonObject
-                        if (items.size > BrokerOperationalLimits.maximumInvocations) healthy = false
-                        items.forEach { (key, value) ->
-                            val record = value.jsonObject
-                            if (record.keys != setOf("fingerprint", "phase")) healthy = false
-                            val fingerprint = record.getValue("fingerprint").jsonPrimitive.content
-                            if (!key.matches(Regex("[a-f0-9]{64}")) || !fingerprint.matches(Regex("[a-f0-9]{64}")))
-                                healthy = false
-                            records[key] =
-                                Record(
-                                    fingerprint,
-                                    InvocationPhase.valueOf(record.getValue("phase").jsonPrimitive.content),
-                                )
-                        }
-                    }
-                }
-            } catch (_: Exception) {
-                healthy = false
-            }
-    }
+/** Durable history is independent of the bounded set of invocations admitted by this process. */
+internal class InvocationFence(
+    file: Path?,
+    private val maximumActive: Int = BrokerOperationalLimits.maximumInvocations,
+    observeMigration: (InvocationMigrationObservation) -> Unit = { System.err.println(it.toJson()) },
+) {
+    private val store: Refinement<InvocationRecords, InvocationFenceFailure> =
+        if (file == null) Refinement.Refined(MemoryInvocationRecords())
+        else FileInvocationRecords.open(file, observeMigration)
+    private val active = mutableSetOf<InvocationKey>()
 
     @Synchronized
     fun initialization(): InvocationAdmission =
-        if (healthy) InvocationAdmission.Admitted
-        else InvocationAdmission.Rejected(InvocationFenceFailure.STORE_REJECTED)
+        when (store) {
+            is Refinement.Refined -> InvocationAdmission.Admitted
+            is Refinement.Rejected -> InvocationAdmission.Rejected(store.failure)
+        }
 
     @Synchronized
     fun admit(identity: String, fingerprint: String): InvocationAdmission {
-        if (!healthy) return InvocationAdmission.Rejected(InvocationFenceFailure.STORE_REJECTED)
-        val key = digest(identity)
-        records[key]?.let { record ->
-            return InvocationAdmission.Rejected(
-                when {
-                    record.fingerprint != fingerprint -> InvocationFenceFailure.INPUT_CONFLICT
-                    record.phase == InvocationPhase.COMPLETED -> InvocationFenceFailure.ALREADY_COMPLETED
-                    else -> InvocationFenceFailure.OUTCOME_UNCERTAIN
-                }
-            )
-        }
-        if (records.size >= BrokerOperationalLimits.maximumInvocations)
-            return InvocationAdmission.Rejected(InvocationFenceFailure.CAPACITY_EXCEEDED)
-        records[key] = Record(fingerprint, InvocationPhase.STARTED)
-        return if (flush()) InvocationAdmission.Admitted
-        else InvocationAdmission.Rejected(InvocationFenceFailure.STORE_REJECTED)
+        val records =
+            when (store) {
+                is Refinement.Refined -> store.value
+                is Refinement.Rejected -> return InvocationAdmission.Rejected(store.failure)
+            }
+        val admitted =
+            when (val result = InvocationFingerprint.admit(fingerprint)) {
+                is Refinement.Refined -> result.value
+                is Refinement.Rejected -> return InvocationAdmission.Rejected(result.failure)
+            }
+        val key = InvocationKey.of(identity)
+        val capacity = if (active.size < maximumActive) InvocationCapacity.AVAILABLE else InvocationCapacity.FULL
+        val result = records.apply(InvocationRecordChange.Begin(key, admitted, capacity))
+        if (result == InvocationAdmission.Admitted) active.add(key)
+        return result
     }
 
     @Synchronized
-    fun finish(identity: String, phase: InvocationPhase): InvocationAdmission {
-        val key = digest(identity)
-        val record = records[key] ?: return InvocationAdmission.Rejected(InvocationFenceFailure.STORE_REJECTED)
-        records[key] = record.copy(phase = phase)
-        return if (flush()) InvocationAdmission.Admitted
-        else InvocationAdmission.Rejected(InvocationFenceFailure.STORE_REJECTED)
-    }
-
-    private fun flush(): Boolean {
-        if (!healthy) return false
-        if (file == null) return true
-        return try {
-            Files.createDirectories(file.parent)
-            if (Files.isSymbolicLink(file) || file.parent.toRealPath() != file.parent) {
-                healthy = false
-                return false
+    fun finish(identity: String, settlement: InvocationSettlement): InvocationAdmission {
+        val records =
+            when (store) {
+                is Refinement.Refined -> store.value
+                is Refinement.Rejected -> return InvocationAdmission.Rejected(store.failure)
             }
-            val bytes = buildJsonObject {
-                put("schemaVersion", 1)
-                put(
-                    "records",
-                    buildJsonObject {
-                        records.forEach { (key, value) ->
-                            put(
-                                key,
-                                buildJsonObject {
-                                    put("fingerprint", value.fingerprint)
-                                    put("phase", value.phase.name)
-                                },
-                            )
-                        }
-                    },
-                )
-            }
-                .toString()
-                .toByteArray()
-            val temporary = Files.createTempFile(file.parent, ".invocations-", ".json")
-            try {
-                Files.setPosixFilePermissions(temporary, PosixFilePermissions.fromString("rw-------"))
-                FileChannel.open(temporary, StandardOpenOption.WRITE).use { channel ->
-                    val buffer = ByteBuffer.wrap(bytes)
-                    while (buffer.hasRemaining()) channel.write(buffer)
-                    channel.force(true)
-                }
-                Files.move(temporary, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
-                FileChannel.open(file.parent, StandardOpenOption.READ).use { it.force(true) }
-            } finally {
-                Files.deleteIfExists(temporary)
-            }
-            true
-        } catch (_: Exception) {
-            healthy = false
-            false
-        }
+        val key = InvocationKey.of(identity)
+        if (key !in active) return InvocationAdmission.Rejected(InvocationFenceFailure.TRANSITION_REJECTED)
+        val result = records.apply(InvocationRecordChange.Settle(key, settlement))
+        if (result == InvocationAdmission.Admitted) active.remove(key)
+        return result
     }
 
     companion object {
-        fun digest(value: String): String =
-            MessageDigest.getInstance("SHA-256").digest(value.toByteArray()).joinToString("") { "%02x".format(it) }
+        fun digest(value: String): String = invocationDigest(value)
     }
 }
