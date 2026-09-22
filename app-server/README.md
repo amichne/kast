@@ -127,6 +127,22 @@ Public status inspects existing session state without initializing Codex or prob
 an optional upstream. Pending, rejected and closed hosts remain distinct; an
 oversized inventory reports capacity failure instead of an empty inventory.
 
+The management route also owns workspace preparation operations. Preparation opens
+only an exact canonical settings root through the selected IDEA lifecycle client.
+Concurrent requests for that root share one server-generated request ID. Pending
+operations poll the same native operation; status reads never open, import or
+restart it. Host/request mismatches, regressing stages, deadlines and unavailable
+IDEA installations remain finite rejections. Native trust and unsaved-document
+gates still apply.
+
+Preparation retains at most 256 operations for a daemon lifetime and rejects
+excess roots without evicting completed evidence. Requests keep running when a
+management client disconnects. Daemon shutdown settles pending records and leaves
+IDEA projects open. Structured stage/outcome events exclude roots and payloads.
+Completion records describe observed readiness; each semantic request still
+requires fresh native admission. Automatic tool-demand integration follows this
+management slice.
+
 Service lifecycle, automatic workspace preparation, deferred updates and durable
 storage migration remain separate work.
 

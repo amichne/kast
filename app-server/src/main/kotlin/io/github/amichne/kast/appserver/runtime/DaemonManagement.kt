@@ -23,6 +23,7 @@ internal class DaemonManagement(
     private val available: () -> Boolean,
     private val status: () -> CoordinatorStatusDocument,
     private val sessions: DaemonSessions,
+    private val preparation: DaemonWorkspacePreparation = DaemonWorkspacePreparation.Unavailable,
     private val enroll:
         (CanonicalBrokerDirectory) -> Refinement<WorkspaceRegistrationAcknowledgement, EnrollmentFailure>,
 ) {
@@ -57,6 +58,12 @@ internal class DaemonManagement(
                 if (request.target != target) reject(DaemonManagementFailure.IDENTITY_REJECTED)
                 else DaemonManagementResponse.Sessions(target, sessions.inspectSessions())
             is DaemonManagementRequest.Control -> control(request)
+            is DaemonManagementRequest.PrepareWorkspace ->
+                if (request.target != target) reject(DaemonManagementFailure.IDENTITY_REJECTED)
+                else preparation.prepare(request.root).response(target)
+            is DaemonManagementRequest.WorkspacePreparationStatus ->
+                if (request.target != target) reject(DaemonManagementFailure.IDENTITY_REJECTED)
+                else preparation.observe(request.requestId).response(target)
         }
     }
 

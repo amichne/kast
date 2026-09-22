@@ -2,6 +2,8 @@ package io.github.amichne.kast.appserver
 
 import io.github.amichne.kast.appserver.runtime.ControlFailure
 import io.github.amichne.kast.appserver.runtime.DaemonSessionInspection
+import io.github.amichne.kast.appserver.runtime.WorkspacePreparationDocument
+import io.github.amichne.kast.appserver.runtime.WorkspacePreparationFailure
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -56,6 +58,22 @@ internal sealed interface DaemonManagementRequest {
     ) : DaemonManagementRequest
 
     @Serializable
+    @SerialName("prepare_workspace")
+    data class PrepareWorkspace(
+        val target: DaemonManagementTarget,
+        val root: String,
+        @Required override val version: Int = DaemonManagementProtocol.version,
+    ) : DaemonManagementRequest
+
+    @Serializable
+    @SerialName("workspace_preparation_status")
+    data class WorkspacePreparationStatus(
+        val target: DaemonManagementTarget,
+        val requestId: String,
+        @Required override val version: Int = DaemonManagementProtocol.version,
+    ) : DaemonManagementRequest
+
+    @Serializable
     @SerialName("register_workspace")
     data class RegisterWorkspace(
         val target: DaemonManagementTarget,
@@ -69,6 +87,11 @@ internal sealed interface DaemonManagementResponse {
     @Serializable
     @SerialName("status")
     data class Status(val coordinator: CoordinatorStatusDocument) : DaemonManagementResponse
+
+    @Serializable
+    @SerialName("workspace_preparation")
+    data class WorkspacePreparation(val target: DaemonManagementTarget, val preparation: WorkspacePreparationDocument) :
+        DaemonManagementResponse
 
     @Serializable
     @SerialName("registered")
@@ -100,6 +123,14 @@ internal sealed interface DaemonManagementResponse {
 
 @Serializable
 sealed interface DaemonManagementRejection {
+    @Serializable
+    @SerialName("root")
+    data class Root(val failure: io.github.amichne.kast.appserver.ide.CanonicalRootFailure) : DaemonManagementRejection
+
+    @Serializable
+    @SerialName("preparation")
+    data class Preparation(val failure: WorkspacePreparationFailure) : DaemonManagementRejection
+
     @Serializable
     @SerialName("protocol")
     data class Protocol(val failure: DaemonManagementFailure) : DaemonManagementRejection
@@ -137,6 +168,8 @@ internal data class WorkspaceRegistrationDocument(
 
 fun DaemonManagementRejection.diagnosticCode(): String =
     when (this) {
+            is DaemonManagementRejection.Root -> "workspace-root-${failure.name}"
+            is DaemonManagementRejection.Preparation -> "workspace-preparation-${failure.name}"
             is DaemonManagementRejection.Protocol -> "daemon-management-${failure.name}"
             is DaemonManagementRejection.Coordinator -> "coordinator-${failure.name}"
             is DaemonManagementRejection.Control -> "control-${failure.name}"

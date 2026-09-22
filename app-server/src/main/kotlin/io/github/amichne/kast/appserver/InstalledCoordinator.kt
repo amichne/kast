@@ -218,6 +218,11 @@ private constructor(
                             stoppedMarker = options.serviceDirectory.resolve("stopped"),
                             hostObservation = frontend::observe,
                             sessions = frontend,
+                            lifecycle =
+                                installedWorkspaceLifecycleClient(
+                                    options.userHome,
+                                    options.configuration.selectedIdeHome,
+                                ),
                         )
                 ) {
                     is Refinement.Refined -> admission.value
