@@ -1,5 +1,7 @@
 package io.github.amichne.kast.appserver.runtime
 
+import io.github.amichne.kast.appserver.AppServerAction
+import io.github.amichne.kast.appserver.AppServerControlAdmission
 import io.github.amichne.kast.appserver.CoordinatorStatusDocument
 import io.github.amichne.kast.appserver.DaemonManagementFailure
 import io.github.amichne.kast.appserver.DaemonManagementProtocol
@@ -20,6 +22,7 @@ internal class DaemonManagement(
     private val target: DaemonManagementTarget,
     private val available: () -> Boolean,
     private val status: () -> CoordinatorStatusDocument,
+    private val sessions: DaemonSessions,
     private val enroll:
         (CanonicalBrokerDirectory) -> Refinement<WorkspaceRegistrationAcknowledgement, EnrollmentFailure>,
 ) {
@@ -50,6 +53,35 @@ internal class DaemonManagement(
         return when (request) {
             is DaemonManagementRequest.Status -> DaemonManagementResponse.Status(status())
             is DaemonManagementRequest.RegisterWorkspace -> register(request)
+            is DaemonManagementRequest.Sessions ->
+                if (request.target != target) reject(DaemonManagementFailure.IDENTITY_REJECTED)
+                else DaemonManagementResponse.Sessions(target, sessions.inspectSessions())
+            is DaemonManagementRequest.Control -> control(request)
+        }
+    }
+
+    private fun control(request: DaemonManagementRequest.Control): DaemonManagementResponse {
+        if (request.target != target) return reject(DaemonManagementFailure.IDENTITY_REJECTED)
+        val action =
+            when (
+                val admitted = AppServerAction.Control.admit(request.operation, request.threadId, request.connectionId)
+            ) {
+                is AppServerControlAdmission.Admitted -> admitted.action
+                is AppServerControlAdmission.Rejected ->
+                    return DaemonManagementResponse.Rejected(
+                        DaemonManagementRejection.Control(ControlFailure.INVALID_ID)
+                    )
+            }
+        return when (val result = sessions.controlSession(action)) {
+            is ControlResult.Rejected ->
+                DaemonManagementResponse.Rejected(DaemonManagementRejection.Control(result.failure))
+            ControlResult.Accepted ->
+                DaemonManagementResponse.Controlled(
+                    target,
+                    action.operation,
+                    action.target.threadId,
+                    action.target.connectionId,
+                )
         }
     }
 

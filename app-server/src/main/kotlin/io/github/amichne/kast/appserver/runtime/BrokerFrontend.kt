@@ -1,12 +1,13 @@
 package io.github.amichne.kast.appserver.runtime
 
+import io.github.amichne.kast.appserver.AppServerAction
 import io.ktor.server.websocket.DefaultWebSocketServerSession
 import io.ktor.websocket.CloseReason
 import io.ktor.websocket.close
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-internal interface BrokerFrontend {
+internal interface BrokerFrontend : DaemonSessions {
     suspend fun connect(session: DefaultWebSocketServerSession)
 
     suspend fun close()
@@ -47,6 +48,22 @@ internal class DeferredBrokerFrontend(private val prepare: suspend () -> BrokerF
             is State.Prepared -> BrokerFrontendObservation.PREPARED
             State.Rejected -> BrokerFrontendObservation.REJECTED
             State.Closed -> BrokerFrontendObservation.CLOSED
+        }
+
+    override fun inspectSessions(): DaemonSessionInspection =
+        when (val selected = state) {
+            State.Pending -> DaemonSessionInspection.Pending
+            State.Rejected -> DaemonSessionInspection.Rejected
+            State.Closed -> DaemonSessionInspection.Closed
+            is State.Prepared -> selected.frontend.inspectSessions()
+        }
+
+    override fun controlSession(action: AppServerAction.Control): ControlResult =
+        when (val selected = state) {
+            is State.Prepared -> selected.frontend.controlSession(action)
+            State.Pending,
+            State.Rejected,
+            State.Closed -> ControlResult.Rejected(ControlFailure.HOST_UNAVAILABLE)
         }
 
     override suspend fun connect(session: DefaultWebSocketServerSession) {

@@ -1,5 +1,7 @@
 package io.github.amichne.kast.appserver
 
+import io.github.amichne.kast.appserver.runtime.ControlFailure
+import io.github.amichne.kast.appserver.runtime.DaemonSessionInspection
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -37,6 +39,23 @@ internal sealed interface DaemonManagementRequest {
     data class Status(@Required override val version: Int = DaemonManagementProtocol.version) : DaemonManagementRequest
 
     @Serializable
+    @SerialName("sessions")
+    data class Sessions(
+        val target: DaemonManagementTarget,
+        @Required override val version: Int = DaemonManagementProtocol.version,
+    ) : DaemonManagementRequest
+
+    @Serializable
+    @SerialName("control")
+    data class Control(
+        val target: DaemonManagementTarget,
+        val operation: ControlOperation,
+        val threadId: String,
+        val connectionId: String,
+        @Required override val version: Int = DaemonManagementProtocol.version,
+    ) : DaemonManagementRequest
+
+    @Serializable
     @SerialName("register_workspace")
     data class RegisterWorkspace(
         val target: DaemonManagementTarget,
@@ -61,6 +80,20 @@ internal sealed interface DaemonManagementResponse {
     ) : DaemonManagementResponse
 
     @Serializable
+    @SerialName("sessions")
+    data class Sessions(val target: DaemonManagementTarget, val inspection: DaemonSessionInspection) :
+        DaemonManagementResponse
+
+    @Serializable
+    @SerialName("controlled")
+    data class Controlled(
+        val target: DaemonManagementTarget,
+        val operation: ControlOperation,
+        val threadId: String,
+        val connectionId: String,
+    ) : DaemonManagementResponse
+
+    @Serializable
     @SerialName("rejected")
     data class Rejected(val reason: DaemonManagementRejection) : DaemonManagementResponse
 }
@@ -78,6 +111,8 @@ sealed interface DaemonManagementRejection {
     @Serializable
     @SerialName("enrollment")
     data class Enrollment(val failure: EnrollmentFailure) : DaemonManagementRejection
+
+    @Serializable @SerialName("control") data class Control(val failure: ControlFailure) : DaemonManagementRejection
 }
 
 @Serializable
@@ -104,6 +139,7 @@ fun DaemonManagementRejection.diagnosticCode(): String =
     when (this) {
             is DaemonManagementRejection.Protocol -> "daemon-management-${failure.name}"
             is DaemonManagementRejection.Coordinator -> "coordinator-${failure.name}"
+            is DaemonManagementRejection.Control -> "control-${failure.name}"
             is DaemonManagementRejection.Enrollment -> "enrollment-${failure.name}"
         }
         .lowercase()

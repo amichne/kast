@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver
 
+import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
 import kotlinx.coroutines.runBlocking
 
@@ -11,32 +12,28 @@ internal fun readAppServerStatus(
     val observed = runBlocking { InstalledCoordinatorClient(kast).status(command) }
     if (observed is CoordinatorStatusRead.Rejected && observed.failure == WorkerControlFailure.PAYLOAD_LIMIT_EXCEEDED)
         return AppServerManagementResult.Rejected(AppServerManagementFailure.PAYLOAD_LIMIT_EXCEEDED)
-    val protocol = observeProtocol(command, observed)
+    val sessions =
+        when (observed) {
+            is CoordinatorStatusRead.Rejected ->
+                SessionStatusPresentation.Rejected(DaemonManagementRejection.Coordinator(observed.failure))
+            is CoordinatorStatusRead.Observed ->
+                when (val read = runBlocking { InstalledDaemonManagementClient(kast).sessions(command) }) {
+                    is Refinement.Refined -> SessionStatusPresentation.Observed(read.value)
+                    is Refinement.Rejected -> SessionStatusPresentation.Rejected(read.failure)
+                }
+        }
     val registered = registry.snapshot()
     val lifecycle = MacOsPersistentBrokerServiceHost().observeLifecycle(command)
     return AppServerManagementResult.Completed(
-        statusDocument(command, observed, registered, protocol, lifecycle).document()
+        statusDocument(command, observed, registered, sessions, lifecycle).document()
     )
-}
-
-private fun observeProtocol(command: BrokerServiceLaunchCommand, observed: CoordinatorStatusRead): AppServerEvidence {
-    if (observed !is CoordinatorStatusRead.Observed || command.publicEndpoint is BrokerPublicEndpoint.Private)
-        return AppServerEvidence.UNOBSERVED
-    return when (
-        runBlocking {
-            NativeCodexReadiness.observe(command.publicSocket, BrokerOperationalLimits.readinessExchange.value)
-        }
-    ) {
-        NativeCodexReadiness.READY -> AppServerEvidence.READY
-        NativeCodexReadiness.REJECTED -> AppServerEvidence.UNAVAILABLE
-    }
 }
 
 private fun statusDocument(
     command: BrokerServiceLaunchCommand,
     observed: CoordinatorStatusRead,
     registered: WorkspaceRegistryRead,
-    protocol: AppServerEvidence,
+    sessions: SessionStatusPresentation,
     lifecycle: BrokerLifecycleObservation,
 ): AppServerStatusDocument {
     val state = observed.serviceState().name.lowercase()
@@ -44,9 +41,8 @@ private fun statusDocument(
         transport =
             if (observed is CoordinatorStatusRead.Observed) AppServerEvidence.READY else AppServerEvidence.UNAVAILABLE,
         publicEndpoint = endpointStatus(command.publicEndpoint, observed),
-        upstream = UpstreamStatus(protocol),
-        protocol = protocol,
-        catalog = catalogEvidence(observed, protocol),
+        upstream = UpstreamStatus(AppServerEvidence.UNOBSERVED),
+        sessions = sessions,
         lifecycle = lifecycle,
         coordinator =
             when (observed) {
@@ -91,15 +87,6 @@ private fun endpointStatus(endpoint: BrokerPublicEndpoint, observed: Coordinator
         if (observed is CoordinatorStatusRead.Observed) PublicEndpointOwnership.KAST
         else PublicEndpointOwnership.UNOBSERVED,
     )
-
-private fun catalogEvidence(observed: CoordinatorStatusRead, protocol: AppServerEvidence): AppServerEvidence =
-    if (
-        protocol == AppServerEvidence.READY &&
-            observed is CoordinatorStatusRead.Observed &&
-            observed.snapshot.hostAttachment == CoordinatorHostAttachment.PREPARED
-    )
-        AppServerEvidence.READY
-    else AppServerEvidence.UNOBSERVED
 
 private fun WorkspaceRegistryRead.presentation(): RegistryStatusPresentation =
     when (this) {

@@ -217,6 +217,7 @@ private constructor(
                             options.configuration,
                             stoppedMarker = options.serviceDirectory.resolve("stopped"),
                             hostObservation = frontend::observe,
+                            sessions = frontend,
                         )
                 ) {
                     is Refinement.Refined -> admission.value
