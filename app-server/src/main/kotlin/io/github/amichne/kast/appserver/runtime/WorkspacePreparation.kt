@@ -51,13 +51,15 @@ enum class WorkspacePreparationFailure {
 }
 
 internal sealed interface WorkspacePreparationOutcome {
+    sealed interface Terminal : WorkspacePreparationOutcome
+
     data class Pending(val stage: IdeLifecycleStage) : WorkspacePreparationOutcome
 
-    data class Complete(val workspace: PreparedWorkspace) : WorkspacePreparationOutcome
+    data class Complete(val workspace: PreparedWorkspace) : WorkspacePreparationOutcome.Terminal
 
-    data class Rejected(val failure: WorkspacePreparationFailure) : WorkspacePreparationOutcome
+    data class Rejected(val failure: WorkspacePreparationFailure) : WorkspacePreparationOutcome.Terminal
 
-    data class Blocked(val reason: IdeLifecycleFailure) : WorkspacePreparationOutcome
+    data class Blocked(val reason: IdeLifecycleFailure) : WorkspacePreparationOutcome.Terminal
 }
 
 internal class WorkspacePreparation internal constructor(val id: WorkspacePreparationId, val root: CanonicalRoot) {

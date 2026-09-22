@@ -26,11 +26,16 @@ internal class InstalledCoordinatorOptions(
     val activitySink: BrokerStartupActivitySink,
 ) {
     /** Host admission is deferred; successful options must retain this process's readiness authority. */
-    internal fun admitHost(): InstalledBrokerServerConfiguration =
+    internal fun admitHost(demand: WorkspaceDemand): InstalledBrokerServerConfiguration =
         when (val admitted = InstalledBrokerServerConfiguration.admit(kast, userHome, environment)) {
             is InstalledBrokerServerConfiguration.Rejected -> admitted
             is InstalledBrokerServerConfiguration.Configured ->
-                InstalledBrokerServerConfiguration.Configured(admitted.options.copy(readiness = readiness))
+                InstalledBrokerServerConfiguration.Configured(
+                    admitted.options.copy(
+                        readiness = readiness,
+                        kastOptions = admitted.options.kastOptions.withWorkspaceDemand(demand),
+                    )
+                )
         }
 }
 
@@ -171,9 +176,10 @@ private constructor(
                     is BrokerServiceReadiness.Managed -> management.instanceId
                     BrokerServiceReadiness.Standalone -> BrokerServiceGeneration.fresh()
                 }
+            val preparation = InstalledWorkspacePreparation(options, owner)
             val frontend = DeferredBrokerFrontend {
                 activity.started(BrokerStartupStage.HOST_ADMISSION)
-                when (val configuration = options.admitHost()) {
+                when (val configuration = options.admitHost(preparation.demand)) {
                     is InstalledBrokerServerConfiguration.Rejected -> {
                         activity.rejected(
                             BrokerStartupStage.HOST_ADMISSION,
@@ -218,16 +224,13 @@ private constructor(
                             stoppedMarker = options.serviceDirectory.resolve("stopped"),
                             hostObservation = frontend::observe,
                             sessions = frontend,
-                            lifecycle =
-                                installedWorkspaceLifecycleClient(
-                                    options.userHome,
-                                    options.configuration.selectedIdeHome,
-                                ),
+                            preparations = preparation.operations,
                         )
                 ) {
                     is Refinement.Refined -> admission.value
                     is Refinement.Rejected -> {
                         frontend.close()
+                        preparation.operations.close()
                         return reject(BrokerServerFailure.STATE_DIRECTORY_REJECTED)
                     }
                 }

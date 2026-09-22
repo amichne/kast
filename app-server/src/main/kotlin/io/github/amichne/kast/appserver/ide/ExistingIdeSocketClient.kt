@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver.ide
 
+import io.github.amichne.kast.appserver.runtime.PreparedWorkspace
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
@@ -19,7 +20,14 @@ import java.security.MessageDigest
 class ExistingIdeSocketClient(private val home: Path, private val limits: ReadLimits = ReadLimits.Default) :
     ExistingIdeClient {
     override fun query(root: CanonicalRoot, operation: ExistingIdeOperation): ExistingIdeExchange =
+        query(ExistingIdeTarget.Discovered(root), operation)
+
+    internal fun queryPrepared(workspace: PreparedWorkspace, operation: ExistingIdeOperation): ExistingIdeExchange =
+        query(ExistingIdeTarget.Prepared(workspace), operation)
+
+    private fun query(target: ExistingIdeTarget, operation: ExistingIdeOperation): ExistingIdeExchange =
         try {
+            val root = target.root
             val digest =
                 MessageDigest.getInstance("SHA-256")
                     .digest(root.path.toString().toByteArray(Charsets.UTF_8))
@@ -28,7 +36,7 @@ class ExistingIdeSocketClient(private val home: Path, private val limits: ReadLi
             val directory = home.resolve(".kast/ide-hosted/$digest")
             val socket = directory.resolve("host.sock")
             when (val descriptor = descriptor(directory, root, socket)) {
-                is Refinement.Refined -> exchange(root, operation, descriptor.value, socket)
+                is Refinement.Refined -> exchange(target, operation, descriptor.value, socket)
                 is Refinement.Rejected -> ExistingIdeExchange.Rejected(descriptor.failure)
             }
         } catch (_: java.io.IOException) {
@@ -38,6 +46,17 @@ class ExistingIdeSocketClient(private val home: Path, private val limits: ReadLi
         } catch (_: UnsupportedOperationException) {
             ExistingIdeExchange.Rejected(ExistingIdeFailure.HOST_UNAVAILABLE)
         }
+
+    private fun exchange(
+        target: ExistingIdeTarget,
+        operation: ExistingIdeOperation,
+        descriptor: ExistingIdeDescriptor,
+        socket: Path,
+    ): ExistingIdeExchange {
+        if (target is ExistingIdeTarget.Prepared && descriptor.host != target.workspace.project)
+            return ExistingIdeExchange.Rejected(ExistingIdeFailure.DESCRIPTOR_REJECTED)
+        return exchange(target.root, operation, descriptor, socket)
+    }
 
     private fun descriptor(
         directory: Path,
@@ -133,5 +152,16 @@ class ExistingIdeSocketClient(private val home: Path, private val limits: ReadLi
         val bytes = input.readNBytes(size)
         return if (bytes.size != size) ExistingIdeExchange.Rejected(ExistingIdeFailure.RESPONSE_REJECTED)
         else ExistingIdeDocuments.response(raw = bytes, root = root, operation = operation, descriptor = descriptor)
+    }
+}
+
+private sealed interface ExistingIdeTarget {
+    val root: CanonicalRoot
+
+    data class Discovered(override val root: CanonicalRoot) : ExistingIdeTarget
+
+    data class Prepared(val workspace: PreparedWorkspace) : ExistingIdeTarget {
+        override val root: CanonicalRoot
+            get() = workspace.root
     }
 }

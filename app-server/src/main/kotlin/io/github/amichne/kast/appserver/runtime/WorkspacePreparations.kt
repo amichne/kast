@@ -29,6 +29,7 @@ internal class WorkspacePreparations(
     private val worker = Job(scope.coroutineContext[Job])
     private val work = CoroutineScope(scope.coroutineContext + worker)
     private val entries = linkedMapOf<CanonicalRoot, WorkspacePreparation>()
+    private val records = linkedMapOf<WorkspacePreparationId, WorkspacePreparation>()
     private var closed = false
 
     init {
@@ -41,13 +42,13 @@ internal class WorkspacePreparations(
         entries[root]?.let {
             return Refinement.Refined(it)
         }
-        if (entries.size >= capacity) return Refinement.Rejected(WorkspacePreparationFailure.CAPACITY_EXCEEDED)
+        if (records.size >= capacity) return Refinement.Rejected(WorkspacePreparationFailure.CAPACITY_EXCEEDED)
         val id = newId()
-        if (entries.values.any { it.id == id })
-            return Refinement.Rejected(WorkspacePreparationFailure.IDENTITY_REJECTED)
+        if (id in records) return Refinement.Rejected(WorkspacePreparationFailure.IDENTITY_REJECTED)
         val entry = WorkspacePreparation(id, root)
         val job = work.launch(start = CoroutineStart.LAZY) { run(entry) }
         entries[root] = entry
+        records[id] = entry
         observer.observe(entry.activity())
         job.start()
         return Refinement.Refined(entry)
@@ -55,8 +56,17 @@ internal class WorkspacePreparations(
 
     @Synchronized
     fun observe(id: WorkspacePreparationId): Refinement<WorkspacePreparation, WorkspacePreparationFailure> =
-        entries.values.singleOrNull { it.id == id }?.let { Refinement.Refined(it) }
+        records[id]?.let { Refinement.Refined(it) }
             ?: Refinement.Rejected(WorkspacePreparationFailure.UNKNOWN_OPERATION)
+
+    /** Retire only this ready incarnation; preserve its historical operation record. */
+    @Synchronized
+    fun invalidate(id: WorkspacePreparationId, workspace: PreparedWorkspace) {
+        val entry = records[id] ?: return
+        val outcome = entry.state.value
+        if (outcome is WorkspacePreparationOutcome.Complete && outcome.workspace === workspace)
+            entries.remove(workspace.root, entry)
+    }
 
     suspend fun close() {
         synchronized(this) { closed = true }

@@ -14,7 +14,6 @@ import io.github.amichne.kast.appserver.core.BrokerInvocationActivityPublication
 import io.github.amichne.kast.appserver.core.BrokerInvocationActivitySink
 import io.github.amichne.kast.appserver.core.BrokerInvocationCompletion
 import io.github.amichne.kast.appserver.core.BrokerInvocationContext
-import io.github.amichne.kast.appserver.core.BrokerLimit
 import io.github.amichne.kast.appserver.core.BrokerThreadId
 import io.github.amichne.kast.appserver.core.ObserverPresentation
 import io.github.amichne.kast.appserver.core.ProviderNamespace
@@ -329,20 +328,7 @@ internal class CodexProtocolAdapter(
         val certainty =
             when (dispatch) {
                 is BrokerDispatch.Completed -> InvocationCertainty.KNOWN
-                is BrokerDispatch.Rejected ->
-                    when (val failure = dispatch.failure) {
-                        is BrokerFailure.UnknownNamespace,
-                        is BrokerFailure.UnknownTool,
-                        is BrokerFailure.SourceInputRejected,
-                        is BrokerFailure.InvalidArguments,
-                        is BrokerFailure.ProviderStartupRejected -> InvocationCertainty.KNOWN
-                        is BrokerFailure.Overloaded ->
-                            if (failure.limit == BrokerLimit.MAXIMUM_TOOL_RESULT_BYTES) InvocationCertainty.UNCERTAIN
-                            else InvocationCertainty.KNOWN
-                        is BrokerFailure.OutputContractRejected -> failure.certainty()
-                        is BrokerFailure.ProviderInvocationRejected,
-                        is BrokerFailure.InvocationCancelled -> InvocationCertainty.UNCERTAIN
-                    }
+                is BrokerDispatch.Rejected -> dispatch.failure.certainty()
                 null -> InvocationCertainty.UNCERTAIN
             }
         return if (reply is ProtocolRouting.ReplyUpstream) reply.copy(certainty = certainty) else reply

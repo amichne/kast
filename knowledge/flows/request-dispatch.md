@@ -102,7 +102,7 @@ Qualification and provider startup never launch Kast; startup rereads the catalo
 rejects digest drift. Installed payload admission and Codex schema qualification remain separate. Canonical registry input aliases
 resolve to the selected preferred tool route; omitted tools and incompatible
 catalog bindings reject before provider invocation. Provider invocation uses the App Server-owned
-IDEA socket client directly, with canonical admission and admitted output and elapsed-time settings.
+IDEA socket client directly, with canonical admission and admitted output and elapsed-time settings. The installed coordinator first prepares the exact root, validates the live application/project identity, and retains that project through descriptor admission. Preparation failures are known pre-execution rejections with typed causes and operation IDs.
 Approval preparation uses the same direct client; exact approval binding precedes effects.
 Pure request preparation and outcome projection are shared from `protocol:wire`. `selectCliRuntimePath` now selects the seven existing-IDE reads before
 installed bootstrap in `KastCliMain`; saved read settings are admitted before the socket is opened. Invalid settings and missing hosts remain distinct rejections. The
@@ -173,7 +173,7 @@ operation presentations retain their existing dispatch behavior.
 
 Workspace refresh is a separate typed hosted control path, not a canonical semantic read. Its request and response DTOs retain request identity and finite pending, complete, failed, rejected or configured outcomes. The CLI uses typed serialization for the hosted transport, validates the independent refresh schema, and binds the response to the admitted host and root.
 
-Agent lifecycle dispatch uses the publicly listed installed `workspace lifecycle` transport route and the selected application control endpoint. For `request_user_close`, the existing controller lease receives a native command-approval item naming the exact host, project incarnation and root. Only one acceptance for that invocation permits enrolled signing; session-wide acceptance does not. The invocation transports the signed assertion privately and preserves finite lifecycle blockers through the output schema. Semantic dispatch never invokes this route.
+Agent lifecycle dispatch calls the App Server-owned lifecycle client and selected application control endpoint directly. For `request_user_close`, the existing controller lease receives a native command-approval item naming the exact host, project incarnation and root. Only one acceptance for that invocation permits enrolled signing; session-wide acceptance does not. The invocation transports the signed assertion privately and preserves finite lifecycle blockers through the output schema. Native semantic dispatch remains passive; the coordinator may prepare the workspace through the lifecycle owner before sending a semantic request.
 
 Local controller claim/release enters the owned daemon management route and delegates
 to the existing session owner. The target service generation and connected observer

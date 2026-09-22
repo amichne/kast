@@ -648,4 +648,4 @@ index, compiler and contract causes. Hosted time exhaustion and cancellation
 produce separate recovery guidance; neither turns an unvalidated accumulator
 into successful evidence.
 
-Application-requested project closure fences the existing project endpoint before native disposal. Already admitted dispatch prevents closure until it leaves; a failed/vetoed close restores admission. Semantic reads do not invoke application lifecycle operations. Project endpoint retirement is observed on that exact service, so a successor project at the same root cannot be mistaken for the retired owner.
+Application-requested project closure fences the existing project endpoint before native disposal. Already admitted dispatch prevents closure until it leaves; a failed/vetoed close restores admission. Native semantic read admission does not invoke application lifecycle operations. The installed coordinator prepares the workspace before dispatch, and its socket client binds the request to the readiness-qualified project descriptor. Project endpoint retirement is observed on that exact service, so a successor project at the same root cannot be mistaken for the retired owner.

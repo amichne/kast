@@ -69,19 +69,6 @@ private constructor(
     }
 }
 
-internal sealed interface ProviderCall<out Output> {
-    /** The provider's owned execution has settled before its terminal value is returned. */
-    data class Completed<Output>(val value: Output) : ProviderCall<Output>
-
-    data class Rejected(val code: ProviderFailureCode) : ProviderCall<Nothing>
-}
-
-internal sealed interface ProviderStartup<out Runtime> {
-    data class Started<Runtime>(val runtime: Runtime) : ProviderStartup<Runtime>
-
-    data class Rejected(val code: ProviderFailureCode) : ProviderStartup<Nothing>
-}
-
 internal class BrokerTool<Runtime, Input, Output, InputFailure>(
     val name: ToolName,
     val description: ToolDescription,
@@ -254,6 +241,11 @@ internal data class BrokerDispatchRequest(
 )
 
 internal sealed interface BrokerFailure {
+    data class WorkspacePreparationRejected(
+        val address: ToolAddress,
+        val cause: io.github.amichne.kast.appserver.runtime.WorkspaceDemandFailure,
+    ) : BrokerFailure
+
     data class SourceInputRejected(val cause: io.github.amichne.kast.protocol.contract.SourceReadCause) : BrokerFailure
 
     data class UnknownNamespace(val namespace: ProviderNamespace) : BrokerFailure
@@ -450,6 +442,8 @@ private class TypedProviderRoute<Runtime>(
                     withTimeout(tool.invocationBudget.value) { tool.invoke(runtime, input, request.context) }
             ) {
                 is ProviderCall.Completed -> Refinement.Refined(invocation.value)
+                is ProviderCall.WorkspaceRejected ->
+                    Refinement.Rejected(BrokerFailure.WorkspacePreparationRejected(request.address, invocation.failure))
                 is ProviderCall.Rejected ->
                     Refinement.Rejected(BrokerFailure.ProviderInvocationRejected(request.address, invocation.code))
             }

@@ -122,3 +122,8 @@ Hosted configuration rejections retain three closed detail shapes: an unknown pa
 Symbol inspection preserves native failure, genuine index unavailability and unsupported declaration as distinct finite wire rejections. Hosted `AddDeclaration` planning failures retain all finite relation, traversal and diagnostic limitations in the hosted endpoint detail. The separate workspace-refresh control schema preserves typed lifecycle outcomes without adding a canonical semantic operation.
 
 The canonical `workspace.lifecycle.v2` operation has one tagged request family and closed application lifecycle outcomes. Its `workspace_lifecycle` agent projection uses the local control route rather than a semantic endpoint. The `workspace lifecycle` command is visible in CLI help and shares the public command inventory used for agent invocation bindings. Blocked lifecycle outcomes retain their finite reasons in the rejected process envelope through the separate `IdeLifecycleRejection` serializer; completed and pending outcomes retain their distinct discriminants.
+
+The canonical agent policy delegates preparation for ordinary semantic requests to
+the installed coordinator. Preparation rejection is a broker failure with typed
+workspace cause and operation identity, outside the canonical semantic result.
+It does not weaken native operation admission or exact-plan approval.

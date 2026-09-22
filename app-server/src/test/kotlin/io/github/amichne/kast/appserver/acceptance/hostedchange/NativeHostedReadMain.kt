@@ -182,6 +182,7 @@ private fun readBrokerFailure(failure: BrokerFailure): String =
         is BrokerFailure.SourceInputRejected ->
             if (failure.cause is SourceReadFailureDetail.InternalContractFailure) "SOURCE_INTERNAL_CONTRACT_FAILURE"
             else "SOURCE_INPUT_REJECTED"
+        is BrokerFailure.WorkspacePreparationRejected -> "WORKSPACE_PREPARATION_REJECTED"
         is BrokerFailure.InvalidArguments -> "INVALID_ARGUMENTS"
         is BrokerFailure.UnknownNamespace -> "UNKNOWN_NAMESPACE"
         is BrokerFailure.UnknownTool -> "UNKNOWN_TOOL"

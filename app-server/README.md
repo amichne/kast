@@ -140,11 +140,20 @@ excess roots without evicting completed evidence. Requests keep running when a
 management client disconnects. Daemon shutdown settles pending records and leaves
 IDEA projects open. Structured stage/outcome events exclude roots and payloads.
 Completion records describe observed readiness; each semantic request still
-requires fresh native admission. Automatic tool-demand integration follows this
-management slice.
+requires fresh native admission. Installed semantic demand shares this operation
+owner, waits within the canonical readiness budget, then checks the selected
+application and project incarnation before sending one native request. The socket
+client also requires the endpoint descriptor to match that prepared project.
 
-Service lifecycle, automatic workspace preparation, deferred updates and durable
-storage migration remain separate work.
+A changed host rejects the current demand before semantic execution and invalidates
+only the current root binding. Historical preparation records remain available;
+a later demand can prepare a new incarnation. Transport failures never retry the
+semantic operation. Cancelled waiters leave the shared preparation running.
+Preparation blockers reach Codex with their finite cause and operation ID, marked
+as known pre-execution failures.
+
+Approval-challenge preparation, service lifecycle, deferred updates and durable
+storage migration remain subsequent work.
 
 ## Ownership and recovery
 

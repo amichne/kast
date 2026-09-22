@@ -9,6 +9,8 @@ Owns the persistent broker/coordinator, host attachment, existing-IDE invocation
 
 ## Key Files
 
+- [InstalledWorkspacePreparation.kt](src/main/kotlin/io/github/amichne/kast/appserver/InstalledWorkspacePreparation.kt) - shared installed preparation owner and native-bound semantic demand.
+
 - [WorkspacePreparations.kt](src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt) - daemon-owned, coalesced IDEA preparation and retained operation outcomes.
 
 - [DaemonManagementProtocol.kt](src/main/kotlin/io/github/amichne/kast/appserver/DaemonManagementProtocol.kt) - versioned local management requests and finite rejections.

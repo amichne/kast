@@ -130,3 +130,9 @@ and the [App Server compatibility record](../../app-server/docs/compatibility.md
 Hosted change planning restores its exact target through the same project-owned reference transport as semantic reads. A compact handle is expanded and subjected to canonical authority validation before exact description and planning evidence acquisition. Handle lookup does not authorize applying a plan.
 
 Hosted `AddDeclaration` planning acquires its own current relation, traversal and diagnostic evidence. Complete evidence alone can issue an executable plan. Rejected or incomplete evidence retains all finite reasons in the bounded hosted planning detail. A page continuation is not a complete evidence proof: the current planning boundary reports `COMPLETE_EVIDENCE_ACCUMULATION_UNAVAILABLE` rather than treating a terminal page as the complete relation set. Prior public reads do not satisfy or alter planning prerequisites.
+
+A daemon preparation rejection is a known pre-execution failure: the requested
+semantic operation was not sent. Its finite cause and preparation identity survive
+Codex projection. A transport failure after semantic dispatch remains uncertain and
+is never automatically replayed. Approval-challenge preparation still uses its
+existing direct hosted-plan gateway.

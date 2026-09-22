@@ -50,8 +50,8 @@ The Codex integration is a preview; full Desktop compatibility remains
 See [Install and connect](https://kast.michne.com/start/) for IDE selection,
 Desktop setup, other harnesses, and uninstall instructions.
 
-The agent can prepare a repository or worktree for compiler-backed queries through
-its workspace setup tool. You do not need to manage project lifecycle commands.
+The installed daemon prepares the exact repository or worktree when an agent
+requests compiler-backed work. You do not need to manage project lifecycle commands.
 Kast asks for help only when setup encounters a user-owned decision such as project
 trust or unsaved documents.
 
