@@ -65,7 +65,9 @@ class InstalledBrokerServerTest {
         val codex = executable(user.resolve("codex"))
         val saved = Files.writeString(user.resolve("environment"), "KAST_ENABLE_APP_SERVER=0\n")
         assertEquals(
-            InstalledBrokerServerConfiguration.Rejected(InstalledBrokerServerConfigurationFailure.APP_SERVER_DISABLED),
+            InstalledBrokerServerConfiguration.Rejected(
+                InstalledBrokerServerConfigurationFailure.PROVIDER_CONFIGURATION_REJECTED
+            ),
             InstalledBrokerServerConfiguration.admit(
                 kast,
                 user,
@@ -120,19 +122,6 @@ class InstalledBrokerServerTest {
                 configured(base).upstreamOptions.appServerArguments.withOwnedTransport("unix:///test.sock"),
             )
             assertEquals(
-                "workspace_lifecycle,search_classes,search_functions,search_declarations,query_symbols," +
-                    "source_read,read_relations,traverse_relations,check_diagnostics," +
-                    "change_plan,change_apply,change_recover",
-                configured(base).kastOptions.toolSelection.environmentValue,
-            )
-            assertEquals(
-                "query_symbols,check_diagnostics,change_apply",
-                configured(base + ("KAST_APP_SERVER_TOOLS" to "change_apply,query_symbols,check_diagnostics"))
-                    .kastOptions
-                    .toolSelection
-                    .environmentValue,
-            )
-            assertEquals(
                 InstalledBrokerServerConfiguration.Rejected(
                     InstalledBrokerServerConfigurationFailure.PROVIDER_CONFIGURATION_REJECTED
                 ),
@@ -144,7 +133,7 @@ class InstalledBrokerServerTest {
             )
             assertEquals(
                 InstalledBrokerServerConfiguration.Rejected(
-                    InstalledBrokerServerConfigurationFailure.APP_SERVER_DISABLED
+                    InstalledBrokerServerConfigurationFailure.PROVIDER_CONFIGURATION_REJECTED
                 ),
                 InstalledBrokerServerConfiguration.admit(
                     kast,
@@ -376,6 +365,8 @@ class InstalledBrokerServerTest {
                         "search_functions",
                         "search_declarations",
                         "query_symbols",
+                        "symbol_lookup",
+                        "symbol_inspect",
                         "source_read",
                         "read_relations",
                         "traverse_relations",

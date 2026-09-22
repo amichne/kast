@@ -39,7 +39,7 @@ def qualify_released_coordinator(isolation, installed, inventory, fixture):
     codex = isolation.tools['codex']
     environment = dict(fixture.environment)
     environment.update(KAST_REAL_CODEX_EXECUTABLE=str(codex), CODEX_EXECUTABLE=str(codex),
-        KAST_ENABLE_APP_SERVER='1', KAST_APP_SERVER_PUBLIC_ENDPOINT='private', KAST_APP_SERVER_TOOLS=','.join(inventory.configuredDefaultTools))
+        KAST_APP_SERVER_PUBLIC_ENDPOINT='private')
     try:
         version = subprocess.run([str(codex), '--version'], cwd=fixture.workspace, env=environment,
                                  check=True, capture_output=True, text=True, timeout=10).stdout.strip()

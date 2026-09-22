@@ -1,7 +1,5 @@
 package io.github.amichne.kast.distribution.contract.configuration
 
-import io.github.amichne.kast.distribution.contract.IndexerHeapFailure
-import io.github.amichne.kast.distribution.contract.IndexerHeapSize
 import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironment
 import io.github.amichne.kast.distribution.contract.gradle.GradleImportExecutableDirectory
 import io.github.amichne.kast.distribution.contract.gradle.GradleImportVariableName
@@ -16,13 +14,13 @@ import kotlinx.serialization.Serializable
 @Serializable
 enum class ConfigurationFailure {
     UNKNOWN_KEY,
+    RETIRED_KEY,
     DUPLICATE_ASSIGNMENT,
     UNSUPPORTED_SOURCE,
     TEST_ONLY_INPUT,
     BUILD_ONLY_INPUT,
     INVALID_VALUE,
     INVALID_PATH,
-    INVALID_HEAP,
     DELEGATED_ENVIRONMENT_REJECTED,
     SAVED_CONFIGURATION_REJECTED,
 }
@@ -32,14 +30,7 @@ data class ConfigurationRejection
 internal constructor(
     val key: String,
     val reason: ConfigurationFailure,
-    val detail: ConfigurationRejectionDetail = ConfigurationRejectionDetail.General,
 )
-
-sealed interface ConfigurationRejectionDetail {
-    data object General : ConfigurationRejectionDetail
-
-    class Heap(val failure: IndexerHeapFailure) : ConfigurationRejectionDetail
-}
 
 enum class ConfigurationSwitch {
     ENABLED,
@@ -49,36 +40,6 @@ enum class ConfigurationSwitch {
 enum class ConfigurationOwner(val module: String) {
     APP_SERVER(":app-server")
 }
-
-/** Declared accounting limits; these values do not establish physical memory availability. */
-@JvmInline
-value class WorkerCountLimit private constructor(val value: Int) {
-    companion object {
-        const val Maximum: Int = 256
-
-        fun admit(value: Int): Refinement<WorkerCountLimit, ConfigurationFailure> =
-            if (value in 1..Maximum) Refinement.Refined(WorkerCountLimit(value))
-            else Refinement.Rejected(ConfigurationFailure.INVALID_VALUE)
-    }
-}
-
-@JvmInline
-value class WorkerMemoryReservationMiB private constructor(val value: Long) {
-    companion object {
-        fun admit(value: Long): Refinement<WorkerMemoryReservationMiB, ConfigurationFailure> =
-            if (value > 0) Refinement.Refined(WorkerMemoryReservationMiB(value))
-            else Refinement.Rejected(ConfigurationFailure.INVALID_VALUE)
-    }
-}
-
-class WorkerCapacityConfiguration
-internal constructor(
-    val resident: WorkerCountLimit,
-    val startup: WorkerCountLimit,
-    val aggregate: WorkerMemoryReservationMiB,
-    val native: WorkerMemoryReservationMiB,
-    val gradle: WorkerMemoryReservationMiB,
-)
 
 @Serializable
 enum class ConfigurationSemanticAdmission {
@@ -95,12 +56,6 @@ sealed interface ConfigurationPathSelection {
 
 internal sealed interface ConfigurationValue {
     class ReadLimit(val value: ReadLimitValue) : ConfigurationValue
-
-    class WorkerCount(val value: WorkerCountLimit) : ConfigurationValue
-
-    class Memory(val value: WorkerMemoryReservationMiB) : ConfigurationValue
-
-    class Heap(val value: IndexerHeapSize) : ConfigurationValue
 
     class Directory(val value: Path) : ConfigurationValue
 
@@ -147,27 +102,15 @@ class ResolvedKastConfiguration
 private constructor(
     private val assignments: List<ResolvedAssignment>,
     private val suppliedCandidates: List<ResolvedAssignment>,
-    val indexerHeap: IndexerHeapSize,
-    val launchd: ConfigurationSwitch,
     val debug: ConfigurationSwitch,
-    val workerCapacity: WorkerCapacityConfiguration,
     val readLimits: ReadLimits,
     private val delegatedEnvironment: GradleImportEnvironment,
 ) {
     val selectedIdeHome: ConfigurationPathSelection
         get() = path(ConfigurationParameter.INSTALL_IDEA_HOME)
 
-    val runtimeArchive: ConfigurationPathSelection
-        get() = path(ConfigurationParameter.RUNTIME_ARCHIVE)
-
-    val runtimeStore: ConfigurationPathSelection
-        get() = path(ConfigurationParameter.RUNTIME_STORE)
-
     val runtimeDirectory: ConfigurationPathSelection
         get() = path(ConfigurationParameter.RUNTIME_DIRECTORY)
-
-    val cacheRoot: ConfigurationPathSelection
-        get() = path(ConfigurationParameter.CACHE_ROOT)
 
     private fun path(parameter: ConfigurationParameter): ConfigurationPathSelection =
         when (val assignment = assignments.singleOrNull { it.parameter == parameter }) {
@@ -195,10 +138,7 @@ private constructor(
                 is ConfigurationValue.OwnerInput -> ConfigurationSemanticAdmission.OWNER_REQUIRED
                 is ConfigurationValue.Directory -> ConfigurationSemanticAdmission.PHYSICAL_REQUIRED
                 is ConfigurationValue.ReadLimit,
-                is ConfigurationValue.Heap,
-                is ConfigurationValue.Switch,
-                is ConfigurationValue.WorkerCount,
-                is ConfigurationValue.Memory -> ConfigurationSemanticAdmission.ADMITTED
+                is ConfigurationValue.Switch -> ConfigurationSemanticAdmission.ADMITTED
             },
         )
     }
@@ -300,7 +240,12 @@ private constructor(
                     val parameter = KastConfigurationCatalogue.parameter(rawKey)
                     if (parameter == null) {
                         if (source == ConfigurationSource.PROCESS_ENVIRONMENT && !rawKey.startsWith("KAST_")) continue
-                        return rejected(rawKey, ConfigurationFailure.UNKNOWN_KEY)
+                        return rejected(
+                            rawKey,
+                            if (RetiredConfigurationSetting.entries.any { it.key == rawKey })
+                                ConfigurationFailure.RETIRED_KEY
+                            else ConfigurationFailure.UNKNOWN_KEY,
+                        )
                     }
                     if (!seen.add(parameter)) return rejected(rawKey, ConfigurationFailure.DUPLICATE_ASSIGNMENT)
                     if (parameter.mutability == ConfigurationMutability.TEST_ONLY)
@@ -337,9 +282,6 @@ private constructor(
                 }
             }
             val byKey = resolved.associateBy { it.parameter }
-            val heap = (byKey.getValue(ConfigurationParameter.INDEXER_MAX_HEAP).value as ConfigurationValue.Heap).value
-            val launchd =
-                (byKey.getValue(ConfigurationParameter.ENABLE_LAUNCHD).value as ConfigurationValue.Switch).value
             val debug = (byKey.getValue(ConfigurationParameter.DEBUG).value as ConfigurationValue.Switch).value
             val rawNames = byKey.getValue(ConfigurationParameter.GRADLE_IMPORT_VARIABLES).value.boundaryValue()
             val gradleHome = byKey[ConfigurationParameter.GRADLE_USER_HOME]?.value?.boundaryValue()
@@ -365,18 +307,6 @@ private constructor(
                             ConfigurationFailure.DELEGATED_ENVIRONMENT_REJECTED,
                         )
                 }
-            fun count(key: ConfigurationParameter) = (byKey.getValue(key).value as ConfigurationValue.WorkerCount).value
-            fun memory(key: ConfigurationParameter) = (byKey.getValue(key).value as ConfigurationValue.Memory).value
-            val capacity =
-                WorkerCapacityConfiguration(
-                    count(ConfigurationParameter.WORKER_RESIDENT_LIMIT),
-                    count(ConfigurationParameter.WORKER_STARTUP_LIMIT),
-                    memory(ConfigurationParameter.WORKER_AGGREGATE_MIB),
-                    memory(ConfigurationParameter.WORKER_NATIVE_MIB),
-                    memory(ConfigurationParameter.WORKER_GRADLE_MIB),
-                )
-            if (capacity.startup.value > capacity.resident.value)
-                return rejected(ConfigurationParameter.WORKER_STARTUP_LIMIT.key, ConfigurationFailure.INVALID_VALUE)
             val readLimits =
                 when (
                     val policy =
@@ -389,10 +319,7 @@ private constructor(
                 ResolvedKastConfiguration(
                     resolved.sortedBy { it.parameter.key },
                     admitted.values.flatten().toList(),
-                    heap,
-                    launchd,
                     debug,
-                    capacity,
                     readLimits,
                     delegated,
                 )
@@ -404,9 +331,6 @@ private constructor(
 private fun ConfigurationValue.boundaryValue(): String =
     when (this) {
         is ConfigurationValue.ReadLimit -> value.value.toString()
-        is ConfigurationValue.WorkerCount -> value.value.toString()
-        is ConfigurationValue.Memory -> value.value.toString()
-        is ConfigurationValue.Heap -> "${value.mebibytes}m"
         is ConfigurationValue.Directory -> value.toString()
         is ConfigurationValue.Switch ->
             when (value) {
@@ -444,28 +368,6 @@ private fun parse(
             is Refinement.Rejected -> rejected(parameter.key, ConfigurationFailure.INVALID_VALUE)
         }
     return when (parameter.syntax) {
-        ConfigurationSyntax.WORKER_COUNT ->
-            when (val value = raw.toIntOrNull()?.let(WorkerCountLimit::admit)) {
-                is Refinement.Refined -> Refinement.Refined(ConfigurationValue.WorkerCount(value.value))
-                else -> rejected(parameter.key, ConfigurationFailure.INVALID_VALUE)
-            }
-        ConfigurationSyntax.MEMORY_MIB ->
-            when (val value = raw.toLongOrNull()?.let(WorkerMemoryReservationMiB::admit)) {
-                is Refinement.Refined -> Refinement.Refined(ConfigurationValue.Memory(value.value))
-                else -> rejected(parameter.key, ConfigurationFailure.INVALID_VALUE)
-            }
-        ConfigurationSyntax.HEAP ->
-            when (val heap = IndexerHeapSize.parse(raw)) {
-                is Refinement.Refined -> Refinement.Refined(ConfigurationValue.Heap(heap.value))
-                is Refinement.Rejected ->
-                    Refinement.Rejected(
-                        ConfigurationRejection(
-                            parameter.key,
-                            ConfigurationFailure.INVALID_HEAP,
-                            ConfigurationRejectionDetail.Heap(heap.failure),
-                        )
-                    )
-            }
         ConfigurationSyntax.SWITCH ->
             when (raw) {
                 "0" -> Refinement.Refined(ConfigurationValue.Switch(ConfigurationSwitch.DISABLED))

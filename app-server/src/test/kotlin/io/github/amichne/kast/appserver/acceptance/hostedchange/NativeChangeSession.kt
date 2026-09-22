@@ -1,7 +1,6 @@
 package io.github.amichne.kast.appserver.acceptance.hostedchange
 
 import io.github.amichne.kast.appserver.BrokerInstallationState
-import io.github.amichne.kast.appserver.KastToolSelection
 import io.github.amichne.kast.appserver.WorkspaceEnrollment
 import io.github.amichne.kast.appserver.core.Broker
 import io.github.amichne.kast.appserver.core.BrokerLimits
@@ -183,11 +182,6 @@ private constructor(
                     executable = NativeProductAdmission.executable(product, workspace),
                     qualificationDirectory = home,
                     processExecutor = trace,
-                    toolSelection =
-                        KastToolSelection.admit(
-                                "search_classes,search_functions,change_plan,change_apply,change_recover"
-                            )
-                            .nativeValue(),
                 )
                 .nativeValue()
         }

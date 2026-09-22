@@ -134,8 +134,7 @@ def install_release(isolation, release: ReleaseInputs, idea) -> ReleasedProduct:
         raise ReleaseRejected(ReleaseFailure.SOURCE)
     environment = dict(isolation.environment)
     environment.update(KAST_INSTALL_ASSETS_DIRECTORY=str(assets), KAST_INSTALL_ROOT=str(root / 'installation'),
-                       KAST_BIN_DIR=str(root / 'bin'), KAST_ENABLE_LAUNCHD='0', KAST_ENABLE_APP_SERVER='0',
-                       KAST_INSTALL_REFRESH_APP_SERVER='0')
+                       KAST_BIN_DIR=str(root / 'bin'), KAST_INSTALL_PROFILE='session')
     log = root / 'released-install.private.log'
     with log.open('xb') as output:
         log.chmod(0o600)

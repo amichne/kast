@@ -74,24 +74,7 @@ class CanonicalAgentToolDefinitionsTest {
     }
 
     @Test
-    fun `default tools retain lifecycle authorization and omit raw symbols`() {
-        assertEquals(
-            listOf(
-                "workspace_lifecycle",
-                "search_classes",
-                "search_functions",
-                "search_declarations",
-                "query_symbols",
-                "source_read",
-                "read_relations",
-                "traverse_relations",
-                "check_diagnostics",
-                "change_plan",
-                "change_apply",
-                "change_recover",
-            ),
-            CanonicalAgentToolDefinitions.defaultAppServerTools.map { it.name.value },
-        )
+    fun `complete tools retain lifecycle authorization`() {
         assertEquals(
             HostedApprovalPolicy.EXACT_PROJECT_CLOSE,
             CanonicalAgentToolDefinitions.workspaceLifecycle.approval,

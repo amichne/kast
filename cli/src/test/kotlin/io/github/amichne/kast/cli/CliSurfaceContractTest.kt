@@ -82,7 +82,7 @@ class CliSurfaceContractTest {
         assertTrue(helpText.contains("change"))
         assertTrue(helpText.contains("app-server"))
         assertTrue(helpText.lineSequence().any { it.trimStart().startsWith("ide ") })
-        assertTrue(helpText.lineSequence().any { it.trimStart().startsWith("index ") })
+        assertFalse(helpText.lineSequence().any { it.trimStart().startsWith("index ") })
         listOf("start", "stop", "status").forEach { command ->
             assertFalse(helpText.lineSequence().any { it.trimStart().startsWith(command + " ") })
         }

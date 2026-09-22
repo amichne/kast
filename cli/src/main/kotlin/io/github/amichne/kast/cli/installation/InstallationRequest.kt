@@ -1,9 +1,8 @@
 package io.github.amichne.kast.cli.installation
 
 import io.github.amichne.kast.appserver.BrokerPublicEndpointMode
+import io.github.amichne.kast.distribution.contract.configuration.RetiredConfigurationSetting
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.protocol.registry.AgentToolDefinition
-import io.github.amichne.kast.protocol.registry.CanonicalAgentToolDefinitions
 import java.nio.file.InvalidPathException
 import java.nio.file.Path
 
@@ -20,11 +19,8 @@ internal enum class InstallationEnvironment(val key: String) {
     BIN_DIRECTORY("KAST_BIN_DIR"),
     HOME("HOME"),
     CODEX_HOME("CODEX_HOME"),
-    ENABLE_LAUNCHD("KAST_ENABLE_LAUNCHD"),
-    APP_SERVER_TOOLS("KAST_APP_SERVER_TOOLS"),
     PUBLIC_ENDPOINT("KAST_APP_SERVER_PUBLIC_ENDPOINT"),
-    REFRESH_APP_SERVER("KAST_INSTALL_REFRESH_APP_SERVER"),
-    REPLACE_COMMAND_COLLISIONS("KAST_INSTALL_REPLACE_COMMAND_COLLISIONS"),
+    PROFILE("KAST_INSTALL_PROFILE"),
     MODE("KAST_INSTALL_MODE"),
     FORCE("KAST_INSTALL_FORCE"),
 }
@@ -90,41 +86,15 @@ internal enum class InstallationSwitch {
     ENABLED,
 }
 
-internal enum class AppServerToolsFailure {
-    EMPTY_NAME,
-    DUPLICATE_NAME,
-    UNKNOWN_NAME,
-}
-
-/** A canonical, non-empty tool selection; installation cannot persist retired tool identities. */
-internal class AppServerTools private constructor(private val definitions: List<AgentToolDefinition>) {
-    val value: String
-        get() = definitions.joinToString(",") { it.name.value }
-
-    companion object {
-        fun parse(raw: String?): Refinement<AppServerTools, AppServerToolsFailure> {
-            if (raw == null)
-                return Refinement.Refined(AppServerTools(CanonicalAgentToolDefinitions.defaultAppServerTools))
-            val tokens = raw.split(',')
-            if (tokens.any(String::isBlank)) return Refinement.Rejected(AppServerToolsFailure.EMPTY_NAME)
-            val names = tokens.toSet()
-            if (names.size != tokens.size) return Refinement.Rejected(AppServerToolsFailure.DUPLICATE_NAME)
-            val admitted = tokens.map { token ->
-                when (val resolved = CanonicalAgentToolDefinitions.resolveInput(token)) {
-                    is Refinement.Refined -> resolved.value.name
-                    is Refinement.Rejected -> return Refinement.Rejected(AppServerToolsFailure.UNKNOWN_NAME)
-                }
-            }
-            if (admitted.toSet().size != admitted.size) {
-                return Refinement.Rejected(AppServerToolsFailure.DUPLICATE_NAME)
-            }
-            val definitions = CanonicalAgentToolDefinitions.all.filter { it.name in admitted }
-            return Refinement.Refined(AppServerTools(definitions))
-        }
-    }
+/** Persistent installs own a login service; private development sessions defer service activation. */
+internal enum class InstallationProfile {
+    PERSISTENT,
+    SESSION,
 }
 
 internal sealed interface InstallationRequestFailure {
+    data class RetiredSetting(val setting: RetiredConfigurationSetting) : InstallationRequestFailure
+
     data class Missing(val environment: InstallationEnvironment) : InstallationRequestFailure
 
     data class InvalidPath(val environment: InstallationEnvironment) : InstallationRequestFailure
@@ -147,16 +117,18 @@ private constructor(
     val binDirectory: InstallationPath,
     val home: InstallationPath,
     val codexHome: InstallationPath,
-    val enableLaunchd: InstallationSwitch,
-    val appServerTools: AppServerTools,
-    val refreshAppServer: InstallationSwitch,
-    val replaceCommandCollisions: InstallationSwitch,
+    val profile: InstallationProfile,
     val mode: InstallationMode,
     val publicEndpoint: BrokerPublicEndpointMode,
     val force: InstallationSwitch,
 ) {
     companion object {
         fun parse(environment: Map<String, String>): Refinement<InstallationRequest, InstallationRequestFailure> {
+            RetiredConfigurationSetting.entries
+                .firstOrNull { it.key in environment }
+                ?.let {
+                    return Refinement.Rejected(InstallationRequestFailure.RetiredSetting(it))
+                }
             fun raw(name: InstallationEnvironment): Refinement<String, InstallationRequestFailure> =
                 (environment[name.key] ?: if (name == InstallationEnvironment.FORCE) "0" else null)?.let(
                     Refinement<String, InstallationRequestFailure>::Refined
@@ -261,19 +233,6 @@ private constructor(
                     is Refinement.Refined -> refined.value
                     is Refinement.Rejected -> return refined
                 }
-            val enableLaunchd =
-                when (val refined = switch(InstallationEnvironment.ENABLE_LAUNCHD)) {
-                    is Refinement.Refined -> refined.value
-                    is Refinement.Rejected -> return refined
-                }
-            val tools =
-                when (val parsed = AppServerTools.parse(environment[InstallationEnvironment.APP_SERVER_TOOLS.key])) {
-                    is Refinement.Refined -> parsed.value
-                    is Refinement.Rejected ->
-                        return Refinement.Rejected(
-                            InstallationRequestFailure.InvalidValue(InstallationEnvironment.APP_SERVER_TOOLS)
-                        )
-                }
             val endpoint =
                 when (
                     val admitted =
@@ -285,15 +244,15 @@ private constructor(
                             InstallationRequestFailure.InvalidValue(InstallationEnvironment.PUBLIC_ENDPOINT)
                         )
                 }
-            val refresh =
-                when (val refined = switch(InstallationEnvironment.REFRESH_APP_SERVER)) {
-                    is Refinement.Refined -> refined.value
-                    is Refinement.Rejected -> return refined
-                }
-            val replaceCommandCollisions =
-                when (val refined = switch(InstallationEnvironment.REPLACE_COMMAND_COLLISIONS)) {
-                    is Refinement.Refined -> refined.value
-                    is Refinement.Rejected -> return refined
+            val profile =
+                when (environment[InstallationEnvironment.PROFILE.key]) {
+                    null,
+                    "persistent" -> InstallationProfile.PERSISTENT
+                    "session" -> InstallationProfile.SESSION
+                    else ->
+                        return Refinement.Rejected(
+                            InstallationRequestFailure.InvalidValue(InstallationEnvironment.PROFILE)
+                        )
                 }
             val force =
                 when (val refined = switch(InstallationEnvironment.FORCE)) {
@@ -328,10 +287,7 @@ private constructor(
                     binDirectory,
                     home,
                     codexHome,
-                    enableLaunchd,
-                    tools,
-                    refresh,
-                    replaceCommandCollisions,
+                    profile,
                     mode,
                     endpoint,
                     force,

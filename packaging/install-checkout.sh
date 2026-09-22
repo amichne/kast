@@ -5,17 +5,16 @@ IFS=$'\n\t'
 
 fail() { printf 'kast-install: %s\n' "$*" >&2; exit 1; }
 quote() { printf "'"; printf '%s' "$1" | sed "s/'/'\"'\"'/g"; printf "'"; }
-installer=$1
-shift
+installer="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd -P)/install.sh"
 mode=${1:-}
-case "$mode" in session|persistent) shift ;; *) fail '--local requires session or persistent' ;; esac
+case "$mode" in session|persistent) shift ;; *) fail 'usage: packaging/install-checkout.sh session|persistent --idea-home <path> [--force]'  ;; esac
 checkout=$(pwd -P)
 [[ -x "$checkout/gradlew" && -f "$checkout/packaging/install-local.sh" && -f "$checkout/build.gradle.kts" ]] ||
-  fail 'run --local from the root of a Kast checkout'
+  fail 'run packaging/install-checkout.sh from the root of a Kast checkout'
 [[ -z ${KAST_SESSION_ROOT:-} || $mode != persistent ]] ||
   fail 'run persistent installation from a shell without an active Kast session'
 
-# Admit the sole public checkout option before invoking Gradle or creating state.
+# Admit development options before invoking Gradle or creating state.
 options=()
 idea_home="${KAST_INSTALL_IDEA_HOME:-}"
 while [[ $# -gt 0 ]]; do
@@ -29,6 +28,7 @@ while [[ $# -gt 0 ]]; do
   shift 2
 done
 
+case "$idea_home" in *.app) idea_home="$idea_home/Contents" ;; esac
 [[ -n "$idea_home" && -f "$idea_home/Resources/product-info.json" ]] || fail 'an admitted IDEA home is required'
 idea_build=$(python3 - "$idea_home/Resources/product-info.json" <<'PYTHON'
 import json, re, sys
@@ -71,18 +71,11 @@ if [[ $mode == session ]]; then
   session_root=$(CDPATH='' cd -- "$session_root" && pwd -P)
   # Ignore inherited persistent settings; the launcher captures its own config.
   export KAST_INSTALL_ROOT="$session_root/install" KAST_BIN_DIR="$session_root/bin"
-  unset KAST_RUNTIME_STORE KAST_RUNTIME_DIRECTORY KAST_CACHE_ROOT
-  export KAST_ENABLE_LAUNCHD=0 KAST_ENABLE_APP_SERVER=1
-  export KAST_INSTALL_REFRESH_APP_SERVER=0
+  unset KAST_RUNTIME_DIRECTORY
   export XDG_CONFIG_HOME="$session_root/config"
-else
-  export KAST_ENABLE_LAUNCHD=1 KAST_ENABLE_APP_SERVER=1
 fi
 
-if [[ $mode == persistent ]]; then
-  export KAST_INSTALL_REFRESH_APP_SERVER=1
-fi
-KAST_VERSION="$version" KAST_RELEASE_BASE_URL="$base_url" \
+KAST_INSTALL_PROFILE="$mode" KAST_VERSION="$version" KAST_RELEASE_BASE_URL="$base_url" \
 KAST_INSTALL_ASSETS_DIRECTORY="$scratch" \
   bash "$installer" ${options[@]+"${options[@]}"} >&2
 
@@ -93,8 +86,7 @@ if [[ $mode == session ]]; then
   activation="$session_root/activate.sh"
   {
     printf '# Source in Bash or Zsh. Session files remain available until explicitly removed.\n'
-    printf 'unset KAST_RUNTIME_STORE KAST_CACHE_ROOT\n'
-    for key in KAST_INSTALL_ROOT KAST_BIN_DIR KAST_RUNTIME_DIRECTORY KAST_ENABLE_LAUNCHD KAST_ENABLE_APP_SERVER; do
+    for key in KAST_INSTALL_ROOT KAST_BIN_DIR KAST_RUNTIME_DIRECTORY; do
       printf 'export %s=%s\n' "$key" "$(quote "${!key}")"
     done
     printf 'export KAST_SESSION_ROOT=%s\n' "$(quote "$session_root")"

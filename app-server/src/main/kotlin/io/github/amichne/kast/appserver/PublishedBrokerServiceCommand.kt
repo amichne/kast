@@ -69,7 +69,6 @@ object PublishedBrokerServiceCommand {
                     "PATH" to "/usr/bin:/bin",
                     "CODEX_HOME" to codexHome.toString(),
                     "KAST_CONFIGURATION_FILE" to installationRoot.resolve("config/environment").toString(),
-                    "KAST_ENABLE_APP_SERVER" to "0",
                 )
             val observed =
                 when (

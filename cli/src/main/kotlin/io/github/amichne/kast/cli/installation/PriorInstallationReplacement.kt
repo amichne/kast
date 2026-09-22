@@ -1,5 +1,7 @@
 package io.github.amichne.kast.cli.installation
 
+import io.github.amichne.kast.distribution.contract.configuration.RetiredConfigurationSetting
+import io.github.amichne.kast.distribution.contract.configuration.SavedConfigurationDocument
 import io.github.amichne.kast.distribution.managed.PriorInstallationPreparation
 import io.github.amichne.kast.distribution.managed.preparePriorInstallationReplacement
 import io.github.amichne.kast.distribution.managed.quarantineInstallationEntry
@@ -13,20 +15,27 @@ import java.time.Duration
 import java.util.HexFormat
 import java.util.concurrent.TimeUnit
 
-/** Reconstruct the only supported transient enabled owner of an opt-out installation. */
+/** Only historical saved configurations require the former transient enabled-owner override. */
 internal fun priorServiceRetirementEnvironment(
     prior: Path,
     home: Path,
     codexHome: Path,
     path: String,
+    configuration: SavedConfigurationDocument,
 ): Map<String, String> =
     mapOf(
         "HOME" to home.toString(),
         "PATH" to path,
         "CODEX_HOME" to codexHome.toString(),
         "KAST_CONFIGURATION_FILE" to prior.resolve("config/environment").toString(),
-        "KAST_ENABLE_APP_SERVER" to "1",
-    )
+    ) +
+        if (
+            configuration.configurationSources(emptyMap()).savedInstallation.any {
+                it.first == RetiredConfigurationSetting.ENABLE_APP_SERVER.key
+            }
+        )
+            mapOf(RetiredConfigurationSetting.ENABLE_APP_SERVER.key to "1")
+        else emptyMap()
 
 /** Replacement uses installation identity, never the old executable, manifest or configuration. */
 internal fun replacePriorInstallation(

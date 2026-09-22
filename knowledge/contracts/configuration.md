@@ -105,6 +105,17 @@ The existing `KAST_INSTALL_IDEA_HOME` selection also identifies the lifecycle ho
 
 The catalogue rejects removed isolated-runtime setup inputs as `UNKNOWN_KEY` at every source: `KAST_NETWORK_CONFIG`, `KAST_TRUST_DONOR_JAVA_HOME`, `KAST_IDE_CONFIG_HOME`, `KAST_INSTALL_RUNTIME_ARCHIVE`, `KAST_INSTALL_RUNTIME_SHA256`, `KAST_RUNTIME_BASE_URL`, `KAST_LOCAL_RUNTIME_ARCHIVE`, and `KAST_SEMANTIC_RUNTIME_ARCHIVE`. Remove these assignments from saved configuration and the calling environment. The catalogue no longer advertises indexer transport limits or derived JVM settings owned by the retired indexer and workspace importer.
 
-New installations always persist `KAST_ENABLE_APP_SERVER=1`; the installer no longer
-admits an app-server-disabled product variant. Local session fixtures may defer
-service activation while retaining the same complete installed payload.
+Every installation exposes the complete app-server tool catalog. The installer
+regenerates its owned configuration from current declarations on upgrade. User
+assignments to retired settings reject with `RETIRED_KEY`; remove them rather
+than migrating their values: `KAST_ENABLE_APP_SERVER`, `KAST_APP_SERVER_TOOLS`,
+`KAST_ENABLE_LAUNCHD`, `KAST_INSTALL_REFRESH_APP_SERVER`,
+`KAST_INSTALL_REPLACE_COMMAND_COLLISIONS`, `KAST_INDEXER_MAX_HEAP`,
+`KAST_WORKER_RESIDENT_LIMIT`, `KAST_WORKER_STARTUP_LIMIT`,
+`KAST_WORKER_AGGREGATE_MIB`, `KAST_WORKER_NATIVE_MIB`, `KAST_WORKER_GRADLE_MIB`,
+`KAST_RUNTIME_ARCHIVE`, `KAST_RUNTIME_STORE`, and `KAST_CACHE_ROOT`.
+
+Installation uses one derived `KAST_INSTALL_PROFILE`: persistent activates the
+coordinator and login service; session defers activation while retaining the same
+complete payload. The public installer always selects persistent. The checkout
+entrypoint derives the profile from its required session or persistent argument.

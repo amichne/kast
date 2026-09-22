@@ -20,13 +20,13 @@ import org.junit.jupiter.api.io.TempDir
 
 class PersistentBrokerServiceTest {
     @Test
-    fun `coordinator service admission does not require an enabled or available Codex host`(@TempDir temporary: Path) {
+    fun `coordinator service admission does not require an available Codex host`(@TempDir temporary: Path) {
         val fixture = installedFixture(temporary)
         val result =
             BrokerServiceLaunchCommand.resolveCoordinator(
                 fixture.kast,
                 fixture.userHome,
-                mapOf("PATH" to "/usr/bin:/bin", "KAST_ENABLE_APP_SERVER" to "0"),
+                mapOf("PATH" to "/usr/bin:/bin"),
             )
         assertTrue(result is BrokerServiceLaunchCommandResolution.Resolved, result.toString())
         assertFalse(Files.exists(fixture.kast.parent.parent.resolve("state")))
@@ -73,11 +73,11 @@ class PersistentBrokerServiceTest {
     }
 
     @Test
-    fun `saved configuration disables persistent service without composing a runtime`(@TempDir temporary: Path) {
+    fun `retired saved enable switch rejects without composing a runtime`(@TempDir temporary: Path) {
         val fixture = installedFixture(temporary)
         val saved = Files.writeString(temporary.toRealPath().resolve("environment"), "KAST_ENABLE_APP_SERVER=0\n")
         assertEquals(
-            BrokerServiceLaunchCommandResolution.Rejected(PersistentBrokerServiceFailure.DISABLED),
+            BrokerServiceLaunchCommandResolution.Rejected(PersistentBrokerServiceFailure.CONFIGURATION_REJECTED),
             BrokerServiceLaunchCommand.resolve(
                 fixture.kast,
                 fixture.userHome,
@@ -295,19 +295,15 @@ class PersistentBrokerServiceTest {
     }
 
     @Test
-    fun `tool selection participates in persistent service identity`(@TempDir temporary: Path) {
+    fun `tool subset override rejects rather than creating a partial service`(@TempDir temporary: Path) {
         val fixture = installedFixture(temporary)
-        val defaults = resolvedCommand(fixture)
-        val queryOnly =
+        assertTrue(
             BrokerServiceLaunchCommand.resolve(
                 fixture.kast,
                 fixture.userHome,
                 fixture.environment + ("KAST_APP_SERVER_TOOLS" to "query_symbols"),
-            ) as BrokerServiceLaunchCommandResolution.Resolved
-
-        assertNotEquals(defaults.identity, queryOnly.command.identity)
-        assertEquals(defaults.serviceLabel, queryOnly.command.serviceLabel)
-        assertEquals("query_symbols", queryOnly.command.toolSelection.environmentValue)
+            ) is BrokerServiceLaunchCommandResolution.Rejected
+        )
     }
 
     @Test
@@ -370,10 +366,6 @@ class PersistentBrokerServiceTest {
         assertTrue(submission.orEmpty().contains("BROKER_SERVICE_IDENTITY=${command.identity.value}"))
         assertTrue(submission.orEmpty().contains("JAVA_HOME=${command.javaHome}"))
         assertTrue(submission.orEmpty().contains("KAST_OPTS=${command.jvmUserHomeOption.value}"))
-        assertTrue(submission.orEmpty().contains("KAST_ENABLE_APP_SERVER=1"))
-        assertTrue(submission.orEmpty().contains("KAST_RUNTIME_STORE=${fixture.userHome.resolve("runtime-store")}"))
-        assertTrue(submission.orEmpty().contains("KAST_ENABLE_LAUNCHD=0"))
-        assertTrue(submission.orEmpty().contains("KAST_APP_SERVER_TOOLS=${command.toolSelection.environmentValue}"))
         assertTrue(submission.orEmpty().contains("PATH=${command.executableSearchPath.value}"))
         assertTrue(submission.orEmpty().contains(command.serviceLabel.value))
 
@@ -386,13 +378,10 @@ class PersistentBrokerServiceTest {
             line.substringBefore('=') to line.substringAfter('=')
         }
         assertEquals("0", launched["KAST_DEBUG"])
-        assertNotNull(launched["KAST_INDEXER_MAX_HEAP"])
-        assertEquals("1", launched["KAST_WORKER_RESIDENT_LIMIT"])
+        assertFalse(launched.containsKey("KAST_INDEXER_MAX_HEAP"))
+        assertFalse(launched.containsKey("KAST_WORKER_RESIDENT_LIMIT"))
         assertEquals(command.codexHome.toString(), launched["CODEX_HOME"])
-        assertEquals(
-            command.toolSelection.environmentValue,
-            launched["KAST_APP_SERVER_TOOLS"],
-        )
+        assertFalse(launched.containsKey("KAST_APP_SERVER_TOOLS"))
         assertFalse(launched.containsKey("KAST_OPTS"))
     }
 
@@ -749,10 +738,7 @@ class PersistentBrokerServiceTest {
             userHome,
             mapOf(
                 "PATH" to tools.toString(),
-                "KAST_RUNTIME_STORE" to userHome.resolve("runtime-store").toString(),
                 "KAST_RUNTIME_DIRECTORY" to userHome.resolve("runtime").toString(),
-                "KAST_CACHE_ROOT" to userHome.resolve("cache").toString(),
-                "KAST_ENABLE_LAUNCHD" to "0",
             ),
         )
     }

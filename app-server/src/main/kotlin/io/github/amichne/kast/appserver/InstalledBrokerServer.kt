@@ -64,7 +64,6 @@ internal enum class InstalledBrokerServerConfigurationFailure {
     READINESS_REJECTED,
     PROVIDER_CONFIGURATION_REJECTED,
     PROTOCOL_CONFIGURATION_REJECTED,
-    APP_SERVER_DISABLED,
 }
 
 internal sealed interface InstalledBrokerServerConfiguration {
@@ -119,10 +118,6 @@ internal sealed interface InstalledBrokerServerConfiguration {
                 }
             val configuration = admittedConfiguration.configuration
             val ownerInputs = configuration.ownerInputs(ConfigurationOwner.APP_SERVER)
-            if (admittedConfiguration.toolingMode == AppServerToolingMode.DISABLED) {
-                return rejected(InstalledBrokerServerConfigurationFailure.APP_SERVER_DISABLED)
-            }
-            val toolSelection = admittedConfiguration.toolSelection
             val codexPath =
                 when {
                     ownerInputs.containsKey("KAST_REAL_CODEX_EXECUTABLE") ->
@@ -193,7 +188,6 @@ internal sealed interface InstalledBrokerServerConfiguration {
                             kast.path,
                             canonicalUserHome,
                             processExecutor,
-                            toolSelection = toolSelection,
                             readLimits = configuration.readLimits,
                         )
                 ) {
@@ -682,7 +676,6 @@ private fun InstalledBrokerServerConfigurationFailure.serverFailure(): BrokerSer
             BrokerServerFailure.PROVIDER_CONFIGURATION_REJECTED
         InstalledBrokerServerConfigurationFailure.PROTOCOL_CONFIGURATION_REJECTED ->
             BrokerServerFailure.PROTOCOL_CONFIGURATION_REJECTED
-        InstalledBrokerServerConfigurationFailure.APP_SERVER_DISABLED -> BrokerServerFailure.APP_SERVER_DISABLED
     }
 
 @JvmInline

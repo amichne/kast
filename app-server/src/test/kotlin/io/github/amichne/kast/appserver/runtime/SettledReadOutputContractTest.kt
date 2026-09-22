@@ -3,7 +3,6 @@
 package io.github.amichne.kast.appserver.runtime
 
 import io.github.amichne.kast.appserver.BrokerWorkspaceId
-import io.github.amichne.kast.appserver.KastToolSelection
 import io.github.amichne.kast.appserver.core.Broker
 import io.github.amichne.kast.appserver.core.BrokerCallId
 import io.github.amichne.kast.appserver.core.BrokerLimits
@@ -139,11 +138,13 @@ class SettledReadOutputContractTest {
                             executable.toRealPath(),
                             root.toRealPath(),
                             process,
-                            toolSelection = KastToolSelection.admit("symbol_lookup").refined(),
                         )
                         .refined()
                 val qualified = KastProviderQualifier.qualify(options) as KastProviderQualification.Qualified
-                assertEquals(OperationEffect.INTELLIJ_READ, qualified.bootstrap.tools.definitions.single().effect)
+                assertEquals(
+                    OperationEffect.INTELLIJ_READ,
+                    qualified.bootstrap.tools.definitions.single { it.name.value == "symbol_lookup" }.effect,
+                )
                 val broker = Broker.create(listOf(qualified.registration), BrokerLimits.defaults()).validated()
                 val store = MemoryThreadCatalogStore()
                 store.write(ThreadCatalogBinding.admit("thread", broker.catalog.digest, root.toRealPath()).refined())

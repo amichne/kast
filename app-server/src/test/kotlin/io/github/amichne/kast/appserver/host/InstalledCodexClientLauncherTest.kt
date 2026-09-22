@@ -256,7 +256,7 @@ class InstalledCodexClientLauncherTest {
     }
 
     @Test
-    fun `disabled App Server fails before any process is launched`(@TempDir temporary: Path) {
+    fun `retired enable override fails before any process is launched`(@TempDir temporary: Path) {
         val bin = Files.createDirectory(temporary.resolve("bin"))
         val home = Files.createDirectory(temporary.resolve("home")).toRealPath()
         val kast = executable(bin.resolve("kast"))
@@ -264,7 +264,7 @@ class InstalledCodexClientLauncherTest {
         val processLauncher = CapturedProcessLauncher()
 
         assertEquals(
-            CodexClientLaunchRun.Rejected(CodexClientLaunchFailure.APP_SERVER_DISABLED),
+            CodexClientLaunchRun.Rejected(CodexClientLaunchFailure.APP_SERVER_CONFIGURATION_REJECTED),
             InstalledCodexClientLauncher(
                     kast,
                     home,

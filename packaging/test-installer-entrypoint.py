@@ -47,7 +47,7 @@ class InstallerEntrypointTest(unittest.TestCase):
         version = "1.2.3"
         control_name = f"kast-control-v{version}-macos-aarch64.tar.gz"
         control = assets / control_name
-        executable = b"#!/bin/sh\nprintf 'launchd=%s app_server=%s mode=%s force=%s\\n' \"$KAST_ENABLE_LAUNCHD\" \"$KAST_ENABLE_APP_SERVER\" \"$KAST_INSTALL_MODE\" \"$KAST_INSTALL_FORCE\" >&2\n"
+        executable = b"#!/bin/sh\nprintf 'profile=%s mode=%s force=%s\\n' \"$KAST_INSTALL_PROFILE\" \"$KAST_INSTALL_MODE\" \"$KAST_INSTALL_FORCE\" >&2\n"
         info = tarfile.TarInfo("bin/kast")
         info.mode = 0o755
         info.size = len(executable)
@@ -83,6 +83,24 @@ class InstallerEntrypointTest(unittest.TestCase):
                         command = line.lstrip(" \t")
                         self.assertTrue(command.startswith(CANONICAL_PREFIX), line)
 
+    def test_removed_options_reject_before_installation(self):
+        for option in ("--local", "--install-root", "--bin-dir", "--clean-collisions", "--no-interactive"):
+            with tempfile.TemporaryDirectory(prefix="kast-retired-option-") as directory:
+                result = subprocess.run([str(BASH), str(INSTALLER), option],
+                    env={"HOME": directory, "PATH": "/usr/bin:/bin"}, text=True, capture_output=True, timeout=10)
+                self.assertNotEqual(0, result.returncode)
+                self.assertIn("unknown argument: " + option, result.stderr)
+                self.assertEqual([], list(Path(directory).iterdir()))
+
+    def test_retired_environment_rejects_with_removal_instruction(self):
+        for key in ("KAST_ENABLE_APP_SERVER", "KAST_APP_SERVER_TOOLS", "KAST_ENABLE_LAUNCHD", "KAST_INSTALL_REFRESH_APP_SERVER"):
+            with tempfile.TemporaryDirectory(prefix="kast-retired-setting-") as directory:
+                result = subprocess.run([str(BASH), str(INSTALLER)],
+                    env={"HOME": directory, "PATH": "/usr/bin:/bin", key: "0"}, text=True, capture_output=True, timeout=10)
+                self.assertNotEqual(0, result.returncode)
+                self.assertIn(key + " is retired; remove it", result.stderr)
+                self.assertEqual([], list(Path(directory).iterdir()))
+
     def test_double_dash_delivers_help_to_downloaded_script(self):
         with tempfile.TemporaryDirectory(prefix="kast-installer-entrypoint-") as directory:
             environment = {
@@ -100,15 +118,15 @@ class InstallerEntrypointTest(unittest.TestCase):
             )
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertIn("Usage:", result.stdout)
-        self.assertIn("--clean-collisions", result.stdout)
+        self.assertNotIn("--clean-collisions", result.stdout)
 
     def test_noninteractive_collision_fails_closed_at_selected_command_directory(self):
         # Budget: one private tree and Bash built-ins only on this regular-file branch.
         # PATH sentinels record forbidden effects; this is not an OS security sandbox.
         with tempfile.TemporaryDirectory(prefix="kast-installer-collision-") as directory:
             root = Path(directory).resolve()
-            commands = root / "custom commands"
-            commands.mkdir()
+            commands = root / ".local/bin"
+            commands.mkdir(parents=True)
             collision = commands / "kast"
             foreign_bytes = b"foreign command\n"
             collision.write_bytes(foreign_bytes)
@@ -128,10 +146,6 @@ class InstallerEntrypointTest(unittest.TestCase):
                     "-c",
                     INSTALLER.read_text(),
                     "--",
-                    "--install-root",
-                    str(root / "custom data"),
-                    "--bin-dir",
-                    str(commands),
                     "--version",
                     "1.2.3",
                 ],
@@ -145,11 +159,11 @@ class InstallerEntrypointTest(unittest.TestCase):
             self.assertFalse(transcript.exists(), transcript.read_text() if transcript.exists() else "")
             self.assertEqual(1, result.returncode, result.stderr)
             self.assertIn(str(collision), result.stderr)
-            self.assertIn("--clean-collisions", result.stderr)
-            self.assertIn("command collisions require an interactive choice", result.stderr)
+            self.assertIn("--force", result.stderr)
+            self.assertIn("command collisions require --force", result.stderr)
             self.assertEqual(foreign_bytes, collision.read_bytes())
             self.assertFalse((root / "custom data").exists())
-            self.assertEqual({commands, tools}, set(root.iterdir()))
+            self.assertEqual({root / ".local", tools}, set(root.iterdir()))
             self.assertEqual([collision], list(commands.iterdir()))
 
     def test_install_enables_the_complete_suite_without_prompting(self):
@@ -163,20 +177,20 @@ class InstallerEntrypointTest(unittest.TestCase):
         self.assertIn("██╗  ██╗", result.stderr)
         self.assertIn("IntelliJ IDEA 2026.2.1 (build 262.1234)", result.stderr)
         self.assertIn("app server", result.stderr.lower())
-        self.assertIn("LaunchAgent", result.stderr)
+        self.assertIn("login", result.stderr)
         self.assertNotIn("[y/N]", result.stderr)
-        self.assertIn("launchd=1 app_server=1 mode=plan", result.stderr)
+        self.assertIn("profile=persistent mode=plan", result.stderr)
 
     def test_force_dry_run_enables_suite_and_preserves_state(self):
         with tempfile.TemporaryDirectory(prefix="kast-installer-entrypoint-") as directory:
             idea, _, environment = self.installer_fixture(directory)
             result = subprocess.run(
-                ["bash", str(INSTALLER), "--idea-home", str(idea), "--dry-run", "--no-interactive", "--force"],
+                ["bash", str(INSTALLER), "--idea-home", str(idea), "--dry-run", "--force"],
                 cwd=ROOT, env=environment, stdin=subprocess.DEVNULL, text=True, capture_output=True, timeout=10,
             )
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertNotIn("[y/N]", result.stderr)
-        self.assertIn("launchd=1 app_server=1 mode=plan force=1", result.stderr)
+        self.assertIn("profile=persistent mode=plan force=1", result.stderr)
 
     def test_missing_matching_idea_plugin_explains_why_nothing_is_installed(self):
         with tempfile.TemporaryDirectory(prefix="kast-installer-entrypoint-") as directory:
@@ -184,7 +198,7 @@ class InstallerEntrypointTest(unittest.TestCase):
             for asset in assets.glob("*idea-262.zip*"):
                 asset.unlink()
             result = subprocess.run(
-                ["bash", str(INSTALLER), "--idea-home", str(idea), "--dry-run", "--no-interactive", "--force"],
+                ["bash", str(INSTALLER), "--idea-home", str(idea), "--dry-run", "--force"],
                 cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
             )
         self.assertNotEqual(0, result.returncode)

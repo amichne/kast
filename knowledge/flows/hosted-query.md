@@ -335,7 +335,7 @@ remains available for the manual acceptance harness.
 The [persistent endpoint](../../experiments/host-observation/HOSTED_ENDPOINT.md)
 is owned by the separate `runtime:hosted` plugin. Normal requests use a framed
 Unix socket and retain the same packaged compatibility policy and admitted epoch
-authority across requests. The primary native `kast index classes` command and Python
+authority across requests. The primary native `kast ide classes` command and Python
 acceptance client reject missing hosts without opening an isolated workspace.
 After an IDE crash, the next endpoint owner may reclaim the paired socket and
 descriptor while holding the exclusive ownership lock. Reclamation requires the
@@ -358,7 +358,7 @@ Incremental creation, class renaming, and deletion were qualified against the
 same original IDE index. Broader semantic CLI/App Server routing and stronger
 workspace publication remain separate integration boundaries.
 
-`kast index supertype` uses the qualified selector. Both public indexing reads
+`kast ide supertype` uses the qualified selector. Both public indexing reads
 run before isolated bootstrap, require no Python, and leave index maintenance
 to IDEA. The earlier `kast ide` spelling shares the same implementation.
 The shared schemas and operation registry live in `protocol:contract`; the CLI
@@ -638,7 +638,7 @@ candidate prefix, including its local selection table and retained-output cursor
 An indivisible source text that prevents any prefix fitting becomes explicitly
 withheld with text-byte qualification; source bytes are never truncated.
 
-The `WORKSPACE_REFRESH` control request is dispatched separately from semantic reads. `index refresh` and `ide refresh` carry typed request/status/configuration documents over the existing owned socket. Response admission validates the control schema, workspace root, host and request identity. Pending results remain qualified; failures remain rejections. The [workspace lifecycle owner](../modules/workspace.md) describes its asynchronous effects and opt-in task rule.
+The `WORKSPACE_REFRESH` control request is dispatched separately from semantic reads. `ide refresh` carry typed request/status/configuration documents over the existing owned socket. Response admission validates the control schema, workspace root, host and request identity. Pending results remain qualified; failures remain rejections. The [workspace lifecycle owner](../modules/workspace.md) describes its asynchronous effects and opt-in task rule.
 
 Fresh exact-symbol reads use the request-local acquisition wrapper described in
 [query protocol](../modules/query-protocol.md#automatic-acquisition-for-fresh-reads).

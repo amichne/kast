@@ -27,7 +27,7 @@ class ConfigurationInspectionTest {
 
     @Test
     fun `configuration help bypasses malformed saved and process configuration`(@TempDir root: Path) {
-        val inputs = mapOf("KAST_SAVED_CONFIGURATION_FAILURE" to "duplicate-record", "KAST_INDEXER_MAX_HEAP" to "")
+        val inputs = mapOf("KAST_SAVED_CONFIGURATION_FAILURE" to "duplicate-record", "KAST_GRADLE_JAVA_HOME" to "")
         val longHelp = launch(root, listOf("config", "--help"), inputs)
         val shortHelp = launch(root, listOf("config", "-h"), inputs)
         assertEquals(0, longHelp.code)
@@ -41,20 +41,20 @@ class ConfigurationInspectionTest {
     }
 
     @Test
-    fun `schema remains passive when saved configuration and heap are malformed`(@TempDir root: Path) {
+    fun `schema remains passive when saved configuration and Java home are malformed`(@TempDir root: Path) {
         val result =
             launch(
                 root,
                 listOf("config", "schema", "--json"),
                 mapOf(
                     "KAST_SAVED_CONFIGURATION_FAILURE" to "duplicate-record",
-                    "KAST_INDEXER_MAX_HEAP" to "",
+                    "KAST_GRADLE_JAVA_HOME" to "",
                 ),
             )
         assertEquals(0, result.code, result.error)
         val document = Json.parseToJsonElement(result.output).jsonObject
         assertEquals("config-schema", document.getValue("operation").jsonPrimitive.content)
-        assertTrue(result.output.contains("KAST_INDEXER_MAX_HEAP"))
+        assertTrue(result.output.contains("KAST_GRADLE_JAVA_HOME"))
         assertEquals(InstalledConfigurationSchema.encoded, result.output)
         assertFalse(Files.exists(root.resolve("runtime")))
         assertFalse(Files.exists(root.resolve("cache")))
@@ -71,13 +71,17 @@ class ConfigurationInspectionTest {
     }
 
     @Test
-    fun `explain reports normalized heap and winning process provenance`(@TempDir root: Path) {
+    fun `explain reports normalized Java home and winning process provenance`(@TempDir root: Path) {
         val result =
-            launch(root, listOf("config", "explain", "KAST_INDEXER_MAX_HEAP"), mapOf("KAST_INDEXER_MAX_HEAP" to "8g"))
+            launch(
+                root,
+                listOf("config", "explain", "KAST_GRADLE_JAVA_HOME"),
+                mapOf("KAST_GRADLE_JAVA_HOME" to "/java8"),
+            )
         assertEquals(0, result.code, result.error)
         val document = Json.parseToJsonElement(result.output).jsonObject
         assertEquals("PROCESS_ENVIRONMENT", document.getValue("source").jsonPrimitive.content)
-        assertEquals("8192m", document.getValue("value").jsonPrimitive.content)
+        assertEquals("/java8", document.getValue("value").jsonPrimitive.content)
         assertEquals("NEXT_WORKER_LAUNCH", document.getValue("applicationBoundary").jsonPrimitive.content)
         assertEquals("unobserved", document.getValue("applied").jsonPrimitive.content)
     }
@@ -85,29 +89,29 @@ class ConfigurationInspectionTest {
     @Test
     fun `saved literal configuration retains provenance below explicit process values`(@TempDir root: Path) {
         val saved = root.toRealPath().resolve("environment")
-        Files.writeString(saved, "# Literal values, never shell execution\nKAST_INDEXER_MAX_HEAP=8g\n")
+        Files.writeString(saved, "# Literal values, never shell execution\nKAST_GRADLE_JAVA_HOME=/java8\n")
         val selected = mapOf("KAST_CONFIGURATION_FILE" to saved.toString())
-        val fromSaved = launch(root, listOf("config", "explain", "KAST_INDEXER_MAX_HEAP"), selected)
+        val fromSaved = launch(root, listOf("config", "explain", "KAST_GRADLE_JAVA_HOME"), selected)
         assertEquals(0, fromSaved.code, fromSaved.error)
         val savedDocument = Json.parseToJsonElement(fromSaved.output).jsonObject
         assertEquals("SAVED_INSTALLATION", savedDocument.getValue("source").jsonPrimitive.content)
-        assertEquals("8192m", savedDocument.getValue("value").jsonPrimitive.content)
+        assertEquals("/java8", savedDocument.getValue("value").jsonPrimitive.content)
         val overridden =
             launch(
                 root,
-                listOf("config", "explain", "KAST_INDEXER_MAX_HEAP"),
-                selected + ("KAST_INDEXER_MAX_HEAP" to "4g"),
+                listOf("config", "explain", "KAST_GRADLE_JAVA_HOME"),
+                selected + ("KAST_GRADLE_JAVA_HOME" to "/java4"),
             )
         val overriddenDocument = Json.parseToJsonElement(overridden.output).jsonObject
         assertEquals("PROCESS_ENVIRONMENT", overriddenDocument.getValue("source").jsonPrimitive.content)
-        assertEquals("4096m", overriddenDocument.getValue("value").jsonPrimitive.content)
+        assertEquals("/java4", overriddenDocument.getValue("value").jsonPrimitive.content)
         assertTrue(overridden.output.contains("SAVED_INSTALLATION"))
     }
 
     @Test
     fun `validate admits a literal file without starting runtime composition`(@TempDir root: Path) {
         val saved = root.toRealPath().resolve("environment")
-        Files.writeString(saved, "KAST_INDEXER_MAX_HEAP=8g\nKAST_ENABLE_LAUNCHD=0\n")
+        Files.writeString(saved, "KAST_GRADLE_JAVA_HOME=/java8\nKAST_DEBUG=0\n")
         val result = launch(root, listOf("config", "validate", "--file", saved.toString(), "--json"), emptyMap())
         assertEquals(0, result.code, result.error)
         val document = Json.parseToJsonElement(result.output).jsonObject
@@ -120,12 +124,12 @@ class ConfigurationInspectionTest {
     @Test
     fun `validate rejects duplicate saved assignments even when the environment overrides them`(@TempDir root: Path) {
         val saved = root.toRealPath().resolve("environment")
-        Files.writeString(saved, "KAST_INDEXER_MAX_HEAP=8g\nKAST_INDEXER_MAX_HEAP=4g\n")
+        Files.writeString(saved, "KAST_GRADLE_JAVA_HOME=/java8\nKAST_GRADLE_JAVA_HOME=/java4\n")
         val result =
             launch(
                 root,
                 listOf("config", "validate", "--file", saved.toString()),
-                mapOf("KAST_INDEXER_MAX_HEAP" to "1g"),
+                mapOf("KAST_GRADLE_JAVA_HOME" to "/java1"),
             )
         assertTrue(result.code != 0, "invalid saved configuration unexpectedly validated")
         val document = Json.parseToJsonElement(result.error).jsonObject
@@ -138,7 +142,7 @@ class ConfigurationInspectionTest {
         val saved = Files.writeString(root.toRealPath().resolve("environment"), "KAST_APP_SERVER_TOOLS=unknown-tool\n")
         val result = launch(root, listOf("config", "validate", "--file", saved.toString()), emptyMap())
         assertTrue(result.code != 0, "unknown tool selection unexpectedly validated")
-        assertTrue(result.error.contains("INVALID_TOOL_SELECTION"), result.error)
+        assertTrue(result.error.contains("RETIRED_KEY"), result.error)
     }
 
     @Test
@@ -148,7 +152,7 @@ class ConfigurationInspectionTest {
         val saved =
             Files.writeString(
                 Files.createDirectories(physical.resolve("config")).resolve("environment"),
-                "KAST_INDEXER_MAX_HEAP=4g\n",
+                "KAST_GRADLE_JAVA_HOME=/java4\n",
             )
         val digest =
             java.security.MessageDigest.getInstance("SHA-256").digest(workspace.toString().toByteArray()).joinToString(
@@ -158,25 +162,25 @@ class ConfigurationInspectionTest {
             }
         Files.writeString(
             Files.createDirectories(physical.resolve("config/workspaces/$digest")).resolve("environment"),
-            "KAST_INDEXER_MAX_HEAP=8g\n",
+            "KAST_GRADLE_JAVA_HOME=/java8\n",
         )
         val selected = mapOf("KAST_CONFIGURATION_FILE" to saved.toString())
         val result =
             launch(
                 root,
-                listOf("config", "explain", "KAST_INDEXER_MAX_HEAP", "--workspace", workspace.toString()),
+                listOf("config", "explain", "KAST_GRADLE_JAVA_HOME", "--workspace", workspace.toString()),
                 selected,
             )
         val document = Json.parseToJsonElement(result.output).jsonObject
         assertEquals("complete", document.getValue("status").jsonPrimitive.content, result.output)
         assertEquals("SAVED_WORKSPACE", document.getValue("source").jsonPrimitive.content)
-        assertEquals("8192m", document.getValue("value").jsonPrimitive.content)
+        assertEquals("/java8", document.getValue("value").jsonPrimitive.content)
         assertTrue(result.output.contains("SAVED_INSTALLATION"))
         val explicit =
             launch(
                 root,
-                listOf("config", "explain", "KAST_INDEXER_MAX_HEAP", "--workspace", workspace.toString()),
-                selected + ("KAST_INDEXER_MAX_HEAP" to "2g"),
+                listOf("config", "explain", "KAST_GRADLE_JAVA_HOME", "--workspace", workspace.toString()),
+                selected + ("KAST_GRADLE_JAVA_HOME" to "/java2"),
             )
         assertEquals(
             "PROCESS_ENVIRONMENT",
@@ -193,7 +197,7 @@ class ConfigurationInspectionTest {
         val saved =
             Files.writeString(
                 Files.createDirectories(physical.resolve("config")).resolve("environment"),
-                "KAST_INDEXER_MAX_HEAP=4g\n",
+                "KAST_GRADLE_JAVA_HOME=/java4\n",
             )
         val digest =
             java.security.MessageDigest.getInstance("SHA-256").digest(workspace.toString().toByteArray()).joinToString(
@@ -203,16 +207,16 @@ class ConfigurationInspectionTest {
             }
         Files.writeString(
             Files.createDirectories(physical.resolve("config/workspaces/$digest")).resolve("environment"),
-            "KAST_INDEXER_MAX_HEAP=bad-secret\n",
+            "KAST_GRADLE_JAVA_HOME=bad-secret\n",
         )
         val result =
             launch(
                 root,
                 listOf("config", "show", "--workspace", workspace.toString(), "--json"),
-                mapOf("KAST_CONFIGURATION_FILE" to saved.toString(), "KAST_INDEXER_MAX_HEAP" to "2g"),
+                mapOf("KAST_CONFIGURATION_FILE" to saved.toString(), "KAST_GRADLE_JAVA_HOME" to "/java2"),
             )
         assertEquals(
-            "INVALID_HEAP",
+            "INVALID_PATH",
             Json.parseToJsonElement(result.output).jsonObject.getValue("reason").jsonPrimitive.content,
             result.output,
         )
@@ -226,7 +230,7 @@ class ConfigurationInspectionTest {
         val saved =
             Files.writeString(
                 Files.createDirectories(physical.resolve("config")).resolve("environment"),
-                "KAST_INDEXER_MAX_HEAP=4g\n",
+                "KAST_GRADLE_JAVA_HOME=/java4\n",
             )
         val result =
             launch(
@@ -267,7 +271,7 @@ class ConfigurationInspectionTest {
                 mapOf("KAST_APP_SERVER_TOOLS" to "query"),
             )
         assertTrue(result.code != 0, "invalid shadowed owner setting was accepted")
-        assertTrue(result.error.contains("INVALID_TOOL_SELECTION"), result.error)
+        assertTrue(result.error.contains("RETIRED_KEY"), result.error)
     }
 
     private fun launch(root: Path, args: List<String>, inputs: Map<String, String>): Result {
@@ -294,7 +298,6 @@ class ConfigurationInspectionTest {
                             mapOf(
                                 "HOME" to root.toString(),
                                 "KAST_RUNTIME_DIRECTORY" to root.resolve("runtime").toString(),
-                                "KAST_CACHE_ROOT" to root.resolve("cache").toString(),
                             ) + inputs
                         )
                 }

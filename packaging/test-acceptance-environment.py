@@ -86,7 +86,7 @@ class StartupEnvironmentTest(unittest.TestCase):
                         script.main()
                 self.assertNotIn("OPENAI_API_KEY", captured)
                 self.assertNotEqual(captured["HOME"], os.environ["HOME"])
-                self.assertEqual(captured["KAST_ENABLE_LAUNCHD"], "0")
+                self.assertNotIn("KAST_ENABLE_LAUNCHD", captured)
             finally:
                 if "KAST_RUNTIME_DIRECTORY" in captured:
                     shutil.rmtree(Path(captured["HOME"]).parent)
@@ -290,7 +290,7 @@ class PrivateEnvironmentTest(unittest.TestCase):
             def probe(command, **kwargs):
                 env = kwargs["env"]
                 self.assertNotIn("OPENAI_API_KEY", env)
-                self.assertEqual(env["KAST_ENABLE_APP_SERVER"], "0")
+                self.assertNotIn("KAST_ENABLE_APP_SERVER", env)
                 copied = Path(command[command.index("--product") + 1])
                 self.assertNotEqual(copied, product)
                 self.assertEqual((copied / "version").read_text(), "original")
