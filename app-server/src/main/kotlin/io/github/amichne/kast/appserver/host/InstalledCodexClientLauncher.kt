@@ -1,7 +1,7 @@
 package io.github.amichne.kast.appserver.host
 
 import io.github.amichne.kast.appserver.AppServerAction
-import io.github.amichne.kast.appserver.AppServerManagementFailure
+import io.github.amichne.kast.appserver.AppServerManagementRejection
 import io.github.amichne.kast.appserver.AppServerManagementResult
 import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.appserver.BrokerServiceLaunchCommand
@@ -12,6 +12,7 @@ import io.github.amichne.kast.appserver.PersistentBrokerServiceAdmission
 import io.github.amichne.kast.appserver.PersistentBrokerServiceFailure
 import io.github.amichne.kast.appserver.PersistentBrokerServiceHost
 import io.github.amichne.kast.appserver.core.CanonicalBrokerDirectory
+import io.github.amichne.kast.appserver.diagnosticCode
 import io.github.amichne.kast.appserver.host.admission.DesktopFacadeExecutable
 import io.github.amichne.kast.appserver.host.admission.UpstreamCodexExecutable
 import io.github.amichne.kast.appserver.provider.BrokerExecutable
@@ -95,10 +96,7 @@ fun interface CodexClientLauncher {
 internal sealed interface CodexLaunchPreparation {
     data object Prepared : CodexLaunchPreparation
 
-    data class Rejected(
-        val failure: AppServerManagementFailure,
-        val serviceFailure: PersistentBrokerServiceFailure?,
-    ) : CodexLaunchPreparation
+    data class Rejected(val reason: AppServerManagementRejection) : CodexLaunchPreparation
 }
 
 internal fun interface CodexLaunchPreparer {
@@ -161,7 +159,7 @@ internal class InstalledCodexClientLauncher(
                     command,
                     client,
                     "workspace-preparation-rejected",
-                    preparation.serviceFailure?.name?.lowercase() ?: preparation.failure.name.lowercase(),
+                    preparation.reason.diagnosticCode(),
                 )
                 return CodexClientLaunchRun.Rejected(CodexClientLaunchFailure.APP_SERVER_UNAVAILABLE)
             }
@@ -379,12 +377,14 @@ fun installedCodexClientLauncher(kastExecutable: Path, userHome: Path): CodexCli
             CodexLaunchPreparer { workspace ->
                 when (val result = manager.execute(AppServerAction.Enable, workspace)) {
                     is AppServerManagementResult.Completed -> CodexLaunchPreparation.Prepared
-                    is AppServerManagementResult.Rejected ->
-                        CodexLaunchPreparation.Rejected(
-                            result.failure,
-                            result.serviceFailure,
-                        )
+                    is AppServerManagementRejection -> CodexLaunchPreparation.Rejected(result)
                 }
             },
     )
 }
+
+private fun AppServerManagementRejection.diagnosticCode(): String =
+    when (this) {
+        is AppServerManagementResult.Rejected -> (serviceFailure?.name ?: failure.name).lowercase()
+        is AppServerManagementResult.DaemonRejected -> reason.diagnosticCode()
+    }

@@ -4,16 +4,6 @@
     {
       "fingerprint": {
         "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/AppServerManagement.kt",
-        "scope": "type:InstalledAppServerManager/fun:execute(15:AppServerAction,4:Path)",
-        "kind": "JSON_BUILDER",
-        "sha256": "47a602208e97299306a9467661a8be586d47a3283ac6f00c8fb5751dbcdb86db"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/AppServerManagement.kt",
         "scope": "type:InstalledAppServerManager/fun:execute(15:AppServerAction,4:Path)/val:result",
         "kind": "JSON_BUILDER",
         "sha256": "17909215e2c97361b0c05bb0ffe3bcf5cab931e9a05c4a16074f4ef62f8c0f95"
@@ -97,46 +87,6 @@
         "scope": "type:JdkBrokerSocketProbe/fun:exchangeStatus(4:Path,4:UUID1:?)/declaration:<anonymous>",
         "kind": "JSON_LITERAL",
         "sha256": "706cffbd889c667427828b45b3e63ed54eb21fc9c18f174b0b466035346a89b8"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/WorkspaceEnrollment.kt",
-        "scope": "type:WorkspaceEnrollmentStore/fun:enroll(4:Path)/declaration:<anonymous>/declaration:<anonymous>/declaration:<anonymous>/val:doc",
-        "kind": "JSON_BUILDER",
-        "sha256": "409a93bdc85011d57216d6c6b7d44fd994c3d1000ce378a1008caec559143318"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/WorkspaceEnrollment.kt",
-        "scope": "type:WorkspaceEnrollmentStore/fun:enroll(4:Path)/declaration:<anonymous>/declaration:<anonymous>/declaration:<anonymous>/val:doc/declaration:<anonymous>",
-        "kind": "JSON_ARRAY",
-        "sha256": "368226eeb9981edf7360e4d3f233464034afdd88e9c9c2d3ab98feb1dcaf43b9"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/WorkspaceEnrollment.kt",
-        "scope": "type:WorkspaceEnrollmentStore/fun:retain(25:WorkspaceRegistrySnapshot,4:Path)/val:document",
-        "kind": "JSON_BUILDER",
-        "sha256": "5b45ea87bc3f2168d1909dd0f5d3106f36f3214271db59fb28bd3a71470f6808"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/WorkspaceEnrollment.kt",
-        "scope": "type:WorkspaceEnrollmentStore/fun:retain(25:WorkspaceRegistrySnapshot,4:Path)/val:document/declaration:<anonymous>",
-        "kind": "JSON_ARRAY",
-        "sha256": "2181d7400657befdf40431d656e365c078e03ae64bed06408ef203940974a3ea"
       },
       "count": 1,
       "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."

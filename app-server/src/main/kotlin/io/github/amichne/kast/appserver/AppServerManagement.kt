@@ -90,11 +90,15 @@ enum class AppServerManagementFailure {
 sealed interface AppServerManagementResult {
     data class Completed(val document: JsonObject) : AppServerManagementResult
 
+    data class DaemonRejected(val reason: DaemonManagementRejection) : AppServerManagementRejection
+
     data class Rejected(
         val failure: AppServerManagementFailure,
         val serviceFailure: PersistentBrokerServiceFailure? = null,
-    ) : AppServerManagementResult
+    ) : AppServerManagementRejection
 }
+
+sealed interface AppServerManagementRejection : AppServerManagementResult
 
 fun interface AppServerManager {
     fun execute(action: AppServerAction, workspace: Path): AppServerManagementResult
@@ -127,24 +131,30 @@ class InstalledAppServerManager(
             return reject(AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN)
         }
         val enrollment = WorkspaceEnrollmentStore(installationRoot.resolve("config/workspaces.json"))
-        if (action == AppServerAction.Register)
-            return when (val registered = enrollment.enroll(workspace)) {
-                is Refinement.Rejected -> reject(AppServerManagementFailure.ENROLLMENT_REJECTED)
-                is Refinement.Refined ->
-                    AppServerManagementResult.Completed(
-                        buildJsonObject {
-                            put("operation", "app-server.register")
-                            put("workspaceId", registered.value.workspace.id.value)
-                            put("root", registered.value.workspace.root.path.toString())
-                            put("revision", registered.value.revision.value)
-                        }
-                    )
-            }
         val command =
             when (val resolved = BrokerServiceLaunchCommand.resolveCoordinator(kast, userHome, environment)) {
                 is BrokerServiceLaunchCommandResolution.Resolved -> resolved.command
                 is BrokerServiceLaunchCommandResolution.Rejected ->
                     return reject(AppServerManagementFailure.CONFIGURATION_REJECTED)
+            }
+        if (action == AppServerAction.Register)
+            return runBlocking {
+                when (val registered = InstalledDaemonManagementClient(kast).register(command, workspace)) {
+                    is Refinement.Rejected -> AppServerManagementResult.DaemonRejected(registered.failure)
+                    is Refinement.Refined ->
+                        AppServerManagementResult.Completed(
+                            DaemonManagementProtocol.json
+                                .encodeToJsonElement(
+                                    WorkspaceRegistrationDocument.serializer(),
+                                    WorkspaceRegistrationDocument(
+                                        registered.value.workspace.id.value,
+                                        registered.value.workspace.root.path.toString(),
+                                        registered.value.revision.value,
+                                    ),
+                                )
+                                .jsonObject
+                        )
+                }
             }
         val agent = userHome.resolve("Library/LaunchAgents/${command.serviceLabel.value}.login.plist")
         return try {

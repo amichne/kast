@@ -109,7 +109,7 @@ internal sealed interface WorkspaceEnrollment {
 }
 
 @kotlinx.serialization.Serializable
-internal enum class EnrollmentFailure {
+enum class EnrollmentFailure {
     PATH_REJECTED,
     DOCUMENT_REJECTED,
     WRITE_REJECTED,
@@ -267,6 +267,14 @@ internal class WorkspaceEnrollmentStore(private val file: Path) {
             } catch (_: Exception) {
                 null
             } ?: return Refinement.Rejected(EnrollmentFailure.PATH_REJECTED)
+        return enroll(canonical)
+    }
+
+    internal fun enroll(
+        canonical: CanonicalBrokerDirectory
+    ): Refinement<WorkspaceRegistrationAcknowledgement, EnrollmentFailure> {
+        if (CanonicalBrokerDirectory.admit(canonical.path) != canonical)
+            return Refinement.Rejected(EnrollmentFailure.PATH_REJECTED)
         return synchronized(locks.computeIfAbsent(file) { Any() }) {
             try {
                 if (!file.isAbsolute || file.normalize() != file)
@@ -287,65 +295,43 @@ internal class WorkspaceEnrollmentStore(private val file: Path) {
                         val lock =
                             channel.tryLock()
                                 ?: return@synchronized Refinement.Rejected(EnrollmentFailure.WRITE_REJECTED)
-                        lock.use {
-                            val previous =
-                                when (val read = snapshot()) {
-                                    is WorkspaceRegistryRead.Read -> read.snapshot
-                                    is WorkspaceRegistryRead.Rejected ->
-                                        return@synchronized Refinement.Rejected(read.failure)
-                                }
-                            if (previous.workspaces.any { it.root == canonical })
-                                return@synchronized Refinement.Refined(
-                                    WorkspaceRegistrationAcknowledgement(
-                                        WorkspaceRegistration(canonical),
-                                        previous.revision,
-                                    )
-                                )
-                            if (previous.workspaces.size >= MAXIMUM_WORKSPACES)
-                                return@synchronized Refinement.Rejected(EnrollmentFailure.CAPACITY_EXCEEDED)
-                            val revision =
-                                when (val next = previous.revision.next()) {
-                                    is Refinement.Refined -> next.value
-                                    is Refinement.Rejected -> return@synchronized Refinement.Rejected(next.failure)
-                                }
-                            val doc = buildJsonObject {
-                                put("schemaVersion", 2)
-                                put("revision", revision.value)
-                                put(
-                                    "roots",
-                                    JsonArray(
-                                        (previous.workspaces.map { it.root.path.toString() } +
-                                                canonical.path.toString())
-                                            .sorted()
-                                            .map(::JsonPrimitive)
-                                    ),
-                                )
-                            }
-                                .toString()
-                            if (doc.toByteArray().size > MAXIMUM_BYTES)
-                                return@synchronized Refinement.Rejected(EnrollmentFailure.CAPACITY_EXCEEDED)
-                            val temporary = Files.createTempFile(file.parent, ".enrollment-", ".json")
-                            try {
-                                Files.writeString(temporary, doc)
-                                Files.setPosixFilePermissions(temporary, PosixFilePermissions.fromString("rw-------"))
-                                Files.move(
-                                    temporary,
-                                    file,
-                                    StandardCopyOption.ATOMIC_MOVE,
-                                    StandardCopyOption.REPLACE_EXISTING,
-                                )
-                            } finally {
-                                Files.deleteIfExists(temporary)
-                            }
-                            Refinement.Refined(
-                                WorkspaceRegistrationAcknowledgement(WorkspaceRegistration(canonical), revision)
-                            )
-                        }
+                        lock.use { enrollLocked(canonical) }
                     }
             } catch (_: Exception) {
                 Refinement.Rejected(EnrollmentFailure.WRITE_REJECTED)
             }
         }
+    }
+
+    private fun enrollLocked(
+        canonical: CanonicalBrokerDirectory
+    ): Refinement<WorkspaceRegistrationAcknowledgement, EnrollmentFailure> {
+        val previous =
+            when (val read = snapshot()) {
+                is WorkspaceRegistryRead.Read -> read.snapshot
+                is WorkspaceRegistryRead.Rejected -> return Refinement.Rejected(read.failure)
+            }
+        val registration = WorkspaceRegistration(canonical)
+        if (previous.workspaces.any { it.root == canonical })
+            return Refinement.Refined(WorkspaceRegistrationAcknowledgement(registration, previous.revision))
+        if (previous.workspaces.size >= MAXIMUM_WORKSPACES)
+            return Refinement.Rejected(EnrollmentFailure.CAPACITY_EXCEEDED)
+        val revision =
+            when (val next = previous.revision.next()) {
+                is Refinement.Refined -> next.value
+                is Refinement.Rejected -> return Refinement.Rejected(next.failure)
+            }
+        val document = encodeWorkspaceRegistry(WorkspaceRegistrySnapshot(revision, previous.workspaces + registration))
+        if (document.toByteArray().size > MAXIMUM_BYTES) return Refinement.Rejected(EnrollmentFailure.CAPACITY_EXCEEDED)
+        val temporary = Files.createTempFile(file.parent, ".enrollment-", ".json")
+        try {
+            Files.writeString(temporary, document)
+            Files.setPosixFilePermissions(temporary, PosixFilePermissions.fromString("rw-------"))
+            Files.move(temporary, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+        } finally {
+            Files.deleteIfExists(temporary)
+        }
+        return Refinement.Refined(WorkspaceRegistrationAcknowledgement(registration, revision))
     }
 
     /**
@@ -449,15 +435,7 @@ internal class WorkspaceEnrollmentStore(private val file: Path) {
                 WorkspaceRegistryRetention.Rejected(WorkspaceRegistryRetentionFailure.DESTINATION_REJECTED)
             }
         }
-        val document = buildJsonObject {
-            put("schemaVersion", 2)
-            put("revision", snapshot.revision.value)
-            put(
-                "roots",
-                JsonArray(snapshot.workspaces.map { it.root.path.toString() }.sorted().map(::JsonPrimitive)),
-            )
-        }
-            .toString()
+        val document = encodeWorkspaceRegistry(snapshot)
         val temporary = Files.createTempFile(parent, ".workspace-retention-", ".json")
         try {
             Files.writeString(temporary, document)

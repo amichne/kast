@@ -21,6 +21,55 @@ import org.junit.jupiter.api.Test
 
 class InstalledCoordinatorTest {
     @Test
+    fun `management status works without admitting optional Codex host`() = withPayload { root, kast ->
+        runBlocking {
+            val activities = java.util.concurrent.CopyOnWriteArrayList<BrokerStartupActivity>()
+            val options =
+                (InstalledCoordinatorConfiguration.admit(
+                        kast,
+                        root,
+                        mapOf("PATH" to "/usr/bin:/bin"),
+                        BrokerStartupActivitySink {
+                            activities += it
+                            BrokerStartupActivityPublication.PUBLISHED
+                        },
+                    ) as Refinement.Refined)
+                    .value
+            val running = (InstalledCoordinator.start(options) as InstalledCoordinatorStart.Started).coordinator
+            val client = HttpClient(CIO) { install(WebSockets) }
+            try {
+                withTimeout(5_000) {
+                    client.webSocket({
+                        url("ws://localhost${DaemonManagementProtocol.route}")
+                        unixSocket(options.socket.path.toString())
+                    }) {
+                        send(
+                            DaemonManagementProtocol.json.encodeToString(
+                                DaemonManagementRequest.serializer(),
+                                DaemonManagementRequest.Status(),
+                            )
+                        )
+                        val reply =
+                            DaemonManagementProtocol.json.decodeFromString<DaemonManagementResponse>(
+                                (incoming.receive() as Frame.Text).readText()
+                            )
+                        assertTrue(reply is DaemonManagementResponse.Status, reply.toString())
+                        assertEquals(
+                            CoordinatorHostAttachment.PENDING,
+                            (reply as DaemonManagementResponse.Status).coordinator.hostAttachment,
+                        )
+                    }
+                }
+                assertFalse(activities.any { it.stage == BrokerStartupStage.HOST_ADMISSION })
+                assertFalse(Files.exists(root.resolve("state/run/u.sock")))
+            } finally {
+                client.close()
+                running.close()
+            }
+        }
+    }
+
+    @Test
     fun `default coordinator serves status alongside a live native Codex endpoint`() = withPayload { root, kast ->
         runBlocking {
             val native = root.resolve(".codex/app-server-control/app-server-control.sock")
@@ -190,6 +239,77 @@ class InstalledCoordinatorTest {
                 assertFalse(Files.exists(options.socket.physicalPath))
             }
         }
+
+    @Test
+    fun `management refuses stale generation and stopped service before registry writes`() = withPayload { root, kast ->
+        runBlocking {
+            val options = (InstalledCoordinatorConfiguration.admit(kast, root, emptyMap()) as Refinement.Refined).value
+            val running = (InstalledCoordinator.start(options) as InstalledCoordinatorStart.Started).coordinator
+            val client = HttpClient(CIO) { install(WebSockets) }
+            try {
+                suspend fun exchange(request: DaemonManagementRequest): DaemonManagementResponse {
+                    var result: DaemonManagementResponse? = null
+                    withTimeout(5_000) {
+                        client.webSocket({
+                            url("ws://localhost${DaemonManagementProtocol.route}")
+                            unixSocket(options.socket.path.toString())
+                        }) {
+                            send(
+                                DaemonManagementProtocol.json.encodeToString(
+                                    DaemonManagementRequest.serializer(),
+                                    request,
+                                )
+                            )
+                            result =
+                                DaemonManagementProtocol.json.decodeFromString<DaemonManagementResponse>(
+                                    (incoming.receive() as Frame.Text).readText()
+                                )
+                        }
+                    }
+                    return checkNotNull(result)
+                }
+                val observed =
+                    (exchange(DaemonManagementRequest.Status()) as DaemonManagementResponse.Status).coordinator
+                val target =
+                    DaemonManagementTarget(
+                        observed.installationId,
+                        observed.stateEpoch,
+                        observed.serviceGeneration,
+                        observed.configurationIdentity,
+                    )
+                val workspace = Files.createDirectory(root.resolve("workspace"))
+                assertEquals(
+                    DaemonManagementResponse.Rejected(
+                        DaemonManagementRejection.Protocol(DaemonManagementFailure.IDENTITY_REJECTED)
+                    ),
+                    exchange(
+                        DaemonManagementRequest.RegisterWorkspace(
+                            target.copy(serviceGeneration = "stale"),
+                            workspace.toString(),
+                        )
+                    ),
+                )
+                assertFalse(Files.exists(root.resolve("config/workspaces.json")))
+                Files.writeString(options.serviceDirectory.resolve("stopped"), "")
+                assertEquals(
+                    DaemonManagementResponse.Rejected(
+                        DaemonManagementRejection.Protocol(DaemonManagementFailure.LIFECYCLE_TRANSITION)
+                    ),
+                    exchange(DaemonManagementRequest.RegisterWorkspace(target, workspace.toString())),
+                )
+                assertEquals(
+                    DaemonManagementResponse.Rejected(
+                        DaemonManagementRejection.Protocol(DaemonManagementFailure.LIFECYCLE_TRANSITION)
+                    ),
+                    exchange(DaemonManagementRequest.Status()),
+                )
+                assertFalse(Files.exists(root.resolve("config/workspaces.json")))
+            } finally {
+                client.close()
+                running.close()
+            }
+        }
+    }
 
     private fun withPayload(test: (Path, Path) -> Unit) {
         val root = Files.createTempDirectory(Path.of("/private/tmp"), "kast-c-").toRealPath()

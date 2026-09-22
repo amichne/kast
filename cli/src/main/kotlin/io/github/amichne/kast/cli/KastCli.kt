@@ -3,6 +3,7 @@ package io.github.amichne.kast.cli
 import io.github.amichne.kast.appserver.BrokerServerRun
 import io.github.amichne.kast.appserver.BrokerServerRunner
 import io.github.amichne.kast.appserver.UnavailableBrokerServerRunner
+import io.github.amichne.kast.appserver.diagnosticCode
 import io.github.amichne.kast.appserver.host.CodexClientLaunch
 import io.github.amichne.kast.appserver.host.CodexClientLauncher
 import io.github.amichne.kast.appserver.host.UnavailableCodexClientLauncher
@@ -116,6 +117,8 @@ internal constructor(
                             is CliTextDocumentAdmission.Rejected ->
                                 boundaryExit(CliBoundaryExitStatus.RUNTIME, "app-server-output-rejected")
                         }
+                    is io.github.amichne.kast.appserver.AppServerManagementResult.DaemonRejected ->
+                        boundaryExit(CliBoundaryExitStatus.RUNTIME, result.reason.diagnosticCode())
                     is io.github.amichne.kast.appserver.AppServerManagementResult.Rejected ->
                         boundaryExit(
                             CliBoundaryExitStatus.RUNTIME,

@@ -6,6 +6,10 @@ resource: file://runtime
 tags: [kotlin, runtime, server, indexer, cli]
 timestamp: 2026-09-16T00:00:00Z
 code_sources:
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/DaemonManagementProtocol.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonManagementClient.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/DaemonManagement.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/CoordinatorRoutes.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastCatalogObservation.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastInputSchema.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastCatalogSource.kt
@@ -67,7 +71,7 @@ The plugin archive contains the semantic contracts, services, IntelliJ adapters 
 
 The CLI admits local metadata and broker configuration separately from its existing-IDE semantic route. All canonical reads, public intent tools and supported changes use the plugin. A missing host rejects. Bare `kast` reports the product version, existing-IDE authority and passive root discovery; `kast ide status` observes the project endpoint. Retired `start` and `stop` commands cannot launch a worker.
 
-App Server owns persistent sessions, the invocation journal, controller approvals, provider qualification and workspace lanes. `CoordinatorControl` provides bounded owner-correlated status with zero worker reservations and rejects retired worker demands. New Codex threads automatically persist an unregistered canonical working directory (or explicit containing root) before binding. Existing containing registrations are reused. Registration preserves closed failures and emits bounded, payload-free startup evidence. Resume and invocation checks remain read-only. Workspace enrollment remains routing data. It grants no importer or worker capability. Provider qualification still verifies the installed CLI catalog. Semantic provider calls and approval preparation then use the App Server-owned IDEA client directly, preserving canonical request admission, finite failures, root/host binding and operation output validation. Pure request and result projection lives in `protocol:wire`.
+App Server owns persistent sessions, the invocation journal, controller approvals, provider qualification and workspace lanes. `CoordinatorControl` provides bounded owner-correlated status with zero worker reservations and rejects retired worker demands. New Codex threads automatically persist an unregistered canonical working directory (or explicit containing root) before binding. Existing containing registrations are reused. Registration preserves closed failures and emits bounded, payload-free startup evidence. Resume and invocation checks remain read-only. Workspace enrollment remains routing data. It grants no importer or worker capability. Provider qualification verifies the packaged catalog against the canonical registry. Semantic provider calls and approval preparation then use the App Server-owned IDEA client directly, preserving canonical request admission, finite failures, root/host binding and operation output validation. Pure request and result projection lives in `protocol:wire`.
 
 Planning stores immutable live plans; applying and recovering require the exact controller-approved plan and current native admission. `kast ide trust-broker` remains the explicit trust-enrollment effect. Read [request dispatch](../flows/request-dispatch.md) and [change lifecycle](../flows/change-lifecycle.md) for the complete boundaries.
 
@@ -151,3 +155,14 @@ Catalog qualification emits one bounded typed stage/outcome observation per cont
 read. It retains source, document, projection, metadata, input-schema and output-schema
 failures without logging catalog contents. Request unions are admitted only when
 every alternative is a closed object; empty or open alternatives reject.
+
+The coordinator also owns `/kast-management` on the same private Unix socket.
+Versioned typed status and registration requests bypass Codex host admission.
+Registration requires the exact installation, epoch, generation and configuration
+identity, and checks the existing lifecycle/stopped fence before enrollment.
+The CLI verifies published service ownership before requesting registration;
+offline or unproven service state cannot fall back to direct registry writes.
+Canonical workspace identity and revision survive acknowledgment admission.
+Unknown protocols and unobserved replies remain finite failures, with no automatic
+retry. Both control routes share the same connection budget. Initial installation
+bootstrap and controller claim/release retain their existing owners.

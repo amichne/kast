@@ -5,10 +5,14 @@ import io.github.amichne.kast.appserver.BrokerServiceGeneration
 import io.github.amichne.kast.appserver.CoordinatorControlAction
 import io.github.amichne.kast.appserver.CoordinatorControlRequest
 import io.github.amichne.kast.appserver.CoordinatorHostAttachment
+import io.github.amichne.kast.appserver.CoordinatorServiceState
+import io.github.amichne.kast.appserver.CoordinatorStatusDocument
 import io.github.amichne.kast.appserver.CoordinatorStatusProtocol
+import io.github.amichne.kast.appserver.DaemonManagementTarget
 import io.github.amichne.kast.appserver.InstallationLifecycleFence
 import io.github.amichne.kast.appserver.InstallationLifecycleStartAdmission
 import io.github.amichne.kast.appserver.WorkerControlFailure
+import io.github.amichne.kast.appserver.WorkspaceEnrollmentStore
 import io.github.amichne.kast.appserver.coordinatorConfigurationIdentity
 import io.github.amichne.kast.appserver.protocol.ThreadBindingOwner
 import io.github.amichne.kast.appserver.rejectedCoordinatorControl
@@ -38,6 +42,39 @@ private constructor(
     private val hostObservation: () -> BrokerFrontendObservation,
 ) {
     private val closed = AtomicBoolean(false)
+    private val management =
+        DaemonManagement(
+            DaemonManagementTarget(
+                owner.installationId.value,
+                owner.stateEpoch.value.toString(),
+                generation.value.toString(),
+                coordinatorConfigurationIdentity(configuration),
+            ),
+            ::available,
+            ::status,
+            { root -> WorkspaceEnrollmentStore(installationRoot.resolve("config/workspaces.json")).enroll(root) },
+        )
+
+    private fun status() =
+        CoordinatorStatusDocument(
+            CoordinatorServiceState.READY,
+            owner.installationId.value,
+            owner.stateEpoch.value.toString(),
+            generation.value.toString(),
+            coordinatorConfigurationIdentity(configuration),
+            0,
+            0,
+            emptyList(),
+            CoordinatorHostAttachment.valueOf(hostObservation().name),
+        )
+
+    suspend fun handleManagement(session: DefaultWebSocketServerSession) {
+        val frame =
+            withTimeoutOrNull(BrokerOperationalLimits.managementExchange.value) {
+                session.incoming.receiveCatching().getOrNull()
+            }
+        if (frame is Frame.Text) session.send(management.exchange(frame.readText()))
+    }
 
     suspend fun drain() {
         closed.set(true)
