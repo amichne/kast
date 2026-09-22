@@ -70,6 +70,12 @@ when following up. See [Read a response](https://kast.michne.com/reference/respo
 
 Use Java 25 or newer and the Python version in [`.python-version`](.python-version).
 
+Start testing with one named behavior and its smallest required dependencies.
+Run the production rule with explicit inputs and script only external observations;
+use real filesystem, compiler or native fixtures when the assertion needs their
+authority. See the [testing approach](docs/development.md#test-one-behavior-at-a-time)
+for focused checks and when to widen verification.
+
 ```shell
 ./gradlew build
 ./gradlew assembleRelease
@@ -81,7 +87,7 @@ To build and try this checkout in an isolated Bash or Zsh session:
 source "$(./install.sh --local session)"
 ```
 
-Start with the [development guide](docs/development.md) for persistent local
+Start with the [development guide](docs/development.md) for testing, persistent local
 installation and native acceptance, or the [knowledge base](knowledge/index.md)
 for architecture and source ownership. `kast knowledge KastCli` searches the
 installed documentation for Kast’s own public declarations without an open IDE.

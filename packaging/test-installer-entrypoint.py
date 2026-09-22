@@ -6,6 +6,7 @@ import hashlib
 import io
 import json
 import os
+import shlex
 import subprocess
 import tarfile
 import tempfile
@@ -21,6 +22,8 @@ DOCUMENTS = (
     ROOT / "docs/public/reference/compatibility.mdx",
 )
 CANONICAL_PREFIX = '/bin/bash -c "$(curl -fsSL '
+# Admit the interpreter once; the collision child's PATH has no host utility fallback.
+BASH = Path('/bin/bash').resolve(strict=True)
 
 
 class InstallerEntrypointTest(unittest.TestCase):
@@ -100,16 +103,28 @@ class InstallerEntrypointTest(unittest.TestCase):
         self.assertIn("--clean-collisions", result.stdout)
 
     def test_noninteractive_collision_fails_closed_at_selected_command_directory(self):
+        # Budget: one private tree and Bash built-ins only on this regular-file branch.
+        # PATH sentinels record forbidden effects; this is not an OS security sandbox.
         with tempfile.TemporaryDirectory(prefix="kast-installer-collision-") as directory:
-            root = Path(directory)
+            root = Path(directory).resolve()
             commands = root / "custom commands"
             commands.mkdir()
             collision = commands / "kast"
-            collision.write_text("foreign command")
-            environment = {"HOME": str(root), "PATH": "/usr/bin:/bin", "NO_COLOR": "1"}
+            foreign_bytes = b"foreign command\n"
+            collision.write_bytes(foreign_bytes)
+            tools = root / "path"
+            tools.mkdir()
+            transcript = root / "forbidden-commands"
+            for name in ('curl', 'java', 'launchctl', 'open', 'shasum', 'awk', 'sed', 'find',
+                         'python3', 'cp', 'mktemp', 'uname', 'readlink', 'rm'):
+                sentinel = tools / name
+                sentinel.write_text(f'#!{BASH}\n'
+                    f'printf "%s\\n" {shlex.quote(name)} >> {shlex.quote(str(transcript))}\nexit 97\n')
+                sentinel.chmod(0o700)
+            environment = {"HOME": str(root), "PATH": str(tools), "NO_COLOR": "1"}
             result = subprocess.run(
                 [
-                    "/bin/bash",
+                    str(BASH),
                     "-c",
                     INSTALLER.read_text(),
                     "--",
@@ -120,17 +135,22 @@ class InstallerEntrypointTest(unittest.TestCase):
                     "--version",
                     "1.2.3",
                 ],
-                cwd=ROOT,
+                cwd=root,
                 env=environment,
                 stdin=subprocess.DEVNULL,
                 text=True,
                 capture_output=True,
                 timeout=10,
             )
-            self.assertNotEqual(0, result.returncode)
+            self.assertFalse(transcript.exists(), transcript.read_text() if transcript.exists() else "")
+            self.assertEqual(1, result.returncode, result.stderr)
             self.assertIn(str(collision), result.stderr)
             self.assertIn("--clean-collisions", result.stderr)
-            self.assertEqual("foreign command", collision.read_text())
+            self.assertIn("command collisions require an interactive choice", result.stderr)
+            self.assertEqual(foreign_bytes, collision.read_bytes())
+            self.assertFalse((root / "custom data").exists())
+            self.assertEqual({commands, tools}, set(root.iterdir()))
+            self.assertEqual([collision], list(commands.iterdir()))
 
     def test_interactive_install_explains_components_and_prompts_for_launch_agent(self):
         with tempfile.TemporaryDirectory(prefix="kast-installer-entrypoint-") as directory:
