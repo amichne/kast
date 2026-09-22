@@ -5,6 +5,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 enum class BrokerServerFailure {
     UNAVAILABLE,
+    ARGUMENTS_REJECTED,
     CONFIGURATION_REJECTED,
     KAST_EXECUTABLE_REJECTED,
     USER_HOME_REJECTED,

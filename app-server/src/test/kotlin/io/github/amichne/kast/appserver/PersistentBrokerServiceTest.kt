@@ -360,9 +360,14 @@ class PersistentBrokerServiceTest {
             )
 
         assertEquals(PersistentBrokerServiceAdmission.Ready, host.ensure(command))
-        assertTrue(submission.orEmpty().contains(command.kast.toString()))
-        assertTrue(submission.orEmpty().contains("broker"))
-        assertTrue(submission.orEmpty().contains("serve"))
+        assertTrue(
+            submission
+                .orEmpty()
+                .contains(fixture.kast.parent.parent.resolve("share/kast/libexec/kast-daemon").toString())
+        )
+        assertFalse(submission.orEmpty().contains(command.kast.toString()))
+        assertFalse(submission.orEmpty().contains("broker"))
+        assertFalse(submission.orEmpty().contains("serve"))
         assertTrue(submission.orEmpty().contains("BROKER_SERVICE_IDENTITY=${command.identity.value}"))
         assertTrue(submission.orEmpty().contains("JAVA_HOME=${command.javaHome}"))
         assertTrue(submission.orEmpty().contains("KAST_OPTS=${command.jvmUserHomeOption.value}"))
@@ -730,6 +735,10 @@ class PersistentBrokerServiceTest {
         val product = Files.createDirectories(temporary.resolve("product")).toRealPath()
         val bin = Files.createDirectories(product.resolve("bin"))
         val kast = executable(bin.resolve("kast"), "#!/bin/sh\nexit 0\n")
+        executable(
+            Files.createDirectories(product.resolve("share/kast/libexec")).resolve("kast-daemon"),
+            "#!/bin/sh\nexit 0\n",
+        )
         val tools = Files.createDirectories(temporary.resolve("tools")).toRealPath()
         executable(tools.resolve("codex"), "#!/bin/sh\nexit 0\n")
         val userHome = Files.createDirectories(temporary.resolve("home")).toRealPath()

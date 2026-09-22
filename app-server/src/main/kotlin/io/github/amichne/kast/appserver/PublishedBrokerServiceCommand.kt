@@ -137,14 +137,15 @@ object PublishedBrokerServiceCommand {
                     ?.directElements()
                     ?.map { it.takeIf { value -> value.tagName == "string" }?.textContent ?: return null }
                     ?: return null
-            if (
-                arguments.size !in 5..MAXIMUM_ARGUMENTS ||
-                    arguments[0] != "/usr/bin/env" ||
-                    arguments[1] != "-i" ||
-                    arguments.takeLast(3) != listOf(observed.kast.toString(), "broker", "serve")
-            )
+            if (arguments.size !in 5..MAXIMUM_ARGUMENTS || arguments[0] != "/usr/bin/env" || arguments[1] != "-i")
                 return null
-            val assignments = arguments.subList(2, arguments.size - 3)
+            val suffix =
+                when {
+                    arguments.last() == observed.daemonExecutable.toString() -> 1
+                    arguments.takeLast(3) == listOf(observed.kast.toString(), "broker", "serve") -> 3
+                    else -> return null
+                }
+            val assignments = arguments.subList(2, arguments.size - suffix)
             val environment = assignments.associate { assignment ->
                 val separator = assignment.indexOf('=')
                 if (separator <= 0) return null

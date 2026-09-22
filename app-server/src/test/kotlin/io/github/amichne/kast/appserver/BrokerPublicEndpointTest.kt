@@ -198,6 +198,9 @@ class BrokerPublicEndpointTest {
             val path = Files.writeString(bin.resolve(name), "#!/bin/sh\nexit 0\n")
             Files.setPosixFilePermissions(path, PosixFilePermissions.fromString("rwx------"))
         }
+        val daemon = Files.createDirectories(bin.parent.resolve("share/kast/libexec")).resolve("kast-daemon")
+        Files.writeString(daemon, "#!/bin/sh\nexit 0\n")
+        Files.setPosixFilePermissions(daemon, PosixFilePermissions.fromString("rwx------"))
         return EndpointFixture(bin.resolve("kast"), home, mapOf("PATH" to bin.toString()))
     }
 

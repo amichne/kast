@@ -93,6 +93,15 @@ class PublishedBrokerServiceCommandTest {
             Files.writeString(plist, servicePlist(command, arguments))
 
             assertEquals(command.identity, PublishedBrokerServiceCommand.recover(command)?.identity)
+            Files.writeString(
+                plist,
+                servicePlist(
+                    command,
+                    arguments.dropLast(3) +
+                        command.kast.parent.parent.resolve("share/kast/libexec/kast-daemon").toString(),
+                ),
+            )
+            assertEquals(command.identity, PublishedBrokerServiceCommand.recover(command)?.identity)
 
             Files.writeString(
                 plist,

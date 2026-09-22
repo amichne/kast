@@ -773,6 +773,13 @@ internal class MacOsPersistentBrokerServiceHost(
     private fun submit(command: BrokerServiceLaunchCommand): BrokerLaunchdServiceSubmission {
         val invocation =
             try {
+                val daemon = command.daemonExecutable
+                if (
+                    daemon.toRealPath() != daemon ||
+                        !Files.isRegularFile(daemon, LinkOption.NOFOLLOW_LINKS) ||
+                        !Files.isExecutable(daemon)
+                )
+                    return BrokerLaunchdServiceSubmission.Rejected
                 fun xml(raw: String) =
                     raw.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
                 val environment =
@@ -789,8 +796,7 @@ internal class MacOsPersistentBrokerServiceHost(
                             "BROKER_SERVICE_IDENTITY=${command.identity.value}",
                             "BROKER_READINESS_FILE=${command.readinessFile}",
                         )
-                val arguments =
-                    listOf(ENV_EXECUTABLE, "-i") + environment + listOf(command.kast.toString(), "broker", "serve")
+                val arguments = listOf(ENV_EXECUTABLE, "-i") + environment + listOf(daemon.toString())
                 val document =
                     """<?xml version="1.0" encoding="UTF-8"?>
 <plist version="1.0"><dict><key>Label</key><string>${xml(command.serviceLabel.value)}</string>

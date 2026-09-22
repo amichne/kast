@@ -62,8 +62,24 @@ val codexIntegrationStartScripts =
         dependsOn(tasks.named("jar"))
     }
 
+val daemonStartScripts =
+    tasks.register<CreateStartScripts>("daemonStartScripts") {
+        applicationName = "kast-daemon"
+        optsEnvironmentVar = "KAST_OPTS"
+        executableDir = "share/kast/libexec"
+        mainClass = "io.github.amichne.kast.cli.KastDaemonMain"
+        outputDir = layout.buildDirectory.dir("daemon-scripts").get().asFile
+        classpath = tasks.named<CreateStartScripts>("startScripts").get().classpath
+        dependsOn(tasks.named("jar"))
+    }
+
 distributions.main {
     contents {
+        from(daemonStartScripts) {
+            into("share/kast/libexec")
+            exclude("*.bat")
+            filePermissions { unix("755") }
+        }
         from(codexIntegrationStartScripts) {
             into("bin")
             exclude("*.bat")

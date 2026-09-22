@@ -2,6 +2,7 @@ package io.github.amichne.kast.appserver
 
 enum class PersistentBrokerServiceFailure {
     UNAVAILABLE,
+    ARGUMENTS_REJECTED,
     CONFIGURATION_REJECTED,
     KAST_QUALIFICATION_REJECTED,
     CATALOG_REJECTED,
@@ -35,6 +36,7 @@ enum class PersistentBrokerServiceFailure {
 
 internal fun BrokerServerFailure.persistentServiceFailure(): PersistentBrokerServiceFailure =
     when (this) {
+        BrokerServerFailure.ARGUMENTS_REJECTED -> PersistentBrokerServiceFailure.ARGUMENTS_REJECTED
         BrokerServerFailure.UNAVAILABLE -> PersistentBrokerServiceFailure.UNAVAILABLE
         BrokerServerFailure.CONFIGURATION_REJECTED -> PersistentBrokerServiceFailure.CONFIGURATION_REJECTED
         BrokerServerFailure.KAST_EXECUTABLE_REJECTED -> PersistentBrokerServiceFailure.KAST_EXECUTABLE_UNAVAILABLE

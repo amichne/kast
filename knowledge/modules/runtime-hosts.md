@@ -194,3 +194,5 @@ current demand and removes only its current root binding; the historical record
 remains. A later demand may prepare again. Transport failures never replay the
 semantic request. Preparation rejection retains its finite cause and operation ID
 as known pre-execution failure evidence.
+
+Launchd invokes the private daemon entry point without the public CLI command graph. The managed readiness environment is required at ingress and then qualified by the existing coordinator. Exact published-command recovery admits both the private path and the earlier `kast broker serve` form for retirement.
