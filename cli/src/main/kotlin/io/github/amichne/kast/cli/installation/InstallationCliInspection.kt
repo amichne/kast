@@ -2,9 +2,11 @@ package io.github.amichne.kast.cli.installation
 
 import io.github.amichne.kast.cli.CliBoundaryExitStatus
 import io.github.amichne.kast.cli.CliExit
-import io.github.amichne.kast.cli.CliJsonDocument
+import io.github.amichne.kast.cli.CliTextDocument
+import io.github.amichne.kast.cli.CliTextDocumentAdmission
 import io.github.amichne.kast.distribution.managed.ControlLimitExceeded
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import kotlinx.serialization.Serializable
 
 internal sealed interface InstallationHandling {
@@ -98,5 +100,5 @@ private data class InstallationRejectionDocument(
 
 private fun InstallationFailure.reason(): String = name.lowercase().replace('_', '-')
 
-private val reportFactory = CliJsonDocument.generated(InstallationReport.serializer())
-private val rejectionFactory = CliJsonDocument.generated(InstallationRejectionDocument.serializer())
+private val reportFactory = CanonicalJsonDocument.generated(InstallationReport.serializer())
+private val rejectionFactory = CanonicalJsonDocument.generated(InstallationRejectionDocument.serializer())

@@ -69,25 +69,6 @@ private constructor(
     }
 }
 
-internal enum class ProviderFailureCode {
-    UNEXPECTED_FAILURE,
-    TIMED_OUT,
-    IO_REJECTED,
-    OUTPUT_LIMIT,
-    SPAWN_FAILED,
-    TERMINATED,
-    KAST_QUALIFICATION_FAILED,
-    KAST_CONTRACT_CHANGED,
-    KAST_ARGUMENT_NOT_SCALAR,
-    MALFORMED_KAST_OUTPUT,
-    APPROVAL_REQUIRED,
-    APPROVAL_BINDING_REJECTED,
-    GRADLE_WRAPPER_UNAVAILABLE;
-
-    val value: String
-        get() = name
-}
-
 internal sealed interface ProviderCall<out Output> {
     /** The provider's owned execution has settled before its terminal value is returned. */
     data class Completed<Output>(val value: Output) : ProviderCall<Output>

@@ -1,13 +1,21 @@
 package io.github.amichne.kast.cli.ide
 
-import io.github.amichne.kast.cli.CanonicalRoot
-import io.github.amichne.kast.cli.CanonicalRootDiscoverer
-import io.github.amichne.kast.cli.CanonicalRootDiscovery
+import io.github.amichne.kast.appserver.ide.CanonicalRootDiscoverer
+import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
+import io.github.amichne.kast.appserver.ide.ExistingIdeClient
+import io.github.amichne.kast.appserver.ide.ExistingIdeDescriptor
+import io.github.amichne.kast.appserver.ide.ExistingIdeDocuments
+import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
+import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
+import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
+import io.github.amichne.kast.appserver.ide.canonicalRootFixture
+import io.github.amichne.kast.appserver.ide.encodeControlRequest
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshCommand
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshEffect
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshResponse
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshResult
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshRule
+import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
 import java.nio.file.Path
 import java.util.UUID
 import kotlinx.serialization.encodeToString
@@ -19,7 +27,7 @@ import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 
 class WorkspaceRefreshCliTest {
-    private val root = CanonicalRoot(Path.of("/workspace"))
+    private val root = canonicalRootFixture(Path.of("/workspace"))
     private val host = UUID.fromString("00000000-0000-0000-0000-000000000001")
     private val descriptor = ExistingIdeDescriptor(123, host)
     private val command = WorkspaceRefreshCommand.Request("refresh-1", WorkspaceRefreshEffect.FILE_REFRESH)
@@ -108,8 +116,15 @@ class WorkspaceRefreshCliTest {
                     descriptor,
                 ) as ExistingIdeExchange.Semantic
             if (result is WorkspaceRefreshResult.Pending)
-                assertInstanceOf(io.github.amichne.kast.cli.ProjectedCliOutcome.Qualified::class.java, exchange.outcome)
-            else assertInstanceOf(io.github.amichne.kast.cli.ProjectedCliOutcome.Rejected::class.java, exchange.outcome)
+                assertInstanceOf(
+                    io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome.Qualified::class.java,
+                    exchange.outcome,
+                )
+            else
+                assertInstanceOf(
+                    io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome.Rejected::class.java,
+                    exchange.outcome,
+                )
         }
     }
 

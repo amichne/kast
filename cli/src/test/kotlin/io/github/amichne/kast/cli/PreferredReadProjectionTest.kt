@@ -4,8 +4,9 @@ import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
 import io.github.amichne.kast.cli.installation.AppServerTools
 import io.github.amichne.kast.cli.installation.AppServerToolsFailure
-import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
+import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -94,7 +95,7 @@ class PreferredReadProjectionTest {
             .getValue("serverProjection")
             .jsonObject
 
-    private fun InstalledSchemaConstruction.constructedDocument(): CliJsonDocument =
+    private fun InstalledSchemaConstruction.constructedDocument(): CanonicalJsonDocument =
         when (this) {
             is InstalledSchemaConstruction.Constructed -> document
             is InstalledSchemaConstruction.Rejected -> fail("Expected installed schema: $this")

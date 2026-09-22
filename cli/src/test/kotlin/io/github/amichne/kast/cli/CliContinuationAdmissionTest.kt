@@ -6,8 +6,6 @@ import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
 import io.github.amichne.kast.cli.command.CliCommandParsing
 import io.github.amichne.kast.cli.command.CliRequestDocumentInput
-import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
-import io.github.amichne.kast.cli.projection.traversalRunCliProjector
 import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.OperationOutcome
@@ -19,6 +17,9 @@ import io.github.amichne.kast.protocol.contract.TraversalContinuationDocument
 import io.github.amichne.kast.protocol.contract.TraversalLimitationDocument
 import io.github.amichne.kast.protocol.contract.TraversalRunQualification
 import io.github.amichne.kast.protocol.contract.TraversalRunResult
+import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
+import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
+import io.github.amichne.kast.protocol.wire.presentation.traversalRunCliProjector
 import java.security.MessageDigest
 import java.util.Base64
 import kotlinx.serialization.json.Json
@@ -145,7 +146,7 @@ internal fun emittedTraversalContinuation(): String {
                     .refined(),
             )
         )
-    val qualified = assertInstanceOf(ProjectedCliOutcome.Qualified::class.java, projected)
+    val qualified = assertInstanceOf(ProjectedOperationOutcome.Qualified::class.java, projected)
     return Json.parseToJsonElement(qualified.document.value)
         .jsonObject
         .getValue("qualification")

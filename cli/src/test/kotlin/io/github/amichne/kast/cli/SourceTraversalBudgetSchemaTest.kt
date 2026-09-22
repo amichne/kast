@@ -1,7 +1,5 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.cli.projection.CanonicalReadCliDocuments
-import io.github.amichne.kast.cli.projection.CanonicalSourceReadCliDocuments
 import io.github.amichne.kast.kernel.EvidenceBasis
 import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.EvidenceGeneration
@@ -26,6 +24,9 @@ import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.protocol.wire.OperationWireBinding
 import io.github.amichne.kast.protocol.wire.WireDecoding
 import io.github.amichne.kast.protocol.wire.WireEncoding
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalReadCliDocuments
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalSourceReadCliDocuments
+import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -162,7 +163,7 @@ class SourceTraversalBudgetSchemaTest {
     > verify(
         binding: OperationWireBinding<Request, Result, Qualification, Rejection>,
         outcome: OperationOutcome<Result, Qualification, Rejection>,
-        project: (OperationOutcome<Result, Qualification, Rejection>) -> ProjectedCliOutcome,
+        project: (OperationOutcome<Result, Qualification, Rejection>) -> ProjectedOperationOutcome,
     ) =
         with(fixture) {
             val wire = binding.encodeOutcome(outcome) as WireEncoding.Encoded

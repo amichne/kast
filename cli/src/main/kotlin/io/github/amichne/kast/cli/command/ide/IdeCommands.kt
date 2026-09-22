@@ -9,6 +9,10 @@ import com.github.ajalt.clikt.parameters.arguments.convert
 import com.github.ajalt.clikt.parameters.options.convert
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.choice
+import io.github.amichne.kast.appserver.ide.ExistingIdeClassName
+import io.github.amichne.kast.appserver.ide.ExistingIdeDocuments
+import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
+import io.github.amichne.kast.appserver.ide.ExistingIdeQualifiedClassName
 import io.github.amichne.kast.cli.command.*
 import io.github.amichne.kast.cli.ide.*
 import io.github.amichne.kast.kernel.Refinement

@@ -8,6 +8,7 @@ import io.github.amichne.kast.appserver.core.BrokerFailure
 import io.github.amichne.kast.appserver.core.BrokerInvocationContext
 import io.github.amichne.kast.appserver.core.BrokerLimits
 import io.github.amichne.kast.appserver.core.CatalogDigest
+import io.github.amichne.kast.appserver.core.ProviderFailureCode
 import io.github.amichne.kast.appserver.core.ProviderNamespace
 import io.github.amichne.kast.appserver.core.ToolAddress
 import io.github.amichne.kast.appserver.core.ToolName
@@ -37,15 +38,15 @@ import org.junit.jupiter.api.Assertions.fail
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
-/** Registration fixture proves name routing and canonical CLI invocation, not semantic execution. */
+/** Registration fixture proves name routing and canonical request admission, not semantic execution. */
 class PreferredReadRoutingTest {
     @Test
-    fun `old and preferred relation input reach the same canonical invocation`(@TempDir root: Path) = runTest {
+    fun `old and preferred relation input reach the same canonical request admission`(@TempDir root: Path) = runTest {
         assertRoutes(root = root, operation = "relation.read", legacy = "semantic_query", preferred = "read_relations")
     }
 
     @Test
-    fun `old and preferred traversal input reach the same canonical invocation`(@TempDir root: Path) = runTest {
+    fun `old and preferred traversal input reach the same canonical request admission`(@TempDir root: Path) = runTest {
         assertRoutes(
             root = root,
             operation = "traversal.run",
@@ -139,14 +140,12 @@ class PreferredReadRoutingTest {
                         context,
                     )
                 )
-            assertInstanceOf(BrokerDispatch.Completed::class.java, result, "$name: $result")
+            val rejected = assertInstanceOf(BrokerDispatch.Rejected::class.java, result, "$name: $result")
+            val failure = assertInstanceOf(BrokerFailure.ProviderInvocationRejected::class.java, rejected.failure)
+            assertEquals(ProviderFailureCode.IDE_INVALID_REQUEST, failure.code)
         }
         val calls = executor.requests.filterNot { it.arguments.first().startsWith("--") }
-        assertEquals(listOf(operation.split('.'), operation.split('.')), calls.map { it.arguments })
-        assertEquals(
-            listOf(arguments.toString(), arguments.toString()),
-            calls.map { (it.input as BrokerProcessInput.Document).value },
-        )
+        assertEquals(emptyList<BrokerProcessRequest>(), calls)
         assertEquals(
             listOf(preferred),
             broker.catalog.namespaces

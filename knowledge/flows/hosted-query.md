@@ -43,7 +43,7 @@ code_sources:
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReadBudgetReports.kt
   - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/TraversalRunResultWireDocument.kt
   - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/SourceReadOutcomeWireMappings.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/projection/TraversalOutcomeCliDocuments.kt
+  - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/TraversalOutcomeCliDocuments.kt
   - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceEntityPageCollector.kt
   - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceExecution.kt
   - path: source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceEntityAttempt.kt
@@ -107,8 +107,8 @@ code_sources:
   - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/discovery/IntellijDiscoveryPackageAdmission.kt
   - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijRelationScopeCompiler.kt
   - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijRelationPackageAdmission.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeQuery.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeSocketClient.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeQuery.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/AdmittedHostedQuery.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/LiveHostedKotlinRead.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/LiveHostedClassIndex.kt

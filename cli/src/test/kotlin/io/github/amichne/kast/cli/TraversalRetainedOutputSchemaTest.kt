@@ -1,6 +1,5 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.cli.projection.CanonicalReadCliDocuments
 import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
@@ -11,6 +10,7 @@ import io.github.amichne.kast.protocol.contract.TraversalContinuationDocument
 import io.github.amichne.kast.protocol.contract.TraversalLimitationDocument
 import io.github.amichne.kast.protocol.contract.TraversalPreparedCoverageDocument
 import io.github.amichne.kast.protocol.contract.TraversalRunQualification
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalReadCliDocuments
 import io.github.amichne.kast.query.protocol.RelationPagingFixture
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonNull

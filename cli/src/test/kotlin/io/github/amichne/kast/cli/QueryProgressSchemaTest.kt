@@ -1,6 +1,5 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.cli.projection.CanonicalQueryCliDocuments
 import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
@@ -23,6 +22,7 @@ import io.github.amichne.kast.protocol.contract.ReadResumeActionDocument
 import io.github.amichne.kast.protocol.contract.RelationFactDocument
 import io.github.amichne.kast.protocol.contract.SymbolIdDocument
 import io.github.amichne.kast.protocol.contract.SymbolKindDocument
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
 import io.github.amichne.kast.query.protocol.RelationPagingFixture
 import io.github.amichne.kast.symbol.contract.CanonicalSymbolId
 import kotlinx.coroutines.test.runTest

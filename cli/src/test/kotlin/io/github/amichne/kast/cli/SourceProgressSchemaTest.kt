@@ -1,6 +1,5 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.cli.projection.CanonicalSourceReadCliDocuments
 import io.github.amichne.kast.kernel.EvidenceBasis
 import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.EvidenceGeneration
@@ -20,6 +19,7 @@ import io.github.amichne.kast.protocol.contract.SourceReadQualification
 import io.github.amichne.kast.protocol.contract.SourceTerminalReasonDocument
 import io.github.amichne.kast.protocol.contract.SourceTextProjectionDocument
 import io.github.amichne.kast.protocol.contract.SourceTextWithheldReasonDocument
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalSourceReadCliDocuments
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject

@@ -1,6 +1,13 @@
 package io.github.amichne.kast.cli.ide
 
-import io.github.amichne.kast.cli.CanonicalRoot
+import io.github.amichne.kast.appserver.ide.ExistingIdeDescriptor
+import io.github.amichne.kast.appserver.ide.ExistingIdeDocuments
+import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
+import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
+import io.github.amichne.kast.appserver.ide.HostedMutationOperation
+import io.github.amichne.kast.appserver.ide.HostedPlanIdentity
+import io.github.amichne.kast.appserver.ide.admitHostedApprovalChallenge
+import io.github.amichne.kast.appserver.ide.canonicalRootFixture
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
 import java.util.UUID
@@ -13,7 +20,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class HostedApprovalChallengeTest {
-    private val root = CanonicalRoot(Path.of("/workspace"))
+    private val root = canonicalRootFixture(Path.of("/workspace"))
     private val descriptor = ExistingIdeDescriptor(123, UUID.fromString("00000000-0000-0000-0000-000000000001"))
     private val operation =
         ExistingIdeOperation.ApprovalPreparation(

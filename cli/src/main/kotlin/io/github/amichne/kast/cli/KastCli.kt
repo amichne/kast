@@ -6,6 +6,11 @@ import io.github.amichne.kast.appserver.UnavailableBrokerServerRunner
 import io.github.amichne.kast.appserver.host.CodexClientLaunch
 import io.github.amichne.kast.appserver.host.CodexClientLauncher
 import io.github.amichne.kast.appserver.host.UnavailableCodexClientLauncher
+import io.github.amichne.kast.appserver.ide.CanonicalRootDiscoverer
+import io.github.amichne.kast.appserver.ide.ExistingIdeClient
+import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
+import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
+import io.github.amichne.kast.appserver.ide.IdeLifecycleClient
 import io.github.amichne.kast.appserver.outputReason
 import io.github.amichne.kast.cli.command.CliAction
 import io.github.amichne.kast.cli.command.CliCommandFailure
@@ -18,6 +23,10 @@ import io.github.amichne.kast.cli.knowledge.KnowledgeReader
 import io.github.amichne.kast.cli.projection.CliBoundaryDocuments
 import io.github.amichne.kast.cli.projection.CliLocalMetadata
 import io.github.amichne.kast.cli.projection.ProductInspectionDocuments
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
+import io.github.amichne.kast.protocol.wire.presentation.OperationProjectionFailure
+import io.github.amichne.kast.protocol.wire.presentation.OutputDocument
+import io.github.amichne.kast.protocol.wire.presentation.canonicalReadRejectedDocument
 import java.nio.file.Path
 
 /** Pure orchestration of the closed CLI boundaries and their explicit outer effects. */
@@ -32,11 +41,11 @@ internal constructor(
     private val brokerServerRunner: BrokerServerRunner = UnavailableBrokerServerRunner,
     private val codexClientLauncher: CodexClientLauncher = UnavailableCodexClientLauncher,
     private val knowledgeReader: KnowledgeReader = DiscoveringInstalledKnowledgeReader,
-    private val lifecycleClient: io.github.amichne.kast.cli.ide.IdeLifecycleClient? = null,
-    private val existingIdeClient: io.github.amichne.kast.cli.ide.ExistingIdeClient =
-        io.github.amichne.kast.cli.ide.ExistingIdeClient { _, _ ->
-            io.github.amichne.kast.cli.ide.ExistingIdeExchange.Rejected(
-                io.github.amichne.kast.cli.ide.ExistingIdeFailure.HOST_UNAVAILABLE
+    private val lifecycleClient: io.github.amichne.kast.appserver.ide.IdeLifecycleClient? = null,
+    private val existingIdeClient: io.github.amichne.kast.appserver.ide.ExistingIdeClient =
+        io.github.amichne.kast.appserver.ide.ExistingIdeClient { _, _ ->
+            io.github.amichne.kast.appserver.ide.ExistingIdeExchange.Rejected(
+                io.github.amichne.kast.appserver.ide.ExistingIdeFailure.HOST_UNAVAILABLE
             )
         },
 ) {
@@ -76,7 +85,7 @@ internal constructor(
             is CliCommandParsing.SourceRejected ->
                 CliExit.BoundaryRejected(
                     CliBoundaryExitStatus.USAGE,
-                    io.github.amichne.kast.cli.projection.canonicalReadRejectedDocument(parsed.failure),
+                    io.github.amichne.kast.protocol.wire.presentation.canonicalReadRejectedDocument(parsed.failure),
                 )
             is CliCommandParsing.ProjectionRejected -> projectionFailure(parsed.failure)
         }
@@ -146,21 +155,21 @@ internal constructor(
                     io.github.amichne.kast.protocol.contract.IdeLifecycleFailure.SELECTED_IDE_UNAVAILABLE
                 )
         val document =
-            CliJsonDocument.generated(io.github.amichne.kast.protocol.contract.IdeLifecycleResult.serializer())
+            CanonicalJsonDocument.generated(io.github.amichne.kast.protocol.contract.IdeLifecycleResult.serializer())
                 .create(result)
         return if (result is io.github.amichne.kast.protocol.contract.IdeLifecycleResult.Blocked)
             CliExit.BoundaryRejected(CliBoundaryExitStatus.RUNTIME, document)
         else CliExit.Complete(document)
     }
 
-    private fun projectionFailure(failure: CliProjectionFailure): CliExit =
+    private fun projectionFailure(failure: OperationProjectionFailure): CliExit =
         when (failure) {
-            is CliProjectionFailure.RequestEncodingFailed ->
+            is OperationProjectionFailure.RequestEncodingFailed ->
                 boundaryExit(
                     CliBoundaryExitStatus.PROTOCOL,
                     "request-encoding-rejected",
                 )
-            is CliProjectionFailure.ResponseDecodingFailed ->
+            is OperationProjectionFailure.ResponseDecodingFailed ->
                 boundaryExit(
                     CliBoundaryExitStatus.PROTOCOL,
                     "response-decoding-rejected",
@@ -180,27 +189,27 @@ enum class CliBoundaryExitStatus(val code: Int) {
 /** Complete and exhaustive process result; every variant carries its explicit output policy. */
 sealed interface CliExit {
     val code: Int
-    val document: CliProcessOutput
+    val document: OutputDocument
 
     data class Delegated(override val code: Int) : CliExit {
-        override val document: CliProcessOutput = CliDelegatedProcessOutput
+        override val document: OutputDocument = CliDelegatedProcessOutput
     }
 
-    data class Complete(override val document: CliProcessOutput) : CliExit {
+    data class Complete(override val document: OutputDocument) : CliExit {
         override val code: Int = 0
     }
 
-    data class Qualified(override val document: CliJsonDocument) : CliExit {
+    data class Qualified(override val document: CanonicalJsonDocument) : CliExit {
         override val code: Int = 0
     }
 
-    data class OperationRejected(override val document: CliJsonDocument) : CliExit {
+    data class OperationRejected(override val document: CanonicalJsonDocument) : CliExit {
         override val code: Int = 0
     }
 
     data class BoundaryRejected(
         val status: CliBoundaryExitStatus,
-        override val document: CliJsonDocument,
+        override val document: CanonicalJsonDocument,
     ) : CliExit {
         override val code: Int = status.code
     }

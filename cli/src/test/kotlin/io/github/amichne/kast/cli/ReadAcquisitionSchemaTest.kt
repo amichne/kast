@@ -1,6 +1,5 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.cli.projection.CanonicalSourceReadCliDocuments
 import io.github.amichne.kast.kernel.EvidenceBasis
 import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.LiveReadContentView
@@ -15,6 +14,7 @@ import io.github.amichne.kast.protocol.contract.SourceReadFormatDocument
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.protocol.wire.WireDecoding
 import io.github.amichne.kast.protocol.wire.WireEncoding
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalSourceReadCliDocuments
 import java.util.UUID
 import kotlinx.serialization.json.jsonObject
 import org.junit.jupiter.api.Assertions.assertEquals

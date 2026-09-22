@@ -1,7 +1,6 @@
 package io.github.amichne.kast.cli
 
 import com.networknt.schema.InputFormat
-import io.github.amichne.kast.cli.projection.CanonicalReadCliDocuments
 import io.github.amichne.kast.kernel.AdmittedExecutionBudget
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.ExecutionBudgetCapacity
@@ -17,6 +16,7 @@ import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
 import io.github.amichne.kast.protocol.contract.RelationContinuationDocument
 import io.github.amichne.kast.protocol.contract.RelationReadPositionDocument
 import io.github.amichne.kast.protocol.contract.RelationReadQualification
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalReadCliDocuments
 import io.github.amichne.kast.query.protocol.RelationPagingFixture
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json

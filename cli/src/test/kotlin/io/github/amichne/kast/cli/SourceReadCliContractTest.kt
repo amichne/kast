@@ -5,7 +5,6 @@ import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
 import io.github.amichne.kast.cli.command.CliCommandParsing
 import io.github.amichne.kast.cli.command.CliRequestDocumentInput
-import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.SourceContainmentDocument
 import io.github.amichne.kast.protocol.contract.SourceDeclarationKindDocument
@@ -26,6 +25,7 @@ import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.protocol.wire.WireDecoding
 import io.github.amichne.kast.protocol.wire.WireRequestAdmission
 import io.github.amichne.kast.protocol.wire.WireRequestEnvelope
+import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.util.Base64

@@ -14,6 +14,8 @@ import io.github.amichne.kast.appserver.core.ProviderFailureCode
 import io.github.amichne.kast.appserver.core.ProviderNamespace
 import io.github.amichne.kast.appserver.core.ToolAddress
 import io.github.amichne.kast.appserver.core.ToolName
+import io.github.amichne.kast.appserver.ide.*
+import io.github.amichne.kast.appserver.installedKastCatalogFixture
 import io.github.amichne.kast.appserver.runtime.BrokerInvocationApproval
 import io.github.amichne.kast.appserver.runtime.ClientConnectionId
 import io.github.amichne.kast.appserver.runtime.ExactPlanApprovalOutcome
@@ -26,6 +28,8 @@ import io.github.amichne.kast.appserver.runtime.SharedTaskSessions
 import io.github.amichne.kast.appserver.runtime.document
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.Validation
+import io.github.amichne.kast.protocol.contract.*
+import io.github.amichne.kast.protocol.wire.presentation.*
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
@@ -33,7 +37,9 @@ import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeout
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
@@ -52,7 +58,16 @@ class KastProviderTest {
         runBlocking<Unit> {
             val cwd = temporary.toRealPath()
             val executor = RecordingProcessExecutor(capabilitySchema().replace("\"plan\"", "\"planIdentity\""))
-            val broker = approvedBroker(temporary, executor)
+            val operations = mutableListOf<ExistingIdeOperation>()
+            val broker =
+                approvedBroker(
+                    temporary,
+                    executor,
+                    ExistingIdeClient { _, operation ->
+                        operations += operation
+                        hostRejection()
+                    },
+                )
             val grant = approvedGrant(cwd)
             val approved =
                 BrokerInvocationContext.admit(
@@ -70,17 +85,11 @@ class KastProviderTest {
                     BrokerDispatchRequest(ToolAddress(namespace("kast"), toolName("change_apply")), arguments, approved)
                 ),
             )
-            val process = executor.requests.last()
-            assertEquals(listOf("change", "apply", "--hosted-approved-invocation"), process.arguments)
-            assertEquals(
-                buildJsonObject {
-                    put("arguments", arguments)
-                    put("approval", grant.assertion)
-                }
-                    .toString(),
-                (process.input as BrokerProcessInput.Document).value,
-            )
-            val count = executor.requests.size
+            val mutation = assertInstanceOf(ExistingIdeOperation.ApprovedMutation::class.java, operations.single())
+            assertEquals(HostedMutationOperation.CHANGE_APPLY, mutation.kind)
+            assertEquals("plan:${"a".repeat(64)}", mutation.identity.value)
+            assertEquals(grant.assertion, mutation.assertion.value)
+            val count = operations.size
             val substituted =
                 broker.dispatch(
                     BrokerDispatchRequest(
@@ -90,7 +99,7 @@ class KastProviderTest {
                     )
                 )
             assertInstanceOf(BrokerDispatch.Rejected::class.java, substituted)
-            assertEquals(count, executor.requests.size)
+            assertEquals(count, operations.size)
             assertGrantContext(cwd, grant)
         }
 
@@ -107,7 +116,29 @@ class KastProviderTest {
         )
     }
 
-    private suspend fun approvedBroker(temporary: Path, executor: RecordingProcessExecutor): Broker {
+    @Serializable
+    private data class HostRejection(val type: String = "HOST_REJECTED", val failure: String = "DIRTY_DOCUMENTS")
+
+    private fun hostRejection() =
+        ExistingIdeExchange.HostRejected(
+            CanonicalJsonDocument.generated(HostRejection.serializer()).create(HostRejection())
+        )
+
+    private fun searchInput(): JsonElement =
+        Json.encodeToJsonElement(
+            io.github.amichne.kast.appserver.query.PublicToolSearchClasses.serializer(),
+            io.github.amichne.kast.appserver.query.PublicToolSearchClasses(
+                ProtocolText.parse("Thing").refinedValue(),
+                null,
+                null,
+            ),
+        )
+
+    private suspend fun approvedBroker(
+        temporary: Path,
+        executor: RecordingProcessExecutor,
+        client: ExistingIdeClient,
+    ): Broker {
         val cwd = temporary.toRealPath()
         val options =
             KastProviderOptions.admit(
@@ -115,6 +146,8 @@ class KastProviderTest {
                     qualificationDirectory = cwd,
                     processExecutor = executor,
                     toolSelection = KastToolSelection.admit("change_apply").refinedValue(),
+                    roots = CanonicalRootDiscoverer { CanonicalRootDiscovery.Discovered(CanonicalRoot(cwd)) },
+                    ideClient = client,
                 )
                 .refinedValue()
         val qualification = KastProviderQualifier.qualify(options) as KastProviderQualification.Qualified
@@ -140,7 +173,11 @@ class KastProviderTest {
             pending.respond(controller, buildJsonObject { put("decision", "accept") })
                 as ExactPlanApprovalResolution.Resolved
         val proof = (resolution.outcome as ExactPlanApprovalOutcome.Approved).proof
-        return HostedPlanApprovalGrant.fromSignedControllerApproval(proof, "e30.${"a".repeat(86)}").refinedValue()
+        return HostedPlanApprovalGrant.fromSignedControllerApproval(
+                proof,
+                "e30.${java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(ByteArray(64))}",
+            )
+            .refinedValue()
     }
 
     @Test
@@ -180,7 +217,7 @@ class KastProviderTest {
 
     @Test
     fun `zero exit host rejections retain details but never present successful observations`(@TempDir temporary: Path) =
-        runTest {
+        runBlocking {
             val executable = executable(temporary.resolve("kast"))
             val cwd = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
             for (rejection in
@@ -193,8 +230,16 @@ class KastProviderTest {
                     KastProviderOptions.admit(
                             executable,
                             cwd,
-                            RecordingProcessExecutor(capabilitySchema(), invocationDocument = rejection),
-                            toolSelection = KastToolSelection.admit("symbol_lookup").refinedValue(),
+                            RecordingProcessExecutor(installedKastCatalogFixture()),
+                            toolSelection = KastToolSelection.admit("search_classes").refinedValue(),
+                            roots = CanonicalRootDiscoverer { CanonicalRootDiscovery.Discovered(CanonicalRoot(cwd)) },
+                            ideClient =
+                                ExistingIdeClient { _, _ ->
+                                    ExistingIdeExchange.HostRejected(
+                                        CanonicalJsonDocument.generated(JsonElement.serializer())
+                                            .create(Json.parseToJsonElement(rejection))
+                                    )
+                                },
                         )
                         .refinedValue()
                 val qualified =
@@ -208,8 +253,8 @@ class KastProviderTest {
                         BrokerDispatch.Completed::class.java,
                         broker.dispatch(
                             BrokerDispatchRequest(
-                                ToolAddress(namespace("kast"), toolName("symbol_lookup")),
-                                buildJsonObject { put("query", "Thing") },
+                                ToolAddress(namespace("kast"), toolName("search_classes")),
+                                searchInput(),
                                 context(cwd),
                             )
                         ),
@@ -315,45 +360,43 @@ class KastProviderTest {
     }
 
     @Test
-    fun `first cold invocation delegates readiness to the canonical semantic boundary`(@TempDir temporary: Path) =
-        runTest {
-            val executable = executable(temporary.resolve("kast"))
-            val cwd = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
-            val executor = RecordingProcessExecutor(capabilitySchema(), invocationDelayMillis = 31_000)
+    fun `first invocation uses the canonical semantic boundary without a child process`(@TempDir temporary: Path) =
+        runBlocking {
+            val cwd = temporary.toRealPath()
+            val executor = RecordingProcessExecutor(installedKastCatalogFixture())
+            val operations = mutableListOf<ExistingIdeOperation>()
             val options =
                 KastProviderOptions.admit(
-                        executable,
+                        executable(temporary.resolve("kast")),
                         cwd,
                         executor,
-                        toolSelection = KastToolSelection.admit("symbol_lookup").refinedValue(),
+                        toolSelection = KastToolSelection.admit("search_classes").refinedValue(),
+                        roots = CanonicalRootDiscoverer { CanonicalRootDiscovery.Discovered(CanonicalRoot(cwd)) },
+                        ideClient =
+                            ExistingIdeClient { _, operation ->
+                                operations += operation
+                                hostRejection()
+                            },
                     )
                     .refinedValue()
-            val qualification =
+            val qualified =
                 assertInstanceOf(
                     KastProviderQualification.Qualified::class.java,
                     KastProviderQualifier.qualify(options),
                 )
-            val broker = Broker.create(listOf(qualification.registration), BrokerLimits.defaults()).validatedValue()
+            val broker = Broker.create(listOf(qualified.registration), BrokerLimits.defaults()).validatedValue()
             val result =
                 broker.dispatch(
                     BrokerDispatchRequest(
-                        ToolAddress(namespace("kast"), toolName("symbol_lookup")),
-                        buildJsonObject { put("query", "Thing") },
+                        ToolAddress(namespace("kast"), toolName("search_classes")),
+                        searchInput(),
                         context(cwd),
                     )
                 )
-            assertInstanceOf(BrokerDispatch.Completed::class.java, result)
-            assertEquals(
-                listOf(listOf("symbol", "discover")),
-                executor.requests
-                    .filterNot { it.arguments.first().startsWith("--") }
-                    .map(BrokerProcessRequest::arguments),
-            )
-            assertEquals(
-                """{"query":"Thing"}""",
-                (executor.requests.last().input as BrokerProcessInput.Document).value,
-            )
-            assertEquals(1_080_000L, executor.requests.last().timeoutMillis)
+            assertInstanceOf(BrokerDispatch.Completed::class.java, result, result.toString())
+            val read = assertInstanceOf(ExistingIdeOperation.Read::class.java, operations.single())
+            assertEquals(ExistingIdeReadOperation.QUERY_RUN, read.kind)
+            assertTrue(executor.requests.all { it.arguments.first().startsWith("--") })
         }
 
     @Test

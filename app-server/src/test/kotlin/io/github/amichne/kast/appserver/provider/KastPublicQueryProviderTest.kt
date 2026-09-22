@@ -1,14 +1,17 @@
 package io.github.amichne.kast.appserver.provider
 
 import io.github.amichne.kast.appserver.core.*
+import io.github.amichne.kast.appserver.ide.*
 import io.github.amichne.kast.appserver.installedKastCatalogFixture
+import io.github.amichne.kast.appserver.query.PublicToolCanonical
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.Validation
 import io.github.amichne.kast.protocol.registry.*
+import io.github.amichne.kast.protocol.wire.presentation.*
 import java.nio.file.Files
 import java.nio.file.Path
-import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -19,22 +22,22 @@ import org.junit.jupiter.api.io.TempDir
 
 class KastPublicQueryProviderTest {
     @Test
-    fun `provider preserves schema-bound facade syntax without preparing lifecycle`(@TempDir root: Path) = runTest {
+    fun `provider preserves schema-bound facade syntax without preparing lifecycle`(@TempDir root: Path) = runBlocking {
         val executor = RecordingExecutor(capability())
         val broker = broker(root, executor)
         val raw = """{"class_name":"Order","name_match":null,"scope":null}"""
         assertTrue(broker.dispatch(request(root, PublicToolIdentity.SEARCH_CLASSES, raw)) is BrokerDispatch.Completed)
-        val calls = executor.requests.filter { it.arguments == listOf("tool", "search_classes") }
-        assertEquals(1, calls.size)
-        val sent = Json.parseToJsonElement((calls.single().input as BrokerProcessInput.Document).value)
-        val parsed = PublicToolContract.admit(PublicToolIdentity.SEARCH_CLASSES, sent).refined()
-        assertEquals(PublicToolContract.encode(parsed), sent)
-        assertEquals(Json.parseToJsonElement(raw), sent)
-        assertTrue(executor.requests.none { it.arguments.first() in setOf("start", "index", "topology") })
+        val read = assertInstanceOf(ExistingIdeOperation.Read::class.java, executor.operations.single())
+        val parsed = PublicToolContract.admit(PublicToolIdentity.SEARCH_CLASSES, Json.parseToJsonElement(raw)).refined()
+        val expected =
+            canonicalCliRequestPreparers().queryRun.prepare((parsed.canonical as PublicToolCanonical.Query).request)
+                as OperationPreparation.Prepared
+        assertEquals(expected.request.document, read.request.document)
+        assertTrue(executor.requests.all { it.arguments.first().startsWith("--") })
     }
 
     @Test
-    fun `multiple search presentations bind distinct schemas to one operation`(@TempDir root: Path) = runTest {
+    fun `multiple search presentations bind distinct schemas to one operation`(@TempDir root: Path) = runBlocking {
         val executor = RecordingExecutor(capability())
         val broker = broker(root, executor)
         assertTrue(
@@ -64,14 +67,15 @@ class KastPublicQueryProviderTest {
                 )
             ) is BrokerDispatch.Rejected
         )
-        assertEquals(
-            listOf(listOf("tool", "search_classes"), listOf("tool", "search_functions")),
-            executor.requests.filter { it.arguments.first() == "tool" }.map { it.arguments },
+        assertEquals(2, executor.operations.size)
+        assertTrue(
+            executor.operations.all { it is ExistingIdeOperation.Read && it.kind == ExistingIdeReadOperation.QUERY_RUN }
         )
+        assertTrue(executor.requests.all { it.arguments.first().startsWith("--") })
     }
 
     @Test
-    fun `invalid controls and lexical paths fail before semantic invocation`(@TempDir root: Path) = runTest {
+    fun `invalid controls and lexical paths fail before semantic invocation`(@TempDir root: Path) = runBlocking {
         val executor = RecordingExecutor(capability())
         val broker = broker(root, executor)
         listOf(
@@ -100,26 +104,27 @@ class KastPublicQueryProviderTest {
     }
 
     @Test
-    fun `qualification rejects drifted schema old catalog and cross-tool invocation`(@TempDir root: Path) = runTest {
-        val schema = capability()
-        val invalid =
-            listOf(
-                capability(driftSchema = true),
-                schema.replace("\"schemaVersion\":13", "\"schemaVersion\":10"),
-                schema.replace(
-                    "\"command\":[\"tool\",\"search_classes\"]",
-                    "\"command\":[\"tool\",\"search_functions\"]",
-                ),
-            )
-        invalid.forEach { input ->
-            val executor = RecordingExecutor(input)
-            assertEquals(
-                KastProviderQualification.Rejected(KastQualificationFailure.SCHEMA_INCOMPATIBLE),
-                KastProviderQualifier.qualify(options(root, executor)),
-            )
-            assertEquals(0, executor.requests.count { it.arguments.first() == "tool" })
+    fun `qualification rejects drifted schema old catalog and cross-tool invocation`(@TempDir root: Path) =
+        runBlocking {
+            val schema = capability()
+            val invalid =
+                listOf(
+                    capability(driftSchema = true),
+                    schema.replace("\"schemaVersion\":13", "\"schemaVersion\":10"),
+                    schema.replace(
+                        "\"command\":[\"tool\",\"search_classes\"]",
+                        "\"command\":[\"tool\",\"search_functions\"]",
+                    ),
+                )
+            invalid.forEach { input ->
+                val executor = RecordingExecutor(input)
+                assertEquals(
+                    KastProviderQualification.Rejected(KastQualificationFailure.SCHEMA_INCOMPATIBLE),
+                    KastProviderQualifier.qualify(options(root, executor)),
+                )
+                assertEquals(0, executor.requests.count { it.arguments.first() == "tool" })
+            }
         }
-    }
 
     private suspend fun broker(root: Path, executor: RecordingExecutor): Broker {
         val qualified = KastProviderQualifier.qualify(options(root, executor))
@@ -140,7 +145,20 @@ class KastPublicQueryProviderTest {
         val executable = root.resolve("kast")
         Files.writeString(executable, "#!/bin/sh\nexit 0\n")
         check(executable.toFile().setExecutable(true))
-        return KastProviderOptions.admit(executable, root.toRealPath(), executor).refined()
+        return KastProviderOptions.admit(
+                executable,
+                root.toRealPath(),
+                executor,
+                roots = CanonicalRootDiscoverer { CanonicalRootDiscovery.Discovered(CanonicalRoot(root.toRealPath())) },
+                ideClient =
+                    ExistingIdeClient { _, operation ->
+                        executor.operations += operation
+                        ExistingIdeExchange.HostRejected(
+                            CanonicalJsonDocument.generated(HostRejection.serializer()).create(HostRejection())
+                        )
+                    },
+            )
+            .refined()
     }
 
     private fun request(root: Path, identity: PublicToolIdentity, input: String) =
@@ -150,8 +168,12 @@ class KastPublicQueryProviderTest {
             BrokerInvocationContext.admit("query-thread", "query-turn", "query-call", root.toRealPath()).refined(),
         )
 
+    @Serializable
+    private data class HostRejection(val type: String = "HOST_REJECTED", val failure: String = "DIRTY_DOCUMENTS")
+
     private class RecordingExecutor(private val schema: String) : BrokerProcessExecutor {
         val requests = mutableListOf<BrokerProcessRequest>()
+        val operations = mutableListOf<ExistingIdeOperation>()
 
         override suspend fun execute(request: BrokerProcessRequest): BrokerProcessExecution {
             requests += request
@@ -187,7 +209,7 @@ class KastPublicQueryProviderTest {
                                     }
                                 )
                             else tool.inputSchema,
-                        outputSchema = json.encodeToJsonElement(FacadeOutputSchema()),
+                        outputSchema = tool.outputSchema,
                     )
                 }
         return json.encodeToString(

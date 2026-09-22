@@ -195,6 +195,13 @@ internal sealed interface InstalledBrokerServerConfiguration {
                             processExecutor,
                             toolSelection = toolSelection,
                             readLimits = configuration.readLimits,
+                            ideClient =
+                                io.github.amichne.kast.appserver.ide.ExistingIdeSocketClient(
+                                    canonicalUserHome,
+                                    configuration.readLimits,
+                                ),
+                            lifecycleClient =
+                                installedWorkspaceLifecycleClient(canonicalUserHome, configuration.selectedIdeHome),
                         )
                 ) {
                     is Refinement.Refined -> admission.value

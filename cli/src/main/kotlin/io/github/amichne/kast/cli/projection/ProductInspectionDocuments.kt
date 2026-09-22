@@ -1,14 +1,14 @@
 package io.github.amichne.kast.cli.projection
 
-import io.github.amichne.kast.cli.CanonicalRootDiscovery
-import io.github.amichne.kast.cli.CanonicalRootFailure
-import io.github.amichne.kast.cli.CliJsonDocument
+import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
+import io.github.amichne.kast.appserver.ide.CanonicalRootFailure
 import io.github.amichne.kast.protocol.contract.KastPluginVersion
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 internal object ProductInspectionDocuments {
-    fun complete(version: KastPluginVersion, workspace: CanonicalRootDiscovery): CliJsonDocument =
+    fun complete(version: KastPluginVersion, workspace: CanonicalRootDiscovery): CanonicalJsonDocument =
         factory.create(
             ProductInspectionDocument(
                 "product.inspect",
@@ -37,4 +37,4 @@ private sealed interface WorkspaceDocument {
     @Serializable @SerialName("rejected") data class Rejected(val failure: CanonicalRootFailure) : WorkspaceDocument
 }
 
-private val factory = CliJsonDocument.generated(ProductInspectionDocument.serializer())
+private val factory = CanonicalJsonDocument.generated(ProductInspectionDocument.serializer())

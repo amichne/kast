@@ -6,6 +6,8 @@ resource: file://runtime/hosted
 tags: [runtime, protocol, dispatch]
 timestamp: 2026-09-16T00:00:00Z
 code_sources:
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastDirectInvocation.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastInvocationAdmission.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/BrokerLifecycleApprovals.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadCompletion.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDeadline.kt
@@ -26,8 +28,8 @@ code_sources:
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointProtocol.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReadBudgetAdmission.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeQuery.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeSocketClient.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeQuery.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastProvider.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/core/Broker.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/core/BrokerOperationEffect.kt
@@ -46,7 +48,7 @@ code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexPlanApprovalProjection.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/HostedPlanApprovalGateway.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/HostedChangeCliInput.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/HostedChangeEvidence.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedChangeEvidence.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedResponse.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSemanticServices.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeFailure.kt
@@ -97,8 +99,10 @@ successful canonical payload.
 App Server provider qualification requires projection version 13 and its exact
 operation schemas and declared default budgets. Canonical registry input aliases
 resolve to the selected preferred tool route; omitted tools and incompatible
-catalog bindings reject before provider invocation. Invocation continues through the configured CLI
-process with admitted output and elapsed-time settings. `selectCliRuntimePath` now selects the seven existing-IDE reads before
+catalog bindings reject before provider invocation. Provider invocation uses the App Server-owned
+IDEA socket client directly, with canonical admission and admitted output and elapsed-time settings.
+Approval preparation uses the same direct client; exact approval binding precedes effects.
+Pure request preparation and outcome projection are shared from `protocol:wire`. `selectCliRuntimePath` now selects the seven existing-IDE reads before
 installed bootstrap in `KastCliMain`; saved read settings are admitted before the socket is opened. Invalid settings and missing hosts remain distinct rejections. The
 [native acceptance review](../../docs/reviews/live-semantic-read-acceptance.md)
 records the final distribution's complete/qualified native matrix and a successful
@@ -127,7 +131,7 @@ the admitted endpoint owner.
 
 See [protocol](../modules/protocol.md) and [operation outcomes](../contracts/operation-outcomes.md).
 
-The current [public tool contracts](../contracts/public-tools.md) distinguish presentation identity from canonical operation identity. Three ordinary searches and deferred `query_symbols` share `query.run`; `check_diagnostics` shares `diagnostic.check`. Private admission retains each tool's schema identity and typed syntax through its exact CLI binding. The `tool` command family uses the existing-IDE read path. Operation effects, budgets, reference authority and exhaustive outcomes remain with their existing owners.
+The current [public tool contracts](../contracts/public-tools.md) distinguish presentation identity from canonical operation identity. Three ordinary searches and deferred `query_symbols` share `query.run`; `check_diagnostics` shares `diagnostic.check`. Private admission retains each tool's schema identity and typed syntax through canonical request preparation. The `tool` command family uses the existing-IDE read path. Operation effects, budgets, reference authority and exhaustive outcomes remain with their existing owners.
 
 The broker validates each encoded provider result against its qualified output
 schema before presentation. Output-contract rejection retains a deduplicated set

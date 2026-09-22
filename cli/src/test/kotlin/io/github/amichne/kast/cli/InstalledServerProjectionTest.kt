@@ -6,11 +6,12 @@ import com.networknt.schema.SpecificationVersion
 import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
-import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.registry.HostedOperationProjection
 import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
+import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -486,7 +487,7 @@ class InstalledServerProjectionTest {
             .jsonArray
             .map(JsonElement::jsonObject)
 
-    private fun InstalledSchemaConstruction.constructedDocument(): CliJsonDocument =
+    private fun InstalledSchemaConstruction.constructedDocument(): CanonicalJsonDocument =
         when (this) {
             is InstalledSchemaConstruction.Constructed -> document
             is InstalledSchemaConstruction.Rejected -> error(failure)

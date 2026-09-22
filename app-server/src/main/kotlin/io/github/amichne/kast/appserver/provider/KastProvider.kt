@@ -24,7 +24,6 @@ import io.github.amichne.kast.appserver.schema.JsonDomainDefinition
 import io.github.amichne.kast.appserver.schema.NetworkntJsonSchemaCompiler
 import io.github.amichne.kast.appserver.schema.ValidatedJsonValue
 import io.github.amichne.kast.appserver.schema.canonicalJson
-import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.RefinementDefinition
@@ -48,8 +47,6 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.encodeToJsonElement
-import kotlinx.serialization.json.jsonObject
 
 internal enum class KastProviderOptionsFailure {
     EXECUTABLE_UNAVAILABLE,
@@ -65,6 +62,9 @@ private constructor(
     val qualificationTimeoutMillis: Long,
     val toolSelection: KastToolSelection,
     val readLimits: ReadLimits,
+    val ideClient: io.github.amichne.kast.appserver.ide.ExistingIdeClient,
+    val roots: io.github.amichne.kast.appserver.ide.CanonicalRootDiscoverer,
+    val lifecycleClient: io.github.amichne.kast.appserver.ide.WorkspaceLifecycleClient,
 ) {
     companion object {
         internal fun admit(
@@ -74,6 +74,15 @@ private constructor(
             qualificationTimeoutMillis: Long = OperationExecutionBudget.LOCAL_QUALIFICATION.value,
             toolSelection: KastToolSelection = KastToolSelection.defaults(),
             readLimits: ReadLimits = ReadLimits.Default,
+            ideClient: io.github.amichne.kast.appserver.ide.ExistingIdeClient =
+                io.github.amichne.kast.appserver.ide.ExistingIdeSocketClient(
+                    Path.of(System.getProperty("user.home")),
+                    readLimits,
+                ),
+            roots: io.github.amichne.kast.appserver.ide.CanonicalRootDiscoverer =
+                io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery,
+            lifecycleClient: io.github.amichne.kast.appserver.ide.WorkspaceLifecycleClient =
+                io.github.amichne.kast.appserver.ide.WorkspaceLifecycleClient.Unavailable,
         ): Refinement<KastProviderOptions, KastProviderOptionsFailure> {
             val admittedExecutable =
                 when (val admission = BrokerExecutable.admit(executable)) {
@@ -95,6 +104,9 @@ private constructor(
                     qualificationTimeoutMillis,
                     toolSelection,
                     readLimits,
+                    ideClient,
+                    roots,
+                    lifecycleClient,
                 )
             )
         }
@@ -514,99 +526,14 @@ internal object KastProviderQualifier {
     private val boundaryJson = Json { ignoreUnknownKeys = true }
 }
 
-internal class KastRuntime(private val options: KastProviderOptions) {
+internal class KastRuntime(options: KastProviderOptions) {
+    private val direct = KastDirectInvocation(options)
+
     internal suspend fun invoke(
         tool: QualifiedKastTool,
         input: KastInvocationInput,
         context: io.github.amichne.kast.appserver.core.BrokerInvocationContext,
-    ): ProviderCall<KastInvocationOutput> {
-        val arguments =
-            when (val encoded = input.encodeFor(tool)) {
-                is Refinement.Refined -> encoded.value
-                is Refinement.Rejected -> return ProviderCall.Rejected(ProviderFailureCode.UNEXPECTED_FAILURE)
-            }
-        val invocationTransport =
-            when (val admitted = KastInvocationTransport.prepare(tool, arguments, context)) {
-                is Refinement.Refined -> admitted.value
-                is Refinement.Rejected -> return ProviderCall.Rejected(admitted.failure)
-            }
-        val requestInput =
-            when (
-                val admission =
-                    BrokerProcessInput.Document.admit(invocationTransport.document.toString(), options.readLimits)
-            ) {
-                is Refinement.Refined -> admission.value
-                is Refinement.Rejected -> return ProviderCall.Rejected(ProviderFailureCode.UNEXPECTED_FAILURE)
-            }
-        val request =
-            when (
-                val admission =
-                    BrokerProcessRequest.admit(
-                        executable = options.executable,
-                        arguments = invocationTransport.command,
-                        workingDirectory = context.workingDirectory,
-                        maximumOutputBytes = options.readLimits[ReadLimitParameter.PROVIDER_OUTPUT_BYTES].value,
-                        timeoutMillis =
-                            options.readLimits[
-                                    when (tool.executionBudget) {
-                                        OperationExecutionBudget.SEMANTIC_READ ->
-                                            ReadLimitParameter.PROVIDER_INVOCATION_MILLIS
-                                        OperationExecutionBudget.GRAPH_BUILD ->
-                                            ReadLimitParameter.PROVIDER_GRAPH_INVOCATION_MILLIS
-                                    }]
-                                .value
-                                .toLong(),
-                        input = requestInput,
-                        limits = options.readLimits,
-                    )
-            ) {
-                is Refinement.Refined -> admission.value
-                is Refinement.Rejected -> return ProviderCall.Rejected(ProviderFailureCode.UNEXPECTED_FAILURE)
-            }
-        return outcome(options.processExecutor.execute(request), context)
-    }
-
-    private fun outcome(
-        execution: BrokerProcessExecution,
-        context: io.github.amichne.kast.appserver.core.BrokerInvocationContext,
-    ): ProviderCall<KastInvocationOutput> {
-        val completed =
-            execution as? BrokerProcessExecution.Completed
-                ?: return ProviderCall.Rejected(
-                    (execution as BrokerProcessExecution.Rejected).failure.providerFailureCode()
-                )
-        val raw = if (completed.exitCode == 0) completed.stdout else completed.stderr
-        val payload =
-            try {
-                Json.parseToJsonElement(raw)
-            } catch (_: SerializationException) {
-                null
-            } catch (_: IllegalArgumentException) {
-                null
-            } ?: return ProviderCall.Rejected(ProviderFailureCode.MALFORMED_KAST_OUTPUT)
-        val document =
-            if (completed.exitCode == 0) invocationJson.encodeToJsonElement(KastCompletedDocument(payload)).jsonObject
-            else invocationJson.encodeToJsonElement(KastRejectedDocument(payload)).jsonObject
-        return ProviderCall.Completed(
-            KastInvocationOutput(
-                document,
-                success = completed.exitCode == 0 && !payload.isHostedReadRejection(),
-                observerDirectory = context.workingDirectory,
-            )
-        )
-    }
-
-    private companion object {
-        const val MAXIMUM_OUTPUT_BYTES = BrokerOperationalLimits.maximumKastOutputBytes
-    }
-}
-
-/** Hosted admission can fail before canonical read evidence exists, with a successful process exit. */
-private fun JsonElement.isHostedReadRejection(): Boolean {
-    val document = this as? JsonObject ?: return false
-    return document["type"] == JsonPrimitive("HOST_REJECTED") ||
-        document["outcome"] == JsonPrimitive("rejected") ||
-        document["status"] == JsonPrimitive("rejected")
+    ): ProviderCall<KastInvocationOutput> = direct.invoke(tool, input, context)
 }
 
 private sealed interface KastContractQualification {
@@ -673,12 +600,12 @@ internal data class KastInvocationOutput(
     val observerDirectory: CanonicalBrokerDirectory,
 )
 
-private val invocationJson = Json { encodeDefaults = true }
+internal val invocationJson = Json { encodeDefaults = true }
 
 /** The payload is opaque here; the owning operation output schema admits it before presentation. */
-@Serializable private data class KastCompletedDocument(val document: JsonElement, val status: String = "completed")
+@Serializable internal data class KastCompletedDocument(val document: JsonElement, val status: String = "completed")
 
 /** Diagnostic payloads are admitted by the installed rejection schema before presentation. */
-@Serializable private data class KastRejectedDocument(val diagnostic: JsonElement, val status: String = "rejected")
+@Serializable internal data class KastRejectedDocument(val diagnostic: JsonElement, val status: String = "rejected")
 
 private const val KAST_SERVER_PROJECTION_VERSION = 13

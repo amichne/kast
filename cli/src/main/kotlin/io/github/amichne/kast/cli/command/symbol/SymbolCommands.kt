@@ -5,10 +5,10 @@ import io.github.amichne.kast.cli.command.CliRequestDocumentInput
 import io.github.amichne.kast.cli.command.CommandFamily
 import io.github.amichne.kast.cli.command.KastCommandGroup
 import io.github.amichne.kast.cli.command.SemanticKastCommand
-import io.github.amichne.kast.cli.projection.CanonicalCliRequestPreparers
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
 import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalCliRequestPreparers
 
 internal fun symbolCommandGroup(
     preparers: CanonicalCliRequestPreparers,

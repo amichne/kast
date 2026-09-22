@@ -5,15 +5,16 @@ import com.networknt.schema.SchemaRegistry
 import com.networknt.schema.SpecificationVersion
 import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
-import io.github.amichne.kast.cli.projection.CanonicalQueryCliDocuments
-import io.github.amichne.kast.cli.projection.CanonicalReadCliDocuments
-import io.github.amichne.kast.cli.projection.CanonicalSourceReadCliDocuments
-import io.github.amichne.kast.cli.projection.CanonicalSymbolCliDocuments
-import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
 import io.github.amichne.kast.kernel.*
 import io.github.amichne.kast.protocol.contract.*
 import io.github.amichne.kast.protocol.contract.SourceQualifiedProgressDocument
 import io.github.amichne.kast.protocol.contract.SourceTerminalReasonDocument
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalReadCliDocuments
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalSourceReadCliDocuments
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalSymbolCliDocuments
+import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
+import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
 import io.github.amichne.kast.query.protocol.RelationPagingFixture
 import java.util.UUID
 import kotlinx.coroutines.test.runTest
@@ -563,11 +564,11 @@ class LiveReadOutputSchemaTest {
 
     @Serializable private data object UnusedMetadata
 
-    internal fun ProjectedCliOutcome.document(): JsonObject =
+    internal fun ProjectedOperationOutcome.document(): JsonObject =
         when (this) {
-                is ProjectedCliOutcome.Complete -> document
-                is ProjectedCliOutcome.Qualified -> document
-                is ProjectedCliOutcome.Rejected -> document
+                is ProjectedOperationOutcome.Complete -> document
+                is ProjectedOperationOutcome.Qualified -> document
+                is ProjectedOperationOutcome.Rejected -> document
             }
             .value
             .let(Json::parseToJsonElement)

@@ -2,8 +2,8 @@ package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
-import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
 import io.github.amichne.kast.protocol.registry.HostedOperationProjection
+import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement

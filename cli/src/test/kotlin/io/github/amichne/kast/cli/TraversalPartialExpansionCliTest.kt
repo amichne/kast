@@ -1,6 +1,5 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.cli.projection.CanonicalReadCliDocuments
 import io.github.amichne.kast.kernel.EvidenceBasis
 import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.EvidenceGeneration
@@ -17,6 +16,8 @@ import io.github.amichne.kast.protocol.contract.TraversalPartialExpansionDocumen
 import io.github.amichne.kast.protocol.contract.TraversalRecordDocument
 import io.github.amichne.kast.protocol.contract.TraversalRunQualification
 import io.github.amichne.kast.protocol.contract.TraversalRunResult
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalReadCliDocuments
+import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -54,7 +55,7 @@ class TraversalPartialExpansionCliTest {
                     )
                     .value(),
             )
-        val projected = CanonicalReadCliDocuments.projectTraversal(outcome) as ProjectedCliOutcome.Qualified
+        val projected = CanonicalReadCliDocuments.projectTraversal(outcome) as ProjectedOperationOutcome.Qualified
         val document = Json.parseToJsonElement(projected.document.value).jsonObject
         assertEquals("qualified", document.getValue("status").jsonPrimitive.content)
         val entry = document.getValue("partialExpansions").jsonArray.single().jsonObject

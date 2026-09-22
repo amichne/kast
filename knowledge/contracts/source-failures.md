@@ -17,7 +17,7 @@ code_sources:
   - path: source/service/src/main/kotlin/io/github/amichne/kast/source/service/SourceReadService.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReferenceStore.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/CanonicalReadRejectionSchemas.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/projection/CanonicalReadRejectedDocument.kt
+  - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/CanonicalReadRejectedDocument.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/SourceInputRejectionEvidence.kt
   - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/SourceInputRejectionTest.kt
   - path: cli/src/test/kotlin/io/github/amichne/kast/cli/SourceFailureMatrixTest.kt

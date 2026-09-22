@@ -23,6 +23,7 @@ abstract class CodexHostManifestArguments : CommandLineArgumentProvider {
 }
 
 plugins {
+    `java-test-fixtures`
     id("kast.kotlin-library")
     kotlin("plugin.serialization")
     id("kast.role.app-server")
@@ -40,6 +41,7 @@ dependencies {
     implementation(project(":distribution:managed"))
     implementation(project(":protocol:contract"))
     implementation(project(":protocol:registry"))
+    implementation(project(":protocol:wire"))
 }
 
 tasks.named<Test>("test") {

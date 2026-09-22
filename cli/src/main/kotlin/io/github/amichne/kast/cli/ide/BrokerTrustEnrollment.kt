@@ -2,8 +2,8 @@ package io.github.amichne.kast.cli.ide
 
 import io.github.amichne.kast.cli.CliBoundaryExitStatus
 import io.github.amichne.kast.cli.CliExit
-import io.github.amichne.kast.cli.CliJsonDocument
 import io.github.amichne.kast.cli.boundaryExit
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import java.nio.channels.FileChannel
 import java.nio.file.Files
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
@@ -221,7 +221,7 @@ internal fun executeBrokerTrustEnrollment(registrar: BrokerTrustRegistrar): CliE
     when (val result = registrar.enroll()) {
         is BrokerTrustResult.Complete ->
             CliExit.Complete(
-                CliJsonDocument.generated(BrokerTrustEnrollmentDocument.serializer())
+                CanonicalJsonDocument.generated(BrokerTrustEnrollmentDocument.serializer())
                     .create(BrokerTrustEnrollmentDocument(result.status))
             )
         is BrokerTrustResult.Rejected ->

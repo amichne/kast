@@ -1,15 +1,18 @@
 package io.github.amichne.kast.appserver.provider
 
 import io.github.amichne.kast.appserver.core.BrokerInvocationContext
+import io.github.amichne.kast.appserver.ide.*
 import io.github.amichne.kast.appserver.runtime.HostedChangeApprovalOperation
 import io.github.amichne.kast.appserver.runtime.HostedPlanApprovalFailure
 import io.github.amichne.kast.appserver.runtime.HostedPlanApprovalRequest
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
 import java.security.KeyPairGenerator
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -25,20 +28,22 @@ class KastHostedPlanApprovalGatewayTest {
     @Test
     fun `prepare projects only canonical plan identity and binds independent owner facts`(@TempDir home: Path) =
         runBlocking {
-            val requests = mutableListOf<BrokerProcessRequest>()
+            val requests = mutableListOf<ExistingIdeOperation>()
             val request = request(home)
             val gateway =
-                gateway(home) { process ->
-                    requests += process
-                    BrokerProcessExecution.Completed(0, response(home).toString(), "")
+                gateway(home) { _, operation ->
+                    requests += operation
+                    ExistingIdeExchange.Received(
+                        CanonicalJsonDocument.generated(JsonElement.serializer()).create(response(home))
+                    )
                 }
             val result = (gateway.prepare(request) as Refinement.Refined).value
             assertSame(request, result.request)
             assertEquals("a".repeat(64), result.subject.planIdentity)
             assertEquals("src/Main.kt", result.preview.path.value)
-            assertEquals(listOf("change", "apply", "--hosted-approval-prepare"), requests.single().arguments)
-            assertEquals(request.arguments.toString(), (requests.single().input as BrokerProcessInput.Document).value)
-            assertEquals(request.invocation.workingDirectory, requests.single().workingDirectory)
+            val prepared = assertInstanceOf(ExistingIdeOperation.ApprovalPreparation::class.java, requests.single())
+            assertEquals(HostedMutationOperation.CHANGE_APPLY, prepared.kind)
+            assertEquals("plan:${request.planIdentity}", prepared.identity.value)
         }
 
     @Test
@@ -61,10 +66,15 @@ class KastHostedPlanApprovalGatewayTest {
                     buildJsonObject {},
                 )
                 .forEach { response ->
-                    val gateway = gateway(home) { BrokerProcessExecution.Completed(0, response.toString(), "") }
+                    val gateway =
+                        gateway(home) { _, _ ->
+                            ExistingIdeExchange.Received(
+                                CanonicalJsonDocument.generated(JsonElement.serializer()).create(response)
+                            )
+                        }
                     assertInstanceOf(Refinement.Rejected::class.java, gateway.prepare(request(home)))
                 }
-            val gateway = gateway(home) { BrokerProcessExecution.Completed(2, normal.toString(), "private details") }
+            val gateway = gateway(home) { _, _ -> ExistingIdeExchange.Rejected(ExistingIdeFailure.TRANSPORT_REJECTED) }
             assertEquals(
                 Refinement.Rejected(HostedPlanApprovalFailure.PLAN_UNAVAILABLE),
                 gateway.prepare(request(home)),
@@ -75,9 +85,9 @@ class KastHostedPlanApprovalGatewayTest {
     fun `missing signing enrollment rejects before any process or prompt`(@TempDir home: Path) = runBlocking {
         var invoked = false
         val options =
-            options(home) {
+            options(home) { _, _ ->
                 invoked = true
-                BrokerProcessExecution.Rejected(BrokerProcessFailure.SPAWN_FAILED)
+                ExistingIdeExchange.Rejected(ExistingIdeFailure.TRANSPORT_REJECTED)
             }
         assertEquals(
             Refinement.Rejected(HostedPlanApprovalFailure.SIGNING_UNAVAILABLE),
@@ -119,7 +129,7 @@ class KastHostedPlanApprovalGatewayTest {
         )
     }
 
-    private fun gateway(home: Path, executor: BrokerProcessExecutor): KastHostedPlanApprovalGateway {
+    private fun gateway(home: Path, executor: ExistingIdeClient): KastHostedPlanApprovalGateway {
         val directory = Files.createDirectories(home.resolve(".kast/approval"))
         Files.setPosixFilePermissions(directory, PosixFilePermissions.fromString("rwx------"))
         val pair = KeyPairGenerator.getInstance("Ed25519").generateKeyPair()
@@ -130,11 +140,17 @@ class KastHostedPlanApprovalGatewayTest {
         return KastHostedPlanApprovalGateway(options(home, executor), home)
     }
 
-    private fun options(home: Path, executor: BrokerProcessExecutor): KastProviderOptions {
+    private fun options(home: Path, executor: ExistingIdeClient): KastProviderOptions {
         val executable = home.resolve("kast")
         Files.writeString(executable, "#!/bin/sh\nexit 0\n")
         executable.toFile().setExecutable(true)
-        return (KastProviderOptions.admit(executable.toRealPath(), home.toRealPath(), executor) as Refinement.Refined)
+        return (KastProviderOptions.admit(
+                executable.toRealPath(),
+                home.toRealPath(),
+                processExecutor = BrokerProcessExecutor { error("Approval preparation must never spawn a process") },
+                roots = CanonicalRootDiscoverer { CanonicalRootDiscovery.Discovered(CanonicalRoot(home.toRealPath())) },
+                ideClient = executor,
+            ) as Refinement.Refined)
             .value
     }
 }

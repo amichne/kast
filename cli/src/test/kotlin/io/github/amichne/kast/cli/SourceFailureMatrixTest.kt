@@ -2,7 +2,6 @@ package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.cli.command.CliCommandParsing
 import io.github.amichne.kast.cli.command.CliRequestDocumentInput
-import io.github.amichne.kast.cli.projection.CanonicalSourceReadCliDocuments
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.AdmittedSourceReadRejection
@@ -38,6 +37,9 @@ import io.github.amichne.kast.protocol.contract.recoveryAction
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.protocol.wire.WireDecoding
 import io.github.amichne.kast.protocol.wire.WireEncoding
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalSourceReadCliDocuments
+import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
+import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -252,8 +254,8 @@ class SourceFailureMatrixTest {
         }
     }
 
-    private fun ProjectedCliOutcome.document(): JsonObject =
-        Json.parseToJsonElement((this as ProjectedCliOutcome.Rejected).document.value).jsonObject
+    private fun ProjectedOperationOutcome.document(): JsonObject =
+        Json.parseToJsonElement((this as ProjectedOperationOutcome.Rejected).document.value).jsonObject
 
     private fun JsonObject.changed(key: String, value: JsonElement): JsonObject =
         with(LiveReadOutputSchemaTest()) { this@changed.with(key, value) }
@@ -262,7 +264,7 @@ class SourceFailureMatrixTest {
         when (
             val built =
                 io.github.amichne.kast.cli.command.CliCommandGraphFactory.create(
-                    io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers()
+                    io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers()
                 )
         ) {
             is io.github.amichne.kast.cli.command.CliCommandGraphConstruction.Created -> built.factory

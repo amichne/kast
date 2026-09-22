@@ -1,6 +1,11 @@
 package io.github.amichne.kast.cli.ide
 
-import io.github.amichne.kast.cli.CanonicalRoot
+import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
+import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
+import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
+import io.github.amichne.kast.appserver.ide.ExistingIdeQualifiedClassName
+import io.github.amichne.kast.appserver.ide.ExistingIdeSocketClient
+import io.github.amichne.kast.appserver.ide.canonicalRootFixture
 import java.net.StandardProtocolFamily
 import java.net.UnixDomainSocketAddress
 import java.nio.channels.Channels
@@ -22,7 +27,7 @@ class ExistingIdeSocketTest {
     fun `native framed client accepts the exact host and rejects oversized and invalid UTF8 responses`() {
         for (scenario in listOf("valid", "supertype", "oversized", "utf8", "truncated")) {
             val home = Files.createTempDirectory(Path.of("/tmp").toRealPath(), "kc-")
-            val root = CanonicalRoot(home)
+            val root = canonicalRootFixture(home)
             val digest =
                 MessageDigest.getInstance("SHA-256").digest(home.toString().toByteArray()).take(16).joinToString("") {
                     "%02x".format(it)

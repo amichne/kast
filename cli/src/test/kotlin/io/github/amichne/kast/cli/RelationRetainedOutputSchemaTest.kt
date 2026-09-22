@@ -1,6 +1,5 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.cli.projection.CanonicalReadCliDocuments
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
@@ -11,6 +10,7 @@ import io.github.amichne.kast.protocol.contract.RelationKnownMinimumDocument
 import io.github.amichne.kast.protocol.contract.RelationLimitationDocument
 import io.github.amichne.kast.protocol.contract.RelationPreparedCoverageDocument
 import io.github.amichne.kast.protocol.contract.RelationReadQualification
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalReadCliDocuments
 import io.github.amichne.kast.query.protocol.RelationPagingFixture
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonNull

@@ -6,6 +6,8 @@ resource: file://runtime
 tags: [kotlin, runtime, server, indexer, cli]
 timestamp: 2026-09-16T00:00:00Z
 code_sources:
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastDirectInvocation.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastInvocationAdmission.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleApplication.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/WorkspaceStartupEnrollment.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/BrokerPublicEndpoint.kt
@@ -37,8 +39,8 @@ code_sources:
     symbols: [HostedPeerTermination, dispatchUntilPeerTermination]
   - path: query/protocol/build.gradle.kts
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeCli.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeSocketClient.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeQuery.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeQuery.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastProvider.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/ide/IdeCommands.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeCoordinator.kt
@@ -62,7 +64,7 @@ The plugin archive contains the semantic contracts, services, IntelliJ adapters 
 
 The CLI admits local metadata and broker configuration separately from its existing-IDE semantic route. All canonical reads, public intent tools and supported changes use the plugin. A missing host rejects. Bare `kast` reports the product version, existing-IDE authority and passive root discovery; `kast ide status` observes the project endpoint. Retired `start` and `stop` commands cannot launch a worker.
 
-App Server owns persistent sessions, the invocation journal, controller approvals, provider qualification and workspace lanes. `CoordinatorControl` provides bounded owner-correlated status with zero worker reservations and rejects retired worker demands. New Codex threads automatically persist an unregistered canonical working directory (or explicit containing root) before binding. Existing containing registrations are reused. Registration preserves closed failures and emits bounded, payload-free startup evidence. Resume and invocation checks remain read-only. Workspace enrollment remains routing data. It grants no importer or worker capability. Provider calls continue through the exact qualified CLI contract.
+App Server owns persistent sessions, the invocation journal, controller approvals, provider qualification and workspace lanes. `CoordinatorControl` provides bounded owner-correlated status with zero worker reservations and rejects retired worker demands. New Codex threads automatically persist an unregistered canonical working directory (or explicit containing root) before binding. Existing containing registrations are reused. Registration preserves closed failures and emits bounded, payload-free startup evidence. Resume and invocation checks remain read-only. Workspace enrollment remains routing data. It grants no importer or worker capability. Provider qualification still verifies the installed CLI catalog. Semantic provider calls and approval preparation then use the App Server-owned IDEA client directly, preserving canonical request admission, finite failures, root/host binding and operation output validation. Pure request and result projection lives in `protocol:wire`.
 
 Planning stores immutable live plans; applying and recovering require the exact controller-approved plan and current native admission. `kast ide trust-broker` remains the explicit trust-enrollment effect. Read [request dispatch](../flows/request-dispatch.md) and [change lifecycle](../flows/change-lifecycle.md) for the complete boundaries.
 
@@ -134,4 +136,4 @@ and mutation planning do not use this capability. The
 [query protocol](query-protocol.md#automatic-acquisition-for-fresh-reads) specifies
 the identity checks and returned handle metadata.
 
-The plugin additionally owns one `IdeLifecycleApplication` service and user-scoped control endpoint per selected graphical application home. It remains available with zero projects, advertises actual build, host incarnation and capabilities, and retains at most 256 operation records. The endpoint reuses existing ownership and framed transport. Project semantic services remain project-scoped. The agent-only `workspace_lifecycle` tool and its private CLI transport expose inspect/open/present/sync/release/close/status. `request_user_close` uses the existing controller lease and enrolled signing authority to approve one exact target; session-wide approval is insufficient. No semantic read acquires this capability.
+The plugin additionally owns one `IdeLifecycleApplication` service and user-scoped control endpoint per selected graphical application home. It remains available with zero projects, advertises actual build, host incarnation and capabilities, and retains at most 256 operation records. The endpoint reuses existing ownership and framed transport. Project semantic services remain project-scoped. The agent-only `workspace_lifecycle` tool calls the App Server-owned lifecycle client directly and exposes inspect/open/present/sync/release/close/status. `request_user_close` uses the existing controller lease and enrolled signing authority to approve one exact target; session-wide approval is insufficient. No semantic read acquires this capability.

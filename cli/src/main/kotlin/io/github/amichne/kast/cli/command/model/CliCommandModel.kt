@@ -1,13 +1,14 @@
 package io.github.amichne.kast.cli.command
 
 import com.github.ajalt.clikt.core.BaseCliktCommand
+import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
 import io.github.amichne.kast.appserver.query.explanation
-import io.github.amichne.kast.cli.CliProjectionFailure
-import io.github.amichne.kast.cli.CliProjectionPreparation
-import io.github.amichne.kast.cli.CliRequestPreparer
-import io.github.amichne.kast.cli.PreparedCliRequest
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.OperationRequest
+import io.github.amichne.kast.protocol.wire.presentation.OperationPreparation
+import io.github.amichne.kast.protocol.wire.presentation.OperationProjectionFailure
+import io.github.amichne.kast.protocol.wire.presentation.OperationRequestPreparer
+import io.github.amichne.kast.protocol.wire.presentation.PreparedOperationRequest
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -72,12 +73,12 @@ sealed interface CliAction {
         data object TrustBroker : Local
 
         data class ExistingIde(
-            val operation: io.github.amichne.kast.cli.ide.ExistingIdeOperation,
+            val operation: io.github.amichne.kast.appserver.ide.ExistingIdeOperation,
             val root: io.github.amichne.kast.cli.command.ide.ExistingIdeRootSelection,
         ) : Local
     }
 
-    data class Semantic(val request: PreparedCliRequest) : CliAction
+    data class Semantic(val request: PreparedOperationRequest) : CliAction
 }
 
 /** Closed domain failures produced after Clikt has refined individual option values. */
@@ -121,7 +122,7 @@ internal sealed interface CliActionResolution : CliNodeResolution {
 
     data class UsageRejected(val failure: CliUsageFailure) : CliActionResolution
 
-    data class ProjectionRejected(val failure: CliProjectionFailure) : CliActionResolution
+    data class ProjectionRejected(val failure: OperationProjectionFailure) : CliActionResolution
 }
 
 /** One Clikt node whose only result is a typed CLI action resolution. */
@@ -147,7 +148,7 @@ internal class SemanticKastCommand<Request : OperationRequest>(
     private val description: String,
     private val serializer: KSerializer<Request>,
     private val requestInput: CliRequestDocumentInput,
-    private val preparer: CliRequestPreparer<Request>,
+    private val preparer: OperationRequestPreparer<Request>,
 ) : KastCommand(name) {
     override fun help(context: com.github.ajalt.clikt.core.Context): String = description
 
@@ -204,9 +205,8 @@ internal class SemanticKastCommand<Request : OperationRequest>(
 
     private fun prepare(request: Request): CliActionResolution =
         when (val preparation = preparer.prepare(request)) {
-            is CliProjectionPreparation.Prepared ->
-                CliActionResolution.Selected(CliAction.Semantic(preparation.request))
-            is CliProjectionPreparation.Rejected -> CliActionResolution.ProjectionRejected(preparation.failure)
+            is OperationPreparation.Prepared -> CliActionResolution.Selected(CliAction.Semantic(preparation.request))
+            is OperationPreparation.Rejected -> CliActionResolution.ProjectionRejected(preparation.failure)
         }
 }
 

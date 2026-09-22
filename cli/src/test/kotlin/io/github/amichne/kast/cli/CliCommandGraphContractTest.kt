@@ -1,5 +1,6 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.appserver.ide.CanonicalRootDiscoverer
 import io.github.amichne.kast.cli.command.CliAction
 import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
@@ -7,7 +8,6 @@ import io.github.amichne.kast.cli.command.CliCommandParsing
 import io.github.amichne.kast.cli.command.CliRequestDocumentInput
 import io.github.amichne.kast.cli.projection.CliLocalMetadata
 import io.github.amichne.kast.cli.projection.CliLocalMetadataAdmission
-import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ChangeIntentDocument
 import io.github.amichne.kast.protocol.contract.ChangePlanRequest
@@ -23,6 +23,8 @@ import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.protocol.wire.WireDecoding
 import io.github.amichne.kast.protocol.wire.WireRequestAdmission
 import io.github.amichne.kast.protocol.wire.WireRequestEnvelope
+import io.github.amichne.kast.protocol.wire.presentation.PreparedOperationRequest
+import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
 import java.nio.file.Path
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
@@ -201,7 +203,7 @@ class CliCommandGraphContractTest {
         argv: List<String>,
         serializer: KSerializer<Request>,
         request: Request,
-    ): PreparedCliRequest {
+    ): PreparedOperationRequest {
         val document = Json {
             encodeDefaults = true
             classDiscriminator = "type"
@@ -219,7 +221,7 @@ class CliCommandGraphContractTest {
         return (action as CliAction.Semantic).request
     }
 
-    private fun PreparedCliRequest.admittedWireRequest() =
+    private fun PreparedOperationRequest.admittedWireRequest() =
         when (val admission = WireRequestEnvelope.admit(document)) {
             is WireRequestAdmission.Admitted -> admission.request
             is WireRequestAdmission.Rejected -> error("wire request: ${admission.failure}")

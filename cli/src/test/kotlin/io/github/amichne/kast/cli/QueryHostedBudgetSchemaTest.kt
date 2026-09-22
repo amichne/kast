@@ -1,6 +1,5 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.cli.projection.CanonicalQueryCliDocuments
 import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.ResultLimit
@@ -15,6 +14,7 @@ import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
 import io.github.amichne.kast.protocol.contract.QueryRunQualification
 import io.github.amichne.kast.protocol.contract.QueryRunResult
 import io.github.amichne.kast.protocol.contract.QueryTerminalReasonDocument
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
 import io.github.amichne.kast.query.protocol.RelationPagingFixture
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonPrimitive

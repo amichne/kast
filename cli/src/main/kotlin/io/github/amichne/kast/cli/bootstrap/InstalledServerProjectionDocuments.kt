@@ -3,7 +3,6 @@ package io.github.amichne.kast.cli
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.cli.bootstrap.HostedRejectionSchemas
 import io.github.amichne.kast.cli.command.CliCommandSurface
-import io.github.amichne.kast.cli.projection.cliName
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ChangeApplyRequest
 import io.github.amichne.kast.protocol.contract.ChangePlanRequest
@@ -25,6 +24,7 @@ import io.github.amichne.kast.protocol.registry.HostedBindingCompleteness
 import io.github.amichne.kast.protocol.registry.HostedOperationProjection
 import io.github.amichne.kast.protocol.registry.HostedToolLoading
 import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
+import io.github.amichne.kast.protocol.wire.presentation.cliName
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement

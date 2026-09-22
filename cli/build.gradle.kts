@@ -11,6 +11,8 @@ application {
 }
 
 dependencies {
+    testImplementation(testFixtures(project(":app-server")))
+    testImplementation(testFixtures(project(":protocol:wire")))
     testImplementation(project(":query:protocol"))
     testImplementation(testFixtures(project(":query:protocol")))
     implementation(libs.json.schema.validator)
