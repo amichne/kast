@@ -1,6 +1,6 @@
 package io.github.amichne.kast.cli.knowledge
 
-import io.github.amichne.kast.cli.CliJsonDocument
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import java.nio.file.Path
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
@@ -8,7 +8,7 @@ import kotlinx.serialization.Serializable
 private const val MAX_RESULTS = 20
 
 internal sealed interface KnowledgeLookup {
-    data class Complete(val document: CliJsonDocument) : KnowledgeLookup
+    data class Complete(val document: CanonicalJsonDocument) : KnowledgeLookup
 
     data class Rejected(val failure: KnowledgeLookupFailure) : KnowledgeLookup
 }
@@ -129,7 +129,7 @@ private fun <T> resourceResult(
     when (result) {
         is KnowledgeAdmission.Accepted ->
             KnowledgeLookup.Complete(
-                CliJsonDocument.generated(KnowledgeResourceDocument.serializer(serializer))
+                CanonicalJsonDocument.generated(KnowledgeResourceDocument.serializer(serializer))
                     .create(KnowledgeResourceDocument(resource = path.value, document = result.value))
             )
         is KnowledgeAdmission.Rejected -> KnowledgeLookup.Rejected(result.failure)
@@ -197,4 +197,4 @@ private data class KnowledgeResourceDocument<T>(
     val document: T,
 )
 
-private val searchFactory = CliJsonDocument.generated(KnowledgeSearchDocument.serializer())
+private val searchFactory = CanonicalJsonDocument.generated(KnowledgeSearchDocument.serializer())

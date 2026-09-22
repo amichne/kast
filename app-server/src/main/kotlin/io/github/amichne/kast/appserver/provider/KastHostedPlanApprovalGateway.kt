@@ -7,7 +7,6 @@ import io.github.amichne.kast.appserver.runtime.HostedPlanApprovalFailure
 import io.github.amichne.kast.appserver.runtime.HostedPlanApprovalGateway
 import io.github.amichne.kast.appserver.runtime.HostedPlanApprovalGrant
 import io.github.amichne.kast.appserver.runtime.HostedPlanApprovalRequest
-import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
 import kotlinx.coroutines.CoroutineDispatcher
@@ -29,41 +28,43 @@ internal class KastHostedPlanApprovalGateway(
             is Refinement.Rejected -> return available
             is Refinement.Refined -> Unit
         }
-        val input =
-            when (val admitted = BrokerProcessInput.Document.admit(request.arguments.toString(), options.readLimits)) {
-                is Refinement.Rejected -> return Refinement.Rejected(HostedPlanApprovalFailure.INVALID_REQUEST)
-                is Refinement.Refined -> admitted.value
-            }
-        val command =
-            listOf(
-                "change",
+        return kotlinx.coroutines.runInterruptible(ioDispatcher) {
+            val root =
+                when (val selected = options.roots.discover(request.invocation.workingDirectory.path)) {
+                    is io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery.Discovered -> selected.root
+                    is io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery.Rejected ->
+                        return@runInterruptible Refinement.Rejected(HostedPlanApprovalFailure.PLAN_UNAVAILABLE)
+                }
+            val identity =
+                when (
+                    val admitted =
+                        io.github.amichne.kast.appserver.ide.HostedPlanIdentity.parse("plan:${request.planIdentity}")
+                ) {
+                    is Refinement.Refined -> admitted.value
+                    is Refinement.Rejected ->
+                        return@runInterruptible Refinement.Rejected(HostedPlanApprovalFailure.INVALID_REQUEST)
+                }
+            val kind =
                 when (request.operation) {
-                    HostedChangeApprovalOperation.APPLY -> "apply"
-                    HostedChangeApprovalOperation.RECOVER -> "recover"
-                },
-                "--hosted-approval-prepare",
-            )
-        val process =
+                    HostedChangeApprovalOperation.APPLY ->
+                        io.github.amichne.kast.appserver.ide.HostedMutationOperation.CHANGE_APPLY
+                    HostedChangeApprovalOperation.RECOVER ->
+                        io.github.amichne.kast.appserver.ide.HostedMutationOperation.CHANGE_RECOVER
+                }
             when (
-                val admitted =
-                    BrokerProcessRequest.admit(
-                        executable = options.executable,
-                        arguments = command,
-                        workingDirectory = request.invocation.workingDirectory,
-                        maximumOutputBytes = options.readLimits[ReadLimitParameter.PROVIDER_OUTPUT_BYTES].value,
-                        timeoutMillis = options.qualificationTimeoutMillis,
-                        input = input,
-                        limits = options.readLimits,
+                val response =
+                    options.ideClient.query(
+                        root,
+                        io.github.amichne.kast.appserver.ide.ExistingIdeOperation.ApprovalPreparation(kind, identity),
                     )
             ) {
-                is Refinement.Rejected -> return Refinement.Rejected(HostedPlanApprovalFailure.UNAVAILABLE)
-                is Refinement.Refined -> admitted.value
+                is io.github.amichne.kast.appserver.ide.ExistingIdeExchange.Received ->
+                    KastHostedPlanChallengeDecoder.decode(request, response.document.value)
+                is io.github.amichne.kast.appserver.ide.ExistingIdeExchange.Rejected,
+                is io.github.amichne.kast.appserver.ide.ExistingIdeExchange.HostRejected,
+                is io.github.amichne.kast.appserver.ide.ExistingIdeExchange.Semantic ->
+                    Refinement.Rejected(HostedPlanApprovalFailure.PLAN_UNAVAILABLE)
             }
-        return when (val completed = options.processExecutor.execute(process)) {
-            is BrokerProcessExecution.Rejected -> Refinement.Rejected(HostedPlanApprovalFailure.PLAN_UNAVAILABLE)
-            is BrokerProcessExecution.Completed ->
-                if (completed.exitCode != 0) Refinement.Rejected(HostedPlanApprovalFailure.PLAN_UNAVAILABLE)
-                else KastHostedPlanChallengeDecoder.decode(request, completed.stdout)
         }
     }
 

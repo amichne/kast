@@ -1,6 +1,5 @@
 package io.github.amichne.kast.cli.projection
 
-import io.github.amichne.kast.cli.ProjectedCliOutcome
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
@@ -23,6 +22,8 @@ import io.github.amichne.kast.protocol.contract.TopologyCoverageSymbol
 import io.github.amichne.kast.protocol.contract.TopologyCoverageSymbolKind
 import io.github.amichne.kast.protocol.contract.TopologyCoverageWorkspaceEvidence
 import io.github.amichne.kast.protocol.contract.TopologyExtractionRejection
+import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
+import io.github.amichne.kast.protocol.wire.presentation.topologyBuildCliProjector
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -49,7 +50,7 @@ class TopologyBuildCliProjectorTest {
                             failure,
                         )
                     )
-                ) as ProjectedCliOutcome.Rejected
+                ) as ProjectedOperationOutcome.Rejected
 
             assertEquals(
                 "{\"operation\":\"topology.build\",\"status\":\"rejected\"," +
@@ -69,7 +70,7 @@ class TopologyBuildCliProjectorTest {
                         TopologyCoverageProjectionRejection.UNREPRESENTABLE_CONTENT_HASH
                     )
                 )
-            ) as ProjectedCliOutcome.Rejected
+            ) as ProjectedOperationOutcome.Rejected
 
         assertEquals(
             "{\"operation\":\"topology.build\",\"status\":\"rejected\"," +
@@ -128,7 +129,7 @@ class TopologyBuildCliProjectorTest {
         val projected =
             topologyBuildCliProjector.project(
                 OperationOutcome.Rejected(TopologyBuildRejection.CoverageIncomplete(failure))
-            ) as ProjectedCliOutcome.Rejected
+            ) as ProjectedOperationOutcome.Rejected
 
         val nodeJson =
             "{\"compilerIdentity\":\"${compilerEvidence.identity.value}\"," +
@@ -183,7 +184,7 @@ class TopologyBuildCliProjectorTest {
         val projected =
             topologyBuildCliProjector.project(
                 OperationOutcome.Rejected(TopologyBuildRejection.CoverageIncomplete(failure))
-            ) as ProjectedCliOutcome.Rejected
+            ) as ProjectedOperationOutcome.Rejected
 
         val first = projected.document.value.indexOf("\"compilerIdentity\":\"a\",\"file\":\"b\\u0000c\"")
         val second = projected.document.value.indexOf("\"compilerIdentity\":\"a\\u0000b\",\"file\":\"c\"")

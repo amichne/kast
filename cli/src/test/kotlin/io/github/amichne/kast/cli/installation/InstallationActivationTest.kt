@@ -1,6 +1,6 @@
 package io.github.amichne.kast.cli.installation
 
-import io.github.amichne.kast.cli.CliJsonDocument
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlinx.serialization.json.Json
@@ -105,7 +105,9 @@ class InstallationActivationTest {
         )
         assertFalse("enable-app-server" in report.changes)
         val encoded =
-            Json.parseToJsonElement(CliJsonDocument.generated(InstallationReport.serializer()).create(report).value)
+            Json.parseToJsonElement(
+                    CanonicalJsonDocument.generated(InstallationReport.serializer()).create(report).value
+                )
                 .jsonObject
         assertEquals("installation.install", encoded.getValue("operation").jsonPrimitive.content)
         assertEquals("installed-activation-pending", encoded.getValue("status").jsonPrimitive.content)

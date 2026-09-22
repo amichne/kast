@@ -3,10 +3,10 @@ package io.github.amichne.kast.cli.command.tool
 import com.github.ajalt.clikt.core.subcommands
 import io.github.amichne.kast.appserver.query.PublicToolCanonical
 import io.github.amichne.kast.appserver.query.PublicToolRequestSerializer
-import io.github.amichne.kast.cli.CliRequestPreparer
 import io.github.amichne.kast.cli.command.*
-import io.github.amichne.kast.cli.projection.CanonicalCliRequestPreparers
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalCliRequestPreparers
+import io.github.amichne.kast.protocol.wire.presentation.OperationRequestPreparer
 
 internal class CliToolCommandSurface(val identity: PublicToolIdentity, val usage: String)
 
@@ -27,7 +27,7 @@ internal fun publicToolCommands(
                 serializer = PublicToolRequestSerializer(identity),
                 requestInput = input,
                 preparer =
-                    CliRequestPreparer { request ->
+                    OperationRequestPreparer { request ->
                         when (val canonical = request.canonical) {
                             is PublicToolCanonical.Query -> preparers.queryRun.prepare(canonical.request)
                             is PublicToolCanonical.Diagnostics -> preparers.diagnosticCheck.prepare(canonical.request)

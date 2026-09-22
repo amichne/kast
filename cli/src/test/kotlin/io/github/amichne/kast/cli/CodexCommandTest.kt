@@ -6,11 +6,12 @@ import io.github.amichne.kast.appserver.AppServerManager
 import io.github.amichne.kast.appserver.host.CodexClientLaunch
 import io.github.amichne.kast.appserver.host.CodexClientLaunchRun
 import io.github.amichne.kast.appserver.host.CodexClientLauncher
+import io.github.amichne.kast.appserver.ide.CanonicalRootDiscoverer
 import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
 import io.github.amichne.kast.cli.projection.CliLocalMetadata
 import io.github.amichne.kast.cli.projection.CliLocalMetadataAdmission
-import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
+import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
 import java.nio.file.Path
 import kotlinx.serialization.json.put
 import org.junit.jupiter.api.Assertions.assertEquals

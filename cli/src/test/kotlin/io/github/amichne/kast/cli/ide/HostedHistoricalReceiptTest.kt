@@ -1,8 +1,14 @@
 package io.github.amichne.kast.cli.ide
 
-import io.github.amichne.kast.cli.CanonicalRoot
-import io.github.amichne.kast.cli.CliProjectionPreparation
-import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
+import io.github.amichne.kast.appserver.ide.ExistingIdeDescriptor
+import io.github.amichne.kast.appserver.ide.ExistingIdeDocuments
+import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
+import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
+import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
+import io.github.amichne.kast.appserver.ide.HostedApprovalAssertion
+import io.github.amichne.kast.appserver.ide.HostedMutationOperation
+import io.github.amichne.kast.appserver.ide.HostedPlanIdentity
+import io.github.amichne.kast.appserver.ide.canonicalRootFixture
 import io.github.amichne.kast.kernel.EvidenceBasis
 import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.EvidenceGeneration
@@ -26,6 +32,8 @@ import io.github.amichne.kast.protocol.contract.ChangeRecoveryDocumentState
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.protocol.wire.WireEncoding
+import io.github.amichne.kast.protocol.wire.presentation.OperationPreparation
+import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
 import java.nio.file.Path
 import java.util.Base64
 import java.util.UUID
@@ -34,7 +42,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class HostedHistoricalReceiptTest {
-    private val root = CanonicalRoot(Path.of("/workspace"))
+    private val root = canonicalRootFixture(Path.of("/workspace"))
     private val current = ExistingIdeDescriptor(123, UUID.fromString("00000000-0000-0000-0000-000000000001"))
     private val historical = UUID.fromString("00000000-0000-0000-0000-000000000002")
     private val changes =
@@ -61,13 +69,14 @@ class HostedHistoricalReceiptTest {
                 HostedMutationOperation.CHANGE_RECOVER ->
                     canonicalCliRequestPreparers().changeRecover.prepare(ChangeRecoverRequest(text(identity)))
             }
-                as CliProjectionPreparation.Prepared
-        return ExistingIdeOperation.ApprovedMutation(
-            request = request.request,
-            kind = kind,
-            identity = HostedPlanIdentity.parse(identity).refined(),
-            assertion = assertion,
-        )
+                as OperationPreparation.Prepared
+        return ExistingIdeOperation.ApprovedMutation.admit(
+                request = request.request,
+                kind = kind,
+                identity = HostedPlanIdentity.parse(identity).refined(),
+                assertion = assertion,
+            )
+            .refined()
     }
 
     private fun live(path: String, owner: UUID) =

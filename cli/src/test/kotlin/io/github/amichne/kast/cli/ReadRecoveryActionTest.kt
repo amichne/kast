@@ -1,8 +1,5 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.cli.projection.CanonicalQueryCliDocuments
-import io.github.amichne.kast.cli.projection.CanonicalReadCliDocuments
-import io.github.amichne.kast.cli.projection.CanonicalSourceReadCliDocuments
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.AdmittedQueryRunRejection
@@ -26,6 +23,10 @@ import io.github.amichne.kast.protocol.contract.recoveryAction
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.protocol.wire.WireDecoding
 import io.github.amichne.kast.protocol.wire.WireEncoding
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalReadCliDocuments
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalSourceReadCliDocuments
+import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -175,5 +176,5 @@ class ReadRecoveryActionTest {
         QueryRunRejection.ReferenceRejected((ProtocolOffset.parse(0) as Refinement.Refined).value, reason)
             .recoveryAction() == ReadRecoveryAction.REACQUIRE_AUTHORITY
 
-    private data class Case(val operation: CanonicalOperation, val projected: ProjectedCliOutcome)
+    private data class Case(val operation: CanonicalOperation, val projected: ProjectedOperationOutcome)
 }

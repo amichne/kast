@@ -1,8 +1,12 @@
 package io.github.amichne.kast.cli.ide
 
-import io.github.amichne.kast.cli.CanonicalRoot
-import io.github.amichne.kast.cli.CanonicalRootDiscoverer
-import io.github.amichne.kast.cli.CanonicalRootDiscovery
+import io.github.amichne.kast.appserver.ide.CanonicalRootDiscoverer
+import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
+import io.github.amichne.kast.appserver.ide.ExistingIdeClient
+import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
+import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
+import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
+import io.github.amichne.kast.appserver.ide.canonicalRootFixture
 import io.github.amichne.kast.cli.command.CliRequestDocumentInput
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
@@ -24,7 +28,7 @@ class HostedChangeCliInputTest {
     @Test
     fun `approved apply and recovery retain exact request identity and opaque assertion`() {
         for (verb in listOf("apply", "recover")) {
-            val root = CanonicalRoot(Path.of("/workspace"))
+            val root = canonicalRootFixture(Path.of("/workspace"))
             var calls = 0
             executeExistingIdeCli(
                 argv = listOf("change", verb, "--stdin", "--hosted-approved-invocation"),

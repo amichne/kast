@@ -69,8 +69,9 @@ stamp is never serialized as a workspace generation or source-state identity.
 
 The canonical read revisions are `query.run.v2`, `source.read.v4`, and version 3
 for symbol discovery, symbol inspection, relation reads, traversal, and diagnostics.
-The CLI's App Server projection is version 13, and provider qualification requires
-that version. Its successful read schemas carry mutually exclusive published and
+The packaged App Server projection is version 13, and provider qualification requires
+that version and every canonical hosted tool. The build generates `provider-catalog.json`
+from the shared schema owner without CLI invocation metadata. Its successful read schemas carry mutually exclusive published and
 live variants, including the corresponding source snapshot shape. The hosted
 endpoint schema is version 3 and advertises the seven canonical read routes plus
 change planning, approval preparation, apply and recovery. Version-2 endpoint
@@ -84,14 +85,14 @@ Installed output schemas reuse equal compiler-signature, receiver, source-range,
 source/relation/traversal qualification, rejection-reason, and execution-budget
 definitions through local references. Admitted failures in the four canonical
 reads preserve a required report alongside their existing finite reason; wire
-decoding distinguishes missing metadata from invalid or null reports. The complete CLI schema regression reserves
-4,096 bytes below the 524,288-byte qualification cap, which counts both stdout and
-stderr from the process. Hosted read admission now also has a closed
+decoding distinguishes missing metadata from invalid or null reports. The CLI schema regression retains its independent output budget. App Server reads
+the packaged catalog with a 1,048,576-byte file bound and rejects malformed UTF-8,
+missing files, symlinks, incompatible metadata, and drift before provider startup. Hosted read admission now also has a closed
 `CONFIGURATION_REJECTED` outcome; canonical semantic outcome schemas retain their existing identities. Schema compatibility and native execution remain
 separate evidence: the [acceptance review](../../docs/reviews/live-semantic-read-acceptance.md)
 records the final default-route CLI matrix and actual provider invocation.
 
-The current [public tool contracts](../contracts/public-tools.md) distinguish presentation identity from canonical operation identity. Three ordinary searches and deferred `query_symbols` share `query.run`; `check_diagnostics` shares `diagnostic.check`. Private admission retains each tool's schema identity and typed syntax through its exact CLI binding. The `tool` command family uses the existing-IDE read path. Operation effects, budgets, reference authority and exhaustive outcomes remain with their existing owners.
+The current [public tool contracts](../contracts/public-tools.md) distinguish presentation identity from canonical operation identity. Three ordinary searches and deferred `query_symbols` share `query.run`; `check_diagnostics` shares `diagnostic.check`. Private admission retains each tool's schema identity and typed syntax through canonical request preparation. The `tool` command family uses the existing-IDE read path. Operation effects, budgets, reference authority and exhaustive outcomes remain with their existing owners.
 
 The hosted endpoint rejection schema admits bounded, discriminated change-failure detail and rejects unknown causes or contradictory outer failure codes. Runtime encoded-shape tests validate each closed variant against this independently owned schema.
 

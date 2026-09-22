@@ -1,40 +1,64 @@
 package io.github.amichne.kast.appserver.provider
 
-import io.github.amichne.kast.appserver.core.*
+import io.github.amichne.kast.appserver.core.Broker
+import io.github.amichne.kast.appserver.core.BrokerDispatch
+import io.github.amichne.kast.appserver.core.BrokerDispatchRequest
+import io.github.amichne.kast.appserver.core.BrokerFailure
+import io.github.amichne.kast.appserver.core.BrokerInvocationContext
+import io.github.amichne.kast.appserver.core.BrokerLimits
+import io.github.amichne.kast.appserver.core.ProviderNamespace
+import io.github.amichne.kast.appserver.core.ToolAddress
+import io.github.amichne.kast.appserver.core.ToolName
+import io.github.amichne.kast.appserver.ide.CanonicalRoot
+import io.github.amichne.kast.appserver.ide.CanonicalRootDiscoverer
+import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
+import io.github.amichne.kast.appserver.ide.ExistingIdeClient
+import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
+import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
+import io.github.amichne.kast.appserver.ide.ExistingIdeReadOperation
 import io.github.amichne.kast.appserver.installedKastCatalogFixture
+import io.github.amichne.kast.appserver.query.PublicToolCanonical
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.Validation
-import io.github.amichne.kast.protocol.registry.*
+import io.github.amichne.kast.protocol.registry.PublicToolIdentity
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
+import io.github.amichne.kast.protocol.wire.presentation.OperationPreparation
+import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
 import java.nio.file.Files
 import java.nio.file.Path
-import kotlinx.coroutines.test.runTest
-import kotlinx.serialization.SerialName
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.*
-import org.junit.jupiter.api.Assertions.*
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.put
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
 class KastPublicQueryProviderTest {
     @Test
-    fun `provider preserves schema-bound facade syntax without preparing lifecycle`(@TempDir root: Path) = runTest {
+    fun `provider preserves schema-bound facade syntax without preparing lifecycle`(@TempDir root: Path) = runBlocking {
         val executor = RecordingExecutor(capability())
         val broker = broker(root, executor)
         val raw = """{"class_name":"Order","name_match":null,"scope":null}"""
         assertTrue(broker.dispatch(request(root, PublicToolIdentity.SEARCH_CLASSES, raw)) is BrokerDispatch.Completed)
-        val calls = executor.requests.filter { it.arguments == listOf("tool", "search_classes") }
-        assertEquals(1, calls.size)
-        val sent = Json.parseToJsonElement((calls.single().input as BrokerProcessInput.Document).value)
-        val parsed = PublicToolContract.admit(PublicToolIdentity.SEARCH_CLASSES, sent).refined()
-        assertEquals(PublicToolContract.encode(parsed), sent)
-        assertEquals(Json.parseToJsonElement(raw), sent)
-        assertTrue(executor.requests.none { it.arguments.first() in setOf("start", "index", "topology") })
+        val read = assertInstanceOf(ExistingIdeOperation.Read::class.java, executor.operations.single())
+        val parsed = PublicToolContract.admit(PublicToolIdentity.SEARCH_CLASSES, Json.parseToJsonElement(raw)).refined()
+        val expected =
+            canonicalCliRequestPreparers().queryRun.prepare((parsed.canonical as PublicToolCanonical.Query).request)
+                as OperationPreparation.Prepared
+        assertEquals(expected.request.document, read.request.document)
     }
 
     @Test
-    fun `multiple search presentations bind distinct schemas to one operation`(@TempDir root: Path) = runTest {
+    fun `multiple search presentations bind distinct schemas to one operation`(@TempDir root: Path) = runBlocking {
         val executor = RecordingExecutor(capability())
         val broker = broker(root, executor)
         assertTrue(
@@ -64,14 +88,14 @@ class KastPublicQueryProviderTest {
                 )
             ) is BrokerDispatch.Rejected
         )
-        assertEquals(
-            listOf(listOf("tool", "search_classes"), listOf("tool", "search_functions")),
-            executor.requests.filter { it.arguments.first() == "tool" }.map { it.arguments },
+        assertEquals(2, executor.operations.size)
+        assertTrue(
+            executor.operations.all { it is ExistingIdeOperation.Read && it.kind == ExistingIdeReadOperation.QUERY_RUN }
         )
     }
 
     @Test
-    fun `invalid controls and lexical paths fail before semantic invocation`(@TempDir root: Path) = runTest {
+    fun `invalid controls and lexical paths fail before semantic invocation`(@TempDir root: Path) = runBlocking {
         val executor = RecordingExecutor(capability())
         val broker = broker(root, executor)
         listOf(
@@ -96,20 +120,15 @@ class KastPublicQueryProviderTest {
         assertTrue(guidance.contains("scope.relative_directory_path"))
         assertTrue(guidance.contains("workspace-relative"))
         assertFalse(guidance.contains("PRIVATE_SECRET_PATH"))
-        assertEquals(0, executor.requests.count { it.arguments.first() == "tool" })
     }
 
     @Test
-    fun `qualification rejects drifted schema old catalog and cross-tool invocation`(@TempDir root: Path) = runTest {
+    fun `qualification rejects drifted schema and old catalog`(@TempDir root: Path) = runBlocking {
         val schema = capability()
         val invalid =
             listOf(
                 capability(driftSchema = true),
                 schema.replace("\"schemaVersion\":13", "\"schemaVersion\":10"),
-                schema.replace(
-                    "\"command\":[\"tool\",\"search_classes\"]",
-                    "\"command\":[\"tool\",\"search_functions\"]",
-                ),
             )
         invalid.forEach { input ->
             val executor = RecordingExecutor(input)
@@ -117,7 +136,6 @@ class KastPublicQueryProviderTest {
                 KastProviderQualification.Rejected(KastQualificationFailure.SCHEMA_INCOMPATIBLE),
                 KastProviderQualifier.qualify(options(root, executor)),
             )
-            assertEquals(0, executor.requests.count { it.arguments.first() == "tool" })
         }
     }
 
@@ -140,7 +158,17 @@ class KastPublicQueryProviderTest {
         val executable = root.resolve("kast")
         Files.writeString(executable, "#!/bin/sh\nexit 0\n")
         check(executable.toFile().setExecutable(true))
-        return KastProviderOptions.admit(executable, root.toRealPath(), executor).refined()
+        return KastProviderOptions(
+            catalogSource = executor,
+            roots = CanonicalRootDiscoverer { CanonicalRootDiscovery.Discovered(CanonicalRoot(root.toRealPath())) },
+            ideClient =
+                ExistingIdeClient { _, operation ->
+                    executor.operations += operation
+                    ExistingIdeExchange.HostRejected(
+                        CanonicalJsonDocument.generated(HostRejection.serializer()).create(HostRejection())
+                    )
+                },
+        )
     }
 
     private fun request(root: Path, identity: PublicToolIdentity, input: String) =
@@ -150,22 +178,16 @@ class KastPublicQueryProviderTest {
             BrokerInvocationContext.admit("query-thread", "query-turn", "query-call", root.toRealPath()).refined(),
         )
 
-    private class RecordingExecutor(private val schema: String) : BrokerProcessExecutor {
-        val requests = mutableListOf<BrokerProcessRequest>()
+    @Serializable
+    private data class HostRejection(val type: String = "HOST_REJECTED", val failure: String = "DIRTY_DOCUMENTS")
 
-        override suspend fun execute(request: BrokerProcessRequest): BrokerProcessExecution {
-            requests += request
-            return when {
-                request.arguments == listOf("--version") -> BrokerProcessExecution.Completed(0, "kast 9.9.9\n", "")
-                request.arguments == listOf("--schema") -> BrokerProcessExecution.Completed(0, schema, "")
-                request.arguments.first() == "tool" ->
-                    BrokerProcessExecution.Completed(
-                        0,
-                        """{"operation":"query.run","status":"complete","items":[],"failures":[]}""",
-                        "",
-                    )
-                else -> error("Unexpected subprocess: ${request.arguments}")
-            }
+    private class RecordingExecutor(private val schema: String) : KastCatalogSource {
+        val operations = mutableListOf<ExistingIdeOperation>()
+        private var reads = 0
+
+        override fun read(): Refinement<String, KastQualificationFailure> {
+            check(++reads <= 2)
+            return Refinement.Refined(schema)
         }
     }
 
@@ -173,33 +195,23 @@ class KastPublicQueryProviderTest {
         val json = Json { encodeDefaults = true }
         val base = json.decodeFromString<KastCapabilityBoundary>(installedKastCatalogFixture())
         val projection = base.serverProjection
-        val facades = PublicToolIdentity.entries.map { it.toolName }.toSet()
         val tools =
-            projection.hostedBootstrap.tools
-                .filter { it.name in facades }
-                .map { tool ->
-                    tool.copy(
-                        inputSchema =
-                            if (driftSchema)
-                                json.encodeToJsonElement(
-                                    tool.inputSchema.jsonObject.toMutableMap().apply {
-                                        put("description", JsonPrimitive("drift"))
-                                    }
-                                )
-                            else tool.inputSchema,
-                        outputSchema = json.encodeToJsonElement(FacadeOutputSchema()),
-                    )
-                }
+            projection.hostedBootstrap.tools.map { tool ->
+                tool.copy(
+                    inputSchema =
+                        if (driftSchema)
+                            json.encodeToJsonElement(
+                                tool.inputSchema.jsonObject.toMutableMap().apply {
+                                    put("description", JsonPrimitive("drift"))
+                                }
+                            )
+                        else tool.inputSchema,
+                    outputSchema = tool.outputSchema,
+                )
+            }
         return json.encodeToString(
             base.copy(
-                serverProjection =
-                    projection.copy(
-                        hostedBootstrap = projection.hostedBootstrap.copy(tools = tools),
-                        cliInvocations =
-                            projection.cliInvocations.copy(
-                                operations = projection.cliInvocations.operations.filter { it.toolName in facades }
-                            ),
-                    )
+                serverProjection = projection.copy(hostedBootstrap = projection.hostedBootstrap.copy(tools = tools))
             )
         )
     }
@@ -210,21 +222,3 @@ class KastPublicQueryProviderTest {
             is Refinement.Rejected -> error("Rejected test fixture: $failure")
         }
 }
-
-@Serializable
-private data class FacadeOutputSchema(
-    val type: String = "object",
-    val properties: FacadeOutputProperties = FacadeOutputProperties(),
-    val required: List<String> = listOf("status", "document"),
-    val additionalProperties: Boolean = false,
-)
-
-@Serializable
-private data class FacadeOutputProperties(
-    val status: FacadeOutputStatus = FacadeOutputStatus(),
-    val document: FacadeOutputDocument = FacadeOutputDocument(),
-)
-
-@Serializable private data class FacadeOutputStatus(@SerialName("enum") val values: List<String> = listOf("completed"))
-
-@Serializable private data class FacadeOutputDocument(val type: String = "object")

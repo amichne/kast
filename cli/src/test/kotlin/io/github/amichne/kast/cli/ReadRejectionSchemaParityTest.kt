@@ -3,9 +3,6 @@ package io.github.amichne.kast.cli
 import com.networknt.schema.InputFormat
 import com.networknt.schema.SchemaRegistry
 import com.networknt.schema.SpecificationVersion
-import io.github.amichne.kast.cli.projection.CanonicalReadCliDocuments
-import io.github.amichne.kast.cli.projection.CanonicalSourceReadCliDocuments
-import io.github.amichne.kast.cli.projection.canonicalRejectedDocument
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.protocol.contract.AdmittedRelationReadRejection
 import io.github.amichne.kast.protocol.contract.AdmittedSourceReadRejection
@@ -24,6 +21,10 @@ import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.protocol.wire.OperationWireBinding
 import io.github.amichne.kast.protocol.wire.WireDecoding
 import io.github.amichne.kast.protocol.wire.WireEncoding
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalReadCliDocuments
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalSourceReadCliDocuments
+import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
+import io.github.amichne.kast.protocol.wire.presentation.canonicalRejectedDocument
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -106,13 +107,13 @@ class ReadRejectionSchemaParityTest {
         binding: OperationWireBinding<Request, Result, Qualification, Rejection>,
         reason: Rejection,
         expectedReason: String,
-        project: (OperationOutcome<Result, Qualification, Rejection>) -> ProjectedCliOutcome,
+        project: (OperationOutcome<Result, Qualification, Rejection>) -> ProjectedOperationOutcome,
         admitted: Boolean = false,
     ) where Rejection : OperationRejection {
         val outcome = OperationOutcome.Rejected(reason)
         val wire = binding.encodeOutcome(outcome) as WireEncoding.Encoded
         assertEquals(WireDecoding.Decoded(outcome), binding.decodeOutcome(wire.document))
-        val projected = project(outcome) as ProjectedCliOutcome.Rejected
+        val projected = project(outcome) as ProjectedOperationOutcome.Rejected
         val document = Json.parseToJsonElement(projected.document.value).jsonObject
         assertEquals(
             setOf("operation", "status", "reason", "next_action") +
@@ -120,7 +121,7 @@ class ReadRejectionSchemaParityTest {
             document.keys,
         )
         val decoded = binding.decodeOutcome(wire.document) as WireDecoding.Decoded
-        val reprojected = project(decoded.value) as ProjectedCliOutcome.Rejected
+        val reprojected = project(decoded.value) as ProjectedOperationOutcome.Rejected
         assertEquals(projected.document.value, reprojected.document.value)
         assertTrue("next_action" !in wire.document)
         if (admitted) assertTrue("execution_budget" in document)

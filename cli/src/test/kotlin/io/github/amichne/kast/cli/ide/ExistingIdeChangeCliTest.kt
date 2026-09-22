@@ -1,8 +1,11 @@
 package io.github.amichne.kast.cli.ide
 
-import io.github.amichne.kast.cli.CanonicalRoot
-import io.github.amichne.kast.cli.CanonicalRootDiscoverer
-import io.github.amichne.kast.cli.CanonicalRootDiscovery
+import io.github.amichne.kast.appserver.ide.CanonicalRootDiscoverer
+import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
+import io.github.amichne.kast.appserver.ide.ExistingIdeClient
+import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
+import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
+import io.github.amichne.kast.appserver.ide.canonicalRootFixture
 import io.github.amichne.kast.cli.command.CliRequestDocumentInput
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -12,7 +15,7 @@ import org.junit.jupiter.api.Test
 class ExistingIdeChangeCliTest {
     @Test
     fun `supported plan reaches only the hosted capability`() {
-        val root = CanonicalRoot(Path.of("/workspace"))
+        val root = canonicalRootFixture(Path.of("/workspace"))
         var calls = 0
         val result =
             executeExistingIdeCli(
@@ -36,7 +39,7 @@ class ExistingIdeChangeCliTest {
 
     @Test
     fun `approval preparation reaches hosted ingress with exact plan identity`() {
-        val root = CanonicalRoot(Path.of("/workspace"))
+        val root = canonicalRootFixture(Path.of("/workspace"))
         var calls = 0
         executeExistingIdeCli(
             argv = listOf("change", "apply", "--stdin", "--hosted-approval-prepare"),
@@ -54,7 +57,7 @@ class ExistingIdeChangeCliTest {
 
     @Test
     fun `ordinary apply requires approval before calling the hosted capability`() {
-        val root = CanonicalRoot(Path.of("/workspace"))
+        val root = canonicalRootFixture(Path.of("/workspace"))
         var calls = 0
         val result =
             executeExistingIdeCli(

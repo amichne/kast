@@ -8,7 +8,7 @@ timestamp: 2026-09-16T00:00:00Z
 code_sources:
   - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/CompactSourceReadDocuments.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/SourceReadFormatProjection.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/projection/CompactSourceReadCliDocuments.kt
+  - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/CompactSourceReadCliDocuments.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastSourcePresentation.kt
   - path: symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/CanonicalSymbolId.kt
   - path: workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadLease.kt

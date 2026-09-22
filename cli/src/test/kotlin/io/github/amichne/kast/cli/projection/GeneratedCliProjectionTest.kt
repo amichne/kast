@@ -1,6 +1,5 @@
 package io.github.amichne.kast.cli.projection
 
-import io.github.amichne.kast.cli.ProjectedCliOutcome
 import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.OperationOutcome
@@ -47,6 +46,15 @@ import io.github.amichne.kast.protocol.contract.TraversalLimitationDocument
 import io.github.amichne.kast.protocol.contract.TraversalRecordDocument
 import io.github.amichne.kast.protocol.contract.TraversalRunQualification
 import io.github.amichne.kast.protocol.contract.TraversalRunResult
+import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
+import io.github.amichne.kast.protocol.wire.presentation.changeRecoverCliProjector
+import io.github.amichne.kast.protocol.wire.presentation.diagnosticCheckCliProjector
+import io.github.amichne.kast.protocol.wire.presentation.normalizeTraversalGraph
+import io.github.amichne.kast.protocol.wire.presentation.queryRunCliProjector
+import io.github.amichne.kast.protocol.wire.presentation.relationReadCliProjector
+import io.github.amichne.kast.protocol.wire.presentation.symbolDiscoverCliProjector
+import io.github.amichne.kast.protocol.wire.presentation.symbolInspectCliProjector
+import io.github.amichne.kast.protocol.wire.presentation.traversalRunCliProjector
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -81,7 +89,7 @@ class GeneratedCliProjectionTest {
             )
         val projected =
             queryRunCliProjector.project(OperationOutcome.Complete(evidence(CanonicalOperation.QUERY_RUN, result)))
-                as ProjectedCliOutcome.Complete
+                as ProjectedOperationOutcome.Complete
         val items = Json.parseToJsonElement(projected.document.value).jsonObject.getValue("items").jsonArray
         assertEquals(2, items.size)
         items.zip(tokens).forEach { (item, token) ->
@@ -139,7 +147,7 @@ class GeneratedCliProjectionTest {
                         TraversalRunResult(text("/workspace"), bounded(records)),
                     )
                 )
-            ) as ProjectedCliOutcome.Complete
+            ) as ProjectedOperationOutcome.Complete
         val document = Json.parseToJsonElement(projected.document.value).jsonObject
         val projectedGraph = document.getValue("graph").jsonObject
         val snapshot = projectedGraph.getValue("snapshot").jsonObject
@@ -183,7 +191,7 @@ class GeneratedCliProjectionTest {
         val projected =
             symbolDiscoverCliProjector.project(
                 OperationOutcome.Complete(evidence(CanonicalOperation.SYMBOL_DISCOVER, result))
-            ) as ProjectedCliOutcome.Complete
+            ) as ProjectedOperationOutcome.Complete
 
         assertEquals(
             "{\"operation\":\"symbol.discover\",\"status\":\"complete\",\"items\":[" +
@@ -219,7 +227,7 @@ class GeneratedCliProjectionTest {
         val projected =
             symbolInspectCliProjector.project(
                 OperationOutcome.Complete(evidence(CanonicalOperation.SYMBOL_INSPECT, result))
-            ) as ProjectedCliOutcome.Complete
+            ) as ProjectedOperationOutcome.Complete
 
         assertEquals(
             io.github.amichne.kast.cli.SymbolInspectionFixture.expectedClass(compilerEvidence.identity.value),
@@ -254,7 +262,7 @@ class GeneratedCliProjectionTest {
         val projected =
             symbolInspectCliProjector.project(
                 OperationOutcome.Complete(evidence(CanonicalOperation.SYMBOL_INSPECT, result))
-            ) as ProjectedCliOutcome.Complete
+            ) as ProjectedOperationOutcome.Complete
 
         assertTrue(
             projected.document.value.contains("\"receiver\":{\"type\":\"present\",\"compilerType\":\"kotlin.String\"}")
@@ -294,7 +302,7 @@ class GeneratedCliProjectionTest {
                     ),
                     diagnosticCoverageQualification(),
                 )
-            ) as ProjectedCliOutcome.Qualified
+            ) as ProjectedOperationOutcome.Qualified
 
         assertEquals(
             "{\"operation\":\"diagnostic.check\",\"status\":\"qualified\"," +
@@ -318,7 +326,7 @@ class GeneratedCliProjectionTest {
                     evidence(CanonicalOperation.RELATION_READ, RelationReadResult(bounded(emptyList()))),
                     relationQualification(),
                 )
-            ) as ProjectedCliOutcome.Qualified
+            ) as ProjectedOperationOutcome.Qualified
         assertTrue(Json.parseToJsonElement(relation.document.value).jsonObject.containsKey("omissions"))
         assertEquals(
             kotlinx.serialization.json.JsonPrimitive("EXACT_RETURNED_FACTS"),
@@ -333,7 +341,7 @@ class GeneratedCliProjectionTest {
                     ),
                     traversalQualification(),
                 )
-            ) as ProjectedCliOutcome.Qualified
+            ) as ProjectedOperationOutcome.Qualified
         val diagnostics =
             diagnosticCheckCliProjector.project(
                 OperationOutcome.Qualified(
@@ -343,7 +351,7 @@ class GeneratedCliProjectionTest {
                     ),
                     diagnosticResultLimitQualification(),
                 )
-            ) as ProjectedCliOutcome.Qualified
+            ) as ProjectedOperationOutcome.Qualified
 
         assertAll(
             {
@@ -399,7 +407,7 @@ class GeneratedCliProjectionTest {
     fun `generated rejection serializer retains operation-specific reason`() {
         val projected =
             changeRecoverCliProjector.project(OperationOutcome.Rejected(ChangeRecoverRejection.JOURNAL_UNAVAILABLE))
-                as ProjectedCliOutcome.Rejected
+                as ProjectedOperationOutcome.Rejected
 
         assertEquals(
             "{\"operation\":\"change.recover\",\"status\":\"rejected\"," + "\"reason\":\"journal-unavailable\"}",
@@ -490,7 +498,7 @@ class GeneratedCliProjectionTest {
             )
             .refined()
 
-    private fun ProjectedCliOutcome.Qualified.qualification() =
+    private fun ProjectedOperationOutcome.Qualified.qualification() =
         Json.parseToJsonElement(document.value).jsonObject.getValue("qualification")
 
     private fun relationContinuation(payloadText: String): RelationContinuationDocument {

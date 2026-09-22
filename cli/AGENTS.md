@@ -9,6 +9,8 @@ Defines Kast's human-facing command graph, installed configuration and installat
 
 ## Key Files
 
+- [PackagedProviderCatalog.kt](src/main/kotlin/io/github/amichne/kast/cli/PackagedProviderCatalog.kt) - build-time hosted schema projection for App Server qualification.
+
 - [WorkspaceRefreshAdmission.kt](src/main/kotlin/io/github/amichne/kast/cli/ide/WorkspaceRefreshAdmission.kt) - strict refresh control admission and operation-specific process outcomes.
 
 - [CanonicalDiagnosticRejectedDocument.kt](src/main/kotlin/io/github/amichne/kast/cli/projection/CanonicalDiagnosticRejectedDocument.kt) - finite diagnostic recovery directions and admitted rejection grants.

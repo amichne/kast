@@ -1,11 +1,11 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.cli.projection.cliName
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.RelationReadRejection
 import io.github.amichne.kast.protocol.contract.SourceReadRejection
 import io.github.amichne.kast.protocol.contract.SymbolInspectRejection
 import io.github.amichne.kast.protocol.contract.TraversalRunRejection
+import io.github.amichne.kast.protocol.wire.presentation.cliName
 import kotlinx.serialization.json.JsonObject
 
 /** These read failures have one closed canonical enum, shared by their wire and CLI projections. */

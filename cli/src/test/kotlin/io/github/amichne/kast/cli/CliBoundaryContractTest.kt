@@ -1,14 +1,19 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.appserver.ide.CanonicalRoot
+import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
+import io.github.amichne.kast.appserver.ide.CanonicalRootFailure
+import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.cli.command.CliAction
 import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
 import io.github.amichne.kast.cli.command.CliCommandParsing
 import io.github.amichne.kast.cli.command.CliProductCommand
 import io.github.amichne.kast.cli.command.CliRequestDocumentInput
-import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
+import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
@@ -180,7 +185,7 @@ class CliBoundaryContractTest {
     fun `semantic rejection is data and exits successfully`() {
         val rejected =
             CliExit.OperationRejected(
-                CliJsonDocument.generated(TestRejectedCliDocument.serializer())
+                CanonicalJsonDocument.generated(TestRejectedCliDocument.serializer())
                     .create(TestRejectedCliDocument("rejected", "selector-stale"))
             )
 

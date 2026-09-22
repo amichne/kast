@@ -30,8 +30,6 @@ internal enum class NativeQualificationStage {
 
 @Serializable
 internal enum class NativeQualificationCause {
-    VERSION_UNAVAILABLE,
-    VERSION_INVALID,
     SCHEMA_UNAVAILABLE,
     SCHEMA_SIZE_LIMIT,
     SCHEMA_INVALID,
@@ -65,8 +63,6 @@ private val qualificationObservationJson = Json {
 
 private fun KastQualificationFailure.observedCause(): NativeQualificationCause =
     when (this) {
-        KastQualificationFailure.VERSION_UNAVAILABLE -> NativeQualificationCause.VERSION_UNAVAILABLE
-        KastQualificationFailure.VERSION_INVALID -> NativeQualificationCause.VERSION_INVALID
         KastQualificationFailure.SCHEMA_UNAVAILABLE -> NativeQualificationCause.SCHEMA_UNAVAILABLE
         KastQualificationFailure.SCHEMA_SIZE_LIMIT -> NativeQualificationCause.SCHEMA_SIZE_LIMIT
         KastQualificationFailure.SCHEMA_INVALID -> NativeQualificationCause.SCHEMA_INVALID

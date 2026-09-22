@@ -1,6 +1,6 @@
 package io.github.amichne.kast.cli.installation
 
-import io.github.amichne.kast.cli.CliJsonDocument
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test
 class InstallationActivationContractTest {
     @Test
     fun `activation variants encode exact discriminators and pending reasons with recovery`() {
-        val factory = CliJsonDocument.generated(InstallationActivation.serializer())
+        val factory = CanonicalJsonDocument.generated(InstallationActivation.serializer())
         for ((activation, discriminator) in
             listOf(
                 InstallationActivation.Planned to "planned",

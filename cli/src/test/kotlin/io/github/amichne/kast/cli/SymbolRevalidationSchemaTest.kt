@@ -3,7 +3,6 @@ package io.github.amichne.kast.cli
 import com.networknt.schema.InputFormat
 import com.networknt.schema.SchemaRegistry
 import com.networknt.schema.SpecificationVersion
-import io.github.amichne.kast.cli.projection.CanonicalSymbolCliDocuments
 import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.OperationOutcome
@@ -20,6 +19,8 @@ import io.github.amichne.kast.protocol.contract.SymbolInspectRejection
 import io.github.amichne.kast.protocol.contract.SymbolInspectResult
 import io.github.amichne.kast.protocol.contract.SymbolKindDocument
 import io.github.amichne.kast.protocol.contract.SymbolQualifiedIdentityDocument
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalSymbolCliDocuments
+import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -46,7 +47,7 @@ class SymbolRevalidationSchemaTest {
                         SymbolInspectResult(symbol, acquisition),
                     )
                 )
-            val projected = CanonicalSymbolCliDocuments.projectInspection(outcome) as ProjectedCliOutcome.Complete
+            val projected = CanonicalSymbolCliDocuments.projectInspection(outcome) as ProjectedOperationOutcome.Complete
             val document = Json.parseToJsonElement(projected.document.value).jsonObject
             assertEquals(
                 if (acquisition == SymbolInspectAcquisition.STRICT) "strict" else "reacquired",
@@ -85,7 +86,7 @@ class SymbolRevalidationSchemaTest {
         for (reason in SymbolInspectRejection.entries) {
             val result =
                 CanonicalSymbolCliDocuments.projectInspection(OperationOutcome.Rejected(reason))
-                    as ProjectedCliOutcome.Rejected
+                    as ProjectedOperationOutcome.Rejected
             val document = Json.parseToJsonElement(result.document.value).jsonObject
             assertTrue(validate(document).isEmpty(), reason.name)
             assertFalse(
@@ -105,7 +106,7 @@ class SymbolRevalidationSchemaTest {
         val result =
             CanonicalSymbolCliDocuments.projectInspection(
                 OperationOutcome.Rejected(SymbolInspectRejection.EXACT_SELECTOR_STALE)
-            ) as ProjectedCliOutcome.Rejected
+            ) as ProjectedOperationOutcome.Rejected
         assertEquals(
             "exact-selector-stale",
             Json.parseToJsonElement(result.document.value).jsonObject.getValue("reason").jsonPrimitive.content,

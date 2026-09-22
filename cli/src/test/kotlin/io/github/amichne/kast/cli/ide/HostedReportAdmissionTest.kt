@@ -1,12 +1,17 @@
 package io.github.amichne.kast.cli.ide
 
-import io.github.amichne.kast.cli.CanonicalRoot
-import io.github.amichne.kast.cli.HostedRequestEffect
-import io.github.amichne.kast.cli.PreparedCliRequest
+import io.github.amichne.kast.appserver.ide.ExistingIdeDescriptor
+import io.github.amichne.kast.appserver.ide.ExistingIdeDocuments
+import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
+import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
+import io.github.amichne.kast.appserver.ide.ExistingIdeReadOperation
+import io.github.amichne.kast.appserver.ide.canonicalRootFixture
 import io.github.amichne.kast.cli.hostedSchemaBudgetGrant
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetDocument
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
+import io.github.amichne.kast.protocol.wire.presentation.HostedRequestEffect
+import io.github.amichne.kast.protocol.wire.presentation.preparedOperationFixture
 import java.nio.file.Path
 import java.util.UUID
 import kotlinx.serialization.SerialName
@@ -22,7 +27,7 @@ class HostedReportAdmissionTest {
         val report = ExecutionBudgetReport.from(hostedSchemaBudgetGrant(ExecutionBudgetDocument()))
         val json = Json { encodeDefaults = true }
         val raw = json.encodeToString(ReportedFailure.serializer(), ReportedFailure(report))
-        val root = CanonicalRoot(Path.of("/workspace"))
+        val root = canonicalRootFixture(Path.of("/workspace"))
         val descriptor = ExistingIdeDescriptor(123, UUID.fromString("00000000-0000-0000-0000-000000000001"))
         for (kind in
             listOf(
@@ -33,7 +38,7 @@ class HostedReportAdmissionTest {
             )) {
             val operation =
                 (ExistingIdeOperation.Read.admit(
-                        PreparedCliRequest(
+                        preparedOperationFixture(
                             kind.canonical,
                             HostedRequestEffect.Operation(kind.canonical),
                             json.encodeToString(EmptyRequest.serializer(), EmptyRequest),

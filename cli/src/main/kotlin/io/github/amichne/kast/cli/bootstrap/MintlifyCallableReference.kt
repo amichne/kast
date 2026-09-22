@@ -3,7 +3,8 @@ package io.github.amichne.kast.cli
 import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
 import io.github.amichne.kast.cli.command.CliCommandSurface
-import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
+import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -16,7 +17,7 @@ import kotlinx.serialization.json.jsonObject
 
 /** Build entry point for the generated public callable reference. */
 internal object MintlifyCallableReference {
-    val document: CliJsonDocument
+    val document: CanonicalJsonDocument
         get() {
             val commandSurface =
                 when (val construction = CliCommandGraphFactory.create(canonicalCliRequestPreparers())) {
@@ -35,13 +36,13 @@ internal object MintlifyCallableReference {
 }
 
 /**
- * Proof transition: `CliCommandSurface -> CliJsonDocument`.
+ * Proof transition: `CliCommandSurface -> CanonicalJsonDocument`.
  *
  * Projects the installed public callable bindings into a documentation-only OpenAPI document. The synthetic paths
  * identify callable pages; they do not describe an HTTP transport, so this document deliberately has no `servers`
  * declaration and disables Mintlify's playground.
  */
-internal fun mintlifyCallableReference(commandSurface: CliCommandSurface): CliJsonDocument {
+internal fun mintlifyCallableReference(commandSurface: CliCommandSurface): CanonicalJsonDocument {
     val bindings = installedServerBindings(commandSurface)
     val components =
         bindings
@@ -295,4 +296,5 @@ private data class MintlifyCallableKastMetadataDocument(
     val cliUsage: String,
 )
 
-private val mintlifyCallableReferenceFactory = CliJsonDocument.generated(MintlifyCallableReferenceDocument.serializer())
+private val mintlifyCallableReferenceFactory =
+    CanonicalJsonDocument.generated(MintlifyCallableReferenceDocument.serializer())

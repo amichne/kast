@@ -1,7 +1,21 @@
 package io.github.amichne.kast.cli.ide
 
+import io.github.amichne.kast.appserver.ide.CanonicalRootDiscoverer
+import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
+import io.github.amichne.kast.appserver.ide.ExistingIdeClassName
+import io.github.amichne.kast.appserver.ide.ExistingIdeClient
+import io.github.amichne.kast.appserver.ide.ExistingIdeDescriptor
+import io.github.amichne.kast.appserver.ide.ExistingIdeDocuments
+import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
+import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
+import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
+import io.github.amichne.kast.appserver.ide.ExistingIdeQualifiedClassName
+import io.github.amichne.kast.appserver.ide.ExistingIdeSocketClient
+import io.github.amichne.kast.appserver.ide.admitLiveEvidence
+import io.github.amichne.kast.appserver.ide.canonicalRootFixture
 import io.github.amichne.kast.cli.*
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.*
@@ -10,7 +24,7 @@ import org.junit.jupiter.api.io.TempDir
 
 class ExistingIdeCliTest {
     @TempDir lateinit var temporary: Path
-    private val root = CanonicalRoot(Path.of("/workspace"))
+    private val root = canonicalRootFixture(Path.of("/workspace"))
     private val host = java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")
     private val descriptor = ExistingIdeDescriptor(123, host)
 
@@ -109,7 +123,7 @@ class ExistingIdeCliTest {
     fun `full command graph retains the same IDE action`() {
         val factory =
             io.github.amichne.kast.cli.command.CliCommandGraphFactory.create(
-                io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers()
+                io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers()
             ) as io.github.amichne.kast.cli.command.CliCommandGraphConstruction.Created
         val parsed =
             factory.factory.parse(listOf("ide", "supertype", "example.Child"))

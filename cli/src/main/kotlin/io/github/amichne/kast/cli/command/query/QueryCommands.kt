@@ -2,13 +2,13 @@ package io.github.amichne.kast.cli.command.query
 
 import com.github.ajalt.clikt.core.subcommands
 import io.github.amichne.kast.appserver.query.PublicQueryRequestSerializer
-import io.github.amichne.kast.cli.CliRequestPreparer
 import io.github.amichne.kast.cli.command.CliRequestDocumentInput
 import io.github.amichne.kast.cli.command.CommandFamily
 import io.github.amichne.kast.cli.command.KastCommandGroup
 import io.github.amichne.kast.cli.command.SemanticKastCommand
-import io.github.amichne.kast.cli.projection.CanonicalCliRequestPreparers
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalCliRequestPreparers
+import io.github.amichne.kast.protocol.wire.presentation.OperationRequestPreparer
 
 internal fun queryCommandGroup(
     preparers: CanonicalCliRequestPreparers,
@@ -22,7 +22,7 @@ internal fun queryCommandGroup(
             description = "Search or enumerate exact Kotlin symbols; omitted controls use query defaults.",
             serializer = PublicQueryRequestSerializer,
             requestInput = requestInput,
-            preparer = CliRequestPreparer { request -> preparers.queryRun.prepare(request.canonicalRequest) },
+            preparer = OperationRequestPreparer { request -> preparers.queryRun.prepare(request.canonicalRequest) },
         )
     return CommandFamily(
         KastCommandGroup("query", "Execute one typed, bounded Kotlin declaration query.").subcommands(run),

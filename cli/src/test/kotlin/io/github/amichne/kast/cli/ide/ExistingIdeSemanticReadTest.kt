@@ -1,12 +1,26 @@
 package io.github.amichne.kast.cli.ide
 
+import io.github.amichne.kast.appserver.ide.CanonicalRootDiscoverer
+import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
+import io.github.amichne.kast.appserver.ide.ExistingIdeClient
+import io.github.amichne.kast.appserver.ide.ExistingIdeDescriptor
+import io.github.amichne.kast.appserver.ide.ExistingIdeDocuments
+import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
+import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
+import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
+import io.github.amichne.kast.appserver.ide.ExistingIdeReadOperation
+import io.github.amichne.kast.appserver.ide.admitOutcome
+import io.github.amichne.kast.appserver.ide.canonicalRootFixture
 import io.github.amichne.kast.cli.*
 import io.github.amichne.kast.cli.command.CliAction
 import io.github.amichne.kast.cli.command.CliRequestDocumentInput
-import io.github.amichne.kast.cli.projection.CanonicalReadCliDocuments
 import io.github.amichne.kast.kernel.*
 import io.github.amichne.kast.protocol.contract.*
 import io.github.amichne.kast.protocol.wire.*
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalReadCliDocuments
+import io.github.amichne.kast.protocol.wire.presentation.HostedRequestEffect
+import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
+import io.github.amichne.kast.protocol.wire.presentation.preparedOperationFixture
 import java.nio.file.Path
 import java.util.UUID
 import kotlinx.serialization.json.*
@@ -14,7 +28,7 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
 class ExistingIdeSemanticReadTest {
-    private val root = CanonicalRoot(Path.of("/workspace"))
+    private val root = canonicalRootFixture(Path.of("/workspace"))
     private val descriptor = ExistingIdeDescriptor(123, UUID.fromString("00000000-0000-0000-0000-000000000001"))
     private val live =
         EvidenceBasis.Live(
@@ -199,7 +213,7 @@ class ExistingIdeSemanticReadTest {
         for (kind in ExistingIdeReadOperation.entries) {
             val operation =
                 ExistingIdeOperation.Read.admit(
-                        PreparedCliRequest(
+                        preparedOperationFixture(
                             kind.canonical,
                             HostedRequestEffect.Operation(kind.canonical),
                             "{}",
@@ -245,7 +259,7 @@ class ExistingIdeSemanticReadTest {
                     TraversalRunResult(text("/workspace"), empty()),
                 )
             )
-        val projected = CanonicalReadCliDocuments.projectTraversal(outcome) as ProjectedCliOutcome.Complete
+        val projected = CanonicalReadCliDocuments.projectTraversal(outcome) as ProjectedOperationOutcome.Complete
         val document = projected.document.value.let(Json::parseToJsonElement).jsonObject
         val snapshot = document.getValue("graph").jsonObject.getValue("snapshot").jsonObject
         assertEquals(document["live"], snapshot["live"])

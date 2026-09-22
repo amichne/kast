@@ -1,8 +1,5 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.cli.projection.CanonicalQueryCliDocuments
-import io.github.amichne.kast.cli.projection.CanonicalReadCliDocuments
-import io.github.amichne.kast.cli.projection.CanonicalSourceReadCliDocuments
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.protocol.contract.AdmittedDiagnosticCheckRejection
 import io.github.amichne.kast.protocol.contract.AdmittedQueryRunRejection
@@ -17,6 +14,10 @@ import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.RelationReadRejection
 import io.github.amichne.kast.protocol.contract.SourceReadRejection
 import io.github.amichne.kast.protocol.contract.TraversalRunRejection
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalReadCliDocuments
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalSourceReadCliDocuments
+import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
@@ -109,5 +110,9 @@ class AdmittedReadRejectionSchemaTest {
             ),
         )
 
-    private data class Case(val operation: CanonicalOperation, val projected: ProjectedCliOutcome, val reason: String)
+    private data class Case(
+        val operation: CanonicalOperation,
+        val projected: ProjectedOperationOutcome,
+        val reason: String,
+    )
 }

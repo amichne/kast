@@ -1,6 +1,6 @@
 package io.github.amichne.kast.cli
 
-import kotlinx.serialization.KSerializer
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -15,26 +15,11 @@ private val cliJson = Json {
 }
 
 /** One admitted process output document. */
-sealed interface CliProcessOutput {
-    val value: String
-}
+sealed interface CliProcessOutput : io.github.amichne.kast.protocol.wire.presentation.OutputDocument
 
 /** Explicit absence selected only when an interactive child owns process output. */
 internal data object CliDelegatedProcessOutput : CliProcessOutput {
     override val value: String = ""
-}
-
-/** A canonical compact JSON document ready for the process output boundary. */
-class CliJsonDocument private constructor(override val value: String) : CliProcessOutput {
-    companion object {
-        /** Selects the generated serializer for one closed CLI document type. */
-        internal fun <Value> generated(serializer: KSerializer<Value>): Factory<Value> = Factory(serializer)
-    }
-
-    /** A generated serializer bound to the CLI's sole configured JSON instance. */
-    internal class Factory<Value>(private val serializer: KSerializer<Value>) {
-        fun create(value: Value): CliJsonDocument = CliJsonDocument(cliJson.encodeToString(serializer, value))
-    }
 }
 
 internal enum class CliOpenJsonObjectFailure {
@@ -51,8 +36,8 @@ internal sealed interface CliOpenJsonObjectAdmission {
 /** One deliberately open JSON object admitted only for installed schema composition. */
 @Serializable
 @JvmInline
-internal value class CliOpenJsonObject private constructor(internal val value: JsonObject) {
-    fun document(): CliJsonDocument = openJsonObjectFactory.create(this)
+internal value class CliOpenJsonObject private constructor(val value: JsonObject) {
+    fun document(): CanonicalJsonDocument = openJsonObjectFactory.create(this)
 
     companion object {
         /**
@@ -78,7 +63,7 @@ internal value class CliOpenJsonObject private constructor(internal val value: J
     }
 }
 
-private val openJsonObjectFactory = CliJsonDocument.generated(CliOpenJsonObject.serializer())
+private val openJsonObjectFactory = CanonicalJsonDocument.generated(CliOpenJsonObject.serializer())
 
 /** Stable non-blank local metadata ready for stdout. */
 class CliTextDocument private constructor(override val value: String) : CliProcessOutput {
@@ -108,13 +93,4 @@ internal sealed interface CliTextDocumentAdmission {
     data class Admitted(val document: CliTextDocument) : CliTextDocumentAdmission
 
     data class Rejected(val failure: CliTextDocumentFailure) : CliTextDocumentAdmission
-}
-
-/** Exhaustive operation-outcome projection before process status selection. */
-sealed interface ProjectedCliOutcome {
-    data class Complete(val document: CliJsonDocument) : ProjectedCliOutcome
-
-    data class Qualified(val document: CliJsonDocument) : ProjectedCliOutcome
-
-    data class Rejected(val document: CliJsonDocument) : ProjectedCliOutcome
 }

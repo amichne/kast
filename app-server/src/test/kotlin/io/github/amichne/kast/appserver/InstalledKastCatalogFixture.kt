@@ -2,13 +2,9 @@ package io.github.amichne.kast.appserver
 
 import io.github.amichne.kast.appserver.provider.KastApprovalPolicy
 import io.github.amichne.kast.appserver.provider.KastCapabilityBoundary
-import io.github.amichne.kast.appserver.provider.KastCliInvocationBoundary
-import io.github.amichne.kast.appserver.provider.KastCliInvocationsBoundary
-import io.github.amichne.kast.appserver.provider.KastCliOperationInvocationBoundary
 import io.github.amichne.kast.appserver.provider.KastExecutionBudgetBoundary
 import io.github.amichne.kast.appserver.provider.KastHostedBootstrapBoundary
 import io.github.amichne.kast.appserver.provider.KastHostedToolBoundary
-import io.github.amichne.kast.appserver.provider.KastInvocationType
 import io.github.amichne.kast.appserver.provider.KastServerProjectionBoundary
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.protocol.registry.AgentToolInputBinding
@@ -56,22 +52,6 @@ internal fun installedKastCatalogFixture(): String =
                                     catalogFixtureJson.encodeToJsonElement(FixtureInputSchema())
                             },
                             catalogFixtureJson.encodeToJsonElement(FixtureOutputSchema()),
-                        )
-                    },
-                ),
-                KastCliInvocationsBoundary(
-                    3,
-                    CanonicalAgentToolDefinitions.all.map { definition ->
-                        val command =
-                            when (val input = definition.inputBinding) {
-                                is AgentToolInputBinding.Facade -> listOf("tool", input.identity.toolName)
-                                AgentToolInputBinding.Canonical -> definition.operation.id.value.split('.')
-                            }
-                        KastCliOperationInvocationBoundary(
-                            definition.name.value,
-                            definition.operation.id.value,
-                            command.joinToString(" ") + " < request.json",
-                            KastCliInvocationBoundary(KastInvocationType.CLI, command),
                         )
                     },
                 ),

@@ -5,7 +5,6 @@ import com.github.ajalt.clikt.core.PrintHelpMessage
 import com.github.ajalt.clikt.core.UsageError
 import com.github.ajalt.clikt.core.subcommands
 import com.github.ajalt.clikt.parsers.CommandLineParser
-import io.github.amichne.kast.cli.CliProjectionFailure
 import io.github.amichne.kast.cli.CliTextDocument
 import io.github.amichne.kast.cli.CliTextDocumentAdmission
 import io.github.amichne.kast.cli.command.broker.brokerCommandGroup
@@ -21,11 +20,12 @@ import io.github.amichne.kast.cli.command.symbol.symbolCommandGroup
 import io.github.amichne.kast.cli.command.traversal.traversalCommandGroup
 import io.github.amichne.kast.cli.command.workspace.indexCommandGroup
 import io.github.amichne.kast.cli.command.workspace.topologyCommandGroup
-import io.github.amichne.kast.cli.projection.CanonicalCliRequestPreparers
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.registry.CanonicalOperationDefinitions
 import io.github.amichne.kast.protocol.registry.HostedExposure
 import io.github.amichne.kast.protocol.registry.OperationDefinition
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalCliRequestPreparers
+import io.github.amichne.kast.protocol.wire.presentation.OperationProjectionFailure
 
 private const val MAX_CLI_TOKEN_LENGTH = 4_096
 private const val MAX_CLI_TOKEN_COUNT = 66
@@ -54,7 +54,7 @@ internal sealed interface CliCommandParsing {
         val diagnostic: CliTextDocument,
     ) : CliCommandParsing
 
-    data class ProjectionRejected(val failure: CliProjectionFailure) : CliCommandParsing
+    data class ProjectionRejected(val failure: OperationProjectionFailure) : CliCommandParsing
 }
 
 internal class CliSemanticCommandSurface
@@ -97,8 +97,8 @@ private constructor(
      * Proof transition: `List<String> -> CliCommandParsing`.
      *
      * Establishes one bounded Clikt invocation refined to exactly one typed CLI action, local help, or closed
-     * rejection. [CliCommandFailure] and [CliProjectionFailure] are the finite expected failures. Raw argv is extracted
-     * only into Clikt at this outer command boundary.
+     * rejection. [CliCommandFailure] and [OperationProjectionFailure] are the finite expected failures. Raw argv is
+     * extracted only into Clikt at this outer command boundary.
      */
     internal fun parse(
         argv: List<String>,

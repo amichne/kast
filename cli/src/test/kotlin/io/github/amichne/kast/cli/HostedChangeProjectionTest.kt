@@ -3,7 +3,6 @@ package io.github.amichne.kast.cli
 import com.networknt.schema.InputFormat
 import com.networknt.schema.SchemaRegistry
 import com.networknt.schema.SpecificationVersion
-import io.github.amichne.kast.cli.projection.CanonicalChangeCliDocuments
 import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.OperationOutcome
@@ -21,6 +20,8 @@ import io.github.amichne.kast.protocol.contract.ChangePreviewDiff
 import io.github.amichne.kast.protocol.contract.ChangePreviewPath
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.registry.CanonicalOperationDefinitions
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalChangeCliDocuments
+import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -123,9 +124,9 @@ class HostedChangeProjectionTest {
             )
         return Json.parseToJsonElement(
                 when (projected) {
-                    is ProjectedCliOutcome.Complete -> projected.document
-                    is ProjectedCliOutcome.Qualified -> projected.document
-                    is ProjectedCliOutcome.Rejected -> projected.document
+                    is ProjectedOperationOutcome.Complete -> projected.document
+                    is ProjectedOperationOutcome.Qualified -> projected.document
+                    is ProjectedOperationOutcome.Rejected -> projected.document
                 }.value
             )
             .jsonObject

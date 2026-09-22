@@ -4,10 +4,10 @@ import com.github.ajalt.clikt.core.UsageError
 import com.github.ajalt.clikt.parsers.CommandLineParser
 import io.github.amichne.kast.cli.command.projectPublicDefinitions
 import io.github.amichne.kast.cli.command.symbol.symbolCommandGroup
-import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.registry.CanonicalOperationDefinitions
 import io.github.amichne.kast.protocol.registry.HostedExposure
+import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test

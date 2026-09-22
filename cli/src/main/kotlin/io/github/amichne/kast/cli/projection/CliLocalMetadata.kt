@@ -1,12 +1,12 @@
 package io.github.amichne.kast.cli.projection
 
-import io.github.amichne.kast.cli.CliJsonDocument
 import io.github.amichne.kast.cli.CliOpenJsonObject
 import io.github.amichne.kast.cli.CliOpenJsonObjectAdmission
-import io.github.amichne.kast.cli.CliProcessOutput
 import io.github.amichne.kast.cli.CliTextDocument
 import io.github.amichne.kast.cli.CliTextDocumentAdmission
 import io.github.amichne.kast.cli.command.CliLocalMetadataCommand
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
+import io.github.amichne.kast.protocol.wire.presentation.OutputDocument
 
 enum class CliLocalMetadataFailure {
     PRODUCT_VERSION_INVALID,
@@ -24,9 +24,9 @@ sealed interface CliLocalMetadataAdmission {
 class CliLocalMetadata
 private constructor(
     private val version: CliTextDocument,
-    private val schema: CliJsonDocument,
+    private val schema: CanonicalJsonDocument,
 ) {
-    fun output(command: CliLocalMetadataCommand): CliProcessOutput =
+    fun output(command: CliLocalMetadataCommand): OutputDocument =
         when (command) {
             CliLocalMetadataCommand.VERSION -> version
             CliLocalMetadataCommand.SCHEMA -> schema
@@ -59,14 +59,14 @@ private constructor(
         }
 
         /**
-         * Proof transition: `String + CliJsonDocument -> CliLocalMetadataAdmission`.
+         * Proof transition: `String + CanonicalJsonDocument -> CliLocalMetadataAdmission`.
          *
          * Preserves a generated schema document while establishing the product identity. [CliLocalMetadataFailure] is
          * the closed expected failure. Raw identity may leave only at installed metadata composition.
          */
         internal fun admit(
             productVersion: String,
-            schema: CliJsonDocument,
+            schema: CanonicalJsonDocument,
         ): CliLocalMetadataAdmission =
             when (val admission = versionDocument(productVersion)) {
                 is CliLocalVersionAdmission.Admitted ->

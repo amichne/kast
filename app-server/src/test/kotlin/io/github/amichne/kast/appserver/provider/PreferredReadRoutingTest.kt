@@ -3,9 +3,11 @@ package io.github.amichne.kast.appserver.provider
 import io.github.amichne.kast.appserver.core.Broker
 import io.github.amichne.kast.appserver.core.BrokerDispatch
 import io.github.amichne.kast.appserver.core.BrokerDispatchRequest
+import io.github.amichne.kast.appserver.core.BrokerFailure
 import io.github.amichne.kast.appserver.core.BrokerInvocationContext
 import io.github.amichne.kast.appserver.core.BrokerLimits
 import io.github.amichne.kast.appserver.core.CatalogDigest
+import io.github.amichne.kast.appserver.core.ProviderFailureCode
 import io.github.amichne.kast.appserver.core.ProviderNamespace
 import io.github.amichne.kast.appserver.core.ToolAddress
 import io.github.amichne.kast.appserver.core.ToolName
@@ -35,18 +37,17 @@ import org.junit.jupiter.api.Assertions.fail
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
-/** Registration fixture proves name routing and canonical CLI invocation, not semantic execution. */
+/** Registration fixture proves name routing and canonical request admission, not semantic execution. */
 class PreferredReadRoutingTest {
     @Test
-    fun `old and preferred relation input reach the same canonical invocation`(@TempDir root: Path) = runTest {
-        assertRoutes(root = root, operation = "relation.read", legacy = "semantic_query", preferred = "read_relations")
+    fun `old and preferred relation input reach the same canonical request admission`(@TempDir root: Path) = runTest {
+        assertRoutes(root = root, legacy = "semantic_query", preferred = "read_relations")
     }
 
     @Test
-    fun `old and preferred traversal input reach the same canonical invocation`(@TempDir root: Path) = runTest {
+    fun `old and preferred traversal input reach the same canonical request admission`(@TempDir root: Path) = runTest {
         assertRoutes(
             root = root,
-            operation = "traversal.run",
             legacy = "impact_analyze",
             preferred = "traverse_relations",
         )
@@ -54,7 +55,7 @@ class PreferredReadRoutingTest {
 
     @Test
     fun `old and preferred inputs cannot bypass a different bound catalog`(@TempDir root: Path) = runTest {
-        val (broker, executor) = fixture(root, "relation.read")
+        val (broker, executor) = fixture(root)
         val store = MemoryThreadCatalogStore()
         store.write(
             ThreadCatalogBinding.admit("thread-1", CatalogDigest.derive("different catalog"), root.toRealPath())
@@ -91,11 +92,10 @@ class PreferredReadRoutingTest {
                 Json.parseToJsonElement(content).jsonObject.getValue("failure").jsonPrimitive.content,
             )
         }
-        assertEquals(0, executor.requests.count { !it.arguments.first().startsWith("--") })
     }
 
-    private suspend fun assertRoutes(root: Path, operation: String, legacy: String, preferred: String) {
-        val (broker, executor) = fixture(root, operation)
+    private suspend fun assertRoutes(root: Path, legacy: String, preferred: String) {
+        val (broker, executor) = fixture(root)
         val context =
             BrokerInvocationContext.admit(
                     threadId = "thread-1",
@@ -114,14 +114,11 @@ class PreferredReadRoutingTest {
                         context,
                     )
                 )
-            assertInstanceOf(BrokerDispatch.Completed::class.java, result, "$name: $result")
+            val rejected = assertInstanceOf(BrokerDispatch.Rejected::class.java, result, "$name: $result")
+            val failure = assertInstanceOf(BrokerFailure.ProviderInvocationRejected::class.java, rejected.failure)
+            assertEquals(ProviderFailureCode.IDE_INVALID_REQUEST, failure.code)
         }
-        val calls = executor.requests.filterNot { it.arguments.first().startsWith("--") }
-        assertEquals(listOf(operation.split('.'), operation.split('.')), calls.map { it.arguments })
-        assertEquals(
-            listOf(arguments.toString(), arguments.toString()),
-            calls.map { (it.input as BrokerProcessInput.Document).value },
-        )
+
         assertEquals(
             listOf(preferred),
             broker.catalog.namespaces
@@ -132,24 +129,12 @@ class PreferredReadRoutingTest {
         )
     }
 
-    private suspend fun fixture(
-        root: Path,
-        operation: String,
-    ): RoutingFixture {
+    private suspend fun fixture(root: Path): RoutingFixture {
         val executable = Files.writeString(root.resolve("kast"), "#!/bin/sh\nexit 0\n")
         Files.setPosixFilePermissions(executable, PosixFilePermissions.fromString("rwx------"))
-        val executor =
-            RecordingProcessExecutor(
-                installedKastCatalogFixture(),
-                invocationDocument = Json.encodeToString(RouteRejection(operation, "rejected", "workspace-not-ready")),
-            )
-        val options =
-            KastProviderOptions.admit(
-                    executable = executable.toRealPath(),
-                    qualificationDirectory = root.toRealPath(),
-                    processExecutor = executor,
-                )
-                .refined()
+        val executor = RecordingCatalogSource(installedKastCatalogFixture())
+
+        val options = KastProviderOptions(catalogSource = executor)
         val provider =
             assertInstanceOf(KastProviderQualification.Qualified::class.java, KastProviderQualifier.qualify(options))
         val broker =
@@ -160,7 +145,7 @@ class PreferredReadRoutingTest {
         return RoutingFixture(broker, executor)
     }
 
-    private data class RoutingFixture(val broker: Broker, val executor: RecordingProcessExecutor)
+    private data class RoutingFixture(val broker: Broker, val executor: RecordingCatalogSource)
 
     @Serializable private data class ObjectSchema(val type: String)
 
@@ -185,13 +170,6 @@ class PreferredReadRoutingTest {
     private val readNames = listOf("semantic_query", "read_relations", "impact_analyze", "traverse_relations")
 
     @Serializable private data object EmptyArguments
-
-    @Serializable
-    private data class RouteRejection(
-        val operation: String,
-        val status: String,
-        val reason: String,
-    )
 
     private fun <T, F> Refinement<T, F>.refined(): T =
         when (this) {

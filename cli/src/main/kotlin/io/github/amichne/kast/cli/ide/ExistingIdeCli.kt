@@ -1,10 +1,17 @@
 package io.github.amichne.kast.cli.ide
 
+import io.github.amichne.kast.appserver.ide.CanonicalRootDiscoverer
+import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
+import io.github.amichne.kast.appserver.ide.ExistingIdeClient
+import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
 import io.github.amichne.kast.cli.*
+import io.github.amichne.kast.cli.CliTextDocument
 import io.github.amichne.kast.cli.command.*
 import io.github.amichne.kast.cli.command.ide.ExistingIdeRootSelection
-import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
+import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
+import io.github.amichne.kast.protocol.wire.presentation.canonicalReadRejectedDocument
 import java.nio.file.Path
 
 internal enum class CliRuntimePath {
@@ -141,9 +148,9 @@ internal fun executeExistingIdeAction(
         is ExistingIdeExchange.HostRejected -> CliExit.OperationRejected(exchange.document)
         is ExistingIdeExchange.Semantic ->
             when (val outcome = exchange.outcome) {
-                is ProjectedCliOutcome.Complete -> CliExit.Complete(outcome.document)
-                is ProjectedCliOutcome.Qualified -> CliExit.Qualified(outcome.document)
-                is ProjectedCliOutcome.Rejected -> CliExit.OperationRejected(outcome.document)
+                is ProjectedOperationOutcome.Complete -> CliExit.Complete(outcome.document)
+                is ProjectedOperationOutcome.Qualified -> CliExit.Qualified(outcome.document)
+                is ProjectedOperationOutcome.Rejected -> CliExit.OperationRejected(outcome.document)
             }
         is ExistingIdeExchange.Rejected ->
             boundaryExit(CliBoundaryExitStatus.RUNTIME, "ide-${exchange.failure.name.lowercase().replace('_', '-')}")
@@ -153,5 +160,5 @@ internal fun executeExistingIdeAction(
 private fun sourceRejectedExit(parsed: CliCommandParsing.SourceRejected): CliExit =
     CliExit.BoundaryRejected(
         CliBoundaryExitStatus.USAGE,
-        io.github.amichne.kast.cli.projection.canonicalReadRejectedDocument(parsed.failure),
+        io.github.amichne.kast.protocol.wire.presentation.canonicalReadRejectedDocument(parsed.failure),
     )

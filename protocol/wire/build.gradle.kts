@@ -1,4 +1,5 @@
 plugins {
+    `java-test-fixtures`
     id("kast.kotlin-serialization")
     id("kast.role.contract")
 }

@@ -32,7 +32,13 @@ object InstalledWorkspaceRoutingAcceptanceMain {
         val fixture = first.parent
         val scope = Files.createDirectory(fixture.resolve("routing-harness"))
         stage(Stage.PROVIDER_QUALIFICATION)
-        val options = KastProviderOptions.admit(product.resolve("bin/kast"), first).refined()
+        val options =
+            KastProviderOptions(
+                catalogSource =
+                    io.github.amichne.kast.appserver.provider.PackagedKastCatalog(
+                        product.resolve("bin/kast").parent.parent.resolve("share/kast/provider-catalog.json")
+                    )
+            )
         val qualification = KastProviderQualifier.qualify(options)
         check(qualification is KastProviderQualification.Qualified) {
             "installed provider qualification rejected: $qualification"

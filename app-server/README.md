@@ -7,6 +7,13 @@ contracts nor IntelliJ runtime implementations belong in this module.
 The desktop release gate is **unqualified**. See [compatibility and blockers](docs/compatibility.md)
 for observed evidence, remaining client checks, and reproduction commands.
 
+Provider qualification reads the bounded `share/kast/provider-catalog.json` artifact
+and checks the complete tool set against the canonical registry. The build derives
+this artifact from the shared hosted schema owner. Startup no longer runs
+`kast --version` or `kast --schema`; it rejects missing or incompatible catalogs
+and changes between qualification and provider startup. Installed payload admission,
+IDEA compatibility, and Codex schema qualification retain their existing owners.
+
 ## Enable and attach
 
 Enable persistent integration from the workspace to enroll:

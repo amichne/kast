@@ -15,6 +15,7 @@ import io.github.amichne.kast.distribution.contract.configuration.ConfigurationS
 import io.github.amichne.kast.distribution.contract.configuration.KastConfigurationCatalogue
 import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import java.nio.file.InvalidPathException
 import java.nio.file.Path
 import kotlinx.coroutines.runBlocking
@@ -280,11 +281,11 @@ internal object ConfigurationCliInspection {
             is AppliedConfigurationInspection.Pending -> "pending"
         }
 
-    private fun complete(document: CliJsonDocument) =
+    private fun complete(document: CanonicalJsonDocument) =
         ConfigurationInspectionHandling.Handled(CliExit.Complete(document))
 
     private fun finish(
-        document: CliJsonDocument,
+        document: CanonicalJsonDocument,
         rejectedValidation: Boolean,
     ): ConfigurationInspectionHandling.Handled =
         if (rejectedValidation)
@@ -338,8 +339,8 @@ private data class ConfigurationInspectionFailureDocument(
     val applied: String = "unobserved",
 )
 
-private val schemaFactory = CliJsonDocument.generated(ConfigurationSchemaDocument.serializer())
-private val showFactory = CliJsonDocument.generated(ConfigurationShowDocument.serializer())
-private val explainFactory = CliJsonDocument.generated(ConfigurationExplainDocument.serializer())
-private val failureFactory = CliJsonDocument.generated(ConfigurationInspectionFailureDocument.serializer())
-private val validationFactory = CliJsonDocument.generated(ConfigurationValidationDocument.serializer())
+private val schemaFactory = CanonicalJsonDocument.generated(ConfigurationSchemaDocument.serializer())
+private val showFactory = CanonicalJsonDocument.generated(ConfigurationShowDocument.serializer())
+private val explainFactory = CanonicalJsonDocument.generated(ConfigurationExplainDocument.serializer())
+private val failureFactory = CanonicalJsonDocument.generated(ConfigurationInspectionFailureDocument.serializer())
+private val validationFactory = CanonicalJsonDocument.generated(ConfigurationValidationDocument.serializer())

@@ -39,6 +39,10 @@ abstract class GenerateControlMetadataTask : DefaultTask() {
     @get:PathSensitive(PathSensitivity.NONE)
     abstract val configurationCatalogueFile: RegularFileProperty
 
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val providerCatalogueFile: RegularFileProperty
+
     @get:Input
     abstract val productVersion: Property<String>
     @get:Input
@@ -64,6 +68,7 @@ abstract class GenerateControlMetadataTask : DefaultTask() {
         ))
         operationRegistryFile.get().asFile.copyTo(output.resolve("operation-registry.json"))
         configurationCatalogueFile.get().asFile.copyTo(output.resolve("configuration-schema.json"))
+        providerCatalogueFile.get().asFile.copyTo(output.resolve("provider-catalog.json"))
         output.resolve("wire-schema.json").writeBytes(CanonicalWireSchema.encodedBytes())
         licenseFile.get().asFile.copyTo(output.resolve("licenses/LICENSE"))
     }

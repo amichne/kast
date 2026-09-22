@@ -1,6 +1,5 @@
 package io.github.amichne.kast.appserver.provider
 
-import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.appserver.core.AgentSessionBootstrap
 import io.github.amichne.kast.appserver.core.AgentSessionBootstrapQualification
 import io.github.amichne.kast.appserver.core.BrokerOperationEffect
@@ -23,12 +22,12 @@ import io.github.amichne.kast.appserver.schema.JsonDomainDefinition
 import io.github.amichne.kast.appserver.schema.NetworkntJsonSchemaCompiler
 import io.github.amichne.kast.appserver.schema.ValidatedJsonValue
 import io.github.amichne.kast.appserver.schema.canonicalJson
-import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.RefinementDefinition
 import io.github.amichne.kast.kernel.Validation
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.registry.AgentToolDefinition
 import io.github.amichne.kast.protocol.registry.AgentToolInputBinding
 import io.github.amichne.kast.protocol.registry.AgentToolPolicy
 import io.github.amichne.kast.protocol.registry.CanonicalAgentToolDefinitions
@@ -39,67 +38,29 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 import java.security.MessageDigest
 import java.util.HexFormat
-import kotlinx.coroutines.TimeoutCancellationException
-import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.encodeToJsonElement
-import kotlinx.serialization.json.jsonObject
 
-internal enum class KastProviderOptionsFailure {
-    EXECUTABLE_UNAVAILABLE,
-    QUALIFICATION_DIRECTORY_REJECTED,
-    QUALIFICATION_TIMEOUT_REJECTED,
-}
+internal class KastProviderOptions(
+    val catalogSource: KastCatalogSource,
+    val catalogObserver: KastCatalogObserver = JsonLineKastCatalogObserver,
+    val readLimits: ReadLimits = ReadLimits.Default,
+    val ideClient: io.github.amichne.kast.appserver.ide.ExistingIdeClient =
+        io.github.amichne.kast.appserver.ide.ExistingIdeSocketClient(
+            Path.of(System.getProperty("user.home")),
+            readLimits,
+        ),
+    val roots: io.github.amichne.kast.appserver.ide.CanonicalRootDiscoverer =
+        io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery,
+    val lifecycleClient: io.github.amichne.kast.appserver.ide.WorkspaceLifecycleClient =
+        io.github.amichne.kast.appserver.ide.WorkspaceLifecycleClient.Unavailable,
+)
 
-internal class KastProviderOptions
-private constructor(
-    val executable: BrokerExecutable,
-    val qualificationDirectory: CanonicalBrokerDirectory,
-    val processExecutor: BrokerProcessExecutor,
-    val qualificationTimeoutMillis: Long,
-    val readLimits: ReadLimits,
-) {
-    companion object {
-        internal fun admit(
-            executable: Path,
-            qualificationDirectory: Path,
-            processExecutor: BrokerProcessExecutor = JdkBrokerProcessExecutor,
-            qualificationTimeoutMillis: Long = OperationExecutionBudget.LOCAL_QUALIFICATION.value,
-            readLimits: ReadLimits = ReadLimits.Default,
-        ): Refinement<KastProviderOptions, KastProviderOptionsFailure> {
-            val admittedExecutable =
-                when (val admission = BrokerExecutable.admit(executable)) {
-                    is Refinement.Refined -> admission.value
-                    is Refinement.Rejected ->
-                        return Refinement.Rejected(KastProviderOptionsFailure.EXECUTABLE_UNAVAILABLE)
-                }
-            val admittedDirectory =
-                CanonicalBrokerDirectory.admit(qualificationDirectory)
-                    ?: return Refinement.Rejected(KastProviderOptionsFailure.QUALIFICATION_DIRECTORY_REJECTED)
-            if (qualificationTimeoutMillis !in 1..BrokerOperationalLimits.maximumKastQualification.value) {
-                return Refinement.Rejected(KastProviderOptionsFailure.QUALIFICATION_TIMEOUT_REJECTED)
-            }
-            return Refinement.Refined(
-                KastProviderOptions(
-                    admittedExecutable,
-                    admittedDirectory,
-                    processExecutor,
-                    qualificationTimeoutMillis,
-                    readLimits,
-                )
-            )
-        }
-    }
-}
-
+@Serializable
 internal enum class KastQualificationFailure {
-    VERSION_UNAVAILABLE,
-    VERSION_INVALID,
     SCHEMA_UNAVAILABLE,
     SCHEMA_SIZE_LIMIT,
     SCHEMA_INVALID,
@@ -114,20 +75,6 @@ internal sealed interface KastProviderQualification {
     ) : KastProviderQualification
 
     data class Rejected(val failure: KastQualificationFailure) : KastProviderQualification
-}
-
-@JvmInline
-internal value class KastCliVersion private constructor(val value: String) {
-    companion object {
-        internal fun admit(raw: String): KastCliVersion? =
-            raw.trim()
-                .takeIf { value ->
-                    value.startsWith("kast ") &&
-                        value.length <= 512 &&
-                        value.none { character -> character == '\n' || character == '\r' || character == '\u0000' }
-                }
-                ?.let(::KastCliVersion)
-    }
 }
 
 @JvmInline
@@ -146,7 +93,6 @@ internal value class KastContractDigest private constructor(val value: String) {
 }
 
 internal data class KastQualificationEvidence(
-    val cliVersion: KastCliVersion,
     val contractDigest: KastContractDigest,
     val schemaVersion: Int,
     val projectionVersion: Int,
@@ -188,53 +134,19 @@ internal object KastProviderQualifier {
         }
 
     private suspend fun qualifyContract(options: KastProviderOptions): KastContractQualification {
-        val versionExecution =
-            executeQualification(
-                options,
-                listOf("--version"),
-                MAXIMUM_VERSION_BYTES,
-            )
-        val versionOutput =
-            versionExecution as? BrokerProcessExecution.Completed
-                ?: return KastContractQualification.Rejected(KastQualificationFailure.VERSION_UNAVAILABLE)
-        if (versionOutput.exitCode != 0) {
-            return KastContractQualification.Rejected(KastQualificationFailure.VERSION_UNAVAILABLE)
-        }
-        val cliVersion =
-            KastCliVersion.admit(versionOutput.stdout)
-                ?: return KastContractQualification.Rejected(KastQualificationFailure.VERSION_INVALID)
-
-        val schemaExecution =
-            executeQualification(
-                options,
-                listOf("--schema"),
-                MAXIMUM_SCHEMA_BYTES,
-            )
-        val schemaOutput =
-            when (schemaExecution) {
-                is BrokerProcessExecution.Completed -> schemaExecution
-                is BrokerProcessExecution.Rejected ->
-                    return KastContractQualification.Rejected(
-                        when (schemaExecution.failure) {
-                            BrokerProcessFailure.OUTPUT_LIMIT -> KastQualificationFailure.SCHEMA_SIZE_LIMIT
-                            BrokerProcessFailure.IO_REJECTED,
-                            BrokerProcessFailure.SPAWN_FAILED,
-                            BrokerProcessFailure.TERMINATED,
-                            BrokerProcessFailure.TIMED_OUT -> KastQualificationFailure.SCHEMA_UNAVAILABLE
-                        }
-                    )
+        val source =
+            when (val read = options.catalogSource.read()) {
+                is Refinement.Refined -> read.value
+                is Refinement.Rejected -> return options.catalogRejected(KastCatalogStage.SOURCE, read.failure)
             }
-        if (schemaOutput.exitCode != 0) {
-            return KastContractQualification.Rejected(KastQualificationFailure.SCHEMA_UNAVAILABLE)
-        }
         val rawDocument =
             try {
-                Json.parseToJsonElement(schemaOutput.stdout) as? JsonObject
+                Json.parseToJsonElement(source) as? JsonObject
             } catch (_: SerializationException) {
                 null
             } catch (_: IllegalArgumentException) {
                 null
-            } ?: return KastContractQualification.Rejected(KastQualificationFailure.SCHEMA_INVALID)
+            } ?: return options.catalogRejected(KastCatalogStage.DOCUMENT, KastQualificationFailure.SCHEMA_INVALID)
         val capability =
             try {
                 boundaryJson.decodeFromJsonElement(KastCapabilityBoundary.serializer(), rawDocument)
@@ -242,13 +154,18 @@ internal object KastProviderQualifier {
                 null
             } catch (_: IllegalArgumentException) {
                 null
-            } ?: return KastContractQualification.Rejected(KastQualificationFailure.SCHEMA_INVALID)
+            } ?: return options.catalogRejected(KastCatalogStage.DOCUMENT, KastQualificationFailure.SCHEMA_INVALID)
+        if (capability.schemaVersion != 1)
+            return options.catalogRejected(KastCatalogStage.DOCUMENT, KastQualificationFailure.SCHEMA_INCOMPATIBLE)
         val projection =
-            admitProjection(capability.serverProjection)
-                ?: return KastContractQualification.Rejected(KastQualificationFailure.SCHEMA_INCOMPATIBLE)
+            when (val admitted = admitProjection(capability.serverProjection)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected ->
+                    return options.catalogRejected(admitted.failure, KastQualificationFailure.SCHEMA_INCOMPATIBLE)
+            }
+        options.catalogObserver.observe(KastCatalogObservation.Admitted)
         return KastContractQualification.Qualified(
             KastQualificationEvidence(
-                cliVersion,
                 KastContractDigest.derive(rawDocument),
                 capability.schemaVersion,
                 capability.serverProjection.schemaVersion,
@@ -258,30 +175,6 @@ internal object KastProviderQualifier {
         )
     }
 
-    private suspend fun executeQualification(
-        options: KastProviderOptions,
-        arguments: List<String>,
-        maximumOutputBytes: Int,
-    ): BrokerProcessExecution {
-        val request =
-            refined(
-                BrokerProcessRequest.admit(
-                    options.executable,
-                    arguments,
-                    options.qualificationDirectory,
-                    maximumOutputBytes,
-                    options.qualificationTimeoutMillis,
-                )
-            ) ?: return BrokerProcessExecution.Rejected(BrokerProcessFailure.TERMINATED)
-        return try {
-            withTimeout(options.qualificationTimeoutMillis) {
-                options.processExecutor.execute(request)
-            }
-        } catch (_: TimeoutCancellationException) {
-            BrokerProcessExecution.Rejected(BrokerProcessFailure.TIMED_OUT)
-        }
-    }
-
     private fun buildRegistration(
         options: KastProviderOptions,
         contract: KastContractQualification.Qualified,
@@ -289,17 +182,14 @@ internal object KastProviderQualifier {
         return ProviderRegistration.define(
             namespace = staticNamespace(),
             version =
-                staticVersion("${contract.evidence.cliVersion.value}+server${contract.evidence.projectionVersion}"),
+                staticVersion("server${contract.evidence.projectionVersion}+${contract.evidence.contractDigest.value}"),
             tools = contract.tools.map { tool -> tool.asBrokerTool() },
             start = {
                 when (val current = qualifyContract(options)) {
                     is KastContractQualification.Rejected ->
                         ProviderStartup.Rejected(ProviderFailureCode.KAST_QUALIFICATION_FAILED)
                     is KastContractQualification.Qualified ->
-                        if (
-                            current.evidence.cliVersion == contract.evidence.cliVersion &&
-                                current.evidence.contractDigest == contract.evidence.contractDigest
-                        ) {
+                        if (current.evidence.contractDigest == contract.evidence.contractDigest) {
                             ProviderStartup.Started(KastRuntime(options))
                         } else {
                             ProviderStartup.Rejected(ProviderFailureCode.KAST_CONTRACT_CHANGED)
@@ -372,122 +262,156 @@ internal object KastProviderQualifier {
         )
     }
 
-    private fun admitProjection(projection: KastServerProjectionBoundary): QualifiedKastProjection? {
-        if (projection.schemaVersion != KAST_SERVER_PROJECTION_VERSION || projection.namespace != "kast") return null
+    private fun admitProjection(
+        projection: KastServerProjectionBoundary
+    ): Refinement<QualifiedKastProjection, KastCatalogStage> {
+        if (projection.schemaVersion != KAST_SERVER_PROJECTION_VERSION || projection.namespace != "kast")
+            return Refinement.Rejected(KastCatalogStage.PROJECTION)
         val bootstrap = projection.hostedBootstrap
-        val cli = projection.cliInvocations
-        if (bootstrap.schemaVersion != 1 || cli.schemaVersion != 3) return null
-        val policy = refined(AgentToolPolicy.parse(bootstrap.policy)) ?: return null
-        if (policy != CanonicalAgentToolDefinitions.policy) return null
-        if (bootstrap.tools.isEmpty() || bootstrap.tools.size > 64) return null
-        if (bootstrap.tools.map(KastHostedToolBoundary::name).hasDuplicates()) return null
-        if (cli.operations.map(KastCliOperationInvocationBoundary::toolName).hasDuplicates()) return null
-        val invocationsByTool = cli.operations.associateBy { it.toolName }
-        if (invocationsByTool.keys != bootstrap.tools.mapTo(linkedSetOf()) { it.name }) {
-            return null
-        }
-        return QualifiedKastProjection(
-            policy,
-            bootstrap.tools.map { tool ->
-                admitTool(tool, invocationsByTool.getValue(tool.name)) ?: return null
-            },
+        if (bootstrap.schemaVersion != 1) return Refinement.Rejected(KastCatalogStage.PROJECTION)
+        val policy =
+            refined(AgentToolPolicy.parse(bootstrap.policy)) ?: return Refinement.Rejected(KastCatalogStage.PROJECTION)
+        if (policy != CanonicalAgentToolDefinitions.policy) return Refinement.Rejected(KastCatalogStage.PROJECTION)
+        if (
+            bootstrap.tools.mapTo(linkedSetOf()) { it.name } !=
+                CanonicalAgentToolDefinitions.all.mapTo(linkedSetOf()) { it.name.value }
         )
+            return Refinement.Rejected(KastCatalogStage.PROJECTION)
+        if (bootstrap.tools.map(KastHostedToolBoundary::name).hasDuplicates())
+            return Refinement.Rejected(KastCatalogStage.PROJECTION)
+        val tools =
+            bootstrap.tools.map { tool ->
+                when (val admitted = admitTool(tool)) {
+                    is Refinement.Refined -> admitted.value
+                    is Refinement.Rejected -> return admitted
+                }
+            }
+        return Refinement.Refined(QualifiedKastProjection(policy, tools))
     }
 
-    private fun admitTool(
-        tool: KastHostedToolBoundary,
-        cliInvocation: KastCliOperationInvocationBoundary,
-    ): QualifiedKastTool? {
-        val operation = KastOperationId.admit(tool.operationId) ?: return null
-        val canonicalOperation =
-            CanonicalOperation.entries.singleOrNull {
-                it.id.value == operation.value
-            } ?: return null
-        val canonicalDefinition =
+    private fun admitTool(tool: KastHostedToolBoundary): Refinement<QualifiedKastTool, KastCatalogStage> {
+        val metadata =
+            when (val admitted = admitMetadata(tool)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return admitted
+            }
+        val input =
+            when (val admitted = admitInputSchema(tool.inputSchema, metadata.definition.inputBinding)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return admitted
+            }
+        val outputDocument =
+            tool.outputSchema as? JsonObject ?: return Refinement.Rejected(KastCatalogStage.OUTPUT_SCHEMA)
+        val output =
+            refined(NetworkntJsonSchemaCompiler.compile(outputDocument))
+                ?: return Refinement.Rejected(KastCatalogStage.OUTPUT_SCHEMA)
+        return Refinement.Refined(metadata.withSchemas(input, output))
+    }
+
+    private fun admitMetadata(tool: KastHostedToolBoundary): Refinement<AdmittedKastToolMetadata, KastCatalogStage> {
+        val definition =
             CanonicalAgentToolDefinitions.all.singleOrNull {
-                it.name.value == tool.name && it.operation.operation == canonicalOperation
-            } ?: return null
-        if (cliInvocation.toolName != tool.name || cliInvocation.operationId != tool.operationId) return null
-        val inputBinding = canonicalDefinition.inputBinding
-        if (
-            inputBinding is AgentToolInputBinding.Facade &&
-                cliInvocation.invocation.command != listOf("tool", inputBinding.identity.toolName)
-        )
-            return null
-        val executionBudget = OperationExecutionBudget.forOperation(canonicalOperation)
+                it.name.value == tool.name && it.operation.id.value == tool.operationId
+            } ?: return Refinement.Rejected(KastCatalogStage.TOOL_METADATA)
+        val operation =
+            KastOperationId.admit(tool.operationId) ?: return Refinement.Rejected(KastCatalogStage.TOOL_METADATA)
+        val budget = OperationExecutionBudget.forOperation(definition.operation.operation)
+        if (!matchesMetadata(tool, definition, budget)) return Refinement.Rejected(KastCatalogStage.TOOL_METADATA)
+        val name = refined(ToolName.admit(tool.name)) ?: return Refinement.Rejected(KastCatalogStage.TOOL_METADATA)
+        val aliases =
+            definition.inputAliases.mapTo(linkedSetOf()) { alias ->
+                refined(ToolName.admit(alias.value)) ?: return Refinement.Rejected(KastCatalogStage.TOOL_METADATA)
+            }
+        val description =
+            refined(ToolDescription.admit(tool.description))
+                ?: return Refinement.Rejected(KastCatalogStage.TOOL_METADATA)
+        return Refinement.Refined(AdmittedKastToolMetadata(definition, operation, budget, name, aliases, description))
+    }
+
+    private fun matchesMetadata(
+        tool: KastHostedToolBoundary,
+        definition: AgentToolDefinition,
+        budget: OperationExecutionBudget,
+    ): Boolean {
         if (
             tool.executionBudget.readinessMillis != OperationExecutionBudget.WORKSPACE_READINESS.value ||
-                tool.executionBudget.operationMillis != executionBudget.operation.value
+                tool.executionBudget.operationMillis != budget.operation.value
         )
-            return null
+            return false
         if (
-            tool.name != canonicalDefinition.name.value ||
-                tool.description != canonicalDefinition.description.value ||
-                tool.effect != canonicalDefinition.operation.effect.name.lowercase()
+            tool.description != definition.description.value ||
+                tool.effect != definition.operation.effect.name.lowercase()
         )
-            return null
+            return false
         val approval =
             when (tool.approvalPolicy) {
                 KastApprovalPolicy.NONE -> HostedApprovalPolicy.NONE
                 KastApprovalPolicy.EXPLICIT -> HostedApprovalPolicy.EXPLICIT
                 KastApprovalPolicy.EXACT_PROJECT_CLOSE -> HostedApprovalPolicy.EXACT_PROJECT_CLOSE
             }
-        if (approval != canonicalDefinition.approval) return null
-        if (tool.deferLoading != (canonicalDefinition.loading == HostedToolLoading.DEFERRED)) return null
-        val name = refined(ToolName.admit(tool.name)) ?: return null
-        val aliases =
-            canonicalDefinition.inputAliases.mapTo(linkedSetOf()) { alias ->
-                refined(ToolName.admit(alias.value)) ?: return null
-            }
-        val description = refined(ToolDescription.admit(tool.description)) ?: return null
-        if (cliInvocation.cliUsage.isBlank() || cliInvocation.cliUsage.length > 16_384) return null
-        if (cliInvocation.invocation.command.isEmpty() || cliInvocation.invocation.command.size > 16) return null
-        if (cliInvocation.invocation.command.any { token -> !token.isAdmittedCliToken() }) return null
-        val inputDocument = tool.inputSchema as? JsonObject ?: return null
-        val outputDocument = tool.outputSchema as? JsonObject ?: return null
-        when (val input = canonicalDefinition.inputBinding) {
-            is AgentToolInputBinding.Facade ->
-                if (inputDocument != PublicToolContract.parameters(input.identity)) return null
-            AgentToolInputBinding.Canonical -> Unit
-        }
-        if (inputDocument["additionalProperties"] != JsonPrimitive(false)) return null
-        val inputSchema = refined(NetworkntJsonSchemaCompiler.compile(inputDocument)) ?: return null
-        val outputSchema = refined(NetworkntJsonSchemaCompiler.compile(outputDocument)) ?: return null
-        return QualifiedKastTool(
-            operation,
-            executionBudget,
-            name,
-            description,
-            tool.deferLoading,
-            HostedToolDefinition(
-                canonicalOperation,
-                canonicalDefinition.name,
-                canonicalDefinition.description,
-                inputSchema,
-                outputSchema,
-                canonicalDefinition.operation.effect,
-                canonicalDefinition.approval,
-                executionBudget,
-                canonicalDefinition.loading,
-                when (inputBinding) {
-                    is AgentToolInputBinding.Facade -> PublicToolContract.generationParameters(inputBinding.identity)
-                    AgentToolInputBinding.Canonical -> inputDocument
-                },
-            ),
-            inputSchema,
-            outputSchema,
-            cliInvocation.invocation.command,
-            canonicalDefinition.inputBinding,
-            aliases,
-        )
+        if (approval != definition.approval || tool.deferLoading != (definition.loading == HostedToolLoading.DEFERRED))
+            return false
+        return true
     }
 
-    private fun String.isAdmittedCliToken(): Boolean =
-        isNotBlank() &&
-            length <= 4_096 &&
-            none { character ->
-                character == '\n' || character == '\r' || character == '\u0000'
-            }
+    private fun admitInputSchema(
+        raw: JsonElement,
+        binding: AgentToolInputBinding,
+    ): Refinement<CompiledJsonSchema, KastCatalogStage> {
+        val document = raw as? JsonObject ?: return Refinement.Rejected(KastCatalogStage.INPUT_SCHEMA)
+        if (binding is AgentToolInputBinding.Facade && document != PublicToolContract.parameters(binding.identity))
+            return Refinement.Rejected(KastCatalogStage.INPUT_SCHEMA)
+        if (!closedKastInputSchema(document)) return Refinement.Rejected(KastCatalogStage.INPUT_SCHEMA)
+        val compiled =
+            refined(NetworkntJsonSchemaCompiler.compile(document))
+                ?: return Refinement.Rejected(KastCatalogStage.INPUT_SCHEMA)
+        return Refinement.Refined(compiled)
+    }
+
+    private data class AdmittedKastToolMetadata(
+        val definition: AgentToolDefinition,
+        val operation: KastOperationId,
+        val budget: OperationExecutionBudget,
+        val name: ToolName,
+        val aliases: Set<ToolName>,
+        val description: ToolDescription,
+    ) {
+        fun withSchemas(input: CompiledJsonSchema, output: CompiledJsonSchema): QualifiedKastTool =
+            QualifiedKastTool(
+                operation,
+                budget,
+                name,
+                description,
+                definition.loading == HostedToolLoading.DEFERRED,
+                HostedToolDefinition(
+                    definition.operation.operation,
+                    definition.name,
+                    definition.description,
+                    input,
+                    output,
+                    definition.operation.effect,
+                    definition.approval,
+                    budget,
+                    definition.loading,
+                    when (val binding = definition.inputBinding) {
+                        is AgentToolInputBinding.Facade -> PublicToolContract.generationParameters(binding.identity)
+                        AgentToolInputBinding.Canonical -> input.document
+                    },
+                ),
+                input,
+                output,
+                definition.inputBinding,
+                aliases,
+            )
+    }
+
+    private fun KastProviderOptions.catalogRejected(
+        stage: KastCatalogStage,
+        failure: KastQualificationFailure,
+    ): KastContractQualification.Rejected {
+        catalogObserver.observe(KastCatalogObservation.Rejected(stage, failure))
+        return KastContractQualification.Rejected(failure)
+    }
 
     private fun <Value> List<Value>.hasDuplicates(): Boolean = toSet().size != size
 
@@ -503,104 +427,17 @@ internal object KastProviderQualifier {
             is Refinement.Rejected -> null
         }
 
-    private const val MAXIMUM_VERSION_BYTES = BrokerOperationalLimits.maximumKastVersionBytes
-    private const val MAXIMUM_SCHEMA_BYTES = BrokerOperationalLimits.maximumKastSchemaBytes
     private val boundaryJson = Json { ignoreUnknownKeys = true }
 }
 
-internal class KastRuntime(private val options: KastProviderOptions) {
+internal class KastRuntime(options: KastProviderOptions) {
+    private val direct = KastDirectInvocation(options)
+
     internal suspend fun invoke(
         tool: QualifiedKastTool,
         input: KastInvocationInput,
         context: io.github.amichne.kast.appserver.core.BrokerInvocationContext,
-    ): ProviderCall<KastInvocationOutput> {
-        val arguments =
-            when (val encoded = input.encodeFor(tool)) {
-                is Refinement.Refined -> encoded.value
-                is Refinement.Rejected -> return ProviderCall.Rejected(ProviderFailureCode.UNEXPECTED_FAILURE)
-            }
-        val invocationTransport =
-            when (val admitted = KastInvocationTransport.prepare(tool, arguments, context)) {
-                is Refinement.Refined -> admitted.value
-                is Refinement.Rejected -> return ProviderCall.Rejected(admitted.failure)
-            }
-        val requestInput =
-            when (
-                val admission =
-                    BrokerProcessInput.Document.admit(invocationTransport.document.toString(), options.readLimits)
-            ) {
-                is Refinement.Refined -> admission.value
-                is Refinement.Rejected -> return ProviderCall.Rejected(ProviderFailureCode.UNEXPECTED_FAILURE)
-            }
-        val request =
-            when (
-                val admission =
-                    BrokerProcessRequest.admit(
-                        executable = options.executable,
-                        arguments = invocationTransport.command,
-                        workingDirectory = context.workingDirectory,
-                        maximumOutputBytes = options.readLimits[ReadLimitParameter.PROVIDER_OUTPUT_BYTES].value,
-                        timeoutMillis =
-                            options.readLimits[
-                                    when (tool.executionBudget) {
-                                        OperationExecutionBudget.SEMANTIC_READ ->
-                                            ReadLimitParameter.PROVIDER_INVOCATION_MILLIS
-                                        OperationExecutionBudget.GRAPH_BUILD ->
-                                            ReadLimitParameter.PROVIDER_GRAPH_INVOCATION_MILLIS
-                                    }]
-                                .value
-                                .toLong(),
-                        input = requestInput,
-                        limits = options.readLimits,
-                    )
-            ) {
-                is Refinement.Refined -> admission.value
-                is Refinement.Rejected -> return ProviderCall.Rejected(ProviderFailureCode.UNEXPECTED_FAILURE)
-            }
-        return outcome(options.processExecutor.execute(request), context)
-    }
-
-    private fun outcome(
-        execution: BrokerProcessExecution,
-        context: io.github.amichne.kast.appserver.core.BrokerInvocationContext,
-    ): ProviderCall<KastInvocationOutput> {
-        val completed =
-            execution as? BrokerProcessExecution.Completed
-                ?: return ProviderCall.Rejected(
-                    (execution as BrokerProcessExecution.Rejected).failure.providerFailureCode()
-                )
-        val raw = if (completed.exitCode == 0) completed.stdout else completed.stderr
-        val payload =
-            try {
-                Json.parseToJsonElement(raw)
-            } catch (_: SerializationException) {
-                null
-            } catch (_: IllegalArgumentException) {
-                null
-            } ?: return ProviderCall.Rejected(ProviderFailureCode.MALFORMED_KAST_OUTPUT)
-        val document =
-            if (completed.exitCode == 0) invocationJson.encodeToJsonElement(KastCompletedDocument(payload)).jsonObject
-            else invocationJson.encodeToJsonElement(KastRejectedDocument(payload)).jsonObject
-        return ProviderCall.Completed(
-            KastInvocationOutput(
-                document,
-                success = completed.exitCode == 0 && !payload.isHostedReadRejection(),
-                observerDirectory = context.workingDirectory,
-            )
-        )
-    }
-
-    private companion object {
-        const val MAXIMUM_OUTPUT_BYTES = BrokerOperationalLimits.maximumKastOutputBytes
-    }
-}
-
-/** Hosted admission can fail before canonical read evidence exists, with a successful process exit. */
-private fun JsonElement.isHostedReadRejection(): Boolean {
-    val document = this as? JsonObject ?: return false
-    return document["type"] == JsonPrimitive("HOST_REJECTED") ||
-        document["outcome"] == JsonPrimitive("rejected") ||
-        document["status"] == JsonPrimitive("rejected")
+    ): ProviderCall<KastInvocationOutput> = direct.invoke(tool, input, context)
 }
 
 private sealed interface KastContractQualification {
@@ -627,7 +464,6 @@ internal data class QualifiedKastTool(
     val hostedDefinition: HostedToolDefinition,
     val inputSchema: CompiledJsonSchema,
     val outputSchema: CompiledJsonSchema,
-    val command: List<String>,
     val inputBinding: AgentToolInputBinding = AgentToolInputBinding.Canonical,
     val inputAliases: Set<ToolName> = emptySet(),
 )
@@ -648,12 +484,12 @@ internal data class KastInvocationOutput(
     val observerDirectory: CanonicalBrokerDirectory,
 )
 
-private val invocationJson = Json { encodeDefaults = true }
+internal val invocationJson = Json { encodeDefaults = true }
 
 /** The payload is opaque here; the owning operation output schema admits it before presentation. */
-@Serializable private data class KastCompletedDocument(val document: JsonElement, val status: String = "completed")
+@Serializable internal data class KastCompletedDocument(val document: JsonElement, val status: String = "completed")
 
 /** Diagnostic payloads are admitted by the installed rejection schema before presentation. */
-@Serializable private data class KastRejectedDocument(val diagnostic: JsonElement, val status: String = "rejected")
+@Serializable internal data class KastRejectedDocument(val diagnostic: JsonElement, val status: String = "rejected")
 
 private const val KAST_SERVER_PROJECTION_VERSION = 13

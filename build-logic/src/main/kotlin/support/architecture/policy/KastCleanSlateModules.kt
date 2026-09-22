@@ -298,6 +298,7 @@ internal object KastCleanSlateModules {
             ModuleId.DISTRIBUTION_MANAGED,
             ModuleId.PROTOCOL_CONTRACT,
             ModuleId.PROTOCOL_REGISTRY,
+            ModuleId.PROTOCOL_WIRE,
             effects = setOf(ForbiddenEffect.PROCESS_CONTROL),
             scopedEffects = mapOf(ForbiddenEffect.FILESYSTEM_WRITE to setOf(
                     JvmClassName("io/github/amichne/kast/appserver/InstalledAppServerManager"),

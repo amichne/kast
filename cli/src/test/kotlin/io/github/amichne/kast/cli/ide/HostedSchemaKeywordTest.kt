@@ -2,6 +2,7 @@ package io.github.amichne.kast.cli.ide
 
 import com.networknt.schema.SchemaRegistry
 import com.networknt.schema.dialect.Dialect
+import io.github.amichne.kast.appserver.ide.ExistingIdeDocuments
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 

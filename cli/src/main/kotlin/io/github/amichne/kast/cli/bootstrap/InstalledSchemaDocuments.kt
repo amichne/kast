@@ -1,6 +1,7 @@
 package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.cli.command.CliCommandSurface
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import kotlinx.serialization.Serializable
 
 internal enum class InstalledSchemaResource {
@@ -14,7 +15,7 @@ internal data class InstalledSchemaFailure(
 )
 
 internal sealed interface InstalledSchemaConstruction {
-    data class Constructed(val document: CliJsonDocument) : InstalledSchemaConstruction
+    data class Constructed(val document: CanonicalJsonDocument) : InstalledSchemaConstruction
 
     data class Rejected(val failure: InstalledSchemaFailure) : InstalledSchemaConstruction
 }
@@ -83,4 +84,4 @@ private data class InstalledCliProjectionDocument(
     val commands: List<String>,
 )
 
-private val installedSchemaFactory = CliJsonDocument.generated(InstalledSchemaDocument.serializer())
+private val installedSchemaFactory = CanonicalJsonDocument.generated(InstalledSchemaDocument.serializer())

@@ -5,6 +5,9 @@ import io.github.amichne.kast.appserver.InstalledBrokerServerRunner
 import io.github.amichne.kast.appserver.InstalledSavedConfigurationIngress
 import io.github.amichne.kast.appserver.SavedConfigurationIngress
 import io.github.amichne.kast.appserver.host.installedCodexClientLauncher
+import io.github.amichne.kast.appserver.ide.ExistingIdeSocketClient
+import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
+import io.github.amichne.kast.appserver.ide.IdeLifecycleClient
 import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
 import io.github.amichne.kast.cli.command.CliCommandGraphFailure
@@ -12,13 +15,13 @@ import io.github.amichne.kast.cli.command.CliCommandSurface
 import io.github.amichne.kast.cli.projection.CliLocalMetadata
 import io.github.amichne.kast.cli.projection.CliLocalMetadataAdmission
 import io.github.amichne.kast.cli.projection.CliLocalMetadataFailure
-import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationPathSelection
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationRejection
 import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityFailure
 import io.github.amichne.kast.protocol.contract.KastPluginVersion
+import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
 import java.io.IOException
 import java.net.URISyntaxException
 import java.nio.file.Files
@@ -111,7 +114,7 @@ internal class InstalledKastCliComposition : KastCliComposition {
                 localMetadata = metadata,
                 productVersion = version,
                 lifecycleClient =
-                    io.github.amichne.kast.cli.ide.IdeLifecycleClient(
+                    io.github.amichne.kast.appserver.ide.IdeLifecycleClient(
                         userHome,
                         when (val selected = configuration.selectedIdeHome) {
                             is ConfigurationPathSelection.Selected -> selected.path
@@ -120,7 +123,7 @@ internal class InstalledKastCliComposition : KastCliComposition {
                         },
                     ),
                 existingIdeClient =
-                    io.github.amichne.kast.cli.ide.ExistingIdeSocketClient(userHome, configuration.readLimits),
+                    io.github.amichne.kast.appserver.ide.ExistingIdeSocketClient(userHome, configuration.readLimits),
                 appServerManager = InstalledAppServerManager(executable, userHome),
                 brokerServerRunner = InstalledBrokerServerRunner(executable, userHome),
                 codexClientLauncher = installedCodexClientLauncher(executable, userHome),

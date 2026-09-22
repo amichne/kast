@@ -401,16 +401,13 @@ class InstalledBrokerServerTest {
         private val rejectKastQualification: Boolean = false,
         private val rejectCodexQualification: Boolean = false,
     ) : BrokerProcessExecutor {
+        init {
+            val directory = Files.createDirectories(kast.parent.parent.resolve("share/kast"))
+            if (!rejectKastQualification) Files.writeString(directory.resolve("provider-catalog.json"), kastSchema())
+        }
+
         override suspend fun execute(request: BrokerProcessRequest): BrokerProcessExecution =
             when {
-                request.executable.path == kast && request.arguments == listOf("--version") ->
-                    if (rejectKastQualification) {
-                        BrokerProcessExecution.Completed(1, "", "rejected")
-                    } else {
-                        BrokerProcessExecution.Completed(0, "kast 9.9.9\n", "")
-                    }
-                request.executable.path == kast && request.arguments == listOf("--schema") ->
-                    BrokerProcessExecution.Completed(0, kastSchema(), "")
                 request.executable.path == codex && request.arguments == listOf("--version") ->
                     BrokerProcessExecution.Completed(0, "codex-cli 9.9.9\n", "")
                 request.executable.path == codex &&

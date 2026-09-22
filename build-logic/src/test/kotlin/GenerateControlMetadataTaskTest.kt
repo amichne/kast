@@ -26,6 +26,7 @@ class GenerateControlMetadataTaskTest {
             licenseFile.set(write("LICENSE", "license").toFile())
             operationRegistryFile.set(registry.toFile())
             configurationCatalogueFile.set(catalogue.toFile())
+            providerCatalogueFile.set(catalogue.toFile())
             productVersion.set("1.0.0")
             ideaBuild.set("262.9437.185")
             kotlinPluginBuild.set("262.9437.185-IJ")
@@ -42,6 +43,7 @@ class GenerateControlMetadataTaskTest {
         assertFalse(Files.exists(output.resolve("semantic-runtime.json")))
         assertArrayEquals(Files.readAllBytes(registry), Files.readAllBytes(output.resolve("operation-registry.json")))
         assertArrayEquals(Files.readAllBytes(catalogue), Files.readAllBytes(output.resolve("configuration-schema.json")))
+        assertArrayEquals(Files.readAllBytes(catalogue), Files.readAllBytes(output.resolve("provider-catalog.json")))
         Files.writeString(plugin, "changed-plugin-archive")
         task.generate()
         val changed = Json.parseToJsonElement(Files.readString(output.resolve("ide-host.json"))).jsonObject

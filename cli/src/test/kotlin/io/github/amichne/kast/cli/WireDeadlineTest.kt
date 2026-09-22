@@ -1,5 +1,7 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.appserver.ide.WireIoDeadline
+import io.github.amichne.kast.appserver.ide.WireRequestOutcome
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.Refinement
 import java.net.StandardProtocolFamily
