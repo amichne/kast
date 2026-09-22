@@ -370,6 +370,7 @@ internal object InstallationWorkflow {
                             return InstallationOutcome.UpgradePending(update.blockers)
                         is InstalledUpgradePreparation.Rejected ->
                             return InstallationOutcome.UpgradeRejected(update.reason)
+                        is InstalledUpgradePreparation.Committed -> Unit
                         is InstalledUpgradePreparation.Sealed ->
                             when (val committed = update.permit.commit()) {
                                 InstalledUpgradeSettlement.Completed -> Unit
