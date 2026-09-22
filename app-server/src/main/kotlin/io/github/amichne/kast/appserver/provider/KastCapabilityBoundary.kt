@@ -15,7 +15,6 @@ internal data class KastServerProjectionBoundary(
     val schemaVersion: Int,
     val namespace: String,
     val hostedBootstrap: KastHostedBootstrapBoundary,
-    val cliInvocations: KastCliInvocationsBoundary,
 )
 
 @Serializable
@@ -39,20 +38,6 @@ internal data class KastHostedToolBoundary(
 )
 
 @Serializable
-internal data class KastCliInvocationsBoundary(
-    val schemaVersion: Int,
-    val operations: List<KastCliOperationInvocationBoundary>,
-)
-
-@Serializable
-internal data class KastCliOperationInvocationBoundary(
-    val toolName: String,
-    val operationId: String,
-    val cliUsage: String,
-    val invocation: KastCliInvocationBoundary,
-)
-
-@Serializable
 internal data class KastExecutionBudgetBoundary(
     val readinessMillis: Long,
     val operationMillis: Long,
@@ -63,15 +48,4 @@ internal enum class KastApprovalPolicy {
     @SerialName("none") NONE,
     @SerialName("explicit") EXPLICIT,
     @SerialName("exact_project_close") EXACT_PROJECT_CLOSE,
-}
-
-@Serializable
-internal data class KastCliInvocationBoundary(
-    val type: KastInvocationType,
-    val command: List<String>,
-)
-
-@Serializable
-internal enum class KastInvocationType {
-    CLI
 }

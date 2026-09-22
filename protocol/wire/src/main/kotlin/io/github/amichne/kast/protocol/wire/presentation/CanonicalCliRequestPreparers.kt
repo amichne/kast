@@ -33,64 +33,21 @@ class CanonicalCliRequestPreparers(
 /** Captures every generated wire binding behind its concrete request type. */
 fun canonicalCliRequestPreparers(): CanonicalCliRequestPreparers =
     CanonicalCliRequestPreparers(
-        indexSync =
-            TypedOperationProjection(
-                CanonicalOperationWireBindings.indexSync,
-                indexSyncCliProjector,
-            ),
+        indexSync = TypedOperationProjection(CanonicalOperationWireBindings.indexSync, indexSyncCliProjector),
         topologyBuild =
-            TypedOperationProjection(
-                CanonicalOperationWireBindings.topologyBuild,
-                topologyBuildCliProjector,
-            ),
+            TypedOperationProjection(CanonicalOperationWireBindings.topologyBuild, topologyBuildCliProjector),
         symbolDiscover =
-            TypedOperationProjection(
-                CanonicalOperationWireBindings.symbolDiscover,
-                symbolDiscoverCliProjector,
-            ),
+            TypedOperationProjection(CanonicalOperationWireBindings.symbolDiscover, symbolDiscoverCliProjector),
         symbolInspect =
-            TypedOperationProjection(
-                CanonicalOperationWireBindings.symbolInspect,
-                symbolInspectCliProjector,
-            ),
-        sourceRead =
-            TypedOperationProjection(
-                CanonicalOperationWireBindings.sourceRead,
-                sourceReadCliProjector,
-            ),
-        relationRead =
-            TypedOperationProjection(
-                CanonicalOperationWireBindings.relationRead,
-                relationReadCliProjector,
-            ),
-        traversalRun =
-            TypedOperationProjection(
-                CanonicalOperationWireBindings.traversalRun,
-                traversalRunCliProjector,
-            ),
-        queryRun =
-            TypedOperationProjection(
-                CanonicalOperationWireBindings.queryRun,
-                queryRunCliProjector,
-            ),
+            TypedOperationProjection(CanonicalOperationWireBindings.symbolInspect, symbolInspectCliProjector),
+        sourceRead = TypedOperationProjection(CanonicalOperationWireBindings.sourceRead, sourceReadCliProjector),
+        relationRead = TypedOperationProjection(CanonicalOperationWireBindings.relationRead, relationReadCliProjector),
+        traversalRun = TypedOperationProjection(CanonicalOperationWireBindings.traversalRun, traversalRunCliProjector),
+        queryRun = TypedOperationProjection(CanonicalOperationWireBindings.queryRun, queryRunCliProjector),
         diagnosticCheck =
-            TypedOperationProjection(
-                CanonicalOperationWireBindings.diagnosticCheck,
-                diagnosticCheckCliProjector,
-            ),
-        changePlan =
-            TypedOperationProjection(
-                CanonicalOperationWireBindings.changePlan,
-                changePlanCliProjector,
-            ),
-        changeApply =
-            TypedOperationProjection(
-                CanonicalOperationWireBindings.changeApply,
-                changeApplyCliProjector,
-            ),
+            TypedOperationProjection(CanonicalOperationWireBindings.diagnosticCheck, diagnosticCheckCliProjector),
+        changePlan = TypedOperationProjection(CanonicalOperationWireBindings.changePlan, changePlanCliProjector),
+        changeApply = TypedOperationProjection(CanonicalOperationWireBindings.changeApply, changeApplyCliProjector),
         changeRecover =
-            TypedOperationProjection(
-                CanonicalOperationWireBindings.changeRecover,
-                changeRecoverCliProjector,
-            ),
+            TypedOperationProjection(CanonicalOperationWireBindings.changeRecover, changeRecoverCliProjector),
     )

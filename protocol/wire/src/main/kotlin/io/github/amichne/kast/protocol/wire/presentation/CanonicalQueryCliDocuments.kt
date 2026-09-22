@@ -3,7 +3,25 @@
 package io.github.amichne.kast.protocol.wire.presentation
 
 import io.github.amichne.kast.kernel.OperationOutcome
-import io.github.amichne.kast.protocol.contract.*
+import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.contract.ExecutionBudgetPresence
+import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
+import io.github.amichne.kast.protocol.contract.QueryItemFailureDocument
+import io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument
+import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
+import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
+import io.github.amichne.kast.protocol.contract.QueryRunFailure
+import io.github.amichne.kast.protocol.contract.QueryRunQualification
+import io.github.amichne.kast.protocol.contract.QueryRunRejection
+import io.github.amichne.kast.protocol.contract.QueryRunResult
+import io.github.amichne.kast.protocol.contract.ReadRecoveryAction
+import io.github.amichne.kast.protocol.contract.ReadReferenceAcquisitions
+import io.github.amichne.kast.protocol.contract.RelationFactDocument
+import io.github.amichne.kast.protocol.contract.budgetPresence
+import io.github.amichne.kast.protocol.contract.continuationToken
+import io.github.amichne.kast.protocol.contract.reason
+import io.github.amichne.kast.protocol.contract.recoveryAction
+import io.github.amichne.kast.protocol.contract.terminalReason
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 

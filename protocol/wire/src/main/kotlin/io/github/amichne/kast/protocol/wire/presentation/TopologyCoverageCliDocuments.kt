@@ -297,8 +297,8 @@ private fun TopologyCoverageSymbolKindCliDocument.sortRank(): Int =
         TopologyCoverageSymbolKindCliDocument.CLASSLIKE -> 0
         TopologyCoverageSymbolKindCliDocument.CONSTRUCTOR -> 1
         TopologyCoverageSymbolKindCliDocument.FUNCTION -> 2
-        TopologyCoverageSymbolKindCliDocument.PROPERTY -> 3
-        TopologyCoverageSymbolKindCliDocument.TYPE_ALIAS -> 4
+        TopologyCoverageSymbolKindCliDocument.PROPERTY -> PROPERTY_SORT_RANK
+        TopologyCoverageSymbolKindCliDocument.TYPE_ALIAS -> TYPE_ALIAS_SORT_RANK
     }
 
 private fun TopologyCoverageSourceRootProvenanceCliDocument.sortRank(): Int =
@@ -310,3 +310,6 @@ private fun TopologyCoverageSourceRootProvenanceCliDocument.sortRank(): Int =
 
 private val topologyCoverageRejectedFactory =
     CanonicalJsonDocument.generated(TopologyCoverageRejectedCliDocument.serializer())
+
+private const val PROPERTY_SORT_RANK = 3
+private const val TYPE_ALIAS_SORT_RANK = 4

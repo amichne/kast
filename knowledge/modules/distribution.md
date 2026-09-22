@@ -6,6 +6,8 @@ resource: file://distribution
 tags: [distribution, configuration, packaging, release]
 timestamp: 2026-09-22T00:00:00Z
 code_sources:
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/PackagedProviderCatalog.kt
+  - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/ControlDistributionAdmissionMain.kt
   - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/SelectedIdeInstallation.kt
   - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/PriorInstallationPreparation.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationChild.kt
@@ -195,3 +197,8 @@ filesystem failure, and interruption remain explicit failures, rather than being
 reported as successful retirement.
 
 Selected IDEA discovery retains one canonical home across upgrades. Typed metadata resolution identifies its macOS ARM bundle and executable, rejects ambiguity and escapes, and admits the 262 release line rather than an exact patch. Installation inspection includes the launch observation and persists the derived receipt. A legacy selection can still attach to its live lifecycle endpoint when cold-launch metadata is unavailable.
+
+Control assembly packages `share/kast/provider-catalog.json` from the same hosted
+schema projection as the CLI. The artifact contains hosted metadata and schemas,
+with no executable grammar. Distribution layout requires it; runtime release
+admission qualifies the actual staged file through the production provider.

@@ -5073,46 +5073,6 @@
     },
     {
       "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/KastPublicQueryProviderTest.kt",
-        "scope": "type:KastPublicQueryProviderTest/type:RecordingExecutor/fun:execute(20:BrokerProcessRequest)",
-        "kind": "JSON_LITERAL",
-        "sha256": "fc42f864bcd893e2ae3e1fb6fd39b8f43e49c6ffe03e0f23cb21619aa4f534d5"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/RecordingProcessExecutor.kt",
-        "scope": "type:RecordingProcessExecutor/declaration:RecordingProcessExecutor/declaration:invocationDocument",
-        "kind": "JSON_LITERAL",
-        "sha256": "a5ecd0f621883ed707dda736e55a20605909dfef33d90421a99106ead8f619d3"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/RecordingProcessExecutor.kt",
-        "scope": "type:RecordingProcessExecutor/fun:execute(20:BrokerProcessRequest)",
-        "kind": "JSON_LITERAL",
-        "sha256": "d72316edc1602883f2dbef50f98215430a5c7d2d6adf66a7a702bf3f12775c2f"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/RecordingProcessExecutor.kt",
-        "scope": "type:RecordingProcessExecutor/fun:execute(20:BrokerProcessRequest)",
-        "kind": "JSON_LITERAL",
-        "sha256": "a0c0fcdd418b3b88f38a047a8771d605156c384c5be28f35839604c6f6943baa"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
         "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicQueryContractTest.kt",
         "scope": "type:PublicQueryContractTest/fun:public enum inputs and encoding use caps case()/val:input",
         "kind": "JSON_LITERAL",

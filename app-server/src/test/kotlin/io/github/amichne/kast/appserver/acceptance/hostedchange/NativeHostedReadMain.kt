@@ -145,11 +145,15 @@ private class NativeHostedReadTransport(
                 NativeFailure.PRODUCT_CLASS_ORIGIN_REJECTED,
             )
             val options =
-                KastProviderOptions.admit(
-                        executable = NativeProductAdmission.executable(product, workspace),
-                        qualificationDirectory = workspace,
-                    )
-                    .nativeValue()
+                KastProviderOptions(
+                    catalogSource =
+                        io.github.amichne.kast.appserver.provider.PackagedKastCatalog(
+                            NativeProductAdmission.executable(product, workspace)
+                                .parent
+                                .parent
+                                .resolve("share/kast/provider-catalog.json")
+                        )
+                )
             val qualified =
                 KastProviderQualifier.qualify(options).nativeQualified { observation ->
                     System.out.println(observation.encodeObservation())

@@ -1,17 +1,47 @@
 package io.github.amichne.kast.appserver.provider
 
-import io.github.amichne.kast.appserver.core.*
-import io.github.amichne.kast.appserver.ide.*
+import io.github.amichne.kast.appserver.core.BrokerInvocationContext
+import io.github.amichne.kast.appserver.core.ProviderCall
+import io.github.amichne.kast.appserver.core.ProviderFailureCode
+import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
+import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
+import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
+import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
+import io.github.amichne.kast.appserver.ide.HostedApprovalAssertion
+import io.github.amichne.kast.appserver.ide.HostedMutationOperation
+import io.github.amichne.kast.appserver.ide.HostedPlanIdentity
 import io.github.amichne.kast.appserver.query.PublicToolCanonical
 import io.github.amichne.kast.appserver.runtime.BrokerInvocationApproval
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.protocol.contract.*
-import io.github.amichne.kast.protocol.wire.presentation.*
+import io.github.amichne.kast.protocol.contract.ApprovedProjectCloseInvocation
+import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.contract.ChangeApplyRequest
+import io.github.amichne.kast.protocol.contract.ChangePlanRequest
+import io.github.amichne.kast.protocol.contract.ChangeRecoverRequest
+import io.github.amichne.kast.protocol.contract.DiagnosticCheckRequest
+import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
+import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
+import io.github.amichne.kast.protocol.contract.OperationRequest
+import io.github.amichne.kast.protocol.contract.RelationReadRequest
+import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
+import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
+import io.github.amichne.kast.protocol.contract.TraversalRunRequest
+import io.github.amichne.kast.protocol.contract.WorkspaceLifecycleRequest
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
+import io.github.amichne.kast.protocol.wire.presentation.OperationPreparation
+import io.github.amichne.kast.protocol.wire.presentation.OperationRequestPreparer
+import io.github.amichne.kast.protocol.wire.presentation.PreparedOperationRequest
+import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
+import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runInterruptible
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerializationException
-import kotlinx.serialization.json.*
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.jsonObject
 
 /** One operation admission and IDEA exchange; no CLI arguments or process completion protocol. */
 internal class KastDirectInvocation(private val options: KastProviderOptions) {
@@ -52,19 +82,25 @@ internal class KastDirectInvocation(private val options: KastProviderOptions) {
                     is CanonicalRootDiscovery.Rejected ->
                         return@runInterruptible ProviderCall.Rejected(admitted.failure.providerFailure())
                 }
-            when (val exchange = options.ideClient.query(root, operation)) {
-                is ExistingIdeExchange.Rejected -> ProviderCall.Rejected(exchange.failure.providerFailure())
-                is ExistingIdeExchange.Received -> completed(exchange.document, true, context)
-                is ExistingIdeExchange.HostRejected -> completed(exchange.document, false, context)
-                is ExistingIdeExchange.Semantic ->
-                    when (val outcome = exchange.outcome) {
-                        is ProjectedOperationOutcome.Complete -> completed(outcome.document, true, context)
-                        is ProjectedOperationOutcome.Qualified -> completed(outcome.document, true, context)
-                        is ProjectedOperationOutcome.Rejected -> completed(outcome.document, false, context)
-                    }
-            }
+            project(options.ideClient.query(root, operation), context)
         }
     }
+
+    private fun project(
+        exchange: ExistingIdeExchange,
+        context: BrokerInvocationContext,
+    ): ProviderCall<KastInvocationOutput> =
+        when (exchange) {
+            is ExistingIdeExchange.Rejected -> ProviderCall.Rejected(exchange.failure.providerFailure())
+            is ExistingIdeExchange.Received -> completed(exchange.document, true, context)
+            is ExistingIdeExchange.HostRejected -> completed(exchange.document, false, context)
+            is ExistingIdeExchange.Semantic ->
+                when (val outcome = exchange.outcome) {
+                    is ProjectedOperationOutcome.Complete -> completed(outcome.document, true, context)
+                    is ProjectedOperationOutcome.Qualified -> completed(outcome.document, true, context)
+                    is ProjectedOperationOutcome.Rejected -> completed(outcome.document, false, context)
+                }
+        }
 
     private suspend fun lifecycle(
         arguments: JsonElement,

@@ -1,5 +1,13 @@
 # Knowledge-base update log
 
+## 2026-09-22
+
+- Replaced runtime Kast CLI qualification with a bounded packaged hosted catalog,
+  full canonical inventory checks, and retained contract drift rejection. Added
+  staged-distribution qualification and retained independent payload/IDEA/Codex
+  admission. Reviewed the six impacted concepts; query-protocol semantic claims
+  remain unchanged. Simplified inherited direct transport code for static checks.
+
 ## 2026-09-21
 
 - Removed unused isolated-runtime realization and network adapters, obsolete setup

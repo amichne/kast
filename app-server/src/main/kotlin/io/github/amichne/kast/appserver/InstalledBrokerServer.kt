@@ -182,26 +182,20 @@ internal sealed interface InstalledBrokerServerConfiguration {
                         return rejected(InstalledBrokerServerConfigurationFailure.READINESS_REJECTED)
                 }
             val kastOptions =
-                when (
-                    val admission =
-                        KastProviderOptions.admit(
-                            kast.path,
+                KastProviderOptions(
+                    catalogSource =
+                        io.github.amichne.kast.appserver.provider.PackagedKastCatalog(
+                            kast.path.parent.parent.resolve("share/kast/provider-catalog.json")
+                        ),
+                    readLimits = configuration.readLimits,
+                    ideClient =
+                        io.github.amichne.kast.appserver.ide.ExistingIdeSocketClient(
                             canonicalUserHome,
-                            processExecutor,
-                            readLimits = configuration.readLimits,
-                            ideClient =
-                                io.github.amichne.kast.appserver.ide.ExistingIdeSocketClient(
-                                    canonicalUserHome,
-                                    configuration.readLimits,
-                                ),
-                            lifecycleClient =
-                                installedWorkspaceLifecycleClient(canonicalUserHome, configuration.selectedIdeHome),
-                        )
-                ) {
-                    is Refinement.Refined -> admission.value
-                    is Refinement.Rejected ->
-                        return rejected(InstalledBrokerServerConfigurationFailure.PROVIDER_CONFIGURATION_REJECTED)
-                }
+                            configuration.readLimits,
+                        ),
+                    lifecycleClient =
+                        installedWorkspaceLifecycleClient(canonicalUserHome, configuration.selectedIdeHome),
+                )
             val protocolOptions =
                 when (
                     val admission =
@@ -243,6 +237,10 @@ internal sealed interface InstalledBrokerServerConfiguration {
             return Configured(
                 InstalledBrokerServerOptions(
                     kastOptions = kastOptions,
+                    approvalHome =
+                        checkNotNull(
+                            io.github.amichne.kast.appserver.core.CanonicalBrokerDirectory.admit(canonicalUserHome)
+                        ),
                     protocolOptions = protocolOptions,
                     upstreamOptions = upstreamOptions,
                     threadStore = stateDirectory.resolve("threads.json"),
@@ -325,6 +323,7 @@ internal sealed interface InstalledBrokerServerConfiguration {
 
 internal data class InstalledBrokerServerOptions(
     val kastOptions: KastProviderOptions,
+    val approvalHome: io.github.amichne.kast.appserver.core.CanonicalBrokerDirectory,
     val protocolOptions: CodexProtocolQualificationOptions,
     val upstreamOptions: ManagedCodexUpstreamOptions,
     val threadStore: Path,
@@ -605,12 +604,11 @@ internal object InstalledBrokerHost {
                 planApprovalGateway =
                     io.github.amichne.kast.appserver.provider.KastHostedPlanApprovalGateway(
                         options.kastOptions,
-                        options.kastOptions.qualificationDirectory.path,
+                        options.approvalHome.path,
                     ),
                 projectCloseSigner =
-                    io.github.amichne.kast.appserver.provider.EnrolledPlanApprovalSigner(
-                        options.kastOptions.qualificationDirectory.path
-                    )::signProjectClose,
+                    io.github.amichne.kast.appserver.provider.EnrolledPlanApprovalSigner(options.approvalHome.path)::
+                        signProjectClose,
                 enrollment = enrollment,
                 bindingOwner = owner,
                 sessionActivitySink = io.github.amichne.kast.appserver.runtime.JsonLineSessionActivitySink(System.err),

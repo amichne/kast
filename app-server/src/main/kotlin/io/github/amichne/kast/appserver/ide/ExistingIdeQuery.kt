@@ -24,14 +24,16 @@ enum class ExistingIdeFailure {
     APPROVAL_REJECTED,
 }
 
+private const val MAXIMUM_CLASS_NAME_BYTES = 512
+private const val MAXIMUM_QUALIFIED_NAME_BYTES = 4096
+
+private fun validIdentifier(raw: String): Boolean =
+    (raw.first().isLetter() || raw.first() == '_') && raw.all { it.isLetterOrDigit() || it == '_' }
+
 class ExistingIdeClassName private constructor(val value: String) {
     companion object {
         fun parse(raw: String): Refinement<ExistingIdeClassName, ExistingIdeFailure> =
-            if (
-                raw.toByteArray(Charsets.UTF_8).size in 1..512 &&
-                    (raw.first().isLetter() || raw.first() == '_') &&
-                    raw.all { it.isLetterOrDigit() || it == '_' }
-            ) {
+            if (raw.toByteArray(Charsets.UTF_8).size in 1..MAXIMUM_CLASS_NAME_BYTES && validIdentifier(raw)) {
                 Refinement.Refined(ExistingIdeClassName(raw))
             } else Refinement.Rejected(ExistingIdeFailure.INVALID_NAME)
     }
@@ -127,7 +129,7 @@ class ExistingIdeQualifiedClassName private constructor(val value: String) {
     companion object {
         fun parse(raw: String): Refinement<ExistingIdeQualifiedClassName, ExistingIdeFailure> =
             if (
-                raw.toByteArray(Charsets.UTF_8).size in 1..4096 &&
+                raw.toByteArray(Charsets.UTF_8).size in 1..MAXIMUM_QUALIFIED_NAME_BYTES &&
                     raw.split('.').all { ExistingIdeClassName.parse(it) is Refinement.Refined }
             ) {
                 Refinement.Refined(ExistingIdeQualifiedClassName(raw))

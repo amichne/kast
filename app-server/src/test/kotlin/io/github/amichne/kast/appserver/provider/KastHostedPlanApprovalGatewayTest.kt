@@ -1,7 +1,14 @@
 package io.github.amichne.kast.appserver.provider
 
 import io.github.amichne.kast.appserver.core.BrokerInvocationContext
-import io.github.amichne.kast.appserver.ide.*
+import io.github.amichne.kast.appserver.ide.CanonicalRoot
+import io.github.amichne.kast.appserver.ide.CanonicalRootDiscoverer
+import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
+import io.github.amichne.kast.appserver.ide.ExistingIdeClient
+import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
+import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
+import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
+import io.github.amichne.kast.appserver.ide.HostedMutationOperation
 import io.github.amichne.kast.appserver.runtime.HostedChangeApprovalOperation
 import io.github.amichne.kast.appserver.runtime.HostedPlanApprovalFailure
 import io.github.amichne.kast.appserver.runtime.HostedPlanApprovalRequest
@@ -144,13 +151,10 @@ class KastHostedPlanApprovalGatewayTest {
         val executable = home.resolve("kast")
         Files.writeString(executable, "#!/bin/sh\nexit 0\n")
         executable.toFile().setExecutable(true)
-        return (KastProviderOptions.admit(
-                executable.toRealPath(),
-                home.toRealPath(),
-                processExecutor = BrokerProcessExecutor { error("Approval preparation must never spawn a process") },
-                roots = CanonicalRootDiscoverer { CanonicalRootDiscovery.Discovered(CanonicalRoot(home.toRealPath())) },
-                ideClient = executor,
-            ) as Refinement.Refined)
-            .value
+        return (KastProviderOptions(
+            catalogSource = KastCatalogSource { error("Approval preparation must not read the catalog") },
+            roots = CanonicalRootDiscoverer { CanonicalRootDiscovery.Discovered(CanonicalRoot(home.toRealPath())) },
+            ideClient = executor,
+        ))
     }
 }

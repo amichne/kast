@@ -1,7 +1,8 @@
 package io.github.amichne.kast.appserver.provider
 
 import io.github.amichne.kast.appserver.core.ProviderFailureCode
-import io.github.amichne.kast.appserver.ide.*
+import io.github.amichne.kast.appserver.ide.CanonicalRootFailure
+import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
 
 internal fun ExistingIdeFailure.providerFailure(): ProviderFailureCode =
     when (this) {

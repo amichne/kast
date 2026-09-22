@@ -112,7 +112,7 @@ private constructor(
             val privateDirectory = inputs.privateDirectory
             validateProductOrigin(product)
             val trace = NativeProcessTrace(privateDirectory)
-            val options = providerOptions(product, home, workspace, trace)
+            val options = providerOptions(product, workspace)
             val qualification = KastProviderQualifier.qualify(options).nativeQualified(observeQualification)
             val contracts = NativeControllerProtocol.contracts(schemas, workspace)
             val connecting = Channel<NativeUpstream>(4)
@@ -174,16 +174,17 @@ private constructor(
 
         private fun providerOptions(
             product: Path,
-            home: Path,
             workspace: Path,
-            trace: NativeProcessTrace,
         ): KastProviderOptions {
-            return KastProviderOptions.admit(
-                    executable = NativeProductAdmission.executable(product, workspace),
-                    qualificationDirectory = home,
-                    processExecutor = trace,
-                )
-                .nativeValue()
+            return KastProviderOptions(
+                catalogSource =
+                    io.github.amichne.kast.appserver.provider.PackagedKastCatalog(
+                        NativeProductAdmission.executable(product, workspace)
+                            .parent
+                            .parent
+                            .resolve("share/kast/provider-catalog.json")
+                    )
+            )
         }
     }
 

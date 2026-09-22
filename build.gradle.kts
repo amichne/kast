@@ -69,11 +69,12 @@ val generatedConfigurationCatalogue = project(":cli").layout.buildDirectory.file
 val generateKastControlMetadata = tasks.register<GenerateControlMetadataTask>("generateKastControlMetadata") {
     group = "distribution"
     description = "Generates the existing-IDE plugin manifest and public schemas."
-    dependsOn(":runtime:hosted:hostedPlugin", ":protocol:wire:generateOperationRegistry", ":cli:generateConfigurationCatalogue")
+    dependsOn(":runtime:hosted:hostedPlugin", ":protocol:wire:generateOperationRegistry", ":cli:generateConfigurationCatalogue", ":cli:generateProviderCatalog")
     pluginArchive.set(hostedPluginArchive)
     licenseFile.set(layout.projectDirectory.file("LICENSE"))
     operationRegistryFile.set(generatedOperationRegistry)
     configurationCatalogueFile.set(generatedConfigurationCatalogue)
+    providerCatalogueFile.set(project(":cli").layout.buildDirectory.file("generated/provider/provider-catalog.json"))
     productVersion.set(project.version.toString())
     ideaBuild.set(libs.versions.ide.host.build)
     kotlinPluginBuild.set(libs.versions.ide.kotlin.plugin.build)

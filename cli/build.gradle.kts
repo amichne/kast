@@ -125,3 +125,12 @@ val verifyMintlifyCallableReference =
 tasks.named("check") {
     dependsOn(verifyMintlifyCallableReference)
 }
+
+// Pure schema projection at build time; App Server never launches Kast for qualification.
+tasks.register<support.tasks.WriteJavaProcessOutputTask>("generateProviderCatalog") {
+    group = "build"
+    dependsOn(tasks.named("classes"))
+    classpath.from(sourceSets.main.get().runtimeClasspath)
+    mainClass.set("io.github.amichne.kast.cli.PackagedProviderCatalog")
+    outputFile.set(layout.buildDirectory.file("generated/provider/provider-catalog.json"))
+}

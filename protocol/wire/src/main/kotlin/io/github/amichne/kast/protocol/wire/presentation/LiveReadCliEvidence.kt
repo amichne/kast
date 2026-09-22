@@ -3,7 +3,6 @@ package io.github.amichne.kast.protocol.wire.presentation
 import io.github.amichne.kast.kernel.EvidenceBasis
 import io.github.amichne.kast.kernel.LiveReadEvidence
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.*
 
 /** Explicit live evidence survives the final CLI boundary; it never becomes a generation. */
 @Serializable

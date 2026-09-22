@@ -42,7 +42,7 @@ internal const val MAXIMUM_PROTOCOL_TEXT_LENGTH = 1_048_576
 internal const val MAXIMUM_WORKSPACE_FILE_LENGTH = 4_096
 internal const val MAXIMUM_PROTOCOL_COUNT = 1_000
 
-private const val SERVER_PROJECTION_SCHEMA_VERSION = 13
+internal const val SERVER_PROJECTION_SCHEMA_VERSION = 13
 private const val HOSTED_BOOTSTRAP_SCHEMA_VERSION = 1
 private const val CLI_INVOCATIONS_SCHEMA_VERSION = 3
 
@@ -98,6 +98,19 @@ private constructor(
     }
 }
 
+/** Canonical hosted contracts are independent of executable command metadata. */
+internal fun installedHostedBootstrap(): InstalledHostedBootstrapDocument {
+    val tools = installedServerTools.associateBy(InstalledServerTool::operation)
+    return InstalledHostedBootstrapDocument(
+        schemaVersion = HOSTED_BOOTSTRAP_SCHEMA_VERSION,
+        policy = CanonicalAgentToolDefinitions.policy.text,
+        tools =
+            CanonicalAgentToolDefinitions.all.map { definition ->
+                tools.getValue(definition.operation.operation).hostedDocument(definition)
+            },
+    )
+}
+
 /**
  * Proof transition: `CliCommandSurface -> InstalledServerProjectionDocument`.
  *
@@ -110,12 +123,7 @@ internal fun installedServerProjection(commandSurface: CliCommandSurface): Insta
     return InstalledServerProjectionDocument(
         schemaVersion = SERVER_PROJECTION_SCHEMA_VERSION,
         namespace = "kast",
-        hostedBootstrap =
-            InstalledHostedBootstrapDocument(
-                schemaVersion = HOSTED_BOOTSTRAP_SCHEMA_VERSION,
-                policy = CanonicalAgentToolDefinitions.policy.text,
-                tools = bindings.map(InstalledServerBinding::tool),
-            ),
+        hostedBootstrap = installedHostedBootstrap(),
         cliInvocations =
             InstalledCliInvocationsDocument(
                 schemaVersion = CLI_INVOCATIONS_SCHEMA_VERSION,

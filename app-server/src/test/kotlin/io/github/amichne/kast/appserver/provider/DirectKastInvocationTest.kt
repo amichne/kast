@@ -1,18 +1,32 @@
 package io.github.amichne.kast.appserver.provider
 
-import io.github.amichne.kast.appserver.core.*
-import io.github.amichne.kast.appserver.ide.*
+import io.github.amichne.kast.appserver.core.Broker
+import io.github.amichne.kast.appserver.core.BrokerDispatch
+import io.github.amichne.kast.appserver.core.BrokerDispatchRequest
+import io.github.amichne.kast.appserver.core.BrokerInvocationContext
+import io.github.amichne.kast.appserver.core.BrokerLimits
+import io.github.amichne.kast.appserver.core.ProviderNamespace
+import io.github.amichne.kast.appserver.core.ToolAddress
+import io.github.amichne.kast.appserver.core.ToolName
+import io.github.amichne.kast.appserver.ide.CanonicalRoot
+import io.github.amichne.kast.appserver.ide.CanonicalRootDiscoverer
+import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
+import io.github.amichne.kast.appserver.ide.ExistingIdeClient
+import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
+import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
 import io.github.amichne.kast.appserver.installedKastCatalogFixture
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.Validation
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
-import java.nio.file.Files
 import java.nio.file.Path
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
@@ -21,25 +35,10 @@ class DirectKastInvocationTest {
     fun `search calls IDEA directly and retains a host rejection without a Kast child`(@TempDir directory: Path) =
         runBlocking {
             val root = directory.toRealPath()
-            val executable = root.resolve("kast")
-            Files.writeString(executable, "#!/bin/sh\nexit 0\n")
-            check(executable.toFile().setExecutable(true))
-            val processes = mutableListOf<List<String>>()
             val operations = mutableListOf<ExistingIdeOperation>()
             val options =
-                KastProviderOptions.admit(
-                    executable,
-                    root,
-                    processExecutor =
-                        BrokerProcessExecutor { request ->
-                            processes += request.arguments
-                            when (request.arguments) {
-                                listOf("--version") -> BrokerProcessExecution.Completed(0, "kast 9.9.9\n", "")
-                                listOf("--schema") ->
-                                    BrokerProcessExecution.Completed(0, installedKastCatalogFixture(), "")
-                                else -> BrokerProcessExecution.Rejected(BrokerProcessFailure.SPAWN_FAILED)
-                            }
-                        },
+                KastProviderOptions(
+                    catalogSource = RecordingCatalogSource(installedKastCatalogFixture()),
                     roots = CanonicalRootDiscoverer { CanonicalRootDiscovery.Discovered(CanonicalRoot(root)) },
                     ideClient =
                         ExistingIdeClient { admittedRoot, operation ->
@@ -49,11 +48,11 @@ class DirectKastInvocationTest {
                                 CanonicalJsonDocument.generated(HostRejection.serializer()).create(HostRejection())
                             )
                         },
-                ) as Refinement.Refined
+                )
             val qualified =
                 assertInstanceOf(
                     KastProviderQualification.Qualified::class.java,
-                    KastProviderQualifier.qualify(options.value),
+                    KastProviderQualifier.qualify(options),
                 )
             val broker =
                 (Broker.create(listOf(qualified.registration), BrokerLimits.defaults()) as Validation.Validated).value
@@ -82,7 +81,6 @@ class DirectKastInvocationTest {
             assertTrue(completed.presentation.content.last().text.contains("DIRTY_DOCUMENTS"))
             val read = assertInstanceOf(ExistingIdeOperation.Read::class.java, operations.single())
             assertEquals(CanonicalOperation.QUERY_RUN, read.request.operation)
-            assertTrue(processes.all { it == listOf("--version") || it == listOf("--schema") })
         }
 
     @Serializable
