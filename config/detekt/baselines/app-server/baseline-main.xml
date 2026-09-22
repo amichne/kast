@@ -47,9 +47,6 @@
     <ID>CognitiveComplexMethod:ManagedCodexUpstream.kt:ManagedCodexUpstream.Companion$internal suspend fun start: ManagedCodexUpstreamStart</ID>
     <ID>CognitiveComplexMethod:PersistentBrokerService.kt:BrokerServiceLaunchCommand.Companion$fun resolve: BrokerServiceLaunchCommandResolution</ID>
     <ID>CognitiveComplexMethod:PublishedBrokerServiceCommand.kt:PublishedBrokerServiceCommand$private fun readEnvironment: Map&lt;String, String>?</ID>
-    <ID>CognitiveComplexMethod:ThreadCatalogStore.kt:FileThreadCatalogStore$private fun flush: Boolean</ID>
-    <ID>CognitiveComplexMethod:ThreadCatalogStore.kt:FileThreadCatalogStore.Companion$internal fun open: FileThreadCatalogStoreOpen</ID>
-    <ID>CognitiveComplexMethod:ThreadCatalogStore.kt:FileThreadCatalogStore.Companion$private fun readDocument: ThreadStoreDocumentRead</ID>
     <ID>CognitiveComplexMethod:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore$fun enroll: Refinement&lt;WorkspaceRegistrationAcknowledgement, EnrollmentFailure></ID>
     <ID>CognitiveComplexMethod:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore$internal fun retainTo: WorkspaceRegistryRetention</ID>
     <ID>CognitiveComplexMethod:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore$internal fun snapshot: WorkspaceRegistryRead</ID>
@@ -154,9 +151,6 @@
     <ID>CyclomaticComplexMethod:PublishedBrokerServiceCommand.kt:PublishedBrokerServiceCommand$fun retirementEnvironment: PublishedBrokerServiceEnvironment?</ID>
     <ID>CyclomaticComplexMethod:PublishedBrokerServiceCommand.kt:PublishedBrokerServiceCommand$private fun readEnvironment: Map&lt;String, String>?</ID>
     <ID>CyclomaticComplexMethod:SavedConfigurationIngress.kt:InstalledSavedConfigurationIngress$fun read: SavedConfigurationIngress</ID>
-    <ID>CyclomaticComplexMethod:ThreadCatalogStore.kt:FileThreadCatalogStore$private fun flush: Boolean</ID>
-    <ID>CyclomaticComplexMethod:ThreadCatalogStore.kt:FileThreadCatalogStore.Companion$internal fun open: FileThreadCatalogStoreOpen</ID>
-    <ID>CyclomaticComplexMethod:ThreadCatalogStore.kt:FileThreadCatalogStore.Companion$private fun readDocument: ThreadStoreDocumentRead</ID>
     <ID>CyclomaticComplexMethod:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore$fun enroll: Refinement&lt;WorkspaceRegistrationAcknowledgement, EnrollmentFailure></ID>
     <ID>CyclomaticComplexMethod:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore$internal fun retainTo: WorkspaceRegistryRetention</ID>
     <ID>CyclomaticComplexMethod:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore$internal fun snapshot: WorkspaceRegistryRead</ID>
@@ -178,7 +172,6 @@
     <ID>InjectDispatcher:MacOsPersistentBrokerServiceHost.kt:JdkBrokerSocketProbe$IO</ID>
     <ID>InjectDispatcher:ManagedCodexUpstream.kt:JdkCodexAppServerProcess$IO</ID>
     <ID>InjectDispatcher:ManagedCodexUpstream.kt:JdkCodexAppServerProcessLauncher$IO</ID>
-    <ID>InjectDispatcher:ThreadCatalogStore.kt:FileThreadCatalogStore$IO</ID>
     <ID>LargeClass:AppServerManagement.kt:InstalledAppServerManager : AppServerManager</ID>
     <ID>LargeClass:BrokerOperationalLimits.kt:BrokerOperationalLimits</ID>
     <ID>LargeClass:BrokerSessionHub.kt:BrokerSessionHub$Session</ID>
@@ -231,9 +224,6 @@
     <ID>LongMethod:PublicToolMapping.kt:internal fun PublicToolDocument.lower: Refinement&lt;PublicToolCanonical, PublicToolInputFailure></ID>
     <ID>LongMethod:PublishedBrokerServiceCommand.kt:PublishedBrokerServiceCommand$private fun readEnvironment: Map&lt;String, String>?</ID>
     <ID>LongMethod:SavedConfigurationIngress.kt:InstalledSavedConfigurationIngress$fun read: SavedConfigurationIngress</ID>
-    <ID>LongMethod:ThreadCatalogStore.kt:FileThreadCatalogStore$private fun flush: Boolean</ID>
-    <ID>LongMethod:ThreadCatalogStore.kt:FileThreadCatalogStore.Companion$internal fun open: FileThreadCatalogStoreOpen</ID>
-    <ID>LongMethod:ThreadCatalogStore.kt:FileThreadCatalogStore.Companion$private fun readDocument: ThreadStoreDocumentRead</ID>
     <ID>LongMethod:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore$fun enroll: Refinement&lt;WorkspaceRegistrationAcknowledgement, EnrollmentFailure></ID>
     <ID>LongMethod:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore$internal fun retainTo: WorkspaceRegistryRetention</ID>
     <ID>LongMethod:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore$private fun retain: WorkspaceRegistryRetention</ID>
@@ -457,7 +447,6 @@
     <ID>NamedArguments:PublicToolMapping.kt:searchSource( name, match ?: PublicToolDefaults.nameMatch, scope ?: PublicToolDefaults.scope, kinds, parameter, )</ID>
     <ID>NamedArguments:PublishedBrokerServiceCommand.kt:PublishedBrokerServiceCommand$resolve( observed.kast, observed.userHome, configurationEnvironment, javaHomeCandidate = javaHome, purpose = BrokerServicePurpose.COORDINATOR, )</ID>
     <ID>NamedArguments:SharedTaskSessions.kt:SharedTaskSessions$TaskSessionView(it.thread, it.controller, it.observers.toSet(), it.activity, it.pending.size, it.lease)</ID>
-    <ID>NamedArguments:ThreadCatalogStore.kt:FileThreadCatalogStore.Companion$admit(boundary.threadId, digest, cwd, root, owner)</ID>
     <ID>NamedArguments:ThreadCatalogStore.kt:ThreadCatalogBinding.Companion$ThreadCatalogBinding( admittedThread, catalogDigest, admittedDirectory, WorkspaceRegistration(admittedRoot), owner, )</ID>
     <ID>NamedArguments:WorkerSeedConsentExchange.kt:WorkerSeedPrompt$WorkerSeedPromptDocument( WorkerSeedMessageKind.SEED_CONSENT_REQUEST, challenge.toString(), disclosure.categories.sortedBy { it.name }, disclosure.estimatedBytes, )</ID>
     <ID>NamedArguments:WorkerStopReply.kt:WorkerStopReply.Companion$WorkerStopReply( WorkerStopStatus.STOPPED, result.root.toString(), result.binding.installationId, result.binding.stateEpoch.toString(), result.binding.serviceGeneration.toString(), result.binding.configurationIdentity, result.binding.workspaceRevision, )</ID>
@@ -490,7 +479,6 @@
     <ID>NestedBlockDepth:MacOsPersistentBrokerServiceHost.kt:MacOsPersistentBrokerServiceHost$private fun reconcileAbsent: PersistentBrokerServiceAdmission</ID>
     <ID>NestedBlockDepth:ManagedCodexUpstream.kt:ManagedCodexUpstream.Companion$internal suspend fun start: ManagedCodexUpstreamStart</ID>
     <ID>NestedBlockDepth:PersistentBrokerService.kt:BrokerServiceLaunchCommand.Companion$private fun sha256: String?</ID>
-    <ID>NestedBlockDepth:ThreadCatalogStore.kt:FileThreadCatalogStore.Companion$private fun readDocument: ThreadStoreDocumentRead</ID>
     <ID>NestedBlockDepth:WorkerStopReply.kt:WorkerStopReply.Companion$fun decode: InstalledWorkerStop</ID>
     <ID>NestedBlockDepth:WorkspaceEnrollment.kt:WorkspaceEnrollmentStore$internal fun snapshot: WorkspaceRegistryRead</ID>
     <ID>NestedBlockDepth:WorkspaceRuntimeControl.kt:WorkspaceRuntimeControl$private fun receipt: Boolean</ID>
@@ -535,8 +523,6 @@
     <ID>UnusedVariable:BrokerSessionHub.kt:BrokerSessionHub.Session$val requestKey = doc["id"]?.toString() ?: return close()</ID>
     <ID>UnusedVariable:CodexHostInvocation.kt:CodexAppServerArguments.Companion$val bounded = when (val admission = admitCommonArguments(all)) { is Refinement.Refined -> admission.value is Refinement.Rejected -> return Refinement.Rejected( when (admission.failure) { CodexArgumentFailure.TOO_MANY_ARGUMENTS -> CodexAppServerArgumentFailure.TOO_MANY_ARGUMENTS CodexArgumentFailure.TOO_MANY_BYTES -> CodexAppServerArgumentFailure.TOO_MANY_BYTES CodexArgumentFailure.INVALID_CHARACTER -> CodexAppServerArgumentFailure.INVALID_CHARACTER CodexArgumentFailure.REMOTE_OVERRIDE, CodexArgumentFailure.WORKING_DIRECTORY_OVERRIDE -> error("Common argument admission cannot produce an owned-argument override") } ) }</ID>
     <ID>UseOrEmpty:CodexProtocolAdapter.kt:CodexProtocolAdapter$method ?: ""</ID>
-    <ID>UseOrEmpty:ThreadCatalogStore.kt:FileThreadCatalogStore.Companion$boundary.installationId ?: ""</ID>
-    <ID>UseOrEmpty:ThreadCatalogStore.kt:FileThreadCatalogStore.Companion$boundary.stateEpoch ?: ""</ID>
     <ID>WildcardImport:AppServerManagement.kt:import io.github.amichne.kast.appserver.runtime.*</ID>
     <ID>WildcardImport:AppServerManagement.kt:import kotlinx.serialization.json.*</ID>
     <ID>WildcardImport:BrokerInstallationState.kt:import kotlinx.serialization.json.*</ID>

@@ -265,7 +265,7 @@ internal class BrokerSessionHub(
                         is io.github.amichne.kast.kernel.Refinement.Refined ->
                             workspaceExecution.cancel(bound.value.id, thread, turn)
                         is io.github.amichne.kast.kernel.Refinement.Rejected -> {
-                            emit(rejection(doc, bound.failure.name))
+                            emit(rejection(doc, bound.failure.code))
                             return
                         }
                     }
@@ -359,7 +359,7 @@ internal class BrokerSessionHub(
                                         is io.github.amichne.kast.kernel.Refinement.Rejected ->
                                             CompletableDeferred<WorkspaceExecutionResult>(
                                                 WorkspaceExecutionResult.Completed(
-                                                    ProtocolRouting.ReplyUpstream(toolFailure(doc, bound.failure.name))
+                                                    ProtocolRouting.ReplyUpstream(toolFailure(doc, bound.failure.code))
                                                 )
                                             )
                                         is io.github.amichne.kast.kernel.Refinement.Refined -> {

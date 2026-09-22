@@ -105,6 +105,9 @@ The broker rejects further operations for that workspace, including recovery.
 Replace the broker while retaining its invocation journal and thread store before
 requesting separately approved recovery. The IDE's durable mutation records remain
 authoritative; replacing the broker does not make an attempted plan executable again.
+A legacy thread-store migration requires a new Kast conversation before requesting
+recovery; retained historical bindings do not authorize resumed execution. Invocation
+fences and IDEA mutation evidence remain intact.
 An output-contract rejection after a possible write remains uncertain even when
 the provider has terminated. The [settled read exception](request-dispatch.md)
 uses canonical non-writing effect metadata and grants no mutation retry or recovery

@@ -1,13 +1,16 @@
 package io.github.amichne.kast.appserver.runtime
 
 import io.github.amichne.kast.appserver.BrokerOperationalLimits
+import io.github.amichne.kast.appserver.storage.PrivateRecordFailure
+import io.github.amichne.kast.appserver.storage.PrivateRecordFiles
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.Path
 
 /** Reads only the addressed hash shard; historical records never populate the daemon's active cache. */
-internal class FileInvocationRecords private constructor(private val files: InvocationStoreFiles) : InvocationRecords {
+internal class FileInvocationRecords
+private constructor(private val files: PrivateRecordFiles<InvocationFenceFailure>) : InvocationRecords {
     private val records = files.root.resolve(RECORDS)
 
     override fun apply(change: InvocationRecordChange): InvocationAdmission =
@@ -29,6 +32,7 @@ internal class FileInvocationRecords private constructor(private val files: Invo
                             path,
                             InvocationRecordDocument.serializer(),
                             InvocationRecordDocument.from(transition.value),
+                            maximumBytes = MAXIMUM_RECORD_BYTES,
                         )
                         Refinement.Refined(Unit)
                     }
@@ -66,7 +70,10 @@ internal class FileInvocationRecords private constructor(private val files: Invo
             observe: (InvocationMigrationObservation) -> Unit,
         ): Refinement<InvocationRecords, InvocationFenceFailure> {
             val files =
-                when (val admitted = InvocationStoreFiles.open(legacy.resolveSibling("${legacy.fileName}.d"))) {
+                when (
+                    val admitted =
+                        PrivateRecordFiles.open(legacy.resolveSibling("${legacy.fileName}.d"), ::storageFailure)
+                ) {
                     is Refinement.Rejected -> return admitted
                     is Refinement.Refined -> admitted.value
                 }
@@ -88,13 +95,20 @@ internal class FileInvocationRecords private constructor(private val files: Invo
             }
         }
 
+        private fun storageFailure(failure: PrivateRecordFailure): InvocationFenceFailure =
+            when (failure) {
+                PrivateRecordFailure.STORE_BUSY -> InvocationFenceFailure.STORE_BUSY
+                PrivateRecordFailure.STORE_REJECTED -> InvocationFenceFailure.STORE_REJECTED
+                PrivateRecordFailure.DOCUMENT_MALFORMED -> InvocationFenceFailure.DOCUMENT_MALFORMED
+            }
+
         private fun observedMigration(
-            files: InvocationStoreFiles,
+            files: PrivateRecordFiles<InvocationFenceFailure>,
             legacy: Path,
             observe: (InvocationMigrationObservation) -> Unit,
         ): Refinement<Unit, InvocationFenceFailure> {
             observe(InvocationMigrationObservation(InvocationMigrationOutcome.Started))
-            val result = InvocationStoreFiles.guarded { migrate(files, legacy) }
+            val result = files.guarded { migrate(files, legacy) }
             val outcome =
                 when (result) {
                     is Refinement.Refined -> InvocationMigrationOutcome.Committed
@@ -134,21 +148,24 @@ internal class FileInvocationRecords private constructor(private val files: Invo
             return Refinement.Refined(admitted)
         }
 
-        private fun stage(files: InvocationStoreFiles, admitted: List<InvocationRecord>): Path {
+        private fun stage(files: PrivateRecordFiles<InvocationFenceFailure>, admitted: List<InvocationRecord>): Path {
             val stage = files.createStage()
             for (record in admitted) {
                 val shard = stage.resolve(record.key.value.take(SHARD_CHARACTERS))
                 files.directory(shard)
                 val path = shard.resolve("${record.key.value}.json")
                 val document = InvocationRecordDocument.from(record)
-                files.write(path, InvocationRecordDocument.serializer(), document)
+                files.write(path, InvocationRecordDocument.serializer(), document, maximumBytes = MAXIMUM_RECORD_BYTES)
                 if (files.read(path, InvocationRecordDocument.serializer(), MAXIMUM_RECORD_BYTES) != document)
                     throw java.io.IOException("Staged record verification failed")
             }
             return stage
         }
 
-        private fun migrate(files: InvocationStoreFiles, legacy: Path): Refinement<Unit, InvocationFenceFailure> {
+        private fun migrate(
+            files: PrivateRecordFiles<InvocationFenceFailure>,
+            legacy: Path,
+        ): Refinement<Unit, InvocationFenceFailure> {
             // A previous interrupted migration retains its stage and source for explicit recovery.
             Files.newDirectoryStream(files.root).use { entries ->
                 if (entries.any { it.fileName.toString() != ".lock" })
@@ -182,6 +199,7 @@ internal class FileInvocationRecords private constructor(private val files: Invo
                 files.root.resolve(LAYOUT),
                 InvocationStoreLayout.serializer(),
                 InvocationStoreLayout(InvocationRecordDocument.VERSION),
+                maximumBytes = MAXIMUM_RECORD_BYTES,
             )
             return Refinement.Refined(Unit)
         }

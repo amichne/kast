@@ -18,8 +18,7 @@ private constructor(
 ) {
     fun requireUnchanged(directory: Path) {
         demand(
-            journalDigest(directory) == invocationJournalSha256 &&
-                sha256(Files.readAllBytes(directory.resolve("threads.json"))) == threadStoreSha256,
+            journalDigest(directory) == invocationJournalSha256 && threadDigest(directory) == threadStoreSha256,
             NativeFailure.RESULT_SHAPE_REJECTED,
         )
     }
@@ -57,8 +56,30 @@ private constructor(
             demand(retained.values.none { it.phase == InvocationPhase.STARTED }, NativeFailure.RESULT_SHAPE_REJECTED)
             return NativeBrokerStoreSnapshot(
                 invocationJournalSha256 = journalDigest(directory),
-                threadStoreSha256 = sha256(Files.readAllBytes(directory.resolve("threads.json"))),
+                threadStoreSha256 = threadDigest(directory),
                 retainedRecords = retained,
+            )
+        }
+
+        private fun threadDigest(directory: Path): String {
+            val store = directory.resolve("threads.json.d")
+            val layout = store.resolve("layout.json")
+            demand(
+                Json.decodeFromString<io.github.amichne.kast.appserver.protocol.ThreadStoreLayout>(
+                        Files.readString(layout)
+                    )
+                    .version == 3,
+                NativeFailure.RESULT_SHAPE_REJECTED,
+            )
+            val records =
+                Files.walk(store.resolve("records-v3")).use { paths ->
+                    paths.filter { !Files.isDirectory(it, NOFOLLOW_LINKS) }.sorted().toList()
+                }
+            demand(records.all { Files.isRegularFile(it, NOFOLLOW_LINKS) }, NativeFailure.RESULT_SHAPE_REJECTED)
+            return sha256(
+                (listOf(layout) + records)
+                    .joinToString("\n") { path -> "${directory.relativize(path)}:${sha256(Files.readAllBytes(path))}" }
+                    .toByteArray()
             )
         }
 

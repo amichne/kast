@@ -2513,16 +2513,6 @@
     },
     {
       "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/protocol/FileThreadCatalogStoreTest.kt",
-        "scope": "type:FileThreadCatalogStoreTest/fun:duplicate thread identities fail closed(4:Path)/val:document",
-        "kind": "JSON_LITERAL",
-        "sha256": "ac92fbc66e4360f0ce6c02a97388fa4c69c39be4d50301918524d6cd7d9d99fe"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
         "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/protocol/codex/AgentSessionProjectionTest.kt",
         "scope": "fun:agentSessionBootstrapFixture()/val:schema/val:compilation",
         "kind": "JSON_LITERAL",

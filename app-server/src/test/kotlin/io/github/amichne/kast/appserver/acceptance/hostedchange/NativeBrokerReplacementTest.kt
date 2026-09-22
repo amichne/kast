@@ -95,7 +95,10 @@ class NativeBrokerReplacementTest {
     fun `changed thread store cannot pass replacement proof`(@TempDir root: Path) {
         stores(root, InvocationPhase.UNCERTAIN)
         val retained = NativeBrokerStoreSnapshot.capture(root)
-        Files.writeString(root.resolve("threads.json"), "deliberately invalid thread catalog")
+        Files.writeString(
+            root.resolve("threads.json.d/layout.json"),
+            Json.encodeToString(io.github.amichne.kast.appserver.protocol.ThreadStoreLayout(4)),
+        )
         assertThrows(NativeRejected::class.java) { retained.requireUnchanged(root) }
     }
 
@@ -135,7 +138,12 @@ class NativeBrokerReplacementTest {
         val file = root.toRealPath().resolve("invocations.json")
         assertEquals(InvocationAdmission.Admitted, InvocationFence(file).initialization())
         writeRecord(root, InvocationFence.digest("uncertain-call"), phase)
-        Files.writeString(root.resolve("threads.json"), Json.encodeToString(EmptyThreadCatalog(2, emptyList())))
+        assertEquals(
+            true,
+            io.github.amichne.kast.appserver.protocol.FileThreadCatalogStore.open(
+                root.toRealPath().resolve("threads.json")
+            ) is io.github.amichne.kast.appserver.protocol.FileThreadCatalogStoreOpen.Opened,
+        )
     }
 
     private fun writeRecord(root: Path, key: String, phase: InvocationPhase) {
@@ -148,6 +156,4 @@ class NativeBrokerReplacementTest {
     }
 
     @Serializable private data class RequestId(val id: Int)
-
-    @Serializable private data class EmptyThreadCatalog(val version: Int, val bindings: List<String>)
 }

@@ -1,4 +1,4 @@
-package io.github.amichne.kast.appserver.runtime
+package io.github.amichne.kast.appserver.storage
 
 import io.github.amichne.kast.kernel.Refinement
 import java.io.IOException
@@ -19,7 +19,12 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 
 /** All paths descend from one admitted private store. File and directory checks precede each effect. */
-internal class InvocationStoreFiles private constructor(val root: Path, private val owner: UserPrincipal) {
+internal class PrivateRecordFiles<Failure>
+private constructor(
+    val root: Path,
+    private val owner: UserPrincipal,
+    private val failure: (PrivateRecordFailure) -> Failure,
+) {
     fun createStage(): Path =
         Files.createTempDirectory(root, ".migration-", PosixFilePermissions.asFileAttribute(directoryMode))
 
@@ -47,26 +52,27 @@ internal class InvocationStoreFiles private constructor(val root: Path, private 
             throw IOException("Private directory rejected")
     }
 
-    fun <T> read(path: Path, serializer: KSerializer<T>, maximumBytes: Int): T {
+    fun <T> read(path: Path, serializer: KSerializer<T>, maximumBytes: Int, format: Json = json): T {
         requireDirectory(path.parent)
         requireFile(path)
         val bytes = Files.newInputStream(path, NOFOLLOW_LINKS).use { it.readNBytes(maximumBytes + 1) }
         if (bytes.size > maximumBytes) throw IOException("Record bound exceeded")
         val text = bytes.toString(Charsets.UTF_8)
-        val decoded = json.decodeFromString(serializer, text)
+        val decoded = format.decodeFromString(serializer, text)
         // Owner-written records have one canonical shape. This also rejects duplicate keys and lossy UTF-8.
         if (
-            !(json.encodeToString(serializer, decoded) + "\n").toByteArray(Charsets.UTF_8).contentEquals(bytes) &&
-                !json.encodeToString(serializer, decoded).toByteArray(Charsets.UTF_8).contentEquals(bytes)
+            !(format.encodeToString(serializer, decoded) + "\n").toByteArray(Charsets.UTF_8).contentEquals(bytes) &&
+                !format.encodeToString(serializer, decoded).toByteArray(Charsets.UTF_8).contentEquals(bytes)
         )
             throw IOException("Noncanonical record rejected")
         return decoded
     }
 
-    fun <T> write(path: Path, serializer: KSerializer<T>, document: T) {
+    fun <T> write(path: Path, serializer: KSerializer<T>, document: T, maximumBytes: Int) {
         requireDirectory(path.parent)
         if (Files.exists(path, NOFOLLOW_LINKS)) requireFile(path)
         val bytes = (json.encodeToString(serializer, document) + "\n").toByteArray(Charsets.UTF_8)
+        if (bytes.size > maximumBytes) throw IOException("Record bound exceeded")
         val temporary =
             Files.createTempFile(path.parent, ".record-", ".tmp", PosixFilePermissions.asFileAttribute(fileMode))
         try {
@@ -82,28 +88,27 @@ internal class InvocationStoreFiles private constructor(val root: Path, private 
         }
     }
 
-    fun <T> locked(block: () -> Refinement<T, InvocationFenceFailure>): Refinement<T, InvocationFenceFailure> =
-        guarded {
-            requireDirectory(root)
-            val lockPath = root.resolve(".lock")
-            if (!Files.exists(lockPath, NOFOLLOW_LINKS)) {
-                try {
-                    Files.createFile(lockPath, PosixFilePermissions.asFileAttribute(fileMode))
-                } catch (_: java.nio.file.FileAlreadyExistsException) {
-                    /* Another opener established the same lock. */
-                }
-            }
-            requireFile(lockPath)
-            FileChannel.open(lockPath, WRITE, NOFOLLOW_LINKS).use { channel ->
-                val lock =
-                    try {
-                        channel.tryLock()
-                    } catch (_: OverlappingFileLockException) {
-                        null
-                    }
-                if (lock == null) Refinement.Rejected(InvocationFenceFailure.STORE_BUSY) else lock.use { block() }
+    fun <T> locked(block: () -> Refinement<T, Failure>): Refinement<T, Failure> = guarded {
+        requireDirectory(root)
+        val lockPath = root.resolve(".lock")
+        if (!Files.exists(lockPath, NOFOLLOW_LINKS)) {
+            try {
+                Files.createFile(lockPath, PosixFilePermissions.asFileAttribute(fileMode))
+            } catch (_: java.nio.file.FileAlreadyExistsException) {
+                /* Another opener established the same lock. */
             }
         }
+        requireFile(lockPath)
+        FileChannel.open(lockPath, WRITE, NOFOLLOW_LINKS).use { channel ->
+            val lock =
+                try {
+                    channel.tryLock()
+                } catch (_: OverlappingFileLockException) {
+                    null
+                }
+            if (lock == null) Refinement.Rejected(failure(PrivateRecordFailure.STORE_BUSY)) else lock.use { block() }
+        }
+    }
 
     private fun requireFile(path: Path) {
         if (
@@ -114,37 +119,50 @@ internal class InvocationStoreFiles private constructor(val root: Path, private 
             throw IOException("Private file rejected")
     }
 
+    fun <T> guarded(block: () -> Refinement<T, Failure>): Refinement<T, Failure> = guarded(failure, block)
+
     companion object {
         private val directoryMode = PosixFilePermissions.fromString("rwx------")
         private val fileMode = PosixFilePermissions.fromString("rw-------")
         private val json = Json { encodeDefaults = true }
 
-        fun open(root: Path): Refinement<InvocationStoreFiles, InvocationFenceFailure> = guarded {
-            if (!root.isAbsolute || root.normalize() != root || root.parent.toRealPath() != root.parent)
-                return@guarded Refinement.Rejected(InvocationFenceFailure.STORE_REJECTED)
-            val files = InvocationStoreFiles(root, Files.getOwner(root.parent, NOFOLLOW_LINKS))
-            files.requireDirectory(root.parent)
-            files.directory(root)
-            Refinement.Refined(files)
-        }
+        fun <Failure> open(
+            root: Path,
+            failure: (PrivateRecordFailure) -> Failure,
+        ): Refinement<PrivateRecordFiles<Failure>, Failure> =
+            guarded(failure) {
+                if (!root.isAbsolute || root.normalize() != root || root.parent.toRealPath() != root.parent)
+                    return@guarded Refinement.Rejected(failure(PrivateRecordFailure.STORE_REJECTED))
+                val files = PrivateRecordFiles(root, Files.getOwner(root.parent, NOFOLLOW_LINKS), failure)
+                files.requireDirectory(root.parent)
+                files.directory(root)
+                Refinement.Refined(files)
+            }
 
         fun force(directory: Path) {
             FileChannel.open(directory, READ, NOFOLLOW_LINKS).use { it.force(true) }
         }
 
-        internal fun <T> guarded(
-            block: () -> Refinement<T, InvocationFenceFailure>
-        ): Refinement<T, InvocationFenceFailure> =
+        private fun <T, Failure> guarded(
+            failure: (PrivateRecordFailure) -> Failure,
+            block: () -> Refinement<T, Failure>,
+        ): Refinement<T, Failure> =
             try {
                 block()
             } catch (_: IOException) {
-                Refinement.Rejected(InvocationFenceFailure.STORE_REJECTED)
+                Refinement.Rejected(failure(PrivateRecordFailure.STORE_REJECTED))
             } catch (_: SerializationException) {
-                Refinement.Rejected(InvocationFenceFailure.STORE_REJECTED)
+                Refinement.Rejected(failure(PrivateRecordFailure.DOCUMENT_MALFORMED))
             } catch (_: SecurityException) {
-                Refinement.Rejected(InvocationFenceFailure.STORE_REJECTED)
+                Refinement.Rejected(failure(PrivateRecordFailure.STORE_REJECTED))
             } catch (_: UnsupportedOperationException) {
-                Refinement.Rejected(InvocationFenceFailure.STORE_REJECTED)
+                Refinement.Rejected(failure(PrivateRecordFailure.STORE_REJECTED))
             }
     }
+}
+
+internal enum class PrivateRecordFailure {
+    STORE_REJECTED,
+    STORE_BUSY,
+    DOCUMENT_MALFORMED,
 }

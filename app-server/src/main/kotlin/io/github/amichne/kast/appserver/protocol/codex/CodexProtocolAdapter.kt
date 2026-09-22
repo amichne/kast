@@ -65,7 +65,8 @@ internal sealed interface ProtocolCloseFailure {
 
     data object ThreadBindingRejected : ProtocolCloseFailure
 
-    data object ThreadStoreRejected : ProtocolCloseFailure
+    data class ThreadStoreRejected(val failure: io.github.amichne.kast.appserver.protocol.ThreadCatalogStoreFailure) :
+        ProtocolCloseFailure
 
     data object ResponseSchemaRejected : ProtocolCloseFailure
 
@@ -124,12 +125,25 @@ private data class ActiveInvocation(
     val job: Job,
 )
 
-internal enum class ThreadWorkspaceFailure {
+internal sealed interface ThreadWorkspaceRejection {
+    val code: String
+
+    data class Store(val failure: io.github.amichne.kast.appserver.protocol.ThreadCatalogStoreFailure) :
+        ThreadWorkspaceRejection {
+        override val code: String
+            get() = failure.name
+    }
+}
+
+internal enum class ThreadWorkspaceFailure : ThreadWorkspaceRejection {
     BINDING_MISSING,
     STORE_REJECTED,
     CATALOG_INCOMPATIBLE,
     OWNER_INCOMPATIBLE,
-    WORKSPACE_REJECTED,
+    WORKSPACE_REJECTED;
+
+    override val code: String
+        get() = name
 }
 
 internal class CodexProtocolAdapter(
@@ -241,7 +255,8 @@ internal class CodexProtocolAdapter(
                         validBinding(it)
                     }
                 ThreadStoreRead.Missing -> null
-                ThreadStoreRead.Rejected -> return ProtocolRouting.Close(ProtocolCloseFailure.ThreadStoreRejected)
+                is ThreadStoreRead.Rejected ->
+                    return dynamicToolReply(id, codexThreadStoreFailurePresentation(stored.failure))
             } ?: return dynamicToolFailure(id, CodexToolTerminalFailure.CATALOG_INCOMPATIBLE)
         val context =
             when (
@@ -603,7 +618,7 @@ internal class CodexProtocolAdapter(
                     stored.binding.takeIf(::validBinding)
                         ?: return ownedRequestFailure(document, "CATALOG_INCOMPATIBLE")
                 ThreadStoreRead.Missing -> return ownedRequestFailure(document, "THREAD_BINDING_MISSING")
-                ThreadStoreRead.Rejected -> return ProtocolRouting.Close(ProtocolCloseFailure.ThreadStoreRejected)
+                is ThreadStoreRead.Rejected -> return ownedRequestFailure(document, stored.failure.name)
             }
         paramsObject.string("cwd")?.let { requested ->
             val selection =
@@ -654,12 +669,13 @@ internal class CodexProtocolAdapter(
 
     internal suspend fun boundWorkspace(
         thread: BrokerThreadId
-    ): Refinement<WorkspaceRegistration, ThreadWorkspaceFailure> {
+    ): Refinement<WorkspaceRegistration, ThreadWorkspaceRejection> {
         val binding =
             when (val stored = threadStore.read(thread.value)) {
                 is ThreadStoreRead.Found -> stored.binding
                 ThreadStoreRead.Missing -> return Refinement.Rejected(ThreadWorkspaceFailure.BINDING_MISSING)
-                ThreadStoreRead.Rejected -> return Refinement.Rejected(ThreadWorkspaceFailure.STORE_REJECTED)
+                is ThreadStoreRead.Rejected ->
+                    return Refinement.Rejected(ThreadWorkspaceRejection.Store(stored.failure))
             }
         return when (val admitted = refineBinding(binding)) {
             is Refinement.Refined -> Refinement.Refined(admitted.value.workspace)
@@ -781,8 +797,10 @@ internal class CodexProtocolAdapter(
                 is Refinement.Refined -> admission.value
                 is Refinement.Rejected -> return ProtocolRouting.Close(ProtocolCloseFailure.ThreadBindingRejected)
             }
-        if (threadStore.write(binding) != ThreadStoreWrite.WRITTEN) {
-            return ProtocolRouting.Close(ProtocolCloseFailure.ThreadStoreRejected)
+        when (val written = threadStore.write(binding)) {
+            ThreadStoreWrite.Written -> Unit
+            is ThreadStoreWrite.Rejected ->
+                return ProtocolRouting.Close(ProtocolCloseFailure.ThreadStoreRejected(written.failure))
         }
         return when (historyProjection) {
             CodexThreadHistoryProjection.Unchanged -> ProtocolRouting.ForwardDownstream(message)

@@ -198,7 +198,15 @@ catalog or binding.
 
 The service stores enrollment, thread/catalog bindings, and digest-only
 invocation intent under `CODEX_HOME/broker`. It does not store conversation
-history. Intent reaches durable storage before approval or execution; a recovered started
+history. Thread bindings live in private digest-sharded files under
+`threads.json.d`. Opening the store does not scan historical workspaces; each
+requested current binding acquires fresh directory and owner proof. Historical
+records have no live-session capacity limit and are never aged out. The locked
+legacy migration retains the original catalog and marks old bindings
+`NEW_CONVERSATION_REQUIRED`; start a new Kast conversation after migration.
+Codex conversation history remains untouched.
+
+Intent reaches durable storage before approval or execution; a recovered started
 invocation is uncertain and cannot run again automatically. Completed duplicate
 calls within a live generation share one result. A restarted service rejects a
 completed duplicate instead of fabricating its missing result.

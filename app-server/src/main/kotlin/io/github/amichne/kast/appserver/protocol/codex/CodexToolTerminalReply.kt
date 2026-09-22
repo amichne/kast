@@ -68,3 +68,14 @@ private enum class CodexCancelledStatus {
 private enum class CodexUncertainEffect {
     @SerialName("uncertain") UNCERTAIN
 }
+
+internal fun codexThreadStoreFailurePresentation(
+    failure: io.github.amichne.kast.appserver.protocol.ThreadCatalogStoreFailure
+): ToolPresentation =
+    ToolPresentation.text(terminalJson.encodeToString(CodexThreadStoreRejectionDocument(failure)), success = false)
+
+@Serializable
+private data class CodexThreadStoreRejectionDocument(
+    val failure: io.github.amichne.kast.appserver.protocol.ThreadCatalogStoreFailure,
+    val status: CodexRejectedStatus = CodexRejectedStatus.REJECTED,
+)
