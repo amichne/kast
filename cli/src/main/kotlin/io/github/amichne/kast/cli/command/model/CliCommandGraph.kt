@@ -13,7 +13,6 @@ import io.github.amichne.kast.cli.command.change.changeCommandGroup
 import io.github.amichne.kast.cli.command.codex.codexCommandGroup
 import io.github.amichne.kast.cli.command.diagnostic.diagnosticCommandGroup
 import io.github.amichne.kast.cli.command.knowledge.knowledgeCommandFamily
-import io.github.amichne.kast.cli.command.lifecycle.lifecycleCommands
 import io.github.amichne.kast.cli.command.product.productCommandGroup
 import io.github.amichne.kast.cli.command.query.queryCommandGroup
 import io.github.amichne.kast.cli.command.relation.relationCommandGroup
@@ -68,8 +67,6 @@ internal class CliCommandSurface
 internal constructor(
     val localFlags: List<String>,
     val localCommands: List<CliProductCommand>,
-    val agentCommands: List<CliProductCommand>,
-    val lifecycleCommands: List<CliLifecycleCommand>,
     val semanticCommands: List<CliSemanticCommandSurface>,
     val toolCommands: List<io.github.amichne.kast.cli.command.tool.CliToolCommandSurface>,
 )
@@ -82,10 +79,6 @@ internal sealed interface CliCommandGraphFailure {
     data class MissingLocal(val command: CliProductCommand) : CliCommandGraphFailure
 
     data class DuplicateLocal(val command: CliProductCommand) : CliCommandGraphFailure
-
-    data class MissingLifecycle(val command: CliLifecycleCommand) : CliCommandGraphFailure
-
-    data class DuplicateLifecycle(val command: CliLifecycleCommand) : CliCommandGraphFailure
 }
 
 internal sealed interface CliCommandGraphConstruction {
@@ -121,9 +114,6 @@ private constructor(
                         graph.root.argvDiagnostic(admission.failure),
                     )
             }
-        if (admitted.isExact(BROKER_SERVE_ARGUMENTS)) {
-            return CliCommandParsing.Parsed(CliAction.Local.BrokerServe)
-        }
         return graph.parse(admitted)
     }
 
@@ -140,7 +130,6 @@ private constructor(
                     KastRootCommand().subcommands(families.map { it.root }),
                     emptyList(),
                     families.flatMap { it.commands },
-                    emptyList(),
                 )
             return when (val admission = CliArgv.admit(argv)) {
                 is CliArgvAdmission.Admitted -> graph.parse(admission.argv)
@@ -156,8 +145,8 @@ private constructor(
          * Proof transition: `CanonicalCliRequestPreparers -> CliCommandGraphConstruction`.
          *
          * Establishes exactly one semantic leaf for every publicly exposed canonical operation and exactly one leaf for
-         * every public product-local and lifecycle command. [CliCommandGraphFailure] closes missing and duplicate graph
-         * identities. Clikt nodes remain private to this composition boundary.
+         * every public product-local command. [CliCommandGraphFailure] closes missing and duplicate graph identities.
+         * Clikt nodes remain private to this composition boundary.
          */
         internal fun create(preparers: CanonicalCliRequestPreparers): CliCommandGraphConstruction {
             val graph = canonicalGraph(preparers, CliRequestDocumentInput.Absent)
@@ -174,8 +163,6 @@ private constructor(
 private class CliArgv private constructor(private val tokens: List<String>) {
     fun cliktTokens(): List<String> = tokens
 
-    fun isExact(expected: List<String>): Boolean = tokens == expected
-
     companion object {
         /** Refines raw argv to a bounded immutable command-selection token sequence. */
         fun admit(raw: List<String>): CliArgvAdmission =
@@ -187,8 +174,6 @@ private class CliArgv private constructor(private val tokens: List<String>) {
             }
     }
 }
-
-private val BROKER_SERVE_ARGUMENTS = listOf("broker", "serve")
 
 private enum class CliArgvFailure {
     MISSING_OR_BLANK_TOKEN,
@@ -220,7 +205,6 @@ private class CliCommandGraph(
     val root: KastCommand,
     private val semantic: List<SemanticKastCommand<*>>,
     private val local: List<LocalKastCommand>,
-    private val lifecycle: List<LifecycleKastCommand>,
     private val tools: List<io.github.amichne.kast.cli.command.tool.CliToolCommandSurface> = emptyList(),
 ) {
     /**
@@ -311,45 +295,26 @@ private class CliCommandGraph(
                 }
             }
         val localCounts = local.groupingBy(LocalKastCommand::command).eachCount()
-        CliProductCommand.entries
-            .filter { it.exposure != CliLocalExposure.INTERNAL && it !in hiddenImplementationCommands }
-            .forEach { command ->
-                when (localCounts[command] ?: 0) {
-                    0 -> add(CliCommandGraphFailure.MissingLocal(command))
-                    1 -> Unit
-                    else -> add(CliCommandGraphFailure.DuplicateLocal(command))
-                }
+        CliProductCommand.entries.forEach { command ->
+            when (localCounts[command] ?: 0) {
+                0 -> add(CliCommandGraphFailure.MissingLocal(command))
+                1 -> Unit
+                else -> add(CliCommandGraphFailure.DuplicateLocal(command))
             }
-        val lifecycleCounts = lifecycle.groupingBy(LifecycleKastCommand::command).eachCount()
-        CliLifecycleCommand.entries
-            .filter { it.exposure == CliLocalExposure.PUBLIC }
-            .forEach { command ->
-                when (lifecycleCounts[command] ?: 0) {
-                    0 -> add(CliCommandGraphFailure.MissingLifecycle(command))
-                    1 -> Unit
-                    else -> add(CliCommandGraphFailure.DuplicateLifecycle(command))
-                }
-            }
+        }
     }
 
     fun surface(): CliCommandSurface =
         CliCommandSurface(
             toolCommands = tools,
             localFlags = listOf("--help", "--version", "--schema"),
-            localCommands = local.map(LocalKastCommand::command).filter { it.exposure == CliLocalExposure.PUBLIC },
-            agentCommands = local.map(LocalKastCommand::command).filter { it.exposure == CliLocalExposure.AGENT },
-            lifecycleCommands = lifecycle.map(LifecycleKastCommand::command),
+            localCommands = local.map(LocalKastCommand::command),
             semanticCommands =
                 semantic.map { command ->
                     CliSemanticCommandSurface(command.operation, command.schemaUsage)
                 },
         )
 }
-
-internal abstract class LifecycleKastCommand(
-    name: String,
-    val command: CliLifecycleCommand,
-) : KastCommand(name)
 
 private sealed interface CliCommandSelection {
     data object Empty : CliCommandSelection
@@ -380,7 +345,6 @@ private fun canonicalGraph(
     val query = queryCommandGroup(preparers, requestInput)
     val diagnostic = diagnosticCommandGroup(preparers, requestInput)
     val change = changeCommandGroup(preparers, requestInput)
-    val lifecycle = lifecycleCommands().filter { it.command.exposure == CliLocalExposure.PUBLIC }
     val families =
         listOf(index, topology, query, symbol, source, relation, traversal, diagnostic, change).map {
             it.projectPublicDefinitions(CanonicalOperationDefinitions.all)
@@ -388,32 +352,27 @@ private fun canonicalGraph(
     val semantic = families.flatMap(CommandFamily::semanticCommands)
     val localFamilies =
         listOf(
-                product,
-                knowledge,
-                broker,
-                codex,
-                hostedIndex,
-                ide,
-                io.github.amichne.kast.cli.command.workspace.workspaceLifecycleCommands(requestInput),
-            )
-            .map { family -> projectedLocalFamily(family, family === hostedIndex || family === ide) }
-            .filter { it.commands.isNotEmpty() }
+            product,
+            knowledge,
+            broker,
+            codex,
+            hostedIndex,
+            ide,
+            io.github.amichne.kast.cli.command.workspace.workspaceLifecycleCommands(requestInput),
+        )
+
     val root =
         KastRootCommand()
             .subcommands(
-                families
-                    .filter { it.semanticCommands.isNotEmpty() }
-                    .map {
-                        if (it.root.commandName == index.root.commandName) HiddenProjectedCommandGroup(it.root)
-                        else it.root
-                    } + localFamilies.map { it.root } + appServer.root + tools.root + lifecycle
+                families.filter { it.semanticCommands.isNotEmpty() }.map { it.root } +
+                    localFamilies.map { it.root } +
+                    appServer.root +
+                    tools.root
             )
     return CliCommandGraph(
         root,
         semantic,
-        localFamilies.flatMap { it.commands }.filterNot { it.command in hiddenImplementationCommands } +
-            appServer.commands.filter { it.command.exposure == CliLocalExposure.PUBLIC },
-        lifecycle,
+        localFamilies.flatMap { it.commands } + appServer.commands,
         tools.surface,
     )
 }

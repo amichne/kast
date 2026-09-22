@@ -34,3 +34,59 @@ fun preparePriorInstallationReplacement(prior: Path, home: Path): PriorInstallat
     } catch (_: SecurityException) {
         PriorInstallationPreparation.FILESYSTEM_REJECTED
     }
+
+/** Moves one installation-owned entry aside without traversing it. */
+fun quarantineInstallationEntry(path: Path) {
+    Files.move(
+        path,
+        path.resolveSibling(".replaced-${path.fileName}-${java.util.UUID.randomUUID()}"),
+        java.nio.file.StandardCopyOption.ATOMIC_MOVE,
+    )
+}
+
+fun resetInstallationTransport(installation: Path, home: Path): PriorInstallationPreparation {
+    return try {
+        val run = installation.resolve("state/run")
+        val alias =
+            io.github.amichne.kast.distribution.managed.endpoint.InstalledEndpointAliases.transportPath(
+                    run.resolve("kast-${"0".repeat(43)}.sock")
+                )
+                .parent
+        val upstream =
+            io.github.amichne.kast.distribution.managed.endpoint.InstalledUpstreamDirectories.transportPath(
+                    run.resolve("u.sock")
+                )
+                .parent
+        val owner = Files.getOwner(home, LinkOption.NOFOLLOW_LINKS)
+        for (path in setOf(alias, upstream) - run) {
+            if (!Files.exists(path, LinkOption.NOFOLLOW_LINKS)) continue
+            if (Files.getOwner(path, LinkOption.NOFOLLOW_LINKS) != owner) {
+                return PriorInstallationPreparation.FILESYSTEM_REJECTED
+            }
+            val removed = removeTransportEntry(path)
+            if (removed != PriorInstallationPreparation.PREPARED) return removed
+        }
+        PriorInstallationPreparation.PREPARED
+    } catch (_: java.io.IOException) {
+        PriorInstallationPreparation.FILESYSTEM_REJECTED
+    } catch (_: SecurityException) {
+        PriorInstallationPreparation.FILESYSTEM_REJECTED
+    }
+}
+
+/** Never follows a link; physical upstream directories contain at most the one named socket. */
+private fun removeTransportEntry(path: Path): PriorInstallationPreparation {
+    if (Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS)) {
+        Files.newDirectoryStream(path).use { entries ->
+            val children = entries.take(2)
+            if (
+                children.any { it.fileName.toString() != "u.sock" || Files.isDirectory(it, LinkOption.NOFOLLOW_LINKS) }
+            ) {
+                return PriorInstallationPreparation.FILESYSTEM_REJECTED
+            }
+            children.forEach(Files::delete)
+        }
+    }
+    Files.delete(path)
+    return PriorInstallationPreparation.PREPARED
+}

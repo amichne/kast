@@ -166,6 +166,25 @@ class RecoveryTest(unittest.TestCase):
             module.save(bundle / 'receipt.json', module.replace_stage(receipt, module.Status.ACTIVE, plugin))
         return plugins, staged
 
+    def test_force_replaces_a_plugin_symlink_without_touching_its_target(self):
+        module = self.recovery_module()
+        plugins, staged = self.plugin_fixture(module)
+        active = plugins / 'kast-ide-hosted'
+        target = self.home / 'unrelated-plugin'
+        active.rename(target)
+        active.symlink_to(target, target_is_directory=True)
+        result = subprocess.run(
+            [sys.executable, str(SCRIPT), 'activate-plugin', '--installation', str(self.root),
+             '--plugin-root', str(plugins), '--staged-plugin', str(staged), '--force'],
+            env=self.environment, capture_output=True, text=True, timeout=10,
+        )
+        self.assertEqual(0, result.returncode, result.stderr + result.stdout)
+        self.assertFalse(active.is_symlink())
+        self.assertEqual(b'next plugin', (active / 'bytes').read_bytes())
+        self.assertEqual(b'prior active plugin', (target / 'bytes').read_bytes())
+        retained = plugins.parent / '.kast-plugin-recovery'
+        self.assertTrue(any(path.is_symlink() for path in retained.iterdir()))
+
     def test_inactive_plugin_paths_never_enter_discovery(self):
         module = self.recovery_module()
         plugins, staged = self.plugin_fixture(module)

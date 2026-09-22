@@ -11,6 +11,7 @@ import io.github.amichne.kast.cli.command.*
 internal fun appServerCommandGroup(): LocalCommandFamily {
     val actions =
         listOf(
+            AppServerLeaf("bootstrap", CliProductCommand.APP_SERVER_BOOTSTRAP, AppServerAction.Bootstrap),
             AppServerLeaf("register", CliProductCommand.APP_SERVER_REGISTER, AppServerAction.Register),
             AppServerLeaf("enable", CliProductCommand.APP_SERVER_ENABLE, AppServerAction.Enable),
             AppServerRepairLeaf(),
@@ -22,22 +23,19 @@ internal fun appServerCommandGroup(): LocalCommandFamily {
     val release = ControlLeaf("release", CliProductCommand.APP_SERVER_RELEASE, ControlOperation.RELEASE)
     val control = KastCommandGroup("control", "Manage the controller of an attached task.").subcommands(claim, release)
     val root =
-        object :
-                KastCommandGroup(
-                    "app-server",
-                    """
-                    Manage the persistent Kast App Server.
+        KastCommandGroup(
+                "app-server",
+                """
+                Manage the persistent Kast App Server.
 
-                               Diagnostics: the active installation writes service output to
-                               state/broker/<installation-id>/service.log and the complete resolved launch
-                               settings to state/broker/<installation-id>/launch-environment. Set
-                               KAST_DEBUG=1 to also stream bounded
-                               launch diagnostics to the calling process on stderr.
-                    """
-                        .trimIndent(),
-                ) {
-                override val hiddenFromHelp: Boolean = true
-            }
+                           Diagnostics: the active installation writes service output to
+                           state/broker/<installation-id>/service.log and the complete resolved launch
+                           settings to state/broker/<installation-id>/launch-environment. Set
+                           KAST_DEBUG=1 to also stream bounded
+                           launch diagnostics to the calling process on stderr.
+                """
+                    .trimIndent(),
+            )
             .subcommands(actions + control)
     return LocalCommandFamily(root, actions + claim + release)
 }

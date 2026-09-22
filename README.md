@@ -22,14 +22,19 @@ The Codex integration is a preview; full Desktop compatibility remains
    ```
 
    The installer reports the detected IntelliJ version, verifies its matching
-   plugin, explains the app server, and asks whether to enable its per-user
-   login LaunchAgent. If no matching IDEA plugin exists, it installs nothing.
-   For automation, append `-- --no-interactive`; the LaunchAgent then remains
-   disabled unless `KAST_ENABLE_LAUNCHD=1` is explicitly set.
+   plugin, and enables the complete app-server suite and its per-user login
+   LaunchAgent. If no matching IDEA plugin exists, it installs nothing.
+   For automation, append `-- --no-interactive`.
 
    Choose other absolute user-owned locations with `--install-root` and
    `--bin-dir`. If a selected command path is occupied, the installer lists it
    and asks before removal. Automation must opt in with `--clean-collisions`.
+
+   To rebuild a damaged installation, append `-- --force`. This retires its
+   services, resets managed sockets and state, restages both launchers and the
+   plugin, and replaces command collisions. Source workspaces are preserved;
+   workspace enrollment is rebuilt. Use `-- --force --dry-run` to preview.
+   Previous payloads and recovery metadata are moved aside under `.replaced-*`.
 
 2. Restart IDEA to load the plugin and save edited files.
    Add the selected command directory to `PATH` if needed.

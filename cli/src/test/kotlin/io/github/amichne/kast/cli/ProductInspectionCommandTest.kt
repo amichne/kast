@@ -45,9 +45,9 @@ class ProductInspectionCommandTest {
     fun `retired process commands fail without launching or enrolling a workspace`() {
         for (command in listOf("start", "stop")) {
             val result = cli().execute(listOf(command), Path.of("/missing")) as CliExit.BoundaryRejected
-            assertEquals(CliBoundaryExitStatus.RUNTIME, result.status)
+            assertEquals(CliBoundaryExitStatus.USAGE, result.status)
             assertEquals(
-                JsonPrimitive("isolated-runtime-retired-ide-lifecycle-is-user-managed"),
+                JsonPrimitive("arguments-rejected"),
                 Json.parseToJsonElement(result.document.value).jsonObject["reason"],
             )
         }

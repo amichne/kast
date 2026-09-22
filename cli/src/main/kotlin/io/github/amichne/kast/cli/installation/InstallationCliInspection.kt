@@ -17,11 +17,33 @@ internal sealed interface InstallationHandling {
 internal object InstallationCliInspection {
     fun inspect(arguments: List<String>, environment: Map<String, String>): InstallationHandling {
         if (arguments.firstOrNull() != "installation") return InstallationHandling.Unrelated
-        if (arguments != listOf("installation", "install")) {
+        if (arguments in listOf(listOf("installation", "--help"), listOf("installation", "-h"))) {
+            val help =
+                io.github.amichne.kast.cli.CliTextDocument.admit(
+                    "kast installation install [--force]: install the verified release from install.sh. " +
+                        "Use install.sh --force to reset and reclaim the selected installation; " +
+                        "--dry-run previews changes. " +
+                        "Installed lifecycle commands: inspect, recover-read-only, reset, remove [--dry-run] [--json]."
+                )
+            return when (help) {
+                is io.github.amichne.kast.cli.CliTextDocumentAdmission.Admitted ->
+                    InstallationHandling.Handled(CliExit.Complete(help.document))
+                is io.github.amichne.kast.cli.CliTextDocumentAdmission.Rejected ->
+                    rejected(InstallationFailure.REQUEST_REJECTED, CliBoundaryExitStatus.USAGE)
+            }
+        }
+
+        val force = arguments == listOf("installation", "install", "--force")
+        if (!force && arguments != listOf("installation", "install")) {
             return rejected(InstallationFailure.REQUEST_REJECTED, CliBoundaryExitStatus.USAGE)
         }
         val request =
-            when (val parsed = InstallationRequest.parse(environment)) {
+            when (
+                val parsed =
+                    InstallationRequest.parse(
+                        if (force) environment + (InstallationEnvironment.FORCE.key to "1") else environment
+                    )
+            ) {
                 is Refinement.Refined -> parsed.value
                 is Refinement.Rejected -> return requestRejected(parsed.failure)
             }

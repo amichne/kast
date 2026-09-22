@@ -105,6 +105,43 @@ class InstallationWorkflowTest {
     }
 
     @Test
+    fun `force reinstall resets same version state and preserves unrelated files`(@TempDir temporary: Path) {
+        val root = temporary.toRealPath()
+        val installation = root.resolve("installation")
+        val environment =
+            installationEnvironment(
+                releaseFixture(root, "1.2.3", 5, 0),
+                "1.2.3",
+                installation,
+                root.resolve("commands"),
+                Files.createDirectory(root.resolve("home")),
+                Files.createDirectory(root.resolve("codex")),
+                InstallationMode.APPLY,
+            )
+        fun request(overrides: Map<String, String> = emptyMap()): InstallationRequest =
+            (InstallationRequest.parse(environment + overrides) as Refinement.Refined).value
+        val request = request()
+        assertInstanceOf(InstallationOutcome.Complete::class.java, InstallationWorkflow.execute(request))
+        val selected = installation.resolve(Files.readSymbolicLink(installation.resolve("current")))
+        val run = Files.createDirectories(selected.resolve("state/run"))
+        val stale = Files.writeString(run.resolve("c.sock"), "stale socket")
+        Files.writeString(selected.resolve("config/workspaces.json"), "broken registry")
+        val unrelated = Files.writeString(root.resolve("keep"), "keep")
+        val forced = request(mapOf("KAST_INSTALL_FORCE" to "1"))
+        assertInstanceOf(
+            InstallationOutcome.Complete::class.java,
+            InstallationWorkflow.execute(request(mapOf("KAST_INSTALL_FORCE" to "1", "KAST_INSTALL_MODE" to "plan"))),
+        )
+        assertEquals("stale socket", Files.readString(stale))
+        assertInstanceOf(InstallationOutcome.Complete::class.java, InstallationWorkflow.execute(forced))
+        assertTrue(Files.notExists(stale))
+        assertTrue(Files.notExists(selected.resolve("config/workspaces.json")))
+        assertEquals("keep", Files.readString(unrelated))
+        assertTrue(Files.isExecutable(root.resolve("commands/kast")))
+        assertTrue(Files.notExists(selected.resolve(".recovery-detached")))
+    }
+
+    @Test
     fun `upgrade retains the admitted workspace registry`(@TempDir temporary: Path) {
         val root = temporary.toRealPath()
         val installation = root.resolve("installation")
@@ -342,6 +379,7 @@ private fun writeControlFiles(
     val emptyDocument = Json.encodeToString(EmptyDocumentFixture)
     val executable = Files.writeString(bin.resolve("kast"), "#!/bin/sh\nexit 0\n")
     Files.setPosixFilePermissions(executable, PosixFilePermissions.fromString("rwxr-xr-x"))
+    Files.copy(executable, bin.resolve("kast-codex"), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
     Files.writeString(metadata.resolve("operation-registry.json"), emptyDocument)
     Files.writeString(metadata.resolve("wire-schema.json"), emptyDocument)
     Files.writeString(
@@ -432,7 +470,6 @@ private fun installationEnvironment(
         InstallationEnvironment.HOME.key to home.toString(),
         InstallationEnvironment.CODEX_HOME.key to codexHome.toString(),
         InstallationEnvironment.ENABLE_LAUNCHD.key to "0",
-        InstallationEnvironment.ENABLE_APP_SERVER.key to "0",
         InstallationEnvironment.APP_SERVER_TOOLS.key to "query_symbols,source_read",
         InstallationEnvironment.REFRESH_APP_SERVER.key to "0",
         InstallationEnvironment.MODE.key to mode.name.lowercase(),

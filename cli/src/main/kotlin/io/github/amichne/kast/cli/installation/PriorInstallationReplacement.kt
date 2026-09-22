@@ -2,6 +2,8 @@ package io.github.amichne.kast.cli.installation
 
 import io.github.amichne.kast.distribution.managed.PriorInstallationPreparation
 import io.github.amichne.kast.distribution.managed.preparePriorInstallationReplacement
+import io.github.amichne.kast.distribution.managed.quarantineInstallationEntry
+import io.github.amichne.kast.distribution.managed.resetInstallationTransport
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.LinkOption
@@ -10,6 +12,21 @@ import java.security.MessageDigest
 import java.time.Duration
 import java.util.HexFormat
 import java.util.concurrent.TimeUnit
+
+/** Reconstruct the only supported transient enabled owner of an opt-out installation. */
+internal fun priorServiceRetirementEnvironment(
+    prior: Path,
+    home: Path,
+    codexHome: Path,
+    path: String,
+): Map<String, String> =
+    mapOf(
+        "HOME" to home.toString(),
+        "PATH" to path,
+        "CODEX_HOME" to codexHome.toString(),
+        "KAST_CONFIGURATION_FILE" to prior.resolve("config/environment").toString(),
+        "KAST_ENABLE_APP_SERVER" to "1",
+    )
 
 /** Replacement uses installation identity, never the old executable, manifest or configuration. */
 internal fun replacePriorInstallation(
@@ -31,6 +48,37 @@ internal fun replacePriorInstallation(
         }
     observe(InstallationChildObservation(stage = InstallationChildStage.PRIOR_REPLACEMENT, outcome = outcome))
     return outcome
+}
+
+/** Explicit force authority is limited to transport paths derived from the selected installation. */
+internal fun resetInstallation(
+    installation: Path,
+    home: Path,
+    observe: (InstallationChildObservation) -> Unit = { System.err.println(it.toJson()) },
+): InstallationChildOutcome {
+    val retired = replacePriorInstallation(installation, home, observe)
+    if (retired != InstallationChildOutcome.COMPLETED) return retired
+    val outcome =
+        when (resetInstallationTransport(installation, home)) {
+            PriorInstallationPreparation.PREPARED -> InstallationChildOutcome.COMPLETED
+            PriorInstallationPreparation.FILESYSTEM_REJECTED -> InstallationChildOutcome.IO_REJECTED
+        }
+    observe(InstallationChildObservation(stage = InstallationChildStage.FORCE_RESET, outcome = outcome))
+    return outcome
+}
+
+/** Called under the installation activation lock, after checksum and path admission. */
+internal fun forceReplaceInstallations(roots: Set<Path>, home: Path, installRoot: Path): InstallationChildOutcome {
+    for (root in roots) {
+        val reset = resetInstallation(root, home)
+        if (reset != InstallationChildOutcome.COMPLETED) return reset
+        if (Files.exists(root, LinkOption.NOFOLLOW_LINKS)) quarantineInstallationEntry(root)
+        val recovery = installRoot.resolve("recovery").resolve(root.fileName)
+        if (Files.exists(recovery, LinkOption.NOFOLLOW_LINKS)) quarantineInstallationEntry(recovery)
+    }
+    val current = installRoot.resolve("current")
+    if (Files.exists(current, LinkOption.NOFOLLOW_LINKS)) quarantineInstallationEntry(current)
+    return InstallationChildOutcome.COMPLETED
 }
 
 private const val SERVICE_NOT_FOUND = 113

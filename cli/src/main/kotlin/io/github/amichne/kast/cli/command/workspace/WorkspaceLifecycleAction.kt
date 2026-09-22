@@ -30,7 +30,8 @@ sealed interface WorkspaceLifecycleAction {
 internal fun workspaceLifecycleCommands(requestInput: CliRequestDocumentInput): LocalCommandFamily {
     val commands = listOf(WorkspaceControlCommand(requestInput))
     return LocalCommandFamily(
-        KastCommandGroup("workspace", "Agent workspace setup transport.").subcommands(commands),
+        KastCommandGroup("workspace", "Inspect and manage an IDEA workspace through its application control endpoint.")
+            .subcommands(commands),
         commands,
     )
 }
@@ -45,7 +46,8 @@ private class WorkspaceControlCommand(private val requestInput: CliRequestDocume
             "--lifecycle-client",
             help = "Stable caller identity; agents use their coordinator identity.",
         )
-    private val approvedClose by option("--lifecycle-approved-close", hidden = true).flag()
+    private val approvedClose by
+        option("--lifecycle-approved-close", help = "Read a signed approved-close invocation document.").flag()
 
     override fun help(context: Context) =
         "Inspect the host or perform an explicit lifecycle action using its exact returned identity."

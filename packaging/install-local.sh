@@ -77,5 +77,6 @@ KAST_INSTALL_ASSETS_DIRECTORY="$assets" \
 KAST_INSTALL_ROOT="$install_prefix/share/kast" \
 KAST_BIN_DIR="$install_prefix/bin" \
 KAST_ENABLE_LAUNCHD=0 \
-KAST_ENABLE_APP_SERVER=0 \
+KAST_ENABLE_APP_SERVER=1 \
+KAST_INSTALL_REFRESH_APP_SERVER=0 \
   bash "$installer"

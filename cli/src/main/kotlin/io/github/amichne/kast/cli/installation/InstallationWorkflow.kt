@@ -14,6 +14,7 @@ import io.github.amichne.kast.distribution.managed.ControlPayloadInventory
 import io.github.amichne.kast.distribution.managed.InstallationRecoveryPreparation
 import io.github.amichne.kast.distribution.managed.endpoint.InstalledUpstreamDirectories
 import io.github.amichne.kast.distribution.managed.prepareInstallationRecovery
+import io.github.amichne.kast.distribution.managed.quarantineInstallationEntry
 import io.github.amichne.kast.kernel.Refinement
 import java.io.IOException
 import java.nio.channels.FileChannel
@@ -37,21 +38,6 @@ import kotlinx.serialization.json.Json
 
 private const val MAXIMUM_UNIX_SOCKET_PATH_BYTES = 104
 private const val SOCKET_NAME_DIGEST_CHARACTERS = 43
-
-/** Reconstruct the only supported transient enabled owner of an opt-out installation. */
-internal fun priorServiceRetirementEnvironment(
-    prior: Path,
-    home: Path,
-    codexHome: Path,
-    path: String,
-): Map<String, String> =
-    mapOf(
-        "HOME" to home.toString(),
-        "PATH" to path,
-        "CODEX_HOME" to codexHome.toString(),
-        "KAST_CONFIGURATION_FILE" to prior.resolve("config/environment").toString(),
-        "KAST_ENABLE_APP_SERVER" to "1",
-    )
 
 internal enum class InstallationFailure {
     REQUEST_REJECTED,
@@ -147,7 +133,8 @@ private data class VerifiedInstallationPlan(
                     "install-immutable-payload",
                     "write-release-local-configuration",
                     "retire-previous-app-server",
-                    "retain-workspace-registry",
+                    if (request.force == InstallationSwitch.ENABLED) "reset-installation-state-and-ownership"
+                    else "retain-workspace-registry",
                     "replace-current-link",
                     "replace-command-links",
                 ) +
@@ -270,6 +257,29 @@ internal object InstallationWorkflow {
                 if (Files.isSymbolicLink(lockPath) || !secureActivationLock(lockPath)) {
                     return InstallationOutcome.Rejected(InstallationFailure.ACTIVATION_LOCK_REJECTED)
                 }
+                if (plan.request.force == InstallationSwitch.ENABLED) {
+                    val roots = buildSet {
+                        when (val selected = selectedInstallation(plan)) {
+                            is PriorSelection.Selected -> add(selected.root)
+                            PriorSelection.Absent,
+                            PriorSelection.Rejected -> Unit
+                        }
+                        add(plan.targetRoot)
+                    }
+                    when (
+                        val reset =
+                            admitReplacement(
+                                forceReplaceInstallations(
+                                    roots,
+                                    plan.request.home.value,
+                                    plan.request.installRoot.value,
+                                )
+                            )
+                    ) {
+                        is Refinement.Refined -> Unit
+                        is Refinement.Rejected -> return InstallationOutcome.Rejected(reset.failure)
+                    }
+                }
                 val existing = Files.exists(plan.targetRoot, LinkOption.NOFOLLOW_LINKS)
                 if (existing && !admitExisting(plan)) {
                     val replacement = replacePriorInstallation(plan.targetRoot, plan.request.home.value)
@@ -277,9 +287,9 @@ internal object InstallationWorkflow {
                         is Refinement.Refined -> Unit
                         is Refinement.Rejected -> return InstallationOutcome.Rejected(replaced.failure)
                     }
-                    quarantine(plan.targetRoot)
+                    quarantineInstallationEntry(plan.targetRoot)
                     val recovery = plan.request.installRoot.value.resolve("recovery").resolve(plan.targetRoot.fileName)
-                    if (Files.exists(recovery, LinkOption.NOFOLLOW_LINKS)) quarantine(recovery)
+                    if (Files.exists(recovery, LinkOption.NOFOLLOW_LINKS)) quarantineInstallationEntry(recovery)
                     if (
                         linkTarget(plan.currentLink) ==
                             LinkObservation.Present(Path.of("versions/${plan.targetRoot.fileName}"))
@@ -303,11 +313,14 @@ internal object InstallationWorkflow {
                         is PriorSelection.Absent -> null
                         is PriorSelection.Selected -> selected.root
                         is PriorSelection.Rejected -> {
-                            quarantine(plan.currentLink)
+                            quarantineInstallationEntry(plan.currentLink)
                             null
                         }
                     }
-                if (plan.request.replaceCommandCollisions == InstallationSwitch.ENABLED) {
+                if (
+                    plan.request.force == InstallationSwitch.ENABLED ||
+                        plan.request.replaceCommandCollisions == InstallationSwitch.ENABLED
+                ) {
                     removeCommandCollision(plan.commandLink, plan.currentLink.resolve("bin/kast-complete"))
                     removeCommandCollision(plan.codexCommandLink, plan.currentLink.resolve("bin/kast-codex-complete"))
                 }
@@ -344,7 +357,7 @@ internal object InstallationWorkflow {
                     InstallationRecoveryPreparation.Rejected -> {
                         val bundle =
                             plan.request.installRoot.value.resolve("recovery").resolve(plan.targetRoot.fileName)
-                        if (Files.exists(bundle, LinkOption.NOFOLLOW_LINKS)) quarantine(bundle)
+                        if (Files.exists(bundle, LinkOption.NOFOLLOW_LINKS)) quarantineInstallationEntry(bundle)
                         if (
                             prepareInstallationRecovery(
                                 plan.targetRoot,
@@ -388,7 +401,7 @@ internal object InstallationWorkflow {
                 StandardOpenOption.CREATE_NEW,
             )
             writeLauncher(plan, staged, "kast")
-            if (regularExecutable(staged.resolve("bin/kast-codex"))) writeLauncher(plan, staged, "kast-codex")
+            writeLauncher(plan, staged, "kast-codex")
             writeConfiguration(plan, staged.resolve("config/environment"))
             Files.writeString(
                 staged.resolve("config/selected-ide.json"),
@@ -451,7 +464,7 @@ internal object InstallationWorkflow {
                         "KAST_INSTALL_IDEA_HOME" to request.ideaHome.value.toString(),
                         "KAST_RUNTIME_DIRECTORY" to target.resolve("state/run").toString(),
                         "KAST_ENABLE_LAUNCHD" to request.enableLaunchd.wireValue(),
-                        "KAST_ENABLE_APP_SERVER" to request.enableAppServer.wireValue(),
+                        "KAST_ENABLE_APP_SERVER" to "1",
                         "KAST_APP_SERVER_TOOLS" to request.appServerTools.value,
                         "KAST_APP_SERVER_PUBLIC_ENDPOINT" to request.publicEndpoint.configurationValue,
                     )
@@ -622,14 +635,6 @@ internal object InstallationWorkflow {
             manifest.payloadFiles == payloadFiles(plan.targetRoot)
     }
 
-    private fun quarantine(path: Path) {
-        Files.move(
-            path,
-            path.resolveSibling(".replaced-${path.fileName}-${java.util.UUID.randomUUID()}"),
-            StandardCopyOption.ATOMIC_MOVE,
-        )
-    }
-
     private fun selectedInstallation(plan: VerifiedInstallationPlan): PriorSelection {
         if (!Files.exists(plan.currentLink, LinkOption.NOFOLLOW_LINKS)) return PriorSelection.Absent
         if (!Files.isSymbolicLink(plan.currentLink)) return PriorSelection.Rejected
@@ -724,11 +729,7 @@ internal object InstallationWorkflow {
         return try {
             replaceLink(plan.currentLink, Path.of("versions/${plan.targetRoot.fileName}"))
             replaceLink(plan.commandLink, plan.currentLink.resolve("bin/kast-complete"))
-            if (regularExecutable(plan.targetRoot.resolve("bin/kast-codex-complete"))) {
-                replaceLink(plan.codexCommandLink, plan.currentLink.resolve("bin/kast-codex-complete"))
-            } else {
-                Files.deleteIfExists(plan.codexCommandLink)
-            }
+            replaceLink(plan.codexCommandLink, plan.currentLink.resolve("bin/kast-codex-complete"))
             if (
                 executeInstallationChild(
                     InstallationChildStage.COMMAND_QUALIFICATION,
@@ -897,7 +898,7 @@ private fun sha256(bytes: ByteArray): Sha256 =
 private fun ByteArray.hex(): String = joinToString("") { byte -> "%02x".format(byte) }
 
 private fun verifyControlLayout(root: Path): ControlInventoryAdmission {
-    if (!regularExecutable(root.resolve("bin/kast")))
+    if (listOf("kast", "kast-codex").any { !regularExecutable(root.resolve("bin/$it")) })
         return ControlInventoryAdmission.Rejected(ControlInventoryFailure.UNSUPPORTED_ENTRY)
     val required = listOf("ide-host.json", "operation-registry.json", "wire-schema.json", "installation-lifecycle.py")
     if (required.any { !regularFile(root.resolve("share/kast/$it")) })

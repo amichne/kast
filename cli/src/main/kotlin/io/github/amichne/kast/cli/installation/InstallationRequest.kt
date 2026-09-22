@@ -21,12 +21,12 @@ internal enum class InstallationEnvironment(val key: String) {
     HOME("HOME"),
     CODEX_HOME("CODEX_HOME"),
     ENABLE_LAUNCHD("KAST_ENABLE_LAUNCHD"),
-    ENABLE_APP_SERVER("KAST_ENABLE_APP_SERVER"),
     APP_SERVER_TOOLS("KAST_APP_SERVER_TOOLS"),
     PUBLIC_ENDPOINT("KAST_APP_SERVER_PUBLIC_ENDPOINT"),
     REFRESH_APP_SERVER("KAST_INSTALL_REFRESH_APP_SERVER"),
     REPLACE_COMMAND_COLLISIONS("KAST_INSTALL_REPLACE_COMMAND_COLLISIONS"),
     MODE("KAST_INSTALL_MODE"),
+    FORCE("KAST_INSTALL_FORCE"),
 }
 
 internal enum class InstallationMode {
@@ -148,18 +148,19 @@ private constructor(
     val home: InstallationPath,
     val codexHome: InstallationPath,
     val enableLaunchd: InstallationSwitch,
-    val enableAppServer: InstallationSwitch,
     val appServerTools: AppServerTools,
     val refreshAppServer: InstallationSwitch,
     val replaceCommandCollisions: InstallationSwitch,
     val mode: InstallationMode,
     val publicEndpoint: BrokerPublicEndpointMode,
+    val force: InstallationSwitch,
 ) {
     companion object {
         fun parse(environment: Map<String, String>): Refinement<InstallationRequest, InstallationRequestFailure> {
             fun raw(name: InstallationEnvironment): Refinement<String, InstallationRequestFailure> =
-                environment[name.key]?.let(Refinement<String, InstallationRequestFailure>::Refined)
-                    ?: Refinement.Rejected(InstallationRequestFailure.Missing(name))
+                (environment[name.key] ?: if (name == InstallationEnvironment.FORCE) "0" else null)?.let(
+                    Refinement<String, InstallationRequestFailure>::Refined
+                ) ?: Refinement.Rejected(InstallationRequestFailure.Missing(name))
 
             fun path(name: InstallationEnvironment): Refinement<InstallationPath, InstallationRequestFailure> =
                 when (val value = raw(name)) {
@@ -265,11 +266,6 @@ private constructor(
                     is Refinement.Refined -> refined.value
                     is Refinement.Rejected -> return refined
                 }
-            val enableAppServer =
-                when (val refined = switch(InstallationEnvironment.ENABLE_APP_SERVER)) {
-                    is Refinement.Refined -> refined.value
-                    is Refinement.Rejected -> return refined
-                }
             val tools =
                 when (val parsed = AppServerTools.parse(environment[InstallationEnvironment.APP_SERVER_TOOLS.key])) {
                     is Refinement.Refined -> parsed.value
@@ -296,6 +292,11 @@ private constructor(
                 }
             val replaceCommandCollisions =
                 when (val refined = switch(InstallationEnvironment.REPLACE_COMMAND_COLLISIONS)) {
+                    is Refinement.Refined -> refined.value
+                    is Refinement.Rejected -> return refined
+                }
+            val force =
+                when (val refined = switch(InstallationEnvironment.FORCE)) {
                     is Refinement.Refined -> refined.value
                     is Refinement.Rejected -> return refined
                 }
@@ -328,12 +329,12 @@ private constructor(
                     home,
                     codexHome,
                     enableLaunchd,
-                    enableAppServer,
                     tools,
                     refresh,
                     replaceCommandCollisions,
                     mode,
                     endpoint,
+                    force,
                 )
             )
         }

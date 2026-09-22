@@ -8,6 +8,42 @@ import org.junit.jupiter.api.Test
 
 class InstallationRequestTest {
     @Test
+    fun `force command reaches verified payload admission while unknown options reject`() {
+        val forced =
+            InstallationCliInspection.inspect(listOf("installation", "install", "--force"), validEnvironment())
+                as InstallationHandling.Handled
+        assertEquals(
+            io.github.amichne.kast.cli.CliBoundaryExitStatus.BOOTSTRAP,
+            (forced.exit as io.github.amichne.kast.cli.CliExit.BoundaryRejected).status,
+        )
+        val unknown =
+            InstallationCliInspection.inspect(listOf("installation", "install", "--unknown"), validEnvironment())
+                as InstallationHandling.Handled
+        assertEquals(
+            io.github.amichne.kast.cli.CliBoundaryExitStatus.USAGE,
+            (unknown.exit as io.github.amichne.kast.cli.CliExit.BoundaryRejected).status,
+        )
+    }
+
+    @Test
+    fun `force defaults off and rejects unknown values`() {
+        assertEquals(
+            InstallationSwitch.DISABLED,
+            (InstallationRequest.parse(validEnvironment()) as Refinement.Refined).value.force,
+        )
+        assertEquals(
+            InstallationSwitch.ENABLED,
+            (InstallationRequest.parse(validEnvironment() + ("KAST_INSTALL_FORCE" to "1")) as Refinement.Refined)
+                .value
+                .force,
+        )
+        assertEquals(
+            Refinement.Rejected(InstallationRequestFailure.InvalidValue(InstallationEnvironment.FORCE)),
+            InstallationRequest.parse(validEnvironment() + ("KAST_INSTALL_FORCE" to "yes")),
+        )
+    }
+
+    @Test
     fun `endpoint defaults to private and rejects unknown explicit selections`() {
         val default = InstallationRequest.parse(validEnvironment()) as Refinement.Refined
         assertEquals(io.github.amichne.kast.appserver.BrokerPublicEndpointMode.PRIVATE, default.value.publicEndpoint)
@@ -102,7 +138,6 @@ class InstallationRequestTest {
             InstallationEnvironment.HOME.key to "/fixture/home",
             InstallationEnvironment.CODEX_HOME.key to "/fixture/codex",
             InstallationEnvironment.ENABLE_LAUNCHD.key to "0",
-            InstallationEnvironment.ENABLE_APP_SERVER.key to "1",
             InstallationEnvironment.APP_SERVER_TOOLS.key to "query_symbols,source_read",
             InstallationEnvironment.REFRESH_APP_SERVER.key to "0",
             InstallationEnvironment.REPLACE_COMMAND_COLLISIONS.key to "0",

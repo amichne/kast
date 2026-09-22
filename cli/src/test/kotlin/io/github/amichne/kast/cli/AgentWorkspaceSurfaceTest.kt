@@ -9,20 +9,19 @@ import io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers
 import io.github.amichne.kast.protocol.contract.WorkspaceLifecycleRequest
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class AgentWorkspaceSurfaceTest {
     @Test
-    fun `workspace setup is absent from user help but remains invocable by the agent runtime`() {
+    fun `workspace lifecycle is visible and invocable by users and the agent runtime`() {
         val graph =
             (CliCommandGraphFactory.create(canonicalCliRequestPreparers()) as CliCommandGraphConstruction.Created)
                 .factory
         val help = assertInstanceOf(CliCommandParsing.Help::class.java, graph.parse(listOf("--help")))
-        assertFalse(Regex("(?m)^\\s+workspace\\s").containsMatchIn(help.document.value))
-        assertTrue(graph.surface.localCommands.none { it.usage.startsWith("workspace ") })
+        assertTrue(Regex("(?m)^\\s+workspace\\s").containsMatchIn(help.document.value))
+        assertTrue(graph.surface.localCommands.any { it.usage.startsWith("workspace ") })
         assertInstanceOf(CliCommandParsing.Rejected::class.java, graph.parse(listOf("workspace", "open", "/worktree")))
         val request = WorkspaceLifecycleRequest.Open("/worktree", "agent-open-1")
         val parsed =

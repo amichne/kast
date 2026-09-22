@@ -57,7 +57,7 @@ internal fun installedSchema(
                     InstalledCliProjectionDocument(
                         localFlags = commandSurface.localFlags,
                         localCommands = commandSurface.localCommands.map { it.usage },
-                        lifecycleCommands = commandSurface.lifecycleCommands.map { it.command },
+                        lifecycleCommands = emptyList(),
                         commands = commandSurface.semanticCommands.map { it.usage },
                     ),
                 serverProjection = installedServerProjection(commandSurface),
