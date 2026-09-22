@@ -41,17 +41,9 @@ private constructor(
     private val stoppedMarker: Path,
     private val hostObservation: () -> BrokerFrontendObservation,
     sessions: DaemonSessions,
-    lifecycle: io.github.amichne.kast.appserver.ide.WorkspaceLifecycleClient,
+    private val preparations: WorkspacePreparations,
 ) {
     private val closed = AtomicBoolean(false)
-    private val preparations =
-        WorkspacePreparations(
-            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO),
-            { request ->
-                kotlinx.coroutines.runInterruptible { lifecycle.execute(request, owner.installationId.value) }
-            },
-            observer = JsonLineWorkspacePreparationObserver(System.err),
-        )
     private val management =
         DaemonManagement(
             DaemonManagementTarget(
@@ -153,8 +145,7 @@ private constructor(
             stoppedMarker: Path,
             hostObservation: () -> BrokerFrontendObservation = { BrokerFrontendObservation.PENDING },
             sessions: DaemonSessions = UnavailableDaemonSessions,
-            lifecycle: io.github.amichne.kast.appserver.ide.WorkspaceLifecycleClient =
-                io.github.amichne.kast.appserver.ide.WorkspaceLifecycleClient.Unavailable,
+            preparations: WorkspacePreparations,
         ): Refinement<CoordinatorControl, WorkerControlFailure> =
             try {
                 val legacy = installationRoot.resolve("state/workers")
@@ -177,7 +168,7 @@ private constructor(
                                 stoppedMarker,
                                 hostObservation,
                                 sessions,
-                                lifecycle,
+                                preparations,
                             )
                         )
                 }

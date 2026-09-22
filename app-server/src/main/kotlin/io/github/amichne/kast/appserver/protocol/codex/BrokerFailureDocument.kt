@@ -13,6 +13,7 @@ import kotlinx.serialization.Serializable
 internal data class BrokerFailureDocument
 private constructor(
     val failure: String,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val workspace: WorkspaceDemandFailureDocument? = null,
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val source: io.github.amichne.kast.protocol.contract.SourceReadCause? = null,
     @EncodeDefault(EncodeDefault.Mode.NEVER) val corrections: List<String> = emptyList(),
@@ -31,6 +32,11 @@ private constructor(
                             "SOURCE_INTERNAL_CONTRACT_FAILURE"
                         else "SOURCE_INPUT_REJECTED",
                         source = failure.cause,
+                    )
+                is BrokerFailure.WorkspacePreparationRejected ->
+                    BrokerFailureDocument(
+                        "WORKSPACE_PREPARATION_REJECTED",
+                        workspace = WorkspaceDemandFailureDocument.from(failure.cause),
                     )
                 is BrokerFailure.UnknownNamespace -> BrokerFailureDocument("UNKNOWN_NAMESPACE")
                 is BrokerFailure.UnknownTool -> BrokerFailureDocument("UNKNOWN_TOOL")

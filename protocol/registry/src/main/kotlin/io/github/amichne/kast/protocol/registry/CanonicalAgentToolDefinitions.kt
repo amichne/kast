@@ -227,14 +227,13 @@ object CanonicalAgentToolDefinitions {
                 Continuations and source snapshots remain strict. Keep qualified partial facts
                 with their limitations; follow recovery guidance and execution_budget.
 
-                Reads require the repository's saved, indexed IntelliJ state. An unavailable or
-                unready host rejects. If the user authorized opening or reopening this repository
-                in the IDE, use available session tools and wait for readiness before retrying.
-                Reuse prior authorization. For missing information or authorization, use session
-                elicitation when available; prefer nonblocking requests and continue independent
-                work. A pending or absent reply grants no authorization; defer dependent actions.
-                Opening permission excludes cache invalidation, forced index synchronization,
-                topology preparation and restarting unrelated IDE sessions.
+                Reads require the repository's saved, indexed IntelliJ state. The installed daemon
+                prepares the exact workspace automatically and waits for native readiness. Do not
+                orchestrate opening, polling, enablement or repair commands for semantic requests.
+                Preparation blockers retain their cause and operation identity; continue independent
+                work while a blocker needs user action. Installation authorization does not permit
+                cache invalidation, forced index synchronization or restarting unrelated IDE sessions.
+                A missing semantic response does not authorize replaying a mutation.
 
                 Pass a returned exact reference unchanged to change_plan. Hosted changes support
                 AddDeclaration in one existing authored Kotlin file. Planning writes no source.

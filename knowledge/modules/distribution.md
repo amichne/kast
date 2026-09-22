@@ -79,7 +79,7 @@ retain that obligation. Lifecycle rejection reports identify the bounded stage
 and outcome, including unresolved worker receipts; failed retirement preserves
 the existing transition journal and state. Successful plugin installation still
 requires the separately reported IDEA restart. Retired CLI start/stop guidance
-does not claim authority to stop IDEA. Agents prepare workspaces through `workspace_lifecycle`; the `workspace lifecycle` transport command is also visible in user help.
+does not claim authority to stop IDEA. The installed coordinator prepares workspaces for semantic demand. The explicit `workspace_lifecycle` tool and `workspace lifecycle` command retain their separate user-directed operations.
 
 Installation defaults to a private coordinator endpoint and persists an explicitly
 selected public endpoint policy. Candidate configuration and executable qualification

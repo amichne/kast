@@ -84,13 +84,11 @@ retains the stronger continuation ownership checks after structural admission.
 
 Public exact-reference syntax accepts hosted `exact:v5:` and `exact:v4:` handles alongside legacy `v2` and `v3` tokens. Returned references remain opaque and must be passed back unchanged. The host resolves compact handles before validating authority; source anchors also accept the corresponding candidate handle family.
 
-The published agent policy permits opening or reopening the exact repository in
-IDE tools when the user has already authorized it, followed by saved/indexed
-readiness. Missing authorization or information may use session elicitation;
-nonblocking elicitation allows independent work to continue, but an absent reply
-never authorizes the dependent action. Opening permission does not extend to
-cache invalidation, forced synchronization, topology preparation, or unrelated
-IDE restarts. Exact-plan mutation approvals retain their separate requirements.
+The published agent policy delegates ordinary workspace preparation to the installed
+daemon. Agents do not orchestrate opening, polling, enablement or repair commands
+for semantic reads. Preparation blockers retain their cause and operation identity.
+Installation authorization excludes cache invalidation, forced synchronization and
+unrelated IDE restarts. Exact-plan mutation approvals remain separate.
 
 Kast's Codex response retains the admitted CLI envelope in its final JSON text
 item. Compact source reads with returned text prepend the unchanged source in a

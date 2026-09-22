@@ -1,6 +1,7 @@
 package io.github.amichne.kast.appserver.protocol.codex
 
 import io.github.amichne.kast.appserver.core.BrokerFailure
+import io.github.amichne.kast.appserver.core.BrokerLimit
 import io.github.amichne.kast.appserver.core.BrokerOperationEffect
 import io.github.amichne.kast.protocol.registry.OperationEffect
 
@@ -19,4 +20,20 @@ internal fun BrokerFailure.OutputContractRejected.certainty(): InvocationCertain
                 OperationEffect.WORKSPACE_MODEL_WRITE,
                 OperationEffect.PROCESS_CONTROL -> InvocationCertainty.UNCERTAIN
             }
+    }
+
+internal fun BrokerFailure.certainty(): InvocationCertainty =
+    when (this) {
+        is BrokerFailure.WorkspacePreparationRejected,
+        is BrokerFailure.UnknownNamespace,
+        is BrokerFailure.UnknownTool,
+        is BrokerFailure.SourceInputRejected,
+        is BrokerFailure.InvalidArguments,
+        is BrokerFailure.ProviderStartupRejected -> InvocationCertainty.KNOWN
+        is BrokerFailure.Overloaded ->
+            if (limit == BrokerLimit.MAXIMUM_TOOL_RESULT_BYTES) InvocationCertainty.UNCERTAIN
+            else InvocationCertainty.KNOWN
+        is BrokerFailure.OutputContractRejected -> certainty()
+        is BrokerFailure.ProviderInvocationRejected,
+        is BrokerFailure.InvocationCancelled -> InvocationCertainty.UNCERTAIN
     }

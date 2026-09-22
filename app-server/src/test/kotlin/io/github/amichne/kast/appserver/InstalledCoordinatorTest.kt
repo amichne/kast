@@ -149,9 +149,12 @@ class InstalledCoordinatorTest {
                 "PATH" to "/usr/bin:/bin",
             )
         val coordinator = (InstalledCoordinatorConfiguration.admit(kast, root, environment) as Refinement.Refined).value
-        val host = coordinator.admitHost()
+        val demand =
+            io.github.amichne.kast.appserver.runtime.WorkspaceDemand { _, _ -> error("unexpected semantic demand") }
+        val host = coordinator.admitHost(demand)
         assertTrue(host is InstalledBrokerServerConfiguration.Configured, host.toString())
         val prepared = (host as InstalledBrokerServerConfiguration.Configured).options
+        assertSame(demand, prepared.kastOptions.workspaceDemand)
         assertSame(
             coordinator.readiness,
             prepared.readiness,

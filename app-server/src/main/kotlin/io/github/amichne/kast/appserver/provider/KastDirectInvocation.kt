@@ -33,7 +33,6 @@ import io.github.amichne.kast.protocol.wire.presentation.OperationRequestPrepare
 import io.github.amichne.kast.protocol.wire.presentation.PreparedOperationRequest
 import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
 import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runInterruptible
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerializationException
@@ -75,14 +74,19 @@ internal class KastDirectInvocation(private val options: KastProviderOptions) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> return ProviderCall.Rejected(admitted.failure.providerFailure())
             }
-        return runInterruptible(Dispatchers.IO) {
-            val root =
-                when (val admitted = options.roots.discover(context.workingDirectory.path)) {
-                    is CanonicalRootDiscovery.Discovered -> admitted.root
-                    is CanonicalRootDiscovery.Rejected ->
-                        return@runInterruptible ProviderCall.Rejected(admitted.failure.providerFailure())
-                }
-            project(options.ideClient.query(root, operation), context)
+        val root =
+            when (
+                val admitted =
+                    runInterruptible(options.ioDispatcher) { options.roots.discover(context.workingDirectory.path) }
+            ) {
+                is CanonicalRootDiscovery.Discovered -> admitted.root
+                is CanonicalRootDiscovery.Rejected -> return ProviderCall.Rejected(admitted.failure.providerFailure())
+            }
+        return when (val result = options.workspaceDemand.query(root, operation)) {
+            is io.github.amichne.kast.appserver.runtime.WorkspaceDemandResult.Native ->
+                project(result.exchange, context)
+            is io.github.amichne.kast.appserver.runtime.WorkspaceDemandResult.Rejected ->
+                ProviderCall.WorkspaceRejected(result.failure)
         }
     }
 
@@ -113,7 +117,7 @@ internal class KastDirectInvocation(private val options: KastProviderOptions) {
                 return ProviderCall.Rejected(ProviderFailureCode.IDE_INVALID_REQUEST)
             }
         val result =
-            runInterruptible(Dispatchers.IO) {
+            runInterruptible(options.ioDispatcher) {
                 when (val approval = context.approval) {
                     is BrokerInvocationApproval.ProjectClose -> {
                         if (request !is WorkspaceLifecycleRequest.RequestUserClose)
