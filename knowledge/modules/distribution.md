@@ -100,7 +100,7 @@ Before activation, `prepareInstallationRecovery` saves a typed receipt and an of
 Under the activation lock it fences and retires the selected and same-version target
 services, removes same-user transport aliases and the exact derived upstream socket
 directory, then moves payload/state and recovery bundles aside before restaging.
-Unknown upstream contents fail closed with a bounded `FORCE_RESET` outcome. Force
+The managed filesystem adapter owns transport cleanup and entry quarantine; the CLI owns process retirement and maps the finite preparation result to `FORCE_RESET` evidence. Unknown upstream contents fail closed. Force
 replaces command collisions and starts with fresh workspace enrollment; source trees
 are untouched. A force dry run verifies and reports without performing reset effects.
 Force plugin activation moves the exact same-user Kast plugin entry into private recovery storage without following a symlink target. Both executable launchers are required; installation cannot publish a CLI-only payload.

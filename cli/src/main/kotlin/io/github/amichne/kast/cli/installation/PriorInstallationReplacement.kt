@@ -2,6 +2,8 @@ package io.github.amichne.kast.cli.installation
 
 import io.github.amichne.kast.distribution.managed.PriorInstallationPreparation
 import io.github.amichne.kast.distribution.managed.preparePriorInstallationReplacement
+import io.github.amichne.kast.distribution.managed.quarantineInstallationEntry
+import io.github.amichne.kast.distribution.managed.resetInstallationTransport
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.LinkOption
@@ -56,7 +58,11 @@ internal fun resetInstallation(
 ): InstallationChildOutcome {
     val retired = replacePriorInstallation(installation, home, observe)
     if (retired != InstallationChildOutcome.COMPLETED) return retired
-    val outcome = resetInstallationTransport(installation, home)
+    val outcome =
+        when (resetInstallationTransport(installation, home)) {
+            PriorInstallationPreparation.PREPARED -> InstallationChildOutcome.COMPLETED
+            PriorInstallationPreparation.FILESYSTEM_REJECTED -> InstallationChildOutcome.IO_REJECTED
+        }
     observe(InstallationChildObservation(stage = InstallationChildStage.FORCE_RESET, outcome = outcome))
     return outcome
 }
@@ -66,67 +72,12 @@ internal fun forceReplaceInstallations(roots: Set<Path>, home: Path, installRoot
     for (root in roots) {
         val reset = resetInstallation(root, home)
         if (reset != InstallationChildOutcome.COMPLETED) return reset
-        if (Files.exists(root, LinkOption.NOFOLLOW_LINKS)) quarantine(root)
+        if (Files.exists(root, LinkOption.NOFOLLOW_LINKS)) quarantineInstallationEntry(root)
         val recovery = installRoot.resolve("recovery").resolve(root.fileName)
-        if (Files.exists(recovery, LinkOption.NOFOLLOW_LINKS)) quarantine(recovery)
+        if (Files.exists(recovery, LinkOption.NOFOLLOW_LINKS)) quarantineInstallationEntry(recovery)
     }
     val current = installRoot.resolve("current")
-    if (Files.exists(current, LinkOption.NOFOLLOW_LINKS)) quarantine(current)
-    return InstallationChildOutcome.COMPLETED
-}
-
-internal fun quarantine(path: Path) {
-    Files.move(
-        path,
-        path.resolveSibling(".replaced-${path.fileName}-${java.util.UUID.randomUUID()}"),
-        java.nio.file.StandardCopyOption.ATOMIC_MOVE,
-    )
-}
-
-private fun resetInstallationTransport(installation: Path, home: Path): InstallationChildOutcome {
-    return try {
-        val run = installation.resolve("state/run")
-        val alias =
-            io.github.amichne.kast.distribution.managed.endpoint.InstalledEndpointAliases.transportPath(
-                    run.resolve("kast-${"0".repeat(43)}.sock")
-                )
-                .parent
-        val upstream =
-            io.github.amichne.kast.distribution.managed.endpoint.InstalledUpstreamDirectories.transportPath(
-                    run.resolve("u.sock")
-                )
-                .parent
-        val owner = Files.getOwner(home, LinkOption.NOFOLLOW_LINKS)
-        for (path in setOf(alias, upstream) - run) {
-            if (!Files.exists(path, LinkOption.NOFOLLOW_LINKS)) continue
-            if (Files.getOwner(path, LinkOption.NOFOLLOW_LINKS) != owner) {
-                return InstallationChildOutcome.IO_REJECTED
-            }
-            val removed = removeTransportEntry(path)
-            if (removed != InstallationChildOutcome.COMPLETED) return removed
-        }
-        InstallationChildOutcome.COMPLETED
-    } catch (_: java.io.IOException) {
-        InstallationChildOutcome.IO_REJECTED
-    } catch (_: SecurityException) {
-        InstallationChildOutcome.IO_REJECTED
-    }
-}
-
-/** Never follows a link; physical upstream directories contain at most the one named socket. */
-private fun removeTransportEntry(path: Path): InstallationChildOutcome {
-    if (Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS)) {
-        Files.newDirectoryStream(path).use { entries ->
-            val children = entries.take(2)
-            if (
-                children.any { it.fileName.toString() != "u.sock" || Files.isDirectory(it, LinkOption.NOFOLLOW_LINKS) }
-            ) {
-                return InstallationChildOutcome.IO_REJECTED
-            }
-            children.forEach(Files::delete)
-        }
-    }
-    Files.delete(path)
+    if (Files.exists(current, LinkOption.NOFOLLOW_LINKS)) quarantineInstallationEntry(current)
     return InstallationChildOutcome.COMPLETED
 }
 

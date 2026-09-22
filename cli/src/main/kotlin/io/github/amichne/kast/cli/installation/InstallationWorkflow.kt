@@ -14,6 +14,7 @@ import io.github.amichne.kast.distribution.managed.ControlPayloadInventory
 import io.github.amichne.kast.distribution.managed.InstallationRecoveryPreparation
 import io.github.amichne.kast.distribution.managed.endpoint.InstalledUpstreamDirectories
 import io.github.amichne.kast.distribution.managed.prepareInstallationRecovery
+import io.github.amichne.kast.distribution.managed.quarantineInstallationEntry
 import io.github.amichne.kast.kernel.Refinement
 import java.io.IOException
 import java.nio.channels.FileChannel
@@ -286,9 +287,9 @@ internal object InstallationWorkflow {
                         is Refinement.Refined -> Unit
                         is Refinement.Rejected -> return InstallationOutcome.Rejected(replaced.failure)
                     }
-                    quarantine(plan.targetRoot)
+                    quarantineInstallationEntry(plan.targetRoot)
                     val recovery = plan.request.installRoot.value.resolve("recovery").resolve(plan.targetRoot.fileName)
-                    if (Files.exists(recovery, LinkOption.NOFOLLOW_LINKS)) quarantine(recovery)
+                    if (Files.exists(recovery, LinkOption.NOFOLLOW_LINKS)) quarantineInstallationEntry(recovery)
                     if (
                         linkTarget(plan.currentLink) ==
                             LinkObservation.Present(Path.of("versions/${plan.targetRoot.fileName}"))
@@ -312,7 +313,7 @@ internal object InstallationWorkflow {
                         is PriorSelection.Absent -> null
                         is PriorSelection.Selected -> selected.root
                         is PriorSelection.Rejected -> {
-                            quarantine(plan.currentLink)
+                            quarantineInstallationEntry(plan.currentLink)
                             null
                         }
                     }
@@ -356,7 +357,7 @@ internal object InstallationWorkflow {
                     InstallationRecoveryPreparation.Rejected -> {
                         val bundle =
                             plan.request.installRoot.value.resolve("recovery").resolve(plan.targetRoot.fileName)
-                        if (Files.exists(bundle, LinkOption.NOFOLLOW_LINKS)) quarantine(bundle)
+                        if (Files.exists(bundle, LinkOption.NOFOLLOW_LINKS)) quarantineInstallationEntry(bundle)
                         if (
                             prepareInstallationRecovery(
                                 plan.targetRoot,
