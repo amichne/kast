@@ -1,6 +1,5 @@
 package io.github.amichne.kast.appserver.runtime
 
-import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
 
@@ -12,6 +11,7 @@ internal enum class InvocationFenceFailure {
     ALREADY_COMPLETED,
     OUTCOME_UNCERTAIN,
     INPUT_REJECTED,
+    LIMIT_REJECTED,
     TRANSITION_REJECTED,
     STORE_BUSY,
     VERSION_UNSUPPORTED,
@@ -27,7 +27,7 @@ internal sealed interface InvocationAdmission {
 /** Durable history is independent of the bounded set of invocations admitted by this process. */
 internal class InvocationFence(
     file: Path?,
-    private val maximumActive: Int = BrokerOperationalLimits.maximumInvocations,
+    private val maximumActive: InvocationCapacityLimit = InvocationCapacityLimit.Default,
     observeMigration: (InvocationMigrationObservation) -> Unit = { System.err.println(it.toJson()) },
 ) {
     private val store: Refinement<InvocationRecords, InvocationFenceFailure> =
@@ -55,7 +55,7 @@ internal class InvocationFence(
                 is Refinement.Rejected -> return InvocationAdmission.Rejected(result.failure)
             }
         val key = InvocationKey.of(identity)
-        val capacity = if (active.size < maximumActive) InvocationCapacity.AVAILABLE else InvocationCapacity.FULL
+        val capacity = if (active.size < maximumActive.value) InvocationCapacity.AVAILABLE else InvocationCapacity.FULL
         val result = records.apply(InvocationRecordChange.Begin(key, admitted, capacity))
         if (result == InvocationAdmission.Admitted) active.add(key)
         return result

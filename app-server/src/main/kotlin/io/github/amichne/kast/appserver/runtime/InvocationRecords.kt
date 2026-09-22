@@ -30,6 +30,8 @@ internal value class InvocationKey private constructor(val value: String) {
 @JvmInline
 internal value class InvocationFingerprint private constructor(val value: String) {
     companion object {
+        fun of(content: String) = InvocationFingerprint(invocationDigest(content))
+
         fun admit(value: String): Refinement<InvocationFingerprint, InvocationFenceFailure> =
             if (digestPattern.matches(value)) Refinement.Refined(InvocationFingerprint(value))
             else Refinement.Rejected(InvocationFenceFailure.INPUT_REJECTED)
