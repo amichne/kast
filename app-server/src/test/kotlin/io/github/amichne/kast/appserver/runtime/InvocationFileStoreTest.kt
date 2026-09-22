@@ -19,13 +19,13 @@ class InvocationFileStoreTest {
     @Test
     fun `completed history does not consume active capacity`(@TempDir root: Path) {
         val file = root.toRealPath().resolve("invocations.json")
-        val fence = InvocationFence(file, maximumActive = 1)
+        val fence = InvocationFence(file, maximumActive = limit(1))
         repeat(3) { ordinal ->
             assertEquals(InvocationAdmission.Admitted, fence.admit("call-$ordinal", fingerprint))
             assertEquals(rejected(InvocationFenceFailure.CAPACITY_EXCEEDED), fence.admit("other", fingerprint))
             assertEquals(InvocationAdmission.Admitted, fence.finish("call-$ordinal", InvocationSettlement.COMPLETED))
         }
-        val reopened = InvocationFence(file, maximumActive = 1)
+        val reopened = InvocationFence(file, maximumActive = limit(1))
         repeat(3) { ordinal ->
             assertEquals(
                 rejected(InvocationFenceFailure.ALREADY_COMPLETED),
@@ -207,6 +207,9 @@ class InvocationFileStoreTest {
         Files.writeString(file, content)
         Files.setPosixFilePermissions(file, PosixFilePermissions.fromString("rw-------"))
     }
+
+    private fun limit(value: Int) =
+        (InvocationCapacityLimit.admit(value) as io.github.amichne.kast.kernel.Refinement.Refined).value
 
     companion object {
         private val fingerprint = "c".repeat(64)

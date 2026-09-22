@@ -183,3 +183,12 @@ inspection observes pending/prepared/rejected/closed session state without admit
 an optional host.
 
 Apply and recovery approval challenges share the installed workspace preparation owner. A workspace rejection is projected before controller registration, preserving its operation identity and finite cause. Controller approval and grant redemption remain separate from workspace readiness.
+
+Invocation admission persists intent before approval preparation or workspace
+submission. Known approval refusals, binding rejections and queued cancellations
+are durably completed before their responses are published. Executing calls settle
+inside the workspace permit so persistence failure remains uncertain before the
+lane can advance. The response owner publishes once, preserves uncertain outcomes,
+and keeps active results separate from its bounded completed cache. Eviction
+removes response bytes only; the durable fingerprint and phase continue to reject
+replay and conflicting inputs.

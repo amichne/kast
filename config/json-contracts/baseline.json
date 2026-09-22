@@ -6044,26 +6044,6 @@
     {
       "fingerprint": {
         "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/BrokerSessionHubTest.kt",
-        "scope": "type:BrokerSessionHubTest/fun:queued cancellation returns before active work and never journals execution(4:Path)/declaration:<anonymous>",
-        "kind": "JSON_LITERAL",
-        "sha256": "9e9fa046b62eff02c173e43b9a7899f493db1305ec8783ffb92fa25d8326a678"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/BrokerSessionHubTest.kt",
-        "scope": "type:BrokerSessionHubTest/fun:queued cancellation returns before active work and never journals execution(4:Path)/declaration:<anonymous>",
-        "kind": "JSON_LITERAL",
-        "sha256": "a909403fcf0ef64b1ee95c1879e2e59522f6edd6f9c02c9e1d498fcbfb8c964d"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/BrokerSessionHubTest.kt",
         "scope": "type:BrokerSessionHubTest/fun:controller handoff cancels original execution and uncertainty stays workspace local(4:Path)/declaration:<anonymous>",
         "kind": "JSON_LITERAL",
         "sha256": "73610a07c59be0c6c996feca8844785697e05f157142c8246a874ec58c82ce9b"

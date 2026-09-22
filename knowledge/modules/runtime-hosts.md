@@ -6,6 +6,8 @@ resource: file://runtime
 tags: [kotlin, runtime, server, indexer, cli]
 timestamp: 2026-09-16T00:00:00Z
 code_sources:
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationResponses.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationCapacityLimit.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationFence.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationRecords.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/FileInvocationRecords.kt
@@ -206,7 +208,10 @@ Invocation replay evidence lives in private hash-sharded records. The store read
 only the addressed digest, preserves its input fingerprint and finite phase, and
 rejects attempts to settle a terminal record or a historical admission owned by a
 previous process. Active capacity is separate from durable history; the response
-cache still has its own fixed bound. Legacy migration validates and verifies a
+cache evicts only completed results at its separate bound. Durable admission
+precedes approvals and workspace submission; known pre-execution rejections settle
+before response publication. Duplicate active calls join the original result.
+An evicted completed response cannot authorize another prompt or execution. Legacy migration validates and verifies a
 locked stage before publishing the layout marker and retains the original
 journal. Incomplete migration, unsafe paths, malformed records and lock contention
 remain typed failures. Migration observations contain only stage and outcome.

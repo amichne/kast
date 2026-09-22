@@ -198,7 +198,7 @@ catalog or binding.
 
 The service stores enrollment, thread/catalog bindings, and digest-only
 invocation intent under `CODEX_HOME/broker`. It does not store conversation
-history. Intent reaches durable storage before execution; a recovered started
+history. Intent reaches durable storage before approval or execution; a recovered started
 invocation is uncertain and cannot run again automatically. Completed duplicate
 calls within a live generation share one result. A restarted service rejects a
 completed duplicate instead of fabricating its missing result.
@@ -209,8 +209,11 @@ clear an uncertain mutation's durable fence. Corrupt enrollment, thread bindings
 or invocation records fail closed. Invocation evidence is stored in hash-sharded
 private records under `invocations.json.d`; only the addressed record is read.
 The fence limits active admissions to 4,096 independently of historical records.
-The live response cache still has its separate 4,096-entry bound. Completed and
-uncertain evidence is never aged out. Settlement cannot rewrite a terminal record.
+The completed response cache retains at most 4,096 results and evicts the oldest
+completed response independently of active work. An evicted result still rejects
+replay from its durable record. Approval refusals, binding failures and queued
+cancellations settle before publication too. Completed and uncertain evidence is
+never aged out. Settlement cannot rewrite a terminal record.
 
 The first open migrates an owned legacy journal under a store lock. It validates
 and verifies staged records before atomically publishing the version marker,

@@ -12,6 +12,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.yield
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -212,51 +213,51 @@ class BrokerSessionHubTest {
         }
 
     @Test
-    fun `queued cancellation returns before active work and never journals execution`(@TempDir root: Path) =
-        runBlocking {
-            val journal = root.toRealPath().resolve("invocations.json")
-            val fixture = HubTestFixture(root, invocationJournal = journal)
-            try {
-                val active = fixture.connect()
-                val queued = fixture.connect()
-                fixture.bind(active, "thread/start")
-                fixture.bind(queued, "thread/start", "thread-2")
-                active.upstream.received.send(BrokerUpstreamFrame.Text(toolCall("thread-1", "active", 7)))
-                fixture.entered.await()
-                queued.upstream.received.send(BrokerUpstreamFrame.Text(toolCall("thread-2", "queued", 8)))
-                queued.upstream.received.send(BrokerUpstreamFrame.Text("""{"method":"fixture/barrier"}"""))
-                queued.session.output.receive()
-                queued.session.accept(
-                    """{"id":20,"method":"turn/interrupt","params":{"threadId":"thread-2","turnId":"turn-queued"}}"""
-                )
-                val responses = mutableListOf<String>()
-                withTimeoutOrNull(1_000) {
-                    while (
-                        responses.none { Json.parseToJsonElement(it).jsonObject["id"] == JsonPrimitive(8) }
-                    ) responses += queued.upstream.sent.receive()
-                }
-                val result = responses.firstOrNull { Json.parseToJsonElement(it).jsonObject["id"] == JsonPrimitive(8) }
-                assertNotNull(result, "queued invocation did not retire before active work completed")
-                assertTrue(result!!.contains("CANCELLED_BEFORE_EXECUTION"))
-                assertEquals(1, fixture.invocations.get())
-                val records =
-                    java.nio.file.Files.walk(journal.resolveSibling("invocations.json.d").resolve("records-v2")).use {
-                        paths ->
-                        paths
-                            .filter { java.nio.file.Files.isRegularFile(it) }
-                            .map { path ->
-                                Json.decodeFromString<InvocationRecordDocument>(java.nio.file.Files.readString(path))
-                            }
-                            .toList()
-                    }
-                assertEquals(1, records.size, "queued cancellation was incorrectly journaled as started")
-                assertEquals(InvocationPhase.STARTED, records.single().phase)
-                assertFalse(fixture.allowExecution.isCompleted)
-            } finally {
-                fixture.allowExecution.complete(Unit)
-                fixture.hub.close()
+    fun `queued cancellation settles durable intent before active work completes`(@TempDir root: Path) = runBlocking {
+        val journal = root.toRealPath().resolve("invocations.json")
+        val fixture = HubTestFixture(root, invocationJournal = journal)
+        try {
+            val active = fixture.connect()
+            val queued = fixture.connect()
+            fixture.bind(active, "thread/start")
+            fixture.bind(queued, "thread/start", "thread-2")
+            active.upstream.received.send(BrokerUpstreamFrame.Text(toolCall("thread-1", "active", 7)))
+            fixture.entered.await()
+            queued.upstream.received.send(BrokerUpstreamFrame.Text(toolCall("thread-2", "queued", 8)))
+            queued.upstream.received.send(
+                BrokerUpstreamFrame.Text(Json.encodeToString(QueueBarrier("fixture/barrier")))
+            )
+            queued.session.output.receive()
+            queued.session.accept(
+                Json.encodeToString(QueueInterrupt(20, "turn/interrupt", QueueTurn("thread-2", "turn-queued")))
+            )
+            val responses = mutableListOf<String>()
+            withTimeoutOrNull(1_000) {
+                while (responses.none { Json.parseToJsonElement(it).jsonObject["id"] == JsonPrimitive(8) }) responses +=
+                    queued.upstream.sent.receive()
             }
+            val result = responses.firstOrNull { Json.parseToJsonElement(it).jsonObject["id"] == JsonPrimitive(8) }
+            assertNotNull(result, "queued invocation did not retire before active work completed")
+            assertTrue(result!!.contains("CANCELLED_BEFORE_EXECUTION"))
+            assertEquals(1, fixture.invocations.get())
+            val records =
+                java.nio.file.Files.walk(journal.resolveSibling("invocations.json.d").resolve("records-v2")).use { paths
+                    ->
+                    paths
+                        .filter { java.nio.file.Files.isRegularFile(it) }
+                        .map { path ->
+                            Json.decodeFromString<InvocationRecordDocument>(java.nio.file.Files.readString(path))
+                        }
+                        .toList()
+                }
+            assertEquals(2, records.size, "canceled intent must remain fenced after response-cache eviction")
+            assertEquals(setOf(InvocationPhase.STARTED, InvocationPhase.COMPLETED), records.map { it.phase }.toSet())
+            assertFalse(fixture.allowExecution.isCompleted)
+        } finally {
+            fixture.allowExecution.complete(Unit)
+            fixture.hub.close()
         }
+    }
 
     @Test
     fun `workspace queue rejects demand beyond its declared bound`(@TempDir root: Path) = runBlocking {
@@ -738,6 +739,13 @@ class BrokerSessionHubTest {
                 fixture.hub.close()
             }
         }
+
+    @kotlinx.serialization.Serializable private data class QueueBarrier(val method: String)
+
+    @kotlinx.serialization.Serializable private data class QueueTurn(val threadId: String, val turnId: String)
+
+    @kotlinx.serialization.Serializable
+    private data class QueueInterrupt(val id: Int, val method: String, val params: QueueTurn)
 
     companion object {
         private fun toolCall(thread: String, call: String, request: Int, independent: Boolean = false): String =

@@ -52,12 +52,21 @@ internal class BrokerSessionHub(
     private val approvedExecutions = BrokerApprovedExecutions(scope, planApprovals)
     private val planAdmission = BrokerPlanApprovalAdmission(options, approvedExecutions)
 
-    private data class InvocationRecord(val fingerprint: String, val result: CompletableDeferred<ProtocolRouting>)
-
-    private val invocations = ConcurrentHashMap<InvocationIdentity, InvocationRecord>()
     private val fence = InvocationFence(options.invocationJournal)
+    private val invocations = InvocationResponses(fence)
 
     fun initialization(): InvocationAdmission = fence.initialization()
+
+    private fun rejectedInvocation(
+        document: JsonObject,
+        failure: InvocationFenceFailure,
+    ): ProtocolRouting.ReplyUpstream =
+        ProtocolRouting.ReplyUpstream(
+            toolFailure(document, failure.name),
+            if (failure == InvocationFenceFailure.OUTCOME_UNCERTAIN)
+                io.github.amichne.kast.appserver.protocol.codex.InvocationCertainty.UNCERTAIN
+            else io.github.amichne.kast.appserver.protocol.codex.InvocationCertainty.KNOWN,
+        )
 
     private val transitions = Mutex()
     private val registration = Any()
@@ -106,6 +115,28 @@ internal class BrokerSessionHub(
         private val controlCommands = ConcurrentHashMap<String, Pair<BrokerThreadId, String>>()
         private val pendingThreads = ConcurrentHashMap<String, String>()
         private var reader: Job? = null
+
+        private fun awaitInvocationResponse(response: Deferred<ProtocolRouting>, doc: JsonObject) {
+            calls.incrementAndGet()
+            scope.launch {
+                try {
+                    val result = response.await()
+                    route(withResponseId(result, doc["id"]))
+                } catch (failure: CancellationException) {
+                    throw failure
+                } catch (_: Exception) {
+                    val rejected =
+                        ProtocolRouting.ReplyUpstream(
+                            toolFailure(doc, "OUTCOME_UNCERTAIN"),
+                            io.github.amichne.kast.appserver.protocol.codex.InvocationCertainty.UNCERTAIN,
+                        )
+                    route(rejected)
+                } finally {
+                    calls.decrementAndGet()
+                    retireIfIdle()
+                }
+            }
+        }
 
         suspend fun start(message: String) {
             if (retired.get()) return
@@ -289,168 +320,127 @@ internal class BrokerSessionHub(
                         params.text("callId")?.let(io.github.amichne.kast.appserver.core.BrokerCallId::admit)
                             ?: return close(),
                     )
-                val future = CompletableDeferred<ProtocolRouting>()
-                if (
-                    invocations.size >= BrokerOperationalLimits.maximumInvocations && !invocations.containsKey(identity)
-                ) {
-                    sendUpstream(toolFailure(doc, "INVOCATION_CAPACITY_EXCEEDED"))
-                    return
-                }
-                val fingerprint = InvocationFence.digest(io.github.amichne.kast.appserver.schema.canonicalJson(params))
-                val previous = invocations.putIfAbsent(identity, InvocationRecord(fingerprint, future))
-                if (previous != null && previous.fingerprint != fingerprint) {
-                    sendUpstream(toolFailure(doc, "INPUT_CONFLICT"))
-                    return
-                }
-                val execution =
-                    if (previous == null)
-                        when (val bound = adapter.boundWorkspace(identity.thread)) {
-                            is io.github.amichne.kast.kernel.Refinement.Rejected ->
-                                CompletableDeferred<WorkspaceExecutionResult>(
-                                    WorkspaceExecutionResult.Completed(
-                                        ProtocolRouting.ReplyUpstream(toolFailure(doc, bound.failure.name))
+                val fingerprint =
+                    InvocationFingerprint.of(io.github.amichne.kast.appserver.schema.canonicalJson(params))
+                val admission =
+                    invocations.begin(
+                        identity,
+                        fingerprint,
+                        reject = { failure -> rejectedInvocation(doc, failure) },
+                        settled = { certainty ->
+                            activity.publish(
+                                SessionActivity(
+                                    id,
+                                    SessionStage.INVOCATION,
+                                    if (
+                                        certainty ==
+                                            io.github.amichne.kast.appserver.protocol.codex.InvocationCertainty.KNOWN
                                     )
+                                        SessionOutcome.COMPLETED
+                                    else SessionOutcome.UNCERTAIN,
                                 )
-                            is io.github.amichne.kast.kernel.Refinement.Refined -> {
-                                val submit: (BrokerInvocationApproval) -> Deferred<WorkspaceExecutionResult> =
-                                    { approval ->
-                                        workspaceExecution.submit(
-                                            WorkspaceExecutionIdentity(
-                                                bound.value.id,
-                                                id,
-                                                identity.thread,
-                                                identity.turn,
-                                                identity.call,
-                                            ),
-                                            interactionLimit,
-                                        ) {
-                                            val identityKey = identity.persistenceKey()
-                                            val admitted = fence.admit(identityKey, fingerprint)
-                                            activity.publish(
-                                                SessionActivity(
-                                                    id,
-                                                    SessionStage.INVOCATION,
-                                                    if (admitted is InvocationAdmission.Admitted) SessionOutcome.STARTED
-                                                    else SessionOutcome.REJECTED,
+                            )
+                        },
+                    )
+                val response =
+                    when (admission) {
+                        is InvocationResponseAdmission.Rejected -> {
+                            activity.publish(SessionActivity(id, SessionStage.INVOCATION, SessionOutcome.REJECTED))
+                            sendUpstream(rejectedInvocation(doc, admission.failure).message)
+                            return
+                        }
+                        is InvocationResponseAdmission.Existing -> admission.result
+                        is InvocationResponseAdmission.Started -> {
+                            val invocation = admission.invocation
+                            activity.publish(SessionActivity(id, SessionStage.INVOCATION, SessionOutcome.STARTED))
+                            val execution =
+                                try {
+                                    when (val bound = adapter.boundWorkspace(identity.thread)) {
+                                        is io.github.amichne.kast.kernel.Refinement.Rejected ->
+                                            CompletableDeferred<WorkspaceExecutionResult>(
+                                                WorkspaceExecutionResult.Completed(
+                                                    ProtocolRouting.ReplyUpstream(toolFailure(doc, bound.failure.name))
                                                 )
                                             )
-                                            if (admitted is InvocationAdmission.Rejected) {
-                                                ProtocolRouting.ReplyUpstream(
-                                                    toolFailure(doc, admitted.failure.name),
-                                                    if (admitted.failure == InvocationFenceFailure.OUTCOME_UNCERTAIN)
-                                                        io.github.amichne.kast.appserver.protocol.codex
-                                                            .InvocationCertainty
-                                                            .UNCERTAIN
-                                                    else
-                                                        io.github.amichne.kast.appserver.protocol.codex
-                                                            .InvocationCertainty
-                                                            .KNOWN,
-                                                )
-                                            } else
-                                                try {
-                                                    val dispatched = adapter.fromUpstream(message, approval)
-                                                    currentCoroutineContext().ensureActive()
-                                                    val phase =
-                                                        if (
-                                                            dispatched is ProtocolRouting.ReplyUpstream &&
-                                                                dispatched.certainty ==
-                                                                    io.github.amichne.kast.appserver.protocol.codex
-                                                                        .InvocationCertainty
-                                                                        .KNOWN
-                                                        )
-                                                            InvocationSettlement.COMPLETED
-                                                        else InvocationSettlement.UNCERTAIN
-                                                    val completed = fence.finish(identityKey, phase)
-                                                    activity.publish(
-                                                        SessionActivity(
+                                        is io.github.amichne.kast.kernel.Refinement.Refined -> {
+                                            val submit:
+                                                (BrokerInvocationApproval) -> Deferred<WorkspaceExecutionResult> =
+                                                { approval ->
+                                                    workspaceExecution.submit(
+                                                        WorkspaceExecutionIdentity(
+                                                            bound.value.id,
                                                             id,
-                                                            SessionStage.INVOCATION,
-                                                            if (
-                                                                completed is InvocationAdmission.Rejected ||
-                                                                    phase == InvocationSettlement.UNCERTAIN
+                                                            identity.thread,
+                                                            identity.turn,
+                                                            identity.call,
+                                                        ),
+                                                        interactionLimit,
+                                                    ) {
+                                                        try {
+                                                            val dispatched = adapter.fromUpstream(message, approval)
+                                                            currentCoroutineContext().ensureActive()
+                                                            invocation.settle(dispatched)
+                                                        } catch (failure: Exception) {
+                                                            invocation.settle(
+                                                                rejectedInvocation(
+                                                                    doc,
+                                                                    InvocationFenceFailure.OUTCOME_UNCERTAIN,
+                                                                )
                                                             )
-                                                                SessionOutcome.UNCERTAIN
-                                                            else SessionOutcome.COMPLETED,
-                                                        )
-                                                    )
-                                                    if (completed is InvocationAdmission.Rejected)
-                                                        ProtocolRouting.ReplyUpstream(
-                                                            toolFailure(doc, "OUTCOME_UNCERTAIN"),
-                                                            io.github.amichne.kast.appserver.protocol.codex
-                                                                .InvocationCertainty
-                                                                .UNCERTAIN,
-                                                        )
-                                                    else dispatched
-                                                } catch (failure: Exception) {
-                                                    fence.finish(identityKey, InvocationSettlement.UNCERTAIN)
-                                                    activity.publish(
-                                                        SessionActivity(
-                                                            id,
-                                                            SessionStage.INVOCATION,
-                                                            SessionOutcome.UNCERTAIN,
-                                                        )
-                                                    )
-                                                    throw failure
+                                                            throw failure
+                                                        }
+                                                    }
                                                 }
+                                            lifecycleApprovals.submit(
+                                                id,
+                                                WorkspaceInvocationBinding(bound.value, identity),
+                                                params,
+                                                doc,
+                                                submit,
+                                            )
+                                                ?: planAdmission.submit(
+                                                    id = id,
+                                                    binding = WorkspaceInvocationBinding(bound.value, identity),
+                                                    params = params,
+                                                    document = doc,
+                                                    submit = submit,
+                                                )
                                         }
                                     }
-                                lifecycleApprovals.submit(
-                                    id,
-                                    WorkspaceInvocationBinding(bound.value, identity),
-                                    params,
-                                    doc,
-                                    submit,
-                                )
-                                    ?: planAdmission.submit(
-                                        id = id,
-                                        binding = WorkspaceInvocationBinding(bound.value, identity),
-                                        params = params,
-                                        document = doc,
-                                        submit = submit,
+                                } catch (_: Exception) {
+                                    CompletableDeferred(
+                                        WorkspaceExecutionResult.Completed(
+                                            rejectedInvocation(doc, InvocationFenceFailure.OUTCOME_UNCERTAIN)
+                                        )
                                     )
+                                }
+                            scope.launch {
+                                try {
+                                    val result =
+                                        when (val completed = execution.await()) {
+                                            is WorkspaceExecutionResult.Completed -> completed.routing
+                                            is WorkspaceExecutionResult.Rejected ->
+                                                ProtocolRouting.ReplyUpstream(
+                                                    toolFailure(doc, completed.failure.name),
+                                                    completed.failure.certainty,
+                                                )
+                                        }
+                                    invocation.complete(result)
+                                } catch (failure: CancellationException) {
+                                    invocation.complete(
+                                        rejectedInvocation(doc, InvocationFenceFailure.OUTCOME_UNCERTAIN)
+                                    )
+                                    throw failure
+                                } catch (_: Exception) {
+                                    invocation.complete(
+                                        rejectedInvocation(doc, InvocationFenceFailure.OUTCOME_UNCERTAIN)
+                                    )
+                                }
                             }
+                            invocation.result
                         }
-                    else null
-                calls.incrementAndGet()
-                scope.launch {
-                    try {
-                        val result =
-                            if (previous == null) {
-                                val result =
-                                    when (val completed = checkNotNull(execution).await()) {
-                                        is WorkspaceExecutionResult.Completed -> completed.routing
-                                        is WorkspaceExecutionResult.Rejected ->
-                                            ProtocolRouting.ReplyUpstream(
-                                                toolFailure(doc, completed.failure.name),
-                                                completed.failure.certainty,
-                                            )
-                                    }
-                                future.complete(result)
-                                result
-                            } else previous.result.await()
-                        route(withResponseId(result, doc["id"]))
-                    } catch (failure: CancellationException) {
-                        if (previous == null)
-                            future.complete(
-                                ProtocolRouting.ReplyUpstream(
-                                    toolFailure(doc, "OUTCOME_UNCERTAIN"),
-                                    io.github.amichne.kast.appserver.protocol.codex.InvocationCertainty.UNCERTAIN,
-                                )
-                            )
-                        throw failure
-                    } catch (_: Exception) {
-                        val rejected =
-                            ProtocolRouting.ReplyUpstream(
-                                toolFailure(doc, "OUTCOME_UNCERTAIN"),
-                                io.github.amichne.kast.appserver.protocol.codex.InvocationCertainty.UNCERTAIN,
-                            )
-                        if (previous == null) future.complete(rejected)
-                        route(rejected)
-                    } finally {
-                        calls.decrementAndGet()
-                        retireIfIdle()
                     }
-                }
+                awaitInvocationResponse(response, doc)
                 return
             }
             if (method != null && doc.containsKey("id")) {
