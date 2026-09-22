@@ -20,7 +20,7 @@ class InstallationActivationTest {
             val root = Files.createDirectory(temporary.resolve(profile)).toRealPath()
             val installation = root.resolve("installation")
             val result =
-                InstallationWorkflow.execute(
+                executeFixtureInstallation(
                     releaseRequest(
                         root,
                         installation,
@@ -77,7 +77,7 @@ class InstallationActivationTest {
             """
                 .trimIndent() + "\n",
         )
-        val result = InstallationWorkflow.execute(request)
+        val result = executeFixtureInstallation(request)
         val complete = assertInstanceOf(InstallationOutcome.Complete::class.java, result)
         verifyPendingReport(complete.report)
         val selected = install.resolve("current").toRealPath()

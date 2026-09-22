@@ -8,6 +8,21 @@ import org.junit.jupiter.api.io.TempDir
 
 class InstalledDaemonUpgradeTest {
     @Test
+    fun `invalid prior java home rejects before service observation`() {
+        assertEquals(
+            InstalledUpgradePreparation.Rejected(
+                InstalledUpgradeRejection.Command(PersistentBrokerServiceFailure.JAVA_RUNTIME_UNAVAILABLE)
+            ),
+            InstalledDaemonUpgrade.prepare(
+                Path.of("/unobserved/kast"),
+                Path.of("/unobserved/home"),
+                mapOf("JAVA_HOME" to "\u0000"),
+                "a".repeat(64),
+            ),
+        )
+    }
+
+    @Test
     fun `marker observation rejects links without following their target`(@TempDir root: Path) {
         val marker = root.resolve("service.plist")
         assertEquals(UpgradeServiceMarkers.Absent, observeUpgradeMarker(marker))

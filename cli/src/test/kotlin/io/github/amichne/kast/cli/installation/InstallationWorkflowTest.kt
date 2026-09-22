@@ -53,7 +53,7 @@ class InstallationWorkflowTest {
         val installation = root.resolve("installation")
         assertInstanceOf(
             InstallationOutcome.Complete::class.java,
-            InstallationWorkflow.execute(
+            executeFixtureInstallation(
                 releaseRequest(
                     root,
                     installation,
@@ -122,7 +122,7 @@ class InstallationWorkflowTest {
         fun request(overrides: Map<String, String> = emptyMap()): InstallationRequest =
             (InstallationRequest.parse(environment + overrides) as Refinement.Refined).value
         val request = request()
-        assertInstanceOf(InstallationOutcome.Complete::class.java, InstallationWorkflow.execute(request))
+        assertInstanceOf(InstallationOutcome.Complete::class.java, executeFixtureInstallation(request))
         val selected = installation.resolve(Files.readSymbolicLink(installation.resolve("current")))
         val run = Files.createDirectories(selected.resolve("state/run"))
         val stale = Files.writeString(run.resolve("c.sock"), "stale socket")
@@ -131,10 +131,10 @@ class InstallationWorkflowTest {
         val forced = request(mapOf("KAST_INSTALL_FORCE" to "1"))
         assertInstanceOf(
             InstallationOutcome.Complete::class.java,
-            InstallationWorkflow.execute(request(mapOf("KAST_INSTALL_FORCE" to "1", "KAST_INSTALL_MODE" to "plan"))),
+            executeFixtureInstallation(request(mapOf("KAST_INSTALL_FORCE" to "1", "KAST_INSTALL_MODE" to "plan"))),
         )
         assertEquals("stale socket", Files.readString(stale))
-        assertInstanceOf(InstallationOutcome.Complete::class.java, InstallationWorkflow.execute(forced))
+        assertInstanceOf(InstallationOutcome.Complete::class.java, executeFixtureInstallation(forced))
         assertTrue(Files.notExists(stale))
         assertTrue(Files.notExists(selected.resolve("config/workspaces.json")))
         assertEquals("keep", Files.readString(unrelated))
@@ -154,7 +154,7 @@ class InstallationWorkflowTest {
 
         assertInstanceOf(
             InstallationOutcome.Complete::class.java,
-            InstallationWorkflow.execute(releaseRequest(root, installation, commands, home, codexHome, "1.2.3")),
+            executeFixtureInstallation(releaseRequest(root, installation, commands, home, codexHome, "1.2.3")),
         )
         val prior = installation.resolve(Files.readSymbolicLink(installation.resolve("current")))
         val registry =
@@ -163,7 +163,7 @@ class InstallationWorkflowTest {
 
         assertInstanceOf(
             InstallationOutcome.Complete::class.java,
-            InstallationWorkflow.execute(releaseRequest(root, installation, commands, home, codexHome, "1.2.4")),
+            executeFixtureInstallation(releaseRequest(root, installation, commands, home, codexHome, "1.2.4")),
         )
 
         val selected = installation.resolve(Files.readSymbolicLink(installation.resolve("current")))
@@ -179,14 +179,14 @@ class InstallationWorkflowTest {
         val codex = Files.createDirectory(root.resolve("codex"))
         assertInstanceOf(
             InstallationOutcome.Complete::class.java,
-            InstallationWorkflow.execute(releaseRequest(root, installation, commands, home, codex, "1.2.3")),
+            executeFixtureInstallation(releaseRequest(root, installation, commands, home, codex, "1.2.3")),
         )
         val prior = installation.resolve(Files.readSymbolicLink(installation.resolve("current")))
         Files.writeString(prior.resolve("config/workspaces.json"), "broken registry")
         val rejected =
             assertInstanceOf(
                 InstallationOutcome.Rejected::class.java,
-                InstallationWorkflow.execute(releaseRequest(root, installation, commands, home, codex, "1.2.4")),
+                executeFixtureInstallation(releaseRequest(root, installation, commands, home, codex, "1.2.4")),
             )
         assertEquals(InstallationFailure.PRIOR_ADMISSION_EXIT_REJECTED, rejected.failure)
         assertEquals("broken registry", Files.readString(prior.resolve("config/workspaces.json")))
@@ -242,7 +242,7 @@ class InstallationWorkflowTest {
         val collision = Files.writeString(commands.resolve("kast"), "unmanaged")
 
         val rejected =
-            InstallationWorkflow.execute(releaseRequest(root, installation, commands, home, codexHome, "1.2.3"))
+            executeFixtureInstallation(releaseRequest(root, installation, commands, home, codexHome, "1.2.3"))
         assertEquals(InstallationOutcome.Rejected(InstallationFailure.RECOVERY_REQUIRED), rejected)
         assertEquals("unmanaged", Files.readString(collision))
 
@@ -256,10 +256,22 @@ class InstallationWorkflowTest {
                 "1.2.4",
                 replaceCommandCollisions = true,
             )
-        assertInstanceOf(InstallationOutcome.Complete::class.java, InstallationWorkflow.execute(request))
+        assertInstanceOf(InstallationOutcome.Complete::class.java, executeFixtureInstallation(request))
         assertTrue(Files.isSymbolicLink(collision))
     }
 }
+
+/** Fixture-owned installations have no launchd job or published daemon state. */
+internal fun executeFixtureInstallation(request: InstallationRequest): InstallationOutcome =
+    InstallationWorkflow.execute(
+        request,
+        PriorDaemonUpgradeGateway { retirement, _, _ ->
+            val prior = retirement.executable.parent.parent
+            check(Files.notExists(prior.resolve("state/broker/service.plist")))
+            check(Files.notExists(prior.resolve("state/broker/service-readiness.json")))
+            io.github.amichne.kast.appserver.InstalledUpgradePreparation.NoDaemon
+        },
+    )
 
 internal fun releaseRequest(
     fixture: Path,

@@ -7,41 +7,58 @@ import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
 
-/** Admission and retirement of the selected installation are distinct, finite outcomes. */
-internal fun retire(prior: Path, request: InstallationRequest): Refinement<Unit, InstallationFailure> {
-    val executable = prior.resolve("bin/kast-complete")
-    if (!(regularPriorFile(executable) && Files.isExecutable(executable)))
-        return Refinement.Rejected(InstallationFailure.PRIOR_RETIREMENT_EXECUTABLE_REJECTED)
-    val saved =
-        readPriorConfiguration(prior.resolve("config/environment"))
-            ?: return Refinement.Rejected(InstallationFailure.PRIOR_RETIREMENT_CONFIGURATION_REJECTED)
-    val configuration =
-        when (val parsed = SavedConfigurationDocument.parse(saved.toByteArray())) {
-            is Refinement.Refined -> parsed.value
-            is Refinement.Rejected ->
-                return Refinement.Rejected(InstallationFailure.PRIOR_RETIREMENT_CONFIGURATION_REJECTED)
-        }
-    val recorded =
-        PublishedBrokerServiceCommand.retirementEnvironment(
-            installationRoot = prior,
-            userHome = request.home.value,
-            codexHome = request.codexHome.value,
-        )
-    val child =
-        executeInstallationChild(
-            InstallationChildStage.PRIOR_RETIREMENT,
-            listOf(executable.toString(), "app-server", "disable"),
-            recorded?.values
-                ?: priorServiceRetirementEnvironment(
-                    prior = prior,
-                    home = request.home.value,
+/** Admission preserves the exact prior command and environment across update sealing and retirement. */
+internal class PriorRetirement
+private constructor(
+    val executable: Path,
+    val daemonExecutable: Path,
+    val environment: Map<String, String>,
+) {
+    companion object {
+        fun admit(prior: Path, request: InstallationRequest): Refinement<PriorRetirement, InstallationFailure> {
+            val executable = prior.resolve("bin/kast-complete")
+            if (!(regularPriorFile(executable) && Files.isExecutable(executable)))
+                return Refinement.Rejected(InstallationFailure.PRIOR_RETIREMENT_EXECUTABLE_REJECTED)
+            val saved =
+                readPriorConfiguration(prior.resolve("config/environment"))
+                    ?: return Refinement.Rejected(InstallationFailure.PRIOR_RETIREMENT_CONFIGURATION_REJECTED)
+            val configuration =
+                when (val parsed = SavedConfigurationDocument.parse(saved.toByteArray())) {
+                    is Refinement.Refined -> parsed.value
+                    is Refinement.Rejected ->
+                        return Refinement.Rejected(InstallationFailure.PRIOR_RETIREMENT_CONFIGURATION_REJECTED)
+                }
+            val recorded =
+                PublishedBrokerServiceCommand.retirementEnvironment(
+                    installationRoot = prior,
+                    userHome = request.home.value,
                     codexHome = request.codexHome.value,
-                    path = System.getenv("PATH") ?: "/usr/bin:/bin",
-                    configuration = configuration,
-                ),
-        )
-    return child.priorRetirement()
+                )
+            return Refinement.Refined(
+                PriorRetirement(
+                    executable,
+                    prior.resolve("bin/kast"),
+                    recorded?.values
+                        ?: priorServiceRetirementEnvironment(
+                            prior = prior,
+                            home = request.home.value,
+                            codexHome = request.codexHome.value,
+                            path = System.getenv("PATH") ?: "/usr/bin:/bin",
+                            configuration = configuration,
+                        ),
+                )
+            )
+        }
+    }
 }
+
+internal fun retire(admitted: PriorRetirement): Refinement<Unit, InstallationFailure> =
+    executeInstallationChild(
+            InstallationChildStage.PRIOR_RETIREMENT,
+            listOf(admitted.executable.toString(), "app-server", "disable"),
+            admitted.environment,
+        )
+        .priorRetirement()
 
 internal fun admitPrior(
     prior: Path,

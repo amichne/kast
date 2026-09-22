@@ -21,7 +21,7 @@ class InstallationTrustTest {
         val commands = root.resolve("commands")
         assertInstanceOf(
             InstallationOutcome.Complete::class.java,
-            InstallationWorkflow.execute(releaseRequest(root, installation, commands, home, codex, "1.2.3")),
+            executeFixtureInstallation(releaseRequest(root, installation, commands, home, codex, "1.2.3")),
         )
         val current = Files.readSymbolicLink(installation.resolve("current"))
         val privateKey = home.resolve(".kast/approval/broker.pk8")
@@ -29,7 +29,7 @@ class InstallationTrustTest {
         Files.delete(home.resolve(".kast/approval/broker.pub"))
         assertEquals(
             InstallationOutcome.TrustRejected(io.github.amichne.kast.cli.ide.BrokerTrustFailure.INCOMPLETE_KEYS),
-            InstallationWorkflow.execute(releaseRequest(root, installation, commands, home, codex, "1.2.4")),
+            executeFixtureInstallation(releaseRequest(root, installation, commands, home, codex, "1.2.4")),
         )
         assertEquals(current, Files.readSymbolicLink(installation.resolve("current")))
         assertArrayEquals(privateBytes, Files.readAllBytes(privateKey))
@@ -42,7 +42,7 @@ class InstallationTrustTest {
         val home = Files.createDirectory(root.resolve("home"))
         assertInstanceOf(
             InstallationOutcome.Complete::class.java,
-            InstallationWorkflow.execute(
+            executeFixtureInstallation(
                 releaseRequest(
                     root,
                     root.resolve("installation"),
@@ -70,7 +70,7 @@ class InstallationTrustTest {
                 Files.createDirectory(root.resolve("codex")),
                 "1.2.3",
             )
-        assertInstanceOf(InstallationOutcome.Complete::class.java, InstallationWorkflow.execute(request))
+        assertInstanceOf(InstallationOutcome.Complete::class.java, executeFixtureInstallation(request))
         val privateKey = home.resolve(".kast/approval/broker.pk8")
         val publicKey = home.resolve(".kast/approval/broker.pub")
         val privateBytes = Files.readAllBytes(privateKey)
@@ -79,7 +79,7 @@ class InstallationTrustTest {
             BrokerTrustResult.Complete(BrokerTrustStatus.PRESERVED),
             FilesystemBrokerTrustRegistrar(home).enroll(),
         )
-        assertInstanceOf(InstallationOutcome.Complete::class.java, InstallationWorkflow.execute(request))
+        assertInstanceOf(InstallationOutcome.Complete::class.java, executeFixtureInstallation(request))
         assertArrayEquals(privateBytes, Files.readAllBytes(privateKey))
         assertArrayEquals(publicBytes, Files.readAllBytes(publicKey))
     }

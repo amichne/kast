@@ -27,6 +27,8 @@ Defines Kast's human-facing command graph, installed configuration and installat
 - [src/main/kotlin/io/github/amichne/kast/cli/command/query/QueryCommands.kt](src/main/kotlin/io/github/amichne/kast/cli/command/query/QueryCommands.kt) - query surface.
 - [src/main/kotlin/io/github/amichne/kast/cli/configuration/SavedConfigurationIngress.kt](src/main/kotlin/io/github/amichne/kast/cli/configuration/SavedConfigurationIngress.kt) - saved configuration boundary.
 - [src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt](src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt) - installation workflow.
+- [src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationDaemonUpgrade.kt](src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationDaemonUpgrade.kt) - prior daemon update admission before service retirement.
+- [src/main/kotlin/io/github/amichne/kast/cli/installation/PriorRetirement.kt](src/main/kotlin/io/github/amichne/kast/cli/installation/PriorRetirement.kt) - admitted prior command and environment retained across sealing and retirement.
 
 - [src/main/kotlin/io/github/amichne/kast/cli/ide](src/main/kotlin/io/github/amichne/kast/cli/ide) - existing-IDE client, semantic read projection, and hosted change/apply/recovery admission and projection.
 

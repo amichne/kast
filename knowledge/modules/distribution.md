@@ -15,7 +15,8 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationChild.kt
     symbols: [executeInstallationChild]
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/PriorInstallationReplacement.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/PriorInstallationSettlement.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/PriorRetirement.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationDaemonUpgrade.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationRegistryObservation.kt
   - path: packaging/hosted_repair_time_observation.py
   - path: packaging/hosted_repair_budget_regression.py
@@ -92,6 +93,14 @@ failure and a resume command. Pending activation does not prevent the shell boot
 from installing the verified IDEA plugin. Saved configuration and installed launchers
 retain the desired state; `kast codex` resumes enrollment and service reconciliation
 without repeating installation. The pending report does not claim service readiness.
+
+After candidate qualification and recovery preparation, an ordinary upgrade
+admits the prior retirement command and asks the selected daemon for an exact
+update seal. A proven absent daemon needs no seal. Active daemon blockers or
+unproven service state reject before retirement and preserve the current links.
+The installer commits a sealed request before invoking the prior service's
+disable command, so a failed or mismatched commit cannot stop that service.
+The upgrade result retains finite blockers and daemon rejection causes.
 
 Installation child processes emit `kast_installation` records by default with a closed stage and outcome. Prior admission, retirement, configuration validation, candidate and activated-command qualification, and App Server enablement retain distinct success, nonzero exit, deadline, I/O and interruption observations. New-payload admission remains authoritative; these records do not contain command arguments, environment values or filesystem paths. Ordinary installation rejects a failed prior admission or retirement with a stage-specific failure and preserves the selected release. An untrusted same-version payload or recovery receipt likewise rejects without replacement. Explicit `--force` remains a separate reset operation.
 

@@ -1,6 +1,10 @@
 package io.github.amichne.kast.cli.installation
 
+import io.github.amichne.kast.appserver.InstalledUpgradePreparation
+import io.github.amichne.kast.appserver.InstalledUpgradeRejection
+import io.github.amichne.kast.appserver.InstalledUpgradeSettlement
 import io.github.amichne.kast.appserver.InstalledWorkspaceRegistryRetention
+import io.github.amichne.kast.appserver.runtime.UpgradeBlocker
 import io.github.amichne.kast.distribution.contract.ControlDistributionLimits
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationSource
 import io.github.amichne.kast.distribution.contract.configuration.InstallationOperationalLimits
@@ -13,6 +17,7 @@ import io.github.amichne.kast.distribution.managed.ControlPayloadInventory
 import io.github.amichne.kast.distribution.managed.InstallationRecoveryPreparation
 import io.github.amichne.kast.distribution.managed.endpoint.InstalledUpstreamDirectories
 import io.github.amichne.kast.distribution.managed.prepareInstallationRecovery
+import io.github.amichne.kast.kernel.NonEmptyFailures
 import io.github.amichne.kast.kernel.Refinement
 import java.io.IOException
 import java.nio.channels.FileChannel
@@ -76,6 +81,10 @@ internal sealed interface InstallationOutcome {
     data class TrustRejected(val failure: io.github.amichne.kast.cli.ide.BrokerTrustFailure) : InstallationOutcome
 
     data class Rejected(val failure: InstallationFailure, val limit: ControlLimitExceeded? = null) : InstallationOutcome
+
+    data class UpgradePending(val blockers: NonEmptyFailures<UpgradeBlocker>) : InstallationOutcome
+
+    data class UpgradeRejected(val reason: InstalledUpgradeRejection) : InstallationOutcome
 }
 
 @Serializable
@@ -165,7 +174,10 @@ private data class VerifiedInstallationPlan(
 
 /** Installs one already-downloaded matched release; network and IDEA discovery remain bootstrap effects. */
 internal object InstallationWorkflow {
-    fun execute(request: InstallationRequest): InstallationOutcome {
+    fun execute(
+        request: InstallationRequest,
+        upgrades: PriorDaemonUpgradeGateway = NativePriorDaemonUpgradeGateway,
+    ): InstallationOutcome {
         val plan =
             when (val verified = verify(request)) {
                 is PlanVerification.Verified -> verified.plan
@@ -175,7 +187,7 @@ internal object InstallationWorkflow {
             return InstallationOutcome.Complete(plan.report(InstallationActivation.Planned))
         }
         return try {
-            apply(plan)
+            apply(plan, upgrades)
         } catch (_: InterruptedException) {
             Thread.currentThread().interrupt()
             InstallationOutcome.Rejected(InstallationFailure.INTERRUPTED)
@@ -246,7 +258,7 @@ internal object InstallationWorkflow {
         )
     }
 
-    private fun apply(plan: VerifiedInstallationPlan): InstallationOutcome {
+    private fun apply(plan: VerifiedInstallationPlan, upgrades: PriorDaemonUpgradeGateway): InstallationOutcome {
         if (
             !prepareOwnedDirectory(plan.request.installRoot.value) ||
                 !prepareOwnedDirectory(plan.request.binDirectory.value)
@@ -347,7 +359,27 @@ internal object InstallationWorkflow {
                         is Refinement.Refined -> Unit
                         is Refinement.Rejected -> return InstallationOutcome.Rejected(admission.failure)
                     }
-                    when (val retirement = retire(prior, plan.request)) {
+                    val retirement =
+                        when (val admitted = PriorRetirement.admit(prior, plan.request)) {
+                            is Refinement.Refined -> admitted.value
+                            is Refinement.Rejected -> return InstallationOutcome.Rejected(admitted.failure)
+                        }
+                    when (val update = upgrades.prepare(retirement, plan.request, plan.payloadDigest)) {
+                        InstalledUpgradePreparation.NoDaemon -> Unit
+                        is InstalledUpgradePreparation.Pending ->
+                            return InstallationOutcome.UpgradePending(update.blockers)
+                        is InstalledUpgradePreparation.Rejected ->
+                            return InstallationOutcome.UpgradeRejected(update.reason)
+                        is InstalledUpgradePreparation.Sealed ->
+                            when (val committed = update.permit.commit()) {
+                                InstalledUpgradeSettlement.Completed -> Unit
+                                is InstalledUpgradeSettlement.Rejected ->
+                                    return InstallationOutcome.UpgradeRejected(
+                                        InstalledUpgradeRejection.Daemon(committed.reason)
+                                    )
+                            }
+                    }
+                    when (val retirement = retire(retirement)) {
                         is Refinement.Refined -> Unit
                         is Refinement.Rejected -> return InstallationOutcome.Rejected(retirement.failure)
                     }

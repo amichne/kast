@@ -30,7 +30,7 @@ class InstallationUpgradePreflightTest {
                 """
                     .trimIndent() + "\n",
             )
-            assertInstanceOf(InstallationOutcome.Complete::class.java, InstallationWorkflow.execute(first))
+            assertInstanceOf(InstallationOutcome.Complete::class.java, executeFixtureInstallation(first))
             val previous = install.resolve("current").toRealPath()
             Files.writeString(
                 previous.resolve("config/workspaces.json"),
@@ -46,7 +46,7 @@ class InstallationUpgradePreflightTest {
             """
                     .trimIndent() + "\n",
             )
-            assertInstanceOf(InstallationOutcome.Rejected::class.java, InstallationWorkflow.execute(second))
+            assertInstanceOf(InstallationOutcome.Rejected::class.java, executeFixtureInstallation(second))
             assertEquals(previous, install.resolve("current").toRealPath())
             assertEquals(previous.resolve("bin/kast-complete"), commands.resolve("kast").toRealPath())
             assertFalse(Files.exists(home.resolve("retirement-observed")), rejectedCommand)

@@ -14,7 +14,7 @@ class ControlDistributionLayoutTest {
     fun `control verification admits the shipped knowledge bundle file count`(@TempDir temporary: Path) {
         val root = temporary.toRealPath()
         val outcome =
-            InstallationWorkflow.execute(
+            executeFixtureInstallation(
                 releaseRequest(
                     root,
                     root.resolve("installation"),
@@ -34,7 +34,7 @@ class ControlDistributionLayoutTest {
     fun `control verification reports layout rejection above the file limit`(@TempDir temporary: Path) {
         val root = temporary.toRealPath()
         val outcome =
-            InstallationWorkflow.execute(
+            executeFixtureInstallation(
                 releaseRequest(
                     root,
                     root.resolve("installation"),
@@ -67,8 +67,8 @@ class ControlDistributionLayoutTest {
                 controlFileCount = 7_494,
             )
 
-        assertInstanceOf(InstallationOutcome.Complete::class.java, InstallationWorkflow.execute(request))
-        assertInstanceOf(InstallationOutcome.Complete::class.java, InstallationWorkflow.execute(request))
+        assertInstanceOf(InstallationOutcome.Complete::class.java, executeFixtureInstallation(request))
+        assertInstanceOf(InstallationOutcome.Complete::class.java, executeFixtureInstallation(request))
     }
 
     @Test
@@ -81,7 +81,7 @@ class ControlDistributionLayoutTest {
 
         assertInstanceOf(
             InstallationOutcome.Complete::class.java,
-            InstallationWorkflow.execute(
+            executeFixtureInstallation(
                 releaseRequest(
                     root,
                     installation,
@@ -102,7 +102,7 @@ class ControlDistributionLayoutTest {
 
         assertInstanceOf(
             InstallationOutcome.Complete::class.java,
-            InstallationWorkflow.execute(releaseRequest(root, installation, commands, home, codexHome, "1.2.4")),
+            executeFixtureInstallation(releaseRequest(root, installation, commands, home, codexHome, "1.2.4")),
         )
     }
 }

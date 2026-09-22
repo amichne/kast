@@ -1,5 +1,8 @@
 package io.github.amichne.kast.cli.installation
 
+import io.github.amichne.kast.appserver.InstalledUpgradeRejection
+import io.github.amichne.kast.appserver.diagnosticCode
+import io.github.amichne.kast.appserver.runtime.UpgradeBlocker
 import io.github.amichne.kast.cli.CliBoundaryExitStatus
 import io.github.amichne.kast.cli.CliExit
 import io.github.amichne.kast.cli.CliTextDocument
@@ -49,14 +52,31 @@ internal object InstallationCliInspection {
                 is Refinement.Refined -> parsed.value
                 is Refinement.Rejected -> return requestRejected(parsed.failure)
             }
-        return when (val outcome = InstallationWorkflow.execute(request)) {
+        return project(InstallationWorkflow.execute(request))
+    }
+
+    internal fun project(outcome: InstallationOutcome): InstallationHandling =
+        when (outcome) {
             is InstallationOutcome.Complete ->
                 InstallationHandling.Handled(CliExit.Complete(reportFactory.create(outcome.report)))
             is InstallationOutcome.Rejected -> rejected(outcome.failure, CliBoundaryExitStatus.BOOTSTRAP, outcome.limit)
+            is InstallationOutcome.UpgradePending ->
+                InstallationHandling.Handled(
+                    CliExit.BoundaryRejected(
+                        CliBoundaryExitStatus.BOOTSTRAP,
+                        pendingFactory.create(InstallationUpgradePendingDocument(blockers = outcome.blockers.toList())),
+                    )
+                )
+            is InstallationOutcome.UpgradeRejected ->
+                InstallationHandling.Handled(
+                    CliExit.BoundaryRejected(
+                        CliBoundaryExitStatus.BOOTSTRAP,
+                        rejectionFactory.create(InstallationRejectionDocument(reason = outcome.reason.reason())),
+                    )
+                )
             is InstallationOutcome.TrustRejected ->
                 InstallationHandling.Handled(installationTrustRejection(outcome.failure))
         }
-    }
 
     private fun requestRejected(failure: InstallationRequestFailure): InstallationHandling {
         val field =
@@ -104,7 +124,28 @@ private data class InstallationRejectionDocument(
     val limit: ControlLimitExceeded? = null,
 )
 
+@Serializable
+private data class InstallationUpgradePendingDocument(
+    val operation: String = "installation.install",
+    val status: String = "rejected",
+    val reason: String = "prior-daemon-pending",
+    val blockers: List<UpgradeBlocker>,
+)
+
 private fun InstallationFailure.reason(): String = name.lowercase().replace('_', '-')
+
+private fun InstalledUpgradeRejection.reason(): String =
+    when (this) {
+        InstalledUpgradeRejection.CandidateRejected -> "prior-daemon-candidate-rejected"
+        is InstalledUpgradeRejection.Command -> "prior-daemon-command-${failure.name.lowercase().replace('_', '-')}"
+        InstalledUpgradeRejection.ServiceMarkersRejected -> "prior-daemon-service-markers-rejected"
+        InstalledUpgradeRejection.RetainedServiceEvidence -> "prior-daemon-retained-service-evidence"
+        is InstalledUpgradeRejection.Lifecycle -> "prior-daemon-lifecycle-${failure.name.lowercase().replace('_', '-')}"
+        is InstalledUpgradeRejection.Daemon -> reason.diagnosticCode()
+        InstalledUpgradeRejection.PreviousUpdateCommitted -> "prior-daemon-previous-update-committed"
+        InstalledUpgradeRejection.PreviousUpdateCancelled -> "prior-daemon-previous-update-cancelled"
+    }
 
 private val reportFactory = CanonicalJsonDocument.generated(InstallationReport.serializer())
 private val rejectionFactory = CanonicalJsonDocument.generated(InstallationRejectionDocument.serializer())
+private val pendingFactory = CanonicalJsonDocument.generated(InstallationUpgradePendingDocument.serializer())
