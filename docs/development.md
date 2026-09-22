@@ -210,3 +210,7 @@ Only this explicit development input permits `KAST_INSTALL_ROOT`, `KAST_BIN_DIR`
 and `KAST_INSTALL_PROFILE=session`. Product read limits, endpoint selection, and
 read-only inspection remain supported. The duplicate `index` command family is
 removed; use `kast ide` for status, refresh, classes, supertype, and completion.
+
+Version-pinned archives must match the installer contract. To stage historical
+archives that require retired setup inputs, use their matching tagged installer.
+The adjacent-patch acceptance helper supports archives with the current contract.
