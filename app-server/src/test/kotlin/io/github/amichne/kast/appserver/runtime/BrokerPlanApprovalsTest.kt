@@ -34,6 +34,24 @@ import org.junit.jupiter.api.io.TempDir
 
 class BrokerPlanApprovalsTest {
     @Test
+    fun `workspace rejection stays typed and never registers a controller request`(@TempDir root: Path) = runTest {
+        val failure =
+            HostedPlanApprovalRejection.Workspace(
+                WorkspaceDemandFailure.Admission(
+                    io.github.amichne.kast.appserver.ide.CanonicalRoot(root.toRealPath()),
+                    WorkspacePreparationFailure.CAPACITY_EXCEEDED,
+                )
+            )
+        val fixture = Fixture(root, preparationFailure = failure)
+        assertEquals(Refinement.Rejected(failure), fixture.manager.approve(fixture.controller, fixture.request))
+        assertTrue(fixture.messages.tryReceive().isFailure)
+        assertEquals(0, fixture.signatures)
+        assertTrue(
+            fixture.activity.any { it.stage == SessionStage.APPROVAL_PREPARE && it.outcome == SessionOutcome.REJECTED }
+        )
+    }
+
+    @Test
     fun `unconfigured gateway fails without presenting an approval or issuing a grant`(@TempDir root: Path) = runTest {
         val fixture = Fixture(root, unavailable = true)
         assertEquals(
@@ -148,7 +166,11 @@ class BrokerPlanApprovalsTest {
         assertEquals(0, cancelled.tasks.views().single().pendingRequests)
     }
 
-    private class Fixture(root: Path, unavailable: Boolean = false) {
+    private class Fixture(
+        root: Path,
+        unavailable: Boolean = false,
+        preparationFailure: HostedPlanApprovalRejection? = null,
+    ) {
         val controller = ClientConnectionId.fresh()
         val tasks = SharedTaskSessions()
         val invocation =
@@ -185,17 +207,21 @@ class BrokerPlanApprovalsTest {
 
         private val gateway =
             object : HostedPlanApprovalGateway {
-                override suspend fun prepare(request: HostedPlanApprovalRequest) =
-                    HostedPlanApprovalChallenge.fromStoredPlan(
-                        request,
-                        subject,
-                        ObserverFileChange.admit(
-                                "src/Thing.kt",
-                                ObserverFileChangeKind.UPDATE,
-                                "@@\n+private declaration",
-                            )
-                            .refined(),
-                    )
+                override suspend fun prepare(
+                    request: HostedPlanApprovalRequest
+                ): Refinement<HostedPlanApprovalChallenge, HostedPlanApprovalRejection> =
+                    if (preparationFailure != null) Refinement.Rejected(preparationFailure)
+                    else
+                        HostedPlanApprovalChallenge.fromStoredPlan(
+                            request,
+                            subject,
+                            ObserverFileChange.admit(
+                                    "src/Thing.kt",
+                                    ObserverFileChangeKind.UPDATE,
+                                    "@@\n+private declaration",
+                                )
+                                .refined(),
+                        )
 
                 override suspend fun redeem(
                     approval: ControllerApprovedPlan

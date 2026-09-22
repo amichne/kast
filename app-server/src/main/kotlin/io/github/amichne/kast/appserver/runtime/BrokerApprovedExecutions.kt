@@ -32,7 +32,7 @@ internal class BrokerApprovedExecutions(private val scope: CoroutineScope, priva
     fun submit(
         source: ClientConnectionId,
         request: HostedPlanApprovalRequest,
-        rejected: (HostedPlanApprovalFailure) -> WorkspaceExecutionResult,
+        rejected: (HostedPlanApprovalRejection) -> WorkspaceExecutionResult,
         execute: (BrokerInvocationApproval) -> Deferred<WorkspaceExecutionResult>,
     ): Deferred<WorkspaceExecutionResult> {
         val key = request.invocation.invocationId

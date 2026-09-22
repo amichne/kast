@@ -32,10 +32,8 @@ internal class BrokerPlanApprovalAdmission(
                     HostedChangeApprovalOperation.RECOVER
                 else -> return submit(BrokerInvocationApproval.Absent)
             }
-        fun rejected(failure: HostedPlanApprovalFailure): WorkspaceExecutionResult =
-            WorkspaceExecutionResult.Completed(
-                ProtocolRouting.ReplyUpstream(toolFailure(document, "PLAN_APPROVAL_${failure.name}"))
-            )
+        fun rejected(failure: HostedPlanApprovalRejection): WorkspaceExecutionResult =
+            WorkspaceExecutionResult.Completed(ProtocolRouting.ReplyUpstream(planApprovalFailure(document, failure)))
         if (
             options.contracts.admit(
                 io.github.amichne.kast.appserver.protocol.codex.CodexOwnedSchema.DYNAMIC_TOOL_CALL_PARAMS,

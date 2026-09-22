@@ -14,7 +14,11 @@ internal enum class HostedChangeApprovalOperation(val canonical: CanonicalOperat
     RECOVER(CanonicalOperation.CHANGE_RECOVER),
 }
 
-internal enum class HostedPlanApprovalFailure {
+internal sealed interface HostedPlanApprovalRejection {
+    data class Workspace(val cause: WorkspaceDemandFailure) : HostedPlanApprovalRejection
+}
+
+internal enum class HostedPlanApprovalFailure : HostedPlanApprovalRejection {
     UNAVAILABLE,
     INVALID_REQUEST,
     PLAN_UNAVAILABLE,
@@ -99,7 +103,7 @@ private constructor(
 internal interface HostedPlanApprovalGateway {
     suspend fun prepare(
         request: HostedPlanApprovalRequest
-    ): Refinement<HostedPlanApprovalChallenge, HostedPlanApprovalFailure>
+    ): Refinement<HostedPlanApprovalChallenge, HostedPlanApprovalRejection>
 
     suspend fun redeem(approval: ControllerApprovedPlan): Refinement<HostedPlanApprovalGrant, HostedPlanApprovalFailure>
 

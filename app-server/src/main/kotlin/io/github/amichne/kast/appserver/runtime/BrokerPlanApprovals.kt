@@ -34,7 +34,7 @@ internal class BrokerPlanApprovals(
     suspend fun approve(
         source: ClientConnectionId,
         request: HostedPlanApprovalRequest,
-    ): Refinement<ApprovedBrokerPlanInvocation, HostedPlanApprovalFailure> {
+    ): Refinement<ApprovedBrokerPlanInvocation, HostedPlanApprovalRejection> {
         val challenge =
             when (val prepared = prepare(source, request)) {
                 is Refinement.Rejected -> return prepared
@@ -51,11 +51,16 @@ internal class BrokerPlanApprovals(
     private suspend fun prepare(
         source: ClientConnectionId,
         request: HostedPlanApprovalRequest,
-    ): Refinement<HostedPlanApprovalChallenge, HostedPlanApprovalFailure> {
+    ): Refinement<HostedPlanApprovalChallenge, HostedPlanApprovalRejection> {
         publish(SessionActivity(source, SessionStage.APPROVAL_PREPARE, SessionOutcome.STARTED))
         val prepared =
             try {
-                withTimeout(waitMillis) { gateway.prepare(request) }
+                withTimeout(
+                    io.github.amichne.kast.protocol.registry.OperationExecutionBudget.WORKSPACE_READINESS.value +
+                        waitMillis
+                ) {
+                    gateway.prepare(request)
+                }
             } catch (_: TimeoutCancellationException) {
                 return rejected(source, SessionStage.APPROVAL_PREPARE, HostedPlanApprovalFailure.TIMED_OUT)
             } catch (cancelled: CancellationException) {
@@ -242,11 +247,11 @@ internal class BrokerPlanApprovals(
         return rejected(pending.source, SessionStage.APPROVAL_REQUEST, failure)
     }
 
-    private fun rejected(
+    private fun <F : HostedPlanApprovalRejection> rejected(
         source: ClientConnectionId,
         stage: SessionStage,
-        failure: HostedPlanApprovalFailure,
-    ): Refinement.Rejected<HostedPlanApprovalFailure> {
+        failure: F,
+    ): Refinement.Rejected<F> {
         publish(SessionActivity(source, stage, SessionOutcome.REJECTED))
         return Refinement.Rejected(failure)
     }

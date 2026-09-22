@@ -152,8 +152,13 @@ semantic operation. Cancelled waiters leave the shared preparation running.
 Preparation blockers reach Codex with their finite cause and operation ID, marked
 as known pre-execution failures.
 
-Approval-challenge preparation, service lifecycle, deferred updates and durable
-storage migration remain subsequent work.
+Apply and recovery approval challenges use the same preparation owner before reading
+the immutable hosted plan. Workspace blockers retain their typed cause and operation
+identity and never register a controller prompt or sign a grant. Preparation has the
+workspace-readiness budget in addition to the existing plan-read budget; controller
+waiting retains its separate deadline.
+
+Service lifecycle, deferred updates and durable storage migration remain subsequent work.
 
 ## Ownership and recovery
 
