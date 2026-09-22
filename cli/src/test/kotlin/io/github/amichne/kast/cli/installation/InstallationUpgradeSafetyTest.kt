@@ -1,5 +1,8 @@
 package io.github.amichne.kast.cli.installation
 
+import io.github.amichne.kast.appserver.InstalledUpgradePreparation
+import io.github.amichne.kast.appserver.runtime.UpgradeBlocker
+import io.github.amichne.kast.kernel.NonEmptyFailures
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlinx.serialization.encodeToString
@@ -11,6 +14,41 @@ import org.junit.jupiter.api.io.TempDir
 
 class InstallationUpgradeSafetyTest {
     @Test
+    fun `pending daemon update preserves the selected service and command`(@TempDir temporary: Path) {
+        val root = temporary.toRealPath()
+        val installation = root.resolve("installation")
+        val commands = root.resolve("commands")
+        val home = Files.createDirectory(root.resolve("home"))
+        val codexHome = Files.createDirectory(root.resolve("codex"))
+        assertInstanceOf(
+            InstallationOutcome.Complete::class.java,
+            executeFixtureInstallation(releaseRequest(root, installation, commands, home, codexHome, "1.2.3")),
+        )
+        val prior = installation.resolve(Files.readSymbolicLink(installation.resolve("current")))
+        Files.writeString(
+            prior.resolve("config/workspaces.json"),
+            Json.encodeToString(RegistryFixture(2, 1, listOf(root.toString()))),
+        )
+        val retired = root.resolve("retired")
+        Files.writeString(prior.resolve("bin/kast"), "#!/bin/sh\nprintf retired > '$retired'\n")
+        val pending =
+            InstallationWorkflow.execute(
+                releaseRequest(root, installation, commands, home, codexHome, "1.2.4"),
+                PriorDaemonUpgradeGateway { retirement, _, _ ->
+                    assertEquals(prior.resolve("bin/kast"), retirement.daemonExecutable)
+                    InstalledUpgradePreparation.Pending(NonEmptyFailures.one(UpgradeBlocker.ACTIVE_TURN))
+                },
+            )
+        assertEquals(
+            InstallationOutcome.UpgradePending(NonEmptyFailures.one(UpgradeBlocker.ACTIVE_TURN)),
+            pending,
+        )
+        assertEquals(prior, installation.resolve("current").toRealPath())
+        assertEquals(prior.resolve("bin/kast-complete"), commands.resolve("kast").toRealPath())
+        assertEquals(false, Files.exists(retired))
+    }
+
+    @Test
     fun `rejected prior admission or retirement preserves the selected release`(@TempDir temporary: Path) {
         for (brokenRetirement in listOf(false, true)) {
             val root = Files.createDirectory(temporary.resolve("case-$brokenRetirement")).toRealPath()
@@ -20,7 +58,7 @@ class InstallationUpgradeSafetyTest {
             val codexHome = Files.createDirectory(home.resolve(".codex"))
             assertInstanceOf(
                 InstallationOutcome.Complete::class.java,
-                InstallationWorkflow.execute(releaseRequest(root, installation, commands, home, codexHome, "1.2.3")),
+                executeFixtureInstallation(releaseRequest(root, installation, commands, home, codexHome, "1.2.3")),
             )
             val prior = installation.resolve(Files.readSymbolicLink(installation.resolve("current")))
             val priorRegistry = Json.encodeToString(RegistryFixture(2, 1, listOf(root.toString())))
@@ -30,7 +68,7 @@ class InstallationUpgradeSafetyTest {
             )
             if (brokenRetirement) Files.writeString(prior.resolve("bin/kast"), "#!/bin/sh\nexit 17\n")
             val upgraded =
-                InstallationWorkflow.execute(
+                executeFixtureInstallation(
                     releaseRequest(
                         root,
                         installation,
@@ -67,7 +105,7 @@ class InstallationUpgradeSafetyTest {
                 Files.createDirectory(root.resolve("codex")),
                 "1.2.3",
             )
-        assertInstanceOf(InstallationOutcome.Complete::class.java, InstallationWorkflow.execute(request))
+        assertInstanceOf(InstallationOutcome.Complete::class.java, executeFixtureInstallation(request))
         val selected = installation.resolve(Files.readSymbolicLink(installation.resolve("current")))
         val manifest = Files.readString(selected.resolve("installation.json"))
         Files.writeString(selected.resolve("installation.json"), "broken manifest")
@@ -76,13 +114,12 @@ class InstallationUpgradeSafetyTest {
             "broken receipt",
         )
         val badManifest =
-            assertInstanceOf(InstallationOutcome.Rejected::class.java, InstallationWorkflow.execute(request))
+            assertInstanceOf(InstallationOutcome.Rejected::class.java, executeFixtureInstallation(request))
         assertEquals(InstallationFailure.CANDIDATE_EXISTING_UNTRUSTED, badManifest.failure)
         assertEquals(selected, installation.resolve("current").toRealPath())
         assertEquals("broken manifest", Files.readString(selected.resolve("installation.json")))
         Files.writeString(selected.resolve("installation.json"), manifest)
-        val badReceipt =
-            assertInstanceOf(InstallationOutcome.Rejected::class.java, InstallationWorkflow.execute(request))
+        val badReceipt = assertInstanceOf(InstallationOutcome.Rejected::class.java, executeFixtureInstallation(request))
         assertEquals(InstallationFailure.RECOVERY_REQUIRED, badReceipt.failure)
         assertEquals(
             "broken receipt",
@@ -99,7 +136,7 @@ class InstallationUpgradeSafetyTest {
         val codexHome = Files.createDirectory(root.resolve("codex"))
         assertInstanceOf(
             InstallationOutcome.Complete::class.java,
-            InstallationWorkflow.execute(releaseRequest(root, installation, commands, home, codexHome, "1.2.3")),
+            executeFixtureInstallation(releaseRequest(root, installation, commands, home, codexHome, "1.2.3")),
         )
         val prior = installation.resolve(Files.readSymbolicLink(installation.resolve("current")))
         val priorManifest = Files.readString(prior.resolve("installation.json"))
@@ -108,7 +145,7 @@ class InstallationUpgradeSafetyTest {
         val rejectedAdmission =
             assertInstanceOf(
                 InstallationOutcome.Rejected::class.java,
-                InstallationWorkflow.execute(candidateRequest),
+                executeFixtureInstallation(candidateRequest),
             )
         assertEquals(InstallationFailure.PRIOR_ADMISSION_EXIT_REJECTED, rejectedAdmission.failure)
         val candidate =
@@ -121,7 +158,7 @@ class InstallationUpgradeSafetyTest {
         val rejectedRecovery =
             assertInstanceOf(
                 InstallationOutcome.Rejected::class.java,
-                InstallationWorkflow.execute(candidateRequest),
+                executeFixtureInstallation(candidateRequest),
             )
         assertEquals(InstallationFailure.RECOVERY_REQUIRED, rejectedRecovery.failure)
         assertEquals(prior, installation.resolve("current").toRealPath())

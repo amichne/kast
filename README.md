@@ -27,6 +27,9 @@ The Codex integration is a preview; full Desktop compatibility remains
    Installation never prompts. It uses `${XDG_DATA_HOME:-$HOME/.local/share}/kast`
    and `$HOME/.local/bin`. Command collisions fail with their exact paths; move
    those paths or use `--force` to replace them and reset managed state.
+   An ordinary upgrade keeps the current release selected when the prior daemon
+   still has active work or its state cannot be proved. The installer reports
+   the blocker; rerun it after that work settles.
 
    To rebuild a damaged installation, append `-- --force`. This retires its
    services, resets managed sockets and state, restages both launchers and the

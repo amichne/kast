@@ -256,4 +256,6 @@ retained service markers before requesting a seal. Only absent launchd and absen
 markers establish that no managed daemon needs retirement. Active service
 admission retains typed blockers and a permit bound to the daemon target,
 candidate and request; rejected or ambiguous observations do not authorize
-replacement. Installer activation has not yet been wired to this boundary.
+replacement. Installer activation commits that permit before prior-service
+retirement. A pending update leaves the selected installation and command links
+in place for a later upgrade attempt.
