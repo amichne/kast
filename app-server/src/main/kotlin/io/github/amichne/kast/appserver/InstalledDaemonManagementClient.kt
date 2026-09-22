@@ -22,7 +22,7 @@ internal class InstalledDaemonManagementClient(private val kast: Path) {
     ): Refinement<WorkspaceRegistrationAcknowledgement, DaemonManagementRejection> {
         val root =
             try {
-                CanonicalBrokerDirectory.admit(workspace.toRealPath())
+                workspace.takeIf(Path::isAbsolute)?.toRealPath()?.let(CanonicalBrokerDirectory::admit)
             } catch (_: Exception) {
                 null
             } ?: return Refinement.Rejected(DaemonManagementRejection.Enrollment(EnrollmentFailure.PATH_REJECTED))

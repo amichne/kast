@@ -64,6 +64,21 @@ class WorkspaceRegistrationCommandTest {
             }
         }
 
+    @Test
+    fun `registration rejects relative root before service observation`(@TempDir temporary: Path) {
+        val installation = Files.createDirectories(temporary.resolve("installation/bin")).parent.toRealPath()
+        val kast = installedExecutable(installation)
+        val home = Files.createDirectory(temporary.resolve("home")).toRealPath()
+        val result = InstalledAppServerManager(kast, home, emptyMap()).execute(AppServerAction.Register, Path.of("."))
+        assertEquals(
+            AppServerManagementResult.DaemonRejected(
+                DaemonManagementRejection.Enrollment(EnrollmentFailure.PATH_REJECTED)
+            ),
+            result,
+        )
+        assertFalse(Files.exists(installation.resolve("config/workspaces.json")))
+    }
+
     private fun installedExecutable(installation: Path): Path {
         Files.createDirectories(installation.resolve("lib"))
         Files.createDirectories(installation.resolve("share"))

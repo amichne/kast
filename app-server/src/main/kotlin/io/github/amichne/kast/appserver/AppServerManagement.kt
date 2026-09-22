@@ -137,27 +137,27 @@ class InstalledAppServerManager(
                 is BrokerServiceLaunchCommandResolution.Rejected ->
                     return reject(AppServerManagementFailure.CONFIGURATION_REJECTED)
             }
-        if (action == AppServerAction.Register)
-            return runBlocking {
-                when (val registered = InstalledDaemonManagementClient(kast).register(command, workspace)) {
-                    is Refinement.Rejected -> AppServerManagementResult.DaemonRejected(registered.failure)
-                    is Refinement.Refined ->
-                        AppServerManagementResult.Completed(
-                            DaemonManagementProtocol.json
-                                .encodeToJsonElement(
-                                    WorkspaceRegistrationDocument.serializer(),
-                                    WorkspaceRegistrationDocument(
-                                        registered.value.workspace.id.value,
-                                        registered.value.workspace.root.path.toString(),
-                                        registered.value.revision.value,
-                                    ),
-                                )
-                                .jsonObject
-                        )
-                }
-            }
         val agent = userHome.resolve("Library/LaunchAgents/${command.serviceLabel.value}.login.plist")
         return try {
+            if (action == AppServerAction.Register)
+                return runBlocking {
+                    when (val registered = InstalledDaemonManagementClient(kast).register(command, workspace)) {
+                        is Refinement.Rejected -> AppServerManagementResult.DaemonRejected(registered.failure)
+                        is Refinement.Refined ->
+                            AppServerManagementResult.Completed(
+                                DaemonManagementProtocol.json
+                                    .encodeToJsonElement(
+                                        WorkspaceRegistrationDocument.serializer(),
+                                        WorkspaceRegistrationDocument(
+                                            registered.value.workspace.id.value,
+                                            registered.value.workspace.root.path.toString(),
+                                            registered.value.revision.value,
+                                        ),
+                                    )
+                                    .jsonObject
+                            )
+                    }
+                }
             when (action) {
                 AppServerAction.Register -> error("registration is handled before service admission")
                 AppServerAction.Enable -> {
