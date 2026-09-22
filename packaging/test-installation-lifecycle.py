@@ -149,7 +149,7 @@ class LifecycleTest(unittest.TestCase):
         self.kast.chmod(0o700)
         self.epoch = {'schemaVersion': 1, 'installation': 'sha256:' + 'd' * 64, 'epoch': str(uuid.uuid4())}
         (self.root / 'state/epoch.json').write_text(json.dumps(self.epoch))
-        (self.root / 'config/environment').write_text('KAST_INDEXER_MAX_HEAP=8g\n')
+        (self.root / 'config/environment').write_text('KAST_INDEXER_MAX_HEAP=8g\nKAST_ENABLE_APP_SERVER=0\n')
         (self.root / 'config/workspaces.json').write_text(json.dumps({'schemaVersion': 2, 'revision': 1, 'roots': [str(self.workspace)]}))
         self.manifest = {'schemaVersion': 1, 'semanticVersion': '0.36.1', 'installationRoot': str(self.root),
             'payloadIdentity': 'sha256:' + 'c' * 64, 'controlSha256': 'sha256:' + 'a' * 64,
@@ -204,8 +204,20 @@ class LifecycleTest(unittest.TestCase):
         new_epoch = json.loads((self.root / 'state/epoch.json').read_text())
         self.assertNotEqual(self.epoch['epoch'], new_epoch['epoch'])
         self.assertEqual(self.epoch['installation'], new_epoch['installation'])
-        self.assertEqual('KAST_INDEXER_MAX_HEAP=8g\n', (self.root / 'config/environment').read_text())
+        self.assertEqual('KAST_INDEXER_MAX_HEAP=8g\nKAST_ENABLE_APP_SERVER=0\n', (self.root / 'config/environment').read_text())
         self.assertTrue(self.kast.exists())
+    def test_current_configuration_retirement_does_not_inject_retired_enable_override(self):
+        (self.root / 'config/environment').write_text('KAST_APP_SERVER_PUBLIC_ENDPOINT=private\n')
+        self.kast.write_text('#!/bin/sh\n'
+            'test -z "${KAST_ENABLE_APP_SERVER+x}" || exit 9\n'
+            'printf "%s\\n" "$*" >> "' + str(self.log) + '"\n'
+            'echo \'{"status":"complete"}\'\n')
+        self.manifest['payloadFiles'] = self.inventory()
+        (self.root / 'installation.json').write_text(json.dumps(self.manifest))
+        code, result = self.invoke('reset')
+        self.assertEqual(0, code, result)
+        self.assertEqual(['app-server disable', 'stop'], self.log.read_text().splitlines())
+
     def test_reset_removes_only_the_receipted_private_upstream_directory(self):
         run = self.root / 'state/run'
         upstream = Path('/tmp').resolve() / ('kast-codex-' + hashlib.sha256(str(run).encode()).hexdigest()[:32])
@@ -307,7 +319,7 @@ class LifecycleTest(unittest.TestCase):
         self.assertEqual('RETIREMENT_UNPROVEN', result['failure'])
         self.assertEqual({'stage': 'coordinator-retirement', 'outcome': 'exit-rejected'}, result['retirement'])
         self.assertEqual(self.epoch, json.loads((self.root / 'state/epoch.json').read_text()))
-        self.assertEqual('KAST_INDEXER_MAX_HEAP=8g\n', (self.root / 'config/environment').read_text())
+        self.assertEqual('KAST_INDEXER_MAX_HEAP=8g\nKAST_ENABLE_APP_SERVER=0\n', (self.root / 'config/environment').read_text())
         self.assertEqual(self.manifest, json.loads((self.root / 'installation.json').read_text()))
         self.assertEqual('#!/bin/sh\nexit 7\n', self.kast.read_text())
         self.assertTrue((self.root / 'state/broker/profile').is_dir())

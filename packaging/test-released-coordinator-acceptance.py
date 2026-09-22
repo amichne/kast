@@ -204,9 +204,9 @@ class CoordinatorLifecycleTest(unittest.TestCase):
         environment = arguments[3]
         for key, value in private.items():
             self.assertEqual(value, environment[key])
-        self.assertEqual('registry_selected_read', environment['KAST_APP_SERVER_TOOLS'])
+        self.assertNotIn('KAST_APP_SERVER_TOOLS', environment)
         self.assertEqual(str(codex), environment['KAST_REAL_CODEX_EXECUTABLE'])
-        self.assertEqual('1', environment['KAST_ENABLE_APP_SERVER'])
+        self.assertNotIn('KAST_ENABLE_APP_SERVER', environment)
 
     def test_release_facade_cannot_fall_back_to_raw_launcher(self):
         (self.product / 'bin').mkdir()

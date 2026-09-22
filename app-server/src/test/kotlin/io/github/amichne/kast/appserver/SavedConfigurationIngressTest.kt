@@ -28,7 +28,7 @@ class SavedConfigurationIngressTest {
         val pinned =
             InstalledSavedConfigurationIngress.read(fixture.configuration.toString(), emptyMap())
                 as SavedConfigurationIngress.Loaded
-        assertEquals(listOf("KAST_INDEXER_MAX_HEAP" to "8g"), alias.sources.savedInstallation)
+        assertEquals(listOf("KAST_READ_HOST_REFERENCE_ENTRIES" to "8192"), alias.sources.savedInstallation)
         assertEquals(pinned.sources.savedInstallation, alias.sources.savedInstallation)
     }
 
@@ -90,7 +90,7 @@ class SavedConfigurationIngressTest {
         val root = temporary.toRealPath()
         val installation = root.resolve("versions/1.2.3-" + "a".repeat(64))
         val configuration = Files.createDirectories(installation.resolve("config")).resolve("environment")
-        Files.writeString(configuration, "KAST_INDEXER_MAX_HEAP=8g\n")
+        Files.writeString(configuration, "KAST_READ_HOST_REFERENCE_ENTRIES=8192\n")
         val current = Files.createSymbolicLink(root.resolve("current"), root.relativize(installation))
         val lock = Files.writeString(root.resolve("activation.lock"), "")
         writeAliasManifest(installation, current, configuration, root)
@@ -117,7 +117,7 @@ class SavedConfigurationIngressTest {
     fun `unselected home configuration is never read`(@TempDir temporary: Path) {
         val home = temporary.toRealPath()
         val liveLookingConfig = Files.createDirectories(home.resolve(".kast/config")).resolve("environment")
-        Files.writeString(liveLookingConfig, "KAST_INDEXER_MAX_HEAP=secret-invalid-input\n")
+        Files.writeString(liveLookingConfig, "KAST_READ_HOST_REFERENCE_ENTRIES=secret-invalid-input\n")
         val loaded =
             InstalledSavedConfigurationIngress.load(mapOf("HOME" to home.toString()))
                 as SavedConfigurationIngress.Loaded
@@ -125,14 +125,14 @@ class SavedConfigurationIngressTest {
         val resolved = ResolvedKastConfiguration.resolve(loaded.sources) as Refinement.Refined
         assertEquals(
             ConfigurationSource.DEFAULT,
-            resolved.value.inspection().single { it.key == "KAST_INDEXER_MAX_HEAP" }.source,
+            resolved.value.inspection().single { it.key == "KAST_READ_HOST_REFERENCE_ENTRIES" }.source,
         )
     }
 
     @Test
     fun `explicit saved selector rejects symlink and missing files`(@TempDir temporary: Path) {
         val directory = temporary.toRealPath()
-        val target = Files.writeString(directory.resolve("real"), "KAST_INDEXER_MAX_HEAP=8g\n")
+        val target = Files.writeString(directory.resolve("real"), "KAST_READ_HOST_REFERENCE_ENTRIES=8192\n")
         val alias = Files.createSymbolicLink(directory.resolve("alias"), target)
         val symbolic =
             InstalledSavedConfigurationIngress.read(alias.toString(), emptyMap()) as SavedConfigurationIngress.Rejected
@@ -161,7 +161,8 @@ class SavedConfigurationIngressTest {
     fun `literal shell expressions are data and never executed`(@TempDir temporary: Path) {
         val directory = temporary.toRealPath()
         val marker = directory.resolve("executed")
-        val target = Files.writeString(directory.resolve("environment"), "KAST_INDEXER_MAX_HEAP=\$(touch $marker)\n")
+        val target =
+            Files.writeString(directory.resolve("environment"), "KAST_READ_HOST_REFERENCE_ENTRIES=\$(touch $marker)\n")
         val loaded =
             InstalledSavedConfigurationIngress.read(target.toString(), emptyMap()) as SavedConfigurationIngress.Loaded
         assertTrue(ResolvedKastConfiguration.resolve(loaded.sources) is Refinement.Rejected)

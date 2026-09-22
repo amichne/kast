@@ -147,12 +147,12 @@ def inspect_shell_sessions(isolation, installed, *, previous=False):
             if call.stderrSha256 != hashlib.sha256(b'').hexdigest():
                 raise SessionRejected(call)
             raw, call = _invoke(isolation, installed, directory, index, SessionCommand.EXPLANATION,
-                                ('config', 'explain', 'KAST_APP_SERVER_TOOLS'), environment)
+                                ('config', 'explain', 'KAST_APP_SERVER_PUBLIC_ENDPOINT'), environment)
             observations.append(call)
             try:
                 explanation = json.loads(raw)
                 explained = (explanation['operation'] == 'config-explain' and explanation['status'] == 'complete'
-                             and explanation['key'] == 'KAST_APP_SERVER_TOOLS')
+                             and explanation['key'] == 'KAST_APP_SERVER_PUBLIC_ENDPOINT')
             except (ValueError, KeyError, TypeError):
                 explained = False
             if not explained or call.stderrSha256 != hashlib.sha256(b'').hexdigest():

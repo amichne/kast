@@ -140,12 +140,8 @@ class InstalledAppServerManager(
                         }
                     )
             }
-        val selectedEnvironment =
-            if (action == AppServerAction.Enable || action == AppServerAction.Repair)
-                environment + (APP_SERVER_ENABLE_ENVIRONMENT to "1")
-            else environment
         val command =
-            when (val resolved = BrokerServiceLaunchCommand.resolveCoordinator(kast, userHome, selectedEnvironment)) {
+            when (val resolved = BrokerServiceLaunchCommand.resolveCoordinator(kast, userHome, environment)) {
                 is BrokerServiceLaunchCommandResolution.Resolved -> resolved.command
                 is BrokerServiceLaunchCommandResolution.Rejected ->
                     return reject(AppServerManagementFailure.CONFIGURATION_REJECTED)
@@ -267,7 +263,6 @@ class InstalledAppServerManager(
             mapOf(
                 "PATH" to command.executableSearchPath.value,
                 "CODEX_HOME" to command.codexHome.toString(),
-                APP_SERVER_ENABLE_ENVIRONMENT to "1",
             ) + command.host.environment()
         return """<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

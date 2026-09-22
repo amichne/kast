@@ -60,24 +60,7 @@ def installed_catalog_evidence(kast: Path, environment: dict[str, str]) -> dict:
         contract = json.loads(execution.stdout)
         bootstrap = contract["serverProjection"]["hostedBootstrap"]
         policy = bootstrap["policy"]
-        # The staged product has no saved installation defaults. Select its advertised
-        # catalog explicitly and retain that exact selection across launchd.
-        environment["KAST_APP_SERVER_TOOLS"] = ",".join(tool["name"] for tool in bootstrap["tools"])
-        configuration = subprocess.run(
-            [str(kast), "config", "show", "--json"], check=True, capture_output=True,
-            text=True, timeout=20, env=environment,
-        )
-        assignments = json.loads(configuration.stdout)["resolvedNextLaunch"]
-        selections = [entry["value"] for entry in assignments if entry["key"] == "KAST_APP_SERVER_TOOLS"]
-        if len(selections) != 1 or not isinstance(selections[0], str):
-            raise AcceptanceFailure("installed Kast tool selection was missing or ambiguous")
-        selected_names = selections[0].split(",")
-        if not selected_names or len(selected_names) != len(set(selected_names)):
-            raise AcceptanceFailure("configured Kast tool selection was invalid")
-        selected = set(selected_names)
-        tools = [tool for tool in bootstrap["tools"] if tool["name"] in selected]
-        if {tool["name"] for tool in tools} != selected:
-            raise AcceptanceFailure("configured Kast tool selection was unavailable")
+        tools = bootstrap["tools"]
         # Read the installed generation projection, whose constraints intentionally
         # differ from the full runtime validation schema.
         projections = []
@@ -147,7 +130,6 @@ def main() -> int:
         environment.update({
             "KAST_REAL_CODEX_EXECUTABLE": str(codex),
             "CODEX_EXECUTABLE": str(codex),
-            "KAST_ENABLE_APP_SERVER": "1",
             "CODEX_HOME": str(home / "c"),
         })
         version = subprocess.run(

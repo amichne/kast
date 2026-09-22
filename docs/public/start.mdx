@@ -93,14 +93,6 @@ Install the IDEA plugin, connect Codex, and find a declaration in your repositor
 ## Setup alternatives
 
 <AccordionGroup>
-  <Accordion title="Run without prompts">
-    ```shell
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" \
-      -- --no-interactive
-    ```
-
-    This installs and enables the app-server suite without reading interactive input.
-  </Accordion>
   <Accordion title="Force a clean installation">
     ```shell
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" \
@@ -125,18 +117,10 @@ Install the IDEA plugin, connect Codex, and find a declaration in your repositor
     Other `262` builds are admitted by policy but lack the same native acceptance
     evidence. See [Compatibility](/reference/compatibility).
   </Accordion>
-  <Accordion title="Choose installation directories or resolve command collisions">
-    Pass absolute user-owned paths:
-
-    ```shell
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" \
-      -- --install-root "/path/to/kast-data" --bin-dir "/path/to/bin"
-    ```
-
-    When `kast` or `kast-codex` already occupies the selected command directory,
-    an interactive install lists those exact paths and asks before removing them.
-    Non-interactive installs fail closed; pass `--clean-collisions` only when the
-    listed command paths may be replaced.
+  <Accordion title="Resolve command collisions">
+    Installation never prompts. It installs into `${XDG_DATA_HOME:-$HOME/.local/share}/kast`
+    and places commands in `$HOME/.local/bin`. If a command path is occupied,
+    move the reported path or use `--force` to replace it and reset managed state.
   </Accordion>
   <Accordion title="Connect Codex Desktop">
     1. Quit any running Desktop instance.

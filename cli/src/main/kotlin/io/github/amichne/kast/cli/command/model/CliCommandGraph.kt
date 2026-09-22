@@ -120,11 +120,7 @@ private constructor(
     companion object {
         /** The same local family and parser, projected before isolated-product bootstrap. */
         internal fun parseExistingIde(argv: List<String>): CliCommandParsing {
-            val families =
-                listOf(
-                    io.github.amichne.kast.cli.command.ide.hostedIndexCommandGroup(),
-                    io.github.amichne.kast.cli.command.ide.ideCommandGroup(),
-                )
+            val families = listOf(io.github.amichne.kast.cli.command.ide.ideCommandGroup())
             val graph =
                 CliCommandGraph(
                     KastRootCommand().subcommands(families.map { it.root }),
@@ -335,7 +331,6 @@ private fun canonicalGraph(
     val broker = brokerCommandGroup()
     val codex = codexCommandGroup()
     val ide = io.github.amichne.kast.cli.command.ide.ideCommandGroup()
-    val hostedIndex = io.github.amichne.kast.cli.command.ide.hostedIndexCommandGroup()
     val index = indexCommandGroup(preparers, requestInput)
     val topology = topologyCommandGroup(preparers, requestInput)
     val symbol = symbolCommandGroup(preparers, requestInput)
@@ -356,7 +351,6 @@ private fun canonicalGraph(
             knowledge,
             broker,
             codex,
-            hostedIndex,
             ide,
             io.github.amichne.kast.cli.command.workspace.workspaceLifecycleCommands(requestInput),
         )

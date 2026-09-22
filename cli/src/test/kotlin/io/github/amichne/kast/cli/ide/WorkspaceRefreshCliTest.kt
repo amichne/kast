@@ -43,8 +43,8 @@ class WorkspaceRefreshCliTest {
     }
 
     @Test
-    fun `refresh request status and configure route through both existing IDE command families`() {
-        for (family in listOf("index", "ide")) {
+    fun `refresh request status and configure route through the existing IDE command family`() {
+        for (family in listOf("ide")) {
             for (request in
                 listOf(
                     command,

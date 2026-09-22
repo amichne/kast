@@ -786,8 +786,6 @@ internal class MacOsPersistentBrokerServiceHost(
                         command.host.environment().map { (key, value) -> "$key=$value" } +
                         command.childEnvironment.assignments +
                         listOf(
-                            "$APP_SERVER_ENABLE_ENVIRONMENT=${if (command.host == BrokerHostSelection.Disabled) "0" else "1"}",
-                            "$APP_SERVER_TOOLS_ENVIRONMENT=${command.toolSelection.environmentValue}",
                             "BROKER_SERVICE_IDENTITY=${command.identity.value}",
                             "BROKER_READINESS_FILE=${command.readinessFile}",
                         )
@@ -969,17 +967,13 @@ internal class MacOsPersistentBrokerServiceHost(
                 when (val host = command.host) {
                     is BrokerHostSelection.Selected ->
                         mapOf("CODEX_EXECUTABLE" to host.executable.launcherPath.toString())
-                    BrokerHostSelection.Disabled,
                     BrokerHostSelection.NotConfigured -> emptyMap()
                 }
             val values =
                 command.configuration.launchEnvironment().variables +
                     selectedHost +
-                    mapOf(
-                        "CODEX_HOME" to command.codexHome.toString(),
-                        APP_SERVER_ENABLE_ENVIRONMENT to if (command.host == BrokerHostSelection.Disabled) "0" else "1",
-                        APP_SERVER_TOOLS_ENVIRONMENT to command.toolSelection.environmentValue,
-                    )
+                    mapOf("CODEX_HOME" to command.codexHome.toString())
+
             val document = buildString {
                 appendLine(
                     "# Complete resolved Kast launch configuration. Values are literal; shell syntax is not evaluated."

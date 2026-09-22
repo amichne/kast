@@ -42,13 +42,13 @@ class ExistingIdeCliTest {
     }
 
     @Test
-    fun `primary index commands route directly to the existing IDE`() {
+    fun `IDE commands route directly to the existing IDE`() {
         for (arguments in
             listOf(listOf("status"), listOf("classes", "Refinement"), listOf("supertype", "example.Child"))) {
             var calls = 0
             val result =
                 executeExistingIdeCli(
-                    listOf("index") + arguments,
+                    listOf("ide") + arguments,
                     root.path,
                     CanonicalRootDiscoverer { CanonicalRootDiscovery.Discovered(root) },
                     ExistingIdeClient { _, _ ->
@@ -65,10 +65,10 @@ class ExistingIdeCliTest {
     fun `index runtime selection fails closed before installed bootstrap`() {
         for (argv in
             listOf(
-                listOf("index"),
-                listOf("index", "sync"),
-                listOf("index", "unknown"),
-                listOf("index", "--help"),
+                listOf("ide"),
+                listOf("ide", "sync"),
+                listOf("ide", "unknown"),
+                listOf("ide", "--help"),
                 listOf("ide", "classes", "C"),
             )) {
             assertEquals(CliRuntimePath.EXISTING_IDE, selectCliRuntimePath(argv))
@@ -78,11 +78,11 @@ class ExistingIdeCliTest {
         }
         val roots = CanonicalRootDiscoverer { fail("Internal sync reached root discovery") }
         val client = ExistingIdeClient { _, _ -> fail("Internal sync reached host") }
-        assertNotEquals(0, executeExistingIdeCli(listOf("index", "sync"), root.path, roots, client).code)
-        assertEquals(0, executeExistingIdeCli(listOf("index", "--help"), root.path, roots, client).code)
+        assertNotEquals(0, executeExistingIdeCli(listOf("ide", "sync"), root.path, roots, client).code)
+        assertEquals(0, executeExistingIdeCli(listOf("ide", "--help"), root.path, roots, client).code)
         for (shell in listOf("bash", "zsh", "fish")) {
             val completion =
-                executeExistingIdeCli(listOf("index", "generate-completion", shell), root.path, roots, client)
+                executeExistingIdeCli(listOf("ide", "generate-completion", shell), root.path, roots, client)
             assertEquals(0, completion.code)
             assertTrue(completion.document.value.contains("supertype"))
         }
@@ -106,13 +106,13 @@ class ExistingIdeCliTest {
     }
 
     @Test
-    fun `full command graph retains the same primary index action`() {
+    fun `full command graph retains the same IDE action`() {
         val factory =
             io.github.amichne.kast.cli.command.CliCommandGraphFactory.create(
                 io.github.amichne.kast.cli.projection.canonicalCliRequestPreparers()
             ) as io.github.amichne.kast.cli.command.CliCommandGraphConstruction.Created
         val parsed =
-            factory.factory.parse(listOf("index", "supertype", "example.Child"))
+            factory.factory.parse(listOf("ide", "supertype", "example.Child"))
                 as io.github.amichne.kast.cli.command.CliCommandParsing.Parsed
         val action = parsed.action as io.github.amichne.kast.cli.command.CliAction.Local.ExistingIde
         assertEquals("example.Child", (action.operation as ExistingIdeOperation.Supertype).name.value)

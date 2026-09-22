@@ -50,7 +50,7 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt
     symbols: [InstallationWorkflow]
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationRequest.kt
-    symbols: [InstallationRequest, AppServerTools]
+    symbols: [InstallationRequest, InstallationProfile]
   - path: build-logic/src/main/kotlin/support/tasks/control/GenerateControlMetadataTask.kt
   - path: build-logic/src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt
   - path: distribution/release/plugin-release.gradle.kts
@@ -68,7 +68,7 @@ Root and packaging scripts orchestrate checkout installation, persistent lifecyc
 The public installer reports the selected IDEA product version and build before
 fetching release-line-specific plugin bytes. An absent matching plugin is a
 fail-closed compatibility result and precedes installation effects. Public installation enables the app-server suite and defaults the per-user login
-LaunchAgent on without a prompt. `--no-interactive` also prevents collision prompts.
+LaunchAgent on without a prompt. All installations are non-interactive; command collisions require explicit `--force` or manual removal.
 Local session installation retains the complete payload and defers service activation.
 
 Hosted-only schema-2 installations retire their coordinator without invoking
@@ -104,10 +104,10 @@ The managed filesystem adapter owns transport cleanup and entry quarantine; the 
 replaces command collisions and starts with fresh workspace enrollment; source trees
 are untouched. A force dry run verifies and reports without performing reset effects.
 Force plugin activation moves the exact same-user Kast plugin entry into private recovery storage without following a symlink target. Both executable launchers are required; installation cannot publish a CLI-only payload.
-The saved app-server setting is always enabled. Activation may still be pending with
+The app-server suite is always installed. Activation may still be pending with
 a finite reason when the host cannot start the service.
 
-The staged Kotlin installer selects default tools directly from the canonical agent catalog. The shell bootstrap preserves an explicit selection and supplies no copied default list. Explicit selections must contain current, unique tool names; installation retains their admitted definitions in canonical catalog order before writing configuration.
+The app server exposes every qualified tool in the canonical agent catalog. There is no subset-selection setting or disabled product variant. Persistent installation activates the login service; private development sessions defer activation. Retired overrides reject before installation effects.
 
 Read [configuration](../contracts/configuration.md) for ingress and ownership rules.
 
@@ -146,15 +146,10 @@ boundaries separate.
 
 The native acceptance runner also accepts `--release-assets` and `--release-version` in place of source-built `--product` and `--plugin`. This mode requires a clean checkout at the exact version tag and a harness carrying that source commit. It invokes the tagged public `install.sh` with original checksum-bound control and plugin archives in an exclusively owned fixture. It verifies the checksum-derived installed version directory, manifest inventory, and original archive file bytes, then routes CLI and provider calls through the installed `bin/kast-complete`. The hosted plugin stays in the installer's private JetBrains plugin directory; only the separately identified test probe is added. Login-service and App Server activation are disabled during installation. This admission mode alone proves neither native behavior nor upgrade or persistent-session behavior; those require the corresponding completed runtime receipts. Temporary fake-installer tests qualify the admission boundary only.
 
-Released-mode admission also reads the installed schema through that wrapper and
-verifies all 13 advertised tools against their canonical operation IDs and the
-11-tool saved default selection. Those defaults contain eight read tools and
-three change tools. The native read harness explicitly selects ten read tools,
-including raw symbol discovery and inspection, and excludes `change_plan` even
-though planning has a read effect. The two raw-symbol cases preserve an issued
-candidate through compiler refinement and are invoked for both CLI and provider
-surfaces. Adding those cases does not change installed production defaults;
-fixture wiring and inventory admission do not establish their native result.
+Release acceptance binds all 14 advertised tools to their canonical operations
+and confirms that the installed configuration contains no retired tool-selection
+assignment. The native read harness exercises the ten read tools from that complete
+suite; lifecycle and change tools retain their own effect and approval contracts.
 
 Released mode checks two fresh noninteractive Bash sessions without reading startup files: command resolution, exact version, saved runtime configuration, and installation identity. Optional `--previous-release-assets` and `--previous-release-version` first install the immediately preceding patch through the same tagged target installer, then register the owned empty workspace through that prior wrapper. The upgrade requires completed prior admission, retirement, configuration validation and command qualification observations, unchanged prior payload/configuration, and exact populated workspace-registry retention. Original archives and invocation output digests remain bound to the receipt. These child-shell observations do not qualify login-service activation, a persistent coordinator, or stock Codex UI; those remain explicit runtime gates.
 

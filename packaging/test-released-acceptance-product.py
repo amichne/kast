@@ -93,7 +93,7 @@ class ReleasedProductTest(unittest.TestCase):
         q = lambda value: shlex.quote(str(value))
         self.installer.write_text('#!/bin/bash\nset -eu\n'
             '[[ "$1" == --version && "$2" == 1.2.3 && "$3" == --idea-home ]]\n'
-            f'[[ "$HOME" == {q(self.root / "home")} && "$KAST_ENABLE_APP_SERVER" == 0 ]]\n'
+            f'[[ "$HOME" == {q(self.root / "home")} && "$KAST_INSTALL_PROFILE" == session ]]\n'
             f'/bin/mkdir -p {q(self.product.parent)} {q(self.root / "bin")} {q(self.plugins / "kast-ide-hosted/lib")}\n'
             f'/bin/cp -R {q(self.template)} {q(self.product)}\n'
             f'/bin/ln -s {q(self.product)} {q(self.root / "installation/current")}\n'

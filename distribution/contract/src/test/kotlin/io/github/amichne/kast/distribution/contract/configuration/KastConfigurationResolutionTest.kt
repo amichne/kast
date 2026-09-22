@@ -1,6 +1,5 @@
 package io.github.amichne.kast.distribution.contract.configuration
 
-import io.github.amichne.kast.distribution.contract.IndexerHeapSize
 import io.github.amichne.kast.kernel.Refinement
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -10,18 +9,18 @@ import org.junit.jupiter.api.Test
 
 class KastConfigurationResolutionTest {
     @Test
-    fun `heap keeps canonical authority and explicit source precedence`() {
+    fun `Java home keeps canonical authority and explicit source precedence`() {
         val resolved =
             admitted(
                 ConfigurationSources(
-                    environment = mapOf("KAST_INDEXER_MAX_HEAP" to "4g"),
-                    savedInstallation = listOf("KAST_INDEXER_MAX_HEAP" to "1g"),
-                    savedWorkspace = listOf("KAST_INDEXER_MAX_HEAP" to "2g"),
-                    commandLine = listOf("KAST_INDEXER_MAX_HEAP" to "8g"),
+                    environment = mapOf("KAST_GRADLE_JAVA_HOME" to "/java0"),
+                    savedInstallation = listOf("KAST_GRADLE_JAVA_HOME" to "/java1"),
+                    savedWorkspace = listOf("KAST_GRADLE_JAVA_HOME" to "/java0"),
+                    commandLine = listOf("KAST_GRADLE_JAVA_HOME" to "/java1"),
                 )
             )
-        assertEquals(8192, resolved.indexerHeap.mebibytes)
-        val entry = resolved.inspection().single { it.key == "KAST_INDEXER_MAX_HEAP" }
+        assertEquals("/java1", resolved.inspection().single { it.key == "KAST_GRADLE_JAVA_HOME" }.value)
+        val entry = resolved.inspection().single { it.key == "KAST_GRADLE_JAVA_HOME" }
         assertEquals(ConfigurationSource.COMMAND_LINE, entry.source)
         assertEquals(
             listOf(
@@ -31,7 +30,6 @@ class KastConfigurationResolutionTest {
             ),
             entry.overriddenSources,
         )
-        assertEquals(IndexerHeapSize.Default, admitted(ConfigurationSources()).indexerHeap)
     }
 
     @Test
@@ -41,8 +39,8 @@ class KastConfigurationResolutionTest {
                 Refinement.Rejected::class.java,
                 ResolvedKastConfiguration.resolve(
                     ConfigurationSources(
-                        environment = mapOf("KAST_INDEXER_MAX_HEAP" to value),
-                        savedInstallation = listOf("KAST_INDEXER_MAX_HEAP" to "8g"),
+                        environment = mapOf("KAST_READ_HOST_REFERENCE_ENTRIES" to value),
+                        savedInstallation = listOf("KAST_READ_HOST_REFERENCE_ENTRIES" to "8"),
                     )
                 ),
             )
@@ -56,7 +54,8 @@ class KastConfigurationResolutionTest {
                 ConfigurationSources(environment = mapOf("KAST_UNKNOWN" to "private-value")) to
                     ConfigurationFailure.UNKNOWN_KEY,
                 ConfigurationSources(
-                    savedInstallation = listOf("KAST_INDEXER_MAX_HEAP" to "1g", "KAST_INDEXER_MAX_HEAP" to "2g")
+                    savedInstallation =
+                        listOf("KAST_READ_HOST_REFERENCE_ENTRIES" to "1", "KAST_READ_HOST_REFERENCE_ENTRIES" to "2")
                 ) to ConfigurationFailure.DUPLICATE_ASSIGNMENT,
                 ConfigurationSources(savedWorkspace = listOf("KAST_INSTALL_ROOT" to "/fixture")) to
                     ConfigurationFailure.UNSUPPORTED_SOURCE,
@@ -71,13 +70,13 @@ class KastConfigurationResolutionTest {
     }
 
     @Test
-    fun `child projection preserves heap and explicitly delegated environment only`() {
+    fun `child projection preserves read limit and explicitly delegated environment only`() {
         val resolved =
             admitted(
                 ConfigurationSources(
                     environment =
                         mapOf(
-                            "KAST_INDEXER_MAX_HEAP" to "8g",
+                            "KAST_READ_HOST_REFERENCE_ENTRIES" to "8",
                             "KAST_GRADLE_IMPORT_VARIABLES" to "REPOSITORY_TOKEN",
                             "REPOSITORY_TOKEN" to "private-value",
                             "UNSELECTED_TOKEN" to "unselected-value",
@@ -86,18 +85,18 @@ class KastConfigurationResolutionTest {
                 )
             )
         val broker = resolved.childEnvironment(ConfigurationChild.BROKER)
-        assertEquals("8192m", broker["KAST_INDEXER_MAX_HEAP"])
+        assertEquals("8", broker["KAST_READ_HOST_REFERENCE_ENTRIES"])
         assertEquals("/fixture/gradle", broker["GRADLE_USER_HOME"])
         assertEquals("private-value", broker["REPOSITORY_TOKEN"])
         assertFalse(broker.containsKey("UNSELECTED_TOKEN"))
         assertFalse(resolved.inspection().toString().contains("private-value"))
         assertFalse(resolved.toString().contains("private-value"))
-        assertFalse(resolved.childEnvironment(ConfigurationChild.SIDECAR).containsKey("KAST_INDEXER_MAX_HEAP"))
+        assertEquals("8", resolved.childEnvironment(ConfigurationChild.SIDECAR)["KAST_READ_HOST_REFERENCE_ENTRIES"])
     }
 
     @Test
     fun `missing or reserved delegated variable fails before child launch`() {
-        for (names in listOf("MISSING_TOKEN", "JAVA_TOOL_OPTIONS", "KAST_INDEXER_MAX_HEAP", "A,A")) {
+        for (names in listOf("MISSING_TOKEN", "JAVA_TOOL_OPTIONS", "KAST_READ_HOST_REFERENCE_ENTRIES", "A,A")) {
             assertEquals(
                 ConfigurationFailure.DELEGATED_ENVIRONMENT_REJECTED,
                 rejected(ConfigurationSources(environment = mapOf("KAST_GRADLE_IMPORT_VARIABLES" to names))).reason,
@@ -106,30 +105,29 @@ class KastConfigurationResolutionTest {
     }
 
     @Test
-    fun `catalogue is deterministic unique and projects heap default from its owner`() {
+    fun `catalogue is deterministic unique and projects read limit default from its owner`() {
         val catalogue = KastConfigurationCatalogue.declarations
         assertEquals(catalogue.map { it.key }.sorted(), catalogue.map { it.key })
         assertEquals(catalogue.size, catalogue.map { it.key }.toSet().size)
-        val heap = catalogue.single { it.key == IndexerHeapSize.SETTING }
-        assertEquals("${IndexerHeapSize.Default.mebibytes}m", heap.defaultValue)
-        assertEquals(ConfigurationImpact.LAUNCH_ONLY, heap.identityImpact)
-        assertTrue(ConfigurationChild.BROKER in heap.children)
+        val limit = catalogue.single { it.key == "KAST_READ_HOST_REFERENCE_ENTRIES" }
+        assertEquals("16384", limit.defaultValue)
+        assertTrue(ConfigurationChild.BROKER in limit.children)
     }
 
     @Test
     fun `resolved snapshot cannot be changed by editing caller environment`() {
-        val inputs = mutableMapOf("KAST_INDEXER_MAX_HEAP" to "8g", "KAST_OPTS" to "-Dsecret=private-value")
+        val inputs = mutableMapOf("KAST_READ_HOST_REFERENCE_ENTRIES" to "8", "KAST_OPTS" to "-Dsecret=private-value")
         val resolved = admitted(ConfigurationSources(environment = inputs))
-        inputs["KAST_INDEXER_MAX_HEAP"] = "1g"
-        assertEquals(8192, resolved.indexerHeap.mebibytes)
-        assertEquals("8192m", resolved.childEnvironment(ConfigurationChild.BROKER)["KAST_INDEXER_MAX_HEAP"])
+        inputs["KAST_READ_HOST_REFERENCE_ENTRIES"] = "1"
+        assertEquals("8", resolved.inspection().single { it.key == "KAST_READ_HOST_REFERENCE_ENTRIES" }.value)
+        assertEquals("8", resolved.childEnvironment(ConfigurationChild.BROKER)["KAST_READ_HOST_REFERENCE_ENTRIES"])
         assertFalse(resolved.inspection().toString().contains("private-value"))
         assertFalse(resolved.childEnvironment(ConfigurationChild.BROKER).containsKey("KAST_OPTS"))
     }
 
     @Test
     fun `version owned runtime directories reject workspace overrides at source admission`() {
-        for (key in listOf("KAST_RUNTIME_STORE", "KAST_RUNTIME_DIRECTORY", "KAST_CACHE_ROOT")) {
+        for (key in listOf("KAST_RUNTIME_DIRECTORY")) {
             val resolution =
                 ResolvedKastConfiguration.resolve(
                     ConfigurationSources(savedWorkspace = listOf(key to "/another/workspace-owned-directory"))

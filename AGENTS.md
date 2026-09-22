@@ -34,7 +34,7 @@ Kast is a Kotlin/Gradle system that gives coding agents compiler-grounded search
 
 - Build and tests: `./gradlew build`.
 - Release assembly: `./gradlew assembleRelease`.
-- Local installation: `source "$(./install.sh --local session)"` or `./install.sh --local persistent`.
+- Local installation: `source "$(./packaging/install-checkout.sh session --idea-home "/Applications/IntelliJ IDEA.app")"` or `./packaging/install-checkout.sh persistent --idea-home "/Applications/IntelliJ IDEA.app"`.
 - CLI main: `cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt`.
 - Semantic host: `runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt`.
 - Codex/App Server main: `app-server/src/main/kotlin/io/github/amichne/kast/appserver/KastCodexMain.kt`.

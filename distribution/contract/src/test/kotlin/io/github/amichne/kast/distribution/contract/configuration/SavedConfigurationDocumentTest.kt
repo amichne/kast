@@ -9,10 +9,9 @@ class SavedConfigurationDocumentTest {
     @Test
     fun `literal parser retains duplicate assignments for closed resolution rejection`() {
         val parsed =
-            SavedConfigurationDocument.parse("KAST_INDEXER_MAX_HEAP=8g\nKAST_INDEXER_MAX_HEAP=4g\n".toByteArray())
-                as Refinement.Refined
+            SavedConfigurationDocument.parse("KAST_DEBUG=1\nKAST_DEBUG=0\n".toByteArray()) as Refinement.Refined
         val result =
-            ResolvedKastConfiguration.resolve(parsed.value.configurationSources(mapOf("KAST_INDEXER_MAX_HEAP" to "1g")))
+            ResolvedKastConfiguration.resolve(parsed.value.configurationSources(mapOf("KAST_DEBUG" to "1")))
                 as Refinement.Rejected
         assertEquals(ConfigurationFailure.DUPLICATE_ASSIGNMENT, result.failure.reason)
     }
@@ -29,7 +28,7 @@ class SavedConfigurationDocumentTest {
         )
         assertEquals(
             Refinement.Rejected(SavedConfigurationDocumentFailure.MALFORMED_RECORD),
-            SavedConfigurationDocument.parse("export KAST_INDEXER_MAX_HEAP\n".toByteArray()),
+            SavedConfigurationDocument.parse("export KAST_DEBUG\n".toByteArray()),
         )
     }
 

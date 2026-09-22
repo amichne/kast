@@ -1,7 +1,6 @@
 package io.github.amichne.kast.appserver.provider
 
 import io.github.amichne.kast.appserver.BrokerOperationalLimits
-import io.github.amichne.kast.appserver.KastToolSelection
 import io.github.amichne.kast.appserver.core.Broker
 import io.github.amichne.kast.appserver.core.BrokerDispatch
 import io.github.amichne.kast.appserver.core.BrokerDispatchRequest
@@ -33,9 +32,11 @@ import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeout
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -114,7 +115,6 @@ class KastProviderTest {
                     executable = executable(temporary.resolve("kast")),
                     qualificationDirectory = cwd,
                     processExecutor = executor,
-                    toolSelection = KastToolSelection.admit("change_apply").refinedValue(),
                 )
                 .refinedValue()
         val qualification = KastProviderQualifier.qualify(options) as KastProviderQualification.Qualified
@@ -172,7 +172,6 @@ class KastProviderTest {
                         executable = executable,
                         qualificationDirectory = temporary.toRealPath(),
                         processExecutor = RecordingProcessExecutor(capabilitySchema()),
-                        toolSelection = KastToolSelection.admit("symbol_lookup").refinedValue(),
                     )
                     .refinedValue()
             assertInstanceOf(KastProviderQualification.Qualified::class.java, KastProviderQualifier.qualify(valid))
@@ -194,7 +193,6 @@ class KastProviderTest {
                             executable,
                             cwd,
                             RecordingProcessExecutor(capabilitySchema(), invocationDocument = rejection),
-                            toolSelection = KastToolSelection.admit("symbol_lookup").refinedValue(),
                         )
                         .refinedValue()
                 val qualified =
@@ -325,7 +323,6 @@ class KastProviderTest {
                         executable,
                         cwd,
                         executor,
-                        toolSelection = KastToolSelection.admit("symbol_lookup").refinedValue(),
                     )
                     .refinedValue()
             val qualification =
@@ -357,7 +354,7 @@ class KastProviderTest {
         }
 
     @Test
-    fun `explicit change selection retains route but cannot invoke change without controller approval`(
+    fun `complete suite retains change route but cannot invoke change without controller approval`(
         @TempDir temporary: Path
     ) =
         runBlocking<Unit> {
@@ -369,7 +366,6 @@ class KastProviderTest {
                         executable = executable,
                         qualificationDirectory = cwd,
                         processExecutor = executor,
-                        toolSelection = KastToolSelection.admit("change_apply").refinedValue(),
                     )
                     .refinedValue()
             val qualification =
@@ -384,12 +380,12 @@ class KastProviderTest {
                     )
                     .validatedValue()
 
-            assertSelectedChangeCatalog(qualification, broker)
+            assertCompleteFixtureCatalog(qualification, broker)
             val completed =
                 broker.dispatch(
                     BrokerDispatchRequest(
                         ToolAddress(namespace("kast"), toolName("change_apply")),
-                        buildJsonObject { put("plan", "plan-1") },
+                        Json.encodeToJsonElement(ApprovalPlanArguments("plan-1")).jsonObject,
                         context(cwd),
                     )
                 )
@@ -397,7 +393,7 @@ class KastProviderTest {
                 broker.dispatch(
                     BrokerDispatchRequest(
                         ToolAddress(namespace("kast"), toolName("symbol_lookup")),
-                        buildJsonObject { put("query", "Thing") },
+                        Json.encodeToJsonElement(SymbolQueryArguments("Thing")).jsonObject,
                         context(cwd),
                     )
                 )
@@ -406,14 +402,11 @@ class KastProviderTest {
             val failure = assertInstanceOf(BrokerFailure.ProviderInvocationRejected::class.java, rejected.failure)
             assertEquals(ProviderFailureCode.APPROVAL_REQUIRED, failure.code)
             assertTrue(executor.requests.none { it.arguments.firstOrNull() == "change" })
-            assertInstanceOf(
-                BrokerFailure.UnknownTool::class.java,
-                (explicit as BrokerDispatch.Rejected).failure,
-            )
+            assertInstanceOf(BrokerDispatch.Completed::class.java, explicit)
         }
 
     @Test
-    fun `explicit mutation opt in publishes all qualified tools`(@TempDir temporary: Path) = runBlocking {
+    fun `complete suite publishes all qualified tools`(@TempDir temporary: Path) = runBlocking {
         val executable = executable(temporary.resolve("kast"))
         val cwd = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
         val options =
@@ -421,7 +414,6 @@ class KastProviderTest {
                     executable,
                     cwd,
                     RecordingProcessExecutor(schema = capabilitySchema()),
-                    toolSelection = KastToolSelection.admit("symbol_lookup,change_apply").refinedValue(),
                 )
                 .refinedValue()
         val qualification =
@@ -713,7 +705,6 @@ class KastProviderTest {
                     executable,
                     cwd,
                     executor,
-                    toolSelection = KastToolSelection.admit("symbol_lookup").refinedValue(),
                 )
                 .refinedValue()
         val qualification = KastProviderQualifier.qualify(options) as KastProviderQualification.Qualified
@@ -783,13 +774,13 @@ class KastProviderTest {
         )
     }
 
-    private fun assertSelectedChangeCatalog(qualification: KastProviderQualification.Qualified, broker: Broker) {
+    private fun assertCompleteFixtureCatalog(qualification: KastProviderQualification.Qualified, broker: Broker) {
         assertEquals(
-            listOf("change_apply"),
+            listOf("change_apply", "symbol_lookup"),
             broker.catalog.namespaces.single().tools.map { tool -> tool.name.value },
         )
         assertEquals(
-            setOf("change_apply"),
+            setOf("change_apply", "symbol_lookup"),
             qualification.bootstrap.tools.definitions.mapTo(linkedSetOf()) { it.name.value },
         )
     }
@@ -858,3 +849,7 @@ class KastProviderTest {
             )
     }
 }
+
+@Serializable private data class ApprovalPlanArguments(val plan: String)
+
+@Serializable private data class SymbolQueryArguments(val query: String)

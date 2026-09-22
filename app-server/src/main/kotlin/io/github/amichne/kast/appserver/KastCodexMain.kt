@@ -62,7 +62,6 @@ suspend fun runInstalledCodex(arguments: List<String>, kast: Path): CodexIntegra
     val codex =
         when (val host = launch.host) {
             is BrokerHostSelection.Selected -> host.executable
-            BrokerHostSelection.Disabled,
             BrokerHostSelection.NotConfigured ->
                 return CodexIntegrationRun.Rejected(CodexIntegrationFailure.CLIENT_UNAVAILABLE)
         }

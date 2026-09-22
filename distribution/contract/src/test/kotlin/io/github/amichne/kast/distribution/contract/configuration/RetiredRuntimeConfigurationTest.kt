@@ -20,7 +20,12 @@ class RetiredRuntimeConfigurationTest {
                 val result = ResolvedKastConfiguration.resolve(sources)
                 assertTrue(result is Refinement.Rejected, "$key must not configure a retired runtime")
                 val failure = (result as Refinement.Rejected).failure
-                assertEquals(ConfigurationFailure.UNKNOWN_KEY, failure.reason, key)
+                assertEquals(
+                    if (RetiredConfigurationSetting.entries.any { it.key == key }) ConfigurationFailure.RETIRED_KEY
+                    else ConfigurationFailure.UNKNOWN_KEY,
+                    failure.reason,
+                    key,
+                )
                 assertEquals(key, failure.key)
                 assertFalse(failure.toString().contains("/private/"))
             }
@@ -36,6 +41,20 @@ class RetiredRuntimeConfigurationTest {
 
     private val retiredKeys =
         setOf(
+            "KAST_ENABLE_LAUNCHD",
+            "KAST_INSTALL_REFRESH_APP_SERVER",
+            "KAST_INSTALL_REPLACE_COMMAND_COLLISIONS",
+            "KAST_ENABLE_APP_SERVER",
+            "KAST_APP_SERVER_TOOLS",
+            "KAST_INDEXER_MAX_HEAP",
+            "KAST_WORKER_RESIDENT_LIMIT",
+            "KAST_WORKER_STARTUP_LIMIT",
+            "KAST_WORKER_AGGREGATE_MIB",
+            "KAST_WORKER_NATIVE_MIB",
+            "KAST_WORKER_GRADLE_MIB",
+            "KAST_RUNTIME_ARCHIVE",
+            "KAST_RUNTIME_STORE",
+            "KAST_CACHE_ROOT",
             "KAST_NETWORK_CONFIG",
             "KAST_TRUST_DONOR_JAVA_HOME",
             "KAST_IDE_CONFIG_HOME",

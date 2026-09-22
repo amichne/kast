@@ -94,7 +94,9 @@ done
         (self.idea / "Resources").mkdir(parents=True)
         (self.idea / "Resources/product-info.json").write_text(json.dumps({"buildNumber": "262.1"}))
         self.env["KAST_INSTALL_IDEA_HOME"] = str(self.idea)
-        self.installer = self.root / "installer"
+        self.installer = self.checkout / "install.sh"
+        self.checkout_installer = self.checkout / "packaging/install-checkout.sh"
+        shutil.copy2(CHECKOUT_INSTALLER, self.checkout_installer)
         self.write_script(self.installer, '''#!/bin/bash
 set -eu
 echo install >> "$TEST_LOG"
@@ -103,7 +105,7 @@ plugin="kast-ide-hosted-v$KAST_VERSION-idea-262.zip"
 [[ -f "$KAST_INSTALL_ASSETS_DIRECTORY/$plugin" && -f "$KAST_INSTALL_ASSETS_DIRECTORY/$plugin.sha256" ]] || exit 32
 (cd "$KAST_INSTALL_ASSETS_DIRECTORY" && shasum -a 256 -c "$plugin.sha256") >&2
 bin=${KAST_BIN_DIR:-$HOME/.local/bin}
-[[ ${KAST_INSTALL_REFRESH_APP_SERVER:-0} == 1 ]] && echo refresh-requested >> "$TEST_LOG"
+[[ ${KAST_INSTALL_PROFILE:-} == persistent ]] && echo refresh-requested >> "$TEST_LOG"
 [[ -n ${KAST_VERSION:-} && -n ${KAST_RELEASE_BASE_URL:-} && -n ${KAST_INSTALL_ASSETS_DIRECTORY:-} ]] || exit 31
 if [[ -n ${KAST_INSTALL_ROOT:-} ]]; then
   mkdir -p "$KAST_INSTALL_ROOT/versions/fixture"
@@ -116,7 +118,7 @@ chmod +x "$bin/kast"
 
     def run_install(self, *args):
         return subprocess.run(
-            ["/bin/bash", str(CHECKOUT_INSTALLER), str(self.installer), *args],
+            ["/bin/bash", str(self.checkout_installer), *args],
             cwd=self.checkout,
             env=self.env,
             capture_output=True,
@@ -124,7 +126,7 @@ chmod +x "$bin/kast"
         )
 
     def test_session_isolated_and_activation_idempotent(self):
-        self.env.update(KAST_RUNTIME_DIRECTORY="/persistent/run", KAST_ENABLE_APP_SERVER="1")
+        self.env.update(KAST_RUNTIME_DIRECTORY="/persistent/run")
         result = self.run_install("session")
         self.assertEqual(result.returncode, 0, result.stderr)
         activation = Path(result.stdout.strip())
@@ -137,7 +139,7 @@ chmod +x "$bin/kast"
             code = '''source "$1"
 first=$PATH
 source "$1"
-[[ $PATH == "$first" && $KAST_ENABLE_APP_SERVER == 1 && $KAST_ENABLE_LAUNCHD == 0 ]] || exit 2
+[[ $PATH == "$first" ]] || exit 2
 physical=$(cd "$KAST_INSTALL_ROOT/current" && pwd -P)
 [[ $KAST_RUNTIME_DIRECTORY == "$physical/state/run" && -z ${KAST_CACHE_ROOT:-} && -z ${KAST_RUNTIME_STORE:-} ]] || exit 3
 kast 'argument with spaces'
@@ -149,6 +151,11 @@ kast 'argument with spaces'
                 text=True,
             )
             self.assertEqual(checked.returncode, 0, checked.stderr)
+
+    def test_development_entrypoint_accepts_the_documented_app_bundle(self):
+        result = self.run_install("session", "--idea-home", str(self.idea.parent))
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertTrue(Path(result.stdout.strip()).is_file())
 
     def test_session_canonicalizes_a_symlinked_temporary_root(self):
         temporary_alias = self.root / "tmp-alias"
@@ -242,7 +249,7 @@ keys = ["KAST_INSTALL_CONTROL_ROOT", "KAST_INSTALL_CONTROL_SHA256", "KAST_INSTAL
         "KAST_INSTALL_HOSTED_PLUGIN_SHA256", "KAST_INSTALL_VERSION", "KAST_INSTALL_IDEA_HOME",
         "KAST_INSTALL_JAVA_HOME", "KAST_INSTALL_ROOT", "KAST_BIN_DIR", "KAST_INSTALL_MODE"]
 with open(os.environ["TEST_LOG"], "w") as output:
-    json.dump({**{key: os.environ[key] for key in keys}, "KAST_APP_SERVER_TOOLS": os.environ.get("KAST_APP_SERVER_TOOLS")}, output)
+    json.dump({key: os.environ[key] for key in keys}, output)
 PYTHON
 ''')
         (self.product / "share/kast").mkdir(parents=True)
@@ -339,19 +346,19 @@ PYTHON
         self.assertTrue((installed / "lib/kast-ide-hosted-1.2.3.jar").is_file())
         self.assertIn("restart IntelliJ IDEA", result.stderr)
 
-    def test_default_tool_selection_is_owned_by_the_staged_installer(self):
+    def test_staged_installer_receives_no_tool_selection(self):
         self.env.pop("KAST_APP_SERVER_TOOLS", None)
         result = self.run_installer("--dry-run")
         self.assertEqual(0, result.returncode, result.stderr)
         contract = json.loads((self.root / "calls").read_text())
-        self.assertIsNone(contract["KAST_APP_SERVER_TOOLS"])
+        self.assertNotIn("KAST_APP_SERVER_TOOLS", contract)
 
-    def test_explicit_tool_selection_reaches_the_staged_installer(self):
+    def test_retired_tool_selection_rejects_before_staged_installer(self):
         self.env["KAST_APP_SERVER_TOOLS"] = "search_classes,check_diagnostics"
         result = self.run_installer("--dry-run")
-        self.assertEqual(0, result.returncode, result.stderr)
-        contract = json.loads((self.root / "calls").read_text())
-        self.assertEqual(self.env["KAST_APP_SERVER_TOOLS"], contract["KAST_APP_SERVER_TOOLS"])
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("KAST_APP_SERVER_TOOLS is retired", result.stderr)
+        self.assertFalse((self.root / "calls").exists())
 
     def test_other_262_patch_uses_the_same_release_line_archive(self):
         (self.idea / "Resources/product-info.json").write_text(json.dumps({

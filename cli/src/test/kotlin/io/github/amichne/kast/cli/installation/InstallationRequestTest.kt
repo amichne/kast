@@ -1,7 +1,7 @@
 package io.github.amichne.kast.cli.installation
 
+import io.github.amichne.kast.distribution.contract.configuration.RetiredConfigurationSetting
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.protocol.registry.CanonicalAgentToolDefinitions
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -58,30 +58,32 @@ class InstallationRequestTest {
     }
 
     @Test
-    fun `absent bootstrap tool selection uses the current canonical catalog`() {
-        val result = InstallationRequest.parse(validEnvironment() - InstallationEnvironment.APP_SERVER_TOOLS.key)
-        val request =
-            when (result) {
-                is Refinement.Refined -> result.value
-                is Refinement.Rejected -> error("unexpected rejection: ${result.failure}")
-            }
-        assertEquals(
-            CanonicalAgentToolDefinitions.defaultAppServerTools.joinToString(",") { it.name.value },
-            request.appServerTools.value,
-        )
+    fun `removed overrides reject before installation`() {
+        for (setting in RetiredConfigurationSetting.entries) {
+            assertEquals(
+                Refinement.Rejected(InstallationRequestFailure.RetiredSetting(setting)),
+                InstallationRequest.parse(validEnvironment() + (setting.key to "1")),
+            )
+        }
     }
 
     @Test
-    fun `retired unknown empty and duplicate tool selections reject before installation`() {
-        for (selection in listOf("query", "diagnostic_check", "unknown_tool", "", "source_read,source_read")) {
-            assertEquals(
-                Refinement.Rejected(InstallationRequestFailure.InvalidValue(InstallationEnvironment.APP_SERVER_TOOLS)),
-                InstallationRequest.parse(
-                    validEnvironment() + (InstallationEnvironment.APP_SERVER_TOOLS.key to selection)
-                ),
-                selection,
-            )
-        }
+    fun `installation profile selects persistent service or private session`() {
+        assertEquals(
+            InstallationProfile.PERSISTENT,
+            (InstallationRequest.parse(validEnvironment()) as Refinement.Refined).value.profile,
+        )
+        assertEquals(
+            InstallationProfile.SESSION,
+            (InstallationRequest.parse(validEnvironment() + ("KAST_INSTALL_PROFILE" to "session"))
+                    as Refinement.Refined)
+                .value
+                .profile,
+        )
+        assertEquals(
+            Refinement.Rejected(InstallationRequestFailure.InvalidValue(InstallationEnvironment.PROFILE)),
+            InstallationRequest.parse(validEnvironment() + ("KAST_INSTALL_PROFILE" to "partial")),
+        )
     }
 
     @Test
@@ -137,10 +139,6 @@ class InstallationRequestTest {
             InstallationEnvironment.BIN_DIRECTORY.key to "/fixture/bin",
             InstallationEnvironment.HOME.key to "/fixture/home",
             InstallationEnvironment.CODEX_HOME.key to "/fixture/codex",
-            InstallationEnvironment.ENABLE_LAUNCHD.key to "0",
-            InstallationEnvironment.APP_SERVER_TOOLS.key to "query_symbols,source_read",
-            InstallationEnvironment.REFRESH_APP_SERVER.key to "0",
-            InstallationEnvironment.REPLACE_COMMAND_COLLISIONS.key to "0",
             InstallationEnvironment.MODE.key to "apply",
         )
 }

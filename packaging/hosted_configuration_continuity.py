@@ -1,4 +1,4 @@
-"""Read-only saved-selector and inherited-tool checks in the owned native fixture."""
+"""Read-only saved-selector and inherited-configuration checks in the owned native fixture."""
 from dataclasses import asdict, dataclass
 from enum import Enum
 import hashlib
@@ -16,7 +16,7 @@ class ConfigurationContinuityOutcome(str, Enum):
 @dataclass(frozen=True)
 class ConfigurationContinuityReceipt:
     outcome: ConfigurationContinuityOutcome
-    inheritedAliasesAdmitted: bool
+    inheritedConfigurationAdmitted: bool
     explicitSelectorRetained: bool
     processProvenanceRetained: bool
     savedFileUnchanged: bool
@@ -49,8 +49,8 @@ def inspect_configuration_continuity(isolation, fixture, product):
                         and values['KAST_CONFIGURATION_FILE']['source'] == 'PROCESS_ENVIRONMENT'
                         and values['KAST_ASCII']['value'] == '1'
                         and values['KAST_ASCII']['source'] == 'SAVED_INSTALLATION')
-            provenance = (values['KAST_APP_SERVER_TOOLS']['source'] == 'PROCESS_ENVIRONMENT'
-                          and values['KAST_APP_SERVER_TOOLS']['value'] == 'semantic_query,impact_analyze')
+            provenance = (values['KAST_DEBUG']['source'] == 'PROCESS_ENVIRONMENT'
+                          and values['KAST_DEBUG']['value'] == '1')
         except (ValueError, TypeError, KeyError):
             pass
     unchanged = hashlib.sha256(saved.read_bytes()).digest() == before

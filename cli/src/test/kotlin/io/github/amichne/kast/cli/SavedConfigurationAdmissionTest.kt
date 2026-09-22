@@ -130,7 +130,6 @@ class SavedConfigurationAdmissionTest {
                                 "HOME" to temporary.toString(),
                                 "KAST_SAVED_CONFIGURATION_FAILURE" to rejection,
                                 "KAST_RUNTIME_DIRECTORY" to temporary.resolve("runtime").toString(),
-                                "KAST_CACHE_ROOT" to temporary.resolve("cache").toString(),
                             )
                         )
                 }

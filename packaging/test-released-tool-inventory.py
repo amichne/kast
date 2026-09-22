@@ -46,19 +46,19 @@ class InventoryTest(unittest.TestCase):
         self.tools = tuple(Tool(name, operation, 'none' if name == 'change_plan' else ('intellij_write' if name.startswith('change_') else 'intellij_read'))
                            for name, operation in OPERATIONS)
         self.cli = Invocations(tuple(Invocation(name, operation) for name, operation in OPERATIONS))
-        self.defaults = tuple(name for name, _ in OPERATIONS if not name.startswith('symbol_'))
-        self.configuration = 'KAST_APP_SERVER_TOOLS=' + ','.join(self.defaults) + '\n'
+        self.defaults = tuple(name for name, _ in OPERATIONS)
+        self.configuration = 'KAST_APP_SERVER_PUBLIC_ENDPOINT=private\n'
 
     def schema(self, tools):
         return asdict(Schema(Projection(Bootstrap(tools), self.cli)))
 
-    def test_all_thirteen_advertised_tools_and_eleven_defaults_are_distinct_from_ten_explicit_reads(self):
+    def test_all_fourteen_advertised_tools_and_defaults_are_distinct_from_ten_explicit_reads(self):
         admitted = admit_inventory(self.schema(self.tools), self.configuration, 'a' * 64)
-        self.assertEqual(len(admitted.advertisedTools), 13)
-        self.assertEqual(len(admitted.configuredDefaultTools), 11)
+        self.assertEqual(len(admitted.advertisedTools), 14)
+        self.assertEqual(len(admitted.configuredDefaultTools), 14)
         self.assertEqual(len(admitted.explicitReadTools), 10)
         self.assertIn('symbol_lookup', admitted.explicitReadTools)
-        self.assertNotIn('symbol_lookup', admitted.configuredDefaultTools)
+        self.assertIn('symbol_lookup', admitted.configuredDefaultTools)
 
     def test_missing_tool_duplicate_name_and_changed_operation_are_refused(self):
         for tools in (self.tools[:-1], self.tools[:-1] + self.tools[:1],
@@ -66,8 +66,8 @@ class InventoryTest(unittest.TestCase):
             with self.subTest(tools=tools), self.assertRaises(ReleaseRejected):
                 admit_inventory(self.schema(tools), self.configuration, 'a' * 64)
 
-    def test_implicit_raw_tool_default_and_duplicate_configuration_are_refused(self):
-        for config in (self.configuration.rstrip() + ',symbol_lookup\n', self.configuration * 2):
+    def test_retired_tool_selection_is_refused(self):
+        for config in ('KAST_APP_SERVER_TOOLS=symbol_lookup\n', 'KAST_APP_SERVER_TOOLS=\n'):
             with self.subTest(config=config), self.assertRaises(ReleaseRejected):
                 admit_inventory(self.schema(self.tools), config, 'a' * 64)
 

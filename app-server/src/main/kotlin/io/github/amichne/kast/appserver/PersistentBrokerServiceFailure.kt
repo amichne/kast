@@ -48,7 +48,6 @@ internal fun BrokerServerFailure.persistentServiceFailure(): PersistentBrokerSer
             PersistentBrokerServiceFailure.PROVIDER_CONFIGURATION_REJECTED
         BrokerServerFailure.PROTOCOL_CONFIGURATION_REJECTED ->
             PersistentBrokerServiceFailure.PROTOCOL_CONFIGURATION_REJECTED
-        BrokerServerFailure.APP_SERVER_DISABLED -> PersistentBrokerServiceFailure.DISABLED
         BrokerServerFailure.KAST_QUALIFICATION_REJECTED -> PersistentBrokerServiceFailure.KAST_QUALIFICATION_REJECTED
         BrokerServerFailure.CATALOG_REJECTED -> PersistentBrokerServiceFailure.CATALOG_REJECTED
         BrokerServerFailure.CODEX_QUALIFICATION_REJECTED -> PersistentBrokerServiceFailure.CODEX_QUALIFICATION_REJECTED

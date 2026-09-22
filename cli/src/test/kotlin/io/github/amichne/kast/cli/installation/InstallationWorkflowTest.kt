@@ -2,6 +2,7 @@ package io.github.amichne.kast.cli.installation
 
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationSource
 import io.github.amichne.kast.distribution.contract.configuration.KastConfigurationCatalogue
+import io.github.amichne.kast.distribution.contract.configuration.SavedConfigurationDocument
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.Path
@@ -258,24 +259,29 @@ class InstallationWorkflowTest {
     }
 
     @Test
-    fun `prior service retirement reconstructs the enabled owner configuration`() {
+    fun `prior retirement reconstructs only historical enabled owner overrides`() {
         val prior = Path.of("/fixture/versions/1.2.3-payload")
-
-        assertEquals(
-            mapOf(
-                "HOME" to "/fixture/home",
-                "PATH" to "/usr/bin:/bin",
-                "CODEX_HOME" to "/fixture/codex",
-                "KAST_CONFIGURATION_FILE" to "/fixture/versions/1.2.3-payload/config/environment",
-                "KAST_ENABLE_APP_SERVER" to "1",
-            ),
-            priorServiceRetirementEnvironment(
-                prior = prior,
-                home = Path.of("/fixture/home"),
-                codexHome = Path.of("/fixture/codex"),
-                path = "/usr/bin:/bin",
-            ),
-        )
+        for (saved in listOf("", "KAST_ENABLE_APP_SERVER=0\n", "KAST_ENABLE_APP_SERVER=1\n")) {
+            val configuration = (SavedConfigurationDocument.parse(saved.toByteArray()) as Refinement.Refined).value
+            val baseline =
+                mapOf(
+                    "HOME" to "/fixture/home",
+                    "PATH" to "/usr/bin:/bin",
+                    "CODEX_HOME" to "/fixture/codex",
+                    "KAST_CONFIGURATION_FILE" to "/fixture/versions/1.2.3-payload/config/environment",
+                )
+            val expected = if (saved.isEmpty()) baseline else baseline + ("KAST_ENABLE_APP_SERVER" to "1")
+            assertEquals(
+                expected,
+                priorServiceRetirementEnvironment(
+                    prior,
+                    Path.of("/fixture/home"),
+                    Path.of("/fixture/codex"),
+                    "/usr/bin:/bin",
+                    configuration,
+                ),
+            )
+        }
     }
 
     @Test
@@ -469,11 +475,9 @@ private fun installationEnvironment(
         InstallationEnvironment.BIN_DIRECTORY.key to commands.toString(),
         InstallationEnvironment.HOME.key to home.toString(),
         InstallationEnvironment.CODEX_HOME.key to codexHome.toString(),
-        InstallationEnvironment.ENABLE_LAUNCHD.key to "0",
-        InstallationEnvironment.APP_SERVER_TOOLS.key to "query_symbols,source_read",
-        InstallationEnvironment.REFRESH_APP_SERVER.key to "0",
+        InstallationEnvironment.PROFILE.key to "session",
         InstallationEnvironment.MODE.key to mode.name.lowercase(),
-        InstallationEnvironment.REPLACE_COMMAND_COLLISIONS.key to if (replaceCommandCollisions) "1" else "0",
+        InstallationEnvironment.FORCE.key to if (replaceCommandCollisions) "1" else "0",
     )
 
 private data class ReleaseFixture(

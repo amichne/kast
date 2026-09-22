@@ -1,10 +1,8 @@
 package io.github.amichne.kast.appserver.provider
 
-import io.github.amichne.kast.appserver.KastToolSelection
 import io.github.amichne.kast.appserver.core.Broker
 import io.github.amichne.kast.appserver.core.BrokerDispatch
 import io.github.amichne.kast.appserver.core.BrokerDispatchRequest
-import io.github.amichne.kast.appserver.core.BrokerFailure
 import io.github.amichne.kast.appserver.core.BrokerInvocationContext
 import io.github.amichne.kast.appserver.core.BrokerLimits
 import io.github.amichne.kast.appserver.core.CatalogDigest
@@ -52,29 +50,6 @@ class PreferredReadRoutingTest {
             legacy = "impact_analyze",
             preferred = "traverse_relations",
         )
-    }
-
-    @Test
-    fun `old and preferred inputs cannot expose omitted tools`(@TempDir root: Path) = runTest {
-        val (broker, executor) = fixture(root, "source.read", KastToolSelection.admit("source_read").refined())
-        val context =
-            BrokerInvocationContext.admit(
-                    threadId = "thread-1",
-                    turnId = "turn-1",
-                    callId = "call-1",
-                    workingDirectory = root.toRealPath(),
-                )
-                .refined()
-        for (name in readNames) {
-            val address = ToolAddress(ProviderNamespace.admit("kast").refined(), ToolName.admit(name).refined())
-            assertEquals(
-                BrokerDispatch.Rejected(BrokerFailure.UnknownTool(address)),
-                broker.dispatch(
-                    BrokerDispatchRequest(address, Json.encodeToJsonElement(EmptyArguments).jsonObject, context)
-                ),
-            )
-        }
-        assertEquals(0, executor.requests.count { !it.arguments.first().startsWith("--") })
     }
 
     @Test
@@ -160,7 +135,6 @@ class PreferredReadRoutingTest {
     private suspend fun fixture(
         root: Path,
         operation: String,
-        selection: KastToolSelection = KastToolSelection.defaults(),
     ): RoutingFixture {
         val executable = Files.writeString(root.resolve("kast"), "#!/bin/sh\nexit 0\n")
         Files.setPosixFilePermissions(executable, PosixFilePermissions.fromString("rwx------"))
@@ -174,7 +148,6 @@ class PreferredReadRoutingTest {
                     executable = executable.toRealPath(),
                     qualificationDirectory = root.toRealPath(),
                     processExecutor = executor,
-                    toolSelection = selection,
                 )
                 .refined()
         val provider =

@@ -17,6 +17,12 @@ import uuid
 # Fixed projections of InstallationOperationalLimits; checked against the generated catalogue.
 RETIREMENT_CHILD_TIMEOUT_MILLIS = 60000
 STATE_MAXIMUM_ENTRIES = 100000
+LEGACY_ENABLE_SETTING = 'KAST_ENABLE_APP_SERVER'
+
+class RetirementConfiguration(Enum):
+    CURRENT = 'current'
+    LEGACY_ENABLED_OWNER = 'legacy-enabled-owner'
+
 CONTROL_MAXIMUM_ENTRIES = 16384
 CONTROL_MANIFEST_MAXIMUM_BYTES = 67108864
 
@@ -567,7 +573,8 @@ def retire(installation, roots):
     coordinator_environment = dict(environment)
     # The supported enable command creates enabled-mode identity without weakening the saved
     # local opt-out. Retirement must reconstruct that exact possible owner, not disabled identity.
-    coordinator_environment['KAST_ENABLE_APP_SERVER'] = '1'
+    if validate_owned_configuration(installation) is RetirementConfiguration.LEGACY_ENABLED_OWNER:
+        coordinator_environment[LEGACY_ENABLE_SETTING] = '1'
     retire_child(executable, ['app-server', 'disable'], installation.root, coordinator_environment, RetirementStage.COORDINATOR)
     # Hosted-only manifests own no isolated workspace process. IDEA remains user-owned;
     # plugin activation requires the separate, explicit IDE restart after installation.
@@ -653,9 +660,10 @@ def execute(installation, operation, dry_run):
 
 
 def validate_owned_configuration(installation):
+    profile = RetirementConfiguration.CURRENT
     file = installation.root / 'config/environment'
     if not file.exists():
-        return
+        return profile
     descriptor = os.open(file, os.O_RDONLY | os.O_NOFOLLOW)
     with os.fdopen(descriptor, 'rb') as source:
         raw = source.read(262145)
@@ -663,6 +671,8 @@ def validate_owned_configuration(installation):
         raise Rejected(Failure.EXTERNAL_STATE_UNPROVEN)
     for line in raw.decode('utf-8').splitlines():
         key, separator, value = line.partition('=')
+        if key == LEGACY_ENABLE_SETTING and separator:
+            profile = RetirementConfiguration.LEGACY_ENABLED_OWNER
         if key.strip() in {'KAST_CACHE_ROOT', 'KAST_RUNTIME_DIRECTORY', 'KAST_RUNTIME_STORE', 'KAST_IDE_CONFIG_HOME'}:
             value = value.strip()
             if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
@@ -672,6 +682,7 @@ def validate_owned_configuration(installation):
                     or not selected.is_relative_to(installation.root)):
                 raise Rejected(Failure.EXTERNAL_STATE_UNPROVEN)
 
+    return profile
 
 def begin_transition(installation, operation):
     path = installation.root / '.lifecycle-transition.json'
