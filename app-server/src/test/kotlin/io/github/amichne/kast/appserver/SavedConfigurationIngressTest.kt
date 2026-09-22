@@ -17,49 +17,84 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
 class SavedConfigurationIngressTest {
+    // Budget: one private root with only the selected file/link, manifest and activation lock.
+    // No product, IDE or child process. Gradle/JUnit provisioning is outside this behavior budget.
     @Test
     fun `receipted current alias loads the same configuration as its immutable path`(@TempDir temporary: Path) {
+        val fixture = aliasFixture(temporary)
+        val alias =
+            InstalledSavedConfigurationIngress.read(fixture.selected.toString(), emptyMap())
+                as SavedConfigurationIngress.Loaded
+        val pinned =
+            InstalledSavedConfigurationIngress.read(fixture.configuration.toString(), emptyMap())
+                as SavedConfigurationIngress.Loaded
+        assertEquals(listOf("KAST_INDEXER_MAX_HEAP" to "8g"), alias.sources.savedInstallation)
+        assertEquals(pinned.sources.savedInstallation, alias.sources.savedInstallation)
+    }
+
+    @Test
+    fun `current alias rejects a held activation lock`(@TempDir temporary: Path) {
+        val fixture = aliasFixture(temporary)
+        FileChannel.open(fixture.lock, WRITE).use { channel ->
+            channel.lock().use {
+                val result =
+                    InstalledSavedConfigurationIngress.read(fixture.selected.toString(), emptyMap())
+                        as SavedConfigurationIngress.Rejected
+                assertEquals(
+                    SavedConfigurationIngressFailure.INVALID_INSTALLATION,
+                    (result.rejection as SavedConfigurationIngressRejection.File).failure,
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `current alias replacement during pinned read rejects deterministically`(@TempDir temporary: Path) {
+        val fixture = aliasFixture(temporary)
+        var reads = 0
+        val changed =
+            InstalledConfigurationAlias.read(fixture.selected, emptyMap()) { pinnedPath, selected ->
+                reads++
+                assertEquals(fixture.configuration, pinnedPath)
+                assertEquals(emptyMap<String, String>(), selected)
+                val loaded = InstalledSavedConfigurationIngress.read(pinnedPath.toString(), selected)
+                Files.delete(fixture.current)
+                Files.createSymbolicLink(fixture.current, Path.of("versions/other"))
+                loaded
+            } as SavedConfigurationIngress.Rejected
+        assertEquals(1, reads)
+        assertEquals(
+            SavedConfigurationIngressFailure.CHANGED_DURING_READ,
+            (changed.rejection as SavedConfigurationIngressRejection.File).failure,
+        )
+    }
+
+    @Test
+    fun `current alias rejects a missing ownership manifest`(@TempDir temporary: Path) {
+        val fixture = aliasFixture(temporary)
+        Files.delete(fixture.configuration.parent.parent.resolve("installation.json"))
+        val result =
+            InstalledSavedConfigurationIngress.read(fixture.selected.toString(), emptyMap())
+                as SavedConfigurationIngress.Rejected
+        assertEquals(
+            SavedConfigurationIngressFailure.INVALID_INSTALLATION,
+            (result.rejection as SavedConfigurationIngressRejection.File).failure,
+        )
+    }
+
+    private data class AliasFixture(val current: Path, val configuration: Path, val lock: Path) {
+        val selected: Path = current.resolve("config/environment")
+    }
+
+    private fun aliasFixture(temporary: Path): AliasFixture {
         val root = temporary.toRealPath()
         val installation = root.resolve("versions/1.2.3-" + "a".repeat(64))
         val configuration = Files.createDirectories(installation.resolve("config")).resolve("environment")
         Files.writeString(configuration, "KAST_INDEXER_MAX_HEAP=8g\n")
         val current = Files.createSymbolicLink(root.resolve("current"), root.relativize(installation))
-        Files.writeString(root.resolve("activation.lock"), "")
+        val lock = Files.writeString(root.resolve("activation.lock"), "")
         writeAliasManifest(installation, current, configuration, root)
-        val alias =
-            InstalledSavedConfigurationIngress.read(current.resolve("config/environment").toString(), emptyMap())
-        val pinned = InstalledSavedConfigurationIngress.read(configuration.toString(), emptyMap())
-        assertTrue(alias is SavedConfigurationIngress.Loaded)
-        assertEquals(
-            (pinned as SavedConfigurationIngress.Loaded).sources.savedInstallation,
-            (alias as SavedConfigurationIngress.Loaded).sources.savedInstallation,
-        )
-        FileChannel.open(root.resolve("activation.lock"), WRITE).use { channel ->
-            channel.lock().use {
-                assertTrue(
-                    InstalledSavedConfigurationIngress.read(
-                        current.resolve("config/environment").toString(),
-                        emptyMap(),
-                    ) is SavedConfigurationIngress.Rejected
-                )
-            }
-        }
-        val changed =
-            InstalledConfigurationAlias.read(current.resolve("config/environment"), emptyMap()) { pinnedPath, selected
-                ->
-                val loaded = InstalledSavedConfigurationIngress.read(pinnedPath.toString(), selected)
-                Files.delete(current)
-                Files.createSymbolicLink(current, Path.of("versions/other"))
-                loaded
-            }
-        assertEquals("CHANGED_DURING_READ", (changed as SavedConfigurationIngress.Rejected).rejection.reason())
-        Files.delete(current)
-        Files.createSymbolicLink(current, root.relativize(installation))
-        Files.delete(installation.resolve("installation.json"))
-        assertTrue(
-            InstalledSavedConfigurationIngress.read(current.resolve("config/environment").toString(), emptyMap())
-                is SavedConfigurationIngress.Rejected
-        )
+        return AliasFixture(current, configuration, lock)
     }
 
     private fun writeAliasManifest(installation: Path, current: Path, configuration: Path, root: Path) {

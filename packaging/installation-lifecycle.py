@@ -1,8 +1,8 @@
 """Explicit installed ownership transitions. Never searches or signals arbitrary processes."""
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from enum import Enum
 import argparse
-from typing import Optional
+from typing import Callable, Optional, Protocol, Tuple, Union
 import fcntl
 import hashlib
 import json
@@ -93,22 +93,64 @@ def observe_retirement(stage, outcome, root):
         event['workspaceIdentity'] = hashlib.sha256(str(root).encode()).hexdigest()
     print(json.dumps(event, separators=(',', ':')), file=sys.stderr, flush=True)
 
+@dataclass(frozen=True)
+class RetirementCommand:
+    executable: Path
+    arguments: Tuple[str, ...]
+    working_directory: Path
+    environment: Tuple[Tuple[str, str], ...] = field(repr=False)
+    timeout_millis: int
+
+@dataclass(frozen=True)
+class Exited:
+    exit_code: int
+
+@dataclass(frozen=True)
+class DeadlineExceeded:
+    pass
+
+@dataclass(frozen=True)
+class IoFailure:
+    pass
+
+ChildObservation = Union[Exited, DeadlineExceeded, IoFailure]
+
+class RetirementExecutor(Protocol):
+    def execute(self, command: RetirementCommand) -> ChildObservation: ...
+
+class SubprocessRetirementExecutor:
+    def execute(self, command: RetirementCommand) -> ChildObservation:
+        try:
+            result = subprocess.run([str(command.executable), *command.arguments],
+                                    cwd=command.working_directory, env=dict(command.environment),
+                                    stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                    shell=False, check=False, timeout=command.timeout_millis / 1000)
+        except subprocess.TimeoutExpired:
+            return DeadlineExceeded()
+        except OSError:
+            return IoFailure()
+        return Exited(result.returncode)
+
+def execute_retirement(command: RetirementCommand, stage: RetirementStage, executor: RetirementExecutor,
+                       observe: Callable[[RetirementStage, RetirementOutcome, Path], None]) -> None:
+    observe(stage, RetirementOutcome.STARTED, command.working_directory)
+    observation = executor.execute(command)
+    if isinstance(observation, Exited):
+        outcome = RetirementOutcome.COMPLETED if observation.exit_code == 0 else RetirementOutcome.EXIT_REJECTED
+    elif isinstance(observation, DeadlineExceeded):
+        outcome = RetirementOutcome.DEADLINE_EXCEEDED
+    elif isinstance(observation, IoFailure):
+        outcome = RetirementOutcome.IO_REJECTED
+    else:
+        raise TypeError('Unsupported child observation')
+    observe(stage, outcome, command.working_directory)
+    if outcome is not RetirementOutcome.COMPLETED:
+        raise retirement_unproven(stage, outcome)
+
 def retire_child(executable, arguments, root, environment, stage):
-    observe_retirement(stage, RetirementOutcome.STARTED, root)
-    try:
-        result = subprocess.run([str(executable), *arguments], cwd=root, env=environment,
-                                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                                check=False, timeout=RETIREMENT_CHILD_TIMEOUT_MILLIS / 1000)
-    except subprocess.TimeoutExpired:
-        observe_retirement(stage, RetirementOutcome.DEADLINE_EXCEEDED, root)
-        raise retirement_unproven(stage, RetirementOutcome.DEADLINE_EXCEEDED) from None
-    except OSError:
-        observe_retirement(stage, RetirementOutcome.IO_REJECTED, root)
-        raise retirement_unproven(stage, RetirementOutcome.IO_REJECTED) from None
-    if result.returncode != 0:
-        observe_retirement(stage, RetirementOutcome.EXIT_REJECTED, root)
-        raise retirement_unproven(stage, RetirementOutcome.EXIT_REJECTED)
-    observe_retirement(stage, RetirementOutcome.COMPLETED, root)
+    command = RetirementCommand(executable, tuple(arguments), root, tuple(environment.items()),
+                                RETIREMENT_CHILD_TIMEOUT_MILLIS)
+    execute_retirement(command, stage, SubprocessRetirementExecutor(), observe_retirement)
 
 @dataclass(frozen=True)
 class FileIdentity:

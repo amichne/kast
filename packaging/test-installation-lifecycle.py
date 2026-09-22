@@ -2,6 +2,10 @@
 import sys
 import json
 import hashlib
+import importlib.util
+import io
+from contextlib import redirect_stderr
+from unittest.mock import patch
 from pathlib import Path
 import subprocess
 import tempfile
@@ -9,6 +13,123 @@ import unittest
 import uuid
 
 SCRIPT = Path(__file__).with_name('installation-lifecycle.py')
+spec = importlib.util.spec_from_file_location('lifecycle_under_test', SCRIPT)
+lifecycle = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = lifecycle
+spec.loader.exec_module(lifecycle)
+
+
+class ScriptedRetirementExecutor:
+    """One exact interaction; violations survive even if product code catches the assertion."""
+    def __init__(self, expected, observation, transcript):
+        self.expected = expected
+        self.observation = observation
+        self.transcript = transcript
+        self.requests = []
+        self.violations = []
+
+    def execute(self, command):
+        self.requests.append(command)
+        self.transcript.append(command)
+        if len(self.requests) != 1 or command != self.expected:
+            # Command repr deliberately excludes environment values.
+            self.violations.append(f'unexpected or repeated request: {command!r}')
+            raise AssertionError(self.violations[-1])
+        return self.observation
+
+    def assert_consumed(self, case):
+        case.assertEqual([], self.violations)
+        case.assertEqual([self.expected], self.requests)
+
+
+class RetirementBoundaryTest(unittest.TestCase):
+    # Budget: one scripted request, explicit immutable values, captured observations.
+    # No filesystem fixture, real child, clock, sleep, or installation. Runner excluded.
+    def test_child_observations_preserve_stage_and_finite_failure(self):
+        cases = (
+            (lifecycle.Exited(0), lifecycle.RetirementOutcome.COMPLETED),
+            (lifecycle.Exited(7), lifecycle.RetirementOutcome.EXIT_REJECTED),
+            (lifecycle.DeadlineExceeded(), lifecycle.RetirementOutcome.DEADLINE_EXCEEDED),
+            (lifecycle.IoFailure(), lifecycle.RetirementOutcome.IO_REJECTED),
+        )
+        for stage, arguments in ((lifecycle.RetirementStage.COORDINATOR, ('app-server', 'disable')),
+                                 (lifecycle.RetirementStage.WORKSPACE, ('stop',))):
+            for observation, expected in cases:
+                with self.subTest(stage=stage, observation=observation):
+                    command = lifecycle.RetirementCommand(Path('/fixture/bin/kast-complete'), arguments,
+                        Path('/fixture/workspace'), (('HOME', '/fixture/home'),), 60000)
+                    transcript = []
+                    executor = ScriptedRetirementExecutor(command, observation, transcript)
+                    output = io.StringIO()
+                    def observe(actual_stage, outcome, root):
+                        transcript.append((actual_stage, outcome, root))
+                        lifecycle.observe_retirement(actual_stage, outcome, root)
+                    try:
+                        with redirect_stderr(output):
+                            if expected is lifecycle.RetirementOutcome.COMPLETED:
+                                lifecycle.execute_retirement(command, stage, executor, observe)
+                            else:
+                                with self.assertRaises(lifecycle.Rejected) as rejection:
+                                    lifecycle.execute_retirement(command, stage, executor, observe)
+                                self.assertEqual(lifecycle.Failure.RETIREMENT_UNPROVEN, rejection.exception.failure)
+                                self.assertEqual(lifecycle.RetirementRejection(stage, expected),
+                                                 rejection.exception.retirement)
+                    finally:
+                        executor.assert_consumed(self)
+                    self.assertEqual([
+                        (stage, lifecycle.RetirementOutcome.STARTED, command.working_directory),
+                        command, (stage, expected, command.working_directory),
+                    ], transcript)
+                    events = [json.loads(line) for line in output.getvalue().splitlines()]
+                    expected_events = [{'component': 'kast-installation', 'stage': stage.value, 'outcome': outcome}
+                                       for outcome in ('started', expected.value)]
+                    if stage is lifecycle.RetirementStage.WORKSPACE:
+                        for event in expected_events:
+                            event['workspaceIdentity'] = hashlib.sha256(b'/fixture/workspace').hexdigest()
+                    self.assertEqual(expected_events, events)
+
+    def test_script_refuses_missing_unexpected_and_repeated_requests(self):
+        command = lifecycle.RetirementCommand(Path('/fixture/child'), ('stop',), Path('/fixture'), (), 60000)
+        different = lifecycle.RetirementCommand(Path('/fixture/other'), ('stop',), Path('/fixture'), (), 60000)
+        for requests in ((), (different,), (command, command)):
+            with self.subTest(requests=requests):
+                executor = ScriptedRetirementExecutor(command, lifecycle.Exited(0), [])
+                for request in requests:
+                    try:
+                        executor.execute(request)
+                    except AssertionError:
+                        pass  # Simulate a consumer catching the fixture's exception.
+                with self.assertRaises(AssertionError):
+                    executor.assert_consumed(self)
+
+
+class RetirementAdapterTest(unittest.TestCase):
+    # Budget: one private directory and one trivial executable; no installation.
+    def test_subprocess_binds_exact_arguments_directory_environment_and_exit(self):
+        with tempfile.TemporaryDirectory(prefix='kast-retirement-adapter-') as directory:
+            root = Path(directory).resolve()
+            executable = root / 'child'
+            executable.write_text('#!/bin/sh\n'
+                '[ "$#" = 2 ] && [ "$1" = "literal ; argument" ] && [ "$2" = second ] || exit 81\n'
+                '[ "$PWD" = "$HOME" ] && [ "$BINDING_INPUT" = explicit ] || exit 82\n'
+                'read -r unexpected && exit 83\n'
+                'printf discarded\nprintf discarded >&2\nexit 7\n')
+            executable.chmod(0o700)
+            command = lifecycle.RetirementCommand(executable, ('literal ; argument', 'second'), root,
+                (('HOME', str(root)), ('BINDING_INPUT', 'explicit')), 60000)
+            self.assertEqual(lifecycle.Exited(7), lifecycle.SubprocessRetirementExecutor().execute(command))
+
+    def test_os_exceptions_translate_without_waiting_or_retrying(self):
+        # Adapter translation only: no child or filesystem; timeout is an observation.
+        command = lifecycle.RetirementCommand(Path('/fixture/child'), ('stop',), Path('/fixture'),
+            (('HOME', '/fixture/home'),), 60000)
+        for error, expected in ((subprocess.TimeoutExpired('/fixture/child', 60), lifecycle.DeadlineExceeded()),
+                                (OSError('scripted I/O failure'), lifecycle.IoFailure())):
+            with self.subTest(observation=expected), patch.object(lifecycle.subprocess, 'run', side_effect=error) as run:
+                self.assertEqual(expected, lifecycle.SubprocessRetirementExecutor().execute(command))
+                run.assert_called_once_with(['/fixture/child', 'stop'], cwd=Path('/fixture'),
+                    env={'HOME': '/fixture/home'}, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL, shell=False, check=False, timeout=60)
 
 class LifecycleTest(unittest.TestCase):
     def setUp(self):
@@ -186,18 +307,12 @@ class LifecycleTest(unittest.TestCase):
         self.assertEqual('RETIREMENT_UNPROVEN', result['failure'])
         self.assertEqual({'stage': 'coordinator-retirement', 'outcome': 'exit-rejected'}, result['retirement'])
         self.assertEqual(self.epoch, json.loads((self.root / 'state/epoch.json').read_text()))
+        self.assertEqual('KAST_INDEXER_MAX_HEAP=8g\n', (self.root / 'config/environment').read_text())
+        self.assertEqual(self.manifest, json.loads((self.root / 'installation.json').read_text()))
+        self.assertEqual('#!/bin/sh\nexit 7\n', self.kast.read_text())
+        self.assertTrue((self.root / 'state/broker/profile').is_dir())
+        self.assertTrue(self.workspace.is_dir())
         self.assertTrue((self.root / '.lifecycle-transition.json').is_file())
-        events = [json.loads(line) for line in self.last_stderr.splitlines()]
-        self.assertEqual(['started', 'exit-rejected'], [event['outcome'] for event in events])
-        self.assertTrue(all(event['stage'] == 'coordinator-retirement' for event in events))
-    def test_successful_retirement_reports_each_bounded_stage(self):
-        code, result = self.invoke('reset')
-        self.assertEqual(0, code, result)
-        events = [json.loads(line) for line in self.last_stderr.splitlines()]
-        self.assertEqual(['coordinator-retirement'] * 2 + ['workspace-retirement'] * 2,
-                         [event['stage'] for event in events])
-        self.assertEqual(['started', 'completed'] * 2, [event['outcome'] for event in events])
-        self.assertTrue(all(set(event) <= {'component', 'stage', 'outcome', 'workspaceIdentity'} for event in events))
     def test_unresolved_worker_receipt_blocks_reset_even_after_stop_reports_success(self):
         workers = self.root / 'state/workers'
         workers.mkdir()
