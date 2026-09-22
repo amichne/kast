@@ -53,6 +53,8 @@ internal object InstallationCliInspection {
             is InstallationOutcome.Complete ->
                 InstallationHandling.Handled(CliExit.Complete(reportFactory.create(outcome.report)))
             is InstallationOutcome.Rejected -> rejected(outcome.failure, CliBoundaryExitStatus.BOOTSTRAP, outcome.limit)
+            is InstallationOutcome.TrustRejected ->
+                InstallationHandling.Handled(installationTrustRejection(outcome.failure))
         }
     }
 
