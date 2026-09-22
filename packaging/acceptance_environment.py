@@ -146,7 +146,6 @@ class AcceptanceEnvironment:
             "_JAVA_OPTIONS": java_options, "JAVA_TOOL_OPTIONS": java_options,
             "LANG": "C.UTF-8", "LC_ALL": "C", "TZ": "UTC",
             "KAST_RUNTIME_DIRECTORY": str(self.root / "run"),
-            "KAST_ENABLE_LAUNCHD": "0", "KAST_ENABLE_APP_SERVER": "0",
         }
         if network is NetworkPolicy.CLOSED_PROXY:
             # Deliberately mirror the pinned native Codex proof's child-only policy.
@@ -162,7 +161,7 @@ class AcceptanceEnvironment:
             raise EnvironmentRejected(EnvironmentFailure.INVALID_INPUT)
         environment = dict(base)
         environment['KAST_CONFIGURATION_FILE'] = str(saved)
-        environment['KAST_APP_SERVER_TOOLS'] = 'semantic_query,impact_analyze'
+        environment['KAST_DEBUG'] = '1'
         options = environment.pop('_JAVA_OPTIONS', None)
         tool_options = environment.pop('JAVA_TOOL_OPTIONS', None)
         if options is not None and options == tool_options:

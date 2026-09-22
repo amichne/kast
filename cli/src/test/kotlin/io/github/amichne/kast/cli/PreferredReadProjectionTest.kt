@@ -2,9 +2,6 @@ package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
-import io.github.amichne.kast.cli.installation.AppServerTools
-import io.github.amichne.kast.cli.installation.AppServerToolsFailure
-import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
 import kotlinx.serialization.Serializable
@@ -53,30 +50,6 @@ class PreferredReadProjectionTest {
         )
     }
 
-    @Test
-    fun `installation legacy tool selection persists preferred names`() {
-        assertEquals(
-            "read_relations,traverse_relations",
-            AppServerTools.parse("impact_analyze,semantic_query").refined().value,
-        )
-    }
-
-    @Test
-    fun `installation preferred tool selection retains canonical order`() {
-        assertEquals(
-            "read_relations,traverse_relations",
-            AppServerTools.parse("traverse_relations,read_relations").refined().value,
-        )
-    }
-
-    @Test
-    fun `installation rejects duplicate identity across old and preferred names`() {
-        assertEquals(
-            Refinement.Rejected(AppServerToolsFailure.DUPLICATE_NAME),
-            AppServerTools.parse("semantic_query,read_relations"),
-        )
-    }
-
     private fun projection() =
         Json.parseToJsonElement(
                 installedSchema(
@@ -102,10 +75,4 @@ class PreferredReadProjectionTest {
         }
 
     @Serializable private data object EmptyMetadata
-
-    private fun <T, F> Refinement<T, F>.refined(): T =
-        when (this) {
-            is Refinement.Refined -> value
-            is Refinement.Rejected -> fail("Expected admitted selection: $failure")
-        }
 }

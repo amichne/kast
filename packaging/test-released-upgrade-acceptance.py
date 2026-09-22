@@ -42,7 +42,7 @@ class Configuration:
 class Explanation:
     operation: str = 'config-explain'
     status: str = 'complete'
-    key: str = 'KAST_APP_SERVER_TOOLS'
+    key: str = 'KAST_APP_SERVER_PUBLIC_ENDPOINT'
 
 
 @dataclass(frozen=True)
@@ -100,7 +100,7 @@ class ReleasedUpgradeTest(unittest.TestCase):
         self.observations = f.base / 'observations'
         self.observations.write_text(observations + '\n')
         f.installer.write_text('#!/bin/bash\nset -eu\n'
-            f'[[ "$HOME" == {q(f.root / "home")} && "$KAST_ENABLE_APP_SERVER" == 0 && "$KAST_ENABLE_LAUNCHD" == 0 ]]\n'
+            f'[[ "$HOME" == {q(f.root / "home")} && "$KAST_INSTALL_PROFILE" == session ]]\n'
             '[[ "$1" == --version && "$3" == --idea-home ]]\n'
             f'case "$2" in 1.2.2) template={q(self.prior_template)}; product={q(self.prior_product)};; '
             f'1.2.3) template={q(f.template)}; product={q(f.product)};; *) exit 21;; esac\n'
@@ -135,7 +135,7 @@ class ReleasedUpgradeTest(unittest.TestCase):
             'case "$*" in\n'
             f' --version) /bin/echo "kast {version} (IntelliJ plugin)";;\n'
             f' "config show --json") /bin/cat {q(product / "config/configuration.json")};;\n'
-            f' "config explain KAST_APP_SERVER_TOOLS") /bin/cat {q(product / "config/explanation.json")};;\n'
+            f' "config explain KAST_APP_SERVER_PUBLIC_ENDPOINT") /bin/cat {q(product / "config/explanation.json")};;\n'
             f' "installation inspect --json") /bin/cat {q(product / "config/inspection.json")};;\n'
             f' "app-server register") /bin/cp {q(product / "config/registry.json")} {q(product / "config/workspaces.json")}; '
             f'/bin/cat {q(product / "config/registration.json")};;\n *) exit 23;;\nesac\n')
@@ -163,7 +163,7 @@ class ReleasedUpgradeTest(unittest.TestCase):
         self.rejects_current_stderr(('config', 'show', '--json'))
 
     def test_successful_current_config_explain_rejects_stderr(self):
-        self.rejects_current_stderr(('config', 'explain', 'KAST_APP_SERVER_TOOLS'))
+        self.rejects_current_stderr(('config', 'explain', 'KAST_APP_SERVER_PUBLIC_ENDPOINT'))
 
     def rejects_current_stderr(self, command):
         original_run = subprocess.run

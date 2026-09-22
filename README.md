@@ -24,11 +24,9 @@ The Codex integration is a preview; full Desktop compatibility remains
    The installer reports the detected IntelliJ version, verifies its matching
    plugin, and enables the complete app-server suite and its per-user login
    LaunchAgent. If no matching IDEA plugin exists, it installs nothing.
-   For automation, append `-- --no-interactive`.
-
-   Choose other absolute user-owned locations with `--install-root` and
-   `--bin-dir`. If a selected command path is occupied, the installer lists it
-   and asks before removal. Automation must opt in with `--clean-collisions`.
+   Installation never prompts. It uses `${XDG_DATA_HOME:-$HOME/.local/share}/kast`
+   and `$HOME/.local/bin`. Command collisions fail with their exact paths; move
+   those paths or use `--force` to replace them and reset managed state.
 
    To rebuild a damaged installation, append `-- --force`. This retires its
    services, resets managed sockets and state, restages both launchers and the
@@ -89,7 +87,7 @@ for focused checks and when to widen verification.
 To build and try this checkout in an isolated Bash or Zsh session:
 
 ```shell
-source "$(./install.sh --local session)"
+source "$(./packaging/install-checkout.sh session --idea-home "/Applications/IntelliJ IDEA.app")"
 ```
 
 Start with the [development guide](docs/development.md) for testing, persistent local

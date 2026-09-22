@@ -1,7 +1,6 @@
 package io.github.amichne.kast.appserver
 
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationOwner
-import io.github.amichne.kast.distribution.contract.configuration.ConfigurationParameter
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationRejection
 import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
 import io.github.amichne.kast.kernel.Refinement
@@ -10,49 +9,25 @@ import io.github.amichne.kast.kernel.Refinement
 class AdmittedAppServerConfiguration
 private constructor(
     val configuration: ResolvedKastConfiguration,
-    internal val toolingMode: AppServerToolingMode,
-    internal val toolSelection: KastToolSelection,
     internal val publicEndpointMode: BrokerPublicEndpointMode,
 ) {
     companion object {
         fun admit(
             configuration: ResolvedKastConfiguration
         ): Refinement<AdmittedAppServerConfiguration, AppServerConfigurationFailure> {
-            val admittedTools =
-                configuration
-                    .ownerCandidates(ConfigurationOwner.APP_SERVER)
-                    .filter { it.parameter == ConfigurationParameter.APP_SERVER_TOOLS }
-                    .map { candidate ->
-                        when (val admitted = KastToolSelection.admit(candidate.valueAtOwnerBoundary())) {
-                            is Refinement.Refined -> admitted.value
-                            is Refinement.Rejected ->
-                                return Refinement.Rejected(AppServerConfigurationFailure.INVALID_TOOL_SELECTION)
-                        }
-                    }
             val inputs = configuration.ownerInputs(ConfigurationOwner.APP_SERVER)
-            val mode =
-                when (val result = AppServerToolingMode.admit(inputs[APP_SERVER_ENABLE_ENVIRONMENT])) {
-                    is Refinement.Refined -> result.value
-                    is Refinement.Rejected ->
-                        return Refinement.Rejected(AppServerConfigurationFailure.INVALID_TOOLING_MODE)
-                }
             val endpointMode =
                 when (val admission = BrokerPublicEndpointMode.admit(inputs["KAST_APP_SERVER_PUBLIC_ENDPOINT"])) {
                     is Refinement.Refined -> admission.value
                     is Refinement.Rejected -> return admission
                 }
-            val selectedEndpoint =
-                if (mode == AppServerToolingMode.DISABLED) BrokerPublicEndpointMode.PRIVATE else endpointMode
-            val tools = admittedTools.firstOrNull() ?: KastToolSelection.defaults()
-            return Refinement.Refined(AdmittedAppServerConfiguration(configuration, mode, tools, selectedEndpoint))
+            return Refinement.Refined(AdmittedAppServerConfiguration(configuration, endpointMode))
         }
     }
 }
 
 enum class AppServerConfigurationFailure {
-    INVALID_TOOLING_MODE,
-    INVALID_PUBLIC_ENDPOINT,
-    INVALID_TOOL_SELECTION,
+    INVALID_PUBLIC_ENDPOINT
 }
 
 internal sealed interface BrokerConfigurationIngressRejection {

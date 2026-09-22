@@ -24,52 +24,19 @@ sealed interface ExistingIdeRootSelection {
     data class Explicit(val path: Path) : ExistingIdeRootSelection
 }
 
-internal fun ideCommandGroup(): LocalCommandFamily = hostedCommandGroup(HostedCommandFamily.IDE)
-
-internal fun hostedIndexCommandGroup(): LocalCommandFamily = hostedCommandGroup(HostedCommandFamily.INDEX)
-
-private enum class HostedCommandFamily(
-    val group: String,
-    val status: CliProductCommand,
-    val refresh: CliProductCommand,
-    val classes: CliProductCommand,
-    val supertype: CliProductCommand,
-    val completion: CliProductCommand,
-) {
-    INDEX(
-        "index",
-        CliProductCommand.INDEX_STATUS,
-        CliProductCommand.INDEX_REFRESH,
-        CliProductCommand.INDEX_CLASSES,
-        CliProductCommand.INDEX_SUPERTYPE,
-        CliProductCommand.INDEX_COMPLETION,
-    ),
-    IDE(
-        "ide",
-        CliProductCommand.IDE_STATUS,
-        CliProductCommand.IDE_REFRESH,
-        CliProductCommand.IDE_CLASSES,
-        CliProductCommand.IDE_SUPERTYPE,
-        CliProductCommand.IDE_COMPLETION,
-    ),
-}
-
-private fun hostedCommandGroup(family: HostedCommandFamily): LocalCommandFamily {
+internal fun ideCommandGroup(): LocalCommandFamily {
     val commands =
         listOf(
-            IdeStatusCommand(family.status),
-            IdeRefreshCommand(family.refresh),
-            IdeClassesCommand(family.classes),
-            IdeSupertypeCommand(family.supertype),
-            IdeCompletionCommand(family.completion),
-        ) +
-            when (family) {
-                HostedCommandFamily.IDE -> listOf(IdeTrustBrokerCommand())
-                HostedCommandFamily.INDEX -> emptyList()
-            }
+            IdeStatusCommand(CliProductCommand.IDE_STATUS),
+            IdeRefreshCommand(CliProductCommand.IDE_REFRESH),
+            IdeClassesCommand(CliProductCommand.IDE_CLASSES),
+            IdeSupertypeCommand(CliProductCommand.IDE_SUPERTYPE),
+            IdeCompletionCommand(CliProductCommand.IDE_COMPLETION),
+            IdeTrustBrokerCommand(),
+        )
     return LocalCommandFamily(
         KastCommandGroup(
-                family.group,
+                "ide",
                 "Read the existing IDEA index. IDEA owns updates; missing IDE state remains unavailable.",
             )
             .subcommands(commands),

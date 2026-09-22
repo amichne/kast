@@ -58,10 +58,7 @@ enum class ConfigurationMutability {
 @Serializable
 enum class ConfigurationSyntax {
     ABSOLUTE_PATH,
-    HEAP,
     SWITCH,
-    WORKER_COUNT,
-    MEMORY_MIB,
     OWNER_INPUT,
     VARIABLE_NAMES,
     EXECUTABLE_PATH,

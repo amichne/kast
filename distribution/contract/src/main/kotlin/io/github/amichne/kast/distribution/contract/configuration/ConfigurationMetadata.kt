@@ -1,6 +1,5 @@
 package io.github.amichne.kast.distribution.contract.configuration
 
-import io.github.amichne.kast.distribution.contract.IndexerHeapSize
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -31,29 +30,12 @@ data class ConfigurationAdmittedRange(
 
 internal fun ConfigurationSyntax.unit(): ConfigurationUnit =
     when (this) {
-        ConfigurationSyntax.HEAP,
-        ConfigurationSyntax.MEMORY_MIB -> ConfigurationUnit.MEBIBYTES
-        ConfigurationSyntax.WORKER_COUNT -> ConfigurationUnit.COUNT
         ConfigurationSyntax.ABSOLUTE_PATH -> ConfigurationUnit.PATH
         else -> ConfigurationUnit.NONE
     }
 
 internal fun ConfigurationSyntax.range(): ConfigurationAdmittedRange =
     when (this) {
-        ConfigurationSyntax.HEAP ->
-            ConfigurationAdmittedRange(
-                IndexerHeapSize.minimumMebibytes.toLong(),
-                Int.MAX_VALUE.toLong(),
-                ownerAdmission = "IndexerHeapSize.parse",
-            )
-        ConfigurationSyntax.WORKER_COUNT ->
-            ConfigurationAdmittedRange(
-                1,
-                WorkerCountLimit.Maximum.toLong(),
-                ownerAdmission = "WorkerCountLimit.admit; startup <= resident",
-            )
-        ConfigurationSyntax.MEMORY_MIB ->
-            ConfigurationAdmittedRange(1, Long.MAX_VALUE, ownerAdmission = "WorkerMemoryReservationMiB.admit")
         ConfigurationSyntax.SWITCH -> ConfigurationAdmittedRange(finiteValues = listOf("0", "1"))
         ConfigurationSyntax.ABSOLUTE_PATH ->
             ConfigurationAdmittedRange(

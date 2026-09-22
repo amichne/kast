@@ -138,7 +138,7 @@ class AppServerStatusTest {
                 val saved =
                     Files.writeString(
                         Files.createDirectory(root.resolve("config")).resolve("environment"),
-                        "KAST_WORKER_AGGREGATE_MIB=32768\n",
+                        "KAST_READ_HOST_REFERENCE_ENTRIES=32768\n",
                     )
                 val environment =
                     mapOf("KAST_CONFIGURATION_FILE" to saved.toString(), "KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private")
@@ -159,7 +159,7 @@ class AppServerStatusTest {
                     val acknowledged =
                         InstalledConfigurationAppliedInspection.read(kast, root, environment, command.configuration)
                     assertTrue(acknowledged is AppliedConfigurationInspection.Acknowledged, acknowledged.toString())
-                    Files.writeString(saved, "KAST_WORKER_AGGREGATE_MIB=40000\n")
+                    Files.writeString(saved, "KAST_READ_HOST_REFERENCE_ENTRIES=40000\n")
                     val next =
                         (BrokerServiceLaunchCommand.resolveCoordinator(kast, root, environment)
                                 as BrokerServiceLaunchCommandResolution.Resolved)

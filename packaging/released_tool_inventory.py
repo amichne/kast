@@ -1,4 +1,4 @@
-"""Bind the installed advertised catalog and saved default selection to acceptance evidence."""
+"""Bind the installed advertised catalog and complete installed suite to acceptance evidence."""
 from dataclasses import dataclass
 import json
 import subprocess
@@ -9,6 +9,7 @@ from released_acceptance_product import product_executable, ReleaseFailure, Rele
 
 # Current public spellings only. Each remains bound to the installed canonical operation identifier.
 OPERATIONS = (
+    ('workspace_lifecycle', 'workspace.lifecycle'),
     ('search_classes', 'query.run'), ('search_functions', 'query.run'),
     ('search_declarations', 'query.run'), ('query_symbols', 'query.run'),
     ('symbol_lookup', 'symbol.discover'), ('symbol_inspect', 'symbol.inspect'),
@@ -35,15 +36,13 @@ def admit_inventory(document, configuration, schema_digest):
             or any(tool['operationId'] != expected[tool['name']] for tool in tools)
             or {item['toolName']: item['operationId'] for item in cli} != expected):
         raise ReleaseRejected(ReleaseFailure.INVENTORY)
-    selections = [line.split('=', 1)[1] for line in configuration.splitlines() if line.startswith('KAST_APP_SERVER_TOOLS=')]
-    expected_defaults = tuple(name for name, _ in OPERATIONS if name not in ('symbol_lookup', 'symbol_inspect'))
-    if len(selections) != 1 or tuple(selections[0].split(',')) != expected_defaults:
+    if any(line.startswith('KAST_APP_SERVER_TOOLS=') for line in configuration.splitlines()):
         raise ReleaseRejected(ReleaseFailure.INVENTORY)
     reads = tuple(tool['name'] for tool in tools if tool['effect'] in ('none', 'intellij_read')
-                  and tool['operationId'] != 'change.plan')
+                  and tool['operationId'] not in ('change.plan', 'workspace.lifecycle'))
     if len(reads) != 10 or not {'symbol_lookup', 'symbol_inspect'} <= set(reads):
         raise ReleaseRejected(ReleaseFailure.INVENTORY)
-    return ReleasedToolInventory(names, expected_defaults, reads, schema_digest)
+    return ReleasedToolInventory(names, names, reads, schema_digest)
 
 
 def inspect_installed_inventory(isolation, product):

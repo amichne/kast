@@ -59,6 +59,7 @@ internal object InstallationCliInspection {
     private fun requestRejected(failure: InstallationRequestFailure): InstallationHandling {
         val field =
             when (failure) {
+                is InstallationRequestFailure.RetiredSetting -> failure.setting.key
                 is InstallationRequestFailure.Missing -> failure.environment.key
                 is InstallationRequestFailure.InvalidPath -> failure.environment.key
                 is InstallationRequestFailure.InvalidValue -> failure.environment.key
@@ -68,7 +69,10 @@ internal object InstallationCliInspection {
                 CliBoundaryExitStatus.USAGE,
                 rejectionFactory.create(
                     InstallationRejectionDocument(
-                        reason = InstallationFailure.REQUEST_REJECTED.reason(),
+                        reason =
+                            if (failure is InstallationRequestFailure.RetiredSetting)
+                                "retired-setting-remove-assignment"
+                            else InstallationFailure.REQUEST_REJECTED.reason(),
                         field = field,
                     )
                 ),

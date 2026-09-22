@@ -21,7 +21,6 @@ class PublishedBrokerServiceCommandTest {
                     "HOME" to root.toString(),
                     "PATH" to root.resolve("tools").toString(),
                     "CODEX_HOME" to root.resolve("codex").toString(),
-                    "KAST_ENABLE_APP_SERVER" to "1",
                 )
             val command =
                 (BrokerServiceLaunchCommand.resolveCoordinator(kast, root, environment)
@@ -40,8 +39,6 @@ class PublishedBrokerServiceCommandTest {
                     command.host.environment().map { (key, value) -> "$key=$value" } +
                     command.childEnvironment.assignments +
                     listOf(
-                        "KAST_ENABLE_APP_SERVER=1",
-                        "KAST_APP_SERVER_TOOLS=${command.toolSelection.environmentValue}",
                         "BROKER_SERVICE_IDENTITY=${command.identity.value}",
                         "BROKER_READINESS_FILE=${command.readinessFile}",
                         command.kast.toString(),
@@ -69,7 +66,6 @@ class PublishedBrokerServiceCommandTest {
                     "HOME" to root.toString(),
                     "PATH" to "/usr/bin:/bin",
                     "CODEX_HOME" to root.resolve("codex").toString(),
-                    "KAST_ENABLE_APP_SERVER" to "0",
                 )
             val command =
                 (BrokerServiceLaunchCommand.resolveCoordinator(kast, root, environment)
@@ -87,8 +83,6 @@ class PublishedBrokerServiceCommandTest {
                     ) +
                     command.childEnvironment.assignments +
                     listOf(
-                        "KAST_ENABLE_APP_SERVER=0",
-                        "KAST_APP_SERVER_TOOLS=${command.toolSelection.environmentValue}",
                         "BROKER_SERVICE_IDENTITY=${command.identity.value}",
                         "BROKER_READINESS_FILE=${command.readinessFile}",
                         command.kast.toString(),

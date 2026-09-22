@@ -1,6 +1,5 @@
 package io.github.amichne.kast.distribution.contract.configuration
 
-import io.github.amichne.kast.distribution.contract.IndexerHeapSize
 import io.github.amichne.kast.kernel.ReadLimitParameter
 
 /** Closed identity: arbitrary caller keys never become admitted configuration identities. */
@@ -74,6 +73,13 @@ enum class ConfigurationParameter(
     READ_DIAGNOSTIC_SCOPE_FILES(ReadLimitParameter.DIAGNOSTIC_SCOPE_FILES),
     READ_DIAGNOSTIC_SCOPE_WORK(ReadLimitParameter.DIAGNOSTIC_SCOPE_WORK),
     READ_DIAGNOSTIC_SCOPE_MILLIS(ReadLimitParameter.DIAGNOSTIC_SCOPE_MILLIS),
+    INSTALL_PROFILE(
+        "KAST_INSTALL_PROFILE",
+        ConfigurationSyntax.OWNER_INPUT,
+        ConfigurationScope.INSTALLATION,
+        ":cli",
+        mutability = ConfigurationMutability.DERIVED,
+    ),
     INSTALL_ROOT(
         "KAST_INSTALL_ROOT",
         ConfigurationSyntax.ABSOLUTE_PATH,
@@ -89,83 +95,11 @@ enum class ConfigurationParameter(
         mutability = ConfigurationMutability.DERIVED,
         children = setOf(ConfigurationChild.BROKER),
     ),
-    RUNTIME_ARCHIVE(
-        "KAST_RUNTIME_ARCHIVE",
-        ConfigurationSyntax.ABSOLUTE_PATH,
-        children = setOf(ConfigurationChild.BROKER),
-    ),
-    RUNTIME_STORE(
-        "KAST_RUNTIME_STORE",
-        ConfigurationSyntax.ABSOLUTE_PATH,
-        ConfigurationScope.INSTALLATION,
-        children = setOf(ConfigurationChild.BROKER),
-    ),
     RUNTIME_DIRECTORY(
         "KAST_RUNTIME_DIRECTORY",
         ConfigurationSyntax.ABSOLUTE_PATH,
         ConfigurationScope.INSTALLATION,
         children = setOf(ConfigurationChild.BROKER),
-    ),
-    CACHE_ROOT(
-        "KAST_CACHE_ROOT",
-        ConfigurationSyntax.ABSOLUTE_PATH,
-        ConfigurationScope.INSTALLATION,
-        children = setOf(ConfigurationChild.BROKER),
-    ),
-    INDEXER_MAX_HEAP(IndexerHeapSize.SETTING, ConfigurationSyntax.HEAP, children = setOf(ConfigurationChild.BROKER)),
-    WORKER_RESIDENT_LIMIT(
-        "KAST_WORKER_RESIDENT_LIMIT",
-        ConfigurationSyntax.WORKER_COUNT,
-        ConfigurationScope.INSTALLATION,
-        ":app-server",
-        "1",
-        children = setOf(ConfigurationChild.BROKER),
-    ),
-    WORKER_STARTUP_LIMIT(
-        "KAST_WORKER_STARTUP_LIMIT",
-        ConfigurationSyntax.WORKER_COUNT,
-        ConfigurationScope.INSTALLATION,
-        ":app-server",
-        "1",
-        children = setOf(ConfigurationChild.BROKER),
-    ),
-    WORKER_AGGREGATE_MIB(
-        "KAST_WORKER_AGGREGATE_MIB",
-        ConfigurationSyntax.MEMORY_MIB,
-        ConfigurationScope.INSTALLATION,
-        ":app-server",
-        "32768",
-        children = setOf(ConfigurationChild.BROKER),
-    ),
-    WORKER_NATIVE_MIB(
-        "KAST_WORKER_NATIVE_MIB",
-        ConfigurationSyntax.MEMORY_MIB,
-        ConfigurationScope.INSTALLATION,
-        ":app-server",
-        "1024",
-        children = setOf(ConfigurationChild.BROKER),
-    ),
-    WORKER_GRADLE_MIB(
-        "KAST_WORKER_GRADLE_MIB",
-        ConfigurationSyntax.MEMORY_MIB,
-        ConfigurationScope.INSTALLATION,
-        ":app-server",
-        "2048",
-        children = setOf(ConfigurationChild.BROKER),
-    ),
-    ENABLE_LAUNCHD(
-        "KAST_ENABLE_LAUNCHD",
-        ConfigurationSyntax.SWITCH,
-        owner = ":cli",
-        defaultValue = "0",
-        children = setOf(ConfigurationChild.BROKER),
-    ),
-    ENABLE_APP_SERVER(
-        "KAST_ENABLE_APP_SERVER",
-        ConfigurationSyntax.SWITCH,
-        ConfigurationScope.HOST_PROFILE,
-        ":app-server",
-        "1",
     ),
     APP_SERVER_PUBLIC_ENDPOINT(
         "KAST_APP_SERVER_PUBLIC_ENDPOINT",
@@ -174,12 +108,6 @@ enum class ConfigurationParameter(
         ":app-server",
         "private",
         children = setOf(ConfigurationChild.BROKER),
-    ),
-    APP_SERVER_TOOLS(
-        "KAST_APP_SERVER_TOOLS",
-        ConfigurationSyntax.OWNER_INPUT,
-        ConfigurationScope.HOST_PROFILE,
-        ":app-server",
     ),
     REAL_CODEX_EXECUTABLE(
         "KAST_REAL_CODEX_EXECUTABLE",
@@ -320,14 +248,6 @@ enum class ConfigurationParameter(
         ConfigurationSyntax.ABSOLUTE_PATH,
         ConfigurationScope.INSTALLATION,
         ":cli",
-        mutability = ConfigurationMutability.DERIVED,
-    ),
-    INSTALL_REFRESH_APP_SERVER(
-        "KAST_INSTALL_REFRESH_APP_SERVER",
-        ConfigurationSyntax.SWITCH,
-        ConfigurationScope.INSTALLATION,
-        ":cli",
-        "0",
         mutability = ConfigurationMutability.DERIVED,
     ),
     INSTALL_MODE(

@@ -6,6 +6,7 @@ import io.github.amichne.kast.distribution.contract.ControlDistributionLimits
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationSource
 import io.github.amichne.kast.distribution.contract.configuration.InstallationOperationalLimits
 import io.github.amichne.kast.distribution.contract.configuration.KastConfigurationCatalogue
+import io.github.amichne.kast.distribution.contract.configuration.SavedConfigurationDocument
 import io.github.amichne.kast.distribution.managed.ControlInventoryAdmission
 import io.github.amichne.kast.distribution.managed.ControlInventoryBoundary
 import io.github.amichne.kast.distribution.managed.ControlInventoryFailure
@@ -142,7 +143,7 @@ private data class VerifiedInstallationPlan(
                         InstallationActivation.Ready -> listOf("enable-app-server")
                         is InstallationActivation.Pending -> listOf("defer-app-server-activation")
                         InstallationActivation.Planned ->
-                            if (request.refreshAppServer == InstallationSwitch.ENABLED) listOf("enable-app-server")
+                            if (request.profile == InstallationProfile.PERSISTENT) listOf("enable-app-server")
                             else emptyList()
                         InstallationActivation.NotRequested -> emptyList()
                     },
@@ -317,10 +318,7 @@ internal object InstallationWorkflow {
                             null
                         }
                     }
-                if (
-                    plan.request.force == InstallationSwitch.ENABLED ||
-                        plan.request.replaceCommandCollisions == InstallationSwitch.ENABLED
-                ) {
+                if (plan.request.force == InstallationSwitch.ENABLED) {
                     removeCommandCollision(plan.commandLink, plan.currentLink.resolve("bin/kast-complete"))
                     removeCommandCollision(plan.codexCommandLink, plan.currentLink.resolve("bin/kast-codex-complete"))
                 }
@@ -379,7 +377,7 @@ internal object InstallationWorkflow {
             }
         }
         val activation =
-            if (plan.request.refreshAppServer == InstallationSwitch.ENABLED) {
+            if (plan.request.profile == InstallationProfile.PERSISTENT) {
                 InstallationActivation.fromChild(enableAppServer(plan))
             } else InstallationActivation.NotRequested
         return InstallationOutcome.Complete(plan.report(activation))
@@ -463,9 +461,6 @@ internal object InstallationWorkflow {
                     mapOf(
                         "KAST_INSTALL_IDEA_HOME" to request.ideaHome.value.toString(),
                         "KAST_RUNTIME_DIRECTORY" to target.resolve("state/run").toString(),
-                        "KAST_ENABLE_LAUNCHD" to request.enableLaunchd.wireValue(),
-                        "KAST_ENABLE_APP_SERVER" to "1",
-                        "KAST_APP_SERVER_TOOLS" to request.appServerTools.value,
                         "KAST_APP_SERVER_PUBLIC_ENDPOINT" to request.publicEndpoint.configurationValue,
                     )
                 )
@@ -648,6 +643,14 @@ internal object InstallationWorkflow {
     private fun retire(prior: Path, request: InstallationRequest): Boolean {
         val executable = prior.resolve("bin/kast-complete")
         if (!regularExecutable(executable)) return false
+        val saved =
+            readBounded(prior.resolve("config/environment"), SavedConfigurationDocument.MAXIMUM_BYTES.toLong())
+                ?: return false
+        val configuration =
+            when (val parsed = SavedConfigurationDocument.parse(saved.toByteArray())) {
+                is Refinement.Refined -> parsed.value
+                is Refinement.Rejected -> return false
+            }
         val recorded =
             PublishedBrokerServiceCommand.retirementEnvironment(
                 installationRoot = prior,
@@ -663,6 +666,7 @@ internal object InstallationWorkflow {
                     home = request.home.value,
                     codexHome = request.codexHome.value,
                     path = System.getenv("PATH") ?: "/usr/bin:/bin",
+                    configuration = configuration,
                 ),
         ) == InstallationChildOutcome.COMPLETED
     }
@@ -756,9 +760,7 @@ internal object InstallationWorkflow {
 
     private fun commandLink(plan: VerifiedInstallationPlan, path: Path, expected: Path): LinkObservation {
         val observed = managedCommandLink(path, expected)
-        if (
-            observed != LinkObservation.Rejected || plan.request.replaceCommandCollisions == InstallationSwitch.DISABLED
-        ) {
+        if (observed != LinkObservation.Rejected || plan.request.force == InstallationSwitch.DISABLED) {
             return observed
         }
         Files.delete(path)
@@ -828,12 +830,6 @@ private sealed interface LinkObservation {
 
     data object Rejected : LinkObservation
 }
-
-private fun InstallationSwitch.wireValue(): Int =
-    when (this) {
-        InstallationSwitch.DISABLED -> 0
-        InstallationSwitch.ENABLED -> 1
-    }
 
 private fun physicalDirectory(path: Path): Boolean =
     try {

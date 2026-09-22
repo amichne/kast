@@ -15,20 +15,13 @@ class NativeProductAdmissionTest {
     @TempDir lateinit var temporary: Path
 
     @Test
-    fun `native explicit selection covers catalog while installed defaults omit raw symbols`() {
+    fun `native read coverage excludes changes from complete installed catalog`() {
         val catalog = CanonicalAgentToolDefinitions.all
-        val defaults = CanonicalAgentToolDefinitions.defaultAppServerTools
         assertEquals(14, catalog.size)
-        assertEquals(12, defaults.size)
         assertEquals(10, nativeReadToolNames.size)
         assertEquals(
             emptySet<String>(),
             nativeReadToolNames.intersect(setOf("change_plan", "change_apply", "change_recover")),
-        )
-        assertEquals(
-            setOf("symbol_lookup", "symbol_inspect"),
-            catalog.map { definition -> definition.name.value }.toSet() -
-                defaults.map { definition -> definition.name.value }.toSet(),
         )
     }
 

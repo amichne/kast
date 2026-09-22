@@ -21,7 +21,7 @@ class LocalInstallationTest(unittest.TestCase):
                 'test -f "$KAST_INSTALL_ASSETS_DIRECTORY/kast-ide-hosted-v1.2.3-idea-262.zip.sha256" || exit 33\n'
                 'printf "argument=%s\\n" "$@" > "' + str(record) + '"\n'
                 'for key in KAST_VERSION KAST_RELEASE_BASE_URL KAST_INSTALL_ASSETS_DIRECTORY '
-                'KAST_INSTALL_ROOT KAST_BIN_DIR KAST_ENABLE_LAUNCHD KAST_ENABLE_APP_SERVER; do\n'
+                'KAST_INSTALL_ROOT KAST_BIN_DIR KAST_INSTALL_PROFILE; do\n'
                 '  eval "value=\\${$key-}"\n'
                 '  printf "%s=%s\\n" "$key" "$value" >> "' + str(record) + '"\n'
                 'done\n'
@@ -55,8 +55,7 @@ class LocalInstallationTest(unittest.TestCase):
             self.assertEqual('1.2.3', contract['KAST_VERSION'])
             self.assertEqual(str(prefix / 'share/kast'), contract['KAST_INSTALL_ROOT'])
             self.assertEqual(str(prefix / 'bin'), contract['KAST_BIN_DIR'])
-            self.assertEqual('0', contract['KAST_ENABLE_LAUNCHD'])
-            self.assertEqual('1', contract['KAST_ENABLE_APP_SERVER'])
+            self.assertEqual('session', contract['KAST_INSTALL_PROFILE'])
             self.assertTrue(Path(contract['KAST_INSTALL_ASSETS_DIRECTORY']).name.startswith('kast-local-assets.'))
 
 

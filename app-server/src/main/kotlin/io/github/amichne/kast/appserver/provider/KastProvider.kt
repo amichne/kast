@@ -1,7 +1,6 @@
 package io.github.amichne.kast.appserver.provider
 
 import io.github.amichne.kast.appserver.BrokerOperationalLimits
-import io.github.amichne.kast.appserver.KastToolSelection
 import io.github.amichne.kast.appserver.core.AgentSessionBootstrap
 import io.github.amichne.kast.appserver.core.AgentSessionBootstrapQualification
 import io.github.amichne.kast.appserver.core.BrokerOperationEffect
@@ -60,7 +59,6 @@ private constructor(
     val qualificationDirectory: CanonicalBrokerDirectory,
     val processExecutor: BrokerProcessExecutor,
     val qualificationTimeoutMillis: Long,
-    val toolSelection: KastToolSelection,
     val readLimits: ReadLimits,
     val ideClient: io.github.amichne.kast.appserver.ide.ExistingIdeClient,
     val roots: io.github.amichne.kast.appserver.ide.CanonicalRootDiscoverer,
@@ -72,7 +70,6 @@ private constructor(
             qualificationDirectory: Path,
             processExecutor: BrokerProcessExecutor = JdkBrokerProcessExecutor,
             qualificationTimeoutMillis: Long = OperationExecutionBudget.LOCAL_QUALIFICATION.value,
-            toolSelection: KastToolSelection = KastToolSelection.defaults(),
             readLimits: ReadLimits = ReadLimits.Default,
             ideClient: io.github.amichne.kast.appserver.ide.ExistingIdeClient =
                 io.github.amichne.kast.appserver.ide.ExistingIdeSocketClient(
@@ -102,7 +99,6 @@ private constructor(
                     admittedDirectory,
                     processExecutor,
                     qualificationTimeoutMillis,
-                    toolSelection,
                     readLimits,
                     ideClient,
                     roots,
@@ -174,14 +170,13 @@ internal object KastProviderQualifier {
             is KastContractQualification.Rejected -> KastProviderQualification.Rejected(contract.failure)
 
             is KastContractQualification.Qualified -> {
-                val exposedTools = ExposedKastTools.select(options.toolSelection, contract.tools)
-                val registration = buildRegistration(options, contract, exposedTools)
+                val registration = buildRegistration(options, contract)
                 when (registration) {
                     is Validation.Validated ->
                         when (
                             val bootstrap =
                                 AgentSessionBootstrap.qualify(
-                                    definitions = exposedTools.values.map(QualifiedKastTool::hostedDefinition),
+                                    definitions = contract.tools.map(QualifiedKastTool::hostedDefinition),
                                     policy = contract.policy,
                                     executableRoutes =
                                         registration.value.tools.mapTo(linkedSetOf()) { tool ->
@@ -302,13 +297,12 @@ internal object KastProviderQualifier {
     private fun buildRegistration(
         options: KastProviderOptions,
         contract: KastContractQualification.Qualified,
-        exposedTools: ExposedKastTools,
     ): Validation<ProviderRegistration<KastRuntime>, *> {
         return ProviderRegistration.define(
             namespace = staticNamespace(),
             version =
                 staticVersion("${contract.evidence.cliVersion.value}+server${contract.evidence.projectionVersion}"),
-            tools = exposedTools.values.map { tool -> tool.asBrokerTool() },
+            tools = contract.tools.map { tool -> tool.asBrokerTool() },
             start = {
                 when (val current = qualifyContract(options)) {
                     is KastContractQualification.Rejected ->
@@ -550,25 +544,6 @@ private data class QualifiedKastProjection(
     val policy: AgentToolPolicy,
     val tools: List<QualifiedKastTool>,
 )
-
-/** Qualified tools narrowed to the authority granted for this broker lifetime. */
-private class ExposedKastTools private constructor(val values: List<QualifiedKastTool>) {
-    companion object {
-        internal fun select(
-            selection: KastToolSelection,
-            qualifiedTools: List<QualifiedKastTool>,
-        ): ExposedKastTools =
-            ExposedKastTools(
-                qualifiedTools.filter { tool ->
-                    val definition =
-                        CanonicalAgentToolDefinitions.all.single { definition ->
-                            definition.name == tool.hostedDefinition.name
-                        }
-                    selection.admits(definition)
-                }
-            )
-    }
-}
 
 internal data class QualifiedKastTool(
     val operation: KastOperationId,

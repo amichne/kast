@@ -4914,26 +4914,6 @@
     {
       "fingerprint": {
         "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/KastProviderTest.kt",
-        "scope": "type:KastProviderTest/fun:explicit change selection retains route but cannot invoke change without controller approval(4:Path)/declaration:<anonymous>/val:completed",
-        "kind": "JSON_BUILDER",
-        "sha256": "bfc87920ab33948b2c0b191d2c3ffda7755062a19867ad9bab0927dac36ea33f"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/KastProviderTest.kt",
-        "scope": "type:KastProviderTest/fun:explicit change selection retains route but cannot invoke change without controller approval(4:Path)/declaration:<anonymous>/val:explicit",
-        "kind": "JSON_BUILDER",
-        "sha256": "d64b3a41eecfc80b0c4e1b25ed566f132bdd8b58135fce9877c0a5c4ef7c89b0"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/KastProviderTest.kt",
         "scope": "type:KastProviderTest/fun:supported Kast operations produce selector-free observer Markdown()/val:discover",
         "kind": "JSON_LITERAL",
         "sha256": "e7687937b1deac52b553ab88f8d951372651e70117eaf03e67005ef2705da2e3"

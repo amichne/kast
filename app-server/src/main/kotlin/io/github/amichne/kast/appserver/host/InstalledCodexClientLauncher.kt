@@ -147,7 +147,6 @@ internal class InstalledCodexClientLauncher(
         val codex =
             when (val host = command.host) {
                 is io.github.amichne.kast.appserver.BrokerHostSelection.Selected -> host.executable
-                io.github.amichne.kast.appserver.BrokerHostSelection.Disabled,
                 io.github.amichne.kast.appserver.BrokerHostSelection.NotConfigured ->
                     return CodexClientLaunchRun.Rejected(CodexClientLaunchFailure.APP_SERVER_UNAVAILABLE)
             }

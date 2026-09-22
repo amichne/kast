@@ -1,26 +1,18 @@
 package io.github.amichne.kast.distribution.contract.configuration
 
-import io.github.amichne.kast.distribution.contract.IndexerHeapSize
-
 internal fun ConfigurationParameter.baseDeclaration(): ConfigurationDeclaration =
     ConfigurationDeclaration(
         key,
         owner,
         when (this) {
-            ConfigurationParameter.RUNTIME_STORE ->
-                "Verified runtime payload store; defaults to the physical installation runtime-payloads directory."
             ConfigurationParameter.RUNTIME_DIRECTORY ->
-                "Worker socket namespace owned by the physical installation state/run directory."
-            ConfigurationParameter.CACHE_ROOT ->
-                "Private sidecar cache; defaults to the physical installation state/cache directory."
+                "Coordinator socket namespace owned by the physical installation state/run directory."
             else -> key.lowercase().replace('_', ' ')
         },
         syntax,
         scope,
-        if (this == ConfigurationParameter.INDEXER_MAX_HEAP) "${IndexerHeapSize.Default.mebibytes}m" else defaultValue,
+        defaultValue,
         when (this) {
-            ConfigurationParameter.INDEXER_MAX_HEAP -> "IndexerHeapSize.Default"
-            ConfigurationParameter.APP_SERVER_TOOLS -> "CanonicalAgentToolDefinitions.defaultAppServerTools"
             else -> if (defaultValue == null) "owning boundary; no catalogue fallback" else "declared literal"
         },
         when (scope) {
@@ -36,7 +28,6 @@ internal fun ConfigurationParameter.baseDeclaration(): ConfigurationDeclaration 
             ConfigurationParameter.GRADLE_IMPORT_VARIABLES,
             ConfigurationParameter.GRADLE_IMPORT_PATH,
             ConfigurationParameter.GRADLE_USER_HOME -> ConfigurationImpact.MODEL
-            ConfigurationParameter.APP_SERVER_TOOLS,
             ConfigurationParameter.CODEX_HOME -> ConfigurationImpact.ROUTING
             else -> ConfigurationImpact.LAUNCH_ONLY
         },

@@ -10,7 +10,7 @@ internal fun coordinatorConfigurationIdentity(
     val values =
         configuration
             .childIdentityInputs(io.github.amichne.kast.distribution.contract.configuration.ConfigurationChild.BROKER)
-            .filterKeys { it != "KAST_INDEXER_MAX_HEAP" && it != "KAST_CONFIGURATION_FILE" }
+            .filterKeys { it != "KAST_CONFIGURATION_FILE" }
     val material =
         Json.encodeToString(
             CoordinatorIdentityInputs(values.toSortedMap().map { CoordinatorIdentityInput(it.key, it.value) })

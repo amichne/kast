@@ -15,9 +15,9 @@ import org.junit.jupiter.api.io.TempDir
 
 class InstallationActivationTest {
     @Test
-    fun `successful activation and opt out have distinct installed outcomes`(@TempDir temporary: Path) {
-        for (refresh in listOf("0", "1")) {
-            val root = Files.createDirectory(temporary.resolve(refresh)).toRealPath()
+    fun `persistent and session activation have distinct installed outcomes`(@TempDir temporary: Path) {
+        for (profile in listOf("session", "persistent")) {
+            val root = Files.createDirectory(temporary.resolve(profile)).toRealPath()
             val installation = root.resolve("installation")
             val result =
                 InstallationWorkflow.execute(
@@ -30,7 +30,7 @@ class InstallationActivationTest {
                         "1.2.3",
                         environmentOverrides =
                             mapOf(
-                                "KAST_INSTALL_REFRESH_APP_SERVER" to refresh,
+                                "KAST_INSTALL_PROFILE" to profile,
                                 "KAST_APP_SERVER_PUBLIC_ENDPOINT" to "codex-control",
                             ),
                     )
@@ -38,7 +38,7 @@ class InstallationActivationTest {
             val report = assertInstanceOf(InstallationOutcome.Complete::class.java, result).report
             assertEquals(InstallationReportStatus.INSTALLED, report.status)
             assertEquals(
-                if (refresh == "1") InstallationActivation.Ready else InstallationActivation.NotRequested,
+                if (profile == "persistent") InstallationActivation.Ready else InstallationActivation.NotRequested,
                 report.activation,
             )
             assertTrue(
@@ -63,7 +63,7 @@ class InstallationActivationTest {
                 home,
                 Files.createDirectory(root.resolve("codex-home")),
                 "1.2.3",
-                environmentOverrides = mapOf("KAST_ENABLE_APP_SERVER" to "1", "KAST_INSTALL_REFRESH_APP_SERVER" to "1"),
+                environmentOverrides = mapOf("KAST_INSTALL_PROFILE" to "persistent"),
             )
         Files.writeString(
             request.controlRoot.value.resolve("bin/kast"),
@@ -82,7 +82,7 @@ class InstallationActivationTest {
         verifyPendingReport(complete.report)
         val selected = install.resolve("current").toRealPath()
         assertTrue(Files.exists(selected.resolve("installation.json")))
-        assertTrue(Files.readString(selected.resolve("config/environment")).contains("KAST_ENABLE_APP_SERVER=1"))
+        assertFalse(Files.readString(selected.resolve("config/environment")).contains("KAST_ENABLE_APP_SERVER"))
         val configuration = Files.readString(selected.resolve("config/environment"))
         assertTrue(configuration.contains("KAST_APP_SERVER_PUBLIC_ENDPOINT=private"))
         val identity = Files.readString(selected.resolve("installation.json"))

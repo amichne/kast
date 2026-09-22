@@ -112,10 +112,10 @@ Choose a local installation from the repository root:
 
 ```shell
 # Isolated installation, active only in this Bash or Zsh session
-source "$(./install.sh --local session)"
+source "$(./packaging/install-checkout.sh session --idea-home "/Applications/IntelliJ IDEA.app")"
 
 # Persistent installation for your user account
-./install.sh --local persistent
+./packaging/install-checkout.sh persistent --idea-home "/Applications/IntelliJ IDEA.app"
 ```
 
 Both modes build the working tree, including uncommitted changes, and verify the
@@ -196,3 +196,21 @@ It does not establish fresh public installation, launchd registration, plugin
 restart, focus behavior, cold launch into the normal user profile, or interactive
 veto and unsaved-editor behavior. See the
 [lifecycle verification record](reviews/ide-lifecycle-acceptance.md).
+
+### Installer development inputs
+
+The public installer supports `--force`, `--dry-run`, `--version`, `--idea-home`,
+`uninstall`, and `--help`. Deprecated collision flags, custom directory flags,
+and `--local` are rejected. Use `packaging/install-checkout.sh session|persistent`
+for checkout builds. Session mode creates private paths and prints an activation
+file; persistent mode installs and activates the same complete suite.
+
+Release fixtures supply `KAST_INSTALL_ASSETS_DIRECTORY` with verified archives.
+Only this explicit development input permits `KAST_INSTALL_ROOT`, `KAST_BIN_DIR`,
+and `KAST_INSTALL_PROFILE=session`. Product read limits, endpoint selection, and
+read-only inspection remain supported. The duplicate `index` command family is
+removed; use `kast ide` for status, refresh, classes, supertype, and completion.
+
+Version-pinned archives must match the installer contract. To stage historical
+archives that require retired setup inputs, use their matching tagged installer.
+The adjacent-patch acceptance helper supports archives with the current contract.

@@ -75,10 +75,8 @@ usage() {
 Install or remove Kast for the current user.
 
 Usage:
-  install.sh [--idea-home <absolute-path>] [--version <major.minor.patch>] [--install-root <absolute-path>] [--bin-dir <absolute-path>] [--force] [--clean-collisions] [--dry-run] [--no-interactive]
+  install.sh [--idea-home <absolute-path>] [--version <major.minor.patch>] [--force] [--dry-run]
   install.sh uninstall [--dry-run]
-  install.sh --local session [--idea-home <absolute-path>]
-  install.sh --local persistent [--idea-home <absolute-path>] [--force]
   install.sh --help
 
 The default command installs the latest release into:
@@ -93,9 +91,9 @@ Pass arguments to a downloaded installer after Bash's `$0` separator:
 `--dry-run` downloads and verifies the matched release, then prints the exact
 installation plan without changing installation state.
 
-When existing `kast` command files are not owned by the selected installation,
-an interactive install offers to remove those exact collisions. In automation,
-pass `--clean-collisions` to make the same explicit choice.
+Command collisions fail with their exact paths. Use `--force` to authorize
+replacement and reset managed installation state, or move the named collision.
+Development builds use packaging/install-checkout.sh session|persistent.
 
 Installation enables the app server and its macOS login LaunchAgent by default.
 `--force` retires the selected installation, resets its managed state and sockets,
@@ -377,23 +375,10 @@ activate_hosted_plugin() {
     --installation "$selected" --staged-plugin "$staged" --plugin-root "$plugin_root" ${options[@]+"${options[@]}"}
 }
 
-script_source="${BASH_SOURCE[0]:-}"
-checkout_mode=""
-if [[ "${1:-}" == "--local" ]]; then
-  [[ -n "$script_source" && -f "$script_source" ]] ||
-    fail "--local requires an installer file from a Kast checkout"
-  installer_directory="$(CDPATH='' cd -- "$(dirname -- "$script_source")" && pwd -P)"
-  checkout_mode="${2:-}"
-  case "$checkout_mode" in session|persistent) ;; *) fail '--local requires session or persistent' ;; esac
-  shift 2
-fi
-
 action=install
 version="${KAST_VERSION:-}"
 idea_home="${KAST_INSTALL_IDEA_HOME:-}"
 mode=apply
-clean_collisions=ask
-interaction=prompt
 force=0
 
 if [[ "${1:-}" == uninstall ]]; then
@@ -402,9 +387,6 @@ if [[ "${1:-}" == uninstall ]]; then
 fi
 
 while [[ $# -gt 0 ]]; do
-  if [[ -n "$checkout_mode" ]]; then
-    case "$1" in --idea-home|--force) ;; *) fail "unsupported checkout installation option: $1" ;; esac
-  fi
   case "$1" in
     --help|-h)
       usage
@@ -413,15 +395,10 @@ while [[ $# -gt 0 ]]; do
     --force)
       [[ "$action" == install ]] || fail "--force is valid only for installation"
       force=1
-      clean_collisions=yes
       shift
       ;;
     --dry-run)
       mode=plan
-      shift
-      ;;
-    --no-interactive)
-      interaction=noninteractive
       shift
       ;;
     --version)
@@ -434,27 +411,23 @@ while [[ $# -gt 0 ]]; do
       idea_home="$2"
       shift 2
       ;;
-    --install-root)
-      [[ $# -ge 2 ]] || fail "--install-root requires a value"
-      install_root="$2"
-      shift 2
-      ;;
-    --bin-dir)
-      [[ $# -ge 2 ]] || fail "--bin-dir requires a value"
-      bin_directory="$2"
-      shift 2
-      ;;
-    --clean-collisions)
-      clean_collisions=yes
-      shift
-      ;;
     *) fail "unknown argument: $1" ;;
   esac
 done
 
 [[ -n "${HOME:-}" ]] || fail "HOME is unavailable"
-install_root="${install_root:-${KAST_INSTALL_ROOT:-${XDG_DATA_HOME:-$HOME/.local/share}/kast}}"
-bin_directory="${bin_directory:-${KAST_BIN_DIR:-$HOME/.local/bin}}"
+# Local artifacts are an explicit developer entry point; public release installs use standard paths.
+profile="${KAST_INSTALL_PROFILE:-persistent}"
+case "$profile" in persistent|session) ;; *) fail 'KAST_INSTALL_PROFILE must be persistent or session' ;; esac
+if [[ -z "${KAST_INSTALL_ASSETS_DIRECTORY:-}" ]]; then
+  [[ "$profile" == persistent ]] || fail 'session installation requires local build artifacts; use packaging/install-checkout.sh'
+  [[ -z "${KAST_INSTALL_ROOT+x}${KAST_BIN_DIR+x}" ]] || fail 'custom installation paths require the development installer'
+fi
+install_root="${KAST_INSTALL_ROOT:-${XDG_DATA_HOME:-$HOME/.local/share}/kast}"
+bin_directory="${KAST_BIN_DIR:-$HOME/.local/bin}"
+for retired in KAST_INDEXER_MAX_HEAP KAST_WORKER_RESIDENT_LIMIT KAST_WORKER_STARTUP_LIMIT KAST_WORKER_AGGREGATE_MIB KAST_WORKER_NATIVE_MIB KAST_WORKER_GRADLE_MIB KAST_RUNTIME_ARCHIVE KAST_RUNTIME_STORE KAST_CACHE_ROOT KAST_ENABLE_APP_SERVER KAST_APP_SERVER_TOOLS KAST_ENABLE_LAUNCHD KAST_INSTALL_REFRESH_APP_SERVER KAST_INSTALL_REPLACE_COMMAND_COLLISIONS; do
+  [[ -z "${!retired+x}" ]] || fail "$retired is retired; remove it from the environment before installing"
+done
 require_absolute_path "install root" "$install_root"
 require_absolute_path "binary directory" "$bin_directory"
 
@@ -468,16 +441,11 @@ for command_name in kast kast-codex; do
     fi
   fi
 done
-if [[ "$action" == install && "$mode" == apply && ${#command_collisions[@]} -gt 0 && "$clean_collisions" == ask ]]; then
+if [[ "$action" == install && "$mode" == apply && ${#command_collisions[@]} -gt 0 && "$force" == 0 ]]; then
   printf '%s\n' 'kast-install: existing command paths collide with this installation:' >&2
   printf '  %s\n' "${command_collisions[@]}" >&2
-  if [[ -t 0 && "$interaction" == prompt ]]; then
-    printf '%s' 'Remove only these paths and continue? [y/N] ' >&2
-    IFS= read -r answer
-    case "$answer" in y|Y|yes|YES) clean_collisions=yes ;; *) fail 'installation cancelled; no collisions were removed' ;; esac
-  else
-    fail 'command collisions require an interactive choice or --clean-collisions'
-  fi
+  fail 'command collisions require --force (resets managed state) or moving the named paths'
+
 fi
 
 if [[ "$action" == uninstall ]]; then
@@ -523,12 +491,6 @@ IFS=$'\t' read -r idea_version idea_build idea_data_directory < <(read_idea_iden
 [[ -n "$idea_version" && -n "$idea_build" && -n "$idea_data_directory" ]] || fail "IDEA product identity is unavailable"
 success "found IntelliJ IDEA $idea_version (build $idea_build)"
 info "The IntelliJ plugin gives Kast compiler-grounded access to projects opened in this exact IDEA release line."
-if [[ -n "$checkout_mode" ]]; then
-  export KAST_INSTALL_IDEA_HOME="$idea_home"
-  checkout_options=(--idea-home "$idea_home")
-  [[ "$force" == 0 ]] || checkout_options+=(--force)
-  exec bash "$installer_directory/packaging/install-checkout.sh" "$installer_directory/install.sh" "$checkout_mode" "${checkout_options[@]}"
-fi
 idea_plugin_root="$HOME/Library/Application Support/JetBrains/$idea_data_directory/plugins"
 
 if [[ -z "$version" || "$version" == latest ]]; then
@@ -565,9 +527,7 @@ control_root="$temporary_root/control"
 extract_control "$temporary_root/$control_name" "$control_root"
 [[ -x "$control_root/bin/kast" ]] || fail "control archive has no executable installer"
 
-enable_launchd="${KAST_ENABLE_LAUNCHD:-1}"
-case "$enable_launchd" in 0|1) ;; *) fail "KAST_ENABLE_LAUNCHD must be 0 or 1" ;; esac
-info "The app server provides the complete Kast suite. Its macOS login LaunchAgent starts it at login."
+info "The app server provides the complete Kast suite. Persistent installations start it at login."
 note "$([[ "$mode" == plan ]] && printf 'planning' || printf 'installing') app server tooling and command launchers"
 
 export KAST_INSTALL_CONTROL_ROOT="$control_root"
@@ -580,15 +540,8 @@ export KAST_INSTALL_IDEA_HOME="$idea_home"
 export KAST_INSTALL_JAVA_HOME="$java_home"
 export KAST_INSTALL_ROOT="$install_root"
 export KAST_BIN_DIR="$bin_directory"
-export KAST_ENABLE_LAUNCHD="$enable_launchd"
-export KAST_ENABLE_APP_SERVER=1
+export KAST_INSTALL_PROFILE="$profile"
 export KAST_INSTALL_FORCE="$force"
-export KAST_INSTALL_REFRESH_APP_SERVER="${KAST_INSTALL_REFRESH_APP_SERVER:-1}"
-if [[ "$clean_collisions" == yes ]]; then
-  export KAST_INSTALL_REPLACE_COMMAND_COLLISIONS=1
-else
-  export KAST_INSTALL_REPLACE_COMMAND_COLLISIONS=0
-fi
 export KAST_INSTALL_MODE="$mode"
 export CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
 export JAVA="$java_home/bin/java"

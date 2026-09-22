@@ -197,11 +197,6 @@ object CanonicalAgentToolDefinitions {
             changeRecover,
         )
 
-    /** Native-qualified read and change surface; raw symbol operations require explicit selection. */
-    val defaultAppServerTools: List<AgentToolDefinition> = all.filter { definition ->
-        definition !== symbolLookup && definition !== symbolInspect
-    }
-
     /** Legacy input names remain accepted throughout 0.40.x; removal is no earlier than 0.41.0. */
     fun resolveInput(raw: String): Refinement<AgentToolDefinition, AgentToolInputFailure> {
         val matches = all.filter { definition ->

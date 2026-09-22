@@ -41,7 +41,6 @@ internal value class BrokerServiceIdentity private constructor(val value: String
             javaExecutable: Path,
             codexHome: Path,
             executableSearchPath: BrokerExecutableSearchPath,
-            toolSelection: KastToolSelection,
             childEnvironment: BrokerChildEnvironment,
             publicEndpoint: BrokerPublicEndpoint,
         ): BrokerServiceIdentity {
@@ -57,7 +56,6 @@ internal value class BrokerServiceIdentity private constructor(val value: String
                         javaExecutable,
                         codexHome,
                         executableSearchPath.value,
-                        toolSelection.environmentValue,
                         childEnvironment.identityValue,
                         publicEndpoint.identityValue,
                     )
@@ -212,10 +210,6 @@ internal sealed interface BrokerHostSelection {
         override val identityValue: String = "selected\n${executable.path}\n$payloadDigest"
     }
 
-    data object Disabled : BrokerHostSelection {
-        override val identityValue = "disabled"
-    }
-
     data object NotConfigured : BrokerHostSelection {
         override val identityValue = "not-configured"
     }
@@ -225,7 +219,6 @@ internal sealed interface BrokerHostSelection {
     fun environment(): Map<String, String> =
         when (this) {
             is Selected -> mapOf("CODEX_EXECUTABLE" to executable.launcherPath.toString())
-            Disabled,
             NotConfigured -> emptyMap()
         }
 }
@@ -253,7 +246,6 @@ private constructor(
     val serviceLock: Path,
     val identity: BrokerServiceIdentity,
     val serviceLabel: BrokerLaunchdServiceLabel,
-    val toolSelection: KastToolSelection,
     val childEnvironment: BrokerChildEnvironment,
     val configuration: ResolvedKastConfiguration,
 ) {
@@ -306,13 +298,6 @@ private constructor(
                 }
             val configuration = admittedConfiguration.configuration
             val ownerInputs = configuration.ownerInputs(ConfigurationOwner.APP_SERVER)
-            if (
-                purpose == BrokerServicePurpose.HOST_ATTACHMENT &&
-                    admittedConfiguration.toolingMode == AppServerToolingMode.DISABLED
-            ) {
-                return rejected(PersistentBrokerServiceFailure.DISABLED)
-            }
-            val toolSelection = admittedConfiguration.toolSelection
             val javaHome =
                 canonicalDirectoryTarget(javaHomeCandidate)
                     ?: return rejected(PersistentBrokerServiceFailure.JAVA_RUNTIME_UNAVAILABLE)
@@ -329,7 +314,6 @@ private constructor(
                 } else resolveExecutable("codex", searchPath)
             val host =
                 when {
-                    admittedConfiguration.toolingMode == AppServerToolingMode.DISABLED -> BrokerHostSelection.Disabled
                     codexSelection == null -> {
                         if (purpose == BrokerServicePurpose.HOST_ATTACHMENT)
                             return rejected(PersistentBrokerServiceFailure.CODEX_EXECUTABLE_UNAVAILABLE)
@@ -364,7 +348,6 @@ private constructor(
                             host.executable.path,
                             kast,
                         )
-                    BrokerHostSelection.Disabled,
                     BrokerHostSelection.NotConfigured -> BrokerExecutableSearchPath.coordinator(kast)
                 } ?: return rejected(PersistentBrokerServiceFailure.CONFIGURATION_REJECTED)
             val codexHome =
@@ -393,7 +376,6 @@ private constructor(
                     javaExecutable,
                     codexHome,
                     executableSearchPath,
-                    toolSelection,
                     childEnvironment,
                     publicEndpoint,
                 )
@@ -415,7 +397,6 @@ private constructor(
                     stateDirectory.resolve("service-start.lock"),
                     identity,
                     BrokerLaunchdServiceLabel.from(installation.root),
-                    toolSelection,
                     childEnvironment,
                     configuration,
                 )

@@ -1,6 +1,5 @@
 package io.github.amichne.kast.appserver.provider
 
-import io.github.amichne.kast.appserver.KastToolSelection
 import io.github.amichne.kast.appserver.core.*
 import io.github.amichne.kast.appserver.ide.*
 import io.github.amichne.kast.appserver.installedKastCatalogFixture
@@ -41,7 +40,6 @@ class DirectKastInvocationTest {
                                 else -> BrokerProcessExecution.Rejected(BrokerProcessFailure.SPAWN_FAILED)
                             }
                         },
-                    toolSelection = (KastToolSelection.admit("search_classes") as Refinement.Refined).value,
                     roots = CanonicalRootDiscoverer { CanonicalRootDiscovery.Discovered(CanonicalRoot(root)) },
                     ideClient =
                         ExistingIdeClient { admittedRoot, operation ->

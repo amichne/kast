@@ -1,6 +1,5 @@
 package io.github.amichne.kast.appserver.acceptance.hostedchange
 
-import io.github.amichne.kast.appserver.KastToolSelection
 import io.github.amichne.kast.appserver.core.Broker
 import io.github.amichne.kast.appserver.core.BrokerDispatch
 import io.github.amichne.kast.appserver.core.BrokerDispatchRequest
@@ -149,7 +148,6 @@ private class NativeHostedReadTransport(
                 KastProviderOptions.admit(
                         executable = NativeProductAdmission.executable(product, workspace),
                         qualificationDirectory = workspace,
-                        toolSelection = KastToolSelection.admit(nativeReadToolNames.joinToString(",")).nativeValue(),
                     )
                     .nativeValue()
             val qualified =
