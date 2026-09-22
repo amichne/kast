@@ -32,6 +32,7 @@ code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparationActivity.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/DaemonManagementProtocol.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonManagementClient.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonUpgrade.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/DaemonManagement.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/CoordinatorRoutes.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastCatalogObservation.kt
@@ -248,5 +249,11 @@ retain reconciliation uncertainty. Structured update observations contain finite
 stages/outcomes without identities or payloads. The installed management client
 qualifies each update reply against the exact daemon target, candidate digest and
 request identity; malformed pending blockers and mismatched commit or cancel
-responses reject. Installer activation has not yet been connected to this admission
-contract.
+responses reject.
+
+The installer-facing upgrade boundary observes the exact launchd label and
+retained service markers before requesting a seal. Only absent launchd and absent
+markers establish that no managed daemon needs retirement. Active service
+admission retains typed blockers and a permit bound to the daemon target,
+candidate and request; rejected or ambiguous observations do not authorize
+replacement. Installer activation has not yet been wired to this boundary.
