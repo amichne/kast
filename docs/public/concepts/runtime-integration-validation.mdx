@@ -9,8 +9,12 @@ tags:
   - "workspaces"
   - "validation"
   - "installation"
-timestamp: "2026-09-14T00:00:00-04:00"
+timestamp: "2026-09-21T00:00:00-04:00"
 code_sources:
+  - path: "AGENTS.md"
+  - path: "docs/development.md"
+  - path: "packaging/installation-lifecycle.py"
+  - path: "packaging/test-installation-lifecycle.py"
   - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeCli.kt"
   - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledCoordinator.kt"
   - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/WorkspaceEnrollment.kt"
@@ -83,8 +87,22 @@ Workspace enrollment provides routing information, not project-opening authority
 
 ## Choose evidence for a validation claim
 
+Kast's default testing approach starts with one named behavior, its minimum facts
+and the real production rule. Focused tests supply explicit inputs and script only
+the external observations that the rule consumes. Filesystem, compiler, platform
+and native fixtures are used when the assertion requires that authority.
+
+Each fixture has a dependency budget. A scripted timeout can establish failure
+handling without waiting or starting a child; it cannot establish how a native
+process reaches that timeout. Ownership checks and protected-state assertions
+remain with the production implementation. See the
+[development testing guide](https://github.com/amichne/kast/blob/main/docs/development.md#test-one-behavior-at-a-time)
+for the general rule, boundary choices and executable examples.
+
 | Check | What it can establish |
 | --- | --- |
+| Pure policy and scripted observation tests | Resolution, provenance, finite failures and effect order for the declared inputs |
+| Private filesystem and process-adapter checks | Path, lock and identity admission or invocation wiring at the exercised boundary |
 | Generated contract and schema tests | Request shapes, response variants, invocation bindings, and rejection of invalid values |
 | Focused coordinator and transport tests | Routing, ownership, deadlines, and bounded failure handling |
 | Existing-IDE semantic acceptance | Compiler results in the admitted project, source state, host, and workload tested |
