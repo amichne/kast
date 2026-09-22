@@ -139,3 +139,5 @@ same workspace demand before loading the immutable hosted plan. Preparation fail
 retains its finite cause and operation identity, before any controller prompt or
 signature. The preparation deadline includes workspace readiness; the separate
 controller deadline begins only after a challenge is admitted.
+
+Installation creates the broker signing identity before activating the product. Reinstallation preserves an admitted matching pair; partial or conflicting enrollment fails closed without replacing surviving keys. Runtime apply and recovery only read existing enrolled authority.

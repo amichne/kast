@@ -29,18 +29,16 @@ Kast can add one declaration to an existing Kotlin source file in the open Intel
 Complete these prerequisites:
 
 - [Install and connect Kast](/start).
-- Open the repository in IntelliJ with the matched Kast plugin.
-- Let the initial import and indexing finish.
+- Use the selected IntelliJ installation with the matched Kast plugin.
 - Save your work before planning.
 
-Enroll the local broker once before applying or recovering a plan:
+The installer creates or preserves the matching private approval key pair in
+`~/.kast/approval`. Partial or conflicting keys reject installation without replacing
+the surviving keys. Re-running the installer preserves valid enrollment.
 
-```console
-kast ide trust-broker
-```
-
-The command creates or preserves a matching private approval key pair in
-`~/.kast/approval`.
+The installed daemon prepares the exact workspace and waits for IDEA readiness
+before planning or loading an approval challenge. A trust or import blocker is
+returned for you to resolve.
 
 - Applying a plan does not enroll trust automatically.
 - The three change tools are deferred defaults.

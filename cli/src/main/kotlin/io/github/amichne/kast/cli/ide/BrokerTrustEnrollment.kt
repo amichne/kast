@@ -20,6 +20,7 @@ import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 
+@Serializable
 internal enum class BrokerTrustFailure {
     UNAVAILABLE,
     UNSAFE_PATH,
@@ -53,7 +54,7 @@ private const val MAXIMUM_KEY_BYTES = 128
 private val privateDirectoryMode = PosixFilePermissions.fromString("rwx------")
 private val privateFileMode = PosixFilePermissions.fromString("rw-------")
 
-/** Explicit local enrollment is the only key creation boundary. Apply never calls it. */
+/** Installation and explicit local enrollment own key creation. Request handling never calls it. */
 internal class FilesystemBrokerTrustRegistrar(private val home: Path) : BrokerTrustRegistrar {
     override fun enroll(): BrokerTrustResult =
         try {

@@ -6,6 +6,7 @@ resource: file://distribution
 tags: [distribution, configuration, packaging, release]
 timestamp: 2026-09-22T00:00:00Z
 code_sources:
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationTrustEnrollment.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/PackagedProviderCatalog.kt
   - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/ControlDistributionAdmissionMain.kt
   - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/SelectedIdeInstallation.kt
@@ -202,3 +203,5 @@ Control assembly packages `share/kast/provider-catalog.json` from the same hoste
 schema projection as the CLI. The artifact contains hosted metadata and schemas,
 with no executable grammar. Distribution layout requires it; runtime release
 admission qualifies the actual staged file through the production provider.
+
+After installation admission and before retiring or replacing any installation, the installer enrolls or preserves the user-owned broker key pair. Partial, mismatched, unsafe or busy enrollment rejects with the finite trust failure. Plan mode creates no keys. Bounded trust observations contain only completion status or rejection cause, never key material. Keys live outside versioned payloads and remain unchanged across reinstalls and upgrades.

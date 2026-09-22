@@ -63,6 +63,8 @@ internal enum class InstallationFailure {
 internal sealed interface InstallationOutcome {
     data class Complete(val report: InstallationReport) : InstallationOutcome
 
+    data class TrustRejected(val failure: io.github.amichne.kast.cli.ide.BrokerTrustFailure) : InstallationOutcome
+
     data class Rejected(val failure: InstallationFailure, val limit: ControlLimitExceeded? = null) : InstallationOutcome
 }
 
@@ -131,6 +133,7 @@ private data class VerifiedInstallationPlan(
                 io.github.amichne.kast.distribution.managed.SelectedIdeInstallation.resolve(request.ideaHome.value),
             changes =
                 listOf(
+                    "enroll-or-preserve-broker-trust",
                     "install-immutable-payload",
                     "write-release-local-configuration",
                     "retire-previous-app-server",
@@ -257,6 +260,11 @@ internal object InstallationWorkflow {
             lock.use {
                 if (Files.isSymbolicLink(lockPath) || !secureActivationLock(lockPath)) {
                     return InstallationOutcome.Rejected(InstallationFailure.ACTIVATION_LOCK_REJECTED)
+                }
+                when (val trust = enrollInstallationTrust(plan.request.home.value)) {
+                    is io.github.amichne.kast.cli.ide.BrokerTrustResult.Complete -> Unit
+                    is io.github.amichne.kast.cli.ide.BrokerTrustResult.Rejected ->
+                        return InstallationOutcome.TrustRejected(trust.failure)
                 }
                 if (plan.request.force == InstallationSwitch.ENABLED) {
                     val roots = buildSet {
