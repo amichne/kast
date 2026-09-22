@@ -160,6 +160,12 @@ waiting retains its separate deadline.
 
 Service lifecycle, deferred updates and durable storage migration remain subsequent work.
 
+Launchd starts the private `share/kast/libexec/kast-daemon` entry point directly.
+It accepts no commands and requires the managed readiness environment before
+coordinator admission. Published receipts for the earlier `kast broker serve`
+entry point remain readable for exact retirement. The login bootstrap remains a
+separate migration step.
+
 ## Ownership and recovery
 
 ```mermaid

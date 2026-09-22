@@ -9,6 +9,8 @@ Defines Kast's human-facing command graph, installed configuration and installat
 
 ## Key Files
 
+- [KastDaemonMain.kt](src/main/kotlin/io/github/amichne/kast/cli/KastDaemonMain.kt) - private managed daemon entry point outside the public command graph.
+
 - [PackagedProviderCatalog.kt](src/main/kotlin/io/github/amichne/kast/cli/PackagedProviderCatalog.kt) - build-time hosted schema projection for App Server qualification.
 
 - [WorkspaceRefreshAdmission.kt](src/main/kotlin/io/github/amichne/kast/cli/ide/WorkspaceRefreshAdmission.kt) - strict refresh control admission and operation-specific process outcomes.

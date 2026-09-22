@@ -43,6 +43,28 @@ CHECK
 mkdir -p "$fixture/repo"
 printf 'rootProject.name = "installed-product"\n' > "$fixture/repo/settings.gradle.kts"
 command_environment=("HOME=$fixture/home" "JAVA_OPTS=-Duser.home=$fixture/home" "KAST_RUNTIME_DIRECTORY=$KAST_RUNTIME_DIRECTORY")
+daemon="$product_root/share/kast/libexec/kast-daemon"
+[[ -x "$daemon" ]] || fail 'private daemon launcher missing'
+set +e
+env -u JAVA_TOOL_OPTIONS -u _JAVA_OPTIONS -u BROKER_SERVICE_IDENTITY -u BROKER_READINESS_FILE "${command_environment[@]}" "$daemon" unexpected > "$fixture/daemon.stdout" 2> "$fixture/daemon.stderr"
+daemon_status=$?
+set -e
+[[ "$daemon_status" == 64 && ! -s "$fixture/daemon.stdout" ]] || fail 'private daemon accepted public arguments'
+python3 - "$fixture/daemon.stderr" <<'DAEMON'
+import json, sys
+from pathlib import Path
+assert json.loads(Path(sys.argv[1]).read_text()) == {'failure': 'ARGUMENTS_REJECTED'}
+DAEMON
+set +e
+env -u JAVA_TOOL_OPTIONS -u _JAVA_OPTIONS -u BROKER_SERVICE_IDENTITY -u BROKER_READINESS_FILE "${command_environment[@]}" "$daemon" > "$fixture/daemon.stdout" 2> "$fixture/daemon.stderr"
+daemon_status=$?
+set -e
+[[ "$daemon_status" == 64 && ! -s "$fixture/daemon.stdout" ]] || fail 'private daemon accepted unmanaged invocation'
+python3 - "$fixture/daemon.stderr" <<'DAEMON'
+import json, sys
+from pathlib import Path
+assert json.loads(Path(sys.argv[1]).read_text()) == {'failure': 'READINESS_REJECTED'}
+DAEMON
 version="$(env "${command_environment[@]}" "$kast" --version)"
 [[ "$version" == "kast "*" (IntelliJ plugin)" ]] || fail "unexpected version: $version"
 schema="$(env "${command_environment[@]}" "$kast" --schema)"

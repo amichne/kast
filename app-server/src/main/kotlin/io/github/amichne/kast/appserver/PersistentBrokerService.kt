@@ -252,6 +252,9 @@ private constructor(
     val publicSocket: Path
         get() = publicEndpoint.path
 
+    val daemonExecutable: Path
+        get() = kast.parent.parent.resolve("share/kast/libexec/kast-daemon")
+
     companion object {
         fun resolveCoordinator(
             kastCandidate: Path,

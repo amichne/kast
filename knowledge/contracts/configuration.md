@@ -119,3 +119,5 @@ Installation uses one derived `KAST_INSTALL_PROFILE`: persistent activates the
 coordinator and login service; session defers activation while retaining the same
 complete payload. The public installer always selects persistent. The checkout
 entrypoint derives the profile from its required session or persistent argument.
+
+The private daemon entry point is a declared raw-environment ingress owner. It checks managed readiness inputs and the saved-configuration rejection marker before invoking the existing coordinator configuration admission. Its generated launcher uses the existing derived `KAST_OPTS` JVM boundary; it adds no saved configuration setting.
