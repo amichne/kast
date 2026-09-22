@@ -1,19 +1,26 @@
 package io.github.amichne.kast.appserver.provider
 
+import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
+import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
+import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
+import io.github.amichne.kast.appserver.ide.HostedMutationOperation
+import io.github.amichne.kast.appserver.ide.HostedPlanIdentity
 import io.github.amichne.kast.appserver.runtime.ControllerApprovedPlan
 import io.github.amichne.kast.appserver.runtime.HostedChangeApprovalOperation
 import io.github.amichne.kast.appserver.runtime.HostedPlanApprovalChallenge
 import io.github.amichne.kast.appserver.runtime.HostedPlanApprovalFailure
 import io.github.amichne.kast.appserver.runtime.HostedPlanApprovalGateway
 import io.github.amichne.kast.appserver.runtime.HostedPlanApprovalGrant
+import io.github.amichne.kast.appserver.runtime.HostedPlanApprovalRejection
 import io.github.amichne.kast.appserver.runtime.HostedPlanApprovalRequest
+import io.github.amichne.kast.appserver.runtime.WorkspaceDemandResult
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-/** The installed CLI reads the owner's immutable plan and issues its challenge without a write permit. */
+/** Prepares the exact workspace before reading its immutable plan, without a mutation permit. */
 internal class KastHostedPlanApprovalGateway(
     private val options: KastProviderOptions,
     userHome: Path,
@@ -23,48 +30,49 @@ internal class KastHostedPlanApprovalGateway(
 
     override suspend fun prepare(
         request: HostedPlanApprovalRequest
-    ): Refinement<HostedPlanApprovalChallenge, HostedPlanApprovalFailure> {
+    ): Refinement<HostedPlanApprovalChallenge, HostedPlanApprovalRejection> {
         when (val available = withContext(ioDispatcher) { signer.availability() }) {
             is Refinement.Rejected -> return available
             is Refinement.Refined -> Unit
         }
-        return kotlinx.coroutines.runInterruptible(ioDispatcher) {
-            val root =
-                when (val selected = options.roots.discover(request.invocation.workingDirectory.path)) {
-                    is io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery.Discovered -> selected.root
-                    is io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery.Rejected ->
-                        return@runInterruptible Refinement.Rejected(HostedPlanApprovalFailure.PLAN_UNAVAILABLE)
-                }
-            val identity =
-                when (
-                    val admitted =
-                        io.github.amichne.kast.appserver.ide.HostedPlanIdentity.parse("plan:${request.planIdentity}")
-                ) {
-                    is Refinement.Refined -> admitted.value
-                    is Refinement.Rejected ->
-                        return@runInterruptible Refinement.Rejected(HostedPlanApprovalFailure.INVALID_REQUEST)
-                }
-            val kind =
-                when (request.operation) {
-                    HostedChangeApprovalOperation.APPLY ->
-                        io.github.amichne.kast.appserver.ide.HostedMutationOperation.CHANGE_APPLY
-                    HostedChangeApprovalOperation.RECOVER ->
-                        io.github.amichne.kast.appserver.ide.HostedMutationOperation.CHANGE_RECOVER
-                }
+        val root =
             when (
-                val response =
-                    options.ideClient.query(
+                val selected =
+                    kotlinx.coroutines.runInterruptible(ioDispatcher) {
+                        options.roots.discover(request.invocation.workingDirectory.path)
+                    }
+            ) {
+                is CanonicalRootDiscovery.Discovered -> selected.root
+                is CanonicalRootDiscovery.Rejected ->
+                    return Refinement.Rejected(HostedPlanApprovalFailure.PLAN_UNAVAILABLE)
+            }
+        val identity =
+            when (val admitted = HostedPlanIdentity.parse("plan:${request.planIdentity}")) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return Refinement.Rejected(HostedPlanApprovalFailure.INVALID_REQUEST)
+            }
+        val kind =
+            when (request.operation) {
+                HostedChangeApprovalOperation.APPLY -> HostedMutationOperation.CHANGE_APPLY
+                HostedChangeApprovalOperation.RECOVER -> HostedMutationOperation.CHANGE_RECOVER
+            }
+        val response =
+            when (
+                val demanded =
+                    options.workspaceDemand.query(
                         root,
-                        io.github.amichne.kast.appserver.ide.ExistingIdeOperation.ApprovalPreparation(kind, identity),
+                        ExistingIdeOperation.ApprovalPreparation(kind, identity),
                     )
             ) {
-                is io.github.amichne.kast.appserver.ide.ExistingIdeExchange.Received ->
-                    KastHostedPlanChallengeDecoder.decode(request, response.document.value)
-                is io.github.amichne.kast.appserver.ide.ExistingIdeExchange.Rejected,
-                is io.github.amichne.kast.appserver.ide.ExistingIdeExchange.HostRejected,
-                is io.github.amichne.kast.appserver.ide.ExistingIdeExchange.Semantic ->
-                    Refinement.Rejected(HostedPlanApprovalFailure.PLAN_UNAVAILABLE)
+                is WorkspaceDemandResult.Native -> demanded.exchange
+                is WorkspaceDemandResult.Rejected ->
+                    return Refinement.Rejected(HostedPlanApprovalRejection.Workspace(demanded.failure))
             }
+        return when (response) {
+            is ExistingIdeExchange.Received -> KastHostedPlanChallengeDecoder.decode(request, response.document.value)
+            is ExistingIdeExchange.Rejected,
+            is ExistingIdeExchange.HostRejected,
+            is ExistingIdeExchange.Semantic -> Refinement.Rejected(HostedPlanApprovalFailure.PLAN_UNAVAILABLE)
         }
     }
 

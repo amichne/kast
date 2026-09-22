@@ -181,3 +181,5 @@ membership are checked before control can change. Native Codex session requests
 cannot claim or release another connection by supplying its identifier. Management
 inspection observes pending/prepared/rejected/closed session state without admitting
 an optional host.
+
+Apply and recovery approval challenges share the installed workspace preparation owner. A workspace rejection is projected before controller registration, preserving its operation identity and finite cause. Controller approval and grant redemption remain separate from workspace readiness.

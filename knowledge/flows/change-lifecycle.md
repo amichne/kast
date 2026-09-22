@@ -134,5 +134,8 @@ Hosted `AddDeclaration` planning acquires its own current relation, traversal an
 A daemon preparation rejection is a known pre-execution failure: the requested
 semantic operation was not sent. Its finite cause and preparation identity survive
 Codex projection. A transport failure after semantic dispatch remains uncertain and
-is never automatically replayed. Approval-challenge preparation still uses its
-existing direct hosted-plan gateway.
+is never automatically replayed. Apply and recovery approval challenges use the
+same workspace demand before loading the immutable hosted plan. Preparation failure
+retains its finite cause and operation identity, before any controller prompt or
+signature. The preparation deadline includes workspace readiness; the separate
+controller deadline begins only after a challenge is admitted.
