@@ -245,5 +245,8 @@ seal share the mutex used by lazy frontend creation, session ingress and managem
 mutations. A seal rejects new work; cancellation reopens only an uncommitted seal,
 and commit is idempotent. Pending upstream requests are bounded and lost requests
 retain reconciliation uncertainty. Structured update observations contain finite
-stages/outcomes without identities or payloads. Installer activation has not yet
-been connected to this admission contract.
+stages/outcomes without identities or payloads. The installed management client
+qualifies each update reply against the exact daemon target, candidate digest and
+request identity; malformed pending blockers and mismatched commit or cancel
+responses reject. Installer activation has not yet been connected to this admission
+contract.

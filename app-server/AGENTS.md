@@ -21,7 +21,7 @@ Owns the persistent broker/coordinator, host attachment, existing-IDE invocation
 - [WorkspacePreparations.kt](src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt) - daemon-owned, coalesced IDEA preparation and retained operation outcomes.
 
 - [DaemonManagementProtocol.kt](src/main/kotlin/io/github/amichne/kast/appserver/DaemonManagementProtocol.kt) - versioned local management requests and finite rejections.
-- [InstalledDaemonManagementClient.kt](src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonManagementClient.kt) - ownership-qualified registration, session inspection and controller client without Codex initialization.
+- [InstalledDaemonManagementClient.kt](src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonManagementClient.kt) - ownership-qualified registration, session inspection, controller operations and update handoff without Codex initialization.
 
 - [KastCatalogSource.kt](src/main/kotlin/io/github/amichne/kast/appserver/provider/KastCatalogSource.kt) - bounded packaged provider-contract reads without a Kast subprocess.
 
