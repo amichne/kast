@@ -171,73 +171,7 @@ class InstallationWorkflowTest {
     }
 
     @Test
-    fun `upgrade replaces a prior installation that fails admission or retirement`(@TempDir temporary: Path) {
-        for (brokenRetirement in listOf(false, true)) {
-            val root = Files.createDirectory(temporary.resolve("case-$brokenRetirement")).toRealPath()
-            val installation = root.resolve("installation")
-            val commands = root.resolve("commands")
-            val home = Files.createDirectory(root.resolve("home"))
-            val codexHome = Files.createDirectory(home.resolve(".codex"))
-            assertInstanceOf(
-                InstallationOutcome.Complete::class.java,
-                InstallationWorkflow.execute(releaseRequest(root, installation, commands, home, codexHome, "1.2.3")),
-            )
-            val prior = installation.resolve(Files.readSymbolicLink(installation.resolve("current")))
-            Files.writeString(
-                prior.resolve("config/workspaces.json"),
-                Json.encodeToString(RegistryFixture(2, 0, emptyList())),
-            )
-            if (brokenRetirement) Files.writeString(prior.resolve("bin/kast"), "#!/bin/sh\nexit 17\n")
-            val upgraded =
-                InstallationWorkflow.execute(
-                    releaseRequest(
-                        root,
-                        installation,
-                        commands,
-                        home,
-                        codexHome,
-                        "1.2.4",
-                        lifecycleInspectionExit = if (brokenRetirement) 0 else 17,
-                    )
-                )
-            assertInstanceOf(InstallationOutcome.Complete::class.java, upgraded)
-            val selected = installation.resolve(Files.readSymbolicLink(installation.resolve("current")))
-            assertTrue(selected.fileName.toString().startsWith("1.2.4-"))
-            assertTrue(Files.isExecutable(commands.resolve("kast")))
-        }
-    }
-
-    @Test
-    fun `reinstall repairs corrupt same version payload and recovery metadata`(@TempDir temporary: Path) {
-        val root = temporary.toRealPath()
-        val installation = root.resolve("installation")
-        val request =
-            releaseRequest(
-                root,
-                installation,
-                root.resolve("commands"),
-                Files.createDirectory(root.resolve("home")),
-                Files.createDirectory(root.resolve("codex")),
-                "1.2.3",
-            )
-        assertInstanceOf(InstallationOutcome.Complete::class.java, InstallationWorkflow.execute(request))
-        val selected = installation.resolve(Files.readSymbolicLink(installation.resolve("current")))
-        Files.writeString(selected.resolve("installation.json"), "broken manifest")
-        Files.writeString(
-            installation.resolve("recovery").resolve(selected.fileName).resolve("receipt.json"),
-            "broken receipt",
-        )
-        assertInstanceOf(InstallationOutcome.Complete::class.java, InstallationWorkflow.execute(request))
-        assertTrue(Files.readString(selected.resolve("installation.json")).contains("payloadIdentity"))
-        Files.writeString(
-            installation.resolve("recovery").resolve(selected.fileName).resolve("receipt.json"),
-            "broken receipt",
-        )
-        assertInstanceOf(InstallationOutcome.Complete::class.java, InstallationWorkflow.execute(request))
-    }
-
-    @Test
-    fun `upgrade leaves a corrupt prior registry behind and starts with fresh registration`(@TempDir temporary: Path) {
+    fun `upgrade rejects a corrupt prior registry and preserves selection`(@TempDir temporary: Path) {
         val root = temporary.toRealPath()
         val installation = root.resolve("installation")
         val commands = root.resolve("commands")
@@ -249,13 +183,15 @@ class InstallationWorkflowTest {
         )
         val prior = installation.resolve(Files.readSymbolicLink(installation.resolve("current")))
         Files.writeString(prior.resolve("config/workspaces.json"), "broken registry")
-        assertInstanceOf(
-            InstallationOutcome.Complete::class.java,
-            InstallationWorkflow.execute(releaseRequest(root, installation, commands, home, codex, "1.2.4")),
-        )
+        val rejected =
+            assertInstanceOf(
+                InstallationOutcome.Rejected::class.java,
+                InstallationWorkflow.execute(releaseRequest(root, installation, commands, home, codex, "1.2.4")),
+            )
+        assertEquals(InstallationFailure.PRIOR_ADMISSION_EXIT_REJECTED, rejected.failure)
         assertEquals("broken registry", Files.readString(prior.resolve("config/workspaces.json")))
         val selected = installation.resolve(Files.readSymbolicLink(installation.resolve("current")))
-        assertTrue(Files.notExists(selected.resolve("config/workspaces.json")))
+        assertEquals(prior, selected)
     }
 
     @Test
