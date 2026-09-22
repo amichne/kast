@@ -46,7 +46,7 @@ internal value class UpgradeRequestId private constructor(val value: UUID) {
 }
 
 @Serializable
-internal enum class UpgradeBlocker {
+enum class UpgradeBlocker {
     ACTIVE_TURN,
     RECONCILIATION_REQUIRED,
     REQUEST_PENDING,
