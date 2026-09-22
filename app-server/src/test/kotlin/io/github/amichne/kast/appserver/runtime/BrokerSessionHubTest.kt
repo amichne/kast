@@ -240,11 +240,17 @@ class BrokerSessionHubTest {
                 assertTrue(result!!.contains("CANCELLED_BEFORE_EXECUTION"))
                 assertEquals(1, fixture.invocations.get())
                 val records =
-                    Json.parseToJsonElement(java.nio.file.Files.readString(journal))
-                        .jsonObject
-                        .getValue("records")
-                        .jsonObject
+                    java.nio.file.Files.walk(journal.resolveSibling("invocations.json.d").resolve("records-v2")).use {
+                        paths ->
+                        paths
+                            .filter { java.nio.file.Files.isRegularFile(it) }
+                            .map { path ->
+                                Json.decodeFromString<InvocationRecordDocument>(java.nio.file.Files.readString(path))
+                            }
+                            .toList()
+                    }
                 assertEquals(1, records.size, "queued cancellation was incorrectly journaled as started")
+                assertEquals(InvocationPhase.STARTED, records.single().phase)
                 assertFalse(fixture.allowExecution.isCompleted)
             } finally {
                 fixture.allowExecution.complete(Unit)

@@ -358,8 +358,8 @@ internal class BrokerSessionHub(
                                                                         .InvocationCertainty
                                                                         .KNOWN
                                                         )
-                                                            InvocationPhase.COMPLETED
-                                                        else InvocationPhase.UNCERTAIN
+                                                            InvocationSettlement.COMPLETED
+                                                        else InvocationSettlement.UNCERTAIN
                                                     val completed = fence.finish(identityKey, phase)
                                                     activity.publish(
                                                         SessionActivity(
@@ -367,7 +367,7 @@ internal class BrokerSessionHub(
                                                             SessionStage.INVOCATION,
                                                             if (
                                                                 completed is InvocationAdmission.Rejected ||
-                                                                    phase == InvocationPhase.UNCERTAIN
+                                                                    phase == InvocationSettlement.UNCERTAIN
                                                             )
                                                                 SessionOutcome.UNCERTAIN
                                                             else SessionOutcome.COMPLETED,
@@ -382,7 +382,7 @@ internal class BrokerSessionHub(
                                                         )
                                                     else dispatched
                                                 } catch (failure: Exception) {
-                                                    fence.finish(identityKey, InvocationPhase.UNCERTAIN)
+                                                    fence.finish(identityKey, InvocationSettlement.UNCERTAIN)
                                                     activity.publish(
                                                         SessionActivity(
                                                             id,

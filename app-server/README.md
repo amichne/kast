@@ -206,9 +206,17 @@ completed duplicate instead of fabricating its missing result.
 Lost upstream work enters reconciliation-required state. Matching terminal turn
 history or authoritative idle status can restore task control. This does not
 clear an uncertain mutation's durable fence. Corrupt enrollment, thread bindings,
-or invocation journals fail closed. The journal caps at 4,096 invocation records;
-capacity exhaustion is an explicit rejection, not automatic eviction of replay
-protection. When safe ownership recovery cannot converge,
+or invocation records fail closed. Invocation evidence is stored in hash-sharded
+private records under `invocations.json.d`; only the addressed record is read.
+The fence limits active admissions to 4,096 independently of historical records.
+The live response cache still has its separate 4,096-entry bound. Completed and
+uncertain evidence is never aged out. Settlement cannot rewrite a terminal record.
+
+The first open migrates an owned legacy journal under a store lock. It validates
+and verifies staged records before atomically publishing the version marker,
+retains the original journal, and emits bounded migration outcomes without
+identities or argument data. An incomplete migration rejects and retains its
+staging evidence for recovery. When safe ownership recovery cannot converge,
 `kast app-server repair --destructive` explicitly retires the installation's
 launchd label, deletes only that physical installation's state and workspace
 registry, re-enrolls the current workspace, and starts clean. Symlinks found
