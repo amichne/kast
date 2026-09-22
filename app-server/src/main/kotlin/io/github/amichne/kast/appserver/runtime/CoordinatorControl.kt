@@ -40,6 +40,7 @@ private constructor(
     private val configuration: ResolvedKastConfiguration,
     private val stoppedMarker: Path,
     private val hostObservation: () -> BrokerFrontendObservation,
+    sessions: DaemonSessions,
 ) {
     private val closed = AtomicBoolean(false)
     private val management =
@@ -52,6 +53,7 @@ private constructor(
             ),
             ::available,
             ::status,
+            sessions,
             { root -> WorkspaceEnrollmentStore(installationRoot.resolve("config/workspaces.json")).enroll(root) },
         )
 
@@ -139,6 +141,7 @@ private constructor(
             configuration: ResolvedKastConfiguration,
             stoppedMarker: Path,
             hostObservation: () -> BrokerFrontendObservation = { BrokerFrontendObservation.PENDING },
+            sessions: DaemonSessions = UnavailableDaemonSessions,
         ): Refinement<CoordinatorControl, WorkerControlFailure> =
             try {
                 val legacy = installationRoot.resolve("state/workers")
@@ -160,6 +163,7 @@ private constructor(
                                 configuration,
                                 stoppedMarker,
                                 hostObservation,
+                                sessions,
                             )
                         )
                 }

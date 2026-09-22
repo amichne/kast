@@ -65,6 +65,7 @@ sealed interface AppServerControlAdmission {
     data class Rejected(val failure: AppServerControlFailure) : AppServerControlAdmission
 }
 
+@kotlinx.serialization.Serializable
 enum class ControlOperation {
     CLAIM,
     RELEASE,
@@ -228,19 +229,21 @@ class InstalledAppServerManager(
                     }
                     complete(if (action == AppServerAction.Stop) "stopped" else "disabled")
                 }
-                is AppServerAction.Control -> {
-                    val result =
-                        rpc(
-                            command,
-                            "kast/appServer/control/${action.operation.name.lowercase()}",
-                            buildJsonObject {
-                                put("threadId", action.target.threadId)
-                                put("connectionId", action.target.connectionId)
-                            },
-                        ) ?: return reject(AppServerManagementFailure.SERVICE_UNAVAILABLE)
-                    if (result.containsKey("error")) reject(AppServerManagementFailure.CONTROL_REJECTED)
-                    else AppServerManagementResult.Completed(result)
-                }
+                is AppServerAction.Control ->
+                    runBlocking {
+                        when (val result = InstalledDaemonManagementClient(kast).control(command, action)) {
+                            is Refinement.Rejected -> AppServerManagementResult.DaemonRejected(result.failure)
+                            is Refinement.Refined ->
+                                AppServerManagementResult.Completed(
+                                    DaemonManagementProtocol.json
+                                        .encodeToJsonElement(
+                                            ControlCompletionDocument.serializer(),
+                                            ControlCompletionDocument(),
+                                        )
+                                        .jsonObject
+                                )
+                        }
+                    }
             }
         } catch (_: InterruptedException) {
             Thread.currentThread().interrupt()
@@ -293,54 +296,6 @@ class InstalledAppServerManager(
         }
     }
 
-    private fun rpc(command: BrokerServiceLaunchCommand, method: String, params: JsonObject): JsonObject? =
-        runBlocking {
-            kotlinx.coroutines.withTimeoutOrNull(BrokerOperationalLimits.managementExchange.value) {
-                val connection =
-                    (connectCodexUnixWebSocket(
-                            command.publicSocket,
-                            BrokerOperationalLimits.maximumClientMessageBytes,
-                            BrokerOperationalLimits.managementConnect.value,
-                        )
-                            as? BrokerUpstreamConnectionAdmission.Connected)
-                        ?.connection ?: return@withTimeoutOrNull null
-                try {
-                    connection.send(
-                        """{"id":1,"method":"initialize","params":{"clientInfo":{"name":"kast-control","version":"1"}}}"""
-                    )
-                    val initialize =
-                        (connection.receive() as? BrokerUpstreamFrame.Text)?.message?.let {
-                            Json.parseToJsonElement(it).jsonObject
-                        } ?: return@withTimeoutOrNull null
-                    if (
-                        initialize.containsKey("error") ||
-                            initialize["id"] != JsonPrimitive(1) ||
-                            initialize["result"] !is JsonObject
-                    )
-                        return@withTimeoutOrNull null
-                    connection.send("""{"method":"initialized"}""")
-                    connection.send(
-                        buildJsonObject {
-                            put("id", 2)
-                            put("method", method)
-                            put("params", params)
-                        }
-                            .toString()
-                    )
-                    while (true) {
-                        val response =
-                            (connection.receive() as? BrokerUpstreamFrame.Text)?.message?.let {
-                                Json.parseToJsonElement(it).jsonObject
-                            } ?: return@withTimeoutOrNull null
-                        if (response["id"] == JsonPrimitive(2)) return@withTimeoutOrNull response
-                    }
-                    @Suppress("UNREACHABLE_CODE") null
-                } finally {
-                    connection.close()
-                }
-            }
-        }
-
     private fun complete(status: String) =
         AppServerManagementResult.Completed(
             buildJsonObject {
@@ -352,3 +307,11 @@ class InstalledAppServerManager(
 
     private fun reject(failure: AppServerManagementFailure) = AppServerManagementResult.Rejected(failure)
 }
+
+@kotlinx.serialization.Serializable
+private data class ControlCompletionDocument(
+    val id: Int = 2,
+    val result: ControlCompletionResult = ControlCompletionResult(),
+)
+
+@kotlinx.serialization.Serializable private data class ControlCompletionResult(val status: String = "complete")

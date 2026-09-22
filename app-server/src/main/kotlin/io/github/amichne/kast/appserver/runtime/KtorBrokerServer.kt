@@ -319,6 +319,11 @@ private constructor(
             }
             return BrokerFrontendAdmission.Prepared(
                 object : BrokerFrontend {
+                    override fun inspectSessions() = hub.inspectSessions()
+
+                    override fun controlSession(action: io.github.amichne.kast.appserver.AppServerAction.Control) =
+                        hub.controlSession(action)
+
                     override suspend fun connect(session: DefaultWebSocketServerSession) =
                         bridgeConnection(session, options, hub)
 

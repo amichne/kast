@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver.runtime
 
+import io.github.amichne.kast.appserver.AppServerAction
 import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.appserver.core.BrokerThreadId
 import io.github.amichne.kast.appserver.protocol.ThreadStoreRead
@@ -18,7 +19,7 @@ import kotlinx.serialization.json.*
 internal class BrokerSessionHub(
     private val options: KtorBrokerServerOptions,
     private val executionPolicy: WorkspaceExecutionPolicy = WorkspaceExecutionPolicy.Default,
-) {
+) : DaemonSessions {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val sessions = ConcurrentHashMap<ClientConnectionId, Session>()
     val tasks = SharedTaskSessions()
@@ -756,9 +757,23 @@ internal class BrokerSessionHub(
         }
     }
 
+    override fun inspectSessions(): DaemonSessionInspection =
+        synchronized(registration) {
+            if (closed.get()) DaemonSessionInspection.Closed
+            else
+                DaemonSessionInspection.Prepared(
+                    sessions.values.map { DaemonConnectionDocument(it.id.value, it.clientName) }.sortedBy { it.id },
+                    tasks.views().map { it.document() }.sortedBy { it.threadId },
+                )
+        }
+
+    override fun controlSession(action: AppServerAction.Control): ControlResult =
+        synchronized(registration) {
+            if (closed.get()) ControlResult.Rejected(ControlFailure.HOST_UNAVAILABLE) else tasks.control(action)
+        }
+
     private fun control(doc: JsonObject): String {
         val method = doc.text("method")
-        val params = doc["params"] as? JsonObject
         val result =
             if (method == "kast/appServer/status")
                 buildJsonObject {
@@ -802,20 +817,7 @@ internal class BrokerSessionHub(
                         },
                     )
                 }
-            else {
-                val thread = params?.text("threadId")?.let(BrokerThreadId::admit)
-                val client = params?.text("connectionId")?.let(ClientConnectionId::admit)
-                val outcome =
-                    if (thread == null || client == null) ControlResult.Rejected(ControlFailure.INVALID_ID)
-                    else
-                        when (method) {
-                            "kast/appServer/control/claim" -> tasks.claim(thread, client)
-                            "kast/appServer/control/release" -> tasks.release(thread, client)
-                            else -> ControlResult.Rejected(ControlFailure.INVALID_ID)
-                        }
-                if (outcome is ControlResult.Rejected) return rejection(doc, outcome.failure.name)
-                buildJsonObject { put("status", "complete") }
-            }
+            else return rejection(doc, ControlFailure.UNSUPPORTED_OPERATION.name)
         return buildJsonObject {
             put("id", doc["id"] ?: JsonNull)
             put("result", result)

@@ -1,6 +1,8 @@
 package io.github.amichne.kast.appserver.runtime
 
+import io.github.amichne.kast.appserver.AppServerAction
 import io.github.amichne.kast.appserver.BrokerOperationalLimits
+import io.github.amichne.kast.appserver.ControlOperation
 import io.github.amichne.kast.appserver.core.BrokerThreadId
 import java.util.UUID
 
@@ -28,7 +30,10 @@ private sealed interface TaskController {
     data class Leased(val owner: ClientConnectionId, val lease: ControllerLeaseId) : TaskController
 }
 
-internal enum class ControlFailure {
+@kotlinx.serialization.Serializable
+enum class ControlFailure {
+    HOST_UNAVAILABLE,
+    UNSUPPORTED_OPERATION,
     INVALID_ID,
     TASK_UNKNOWN,
     CONNECTION_UNKNOWN,
@@ -104,6 +109,12 @@ internal class SharedTaskSessions(private val capacity: Int = BrokerOperationalL
         current.observers += client
         return ControlResult.Accepted
     }
+
+    fun control(action: AppServerAction.Control): ControlResult =
+        when (action.operation) {
+            ControlOperation.CLAIM -> claim(action.target.thread, action.target.connection)
+            ControlOperation.RELEASE -> release(action.target.thread, action.target.connection)
+        }
 
     @Synchronized
     fun claim(thread: BrokerThreadId, client: ClientConnectionId): ControlResult {

@@ -2,6 +2,7 @@ package io.github.amichne.kast.appserver
 
 import io.github.amichne.kast.appserver.core.CanonicalBrokerDirectory
 import io.github.amichne.kast.appserver.runtime.DaemonManagement
+import io.github.amichne.kast.appserver.runtime.UnavailableDaemonSessions
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.Path
@@ -42,7 +43,7 @@ class DaemonManagementTest {
     fun `foreign identity dimensions reject before enrollment or path observation`() {
         var effects = 0
         val management =
-            DaemonManagement(target, { true }, { status }) {
+            DaemonManagement(target, { true }, { status }, UnavailableDaemonSessions) {
                 effects++
                 error("unexpected enrollment")
             }
@@ -73,6 +74,7 @@ class DaemonManagementTest {
                     effects++
                     status
                 },
+                UnavailableDaemonSessions,
             ) {
                 effects++
                 error("unexpected enrollment")
@@ -103,6 +105,7 @@ class DaemonManagementTest {
                     true
                 },
                 { status },
+                UnavailableDaemonSessions,
             ) {
                 effects++
                 error("unexpected enrollment")
@@ -124,7 +127,7 @@ class DaemonManagementTest {
     fun `registration preserves root revision and idempotence`(@TempDir directory: Path) {
         val root = Files.createDirectory(directory.resolve("workspace")).toRealPath()
         val store = WorkspaceEnrollmentStore(directory.toRealPath().resolve("registry/workspaces.json"))
-        val management = DaemonManagement(target, { true }, { status }) { store.enroll(it) }
+        val management = DaemonManagement(target, { true }, { status }, UnavailableDaemonSessions) { store.enroll(it) }
         val request = DaemonManagementRequest.RegisterWorkspace(target, root.toString())
         val response = management.execute(request)
         assertTrue(response is DaemonManagementResponse.Registered)
@@ -154,7 +157,7 @@ class DaemonManagementTest {
         EnrollmentFailure.entries.forEach { failure ->
             var calls = 0
             val management =
-                DaemonManagement(target, { true }, { status }) {
+                DaemonManagement(target, { true }, { status }, UnavailableDaemonSessions) {
                     calls++
                     assertEquals(root, it.path)
                     Refinement.Rejected(failure)
@@ -169,7 +172,7 @@ class DaemonManagementTest {
     fun `invalid workspace path rejects without changing registry`(@TempDir directory: Path) {
         var calls = 0
         val management =
-            DaemonManagement(target, { true }, { status }) {
+            DaemonManagement(target, { true }, { status }, UnavailableDaemonSessions) {
                 calls++
                 error("unexpected enrollment")
             }
@@ -258,6 +261,7 @@ class DaemonManagementTest {
                     true
                 },
                 { status },
+                UnavailableDaemonSessions,
             ) {
                 error("unexpected enrollment")
             }

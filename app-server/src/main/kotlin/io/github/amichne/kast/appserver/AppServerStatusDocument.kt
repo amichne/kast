@@ -55,6 +55,7 @@ internal data class AppServerStatusDocument(
     val enrollment: String?,
     val operation: String = "app-server.status",
     val lifecycle: BrokerLifecycleObservation,
+    val sessions: SessionStatusPresentation,
     val protocol: AppServerEvidence = AppServerEvidence.UNOBSERVED,
     val catalog: AppServerEvidence = AppServerEvidence.UNOBSERVED,
     val semantic: AppServerEvidence = AppServerEvidence.UNOBSERVED,
@@ -108,3 +109,15 @@ internal enum class BrokerLifecycleObservation {
 }
 
 private val STATUS_JSON = Json { encodeDefaults = true }
+
+@Serializable
+internal sealed interface SessionStatusPresentation {
+    @Serializable
+    @SerialName("observed")
+    data class Observed(val inspection: io.github.amichne.kast.appserver.runtime.DaemonSessionInspection) :
+        SessionStatusPresentation
+
+    @Serializable
+    @SerialName("rejected")
+    data class Rejected(val reason: DaemonManagementRejection) : SessionStatusPresentation
+}

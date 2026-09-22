@@ -157,12 +157,17 @@ failures without logging catalog contents. Request unions are admitted only when
 every alternative is a closed object; empty or open alternatives reject.
 
 The coordinator also owns `/kast-management` on the same private Unix socket.
-Versioned typed status and registration requests bypass Codex host admission.
+Versioned typed coordinator/session status, registration and controller requests
+bypass Codex host admission.
 Registration requires the exact installation, epoch, generation and configuration
 identity, and checks the existing lifecycle/stopped fence before enrollment.
 The CLI verifies published service ownership before requesting registration;
 offline or unproven service state cannot fall back to direct registry writes.
 Canonical workspace identity and revision survive acknowledgment admission.
 Unknown protocols and unobserved replies remain finite failures, with no automatic
-retry. Both control routes share the same connection budget. Initial installation
-bootstrap and controller claim/release retain their existing owners.
+retry. Both control routes share the same connection budget. The shared session
+owner enforces controller changes against actual connected observers, leases,
+active turns and pending approvals. Native clients cannot assert another client's
+identity to claim or release control. Public status reads existing session state
+passively; it does not initialize or probe Codex. Initial installation bootstrap
+retains its existing owner.

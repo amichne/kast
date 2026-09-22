@@ -174,3 +174,10 @@ operation presentations retain their existing dispatch behavior.
 Workspace refresh is a separate typed hosted control path, not a canonical semantic read. Its request and response DTOs retain request identity and finite pending, complete, failed, rejected or configured outcomes. The CLI uses typed serialization for the hosted transport, validates the independent refresh schema, and binds the response to the admitted host and root.
 
 Agent lifecycle dispatch uses the publicly listed installed `workspace lifecycle` transport route and the selected application control endpoint. For `request_user_close`, the existing controller lease receives a native command-approval item naming the exact host, project incarnation and root. Only one acceptance for that invocation permits enrolled signing; session-wide acceptance does not. The invocation transports the signed assertion privately and preserves finite lifecycle blockers through the output schema. Semantic dispatch never invokes this route.
+
+Local controller claim/release enters the owned daemon management route and delegates
+to the existing session owner. The target service generation and connected observer
+membership are checked before control can change. Native Codex session requests
+cannot claim or release another connection by supplying its identifier. Management
+inspection observes pending/prepared/rejected/closed session state without admitting
+an optional host.

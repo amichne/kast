@@ -4,46 +4,6 @@
     {
       "fingerprint": {
         "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/AppServerManagement.kt",
-        "scope": "type:InstalledAppServerManager/fun:execute(15:AppServerAction,4:Path)/val:result",
-        "kind": "JSON_BUILDER",
-        "sha256": "17909215e2c97361b0c05bb0ffe3bcf5cab931e9a05c4a16074f4ef62f8c0f95"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/AppServerManagement.kt",
-        "scope": "type:InstalledAppServerManager/fun:rpc(26:BrokerServiceLaunchCommand,6:String,10:JsonObject)/declaration:<anonymous>/declaration:<anonymous>",
-        "kind": "JSON_LITERAL",
-        "sha256": "981b24bbdaa0f55360fccebf333cc42a45b7bbc50fcc42a5133c4a1236799055"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/AppServerManagement.kt",
-        "scope": "type:InstalledAppServerManager/fun:rpc(26:BrokerServiceLaunchCommand,6:String,10:JsonObject)/declaration:<anonymous>/declaration:<anonymous>",
-        "kind": "JSON_LITERAL",
-        "sha256": "79f13e6cb8ca797dc1d2c66781bbff34f5a95573ae43013211e765261bb4ffe9"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/AppServerManagement.kt",
-        "scope": "type:InstalledAppServerManager/fun:rpc(26:BrokerServiceLaunchCommand,6:String,10:JsonObject)/declaration:<anonymous>/declaration:<anonymous>",
-        "kind": "JSON_BUILDER",
-        "sha256": "e7ee7b628532681583e9f03ee19cac3a38bbc74e79816f6cc4ed8cf22e9b3a18"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/AppServerManagement.kt",
         "scope": "type:InstalledAppServerManager/fun:complete(6:String)",
         "kind": "JSON_BUILDER",
         "sha256": "1430f327bf2bacb3c76d224fb0fb84ee783ea762c5f6d327ebf305e8fef88a55"
@@ -1197,16 +1157,6 @@
         "scope": "type:BrokerSessionHub/fun:control(10:JsonObject)/val:result/declaration:<anonymous>/declaration:<anonymous>/declaration:<anonymous>",
         "kind": "JSON_BUILDER",
         "sha256": "11a43d866f27915165bc06e30bcc1c3ba6282e7eb1b29f0c0ea4942e4adf6601"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/BrokerSessionHub.kt",
-        "scope": "type:BrokerSessionHub/fun:control(10:JsonObject)/val:result",
-        "kind": "JSON_BUILDER",
-        "sha256": "21d863d8bebca0889a629011eb4a342e1ff643e4ca2795f6346e5f0718b411ba"
       },
       "count": 1,
       "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."

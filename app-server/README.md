@@ -105,7 +105,8 @@ writes the registry from a standalone CLI process. Initial enable/repair and
 login bootstrap retain their existing installation responsibilities.
 
 The owned Unix socket serves a versioned, bounded `/kast-management` WebSocket
-route for passive coordinator status and workspace registration. It uses no
+route for passive coordinator/session status, workspace registration, and controller
+claim/release. It uses no
 Codex handshake and does not admit the optional host. The client first verifies
 the published installation owner, state epoch, service generation and service
 identity; the daemon rejects a mismatched target or lifecycle fence before
@@ -116,11 +117,18 @@ Each connection accepts one request. Management and runtime status share the
 existing control connection limit. Requests and replies have a 16 KiB bound;
 registration reserves enough reply space before writing. Lost replies report
 an unobserved outcome and are never retried automatically. Protocol, coordinator
-and enrollment failures retain their finite codes through the CLI.
+enrollment and controller failures retain their finite codes through the CLI.
 
-This is the first management migration slice. Controller claim/release still use
-the existing initialized session route. Service lifecycle, automatic workspace
-preparation, deferred updates and durable storage migration remain separate work.
+Controller actions target an existing connection and delegate to the shared session
+owner, preserving observer membership, controller leases, active-turn protection
+and pending approval protection. Native Codex connections cannot claim or release
+control by asserting a different connection ID. They retain passive legacy status.
+Public status inspects existing session state without initializing Codex or probing
+an optional upstream. Pending, rejected and closed hosts remain distinct; an
+oversized inventory reports capacity failure instead of an empty inventory.
+
+Service lifecycle, automatic workspace preparation, deferred updates and durable
+storage migration remain separate work.
 
 ## Ownership and recovery
 
