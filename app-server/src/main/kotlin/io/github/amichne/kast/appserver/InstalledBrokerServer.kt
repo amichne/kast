@@ -181,6 +181,9 @@ internal sealed interface InstalledBrokerServerConfiguration {
                     BrokerServiceReadinessAdmission.Rejected ->
                         return rejected(InstalledBrokerServerConfigurationFailure.READINESS_REJECTED)
                 }
+            val approvalHome =
+                io.github.amichne.kast.appserver.core.CanonicalBrokerDirectory.admit(canonicalUserHome)
+                    ?: return rejected(InstalledBrokerServerConfigurationFailure.USER_HOME_REJECTED)
             val kastOptions =
                 KastProviderOptions(
                     catalogSource =
@@ -237,10 +240,7 @@ internal sealed interface InstalledBrokerServerConfiguration {
             return Configured(
                 InstalledBrokerServerOptions(
                     kastOptions = kastOptions,
-                    approvalHome =
-                        checkNotNull(
-                            io.github.amichne.kast.appserver.core.CanonicalBrokerDirectory.admit(canonicalUserHome)
-                        ),
+                    approvalHome = approvalHome,
                     protocolOptions = protocolOptions,
                     upstreamOptions = upstreamOptions,
                     threadStore = stateDirectory.resolve("threads.json"),

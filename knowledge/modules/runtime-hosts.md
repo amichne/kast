@@ -6,6 +6,8 @@ resource: file://runtime
 tags: [kotlin, runtime, server, indexer, cli]
 timestamp: 2026-09-16T00:00:00Z
 code_sources:
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastCatalogObservation.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastInputSchema.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastCatalogSource.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastDirectInvocation.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastInvocationAdmission.kt
@@ -144,3 +146,8 @@ contract and canonical registry. It has no Kast process executor or CLI version
 probe. The provider retains contract identity across qualification and startup;
 a changed contract rejects before execution. Approval signing uses the explicitly
 admitted user home independently of catalog qualification.
+
+Catalog qualification emits one bounded typed stage/outcome observation per contract
+read. It retains source, document, projection, metadata, input-schema and output-schema
+failures without logging catalog contents. Request unions are admitted only when
+every alternative is a closed object; empty or open alternatives reject.

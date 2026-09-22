@@ -73,7 +73,8 @@ class ExistingIdeSocketClient(private val home: Path, private val limits: ReadLi
         socket: Path,
     ): ExistingIdeExchange {
         val attributes = Files.readAttributes(socket, BasicFileAttributes::class.java, NOFOLLOW_LINKS)
-        if (attributes.fileKey() == null || !attributes.isOther || attributes.isSymbolicLink) {
+        val key = attributes.fileKey() ?: return ExistingIdeExchange.Rejected(ExistingIdeFailure.DESCRIPTOR_REJECTED)
+        if (!attributes.isOther || attributes.isSymbolicLink) {
             return ExistingIdeExchange.Rejected(ExistingIdeFailure.DESCRIPTOR_REJECTED)
         }
         val request = operation.encodeControlRequest(root)
@@ -92,8 +93,7 @@ class ExistingIdeSocketClient(private val home: Path, private val limits: ReadLi
                 try {
                     channel.connect(UnixDomainSocketAddress.of(socket))
                     if (
-                        Files.readAttributes(socket, BasicFileAttributes::class.java, NOFOLLOW_LINKS).fileKey() !=
-                            attributes.fileKey()
+                        Files.readAttributes(socket, BasicFileAttributes::class.java, NOFOLLOW_LINKS).fileKey() != key
                     ) {
                         ExistingIdeExchange.Rejected(ExistingIdeFailure.DESCRIPTOR_REJECTED)
                     } else {

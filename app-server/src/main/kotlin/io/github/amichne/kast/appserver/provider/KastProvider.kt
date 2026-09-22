@@ -27,6 +27,7 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.RefinementDefinition
 import io.github.amichne.kast.kernel.Validation
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.registry.AgentToolDefinition
 import io.github.amichne.kast.protocol.registry.AgentToolInputBinding
 import io.github.amichne.kast.protocol.registry.AgentToolPolicy
 import io.github.amichne.kast.protocol.registry.CanonicalAgentToolDefinitions
@@ -42,10 +43,10 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 
 internal class KastProviderOptions(
     val catalogSource: KastCatalogSource,
+    val catalogObserver: KastCatalogObserver = JsonLineKastCatalogObserver,
     val readLimits: ReadLimits = ReadLimits.Default,
     val ideClient: io.github.amichne.kast.appserver.ide.ExistingIdeClient =
         io.github.amichne.kast.appserver.ide.ExistingIdeSocketClient(
@@ -58,6 +59,7 @@ internal class KastProviderOptions(
         io.github.amichne.kast.appserver.ide.WorkspaceLifecycleClient.Unavailable,
 )
 
+@Serializable
 internal enum class KastQualificationFailure {
     SCHEMA_UNAVAILABLE,
     SCHEMA_SIZE_LIMIT,
@@ -135,7 +137,7 @@ internal object KastProviderQualifier {
         val source =
             when (val read = options.catalogSource.read()) {
                 is Refinement.Refined -> read.value
-                is Refinement.Rejected -> return KastContractQualification.Rejected(read.failure)
+                is Refinement.Rejected -> return options.catalogRejected(KastCatalogStage.SOURCE, read.failure)
             }
         val rawDocument =
             try {
@@ -144,7 +146,7 @@ internal object KastProviderQualifier {
                 null
             } catch (_: IllegalArgumentException) {
                 null
-            } ?: return KastContractQualification.Rejected(KastQualificationFailure.SCHEMA_INVALID)
+            } ?: return options.catalogRejected(KastCatalogStage.DOCUMENT, KastQualificationFailure.SCHEMA_INVALID)
         val capability =
             try {
                 boundaryJson.decodeFromJsonElement(KastCapabilityBoundary.serializer(), rawDocument)
@@ -152,12 +154,16 @@ internal object KastProviderQualifier {
                 null
             } catch (_: IllegalArgumentException) {
                 null
-            } ?: return KastContractQualification.Rejected(KastQualificationFailure.SCHEMA_INVALID)
+            } ?: return options.catalogRejected(KastCatalogStage.DOCUMENT, KastQualificationFailure.SCHEMA_INVALID)
         if (capability.schemaVersion != 1)
-            return KastContractQualification.Rejected(KastQualificationFailure.SCHEMA_INCOMPATIBLE)
+            return options.catalogRejected(KastCatalogStage.DOCUMENT, KastQualificationFailure.SCHEMA_INCOMPATIBLE)
         val projection =
-            admitProjection(capability.serverProjection)
-                ?: return KastContractQualification.Rejected(KastQualificationFailure.SCHEMA_INCOMPATIBLE)
+            when (val admitted = admitProjection(capability.serverProjection)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected ->
+                    return options.catalogRejected(admitted.failure, KastQualificationFailure.SCHEMA_INCOMPATIBLE)
+            }
+        options.catalogObserver.observe(KastCatalogObservation.Admitted)
         return KastContractQualification.Qualified(
             KastQualificationEvidence(
                 KastContractDigest.derive(rawDocument),
@@ -256,99 +262,155 @@ internal object KastProviderQualifier {
         )
     }
 
-    private fun admitProjection(projection: KastServerProjectionBoundary): QualifiedKastProjection? {
-        if (projection.schemaVersion != KAST_SERVER_PROJECTION_VERSION || projection.namespace != "kast") return null
+    private fun admitProjection(
+        projection: KastServerProjectionBoundary
+    ): Refinement<QualifiedKastProjection, KastCatalogStage> {
+        if (projection.schemaVersion != KAST_SERVER_PROJECTION_VERSION || projection.namespace != "kast")
+            return Refinement.Rejected(KastCatalogStage.PROJECTION)
         val bootstrap = projection.hostedBootstrap
-        if (bootstrap.schemaVersion != 1) return null
-        val policy = refined(AgentToolPolicy.parse(bootstrap.policy)) ?: return null
-        if (policy != CanonicalAgentToolDefinitions.policy) return null
+        if (bootstrap.schemaVersion != 1) return Refinement.Rejected(KastCatalogStage.PROJECTION)
+        val policy =
+            refined(AgentToolPolicy.parse(bootstrap.policy)) ?: return Refinement.Rejected(KastCatalogStage.PROJECTION)
+        if (policy != CanonicalAgentToolDefinitions.policy) return Refinement.Rejected(KastCatalogStage.PROJECTION)
         if (
             bootstrap.tools.mapTo(linkedSetOf()) { it.name } !=
                 CanonicalAgentToolDefinitions.all.mapTo(linkedSetOf()) { it.name.value }
         )
-            return null
-        if (bootstrap.tools.map(KastHostedToolBoundary::name).hasDuplicates()) return null
-        return QualifiedKastProjection(
-            policy,
+            return Refinement.Rejected(KastCatalogStage.PROJECTION)
+        if (bootstrap.tools.map(KastHostedToolBoundary::name).hasDuplicates())
+            return Refinement.Rejected(KastCatalogStage.PROJECTION)
+        val tools =
             bootstrap.tools.map { tool ->
-                admitTool(tool) ?: return null
-            },
-        )
+                when (val admitted = admitTool(tool)) {
+                    is Refinement.Refined -> admitted.value
+                    is Refinement.Rejected -> return admitted
+                }
+            }
+        return Refinement.Refined(QualifiedKastProjection(policy, tools))
     }
 
-    private fun admitTool(tool: KastHostedToolBoundary): QualifiedKastTool? {
-        val operation = KastOperationId.admit(tool.operationId) ?: return null
-        val canonicalOperation =
-            CanonicalOperation.entries.singleOrNull {
-                it.id.value == operation.value
-            } ?: return null
-        val canonicalDefinition =
+    private fun admitTool(tool: KastHostedToolBoundary): Refinement<QualifiedKastTool, KastCatalogStage> {
+        val metadata =
+            when (val admitted = admitMetadata(tool)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return admitted
+            }
+        val input =
+            when (val admitted = admitInputSchema(tool.inputSchema, metadata.definition.inputBinding)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return admitted
+            }
+        val outputDocument =
+            tool.outputSchema as? JsonObject ?: return Refinement.Rejected(KastCatalogStage.OUTPUT_SCHEMA)
+        val output =
+            refined(NetworkntJsonSchemaCompiler.compile(outputDocument))
+                ?: return Refinement.Rejected(KastCatalogStage.OUTPUT_SCHEMA)
+        return Refinement.Refined(metadata.withSchemas(input, output))
+    }
+
+    private fun admitMetadata(tool: KastHostedToolBoundary): Refinement<AdmittedKastToolMetadata, KastCatalogStage> {
+        val definition =
             CanonicalAgentToolDefinitions.all.singleOrNull {
-                it.name.value == tool.name && it.operation.operation == canonicalOperation
-            } ?: return null
-        val inputBinding = canonicalDefinition.inputBinding
-        val executionBudget = OperationExecutionBudget.forOperation(canonicalOperation)
+                it.name.value == tool.name && it.operation.id.value == tool.operationId
+            } ?: return Refinement.Rejected(KastCatalogStage.TOOL_METADATA)
+        val operation =
+            KastOperationId.admit(tool.operationId) ?: return Refinement.Rejected(KastCatalogStage.TOOL_METADATA)
+        val budget = OperationExecutionBudget.forOperation(definition.operation.operation)
+        if (!matchesMetadata(tool, definition, budget)) return Refinement.Rejected(KastCatalogStage.TOOL_METADATA)
+        val name = refined(ToolName.admit(tool.name)) ?: return Refinement.Rejected(KastCatalogStage.TOOL_METADATA)
+        val aliases =
+            definition.inputAliases.mapTo(linkedSetOf()) { alias ->
+                refined(ToolName.admit(alias.value)) ?: return Refinement.Rejected(KastCatalogStage.TOOL_METADATA)
+            }
+        val description =
+            refined(ToolDescription.admit(tool.description))
+                ?: return Refinement.Rejected(KastCatalogStage.TOOL_METADATA)
+        return Refinement.Refined(AdmittedKastToolMetadata(definition, operation, budget, name, aliases, description))
+    }
+
+    private fun matchesMetadata(
+        tool: KastHostedToolBoundary,
+        definition: AgentToolDefinition,
+        budget: OperationExecutionBudget,
+    ): Boolean {
         if (
             tool.executionBudget.readinessMillis != OperationExecutionBudget.WORKSPACE_READINESS.value ||
-                tool.executionBudget.operationMillis != executionBudget.operation.value
+                tool.executionBudget.operationMillis != budget.operation.value
         )
-            return null
+            return false
         if (
-            tool.name != canonicalDefinition.name.value ||
-                tool.description != canonicalDefinition.description.value ||
-                tool.effect != canonicalDefinition.operation.effect.name.lowercase()
+            tool.description != definition.description.value ||
+                tool.effect != definition.operation.effect.name.lowercase()
         )
-            return null
+            return false
         val approval =
             when (tool.approvalPolicy) {
                 KastApprovalPolicy.NONE -> HostedApprovalPolicy.NONE
                 KastApprovalPolicy.EXPLICIT -> HostedApprovalPolicy.EXPLICIT
                 KastApprovalPolicy.EXACT_PROJECT_CLOSE -> HostedApprovalPolicy.EXACT_PROJECT_CLOSE
             }
-        if (approval != canonicalDefinition.approval) return null
-        if (tool.deferLoading != (canonicalDefinition.loading == HostedToolLoading.DEFERRED)) return null
-        val name = refined(ToolName.admit(tool.name)) ?: return null
-        val aliases =
-            canonicalDefinition.inputAliases.mapTo(linkedSetOf()) { alias ->
-                refined(ToolName.admit(alias.value)) ?: return null
-            }
-        val description = refined(ToolDescription.admit(tool.description)) ?: return null
-        val inputDocument = tool.inputSchema as? JsonObject ?: return null
-        val outputDocument = tool.outputSchema as? JsonObject ?: return null
-        when (val input = canonicalDefinition.inputBinding) {
-            is AgentToolInputBinding.Facade ->
-                if (inputDocument != PublicToolContract.parameters(input.identity)) return null
-            AgentToolInputBinding.Canonical -> Unit
-        }
-        if (inputDocument["additionalProperties"] != JsonPrimitive(false)) return null
-        val inputSchema = refined(NetworkntJsonSchemaCompiler.compile(inputDocument)) ?: return null
-        val outputSchema = refined(NetworkntJsonSchemaCompiler.compile(outputDocument)) ?: return null
-        return QualifiedKastTool(
-            operation,
-            executionBudget,
-            name,
-            description,
-            tool.deferLoading,
-            HostedToolDefinition(
-                canonicalOperation,
-                canonicalDefinition.name,
-                canonicalDefinition.description,
-                inputSchema,
-                outputSchema,
-                canonicalDefinition.operation.effect,
-                canonicalDefinition.approval,
-                executionBudget,
-                canonicalDefinition.loading,
-                when (inputBinding) {
-                    is AgentToolInputBinding.Facade -> PublicToolContract.generationParameters(inputBinding.identity)
-                    AgentToolInputBinding.Canonical -> inputDocument
-                },
-            ),
-            inputSchema,
-            outputSchema,
-            canonicalDefinition.inputBinding,
-            aliases,
-        )
+        if (approval != definition.approval || tool.deferLoading != (definition.loading == HostedToolLoading.DEFERRED))
+            return false
+        return true
+    }
+
+    private fun admitInputSchema(
+        raw: JsonElement,
+        binding: AgentToolInputBinding,
+    ): Refinement<CompiledJsonSchema, KastCatalogStage> {
+        val document = raw as? JsonObject ?: return Refinement.Rejected(KastCatalogStage.INPUT_SCHEMA)
+        if (binding is AgentToolInputBinding.Facade && document != PublicToolContract.parameters(binding.identity))
+            return Refinement.Rejected(KastCatalogStage.INPUT_SCHEMA)
+        if (!closedKastInputSchema(document)) return Refinement.Rejected(KastCatalogStage.INPUT_SCHEMA)
+        val compiled =
+            refined(NetworkntJsonSchemaCompiler.compile(document))
+                ?: return Refinement.Rejected(KastCatalogStage.INPUT_SCHEMA)
+        return Refinement.Refined(compiled)
+    }
+
+    private data class AdmittedKastToolMetadata(
+        val definition: AgentToolDefinition,
+        val operation: KastOperationId,
+        val budget: OperationExecutionBudget,
+        val name: ToolName,
+        val aliases: Set<ToolName>,
+        val description: ToolDescription,
+    ) {
+        fun withSchemas(input: CompiledJsonSchema, output: CompiledJsonSchema): QualifiedKastTool =
+            QualifiedKastTool(
+                operation,
+                budget,
+                name,
+                description,
+                definition.loading == HostedToolLoading.DEFERRED,
+                HostedToolDefinition(
+                    definition.operation.operation,
+                    definition.name,
+                    definition.description,
+                    input,
+                    output,
+                    definition.operation.effect,
+                    definition.approval,
+                    budget,
+                    definition.loading,
+                    when (val binding = definition.inputBinding) {
+                        is AgentToolInputBinding.Facade -> PublicToolContract.generationParameters(binding.identity)
+                        AgentToolInputBinding.Canonical -> input.document
+                    },
+                ),
+                input,
+                output,
+                definition.inputBinding,
+                aliases,
+            )
+    }
+
+    private fun KastProviderOptions.catalogRejected(
+        stage: KastCatalogStage,
+        failure: KastQualificationFailure,
+    ): KastContractQualification.Rejected {
+        catalogObserver.observe(KastCatalogObservation.Rejected(stage, failure))
+        return KastContractQualification.Rejected(failure)
     }
 
     private fun <Value> List<Value>.hasDuplicates(): Boolean = toSet().size != size

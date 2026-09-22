@@ -304,6 +304,7 @@ val productBuildGate = tasks.register("productBuildGate") {
         testCheckoutInstaller,
         installerEntrypointTest,
         "verifyKastArchitecture",
+        ":app-server:verifyReleaseRuntimeAdmission",
     )
     dependsOn(gradle.includedBuild("build-logic").task(":check"))
 }

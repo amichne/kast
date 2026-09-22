@@ -86,7 +86,7 @@ source/relation/traversal qualification, rejection-reason, and execution-budget
 definitions through local references. Admitted failures in the four canonical
 reads preserve a required report alongside their existing finite reason; wire
 decoding distinguishes missing metadata from invalid or null reports. The CLI schema regression retains its independent output budget. App Server reads
-the packaged catalog with a 524,288-byte file bound and rejects malformed UTF-8,
+the packaged catalog with a 1,048,576-byte file bound and rejects malformed UTF-8,
 missing files, symlinks, incompatible metadata, and drift before provider startup. Hosted read admission now also has a closed
 `CONFIGURATION_REJECTED` outcome; canonical semantic outcome schemas retain their existing identities. Schema compatibility and native execution remain
 separate evidence: the [acceptance review](../../docs/reviews/live-semantic-read-acceptance.md)
