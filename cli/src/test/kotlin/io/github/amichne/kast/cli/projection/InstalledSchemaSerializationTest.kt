@@ -43,7 +43,7 @@ class InstalledSchemaSerializationTest {
             document.cliProjection.localCommands,
         )
         assertEquals(
-            surface.lifecycleCommands.map { it.command },
+            emptyList<String>(),
             document.cliProjection.lifecycleCommands,
         )
         assertEquals(

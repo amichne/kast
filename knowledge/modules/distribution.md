@@ -4,7 +4,7 @@ title: Distribution and packaging
 description: Typed configuration and runtime identity contracts constrain managed installation effects, release assembly, and acceptance harnesses.
 resource: file://distribution
 tags: [distribution, configuration, packaging, release]
-timestamp: 2026-09-21T00:00:00Z
+timestamp: 2026-09-22T00:00:00Z
 code_sources:
   - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/SelectedIdeInstallation.kt
   - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/PriorInstallationPreparation.kt
@@ -67,10 +67,9 @@ Root and packaging scripts orchestrate checkout installation, persistent lifecyc
 
 The public installer reports the selected IDEA product version and build before
 fetching release-line-specific plugin bytes. An absent matching plugin is a
-fail-closed compatibility result and precedes installation effects. Interactive
-public installation explains app-server tooling and asks whether to enable the
-per-user login LaunchAgent; `--no-interactive` skips that read and defaults the
-LaunchAgent off unless its existing configuration switch explicitly enables it.
+fail-closed compatibility result and precedes installation effects. Public installation enables the app-server suite and defaults the per-user login
+LaunchAgent on without a prompt. `--no-interactive` also prevents collision prompts.
+Local session installation retains the complete payload and defers service activation.
 
 Hosted-only schema-2 installations retire their coordinator without invoking
 the retired isolated-workspace `stop` command. Legacy schema-1 installations
@@ -78,7 +77,7 @@ retain that obligation. Lifecycle rejection reports identify the bounded stage
 and outcome, including unresolved worker receipts; failed retirement preserves
 the existing transition journal and state. Successful plugin installation still
 requires the separately reported IDEA restart. Retired CLI start/stop guidance
-does not claim authority to stop IDEA. Agents prepare workspaces through `workspace_lifecycle`; the transport command is absent from user help.
+does not claim authority to stop IDEA. Agents prepare workspaces through `workspace_lifecycle`; the `workspace lifecycle` transport command is also visible in user help.
 
 Installation defaults to a private coordinator endpoint and persists an explicitly
 selected public endpoint policy. Candidate configuration and executable qualification
@@ -96,6 +95,17 @@ Installation child processes emit `kast_installation` records by default with a 
 `ControlPayloadInventory` counts paths globally, including the three payload roots, before sorting or hashing. Installer and broker use that same admission; `verifyReleaseRuntimeAdmission` exercises the runtime identity owner on the actual staged control product. Limit diagnostics retain the resource and observed lower bound. The hosted-plugin ZIP has a separate archive budget.
 
 Before activation, `prepareInstallationRecovery` saves a typed receipt and an offline Python bundle outside the immutable version payload. Active plugin bytes alone occupy `plugins/kast-ide-hosted`; candidate, baseline and detached copies remain in the private sibling `.kast-plugin-recovery` on the same filesystem. Recovery admits exactly the legacy discovery-root layout or this retained layout, with one shared token and inode ownership proofs. The installer disconnects the prior-installation recovery chain, so old or corrupt receipts cannot block the new plugin. Standalone recovery on retained historical receipts still migrates receipt-listed legacy copies through the exact prior-installation chain; it saves the updated recovery script and location intent before atomic renames so interruption can resume. Standalone recovery rejects missing, cyclic, oversized or corrupt chains and foreign replacement identities. Installation replaces unusable target recovery metadata and prepares a fresh receipt instead. Only mutable recovery metadata and owned plugin paths change: prior payloads, configuration, installation manifests and workspace registries remain unchanged. `installation-recovery.py detach` fences launches, detaches matching command links and receipted plugin directories, and retains previous plugin backups outside discovery. It executes retirement only after full payload admission. Verified retired state is quarantined; uncertain processes and journals remain preserved and produce `DetachedWithUnresolvedState`. A missing plugin ownership witness cannot produce a clean result. The standalone `prepare` operation supports older installations without requiring their executable to run. Python and JVM installation transitions use compatible POSIX record locks.
+
+`install.sh --force` uses the same verified release path with explicit reset authority.
+Under the activation lock it fences and retires the selected and same-version target
+services, removes same-user transport aliases and the exact derived upstream socket
+directory, then moves payload/state and recovery bundles aside before restaging.
+Unknown upstream contents fail closed with a bounded `FORCE_RESET` outcome. Force
+replaces command collisions and starts with fresh workspace enrollment; source trees
+are untouched. A force dry run verifies and reports without performing reset effects.
+Force plugin activation moves the exact same-user Kast plugin entry into private recovery storage without following a symlink target. Both executable launchers are required; installation cannot publish a CLI-only payload.
+The saved app-server setting is always enabled. Activation may still be pending with
+a finite reason when the host cannot start the service.
 
 The staged Kotlin installer selects default tools directly from the canonical agent catalog. The shell bootstrap preserves an explicit selection and supplies no copied default list. Explicit selections must contain current, unique tool names; installation retains their admitted definitions in canonical catalog order before writing configuration.
 

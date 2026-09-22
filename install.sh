@@ -75,10 +75,10 @@ usage() {
 Install or remove Kast for the current user.
 
 Usage:
-  install.sh [--idea-home <absolute-path>] [--version <major.minor.patch>] [--install-root <absolute-path>] [--bin-dir <absolute-path>] [--clean-collisions] [--dry-run] [--no-interactive]
+  install.sh [--idea-home <absolute-path>] [--version <major.minor.patch>] [--install-root <absolute-path>] [--bin-dir <absolute-path>] [--force] [--clean-collisions] [--dry-run] [--no-interactive]
   install.sh uninstall [--dry-run]
   install.sh --local session [--idea-home <absolute-path>]
-  install.sh --local persistent [--idea-home <absolute-path>]
+  install.sh --local persistent [--idea-home <absolute-path>] [--force]
   install.sh --help
 
 The default command installs the latest release into:
@@ -97,9 +97,10 @@ When existing `kast` command files are not owned by the selected installation,
 an interactive install offers to remove those exact collisions. In automation,
 pass `--clean-collisions` to make the same explicit choice.
 
-Interactive installs ask whether to create a macOS login LaunchAgent. Pass
-`--no-interactive` to skip that prompt; the LaunchAgent then remains disabled
-unless KAST_ENABLE_LAUNCHD=1 is explicitly provided.
+Installation enables the app server and its macOS login LaunchAgent by default.
+`--force` retires the selected installation, resets its managed state and sockets,
+restages verified components, and replaces command collisions. It does not change
+source workspaces or the selected IDEA application. `--dry-run` remains read-only.
 USAGE
 }
 
@@ -369,9 +370,11 @@ activate_hosted_plugin() {
   local staged="$1"
   local plugin_root="$2"
   local selected
+  local -a options=()
+  [[ "$force" == 0 ]] || options+=(--force)
   selected="$(cd "$install_root/current" && pwd -P)"
   python3 "$control_root/share/kast/installation-recovery.py" activate-plugin \
-    --installation "$selected" --staged-plugin "$staged" --plugin-root "$plugin_root"
+    --installation "$selected" --staged-plugin "$staged" --plugin-root "$plugin_root" ${options[@]+"${options[@]}"}
 }
 
 script_source="${BASH_SOURCE[0]:-}"
@@ -383,12 +386,6 @@ if [[ "${1:-}" == "--local" ]]; then
   checkout_mode="${2:-}"
   case "$checkout_mode" in session|persistent) ;; *) fail '--local requires session or persistent' ;; esac
   shift 2
-  # Checkout builds admit only the IDE selection option, before resolving or building anything.
-  case "$#" in
-    0) ;;
-    2) [[ $1 == --idea-home && -n $2 ]] || fail 'unsupported checkout installation option' ;;
-    *) fail 'unsupported checkout installation option' ;;
-  esac
 fi
 
 action=install
@@ -397,6 +394,7 @@ idea_home="${KAST_INSTALL_IDEA_HOME:-}"
 mode=apply
 clean_collisions=ask
 interaction=prompt
+force=0
 
 if [[ "${1:-}" == uninstall ]]; then
   action=uninstall
@@ -404,10 +402,19 @@ if [[ "${1:-}" == uninstall ]]; then
 fi
 
 while [[ $# -gt 0 ]]; do
+  if [[ -n "$checkout_mode" ]]; then
+    case "$1" in --idea-home|--force) ;; *) fail "unsupported checkout installation option: $1" ;; esac
+  fi
   case "$1" in
     --help|-h)
       usage
       exit 0
+      ;;
+    --force)
+      [[ "$action" == install ]] || fail "--force is valid only for installation"
+      force=1
+      clean_collisions=yes
+      shift
       ;;
     --dry-run)
       mode=plan
@@ -464,7 +471,7 @@ done
 if [[ "$action" == install && "$mode" == apply && ${#command_collisions[@]} -gt 0 && "$clean_collisions" == ask ]]; then
   printf '%s\n' 'kast-install: existing command paths collide with this installation:' >&2
   printf '  %s\n' "${command_collisions[@]}" >&2
-  if [[ -t 0 ]]; then
+  if [[ -t 0 && "$interaction" == prompt ]]; then
     printf '%s' 'Remove only these paths and continue? [y/N] ' >&2
     IFS= read -r answer
     case "$answer" in y|Y|yes|YES) clean_collisions=yes ;; *) fail 'installation cancelled; no collisions were removed' ;; esac
@@ -518,7 +525,9 @@ success "found IntelliJ IDEA $idea_version (build $idea_build)"
 info "The IntelliJ plugin gives Kast compiler-grounded access to projects opened in this exact IDEA release line."
 if [[ -n "$checkout_mode" ]]; then
   export KAST_INSTALL_IDEA_HOME="$idea_home"
-  exec bash "$installer_directory/packaging/install-checkout.sh" "$installer_directory/install.sh" "$checkout_mode" --idea-home "$idea_home"
+  checkout_options=(--idea-home "$idea_home")
+  [[ "$force" == 0 ]] || checkout_options+=(--force)
+  exec bash "$installer_directory/packaging/install-checkout.sh" "$installer_directory/install.sh" "$checkout_mode" "${checkout_options[@]}"
 fi
 idea_plugin_root="$HOME/Library/Application Support/JetBrains/$idea_data_directory/plugins"
 
@@ -556,18 +565,9 @@ control_root="$temporary_root/control"
 extract_control "$temporary_root/$control_name" "$control_root"
 [[ -x "$control_root/bin/kast" ]] || fail "control archive has no executable installer"
 
-enable_launchd="${KAST_ENABLE_LAUNCHD:-0}"
-if [[ -z "${KAST_ENABLE_LAUNCHD+x}" && "$interaction" == prompt ]]; then
-  info "The app server lets Codex reuse one persistent Kast coordinator across terminal and desktop sessions."
-  info "A macOS login LaunchAgent starts that coordinator at login and restarts it if it exits; uninstalling Kast removes its managed service."
-  printf '  %s ' "$(colorize '1;36' 'Enable the Kast login LaunchAgent? [y/N]')" >&2
-  reply=""
-  IFS= read -r reply || true
-  case "$reply" in y|Y|yes|YES|Yes) enable_launchd=1 ;; *) enable_launchd=0 ;; esac
-elif [[ "$interaction" == noninteractive ]]; then
-  info "Non-interactive mode: app server tooling will be installed; the login LaunchAgent is $([[ "$enable_launchd" == 1 ]] && printf enabled || printf disabled)."
-fi
+enable_launchd="${KAST_ENABLE_LAUNCHD:-1}"
 case "$enable_launchd" in 0|1) ;; *) fail "KAST_ENABLE_LAUNCHD must be 0 or 1" ;; esac
+info "The app server provides the complete Kast suite. Its macOS login LaunchAgent starts it at login."
 note "$([[ "$mode" == plan ]] && printf 'planning' || printf 'installing') app server tooling and command launchers"
 
 export KAST_INSTALL_CONTROL_ROOT="$control_root"
@@ -581,7 +581,8 @@ export KAST_INSTALL_JAVA_HOME="$java_home"
 export KAST_INSTALL_ROOT="$install_root"
 export KAST_BIN_DIR="$bin_directory"
 export KAST_ENABLE_LAUNCHD="$enable_launchd"
-export KAST_ENABLE_APP_SERVER="${KAST_ENABLE_APP_SERVER:-1}"
+export KAST_ENABLE_APP_SERVER=1
+export KAST_INSTALL_FORCE="$force"
 export KAST_INSTALL_REFRESH_APP_SERVER="${KAST_INSTALL_REFRESH_APP_SERVER:-1}"
 if [[ "$clean_collisions" == yes ]]; then
   export KAST_INSTALL_REPLACE_COMMAND_COLLISIONS=1
@@ -593,7 +594,10 @@ export CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
 export JAVA="$java_home/bin/java"
 export JAVA_HOME="$java_home"
 
-"$control_root/bin/kast" installation install
+# Pass reset authority as a command option so older payloads reject it before effects.
+installation_options=()
+[[ "$force" == 0 ]] || installation_options+=(--force)
+"$control_root/bin/kast" installation install ${installation_options[@]+"${installation_options[@]}"}
 if [[ "$mode" == plan ]]; then
   success "verified hosted plugin $plugin_digest for IntelliJ IDEA $idea_version (build $idea_build)"
   info "Installation is planned at $install_root; the IDEA plugin is planned at $idea_plugin_root/kast-ide-hosted."

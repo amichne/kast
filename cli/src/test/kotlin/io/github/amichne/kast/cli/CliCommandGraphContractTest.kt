@@ -33,6 +33,16 @@ import org.junit.jupiter.api.Test
 
 class CliCommandGraphContractTest {
     @Test
+    fun `service entry points use the public parser and provide local help`() {
+        val graph = commandGraphFactory()
+        for (command in listOf(listOf("broker", "serve"), listOf("app-server", "bootstrap"))) {
+            assertTrue(graph.parse(command) is CliCommandParsing.Parsed)
+            assertTrue(graph.parse(command + "--help") is CliCommandParsing.Help)
+            assertTrue(graph.parse(command + "unexpected") is CliCommandParsing.Rejected)
+        }
+    }
+
+    @Test
     fun `root and nested help complete locally without touching runtime boundaries`() {
         var boundaryTouched = false
         val cli = testCli { boundaryTouched = true }
@@ -46,7 +56,9 @@ class CliCommandGraphContractTest {
 
         assertTrue(rootHelp is CliExit.Complete)
         assertTrue(nestedHelp is CliExit.Complete)
-        assertFalse(Regex("(?m)^\\s+workspace\\s").containsMatchIn(rootHelp.document.value))
+        for (command in listOf("workspace", "app-server", "broker", "product", "ide", "index")) {
+            assertTrue(Regex("(?m)^\\s+" + command + "\\s").containsMatchIn(rootHelp.document.value), command)
+        }
         assertTrue(nestedHelp.document.value.contains("standard input"))
         assertFalse(boundaryTouched)
     }

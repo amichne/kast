@@ -383,7 +383,7 @@ def replace_stage(receipt, stage, plugin=None):
                    pluginRoot=receipt.pluginRoot if plugin is None else str(Path(plugin.destination).parent))
 
 
-def activate_plugin(root, staged, plugin_root):
+def activate_plugin(root, staged, plugin_root, *, force=False):
     outer, bundle = location(root)
     receipt = load(bundle / 'receipt.json')
     validate(root, receipt)
@@ -394,6 +394,13 @@ def activate_plugin(root, staged, plugin_root):
     retained = prepare_retention(plugin_root)
     destination = plugin_root / 'kast-ide-hosted'
     if receipt.plugin is None:
+        if force and os.path.lexists(destination):
+            if destination.lstat().st_uid != os.getuid():
+                raise Rejected(Failure.OWNERSHIP)
+            # Move only the named entry; a symlink's target is never traversed.
+            destination.rename(retained / ('.replaced-kast-ide-hosted-' + uuid.uuid4().hex))
+            sync(retained)
+            sync(plugin_root)
         prior = Identity.observe(physical(destination)) if os.path.lexists(destination) else None
         token = uuid.uuid4().hex
         candidate = retained / ('.kast-ide-hosted.install-' + token)
@@ -603,8 +610,11 @@ def main():
     parser.add_argument('--plugin-root', type=Path)
     parser.add_argument('--staged-plugin', type=Path)
     parser.add_argument('--dry-run', action='store_true')
+    parser.add_argument('--force', action='store_true', help='Replace the exact Kast plugin entry without following symlinks.')
     arguments = parser.parse_args()
     try:
+        if arguments.force and arguments.operation != 'activate-plugin':
+            raise Rejected(Failure.RECEIPT)
         outer, bundle = location(arguments.installation)
         if arguments.dry_run:
             if arguments.operation != 'detach':
@@ -620,7 +630,7 @@ def main():
                 if arguments.operation == 'prepare' and arguments.bin_directory is not None:
                     report = prepare(arguments.installation, arguments.bin_directory, arguments.plugin_root)
                 elif arguments.operation == 'activate-plugin' and arguments.staged_plugin is not None and arguments.plugin_root is not None:
-                    report = activate_plugin(arguments.installation, arguments.staged_plugin, arguments.plugin_root)
+                    report = activate_plugin(arguments.installation, arguments.staged_plugin, arguments.plugin_root, force=arguments.force)
                 elif arguments.operation == 'detach':
                     report = detach(arguments.installation, False)
                 else:

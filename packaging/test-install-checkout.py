@@ -98,6 +98,7 @@ done
         self.write_script(self.installer, '''#!/bin/bash
 set -eu
 echo install >> "$TEST_LOG"
+for argument in "$@"; do [[ "$argument" != --force ]] || echo force-requested >> "$TEST_LOG"; done
 plugin="kast-ide-hosted-v$KAST_VERSION-idea-262.zip"
 [[ -f "$KAST_INSTALL_ASSETS_DIRECTORY/$plugin" && -f "$KAST_INSTALL_ASSETS_DIRECTORY/$plugin.sha256" ]] || exit 32
 (cd "$KAST_INSTALL_ASSETS_DIRECTORY" && shasum -a 256 -c "$plugin.sha256") >&2
@@ -136,7 +137,7 @@ chmod +x "$bin/kast"
             code = '''source "$1"
 first=$PATH
 source "$1"
-[[ $PATH == "$first" && $KAST_ENABLE_APP_SERVER == 0 && $KAST_ENABLE_LAUNCHD == 0 ]] || exit 2
+[[ $PATH == "$first" && $KAST_ENABLE_APP_SERVER == 1 && $KAST_ENABLE_LAUNCHD == 0 ]] || exit 2
 physical=$(cd "$KAST_INSTALL_ROOT/current" && pwd -P)
 [[ $KAST_RUNTIME_DIRECTORY == "$physical/state/run" && -z ${KAST_CACHE_ROOT:-} && -z ${KAST_RUNTIME_STORE:-} ]] || exit 3
 kast 'argument with spaces'
@@ -166,6 +167,11 @@ kast 'argument with spaces'
         self.assertEqual(result.stdout, "")
         self.assertEqual((self.root / "calls").read_text(), "build\ninstall\nrefresh-requested\n")
         self.assertTrue((self.root / "custom bin/kast").is_file())
+
+    def test_force_is_forwarded_to_the_release_installer(self):
+        result = self.run_install("persistent", "--force")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("force-requested\n", (self.root / "calls").read_text())
 
     def test_non_public_checkout_options_have_no_effects(self):
         for args in (

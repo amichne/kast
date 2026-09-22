@@ -20,6 +20,7 @@ options=()
 idea_home="${KAST_INSTALL_IDEA_HOME:-}"
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --force) options+=(--force); shift; continue ;;
     --idea-home) idea_home="${2:-}" ;;
     *) fail "unsupported checkout installation option: $1" ;;
   esac
@@ -71,7 +72,8 @@ if [[ $mode == session ]]; then
   # Ignore inherited persistent settings; the launcher captures its own config.
   export KAST_INSTALL_ROOT="$session_root/install" KAST_BIN_DIR="$session_root/bin"
   unset KAST_RUNTIME_STORE KAST_RUNTIME_DIRECTORY KAST_CACHE_ROOT
-  export KAST_ENABLE_LAUNCHD=0 KAST_ENABLE_APP_SERVER=0
+  export KAST_ENABLE_LAUNCHD=0 KAST_ENABLE_APP_SERVER=1
+  export KAST_INSTALL_REFRESH_APP_SERVER=0
   export XDG_CONFIG_HOME="$session_root/config"
 else
   export KAST_ENABLE_LAUNCHD=1 KAST_ENABLE_APP_SERVER=1

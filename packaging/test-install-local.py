@@ -56,7 +56,7 @@ class LocalInstallationTest(unittest.TestCase):
             self.assertEqual(str(prefix / 'share/kast'), contract['KAST_INSTALL_ROOT'])
             self.assertEqual(str(prefix / 'bin'), contract['KAST_BIN_DIR'])
             self.assertEqual('0', contract['KAST_ENABLE_LAUNCHD'])
-            self.assertEqual('0', contract['KAST_ENABLE_APP_SERVER'])
+            self.assertEqual('1', contract['KAST_ENABLE_APP_SERVER'])
             self.assertTrue(Path(contract['KAST_INSTALL_ASSETS_DIRECTORY']).name.startswith('kast-local-assets.'))
 
 

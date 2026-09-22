@@ -11,6 +11,21 @@ import java.time.Duration
 import java.util.HexFormat
 import java.util.concurrent.TimeUnit
 
+/** Reconstruct the only supported transient enabled owner of an opt-out installation. */
+internal fun priorServiceRetirementEnvironment(
+    prior: Path,
+    home: Path,
+    codexHome: Path,
+    path: String,
+): Map<String, String> =
+    mapOf(
+        "HOME" to home.toString(),
+        "PATH" to path,
+        "CODEX_HOME" to codexHome.toString(),
+        "KAST_CONFIGURATION_FILE" to prior.resolve("config/environment").toString(),
+        "KAST_ENABLE_APP_SERVER" to "1",
+    )
+
 /** Replacement uses installation identity, never the old executable, manifest or configuration. */
 internal fun replacePriorInstallation(
     prior: Path,
@@ -31,6 +46,88 @@ internal fun replacePriorInstallation(
         }
     observe(InstallationChildObservation(stage = InstallationChildStage.PRIOR_REPLACEMENT, outcome = outcome))
     return outcome
+}
+
+/** Explicit force authority is limited to transport paths derived from the selected installation. */
+internal fun resetInstallation(
+    installation: Path,
+    home: Path,
+    observe: (InstallationChildObservation) -> Unit = { System.err.println(it.toJson()) },
+): InstallationChildOutcome {
+    val retired = replacePriorInstallation(installation, home, observe)
+    if (retired != InstallationChildOutcome.COMPLETED) return retired
+    val outcome = resetInstallationTransport(installation, home)
+    observe(InstallationChildObservation(stage = InstallationChildStage.FORCE_RESET, outcome = outcome))
+    return outcome
+}
+
+/** Called under the installation activation lock, after checksum and path admission. */
+internal fun forceReplaceInstallations(roots: Set<Path>, home: Path, installRoot: Path): InstallationChildOutcome {
+    for (root in roots) {
+        val reset = resetInstallation(root, home)
+        if (reset != InstallationChildOutcome.COMPLETED) return reset
+        if (Files.exists(root, LinkOption.NOFOLLOW_LINKS)) quarantine(root)
+        val recovery = installRoot.resolve("recovery").resolve(root.fileName)
+        if (Files.exists(recovery, LinkOption.NOFOLLOW_LINKS)) quarantine(recovery)
+    }
+    val current = installRoot.resolve("current")
+    if (Files.exists(current, LinkOption.NOFOLLOW_LINKS)) quarantine(current)
+    return InstallationChildOutcome.COMPLETED
+}
+
+internal fun quarantine(path: Path) {
+    Files.move(
+        path,
+        path.resolveSibling(".replaced-${path.fileName}-${java.util.UUID.randomUUID()}"),
+        java.nio.file.StandardCopyOption.ATOMIC_MOVE,
+    )
+}
+
+private fun resetInstallationTransport(installation: Path, home: Path): InstallationChildOutcome {
+    return try {
+        val run = installation.resolve("state/run")
+        val alias =
+            io.github.amichne.kast.distribution.managed.endpoint.InstalledEndpointAliases.transportPath(
+                    run.resolve("kast-${"0".repeat(43)}.sock")
+                )
+                .parent
+        val upstream =
+            io.github.amichne.kast.distribution.managed.endpoint.InstalledUpstreamDirectories.transportPath(
+                    run.resolve("u.sock")
+                )
+                .parent
+        val owner = Files.getOwner(home, LinkOption.NOFOLLOW_LINKS)
+        for (path in setOf(alias, upstream) - run) {
+            if (!Files.exists(path, LinkOption.NOFOLLOW_LINKS)) continue
+            if (Files.getOwner(path, LinkOption.NOFOLLOW_LINKS) != owner) {
+                return InstallationChildOutcome.IO_REJECTED
+            }
+            val removed = removeTransportEntry(path)
+            if (removed != InstallationChildOutcome.COMPLETED) return removed
+        }
+        InstallationChildOutcome.COMPLETED
+    } catch (_: java.io.IOException) {
+        InstallationChildOutcome.IO_REJECTED
+    } catch (_: SecurityException) {
+        InstallationChildOutcome.IO_REJECTED
+    }
+}
+
+/** Never follows a link; physical upstream directories contain at most the one named socket. */
+private fun removeTransportEntry(path: Path): InstallationChildOutcome {
+    if (Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS)) {
+        Files.newDirectoryStream(path).use { entries ->
+            val children = entries.take(2)
+            if (
+                children.any { it.fileName.toString() != "u.sock" || Files.isDirectory(it, LinkOption.NOFOLLOW_LINKS) }
+            ) {
+                return InstallationChildOutcome.IO_REJECTED
+            }
+            children.forEach(Files::delete)
+        }
+    }
+    Files.delete(path)
+    return InstallationChildOutcome.COMPLETED
 }
 
 private const val SERVICE_NOT_FOUND = 113

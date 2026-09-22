@@ -48,8 +48,8 @@ Install the IDEA plugin, connect Codex, and find a declaration in your repositor
     ```
 
     The installer reports the detected IntelliJ version, verifies Kast and the
-    matching IDEA plugin, and explains the app-server setup. It then asks whether
-    to enable a per-user macOS login LaunchAgent. The LaunchAgent keeps the Kast
+    matching IDEA plugin, and enables the complete app-server suite and its
+    per-user macOS login LaunchAgent. The LaunchAgent keeps the Kast
     app server available across logins and restarts it after an unexpected exit.
 
     It does not install IDEA.
@@ -99,8 +99,19 @@ Install the IDEA plugin, connect Codex, and find a declaration in your repositor
       -- --no-interactive
     ```
 
-    This installs app-server tooling but leaves the login LaunchAgent disabled.
-    Set `KAST_ENABLE_LAUNCHD=1` explicitly when automation should enable it.
+    This installs and enables the app-server suite without reading interactive input.
+  </Accordion>
+  <Accordion title="Force a clean installation">
+    ```shell
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" \
+      -- --force
+    ```
+
+    Force installation retires the selected services, resets managed sockets and
+    state, replaces command collisions, and rebuilds the verified launchers and
+    IDEA plugin. It preserves source workspaces and rebuilds enrollment. Previous
+    payloads and recovery records move aside under `.replaced-*`.
+    Add `--dry-run` to preview without changing installation state.
   </Accordion>
   <Accordion title="Choose among multiple IDEA installations">
     ```shell

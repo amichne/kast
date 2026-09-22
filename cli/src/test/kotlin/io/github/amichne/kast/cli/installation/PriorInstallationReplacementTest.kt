@@ -51,6 +51,54 @@ class PriorInstallationReplacementTest {
         assertTrue(observations.none { "secret" in it.toJson() })
     }
 
+    @Test
+    fun `force reset removes derived sockets and aliases without following links`(@TempDir temporary: Path) {
+        val root = temporary.toRealPath()
+        val installation = Files.createDirectory(root.resolve("installation-" + "x".repeat(100)))
+        val home = Files.createDirectory(root.resolve("home"))
+        val run = Files.createDirectories(installation.resolve("state/run"))
+        val alias =
+            io.github.amichne.kast.distribution.managed.endpoint.InstalledEndpointAliases.transportPath(
+                    run.resolve("c.sock")
+                )
+                .parent
+        val upstream =
+            io.github.amichne.kast.distribution.managed.endpoint.InstalledUpstreamDirectories.transportPath(
+                run.resolve("u.sock")
+            )
+        val retained = Files.writeString(run.resolve("keep"), "retained")
+        val observations = mutableListOf<InstallationChildObservation>()
+        Files.createSymbolicLink(alias, run)
+        Files.createDirectory(upstream.parent)
+        try {
+            java.nio.channels.ServerSocketChannel.open(java.net.StandardProtocolFamily.UNIX).use {
+                it.bind(java.net.UnixDomainSocketAddress.of(upstream))
+            }
+            assertEquals(InstallationChildOutcome.COMPLETED, resetInstallation(installation, home, observations::add))
+            assertTrue(Files.notExists(alias, java.nio.file.LinkOption.NOFOLLOW_LINKS))
+            assertTrue(Files.notExists(upstream.parent))
+            assertEquals("retained", Files.readString(retained))
+            assertEquals(
+                InstallationChildObservation(
+                    stage = InstallationChildStage.FORCE_RESET,
+                    outcome = InstallationChildOutcome.COMPLETED,
+                ),
+                observations.last(),
+            )
+
+            Files.createDirectory(upstream.parent)
+            val foreign = Files.writeString(upstream.parent.resolve("unexpected"), "retain")
+            assertEquals(InstallationChildOutcome.IO_REJECTED, resetInstallation(installation, home, observations::add))
+            assertEquals("retain", Files.readString(foreign))
+            assertEquals(InstallationChildOutcome.IO_REJECTED, observations.last().outcome)
+            Files.delete(foreign)
+        } finally {
+            Files.deleteIfExists(alias)
+            Files.deleteIfExists(upstream)
+            Files.deleteIfExists(upstream.parent)
+        }
+    }
+
     private fun cleanup(process: Process) {
         process.toHandle().descendants().use { children -> children.forEach { it.destroyForcibly() } }
         process.destroyForcibly()

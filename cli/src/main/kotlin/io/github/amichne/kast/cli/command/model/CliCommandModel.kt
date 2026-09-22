@@ -17,51 +17,33 @@ enum class CliLocalMetadataCommand {
     SCHEMA,
 }
 
-enum class CliLocalExposure {
-    PUBLIC,
-    AGENT,
-    INTERNAL,
-}
-
-enum class CliProductCommand(
-    val usage: String,
-    val exposure: CliLocalExposure = CliLocalExposure.INTERNAL,
-) {
-    WORKSPACE_LIFECYCLE("workspace lifecycle <document>", CliLocalExposure.AGENT),
+enum class CliProductCommand(val usage: String) {
+    WORKSPACE_LIFECYCLE("workspace lifecycle <document>"),
+    APP_SERVER_BOOTSTRAP("app-server bootstrap"),
     APP_SERVER_REGISTER("app-server register"),
     APP_SERVER_ENABLE("app-server enable"),
     APP_SERVER_REPAIR("app-server repair --destructive"),
     APP_SERVER_STATUS("app-server status"),
     APP_SERVER_STOP("app-server stop"),
     APP_SERVER_DISABLE("app-server disable"),
-    APP_SERVER_CLAIM("app-server control claim"),
-    APP_SERVER_RELEASE("app-server control release"),
+    APP_SERVER_CLAIM("app-server control claim <thread-id> <connection-id>"),
+    APP_SERVER_RELEASE("app-server control release <thread-id> <connection-id>"),
     INSPECT("product inspect"),
     BROKER_SERVE("broker serve"),
-    CODEX_CLI("codex", CliLocalExposure.PUBLIC),
-    CODEX_DESKTOP("codex desktop", CliLocalExposure.PUBLIC),
-    KNOWLEDGE("knowledge <query-or-resource>", CliLocalExposure.PUBLIC),
-    INDEX_REFRESH("index refresh <document> [--root <path>]", CliLocalExposure.PUBLIC),
-    INDEX_STATUS("index status [--root <path>]", CliLocalExposure.PUBLIC),
-    INDEX_CLASSES("index classes <name> [--root <path>]", CliLocalExposure.PUBLIC),
-    INDEX_SUPERTYPE("index supertype <qualified-name> [--root <path>]", CliLocalExposure.PUBLIC),
-    INDEX_COMPLETION("index generate-completion <shell>", CliLocalExposure.PUBLIC),
-    IDE_TRUST_BROKER("ide trust-broker", CliLocalExposure.PUBLIC),
-    IDE_REFRESH("ide refresh <document> [--root <path>]", CliLocalExposure.PUBLIC),
-    IDE_STATUS("ide status [--root <path>]", CliLocalExposure.PUBLIC),
-    IDE_CLASSES("ide classes <name> [--root <path>]", CliLocalExposure.PUBLIC),
-    IDE_SUPERTYPE("ide supertype <qualified-name> [--root <path>]", CliLocalExposure.PUBLIC),
-    IDE_COMPLETION("ide generate-completion <shell>", CliLocalExposure.PUBLIC),
-}
-
-/** Process-local operator actions that do not extend the semantic wire protocol. */
-enum class CliLifecycleCommand(
-    val command: String,
-    val exposure: CliLocalExposure = CliLocalExposure.PUBLIC,
-) {
-    START("start", CliLocalExposure.INTERNAL),
-    STOP("stop", CliLocalExposure.INTERNAL),
-    STATUS("status", CliLocalExposure.INTERNAL),
+    CODEX_CLI("codex"),
+    CODEX_DESKTOP("codex desktop"),
+    KNOWLEDGE("knowledge <query-or-resource>"),
+    INDEX_REFRESH("index refresh <document> [--root <path>]"),
+    INDEX_STATUS("index status [--root <path>]"),
+    INDEX_CLASSES("index classes <name> [--root <path>]"),
+    INDEX_SUPERTYPE("index supertype <qualified-name> [--root <path>]"),
+    INDEX_COMPLETION("index generate-completion <shell>"),
+    IDE_TRUST_BROKER("ide trust-broker"),
+    IDE_REFRESH("ide refresh <document> [--root <path>]"),
+    IDE_STATUS("ide status [--root <path>]"),
+    IDE_CLASSES("ide classes <name> [--root <path>]"),
+    IDE_SUPERTYPE("ide supertype <qualified-name> [--root <path>]"),
+    IDE_COMPLETION("ide generate-completion <shell>"),
 }
 
 /** One fully refined action selected by the public command graph. */
@@ -96,31 +78,11 @@ sealed interface CliAction {
     }
 
     data class Semantic(val request: PreparedCliRequest) : CliAction
-
-    sealed interface Lifecycle : CliAction {
-        val command: CliLifecycleCommand
-
-        data object Start : Lifecycle {
-            override val command: CliLifecycleCommand = CliLifecycleCommand.START
-        }
-
-        data object Stop : Lifecycle {
-            override val command: CliLifecycleCommand = CliLifecycleCommand.STOP
-        }
-
-        data object Status : Lifecycle {
-            override val command: CliLifecycleCommand = CliLifecycleCommand.STATUS
-        }
-    }
 }
 
 /** Closed domain failures produced after Clikt has refined individual option values. */
 sealed interface CliUsageFailure {
     data class PublicTool(val failure: io.github.amichne.kast.appserver.query.PublicToolInputFailure) : CliUsageFailure
-
-    enum class Start : CliUsageFailure {
-        OPTIONS_REQUIRE_SEED
-    }
 
     enum class RequestDocument : CliUsageFailure {
         REQUIRED,
@@ -131,8 +93,6 @@ sealed interface CliUsageFailure {
 internal fun CliUsageFailure.message(): String =
     when (this) {
         is CliUsageFailure.PublicTool -> failure.explanation()
-        CliUsageFailure.Start.OPTIONS_REQUIRE_SEED ->
-            "--source-idea-system and --accept-global-index-copy require --cache seed"
         CliUsageFailure.RequestDocument.REQUIRED ->
             "semantic commands read one canonical JSON request document from standard input"
         CliUsageFailure.RequestDocument.REJECTED ->

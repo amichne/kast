@@ -20,8 +20,6 @@ import io.github.amichne.kast.cli.projection.CliLocalMetadata
 import io.github.amichne.kast.cli.projection.ProductInspectionDocuments
 import java.nio.file.Path
 
-private const val RETIRED_RUNTIME_GUIDANCE = "isolated-runtime-retired-ide-lifecycle-is-user-managed"
-
 /** Pure orchestration of the closed CLI boundaries and their explicit outer effects. */
 class KastCli
 internal constructor(
@@ -59,9 +57,6 @@ internal constructor(
         start: Path,
         requestInput: CliRequestDocumentInput,
     ): CliExit {
-        if (argv == listOf("start") || argv == listOf("stop")) {
-            return boundaryExit(CliBoundaryExitStatus.RUNTIME, RETIRED_RUNTIME_GUIDANCE)
-        }
         if (
             io.github.amichne.kast.cli.ide.selectCliRuntimePath(argv) ==
                 io.github.amichne.kast.cli.ide.CliRuntimePath.EXISTING_IDE
@@ -134,18 +129,6 @@ internal constructor(
             is CliAction.Local.ExistingIde ->
                 io.github.amichne.kast.cli.ide.executeExistingIdeAction(action, start, rootDiscovery, existingIdeClient)
             is CliAction.Semantic -> boundaryExit(CliBoundaryExitStatus.USAGE, "existing-ide-command-required")
-            is CliAction.Lifecycle ->
-                when (action) {
-                    CliAction.Lifecycle.Start,
-                    CliAction.Lifecycle.Stop -> boundaryExit(CliBoundaryExitStatus.RUNTIME, RETIRED_RUNTIME_GUIDANCE)
-                    CliAction.Lifecycle.Status ->
-                        io.github.amichne.kast.cli.ide.executeExistingIdeCli(
-                            listOf("ide", "status"),
-                            start,
-                            rootDiscovery,
-                            existingIdeClient,
-                        )
-                }
         }
 
     private fun executeLifecycle(

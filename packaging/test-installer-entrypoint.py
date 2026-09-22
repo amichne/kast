@@ -47,7 +47,7 @@ class InstallerEntrypointTest(unittest.TestCase):
         version = "1.2.3"
         control_name = f"kast-control-v{version}-macos-aarch64.tar.gz"
         control = assets / control_name
-        executable = b"#!/bin/sh\nprintf 'launchd=%s app_server=%s mode=%s\\n' \"$KAST_ENABLE_LAUNCHD\" \"$KAST_ENABLE_APP_SERVER\" \"$KAST_INSTALL_MODE\" >&2\n"
+        executable = b"#!/bin/sh\nprintf 'launchd=%s app_server=%s mode=%s force=%s\\n' \"$KAST_ENABLE_LAUNCHD\" \"$KAST_ENABLE_APP_SERVER\" \"$KAST_INSTALL_MODE\" \"$KAST_INSTALL_FORCE\" >&2\n"
         info = tarfile.TarInfo("bin/kast")
         info.mode = 0o755
         info.size = len(executable)
@@ -152,7 +152,7 @@ class InstallerEntrypointTest(unittest.TestCase):
             self.assertEqual({commands, tools}, set(root.iterdir()))
             self.assertEqual([collision], list(commands.iterdir()))
 
-    def test_interactive_install_explains_components_and_prompts_for_launch_agent(self):
+    def test_install_enables_the_complete_suite_without_prompting(self):
         with tempfile.TemporaryDirectory(prefix="kast-installer-entrypoint-") as directory:
             idea, _, environment = self.installer_fixture(directory)
             result = subprocess.run(
@@ -164,19 +164,19 @@ class InstallerEntrypointTest(unittest.TestCase):
         self.assertIn("IntelliJ IDEA 2026.2.1 (build 262.1234)", result.stderr)
         self.assertIn("app server", result.stderr.lower())
         self.assertIn("LaunchAgent", result.stderr)
-        self.assertIn("Enable the Kast login LaunchAgent? [y/N]", result.stderr)
+        self.assertNotIn("[y/N]", result.stderr)
         self.assertIn("launchd=1 app_server=1 mode=plan", result.stderr)
 
-    def test_no_interactive_does_not_read_input_and_leaves_launch_agent_disabled(self):
+    def test_force_dry_run_enables_suite_and_preserves_state(self):
         with tempfile.TemporaryDirectory(prefix="kast-installer-entrypoint-") as directory:
             idea, _, environment = self.installer_fixture(directory)
             result = subprocess.run(
-                ["bash", str(INSTALLER), "--idea-home", str(idea), "--dry-run", "--no-interactive"],
+                ["bash", str(INSTALLER), "--idea-home", str(idea), "--dry-run", "--no-interactive", "--force"],
                 cwd=ROOT, env=environment, stdin=subprocess.DEVNULL, text=True, capture_output=True, timeout=10,
             )
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertNotIn("[y/N]", result.stderr)
-        self.assertIn("launchd=0 app_server=1 mode=plan", result.stderr)
+        self.assertIn("launchd=1 app_server=1 mode=plan force=1", result.stderr)
 
     def test_missing_matching_idea_plugin_explains_why_nothing_is_installed(self):
         with tempfile.TemporaryDirectory(prefix="kast-installer-entrypoint-") as directory:
@@ -184,7 +184,7 @@ class InstallerEntrypointTest(unittest.TestCase):
             for asset in assets.glob("*idea-262.zip*"):
                 asset.unlink()
             result = subprocess.run(
-                ["bash", str(INSTALLER), "--idea-home", str(idea), "--dry-run", "--no-interactive"],
+                ["bash", str(INSTALLER), "--idea-home", str(idea), "--dry-run", "--no-interactive", "--force"],
                 cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
             )
         self.assertNotEqual(0, result.returncode)

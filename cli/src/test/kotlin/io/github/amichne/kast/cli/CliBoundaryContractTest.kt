@@ -132,16 +132,14 @@ class CliBoundaryContractTest {
         for (command in listOf("start", "stop")) assertTrue(
             factory.parse(listOf(command)) is CliCommandParsing.Rejected
         )
-        assertEquals(emptySet<String>(), factory.surface.lifecycleCommands.map { it.command }.toSet())
-        listOf(listOf("status"), listOf("product", "inspect"), listOf("index", "sync"), listOf("topology", "build"))
-            .forEach {
-                assertTrue(factory.parse(it) is CliCommandParsing.Rejected, it.toString())
-            }
+        listOf(listOf("status"), listOf("index", "sync"), listOf("topology", "build")).forEach {
+            assertTrue(factory.parse(it) is CliCommandParsing.Rejected, it.toString())
+        }
         assertEquals(
             CliAction.Local.BrokerServe,
             (factory.parse(listOf("broker", "serve")) as CliCommandParsing.Parsed).action,
         )
-        assertTrue(CliProductCommand.BROKER_SERVE !in factory.surface.localCommands)
+        assertTrue(CliProductCommand.BROKER_SERVE in factory.surface.localCommands)
         assertTrue(factory.parse(listOf("clean")) is CliCommandParsing.Rejected)
         assertTrue(factory.parse(listOf("reindex")) is CliCommandParsing.Rejected)
         assertTrue(factory.parse(listOf("start", "unexpected")) is CliCommandParsing.Rejected)

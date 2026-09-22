@@ -2,7 +2,6 @@ package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
-import io.github.amichne.kast.cli.command.CliLifecycleCommand
 import io.github.amichne.kast.cli.command.CliProductCommand
 import io.github.amichne.kast.cli.projection.CliLocalMetadata
 import io.github.amichne.kast.cli.projection.CliLocalMetadataAdmission
@@ -33,15 +32,7 @@ class CliSurfaceContractTest {
                 }
                 .usage,
         )
-        assertEquals(emptyList<CliLifecycleCommand>(), surface.lifecycleCommands)
-        assertEquals(
-            listOf(
-                CliProductCommand.KNOWLEDGE,
-                CliProductCommand.CODEX_CLI,
-                CliProductCommand.CODEX_DESKTOP,
-            ),
-            surface.localCommands,
-        )
+        assertEquals(CliProductCommand.entries.toSet(), surface.localCommands.toSet())
     }
 
     @Test
@@ -89,13 +80,13 @@ class CliSurfaceContractTest {
         assertTrue(helpText.contains("Read compiler diagnostics"))
         assertTrue(helpText.contains("workspace"))
         assertTrue(helpText.contains("change"))
-        assertFalse(helpText.contains("app-server"))
-        assertFalse(helpText.lineSequence().any { it.trimStart().startsWith("ide ") })
-        assertFalse(helpText.lineSequence().any { it.trimStart().startsWith("index ") })
-        listOf(CliLifecycleCommand.START, CliLifecycleCommand.STOP).forEach { command ->
-            assertFalse(helpText.lineSequence().any { it.trimStart().startsWith(command.command + " ") })
+        assertTrue(helpText.contains("app-server"))
+        assertTrue(helpText.lineSequence().any { it.trimStart().startsWith("ide ") })
+        assertTrue(helpText.lineSequence().any { it.trimStart().startsWith("index ") })
+        listOf("start", "stop", "status").forEach { command ->
+            assertFalse(helpText.lineSequence().any { it.trimStart().startsWith(command + " ") })
         }
-        assertFalse(helpText.contains(" setup"))
+        assertFalse(helpText.lineSequence().any { it.trimStart().startsWith("setup ") })
         assertEquals(
             "kast 1.2.3 (IntelliJ plugin)",
             version.document.value,
