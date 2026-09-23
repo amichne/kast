@@ -4,6 +4,7 @@ import io.github.amichne.kast.appserver.protocol.codex.CodexOwnedSchema
 import io.github.amichne.kast.appserver.protocol.codex.CodexProtocolContracts
 import java.nio.file.Files
 import java.nio.file.Path
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
@@ -15,6 +16,12 @@ import kotlinx.serialization.json.putJsonObject
 
 /** Scripted envelopes are checked against the selected real Codex schemas before the native workflow starts. */
 internal object NativeControllerProtocol {
+    fun initializeResponse(): String =
+        nativeControllerJson.encodeToString(NativeInitializeResponse.serializer(), NativeInitializeResponse())
+
+    fun initializedNotification(): String =
+        nativeControllerJson.encodeToString(NativeInitializedNotification.serializer(), NativeInitializedNotification())
+
     fun contracts(schemas: Path, workspace: Path): CodexProtocolContracts {
         val schemaFiles = Files.walk(schemas).use { paths -> paths.filter(Files::isRegularFile).toList() }
         val contracts =
@@ -85,3 +92,12 @@ internal object NativeControllerProtocol {
         put("updatedAt", 0)
     }
 }
+
+@Serializable
+private data class NativeInitializeResponse(val id: Int = 0, val result: NativeEmptyResult = NativeEmptyResult())
+
+@Serializable private class NativeEmptyResult
+
+@Serializable private data class NativeInitializedNotification(val method: String = "initialized")
+
+private val nativeControllerJson = Json { encodeDefaults = true }

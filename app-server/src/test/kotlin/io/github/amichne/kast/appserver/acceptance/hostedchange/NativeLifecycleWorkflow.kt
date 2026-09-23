@@ -24,10 +24,13 @@ internal class NativeLifecycleWorkflow(
         concurrentSamePlan(peer, preimage, postimage)
         val replacement = postSaveInterruption(peer, preimage, postimage)
         val beforeUnload = unloadWithPendingApproval(replacement)
-        val retained = session.replaceBrokerAfterUncertainInvocation(beforeUnload)
-        controls.restart()
-        val fresh = session.connect()
-        session.requireRetained(retained)
+        val retained =
+            observeReconnect(NativeReconnectStage.BROKER_REPLACEMENT) {
+                session.replaceBrokerAfterUncertainInvocation(beforeUnload)
+            }
+        observeReconnect(NativeReconnectStage.IDE_RESTART) { controls.restart() }
+        val fresh = observeReconnect(NativeReconnectStage.SESSION_RECONNECT) { session.connect() }
+        observeReconnect(NativeReconnectStage.RETENTION) { session.requireRetained(retained) }
         return fresh
     }
 
