@@ -44,6 +44,13 @@ class SearchResponse:
 
 
 class NativeWorkspaceRefreshTest(unittest.TestCase):
+    def test_hosted_rule_reports_a_typed_native_inspection_blocker(self):
+        transport = Mock()
+        transport.invoke_observed.return_value = (
+            {'status': 'rejected', 'diagnostic': {'type': 'blocked', 'reason': 'HOST_UNAVAILABLE'}}, 'schema')
+        with self.assertRaisesRegex(ValueError, 'HOSTED_RULE_HOST_UNAVAILABLE'):
+            prove_hosted_rule(transport, Path('/workspace'))
+
     def test_hosted_rule_keeps_exact_target_and_restores_off_after_finite_rejection(self):
         target = {'host': 'host-1', 'project': 'project-1', 'root': '/workspace'}
         rule = {'type': 'task_success', 'task': ':nativeHostedRule', 'effect': 'FILE_REFRESH'}

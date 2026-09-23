@@ -29,6 +29,12 @@ class RefreshBoundaryFailure(str, Enum):
     KEY = 'key_rejected'
     HOSTED_RULE_TIMEOUT = 'HOSTED_RULE_TIMEOUT'
     HOSTED_RULE_INSPECTION_REJECTED = 'HOSTED_RULE_INSPECTION_REJECTED'
+    HOSTED_RULE_HOST_UNAVAILABLE = 'HOSTED_RULE_HOST_UNAVAILABLE'
+    HOSTED_RULE_PLUGIN_UNAVAILABLE = 'HOSTED_RULE_PLUGIN_UNAVAILABLE'
+    HOSTED_RULE_SELECTED_IDE_UNAVAILABLE = 'HOSTED_RULE_SELECTED_IDE_UNAVAILABLE'
+    HOSTED_RULE_CAPABILITY_MISMATCH = 'HOSTED_RULE_CAPABILITY_MISMATCH'
+    HOSTED_RULE_HOST_IDENTITY_MISMATCH = 'HOSTED_RULE_HOST_IDENTITY_MISMATCH'
+    HOSTED_RULE_UNSUPPORTED_PLATFORM_LINE = 'HOSTED_RULE_UNSUPPORTED_PLATFORM_LINE'
     HOSTED_RULE_TARGET_REJECTED = 'HOSTED_RULE_TARGET_REJECTED'
     HOSTED_RULE_RESTORATION_REJECTED = 'HOSTED_RULE_RESTORATION_REJECTED'
     HOSTED_RULE_RELEASE_REJECTED = 'HOSTED_RULE_RELEASE_REJECTED'
@@ -291,6 +297,10 @@ def prove_hosted_rule(transport, workspace):
     inspected, _ = transport.invoke_observed('provider', 'workspace_lifecycle', {'type': 'inspect'})
     document = inspected.get('document', {})
     if inspected.get('status') != 'completed' or document.get('type') != 'inspected':
+        reason = inspected.get('diagnostic', {}).get('reason')
+        cause = 'HOSTED_RULE_' + reason if isinstance(reason, str) else ''
+        if any(known.value == cause for known in RefreshBoundaryFailure):
+            raise ValueError(cause)
         raise ValueError('HOSTED_RULE_INSPECTION_REJECTED')
     host = document.get('host')
     targets = [project.get('target') for project in document.get('projects', [])
