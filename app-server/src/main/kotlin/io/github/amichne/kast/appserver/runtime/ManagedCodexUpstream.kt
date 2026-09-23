@@ -68,7 +68,7 @@ internal enum class ManagedCodexUpstreamFailure {
     SOCKET_PATH_REJECTED,
     PROCESS_START_REJECTED,
     STARTUP_TIMED_OUT,
-    SOCKET_ALIAS_UNSUPPORTED,
+    SOCKET_ALIAS_OWNER_UNPROVEN,
     SOCKET_IDENTITY_REJECTED,
     INTERRUPTED,
 }
@@ -96,7 +96,9 @@ private constructor(
     private val closed = AtomicBoolean(false)
 
     override suspend fun connect(): BrokerUpstreamConnectionAdmission {
-        if (closed.get() || !process.isAlive()) return BrokerUpstreamConnectionAdmission.Rejected
+        if (closed.get() || !process.isAlive() || !ownedSocket.matchesCurrent()) {
+            return BrokerUpstreamConnectionAdmission.Rejected
+        }
         val connected =
             connectCodexUnixWebSocket(
                 privateSocket.path,
@@ -106,6 +108,10 @@ private constructor(
         val connection =
             (connected as? BrokerUpstreamConnectionAdmission.Connected)?.connection
                 ?: return BrokerUpstreamConnectionAdmission.Rejected
+        if (!process.isAlive() || !ownedSocket.matchesCurrent()) {
+            connection.close()
+            return BrokerUpstreamConnectionAdmission.Rejected
+        }
         lateinit var managed: ManagedUpstreamConnection
         managed = ManagedUpstreamConnection(connection) { connections.remove(managed) }
         connections.add(managed)
@@ -186,18 +192,41 @@ private constructor(
                     val connection = (probe as? BrokerUpstreamConnectionAdmission.Connected)?.connection
                     if (connection != null) {
                         connection.close()
-                        if (Files.isSymbolicLink(options.privateSocket.physicalPath)) {
-                            process.close()
-                            return rejected(ManagedCodexUpstreamFailure.SOCKET_ALIAS_UNSUPPORTED)
+                        val alias = Files.isSymbolicLink(options.privateSocket.physicalPath)
+                        if (!alias) {
+                            Files.setPosixFilePermissions(
+                                options.privateSocket.physicalPath,
+                                PosixFilePermissions.fromString("rw-------"),
+                            )
                         }
-                        Files.setPosixFilePermissions(
-                            options.privateSocket.physicalPath,
-                            PosixFilePermissions.fromString("rw-------"),
-                        )
-                        val owned = OwnedUnixSocket.capture(options.privateSocket)
-                        if (owned == null) {
+                        val owned =
+                            if (alias) {
+                                when (
+                                    val capture =
+                                        OwnedUnixSocket.capturePublishedAlias(
+                                            options.privateSocket,
+                                            process.pid,
+                                            maxOf(1, TimeUnit.NANOSECONDS.toMillis(deadline - System.nanoTime())),
+                                        )
+                                ) {
+                                    is PublishedAliasCapture.Captured -> capture.socket
+                                    PublishedAliasCapture.Unproven -> {
+                                        process.close()
+                                        return rejected(ManagedCodexUpstreamFailure.SOCKET_ALIAS_OWNER_UNPROVEN)
+                                    }
+                                }
+                            } else {
+                                OwnedUnixSocket.capture(options.privateSocket) ?: run {
+                                    process.close()
+                                    return rejected(ManagedCodexUpstreamFailure.SOCKET_IDENTITY_REJECTED)
+                                }
+                            }
+                        if (!process.isAlive() || !owned.matchesCurrent()) {
                             process.close()
-                            return rejected(ManagedCodexUpstreamFailure.SOCKET_IDENTITY_REJECTED)
+                            return rejected(
+                                if (alias) ManagedCodexUpstreamFailure.SOCKET_ALIAS_OWNER_UNPROVEN
+                                else ManagedCodexUpstreamFailure.SOCKET_IDENTITY_REJECTED
+                            )
                         }
                         return ManagedCodexUpstreamStart.Started(
                             ManagedCodexUpstream(
