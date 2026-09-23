@@ -44,6 +44,8 @@ class CliCommandGraphContractTest {
         assertTrue(graph.parse(listOf("broker", "serve")) is CliCommandParsing.Rejected)
         assertTrue(graph.parse(listOf("app-server", "bootstrap")) is CliCommandParsing.Rejected)
         assertTrue(graph.parse(listOf("app-server", "register")) is CliCommandParsing.Rejected)
+        assertTrue(graph.parse(listOf("app-server", "enable")) is CliCommandParsing.Rejected)
+        assertTrue(graph.parse(listOf("app-server", "disable")) is CliCommandParsing.Rejected)
     }
 
     @Test

@@ -88,14 +88,14 @@ class CodexCommandTest {
     }
 
     @Test
-    fun `service setup commands reject before reaching the manager`() {
+    fun `retired service commands reject before reaching the manager`() {
         var calls = 0
         val manager = AppServerManager { _, _ ->
             calls++
             error("retired setup command reached the manager")
         }
         val cli = testCli(CodexClientLauncher { error("setup cannot launch Codex") }, manager)
-        for (command in listOf("bootstrap", "register")) {
+        for (command in listOf("bootstrap", "register", "enable", "disable")) {
             assertTrue(cli.execute(listOf("app-server", command), Path.of("/workspace")) is CliExit.BoundaryRejected)
         }
         assertEquals(0, calls)
