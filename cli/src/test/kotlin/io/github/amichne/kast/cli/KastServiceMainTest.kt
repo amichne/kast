@@ -31,6 +31,10 @@ class KastServiceMainTest {
             ServiceControlSelection.Selected(ServiceControlAction.REPAIR),
             selectServiceControl(listOf("repair", "--destructive")),
         )
+        assertEquals(
+            ServiceControlSelection.Selected(ServiceControlAction.STOP),
+            selectServiceControl(listOf("stop")),
+        )
         for (arguments in
             listOf(emptyList(), listOf("repair"), listOf("enable", "workspace"), listOf("app-server", "enable"))) {
             assertEquals(ServiceControlSelection.Rejected, selectServiceControl(arguments))
@@ -41,18 +45,6 @@ class KastServiceMainTest {
             ),
             executeServiceControl(ServiceControlAction.ENABLE, UnavailableAppServerManager, Path.of("/unobserved")),
         )
-        val observedActions = mutableListOf<AppServerAction>()
-        val manager = AppServerManager { action, _ ->
-            observedActions += action
-            AppServerManagementResult.Rejected(AppServerManagementFailure.SERVICE_UNAVAILABLE)
-        }
-        assertEquals(
-            ServiceControlOutcome.Rejected(
-                ServiceControlFailureDocument.Management(AppServerManagementFailure.SERVICE_UNAVAILABLE, null)
-            ),
-            executeServiceControl(ServiceControlAction.REPAIR, manager, Path.of("/unobserved")),
-        )
-        assertEquals(listOf(AppServerAction.Repair), observedActions)
         val kast = Path.of("/owned/versions/v1/bin/kast")
         assertEquals(
             "/owned/versions/v1/config/environment",
@@ -63,6 +55,22 @@ class KastServiceMainTest {
             serviceControlEnvironment(kast, mapOf("KAST_CONFIGURATION_FILE" to "/selected/configuration"))
                 .getValue("KAST_CONFIGURATION_FILE"),
         )
+    }
+
+    @Test
+    fun `private repair and stop dispatch typed manager actions`() {
+        val observedActions = mutableListOf<AppServerAction>()
+        val manager = AppServerManager { action, _ ->
+            observedActions += action
+            AppServerManagementResult.Rejected(AppServerManagementFailure.SERVICE_UNAVAILABLE)
+        }
+        val rejected =
+            ServiceControlOutcome.Rejected(
+                ServiceControlFailureDocument.Management(AppServerManagementFailure.SERVICE_UNAVAILABLE, null)
+            )
+        assertEquals(rejected, executeServiceControl(ServiceControlAction.REPAIR, manager, Path.of("/unobserved")))
+        assertEquals(rejected, executeServiceControl(ServiceControlAction.STOP, manager, Path.of("/unobserved")))
+        assertEquals(listOf(AppServerAction.Repair, AppServerAction.Stop), observedActions)
     }
 
     @Test
