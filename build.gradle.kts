@@ -199,7 +199,7 @@ val installedProductTest = tasks.register<Exec>("installedProductTest") {
     inputs.file(assembleKastControlDist.flatMap(Tar::getArchiveFile))
     inputs.file(hostedPluginArchive)
     inputs.file(layout.projectDirectory.file("packaging/test-installed-product.sh"))
-    inputs.files("packaging/acceptance_environment.py", "packaging/run-installed-product.py")
+    inputs.files("install.sh", "packaging/acceptance_environment.py", "packaging/run-installed-product.py")
     outputs.file(layout.buildDirectory.file("reports/installed-product/topology-installed-product.json"))
     outputs.upToDateWhen { false }
     environment("KAST_INSTALLED_PRODUCT", installedProductDirectory.get().asFile.absolutePath)

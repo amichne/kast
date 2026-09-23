@@ -13,6 +13,7 @@ code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledConfigurationAlias.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/SavedConfigurationIngress.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationConfigurationValidation.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/BrokerOperationalLimits.kt
   - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/KastSchemaOutputBudgetTest.kt
   - path: kernel/src/main/kotlin/io/github/amichne/kast/kernel/ReadLimits.kt
@@ -36,7 +37,7 @@ code_sources:
 
 # Installation configuration
 
-The Kotlin catalogue owns typed keys, value parsing, defaults, and consuming component ownership. Installed-runtime composition admits saved configuration, then projects it to runtime owners instead of reading it ambiently throughout the system. The daemon admits its installed configuration and exact workspace before using the existing-IDE socket. Former CLI semantic and configuration commands are rejected at the private executable ingress. Invalid configuration rejects without starting a worker. The IDE separately retains validated JVM/environment read limits for its project-service lifetime. Process-boundary checks cover daemon-demand failure and rejected former commands without creating runtime/cache directories.
+The Kotlin catalogue owns typed keys, value parsing, defaults, and consuming component ownership. Installed-runtime composition admits saved configuration, then projects it to runtime owners instead of reading it ambiently throughout the system. The installer validates its staged saved file through the same source, resolution, and app-server owner admissions without invoking a retired CLI command. The daemon admits its installed configuration and exact workspace before using the existing-IDE socket. Former CLI semantic and configuration commands are rejected at the private executable ingress. Invalid configuration rejects without starting a worker. The IDE separately retains validated JVM/environment read limits for its project-service lifetime. Process-boundary checks cover daemon-demand failure and rejected former commands without creating runtime/cache directories.
 
 Two checked artifacts enforce the boundary: [configuration-schema.json](../../packaging/configuration-schema.json) describes the external document and [configuration-ingress.json](../../build-policy/configuration-ingress.json) declares permitted ingress owners. Root verification rejects undeclared ambient reads.
 

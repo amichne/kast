@@ -318,7 +318,10 @@ internal object InstallationWorkflow {
                         is StageResult.Rejected -> return InstallationOutcome.Rejected(staged.failure)
                     }
                 }
-                if (!validateConfiguration(plan)) {
+                if (
+                    validateStagedConfiguration(plan.configuration) !=
+                        InstallationConfigurationValidationOutcome.ADMITTED
+                ) {
                     return InstallationOutcome.Rejected(InstallationFailure.CONFIGURATION_REJECTED)
                 }
                 if (qualifyCandidate(plan) != InstallationChildOutcome.COMPLETED) {
@@ -642,23 +645,6 @@ internal object InstallationWorkflow {
         if (resolved.parent != plan.versionsRoot) return PriorSelection.Rejected
         return PriorSelection.Selected(resolved)
     }
-
-    private fun validateConfiguration(plan: VerifiedInstallationPlan): Boolean =
-        executeInstallationChild(
-            InstallationChildStage.CONFIGURATION_VALIDATION,
-            listOf(
-                plan.targetRoot.resolve("bin/kast-complete").toString(),
-                "config",
-                "validate",
-                "--file",
-                plan.configuration.toString(),
-                "--json",
-            ),
-            mapOf(
-                "HOME" to plan.request.home.value.toString(),
-                "PATH" to (System.getenv("PATH") ?: "/usr/bin:/bin"),
-            ),
-        ) == InstallationChildOutcome.COMPLETED
 
     private fun qualifyCandidate(plan: VerifiedInstallationPlan): InstallationChildOutcome =
         executeInstallationChild(
