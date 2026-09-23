@@ -58,7 +58,8 @@ internal fun mintlifyCallableReference(commandSurface: CliCommandSurface): Canon
                 MintlifyCallableInfoDocument(
                     title = "Kast callable reference",
                     version = "1",
-                    description = "Public compiler-grounded Kast callables invoked through the Kast CLI.",
+                    description =
+                        "Public compiler-grounded Kast callables for connected agents and supported CLI routes.",
                 ),
             paths =
                 bindings.associateTo(linkedMapOf()) { binding ->
@@ -70,8 +71,18 @@ internal fun mintlifyCallableReference(commandSurface: CliCommandSurface): Canon
     )
 }
 
-private fun InstalledServerBinding.operationDocument(): MintlifyCallableOperationDocument =
-    MintlifyCallableOperationDocument(
+private fun InstalledServerBinding.operationDocument(): MintlifyCallableOperationDocument {
+    val cli =
+        when (val route = invocation) {
+            is InstalledInvocationBinding.Cli -> route.document
+            InstalledInvocationBinding.HostedOnly -> null
+        }
+    val invocationGuide =
+        if (cli == null) "Invoke the `workspace_lifecycle` tool in a connected Kast agent session.\n\n"
+        else
+            "Invoke it with the Kast CLI:\n\n" +
+                "```bash\nkast ${cli.invocation.command.joinToString(" ")} < request.json\n```\n\n"
+    return MintlifyCallableOperationDocument(
         operationId = tool.name,
         summary = tool.name.replace('_', ' '),
         description = tool.description,
@@ -116,8 +127,7 @@ private fun InstalledServerBinding.operationDocument(): MintlifyCallableOperatio
                     ),
                 content =
                     "${tool.description}\n\nThis callable is not an HTTP endpoint. " +
-                        "Invoke it with the Kast CLI:\n\n" +
-                        "```bash\nkast ${invocation.invocation.command.joinToString(" ")} < request.json\n```\n\n" +
+                        invocationGuide +
                         "Read [response outcomes](/reference/responses) before using the payload. " +
                         "For compiler fields and reference reuse, see [symbol results](/reference/symbols).",
             ),
@@ -128,9 +138,10 @@ private fun InstalledServerBinding.operationDocument(): MintlifyCallableOperatio
                 approvalPolicy = tool.approvalPolicy,
                 deferLoading = tool.deferLoading,
                 executionBudget = tool.executionBudget,
-                cliUsage = invocation.cliUsage,
+                cliUsage = cli?.cliUsage,
             ),
     )
+}
 
 private fun InstalledServerBinding.requestComponentName(): MintlifyCallableComponentName =
     MintlifyCallableComponentName.request(tool.name)
@@ -293,7 +304,7 @@ private data class MintlifyCallableKastMetadataDocument(
     val approvalPolicy: String,
     val deferLoading: Boolean,
     val executionBudget: InstalledServerExecutionBudgetDocument,
-    val cliUsage: String,
+    val cliUsage: String?,
 )
 
 private val mintlifyCallableReferenceFactory =

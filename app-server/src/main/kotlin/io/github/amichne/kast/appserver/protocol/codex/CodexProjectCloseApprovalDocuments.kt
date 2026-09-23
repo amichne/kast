@@ -9,7 +9,7 @@ import kotlinx.serialization.json.encodeToJsonElement
 internal object CodexProjectCloseApprovalProjection {
     fun qualificationWitnesses(): Map<CodexOwnedSchema, JsonElement> {
         val json = Json { encodeDefaults = true }
-        val item = CloseItem("close-1", "kast workspace lifecycle", "/workspace", CloseItemStatus.IN_PROGRESS)
+        val item = CloseItem("close-1", "Kast workspace_lifecycle close", "/workspace", CloseItemStatus.IN_PROGRESS)
         return mapOf(
             CodexOwnedSchema.ITEM_STARTED_NOTIFICATION to
                 json.encodeToJsonElement(CloseStarted("thread", "turn", 1, item)),

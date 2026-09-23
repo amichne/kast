@@ -133,7 +133,7 @@ internal class BrokerLifecycleApprovals(
         val item =
             CloseItem(
                 id,
-                "kast workspace lifecycle '" +
+                "Kast workspace_lifecycle close '" +
                     json.encodeToString<WorkspaceLifecycleRequest>(entry.request).replace("'", "'\"'\"'") +
                     "'",
                 entry.request.target.root,

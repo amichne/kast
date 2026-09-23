@@ -42,16 +42,23 @@ internal const val MAXIMUM_PROTOCOL_TEXT_LENGTH = 1_048_576
 internal const val MAXIMUM_WORKSPACE_FILE_LENGTH = 4_096
 internal const val MAXIMUM_PROTOCOL_COUNT = 1_000
 
-internal const val SERVER_PROJECTION_SCHEMA_VERSION = 13
+internal const val SERVER_PROJECTION_SCHEMA_VERSION = 14
 private const val HOSTED_BOOTSTRAP_SCHEMA_VERSION = 1
-private const val CLI_INVOCATIONS_SCHEMA_VERSION = 3
+private const val CLI_INVOCATIONS_SCHEMA_VERSION = 4
 
-/** One public hosted tool retained with its canonical operation and exact CLI invocation. */
+/** A hosted tool either has an executable CLI route or is hosted-only. */
+internal sealed interface InstalledInvocationBinding {
+    data class Cli(val document: InstalledCliOperationInvocationDocument) : InstalledInvocationBinding
+
+    data object HostedOnly : InstalledInvocationBinding
+}
+
+/** One public hosted tool retained with its canonical operation and explicit invocation ownership. */
 internal class InstalledServerBinding
 private constructor(
     val operation: CanonicalOperation,
     val tool: InstalledHostedToolDocument,
-    val invocation: InstalledCliOperationInvocationDocument,
+    val invocation: InstalledInvocationBinding,
 ) {
     companion object {
         /** Derives the complete binding set without accepting independently associated members. */
@@ -68,28 +75,19 @@ private constructor(
                     invocation =
                         when (val input = definition.inputBinding) {
                             AgentToolInputBinding.Canonical ->
-                                tool.cliInvocationDocument(
-                                    definition.name.value,
-                                    if (operation == CanonicalOperation.WORKSPACE_LIFECYCLE)
-                                        commandSurface.localCommands
-                                            .single {
-                                                it ==
-                                                    io.github.amichne.kast.cli.command.CliProductCommand
-                                                        .WORKSPACE_LIFECYCLE
-                                            }
-                                            .usage
-                                    else commandByOperation.getValue(operation).usage,
-                                )
+                                tool.cliInvocationDocument(definition.name.value, commandByOperation[operation]?.usage)
                             is AgentToolInputBinding.Facade ->
-                                InstalledCliOperationInvocationDocument(
-                                    toolName = definition.name.value,
-                                    operationId = operation.id.value,
-                                    cliUsage = facadeByIdentity.getValue(input.identity).usage,
-                                    invocation =
-                                        InstalledServerCliInvocationDocument(
-                                            InstalledServerInvocationType.CLI,
-                                            listOf("tool", input.identity.toolName),
-                                        ),
+                                InstalledInvocationBinding.Cli(
+                                    InstalledCliOperationInvocationDocument(
+                                        toolName = definition.name.value,
+                                        operationId = operation.id.value,
+                                        cliUsage = facadeByIdentity.getValue(input.identity).usage,
+                                        invocation =
+                                            InstalledServerCliInvocationDocument(
+                                                InstalledServerInvocationType.CLI,
+                                                listOf("tool", input.identity.toolName),
+                                            ),
+                                    )
                                 )
                         },
                 )
@@ -115,8 +113,8 @@ internal fun installedHostedBootstrap(): InstalledHostedBootstrapDocument {
  * Proof transition: `CliCommandSurface -> InstalledServerProjectionDocument`.
  *
  * The proven canonical command graph supplies exact operation usage while this closed projection supplies the
- * corresponding server name, JSON shapes, and CLI binding grammar. The resulting document is the sole broker-facing
- * authority for an installed executable; no runtime or filesystem input is interpreted here.
+ * corresponding server name, JSON shapes, and CLI binding grammar where a CLI route exists. The resulting document is
+ * the sole broker-facing authority for an installed executable; no runtime or filesystem input is interpreted here.
  */
 internal fun installedServerProjection(commandSurface: CliCommandSurface): InstalledServerProjectionDocument {
     val bindings = installedServerBindings(commandSurface)
@@ -127,7 +125,13 @@ internal fun installedServerProjection(commandSurface: CliCommandSurface): Insta
         cliInvocations =
             InstalledCliInvocationsDocument(
                 schemaVersion = CLI_INVOCATIONS_SCHEMA_VERSION,
-                operations = bindings.map(InstalledServerBinding::invocation),
+                operations =
+                    bindings.mapNotNull { binding ->
+                        when (val route = binding.invocation) {
+                            is InstalledInvocationBinding.Cli -> route.document
+                            InstalledInvocationBinding.HostedOnly -> null
+                        }
+                    },
             ),
     )
 }
@@ -135,8 +139,8 @@ internal fun installedServerProjection(commandSurface: CliCommandSurface): Insta
 /**
  * Proof transition: `CliCommandSurface -> List<InstalledServerBinding>`.
  *
- * Retains the canonical operation while joining its hosted schema and CLI invocation. Consumers can project another
- * representation without reconstructing operation identity from JSON text.
+ * Retains the canonical operation while joining its hosted schema and explicit CLI or hosted-only route. Consumers can
+ * project another representation without reconstructing operation identity from JSON text.
  */
 internal fun installedServerBindings(commandSurface: CliCommandSurface): List<InstalledServerBinding> =
     InstalledServerBinding.from(commandSurface)
@@ -156,75 +160,81 @@ private val installedServerTools: List<InstalledServerTool> =
             }
         }
 
+private sealed interface InstalledToolRoute {
+    data object HostedOnly : InstalledToolRoute
+
+    data class Cli(val command: List<String>) : InstalledToolRoute
+}
+
 private enum class InstalledServerTool(
     val operation: CanonicalOperation,
     private val requestSerializer: KSerializer<*>,
-    private val command: List<String>,
+    private val route: InstalledToolRoute,
 ) {
     WORKSPACE_LIFECYCLE(
         operation = CanonicalOperation.WORKSPACE_LIFECYCLE,
         requestSerializer = io.github.amichne.kast.protocol.contract.WorkspaceLifecycleRequest.serializer(),
-        command = listOf("workspace", "lifecycle"),
+        route = InstalledToolRoute.HostedOnly,
     ),
     INDEX_SYNC(
         operation = CanonicalOperation.INDEX_SYNC,
         requestSerializer = IndexSyncRequest.serializer(),
-        command = listOf("index", "sync"),
+        route = InstalledToolRoute.Cli(listOf("index", "sync")),
     ),
     TOPOLOGY_BUILD(
         operation = CanonicalOperation.TOPOLOGY_BUILD,
         requestSerializer = TopologyBuildRequest.serializer(),
-        command = listOf("topology", "build"),
+        route = InstalledToolRoute.Cli(listOf("topology", "build")),
     ),
     SYMBOL_DISCOVER(
         operation = CanonicalOperation.SYMBOL_DISCOVER,
         requestSerializer = SymbolDiscoverRequest.serializer(),
-        command = listOf("symbol", "discover"),
+        route = InstalledToolRoute.Cli(listOf("symbol", "discover")),
     ),
     SYMBOL_INSPECT(
         operation = CanonicalOperation.SYMBOL_INSPECT,
         requestSerializer = SymbolInspectRequest.serializer(),
-        command = listOf("symbol", "inspect"),
+        route = InstalledToolRoute.Cli(listOf("symbol", "inspect")),
     ),
     SOURCE_READ(
         operation = CanonicalOperation.SOURCE_READ,
         requestSerializer = SourceReadRequest.serializer(),
-        command = listOf("source", "read"),
+        route = InstalledToolRoute.Cli(listOf("source", "read")),
     ),
     RELATION_READ(
         operation = CanonicalOperation.RELATION_READ,
         requestSerializer = RelationReadRequest.serializer(),
-        command = listOf("relation", "read"),
+        route = InstalledToolRoute.Cli(listOf("relation", "read")),
     ),
     TRAVERSAL_RUN(
         operation = CanonicalOperation.TRAVERSAL_RUN,
         requestSerializer = TraversalRunRequest.serializer(),
-        command = listOf("traversal", "run"),
+        route = InstalledToolRoute.Cli(listOf("traversal", "run")),
     ),
     QUERY_RUN(
         operation = CanonicalOperation.QUERY_RUN,
         requestSerializer = QueryRunRequest.serializer(),
-        command = listOf("query", "run"),
+        route = InstalledToolRoute.Cli(listOf("query", "run")),
     ),
     DIAGNOSTIC_CHECK(
         operation = CanonicalOperation.DIAGNOSTIC_CHECK,
         requestSerializer = DiagnosticCheckRequest.serializer(),
-        command = listOf("diagnostic", "check"),
+        route = InstalledToolRoute.Cli(listOf("diagnostic", "check")),
     ),
     CHANGE_PLAN(
         operation = CanonicalOperation.CHANGE_PLAN,
         requestSerializer = ChangePlanRequest.serializer(),
-        command = listOf("change", "plan"),
+        route = InstalledToolRoute.Cli(listOf("change", "plan")),
     ),
     CHANGE_APPLY(
         operation = CanonicalOperation.CHANGE_APPLY,
         requestSerializer = ChangeApplyRequest.serializer(),
-        command = listOf("change", "apply"),
+        route = InstalledToolRoute.Cli(listOf("change", "apply")),
     ),
     CHANGE_RECOVER(
         operation = CanonicalOperation.CHANGE_RECOVER,
         requestSerializer = ChangeRecoverRequest.serializer(),
-        command = listOf("change", "recover"),
+        route = InstalledToolRoute.Cli(listOf("change", "recover")),
     );
 
     fun hostedDocument(definition: AgentToolDefinition): InstalledHostedToolDocument =
@@ -249,17 +259,23 @@ private enum class InstalledServerTool(
             outputSchema = installedServerOutputSchema(operation),
         )
 
-    fun cliInvocationDocument(toolName: String, cliUsage: String): InstalledCliOperationInvocationDocument =
-        InstalledCliOperationInvocationDocument(
-            toolName = toolName,
-            operationId = operation.id.value,
-            cliUsage = cliUsage,
-            invocation =
-                InstalledServerCliInvocationDocument(
-                    type = InstalledServerInvocationType.CLI,
-                    command = command,
-                ),
-        )
+    fun cliInvocationDocument(toolName: String, cliUsage: String?): InstalledInvocationBinding =
+        when (val selected = route) {
+            InstalledToolRoute.HostedOnly -> InstalledInvocationBinding.HostedOnly
+            is InstalledToolRoute.Cli ->
+                InstalledInvocationBinding.Cli(
+                    InstalledCliOperationInvocationDocument(
+                        toolName = toolName,
+                        operationId = operation.id.value,
+                        cliUsage = checkNotNull(cliUsage),
+                        invocation =
+                            InstalledServerCliInvocationDocument(
+                                type = InstalledServerInvocationType.CLI,
+                                command = selected.command,
+                            ),
+                    )
+                )
+        }
 }
 
 internal data class ServerSchemaProperty(

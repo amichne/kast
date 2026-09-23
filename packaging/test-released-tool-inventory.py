@@ -45,7 +45,8 @@ class InventoryTest(unittest.TestCase):
     def setUp(self):
         self.tools = tuple(Tool(name, operation, 'none' if name == 'change_plan' else ('intellij_write' if name.startswith('change_') else 'intellij_read'))
                            for name, operation in OPERATIONS)
-        self.cli = Invocations(tuple(Invocation(name, operation) for name, operation in OPERATIONS))
+        self.cli = Invocations(tuple(Invocation(name, operation) for name, operation in OPERATIONS
+                                     if name != 'workspace_lifecycle'))
         self.defaults = tuple(name for name, _ in OPERATIONS)
         self.configuration = 'KAST_APP_SERVER_PUBLIC_ENDPOINT=private\n'
 
@@ -65,6 +66,11 @@ class InventoryTest(unittest.TestCase):
                       (replace(self.tools[0], operationId='symbol.discover'),) + self.tools[1:]):
             with self.subTest(tools=tools), self.assertRaises(ReleaseRejected):
                 admit_inventory(self.schema(tools), self.configuration, 'a' * 64)
+
+    def test_workspace_tool_has_no_cli_invocation(self):
+        self.cli = Invocations(self.cli.operations + (Invocation('workspace_lifecycle', 'workspace.lifecycle'),))
+        with self.assertRaises(ReleaseRejected):
+            admit_inventory(self.schema(self.tools), self.configuration, 'a' * 64)
 
     def test_retired_tool_selection_is_refused(self):
         for config in ('KAST_APP_SERVER_TOOLS=symbol_lookup\n', 'KAST_APP_SERVER_TOOLS=\n'):

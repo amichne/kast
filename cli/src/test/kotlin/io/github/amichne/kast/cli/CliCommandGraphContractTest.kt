@@ -71,9 +71,10 @@ class CliCommandGraphContractTest {
 
         assertTrue(rootHelp is CliExit.Complete)
         assertTrue(nestedHelp is CliExit.Complete)
-        for (command in listOf("workspace", "app-server", "product", "ide")) {
+        for (command in listOf("app-server", "product", "ide")) {
             assertTrue(Regex("(?m)^\\s+" + command + "\\s").containsMatchIn(rootHelp.document.value), command)
         }
+        assertFalse(Regex("(?m)^\\s+workspace\\s").containsMatchIn(rootHelp.document.value))
         assertFalse(Regex("(?m)^\\s+broker\\s").containsMatchIn(rootHelp.document.value))
         assertTrue(nestedHelp.document.value.contains("standard input"))
         assertFalse(boundaryTouched)

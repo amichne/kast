@@ -19,7 +19,6 @@ enum class CliLocalMetadataCommand {
 }
 
 enum class CliProductCommand(val usage: String) {
-    WORKSPACE_LIFECYCLE("workspace lifecycle <document>"),
     APP_SERVER_STATUS("app-server status"),
     INSPECT("product inspect"),
     CODEX_CLI("codex"),
@@ -46,10 +45,6 @@ sealed interface CliAction {
         data object CodexCli : Local
 
         data object CodexDesktop : Local
-
-        data class WorkspaceLifecycle(
-            val action: io.github.amichne.kast.cli.command.workspace.WorkspaceLifecycleAction
-        ) : Local
 
         data class ExistingIde(
             val operation: io.github.amichne.kast.appserver.ide.ExistingIdeOperation,
