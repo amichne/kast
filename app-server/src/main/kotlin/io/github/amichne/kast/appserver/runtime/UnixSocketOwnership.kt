@@ -15,6 +15,7 @@ import java.nio.file.Path
 import java.nio.file.StandardOpenOption
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.attribute.PosixFilePermissions
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 internal sealed interface UnixSocketOwnershipLeaseAcquisition {
@@ -207,11 +208,38 @@ internal object UnixSocketPathOwnership {
     }
 }
 
+internal sealed interface PublishedAliasCapture {
+    data class Captured(val socket: OwnedUnixSocket) : PublishedAliasCapture
+
+    data object Unproven : PublishedAliasCapture
+}
+
 internal class OwnedUnixSocket
 private constructor(
     private val path: Path,
     private val fileKey: Any,
+    private val aliasTarget: SocketTarget? = null,
 ) {
+    internal fun matchesCurrent(): Boolean {
+        return try {
+            val current = Files.readAttributes(path, BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
+            if (current.fileKey() != fileKey) return false
+            when (val target = aliasTarget) {
+                null -> current.isOther && !current.isSymbolicLink
+                else -> {
+                    if (!current.isSymbolicLink || path.toRealPath() != target.path) return false
+                    val resolved =
+                        Files.readAttributes(target.path, BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
+                    resolved.isOther && !resolved.isSymbolicLink && resolved.fileKey() == target.fileKey
+                }
+            }
+        } catch (_: IOException) {
+            false
+        } catch (_: SecurityException) {
+            false
+        }
+    }
+
     internal fun retire() {
         try {
             if (!Files.exists(path, LinkOption.NOFOLLOW_LINKS)) return
@@ -231,6 +259,34 @@ private constructor(
     }
 
     companion object {
+        internal fun capturePublishedAlias(
+            socket: BrokerSocketPath,
+            processPid: Long,
+            timeoutMillis: Long,
+        ): PublishedAliasCapture =
+            try {
+                if (socket.revalidate() is Validation.Rejected) return PublishedAliasCapture.Unproven
+                val alias = socket.physicalPath
+                val aliasAttributes =
+                    Files.readAttributes(alias, BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
+                if (!aliasAttributes.isSymbolicLink) return PublishedAliasCapture.Unproven
+                val aliasKey = aliasAttributes.fileKey() ?: return PublishedAliasCapture.Unproven
+                val target = alias.toRealPath()
+                val targetAttributes =
+                    Files.readAttributes(target, BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
+                if (!targetAttributes.isOther || targetAttributes.isSymbolicLink) return PublishedAliasCapture.Unproven
+                val targetKey = targetAttributes.fileKey() ?: return PublishedAliasCapture.Unproven
+                if (!ProcessUnixSocketOwnership.holds(processPid, target, timeoutMillis)) {
+                    return PublishedAliasCapture.Unproven
+                }
+                val owned = OwnedUnixSocket(alias, aliasKey, SocketTarget(target, targetKey))
+                if (owned.matchesCurrent()) PublishedAliasCapture.Captured(owned) else PublishedAliasCapture.Unproven
+            } catch (_: IOException) {
+                PublishedAliasCapture.Unproven
+            } catch (_: SecurityException) {
+                PublishedAliasCapture.Unproven
+            }
+
         internal fun capture(socket: BrokerSocketPath): OwnedUnixSocket? =
             when (socket.revalidate()) {
                 is Validation.Validated -> capture(socket.physicalPath)
@@ -253,6 +309,39 @@ private constructor(
             } catch (_: SecurityException) {
                 null
             }
+    }
+}
+
+private data class SocketTarget(val path: Path, val fileKey: Any)
+
+/** Observes the launched process's open Unix socket, rather than inferring ownership from a successful connection. */
+private object ProcessUnixSocketOwnership {
+    fun holds(pid: Long, target: Path, timeoutMillis: Long): Boolean {
+        if (pid <= 0 || timeoutMillis <= 0) return false
+        val lsof =
+            listOf("/usr/sbin/lsof", "/usr/bin/lsof").firstOrNull { Files.isExecutable(Path.of(it)) } ?: return false
+        var probe: Process? = null
+        try {
+            probe =
+                ProcessBuilder(lsof, "-nP", "-a", "-p", pid.toString(), "-U", "-F", "pfn", target.toString())
+                    .redirectError(ProcessBuilder.Redirect.DISCARD)
+                    .start()
+            if (!probe.waitFor(timeoutMillis, TimeUnit.MILLISECONDS)) {
+                return false
+            }
+            if (probe.exitValue() != 0) return false
+            val lines = probe.inputStream.bufferedReader().use { it.readLines() }
+            return lines.firstOrNull() == "p$pid" && lines.any { it == "n$target" }
+        } catch (_: IOException) {
+            return false
+        } catch (_: InterruptedException) {
+            Thread.currentThread().interrupt()
+            return false
+        } catch (_: SecurityException) {
+            return false
+        } finally {
+            if (probe?.isAlive == true) probe.destroyForcibly()
+        }
     }
 }
 

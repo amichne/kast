@@ -5,6 +5,25 @@ compatibility has been verified separately. This repository change does not add
 a Desktop UI acceptance receipt; the dated observations below retain their
 original evidence level.
 
+## Managed upstream socket alias — 2026-09-23 candidate
+
+Codex 0.156.0 publishes the requested upstream socket path as a symbolic link
+to a live Unix socket in its own short runtime directory. Kast now admits that
+alias only when the requested path resolves to a socket reported open by the
+launched Codex PID. It retains the alias and target file identities, checks them
+before and after each later connection, and removes only the original alias on
+retirement. An alias whose owner cannot be proven remains untouched and rejects
+as `SOCKET_ALIAS_OWNER_UNPROVEN`; a later changed alias refuses connection and
+is not removed on retirement.
+
+The focused native test (`KAST_CODEX_ALIAS_ACCEPTANCE_EXECUTABLE=<codex>`
+`./gradlew :app-server:test --tests '*ManagedCodexUpstreamTest'`) launched
+installed Codex 0.156.0 in a disposable home, observed its alias, attached
+through the managed upstream and retired it. The
+broader `installedCodexHostTest` remains blocked before runtime qualification by
+its retired `kast --schema` call; it is not evidence against alias admission.
+Desktop UI tool exposure remains a separate unqualified boundary.
+
 Historical client evidence was recorded on 2026-09-08 UTC; the hosted change
 implementation notes were updated on 2026-09-11 UTC. This record is owned by
 `:app-server`. **Full desktop compatibility has not been established.**

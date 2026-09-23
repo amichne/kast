@@ -28,6 +28,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
@@ -68,7 +69,7 @@ class ManagedCodexUpstreamTest {
     }
 
     @Test
-    fun `socket alias is a finite unsupported upstream failure`(@TempDir temporary: Path) = runBlocking {
+    fun `socket alias held by the launched process connects and retires`(@TempDir temporary: Path) = runBlocking {
         val codex = executable(temporary.resolve("codex"))
         val codexHome = Files.createDirectory(temporary.resolve("codex-home")).toRealPath()
         val socket = Path.of("/private/tmp/kast-codex-alias-${UUID.randomUUID()}.sock")
@@ -87,8 +88,42 @@ class ManagedCodexUpstreamTest {
                         startupTimeoutMillis = 5_000,
                     )
                 )
+            val started = result as ManagedCodexUpstreamStart.Started
+            val connection = (started.upstream.connect() as BrokerUpstreamConnectionAdmission.Connected).connection
+            assertEquals(BrokerUpstreamSend.SENT, connection.send("alias"))
+            assertEquals(BrokerUpstreamFrame.Text("alias"), connection.receive())
+            connection.close()
+            started.upstream.close()
+            assertEquals(true, launcher.closed)
+            assertFalse(Files.exists(socket, java.nio.file.LinkOption.NOFOLLOW_LINKS))
+        } finally {
+            Files.deleteIfExists(socket)
+            Files.deleteIfExists(target)
+        }
+    }
+
+    @Test
+    fun `socket alias held by another process does not gain ownership`(@TempDir temporary: Path) = runBlocking {
+        val codex = executable(temporary.resolve("codex"))
+        val codexHome = Files.createDirectory(temporary.resolve("codex-home")).toRealPath()
+        val socket = Path.of("/private/tmp/kast-codex-unowned-${UUID.randomUUID()}.sock")
+        val target = Path.of("/private/tmp/kast-codex-foreign-${UUID.randomUUID()}.sock")
+        val launcher = EchoCodexLauncher(target, Long.MAX_VALUE)
+        try {
+            val result =
+                ManagedCodexUpstream.start(
+                    ManagedCodexUpstreamOptions(
+                        executable =
+                            UpstreamCodexExecutable.admit(codex, DesktopFacadeExecutables.none()).refinedValue(),
+                        codexHome = codexHome,
+                        privateSocket = BrokerSocketPath.admit(socket).validatedValue(),
+                        launcher = launcher,
+                        maximumMessageBytes = 1024 * 1024,
+                        startupTimeoutMillis = 5_000,
+                    )
+                )
             assertEquals(
-                ManagedCodexUpstreamStart.Rejected(ManagedCodexUpstreamFailure.SOCKET_ALIAS_UNSUPPORTED),
+                ManagedCodexUpstreamStart.Rejected(ManagedCodexUpstreamFailure.SOCKET_ALIAS_OWNER_UNPROVEN),
                 result,
             )
             assertEquals(true, launcher.closed)
@@ -96,6 +131,75 @@ class ManagedCodexUpstreamTest {
         } finally {
             Files.deleteIfExists(socket)
             Files.deleteIfExists(target)
+        }
+    }
+
+    @Test
+    fun `retargeted alias is rejected and not deleted on close`(@TempDir temporary: Path) = runBlocking {
+        val codex = executable(temporary.resolve("codex"))
+        val codexHome = Files.createDirectory(temporary.resolve("codex-home")).toRealPath()
+        val socket = Path.of("/private/tmp/kast-codex-retarget-${UUID.randomUUID()}.sock")
+        val target = Path.of("/private/tmp/kast-codex-original-${UUID.randomUUID()}.sock")
+        val foreign = Files.writeString(temporary.resolve("foreign"), "preserve")
+        val launcher = EchoCodexLauncher(target)
+        try {
+            val started =
+                ManagedCodexUpstream.start(
+                    ManagedCodexUpstreamOptions(
+                        executable =
+                            UpstreamCodexExecutable.admit(codex, DesktopFacadeExecutables.none()).refinedValue(),
+                        codexHome = codexHome,
+                        privateSocket = BrokerSocketPath.admit(socket).validatedValue(),
+                        launcher = launcher,
+                        maximumMessageBytes = 1024 * 1024,
+                        startupTimeoutMillis = 5_000,
+                    )
+                ) as ManagedCodexUpstreamStart.Started
+            Files.delete(socket)
+            Files.createSymbolicLink(socket, foreign)
+            assertEquals(BrokerUpstreamConnectionAdmission.Rejected, started.upstream.connect())
+            started.upstream.close()
+            assertEquals(true, Files.isSymbolicLink(socket))
+            assertEquals("preserve", Files.readString(foreign))
+        } finally {
+            Files.deleteIfExists(socket)
+            Files.deleteIfExists(target)
+        }
+    }
+
+    @Test
+    fun `installed Codex publishes an owned socket alias`(@TempDir temporary: Path) = runBlocking {
+        val configured = System.getenv("KAST_CODEX_ALIAS_ACCEPTANCE_EXECUTABLE")
+        assumeTrue(
+            !configured.isNullOrBlank(),
+            "Set KAST_CODEX_ALIAS_ACCEPTANCE_EXECUTABLE for native alias acceptance",
+        )
+        val codex = Path.of(configured).toRealPath()
+        val codexHome = Files.createDirectory(temporary.resolve("codex-home")).toRealPath()
+        val socket = Path.of("/private/tmp/kast-codex-native-${UUID.randomUUID()}.sock")
+        try {
+            val started =
+                ManagedCodexUpstream.start(
+                    ManagedCodexUpstreamOptions(
+                        executable =
+                            UpstreamCodexExecutable.admit(codex, DesktopFacadeExecutables.none()).refinedValue(),
+                        codexHome = codexHome,
+                        privateSocket = BrokerSocketPath.admit(socket).validatedValue(),
+                        maximumMessageBytes = 1024 * 1024,
+                        startupTimeoutMillis = 10_000,
+                    )
+                ) as ManagedCodexUpstreamStart.Started
+            try {
+                assertEquals(true, Files.isSymbolicLink(socket))
+                val connection = started.upstream.connect()
+                assertEquals(true, connection is BrokerUpstreamConnectionAdmission.Connected)
+                (connection as BrokerUpstreamConnectionAdmission.Connected).connection.close()
+            } finally {
+                started.upstream.close()
+            }
+            assertFalse(Files.exists(socket, java.nio.file.LinkOption.NOFOLLOW_LINKS))
+        } finally {
+            Files.deleteIfExists(socket)
         }
     }
 
@@ -190,7 +294,10 @@ class ManagedCodexUpstreamTest {
         }
     }
 
-    private class EchoCodexLauncher(private val aliasTarget: Path? = null) : CodexAppServerProcessLauncher {
+    private class EchoCodexLauncher(
+        private val aliasTarget: Path? = null,
+        private val reportedPid: Long = ProcessHandle.current().pid(),
+    ) : CodexAppServerProcessLauncher {
         var request: CodexAppServerProcessRequest? = null
         var closed = false
 
@@ -216,7 +323,7 @@ class ManagedCodexUpstreamTest {
             if (aliasTarget != null) Files.createSymbolicLink(request.socket, aliasTarget)
             return CodexAppServerProcessAdmission.Started(
                 object : CodexAppServerProcess {
-                    override val pid: Long = 1234
+                    override val pid: Long = reportedPid
 
                     override fun isAlive(): Boolean = true
 

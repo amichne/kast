@@ -3,17 +3,6 @@ package io.github.amichne.kast.appserver.runtime
 import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.appserver.host.admission.CodexAppServerArguments
 import io.github.amichne.kast.appserver.host.admission.UpstreamCodexExecutable
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.cio.CIO
-import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
-import io.ktor.client.plugins.websocket.WebSockets
-import io.ktor.client.plugins.websocket.webSocketSession
-import io.ktor.client.request.unixSocket
-import io.ktor.client.request.url
-import io.ktor.websocket.Frame
-import io.ktor.websocket.close
-import io.ktor.websocket.readText
-import io.ktor.websocket.send
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
@@ -25,7 +14,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
 
 internal data class ManagedCodexUpstreamOptions(
     val executable: UpstreamCodexExecutable,
@@ -68,7 +56,7 @@ internal enum class ManagedCodexUpstreamFailure {
     SOCKET_PATH_REJECTED,
     PROCESS_START_REJECTED,
     STARTUP_TIMED_OUT,
-    SOCKET_ALIAS_UNSUPPORTED,
+    SOCKET_ALIAS_OWNER_UNPROVEN,
     SOCKET_IDENTITY_REJECTED,
     INTERRUPTED,
 }
@@ -96,7 +84,9 @@ private constructor(
     private val closed = AtomicBoolean(false)
 
     override suspend fun connect(): BrokerUpstreamConnectionAdmission {
-        if (closed.get() || !process.isAlive()) return BrokerUpstreamConnectionAdmission.Rejected
+        if (closed.get() || !process.isAlive() || !ownedSocket.matchesCurrent()) {
+            return BrokerUpstreamConnectionAdmission.Rejected
+        }
         val connected =
             connectCodexUnixWebSocket(
                 privateSocket.path,
@@ -106,6 +96,10 @@ private constructor(
         val connection =
             (connected as? BrokerUpstreamConnectionAdmission.Connected)?.connection
                 ?: return BrokerUpstreamConnectionAdmission.Rejected
+        if (!process.isAlive() || !ownedSocket.matchesCurrent()) {
+            connection.close()
+            return BrokerUpstreamConnectionAdmission.Rejected
+        }
         lateinit var managed: ManagedUpstreamConnection
         managed = ManagedUpstreamConnection(connection) { connections.remove(managed) }
         connections.add(managed)
@@ -186,18 +180,42 @@ private constructor(
                     val connection = (probe as? BrokerUpstreamConnectionAdmission.Connected)?.connection
                     if (connection != null) {
                         connection.close()
-                        if (Files.isSymbolicLink(options.privateSocket.physicalPath)) {
-                            process.close()
-                            return rejected(ManagedCodexUpstreamFailure.SOCKET_ALIAS_UNSUPPORTED)
+                        val alias = Files.isSymbolicLink(options.privateSocket.physicalPath)
+                        if (!alias) {
+                            Files.setPosixFilePermissions(
+                                options.privateSocket.physicalPath,
+                                PosixFilePermissions.fromString("rw-------"),
+                            )
                         }
-                        Files.setPosixFilePermissions(
-                            options.privateSocket.physicalPath,
-                            PosixFilePermissions.fromString("rw-------"),
-                        )
-                        val owned = OwnedUnixSocket.capture(options.privateSocket)
-                        if (owned == null) {
+                        val owned =
+                            if (alias) {
+                                when (
+                                    val capture =
+                                        OwnedUnixSocket.capturePublishedAlias(
+                                            options.privateSocket,
+                                            process.pid,
+                                            maxOf(1, TimeUnit.NANOSECONDS.toMillis(deadline - System.nanoTime())),
+                                        )
+                                ) {
+                                    is PublishedAliasCapture.Captured -> capture.socket
+                                    PublishedAliasCapture.Unproven -> {
+                                        process.close()
+                                        return rejected(ManagedCodexUpstreamFailure.SOCKET_ALIAS_OWNER_UNPROVEN)
+                                    }
+                                }
+                            } else {
+                                OwnedUnixSocket.capture(options.privateSocket)
+                                    ?: run {
+                                        process.close()
+                                        return rejected(ManagedCodexUpstreamFailure.SOCKET_IDENTITY_REJECTED)
+                                    }
+                            }
+                        if (!process.isAlive() || !owned.matchesCurrent()) {
                             process.close()
-                            return rejected(ManagedCodexUpstreamFailure.SOCKET_IDENTITY_REJECTED)
+                            return rejected(
+                                if (alias) ManagedCodexUpstreamFailure.SOCKET_ALIAS_OWNER_UNPROVEN
+                                else ManagedCodexUpstreamFailure.SOCKET_IDENTITY_REJECTED
+                            )
                         }
                         return ManagedCodexUpstreamStart.Started(
                             ManagedCodexUpstream(
@@ -252,92 +270,6 @@ private class ManagedUpstreamConnection(
             delegate.close()
         } finally {
             onClose()
-        }
-    }
-}
-
-internal enum class BrokerControlRoute(val path: String) {
-    CODEX("/"),
-    RUNTIME("/kast-runtime"),
-    MANAGEMENT(io.github.amichne.kast.appserver.DaemonManagementProtocol.route),
-}
-
-internal suspend fun connectCodexUnixWebSocket(
-    socket: Path,
-    maximumMessageBytes: Int,
-    timeoutMillis: Long,
-    route: BrokerControlRoute = BrokerControlRoute.CODEX,
-): BrokerUpstreamConnectionAdmission {
-    val client =
-        HttpClient(CIO) {
-            install(WebSockets) { maxFrameSize = maximumMessageBytes.toLong() }
-        }
-    return try {
-        val session =
-            withTimeoutOrNull(timeoutMillis) {
-                client.webSocketSession {
-                    url("ws://localhost${route.path}")
-                    unixSocket(socket.toString())
-                }
-            } ?: return BrokerUpstreamConnectionAdmission.Rejected.also { client.close() }
-        BrokerUpstreamConnectionAdmission.Connected(KtorCodexUpstreamConnection(client, session, maximumMessageBytes))
-    } catch (cancelled: CancellationException) {
-        client.close()
-        throw cancelled
-    } catch (_: Exception) {
-        client.close()
-        BrokerUpstreamConnectionAdmission.Rejected
-    }
-}
-
-private class KtorCodexUpstreamConnection(
-    private val client: HttpClient,
-    private val session: DefaultClientWebSocketSession,
-    private val maximumMessageBytes: Int,
-) : BrokerUpstreamConnection {
-    private val closed = AtomicBoolean(false)
-
-    override suspend fun send(message: String): BrokerUpstreamSend =
-        try {
-            if (message.toByteArray(Charsets.UTF_8).size > maximumMessageBytes) {
-                BrokerUpstreamSend.REJECTED
-            } else {
-                session.send(message)
-                BrokerUpstreamSend.SENT
-            }
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (_: Exception) {
-            BrokerUpstreamSend.REJECTED
-        }
-
-    override suspend fun receive(): BrokerUpstreamFrame =
-        try {
-            when (val frame = session.incoming.receiveCatching().getOrNull()) {
-                is Frame.Text -> {
-                    val message = frame.readText()
-                    if (message.toByteArray(Charsets.UTF_8).size <= maximumMessageBytes) {
-                        BrokerUpstreamFrame.Text(message)
-                    } else {
-                        BrokerUpstreamFrame.Rejected
-                    }
-                }
-                null,
-                is Frame.Close -> BrokerUpstreamFrame.Closed
-                else -> BrokerUpstreamFrame.Rejected
-            }
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (_: Exception) {
-            BrokerUpstreamFrame.Rejected
-        }
-
-    override suspend fun close() {
-        if (!closed.compareAndSet(false, true)) return
-        try {
-            session.close()
-        } finally {
-            client.close()
         }
     }
 }
