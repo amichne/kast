@@ -226,6 +226,13 @@ val installedCodexHostTest = tasks.register<Exec>("installedCodexHostTest") {
     )
 }
 
+val installedCodexLifecycleTest = tasks.register<Exec>("installedCodexLifecycleTest") {
+    group = "verification"
+    description = "Checks native acceptance selects owned private or legacy service control."
+    inputs.files("packaging/installed_codex_lifecycle.py", "packaging/test-installed-codex-lifecycle.py")
+    commandLine("python3", layout.projectDirectory.file("packaging/test-installed-codex-lifecycle.py"))
+}
+
 val testCheckoutInstaller = tasks.register<Exec>("testCheckoutInstaller") {
     group = "verification"
     description = "Verifies checkout and release bootstrap boundaries without touching machine state."
@@ -301,6 +308,7 @@ val productBuildGate = tasks.register("productBuildGate") {
         localInstallationTest,
         installerRemovalTest,
         installedProductTest,
+        installedCodexLifecycleTest,
         testCheckoutInstaller,
         installerEntrypointTest,
         "verifyKastArchitecture",

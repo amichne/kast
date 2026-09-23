@@ -25,6 +25,40 @@ class HostCheck(str, Enum):
     UNQUALIFIED = "UNQUALIFIED"
 
 
+class ServiceControlKind(Enum):
+    PRIVATE = "private"
+    LEGACY = "legacy"
+
+
+class ServiceControlAction(Enum):
+    ENABLE = "enable"
+    DISABLE = "disable"
+
+
+@dataclass(frozen=True)
+class ServiceControl:
+    executable: Path
+    kind: ServiceControlKind
+
+    @staticmethod
+    def admit(product: Path, kast: Path) -> "ServiceControl":
+        private = product / "share/kast/libexec/kast-service"
+        try:
+            observed = private.lstat()
+        except FileNotFoundError:
+            return ServiceControl(kast, ServiceControlKind.LEGACY)
+        except OSError as failure:
+            raise AcceptanceFailure("private service control could not be observed") from failure
+        if not stat.S_ISREG(observed.st_mode) or not os.access(private, os.X_OK):
+            raise AcceptanceFailure("private service control is not an owned executable")
+        return ServiceControl(private, ServiceControlKind.PRIVATE)
+
+    def command(self, action: ServiceControlAction) -> list[str]:
+        if self.kind is ServiceControlKind.PRIVATE:
+            return [str(self.executable), action.value]
+        return [str(self.executable), "app-server", action.value]
+
+
 @dataclass(frozen=True)
 class ServiceObservation:
     phase: HostObservationPhase
@@ -136,8 +170,9 @@ def exercise_private_service(kast: Path, environment: dict[str, str], home: Path
 def qualify_installed_lifecycle(isolation, kast, facade, environment, home, project, product) -> HostLifecycleReceipt:
     private = environment.get("KAST_APP_SERVER_PUBLIC_ENDPOINT") == "private"
     discovery = HostCheck.UNQUALIFIED
+    control = ServiceControl.admit(product, kast)
     try:
-        enabled = subprocess.run([str(kast), "app-server", "enable"], cwd=project, env=environment, capture_output=True, text=True, timeout=90)
+        enabled = subprocess.run(control.command(ServiceControlAction.ENABLE), cwd=project, env=environment, capture_output=True, text=True, timeout=90)
         if enabled.returncode != 0:
             service_logs = list(product.glob("state/broker/*/service.log"))
             evidence = bounded_tail(service_logs[0]) if len(service_logs) == 1 else "no unique child service log"
@@ -221,7 +256,7 @@ def qualify_installed_lifecycle(isolation, kast, facade, environment, home, proj
         # Parent stdio termination must preserve the coordinator and its prepared host.
         private_service = exercise_private_service(kast, environment, home, project, product, HostObservationPhase.FRONTEND_PREPARED)
     finally:
-        disabled = subprocess.run([str(kast), "app-server", "disable"], cwd=project, env=environment, capture_output=True, text=True, timeout=40)
+        disabled = subprocess.run(control.command(ServiceControlAction.DISABLE), cwd=project, env=environment, capture_output=True, text=True, timeout=40)
         if disabled.returncode != 0:
             raise AcceptanceFailure("temporary service cleanup failed: " + disabled.stderr[-4096:])
     return HostLifecycleReceipt(before, private_service, HostCheck.VALIDATED, HostCheck.VALIDATED, HostCheck.VALIDATED, HostCheck.VALIDATED, HostCheck.UNQUALIFIED, discovery)
