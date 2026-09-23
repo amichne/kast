@@ -84,7 +84,7 @@ For `GRADLE_MODEL_UNAVAILABLE`, expect recovery to identify:
 
 A missing cached model does not prove that import is running.
 
-Semantic reads do not start import or return an empty successful search. You can request an explicit refresh through the separate lifecycle command below.
+Semantic reads do not start import or return an empty successful search. A connected agent can request an explicit refresh through `workspace_lifecycle`.
 
 Older output without `recovery` provides no automated retry instruction.
 
@@ -94,25 +94,9 @@ Set `KAST_DEBUG=1` for bounded launch-stage output.
 
 ## Refresh an already linked workspace
 
-Use file refresh to make external file changes visible, or Gradle model reload after changing dependencies or modules. The project must already be open, trusted and linked at the selected root. Save your editor changes first; Kast does not save or discard them.
+Use file refresh to make external file changes visible, or Gradle model reload after changing dependencies or modules. The project must already be open, trusted and linked at the selected root. Save your editor changes first; Kast does not save or discard them. In a connected agent session, call `workspace_lifecycle` with `inspect`, then `sync` using its exact project `target`, a new `requestId`, and `FILE_REFRESH` or `GRADLE_MODEL_RELOAD`. Poll a pending result with `status` and the same request ID. A deadline or failed import remains an explicit failure. Search again after refresh to acquire current references.
 
-```shell
-kast ide refresh '{"type":"request","requestId":"refresh-files-1","effect":"FILE_REFRESH"}'
-kast ide refresh '{"type":"status","requestId":"refresh-files-1"}'
-kast ide refresh '{"type":"request","requestId":"reload-model-1","effect":"GRADLE_MODEL_RELOAD"}'
-kast ide refresh '{"type":"status","requestId":"reload-model-1"}'
-```
-
-A pending response names `QUEUED`, `EFFECT` or `ADMISSION`. Poll the same request ID. Completion requires the native effect to finish and fresh workspace admission to succeed. A deadline or failed import remains an explicit failure. Repeating a request ID does not repeat its effect; use a new ID for a newer change. Search again after refresh to acquire current references.
-
-Automatic refresh is off for every new IDE host. To opt in for one exact Gradle task executed successfully by IDEA:
-
-```shell
-kast ide refresh '{"type":"configure","rule":{"type":"task_success","task":":generateSources","effect":"FILE_REFRESH"}}'
-kast ide refresh '{"type":"configure","rule":{"type":"off"}}'
-```
-
-The rule applies to this host and its linked root. It matches an invocation containing exactly that one task. Terminal builds and Gradle imports do not trigger the rule. You can select `GRADLE_MODEL_RELOAD` instead of `FILE_REFRESH`.
+Automatic refresh is off for every new IDE host. To opt in for one exact Gradle task executed successfully by IDEA, call `workspace_lifecycle` with `configure_sync`, the exact project `target`, a new `requestId`, and a `task_success` rule. Use an `off` rule to disable it. The rule applies to that project and matches an invocation containing exactly the selected task. Terminal builds and Gradle imports do not trigger it. See [workspace lifecycle](/workspaces) for the input and result variants.
 
 ## Resolve the common boundaries
 

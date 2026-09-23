@@ -639,7 +639,7 @@ candidate prefix, including its local selection table and retained-output cursor
 An indivisible source text that prevents any prefix fitting becomes explicitly
 withheld with text-byte qualification; source bytes are never truncated.
 
-The `WORKSPACE_REFRESH` control request is dispatched separately from semantic reads. `ide refresh` carry typed request/status/configuration documents over the existing owned socket. Response admission validates the control schema, workspace root, host and request identity. Pending results remain qualified; failures remain rejections. The [workspace lifecycle owner](../modules/workspace.md) describes its asynchronous effects and opt-in task rule.
+The `WORKSPACE_REFRESH` control request is dispatched separately from semantic reads and remains available to the disposable native acceptance fixture over the owned socket. The public `workspace_lifecycle` tool selects explicit sync and per-project task-success configuration through an exact target. Its native lifecycle admission preserves the host, project and request identities; pending results remain qualified and failures remain rejections. The [workspace lifecycle owner](../modules/workspace.md) describes its asynchronous effects and opt-in task rule.
 
 Fresh exact-symbol reads use the request-local acquisition wrapper described in
 [query protocol](../modules/query-protocol.md#automatic-acquisition-for-fresh-reads).

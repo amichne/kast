@@ -165,7 +165,7 @@ inferring IDEA authority. Installed transport acceptance does not qualify stock
 interactive CLI or Desktop tool exposure; the explicit CLI route and Desktop
 façade remain pending those gates.
 
-The hosted endpoint also composes an explicit workspace refresh owner outside `workspace:intellij-read`. Its existing socket accepts file refresh, Gradle model reload, bounded status and one opt-in task-success rule per project. `workspace_lifecycle configure_sync` applies the rule through an exact project target; `ide refresh` still exposes the typed control documents. The legacy refresh request requires an already linked project. Initial linking is admitted only through explicit application lifecycle opening; semantic read admission remains passive.
+The hosted endpoint also composes an explicit workspace refresh owner outside `workspace:intellij-read`. Its existing socket accepts file refresh, Gradle model reload, bounded status and one opt-in task-success rule per project. `workspace_lifecycle sync` and `configure_sync` select those effects through an exact project target. The direct refresh request remains for disposable native acceptance and requires an already linked project. Initial linking is admitted only through explicit application lifecycle opening; semantic read admission remains passive.
 
 Fresh semantic reads additionally use `ReacquiringQueryReferences`, backed by the
 separate detached exact-locator store. Its request-local accounting charges
