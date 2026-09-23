@@ -449,8 +449,8 @@ class RecoveryFence:
 
 def detach_login(root, bundle):
     home = physical(Path(os.environ['HOME']))
-    label = 'io.github.amichne.kast.broker.' + hashlib.sha256(str(root).encode()).hexdigest()[:32] + '.login'
-    path = home / 'Library/LaunchAgents' / (label + '.plist')
+    service_label = 'io.github.amichne.kast.broker.' + hashlib.sha256(str(root).encode()).hexdigest()[:32]
+    path = home / 'Library/LaunchAgents' / (service_label + '.login.plist')
     if not os.path.lexists(path):
         return []
     try:
@@ -458,14 +458,23 @@ def detach_login(root, bundle):
         descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
         with os.fdopen(descriptor, 'rb') as source:
             observed = os.fstat(source.fileno())
-            if not stat.S_ISREG(observed.st_mode) or observed.st_uid != os.getuid():
+            if not stat.S_ISREG(observed.st_mode) or observed.st_uid != os.getuid() or observed.st_mode & 0o077:
                 return [Failure.OWNERSHIP]
             raw = source.read(65537)
         if len(raw) > 65536:
             return [Failure.OWNERSHIP]
         document = plistlib.loads(raw)
+        if not isinstance(document, dict):
+            return [Failure.OWNERSHIP]
         arguments = document.get('ProgramArguments')
-        if document.get('Label') != label or not isinstance(arguments, list) or not arguments or arguments[0] != str(root / 'bin/kast'):
+        legacy = (document.get('Label') == service_label + '.login'
+                  and set(document) == {'Label', 'ProgramArguments', 'RunAtLoad', 'EnvironmentVariables'}
+                  and arguments == [str(root / 'bin/kast'), 'app-server', 'bootstrap']
+                  and document.get('RunAtLoad') is True
+                  and isinstance(document.get('EnvironmentVariables'), dict)
+                  and b'<!-- Kast App Server login bootstrap v1 -->' in raw)
+        direct = document.get('Label') == service_label and exact_service_login(root, raw, document)
+        if not (legacy or direct):
             return [Failure.OWNERSHIP]
         if Identity.observe(path) != Identity(observed.st_dev, observed.st_ino, observed.st_uid):
             return [Failure.OWNERSHIP]
@@ -479,6 +488,45 @@ def detach_login(root, bundle):
         return []
     except (OSError, ValueError, TypeError, plistlib.InvalidFileException):
         return [Failure.OWNERSHIP]
+
+
+def exact_service_login(root, raw, document):
+    if (set(document) != {'Label', 'ProgramArguments', 'RunAtLoad', 'KeepAlive', 'ThrottleInterval',
+                          'StandardOutPath', 'StandardErrorPath'}
+            or document.get('RunAtLoad') is not True
+            or document.get('KeepAlive') != {'SuccessfulExit': False}
+            or document.get('ThrottleInterval') != 10):
+        return False
+    arguments = document.get('ProgramArguments')
+    if (not isinstance(arguments, list) or len(arguments) < 5 or len(arguments) > 64
+            or arguments[:2] != ['/usr/bin/env', '-i']
+            or arguments[-2:] != [str(root / 'share/kast/libexec/kast-daemon'), '--login']
+            or any(not isinstance(value, str) for value in arguments)):
+        return False
+    assignments = arguments[2:-2]
+    if any('=' not in value for value in assignments):
+        return False
+    environment = dict(value.split('=', 1) for value in assignments)
+    if len(environment) != len(assignments):
+        return False
+    codex_home = environment.get('CODEX_HOME')
+    if not codex_home or not Path(codex_home).is_absolute() or os.path.normpath(codex_home) != codex_home:
+        return False
+    profile = hashlib.sha256(codex_home.encode()).hexdigest()[:16]
+    receipt = root / 'state/broker' / profile / 'service.plist'
+    try:
+        physical(receipt.parent)
+        descriptor = os.open(receipt, os.O_RDONLY | os.O_NOFOLLOW)
+        with os.fdopen(descriptor, 'rb') as source:
+            observed = os.fstat(source.fileno())
+            if not stat.S_ISREG(observed.st_mode) or observed.st_uid != os.getuid() or observed.st_mode & 0o077:
+                return False
+            published = source.read(65537)
+        login_argument = b'<string>--login</string>'
+        return (len(published) <= 65536 and raw.count(login_argument) == 1
+                and raw.replace(login_argument, b'', 1) == published)
+    except (OSError, ValueError):
+        return False
 
 
 @dataclass(frozen=True)

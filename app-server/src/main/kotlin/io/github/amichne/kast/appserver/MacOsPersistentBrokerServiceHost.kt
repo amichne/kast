@@ -16,8 +16,6 @@ import io.ktor.websocket.readText
 import io.ktor.websocket.send
 import java.io.IOException
 import java.net.ConnectException
-import java.nio.channels.FileChannel
-import java.nio.channels.OverlappingFileLockException
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.NoSuchFileException
@@ -341,6 +339,47 @@ internal class MacOsPersistentBrokerServiceHost(
             BrokerServiceLockExecution.Rejected -> rejected(PersistentBrokerServiceFailure.SERVICE_LOCK_REJECTED)
             BrokerServiceLockExecution.TimedOut -> rejected(PersistentBrokerServiceFailure.STARTUP_TIMED_OUT)
         }
+    }
+
+    /** A launchd login start may clear a prior stop only while its exact service job is loaded. */
+    internal fun resumeLogin(command: BrokerServiceLaunchCommand): PersistentBrokerServiceAdmission {
+        if (!loginEvidenceAdmitted(command))
+            return rejected(PersistentBrokerServiceFailure.SERVICE_OBSERVATION_REJECTED)
+        return when (
+            val execution = BrokerServiceStartLock.withAcquired(command.serviceLock) { resumeLoginExclusively(command) }
+        ) {
+            is BrokerServiceLockExecution.Executed -> execution.admission
+            BrokerServiceLockExecution.Interrupted -> rejected(PersistentBrokerServiceFailure.INTERRUPTED)
+            BrokerServiceLockExecution.Rejected -> rejected(PersistentBrokerServiceFailure.SERVICE_LOCK_REJECTED)
+            BrokerServiceLockExecution.TimedOut -> rejected(PersistentBrokerServiceFailure.STARTUP_TIMED_OUT)
+        }
+    }
+
+    private fun loginEvidenceAdmitted(command: BrokerServiceLaunchCommand): Boolean =
+        ServiceLoginAgent.observe(command) == ServiceLoginAgentObservation.SERVICE &&
+            PublishedBrokerServiceCommand.observePrivate(command) == PublishedPrivateDocumentObservation.EXACT
+
+    private fun resumeLoginExclusively(command: BrokerServiceLaunchCommand): PersistentBrokerServiceAdmission {
+        if (
+            InstallationLifecycleFence.observe(command.kast.parent.parent) !=
+                InstallationLifecycleStartAdmission.AVAILABLE || !loginEvidenceAdmitted(command)
+        )
+            return rejected(PersistentBrokerServiceFailure.DISABLED)
+        return when (observeService(command.serviceLabel)) {
+            BrokerLaunchdServiceObservation.Present -> clearLoginStop(command)
+            BrokerLaunchdServiceObservation.Interrupted -> rejected(PersistentBrokerServiceFailure.INTERRUPTED)
+            BrokerLaunchdServiceObservation.TimedOut -> rejected(PersistentBrokerServiceFailure.LAUNCHCTL_TIMED_OUT)
+            BrokerLaunchdServiceObservation.Absent,
+            BrokerLaunchdServiceObservation.Rejected ->
+                rejected(PersistentBrokerServiceFailure.SERVICE_OBSERVATION_REJECTED)
+        }
+    }
+
+    private fun clearLoginStop(command: BrokerServiceLaunchCommand): PersistentBrokerServiceAdmission {
+        val marker = command.stateDirectory.resolve("stopped")
+        if (Files.isSymbolicLink(marker)) return rejected(PersistentBrokerServiceFailure.STATE_DIRECTORY_REJECTED)
+        Files.deleteIfExists(marker)
+        return PersistentBrokerServiceAdmission.Ready
     }
 
     private fun probeSocket(command: BrokerServiceLaunchCommand): BrokerSocketReachability =
@@ -1120,66 +1159,6 @@ internal class MacOsPersistentBrokerServiceHost(
 private enum class BrokerStateDirectoryPreparation {
     Prepared,
     Rejected,
-}
-
-private sealed interface BrokerServiceLockExecution {
-    data class Executed(val admission: PersistentBrokerServiceAdmission) : BrokerServiceLockExecution
-
-    data object Interrupted : BrokerServiceLockExecution
-
-    data object Rejected : BrokerServiceLockExecution
-
-    data object TimedOut : BrokerServiceLockExecution
-}
-
-private object BrokerServiceStartLock {
-    fun withAcquired(
-        path: Path,
-        operation: () -> PersistentBrokerServiceAdmission,
-    ): BrokerServiceLockExecution {
-        if (Files.isSymbolicLink(path)) return BrokerServiceLockExecution.Rejected
-        val channel =
-            try {
-                FileChannel.open(
-                    path,
-                    StandardOpenOption.CREATE,
-                    StandardOpenOption.WRITE,
-                    LinkOption.NOFOLLOW_LINKS,
-                )
-            } catch (_: IOException) {
-                return BrokerServiceLockExecution.Rejected
-            } catch (_: SecurityException) {
-                return BrokerServiceLockExecution.Rejected
-            }
-        return channel.use { opened ->
-            val deadline = System.nanoTime() + LOCK_TIMEOUT_NANOS
-            while (System.nanoTime() < deadline) {
-                val lock =
-                    try {
-                        opened.tryLock()
-                    } catch (_: OverlappingFileLockException) {
-                        null
-                    } catch (_: IOException) {
-                        return@use BrokerServiceLockExecution.Rejected
-                    }
-                if (lock != null) {
-                    return@use lock.use {
-                        BrokerServiceLockExecution.Executed(operation())
-                    }
-                }
-                try {
-                    Thread.sleep(LOCK_POLL_MILLIS)
-                } catch (_: InterruptedException) {
-                    Thread.currentThread().interrupt()
-                    return@use BrokerServiceLockExecution.Interrupted
-                }
-            }
-            BrokerServiceLockExecution.TimedOut
-        }
-    }
-
-    private val LOCK_TIMEOUT_NANOS = BrokerServiceStartupBudgets.lockTimeoutNanos
-    private val LOCK_POLL_MILLIS = BrokerOperationalLimits.serviceLockPoll.value
 }
 
 private enum class BrokerLaunchdServiceObservation {

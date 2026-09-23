@@ -68,6 +68,16 @@ from pathlib import Path
 assert json.loads(Path(sys.argv[1]).read_text()) == {'failure': 'ARGUMENTS_REJECTED'}
 DAEMON
 set +e
+env -u JAVA_TOOL_OPTIONS -u _JAVA_OPTIONS -u BROKER_SERVICE_IDENTITY -u BROKER_READINESS_FILE "${command_environment[@]}" "$daemon" --login > "$fixture/daemon.stdout" 2> "$fixture/daemon.stderr"
+daemon_status=$?
+set -e
+[[ "$daemon_status" == 64 && ! -s "$fixture/daemon.stdout" ]] || fail 'private login accepted unmanaged invocation'
+python3 - "$fixture/daemon.stderr" <<'DAEMON'
+import json, sys
+from pathlib import Path
+assert json.loads(Path(sys.argv[1]).read_text()) == {'failure': 'READINESS_REJECTED'}
+DAEMON
+set +e
 env -u JAVA_TOOL_OPTIONS -u _JAVA_OPTIONS -u BROKER_SERVICE_IDENTITY -u BROKER_READINESS_FILE "${command_environment[@]}" "$daemon" > "$fixture/daemon.stdout" 2> "$fixture/daemon.stderr"
 daemon_status=$?
 set -e

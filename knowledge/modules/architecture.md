@@ -49,6 +49,8 @@ Every module role requires its matching Gradle convention. Validated module poli
 - The existing-IDE host connects proven contracts to effectful adapters.
 - App Server and CLI expose broker, installation and transport boundaries.
 
+The App Server's direct login-agent publisher and the installation service lock are explicit scoped filesystem-write owners. The publisher writes or removes only the qualified per-user launchd entry; the lock serializes launchd start, retirement, and direct login resumption.
+
 The IntelliJ read adapter also depends on symbol contracts for the existing-IDE
 [hosted query](../flows/hosted-query.md). This permits detached compiler evidence
 without introducing an isolated workspace opener or importing implementation
