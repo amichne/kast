@@ -68,6 +68,7 @@ internal enum class ManagedCodexUpstreamFailure {
     SOCKET_PATH_REJECTED,
     PROCESS_START_REJECTED,
     STARTUP_TIMED_OUT,
+    SOCKET_ALIAS_UNSUPPORTED,
     SOCKET_IDENTITY_REJECTED,
     INTERRUPTED,
 }
@@ -185,6 +186,10 @@ private constructor(
                     val connection = (probe as? BrokerUpstreamConnectionAdmission.Connected)?.connection
                     if (connection != null) {
                         connection.close()
+                        if (Files.isSymbolicLink(options.privateSocket.physicalPath)) {
+                            process.close()
+                            return rejected(ManagedCodexUpstreamFailure.SOCKET_ALIAS_UNSUPPORTED)
+                        }
                         Files.setPosixFilePermissions(
                             options.privateSocket.physicalPath,
                             PosixFilePermissions.fromString("rw-------"),

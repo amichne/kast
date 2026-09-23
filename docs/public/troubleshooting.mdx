@@ -95,11 +95,12 @@ Automatic refresh is off for every new IDE host. To opt in for one exact Gradle 
     - Register the intended Kotlin Gradle root through the private service control.
     - Verify the selected installation and connected Codex client.
     - Remove retired `KAST_ENABLE_APP_SERVER` and `KAST_APP_SERVER_TOOLS` assignments.
-    - Recreate obsolete catalogs with the matched hosted provider.
 
-    Do not bypass admission with handwritten definitions.
-
-    See [Harness configuration](/agent-harnesses#configuration-and-migration).
+    If the service reports `upstream-socket-alias-unsupported`,
+    `upstream-socket-path-rejected`, or `SERVICE_OWNERSHIP_UNPROVEN`, preserve
+    the service log and [report the failure](#report-a-reproducible-defect).
+    Do not remove an unfamiliar socket or change the saved executable to force
+    startup; Kast cannot establish ownership from that path alone.
   </Accordion>
   <Accordion title="The IDE host is unavailable or source is unready">
     - Open the exact repository in a compatible IDEA installation.
@@ -128,56 +129,6 @@ Automatic refresh is off for every new IDE host. To opt in for one exact Gradle 
 
 For an installation that cannot start or uninstall, use the [offline recovery
 runbook](https://github.com/amichne/kast/blob/main/docs/installation-recovery.md).
-
-## Advanced runtime maintenance
-
-These controls affect the installation-owned broker, not IDEA project state.
-
-<AccordionGroup>
-  <Accordion title="Repair installation-owned broker state">
-    The persistent service owns readiness across client sessions.
-
-    Use this reset only when diagnosis requires discarding owned state:
-
-    ```console
-    "${XDG_DATA_HOME:-$HOME/.local/share}/kast/current/share/kast/libexec/kast-service" repair --destructive
-    ```
-
-    <Warning>
-      This command discards broker invocation evidence. Do not use it while an
-      uncertain source change still needs recovery.
-    </Warning>
-
-    The reset removes installation-owned runtime, cache, broker, and registry state.
-
-    It then re-enrolls the workspace without rebuilding IDEA indexes.
-
-    It does not follow symlinks inside the owned state tree.
-  </Accordion>
-  <Accordion title="A change store rejects">
-    Keep the complete `HOST_REJECTED.detail` value.
-
-    Treat these as distinct stages:
-
-    - database admission
-    - plan storage
-    - receipt storage
-    - plan lookup
-
-    `CORRUPT_RECORD` and `VERSION_UNSUPPORTED` remain distinct from generic I/O.
-
-    Retain durable records and the exact plan identity.
-  </Accordion>
-  <Accordion title="A retired start or stop command rejects">
-    Kast no longer launches a second IntelliJ workspace.
-
-    - Open the repository in IDEA with the Kast plugin.
-    - Finish import and indexing.
-    - Save edited files.
-    - Inspect the hosted workspace status.
-    - Configure memory and Gradle settings in IDEA.
-  </Accordion>
-</AccordionGroup>
 
 ## Report a reproducible defect
 

@@ -44,8 +44,15 @@ You need macOS on Apple silicon, a Kotlin Gradle repository, IntelliJ IDEA
    "${XDG_DATA_HOME:-$HOME/.local/share}/kast/current/share/kast/libexec/kast-service" register "$PWD"
    ```
 
-   Then open the repository in your Codex client. Registration is explicit for
-   each repository or worktree; Kast does not put a command on `PATH`.
+   Start the connected Codex CLI through the installed launcher:
+
+   ```shell
+   "${XDG_DATA_HOME:-$HOME/.local/share}/kast/current/bin/kast" codex
+   ```
+
+   Start a fresh task after connecting. Registration is explicit for each
+   repository or worktree; Kast does not put a command on `PATH`. Desktop UI
+   discovery remains unverified; see the compatibility record.
 
 4. Ask your agent: **“Use Kast to find the class OrderService.”** Replace the
    name with a class in your project. Check the returned status and matches.

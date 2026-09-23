@@ -49,7 +49,10 @@ provider for the enrolled workspace.
 
 <Note>
   The Codex App Server integration remains a preview, and full Desktop UI
-  compatibility remains unqualified.
+  compatibility remains unqualified. On the tested macOS host, Codex 0.154.0
+  started as Kast's managed upstream; 0.156.0 published a socket alias Kast
+  could not verify and was rejected. A 0.156.0 CLI connected to the 0.154.0
+  upstream through Kast.
 </Note>
 
 See the [source-backed compatibility record](https://github.com/amichne/kast/blob/main/app-server/docs/compatibility.md)
@@ -64,20 +67,6 @@ for the tested boundary.
 The installer verifies control and plugin payloads before activation.
 
 Repository source and unrelated JetBrains state remain unchanged.
-
-<Accordion title="Pin an approved release">
-  Run the installer from the same explicit tag passed to `--version`:
-
-  ```shell
-  release_tag="v0.35.0"
-  /bin/bash -c "$(curl -fsSL "https://raw.githubusercontent.com/amichne/kast/${release_tag}/install.sh")" \
-    -- --version "$release_tag"
-  ```
-
-  Replace the example with your approved, published release.
-
-  The example shows a pinning pattern, not a downgrade recommendation.
-</Accordion>
 
 Do not reuse metadata from a different installation.
 

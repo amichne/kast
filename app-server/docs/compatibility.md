@@ -9,6 +9,74 @@ Historical client evidence was recorded on 2026-09-08 UTC; the hosted change
 implementation notes were updated on 2026-09-11 UTC. This record is owned by
 `:app-server`. **Full desktop compatibility has not been established.**
 
+## Local 0.43.2 acceptance — 2026-09-23
+
+On the current macOS host, a force installation of 0.43.2 retired the prior
+0.42.4 service and enrolled `/Users/amichne/code/konditional`. The installed
+IDEA 262 instance opened that workspace. The canonical endpoint was explicitly
+selected; the installation default remains private to avoid claiming another
+Codex daemon's socket. The managed upstream was pinned to installed Codex
+0.154.0 because 0.156.0 published a symbolic-link socket alias that Kast could
+not prove belonged to the launched process. The broker now distinguishes this
+case as `SOCKET_ALIAS_UNSUPPORTED` in source; the installed release still reports
+the broader socket-identity failure.
+
+A fresh Codex CLI 0.156.0 task attached to the canonical endpoint with the
+account-listed `gpt-5.6-sol` model, invoked `kast.search_classes`, and found
+`io.amichne.kontracts.dsl.RootObjectSchemaBuilder` at its compiler-indexed
+Konditional source path. The task completed without modifying files. This
+qualifies the CLI tool path on this host, not the Desktop UI. Computer use
+rejected access to `com.openai.codex`, so Desktop discovery and invocation
+remain unverified here.
+
+An isolated checkout install in a disposable home wrote the default `private`
+endpoint and started its coordinator without replacing the user's canonical
+socket. A fresh CLI attachment with Codex 0.156.0 triggered the managed host,
+which rejected its symbolic-link upstream path with
+`upstream-socket-alias-unsupported`. A retired `KAST_ENABLE_APP_SERVER` assignment
+in that fixture's saved configuration rejected service enablement as
+`CONFIGURATION_REJECTED` before startup. After restoring the admitted configuration,
+the exact old service identity had to be disabled before selecting Codex 0.154.0;
+changing identity while its launch record remained returned
+`SERVICE_OWNERSHIP_UNPROVEN`.
+
+With 0.154.0 selected, a symlink placed at the installation's short upstream
+socket path rejected a fresh client as `upstream-socket-path-rejected`. Kast left
+the symlink and its foreign target untouched. Removing the alias alone did not
+retry the rejected host in that service incarnation. Stopping and enabling the
+fixture service restored native upstream initialization. Its isolated Codex home
+had no credentials, so the client stopped at sign-in; this is transport recovery
+evidence, not a semantic tool result. The earlier enrolled CLI result remains
+the semantic acceptance evidence on this host.
+
+The same checkout service was enabled and disabled from an ambient Temurin
+25.0.2 runtime. Its launch receipt still selected the installed IDEA 262 JBR,
+and both controls completed. This is native evidence that caller Java drift no
+longer changes service identity in the checkout build.
+
+## Availability in independently started Codex sessions
+
+The installed `kast codex` launcher starts a client attached to Kast's private
+broker. Repository registration persists across tasks, but it does not inject
+Kast's broker-owned `dynamicTools` into an independently started Codex thread.
+The canonical Codex control socket can be selected only when Kast proves that
+the endpoint is free or already its own; its use still depends on the stock
+client choosing that daemon. Neither choice establishes tool availability in
+every Desktop session. The current [Codex App Server contract](https://github.com/openai/codex/blob/main/codex-rs/app-server/README.md)
+places dynamic tool registration at thread start.
+
+The App Server-only route is to select Kast's canonical control endpoint for a
+verified installation and have stock clients connect to that persistent broker.
+Installation must reject an incumbent it cannot prove it owns. An implicit CLI
+launch can fall back to an embedded server when discovery fails, so socket
+publication alone cannot establish tool availability. Desktop builds may choose
+their own stdio App Server; Kast cannot inject thread-start tools into such a
+session. The supported launcher remains `kast codex`, with `kast codex desktop`
+requiring its separate build-specific UI gate. Broader claims need fresh CLI and
+Desktop sessions, resumed threads, concurrent sessions, absent IDEA,
+unregistered roots, and mutation approval tested against the same installed
+provider. A client that bypasses the broker cannot receive its dynamic tools.
+
 ## Canonical endpoint migration — 2026-09-15
 
 `installedCodexHostTest` passed against installed Codex CLI 0.154.0 with an

@@ -33,6 +33,73 @@ import org.junit.jupiter.api.io.TempDir
 
 class ManagedCodexUpstreamTest {
     @Test
+    fun `foreign socket alias survives rejection and clean retry`(@TempDir temporary: Path) = runBlocking {
+        val codex = executable(temporary.resolve("codex"))
+        val codexHome = Files.createDirectory(temporary.resolve("codex-home")).toRealPath()
+        val socket = Path.of("/private/tmp/kast-codex-stale-${UUID.randomUUID()}.sock")
+        val foreign = Files.writeString(temporary.resolve("foreign.sock"), "foreign-transport")
+        val launcher = EchoCodexLauncher()
+        val options =
+            ManagedCodexUpstreamOptions(
+                executable = UpstreamCodexExecutable.admit(codex, DesktopFacadeExecutables.none()).refinedValue(),
+                codexHome = codexHome,
+                privateSocket = BrokerSocketPath.admit(socket).validatedValue(),
+                launcher = launcher,
+                maximumMessageBytes = 1024 * 1024,
+                startupTimeoutMillis = 5_000,
+            )
+        Files.createSymbolicLink(socket, foreign)
+        try {
+            assertEquals(
+                ManagedCodexUpstreamStart.Rejected(ManagedCodexUpstreamFailure.SOCKET_PATH_REJECTED),
+                ManagedCodexUpstream.start(options),
+            )
+            assertEquals(null, launcher.request)
+            assertEquals(true, Files.isSymbolicLink(socket))
+            assertEquals("foreign-transport", Files.readString(foreign))
+
+            Files.delete(socket)
+            val started = ManagedCodexUpstream.start(options) as ManagedCodexUpstreamStart.Started
+            started.upstream.close()
+            assertEquals("foreign-transport", Files.readString(foreign))
+        } finally {
+            Files.deleteIfExists(socket)
+        }
+    }
+
+    @Test
+    fun `socket alias is a finite unsupported upstream failure`(@TempDir temporary: Path) = runBlocking {
+        val codex = executable(temporary.resolve("codex"))
+        val codexHome = Files.createDirectory(temporary.resolve("codex-home")).toRealPath()
+        val socket = Path.of("/private/tmp/kast-codex-alias-${UUID.randomUUID()}.sock")
+        val target = Path.of("/private/tmp/kast-codex-target-${UUID.randomUUID()}.sock")
+        val launcher = EchoCodexLauncher(target)
+        try {
+            val result =
+                ManagedCodexUpstream.start(
+                    ManagedCodexUpstreamOptions(
+                        executable =
+                            UpstreamCodexExecutable.admit(codex, DesktopFacadeExecutables.none()).refinedValue(),
+                        codexHome = codexHome,
+                        privateSocket = BrokerSocketPath.admit(socket).validatedValue(),
+                        launcher = launcher,
+                        maximumMessageBytes = 1024 * 1024,
+                        startupTimeoutMillis = 5_000,
+                    )
+                )
+            assertEquals(
+                ManagedCodexUpstreamStart.Rejected(ManagedCodexUpstreamFailure.SOCKET_ALIAS_UNSUPPORTED),
+                result,
+            )
+            assertEquals(true, launcher.closed)
+            assertEquals(true, Files.isSymbolicLink(socket))
+        } finally {
+            Files.deleteIfExists(socket)
+            Files.deleteIfExists(target)
+        }
+    }
+
+    @Test
     fun `managed upstream launches exact Codex UDS and exposes independent WebSocket connection`(
         @TempDir temporary: Path
     ) = runBlocking {
@@ -123,7 +190,7 @@ class ManagedCodexUpstreamTest {
         }
     }
 
-    private class EchoCodexLauncher : CodexAppServerProcessLauncher {
+    private class EchoCodexLauncher(private val aliasTarget: Path? = null) : CodexAppServerProcessLauncher {
         var request: CodexAppServerProcessRequest? = null
         var closed = false
 
@@ -132,7 +199,7 @@ class ManagedCodexUpstreamTest {
             val engine =
                 embeddedServer(
                     factory = CIO,
-                    configure = { unixConnector(request.socket.toString()) },
+                    configure = { unixConnector((aliasTarget ?: request.socket).toString()) },
                     module = {
                         install(WebSockets)
                         routing {
@@ -146,6 +213,7 @@ class ManagedCodexUpstreamTest {
                     },
                 )
             engine.startSuspend(wait = false)
+            if (aliasTarget != null) Files.createSymbolicLink(request.socket, aliasTarget)
             return CodexAppServerProcessAdmission.Started(
                 object : CodexAppServerProcess {
                     override val pid: Long = 1234
