@@ -8014,16 +8014,6 @@
     {
       "fingerprint": {
         "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/CodexCommandTest.kt",
-        "scope": "type:CodexCommandTest/fun:destructive App Server recovery requires explicit confirmation()/val:manager/declaration:<anonymous>",
-        "kind": "JSON_BUILDER",
-        "sha256": "064faf52655dff262e9126329670b27e4eec23baaa4329b66106be0738602cd3"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/CodexCommandTest.kt",
         "scope": "type:CodexCommandTest/fun:testCli(19:CodexClientLauncher,16:AppServerManager)/val:admitted",
         "kind": "JSON_LITERAL",
         "sha256": "69dff89bc2ba1bc81d4baff6eb123f31ff963e476c925e50b874a04b9930e107"

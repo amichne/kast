@@ -1,7 +1,6 @@
 package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.appserver.AppServerAction
-import io.github.amichne.kast.appserver.AppServerManagementResult
 import io.github.amichne.kast.appserver.AppServerManager
 import io.github.amichne.kast.appserver.host.CodexClientLaunch
 import io.github.amichne.kast.appserver.host.CodexClientLaunchRun
@@ -13,7 +12,6 @@ import io.github.amichne.kast.cli.projection.CliLocalMetadata
 import io.github.amichne.kast.cli.projection.CliLocalMetadataAdmission
 import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
 import java.nio.file.Path
-import kotlinx.serialization.json.put
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -63,15 +61,11 @@ class CodexCommandTest {
     }
 
     @Test
-    fun `destructive App Server recovery requires explicit confirmation`() {
+    fun `destructive App Server recovery is absent from the public graph`() {
         val actions = mutableListOf<AppServerAction>()
         val manager = AppServerManager { action, _ ->
             actions.add(action)
-            AppServerManagementResult.Completed(
-                kotlinx.serialization.json.buildJsonObject {
-                    put("status", "ready")
-                }
-            )
+            error("retired recovery reached the manager")
         }
         val cli =
             testCli(
@@ -82,9 +76,10 @@ class CodexCommandTest {
         assertTrue(cli.execute(listOf("app-server", "repair"), Path.of("/missing")) is CliExit.BoundaryRejected)
         assertEquals(emptyList<AppServerAction>(), actions)
         assertTrue(
-            cli.execute(listOf("app-server", "repair", "--destructive"), Path.of("/missing")) is CliExit.Complete
+            cli.execute(listOf("app-server", "repair", "--destructive"), Path.of("/missing"))
+                is CliExit.BoundaryRejected
         )
-        assertEquals(listOf(AppServerAction.Repair), actions)
+        assertEquals(emptyList<AppServerAction>(), actions)
     }
 
     @Test

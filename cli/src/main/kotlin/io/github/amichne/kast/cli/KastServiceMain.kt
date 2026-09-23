@@ -56,12 +56,14 @@ internal sealed interface ServiceControlSelection {
 internal enum class ServiceControlAction(val managerAction: AppServerAction) {
     ENABLE(AppServerAction.Enable),
     DISABLE(AppServerAction.Disable),
+    REPAIR(AppServerAction.Repair),
 }
 
 internal fun selectServiceControl(arguments: List<String>): ServiceControlSelection =
     when (arguments) {
         listOf("enable") -> ServiceControlSelection.Selected(ServiceControlAction.ENABLE)
         listOf("disable") -> ServiceControlSelection.Selected(ServiceControlAction.DISABLE)
+        listOf("repair", "--destructive") -> ServiceControlSelection.Selected(ServiceControlAction.REPAIR)
         else -> ServiceControlSelection.Rejected
     }
 
