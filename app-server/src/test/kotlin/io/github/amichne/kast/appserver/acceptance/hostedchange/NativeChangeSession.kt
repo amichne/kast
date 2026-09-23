@@ -44,30 +44,36 @@ private constructor(
 
     suspend fun connect(): NativeChangePeer {
         val upstream = NativeUpstream()
-        connecting.send(upstream)
         val peer =
-            NativeChangePeer(
-                session = checkNotNull(hub.attach(NativeControllerProtocol.initialize().toString())),
-                upstream = upstream,
-                thread = "native-${++peerCount}",
-                trace = trace,
-                privateDirectory = privateDirectory,
-                nextSequence = sequence::getAndIncrement,
+            observeReconnect(NativeReconnectStage.ATTACH) {
+                connecting.send(upstream)
+                NativeChangePeer(
+                    session = checkNotNull(hub.attach(NativeControllerProtocol.initialize().toString())),
+                    upstream = upstream,
+                    thread = "native-${++peerCount}",
+                    trace = trace,
+                    privateDirectory = privateDirectory,
+                    nextSequence = sequence::getAndIncrement,
+                )
+            }
+        observeReconnect(NativeReconnectStage.INITIALIZE) {
+            peer.forwarded()
+            upstream.received.send(BrokerUpstreamFrame.Text(NativeControllerProtocol.initializeResponse()))
+            peer.session.output.receive()
+            peer.session.accept(NativeControllerProtocol.initializedNotification())
+            peer.forwarded()
+        }
+        observeReconnect(NativeReconnectStage.THREAD_START) {
+            peer.session.accept(NativeControllerProtocol.threadStart(workspace).toString())
+            peer.forwarded()
+            upstream.received.send(
+                BrokerUpstreamFrame.Text(NativeControllerProtocol.threadStarted(workspace, peer.thread).toString())
             )
-        peer.forwarded()
-        upstream.received.send(BrokerUpstreamFrame.Text("""{"id":0,"result":{}}"""))
-        peer.session.output.receive()
-        peer.session.accept("""{"method":"initialized"}""")
-        peer.forwarded()
-        peer.session.accept(NativeControllerProtocol.threadStart(workspace).toString())
-        peer.forwarded()
-        upstream.received.send(
-            BrokerUpstreamFrame.Text(NativeControllerProtocol.threadStarted(workspace, peer.thread).toString())
-        )
-        demand(
-            Json.parseToJsonElement(peer.session.output.receive()).jsonObject["error"] == null,
-            NativeFailure.PROTOCOL_REJECTED,
-        )
+            demand(
+                Json.parseToJsonElement(peer.session.output.receive()).jsonObject["error"] == null,
+                NativeFailure.PROTOCOL_REJECTED,
+            )
+        }
         return peer
     }
 

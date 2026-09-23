@@ -378,6 +378,20 @@ class HostedChangeAcceptanceTest(unittest.TestCase):
             with self.assertRaises(AcceptanceRejected):
                 admit_event(invalid)
 
+    def test_reconnect_stage_accepts_only_closed_stage_and_outcome(self):
+        for stage in ('BROKER_REPLACEMENT', 'IDE_RESTART', 'SESSION_RECONNECT', 'RETENTION',
+                      'ATTACH', 'INITIALIZE', 'THREAD_START'):
+            for outcome in ('STARTED', 'COMPLETE', 'REJECTED'):
+                event = {'event': 'kast_native_reconnect_stage', 'stage': stage, 'outcome': outcome}
+                self.assertEqual(event, admit_event(event))
+        for invalid in (
+            {'event': 'kast_native_reconnect_stage', 'stage': 'UNKNOWN', 'outcome': 'COMPLETE'},
+            {'event': 'kast_native_reconnect_stage', 'stage': 'ATTACH', 'outcome': 'UNKNOWN'},
+            {'event': 'kast_native_reconnect_stage', 'stage': 'ATTACH', 'outcome': 'REJECTED', 'path': '/private'},
+        ):
+            with self.assertRaises(AcceptanceRejected):
+                admit_event(invalid)
+
     def test_interrupted_controller_snapshot_retains_cases_without_terminal_success(self):
         workspace = Path('/private/fixture/workspace')
         report = asdict(ExpectedNativeReport(ExpectedNativeMetadata(str(workspace), 'incomplete'), None,

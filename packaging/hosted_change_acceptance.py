@@ -189,6 +189,11 @@ def admit_event(value: object) -> dict:
     if (event == 'kast_native_plan_stage' and set(value) == {'event', 'stage', 'outcome'}
             and value['stage'] in ('RESPONSE', 'IDENTITY') and value['outcome'] in ('COMPLETE', 'REJECTED')):
         return value
+    if (event == 'kast_native_reconnect_stage' and set(value) == {'event', 'stage', 'outcome'}
+            and value['stage'] in ('BROKER_REPLACEMENT', 'IDE_RESTART', 'SESSION_RECONNECT',
+                                   'RETENTION', 'ATTACH', 'INITIALIZE', 'THREAD_START')
+            and value['outcome'] in ('STARTED', 'COMPLETE', 'REJECTED')):
+        return value
     if value in ({'event': 'completed'}, {'event': 'control', 'action': 'restart-ide'}):
         return value
     if event == 'control' and value.get('action') == 'probe':

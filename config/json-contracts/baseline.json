@@ -1613,26 +1613,6 @@
     },
     {
       "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/acceptance/hostedchange/NativeChangeSession.kt",
-        "scope": "type:NativeChangeSession/fun:connect()",
-        "kind": "JSON_LITERAL",
-        "sha256": "08f3c47f073cbfc2c9f003a2b47fa16381b90830e953bf321eac8cb1d1698fcd"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/acceptance/hostedchange/NativeChangeSession.kt",
-        "scope": "type:NativeChangeSession/fun:connect()",
-        "kind": "JSON_LITERAL",
-        "sha256": "79f13e6cb8ca797dc1d2c66781bbff34f5a95573ae43013211e765261bb4ffe9"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
         "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/acceptance/hostedchange/NativeChangeWorkflow.kt",
         "scope": "type:NativeChangeWorkflow/fun:applyAndVerify()",
         "kind": "JSON_BUILDER",
