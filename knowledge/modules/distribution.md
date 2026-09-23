@@ -179,6 +179,9 @@ host after detach, and successful service disable in a finally block. Tool selec
 comes from the admitted saved inventory. Its bounded receipt retains hashes and
 closed observations; stock desktop UI remains unqualified. This is harness capability,
 not evidence that a particular released version passed the live check.
+Native acceptance selects the owned private service-control executable when the
+release contains it and uses the legacy public command only for older releases;
+unsafe private presence rejects before service effects.
 
 Passive runtime identity inspection emits accepted inventory counters only to an
 explicit typed diagnostic sink. Coordinator startup retains its existing success

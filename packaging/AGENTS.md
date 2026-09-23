@@ -27,6 +27,7 @@ Implements installer support, installed-product acceptance, configuration ingres
 
 - [hosted_read_name_regression.py](hosted_read_name_regression.py) - preferred and legacy provider inputs retain canonical operations, schema and ordered facts.
 - [installed_codex_lifecycle.py](installed_codex_lifecycle.py) - shared real-Codex handshake, private coordinator ownership, detach, and cleanup checks.
+- [test-installed-codex-lifecycle.py](test-installed-codex-lifecycle.py) - private and legacy service-control selection for native acceptance.
 - [released_coordinator_acceptance.py](released_coordinator_acceptance.py) - original installed wrapper and explicit Codex admission for coordinator qualification.
 
 - [released_session_acceptance.py](released_session_acceptance.py) - owned child-shell wrapper, version and saved-configuration qualification.
