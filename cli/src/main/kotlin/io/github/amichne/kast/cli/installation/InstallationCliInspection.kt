@@ -142,7 +142,6 @@ private fun InstalledUpgradeRejection.reason(): String =
         InstalledUpgradeRejection.RetainedServiceEvidence -> "prior-daemon-retained-service-evidence"
         is InstalledUpgradeRejection.Lifecycle -> "prior-daemon-lifecycle-${failure.name.lowercase().replace('_', '-')}"
         is InstalledUpgradeRejection.Daemon -> reason.diagnosticCode()
-        InstalledUpgradeRejection.PreviousUpdateCommitted -> "prior-daemon-previous-update-committed"
         InstalledUpgradeRejection.PreviousUpdateCancelled -> "prior-daemon-previous-update-cancelled"
     }
 

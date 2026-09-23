@@ -43,6 +43,11 @@ class DaemonUpgradeAdmissionTest {
         val committed = owner.commit(requestId).value()
         assertInstanceOf(UpgradeStatus.Committed::class.java, committed)
         assertEquals(committed, owner.commit(requestId).value())
+        assertEquals(committed, owner.prepare(candidate, emptySet()).value())
+        assertEquals(
+            Refinement.Rejected(DaemonUpgradeFailure.CANDIDATE_CONFLICT),
+            owner.prepare(otherCandidate, emptySet()),
+        )
         assertEquals(Refinement.Rejected(DaemonUpgradeFailure.ALREADY_COMMITTED), owner.cancel(requestId))
         assertEquals(Refinement.Rejected(DaemonUpgradeFailure.ADMISSION_SEALED), owner.admitWork())
     }

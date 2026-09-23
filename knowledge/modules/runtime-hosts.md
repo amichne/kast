@@ -258,4 +258,6 @@ admission retains typed blockers and a permit bound to the daemon target,
 candidate and request; rejected or ambiguous observations do not authorize
 replacement. Installer activation commits that permit before prior-service
 retirement. A pending update leaves the selected installation and command links
-in place for a later upgrade attempt.
+in place for a later upgrade attempt. If retirement fails after commit, another
+ordinary attempt for the same candidate can resume from the active daemon's
+qualified committed request. A different candidate or daemon identity rejects.

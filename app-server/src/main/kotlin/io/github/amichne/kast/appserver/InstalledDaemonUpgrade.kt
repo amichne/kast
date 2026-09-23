@@ -24,8 +24,6 @@ sealed interface InstalledUpgradeRejection {
 
     data class Daemon(val reason: DaemonManagementRejection) : InstalledUpgradeRejection
 
-    data object PreviousUpdateCommitted : InstalledUpgradeRejection
-
     data object PreviousUpdateCancelled : InstalledUpgradeRejection
 }
 
@@ -41,6 +39,8 @@ sealed interface InstalledUpgradePreparation {
     data class Pending(val blockers: NonEmptyFailures<UpgradeBlocker>) : InstalledUpgradePreparation
 
     data class Sealed(val permit: InstalledUpgradePermit) : InstalledUpgradePreparation
+
+    data class Committed(val permit: InstalledCommittedUpgradePermit) : InstalledUpgradePreparation
 
     data class Rejected(val reason: InstalledUpgradeRejection) : InstalledUpgradePreparation
 }
@@ -71,6 +71,24 @@ internal constructor(
             is Refinement.Refined -> InstalledUpgradeSettlement.Completed
             is Refinement.Rejected -> InstalledUpgradeSettlement.Rejected(result.failure)
         }
+    }
+}
+
+/** A prior daemon's already-committed exact request permits retirement to resume. */
+class InstalledCommittedUpgradePermit
+private constructor(
+    private val target: DaemonManagementTarget,
+    private val document: DaemonUpgradeDocument.Committed,
+) {
+    internal companion object {
+        fun admit(
+            qualified: QualifiedDaemonUpdate
+        ): Refinement<InstalledCommittedUpgradePermit, DaemonManagementFailure> =
+            when (val document = qualified.document) {
+                is DaemonUpgradeDocument.Committed ->
+                    Refinement.Refined(InstalledCommittedUpgradePermit(qualified.target, document))
+                else -> Refinement.Rejected(DaemonManagementFailure.RESPONSE_REJECTED)
+            }
     }
 }
 
@@ -136,7 +154,15 @@ object InstalledDaemonUpgrade {
                                 InstalledUpgradePermit(client, command, result.value.target, document)
                             )
                         is DaemonUpgradeDocument.Committed ->
-                            InstalledUpgradePreparation.Rejected(InstalledUpgradeRejection.PreviousUpdateCommitted)
+                            when (val admitted = InstalledCommittedUpgradePermit.admit(result.value)) {
+                                is Refinement.Refined -> InstalledUpgradePreparation.Committed(admitted.value)
+                                is Refinement.Rejected ->
+                                    InstalledUpgradePreparation.Rejected(
+                                        InstalledUpgradeRejection.Daemon(
+                                            DaemonManagementRejection.Protocol(admitted.failure)
+                                        )
+                                    )
+                            }
                         is DaemonUpgradeDocument.Cancelled ->
                             InstalledUpgradePreparation.Rejected(InstalledUpgradeRejection.PreviousUpdateCancelled)
                     }

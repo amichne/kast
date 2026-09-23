@@ -100,6 +100,8 @@ update seal. A proven absent daemon needs no seal. Active daemon blockers or
 unproven service state reject before retirement and preserve the current links.
 The installer commits a sealed request before invoking the prior service's
 disable command, so a failed or mismatched commit cannot stop that service.
+If disable fails after commit, the same candidate can resume retirement while
+the exact prior daemon remains reachable and reports its committed request.
 The upgrade result retains finite blockers and daemon rejection causes.
 
 Installation child processes emit `kast_installation` records by default with a closed stage and outcome. Prior admission, retirement, configuration validation, candidate and activated-command qualification, and App Server enablement retain distinct success, nonzero exit, deadline, I/O and interruption observations. New-payload admission remains authoritative; these records do not contain command arguments, environment values or filesystem paths. Ordinary installation rejects a failed prior admission or retirement with a stage-specific failure and preserves the selected release. An untrusted same-version payload or recovery receipt likewise rejects without replacement. Explicit `--force` remains a separate reset operation.
