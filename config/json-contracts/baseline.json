@@ -1524,16 +1524,6 @@
     {
       "fingerprint": {
         "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/acceptance/hostedchange/NativeChangeEvidence.kt",
-        "scope": "type:NativeProcessTrace/fun:document()",
-        "kind": "JSON_BUILDER",
-        "sha256": "e83290dfd4f9fbb0f0ef2ceb4fc2432cc8374b2d271691ce5aed34f5069af21f"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/acceptance/hostedchange/NativeChangeEvidence.kt",
         "scope": "type:NativeChangeEvidence/val:metadata",
         "kind": "JSON_BUILDER",
         "sha256": "518daf9dd40e33de3cb176062ff61eda6a4d41c58534793f686e1d7b258c096b"
@@ -1657,16 +1647,6 @@
         "scope": "type:NativeChangeWorkflow/fun:rejectOldEpoch(10:JsonObject)",
         "kind": "JSON_BUILDER",
         "sha256": "f60ba554cf40ddbd60b5809a691d789cff1322b239740da15a6ff730949e8fad"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/acceptance/hostedchange/NativeChangeWorkflow.kt",
-        "scope": "type:NativeChangeWorkflow/fun:prepare(6:String)",
-        "kind": "JSON_BUILDER",
-        "sha256": "008f44d799242fa0a7c0a2059c377a229e324ab1ade534681322624b2e6b6458"
       },
       "count": 1,
       "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."

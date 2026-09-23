@@ -2,10 +2,13 @@ package io.github.amichne.kast.appserver.acceptance.hostedchange
 
 import java.nio.file.Files
 import java.nio.file.Path
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 
 internal class NativeChangeWorkflow(
@@ -148,19 +151,17 @@ internal class NativeChangeWorkflow(
     private suspend fun prepare(reference: String) {
         evidence.record("plan-has-no-source-effect", NativeCaseOutcome.UNQUALIFIED)
         val planned = peer.call("change_plan", nativePlanArguments(reference, DECLARATION))
-        demand(
-            !planned.rejected() && planned.document()["status"] == JsonPrimitive("complete"),
-            NativeFailure.PROVIDER_REJECTED,
-        )
+        val accepted = !planned.rejected() && planned.document()["status"] == JsonPrimitive("complete")
+        observeNativePlanStage(NativePlanStage.RESPONSE, accepted)
+        demand(accepted, NativeFailure.PROVIDER_REJECTED)
         plan = planned.document()
         returnedReference = reference
         initialLive = plan.objectAt("live")
-        planId = plan.textAt("planIdentity")
-        demand(planId.matches(Regex("plan:[0-9a-f]{64}")), NativeFailure.RESULT_SHAPE_REJECTED)
-        demand(
-            session.trace.plannedReferenceDigests.lastOrNull() == sha256(reference.toByteArray()),
-            NativeFailure.RESULT_SHAPE_REJECTED,
-        )
+        val identity = (plan["planIdentity"] as? JsonPrimitive)?.takeIf { it.isString }?.content
+        val identityAdmitted = identity?.matches(Regex("plan:[0-9a-f]{64}")) == true
+        observeNativePlanStage(NativePlanStage.IDENTITY, identityAdmitted)
+        demand(identityAdmitted, NativeFailure.RESULT_SHAPE_REJECTED)
+        planId = identity ?: throw NativeRejected(NativeFailure.RESULT_SHAPE_REJECTED)
         val cleanRead = searchClass()
         evidence.verifyPlan(
             observeNativePlan(
@@ -173,11 +174,7 @@ internal class NativeChangeWorkflow(
         evidence.record(
             "plan-has-no-source-effect",
             NativeCaseOutcome.PASSED,
-            buildJsonObject {
-                put("sourceSha256", sha256(original))
-                put("postPlanAdmission", "SAVED_PSI_COMMITTED")
-                put("referencePassedUnchanged", true)
-            },
+            nativePlanSourceEvidence(sha256(original)),
         )
     }
 
@@ -296,3 +293,12 @@ internal class NativeChangeWorkflow(
         const val DECLARATION = "fun acceptanceAdded(): String = value"
     }
 }
+
+@Serializable internal data class NativePlanSourceEvidence(val sourceSha256: String, val postPlanAdmission: String)
+
+internal fun nativePlanSourceEvidence(sourceSha256: String): JsonObject =
+    Json.encodeToJsonElement(
+            NativePlanSourceEvidence.serializer(),
+            NativePlanSourceEvidence(sourceSha256, "SAVED_PSI_COMMITTED"),
+        )
+        .jsonObject

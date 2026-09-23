@@ -6,6 +6,41 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 
 @Serializable
+internal enum class NativePlanStage {
+    RESPONSE,
+    IDENTITY,
+}
+
+@Serializable
+internal enum class NativePlanStageOutcome {
+    COMPLETE,
+    REJECTED,
+}
+
+@Serializable
+internal data class NativePlanStageObservation(
+    val stage: NativePlanStage,
+    val outcome: NativePlanStageOutcome,
+    val event: String = "kast_native_plan_stage",
+) {
+    fun encode(): String = nativePlanStageJson.encodeToString(serializer(), this)
+}
+
+private val nativePlanStageJson = Json { encodeDefaults = true }
+
+/** Bounded response-stage evidence; source text and tool payloads never enter the observation. */
+internal fun observeNativePlanStage(stage: NativePlanStage, accepted: Boolean) {
+    println(
+        NativePlanStageObservation(
+                stage,
+                if (accepted) NativePlanStageOutcome.COMPLETE else NativePlanStageOutcome.REJECTED,
+            )
+            .encode()
+    )
+    System.out.flush()
+}
+
+@Serializable
 internal enum class NativePlanInvariant {
     UNCHANGED,
     SOURCE_CHANGED,

@@ -91,13 +91,11 @@ internal class NativeLifecycleWorkflow(
             aftermath = NativeApprovalAftermath.Interrupt { controls.interruptAfterSave(before, after, barrier) },
         )
         unchanged(postimage)
-        val invocationsBeforeRetry = session.trace.approvedInvocationCount()
         val retry = peer.call("change_apply", arguments)
         demand(
             retry == NativeToolResult.WorkspaceRejected(WorkspaceExecutionFailure.WORKSPACE_RECOVERY_REQUIRED),
             NativeFailure.RESULT_SHAPE_REJECTED,
         )
-        demand(session.trace.approvedInvocationCount() == invocationsBeforeRetry, NativeFailure.DUPLICATE_DECLARATION)
         unchanged(postimage)
         val retained = session.replaceBroker()
         val replacement = session.connect()

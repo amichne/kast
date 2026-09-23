@@ -186,6 +186,9 @@ def admit_event(value: object) -> dict:
     event = value.get('event')
     if event == 'case' and set(value) == {'event', 'case', 'outcome'} and value['case'] in CASE_NAMES and value['outcome'] in ('passed', 'rejected', 'unqualified'):
         return value
+    if (event == 'kast_native_plan_stage' and set(value) == {'event', 'stage', 'outcome'}
+            and value['stage'] in ('RESPONSE', 'IDENTITY') and value['outcome'] in ('COMPLETE', 'REJECTED')):
+        return value
     if value in ({'event': 'completed'}, {'event': 'control', 'action': 'restart-ide'}):
         return value
     if event == 'control' and value.get('action') == 'probe':
