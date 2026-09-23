@@ -101,6 +101,7 @@ object CanonicalAgentToolDefinitions {
             "Prepare a workspace for Kast compiler evidence. Inspect the selected IDEA host, open the requested " +
                 "repository when needed, and poll pending work with status before semantic queries. Manage setup " +
                 "through this tool without asking the user to run workspace commands. You can also present, sync, " +
+                "configure an exact task-success refresh rule, " +
                 "release or close an exact project. Opening is background best effort. Preserve returned host and " +
                 "project identities and reuse request IDs only for the same operation. Pending work requires " +
                 "status, not repeated open or sync. Unsaved documents and trust require user " +

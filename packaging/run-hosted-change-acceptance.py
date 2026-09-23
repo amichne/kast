@@ -168,7 +168,7 @@ def main():
                 write()
                 record({'event': 'stage', 'stage': 'workspace-refresh', 'outcome': 'started'})
                 evidence['workspaceRefresh'] = run_workspace_refresh_regression(
-                    isolation, fixture, product, idea.java, harness, evidence['initialLive'])
+                    isolation, fixture, product, idea.java, harness, evidence['initialLive'], idea.home)
                 record({'event': 'stage', 'stage': 'workspace-refresh',
                         'outcome': 'completed' if evidence['workspaceRefresh']['outcome'] == 'passed' else 'rejected'})
                 if installed:

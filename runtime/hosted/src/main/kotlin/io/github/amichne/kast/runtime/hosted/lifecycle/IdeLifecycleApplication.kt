@@ -195,6 +195,7 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
                 is IdeLifecycleCommand.Open -> command.requestId to command.client
                 is IdeLifecycleCommand.Present -> command.requestId to command.client
                 is IdeLifecycleCommand.Sync -> command.requestId to command.client
+                is IdeLifecycleCommand.ConfigureSync -> command.requestId to command.client
                 is IdeLifecycleCommand.Release -> command.requestId to command.client
                 is IdeLifecycleCommand.Close -> command.requestId to command.client
                 else -> return IdeLifecycleResult.Blocked(IdeLifecycleFailure.INVALID_REQUEST)

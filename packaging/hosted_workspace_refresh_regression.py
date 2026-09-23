@@ -14,6 +14,7 @@ from hosted_repair_budget_regression import SemanticOutcome
 
 class RefreshStage(str, Enum):
     PROVIDER = 'provider'
+    HOSTED_RULE = 'hosted_rule'
     FILE_EFFECT = 'file_effect'
     FILE_VISIBILITY = 'file_visibility'
     MODEL_EFFECT = 'model_effect'
@@ -26,6 +27,17 @@ class RefreshBoundaryFailure(str, Enum):
     VALUE = 'value_rejected'
     TYPE = 'type_rejected'
     KEY = 'key_rejected'
+    HOSTED_RULE_TIMEOUT = 'HOSTED_RULE_TIMEOUT'
+    HOSTED_RULE_INSPECTION_REJECTED = 'HOSTED_RULE_INSPECTION_REJECTED'
+    HOSTED_RULE_HOST_UNAVAILABLE = 'HOSTED_RULE_HOST_UNAVAILABLE'
+    HOSTED_RULE_PLUGIN_UNAVAILABLE = 'HOSTED_RULE_PLUGIN_UNAVAILABLE'
+    HOSTED_RULE_SELECTED_IDE_UNAVAILABLE = 'HOSTED_RULE_SELECTED_IDE_UNAVAILABLE'
+    HOSTED_RULE_CAPABILITY_MISMATCH = 'HOSTED_RULE_CAPABILITY_MISMATCH'
+    HOSTED_RULE_HOST_IDENTITY_MISMATCH = 'HOSTED_RULE_HOST_IDENTITY_MISMATCH'
+    HOSTED_RULE_UNSUPPORTED_PLATFORM_LINE = 'HOSTED_RULE_UNSUPPORTED_PLATFORM_LINE'
+    HOSTED_RULE_TARGET_REJECTED = 'HOSTED_RULE_TARGET_REJECTED'
+    HOSTED_RULE_RESTORATION_REJECTED = 'HOSTED_RULE_RESTORATION_REJECTED'
+    HOSTED_RULE_RELEASE_REJECTED = 'HOSTED_RULE_RELEASE_REJECTED'
 
 
 @dataclass(frozen=True)
@@ -38,6 +50,10 @@ class RefreshBoundaryRejection:
 def refresh_rejection(stage, error):
     if isinstance(error, ReadTransportRejected):
         return RefreshBoundaryRejection(stage, error.reason, error.provider_failure)
+    if stage is RefreshStage.HOSTED_RULE and isinstance(error, ValueError):
+        known = next((reason for reason in RefreshBoundaryFailure if reason.value == str(error)), None)
+        if known is not None:
+            return RefreshBoundaryRejection(stage, known)
     cause = next(reason for kind, reason in ((OSError, RefreshBoundaryFailure.IO),
         (ValueError, RefreshBoundaryFailure.VALUE), (TypeError, RefreshBoundaryFailure.TYPE),
         (KeyError, RefreshBoundaryFailure.KEY)) if isinstance(error, kind))
@@ -139,6 +155,8 @@ class RefreshReceipt:
     conflictingRequestRejected: bool
     failedImportRejected: bool
     restored: bool
+    configuredRule: bool
+    invalidRuleRejected: bool
     pendingObservations: int
     failure: RefreshFixtureFailure | None = None
     effectFailure: RefreshEffectFailure | None = None
@@ -188,7 +206,7 @@ def await_refresh(endpoint, request, first, schema, *, timeout=300):
     return observations
 
 
-def run_workspace_refresh_regression(isolation, fixture, product, java, harness, live):
+def run_workspace_refresh_regression(isolation, fixture, product, java, harness, live, selected_idea_home):
     """Effects are limited to new owned files and restored fixture settings."""
     from hosted_wire_schema import load_hosted_wire_schema
     endpoint = admit_peer_endpoint(isolation, fixture.workspace, live)
@@ -200,12 +218,15 @@ def run_workspace_refresh_regression(isolation, fixture, product, java, harness,
     if external.exists() or module.exists() or fixture.workspace != isolation.root / 'workspace':
         raise ValueError('REFRESH_FIXTURE_OWNERSHIP_REJECTED')
     file_visible = model_visible = duplicate = conflict = failed_import = restored = False
+    configured_rule = invalid_rule_rejected = False
     observations, failure, effect_failure, restoration_failure = 0, None, None, None
     file_observation = module_observation = None
     rejection = None
     stage = RefreshStage.PROVIDER
     try:
-        with HostedReadTransport(isolation, fixture, product, java, harness).open() as transport:
+        with HostedReadTransport(isolation, fixture, product, java, harness, selected_idea_home).open() as transport:
+            stage = RefreshStage.HOSTED_RULE
+            configured_rule, invalid_rule_rejected = prove_hosted_rule(transport, fixture.workspace)
             stage = RefreshStage.FILE_EFFECT
             external.write_text('package fixture\nclass NativeRefreshExternal\n')
             request = RefreshRequest(str(uuid.uuid4()), RefreshEffect.FILE_REFRESH)
@@ -252,10 +273,60 @@ def run_workspace_refresh_regression(isolation, fixture, product, java, harness,
             failure, restoration_failure = RefreshFixtureFailure.RESTORATION_REJECTED, error.reason
         except (OSError, ValueError, TypeError, KeyError):
             failure = RefreshFixtureFailure.RESTORATION_REJECTED
-    passed = all((file_visible, model_visible, duplicate, conflict, failed_import, restored)) and failure is None
+    passed = all((file_visible, model_visible, duplicate, conflict, failed_import, restored,
+                  configured_rule, invalid_rule_rejected)) and failure is None
     return asdict(RefreshReceipt('passed' if passed else 'rejected', file_visible, model_visible,
-                               duplicate, conflict, failed_import, restored, observations, failure, effect_failure, restoration_failure,
+                               duplicate, conflict, failed_import, restored, configured_rule,
+                               invalid_rule_rejected, observations, failure, effect_failure, restoration_failure,
                                file_observation, module_observation, rejection))
+
+
+def lifecycle_terminal(transport, request, host):
+    deadline = time.monotonic() + 60
+    document, _ = transport.invoke_observed('provider', 'workspace_lifecycle', request)
+    while document.get('type') == 'pending':
+        if time.monotonic() >= deadline:
+            raise ValueError('HOSTED_RULE_TIMEOUT')
+        time.sleep(0.2)
+        document, _ = transport.invoke_observed('provider', 'workspace_lifecycle',
+            {'type': 'status', 'host': host, 'requestId': request['requestId']})
+    return document
+
+
+def prove_hosted_rule(transport, workspace):
+    inspected, _ = transport.invoke_observed('provider', 'workspace_lifecycle', {'type': 'inspect'})
+    if inspected.get('type') != 'inspected':
+        reason = inspected.get('reason') if inspected.get('type') == 'blocked' else None
+        cause = 'HOSTED_RULE_' + reason if isinstance(reason, str) else ''
+        if any(known.value == cause for known in RefreshBoundaryFailure):
+            raise ValueError(cause)
+        raise ValueError('HOSTED_RULE_INSPECTION_REJECTED')
+    host = inspected.get('host')
+    targets = [project.get('target') for project in inspected.get('projects', [])
+               if project.get('target', {}).get('root') == str(workspace)]
+    if len(targets) != 1 or targets[0].get('host') != host:
+        raise ValueError('HOSTED_RULE_TARGET_REJECTED')
+    target = targets[0]
+    rule = {'type': 'task_success', 'task': ':nativeHostedRule', 'effect': 'FILE_REFRESH'}
+    try:
+        configured = lifecycle_terminal(transport,
+            {'type': 'configure_sync', 'target': target, 'requestId': str(uuid.uuid4()), 'rule': rule}, host)
+        valid = configured == {'type': 'configured', 'target': target, 'rule': rule}
+        invalid = lifecycle_terminal(transport,
+            {'type': 'configure_sync', 'target': target, 'requestId': str(uuid.uuid4()),
+             'rule': {'type': 'task_success', 'task': '?', 'effect': 'FILE_REFRESH'}}, host)
+        rejected = invalid == {'type': 'blocked', 'reason': 'INVALID_REQUEST'}
+        return valid, rejected
+    finally:
+        cleared = lifecycle_terminal(transport,
+            {'type': 'configure_sync', 'target': target, 'requestId': str(uuid.uuid4()),
+             'rule': {'type': 'off'}}, host)
+        if cleared != {'type': 'configured', 'target': target, 'rule': {'type': 'off'}}:
+            raise ValueError('HOSTED_RULE_RESTORATION_REJECTED')
+        released = lifecycle_terminal(transport,
+            {'type': 'release', 'target': target, 'requestId': str(uuid.uuid4())}, host)
+        if released != {'type': 'released', 'target': target}:
+            raise ValueError('HOSTED_RULE_RELEASE_REJECTED')
 
 
 def observe_visibility(transport, name):

@@ -3,8 +3,9 @@
 from dataclasses import asdict, dataclass, field
 from unittest.mock import patch, Mock
 import unittest
+from pathlib import Path
 
-from hosted_workspace_refresh_regression import RefreshEffect, RefreshRequest, await_refresh, observe_visibility, VisibilityReason, RefreshStage, refresh_rejection
+from hosted_workspace_refresh_regression import RefreshEffect, RefreshRequest, await_refresh, observe_visibility, VisibilityReason, RefreshStage, refresh_rejection, prove_hosted_rule
 from hosted_read_transport import ReadTransportRejected, ReadProviderFailure
 from hosted_change_acceptance import remaining_matrix_gates
 
@@ -43,6 +44,31 @@ class SearchResponse:
 
 
 class NativeWorkspaceRefreshTest(unittest.TestCase):
+    def test_hosted_rule_reports_a_typed_native_inspection_blocker(self):
+        transport = Mock()
+        transport.invoke_observed.return_value = (
+            {'type': 'blocked', 'reason': 'HOST_UNAVAILABLE'}, 'schema')
+        with self.assertRaisesRegex(ValueError, 'HOSTED_RULE_HOST_UNAVAILABLE'):
+            prove_hosted_rule(transport, Path('/workspace'))
+
+    def test_hosted_rule_keeps_exact_target_and_restores_off_after_finite_rejection(self):
+        target = {'host': 'host-1', 'project': 'project-1', 'root': '/workspace'}
+        rule = {'type': 'task_success', 'task': ':nativeHostedRule', 'effect': 'FILE_REFRESH'}
+        transport = Mock()
+        transport.invoke_observed.side_effect = [
+            ({'type': 'inspected', 'host': 'host-1', 'projects': [{'target': target}]}, 'schema'),
+            ({'type': 'configured', 'target': target, 'rule': rule}, 'schema'),
+            ({'type': 'blocked', 'reason': 'INVALID_REQUEST'}, 'schema'),
+            ({'type': 'configured', 'target': target, 'rule': {'type': 'off'}}, 'schema'),
+            ({'type': 'released', 'target': target}, 'schema'),
+        ]
+        self.assertEqual((True, True), prove_hosted_rule(transport, Path('/workspace')))
+        requests = [call.args[2] for call in transport.invoke_observed.call_args_list]
+        self.assertEqual(['inspect', 'configure_sync', 'configure_sync', 'configure_sync', 'release'],
+                         [request['type'] for request in requests])
+        self.assertTrue(all(request['target'] == target for request in requests[1:]))
+        self.assertEqual({'type': 'off'}, requests[-2]['rule'])
+
     def test_boundary_rejection_preserves_stage_and_typed_transport_cause(self):
         error = ReadTransportRejected('READ_PROVIDER_REJECTED', ReadProviderFailure.OUTPUT_CONTRACT)
         self.assertEqual({'stage': 'model_visibility', 'cause': 'READ_PROVIDER_REJECTED',
@@ -50,6 +76,10 @@ class NativeWorkspaceRefreshTest(unittest.TestCase):
                          asdict(refresh_rejection(RefreshStage.MODEL_VISIBILITY, error)))
         self.assertEqual({'stage': 'model_effect', 'cause': 'value_rejected', 'providerFailure': None},
                          asdict(refresh_rejection(RefreshStage.MODEL_EFFECT, ValueError('private payload'))))
+        self.assertEqual({'stage': 'hosted_rule', 'cause': 'HOSTED_RULE_TARGET_REJECTED',
+                          'providerFailure': None},
+                         asdict(refresh_rejection(RefreshStage.HOSTED_RULE,
+                            ValueError('HOSTED_RULE_TARGET_REJECTED'))))
 
     def test_pending_effect_and_admission_must_reach_actual_completion(self):
         request = RefreshRequest('test-request', RefreshEffect.GRADLE_MODEL_RELOAD)

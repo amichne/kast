@@ -128,8 +128,7 @@ internal class IdeLifecycleState(val host: UUID, private val capacity: Int = 256
             projects.values.singleOrNull { it.target == target }
                 ?: return Refinement.Rejected(IdeLifecycleFailure.STALE_PROJECT)
         if (entry.closing) return Refinement.Rejected(IdeLifecycleFailure.PROJECT_BUSY)
-        val requiresIdle = command is IdeLifecycleCommand.Sync || command is IdeLifecycleCommand.Close
-        if (requiresIdle && hasPendingFor(target)) return Refinement.Rejected(IdeLifecycleFailure.PROJECT_BUSY)
+        if (requiresIdle(command) && hasPendingFor(target)) return Refinement.Rejected(IdeLifecycleFailure.PROJECT_BUSY)
         if (command is IdeLifecycleCommand.Close) {
             if (entry.users.any { it != client }) return Refinement.Rejected(IdeLifecycleFailure.OTHER_CLIENTS)
             val userDirected = authority is ProjectCloseAuthority.UserApproved && authority.matches(command)
@@ -144,6 +143,11 @@ internal class IdeLifecycleState(val host: UUID, private val capacity: Int = 256
             it.result is IdeLifecycleResult.Pending &&
                 ((it.command as? IdeLifecycleCommand.Open)?.root == target.root || target(it.command) == target)
         }
+
+    private fun requiresIdle(command: IdeLifecycleCommand): Boolean =
+        command is IdeLifecycleCommand.Sync ||
+            command is IdeLifecycleCommand.ConfigureSync ||
+            command is IdeLifecycleCommand.Close
 
     private fun joinOpen(command: IdeLifecycleCommand.Open, id: LifecycleRequest): LifecycleSubmission? {
         if (command.host != host.toString()) return existing(IdeLifecycleFailure.WRONG_HOST)
@@ -163,6 +167,7 @@ internal class IdeLifecycleState(val host: UUID, private val capacity: Int = 256
             is IdeLifecycleCommand.Open -> IdeLifecycleStage.OPENING
             is IdeLifecycleCommand.Present -> IdeLifecycleStage.PRESENTING
             is IdeLifecycleCommand.Close -> IdeLifecycleStage.CLOSING
+            is IdeLifecycleCommand.ConfigureSync -> IdeLifecycleStage.ADMISSION
             else -> IdeLifecycleStage.IMPORTING
         }
 
@@ -224,6 +229,7 @@ internal class IdeLifecycleState(val host: UUID, private val capacity: Int = 256
         when (command) {
             is IdeLifecycleCommand.Present -> command.target
             is IdeLifecycleCommand.Sync -> command.target
+            is IdeLifecycleCommand.ConfigureSync -> command.target
             is IdeLifecycleCommand.Release -> command.target
             is IdeLifecycleCommand.Close -> command.target
             else -> null

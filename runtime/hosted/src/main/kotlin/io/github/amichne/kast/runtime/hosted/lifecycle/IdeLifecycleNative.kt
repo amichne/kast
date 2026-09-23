@@ -105,6 +105,8 @@ internal class IdeLifecycleNative(private val state: IdeLifecycleState) {
                 }
             is IdeLifecycleCommand.Sync ->
                 withTarget(command.target) { sync(it, command.target, command.requestId, command.effect) }
+            is IdeLifecycleCommand.ConfigureSync ->
+                withTarget(command.target) { configureSync(it, command.target, command.rule) }
             is IdeLifecycleCommand.Close -> withTarget(command.target) { close(it, command.target) }
             else -> blocked(IdeLifecycleFailure.INVALID_REQUEST)
         }
@@ -222,6 +224,24 @@ internal class IdeLifecycleNative(private val state: IdeLifecycleState) {
             requestId,
             endpoint.lifecycleRefresh(WorkspaceRefreshCommand.Request(requestId, effect)),
         )
+    }
+
+    private fun configureSync(
+        project: Project,
+        target: IdeProjectTarget,
+        rule: io.github.amichne.kast.protocol.contract.WorkspaceRefreshRule,
+    ): IdeLifecycleResult {
+        if (!TrustedProjects.isProjectTrusted(project)) return blocked(IdeLifecycleFailure.TRUST_REQUIRED)
+        return when (
+            val configured =
+                project
+                    .getService(HostedEndpointService::class.java)
+                    .lifecycleRefresh(WorkspaceRefreshCommand.Configure(rule))
+        ) {
+            is WorkspaceRefreshResult.Configured -> IdeLifecycleResult.Configured(target, configured.rule)
+            is WorkspaceRefreshResult.Rejected -> blocked(configured.reason.lifecycleFailure())
+            else -> blocked(IdeLifecycleFailure.INVALID_REQUEST)
+        }
     }
 
     private suspend fun awaitRefresh(

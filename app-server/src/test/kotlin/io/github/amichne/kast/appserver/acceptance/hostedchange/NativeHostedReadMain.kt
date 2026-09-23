@@ -9,6 +9,8 @@ import io.github.amichne.kast.appserver.core.BrokerLimits
 import io.github.amichne.kast.appserver.core.ProviderNamespace
 import io.github.amichne.kast.appserver.core.ToolAddress
 import io.github.amichne.kast.appserver.core.ToolName
+import io.github.amichne.kast.appserver.ide.IdeLifecycleClient
+import io.github.amichne.kast.appserver.ide.WorkspaceLifecycleClient
 import io.github.amichne.kast.appserver.provider.KastProviderOptions
 import io.github.amichne.kast.appserver.provider.KastProviderQualifier
 import io.github.amichne.kast.appserver.schema.CompiledJsonSchema
@@ -35,10 +37,11 @@ object NativeHostedReadMain {
     @JvmStatic
     fun main(arguments: Array<String>): Unit = runBlocking {
         try {
-            demand(arguments.size == 2, NativeFailure.INPUT_REJECTED)
+            demand(arguments.size in 2..3, NativeFailure.INPUT_REJECTED)
             val product = Path.of(arguments[0]).toRealPath()
             val workspace = Path.of(arguments[1]).toRealPath()
-            val transport = NativeHostedReadTransport.open(product, workspace)
+            val selectedHome = arguments.getOrNull(2)?.let { Path.of(it).toRealPath() }
+            val transport = NativeHostedReadTransport.open(product, workspace, selectedHome)
             val input = BufferedInputStream(System.`in`)
             while (true) {
                 val request = boundedReadRequest(input) ?: break
@@ -85,13 +88,18 @@ private class NativeHostedReadTransport(
     private val broker: Broker,
     private val workspace: Path,
     private val schemas: Map<String, CompiledJsonSchema>,
+    private val lifecycleEnabled: Boolean,
 ) {
     private var sequence = 0
 
     suspend fun invoke(document: JsonObject): NativeReadResponse {
         val request = readRequestJson.decodeFromJsonElement(NativeReadRequest.serializer(), document)
         val definition = CanonicalAgentToolDefinitions.resolveInput(request.tool).nativeValue()
-        demand(definition.name.value in nativeReadToolNames, NativeFailure.INPUT_REJECTED)
+        demand(
+            definition.name.value in nativeReadToolNames ||
+                (lifecycleEnabled && definition === CanonicalAgentToolDefinitions.workspaceLifecycle),
+            NativeFailure.INPUT_REJECTED,
+        )
         val schema = schemas.getValue(definition.name.value)
         return when (request) {
             is NativeReadRequest.Invoke -> dispatch(request)
@@ -138,7 +146,7 @@ private class NativeHostedReadTransport(
     }
 
     companion object {
-        suspend fun open(product: Path, workspace: Path): NativeHostedReadTransport {
+        suspend fun open(product: Path, workspace: Path, selectedHome: Path?): NativeHostedReadTransport {
             val origin = Path.of(Broker::class.java.protectionDomain.codeSource.location.toURI()).toRealPath()
             demand(
                 origin.startsWith(product.resolve("lib")) && Files.isRegularFile(origin),
@@ -152,7 +160,10 @@ private class NativeHostedReadTransport(
                                 .parent
                                 .parent
                                 .resolve("share/kast/provider-catalog.json")
-                        )
+                        ),
+                    lifecycleClient =
+                        selectedHome?.let { IdeLifecycleClient(Path.of(System.getProperty("user.home")), it) }
+                            ?: WorkspaceLifecycleClient.Unavailable,
                 )
             val qualified =
                 KastProviderQualifier.qualify(options).nativeQualified { observation ->
@@ -163,6 +174,7 @@ private class NativeHostedReadTransport(
                 Broker.create(listOf(qualified.registration), BrokerLimits.defaults()).nativeValue(),
                 workspace,
                 qualified.registration.toolDocuments.associate { it.name.value to it.outputSchema },
+                selectedHome != null,
             )
         }
     }

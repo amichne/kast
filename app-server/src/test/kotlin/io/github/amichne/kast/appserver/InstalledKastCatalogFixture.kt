@@ -25,7 +25,7 @@ internal fun installedKastCatalogFixture(): String =
         KastCapabilityBoundary(
             1,
             KastServerProjectionBoundary(
-                14,
+                15,
                 "kast",
                 KastHostedBootstrapBoundary(
                     1,
