@@ -1,5 +1,9 @@
 package io.github.amichne.kast.cli.ide
 
+import io.github.amichne.kast.appserver.DaemonQueryClient
+import io.github.amichne.kast.appserver.DaemonQueryClientRejection
+import io.github.amichne.kast.appserver.DaemonQueryFailure
+import io.github.amichne.kast.appserver.DaemonQueryResult
 import io.github.amichne.kast.appserver.ide.CanonicalRootDiscoverer
 import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
 import io.github.amichne.kast.appserver.ide.ExistingIdeClient
@@ -121,6 +125,7 @@ class ExistingIdeSemanticReadTest {
                 listOf(Triple(command, operation, document), Triple("-- $command", operation, document))
             }) {
             var calls = 0
+            var daemonCalls = 0
             val result =
                 executeExistingIdeCli(
                     command.split(' '),
@@ -133,9 +138,29 @@ class ExistingIdeSemanticReadTest {
                         ExistingIdeExchange.Rejected(ExistingIdeFailure.HOST_UNAVAILABLE)
                     },
                     CliRequestDocumentInput.Provided(document),
+                    DaemonQueryClient { admittedRoot, tool ->
+                        assertSame(root, admittedRoot)
+                        assertEquals(
+                            io.github.amichne.kast.protocol.registry.PublicToolIdentity.QUERY_SYMBOLS,
+                            tool.identity,
+                        )
+                        daemonCalls++
+                        DaemonQueryResult.Rejected(
+                            DaemonQueryClientRejection.Server(
+                                DaemonQueryFailure.Host(ExistingIdeFailure.HOST_UNAVAILABLE)
+                            )
+                        )
+                    },
                 )
-            assertEquals(1, calls, "$command: ${result.document.value}")
-            assertTrue(result.document.value.contains("ide-host-unavailable"), command)
+            if (command.contains("query_symbols")) {
+                assertEquals(0, calls, command)
+                assertEquals(1, daemonCalls, command)
+                assertTrue(result.document.value.contains("daemon-query-host-host-unavailable"), command)
+            } else {
+                assertEquals(1, calls, "$command: ${result.document.value}")
+                assertEquals(0, daemonCalls, command)
+                assertTrue(result.document.value.contains("ide-host-unavailable"), command)
+            }
         }
     }
 

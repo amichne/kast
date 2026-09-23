@@ -8,6 +8,7 @@ import io.github.amichne.kast.protocol.wire.presentation.HostedRequestEffect
 import io.github.amichne.kast.protocol.wire.presentation.PreparedOperationRequest
 import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
 
+@kotlinx.serialization.Serializable
 enum class ExistingIdeFailure {
     CONFIGURATION_REJECTED,
     INVALID_NAME,

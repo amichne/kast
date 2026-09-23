@@ -9,6 +9,12 @@ import io.github.amichne.kast.appserver.CoordinatorServiceState
 import io.github.amichne.kast.appserver.CoordinatorStatusDocument
 import io.github.amichne.kast.appserver.CoordinatorStatusProtocol
 import io.github.amichne.kast.appserver.DaemonManagementTarget
+import io.github.amichne.kast.appserver.DaemonQuery
+import io.github.amichne.kast.appserver.DaemonQueryFailure
+import io.github.amichne.kast.appserver.DaemonQueryProtocol
+import io.github.amichne.kast.appserver.DaemonQueryProtocolFailure
+import io.github.amichne.kast.appserver.DaemonQueryRequest
+import io.github.amichne.kast.appserver.DaemonQueryResponse
 import io.github.amichne.kast.appserver.InstallationLifecycleFence
 import io.github.amichne.kast.appserver.InstallationLifecycleStartAdmission
 import io.github.amichne.kast.appserver.WorkerControlFailure
@@ -18,6 +24,7 @@ import io.github.amichne.kast.appserver.protocol.ThreadBindingOwner
 import io.github.amichne.kast.appserver.rejectedCoordinatorControl
 import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
 import io.ktor.server.websocket.DefaultWebSocketServerSession
 import io.ktor.websocket.Frame
 import io.ktor.websocket.readText
@@ -42,21 +49,30 @@ private constructor(
     private val hostObservation: () -> BrokerFrontendObservation,
     sessions: DaemonSessions,
     private val preparations: WorkspacePreparations,
+    demand: WorkspaceDemand,
 ) {
     private val closed = AtomicBoolean(false)
+    private val target =
+        DaemonManagementTarget(
+            owner.installationId.value,
+            owner.stateEpoch.value.toString(),
+            generation.value.toString(),
+            coordinatorConfigurationIdentity(configuration),
+        )
     private val management =
         DaemonManagement(
-            DaemonManagementTarget(
-                owner.installationId.value,
-                owner.stateEpoch.value.toString(),
-                generation.value.toString(),
-                coordinatorConfigurationIdentity(configuration),
-            ),
+            target,
             ::available,
             ::status,
             sessions,
             ManagedDaemonWorkspacePreparation(preparations),
             { root -> WorkspaceEnrollmentStore(installationRoot.resolve("config/workspaces.json")).enroll(root) },
+        )
+    private val query =
+        DaemonQuery(
+            target,
+            ::available,
+            demand,
         )
 
     private fun status() =
@@ -78,6 +94,43 @@ private constructor(
                 session.incoming.receiveCatching().getOrNull()
             }
         if (frame is Frame.Text) session.send(management.exchange(frame.readText()))
+    }
+
+    suspend fun handleQuery(session: DefaultWebSocketServerSession) {
+        fun rejected(reason: DaemonQueryProtocolFailure): String =
+            DaemonQueryProtocol.json.encodeToString<DaemonQueryResponse>(
+                DaemonQueryResponse.Rejected(DaemonQueryFailure.Protocol(reason))
+            )
+        val frame =
+            withTimeoutOrNull(BrokerOperationalLimits.managementExchange.value) {
+                session.incoming.receiveCatching().getOrNull()
+            }
+        val text = (frame as? Frame.Text)?.readText()
+        if (text == null || text.toByteArray().size > DaemonQueryProtocol.maximumRequestBytes) {
+            session.send(rejected(DaemonQueryProtocolFailure.INVALID_REQUEST))
+            return
+        }
+        val request =
+            try {
+                DaemonQueryProtocol.json.decodeFromString<DaemonQueryRequest>(text)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                session.send(rejected(DaemonQueryProtocolFailure.INVALID_REQUEST))
+                return
+            }
+        val result =
+            withTimeoutOrNull(OperationExecutionBudget.SEMANTIC_READ.invocation.value) {
+                query.execute(request)
+            }
+                ?: DaemonQueryResponse.Rejected(
+                    DaemonQueryFailure.Protocol(DaemonQueryProtocolFailure.OUTCOME_UNOBSERVED)
+                )
+        val response = DaemonQueryProtocol.json.encodeToString<DaemonQueryResponse>(result)
+        session.send(
+            if (response.toByteArray().size <= DaemonQueryProtocol.maximumResponseBytes) response
+            else rejected(DaemonQueryProtocolFailure.CAPACITY_EXCEEDED)
+        )
     }
 
     suspend fun drain() {
@@ -146,6 +199,7 @@ private constructor(
             hostObservation: () -> BrokerFrontendObservation = { BrokerFrontendObservation.PENDING },
             sessions: DaemonSessions = UnavailableDaemonSessions,
             preparations: WorkspacePreparations,
+            demand: WorkspaceDemand,
         ): Refinement<CoordinatorControl, WorkerControlFailure> =
             try {
                 val legacy = installationRoot.resolve("state/workers")
@@ -169,6 +223,7 @@ private constructor(
                                 hostObservation,
                                 sessions,
                                 preparations,
+                                demand,
                             )
                         )
                 }

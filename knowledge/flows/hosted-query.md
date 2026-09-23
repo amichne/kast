@@ -153,9 +153,11 @@ code_sources:
 
 `selectCliRuntimePath` selects the semantic command families before installed
 bootstrap in `KastCliMain`, including the optional leading `--` command
-delimiter. The default path sends all seven canonical reads to
-the existing project endpoint; an absent host rejects without opening a workspace,
-importing Gradle, or starting an isolated worker.
+delimiter. The CLI sends `tool query_symbols` through the installed daemon's
+versioned query RPC. The daemon re-admits its public schema and exact root,
+prepares the selected IDEA project, then sends one native read to that project's
+endpoint. Other CLI semantic reads use the existing project endpoint directly;
+an absent host rejects without starting an isolated worker.
 
 The ordinary-query scope gate has a separate project-bound capture for exact
 imported Gradle names. It reads `ExternalProjectDataCache` and joins explicit

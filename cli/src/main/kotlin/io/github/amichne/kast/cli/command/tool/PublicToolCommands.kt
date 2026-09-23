@@ -33,6 +33,7 @@ internal fun publicToolCommands(
                             is PublicToolCanonical.Diagnostics -> preparers.diagnosticCheck.prepare(canonical.request)
                         }
                     },
+                source = { request -> SemanticSource.PublicTool(request) },
             )
         }
     return PublicToolCommandFamily(

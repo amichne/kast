@@ -42,7 +42,7 @@ internal sealed interface WorkspaceDemandFailure {
 }
 
 @Serializable
-internal sealed interface WorkspaceDemandCause {
+sealed interface WorkspaceDemandCause {
     @Serializable
     @SerialName("preparation")
     data class Preparation(val failure: WorkspacePreparationFailure) : WorkspaceDemandCause

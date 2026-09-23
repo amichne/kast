@@ -227,6 +227,7 @@ private constructor(
                             hostObservation = frontend::observe,
                             sessions = frontend,
                             preparations = preparation.operations,
+                            demand = preparation.demand,
                         )
                 ) {
                     is Refinement.Refined -> admission.value

@@ -1,11 +1,17 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.appserver.DaemonQueryClient
+import io.github.amichne.kast.appserver.DaemonQueryClientFailure
+import io.github.amichne.kast.appserver.DaemonQueryClientRejection
+import io.github.amichne.kast.appserver.DaemonQueryResult
+import io.github.amichne.kast.appserver.InstalledDaemonQueryClient
 import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.cli.command.CliRequestDocumentInput
 import io.github.amichne.kast.cli.ide.CliRuntimePath
 import io.github.amichne.kast.cli.ide.selectCliRuntimePath
 import io.github.amichne.kast.cli.installation.InstallationCliInspection
 import io.github.amichne.kast.cli.installation.InstallationHandling
+import io.github.amichne.kast.kernel.Refinement
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.nio.ByteBuffer
@@ -79,6 +85,7 @@ fun main(args: Array<String>) {
                             Path.of(System.getProperty("user.home")),
                             environment,
                         ),
+                        configuredDaemonQueryClient(environment),
                     ),
                 requestInput = CliRequestDocumentInput.Deferred(::readCanonicalRequestInput),
             )
@@ -100,6 +107,23 @@ fun main(args: Array<String>) {
     }
     exitProcess(exit.code)
 }
+
+private fun configuredDaemonQueryClient(environment: Map<String, String>): DaemonQueryClient =
+    DaemonQueryClient { root, tool ->
+        when (val installed = installedKastExecutable()) {
+            is Refinement.Refined ->
+                InstalledDaemonQueryClient(
+                        installed.value,
+                        Path.of(System.getProperty("user.home")),
+                        environment,
+                    )
+                    .query(root, tool)
+            is Refinement.Rejected ->
+                DaemonQueryResult.Rejected(
+                    DaemonQueryClientRejection.Transport(DaemonQueryClientFailure.EXECUTABLE_UNAVAILABLE)
+                )
+        }
+    }
 
 private fun executeInstalledCommand(args: Array<String>): CliExit =
     when (val bootstrap = loadComposition(args.isEmpty())) {
