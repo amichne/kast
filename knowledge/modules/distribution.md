@@ -99,7 +99,9 @@ admits the prior retirement command and asks the selected daemon for an exact
 update seal. A proven absent daemon needs no seal. Active daemon blockers or
 unproven service state reject before retirement and preserve the current links.
 The installer commits a sealed request before invoking the prior service's
-disable command, so a failed or mismatched commit cannot stop that service.
+disable control, so a failed or mismatched commit cannot stop that service.
+New releases use the private `kast-service` executable for activation and
+retirement; admitted older releases retain their public CLI retirement command.
 If disable fails after commit, the same candidate can resume retirement while
 the exact prior daemon remains reachable and reports its committed request.
 The upgrade result retains finite blockers and daemon rejection causes.
@@ -218,4 +220,4 @@ admission qualifies the actual staged file through the production provider.
 
 After installation admission and before retiring or replacing any installation, the installer enrolls or preserves the user-owned broker key pair. Partial, mismatched, unsafe or busy enrollment rejects with the finite trust failure. Plan mode creates no keys. Bounded trust observations contain only completion status or rejection cause, never key material. Keys live outside versioned payloads and remain unchanged across reinstalls and upgrades.
 
-The control payload includes a private executable at `share/kast/libexec/kast-daemon`, inside the existing inventory and checksum boundary. Launchd invokes it directly; installed-product checks verify rejection of public arguments and missing managed readiness input before any coordinator effect. These process checks do not establish live launchd behavior.
+The control payload includes private executables at `share/kast/libexec/kast-daemon` and `share/kast/libexec/kast-service`, inside the existing inventory and checksum boundary. Launchd invokes the daemon directly; the installer invokes service control without the public CLI graph. Installed-product checks verify rejection of unsupported service arguments and of daemon public arguments or missing managed readiness input before any coordinator effect. These process checks do not establish live launchd behavior.

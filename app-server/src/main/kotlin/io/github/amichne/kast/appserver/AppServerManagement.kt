@@ -71,6 +71,7 @@ enum class ControlOperation {
     RELEASE,
 }
 
+@kotlinx.serialization.Serializable
 enum class AppServerManagementFailure {
     PAYLOAD_LIMIT_EXCEEDED,
     CONFIGURATION_REJECTED,

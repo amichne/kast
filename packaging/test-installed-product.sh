@@ -45,6 +45,18 @@ printf 'rootProject.name = "installed-product"\n' > "$fixture/repo/settings.grad
 command_environment=("HOME=$fixture/home" "JAVA_OPTS=-Duser.home=$fixture/home" "KAST_RUNTIME_DIRECTORY=$KAST_RUNTIME_DIRECTORY")
 daemon="$product_root/share/kast/libexec/kast-daemon"
 [[ -x "$daemon" ]] || fail 'private daemon launcher missing'
+service="$product_root/share/kast/libexec/kast-service"
+[[ -x "$service" ]] || fail 'private service launcher missing'
+set +e
+env -u JAVA_TOOL_OPTIONS -u _JAVA_OPTIONS "${command_environment[@]}" "$service" unexpected > "$fixture/service.stdout" 2> "$fixture/service.stderr"
+service_status=$?
+set -e
+[[ "$service_status" == 64 && ! -s "$fixture/service.stdout" ]] || fail 'private service accepted unsupported arguments'
+python3 - "$fixture/service.stderr" <<'SERVICE'
+import json, sys
+from pathlib import Path
+assert json.loads(Path(sys.argv[1]).read_text()) == {'type': 'arguments'}
+SERVICE
 set +e
 env -u JAVA_TOOL_OPTIONS -u _JAVA_OPTIONS -u BROKER_SERVICE_IDENTITY -u BROKER_READINESS_FILE "${command_environment[@]}" "$daemon" unexpected > "$fixture/daemon.stdout" 2> "$fixture/daemon.stderr"
 daemon_status=$?

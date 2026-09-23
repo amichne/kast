@@ -10,6 +10,7 @@ Defines Kast's human-facing command graph, installed configuration and installat
 ## Key Files
 
 - [KastDaemonMain.kt](src/main/kotlin/io/github/amichne/kast/cli/KastDaemonMain.kt) - private managed daemon entry point outside the public command graph.
+- [KastServiceMain.kt](src/main/kotlin/io/github/amichne/kast/cli/KastServiceMain.kt) - private installation service control with typed rejection output.
 
 - [PackagedProviderCatalog.kt](src/main/kotlin/io/github/amichne/kast/cli/PackagedProviderCatalog.kt) - build-time hosted schema projection for App Server qualification.
 
@@ -28,7 +29,7 @@ Defines Kast's human-facing command graph, installed configuration and installat
 - [src/main/kotlin/io/github/amichne/kast/cli/configuration/SavedConfigurationIngress.kt](src/main/kotlin/io/github/amichne/kast/cli/configuration/SavedConfigurationIngress.kt) - saved configuration boundary.
 - [src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt](src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt) - installation workflow, including committed daemon upgrade resumption.
 - [src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationDaemonUpgrade.kt](src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationDaemonUpgrade.kt) - prior daemon update admission before service retirement.
-- [src/main/kotlin/io/github/amichne/kast/cli/installation/PriorRetirement.kt](src/main/kotlin/io/github/amichne/kast/cli/installation/PriorRetirement.kt) - admitted prior command and environment retained across sealing and retirement.
+- [src/main/kotlin/io/github/amichne/kast/cli/installation/PriorRetirement.kt](src/main/kotlin/io/github/amichne/kast/cli/installation/PriorRetirement.kt) - admitted private or legacy prior command and environment retained across sealing and retirement.
 
 - [src/main/kotlin/io/github/amichne/kast/cli/ide](src/main/kotlin/io/github/amichne/kast/cli/ide) - existing-IDE client, semantic read projection, and hosted change/apply/recovery admission and projection.
 

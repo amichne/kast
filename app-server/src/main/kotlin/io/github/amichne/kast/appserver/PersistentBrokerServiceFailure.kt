@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver
 
+@kotlinx.serialization.Serializable
 enum class PersistentBrokerServiceFailure {
     UNAVAILABLE,
     ARGUMENTS_REJECTED,
