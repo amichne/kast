@@ -105,8 +105,13 @@ retain the earlier interpreter.
 ```
 
 Dependency verification uses the checked `gradle/verification-metadata.xml` in strict mode.
-For an intentional dependency update, review newly generated checksums against the
-publisher before committing the metadata; keep verification enabled for builds and IDE sync.
+IDE source and Javadoc attachments are trusted by artifact name so IDEA can import and
+index dependencies without requiring a checksum update for each optional attachment.
+This includes the Gradle distribution source archive. Compiled artifacts and dependency
+metadata still require checked SHA-256 values. Source attachments are not checked for
+tampering; do not treat them as evidence for release provenance. For an intentional
+dependency update, review newly generated checksums against the publisher before
+committing the metadata; keep verification enabled for builds and IDE sync.
 
 Choose a local installation from the repository root:
 
