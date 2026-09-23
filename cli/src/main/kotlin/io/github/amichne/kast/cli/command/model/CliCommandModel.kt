@@ -30,7 +30,6 @@ enum class CliProductCommand(val usage: String) {
     APP_SERVER_CLAIM("app-server control claim <thread-id> <connection-id>"),
     APP_SERVER_RELEASE("app-server control release <thread-id> <connection-id>"),
     INSPECT("product inspect"),
-    BROKER_SERVE("broker serve"),
     CODEX_CLI("codex"),
     CODEX_DESKTOP("codex desktop"),
     KNOWLEDGE("knowledge <query-or-resource>"),
@@ -54,8 +53,6 @@ sealed interface CliAction {
         data class Knowledge(val selection: io.github.amichne.kast.cli.knowledge.KnowledgeSelection) : Local
 
         data class AppServer(val action: io.github.amichne.kast.appserver.AppServerAction) : Local
-
-        data object BrokerServe : Local
 
         data object CodexCli : Local
 

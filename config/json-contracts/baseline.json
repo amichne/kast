@@ -7743,16 +7743,6 @@
     },
     {
       "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/BrokerServeCommandTest.kt",
-        "scope": "type:BrokerServeCommandTest/fun:metadata()/val:admission",
-        "kind": "JSON_LITERAL",
-        "sha256": "69dff89bc2ba1bc81d4baff6eb123f31ff963e476c925e50b874a04b9930e107"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
         "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/CliBoundaryContractTest.kt",
         "scope": "type:CliBoundaryContractTest/fun:every public command projection parses to its canonical operation()/val:commands",
         "kind": "JSON_LITERAL",

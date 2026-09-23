@@ -102,7 +102,6 @@ assert document["cliProjection"]["commands"], document
 assert document["cliProjection"]["localCommands"] == [
     "product inspect",
     "knowledge <query-or-resource>",
-    "broker serve",
     "codex", "codex desktop",
     "ide status [--root <path>]",
     "ide refresh <document> [--root <path>]",
@@ -150,10 +149,10 @@ assert all("invocation" not in tool and "cliUsage" not in tool for tool in boots
 PY
 
 help="$(env "${command_environment[@]}" "$kast" --help)"
-for command in tool symbol source relation traversal diagnostic change knowledge codex product broker ide app-server workspace; do
+for command in tool symbol source relation traversal diagnostic change knowledge codex product ide app-server workspace; do
   grep -Eq "^  ${command}[[:space:]]" <<<"$help" || fail "missing command: $command"
 done
-for command in start stop status topology index; do
+for command in start stop status topology index broker; do
   if grep -Eq "^  ${command}[[:space:]]" <<<"$help"; then fail "retired command is public: $command"; fi
 done
 

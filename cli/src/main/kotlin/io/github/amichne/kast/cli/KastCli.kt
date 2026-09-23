@@ -1,8 +1,5 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.appserver.BrokerServerRun
-import io.github.amichne.kast.appserver.BrokerServerRunner
-import io.github.amichne.kast.appserver.UnavailableBrokerServerRunner
 import io.github.amichne.kast.appserver.diagnosticCode
 import io.github.amichne.kast.appserver.host.CodexClientLaunch
 import io.github.amichne.kast.appserver.host.CodexClientLauncher
@@ -12,7 +9,6 @@ import io.github.amichne.kast.appserver.ide.ExistingIdeClient
 import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
 import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
 import io.github.amichne.kast.appserver.ide.IdeLifecycleClient
-import io.github.amichne.kast.appserver.outputReason
 import io.github.amichne.kast.cli.command.CliAction
 import io.github.amichne.kast.cli.command.CliCommandFailure
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
@@ -39,7 +35,6 @@ internal constructor(
     private val productVersion: io.github.amichne.kast.protocol.contract.KastPluginVersion,
     private val appServerManager: io.github.amichne.kast.appserver.AppServerManager =
         io.github.amichne.kast.appserver.UnavailableAppServerManager,
-    private val brokerServerRunner: BrokerServerRunner = UnavailableBrokerServerRunner,
     private val codexClientLauncher: CodexClientLauncher = UnavailableCodexClientLauncher,
     private val knowledgeReader: KnowledgeReader = DiscoveringInstalledKnowledgeReader,
     private val lifecycleClient: io.github.amichne.kast.appserver.ide.IdeLifecycleClient? = null,
@@ -123,15 +118,6 @@ internal constructor(
                         boundaryExit(
                             CliBoundaryExitStatus.RUNTIME,
                             (result.serviceFailure?.name ?: result.failure.name).lowercase().replace('_', '-'),
-                        )
-                }
-            CliAction.Local.BrokerServe ->
-                when (val run = brokerServerRunner.serve()) {
-                    BrokerServerRun.Stopped -> CliExit.Complete(CliBoundaryDocuments.brokerStopped())
-                    is BrokerServerRun.Rejected ->
-                        boundaryExit(
-                            CliBoundaryExitStatus.RUNTIME,
-                            run.failure.outputReason(),
                         )
                 }
             CliAction.Local.CodexCli -> launchCodex(codexClientLauncher, CodexClientLaunch.Cli)
