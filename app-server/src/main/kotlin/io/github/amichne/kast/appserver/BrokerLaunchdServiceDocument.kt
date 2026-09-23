@@ -1,8 +1,16 @@
 package io.github.amichne.kast.appserver
 
 /** The exact launchd job published for a private daemon executable. */
+internal enum class BrokerLaunchdStart {
+    CURRENT_SESSION,
+    LOGIN,
+}
+
 internal object BrokerLaunchdServiceDocument {
-    fun render(command: BrokerServiceLaunchCommand): String {
+    fun render(
+        command: BrokerServiceLaunchCommand,
+        start: BrokerLaunchdStart = BrokerLaunchdStart.CURRENT_SESSION,
+    ): String {
         fun xml(raw: String) =
             raw.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
         val environment =
@@ -19,7 +27,11 @@ internal object BrokerLaunchdServiceDocument {
                     "BROKER_SERVICE_IDENTITY=${command.identity.value}",
                     "BROKER_READINESS_FILE=${command.readinessFile}",
                 )
-        val arguments = listOf("/usr/bin/env", "-i") + environment + listOf(command.daemonExecutable.toString())
+        val daemon = listOf(command.daemonExecutable.toString())
+        val arguments =
+            listOf("/usr/bin/env", "-i") +
+                environment +
+                if (start == BrokerLaunchdStart.LOGIN) daemon + "--login" else daemon
         return """<?xml version="1.0" encoding="UTF-8"?>
 <plist version="1.0"><dict><key>Label</key><string>${xml(command.serviceLabel.value)}</string>
 <key>ProgramArguments</key><array>${arguments.joinToString("") { "<string>${xml(it)}</string>" }}</array>

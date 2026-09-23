@@ -16,6 +16,9 @@ sealed interface AppServerAction {
 
     data object Bootstrap : AppServerAction
 
+    /** Private daemon ingress for a launchd-loaded login job. */
+    data object Login : AppServerAction
+
     data object Status : AppServerAction
 
     data object Stop : AppServerAction
@@ -123,9 +126,7 @@ class InstalledAppServerManager(
                 return reject(AppServerManagementFailure.CONFIGURATION_REJECTED)
             }
         if (
-            (action == AppServerAction.Enable ||
-                action == AppServerAction.Repair ||
-                action == AppServerAction.Bootstrap) &&
+            requiresLifecycleStart(action) &&
                 InstallationLifecycleFence.observe(installationRoot) != InstallationLifecycleStartAdmission.AVAILABLE
         ) {
             return reject(AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN)
@@ -196,6 +197,18 @@ class InstalledAppServerManager(
                     // Older one-shot login jobs converge on the directly loaded service job.
                     Files.deleteIfExists(command.stateDirectory.resolve("stopped"))
                     bootstrapAndPublish(command)
+                }
+                AppServerAction.Login -> {
+                    if (enrollment.read() is EnrollmentRead.Rejected)
+                        return reject(AppServerManagementFailure.ENROLLMENT_REJECTED)
+                    when (val admitted = MacOsPersistentBrokerServiceHost().resumeLogin(command)) {
+                        PersistentBrokerServiceAdmission.Ready -> complete("ready")
+                        is PersistentBrokerServiceAdmission.Rejected ->
+                            AppServerManagementResult.Rejected(
+                                AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN,
+                                admitted.failure,
+                            )
+                    }
                 }
                 AppServerAction.Status -> readAppServerStatus(kast, command, enrollment)
                 AppServerAction.Stop,
@@ -276,6 +289,19 @@ class InstalledAppServerManager(
         )
 
     private fun reject(failure: AppServerManagementFailure) = AppServerManagementResult.Rejected(failure)
+
+    private fun requiresLifecycleStart(action: AppServerAction): Boolean =
+        when (action) {
+            AppServerAction.Enable,
+            AppServerAction.Repair,
+            AppServerAction.Bootstrap,
+            AppServerAction.Login -> true
+            AppServerAction.Register,
+            AppServerAction.Status,
+            AppServerAction.Stop,
+            AppServerAction.Disable,
+            is AppServerAction.Control -> false
+        }
 }
 
 @kotlinx.serialization.Serializable

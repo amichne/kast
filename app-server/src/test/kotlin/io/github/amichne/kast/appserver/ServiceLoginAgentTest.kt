@@ -20,7 +20,7 @@ class ServiceLoginAgentTest {
         publishReceipt(command)
         assertEquals(PublishedPrivateDocumentObservation.EXACT, PublishedBrokerServiceCommand.observePrivate(command))
         assertEquals(ServiceLoginAgentChange.READY, ServiceLoginAgent.publish(command))
-        assertEquals(BrokerLaunchdServiceDocument.render(command), Files.readString(agent))
+        assertEquals(BrokerLaunchdServiceDocument.render(command, BrokerLaunchdStart.LOGIN), Files.readString(agent))
         assertEquals(ServiceLoginAgentObservation.SERVICE, ServiceLoginAgent.observe(command))
         assertEquals(ServiceLoginAgentChange.READY, ServiceLoginAgent.publish(command))
 

@@ -57,18 +57,20 @@ class RecoveryTest(unittest.TestCase):
             'StandardOutPath': str(state / 'service.log'), 'StandardErrorPath': str(state / 'service.log'),
         }
         raw = plistlib.dumps(document)
+        daemon_argument = ('<string>' + str(self.root / 'share/kast/libexec/kast-daemon') + '</string>').encode()
+        login = raw.replace(daemon_argument, daemon_argument + b'<string>--login</string>')
         receipt = state / 'service.plist'
         receipt.write_bytes(raw)
         receipt.chmod(0o600)
         agent = self.home / 'Library/LaunchAgents' / (label + '.login.plist')
         agent.parent.mkdir(parents=True)
-        agent.write_bytes(raw)
+        agent.write_bytes(login)
         agent.chmod(0o600)
         spec = importlib.util.spec_from_file_location('recovery_login_under_test', SCRIPT)
         module = importlib.util.module_from_spec(spec)
         sys.modules[spec.name] = module
         spec.loader.exec_module(module)
-        return module, bundle, agent, raw
+        return module, bundle, agent, login
 
     def test_offline_recovery_detaches_only_exact_direct_service_login(self):
         module, bundle, agent, raw = self.direct_login()

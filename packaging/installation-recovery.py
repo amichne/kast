@@ -500,10 +500,10 @@ def exact_service_login(root, raw, document):
     arguments = document.get('ProgramArguments')
     if (not isinstance(arguments, list) or len(arguments) < 5 or len(arguments) > 64
             or arguments[:2] != ['/usr/bin/env', '-i']
-            or arguments[-1] != str(root / 'share/kast/libexec/kast-daemon')
+            or arguments[-2:] != [str(root / 'share/kast/libexec/kast-daemon'), '--login']
             or any(not isinstance(value, str) for value in arguments)):
         return False
-    assignments = arguments[2:-1]
+    assignments = arguments[2:-2]
     if any('=' not in value for value in assignments):
         return False
     environment = dict(value.split('=', 1) for value in assignments)
@@ -522,7 +522,9 @@ def exact_service_login(root, raw, document):
             if not stat.S_ISREG(observed.st_mode) or observed.st_uid != os.getuid() or observed.st_mode & 0o077:
                 return False
             published = source.read(65537)
-        return len(published) <= 65536 and published == raw
+        login_argument = b'<string>--login</string>'
+        return (len(published) <= 65536 and raw.count(login_argument) == 1
+                and raw.replace(login_argument, b'', 1) == published)
     except (OSError, ValueError):
         return False
 

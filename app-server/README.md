@@ -92,9 +92,9 @@ claiming an occupied task conflicts, and handoff during an active turn or pendin
 server request fails. An observer must first successfully resume the task.
 
 Stop publishes its suppression marker under the startup lock, removes only the
-identity-proven service, and waits for retirement. Attachments cannot restart it.
-Explicit enable clears suppression; the direct daemon login job does not override
-an explicit stop. Disable additionally removes the exact Kast-owned login agent. Enrollment and invocation evidence remain
+identity-proven service, and waits for retirement. Attachments cannot restart it
+for that login. Explicit enable or a qualified next-login daemon start clears
+suppression. Disable additionally removes the exact Kast-owned login agent. Enrollment and invocation evidence remain
 on disk; disable does not erase execution history.
 
 ## Daemon management
@@ -176,7 +176,8 @@ Launchd starts the private `share/kast/libexec/kast-daemon` entry point directly
 It accepts no commands and requires the managed readiness environment before
 coordinator admission. Published receipts for the earlier `kast broker serve`
 entry point remain readable for exact retirement. The per-user login agent
-contains the same direct daemon job as the current service submission; the
+uses the same service label and daemon executable with a private login mode;
+that mode verifies the exact loaded job before clearing a prior stop. The
 one-shot bootstrap remains readable only for migration.
 
 ## Ownership and recovery

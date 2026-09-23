@@ -25,7 +25,11 @@ internal object ServiceLoginAgent {
     fun observe(command: BrokerServiceLaunchCommand): ServiceLoginAgentObservation {
         val agent = path(command)
         return when (
-            LegacyLoginBootstrap.observe(agent, command.userHome, BrokerLaunchdServiceDocument.render(command))
+            LegacyLoginBootstrap.observe(
+                agent,
+                command.userHome,
+                BrokerLaunchdServiceDocument.render(command, BrokerLaunchdStart.LOGIN),
+            )
         ) {
             LegacyLoginBootstrapObservation.Absent -> ServiceLoginAgentObservation.ABSENT
             LegacyLoginBootstrapObservation.Exact -> ServiceLoginAgentObservation.SERVICE
@@ -50,7 +54,7 @@ internal object ServiceLoginAgent {
             Files.createDirectories(agent.parent)
             val temporary = Files.createTempFile(agent.parent, ".kast-service-", ".plist")
             try {
-                Files.writeString(temporary, BrokerLaunchdServiceDocument.render(command))
+                Files.writeString(temporary, BrokerLaunchdServiceDocument.render(command, BrokerLaunchdStart.LOGIN))
                 Files.setPosixFilePermissions(temporary, PosixFilePermissions.fromString("rw-------"))
                 if (observe(command) != before) return ServiceLoginAgentChange.REJECTED
                 Files.move(temporary, agent, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
