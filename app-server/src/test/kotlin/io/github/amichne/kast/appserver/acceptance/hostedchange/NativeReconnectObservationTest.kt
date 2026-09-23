@@ -51,5 +51,14 @@ class NativeReconnectObservationTest {
             assertEquals(setOf("event", "stage", "outcome"), document.keys)
             assertEquals("kast_native_reconnect_stage", document.getValue("event").jsonPrimitive.content)
         }
+        val continued =
+            NativeReconnectObservation(
+                NativeReconnectStage.POST_RECONNECT_SEARCH,
+                NativeReconnectOutcome.STARTED,
+            )
+        assertEquals(
+            "POST_RECONNECT_SEARCH",
+            Json.parseToJsonElement(continued.encode()).jsonObject.getValue("stage").jsonPrimitive.content,
+        )
     }
 }

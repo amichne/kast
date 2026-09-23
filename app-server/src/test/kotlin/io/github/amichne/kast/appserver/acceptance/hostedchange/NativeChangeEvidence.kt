@@ -11,7 +11,6 @@ import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
 import java.security.MessageDigest
 import java.util.concurrent.CopyOnWriteArrayList
-import kotlinx.coroutines.channels.Channel
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -93,7 +92,6 @@ internal fun privateWrite(path: Path, value: String) {
 internal class NativeProcessTrace(private val privateDirectory: Path) : BrokerProcessExecutor {
     private val routes = CopyOnWriteArrayList<List<String>>()
     private val sequence = java.util.concurrent.atomic.AtomicInteger()
-    val completedEffects = Channel<Unit>(32)
     val boundaryRejections = CopyOnWriteArrayList<NativeBoundaryRejection>()
 
     fun isolatedStartupCount(): Int = routes.count { it.firstOrNull() in setOf("start", "prepare", "worker") }
@@ -104,7 +102,6 @@ internal class NativeProcessTrace(private val privateDirectory: Path) : BrokerPr
         val result = JdkBrokerProcessExecutor.execute(request)
         boundaryRejections += nativeBoundaryRejection(result)
         privateWrite(privateDirectory.resolve("process-$number.private.json"), processObservation(result).toString())
-        if (request.arguments.lastOrNull() == "--hosted-approved-invocation") completedEffects.send(Unit)
         return result
     }
 

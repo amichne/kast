@@ -25,6 +25,7 @@ object NativeBrokerRestartMain {
             NativeChangeSession.open(
                 inputs = inputs,
                 home = Path.of(System.getProperty("user.home")).toRealPath(),
+                stageObserver = { System.err.println(it.encode()) },
             )
         try {
             withTimeout(180_000) { retrieve(session, identity, source, before) }

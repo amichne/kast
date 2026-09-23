@@ -214,21 +214,29 @@ internal class NativeChangeWorkflow(
     }
 
     private suspend fun lostResponse() {
-        val found = searchClass()
+        evidence.record("lost-response-no-replay", NativeCaseOutcome.UNQUALIFIED)
+        val found = observeReconnect(NativeReconnectStage.POST_RECONNECT_SEARCH) { searchClass() }
         val created =
-            peer.call("change_plan", nativePlanArguments(reference(found), "fun acceptanceLostResponse() = value"))
+            observeReconnect(NativeReconnectStage.POST_RECONNECT_PLAN) {
+                peer.call("change_plan", nativePlanArguments(reference(found), "fun acceptanceLostResponse() = value"))
+            }
         demand(!created.rejected(), NativeFailure.PROVIDER_REJECTED)
         val id = created.document().textAt("planIdentity")
         lostPlanIdentity = id
         val arguments = buildJsonObject { put("planIdentity", id) }
-        while (session.trace.completedEffects.tryReceive().isSuccess) {
-            /* old completed subprocesses are not this attempt */
+        observeReconnect(NativeReconnectStage.POST_RECONNECT_APPLY) {
+            peer.call("change_apply", arguments, aftermath = NativeApprovalAftermath.DropResponse)
         }
-        peer.call("change_apply", arguments, aftermath = NativeApprovalAftermath.DropResponse)
-        val retained = session.replaceBroker(NativeBrokerRetentionExpectation.SETTLED)
+        val retained =
+            observeReconnect(NativeReconnectStage.POST_RECONNECT_REPLACEMENT) {
+                session.replaceBroker(NativeBrokerRetentionExpectation.SETTLED)
+            }
         evidence.record("provider-routing", NativeCaseOutcome.UNQUALIFIED)
-        peer = session.connect()
-        val recovered = peer.call("change_apply", arguments)
+        peer = observeReconnect(NativeReconnectStage.POST_RECONNECT_REATTACH) { session.connect() }
+        val recovered =
+            observeReconnect(NativeReconnectStage.POST_RECONNECT_RETRY) {
+                peer.call("change_apply", arguments)
+            }
         demand(!recovered.rejected(), NativeFailure.PROVIDER_REJECTED)
         demand(
             recovered.document()["state"] in
@@ -239,7 +247,7 @@ internal class NativeChangeWorkflow(
                 ),
             NativeFailure.RESULT_SHAPE_REJECTED,
         )
-        session.requireRetained(retained)
+        observeReconnect(NativeReconnectStage.POST_RECONNECT_RETENTION) { session.requireRetained(retained) }
         val after = Files.readAllBytes(source)
         demand(occurrences(after, "fun acceptanceLostResponse") <= 1, NativeFailure.DUPLICATE_DECLARATION)
         evidence.record(
