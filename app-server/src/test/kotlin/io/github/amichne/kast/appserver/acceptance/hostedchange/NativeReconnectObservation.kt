@@ -12,6 +12,13 @@ internal enum class NativeReconnectStage {
     ATTACH,
     INITIALIZE,
     THREAD_START,
+    POST_RECONNECT_SEARCH,
+    POST_RECONNECT_PLAN,
+    POST_RECONNECT_APPLY,
+    POST_RECONNECT_REPLACEMENT,
+    POST_RECONNECT_REATTACH,
+    POST_RECONNECT_RETRY,
+    POST_RECONNECT_RETENTION,
 }
 
 @Serializable
@@ -47,7 +54,7 @@ internal suspend fun <T> observeReconnect(
     }
 }
 
-private fun reportReconnect(observation: NativeReconnectObservation) {
+internal fun reportReconnect(observation: NativeReconnectObservation) {
     println(observation.encode())
     System.out.flush()
 }

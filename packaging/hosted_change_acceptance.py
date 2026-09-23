@@ -191,7 +191,10 @@ def admit_event(value: object) -> dict:
         return value
     if (event == 'kast_native_reconnect_stage' and set(value) == {'event', 'stage', 'outcome'}
             and value['stage'] in ('BROKER_REPLACEMENT', 'IDE_RESTART', 'SESSION_RECONNECT',
-                                   'RETENTION', 'ATTACH', 'INITIALIZE', 'THREAD_START')
+                                   'RETENTION', 'ATTACH', 'INITIALIZE', 'THREAD_START',
+                                   'POST_RECONNECT_SEARCH', 'POST_RECONNECT_PLAN', 'POST_RECONNECT_APPLY',
+                                   'POST_RECONNECT_REPLACEMENT', 'POST_RECONNECT_REATTACH',
+                                   'POST_RECONNECT_RETRY', 'POST_RECONNECT_RETENTION')
             and value['outcome'] in ('STARTED', 'COMPLETE', 'REJECTED')):
         return value
     if value in ({'event': 'completed'}, {'event': 'control', 'action': 'restart-ide'}):

@@ -31,6 +31,7 @@ internal class NativeChangeSession
 private constructor(
     private val reopenHub: () -> BrokerSessionHub,
     val trace: NativeProcessTrace,
+    private val stageObserver: (NativeReconnectObservation) -> Unit,
     private val connecting: Channel<NativeUpstream>,
     private val workspace: Path,
     private val privateDirectory: Path,
@@ -45,25 +46,24 @@ private constructor(
     suspend fun connect(): NativeChangePeer {
         val upstream = NativeUpstream()
         val peer =
-            observeReconnect(NativeReconnectStage.ATTACH) {
+            observeReconnect(NativeReconnectStage.ATTACH, stageObserver) {
                 connecting.send(upstream)
                 NativeChangePeer(
                     session = checkNotNull(hub.attach(NativeControllerProtocol.initialize().toString())),
                     upstream = upstream,
                     thread = "native-${++peerCount}",
-                    trace = trace,
                     privateDirectory = privateDirectory,
                     nextSequence = sequence::getAndIncrement,
                 )
             }
-        observeReconnect(NativeReconnectStage.INITIALIZE) {
+        observeReconnect(NativeReconnectStage.INITIALIZE, stageObserver) {
             peer.forwarded()
             upstream.received.send(BrokerUpstreamFrame.Text(NativeControllerProtocol.initializeResponse()))
             peer.session.output.receive()
             peer.session.accept(NativeControllerProtocol.initializedNotification())
             peer.forwarded()
         }
-        observeReconnect(NativeReconnectStage.THREAD_START) {
+        observeReconnect(NativeReconnectStage.THREAD_START, stageObserver) {
             peer.session.accept(NativeControllerProtocol.threadStart(workspace).toString())
             peer.forwarded()
             upstream.received.send(
@@ -111,6 +111,7 @@ private constructor(
             observeQualification: (NativeProviderQualificationObservation) -> Unit = {
                 System.err.println(it.encodeObservation())
             },
+            stageObserver: (NativeReconnectObservation) -> Unit = ::reportReconnect,
         ): NativeChangeSession {
             val product = inputs.product
             val workspace = inputs.workspace
@@ -153,6 +154,7 @@ private constructor(
             return NativeChangeSession(
                 reopenHub = reopen,
                 trace = trace,
+                stageObserver = stageObserver,
                 connecting = connecting,
                 workspace = workspace,
                 privateDirectory = privateDirectory,

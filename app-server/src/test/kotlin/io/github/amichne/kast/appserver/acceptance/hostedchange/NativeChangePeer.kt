@@ -64,11 +64,6 @@ internal enum class NativeToolSuccess {
     FAILED,
 }
 
-private enum class NativeControllerProgress {
-    CONTINUE,
-    RESPONSE_LOST,
-}
-
 private sealed interface NativeControllerFrame {
     data class Response(val raw: String) : NativeControllerFrame
 
@@ -94,7 +89,6 @@ internal class NativeChangePeer(
     val session: BrokerSessionHub.Session,
     private val upstream: NativeChangeSession.NativeUpstream,
     val thread: String,
-    private val trace: NativeProcessTrace,
     private val privateDirectory: Path,
     private val nextSequence: () -> Int,
 ) {
@@ -162,19 +156,20 @@ internal class NativeChangePeer(
                             privateDirectory.resolve("response-$number.json"),
                             protocolObservation(frame.raw).toString(),
                         )
-                        return decode(document)
-                    }
-                    is NativeControllerFrame.Notification ->
-                        if (
-                            notification(Json.parseToJsonElement(frame.raw).jsonObject) ==
-                                NativeControllerProgress.RESPONSE_LOST
-                        )
+                        val result = decode(document)
+                        if (options.aftermath == NativeApprovalAftermath.DropResponse) {
+                            demand(!result.rejected(), NativeFailure.PROVIDER_REJECTED)
+                            session.detach()
                             return NativeToolResult.ResponseLost
+                        }
+                        return result
+                    }
+                    is NativeControllerFrame.Notification -> notification(Json.parseToJsonElement(frame.raw).jsonObject)
                 }
             }
         }
 
-        private suspend fun notification(document: JsonObject): NativeControllerProgress {
+        private suspend fun notification(document: JsonObject) {
             when (document["method"]?.jsonPrimitive?.content) {
                 "item/started" ->
                     preview =
@@ -182,15 +177,14 @@ internal class NativeChangePeer(
                             document.objectAt("params").objectAt("item")["changes"] as? JsonArray
                                 ?: throw NativeRejected(NativeFailure.PROTOCOL_REJECTED)
                         )
-                "item/fileChange/requestApproval" -> return approve(document)
+                "item/fileChange/requestApproval" -> approve(document)
                 "serverRequest/resolved",
                 "item/completed" -> Unit
                 else -> throw NativeRejected(NativeFailure.PROTOCOL_REJECTED)
             }
-            return NativeControllerProgress.CONTINUE
         }
 
-        private suspend fun approve(document: JsonObject): NativeControllerProgress {
+        private suspend fun approve(document: JsonObject) {
             options.beforeApproval(preview ?: throw NativeRejected(NativeFailure.PROTOCOL_REJECTED))
             session.accept(
                 buildJsonObject {
@@ -210,16 +204,11 @@ internal class NativeChangePeer(
                 }
                     .toString()
             )
-            return when (val aftermath = options.aftermath) {
-                NativeApprovalAftermath.Continue -> NativeControllerProgress.CONTINUE
+            when (val aftermath = options.aftermath) {
+                NativeApprovalAftermath.Continue,
+                NativeApprovalAftermath.DropResponse -> Unit
                 is NativeApprovalAftermath.Interrupt -> {
                     aftermath.action()
-                    NativeControllerProgress.CONTINUE
-                }
-                NativeApprovalAftermath.DropResponse -> {
-                    trace.completedEffects.receive()
-                    session.detach()
-                    NativeControllerProgress.RESPONSE_LOST
                 }
             }
         }

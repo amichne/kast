@@ -380,7 +380,9 @@ class HostedChangeAcceptanceTest(unittest.TestCase):
 
     def test_reconnect_stage_accepts_only_closed_stage_and_outcome(self):
         for stage in ('BROKER_REPLACEMENT', 'IDE_RESTART', 'SESSION_RECONNECT', 'RETENTION',
-                      'ATTACH', 'INITIALIZE', 'THREAD_START'):
+                      'ATTACH', 'INITIALIZE', 'THREAD_START', 'POST_RECONNECT_SEARCH',
+                      'POST_RECONNECT_PLAN', 'POST_RECONNECT_APPLY', 'POST_RECONNECT_REPLACEMENT',
+                      'POST_RECONNECT_REATTACH', 'POST_RECONNECT_RETRY', 'POST_RECONNECT_RETENTION'):
             for outcome in ('STARTED', 'COMPLETE', 'REJECTED'):
                 event = {'event': 'kast_native_reconnect_stage', 'stage': stage, 'outcome': outcome}
                 self.assertEqual(event, admit_event(event))
