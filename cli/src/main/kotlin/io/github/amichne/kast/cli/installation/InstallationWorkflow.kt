@@ -595,8 +595,8 @@ internal object InstallationWorkflow {
             ExternalAnchor(
                 "login",
                 plan.request.home.value.resolve("Library/LaunchAgents/$serviceLabel.login.plist").toString(),
-                expectedExecutable = plan.targetRoot.resolve("bin/kast").toString(),
-                expectedLabel = "$serviceLabel.login",
+                expectedExecutable = plan.targetRoot.resolve("share/kast/libexec/kast-daemon").toString(),
+                expectedLabel = serviceLabel,
             ),
         )
     }

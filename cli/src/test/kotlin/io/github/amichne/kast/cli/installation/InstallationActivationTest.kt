@@ -3,7 +3,9 @@ package io.github.amichne.kast.cli.installation
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import java.nio.file.Files
 import java.nio.file.Path
+import java.security.MessageDigest
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -19,12 +21,13 @@ class InstallationActivationTest {
         for (profile in listOf("session", "persistent")) {
             val root = Files.createDirectory(temporary.resolve(profile)).toRealPath()
             val installation = root.resolve("installation")
+            val home = Files.createDirectory(root.resolve("home"))
             val request =
                 releaseRequest(
                     root,
                     installation,
                     root.resolve("commands"),
-                    Files.createDirectory(root.resolve("home")),
+                    home,
                     Files.createDirectory(root.resolve("codex-home")),
                     "1.2.3",
                     environmentOverrides =
@@ -48,7 +51,35 @@ class InstallationActivationTest {
                 Files.readString(installation.resolve("current/config/environment"))
                     .contains("KAST_APP_SERVER_PUBLIC_ENDPOINT=codex-control")
             )
+            assertLoginAnchor(installation.resolve("current").toRealPath(), home)
         }
+    }
+
+    private fun assertLoginAnchor(installed: Path, home: Path) {
+        val manifest = Json.parseToJsonElement(Files.readString(installed.resolve("installation.json"))).jsonObject
+        val login =
+            manifest
+                .getValue("externalAnchors")
+                .jsonArray
+                .single {
+                    it.jsonObject.getValue("kind").jsonPrimitive.content == "login"
+                }
+                .jsonObject
+        val label = login.getValue("expectedLabel").jsonPrimitive.content
+        val installationHash =
+            MessageDigest.getInstance("SHA-256")
+                .digest(installed.toString().toByteArray())
+                .joinToString("") { "%02x".format(it) }
+                .take(32)
+        assertEquals("io.github.amichne.kast.broker.$installationHash", label)
+        assertEquals(
+            home.resolve("Library/LaunchAgents/$label.login.plist").toString(),
+            login.getValue("path").jsonPrimitive.content,
+        )
+        assertEquals(
+            installed.resolve("share/kast/libexec/kast-daemon").toString(),
+            login.getValue("expectedExecutable").jsonPrimitive.content,
+        )
     }
 
     @Test
