@@ -11,11 +11,9 @@ import io.github.amichne.kast.cli.command.*
 internal fun appServerCommandGroup(): LocalCommandFamily {
     val actions =
         listOf(
-            AppServerLeaf("enable", CliProductCommand.APP_SERVER_ENABLE, AppServerAction.Enable),
             AppServerRepairLeaf(),
             AppServerLeaf("status", CliProductCommand.APP_SERVER_STATUS, AppServerAction.Status),
             AppServerLeaf("stop", CliProductCommand.APP_SERVER_STOP, AppServerAction.Stop),
-            AppServerLeaf("disable", CliProductCommand.APP_SERVER_DISABLE, AppServerAction.Disable),
         )
     val claim = ControlLeaf("claim", CliProductCommand.APP_SERVER_CLAIM, ControlOperation.CLAIM)
     val release = ControlLeaf("release", CliProductCommand.APP_SERVER_RELEASE, ControlOperation.RELEASE)

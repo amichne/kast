@@ -110,11 +110,9 @@ assert document["cliProjection"]["localCommands"] == [
     "ide generate-completion <shell>",
     "ide trust-broker",
     "workspace lifecycle <document>",
-    "app-server enable",
     "app-server repair --destructive",
     "app-server status",
     "app-server stop",
-    "app-server disable",
     "app-server control claim <thread-id> <connection-id>",
     "app-server control release <thread-id> <connection-id>",
 ], document["cliProjection"]["localCommands"]
