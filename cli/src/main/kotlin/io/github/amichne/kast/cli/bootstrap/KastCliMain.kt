@@ -1,10 +1,10 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.appserver.DaemonReadClient
-import io.github.amichne.kast.appserver.DaemonReadClientFailure
-import io.github.amichne.kast.appserver.DaemonReadClientRejection
-import io.github.amichne.kast.appserver.DaemonReadResult
-import io.github.amichne.kast.appserver.InstalledDaemonReadClient
+import io.github.amichne.kast.appserver.DaemonOperationClient
+import io.github.amichne.kast.appserver.DaemonOperationClientFailure
+import io.github.amichne.kast.appserver.DaemonOperationClientRejection
+import io.github.amichne.kast.appserver.DaemonOperationResult
+import io.github.amichne.kast.appserver.InstalledDaemonOperationClient
 import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.cli.command.CliRequestDocumentInput
 import io.github.amichne.kast.cli.ide.CliRuntimePath
@@ -85,7 +85,7 @@ fun main(args: Array<String>) {
                             Path.of(System.getProperty("user.home")),
                             environment,
                         ),
-                        configuredDaemonReadClient(environment),
+                        configuredDaemonOperationClient(environment),
                     ),
                 requestInput = CliRequestDocumentInput.Deferred(::readCanonicalRequestInput),
             )
@@ -108,32 +108,32 @@ fun main(args: Array<String>) {
     exitProcess(exit.code)
 }
 
-private fun configuredDaemonReadClient(environment: Map<String, String>): DaemonReadClient =
-    DaemonReadClient { root, tool ->
+private fun configuredDaemonOperationClient(environment: Map<String, String>): DaemonOperationClient =
+    DaemonOperationClient { root, call ->
         when (val installed = installedKastExecutable()) {
             is Refinement.Refined ->
-                InstalledDaemonReadClient(
+                InstalledDaemonOperationClient(
                         installed.value,
                         Path.of(System.getProperty("user.home")),
                         environment,
                     )
-                    .read(root, tool)
+                    .read(root, call)
             is Refinement.Rejected ->
-                DaemonReadResult.Rejected(
-                    DaemonReadClientRejection.Transport(
+                DaemonOperationResult.Rejected(
+                    DaemonOperationClientRejection.Transport(
                         when (installed.failure) {
                             InstalledKastControlProductFailure.CODE_SOURCE_UNAVAILABLE ->
-                                DaemonReadClientFailure.CODE_SOURCE_UNAVAILABLE
+                                DaemonOperationClientFailure.CODE_SOURCE_UNAVAILABLE
                             InstalledKastControlProductFailure.CODE_SOURCE_INVALID ->
-                                DaemonReadClientFailure.CODE_SOURCE_INVALID
+                                DaemonOperationClientFailure.CODE_SOURCE_INVALID
                             InstalledKastControlProductFailure.LIBRARY_DIRECTORY_INVALID ->
-                                DaemonReadClientFailure.LIBRARY_DIRECTORY_INVALID
+                                DaemonOperationClientFailure.LIBRARY_DIRECTORY_INVALID
                             InstalledKastControlProductFailure.PRODUCT_ROOT_UNAVAILABLE ->
-                                DaemonReadClientFailure.PRODUCT_ROOT_UNAVAILABLE
+                                DaemonOperationClientFailure.PRODUCT_ROOT_UNAVAILABLE
                             InstalledKastControlProductFailure.RESOURCE_DIRECTORY_UNAVAILABLE ->
-                                DaemonReadClientFailure.RESOURCE_DIRECTORY_UNAVAILABLE
+                                DaemonOperationClientFailure.RESOURCE_DIRECTORY_UNAVAILABLE
                             InstalledKastControlProductFailure.KAST_EXECUTABLE_UNAVAILABLE ->
-                                DaemonReadClientFailure.KAST_EXECUTABLE_UNAVAILABLE
+                                DaemonOperationClientFailure.KAST_EXECUTABLE_UNAVAILABLE
                         }
                     )
                 )

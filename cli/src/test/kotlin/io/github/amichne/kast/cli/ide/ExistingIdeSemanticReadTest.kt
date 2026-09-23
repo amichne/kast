@@ -1,9 +1,11 @@
 package io.github.amichne.kast.cli.ide
 
-import io.github.amichne.kast.appserver.DaemonReadClient
-import io.github.amichne.kast.appserver.DaemonReadClientRejection
-import io.github.amichne.kast.appserver.DaemonReadFailure
-import io.github.amichne.kast.appserver.DaemonReadResult
+import io.github.amichne.kast.appserver.DaemonCanonicalRead
+import io.github.amichne.kast.appserver.DaemonOperationCall
+import io.github.amichne.kast.appserver.DaemonOperationClient
+import io.github.amichne.kast.appserver.DaemonOperationClientRejection
+import io.github.amichne.kast.appserver.DaemonOperationFailure
+import io.github.amichne.kast.appserver.DaemonOperationResult
 import io.github.amichne.kast.appserver.ide.CanonicalRootDiscoverer
 import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
 import io.github.amichne.kast.appserver.ide.ExistingIdeClient
@@ -156,7 +158,7 @@ class ExistingIdeSemanticReadTest {
     )
 
     @Test
-    fun `all canonical reads parse before the sole existing-host capability is invoked`() {
+    fun `all semantic reads use the daemon without direct host fallback`() {
         for ((command, operation, document) in
             requests.flatMap { (command, operation, document) ->
                 listOf(Triple(command, operation, document), Triple("-- $command", operation, document))
@@ -175,28 +177,36 @@ class ExistingIdeSemanticReadTest {
                         ExistingIdeExchange.Rejected(ExistingIdeFailure.HOST_UNAVAILABLE)
                     },
                     CliRequestDocumentInput.Provided(document),
-                    DaemonReadClient { admittedRoot, tool ->
+                    DaemonOperationClient { admittedRoot, call ->
                         assertSame(root, admittedRoot)
-                        assertEquals(publicIdentity(command), tool.identity)
+                        when (call) {
+                            is DaemonOperationCall.PublicTool ->
+                                assertEquals(publicIdentity(command), call.tool.identity)
+                            is DaemonOperationCall.Canonical -> assertEquals(operation, canonicalKind(call.read))
+                            is DaemonOperationCall.Change -> fail("Read command selected a change")
+                        }
                         daemonCalls++
-                        DaemonReadResult.Rejected(
-                            DaemonReadClientRejection.Server(
-                                DaemonReadFailure.Host(ExistingIdeFailure.HOST_UNAVAILABLE)
+                        DaemonOperationResult.Rejected(
+                            DaemonOperationClientRejection.Server(
+                                DaemonOperationFailure.Host(ExistingIdeFailure.HOST_UNAVAILABLE)
                             )
                         )
                     },
                 )
-            if (command.contains("tool")) {
-                assertEquals(0, calls, command)
-                assertEquals(1, daemonCalls, command)
-                assertTrue(result.document.value.contains("daemon-read-host-host-unavailable"), command)
-            } else {
-                assertEquals(1, calls, "$command: ${result.document.value}")
-                assertEquals(0, daemonCalls, command)
-                assertTrue(result.document.value.contains("ide-host-unavailable"), command)
-            }
+            assertEquals(0, calls, command)
+            assertEquals(1, daemonCalls, command)
+            assertTrue(result.document.value.contains("daemon-operation-host-host-unavailable"), command)
         }
     }
+
+    private fun canonicalKind(read: DaemonCanonicalRead): ExistingIdeReadOperation =
+        when (read) {
+            is DaemonCanonicalRead.SymbolDiscover -> ExistingIdeReadOperation.SYMBOL_DISCOVER
+            is DaemonCanonicalRead.SymbolInspect -> ExistingIdeReadOperation.SYMBOL_INSPECT
+            is DaemonCanonicalRead.SourceRead -> ExistingIdeReadOperation.SOURCE_READ
+            is DaemonCanonicalRead.RelationRead -> ExistingIdeReadOperation.RELATION_READ
+            is DaemonCanonicalRead.TraversalRun -> ExistingIdeReadOperation.TRAVERSAL_RUN
+        }
 
     private fun publicIdentity(command: String): io.github.amichne.kast.protocol.registry.PublicToolIdentity =
         when {

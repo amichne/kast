@@ -1,10 +1,14 @@
 package io.github.amichne.kast.cli.command
 
 import com.github.ajalt.clikt.core.BaseCliktCommand
+import io.github.amichne.kast.appserver.DaemonCanonicalRead
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
 import io.github.amichne.kast.appserver.query.AdmittedPublicTool
 import io.github.amichne.kast.appserver.query.explanation
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.contract.ChangeApplyRequest
+import io.github.amichne.kast.protocol.contract.ChangePlanRequest
+import io.github.amichne.kast.protocol.contract.ChangeRecoverRequest
 import io.github.amichne.kast.protocol.contract.OperationRequest
 import io.github.amichne.kast.protocol.wire.presentation.OperationPreparation
 import io.github.amichne.kast.protocol.wire.presentation.OperationProjectionFailure
@@ -61,6 +65,14 @@ sealed interface SemanticSource {
     data object Canonical : SemanticSource
 
     data class PublicTool(val tool: AdmittedPublicTool) : SemanticSource
+
+    data class CanonicalRead(val read: DaemonCanonicalRead) : SemanticSource
+
+    data class ChangePlan(val request: ChangePlanRequest) : SemanticSource
+
+    data class ChangeApply(val request: ChangeApplyRequest) : SemanticSource
+
+    data class ChangeRecover(val request: ChangeRecoverRequest) : SemanticSource
 }
 
 /** Closed domain failures produced after Clikt has refined individual option values. */

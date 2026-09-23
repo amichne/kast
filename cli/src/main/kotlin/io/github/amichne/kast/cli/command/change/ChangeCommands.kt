@@ -5,6 +5,7 @@ import io.github.amichne.kast.cli.command.CliRequestDocumentInput
 import io.github.amichne.kast.cli.command.CommandFamily
 import io.github.amichne.kast.cli.command.KastCommandGroup
 import io.github.amichne.kast.cli.command.SemanticKastCommand
+import io.github.amichne.kast.cli.command.SemanticSource
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ChangeApplyRequest
 import io.github.amichne.kast.protocol.contract.ChangePlanRequest
@@ -24,6 +25,7 @@ internal fun changeCommandGroup(
             serializer = ChangePlanRequest.serializer(),
             requestInput = requestInput,
             preparer = preparers.changePlan,
+            source = { SemanticSource.ChangePlan(it) },
         )
     val apply =
         SemanticKastCommand(
@@ -34,6 +36,7 @@ internal fun changeCommandGroup(
             serializer = ChangeApplyRequest.serializer(),
             requestInput = requestInput,
             preparer = preparers.changeApply,
+            source = { SemanticSource.ChangeApply(it) },
         )
     val recover =
         SemanticKastCommand(
@@ -44,6 +47,7 @@ internal fun changeCommandGroup(
             serializer = ChangeRecoverRequest.serializer(),
             requestInput = requestInput,
             preparer = preparers.changeRecover,
+            source = { SemanticSource.ChangeRecover(it) },
         )
     return CommandFamily(
         KastCommandGroup("change", "Plan, apply, and recover semantic changes.").subcommands(plan, apply, recover),

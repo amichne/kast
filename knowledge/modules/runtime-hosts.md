@@ -32,10 +32,12 @@ code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparationActivity.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/DaemonManagementProtocol.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonManagementClient.kt
-  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/DaemonReadProtocol.kt
-    symbols: [DaemonRead]
-  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonReadClient.kt
-    symbols: [InstalledDaemonReadClient]
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/DaemonOperationProtocol.kt
+    symbols: [DaemonOperationProtocol, DaemonOperationSelection]
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/DaemonOperation.kt
+    symbols: [DaemonOperation]
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonOperationClient.kt
+    symbols: [InstalledDaemonOperationClient]
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonUpgrade.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/DaemonManagement.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/CoordinatorRoutes.kt
@@ -225,11 +227,15 @@ remains. A later demand may prepare again. Transport failures never replay the
 semantic request. Preparation rejection retains its finite cause and operation ID
 as known pre-execution failure evidence.
 
-The `tool` CLI family now uses a versioned read RPC on the same owned
-Unix socket. The daemon verifies its exact installation target and canonical
-settings root, re-admits the selected public schema, and passes the prepared read
-to this shared demand owner. Complete, qualified and rejected native outcomes
-retain distinct replies. RPC failure does not trigger a direct IDE fallback.
+All semantic CLI families now use the versioned `/kast-operation` RPC on the
+same owned Unix socket. The daemon verifies its exact installation target and
+canonical settings root, re-admits public tool schemas or typed canonical
+requests, and passes the prepared operation to this shared demand owner.
+Approved mutations preserve the plan identity and signed assertion; ordinary
+apply or recovery still rejects before transport. Complete, qualified,
+rejected and hosted challenge outcomes retain distinct replies. RPC failure
+does not trigger a direct IDE fallback. Passive `ide status` remains a direct
+endpoint observation.
 
 Launchd invokes the private daemon entry point without the public CLI command graph. The managed readiness environment is required at ingress and then qualified by the existing coordinator. Published-command recovery admits the private daemon form only when the entire plist matches the document generated from the recovered command, including launch behavior and logging. It still admits the earlier `kast broker serve` form for retirement.
 On enable, the login variant of the exact service plist is published only after the service and its private receipt are qualified. It retains the same label and daemon executable and adds the private `--login` argument. At login the daemon verifies that exact agent, retained service receipt and loaded launchd label under the service lock before clearing a prior stop. Explicit disable removes the agent, so login cannot override it. An unknown file blocks lifecycle effects. The legacy bootstrap command remains available to converge an older one-shot entry on the direct service job.
