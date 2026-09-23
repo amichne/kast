@@ -93,6 +93,12 @@ class CodexCommandTest {
         for (command in listOf("bootstrap", "register", "enable", "disable", "stop")) {
             assertTrue(cli.execute(listOf("app-server", command), Path.of("/workspace")) is CliExit.BoundaryRejected)
         }
+        for (operation in listOf("claim", "release")) {
+            assertTrue(
+                cli.execute(listOf("app-server", "control", operation, "thread", "connection"), Path.of("/workspace"))
+                    is CliExit.BoundaryRejected
+            )
+        }
         assertEquals(0, calls)
     }
 

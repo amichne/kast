@@ -16,12 +16,11 @@ IDEA compatibility, and Codex schema qualification retain their existing owners.
 
 ## Enable and attach
 
-Enable persistent integration from the workspace to enroll:
+Persistent installation enables the service. Launching Codex enrolls the current workspace and reconciles the service:
 
 ```sh
-kast app-server enable
-kast app-server status
 kast codex
+kast app-server status
 ```
 
 Enabled integration defaults to the installation-owned endpoint at `state/run/c.sock`
@@ -80,14 +79,10 @@ client-specific RPC envelope is introduced. This launch pattern takes inspiratio
 from [Codapter](https://github.com/kcosr/codapter/tree/429812d8976c317d4333aa51ce5106eb511f6816);
 Kast continues to use the real Codex server and existing tool broker.
 
-```sh
-kast app-server control release THREAD_ID CONNECTION_ID
-kast app-server control claim THREAD_ID CONNECTION_ID
-kast app-server stop
-kast app-server disable
-```
-
-Status exposes bounded connection IDs and task state. A task has one controller;
+The public CLI retains passive `kast app-server status`. Installation and recovery
+use the private `share/kast/libexec/kast-service` executable for enable, disable,
+stop, and explicitly destructive repair. Controller claim and release are no longer
+public shell commands. Status exposes bounded connection IDs and task state. A task has one controller;
 claiming an occupied task conflicts, and handoff during an active turn or pending
 server request fails. An observer must first successfully resume the task.
 
@@ -99,11 +94,11 @@ on disk; disable does not erase execution history.
 
 ## Daemon management
 
-`kast app-server register` registers the current workspace through the running
-coordinator. Start it with `kast app-server enable` first. Registration no longer
-writes the registry from a standalone CLI process. Initial enable/repair retain
-their installation responsibilities. The legacy login bootstrap remains available
-to migrate an older one-shot agent.
+The running coordinator registers a workspace during Codex attachment and
+semantic demand. Registration no longer writes the registry from a standalone
+CLI process. Private enable and repair retain their installation responsibilities.
+The legacy login bootstrap remains available internally to migrate an older
+one-shot agent.
 
 The owned Unix socket serves a versioned, bounded `/kast-management` WebSocket
 route for passive coordinator/session status, workspace registration, and controller
@@ -242,7 +237,7 @@ and verifies staged records before atomically publishing the version marker,
 retains the original journal, and emits bounded migration outcomes without
 identities or argument data. An incomplete migration rejects and retains its
 staging evidence for recovery. When safe ownership recovery cannot converge,
-`kast app-server repair --destructive` explicitly retires the installation's
+private `kast-service repair --destructive` explicitly retires the installation's
 launchd label, deletes only that physical installation's state and workspace
 registry, re-enrolls the current workspace, and starts clean. Symlinks found
 inside the state tree are deleted as links and never followed.
