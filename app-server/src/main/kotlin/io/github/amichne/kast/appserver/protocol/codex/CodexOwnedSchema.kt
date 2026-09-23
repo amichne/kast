@@ -48,3 +48,7 @@ internal enum class CodexOwnedSchema(val fileName: String) {
     TURN_START_PARAMS("TurnStartParams.json"),
     TURN_START_RESPONSE("TurnStartResponse.json"),
 }
+
+/** `thread/rollback` was removed from newer Codex schemas; the pair must remain all-or-none. */
+internal val legacyRollbackSchemas =
+    setOf(CodexOwnedSchema.THREAD_ROLLBACK_PARAMS, CodexOwnedSchema.THREAD_ROLLBACK_RESPONSE)

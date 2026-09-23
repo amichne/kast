@@ -61,7 +61,7 @@ applies.
 | Boundary | Authority and observation |
 | --- | --- |
 | Module direction | Compiler and architecture verification: CLI depends on app-server; app-server has no CLI imports or project dependency. The hosted change path composes its own live mutation adapters. |
-| Codex contract | Installed `codex-cli 0.153.4`; generated experimental JSON schemas. Aggregate digest `sha256:a4e7ee85a1237179f0f8cec1e69dc7085e05e038416f7d8f2a2ccbd780ef2a79`. Each startup regenerates and qualifies schemas. Installation identity and schema/catalog digests are exposed in status. |
+| Codex contract | Installed `codex-cli 0.153.4`; generated experimental JSON schemas. Aggregate digest `sha256:a4e7ee85a1237179f0f8cec1e69dc7085e05e038416f7d8f2a2ccbd780ef2a79`. Each startup regenerates and qualifies schemas. Codex 0.156 omits both legacy `thread/rollback` schemas; Kast admits that exact absence, rejects a partial pair, and forwards unsupported rollback requests unchanged to Codex. Installation identity and schema/catalog digests are exposed in status. |
 | Standard daemon discovery | Stock `codex app-server daemon version` reached the broker in a disposable home and reported CLI and server version `0.153.4`. |
 | Persistent lifecycle | Staged-product acceptance enabled launchd, completed initialize and thread/start via `kast-codex app-server`, closed parent stdio, rediscovered the running service, then disabled it. |
 | Session ownership | Module tests cover reused request IDs, blocked writers, ordered repeated deltas, observer authorization, detached exactly-once execution, pending approval correlation, source loss, and explicit control handoff. These are protocol tests, not desktop UI evidence. |

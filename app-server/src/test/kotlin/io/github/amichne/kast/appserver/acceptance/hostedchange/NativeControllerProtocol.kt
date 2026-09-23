@@ -2,6 +2,7 @@ package io.github.amichne.kast.appserver.acceptance.hostedchange
 
 import io.github.amichne.kast.appserver.protocol.codex.CodexOwnedSchema
 import io.github.amichne.kast.appserver.protocol.codex.CodexProtocolContracts
+import io.github.amichne.kast.appserver.protocol.codex.legacyRollbackSchemas
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlinx.serialization.Serializable
@@ -26,12 +27,14 @@ internal object NativeControllerProtocol {
         val schemaFiles = Files.walk(schemas).use { paths -> paths.filter(Files::isRegularFile).toList() }
         val contracts =
             CodexProtocolContracts.define(
-                    CodexOwnedSchema.entries.associateWith { schema ->
-                        val file =
-                            schemaFiles.singleOrNull { it.fileName.toString() == schema.fileName }
-                                ?: nativeSchemaFileRejected(schema)
-                        Json.parseToJsonElement(Files.readString(file)).jsonObject
-                    }
+                    CodexOwnedSchema.entries
+                        .mapNotNull { schema ->
+                            val matches = schemaFiles.filter { it.fileName.toString() == schema.fileName }
+                            if (matches.isEmpty() && schema in legacyRollbackSchemas) return@mapNotNull null
+                            val file = matches.singleOrNull() ?: nativeSchemaFileRejected(schema)
+                            schema to Json.parseToJsonElement(Files.readString(file)).jsonObject
+                        }
+                        .toMap()
                 )
                 .nativeContracts()
         contracts
