@@ -91,8 +91,9 @@ precede prior-service retirement. Committed installation and service activation 
 separate outcomes: ready, not requested, or pending with a finite child-process
 failure and a resume command. Pending activation does not prevent the shell bootstrap
 from installing the verified IDEA plugin. Saved configuration and installed launchers
-retain the desired state; `kast codex` resumes enrollment and service reconciliation
-without repeating installation. The pending report does not claim service readiness.
+retain the desired state; the private `kast-service enable` action resumes
+service reconciliation without repeating installation. Workspace registration
+is an explicit `kast-service register` action. The pending report does not claim service readiness.
 
 After candidate qualification and recovery preparation, an ordinary upgrade
 admits the prior retirement command and asks the selected daemon for an exact

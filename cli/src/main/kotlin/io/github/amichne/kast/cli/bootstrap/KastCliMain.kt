@@ -1,22 +1,5 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.appserver.DaemonOperationClient
-import io.github.amichne.kast.appserver.DaemonOperationClientFailure
-import io.github.amichne.kast.appserver.DaemonOperationClientRejection
-import io.github.amichne.kast.appserver.DaemonOperationResult
-import io.github.amichne.kast.appserver.InstalledDaemonOperationClient
-import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
-import io.github.amichne.kast.cli.command.CliRequestDocumentInput
-import io.github.amichne.kast.cli.ide.CliRuntimePath
-import io.github.amichne.kast.cli.ide.selectCliRuntimePath
-import io.github.amichne.kast.cli.installation.InstallationCliInspection
-import io.github.amichne.kast.cli.installation.InstallationHandling
-import io.github.amichne.kast.kernel.Refinement
-import java.io.ByteArrayOutputStream
-import java.io.IOException
-import java.nio.ByteBuffer
-import java.nio.charset.CodingErrorAction
-import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 import java.util.ServiceConfigurationError
 import java.util.ServiceLoader
@@ -72,32 +55,7 @@ private sealed interface CliBootstrapFailure {
 
 /** Process entrypoint for the single Kotlin `kast` executable. */
 fun main(args: Array<String>) {
-    val environment = System.getenv()
-    val exit =
-        if (selectCliRuntimePath(args.toList()) == CliRuntimePath.EXISTING_IDE) {
-            io.github.amichne.kast.cli.ide.executeExistingIdeCli(
-                argv = args.toList(),
-                start = Path.of("").toAbsolutePath(),
-                capabilities =
-                    io.github.amichne.kast.cli.ide.ExistingIdeCliCapabilities(
-                        FilesystemCanonicalRootDiscovery,
-                        io.github.amichne.kast.cli.ide.configuredExistingIdeClient(
-                            Path.of(System.getProperty("user.home")),
-                            environment,
-                        ),
-                        configuredDaemonOperationClient(environment),
-                    ),
-                requestInput = CliRequestDocumentInput.Deferred(::readCanonicalRequestInput),
-            )
-        } else
-            when (val installation = InstallationCliInspection.inspect(args.toList(), environment)) {
-                is InstallationHandling.Handled -> installation.exit
-                InstallationHandling.Unrelated ->
-                    when (val inspection = ConfigurationCliInspection.inspect(args.toList(), environment)) {
-                        is ConfigurationInspectionHandling.Handled -> inspection.exit
-                        ConfigurationInspectionHandling.Unrelated -> executeInstalledCommand(args)
-                    }
-            }
+    val exit = privateInstallerCommand(args.toList())
     when (exit) {
         is CliExit.Delegated -> Unit
         is CliExit.Complete -> System.out.println(exit.document.value)
@@ -108,46 +66,13 @@ fun main(args: Array<String>) {
     exitProcess(exit.code)
 }
 
-private fun configuredDaemonOperationClient(environment: Map<String, String>): DaemonOperationClient =
-    DaemonOperationClient { root, call ->
-        when (val installed = installedKastExecutable()) {
-            is Refinement.Refined ->
-                InstalledDaemonOperationClient(
-                        installed.value,
-                        Path.of(System.getProperty("user.home")),
-                        environment,
-                    )
-                    .read(root, call)
-            is Refinement.Rejected ->
-                DaemonOperationResult.Rejected(
-                    DaemonOperationClientRejection.Transport(
-                        when (installed.failure) {
-                            InstalledKastControlProductFailure.CODE_SOURCE_UNAVAILABLE ->
-                                DaemonOperationClientFailure.CODE_SOURCE_UNAVAILABLE
-                            InstalledKastControlProductFailure.CODE_SOURCE_INVALID ->
-                                DaemonOperationClientFailure.CODE_SOURCE_INVALID
-                            InstalledKastControlProductFailure.LIBRARY_DIRECTORY_INVALID ->
-                                DaemonOperationClientFailure.LIBRARY_DIRECTORY_INVALID
-                            InstalledKastControlProductFailure.PRODUCT_ROOT_UNAVAILABLE ->
-                                DaemonOperationClientFailure.PRODUCT_ROOT_UNAVAILABLE
-                            InstalledKastControlProductFailure.RESOURCE_DIRECTORY_UNAVAILABLE ->
-                                DaemonOperationClientFailure.RESOURCE_DIRECTORY_UNAVAILABLE
-                            InstalledKastControlProductFailure.KAST_EXECUTABLE_UNAVAILABLE ->
-                                DaemonOperationClientFailure.KAST_EXECUTABLE_UNAVAILABLE
-                        }
-                    )
-                )
-        }
-    }
+internal fun privateInstallerCommand(args: List<String>): CliExit =
+    if (args == listOf("--version")) executeInstalledCommand(args.toTypedArray())
+    else boundaryExit(CliBoundaryExitStatus.USAGE, "unsupported-private-installer-command")
 
 private fun executeInstalledCommand(args: Array<String>): CliExit =
     when (val bootstrap = loadComposition(args.isEmpty())) {
-        is CliBootstrap.Ready ->
-            bootstrap.cli.execute(
-                args.toList(),
-                Path.of("").toAbsolutePath(),
-                CliRequestDocumentInput.Deferred(::readCanonicalRequestInput),
-            )
+        is CliBootstrap.Ready -> bootstrap.cli.execute(args.toList(), Path.of("").toAbsolutePath())
         is CliBootstrap.Inspected -> bootstrap.exit
         is CliBootstrap.Rejected ->
             boundaryExit(
@@ -155,37 +80,6 @@ private fun executeInstalledCommand(args: Array<String>): CliExit =
                 bootstrap.failure.outputReason(),
             )
     }
-
-private fun readCanonicalRequestInput(): CliRequestDocumentInput {
-    val bytes = ByteArrayOutputStream()
-    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-    try {
-        while (true) {
-            val count = System.`in`.read(buffer)
-            if (count < 0) break
-            if (bytes.size() + count > MAXIMUM_REQUEST_DOCUMENT_BYTES) {
-                return CliRequestDocumentInput.Rejected
-            }
-            bytes.write(buffer, 0, count)
-        }
-    } catch (_: IOException) {
-        return CliRequestDocumentInput.Rejected
-    }
-    if (bytes.size() == 0) return CliRequestDocumentInput.Absent
-    val document =
-        try {
-            StandardCharsets.UTF_8.newDecoder()
-                .onMalformedInput(CodingErrorAction.REPORT)
-                .onUnmappableCharacter(CodingErrorAction.REPORT)
-                .decode(ByteBuffer.wrap(bytes.toByteArray()))
-                .toString()
-        } catch (_: java.nio.charset.CharacterCodingException) {
-            return CliRequestDocumentInput.Rejected
-        }
-    return if (document.isBlank()) CliRequestDocumentInput.Rejected else CliRequestDocumentInput.Provided(document)
-}
-
-private const val MAXIMUM_REQUEST_DOCUMENT_BYTES = CliOperationalLimits.maximumRequestDocumentBytes
 
 /**
  * Proof transition: installed service providers -> `CliBootstrap`.

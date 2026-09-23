@@ -35,16 +35,16 @@ Passing one boundary does not establish another.
 
 ## Installed agent contract
 
-Load `serverProjection` from the executable's `kast --schema` output.
+Admit the hosted tool definitions supplied by the connected Codex App Server
+provider for the enrolled workspace.
 
 | Contract | Version |
 | --- | --- |
-| Server projection | 15 |
-| CLI invocation projection | 4 |
+| Hosted tool catalog | Admitted at thread start |
 
-- Validate the catalog, schemas, policies, and bindings at provider startup.
-- Bind CLI invocations by tool name because several tools share an operation.
-- Invoke the hosted-only `workspace_lifecycle` tool through the connected provider.
+- Validate the catalog, schemas, and policies at provider startup.
+- Bind hosted invocations by tool name because several tools share an operation.
+- Invoke `workspace_lifecycle` through the connected provider.
 - Follow [Harness integration](/agent-harnesses) for the full sequence.
 
 <Note>

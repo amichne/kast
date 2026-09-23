@@ -25,7 +25,7 @@ private enum class RecoveryStage {
 
 @Serializable
 private data class PreparedRecoveryReceipt(
-    val schemaVersion: Int = 1,
+    val schemaVersion: Int = CURRENT_RECOVERY_SCHEMA_VERSION,
     val installation: String,
     val installationIdentity: RecoveryIdentity,
     val links: List<RecoveryLink>,
@@ -46,6 +46,10 @@ private data class RecoveryPlugin(
 )
 
 private const val MAXIMUM_RECOVERY_RECEIPT_BYTES = 65_536
+private const val LEGACY_RECOVERY_SCHEMA_VERSION = 1
+private const val CURRENT_RECOVERY_SCHEMA_VERSION = 2
+private const val LEGACY_RECOVERY_LINK_COUNT = 3
+private const val CURRENT_RECOVERY_LINK_COUNT = 1
 
 sealed interface InstallationRecoveryPreparation {
     data object Prepared : InstallationRecoveryPreparation
@@ -61,12 +65,10 @@ enum class InstallationRecoveryHistory {
 /** Called with the activation lock held, before replacing any launcher. */
 fun prepareInstallationRecovery(
     root: Path,
-    command: Path,
-    codex: Path,
     history: InstallationRecoveryHistory = InstallationRecoveryHistory.RETAIN,
 ): InstallationRecoveryPreparation =
     try {
-        prepareRecoveryFiles(root, command, codex, history)
+        prepareRecoveryFiles(root, history)
         InstallationRecoveryPreparation.Prepared
     } catch (_: java.io.IOException) {
         InstallationRecoveryPreparation.Rejected
@@ -76,7 +78,7 @@ fun prepareInstallationRecovery(
         InstallationRecoveryPreparation.Rejected
     }
 
-private fun prepareRecoveryFiles(root: Path, command: Path, codex: Path, history: InstallationRecoveryHistory) {
+private fun prepareRecoveryFiles(root: Path, history: InstallationRecoveryHistory) {
     val recovery = root.parent.parent.resolve("recovery")
     val bundle = recovery.resolve(root.fileName)
     listOf(recovery, bundle).forEach(::prepareRecoveryDirectory)
@@ -88,7 +90,7 @@ private fun prepareRecoveryFiles(root: Path, command: Path, codex: Path, history
         return
     }
     val document =
-        recoveryReceipt(root, command, codex).let {
+        recoveryReceipt(root).let {
             when (history) {
                 InstallationRecoveryHistory.RETAIN -> it
                 InstallationRecoveryHistory.REPLACE -> it.copy(priorInstallation = null)
@@ -117,7 +119,7 @@ private fun validateExistingReceipt(root: Path, receipt: Path): PreparedRecovery
     val identityMatches =
         existing.installation == root.toString() && existing.installationIdentity == observeRecoveryIdentity(root)
     if (
-        existing.schemaVersion != 1 ||
+        !validRecoveryLayout(existing) ||
             !identityMatches ||
             existing.stage !in setOf(RecoveryStage.PREPARED, RecoveryStage.ACTIVE)
     ) {
@@ -126,6 +128,13 @@ private fun validateExistingReceipt(root: Path, receipt: Path): PreparedRecovery
     return existing
 }
 
+private fun validRecoveryLayout(receipt: PreparedRecoveryReceipt): Boolean =
+    when (receipt.schemaVersion) {
+        LEGACY_RECOVERY_SCHEMA_VERSION -> receipt.links.size == LEGACY_RECOVERY_LINK_COUNT
+        CURRENT_RECOVERY_SCHEMA_VERSION -> receipt.links.size == CURRENT_RECOVERY_LINK_COUNT
+        else -> false
+    }
+
 private fun recoveryLinkTarget(path: Path): String? =
     when {
         Files.isSymbolicLink(path) -> Files.readSymbolicLink(path).toString()
@@ -133,27 +142,14 @@ private fun recoveryLinkTarget(path: Path): String? =
         else -> throw java.io.IOException("recovery anchor rejected")
     }
 
-private fun recoveryReceipt(root: Path, command: Path, codex: Path): PreparedRecoveryReceipt {
+private fun recoveryReceipt(root: Path): PreparedRecoveryReceipt {
     val outer = root.parent.parent
     val current = outer.resolve("current")
     val prior = recoveryLinkTarget(current)
     return PreparedRecoveryReceipt(
         installation = root.toString(),
         installationIdentity = observeRecoveryIdentity(root),
-        links =
-            listOf(
-                RecoveryLink(current.toString(), "versions/${root.fileName}", prior),
-                RecoveryLink(
-                    command.toString(),
-                    current.resolve("bin/kast-complete").toString(),
-                    recoveryLinkTarget(command),
-                ),
-                RecoveryLink(
-                    codex.toString(),
-                    current.resolve("bin/kast-codex-complete").toString(),
-                    recoveryLinkTarget(codex),
-                ),
-            ),
+        links = listOf(RecoveryLink(current.toString(), "versions/${root.fileName}", prior)),
         priorInstallation = prior?.let { outer.resolve(it).toString() },
     )
 }

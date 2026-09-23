@@ -48,7 +48,7 @@ class InstallerEntrypointTest(unittest.TestCase):
         control_name = f"kast-control-v{version}-macos-aarch64.tar.gz"
         control = assets / control_name
         executable = b"#!/bin/sh\nprintf 'profile=%s mode=%s force=%s\\n' \"$KAST_INSTALL_PROFILE\" \"$KAST_INSTALL_MODE\" \"$KAST_INSTALL_FORCE\" >&2\n"
-        info = tarfile.TarInfo("bin/kast")
+        info = tarfile.TarInfo("share/kast/libexec/kast-service")
         info.mode = 0o755
         info.size = len(executable)
         with tarfile.open(control, "w:gz") as archive:
@@ -120,51 +120,17 @@ class InstallerEntrypointTest(unittest.TestCase):
         self.assertIn("Usage:", result.stdout)
         self.assertNotIn("--clean-collisions", result.stdout)
 
-    def test_noninteractive_collision_fails_closed_at_selected_command_directory(self):
-        # Budget: one private tree and Bash built-ins only on this regular-file branch.
-        # PATH sentinels record forbidden effects; this is not an OS security sandbox.
-        with tempfile.TemporaryDirectory(prefix="kast-installer-collision-") as directory:
-            root = Path(directory).resolve()
-            commands = root / ".local/bin"
-            commands.mkdir(parents=True)
-            collision = commands / "kast"
-            foreign_bytes = b"foreign command\n"
-            collision.write_bytes(foreign_bytes)
-            tools = root / "path"
-            tools.mkdir()
-            transcript = root / "forbidden-commands"
-            for name in ('curl', 'java', 'launchctl', 'open', 'shasum', 'awk', 'sed', 'find',
-                         'python3', 'cp', 'mktemp', 'uname', 'readlink', 'rm'):
-                sentinel = tools / name
-                sentinel.write_text(f'#!{BASH}\n'
-                    f'printf "%s\\n" {shlex.quote(name)} >> {shlex.quote(str(transcript))}\nexit 97\n')
-                sentinel.chmod(0o700)
-            environment = {"HOME": str(root), "PATH": str(tools), "NO_COLOR": "1"}
+    def test_unrelated_command_does_not_block_installation_plan(self):
+        with tempfile.TemporaryDirectory(prefix="kast-installer-foreign-command-") as directory:
+            idea, _, environment = self.installer_fixture(directory)
+            foreign = Path(directory) / "bin/kast"
+            foreign.write_bytes(b"foreign command\n")
             result = subprocess.run(
-                [
-                    str(BASH),
-                    "-c",
-                    INSTALLER.read_text(),
-                    "--",
-                    "--version",
-                    "1.2.3",
-                ],
-                cwd=root,
-                env=environment,
-                stdin=subprocess.DEVNULL,
-                text=True,
-                capture_output=True,
-                timeout=10,
+                ["bash", str(INSTALLER), "--idea-home", str(idea), "--dry-run"],
+                cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
             )
-            self.assertFalse(transcript.exists(), transcript.read_text() if transcript.exists() else "")
-            self.assertEqual(1, result.returncode, result.stderr)
-            self.assertIn(str(collision), result.stderr)
-            self.assertIn("--force", result.stderr)
-            self.assertIn("command collisions require --force", result.stderr)
-            self.assertEqual(foreign_bytes, collision.read_bytes())
-            self.assertFalse((root / "custom data").exists())
-            self.assertEqual({root / ".local", tools}, set(root.iterdir()))
-            self.assertEqual([collision], list(commands.iterdir()))
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertEqual(b"foreign command\n", foreign.read_bytes())
 
     def test_install_enables_the_complete_suite_without_prompting(self):
         with tempfile.TemporaryDirectory(prefix="kast-installer-entrypoint-") as directory:
@@ -206,6 +172,29 @@ class InstallerEntrypointTest(unittest.TestCase):
         self.assertIn("IntelliJ IDEA 2026.2.1 (build 262.1234)", result.stderr)
         self.assertIn("matching IDEA 262 plugin", result.stderr)
         self.assertNotIn("launchd=", result.stderr)
+
+    def test_uninstall_uses_selected_private_lifecycle_control(self):
+        with tempfile.TemporaryDirectory(prefix="kast-installer-uninstall-") as directory:
+            root = Path(directory)
+            install = root / "data/kast"
+            selected = install / "versions/release"
+            control = selected / "share/kast/installation-lifecycle.py"
+            control.parent.mkdir(parents=True)
+            control.write_text("import json,sys\nprint(json.dumps(sys.argv[1:]))\n")
+            (install / "current").symlink_to(selected)
+            environment = {
+                "HOME": str(root), "PATH": "/usr/bin:/bin", "NO_COLOR": "1",
+                "XDG_DATA_HOME": str(root / "data"),
+            }
+            result = subprocess.run(
+                ["bash", str(INSTALLER), "uninstall", "--dry-run"],
+                cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
+            )
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertEqual(
+                ["--installation", str(selected.resolve()), "remove", "--dry-run", "--json"],
+                json.loads(result.stdout),
+            )
 
 
 if __name__ == "__main__":

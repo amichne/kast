@@ -34,8 +34,6 @@ code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonManagementClient.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/DaemonOperationProtocol.kt
     symbols: [DaemonOperationProtocol, DaemonOperationSelection]
-  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/DaemonOperation.kt
-    symbols: [DaemonOperation]
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonOperationClient.kt
     symbols: [InstalledDaemonOperationClient]
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonUpgrade.kt
@@ -107,7 +105,7 @@ The plugin archive contains the semantic contracts, services, IntelliJ adapters 
 
 `HostedResponse` retains the original complete, qualified or rejected outcome alongside its encoded document. Encoding and response-size failures retain the original semantic result. The endpoint observer reports semantic classification rather than treating every written frame as completion. [Hosted queries](../flows/hosted-query.md) describes lifetime and cancellation.
 
-The CLI admits local metadata and broker configuration separately from its existing-IDE semantic route. All canonical reads, public intent tools and supported changes use the plugin. A missing host rejects. Bare `kast` reports the product version, existing-IDE authority and passive root discovery; `kast ide status` observes the project endpoint. Retired `start` and `stop` commands cannot launch a worker.
+The hosted provider admits public intent tools and supported changes through the existing IDEA plugin. A missing host rejects. The private installed `kast` executable retains product-version inspection for release identity; former semantic CLI routes reject.
 
 App Server owns persistent sessions, the invocation journal, controller approvals, provider qualification and workspace lanes. `CoordinatorControl` provides bounded owner-correlated status with zero worker reservations and rejects retired worker demands. New Codex threads automatically persist an unregistered canonical working directory (or explicit containing root) before binding. Existing containing registrations are reused. Registration preserves closed failures and emits bounded, payload-free startup evidence. Thread-binding validation for resume and invocation remains read-only. Workspace enrollment remains routing data. It grants no importer or worker capability. Provider qualification verifies the packaged catalog against the canonical registry. Installed semantic provider calls first use the shared workspace preparation owner. They then use the App Server-owned IDEA client directly; approval challenges use the same workspace demand before immutable plan loading, preserving canonical request admission, finite failures, root/host binding and operation output validation. Pure request and result projection lives in `protocol:wire`.
 
@@ -227,21 +225,13 @@ remains. A later demand may prepare again. Transport failures never replay the
 semantic request. Preparation rejection retains its finite cause and operation ID
 as known pre-execution failure evidence.
 
-All semantic CLI families now use the versioned `/kast-operation` RPC on the
-same owned Unix socket. The daemon verifies its exact installation target and
-canonical settings root, re-admits public tool schemas or typed canonical
-requests, and passes the prepared operation to this shared demand owner.
-Approved mutations preserve the plan identity and signed assertion; ordinary
-apply or recovery still rejects before transport. Complete, qualified,
-rejected and hosted challenge outcomes retain distinct replies. RPC failure
-does not trigger a direct IDE fallback. Passive `ide status` remains a direct
-endpoint observation.
+Hosted provider calls use the shared workspace demand owner and the existing-IDE client. Approved mutations preserve plan identity and signed assertion. Complete, qualified, rejected and hosted challenge outcomes retain distinct replies. The former `/kast-operation` CLI RPC route is removed.
 
 Launchd invokes the private daemon entry point without the public CLI command graph. The managed readiness environment is required at ingress and then qualified by the existing coordinator. Published-command recovery admits the private daemon form only when the entire plist matches the document generated from the recovered command, including launch behavior and logging. It still admits the earlier `kast broker serve` form for retirement.
 On enable, the login variant of the exact service plist is published only after the service and its private receipt are qualified. It retains the same label and daemon executable and adds the private `--login` argument. At login the daemon verifies that exact agent, retained service receipt and loaded launchd label under the service lock before clearing a prior stop. Explicit disable removes the agent, so login cannot override it. An unknown file blocks lifecycle effects. The legacy bootstrap command remains available to converge an older one-shot entry on the direct service job.
 Installation activation and new-release retirement use a separate private
-service-control entry point. It admits only enable and disable; older installed
-releases retain the admitted public CLI disable path during migration.
+service-control entry point. It admits registration, enable, disable, stop, destructive repair and trust enrollment. Older installed
+releases retain their admitted public CLI disable path only during retirement.
 The legacy login bootstrap is admitted only from an exact generated file under
 owned, physical LaunchAgents directories with private file permissions. Enable,
 disable, and destructive repair reject a foreign or changed agent before service

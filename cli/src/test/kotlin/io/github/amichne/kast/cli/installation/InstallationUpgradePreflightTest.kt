@@ -48,7 +48,7 @@ class InstallationUpgradePreflightTest {
             )
             assertInstanceOf(InstallationOutcome.Rejected::class.java, executeFixtureInstallation(second))
             assertEquals(previous, install.resolve("current").toRealPath())
-            assertEquals(previous.resolve("bin/kast-complete"), commands.resolve("kast").toRealPath())
+            assertFalse(Files.exists(commands.resolve("kast")))
             assertFalse(Files.exists(home.resolve("retirement-observed")), rejectedCommand)
         }
     }

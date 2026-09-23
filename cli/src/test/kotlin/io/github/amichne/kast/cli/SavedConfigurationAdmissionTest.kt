@@ -1,16 +1,8 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.protocol.contract.ChangeIntentDocument
-import io.github.amichne.kast.protocol.contract.ChangePlanRequest
-import io.github.amichne.kast.protocol.contract.ProtocolText
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -19,97 +11,21 @@ import org.junit.jupiter.api.io.TempDir
 
 class SavedConfigurationAdmissionTest {
     @Test
-    fun `bare installed entry point fails closed on every saved configuration rejection`(@TempDir temporary: Path) {
-        val root = workspace(temporary)
-        for ((marker, _) in rejectionMarkers) {
-            val result = launch(temporary, root, "io.github.amichne.kast.cli.KastCliMainKt", marker)
-
-            assertEquals(9, result.exitCode, result.stderr)
-            assertEquals("", result.stdout)
-            val document = Json.parseToJsonElement(result.stderr).jsonObject
-            assertEquals("rejected", document.getValue("status").jsonPrimitive.content)
-            assertEquals("bootstrap", document.getValue("boundary").jsonPrimitive.content)
-            assertEquals(
-                "configuration-saved_configuration_rejected",
-                document.getValue("reason").jsonPrimitive.content,
-            )
-            assertFalse(Files.exists(temporary.resolve("runtime")))
-            assertFalse(Files.exists(temporary.resolve("cache")))
-        }
-    }
-
-    @Test
-    fun `passive IDE status rejects saved configuration before host admission`(@TempDir temporary: Path) {
-        val root = workspace(temporary)
-        for ((marker, _) in rejectionMarkers) {
-            val result =
-                launch(
-                    temporary = temporary,
-                    root = root,
-                    mainClass = "io.github.amichne.kast.cli.KastCliMainKt",
-                    rejection = marker,
-                    arguments = listOf("ide", "status"),
-                )
-
-            assertEquals(4, result.exitCode, result.stderr)
-            assertEquals("", result.stdout)
-            val document = Json.parseToJsonElement(result.stderr).jsonObject
-            assertEquals("ide-configuration-rejected", document.getValue("reason").jsonPrimitive.content)
-            assertFalse(Files.exists(temporary.resolve("runtime")))
-            assertFalse(Files.exists(temporary.resolve("cache")))
-        }
-    }
-
-    @Test
-    fun `canonical read requires daemon without opening a host`(@TempDir temporary: Path) {
-        val result =
-            launch(
-                temporary,
-                workspace(temporary),
-                "io.github.amichne.kast.cli.KastCliMainKt",
-                "unreadable",
+    fun `private installer refuses former semantic and configuration commands`() {
+        for (arguments in
+            listOf(
+                listOf("tool", "search_classes"),
                 listOf("symbol", "discover"),
-                Json.encodeToString(SymbolDiscoverFixture(NameTarget("name", "Example", "symbol", "fuzzy"), 10)),
+                listOf("config", "show"),
+                listOf("codex"),
+            )) {
+            val exit = privateInstallerCommand(arguments)
+            assertEquals(2, exit.code)
+            assertTrue(exit is CliExit.BoundaryRejected)
+            assertTrue(
+                (exit as CliExit.BoundaryRejected).document.value.contains("unsupported-private-installer-command")
             )
-
-        assertEquals(4, result.exitCode, result.stderr)
-        assertEquals("", result.stdout)
-        val document = Json.parseToJsonElement(result.stderr).jsonObject
-        assertEquals("daemon-operation-library-directory-invalid", document.getValue("reason").jsonPrimitive.content)
-        assertFalse(Files.exists(temporary.resolve("runtime")))
-        assertFalse(Files.exists(temporary.resolve("cache")))
-    }
-
-    @Serializable private data class SymbolDiscoverFixture(val target: NameTarget, val limit: Int)
-
-    @Serializable
-    private data class NameTarget(val type: String, val query: String, val kind: String, val match: String)
-
-    @Test
-    fun `hosted planning requires daemon without opening a host`(@TempDir temporary: Path) {
-        val root = workspace(temporary)
-        val request =
-            ChangePlanRequest(
-                ChangeIntentDocument.AddDeclaration(
-                    (ProtocolText.parse("exact:opaque") as Refinement.Refined).value,
-                    (ProtocolText.parse("fun added() = Unit") as Refinement.Refined).value,
-                )
-            )
-        val result =
-            launch(
-                temporary,
-                root,
-                "io.github.amichne.kast.cli.KastCliMainKt",
-                "unreadable",
-                listOf("change", "plan"),
-                Json.encodeToString(request),
-            )
-        assertEquals(4, result.exitCode, result.stderr)
-        assertEquals("", result.stdout)
-        val document = Json.parseToJsonElement(result.stderr).jsonObject
-        assertEquals("daemon-operation-library-directory-invalid", document.getValue("reason").jsonPrimitive.content)
-        assertFalse(Files.exists(temporary.resolve("runtime")))
-        assertFalse(Files.exists(temporary.resolve("cache")))
+        }
     }
 
     @Test

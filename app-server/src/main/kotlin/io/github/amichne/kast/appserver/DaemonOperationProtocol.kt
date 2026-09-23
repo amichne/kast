@@ -23,7 +23,6 @@ import kotlinx.serialization.json.JsonElement
 
 /** One typed semantic operation on the installed daemon's owned Unix socket. */
 internal object DaemonOperationProtocol {
-    const val route = "/kast-operation"
     const val version = 2
     const val maximumRequestBytes = BrokerOperationalLimits.maximumToolArgumentBytes + 4096
     const val maximumResponseBytes = BrokerOperationalLimits.maximumToolResultBytes + 4096

@@ -12,6 +12,8 @@ import io.github.amichne.kast.cli.ide.BrokerTrustRegistrar
 import io.github.amichne.kast.cli.ide.BrokerTrustResult
 import io.github.amichne.kast.cli.ide.BrokerTrustStatus
 import io.github.amichne.kast.cli.ide.FilesystemBrokerTrustRegistrar
+import io.github.amichne.kast.cli.installation.InstallationCliInspection
+import io.github.amichne.kast.cli.installation.InstallationHandling
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
 import kotlin.system.exitProcess
@@ -19,43 +21,28 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 
 /** Private installation control entry point, independent of the public command graph. */
 object KastServiceMain {
     @JvmStatic
     fun main(arguments: Array<String>) {
-        val selection = selectServiceControl(arguments.toList())
-        val outcome =
-            when (selection) {
-                ServiceControlSelection.Rejected ->
-                    ServiceControlOutcome.Rejected(ServiceControlFailureDocument.Arguments)
-                ServiceControlSelection.Trust ->
-                    when (val installed = installedKastExecutable()) {
-                        is Refinement.Rejected ->
-                            ServiceControlOutcome.Rejected(ServiceControlFailureDocument.Product(installed.failure))
-                        is Refinement.Refined ->
-                            executePrivateTrust(
-                                FilesystemBrokerTrustRegistrar(Path.of(System.getProperty("user.home")))
-                            )
-                    }
-                is ServiceControlSelection.Selected ->
-                    when (val installed = installedKastExecutable()) {
-                        is Refinement.Rejected ->
-                            ServiceControlOutcome.Rejected(ServiceControlFailureDocument.Product(installed.failure))
-                        is Refinement.Refined ->
-                            executeServiceControl(
-                                selection.action,
-                                InstalledAppServerManager(
-                                    installed.value,
-                                    Path.of(System.getProperty("user.home")),
-                                    serviceControlEnvironment(installed.value, System.getenv()),
-                                ),
-                                Path.of("").toAbsolutePath(),
-                            )
-                    }
+        if (arguments.firstOrNull() == "install") {
+            val installation = InstallationCliInspection.inspect(listOf("installation") + arguments, System.getenv())
+            val exit = (installation as InstallationHandling.Handled).exit
+            when (exit) {
+                is CliExit.Complete -> println(exit.document.value)
+                is CliExit.Qualified -> println(exit.document.value)
+                is CliExit.OperationRejected -> println(exit.document.value)
+                is CliExit.BoundaryRejected -> System.err.println(exit.document.value)
+                is CliExit.Delegated -> Unit
             }
+            exitProcess(exit.code)
+        }
+        val outcome = runServiceControl(selectServiceControl(arguments.toList()))
         when (outcome) {
             ServiceControlOutcome.Completed -> Unit
+            is ServiceControlOutcome.Registered -> println(outcome.document)
             is ServiceControlOutcome.TrustCompleted ->
                 println(serviceControlJson.encodeToString(ServiceTrustCompletionDocument(outcome.status)))
             is ServiceControlOutcome.Rejected -> {
@@ -66,10 +53,44 @@ object KastServiceMain {
     }
 }
 
+private fun runServiceControl(selection: ServiceControlSelection): ServiceControlOutcome =
+    when (selection) {
+        ServiceControlSelection.Rejected -> ServiceControlOutcome.Rejected(ServiceControlFailureDocument.Arguments)
+        ServiceControlSelection.Trust ->
+            when (val installed = installedKastExecutable()) {
+                is Refinement.Rejected ->
+                    ServiceControlOutcome.Rejected(ServiceControlFailureDocument.Product(installed.failure))
+                is Refinement.Refined ->
+                    executePrivateTrust(FilesystemBrokerTrustRegistrar(Path.of(System.getProperty("user.home"))))
+            }
+        is ServiceControlSelection.Register ->
+            withInstalledManager { executeWorkspaceRegistration(it, selection.workspace) }
+        is ServiceControlSelection.Selected ->
+            withInstalledManager {
+                executeServiceControl(selection.action, it, Path.of("").toAbsolutePath())
+            }
+    }
+
+private fun withInstalledManager(action: (AppServerManager) -> ServiceControlOutcome): ServiceControlOutcome =
+    when (val installed = installedKastExecutable()) {
+        is Refinement.Rejected ->
+            ServiceControlOutcome.Rejected(ServiceControlFailureDocument.Product(installed.failure))
+        is Refinement.Refined ->
+            action(
+                InstalledAppServerManager(
+                    installed.value,
+                    Path.of(System.getProperty("user.home")),
+                    serviceControlEnvironment(installed.value, System.getenv()),
+                )
+            )
+    }
+
 internal sealed interface ServiceControlSelection {
     data class Selected(val action: ServiceControlAction) : ServiceControlSelection
 
     data object Trust : ServiceControlSelection
+
+    data class Register(val workspace: Path) : ServiceControlSelection
 
     data object Rejected : ServiceControlSelection
 }
@@ -81,8 +102,18 @@ internal enum class ServiceControlAction(val managerAction: AppServerAction) {
     STOP(AppServerAction.Stop),
 }
 
-internal fun selectServiceControl(arguments: List<String>): ServiceControlSelection =
-    when (arguments) {
+internal fun selectServiceControl(arguments: List<String>): ServiceControlSelection {
+    if (arguments.size == 2 && arguments.first() == "register") {
+        val workspace =
+            try {
+                Path.of(arguments.last())
+            } catch (_: Exception) {
+                return ServiceControlSelection.Rejected
+            }
+        return if (workspace.isAbsolute) ServiceControlSelection.Register(workspace)
+        else ServiceControlSelection.Rejected
+    }
+    return when (arguments) {
         listOf("enable") -> ServiceControlSelection.Selected(ServiceControlAction.ENABLE)
         listOf("disable") -> ServiceControlSelection.Selected(ServiceControlAction.DISABLE)
         listOf("repair", "--destructive") -> ServiceControlSelection.Selected(ServiceControlAction.REPAIR)
@@ -90,6 +121,7 @@ internal fun selectServiceControl(arguments: List<String>): ServiceControlSelect
         listOf("enroll-trust") -> ServiceControlSelection.Trust
         else -> ServiceControlSelection.Rejected
     }
+}
 
 internal fun executePrivateTrust(registrar: BrokerTrustRegistrar): ServiceControlOutcome =
     when (val enrollment = registrar.enroll()) {
@@ -105,6 +137,8 @@ internal fun serviceControlEnvironment(kast: Path, environment: Map<String, Stri
 
 internal sealed interface ServiceControlOutcome {
     data object Completed : ServiceControlOutcome
+
+    data class Registered(val document: JsonObject) : ServiceControlOutcome
 
     data class TrustCompleted(val status: BrokerTrustStatus) : ServiceControlOutcome
 
@@ -124,6 +158,17 @@ internal fun executeServiceControl(
 ): ServiceControlOutcome =
     when (val result = manager.execute(action.managerAction, workspace)) {
         is AppServerManagementResult.Completed -> ServiceControlOutcome.Completed
+        is AppServerManagementResult.Rejected ->
+            ServiceControlOutcome.Rejected(
+                ServiceControlFailureDocument.Management(result.failure, result.serviceFailure)
+            )
+        is AppServerManagementResult.DaemonRejected ->
+            ServiceControlOutcome.Rejected(ServiceControlFailureDocument.Daemon(result.reason))
+    }
+
+internal fun executeWorkspaceRegistration(manager: AppServerManager, workspace: Path): ServiceControlOutcome =
+    when (val result = manager.execute(AppServerAction.Register, workspace)) {
+        is AppServerManagementResult.Completed -> ServiceControlOutcome.Registered(result.document)
         is AppServerManagementResult.Rejected ->
             ServiceControlOutcome.Rejected(
                 ServiceControlFailureDocument.Management(result.failure, result.serviceFailure)

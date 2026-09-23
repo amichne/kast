@@ -55,7 +55,7 @@ set -e
 python3 - "$fixture/service.stderr" <<'SERVICE'
 import json, sys
 from pathlib import Path
-assert json.loads(Path(sys.argv[1]).read_text()) == {'type': 'arguments'}
+assert json.loads(Path(sys.argv[1]).read_text().splitlines()[-1]) == {'type': 'arguments'}
 SERVICE
 set +e
 env -u JAVA_TOOL_OPTIONS -u _JAVA_OPTIONS -u BROKER_SERVICE_IDENTITY -u BROKER_READINESS_FILE "${command_environment[@]}" "$daemon" unexpected > "$fixture/daemon.stdout" 2> "$fixture/daemon.stderr"
@@ -87,107 +87,51 @@ import json, sys
 from pathlib import Path
 assert json.loads(Path(sys.argv[1]).read_text()) == {'failure': 'READINESS_REJECTED'}
 DAEMON
+set +e
+env "${command_environment[@]}" "$service" register relative > "$fixture/service.stdout" 2> "$fixture/service.stderr"
+service_status=$?
+set -e
+[[ "$service_status" == 64 && ! -s "$fixture/service.stdout" ]] || fail 'private service accepted a relative workspace'
+python3 - "$fixture/service.stderr" <<'SERVICE'
+import json, sys
+from pathlib import Path
+assert json.loads(Path(sys.argv[1]).read_text().splitlines()[-1]) == {'type': 'arguments'}
+SERVICE
 version="$(env "${command_environment[@]}" "$kast" --version)"
 [[ "$version" == "kast "*" (IntelliJ plugin)" ]] || fail "unexpected version: $version"
-schema="$(env "${command_environment[@]}" "$kast" --schema)"
-python3 - "$schema" "$product_root/share/kast/operation-registry.json" <<'PY'
-import json
+python3 - "$product_root/share/kast/provider-catalog.json" <<'CATALOG'
+import json, sys
 from pathlib import Path
-import sys
-
-document = json.loads(sys.argv[1])
-registry = json.loads(Path(sys.argv[2]).read_text())
-assert document["operationRegistry"] == registry, document
-assert document["cliProjection"]["commands"], document
-assert "query run < request.json" not in document["cliProjection"]["commands"], document
-assert "diagnostic check < request.json" not in document["cliProjection"]["commands"], document
-assert document["cliProjection"]["localCommands"] == [
-    "product inspect",
-    "knowledge <query-or-resource>",
-    "codex", "codex desktop",
-    "ide status [--root <path>]",
-    "app-server status",
-], document["cliProjection"]["localCommands"]
-projection = document["serverProjection"]
-bootstrap = projection["hostedBootstrap"]
-invocations = projection["cliInvocations"]["operations"]
-expected_tools = [
-    "workspace_lifecycle",
-    "search_classes",
-    "search_functions",
-    "search_declarations",
-    "query_symbols",
-    "symbol_lookup",
-    "symbol_inspect",
-    "source_read",
-    "read_relations",
-    "traverse_relations",
-    "check_diagnostics",
-    "change_plan",
-    "change_apply",
-    "change_recover",
+catalog = json.loads(Path(sys.argv[1]).read_text())
+assert catalog['schemaVersion'] == 1
+projection = catalog['serverProjection']
+assert projection['namespace'] == 'kast'
+bootstrap = projection['hostedBootstrap']
+assert [tool['name'] for tool in bootstrap['tools']] == [
+    'workspace_lifecycle', 'search_classes', 'search_functions', 'search_declarations',
+    'query_symbols', 'symbol_lookup', 'symbol_inspect', 'source_read', 'read_relations',
+    'traverse_relations', 'check_diagnostics', 'change_plan', 'change_apply', 'change_recover',
 ]
-assert [tool["name"] for tool in bootstrap["tools"]] == expected_tools, [tool["name"] for tool in bootstrap["tools"]]
-assert "compiler-grounded Kotlin source intelligence" in bootstrap["policy"], bootstrap
-assert {tool["operationId"] for tool in bootstrap["tools"]} - {"workspace.lifecycle"} == {
-    invocation["operationId"] for invocation in invocations
-}, projection
-assert all("bindings" not in invocation["invocation"] for invocation in invocations), invocations
-assert all("invocation" not in tool and "cliUsage" not in tool for tool in bootstrap["tools"]), bootstrap
-PY
-
-help="$(env "${command_environment[@]}" "$kast" --help)"
-for command in tool symbol source relation traversal change knowledge codex product ide app-server; do
-  grep -Eq "^  ${command}[[:space:]]" <<<"$help" || fail "missing command: $command"
+assert 'compiler-grounded Kotlin source intelligence' in bootstrap['policy']
+assert 'cliInvocations' not in projection
+CATALOG
+for command in tool ide config codex knowledge; do
+  if env "${command_environment[@]}" "$kast" "$command" > "$fixture/out" 2> "$fixture/err"; then
+    fail "former public command succeeded: $command"
+  fi
 done
-for command in query diagnostic; do
-  ! grep -Eq "^  ${command}[[:space:]]" <<<"$help" || fail "retired command remains: $command"
-done
-for command in start stop status topology index broker workspace; do
-  if grep -Eq "^  ${command}[[:space:]]" <<<"$help"; then fail "retired command is public: $command"; fi
-done
-
-mkdir -p "$fixture/unrelated"
-knowledge_search="$(cd "$fixture/unrelated" && env "${command_environment[@]}" "$kast" knowledge KastCli)"
-knowledge_resource="$(python3 - "$knowledge_search" <<'PY'
+python3 - "$fixture/err" <<'REJECTED'
 import json, sys
-value = json.loads(sys.argv[1])
-assert value['operation'] == 'knowledge' and value['status'] == 'complete', value
-assert value['declarationEvidence'] == 'KOTLIN_PSI_SYNTAX', value
-assert {'KOTLIN_SOURCE_ONLY', 'NO_TYPE_RESOLUTION', 'NO_INHERITED_DOCUMENTATION'} <= set(value['declarationLimitations']), value
-match = next(item for item in value['items'] if item['name'] == 'KastCli')
-assert match['resource'].startswith('modules/') and '/declarations/' in match['resource'], match
-print(match['resource'])
-PY
-)"
-knowledge_card="$(cd "$fixture/unrelated" && env "${command_environment[@]}" "$kast" knowledge "$knowledge_resource")"
-python3 - "$knowledge_card" <<'PY'
-import json, sys
-value = json.loads(sys.argv[1])
-assert value['operation'] == 'knowledge' and value['status'] == 'complete', value
-card = value['document']
-assert card['name'] == 'KastCli' and card['signature'], card
-assert card['sourcePath'].endswith('/KastCli.kt'), card
-assert card['governingGuides'], card
-PY
-
-inspection="$(cd "$fixture/repo" && env "${command_environment[@]}" "$kast")"
-python3 - "$inspection" <<'CHECK'
-import json, sys
-value = json.loads(sys.argv[1])
-assert set(value) == {'operation', 'productVersion', 'semanticAuthority', 'workspace'}
-assert value['operation'] == 'product.inspect' and value['semanticAuthority'] == 'existing_ide'
-assert value['workspace']['type'] == 'resolved'
-CHECK
-for command in start stop; do
-  if (cd "$fixture/repo" && env "${command_environment[@]}" "$kast" "$command" > "$fixture/out" 2> "$fixture/err"); then fail "retired command succeeded: $command"; fi
-done
-if (cd "$fixture/repo" && env "${command_environment[@]}" "$kast" ide status > "$fixture/out" 2> "$fixture/err"); then fail 'missing IDE was treated as ready'; fi
-[[ ! -e "$fixture/home/Library/Application Support/JetBrains" && ! -e "$product_root/runtime-payloads" && ! -e "$product_root/state/cache" ]] || fail 'passive command created IDE or index state'
+from pathlib import Path
+assert json.loads(Path(sys.argv[1]).read_text().splitlines()[-1]) == {
+    'status': 'rejected', 'boundary': 'usage', 'reason': 'unsupported-private-installer-command'
+}
+REJECTED
+[[ ! -e "$fixture/home/Library/Application Support/JetBrains" && ! -e "$product_root/runtime-payloads" && ! -e "$product_root/state/cache" ]] || fail 'private entry point created IDE or index state'
 mkdir -p "$report_directory"
 python3 - "$report_directory/topology-installed-product.json" "$version" <<'REPORT'
 import json, sys
 from pathlib import Path
-Path(sys.argv[1]).write_text(json.dumps({'schemaVersion': 2, 'taskId': 'INSTALLED-PRODUCT', 'outcome': 'COMPLETE', 'product': sys.argv[2], 'semanticAuthority': 'EXISTING_IDE', 'isolatedModules': 'ABSENT', 'missingHost': 'REJECTED', 'knowledge': 'INSTALLED'}, separators=(',', ':')) + '\n')
+Path(sys.argv[1]).write_text(json.dumps({'schemaVersion': 2, 'taskId': 'INSTALLED-PRODUCT', 'outcome': 'COMPLETE', 'product': sys.argv[2], 'semanticAuthority': 'EXISTING_IDE', 'isolatedModules': 'ABSENT', 'missingHost': 'REJECTED', 'knowledge': 'PACKAGED'}, separators=(',', ':')) + '\n')
 REPORT
-printf 'installed-product: plugin metadata, local knowledge, and fail-closed IDE admission passed\n'
+printf 'installed-product: plugin metadata, hosted catalog, and private entry points passed\n'

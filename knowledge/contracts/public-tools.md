@@ -20,8 +20,6 @@ code_sources:
     symbols: [PublicToolContract, AdmittedPublicTool, PublicToolCanonical]
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/DaemonOperationProtocol.kt
     symbols: [DaemonOperationProtocol, DaemonOperationSelection]
-  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/DaemonOperation.kt
-    symbols: [DaemonOperation]
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonOperationClient.kt
     symbols: [InstalledDaemonOperationClient]
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolMapping.kt
@@ -44,11 +42,11 @@ code_sources:
 
 # Public intent tools
 
-The authored tool bundle generates Kotlin request DTOs, concrete normalization defaults, closed presentation identities, full admission schemas, Codex registration schemas and separate Responses strict registrations. `tool query_symbols` and `tool check_diagnostics` are the CLI routes for the canonical query and diagnostic operations; the legacy `query run` and `diagnostic check` routes are retired. Provider admission rejects both historical canonical input routes; supported query and diagnostic presentations retain their separate façade schema identities.
+The authored tool bundle generates Kotlin request DTOs, concrete normalization defaults, closed presentation identities, full admission schemas, Codex registration schemas and separate Responses strict registrations. The hosted `query_symbols` and `check_diagnostics` presentations lower to canonical query and diagnostic operations. The former CLI routes are retired; provider admission retains distinct schemas for these presentations.
 
 `search_classes`, `search_functions`, `search_declarations` and `check_diagnostics` are eager. `query_symbols` is deferred. Ordinary searches fix or admit declaration kinds and request names, locations and signatures; diagnostics lower to the path, semantic diagnostic limit, optional continuation and execution grant request. Required nullable controls normalize before canonical construction. Directory/package scope shapes are exclusive, and duplicates and invalid lexical values reject.
 
-Every `tool` CLI route carries its admitted presentation syntax and closed tool identity to the installed daemon over the bounded `/kast-operation` Unix-socket RPC. The daemon checks installation identity, service generation, lifecycle and exact canonical root, re-admits the selected public schema, and calls its shared existing-IDE preparation owner. Canonical read and change CLI commands use the same route with typed requests; approved mutations retain their plan identity and assertion. The response retains complete, qualified, operation-rejected and hosted challenge documents or a finite boundary failure. An unavailable or rejected daemon call does not fall back to direct IDE access.
+Hosted tools pass admitted requests through the provider and shared workspace preparation owner. The daemon checks exact workspace identity before the existing-IDE operation. Complete, qualified, and rejected results retain their distinct documents. There is no semantic CLI operation RPC or direct-IDE fallback.
 
 The advanced pipeline preserves source meaning, step order, repeated steps and empty projections. Expansion returns related declarations; occurrence-oriented relation facts remain the relation-read contract. Query items and per-item failures expose one scalar `ref`, preserving the issued candidate or exact token verbatim. Named output schemas `CandidateRef`, `ExactSymbolRef`, and query-scoped `ContinuationRef` describe these opaque representations. No token spelling creates authority: existing runtime owners re-admit workspace, lifetime, epoch and compiler evidence.
 

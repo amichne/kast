@@ -96,6 +96,19 @@ private constructor(
     }
 }
 
+/** The hosted catalog remains authoritative when no command is published. */
+internal data class InstalledHostedBinding(val operation: CanonicalOperation, val tool: InstalledHostedToolDocument)
+
+internal fun installedHostedBindings(): List<InstalledHostedBinding> {
+    val definitions = CanonicalAgentToolDefinitions.all
+    val tools = installedHostedBootstrap().tools
+    check(definitions.size == tools.size)
+    return definitions.zip(tools).map { (definition, tool) ->
+        check(definition.name.value == tool.name)
+        InstalledHostedBinding(definition.operation.operation, tool)
+    }
+}
+
 /** Canonical hosted contracts are independent of executable command metadata. */
 internal fun installedHostedBootstrap(): InstalledHostedBootstrapDocument {
     val tools = installedServerTools.associateBy(InstalledServerTool::operation)

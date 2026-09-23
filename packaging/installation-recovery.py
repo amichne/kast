@@ -240,23 +240,25 @@ def prepare(root, bin_directory, plugin_root=None):
 
 
 def validate(root, receipt):
-    if receipt.schemaVersion != 1 or receipt.installation != str(root) or receipt.installationIdentity != Identity.observe(root):
+    if receipt.schemaVersion not in (1, 2) or receipt.installation != str(root) or receipt.installationIdentity != Identity.observe(root):
         raise Rejected(Failure.RECEIPT)
     outer, bundle = location(root)
     physical(bundle.parent)
     physical(bundle)
-    if len(receipt.links) != 3:
+    if len(receipt.links) != (3 if receipt.schemaVersion == 1 else 1):
         raise Rejected(Failure.RECEIPT)
-    current, command, codex = receipt.links
+    current = receipt.links[0]
     if current.path != str(outer / 'current') or current.target != 'versions/' + root.name:
         raise Rejected(Failure.RECEIPT)
-    for link, name in ((command, 'kast'), (codex, 'kast-codex')):
-        path = Path(link.path)
-        physical(path.parent)
-        if path.name != name or link.target != str(outer / 'current/bin' / (name + '-complete')):
+    if receipt.schemaVersion == 1:
+        command, codex = receipt.links[1:]
+        for link, name in ((command, 'kast'), (codex, 'kast-codex')):
+            path = Path(link.path)
+            physical(path.parent)
+            if path.name != name or link.target != str(outer / 'current/bin' / (name + '-complete')):
+                raise Rejected(Failure.RECEIPT)
+        if Path(command.path).parent != Path(codex.path).parent:
             raise Rejected(Failure.RECEIPT)
-    if Path(command.path).parent != Path(codex.path).parent:
-        raise Rejected(Failure.RECEIPT)
     if receipt.plugin is not None:
         plugin = receipt.plugin
         destination = Path(plugin.destination)

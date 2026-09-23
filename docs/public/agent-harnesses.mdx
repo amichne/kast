@@ -22,31 +22,22 @@ icon: "bot"
 keywords: ["agent harness", "serverProjection", "query", "tool schemas"]
 ---
 
-A custom harness must load its contract from the Kast executable it invokes.
+A custom harness connects through the persistent Codex App Server broker and
+uses the hosted tool definitions admitted for its enrolled workspace.
 
 <Note>
-  For the included integration, run `kast codex` from the repository root and
-  continue with [Search declarations](/search).
+  Register the repository with the private service control described in
+  [Install and connect](/start), then continue with [Search declarations](/search).
 </Note>
 
 ## Bind the catalog once at startup
 
 <Steps>
-  <Step title="Admit the installed projection">
-    Run `kast --schema` and consume `serverProjection`.
-
-    - Require server projection version 15.
-    - Require CLI invocation version 4.
-    - Reject missing, malformed, unsupported, or contradictory data.
-    - Validate the complete contract instead of trusting version numbers alone.
-  </Step>
-  <Step title="Join by tool name">
-    Match `hostedBootstrap.tools` with `cliInvocations.operations` by `toolName`.
-
-    Require exactly one binding for each CLI-invokable tool and verify its canonical
-    operation ID. `workspace_lifecycle` is hosted-only and has no CLI binding.
-
-    Multiple search tools share `query.run`, so operation identity is insufficient.
+  <Step title="Admit the hosted catalog">
+    Connect to the broker through a compatible Codex App Server client. Admit
+    the tool definitions supplied at thread start, including their names,
+    schemas, policies, and effect classifications. Reject a missing or
+    contradictory definition.
   </Step>
   <Step title="Register the complete tool definition">
     Preserve every declared field:
@@ -56,14 +47,10 @@ A custom harness must load its contract from the Kast executable it invokes.
     - effect and approval policy
     - deferred-loading hint and execution budget
 
-    Invoke CLI-bound tools with the admitted argument vector and repository root.
-    Invoke hosted-only tools through a connected provider session.
-
-    Never interpolate tool input into a shell command.
+    Invoke tools through the connected provider session. Do not translate tool
+    calls into shell commands.
   </Step>
   <Step title="Validate and return the whole result">
-    Send one JSON input on stdin.
-
     Admit output against the selected tool's schema and preserve both result layers.
 
     Return semantic status, payload, qualification, item failures, and unchanged references.
@@ -72,7 +59,7 @@ A custom harness must load its contract from the Kast executable it invokes.
   </Step>
 </Steps>
 
-Requalify whenever the provider starts or the executable changes.
+Requalify whenever the provider starts or the installed release changes.
 
 ## Choose what the agent sees
 
@@ -117,12 +104,13 @@ Never render `applied_unverified` or `recovery_required` as verified success.
 
 <AccordionGroup>
   <Accordion title="Use the complete suite">
-    Every installation exposes the complete catalog from `kast --schema`, including
-    raw symbol tools and workspace lifecycle operations. Mutation approval remains required.
+    The hosted catalog includes raw symbol tools and workspace lifecycle
+    operations. Mutation approval remains required.
 
     `KAST_APP_SERVER_TOOLS` and `KAST_ENABLE_APP_SERVER` are retired. Remove them
     from saved configuration and the launch environment; they reject startup.
-    Use `kast app-server stop` or `disable` for explicit service lifecycle control.
+    Use the private `kast-service stop` or `disable` entry point for explicit
+    service lifecycle control.
   </Accordion>
   <Accordion title="Find the configuration used by a launch">
     The installer saves App Server settings in the selected release's
@@ -133,17 +121,17 @@ Never render `applied_unverified` or `recovery_required` as verified success.
 
     - Process values override saved values.
     - Fresh installations materialize defaults such as `KAST_DEBUG=0`.
-    - `kast app-server status` reports configuration and service-log paths.
+    - The selected installation stores service logs under its managed state root.
     - `KAST_DEBUG=1` also streams bounded launch diagnostics to stderr.
   </Accordion>
   <Accordion title="Migrate an older query integration">
-    Recreate persisted catalogs with the matched executable and broker.
+    Recreate persisted catalogs through the matched hosted provider.
 
     - `kast.query` is not an alias in the new agent catalog.
     - `kast.diagnostic_check` is not an alias in the new agent catalog.
     - Use the intent tools for new registrations.
-    - Replace retired `kast query run` with `kast tool query_symbols` or a `search_*` tool.
-    - Replace retired `kast diagnostic check` with `kast tool check_diagnostics`.
+    - Replace former CLI calls with the matching hosted tool, such as
+      `query_symbols`, `search_classes`, or `check_diagnostics`.
   </Accordion>
 </AccordionGroup>
 

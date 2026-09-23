@@ -24,7 +24,6 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/configuration/InstalledConfigurationSchema.kt
     symbols: [InstalledConfigurationSchema]
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/configuration/ConfigurationInspection.kt
-  - path: cli/src/test/kotlin/io/github/amichne/kast/cli/ConfigurationInspectionTest.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/configuration/SavedConfigurationIngress.kt
     symbols: [SavedConfigurationIngress]
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt
@@ -37,7 +36,7 @@ code_sources:
 
 # Installation configuration
 
-The Kotlin catalogue owns typed keys, value parsing, defaults, and consuming component ownership. Installed-runtime composition admits saved configuration, then projects it to runtime owners instead of reading it ambiently throughout the system. Semantic CLI commands select the daemon RPC before installed composition. The daemon admits its installed configuration and exact workspace before using the existing-IDE socket; the CLI retains a direct socket only for passive `ide status`. Invalid configuration rejects without starting a worker. The IDE separately retains validated JVM/environment read limits for its project-service lifetime. Process-boundary checks cover both daemon-demand failure and passive direct-status rejection without creating runtime/cache directories.
+The Kotlin catalogue owns typed keys, value parsing, defaults, and consuming component ownership. Installed-runtime composition admits saved configuration, then projects it to runtime owners instead of reading it ambiently throughout the system. The daemon admits its installed configuration and exact workspace before using the existing-IDE socket. Former CLI semantic and configuration commands are rejected at the private executable ingress. Invalid configuration rejects without starting a worker. The IDE separately retains validated JVM/environment read limits for its project-service lifetime. Process-boundary checks cover daemon-demand failure and rejected former commands without creating runtime/cache directories.
 
 Two checked artifacts enforce the boundary: [configuration-schema.json](../../packaging/configuration-schema.json) describes the external document and [configuration-ingress.json](../../build-policy/configuration-ingress.json) declares permitted ingress owners. Root verification rejects undeclared ambient reads.
 
@@ -61,10 +60,6 @@ desired state when post-install activation is pending.
 
 See [distribution](../modules/distribution.md).
 
-`kast config --help` (or `-h`) lists schema, show, explain and validate before
-loading configuration. Help remains available when saved or process configuration
-is invalid; it starts no runtime and writes its text to stdout.
-
 The `KAST_READ_*` declarations retain parameter identity, admitted values and provenance across model/epoch capture, semantic budgets, native collection, source paging, diagnostic scope enumeration, transport and provider execution. [Configuration instructions](../../docs/hosted-read-configuration.md) explain activation and paired bounds. Client exchange time strictly exceeds host connection time, and each provider invocation deadline strictly exceeds client exchange time; equality rejects with `InconsistentBounds`. Semantic configuration may equal host query configuration because semantic admission reserves completion time. Default request diagnostics include the effective policy.
 
 The fixed `broker.kast.schema.maximum_bytes` declaration is 1 MiB, aligned with
@@ -83,7 +78,7 @@ and connection limits. Refresh the snapshot from
 `:cli:generateConfigurationCatalogue`; `verifyConfigurationIngress` requires
 byte-for-byte agreement with that owner-generated output.
 
-Bare installed CLI composition fails closed on rejected saved configuration. Its passive product response identifies `existing_ide` authority and root discovery rather than inventing a worker/bootstrap observation. Broker configuration identity remains owner-correlated while coordinator status admits zero workers.
+Broker configuration identity remains owner-correlated while coordinator status admits zero workers. The private executable admits only product version inspection; former semantic and configuration commands reject.
 
 The default host query limit is 4,000 ms. At semantic entry the host derives smaller positive semantic and diagnostic-scope allowances from remaining request time, preserving the configured policy separately in diagnostics. See the deadline admission rules in the read configuration guide.
 
@@ -122,4 +117,4 @@ complete payload. The public installer always selects persistent. The checkout
 entrypoint derives the profile from its required session or persistent argument.
 
 The private daemon entry point is a declared raw-environment ingress owner. It checks managed readiness inputs and the saved-configuration rejection marker before invoking the existing coordinator configuration admission. Its generated launcher uses the existing derived `KAST_OPTS` JVM boundary; it adds no saved configuration setting.
-The private service-control entry point is also a declared raw-environment ingress owner. It selects the installed release's saved configuration only when no selector was supplied, then delegates enable or disable to the existing service manager.
+The private service-control entry point is also a declared raw-environment ingress owner. It selects the installed release's saved configuration only when no selector was supplied, then delegates registration, enable, disable, stop, repair, or trust enrollment to the existing owners.

@@ -159,7 +159,7 @@ private data class VerifiedInstallationPlan(
                     if (request.force == InstallationSwitch.ENABLED) "reset-installation-state-and-ownership"
                     else "retain-workspace-registry",
                     "replace-current-link",
-                    "replace-command-links",
+                    "retire-owned-command-links",
                 ) +
                     when (activation) {
                         InstallationActivation.Ready -> listOf("enable-app-server")
@@ -259,10 +259,7 @@ internal object InstallationWorkflow {
     }
 
     private fun apply(plan: VerifiedInstallationPlan, upgrades: PriorDaemonUpgradeGateway): InstallationOutcome {
-        if (
-            !prepareOwnedDirectory(plan.request.installRoot.value) ||
-                !prepareOwnedDirectory(plan.request.binDirectory.value)
-        ) {
+        if (!prepareOwnedDirectory(plan.request.installRoot.value)) {
             return InstallationOutcome.Rejected(InstallationFailure.INSTALLATION_ROOT_REJECTED)
         }
         if (!prepareOwnedDirectory(plan.versionsRoot)) {
@@ -334,15 +331,9 @@ internal object InstallationWorkflow {
                         is PriorSelection.Rejected ->
                             return InstallationOutcome.Rejected(InstallationFailure.PRIOR_SELECTION_REJECTED)
                     }
-                if (plan.request.force == InstallationSwitch.ENABLED) {
-                    removeCommandCollision(plan.commandLink, plan.currentLink.resolve("bin/kast-complete"))
-                    removeCommandCollision(plan.codexCommandLink, plan.currentLink.resolve("bin/kast-codex-complete"))
-                }
                 when (
                     prepareInstallationRecovery(
                         plan.targetRoot,
-                        plan.commandLink,
-                        plan.codexCommandLink,
                         if (plan.request.force == InstallationSwitch.ENABLED)
                             io.github.amichne.kast.distribution.managed.InstallationRecoveryHistory.REPLACE
                         else io.github.amichne.kast.distribution.managed.InstallationRecoveryHistory.RETAIN,
@@ -581,18 +572,6 @@ internal object InstallationWorkflow {
         return listOf(
             ExternalAnchor("current", plan.currentLink.toString(), expectedLinkTarget = currentTarget),
             ExternalAnchor(
-                "command",
-                plan.commandLink.toString(),
-                expectedLinkTarget = plan.currentLink.resolve("bin/kast-complete").toString(),
-                requiresCurrentTarget = currentTarget,
-            ),
-            ExternalAnchor(
-                "codex-command",
-                plan.codexCommandLink.toString(),
-                expectedLinkTarget = plan.currentLink.resolve("bin/kast-codex-complete").toString(),
-                requiresCurrentTarget = currentTarget,
-            ),
-            ExternalAnchor(
                 "login",
                 plan.request.home.value.resolve("Library/LaunchAgents/$serviceLabel.login.plist").toString(),
                 expectedExecutable = plan.targetRoot.resolve("share/kast/libexec/kast-daemon").toString(),
@@ -693,50 +672,28 @@ internal object InstallationWorkflow {
 
     private fun activate(plan: VerifiedInstallationPlan): ActivationResult {
         val priorCurrent = linkTarget(plan.currentLink)
-        val priorCommand = commandLink(plan, plan.commandLink, plan.currentLink.resolve("bin/kast-complete"))
-        val priorCodex = commandLink(plan, plan.codexCommandLink, plan.currentLink.resolve("bin/kast-codex-complete"))
-        if (
-            priorCurrent is LinkObservation.Rejected ||
-                priorCommand is LinkObservation.Rejected ||
-                priorCodex is LinkObservation.Rejected
-        ) {
-            return ActivationResult.Rejected
-        }
+        val priorCommand = managedCommandLink(plan.commandLink, plan.currentLink.resolve("bin/kast-complete"))
+        val priorCodex = managedCommandLink(plan.codexCommandLink, plan.currentLink.resolve("bin/kast-codex-complete"))
+        if (priorCurrent is LinkObservation.Rejected) return ActivationResult.Rejected
         return try {
-            replaceLink(plan.currentLink, Path.of("versions/${plan.targetRoot.fileName}"))
-            replaceLink(plan.commandLink, plan.currentLink.resolve("bin/kast-complete"))
-            replaceLink(plan.codexCommandLink, plan.currentLink.resolve("bin/kast-codex-complete"))
-            if (
-                executeInstallationChild(
-                    InstallationChildStage.COMMAND_QUALIFICATION,
-                    listOf(plan.commandLink.toString(), "--version"),
-                    mapOf(
-                        "HOME" to plan.request.home.value.toString(),
-                        "PATH" to (System.getenv("PATH") ?: "/usr/bin:/bin"),
-                    ),
-                ) != InstallationChildOutcome.COMPLETED
+            retireOwnedCommandLink(plan.commandLink, plan.currentLink.resolve("bin/kast-complete"), priorCommand)
+            retireOwnedCommandLink(
+                plan.codexCommandLink,
+                plan.currentLink.resolve("bin/kast-codex-complete"),
+                priorCodex,
             )
-                throw IOException("installed command qualification rejected")
+            replaceLink(plan.currentLink, Path.of("versions/${plan.targetRoot.fileName}"))
             ActivationResult.Complete
         } catch (_: IOException) {
             val restored =
                 listOf(
                         restoreLink(plan.currentLink, priorCurrent),
-                        restoreLink(plan.commandLink, priorCommand),
-                        restoreLink(plan.codexCommandLink, priorCodex),
+                        restoreRetiredCommandLink(plan.commandLink, priorCommand),
+                        restoreRetiredCommandLink(plan.codexCommandLink, priorCodex),
                     )
                     .all { it == LinkRestoration.RESTORED }
             if (restored) ActivationResult.Rejected else ActivationResult.RecoveryRequired
         }
-    }
-
-    private fun commandLink(plan: VerifiedInstallationPlan, path: Path, expected: Path): LinkObservation {
-        val observed = managedCommandLink(path, expected)
-        if (observed != LinkObservation.Rejected || plan.request.force == InstallationSwitch.DISABLED) {
-            return observed
-        }
-        Files.delete(path)
-        return LinkObservation.Absent
     }
 
     private fun enableAppServer(plan: VerifiedInstallationPlan): InstallationChildOutcome =
@@ -955,9 +912,16 @@ private fun managedCommandLink(path: Path, expected: Path): LinkObservation =
         LinkObservation.Rejected -> observed
     }
 
-private fun removeCommandCollision(path: Path, expected: Path) {
-    if (managedCommandLink(path, expected) == LinkObservation.Rejected) Files.delete(path)
+private fun retireOwnedCommandLink(path: Path, expected: Path, prior: LinkObservation) {
+    if (prior !is LinkObservation.Present) return
+    if (managedCommandLink(path, expected) != prior) throw IOException("command ownership changed")
+    Files.delete(path)
 }
+
+private fun restoreRetiredCommandLink(path: Path, prior: LinkObservation): LinkRestoration =
+    if (prior is LinkObservation.Present) {
+        if (Files.exists(path, LinkOption.NOFOLLOW_LINKS)) LinkRestoration.REJECTED else restoreLink(path, prior)
+    } else LinkRestoration.RESTORED
 
 private fun replaceLink(path: Path, target: Path) {
     Files.createDirectories(path.parent)

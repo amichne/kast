@@ -47,7 +47,7 @@ control_name="kast-control-v${version}-macos-aarch64.tar.gz"
 idea_build="$(sed -nE 's/^ide-host-build = "([^"]+)"/\1/p' gradle/libs.versions.toml)"
 [[ "${idea_build}" =~ ^[0-9]+(\.[0-9]+)+$ ]] || fail "IDEA host build is invalid"
 plugin_name="kast-ide-hosted-v${version}-idea-${idea_build%%.*}.zip"
-schema_name="kast-cli-schema-v${version}.json"
+catalog_name="kast-hosted-catalog-v${version}.json"
 knowledge_name="kast-module-knowledge-v${version}.json"
 sbom_name="kast-sbom-v${version}.cdx.json"
 control_source="${repository_root}/build/distributions/${control_name}"
@@ -60,13 +60,20 @@ output_directory="${repository_root}/build/release/v${version}"
 mkdir -p "${output_directory}"
 cp "${knowledge_source}" "${output_directory}/${knowledge_name}"
 
-schema_control="$(mktemp -d "${TMPDIR:-/tmp}/kast-release-schema.XXXXXX")"
-cleanup() { rm -rf -- "${schema_control}"; }
-trap cleanup EXIT
-tar -xzf "${control_source}" -C "${schema_control}"
-mkdir -p "${schema_control}/home"
-HOME="${schema_control}/home" JAVA_OPTS="-Duser.home=${schema_control}/home" \
-  "${schema_control}/bin/kast" --schema >"${output_directory}/${schema_name}"
+tar -xOzf "${control_source}" share/kast/provider-catalog.json >"${output_directory}/${catalog_name}"
+python3 - "${output_directory}/${catalog_name}" <<'PYTHON'
+import json
+from pathlib import Path
+import sys
+
+catalog = json.loads(Path(sys.argv[1]).read_text())
+projection = catalog.get("serverProjection")
+hosted = projection.get("hostedBootstrap") if isinstance(projection, dict) else None
+if (catalog.get("schemaVersion") != 1 or not isinstance(projection, dict)
+        or projection.get("namespace") != "kast" or not isinstance(hosted, dict)
+        or not hosted.get("tools") or "cliInvocations" in projection):
+    raise SystemExit("build-release-assets: hosted catalog rejected")
+PYTHON
 
 python3 distribution/release/generate_sbom.py \
   --source-root "${repository_root}" --assets-directory "${output_directory}" \
@@ -74,7 +81,7 @@ python3 distribution/release/generate_sbom.py \
 
 (
   cd "${output_directory}"
-  for asset in "${control_name}" "${plugin_name}" "${schema_name}" "${knowledge_name}" "${sbom_name}"; do
+  for asset in "${control_name}" "${plugin_name}" "${catalog_name}" "${knowledge_name}" "${sbom_name}"; do
     [[ -f "${asset}" ]] || fail "missing release asset: ${asset}"
     shasum -a 256 "${asset}" >"${asset}.sha256"
   done

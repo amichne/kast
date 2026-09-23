@@ -90,7 +90,6 @@ if [[ $mode == session ]]; then
       printf 'export %s=%s\n' "$key" "$(quote "${!key}")"
     done
     printf 'export KAST_SESSION_ROOT=%s\n' "$(quote "$session_root")"
-    printf 'case ":${PATH:-}:" in *":$KAST_BIN_DIR:"*) ;; *) export PATH="$KAST_BIN_DIR${PATH:+:$PATH}" ;; esac\n'
   } > "$activation"
   printf 'kast-install: source %s to activate; persistent services are disabled\n' "$activation" >&2
   printf '%s\n' "$activation"

@@ -49,7 +49,7 @@ Implements installer support, installed-product acceptance, configuration ingres
 - [run-installed-product.py](run-installed-product.py) - installed-product runner.
 - [install-local.sh](install-local.sh) and [install-checkout.sh](install-checkout.sh) - packaging shell boundaries.
 - [test-installer-entrypoint.py](test-installer-entrypoint.py) - public remote-installer command contract.
-- [test-installed-product.sh](test-installed-product.sh) - installed product, private executable, and local knowledge acceptance entry.
+- [test-installed-product.sh](test-installed-product.sh) - installed product, hosted catalog, and private entry-point acceptance.
 - [run-hosted-change-acceptance.py](run-hosted-change-acceptance.py) - staged broker, CLI, and plugin change workflow in a private native IDE.
 - [hosted_read_regression.py](hosted_read_regression.py) - native CLI/provider read regression and bounded continuation checks.
 - [hosted_authority_read_regression.py](hosted_authority_read_regression.py) - ordinary private source edits, observed epochs, stale authority refusal, exact restoration, and provider envelope qualification.

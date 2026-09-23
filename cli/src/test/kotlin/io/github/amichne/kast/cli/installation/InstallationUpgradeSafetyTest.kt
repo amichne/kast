@@ -9,6 +9,7 @@ import java.nio.file.Path
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -71,7 +72,7 @@ class InstallationUpgradeSafetyTest {
             pending,
         )
         assertEquals(prior, installation.resolve("current").toRealPath())
-        assertEquals(prior.resolve("bin/kast-complete"), commands.resolve("kast").toRealPath())
+        assertFalse(Files.exists(commands.resolve("kast")))
         assertEquals(false, Files.exists(retired))
     }
 
@@ -114,7 +115,7 @@ class InstallationUpgradeSafetyTest {
             )
             val selected = installation.resolve(Files.readSymbolicLink(installation.resolve("current")))
             assertEquals(prior, selected)
-            assertEquals(prior.resolve("bin/kast-complete"), commands.resolve("kast").toRealPath())
+            assertFalse(Files.exists(commands.resolve("kast")))
             assertEquals(priorRegistry, Files.readString(prior.resolve("config/workspaces.json")))
         }
     }
@@ -189,7 +190,7 @@ class InstallationUpgradeSafetyTest {
             )
         assertEquals(InstallationFailure.RECOVERY_REQUIRED, rejectedRecovery.failure)
         assertEquals(prior, installation.resolve("current").toRealPath())
-        assertEquals(prior.resolve("bin/kast-complete"), commands.resolve("kast").toRealPath())
+        assertFalse(Files.exists(commands.resolve("kast")))
         assertEquals("broken receipt", Files.readString(receipt))
     }
 }

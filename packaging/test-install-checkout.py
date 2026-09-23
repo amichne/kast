@@ -111,9 +111,6 @@ if [[ -n ${KAST_INSTALL_ROOT:-} ]]; then
   mkdir -p "$KAST_INSTALL_ROOT/versions/fixture"
   ln -s versions/fixture "$KAST_INSTALL_ROOT/current"
 fi
-mkdir -p "$bin"
-printf '#!/bin/bash\nprintf "%%s\\n" "$*" >> "$TEST_LOG"\n' > "$bin/kast"
-chmod +x "$bin/kast"
 ''')
 
     def run_install(self, *args):
@@ -142,7 +139,7 @@ source "$1"
 [[ $PATH == "$first" ]] || exit 2
 physical=$(cd "$KAST_INSTALL_ROOT/current" && pwd -P)
 [[ $KAST_RUNTIME_DIRECTORY == "$physical/state/run" && -z ${KAST_CACHE_ROOT:-} && -z ${KAST_RUNTIME_STORE:-} ]] || exit 3
-kast 'argument with spaces'
+[[ $PATH != *"$KAST_BIN_DIR"* ]] || exit 4
 '''
             checked = subprocess.run(
                 [shell, "-c", code, "activation-test", str(activation)],
@@ -173,7 +170,7 @@ kast 'argument with spaces'
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout, "")
         self.assertEqual((self.root / "calls").read_text(), "build\ninstall\nrefresh-requested\n")
-        self.assertTrue((self.root / "custom bin/kast").is_file())
+        self.assertFalse((self.root / "custom bin/kast").exists())
 
     def test_force_is_forwarded_to_the_release_installer(self):
         result = self.run_install("persistent", "--force")
@@ -253,6 +250,8 @@ with open(os.environ["TEST_LOG"], "w") as output:
 PYTHON
 ''')
         (self.product / "share/kast").mkdir(parents=True)
+        (self.product / "share/kast/libexec").mkdir()
+        shutil.copy2(self.product / "bin/kast", self.product / "share/kast/libexec/kast-service")
         shutil.copyfile(Path(__file__).with_name('installation-recovery.py'), self.product / 'share/kast/installation-recovery.py')
         self.control = self.assets / f"kast-control-v{self.version}-macos-aarch64.tar.gz"
         with tarfile.open(self.control, "w:gz") as archive:
@@ -301,9 +300,13 @@ PYTHON
             executable.mode = 0o755
             executable.size = len(launcher)
             archive.addfile(executable, io.BytesIO(launcher))
+            private_installer = tarfile.TarInfo("share/kast/libexec/kast-service")
+            private_installer.mode = 0o755
+            private_installer.size = len(launcher)
+            archive.addfile(private_installer, io.BytesIO(launcher))
             recovery = self.product / 'share/kast/installation-recovery.py'
             archive.add(recovery, arcname='share/kast/installation-recovery.py')
-            for index in range(member_count - 3):
+            for index in range(member_count - 4):
                 entry = tarfile.TarInfo(f"share/kast/knowledge/declarations/{index}.json")
                 entry.mode = 0o644
                 entry.size = 2
@@ -344,7 +347,7 @@ PYTHON
         self.assertEqual(0, result.returncode, result.stderr)
         installed = self.root / "Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted"
         self.assertTrue((installed / "lib/kast-ide-hosted-1.2.3.jar").is_file())
-        self.assertIn("restart IntelliJ IDEA", result.stderr)
+        self.assertIn("Restart IntelliJ IDEA", result.stderr)
 
     def test_staged_installer_receives_no_tool_selection(self):
         self.env.pop("KAST_APP_SERVER_TOOLS", None)

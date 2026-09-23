@@ -12,6 +12,8 @@ import io.github.amichne.kast.cli.ide.BrokerTrustFailure
 import io.github.amichne.kast.cli.ide.BrokerTrustResult
 import io.github.amichne.kast.cli.ide.BrokerTrustStatus
 import java.nio.file.Path
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
@@ -64,6 +66,38 @@ class KastServiceMainTest {
             "/selected/configuration",
             serviceControlEnvironment(kast, mapOf("KAST_CONFIGURATION_FILE" to "/selected/configuration"))
                 .getValue("KAST_CONFIGURATION_FILE"),
+        )
+    }
+
+    @Test
+    fun `registration requires one absolute workspace path`() {
+        assertEquals(
+            ServiceControlSelection.Register(Path.of("/workspace")),
+            selectServiceControl(listOf("register", "/workspace")),
+        )
+        val invalid =
+            listOf(listOf("register"), listOf("register", "relative"), listOf("register", "/workspace", "extra"))
+        for (arguments in invalid) {
+            assertEquals(ServiceControlSelection.Rejected, selectServiceControl(arguments))
+        }
+    }
+
+    @Test
+    fun `private registration forwards the exact workspace and preserves daemon rejection`() {
+        val workspace = Path.of("/workspace")
+        val document = Json.encodeToJsonElement(RegistrationFixture()).jsonObject
+        val accepted = AppServerManager { action, root ->
+            assertEquals(AppServerAction.Register, action)
+            assertEquals(workspace, root)
+            AppServerManagementResult.Completed(document)
+        }
+        assertEquals(ServiceControlOutcome.Registered(document), executeWorkspaceRegistration(accepted, workspace))
+
+        val reason = DaemonManagementRejection.Protocol(DaemonManagementFailure.IDENTITY_REJECTED)
+        val rejected = AppServerManager { _, _ -> AppServerManagementResult.DaemonRejected(reason) }
+        assertEquals(
+            ServiceControlOutcome.Rejected(ServiceControlFailureDocument.Daemon(reason)),
+            executeWorkspaceRegistration(rejected, workspace),
         )
     }
 
@@ -154,3 +188,11 @@ class KastServiceMainTest {
         assertEquals(JsonNull, withoutServiceFailure.getValue("serviceFailure"))
     }
 }
+
+@Serializable
+private data class RegistrationFixture(
+    val workspaceId: String = "workspace-id",
+    val root: String = "/workspace",
+    val revision: Long = 1,
+    val operation: String = "app-server.register",
+)
