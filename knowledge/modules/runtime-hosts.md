@@ -44,6 +44,8 @@ code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/WorkspaceStartupEnrollment.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/BrokerPublicEndpoint.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/PersistentBrokerService.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/AppServerManagement.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/LegacyLoginBootstrap.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/NativeCodexReadiness.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledCoordinatorClient.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ConfigurationAppliedInspection.kt
@@ -218,6 +220,10 @@ Launchd invokes the private daemon entry point without the public CLI command gr
 Installation activation and new-release retirement use a separate private
 service-control entry point. It admits only enable and disable; older installed
 releases retain the admitted public CLI disable path during migration.
+The legacy login bootstrap is admitted only from an exact generated file under
+owned, physical LaunchAgents directories with private file permissions. Enable,
+disable, and destructive repair reject a foreign or changed agent before service
+effects; the marker text alone grants no ownership.
 
 Invocation replay evidence lives in private hash-sharded records. The store reads
 only the addressed digest, preserves its input fingerprint and finite phase, and

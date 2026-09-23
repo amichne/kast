@@ -139,7 +139,7 @@ class InstalledAppServerManager(
                 is BrokerServiceLaunchCommandResolution.Rejected ->
                     return reject(AppServerManagementFailure.CONFIGURATION_REJECTED)
             }
-        val agent = userHome.resolve("Library/LaunchAgents/${command.serviceLabel.value}.login.plist")
+        val agent = command.userHome.resolve("Library/LaunchAgents/${command.serviceLabel.value}.login.plist")
         return try {
             if (action == AppServerAction.Register)
                 return runBlocking {
@@ -163,20 +163,29 @@ class InstalledAppServerManager(
             when (action) {
                 AppServerAction.Register -> error("registration is handled before service admission")
                 AppServerAction.Enable -> {
+                    val observed = LegacyLoginBootstrap.observe(agent, command.userHome, loginAgent(command))
+                    if (observed == LegacyLoginBootstrapObservation.Rejected)
+                        return reject(AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN)
                     if (enrollment.enroll(workspace) is Refinement.Rejected)
                         return reject(AppServerManagementFailure.ENROLLMENT_REJECTED)
-                    if (
-                        Files.exists(agent) &&
-                            (Files.isSymbolicLink(agent) ||
-                                !Files.readString(agent).contains("<!-- Kast App Server login bootstrap v1 -->"))
-                    )
-                        return reject(AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN)
-                    Files.createDirectories(agent.parent)
-                    writeLoginAgent(agent, command)
+                    when (observed) {
+                        LegacyLoginBootstrapObservation.Rejected ->
+                            return reject(AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN)
+                        LegacyLoginBootstrapObservation.Absent -> {
+                            Files.createDirectories(agent.parent)
+                            writeLoginAgent(agent, command)
+                        }
+                        LegacyLoginBootstrapObservation.Exact -> Unit
+                    }
                     Files.deleteIfExists(command.stateDirectory.resolve("stopped"))
                     bootstrap(command)
                 }
                 AppServerAction.Repair -> {
+                    if (
+                        LegacyLoginBootstrap.observe(agent, command.userHome, loginAgent(command)) ==
+                            LegacyLoginBootstrapObservation.Rejected
+                    )
+                        return reject(AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN)
                     val host = MacOsPersistentBrokerServiceHost()
                     when (val reset = host.destructiveReset(command)) {
                         PersistentBrokerServiceAdmission.Ready -> Unit
@@ -190,8 +199,13 @@ class InstalledAppServerManager(
                     Files.deleteIfExists(registry)
                     if (enrollment.enroll(workspace) is Refinement.Rejected)
                         return reject(AppServerManagementFailure.ENROLLMENT_REJECTED)
+                    when (LegacyLoginBootstrap.observe(agent, command.userHome, loginAgent(command))) {
+                        LegacyLoginBootstrapObservation.Exact -> Files.delete(agent)
+                        LegacyLoginBootstrapObservation.Absent -> Unit
+                        LegacyLoginBootstrapObservation.Rejected ->
+                            return reject(AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN)
+                    }
                     Files.createDirectories(agent.parent)
-                    Files.deleteIfExists(agent)
                     writeLoginAgent(agent, command)
                     Files.deleteIfExists(command.stateDirectory.resolve("stopped"))
                     bootstrap(command)
@@ -206,6 +220,12 @@ class InstalledAppServerManager(
                 AppServerAction.Status -> readAppServerStatus(kast, command, enrollment)
                 AppServerAction.Stop,
                 AppServerAction.Disable -> {
+                    if (
+                        action == AppServerAction.Disable &&
+                            LegacyLoginBootstrap.observe(agent, command.userHome, loginAgent(command)) ==
+                                LegacyLoginBootstrapObservation.Rejected
+                    )
+                        return reject(AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN)
                     val host = MacOsPersistentBrokerServiceHost()
                     val first = host.stop(command)
                     val stopped =
@@ -219,13 +239,11 @@ class InstalledAppServerManager(
                         )
                     }
                     if (action == AppServerAction.Disable) {
-                        if (Files.exists(agent)) {
-                            if (
-                                Files.isSymbolicLink(agent) ||
-                                    !Files.readString(agent).contains("<!-- Kast App Server login bootstrap v1 -->")
-                            )
+                        when (LegacyLoginBootstrap.observe(agent, command.userHome, loginAgent(command))) {
+                            LegacyLoginBootstrapObservation.Exact -> Files.delete(agent)
+                            LegacyLoginBootstrapObservation.Absent -> Unit
+                            LegacyLoginBootstrapObservation.Rejected ->
                                 return reject(AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN)
-                            Files.delete(agent)
                         }
                     }
                     complete(if (action == AppServerAction.Stop) "stopped" else "disabled")
