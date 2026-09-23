@@ -6,8 +6,6 @@ resource: file://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/
 tags: [intellij, kotlin, semantic-query, lifecycle]
 timestamp: 2026-09-16T00:00:00Z
 code_sources:
-  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/DaemonOperation.kt
-    symbols: [DaemonOperation]
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeCli.kt
     symbols: [selectCliRuntimePath]
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostedProjectAdmission.kt
@@ -155,13 +153,7 @@ code_sources:
 
 ## Default canonical read path
 
-`selectCliRuntimePath` selects the semantic command families before installed
-bootstrap in `KastCliMain`, including the optional leading `--` command
-delimiter. Public tools and canonical read commands use the installed daemon's
-versioned `/kast-operation` RPC. The daemon re-admits the selected public schema
-or typed canonical request and exact root, prepares the selected IDEA project,
-then sends one native read to that project's endpoint. An absent host rejects
-without starting an isolated worker or falling back to a direct CLI socket.
+The connected provider admits hosted tool requests and selects the exact enrolled workspace. The daemon prepares the selected IDEA project, then sends one native read to that project's endpoint. An absent host rejects without starting an isolated worker or falling back to a direct CLI socket.
 
 The ordinary-query scope gate has a separate project-bound capture for exact
 imported Gradle names. It reads `ExternalProjectDataCache` and joins explicit

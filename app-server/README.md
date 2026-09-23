@@ -1,96 +1,39 @@
 # Persistent Kast App Server
 
-`:app-server` owns the persistent Codex broker and its client sessions. `:cli`
-composes installed executables and exposes the command tree. Neither semantic
-contracts nor IntelliJ runtime implementations belong in this module.
-
-The desktop release gate is **unqualified**. See [compatibility and blockers](docs/compatibility.md)
-for observed evidence, remaining client checks, and reproduction commands.
+`:app-server` owns the persistent Codex broker, hosted tool catalog, and client
+sessions. The installer keeps service control in the selected release at
+`share/kast/libexec/kast-service`; it does not publish a `kast` command on `PATH`.
+Semantic contracts and IntelliJ runtime implementations retain their own modules.
 
 Provider qualification reads the bounded `share/kast/provider-catalog.json` artifact
-and checks the complete tool set against the canonical registry. The build derives
-this artifact from the shared hosted schema owner. Startup no longer runs
-`kast --version` or `kast --schema`; it rejects missing or incompatible catalogs
-and changes between qualification and provider startup. Installed payload admission,
-IDEA compatibility, and Codex schema qualification retain their existing owners.
+and checks the complete hosted tool set against the canonical registry. Startup
+rejects a missing or incompatible catalog and changes between qualification and
+provider startup. Installed payload admission, IDEA compatibility, and Codex
+schema qualification retain their existing owners.
 
 ## Enable and attach
 
-Persistent installation enables the service. Launching Codex enrolls the current workspace and reconciles the service:
+Persistent installation enables the service and selects the canonical Codex App
+Server endpoint. Register each repository or worktree explicitly before opening
+it in a Codex client:
 
 ```sh
-kast codex
-kast app-server status
+"${XDG_DATA_HOME:-$HOME/.local/share}/kast/current/share/kast/libexec/kast-service" register /absolute/path/to/repository
 ```
 
-Enabled integration defaults to the installation-owned endpoint at `state/run/c.sock`
-(with the owned short-path transport when needed). `kast codex` explicitly selects
-that endpoint; the desktop façade attaches to the same coordinator. A standalone
-Codex daemon can keep its own public socket without blocking Kast. The real Codex
-upstream remains installation-private at `state/run/u.sock`.
+Registration is handled by the daemon management RPC. The private entry point
+also accepts `enable`, `disable`, `stop`, `repair --destructive`, and
+`enroll-trust`. A rejected registration retains its finite daemon reason.
 
-`KAST_APP_SERVER_PUBLIC_ENDPOINT=codex-control` explicitly selects the canonical
-public endpoint at `$CODEX_HOME/app-server-control/app-server-control.sock` for
-stock-client discovery. Installation persists an explicit selection; endpoint
-policy participates in service identity. Disabled host integration always retains
-the private coordinator endpoint.
+The broker's coordinator endpoint is installation-owned at `state/run/c.sock`
+(with an owned short-path transport when needed). The real Codex upstream remains
+installation-private at `state/run/u.sock`. An occupied canonical endpoint never
+grants Kast authority to replace an unknown incumbent. Client closure does not
+stop the persistent service.
 
-Canonical mode never replaces an unknown incumbent. An occupied endpoint reports
-`public-socket-owned` before attempting Kast's status protocol. To transfer that
-endpoint from a standalone Codex daemon, stop it with `codex app-server daemon stop`
-and retry enablement. A refused connection grants no socket deletion authority.
-Canonical startup acquires its socket lease, binds the endpoint, qualifies the
-catalog and Codex schemas, and completes native `initialize` / `initialized` before
-publishing readiness. The private coordinator publishes its control readiness
-independently; client attachment still requires host and protocol qualification.
-
-Installation validates the candidate configuration and executable before retiring
-the previous service. Once installation is committed, activation failure reports
-`installed-activation-pending`, with a finite process failure and `kast codex` as
-the resume command. The saved configuration and installed launchers remain usable.
-The next launch re-runs enrollment and bounded service reconciliation without
-reinstalling; a client starts only after service readiness succeeds. Installation
-with activation disabled reports `not-requested` rather than implying readiness.
-
-`kast codex` enrolls the workspace and ensures the persistent service. It retains
-explicit `--remote` attachment during client qualification. Stock Codex 0.154.0
-daemon discovery passed installed acceptance; interactive tool execution remains
-a separate gate. Its implicit TUI route can fall back to an embedded server after
-attachment failure, so ordinary launch is not yet a qualified fail-closed route.
-
-`kast codex desktop` launches the desktop with a process-local `CODEX_CLI_PATH`
-pointing to the installed `kast-codex` façade and forces stdio. Quit an already
-running desktop first so its next process receives that environment. The desktop
-starts the façade with `app-server` and exchanges native JSONL on stdin/stdout;
-diagnostics go to stderr. The façade attaches to the same persistent service used
-by the CLI. Client closure does not stop the service.
-
-The shared upstream enables `features.code_mode_host=true` and uses Codex's
-`--analytics-default-enabled` policy, matching the inspected desktop's launch
-profile. Explicit Codex analytics configuration still takes precedence over that
-default. Those exact options are accepted on the façade; other process options
-and transport overrides reject before attachment. Configure shared settings in
-`CODEX_HOME` rather than passing per-client overrides. `kast-codex` retains CLI
-argument forwarding.
-
-A custom desktop client can spawn `kast-codex app-server`, send `initialize`,
-then `initialized`, and use the ordinary App Server protocol. No TCP listener or
-desktop-specific RPC envelope is introduced. This launch pattern takes inspiration
-from [Codapter](https://github.com/kcosr/codapter/tree/429812d8976c317d4333aa51ce5106eb511f6816);
-Kast continues to use the real Codex server and existing tool broker.
-
-The public CLI retains passive `kast app-server status`. Installation and recovery
-use the private `share/kast/libexec/kast-service` executable for enable, disable,
-stop, and explicitly destructive repair. Controller claim and release are no longer
-public shell commands. Status exposes bounded connection IDs and task state. A task has one controller;
-claiming an occupied task conflicts, and handoff during an active turn or pending
-server request fails. An observer must first successfully resume the task.
-
-Stop publishes its suppression marker under the startup lock, removes only the
-identity-proven service, and waits for retirement. Attachments cannot restart it
-for that login. Explicit enable or a qualified next-login daemon start clears
-suppression. Disable additionally removes the exact Kast-owned login agent. Enrollment and invocation evidence remain
-on disk; disable does not erase execution history.
+Desktop UI behavior is outside module-test evidence; see the
+[compatibility and blocker record](docs/compatibility.md) for historical
+observations and release-gate checks.
 
 ## Daemon management
 
@@ -120,14 +63,12 @@ idempotent and cannot reopen admission. Lost upstream requests retain uncertaint
 Bounded outcome logs exclude paths, request IDs and candidate hashes. This is the
 daemon admission contract; installer activation does not yet consume it.
 
-Each connection accepts one request. Management, runtime status and the narrow
-`/kast-operation` semantic-operation route share the
-existing control connection limit. Management requests and replies have a 16 KiB bound;
+Each control connection accepts one request. Management and runtime status share
+the existing connection limit. Management requests and replies have a 16 KiB bound;
 registration reserves enough reply space before writing. Lost replies report
 an unobserved outcome and are never retried automatically. Protocol, coordinator
-enrollment and controller failures retain their finite codes through the CLI.
-The query route allows 64 KiB tool arguments and 1 MiB results, plus bounded
-protocol metadata, within the canonical semantic-read and workspace-readiness budget.
+enrollment and controller failures retain their finite codes through service control.
+Hosted queries use the provider's bounded semantic-read and workspace-readiness budget.
 
 Controller actions target an existing connection and delegate to the shared session
 owner, preserving observer membership, controller leases, active-turn protection
@@ -319,12 +260,10 @@ implementation imports.
 
 The coordinator no longer launches or reserves isolated workspace workers. Its
 control route admits only passive, identity-correlated status and rejects legacy
-worker demands. Semantic CLI commands use the versioned `/kast-operation` RPC.
-The daemon re-admits public tool schemas or concrete canonical requests, checks
-the exact root and installation, and prepares the selected IDEA project before
-one native operation. Change preparation and approved apply/recover retain the
-plan identity and assertion; an ordinary apply or recovery without approval
-rejects before RPC. Complete, qualified, rejected and hosted challenge replies
-remain distinct. Only passive `ide status` inspects the IDEA endpoint directly.
+worker demands. Hosted provider calls check the exact root and installation and
+prepare the selected IDEA project before one native operation. Change preparation
+and approved apply/recover retain the plan identity and assertion; an ordinary
+apply or recovery without approval rejects before transport. Complete, qualified,
+rejected and hosted challenge replies remain distinct.
 Enrollment, sessions, approvals and durable invocation settlement remain broker
 responsibilities.

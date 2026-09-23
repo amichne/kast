@@ -1,5 +1,10 @@
 # Compatibility and blocker record
 
+The public CLI retirement proceeds on the caller's assumption that Desktop
+compatibility has been verified separately. This repository change does not add
+a Desktop UI acceptance receipt; the dated observations below retain their
+original evidence level.
+
 Historical client evidence was recorded on 2026-09-08 UTC; the hosted change
 implementation notes were updated on 2026-09-11 UTC. This record is owned by
 `:app-server`. **Full desktop compatibility has not been established.**

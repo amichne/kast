@@ -54,7 +54,7 @@ print_banner() {
   else
     printf '  %s\n' "$(colorize '1;36' "$(ui_glyph step) KAST INSTALLER")" >&2
   fi
-  printf '  %s\n\n' "$(colorize '2' 'Compiler-grounded Kotlin evidence from your terminal')" >&2
+  printf '  %s\n\n' "$(colorize '2' 'Compiler-grounded Kotlin evidence for coding agents')" >&2
 }
 
 fail() {
@@ -82,8 +82,7 @@ Usage:
 The default command installs the latest release into:
   ${XDG_DATA_HOME:-$HOME/.local/share}/kast
 
-and creates `kast` and `kast-codex` in:
-  $HOME/.local/bin
+and configures the persistent daemon without adding a Kast command to PATH.
 
 Pass arguments to a downloaded installer after Bash's `$0` separator:
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --help
@@ -91,13 +90,11 @@ Pass arguments to a downloaded installer after Bash's `$0` separator:
 `--dry-run` downloads and verifies the matched release, then prints the exact
 installation plan without changing installation state.
 
-Command collisions fail with their exact paths. Use `--force` to authorize
-replacement and reset managed installation state, or move the named collision.
 Development builds use packaging/install-checkout.sh session|persistent.
 
 Installation enables the app server and its macOS login LaunchAgent by default.
 `--force` retires the selected installation, resets its managed state and sockets,
-restages verified components, and replaces command collisions. It does not change
+and restages verified components. It does not change
 source workspaces or the selected IDEA application. `--dry-run` remains read-only.
 USAGE
 }
@@ -431,30 +428,17 @@ done
 require_absolute_path "install root" "$install_root"
 require_absolute_path "binary directory" "$bin_directory"
 
-command_collisions=()
-for command_name in kast kast-codex; do
-  command_path="$bin_directory/$command_name"
-  expected="$install_root/current/bin/$command_name-complete"
-  if [[ -e "$command_path" || -L "$command_path" ]]; then
-    if [[ ! -L "$command_path" || "$(readlink "$command_path")" != "$expected" ]]; then
-      command_collisions+=("$command_path")
-    fi
-  fi
-done
-if [[ "$action" == install && "$mode" == apply && ${#command_collisions[@]} -gt 0 && "$force" == 0 ]]; then
-  printf '%s\n' 'kast-install: existing command paths collide with this installation:' >&2
-  printf '  %s\n' "${command_collisions[@]}" >&2
-  fail 'command collisions require --force (resets managed state) or moving the named paths'
-
-fi
-
 if [[ "$action" == uninstall ]]; then
-  command="$install_root/current/bin/kast-complete"
-  [[ -x "$command" ]] || fail "no selected Kast installation exists at $install_root"
+  require_command python3
+  selected="$install_root/current"
+  [[ -d "$selected" ]] || fail "no selected Kast installation exists at $install_root"
+  selected="$(CDPATH='' cd -- "$selected" && pwd -P)"
+  lifecycle="$selected/share/kast/installation-lifecycle.py"
+  [[ -f "$lifecycle" && ! -L "$lifecycle" ]] || fail "selected installation has no lifecycle control"
   if [[ "$mode" == plan ]]; then
-    exec "$command" installation remove --dry-run --json
+    exec python3 "$lifecycle" --installation "$selected" remove --dry-run --json
   else
-    exec "$command" installation remove --json
+    exec python3 "$lifecycle" --installation "$selected" remove --json
   fi
 fi
 
@@ -525,10 +509,10 @@ plugin_stage="$temporary_root/hosted-plugin"
 extract_hosted_plugin "$temporary_root/$plugin_name" "$plugin_stage" "$version" "$idea_build"
 control_root="$temporary_root/control"
 extract_control "$temporary_root/$control_name" "$control_root"
-[[ -x "$control_root/bin/kast" ]] || fail "control archive has no executable installer"
+[[ -x "$control_root/share/kast/libexec/kast-service" ]] || fail "control archive has no executable installer"
 
 info "The app server provides the complete Kast suite. Persistent installations start it at login."
-note "$([[ "$mode" == plan ]] && printf 'planning' || printf 'installing') app server tooling and command launchers"
+note "$([[ "$mode" == plan ]] && printf 'planning' || printf 'installing') the app server and private service control"
 
 export KAST_INSTALL_CONTROL_ROOT="$control_root"
 export KAST_INSTALL_CONTROL_ARCHIVE="$temporary_root/$control_name"
@@ -550,12 +534,12 @@ export JAVA_HOME="$java_home"
 # Pass reset authority as a command option so older payloads reject it before effects.
 installation_options=()
 [[ "$force" == 0 ]] || installation_options+=(--force)
-"$control_root/bin/kast" installation install ${installation_options[@]+"${installation_options[@]}"}
+"$control_root/share/kast/libexec/kast-service" install ${installation_options[@]+"${installation_options[@]}"}
 if [[ "$mode" == plan ]]; then
   success "verified hosted plugin $plugin_digest for IntelliJ IDEA $idea_version (build $idea_build)"
   info "Installation is planned at $install_root; the IDEA plugin is planned at $idea_plugin_root/kast-ide-hosted."
 else
   activate_hosted_plugin "$plugin_stage" "$idea_plugin_root"
   success "installed Kast $version and the plugin for IntelliJ IDEA $idea_version (build $idea_build)"
-  info "Please restart IntelliJ IDEA to activate the plugin, then run 'kast codex' from your repository."
+  info "Restart IntelliJ IDEA, register each repository with $install_root/current/share/kast/libexec/kast-service register /absolute/path/to/repository, then connect through your Codex client."
 fi

@@ -2,21 +2,7 @@ package io.github.amichne.kast.appserver
 
 import io.github.amichne.kast.appserver.ide.CanonicalRoot
 import io.github.amichne.kast.appserver.query.AdmittedPublicTool
-import io.github.amichne.kast.appserver.query.PublicToolContract
-import io.github.amichne.kast.appserver.runtime.BrokerControlRoute
-import io.github.amichne.kast.appserver.runtime.BrokerUpstreamConnectionAdmission
-import io.github.amichne.kast.appserver.runtime.BrokerUpstreamFrame
-import io.github.amichne.kast.appserver.runtime.BrokerUpstreamSend
-import io.github.amichne.kast.appserver.runtime.connectCodexUnixWebSocket
-import io.github.amichne.kast.protocol.contract.CanonicalOperation
-import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
-import java.nio.file.Path
-import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonElement
 
 sealed interface DaemonOperationCall {
@@ -64,100 +50,6 @@ enum class DaemonOperationClientFailure {
     UNAVAILABLE,
     OUTCOME_UNOBSERVED,
     RESPONSE_REJECTED,
-}
-
-class InstalledDaemonOperationClient(
-    private val kast: Path,
-    private val userHome: Path,
-    private val environment: Map<String, String>,
-) : DaemonOperationClient {
-    override fun read(root: CanonicalRoot, call: DaemonOperationCall): DaemonOperationResult = runBlocking {
-        executeInstalled(root, call)
-    }
-
-    private suspend fun executeInstalled(root: CanonicalRoot, call: DaemonOperationCall): DaemonOperationResult {
-        val command =
-            when (val resolved = BrokerServiceDemandContext.resolveCommand(kast, userHome, environment)) {
-                is BrokerServiceLaunchCommandResolution.Resolved -> resolved.command
-                is BrokerServiceLaunchCommandResolution.Rejected ->
-                    return DaemonOperationResult.Rejected(DaemonOperationClientRejection.Command(resolved.failure))
-            }
-        val target =
-            when (val status = InstalledCoordinatorClient(kast).status(command)) {
-                is CoordinatorStatusRead.Observed -> DaemonManagementTarget.from(status.snapshot)
-                is CoordinatorStatusRead.Rejected ->
-                    return DaemonOperationResult.Rejected(DaemonOperationClientRejection.Coordinator(status.failure))
-            }
-        val selection =
-            when (call) {
-                is DaemonOperationCall.PublicTool ->
-                    DaemonOperationSelection.PublicTool(
-                        DaemonOperationTool.from(call.tool.identity),
-                        PublicToolContract.encode(call.tool),
-                    )
-                is DaemonOperationCall.Canonical -> DaemonOperationSelection.Canonical(call.read)
-                is DaemonOperationCall.Change -> DaemonOperationSelection.Change(call.action)
-            }
-        val operation: CanonicalOperation =
-            when (call) {
-                is DaemonOperationCall.PublicTool -> call.tool.identity.operation
-                is DaemonOperationCall.Canonical -> call.read.operation()
-                is DaemonOperationCall.Change -> call.action.operation()
-            }
-        val request = DaemonOperationRequest(target, root.path.toString(), selection)
-        val encoded = DaemonOperationProtocol.json.encodeToString(DaemonOperationRequest.serializer(), request)
-        if (encoded.toByteArray().size > DaemonOperationProtocol.maximumRequestBytes)
-            return rejected(DaemonOperationClientFailure.RESPONSE_REJECTED)
-        return exchange(
-            command.publicSocket,
-            encoded,
-            target,
-            root,
-            OperationExecutionBudget.forOperation(operation).invocation.value,
-            call is DaemonOperationCall.Change && call.action is DaemonChangeAction.Prepare,
-        )
-    }
-
-    private suspend fun exchange(
-        socket: Path,
-        encoded: String,
-        target: DaemonManagementTarget,
-        root: CanonicalRoot,
-        timeoutMillis: Long,
-        allowHosted: Boolean,
-    ): DaemonOperationResult =
-        withTimeoutOrNull(timeoutMillis) {
-            val connection =
-                when (
-                    val connected =
-                        connectCodexUnixWebSocket(
-                            socket,
-                            DaemonOperationProtocol.maximumResponseBytes,
-                            BrokerOperationalLimits.managementConnect.value,
-                            BrokerControlRoute.OPERATION,
-                        )
-                ) {
-                    is BrokerUpstreamConnectionAdmission.Connected -> connected.connection
-                    BrokerUpstreamConnectionAdmission.Rejected ->
-                        return@withTimeoutOrNull rejected(DaemonOperationClientFailure.UNAVAILABLE)
-                }
-            try {
-                if (connection.send(encoded) != BrokerUpstreamSend.SENT)
-                    return@withTimeoutOrNull rejected(DaemonOperationClientFailure.OUTCOME_UNOBSERVED)
-                val frame = connection.receive()
-                if (frame !is BrokerUpstreamFrame.Text)
-                    return@withTimeoutOrNull rejected(DaemonOperationClientFailure.OUTCOME_UNOBSERVED)
-                val response =
-                    try {
-                        DaemonOperationProtocol.json.decodeFromString<DaemonOperationResponse>(frame.message)
-                    } catch (_: SerializationException) {
-                        return@withTimeoutOrNull rejected(DaemonOperationClientFailure.RESPONSE_REJECTED)
-                    }
-                admitOperationResponse(response, target, root, allowHosted)
-            } finally {
-                withContext(NonCancellable) { connection.close() }
-            }
-        } ?: rejected(DaemonOperationClientFailure.OUTCOME_UNOBSERVED)
 }
 
 internal fun admitOperationResponse(

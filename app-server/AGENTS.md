@@ -60,7 +60,9 @@ Owns the persistent broker/coordinator, host attachment, existing-IDE invocation
 ## Entry Points
 
 - Gradle project: `:app-server`.
-- Runtime commands are surfaced through [App Server commands](../cli/src/main/kotlin/io/github/amichne/kast/cli/command/appserver) and [Codex commands](../cli/src/main/kotlin/io/github/amichne/kast/cli/command/codex).
+- Private lifecycle and workspace registration are surfaced through
+  [KastServiceMain.kt](../cli/src/main/kotlin/io/github/amichne/kast/cli/KastServiceMain.kt);
+  semantic requests arrive through the hosted Codex provider.
 
 ## Navigation Hints
 

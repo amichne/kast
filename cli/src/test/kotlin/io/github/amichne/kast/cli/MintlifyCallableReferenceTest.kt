@@ -1,13 +1,9 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
-import io.github.amichne.kast.cli.command.CliCommandGraphFactory
 import io.github.amichne.kast.protocol.registry.HostedOperationProjection
-import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonArray
@@ -21,24 +17,22 @@ import org.junit.jupiter.api.Test
 class MintlifyCallableReferenceTest {
     @Test
     fun `reference preserves every public callable without claiming an HTTP server`() {
-        val surface = commandGraphFactory().surface
-        val installed = installedServerProjection(surface)
-        val reference = Json.parseToJsonElement(mintlifyCallableReference(surface).value).jsonObject
+        val tools = installedHostedBootstrap().tools
+        val reference = Json.parseToJsonElement(mintlifyCallableReference().value).jsonObject
         val paths = reference.getValue("paths").jsonObject
         val components = reference.getValue("components").jsonObject.getValue("schemas").jsonObject
-        val invocationByTool = installed.cliInvocations.operations.associateBy { it.toolName }
         val publicOperationIds = HostedOperationProjection.publicDefinitions.map { it.operation.id.value }
         val internalOperationIds = HostedOperationProjection.internalDefinitions.map { it.operation.id.value }
 
         assertEquals("3.1.0", reference.getValue("openapi").jsonPrimitive.content)
         assertFalse("servers" in reference)
         assertEquals(
-            installed.hostedBootstrap.tools.map { "/callables/${it.name}" },
+            tools.map { "/callables/${it.name}" },
             paths.keys.toList(),
         )
-        assertEquals(publicOperationIds.toSet(), installed.hostedBootstrap.tools.map { it.operationId }.toSet())
-        assertFalse(installed.hostedBootstrap.tools.any { it.operationId in internalOperationIds })
-        assertTrue(components.size > installed.hostedBootstrap.tools.size * 2)
+        assertEquals(publicOperationIds.toSet(), tools.map { it.operationId }.toSet())
+        assertFalse(tools.any { it.operationId in internalOperationIds })
+        assertTrue(components.size > tools.size * 2)
 
         components.values
             .flatMap { schema -> schema.localReferences() }
@@ -52,7 +46,7 @@ class MintlifyCallableReferenceTest {
                 }
             }
 
-        installed.hostedBootstrap.tools.forEach { tool ->
+        tools.forEach { tool ->
             val operation = paths.getValue("/callables/${tool.name}").jsonObject.getValue("post").jsonObject
             val mint = operation.getValue("x-mint").jsonObject
             val mintMetadata = mint.getValue("metadata").jsonObject
@@ -82,7 +76,6 @@ class MintlifyCallableReferenceTest {
                     .getValue("schema")
                     .jsonObject
                     .reference()
-            val invocation = invocationByTool[tool.name]
 
             assertEquals(tool.name, operation.getValue("operationId").jsonPrimitive.content)
             assertEquals("none", mintMetadata.getValue("playground").jsonPrimitive.content)
@@ -107,26 +100,15 @@ class MintlifyCallableReferenceTest {
             assertEquals("wide", mintMetadata.getValue("mode").jsonPrimitive.content)
             assertEquals("true", mintMetadata.getValue("hideApiMarker").jsonPrimitive.content)
             assertFalse("x-codeSamples" in operation)
-            if (tool.name == "workspace_lifecycle") {
-                assertEquals(JsonNull, kastMetadata.getValue("cliUsage"))
-                assertTrue(content.contains("connected Kast agent session"))
-                assertFalse(content.contains("```bash"))
-            } else {
-                val command = checkNotNull(invocation)
-                assertEquals(command.cliUsage, kastMetadata.getValue("cliUsage").jsonPrimitive.content)
-                assertTrue(
-                    content.contains(
-                        "```bash\nkast ${command.invocation.command.joinToString(" ")} < request.json\n```"
-                    )
-                )
-            }
+            assertFalse("cliUsage" in kastMetadata)
+            assertTrue(content.contains("connected Kast agent session"))
+            assertFalse(content.contains("```bash"))
         }
     }
 
     @Test
     fun `compiler arrays resolve to named OpenAPI components instead of nested definitions`() {
-        val reference =
-            Json.parseToJsonElement(mintlifyCallableReference(commandGraphFactory().surface).value).jsonObject
+        val reference = Json.parseToJsonElement(mintlifyCallableReference().value).jsonObject
         val components = reference.getValue("components").jsonObject.getValue("schemas").jsonObject
         assertTrue(components.values.none { "\$defs" in it.jsonObject })
         val symbolVariants = components.getValue("read_relationsResponse_symbol").jsonObject.getValue("anyOf").jsonArray
@@ -147,8 +129,7 @@ class MintlifyCallableReferenceTest {
 
     @Test
     fun `live outcomes carry distinct navigation labels`() {
-        val reference =
-            Json.parseToJsonElement(mintlifyCallableReference(commandGraphFactory().surface).value).jsonObject
+        val reference = Json.parseToJsonElement(mintlifyCallableReference().value).jsonObject
         val components = reference.getValue("components").jsonObject.getValue("schemas").jsonObject
         val response = components.getValue("search_classesResponse").jsonObject
         val document =
@@ -203,11 +184,5 @@ class MintlifyCallableReferenceTest {
                     )
             }
             else -> this
-        }
-
-    private fun commandGraphFactory(): CliCommandGraphFactory =
-        when (val construction = CliCommandGraphFactory.create(canonicalCliRequestPreparers())) {
-            is CliCommandGraphConstruction.Created -> construction.factory
-            is CliCommandGraphConstruction.Rejected -> error(construction.failures)
         }
 }

@@ -25,10 +25,7 @@ code_sources:
 
 # Installed knowledge
 
-`kast knowledge <query-or-resource>` searches the installed Kast declaration
-descriptors or reads one listed resource. It uses the control product's local
-files, independently of the current directory and semantic runtime. It describes
-Kast's shipped source, not declarations in the user's open project.
+The retired `kast knowledge` command searched installed declaration descriptors and read listed resources. The assets and parser remain in the control product for now, but the private executable no longer exposes the command. These descriptors concern Kast's shipped source, not the user's open project.
 
 The isolated Kotlin PSI extractor supplies source headers and KDoc. Its output
 retains `KOTLIN_PSI_SYNTAX`, Kotlin-only named-declaration coverage, no type
@@ -57,26 +54,9 @@ or guide content hashes. Unsupported schema versions, unknown fields, oversized
 files, path escapes and symbolic links reject. Search returns at most 20 shallow
 matches; it does not read declaration bodies.
 
-The focused parser, projection and CLI tests establish these boundaries.
-`installedProductTest` verifies archive contents and invokes the packaged CLI
-from an unrelated directory in an isolated fixture.
+The focused parser and projection tests retain the internal asset contract.
+`installedProductTest` verifies archive contents and rejects former semantic CLI
+commands from the private executable.
 
-## Read installed documentation
-
-```shell
-kast knowledge KastCli
-kast knowledge manifest.json
-kast knowledge modules/cli/index.json
-kast knowledge guides/root.json
-```
-
-Pass a search result’s `resource` value to `kast knowledge` to read its declaration
-card, or its `governingGuides` resource to read the complete guide. There is no
-`--resource` option. These lookups describe the installed Kast version and require
-no checkout, open IDE, Gradle invocation, or network lookup.
-
-Validate generation and installed reads with:
-
-```shell
-./gradlew :build-logic:test :cli:check verifyJsonContracts installedProductTest
-```
+The former shell lookup examples are retired. Validate the retained generation
+contract with `./gradlew :build-logic:test :cli:check verifyJsonContracts installedProductTest`.

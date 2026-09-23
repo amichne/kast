@@ -1,10 +1,6 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
-import io.github.amichne.kast.cli.command.CliCommandGraphFactory
-import io.github.amichne.kast.cli.command.CliCommandSurface
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
-import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -18,15 +14,7 @@ import kotlinx.serialization.json.jsonObject
 /** Build entry point for the generated public callable reference. */
 internal object MintlifyCallableReference {
     val document: CanonicalJsonDocument
-        get() {
-            val commandSurface =
-                when (val construction = CliCommandGraphFactory.create(canonicalCliRequestPreparers())) {
-                    is CliCommandGraphConstruction.Created -> construction.factory.surface
-                    is CliCommandGraphConstruction.Rejected ->
-                        error("Canonical CLI command graph rejected: ${construction.failures}")
-                }
-            return mintlifyCallableReference(commandSurface)
-        }
+        get() = mintlifyCallableReference()
 
     @JvmStatic
     fun main(arguments: Array<String>) {
@@ -36,14 +24,14 @@ internal object MintlifyCallableReference {
 }
 
 /**
- * Proof transition: `CliCommandSurface -> CanonicalJsonDocument`.
+ * Proof transition: `hosted catalog -> CanonicalJsonDocument`.
  *
  * Projects the installed public callable bindings into a documentation-only OpenAPI document. The synthetic paths
  * identify callable pages; they do not describe an HTTP transport, so this document deliberately has no `servers`
  * declaration and disables Mintlify's playground.
  */
-internal fun mintlifyCallableReference(commandSurface: CliCommandSurface): CanonicalJsonDocument {
-    val bindings = installedServerBindings(commandSurface)
+internal fun mintlifyCallableReference(): CanonicalJsonDocument {
+    val bindings = installedHostedBindings()
     val components =
         bindings
             .flatMap { binding ->
@@ -58,8 +46,7 @@ internal fun mintlifyCallableReference(commandSurface: CliCommandSurface): Canon
                 MintlifyCallableInfoDocument(
                     title = "Kast callable reference",
                     version = "1",
-                    description =
-                        "Public compiler-grounded Kast callables for connected agents and supported CLI routes.",
+                    description = "Public compiler-grounded Kast callables for connected agents.",
                 ),
             paths =
                 bindings.associateTo(linkedMapOf()) { binding ->
@@ -71,66 +58,14 @@ internal fun mintlifyCallableReference(commandSurface: CliCommandSurface): Canon
     )
 }
 
-private fun InstalledServerBinding.operationDocument(): MintlifyCallableOperationDocument {
-    val cli =
-        when (val route = invocation) {
-            is InstalledInvocationBinding.Cli -> route.document
-            InstalledInvocationBinding.HostedOnly -> null
-        }
-    val invocationGuide =
-        if (cli == null) "Invoke the `workspace_lifecycle` tool in a connected Kast agent session.\n\n"
-        else
-            "Invoke it with the Kast CLI:\n\n" +
-                "```bash\nkast ${cli.invocation.command.joinToString(" ")} < request.json\n```\n\n"
+private fun InstalledHostedBinding.operationDocument(): MintlifyCallableOperationDocument {
     return MintlifyCallableOperationDocument(
         operationId = tool.name,
         summary = tool.name.replace('_', ' '),
         description = tool.description,
-        requestBody =
-            MintlifyCallableRequestBodyDocument(
-                required = true,
-                content =
-                    mapOf(
-                        "application/json" to
-                            MintlifyCallableMediaTypeDocument(
-                                schema = MintlifyCallableSchemaReference.component(requestComponentName())
-                            )
-                    ),
-            ),
-        responses =
-            mapOf(
-                "200" to
-                    MintlifyCallableResponseDocument(
-                        description =
-                            "Invocation envelope: completed contains a semantic document; " +
-                                "rejected contains a boundary diagnostic. A completed invocation may still contain " +
-                                "a qualified or rejected semantic outcome.",
-                        content =
-                            mapOf(
-                                "application/json" to
-                                    MintlifyCallableMediaTypeDocument(
-                                        schema = MintlifyCallableSchemaReference.component(responseComponentName())
-                                    )
-                            ),
-                    )
-            ),
-        mint =
-            MintlifyCallableMintDocument(
-                metadata =
-                    MintlifyCallablePageMetadataDocument(
-                        playground = MintlifyCallablePlayground.NONE,
-                        mode = MintlifyCallablePageMode.WIDE,
-                        hideApiMarker = true,
-                        icon = "square-terminal",
-                        description = "Inputs and response fields for ${tool.name}.",
-                        title = tool.name.replace('_', ' ').replaceFirstChar { it.uppercaseChar() },
-                    ),
-                content =
-                    "${tool.description}\n\nThis callable is not an HTTP endpoint. " +
-                        invocationGuide +
-                        "Read [response outcomes](/reference/responses) before using the payload. " +
-                        "For compiler fields and reference reuse, see [symbol results](/reference/symbols).",
-            ),
+        requestBody = requestBodyDocument(),
+        responses = responseDocuments(),
+        mint = mintDocument(),
         kast =
             MintlifyCallableKastMetadataDocument(
                 operation = operation.id.value,
@@ -138,15 +73,62 @@ private fun InstalledServerBinding.operationDocument(): MintlifyCallableOperatio
                 approvalPolicy = tool.approvalPolicy,
                 deferLoading = tool.deferLoading,
                 executionBudget = tool.executionBudget,
-                cliUsage = cli?.cliUsage,
             ),
     )
 }
 
-private fun InstalledServerBinding.requestComponentName(): MintlifyCallableComponentName =
+private fun InstalledHostedBinding.requestBodyDocument() =
+    MintlifyCallableRequestBodyDocument(
+        required = true,
+        content =
+            mapOf(
+                "application/json" to
+                    MintlifyCallableMediaTypeDocument(
+                        schema = MintlifyCallableSchemaReference.component(requestComponentName())
+                    )
+            ),
+    )
+
+private fun InstalledHostedBinding.responseDocuments() =
+    mapOf(
+        "200" to
+            MintlifyCallableResponseDocument(
+                description =
+                    "Invocation envelope: completed contains a semantic document; " +
+                        "rejected contains a boundary diagnostic. A completed invocation may still contain " +
+                        "a qualified or rejected semantic outcome.",
+                content =
+                    mapOf(
+                        "application/json" to
+                            MintlifyCallableMediaTypeDocument(
+                                schema = MintlifyCallableSchemaReference.component(responseComponentName())
+                            )
+                    ),
+            )
+    )
+
+private fun InstalledHostedBinding.mintDocument() =
+    MintlifyCallableMintDocument(
+        metadata =
+            MintlifyCallablePageMetadataDocument(
+                playground = MintlifyCallablePlayground.NONE,
+                mode = MintlifyCallablePageMode.WIDE,
+                hideApiMarker = true,
+                icon = "square-terminal",
+                description = "Inputs and response fields for ${tool.name}.",
+                title = tool.name.replace('_', ' ').replaceFirstChar { it.uppercaseChar() },
+            ),
+        content =
+            "${tool.description}\n\nThis callable is not an HTTP endpoint. " +
+                "Invoke this tool in a connected Kast agent session.\n\n" +
+                "Read [response outcomes](/reference/responses) before using the payload. " +
+                "For compiler fields and reference reuse, see [symbol results](/reference/symbols).",
+    )
+
+private fun InstalledHostedBinding.requestComponentName(): MintlifyCallableComponentName =
     MintlifyCallableComponentName.request(tool.name)
 
-private fun InstalledServerBinding.responseComponentName(): MintlifyCallableComponentName =
+private fun InstalledHostedBinding.responseComponentName(): MintlifyCallableComponentName =
     MintlifyCallableComponentName.response(tool.name)
 
 /**
@@ -304,7 +286,6 @@ private data class MintlifyCallableKastMetadataDocument(
     val approvalPolicy: String,
     val deferLoading: Boolean,
     val executionBudget: InstalledServerExecutionBudgetDocument,
-    val cliUsage: String?,
 )
 
 private val mintlifyCallableReferenceFactory =

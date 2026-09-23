@@ -23,10 +23,7 @@ keywords: ["install", "Codex", "IntelliJ", "agent integration"]
 
 Install the IDEA plugin, connect Codex, and find a declaration in your repository.
 
-<Note>
-  The Codex integration is a preview. Full Desktop compatibility remains
-  [unqualified](/reference/compatibility).
-</Note>
+<Note>The Codex integration is a preview. See the [compatibility record](/reference/compatibility) for tested boundaries.</Note>
 
 ## Requirements
 
@@ -37,7 +34,7 @@ Install the IDEA plugin, connect Codex, and find a declaration in your repositor
 | IDE | IntelliJ IDEA in the `262` release line |
 | Kotlin | The Kotlin plugin bundled with that IDEA installation |
 | Runtime | The Java 25 JBR bundled with IDEA |
-| Agent | A `codex` executable on `PATH` |
+| Agent | A compatible Codex client |
 
 <Steps>
   <Step title="Install the matched release">
@@ -57,7 +54,7 @@ Install the IDEA plugin, connect Codex, and find a declaration in your repositor
     If the Kast release has no plugin for the installed IDEA release line, the
     installer names the mismatch and installs nothing.
 
-    If prompted, add `~/.local/bin` to `PATH`.
+    The installer does not add a Kast command to `PATH`.
   </Step>
   <Step title="Prepare IDEA">
     - Restart IDEA to load the plugin.
@@ -68,15 +65,15 @@ Install the IDEA plugin, connect Codex, and find a declaration in your repositor
     lifecycle commands. Resolve project trust or unsaved-document blockers if the
     agent reports them; see [troubleshooting](/troubleshooting).
   </Step>
-  <Step title="Connect from the repository root">
+  <Step title="Register the repository and connect">
     ```console
     cd /path/to/kotlin-repository
-    kast codex
+    "${XDG_DATA_HOME:-$HOME/.local/share}/kast/current/share/kast/libexec/kast-service" register "$PWD"
     ```
 
-    This command enrolls the workspace, qualifies the installed catalog, and
-    starts the included integration. Closing the client leaves the managed
-    broker running for later terminal or Desktop sessions.
+    Then open the repository in your Codex client. Register each worktree you
+    want Kast to serve. The persistent broker remains available after a client
+    closes.
   </Step>
   <Step title="Ask for a declaration">
     Ask: **“Use Kast to find the class OrderService.”** Replace `OrderService`
@@ -100,7 +97,7 @@ Install the IDEA plugin, connect Codex, and find a declaration in your repositor
     ```
 
     Force installation retires the selected services, resets managed sockets and
-    state, replaces command collisions, and rebuilds the verified launchers and
+    state and rebuilds the verified installation and
     IDEA plugin. It preserves source workspaces and rebuilds enrollment. Previous
     payloads and recovery records move aside under `.replaced-*`.
     Add `--dry-run` to preview without changing installation state.
@@ -117,27 +114,17 @@ Install the IDEA plugin, connect Codex, and find a declaration in your repositor
     Other `262` builds are admitted by policy but lack the same native acceptance
     evidence. See [Compatibility](/reference/compatibility).
   </Accordion>
-  <Accordion title="Resolve command collisions">
-    Installation never prompts. It installs into `${XDG_DATA_HOME:-$HOME/.local/share}/kast`
-    and places commands in `$HOME/.local/bin`. If a command path is occupied,
-    move the reported path or use `--force` to replace it and reset managed state.
+  <Accordion title="Old command links">
+    An upgrade removes only links previously owned by Kast. An unrelated file
+    named `kast` or `kast-codex` is left in place.
   </Accordion>
   <Accordion title="Connect Codex Desktop">
-    1. Quit any running Desktop instance.
-    2. Run `kast codex desktop` from the repository root.
-
-    Desktop connects to the same persistent broker as the terminal integration.
-
-    Closing Desktop leaves the broker running.
-
-    Full Desktop UI compatibility remains unqualified in the
-    [compatibility record](https://github.com/amichne/kast/blob/main/app-server/docs/compatibility.md).
+    Register the repository as above, then open that repository in Codex Desktop.
+    Desktop uses the persistent broker. Closing Desktop leaves it running.
   </Accordion>
   <Accordion title="Use an explicit Codex executable or another harness">
-    Set `CODEX_EXECUTABLE` to an absolute path when `codex` is not on `PATH`.
-
-    Other agent hosts should consume `kast --schema` through the
-    [harness contract](/agent-harnesses).
+    Other agent hosts should connect to the daemon through the
+    [hosted contract](/agent-harnesses).
   </Accordion>
   <Accordion title="Uninstall Kast">
     ```shell
@@ -145,7 +132,7 @@ Install the IDEA plugin, connect Codex, and find a declaration in your repositor
       -- uninstall
     ```
 
-    Uninstall removes Kast-owned commands, installations, runtime state,
+    Uninstall removes Kast-owned links, installations, runtime state,
     configuration, and services.
 
     Repositories and unrelated JetBrains state remain.

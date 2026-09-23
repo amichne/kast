@@ -11,9 +11,7 @@ and follow their relationships with the compiler’s identities and evidence.
 ## Get started
 
 You need macOS on Apple silicon, a Kotlin Gradle repository, IntelliJ IDEA
-`262.*` with its bundled Kotlin plugin and Java 25 JBR, and `codex` on your `PATH`.
-The Codex integration is a preview; full Desktop compatibility remains
-[unqualified](https://kast.michne.com/reference/compatibility/).
+`262.*` with its bundled Kotlin plugin and Java 25 JBR, and a compatible Codex client.
 
 1. Install Kast and its IDEA plugin:
 
@@ -25,27 +23,29 @@ The Codex integration is a preview; full Desktop compatibility remains
    plugin, and enables the complete app-server suite and its per-user login
    LaunchAgent. If no matching IDEA plugin exists, it installs nothing.
    Installation never prompts. It uses `${XDG_DATA_HOME:-$HOME/.local/share}/kast`
-   and `$HOME/.local/bin`. Command collisions fail with their exact paths; move
-   those paths or use `--force` to replace them and reset managed state.
+   without publishing a `kast` command on `PATH`. An upgrade retires only
+   command links owned by a previous Kast installation.
    An ordinary upgrade keeps the current release selected when the prior daemon
    still has active work or its state cannot be proved. The installer reports
    the blocker; rerun it after that work settles.
 
    To rebuild a damaged installation, append `-- --force`. This retires its
-   services, resets managed sockets and state, restages both launchers and the
-   plugin, and replaces command collisions. Source workspaces are preserved;
+   services, resets managed sockets and state, and restages the plugin.
+   Source workspaces are preserved;
    workspace enrollment is rebuilt. Use `-- --force --dry-run` to preview.
    Previous payloads and recovery metadata are moved aside under `.replaced-*`.
 
 2. Restart IDEA to load the plugin and save edited files.
-   Add the selected command directory to `PATH` if needed.
 
-3. Connect from that repository:
+3. Register the repository through the private installed service control:
 
    ```console
    cd /path/to/kotlin-repository
-   kast codex
+   "${XDG_DATA_HOME:-$HOME/.local/share}/kast/current/share/kast/libexec/kast-service" register "$PWD"
    ```
+
+   Then open the repository in your Codex client. Registration is explicit for
+   each repository or worktree; Kast does not put a command on `PATH`.
 
 4. Ask your agent: **“Use Kast to find the class OrderService.”** Replace the
    name with a class in your project. Check the returned status and matches.
@@ -95,8 +95,7 @@ source "$(./packaging/install-checkout.sh session --idea-home "/Applications/Int
 
 Start with the [development guide](docs/development.md) for testing, persistent local
 installation and native acceptance, or the [knowledge base](knowledge/index.md)
-for architecture and source ownership. `kast knowledge KastCli` searches the
-installed documentation for Kast’s own public declarations without an open IDE.
+for architecture and source ownership.
 
 ## Security and license
 

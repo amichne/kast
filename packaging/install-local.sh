@@ -32,6 +32,8 @@ esac
   fail "control product is not a directory: ${control_product}"
 [[ -x "${control_product}/bin/kast" ]] ||
   fail "control product has no executable bin/kast"
+[[ -x "${control_product}/share/kast/libexec/kast-service" ]] ||
+  fail "control product has no private installer"
 [[ -f "${control_product}/share/kast/ide-host.json" ]] ||
   fail "control product has no hosted plugin manifest"
 case "${java_executable}" in

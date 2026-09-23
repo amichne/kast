@@ -32,7 +32,7 @@ See [Read a response](/reference/responses) for field names and result layers.
 
 | Symptom | First action |
 | --- | --- |
-| Tools are missing | Check `kast app-server status` and `kast --schema`. Remove retired catalog or enable overrides. |
+| Tools are missing | Register the exact repository, then reconnect the Codex client to the installed broker. |
 | Outer `status: rejected` | Preserve `diagnostic.boundary` and `diagnostic.reason`; collect status below. |
 | The document rejects | Follow its finite reason. Open the intended IDEA project or correct the named input as appropriate. |
 | The answer is qualified | Read limitations and item failures. Narrow scope or relation expansion before increasing bounds. |
@@ -41,20 +41,9 @@ See [Read a response](/reference/responses) for field names and result layers.
 
 ## Collect status from the same repository
 
-```console
-cd /path/to/kotlin-repository
-kast
-kast ide status
-kast app-server status
-```
-
-Collect these fields without changing runtime state:
-
-- Bare `kast` reports product version, semantic authority, and repository root.
-- `kast ide status` reports fresh endpoint readiness.
-- `kast app-server status` adds paths for logs, configuration, and workspace state.
-
-`kast ide status` does not acquire a query permit or spend search budget.
+Use the connected agent's hosted status and `workspace_lifecycle` inspection
+for the exact repository. The installed configuration and service logs are under
+`${XDG_DATA_HOME:-$HOME/.local/share}/kast/current`.
 
 `admission_ready` establishes:
 
@@ -88,7 +77,8 @@ Semantic reads do not start import or return an empty successful search. A conne
 
 Older output without `recovery` provides no automated retry instruction.
 
-If startup fails, `kast codex` writes a finite reason to stderr.
+If registration fails, the private `kast-service register` action writes a
+finite reason to stderr.
 
 Set `KAST_DEBUG=1` for bounded launch-stage output.
 
@@ -102,12 +92,10 @@ Automatic refresh is off for every new IDE host. To opt in for one exact Gradle 
 
 <AccordionGroup>
   <Accordion title="The Codex integration cannot start">
-    - Verify `kast` and `codex` in the launch environment.
-    - Run from the intended Kotlin Gradle root.
-    - Require `CODEX_EXECUTABLE` to be absolute and executable when set.
+    - Register the intended Kotlin Gradle root through the private service control.
+    - Verify the selected installation and connected Codex client.
     - Remove retired `KAST_ENABLE_APP_SERVER` and `KAST_APP_SERVER_TOOLS` assignments.
-    - Inspect the complete tool catalog with `kast --schema`.
-    - Recreate obsolete catalogs with the matched broker and executable.
+    - Recreate obsolete catalogs with the matched hosted provider.
 
     Do not bypass admission with handwritten definitions.
 
@@ -147,12 +135,12 @@ These controls affect the installation-owned broker, not IDEA project state.
 
 <AccordionGroup>
   <Accordion title="Repair installation-owned broker state">
-    `kast codex` recovers stale or malformed owned readiness during ordinary launch.
+    The persistent service owns readiness across client sessions.
 
     Use this reset only when diagnosis requires discarding owned state:
 
     ```console
-    kast app-server repair --destructive
+    "${XDG_DATA_HOME:-$HOME/.local/share}/kast/current/share/kast/libexec/kast-service" repair --destructive
     ```
 
     <Warning>
@@ -186,7 +174,7 @@ These controls affect the installation-owned broker, not IDEA project state.
     - Open the repository in IDEA with the Kast plugin.
     - Finish import and indexing.
     - Save edited files.
-    - Inspect `kast ide status`.
+    - Inspect the hosted workspace status.
     - Configure memory and Gradle settings in IDEA.
   </Accordion>
 </AccordionGroup>

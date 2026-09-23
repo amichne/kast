@@ -30,8 +30,11 @@ class LocalInstallationTest(unittest.TestCase):
             (product / 'bin').mkdir(parents=True)
             (product / 'lib').mkdir(parents=True)
             (product / 'share/kast').mkdir(parents=True)
+            (product / 'share/kast/libexec').mkdir(parents=True)
             (product / 'bin/kast').write_text('#!/bin/sh\nexit 0\n')
             (product / 'bin/kast').chmod(0o755)
+            (product / 'share/kast/libexec/kast-service').write_text('#!/bin/sh\nexit 0\n')
+            (product / 'share/kast/libexec/kast-service').chmod(0o755)
             (product / 'share/kast/ide-host.json').write_text(json.dumps({'productVersion': '1.2.3'}))
             plugin = root / 'kast-ide-hosted-v1.2.3-idea-262.zip'
             plugin.write_text('fixture plugin')

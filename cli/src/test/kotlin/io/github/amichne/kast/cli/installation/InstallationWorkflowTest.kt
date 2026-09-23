@@ -138,7 +138,7 @@ class InstallationWorkflowTest {
         assertTrue(Files.notExists(stale))
         assertTrue(Files.notExists(selected.resolve("config/workspaces.json")))
         assertEquals("keep", Files.readString(unrelated))
-        assertTrue(Files.isExecutable(root.resolve("commands/kast")))
+        assertTrue(Files.notExists(root.resolve("commands/kast")))
         assertTrue(Files.notExists(selected.resolve(".recovery-detached")))
     }
 
@@ -233,31 +233,48 @@ class InstallationWorkflowTest {
     }
 
     @Test
-    fun `approved command collisions are removed while default policy fails closed`(@TempDir temporary: Path) {
+    fun `unrelated commands survive installation without force`(@TempDir temporary: Path) {
         val root = temporary.toRealPath()
         val installation = root.resolve("installation")
         val commands = Files.createDirectory(root.resolve("commands"))
         val home = Files.createDirectory(root.resolve("home"))
         val codexHome = Files.createDirectory(home.resolve(".codex"))
-        val collision = Files.writeString(commands.resolve("kast"), "unmanaged")
+        val foreign = Files.writeString(commands.resolve("kast"), "unmanaged")
 
-        val rejected =
-            executeFixtureInstallation(releaseRequest(root, installation, commands, home, codexHome, "1.2.3"))
-        assertEquals(InstallationOutcome.Rejected(InstallationFailure.RECOVERY_REQUIRED), rejected)
-        assertEquals("unmanaged", Files.readString(collision))
+        assertInstanceOf(
+            InstallationOutcome.Complete::class.java,
+            executeFixtureInstallation(releaseRequest(root, installation, commands, home, codexHome, "1.2.3")),
+        )
+        assertEquals("unmanaged", Files.readString(foreign))
+        assertTrue(Files.notExists(commands.resolve("kast-codex")))
+    }
 
-        val request =
-            releaseRequest(
-                root,
-                installation,
-                commands,
-                home,
-                codexHome,
-                "1.2.4",
-                replaceCommandCollisions = true,
-            )
-        assertInstanceOf(InstallationOutcome.Complete::class.java, executeFixtureInstallation(request))
-        assertTrue(Files.isSymbolicLink(collision))
+    @Test
+    fun `upgrade retires only the prior Kast command links`(@TempDir temporary: Path) {
+        val root = temporary.toRealPath()
+        val installation = root.resolve("installation")
+        val commands = Files.createDirectory(root.resolve("commands"))
+        val home = Files.createDirectory(root.resolve("home"))
+        val codexHome = Files.createDirectory(home.resolve(".codex"))
+        assertInstanceOf(
+            InstallationOutcome.Complete::class.java,
+            executeFixtureInstallation(releaseRequest(root, installation, commands, home, codexHome, "1.2.3")),
+        )
+        val prior = installation.resolve(Files.readSymbolicLink(installation.resolve("current")))
+        Files.writeString(
+            prior.resolve("config/workspaces.json"),
+            Json.encodeToString(RegistryFixture(2, 0, emptyList())),
+        )
+        for ((name, executable) in listOf("kast" to "kast-complete", "kast-codex" to "kast-codex-complete")) {
+            Files.createSymbolicLink(commands.resolve(name), installation.resolve("current/bin/$executable"))
+        }
+
+        assertInstanceOf(
+            InstallationOutcome.Complete::class.java,
+            executeFixtureInstallation(releaseRequest(root, installation, commands, home, codexHome, "1.2.4")),
+        )
+        assertTrue(Files.notExists(commands.resolve("kast")))
+        assertTrue(Files.notExists(commands.resolve("kast-codex")))
     }
 }
 

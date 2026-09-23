@@ -5,7 +5,8 @@
 
 ## Purpose
 
-Defines Kast's human-facing command graph, installed configuration and installation workflows, and canonical output projections.
+Owns the private installation and service entry points, installed configuration,
+legacy command graph retained for migration, and hosted output projections.
 
 ## Key Files
 
@@ -23,7 +24,7 @@ Defines Kast's human-facing command graph, installed configuration and installat
 - [src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt](src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt) - executable main.
 - [src/main/kotlin/io/github/amichne/kast/cli/KastCli.kt](src/main/kotlin/io/github/amichne/kast/cli/KastCli.kt) - root CLI assembly.
 - [src/main/kotlin/io/github/amichne/kast/cli/command/model/CliCommandGraph.kt](src/main/kotlin/io/github/amichne/kast/cli/command/model/CliCommandGraph.kt) - command topology.
-- [src/main/kotlin/io/github/amichne/kast/cli/command/tool/PublicToolCommands.kt](src/main/kotlin/io/github/amichne/kast/cli/command/tool/PublicToolCommands.kt) - current schema-bound query and diagnostic CLI routes.
+- [src/main/kotlin/io/github/amichne/kast/cli/command/tool/PublicToolCommands.kt](src/main/kotlin/io/github/amichne/kast/cli/command/tool/PublicToolCommands.kt) - retired public command graph retained as internal migration code.
 - [src/main/kotlin/io/github/amichne/kast/cli/configuration/SavedConfigurationIngress.kt](src/main/kotlin/io/github/amichne/kast/cli/configuration/SavedConfigurationIngress.kt) - saved configuration boundary.
 - [src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt](src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt) - installation workflow, including committed daemon upgrade resumption.
 - [src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationDaemonUpgrade.kt](src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationDaemonUpgrade.kt) - prior daemon update admission before service retirement.
@@ -46,7 +47,8 @@ Defines Kast's human-facing command graph, installed configuration and installat
 ## Entry Points
 
 - Gradle project: `:cli`.
-- Public shell entry is installed by `install.sh` and packaging scripts.
+- `install.sh` publishes no command on `PATH`. Private service control lives at
+  `share/kast/libexec/kast-service` in the selected installation.
 
 ## Navigation Hints
 
@@ -55,4 +57,6 @@ Defines Kast's human-facing command graph, installed configuration and installat
 - For parsing or command ownership, start with `CliCommandGraph` and the owning command package.
 - For output compatibility, start in `projection` and follow to `protocol/wire`.
 
-- Semantic operations require an existing IDE endpoint. Bare inspection and `app-server status` are passive; service controls and trust enrollment use the private installed control. IDE and product inspection operations remain visible in help; workspace lifecycle is a hosted agent tool.
+- Semantic operations use the hosted provider and require an existing IDE
+  endpoint. The private installed control owns registration, lifecycle actions,
+  and trust enrollment. Former public semantic commands reject at process ingress.
