@@ -111,8 +111,6 @@ assert document["cliProjection"]["localCommands"] == [
     "ide trust-broker",
     "workspace lifecycle <document>",
     "app-server status",
-    "app-server control claim <thread-id> <connection-id>",
-    "app-server control release <thread-id> <connection-id>",
 ], document["cliProjection"]["localCommands"]
 projection = document["serverProjection"]
 bootstrap = projection["hostedBootstrap"]
