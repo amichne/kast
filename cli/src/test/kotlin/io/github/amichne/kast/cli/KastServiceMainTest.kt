@@ -1,6 +1,9 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.appserver.AppServerAction
 import io.github.amichne.kast.appserver.AppServerManagementFailure
+import io.github.amichne.kast.appserver.AppServerManagementResult
+import io.github.amichne.kast.appserver.AppServerManager
 import io.github.amichne.kast.appserver.DaemonManagementFailure
 import io.github.amichne.kast.appserver.DaemonManagementRejection
 import io.github.amichne.kast.appserver.PersistentBrokerServiceFailure
@@ -24,6 +27,10 @@ class KastServiceMainTest {
             ServiceControlSelection.Selected(ServiceControlAction.DISABLE),
             selectServiceControl(listOf("disable")),
         )
+        assertEquals(
+            ServiceControlSelection.Selected(ServiceControlAction.REPAIR),
+            selectServiceControl(listOf("repair", "--destructive")),
+        )
         for (arguments in
             listOf(emptyList(), listOf("repair"), listOf("enable", "workspace"), listOf("app-server", "enable"))) {
             assertEquals(ServiceControlSelection.Rejected, selectServiceControl(arguments))
@@ -34,6 +41,18 @@ class KastServiceMainTest {
             ),
             executeServiceControl(ServiceControlAction.ENABLE, UnavailableAppServerManager, Path.of("/unobserved")),
         )
+        val observedActions = mutableListOf<AppServerAction>()
+        val manager = AppServerManager { action, _ ->
+            observedActions += action
+            AppServerManagementResult.Rejected(AppServerManagementFailure.SERVICE_UNAVAILABLE)
+        }
+        assertEquals(
+            ServiceControlOutcome.Rejected(
+                ServiceControlFailureDocument.Management(AppServerManagementFailure.SERVICE_UNAVAILABLE, null)
+            ),
+            executeServiceControl(ServiceControlAction.REPAIR, manager, Path.of("/unobserved")),
+        )
+        assertEquals(listOf(AppServerAction.Repair), observedActions)
         val kast = Path.of("/owned/versions/v1/bin/kast")
         assertEquals(
             "/owned/versions/v1/config/environment",

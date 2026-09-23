@@ -3,15 +3,12 @@ package io.github.amichne.kast.cli.command.appserver
 import com.github.ajalt.clikt.core.Context
 import com.github.ajalt.clikt.core.subcommands
 import com.github.ajalt.clikt.parameters.arguments.argument
-import com.github.ajalt.clikt.parameters.options.flag
-import com.github.ajalt.clikt.parameters.options.option
 import io.github.amichne.kast.appserver.*
 import io.github.amichne.kast.cli.command.*
 
 internal fun appServerCommandGroup(): LocalCommandFamily {
     val actions =
         listOf(
-            AppServerRepairLeaf(),
             AppServerLeaf("status", CliProductCommand.APP_SERVER_STATUS, AppServerAction.Status),
             AppServerLeaf("stop", CliProductCommand.APP_SERVER_STOP, AppServerAction.Stop),
         )
@@ -34,24 +31,6 @@ internal fun appServerCommandGroup(): LocalCommandFamily {
             )
             .subcommands(actions + control)
     return LocalCommandFamily(root, actions + claim + release)
-}
-
-private class AppServerRepairLeaf : LocalKastCommand("repair", CliProductCommand.APP_SERVER_REPAIR) {
-    private val destructive by
-        option(
-                "--destructive",
-                help =
-                    "Delete this installation's owned broker, runtime, cache, and workspace-registry state before rebuilding it.",
-            )
-            .flag()
-
-    override fun help(context: Context) =
-        "Rebuild the current installation and workspace after normal ownership recovery cannot converge."
-
-    override fun resolveAction(): CliActionResolution {
-        if (!destructive) throw com.github.ajalt.clikt.core.UsageError("repair requires --destructive")
-        return CliActionResolution.Selected(CliAction.Local.AppServer(AppServerAction.Repair))
-    }
 }
 
 private class AppServerLeaf(name: String, command: CliProductCommand, private val action: AppServerAction) :
