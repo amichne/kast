@@ -1,10 +1,9 @@
 package io.github.amichne.kast.appserver.provider
 
-import io.github.amichne.kast.appserver.query.AdmittedPublicQuery
 import io.github.amichne.kast.appserver.schema.ValidatedJsonValue
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 
-/** Keep the admitted query or exact schema proof until the subprocess boundary. */
+/** Keep the admitted tool syntax or exact schema proof until the IDEA invocation boundary. */
 internal sealed interface KastInvocationInput {
     data class Source(
         val request: io.github.amichne.kast.protocol.contract.SourceReadRequest,
@@ -12,8 +11,6 @@ internal sealed interface KastInvocationInput {
     ) : KastInvocationInput
 
     data class Facade(val request: io.github.amichne.kast.appserver.query.AdmittedPublicTool) : KastInvocationInput
-
-    data class Query(val request: AdmittedPublicQuery) : KastInvocationInput
 
     data class Canonical(
         val operation: CanonicalOperation,

@@ -198,7 +198,6 @@ internal class KastDirectInvocation(private val options: KastProviderOptions) {
     private fun prepare(input: KastInvocationInput): Refinement<PreparedOperationRequest, ExistingIdeFailure> =
         when (input) {
             is KastInvocationInput.Source -> admit(preparers.sourceRead.prepare(input.request))
-            is KastInvocationInput.Query -> admit(preparers.queryRun.prepare(input.request.canonicalRequest))
             is KastInvocationInput.Facade ->
                 when (val canonical = input.request.canonical) {
                     is PublicToolCanonical.Query -> admit(preparers.queryRun.prepare(canonical.request))
