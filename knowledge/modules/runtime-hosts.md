@@ -46,6 +46,8 @@ code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/PersistentBrokerService.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/AppServerManagement.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/LegacyLoginBootstrap.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/BrokerLaunchdServiceDocument.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/PublishedBrokerServiceCommand.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/NativeCodexReadiness.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledCoordinatorClient.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ConfigurationAppliedInspection.kt
@@ -216,7 +218,7 @@ remains. A later demand may prepare again. Transport failures never replay the
 semantic request. Preparation rejection retains its finite cause and operation ID
 as known pre-execution failure evidence.
 
-Launchd invokes the private daemon entry point without the public CLI command graph. The managed readiness environment is required at ingress and then qualified by the existing coordinator. Exact published-command recovery admits both the private path and the earlier `kast broker serve` form for retirement.
+Launchd invokes the private daemon entry point without the public CLI command graph. The managed readiness environment is required at ingress and then qualified by the existing coordinator. Published-command recovery admits the private daemon form only when the entire plist matches the document generated from the recovered command, including launch behavior and logging. It still admits the earlier `kast broker serve` form for retirement.
 Installation activation and new-release retirement use a separate private
 service-control entry point. It admits only enable and disable; older installed
 releases retain the admitted public CLI disable path during migration.

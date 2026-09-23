@@ -24,6 +24,7 @@ Owns the persistent broker/coordinator, host attachment, existing-IDE invocation
 - [InstalledDaemonManagementClient.kt](src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonManagementClient.kt) - ownership-qualified registration, session inspection, controller operations and update handoff without Codex initialization.
 - [InstalledDaemonUpgrade.kt](src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonUpgrade.kt) - installer-facing service presence proof and exact sealed or committed update permit.
 - [LegacyLoginBootstrap.kt](src/main/kotlin/io/github/amichne/kast/appserver/LegacyLoginBootstrap.kt) - exact legacy login-agent ownership admission before lifecycle effects.
+- [BrokerLaunchdServiceDocument.kt](src/main/kotlin/io/github/amichne/kast/appserver/BrokerLaunchdServiceDocument.kt) - exact private daemon launchd document shared by publication and recovery proof.
 
 - [KastCatalogSource.kt](src/main/kotlin/io/github/amichne/kast/appserver/provider/KastCatalogSource.kt) - bounded packaged provider-contract reads without a Kast subprocess.
 
