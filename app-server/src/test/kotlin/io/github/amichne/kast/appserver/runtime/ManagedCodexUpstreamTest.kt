@@ -113,7 +113,8 @@ class ManagedCodexUpstreamTest {
             val result =
                 ManagedCodexUpstream.start(
                     ManagedCodexUpstreamOptions(
-                        executable = UpstreamCodexExecutable.admit(codex, DesktopFacadeExecutables.none()).refinedValue(),
+                        executable =
+                            UpstreamCodexExecutable.admit(codex, DesktopFacadeExecutables.none()).refinedValue(),
                         codexHome = codexHome,
                         privateSocket = BrokerSocketPath.admit(socket).validatedValue(),
                         launcher = launcher,
@@ -145,7 +146,8 @@ class ManagedCodexUpstreamTest {
             val started =
                 ManagedCodexUpstream.start(
                     ManagedCodexUpstreamOptions(
-                        executable = UpstreamCodexExecutable.admit(codex, DesktopFacadeExecutables.none()).refinedValue(),
+                        executable =
+                            UpstreamCodexExecutable.admit(codex, DesktopFacadeExecutables.none()).refinedValue(),
                         codexHome = codexHome,
                         privateSocket = BrokerSocketPath.admit(socket).validatedValue(),
                         launcher = launcher,
@@ -168,7 +170,10 @@ class ManagedCodexUpstreamTest {
     @Test
     fun `installed Codex publishes an owned socket alias`(@TempDir temporary: Path) = runBlocking {
         val configured = System.getenv("KAST_CODEX_ALIAS_ACCEPTANCE_EXECUTABLE")
-        assumeTrue(!configured.isNullOrBlank(), "Set KAST_CODEX_ALIAS_ACCEPTANCE_EXECUTABLE for native alias acceptance")
+        assumeTrue(
+            !configured.isNullOrBlank(),
+            "Set KAST_CODEX_ALIAS_ACCEPTANCE_EXECUTABLE for native alias acceptance",
+        )
         val codex = Path.of(configured).toRealPath()
         val codexHome = Files.createDirectory(temporary.resolve("codex-home")).toRealPath()
         val socket = Path.of("/private/tmp/kast-codex-native-${UUID.randomUUID()}.sock")
@@ -176,7 +181,8 @@ class ManagedCodexUpstreamTest {
             val started =
                 ManagedCodexUpstream.start(
                     ManagedCodexUpstreamOptions(
-                        executable = UpstreamCodexExecutable.admit(codex, DesktopFacadeExecutables.none()).refinedValue(),
+                        executable =
+                            UpstreamCodexExecutable.admit(codex, DesktopFacadeExecutables.none()).refinedValue(),
                         codexHome = codexHome,
                         privateSocket = BrokerSocketPath.admit(socket).validatedValue(),
                         maximumMessageBytes = 1024 * 1024,

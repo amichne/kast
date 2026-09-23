@@ -318,8 +318,8 @@ private data class SocketTarget(val path: Path, val fileKey: Any)
 private object ProcessUnixSocketOwnership {
     fun holds(pid: Long, target: Path, timeoutMillis: Long): Boolean {
         if (pid <= 0 || timeoutMillis <= 0) return false
-        val lsof = listOf("/usr/sbin/lsof", "/usr/bin/lsof").firstOrNull { Files.isExecutable(Path.of(it)) }
-            ?: return false
+        val lsof =
+            listOf("/usr/sbin/lsof", "/usr/bin/lsof").firstOrNull { Files.isExecutable(Path.of(it)) } ?: return false
         var probe: Process? = null
         try {
             probe =

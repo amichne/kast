@@ -16,12 +16,6 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withTimeoutOrNull
 
-internal enum class BrokerControlRoute(val path: String) {
-    CODEX("/"),
-    RUNTIME("/kast-runtime"),
-    MANAGEMENT(io.github.amichne.kast.appserver.DaemonManagementProtocol.route),
-}
-
 internal suspend fun connectCodexUnixWebSocket(
     socket: Path,
     maximumMessageBytes: Int,
@@ -101,4 +95,3 @@ private class KtorCodexUpstreamConnection(
         }
     }
 }
-

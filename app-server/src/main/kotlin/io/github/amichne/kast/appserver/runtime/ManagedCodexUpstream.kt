@@ -204,10 +204,11 @@ private constructor(
                                     }
                                 }
                             } else {
-                                OwnedUnixSocket.capture(options.privateSocket) ?: run {
-                                    process.close()
-                                    return rejected(ManagedCodexUpstreamFailure.SOCKET_IDENTITY_REJECTED)
-                                }
+                                OwnedUnixSocket.capture(options.privateSocket)
+                                    ?: run {
+                                        process.close()
+                                        return rejected(ManagedCodexUpstreamFailure.SOCKET_IDENTITY_REJECTED)
+                                    }
                             }
                         if (!process.isAlive() || !owned.matchesCurrent()) {
                             process.close()

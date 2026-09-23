@@ -50,6 +50,7 @@ code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/ManagedCodexUpstream.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/UnixSocketOwnership.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/CodexUnixWebSocket.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/BrokerControlRoute.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/PersistentBrokerService.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/AppServerManagement.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/LegacyLoginBootstrap.kt
