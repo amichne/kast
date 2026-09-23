@@ -93,7 +93,7 @@ service log.
 
 ## Hosted change boundary
 
-The implemented route is provider → installed CLI → existing IDEA plugin. Its
+The implemented route is provider → App Server-owned IDEA client → existing IDEA plugin. Its
 first intent is `AddDeclaration` in one authored Kotlin file. `change_plan` has
 no approval requirement. Apply and recovery load the immutable stored plan and
 require a current controller decision for that exact root, host, operation and
