@@ -32,6 +32,10 @@ with zipfile.ZipFile(plugin) as archive:
     assert not any(any(token in name for token in ('indexer', 'topology-', 'runtime-composition', 'workspace-service', 'idea-home')) for name in names)
 with tarfile.open(sys.argv[3]) as archive:
     names = archive.getnames()
+    for launcher in ('bin/kast', 'bin/kast-codex', 'share/kast/libexec/kast-daemon',
+                     'share/kast/libexec/kast-service'):
+        member = archive.getmember(launcher)
+        assert member.isfile() and member.mode & 0o111 == 0o111, (launcher, oct(member.mode))
     forbidden_runtime = ('semantic-runtime', 'kast-indexer', 'topology-', 'runtime-composition', 'workspace-service')
     for member in archive.getmembers():
         if member.name.startswith('share/kast/knowledge/'):

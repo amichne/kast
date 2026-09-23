@@ -98,7 +98,7 @@ val stageKastControlProduct = tasks.register<Sync>("stageKastControlProduct") {
 
 val assembleKastControlDist = tasks.register<Tar>("assembleKastControlDist") {
     group = "distribution"
-    description = "Builds the public CLI, lifecycle, schema, broker, and wire-control archive."
+    description = "Builds the private service, lifecycle, schema, broker, and wire-control archive."
     dependsOn(stageKastControlProduct)
     from(controlProductDirectory)
     destinationDirectory.set(layout.buildDirectory.dir("distributions"))
@@ -107,7 +107,13 @@ val assembleKastControlDist = tasks.register<Tar>("assembleKastControlDist") {
     isPreserveFileTimestamps = false
     isReproducibleFileOrder = true
     eachFile {
-        if (relativePath.pathString in setOf("bin/kast", "bin/kast-codex")) permissions { unix("755") }
+        if (relativePath.pathString in setOf(
+                "bin/kast",
+                "bin/kast-codex",
+                "share/kast/libexec/kast-daemon",
+                "share/kast/libexec/kast-service",
+            )
+        ) permissions { unix("755") }
     }
 }
 
