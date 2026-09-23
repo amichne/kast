@@ -20,6 +20,8 @@ internal sealed interface KastToolInputFailure {
     data object SchemaMismatch : KastToolInputFailure
 }
 
+private val facadeOnlyOperations = setOf(CanonicalOperation.QUERY_RUN, CanonicalOperation.DIAGNOSTIC_CHECK)
+
 internal fun admitKastInput(
     operation: CanonicalOperation,
     admitted: ValidatedJsonValue,
@@ -29,7 +31,7 @@ internal fun admitKastInput(
         admitFacadeInput(operation, admitted, binding)
     } else if (operation == CanonicalOperation.SOURCE_READ) {
         admitSourceInput(admitted)
-    } else if (operation == CanonicalOperation.QUERY_RUN) {
+    } else if (operation in facadeOnlyOperations) {
         Validation.rejected(KastToolInputFailure.SchemaMismatch)
     } else if (admitted.element is JsonObject) {
         Validation.validated(KastInvocationInput.Canonical(operation, admitted))
@@ -50,10 +52,11 @@ internal fun KastInvocationInput.encodeFor(tool: QualifiedKastTool): Refinement<
                 Refinement.Refined(PublicToolContract.encode(request))
             else Refinement.Rejected(KastToolInputFailure.SchemaMismatch)
         is KastInvocationInput.Canonical ->
-            if (
+            if (operation in facadeOnlyOperations) {
+                Refinement.Rejected(KastToolInputFailure.SchemaMismatch)
+            } else if (
                 tool.inputBinding == AgentToolInputBinding.Canonical &&
                     operation == tool.hostedDefinition.operation &&
-                    operation != CanonicalOperation.QUERY_RUN &&
                     arguments.schemaDigest == tool.inputSchema.digest
             ) {
                 Refinement.Refined(arguments.element)

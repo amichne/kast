@@ -18,7 +18,6 @@ import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ChangeApplyRequest
 import io.github.amichne.kast.protocol.contract.ChangePlanRequest
 import io.github.amichne.kast.protocol.contract.ChangeRecoverRequest
-import io.github.amichne.kast.protocol.contract.DiagnosticCheckRequest
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import io.github.amichne.kast.protocol.contract.OperationRequest
@@ -213,8 +212,6 @@ internal class KastDirectInvocation(private val options: KastProviderOptions) {
                         decode(input, RelationReadRequest.serializer(), preparers.relationRead)
                     CanonicalOperation.TRAVERSAL_RUN ->
                         decode(input, TraversalRunRequest.serializer(), preparers.traversalRun)
-                    CanonicalOperation.DIAGNOSTIC_CHECK ->
-                        decode(input, DiagnosticCheckRequest.serializer(), preparers.diagnosticCheck)
                     CanonicalOperation.CHANGE_PLAN ->
                         decode(input, ChangePlanRequest.serializer(), preparers.changePlan)
                     CanonicalOperation.CHANGE_APPLY ->
@@ -225,6 +222,7 @@ internal class KastDirectInvocation(private val options: KastProviderOptions) {
                     CanonicalOperation.INDEX_SYNC,
                     CanonicalOperation.TOPOLOGY_BUILD,
                     CanonicalOperation.QUERY_RUN,
+                    CanonicalOperation.DIAGNOSTIC_CHECK,
                     CanonicalOperation.SOURCE_READ -> Refinement.Rejected(ExistingIdeFailure.OPERATION_UNSUPPORTED)
                 }
         }
