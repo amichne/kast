@@ -27,7 +27,8 @@ def main() -> None:
     run(["python3", "distribution/release/test_verify_environment.py"], environment)
     run(["python3", ".github/scripts/ci/test_routine_gate.py"], environment)
     run(["python3", ".github/scripts/ci/routine_gate.py"], environment)
-    run(GRADLE + ["productBuildGate"], environment)
+    # The installer admits release-shaped versions; Git-describe PR versions are not installable.
+    run(GRADLE + ["-Pversion=0.0.0", "productBuildGate"], environment)
     run([
         "bash", ".github/scripts/release/admit-source.sh",
         "--repository-root", str(ROOT),

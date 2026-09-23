@@ -298,9 +298,12 @@ class PrivateEnvironmentTest(unittest.TestCase):
                 self.assertNotIn("KAST_INSTALLED_PRODUCT", env)
                 return subprocess.CompletedProcess(command, 0)
 
-            with patch.dict(os.environ, inputs), patch.object(runner.subprocess, "run", side_effect=probe) as child:
+            with patch.dict(os.environ, inputs), \
+                    patch.object(runner.subprocess, "run", side_effect=probe) as child, \
+                    patch.object(runner, "verify_assembled_installer") as installer:
                 runner.main()
             child.assert_called_once()
+            installer.assert_called_once()
 
     def test_replaced_root_is_never_removed(self):
         fixture = self.fixture()
