@@ -37,7 +37,7 @@ Executable checks are `PublicToolContractTest`, `PublicToolSchemaTest`, `KastPub
 
 ## Historical legacy query grammar
 
-The sections below record the former `kast query run` contract. Its authored schema and admission tests remain as historical contract evidence, but the command is no longer in the installed CLI and the provider rejects its canonical input route. The current agent catalog and CLI use the intent contracts above.
+The sections below record the former `kast query run` contract. Its authored schema and admission tests remain as historical contract evidence, but the command is no longer in the installed CLI and the provider rejects its canonical input route. The former `diagnostic check` command and canonical provider input route are also retired. The current agent catalog and CLI use the intent contracts above.
 
 ## Authority and physical ownership
 
