@@ -1,14 +1,18 @@
 package io.github.amichne.kast.cli.ide
 
-import io.github.amichne.kast.appserver.DaemonReadClient
-import io.github.amichne.kast.appserver.DaemonReadClientFailure
-import io.github.amichne.kast.appserver.DaemonReadClientRejection
-import io.github.amichne.kast.appserver.DaemonReadResult
+import io.github.amichne.kast.appserver.DaemonChangeAction
+import io.github.amichne.kast.appserver.DaemonOperationCall
+import io.github.amichne.kast.appserver.DaemonOperationClient
+import io.github.amichne.kast.appserver.DaemonOperationClientFailure
+import io.github.amichne.kast.appserver.DaemonOperationClientRejection
+import io.github.amichne.kast.appserver.DaemonOperationResult
 import io.github.amichne.kast.appserver.diagnosticCode
 import io.github.amichne.kast.appserver.ide.CanonicalRootDiscoverer
 import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
 import io.github.amichne.kast.appserver.ide.ExistingIdeClient
 import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
+import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
+import io.github.amichne.kast.appserver.ide.HostedMutationOperation
 import io.github.amichne.kast.cli.*
 import io.github.amichne.kast.cli.CliTextDocument
 import io.github.amichne.kast.cli.command.*
@@ -45,8 +49,10 @@ internal fun selectCliRuntimePath(argv: List<String>): CliRuntimePath {
 internal class ExistingIdeCliCapabilities(
     val roots: CanonicalRootDiscoverer,
     val client: ExistingIdeClient,
-    val read: DaemonReadClient = DaemonReadClient { _, _ ->
-        DaemonReadResult.Rejected(DaemonReadClientRejection.Transport(DaemonReadClientFailure.UNAVAILABLE))
+    val read: DaemonOperationClient = DaemonOperationClient { _, _ ->
+        DaemonOperationResult.Rejected(
+            DaemonOperationClientRejection.Transport(DaemonOperationClientFailure.UNAVAILABLE)
+        )
     },
 )
 
@@ -57,8 +63,10 @@ internal fun executeExistingIdeCli(
     roots: CanonicalRootDiscoverer,
     client: ExistingIdeClient,
     requestInput: CliRequestDocumentInput = CliRequestDocumentInput.Absent,
-    read: DaemonReadClient = DaemonReadClient { _, _ ->
-        DaemonReadResult.Rejected(DaemonReadClientRejection.Transport(DaemonReadClientFailure.UNAVAILABLE))
+    read: DaemonOperationClient = DaemonOperationClient { _, _ ->
+        DaemonOperationResult.Rejected(
+            DaemonOperationClientRejection.Transport(DaemonOperationClientFailure.UNAVAILABLE)
+        )
     },
 ): CliExit =
     executeExistingIdeCli(
@@ -122,22 +130,85 @@ private fun executeSemanticAction(
                 )
         }
     val source = action.source
-    return if (source is SemanticSource.PublicTool)
-        executeDaemonRead(start, capabilities.roots, capabilities.read, source.tool)
-    else
-        executeExistingIdeAction(
-            CliAction.Local.ExistingIde(operation, ExistingIdeRootSelection.CurrentDirectory),
-            start,
-            capabilities.roots,
-            capabilities.client,
-        )
+    return when (source) {
+        is SemanticSource.PublicTool ->
+            executeDaemonOperation(
+                start,
+                capabilities.roots,
+                capabilities.read,
+                DaemonOperationCall.PublicTool(source.tool),
+            )
+        is SemanticSource.CanonicalRead ->
+            executeDaemonOperation(
+                start,
+                capabilities.roots,
+                capabilities.read,
+                DaemonOperationCall.Canonical(source.read),
+            )
+        is SemanticSource.ChangePlan,
+        is SemanticSource.ChangeApply,
+        is SemanticSource.ChangeRecover -> {
+            val change =
+                source.changeCall(operation)
+                    ?: return boundaryExit(CliBoundaryExitStatus.RUNTIME, "daemon-operation-identity-rejected")
+            executeDaemonOperation(start, capabilities.roots, capabilities.read, DaemonOperationCall.Change(change))
+        }
+        SemanticSource.Canonical -> boundaryExit(CliBoundaryExitStatus.RUNTIME, "daemon-operation-unsupported")
+    }
 }
 
-private fun executeDaemonRead(
+private fun SemanticSource.changeCall(operation: ExistingIdeOperation): DaemonChangeAction? =
+    when (this) {
+        is SemanticSource.ChangePlan ->
+            if (operation is ExistingIdeOperation.Plan) DaemonChangeAction.Plan(request) else null
+        is SemanticSource.ChangeApply -> changeCall(operation)
+        is SemanticSource.ChangeRecover -> changeCall(operation)
+        else -> null
+    }
+
+private fun SemanticSource.ChangeApply.changeCall(operation: ExistingIdeOperation): DaemonChangeAction? =
+    when (operation) {
+        is ExistingIdeOperation.ApprovalPreparation ->
+            if (
+                operation.kind == HostedMutationOperation.CHANGE_APPLY &&
+                    operation.identity.value == request.planIdentity.value
+            )
+                DaemonChangeAction.Prepare(operation.kind, operation.identity.value)
+            else null
+        is ExistingIdeOperation.ApprovedMutation ->
+            if (
+                operation.kind == HostedMutationOperation.CHANGE_APPLY &&
+                    operation.identity.value == request.planIdentity.value
+            )
+                DaemonChangeAction.Apply(request, operation.assertion.value)
+            else null
+        else -> null
+    }
+
+private fun SemanticSource.ChangeRecover.changeCall(operation: ExistingIdeOperation): DaemonChangeAction? =
+    when (operation) {
+        is ExistingIdeOperation.ApprovalPreparation ->
+            if (
+                operation.kind == HostedMutationOperation.CHANGE_RECOVER &&
+                    operation.identity.value == request.planIdentity.value
+            )
+                DaemonChangeAction.Prepare(operation.kind, operation.identity.value)
+            else null
+        is ExistingIdeOperation.ApprovedMutation ->
+            if (
+                operation.kind == HostedMutationOperation.CHANGE_RECOVER &&
+                    operation.identity.value == request.planIdentity.value
+            )
+                DaemonChangeAction.Recover(request, operation.assertion.value)
+            else null
+        else -> null
+    }
+
+private fun executeDaemonOperation(
     start: Path,
     roots: CanonicalRootDiscoverer,
-    read: DaemonReadClient,
-    tool: io.github.amichne.kast.appserver.query.AdmittedPublicTool,
+    read: DaemonOperationClient,
+    call: DaemonOperationCall,
 ): CliExit {
     val root =
         when (val selected = roots.discover(start)) {
@@ -145,11 +216,13 @@ private fun executeDaemonRead(
             is CanonicalRootDiscovery.Rejected ->
                 return boundaryExit(CliBoundaryExitStatus.ROOT, selected.failure.name.lowercase())
         }
-    return when (val result = read.read(root, tool)) {
-        is DaemonReadResult.Complete -> CliExit.Complete(result.document)
-        is DaemonReadResult.Qualified -> CliExit.Qualified(result.document)
-        is DaemonReadResult.OperationRejected -> CliExit.OperationRejected(result.document)
-        is DaemonReadResult.Rejected -> boundaryExit(CliBoundaryExitStatus.RUNTIME, result.failure.diagnosticCode())
+    return when (val result = read.read(root, call)) {
+        is DaemonOperationResult.Complete -> CliExit.Complete(result.document)
+        is DaemonOperationResult.Qualified -> CliExit.Qualified(result.document)
+        is DaemonOperationResult.OperationRejected -> CliExit.OperationRejected(result.document)
+        is DaemonOperationResult.Hosted -> CliExit.Complete(result.document)
+        is DaemonOperationResult.Rejected ->
+            boundaryExit(CliBoundaryExitStatus.RUNTIME, result.failure.diagnosticCode())
     }
 }
 

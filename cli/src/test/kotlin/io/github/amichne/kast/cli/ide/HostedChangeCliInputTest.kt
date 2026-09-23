@@ -1,19 +1,20 @@
 package io.github.amichne.kast.cli.ide
 
+import io.github.amichne.kast.appserver.DaemonChangeAction
+import io.github.amichne.kast.appserver.DaemonOperationCall
+import io.github.amichne.kast.appserver.DaemonOperationClient
+import io.github.amichne.kast.appserver.DaemonOperationClientRejection
+import io.github.amichne.kast.appserver.DaemonOperationFailure
+import io.github.amichne.kast.appserver.DaemonOperationResult
 import io.github.amichne.kast.appserver.ide.CanonicalRootDiscoverer
 import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
 import io.github.amichne.kast.appserver.ide.ExistingIdeClient
-import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
 import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
-import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
 import io.github.amichne.kast.appserver.ide.canonicalRootFixture
 import io.github.amichne.kast.cli.command.CliRequestDocumentInput
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
 import java.util.Base64
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -36,25 +37,38 @@ class HostedChangeCliInputTest {
                 roots = CanonicalRootDiscoverer { CanonicalRootDiscovery.Discovered(root) },
                 client =
                     ExistingIdeClient { _, operation ->
-                        calls++
-                        val approved = operation as ExistingIdeOperation.ApprovedMutation
-                        assertEquals(identity, approved.identity.value)
-                        assertEquals(assertion, approved.assertion.value)
-                        assertEquals(
-                            identity,
-                            Json.parseToJsonElement(approved.request.document)
-                                .jsonObject["body"]!!
-                                .jsonObject["value"]!!
-                                .jsonObject["planIdentity"]!!
-                                .jsonPrimitive
-                                .content,
-                        )
-                        ExistingIdeExchange.Rejected(ExistingIdeFailure.HOST_UNAVAILABLE)
+                        error("Approved change reached direct IDE: $operation")
                     },
                 requestInput =
                     CliRequestDocumentInput.Provided(
                         """{"arguments":{"planIdentity":"$identity"},"approval":"$assertion"}"""
                     ),
+                read =
+                    DaemonOperationClient { admittedRoot, call ->
+                        assertEquals(root, admittedRoot)
+                        val action = (call as DaemonOperationCall.Change).action
+                        val actualIdentity =
+                            when (action) {
+                                is DaemonChangeAction.Apply -> {
+                                    assertEquals("apply", verb)
+                                    assertEquals(assertion, action.assertion)
+                                    action.request.planIdentity.value
+                                }
+                                is DaemonChangeAction.Recover -> {
+                                    assertEquals("recover", verb)
+                                    assertEquals(assertion, action.assertion)
+                                    action.request.planIdentity.value
+                                }
+                                else -> error("Unexpected change stage: $action")
+                            }
+                        assertEquals(identity, actualIdentity)
+                        calls++
+                        DaemonOperationResult.Rejected(
+                            DaemonOperationClientRejection.Server(
+                                DaemonOperationFailure.Host(ExistingIdeFailure.HOST_UNAVAILABLE)
+                            )
+                        )
+                    },
             )
             assertEquals(1, calls)
         }

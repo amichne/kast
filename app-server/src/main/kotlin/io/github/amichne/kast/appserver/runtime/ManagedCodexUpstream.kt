@@ -255,7 +255,7 @@ internal enum class BrokerControlRoute(val path: String) {
     CODEX("/"),
     RUNTIME("/kast-runtime"),
     MANAGEMENT(io.github.amichne.kast.appserver.DaemonManagementProtocol.route),
-    READ(io.github.amichne.kast.appserver.DaemonReadProtocol.route),
+    OPERATION(io.github.amichne.kast.appserver.DaemonOperationProtocol.route),
 }
 
 internal suspend fun connectCodexUnixWebSocket(

@@ -9,17 +9,18 @@ import io.github.amichne.kast.appserver.CoordinatorServiceState
 import io.github.amichne.kast.appserver.CoordinatorStatusDocument
 import io.github.amichne.kast.appserver.CoordinatorStatusProtocol
 import io.github.amichne.kast.appserver.DaemonManagementTarget
-import io.github.amichne.kast.appserver.DaemonRead
-import io.github.amichne.kast.appserver.DaemonReadFailure
-import io.github.amichne.kast.appserver.DaemonReadProtocol
-import io.github.amichne.kast.appserver.DaemonReadProtocolFailure
-import io.github.amichne.kast.appserver.DaemonReadRequest
-import io.github.amichne.kast.appserver.DaemonReadResponse
+import io.github.amichne.kast.appserver.DaemonOperation
+import io.github.amichne.kast.appserver.DaemonOperationFailure
+import io.github.amichne.kast.appserver.DaemonOperationProtocol
+import io.github.amichne.kast.appserver.DaemonOperationProtocolFailure
+import io.github.amichne.kast.appserver.DaemonOperationRequest
+import io.github.amichne.kast.appserver.DaemonOperationResponse
 import io.github.amichne.kast.appserver.InstallationLifecycleFence
 import io.github.amichne.kast.appserver.InstallationLifecycleStartAdmission
 import io.github.amichne.kast.appserver.WorkerControlFailure
 import io.github.amichne.kast.appserver.WorkspaceEnrollmentStore
 import io.github.amichne.kast.appserver.coordinatorConfigurationIdentity
+import io.github.amichne.kast.appserver.operation
 import io.github.amichne.kast.appserver.protocol.ThreadBindingOwner
 import io.github.amichne.kast.appserver.rejectedCoordinatorControl
 import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
@@ -69,7 +70,7 @@ private constructor(
             { root -> WorkspaceEnrollmentStore(installationRoot.resolve("config/workspaces.json")).enroll(root) },
         )
     private val read =
-        DaemonRead(
+        DaemonOperation(
             target,
             ::available,
             demand,
@@ -96,37 +97,40 @@ private constructor(
         if (frame is Frame.Text) session.send(management.exchange(frame.readText()))
     }
 
-    suspend fun handleRead(session: DefaultWebSocketServerSession) {
-        fun rejected(reason: DaemonReadProtocolFailure): String =
-            DaemonReadProtocol.json.encodeToString<DaemonReadResponse>(
-                DaemonReadResponse.Rejected(DaemonReadFailure.Protocol(reason))
+    suspend fun handleOperation(session: DefaultWebSocketServerSession) {
+        fun rejected(reason: DaemonOperationProtocolFailure): String =
+            DaemonOperationProtocol.json.encodeToString<DaemonOperationResponse>(
+                DaemonOperationResponse.Rejected(DaemonOperationFailure.Protocol(reason))
             )
         val frame =
             withTimeoutOrNull(BrokerOperationalLimits.managementExchange.value) {
                 session.incoming.receiveCatching().getOrNull()
             }
         val text = (frame as? Frame.Text)?.readText()
-        if (text == null || text.toByteArray().size > DaemonReadProtocol.maximumRequestBytes) {
-            session.send(rejected(DaemonReadProtocolFailure.INVALID_REQUEST))
+        if (text == null || text.toByteArray().size > DaemonOperationProtocol.maximumRequestBytes) {
+            session.send(rejected(DaemonOperationProtocolFailure.INVALID_REQUEST))
             return
         }
         val request =
             try {
-                DaemonReadProtocol.json.decodeFromString<DaemonReadRequest>(text)
+                DaemonOperationProtocol.json.decodeFromString<DaemonOperationRequest>(text)
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
-                session.send(rejected(DaemonReadProtocolFailure.INVALID_REQUEST))
+                session.send(rejected(DaemonOperationProtocolFailure.INVALID_REQUEST))
                 return
             }
         val result =
-            withTimeoutOrNull(OperationExecutionBudget.forOperation(request.tool.identity.operation).invocation.value) {
+            withTimeoutOrNull(OperationExecutionBudget.forOperation(request.selection.operation()).invocation.value) {
                 read.execute(request)
-            } ?: DaemonReadResponse.Rejected(DaemonReadFailure.Protocol(DaemonReadProtocolFailure.OUTCOME_UNOBSERVED))
-        val response = DaemonReadProtocol.json.encodeToString<DaemonReadResponse>(result)
+            }
+                ?: DaemonOperationResponse.Rejected(
+                    DaemonOperationFailure.Protocol(DaemonOperationProtocolFailure.OUTCOME_UNOBSERVED)
+                )
+        val response = DaemonOperationProtocol.json.encodeToString<DaemonOperationResponse>(result)
         session.send(
-            if (response.toByteArray().size <= DaemonReadProtocol.maximumResponseBytes) response
-            else rejected(DaemonReadProtocolFailure.CAPACITY_EXCEEDED)
+            if (response.toByteArray().size <= DaemonOperationProtocol.maximumResponseBytes) response
+            else rejected(DaemonOperationProtocolFailure.CAPACITY_EXCEEDED)
         )
     }
 

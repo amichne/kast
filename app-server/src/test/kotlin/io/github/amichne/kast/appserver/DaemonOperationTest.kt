@@ -23,7 +23,7 @@ import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
-class DaemonReadTest {
+class DaemonOperationTest {
     @TempDir lateinit var directory: Path
 
     private val target = DaemonManagementTarget("installation", "epoch", "generation", "configuration")
@@ -89,19 +89,27 @@ class DaemonReadTest {
     private data class ExpectedRequest(
         val target: DaemonManagementTarget,
         val root: String,
+        val selection: ExpectedSelection,
+        val version: Int,
+    )
+
+    @Serializable
+    private data class ExpectedSelection(
+        val type: String,
         val tool: String,
         val arguments: JsonElement,
-        val version: Int,
     )
 
     private fun root(): Path = directory.also { Files.writeString(it.resolve("settings.gradle.kts"), "") }.toRealPath()
 
-    private fun request(path: Path, tool: DaemonReadTool = DaemonReadTool.QUERY_SYMBOLS) =
-        DaemonReadRequest(
+    private fun request(path: Path, tool: DaemonOperationTool = DaemonOperationTool.QUERY_SYMBOLS) =
+        DaemonOperationRequest(
             target,
             path.toString(),
-            tool,
-            Json.encodeToJsonElement(Arguments(Source(SourceType.ALL_DECLARATIONS, null, null), null, emptyList())),
+            DaemonOperationSelection.PublicTool(
+                tool,
+                Json.encodeToJsonElement(Arguments(Source(SourceType.ALL_DECLARATIONS, null, null), null, emptyList())),
+            ),
         )
 
     @Test
@@ -109,30 +117,47 @@ class DaemonReadTest {
         val path = root()
         assertEquals(
             Json.encodeToJsonElement(
-                ExpectedRequest(target, path.toString(), "QUERY_SYMBOLS", request(path).arguments, 1)
+                ExpectedRequest(
+                    target,
+                    path.toString(),
+                    ExpectedSelection(
+                        "public_tool",
+                        "QUERY_SYMBOLS",
+                        (request(path).selection as DaemonOperationSelection.PublicTool).arguments,
+                    ),
+                    2,
+                )
             ),
-            DaemonReadProtocol.json.encodeToJsonElement(DaemonReadRequest.serializer(), request(path)),
+            DaemonOperationProtocol.json.encodeToJsonElement(DaemonOperationRequest.serializer(), request(path)),
         )
-        val query = DaemonRead(target, { true }, WorkspaceDemand { _, _ -> error("Workspace was prepared") })
+        val query = DaemonOperation(target, { true }, WorkspaceDemand { _, _ -> error("Workspace was prepared") })
         assertEquals(
-            DaemonReadFailure.Protocol(DaemonReadProtocolFailure.IDENTITY_REJECTED),
+            DaemonOperationFailure.Protocol(DaemonOperationProtocolFailure.IDENTITY_REJECTED),
             (query.execute(request(path).copy(target = target.copy(stateEpoch = "other")))
-                    as DaemonReadResponse.Rejected)
+                    as DaemonOperationResponse.Rejected)
                 .failure,
         )
         assertEquals(
-            DaemonReadFailure.Protocol(DaemonReadProtocolFailure.UNSUPPORTED_VERSION),
-            (query.execute(request(path).copy(version = 2)) as DaemonReadResponse.Rejected).failure,
+            DaemonOperationFailure.Protocol(DaemonOperationProtocolFailure.UNSUPPORTED_VERSION),
+            (query.execute(request(path).copy(version = 3)) as DaemonOperationResponse.Rejected).failure,
         )
-        val malformed = request(path).copy(arguments = Json.encodeToJsonElement(Document("wrong schema")))
+        val malformed =
+            request(path)
+                .copy(
+                    selection =
+                        DaemonOperationSelection.PublicTool(
+                            DaemonOperationTool.QUERY_SYMBOLS,
+                            Json.encodeToJsonElement(Document("wrong schema")),
+                        )
+                )
         assertEquals(
-            DaemonReadFailure.Input(DaemonReadInputFailure.SchemaRejected),
-            (query.execute(malformed) as DaemonReadResponse.Rejected).failure,
+            DaemonOperationFailure.Input(DaemonOperationInputFailure.SchemaRejected),
+            (query.execute(malformed) as DaemonOperationResponse.Rejected).failure,
         )
         assertEquals(
-            DaemonReadFailure.Protocol(DaemonReadProtocolFailure.LIFECYCLE_TRANSITION),
-            (DaemonRead(target, { false }, WorkspaceDemand { _, _ -> error("Workspace was prepared") })
-                    .execute(request(path)) as DaemonReadResponse.Rejected)
+            DaemonOperationFailure.Protocol(DaemonOperationProtocolFailure.LIFECYCLE_TRANSITION),
+            (DaemonOperation(target, { false }, WorkspaceDemand { _, _ -> error("Workspace was prepared") })
+                    .execute(request(path)) as DaemonOperationResponse.Rejected)
                 .failure,
         )
     }
@@ -144,7 +169,7 @@ class DaemonReadTest {
         val document = CanonicalJsonDocument.generated(Document.serializer()).create(Document("partial"))
         var calls = 0
         val query =
-            DaemonRead(
+            DaemonOperation(
                 target,
                 { true },
                 WorkspaceDemand { root, operation ->
@@ -156,17 +181,17 @@ class DaemonReadTest {
                     )
                 },
             )
-        val response = assertInstanceOf(DaemonReadResponse.Qualified::class.java, query.execute(request(path)))
+        val response = assertInstanceOf(DaemonOperationResponse.Qualified::class.java, query.execute(request(path)))
         assertEquals(1, calls)
         assertEquals(target, response.target)
         assertEquals(path.toString(), response.root)
         assertEquals(Json.encodeToJsonElement(Document("partial")), response.document)
-        val wire = DaemonReadProtocol.json.encodeToString(DaemonReadResponse.serializer(), response)
+        val wire = DaemonOperationProtocol.json.encodeToString(DaemonOperationResponse.serializer(), response)
         assertEquals(
             Json.encodeToJsonElement(ExpectedQualified("qualified", target, path.toString(), Document("partial"))),
             Json.parseToJsonElement(wire),
         )
-        assertEquals(response, DaemonReadProtocol.json.decodeFromString<DaemonReadResponse>(wire))
+        assertEquals(response, DaemonOperationProtocol.json.decodeFromString<DaemonOperationResponse>(wire))
     }
 
     @Test
@@ -174,14 +199,16 @@ class DaemonReadTest {
         val path = root()
         val admittedRoot = (FilesystemCanonicalRootDiscovery.discover(path) as CanonicalRootDiscovery.Discovered).root
         val response =
-            DaemonReadResponse.Complete(
+            DaemonOperationResponse.Complete(
                 target.copy(stateEpoch = "other"),
                 path.toString(),
                 Json.encodeToJsonElement(Document("success")),
             )
         assertEquals(
-            DaemonReadResult.Rejected(DaemonReadClientRejection.Transport(DaemonReadClientFailure.RESPONSE_REJECTED)),
-            admitQueryResponse(response, target, admittedRoot),
+            DaemonOperationResult.Rejected(
+                DaemonOperationClientRejection.Transport(DaemonOperationClientFailure.RESPONSE_REJECTED)
+            ),
+            admitOperationResponse(response, target, admittedRoot),
         )
     }
 
@@ -191,10 +218,14 @@ class DaemonReadTest {
         val admittedRoot = (FilesystemCanonicalRootDiscovery.discover(path) as CanonicalRootDiscovery.Discovered).root
         val payload = Json.encodeToJsonElement(Document("partial"))
         val result =
-            admitQueryResponse(DaemonReadResponse.Qualified(target, path.toString(), payload), target, admittedRoot)
+            admitOperationResponse(
+                DaemonOperationResponse.Qualified(target, path.toString(), payload),
+                target,
+                admittedRoot,
+            )
         assertEquals(
             CanonicalJsonDocument.generated(Document.serializer()).create(Document("partial")).value,
-            assertInstanceOf(DaemonReadResult.Qualified::class.java, result).document.value,
+            assertInstanceOf(DaemonOperationResult.Qualified::class.java, result).document.value,
         )
     }
 
@@ -206,21 +237,21 @@ class DaemonReadTest {
         val cases =
             listOf(
                 ExistingIdeExchange.Semantic(ProjectedOperationOutcome.Complete(document)) to
-                    DaemonReadResponse.Complete(target, path.toString(), element),
+                    DaemonOperationResponse.Complete(target, path.toString(), element),
                 ExistingIdeExchange.Semantic(ProjectedOperationOutcome.Rejected(document)) to
-                    DaemonReadResponse.OperationRejected(target, path.toString(), element),
+                    DaemonOperationResponse.OperationRejected(target, path.toString(), element),
                 ExistingIdeExchange.HostRejected(document) to
-                    DaemonReadResponse.OperationRejected(target, path.toString(), element),
+                    DaemonOperationResponse.OperationRejected(target, path.toString(), element),
                 ExistingIdeExchange.Rejected(ExistingIdeFailure.HOST_UNAVAILABLE) to
-                    DaemonReadResponse.Rejected(DaemonReadFailure.Host(ExistingIdeFailure.HOST_UNAVAILABLE)),
+                    DaemonOperationResponse.Rejected(DaemonOperationFailure.Host(ExistingIdeFailure.HOST_UNAVAILABLE)),
                 ExistingIdeExchange.Received(document) to
-                    DaemonReadResponse.Rejected(
-                        DaemonReadFailure.Protocol(DaemonReadProtocolFailure.RESPONSE_REJECTED)
+                    DaemonOperationResponse.Rejected(
+                        DaemonOperationFailure.Protocol(DaemonOperationProtocolFailure.RESPONSE_REJECTED)
                     ),
             )
         for ((exchange, expected) in cases) {
             val query =
-                DaemonRead(
+                DaemonOperation(
                     target,
                     { true },
                     WorkspaceDemand { _, operation ->
@@ -238,7 +269,7 @@ class DaemonReadTest {
         for ((tool, arguments, operation) in readCases(path)) {
             var calls = 0
             val read =
-                DaemonRead(
+                DaemonOperation(
                     target,
                     { true },
                     WorkspaceDemand { admittedRoot, native ->
@@ -249,8 +280,11 @@ class DaemonReadTest {
                     },
                 )
             assertEquals(
-                DaemonReadFailure.Host(ExistingIdeFailure.HOST_UNAVAILABLE),
-                (read.execute(request(path, tool).copy(arguments = arguments)) as DaemonReadResponse.Rejected).failure,
+                DaemonOperationFailure.Host(ExistingIdeFailure.HOST_UNAVAILABLE),
+                (read.execute(
+                        request(path, tool).copy(selection = DaemonOperationSelection.PublicTool(tool, arguments))
+                    ) as DaemonOperationResponse.Rejected)
+                    .failure,
             )
             assertEquals(1, calls)
         }
@@ -260,42 +294,48 @@ class DaemonReadTest {
     fun `another public tool schema cannot prepare a workspace`() = runBlocking {
         val path = root()
         val rejected =
-            DaemonRead(target, { true }, WorkspaceDemand { _, _ -> error("Schema mismatch prepared workspace") })
+            DaemonOperation(target, { true }, WorkspaceDemand { _, _ -> error("Schema mismatch prepared workspace") })
         assertEquals(
-            DaemonReadFailure.Input(DaemonReadInputFailure.SchemaRejected),
+            DaemonOperationFailure.Input(DaemonOperationInputFailure.SchemaRejected),
             (rejected.execute(
-                    request(path, DaemonReadTool.SEARCH_CLASSES)
-                        .copy(arguments = Json.encodeToJsonElement(SearchFunctions("order", null, null)))
-                ) as DaemonReadResponse.Rejected)
+                    request(path, DaemonOperationTool.SEARCH_CLASSES)
+                        .copy(
+                            selection =
+                                DaemonOperationSelection.PublicTool(
+                                    DaemonOperationTool.SEARCH_CLASSES,
+                                    Json.encodeToJsonElement(SearchFunctions("order", null, null)),
+                                )
+                        )
+                ) as DaemonOperationResponse.Rejected)
                 .failure,
         )
     }
 
-    private fun readCases(path: Path): List<Triple<DaemonReadTool, JsonElement, ExistingIdeReadOperation>> =
+    private fun readCases(path: Path): List<Triple<DaemonOperationTool, JsonElement, ExistingIdeReadOperation>> =
         listOf(
             Triple(
-                DaemonReadTool.SEARCH_CLASSES,
+                DaemonOperationTool.SEARCH_CLASSES,
                 Json.encodeToJsonElement(SearchClasses("Order", null, null)),
                 ExistingIdeReadOperation.QUERY_RUN,
             ),
             Triple(
-                DaemonReadTool.SEARCH_FUNCTIONS,
+                DaemonOperationTool.SEARCH_FUNCTIONS,
                 Json.encodeToJsonElement(SearchFunctions("order", null, null)),
                 ExistingIdeReadOperation.QUERY_RUN,
             ),
             Triple(
-                DaemonReadTool.SEARCH_DECLARATIONS,
+                DaemonOperationTool.SEARCH_DECLARATIONS,
                 Json.encodeToJsonElement(SearchDeclarations("order", null, null, listOf("property", "type_alias"))),
                 ExistingIdeReadOperation.QUERY_RUN,
             ),
             Triple(
-                DaemonReadTool.CHECK_DIAGNOSTICS,
+                DaemonOperationTool.CHECK_DIAGNOSTICS,
                 Json.encodeToJsonElement(Diagnostics(".", null)),
                 ExistingIdeReadOperation.DIAGNOSTIC_CHECK,
             ),
             Triple(
-                DaemonReadTool.QUERY_SYMBOLS,
-                request(path).arguments,
+                DaemonOperationTool.QUERY_SYMBOLS,
+                (request(path).selection as DaemonOperationSelection.PublicTool).arguments,
                 ExistingIdeReadOperation.QUERY_RUN,
             ),
         )

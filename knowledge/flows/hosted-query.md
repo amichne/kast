@@ -6,6 +6,10 @@ resource: file://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/
 tags: [intellij, kotlin, semantic-query, lifecycle]
 timestamp: 2026-09-16T00:00:00Z
 code_sources:
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/DaemonOperation.kt
+    symbols: [DaemonOperation]
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeCli.kt
+    symbols: [selectCliRuntimePath]
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostedProjectAdmission.kt
   - path: packaging/hosted_wire_schema.py
   - path: packaging/hosted_peer_probe.py
@@ -153,11 +157,11 @@ code_sources:
 
 `selectCliRuntimePath` selects the semantic command families before installed
 bootstrap in `KastCliMain`, including the optional leading `--` command
-delimiter. The CLI sends every schema-bound `tool` read through the installed daemon's
-versioned read RPC. The daemon re-admits the selected public schema and exact root,
-prepares the selected IDEA project, then sends one native read to that project's
-endpoint. Other CLI semantic reads use the existing project endpoint directly;
-an absent host rejects without starting an isolated worker.
+delimiter. Public tools and canonical read commands use the installed daemon's
+versioned `/kast-operation` RPC. The daemon re-admits the selected public schema
+or typed canonical request and exact root, prepares the selected IDEA project,
+then sends one native read to that project's endpoint. An absent host rejects
+without starting an isolated worker or falling back to a direct CLI socket.
 
 The ordinary-query scope gate has a separate project-bound capture for exact
 imported Gradle names. It reads `ExternalProjectDataCache` and joins explicit
@@ -359,8 +363,9 @@ or relevance proof. The epoch listener independently advances its invalidation
 signal conservatively; a diagnostic receipt is not proof of fresh read admission.
 
 Incremental creation, class renaming, and deletion were qualified against the
-same original IDE index. Broader semantic CLI/App Server routing and stronger
-workspace publication remain separate integration boundaries.
+same original IDE index. The current CLI-to-daemon route has local contract and
+socket evidence; native desktop composition and stronger workspace publication
+remain separate integration boundaries.
 
 The qualified supertype selector remains in the hosted endpoint contract for
 native and compatibility tests. Index maintenance remains with IDEA.

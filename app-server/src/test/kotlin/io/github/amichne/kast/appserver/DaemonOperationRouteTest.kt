@@ -20,9 +20,9 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Test
 
-class DaemonReadRouteTest {
+class DaemonOperationRouteTest {
     @Test
-    fun `query RPC rejects stale identity before opening a workspace or optional Codex host`() =
+    fun `operation RPC rejects stale identity before opening a workspace or optional Codex host`() =
         withPayload { root, kast ->
             runBlocking {
                 val activities = java.util.concurrent.CopyOnWriteArrayList<BrokerStartupActivity>()
@@ -40,29 +40,25 @@ class DaemonReadRouteTest {
                 val running = (InstalledCoordinator.start(options) as InstalledCoordinatorStart.Started).coordinator
                 val client = HttpClient(CIO) { install(WebSockets) }
                 try {
-                    val stale =
-                        DaemonReadRequest(
-                            DaemonManagementTarget("stale", "stale", "stale", "stale"),
-                            "\u0000",
-                            DaemonReadTool.QUERY_SYMBOLS,
-                            JsonNull,
-                        )
-                    var result: DaemonReadResponse? = null
+                    val stale = staleRequest()
+                    var result: DaemonOperationResponse? = null
                     withTimeout(5_000) {
                         client.webSocket({
-                            url("ws://localhost${DaemonReadProtocol.route}")
+                            url("ws://localhost${DaemonOperationProtocol.route}")
                             unixSocket(options.socket.path.toString())
                         }) {
-                            send(DaemonReadProtocol.json.encodeToString(DaemonReadRequest.serializer(), stale))
+                            send(
+                                DaemonOperationProtocol.json.encodeToString(DaemonOperationRequest.serializer(), stale)
+                            )
                             result =
-                                DaemonReadProtocol.json.decodeFromString<DaemonReadResponse>(
+                                DaemonOperationProtocol.json.decodeFromString<DaemonOperationResponse>(
                                     (incoming.receive() as Frame.Text).readText()
                                 )
                         }
                     }
                     assertEquals(
-                        DaemonReadResponse.Rejected(
-                            DaemonReadFailure.Protocol(DaemonReadProtocolFailure.IDENTITY_REJECTED)
+                        DaemonOperationResponse.Rejected(
+                            DaemonOperationFailure.Protocol(DaemonOperationProtocolFailure.IDENTITY_REJECTED)
                         ),
                         result,
                     )
@@ -73,6 +69,13 @@ class DaemonReadRouteTest {
                 }
             }
         }
+
+    private fun staleRequest() =
+        DaemonOperationRequest(
+            DaemonManagementTarget("stale", "stale", "stale", "stale"),
+            "\u0000",
+            DaemonOperationSelection.PublicTool(DaemonOperationTool.QUERY_SYMBOLS, JsonNull),
+        )
 
     private fun withPayload(test: (Path, Path) -> Unit) {
         val root = Files.createTempDirectory(Path.of("/private/tmp"), "kast-q-").toRealPath()

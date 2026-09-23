@@ -1,5 +1,9 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.ChangeIntentDocument
+import io.github.amichne.kast.protocol.contract.ChangePlanRequest
+import io.github.amichne.kast.protocol.contract.ProtocolText
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
@@ -35,7 +39,7 @@ class SavedConfigurationAdmissionTest {
     }
 
     @Test
-    fun `hosted planning entry point rejects saved configuration before host admission`(@TempDir temporary: Path) {
+    fun `passive IDE status rejects saved configuration before host admission`(@TempDir temporary: Path) {
         val root = workspace(temporary)
         for ((marker, _) in rejectionMarkers) {
             val result =
@@ -44,10 +48,7 @@ class SavedConfigurationAdmissionTest {
                     root = root,
                     mainClass = "io.github.amichne.kast.cli.KastCliMainKt",
                     rejection = marker,
-                    arguments = listOf("change", "plan"),
-                    input =
-                        """{"intent":{"kind":"add-declaration","exactTarget":"exact:opaque",""" +
-                            """"declaration":"fun added() = Unit"}}""",
+                    arguments = listOf("ide", "status"),
                 )
 
             assertEquals(4, result.exitCode, result.stderr)
@@ -60,7 +61,7 @@ class SavedConfigurationAdmissionTest {
     }
 
     @Test
-    fun `live read entry point rejects unreadable saved read settings before opening a host`(@TempDir temporary: Path) {
+    fun `canonical read requires daemon without opening a host`(@TempDir temporary: Path) {
         val result =
             launch(
                 temporary,
@@ -74,7 +75,7 @@ class SavedConfigurationAdmissionTest {
         assertEquals(4, result.exitCode, result.stderr)
         assertEquals("", result.stdout)
         val document = Json.parseToJsonElement(result.stderr).jsonObject
-        assertEquals("ide-configuration-rejected", document.getValue("reason").jsonPrimitive.content)
+        assertEquals("daemon-operation-library-directory-invalid", document.getValue("reason").jsonPrimitive.content)
         assertFalse(Files.exists(temporary.resolve("runtime")))
         assertFalse(Files.exists(temporary.resolve("cache")))
     }
@@ -83,6 +84,33 @@ class SavedConfigurationAdmissionTest {
 
     @Serializable
     private data class NameTarget(val type: String, val query: String, val kind: String, val match: String)
+
+    @Test
+    fun `hosted planning requires daemon without opening a host`(@TempDir temporary: Path) {
+        val root = workspace(temporary)
+        val request =
+            ChangePlanRequest(
+                ChangeIntentDocument.AddDeclaration(
+                    (ProtocolText.parse("exact:opaque") as Refinement.Refined).value,
+                    (ProtocolText.parse("fun added() = Unit") as Refinement.Refined).value,
+                )
+            )
+        val result =
+            launch(
+                temporary,
+                root,
+                "io.github.amichne.kast.cli.KastCliMainKt",
+                "unreadable",
+                listOf("change", "plan"),
+                Json.encodeToString(request),
+            )
+        assertEquals(4, result.exitCode, result.stderr)
+        assertEquals("", result.stdout)
+        val document = Json.parseToJsonElement(result.stderr).jsonObject
+        assertEquals("daemon-operation-library-directory-invalid", document.getValue("reason").jsonPrimitive.content)
+        assertFalse(Files.exists(temporary.resolve("runtime")))
+        assertFalse(Files.exists(temporary.resolve("cache")))
+    }
 
     @Test
     fun `integration host rejects even empty and unknown markers before installation discovery or broker start`(
