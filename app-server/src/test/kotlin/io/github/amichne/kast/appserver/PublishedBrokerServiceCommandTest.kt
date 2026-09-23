@@ -93,25 +93,26 @@ class PublishedBrokerServiceCommandTest {
             Files.writeString(plist, servicePlist(command, arguments))
 
             assertEquals(command.identity, PublishedBrokerServiceCommand.recover(command)?.identity)
-            Files.writeString(
-                plist,
-                servicePlist(
-                    command,
-                    arguments.dropLast(3) +
-                        command.kast.parent.parent.resolve("share/kast/libexec/kast-daemon").toString(),
-                ),
-            )
+            val privateDocument = BrokerLaunchdServiceDocument.render(command)
+            Files.writeString(plist, privateDocument)
             assertEquals(command.identity, PublishedBrokerServiceCommand.recover(command)?.identity)
 
             Files.writeString(
                 plist,
-                servicePlist(
-                    command,
-                    arguments.map { argument ->
-                        if (argument.startsWith("BROKER_SERVICE_IDENTITY=")) {
-                            "BROKER_SERVICE_IDENTITY=sha256:${"0".repeat(64)}"
-                        } else argument
-                    },
+                privateDocument.replace("<key>RunAtLoad</key><true/>", "<key>RunAtLoad</key><false/>"),
+            )
+            assertNull(PublishedBrokerServiceCommand.recover(command))
+
+            Files.writeString(plist, privateDocument.replace("<integer>10</integer>", "<integer>1</integer>"))
+            assertNull(PublishedBrokerServiceCommand.recover(command))
+
+            Files.writeString(plist, privateDocument)
+
+            Files.writeString(
+                plist,
+                privateDocument.replace(
+                    "BROKER_SERVICE_IDENTITY=${command.identity.value}",
+                    "BROKER_SERVICE_IDENTITY=sha256:${"0".repeat(64)}",
                 ),
             )
             assertNull(PublishedBrokerServiceCommand.recover(command))
