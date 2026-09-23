@@ -65,14 +65,17 @@ client choosing that daemon. Neither choice establishes tool availability in
 every Desktop session. The current [Codex App Server contract](https://github.com/openai/codex/blob/main/codex-rs/app-server/README.md)
 places dynamic tool registration at thread start.
 
-The intended any-session route is a user-scoped Codex MCP registration backed by
-an installation-owned Kast adapter. That adapter must use the existing broker's
-workspace enrollment, tool schemas, semantic outcomes and approval boundary;
-installation must add and retire only its exact owned Codex configuration entry.
-This route is not implemented or accepted yet. It needs fresh CLI and Desktop
-sessions, resumed threads, concurrent sessions, absent IDEA, unregistered roots,
-and mutation approval tested against the same installed provider. Until then,
-use `kast codex` for a qualified attached CLI session.
+The App Server-only route is to select Kast's canonical control endpoint for a
+verified installation and have stock clients connect to that persistent broker.
+Installation must reject an incumbent it cannot prove it owns. An implicit CLI
+launch can fall back to an embedded server when discovery fails, so socket
+publication alone cannot establish tool availability. Desktop builds may choose
+their own stdio App Server; Kast cannot inject thread-start tools into such a
+session. The supported launcher remains `kast codex`, with `kast codex desktop`
+requiring its separate build-specific UI gate. Broader claims need fresh CLI and
+Desktop sessions, resumed threads, concurrent sessions, absent IDEA,
+unregistered roots, and mutation approval tested against the same installed
+provider. A client that bypasses the broker cannot receive its dynamic tools.
 
 ## Canonical endpoint migration — 2026-09-15
 
