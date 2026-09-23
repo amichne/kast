@@ -71,9 +71,14 @@ Install the IDEA plugin, connect Codex, and find a declaration in your repositor
     "${XDG_DATA_HOME:-$HOME/.local/share}/kast/current/share/kast/libexec/kast-service" register "$PWD"
     ```
 
-    Then open the repository in your Codex client. Register each worktree you
-    want Kast to serve. The persistent broker remains available after a client
-    closes.
+    Start the connected Codex CLI through the installed launcher:
+
+    ```shell
+    "${XDG_DATA_HOME:-$HOME/.local/share}/kast/current/bin/kast" codex
+    ```
+
+    Start a fresh task after connecting. Register each worktree you want Kast
+    to serve. The persistent broker remains available after a client closes.
   </Step>
   <Step title="Ask for a declaration">
     Ask: **“Use Kast to find the class OrderService.”** Replace `OrderService`
@@ -90,41 +95,13 @@ Install the IDEA plugin, connect Codex, and find a declaration in your repositor
 ## Setup alternatives
 
 <AccordionGroup>
-  <Accordion title="Force a clean installation">
-    ```shell
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" \
-      -- --force
-    ```
-
-    Force installation retires the selected services, resets managed sockets and
-    state and rebuilds the verified installation and
-    IDEA plugin. It preserves source workspaces and rebuilds enrollment. Previous
-    payloads and recovery records move aside under `.replaced-*`.
-    Add `--dry-run` to preview without changing installation state.
-  </Accordion>
   <Accordion title="Choose among multiple IDEA installations">
     ```shell
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" \
       -- --idea-home "/Applications/IntelliJ IDEA.app"
     ```
 
-    The recorded baseline is IDEA `262.10315.125` with Kotlin plugin
-    `262.10315.125-IJ`.
-
-    Other `262` builds are admitted by policy but lack the same native acceptance
-    evidence. See [Compatibility](/reference/compatibility).
-  </Accordion>
-  <Accordion title="Old command links">
-    An upgrade removes only links previously owned by Kast. An unrelated file
-    named `kast` or `kast-codex` is left in place.
-  </Accordion>
-  <Accordion title="Connect Codex Desktop">
-    Register the repository as above, then open that repository in Codex Desktop.
-    Desktop uses the persistent broker. Closing Desktop leaves it running.
-  </Accordion>
-  <Accordion title="Use an explicit Codex executable or another harness">
-    Other agent hosts should connect to the daemon through the
-    [hosted contract](/agent-harnesses).
+    See [Compatibility](/reference/compatibility) for tested IDEA builds.
   </Accordion>
   <Accordion title="Uninstall Kast">
     ```shell

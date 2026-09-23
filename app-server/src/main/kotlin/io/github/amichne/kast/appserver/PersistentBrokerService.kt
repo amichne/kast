@@ -5,6 +5,7 @@ import io.github.amichne.kast.appserver.host.admission.DesktopFacadeExecutables
 import io.github.amichne.kast.appserver.host.admission.UpstreamCodexExecutable
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationChild
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationOwner
+import io.github.amichne.kast.distribution.contract.configuration.ConfigurationPathSelection
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationSources
 import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
 import io.github.amichne.kast.kernel.Refinement
@@ -12,6 +13,7 @@ import java.io.File
 import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
+import java.nio.file.InvalidPathException
 import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.security.MessageDigest
@@ -267,7 +269,7 @@ private constructor(
             kastCandidate: Path,
             userHomeCandidate: Path,
             environment: Map<String, String>,
-            javaHomeCandidate: Path = Path.of(System.getProperty("java.home")),
+            javaHomeCandidate: Path? = null,
             purpose: BrokerServicePurpose = BrokerServicePurpose.HOST_ATTACHMENT,
         ): BrokerServiceLaunchCommandResolution {
             val kast =
@@ -301,8 +303,19 @@ private constructor(
                 }
             val configuration = admittedConfiguration.configuration
             val ownerInputs = configuration.ownerInputs(ConfigurationOwner.APP_SERVER)
+            val selectedJavaHome =
+                javaHomeCandidate
+                    ?: when (val idea = configuration.selectedIdeHome) {
+                        is ConfigurationPathSelection.Selected -> idea.path.resolve("jbr/Contents/Home")
+                        ConfigurationPathSelection.OwnerDefault ->
+                            try {
+                                Path.of(environment["JAVA_HOME"] ?: System.getProperty("java.home"))
+                            } catch (_: InvalidPathException) {
+                                return rejected(PersistentBrokerServiceFailure.JAVA_RUNTIME_UNAVAILABLE)
+                            }
+                    }
             val javaHome =
-                canonicalDirectoryTarget(javaHomeCandidate)
+                canonicalDirectoryTarget(selectedJavaHome)
                     ?: return rejected(PersistentBrokerServiceFailure.JAVA_RUNTIME_UNAVAILABLE)
             val javaExecutable =
                 regularExecutable(

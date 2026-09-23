@@ -13,9 +13,9 @@ schema qualification retain their existing owners.
 
 ## Enable and attach
 
-Persistent installation enables the service and selects the canonical Codex App
-Server endpoint. Register each repository or worktree explicitly before opening
-it in a Codex client:
+Persistent installation enables the service with an installation-private App
+Server endpoint by default. Register each repository or worktree explicitly
+before attaching a compatible client:
 
 ```sh
 "${XDG_DATA_HOME:-$HOME/.local/share}/kast/current/share/kast/libexec/kast-service" register /absolute/path/to/repository
@@ -26,7 +26,8 @@ also accepts `enable`, `disable`, `stop`, `repair --destructive`, and
 `enroll-trust`. A rejected registration retains its finite daemon reason.
 
 The broker's coordinator endpoint is installation-owned at `state/run/c.sock`
-(with an owned short-path transport when needed). The real Codex upstream remains
+(with an owned short-path transport when needed). The CLI connection command is
+documented in [Install and connect](../docs/public/start.mdx). The real Codex upstream remains
 installation-private at `state/run/u.sock`. An occupied canonical endpoint never
 grants Kast authority to replace an unknown incumbent. Client closure does not
 stop the persistent service.

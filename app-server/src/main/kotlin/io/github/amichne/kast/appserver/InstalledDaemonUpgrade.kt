@@ -6,7 +6,6 @@ import io.github.amichne.kast.appserver.runtime.UpgradeCandidate
 import io.github.amichne.kast.kernel.NonEmptyFailures
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
-import java.nio.file.InvalidPathException
 import java.nio.file.LinkOption
 import java.nio.file.Path
 import kotlinx.coroutines.runBlocking
@@ -102,14 +101,6 @@ object InstalledDaemonUpgrade {
     ): InstalledUpgradePreparation {
         if (UpgradeCandidate.admit(candidate) is Refinement.Rejected)
             return InstalledUpgradePreparation.Rejected(InstalledUpgradeRejection.CandidateRejected)
-        val javaHome =
-            try {
-                Path.of(environment["JAVA_HOME"] ?: System.getProperty("java.home"))
-            } catch (_: InvalidPathException) {
-                return InstalledUpgradePreparation.Rejected(
-                    InstalledUpgradeRejection.Command(PersistentBrokerServiceFailure.JAVA_RUNTIME_UNAVAILABLE)
-                )
-            }
         val command =
             when (
                 val resolved =
@@ -117,7 +108,6 @@ object InstalledDaemonUpgrade {
                         kast,
                         userHome,
                         environment,
-                        javaHomeCandidate = javaHome,
                         purpose = BrokerServicePurpose.COORDINATOR,
                     )
             ) {

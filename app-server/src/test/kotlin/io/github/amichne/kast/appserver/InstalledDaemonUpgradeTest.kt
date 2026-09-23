@@ -8,10 +8,10 @@ import org.junit.jupiter.api.io.TempDir
 
 class InstalledDaemonUpgradeTest {
     @Test
-    fun `invalid prior java home rejects before service observation`() {
+    fun `missing prior executable rejects before service observation`() {
         assertEquals(
             InstalledUpgradePreparation.Rejected(
-                InstalledUpgradeRejection.Command(PersistentBrokerServiceFailure.JAVA_RUNTIME_UNAVAILABLE)
+                InstalledUpgradeRejection.Command(PersistentBrokerServiceFailure.KAST_EXECUTABLE_UNAVAILABLE)
             ),
             InstalledDaemonUpgrade.prepare(
                 Path.of("/unobserved/kast"),
