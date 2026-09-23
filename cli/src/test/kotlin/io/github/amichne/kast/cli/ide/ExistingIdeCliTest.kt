@@ -101,16 +101,19 @@ class ExistingIdeCliTest {
     fun `normal semantic read families select the existing IDE before bootstrap`() {
         for (arguments in
             listOf(
-                listOf("query", "run"),
+                listOf("tool", "query_symbols"),
                 listOf("symbol", "discover"),
                 listOf("symbol", "inspect"),
                 listOf("source", "read"),
                 listOf("relation", "read"),
                 listOf("traversal", "run"),
-                listOf("diagnostic", "check"),
+                listOf("tool", "check_diagnostics"),
             )) {
             assertEquals(CliRuntimePath.EXISTING_IDE, selectCliRuntimePath(arguments))
             assertEquals(CliRuntimePath.EXISTING_IDE, selectCliRuntimePath(listOf("--") + arguments))
+        }
+        for (retired in listOf("query", "diagnostic")) {
+            assertEquals(CliRuntimePath.INSTALLED, selectCliRuntimePath(listOf(retired)))
         }
     }
 

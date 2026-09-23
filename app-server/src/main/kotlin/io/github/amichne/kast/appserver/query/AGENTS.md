@@ -8,8 +8,8 @@ changes, and focused PublicQuery contract/schema tests after admission changes.
 A public request is intent, not compiler evidence. Admit into `AdmittedPublicQuery`
 through its private-construction boundary; never reintroduce a raw JSON query
 payload, candidate output, an INSPECT stage, magic wildcard, or implicit retry.
-The legacy `query run` grammar keeps declaring defaults and rejects explicit null
-for ordinary controls. Pagination continuation is optional nullable context: absent
+The historical `query run` contract keeps declaring defaults and rejects explicit null
+for ordinary controls in its retained admission tests. Pagination continuation is optional nullable context: absent
 or null starts a query, while a value must retain exact opaque bytes.
 The intent tools in `tools.schema.json` require controls to be present; normalize
 null once through the generated defaults before canonical construction. Admit

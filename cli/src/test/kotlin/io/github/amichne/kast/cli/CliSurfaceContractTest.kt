@@ -22,7 +22,14 @@ class CliSurfaceContractTest {
         assertEquals(
             io.github.amichne.kast.protocol.registry.HostedOperationProjection.publicDefinitions
                 .map { it.operation }
-                .filterNot { it == CanonicalOperation.WORKSPACE_LIFECYCLE },
+                .filterNot {
+                    it in
+                        setOf(
+                            CanonicalOperation.WORKSPACE_LIFECYCLE,
+                            CanonicalOperation.QUERY_RUN,
+                            CanonicalOperation.DIAGNOSTIC_CHECK,
+                        )
+                },
             surface.semanticCommands.map { it.operation },
         )
         assertEquals(
@@ -75,10 +82,11 @@ class CliSurfaceContractTest {
         assertTrue(helpText.contains("Show the installed IntelliJ plugin product version"))
         assertTrue(helpText.contains("product"))
         assertTrue(helpText.contains("Read exact semantic relations."))
-        assertTrue(helpText.contains("Read compiler diagnostics."))
+        assertTrue(helpText.contains("Invoke a public search, diagnostic, or advanced symbol tool"))
         assertTrue(helpText.contains("Plan, apply, and recover semantic changes"))
         assertTrue(helpText.contains("Read exact semantic relations"))
-        assertTrue(helpText.contains("Read compiler diagnostics"))
+        assertFalse(helpText.lineSequence().any { it.trimStart().startsWith("diagnostic ") })
+        assertFalse(helpText.lineSequence().any { it.trimStart().startsWith("query ") })
         assertTrue(helpText.contains("workspace"))
         assertTrue(helpText.contains("change"))
         assertTrue(helpText.contains("app-server"))

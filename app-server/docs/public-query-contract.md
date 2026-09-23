@@ -22,7 +22,7 @@ Null controls are an intentional property of this surface. Unknown/mixed shapes,
 
 Tool identity is separate from canonical operation identity. Catalogs require unique tool names and exact bindings for CLI-invokable tools; hosted-only `workspace_lifecycle` has no CLI route. Repeated operation IDs require consistent operation effect, approval, budget and output contract. The operation continues to own all execution policy. No fake operations, second evaluator or lifecycle prerequisite are added. Source, relation, traversal and approved change tools remain; candidate lookup/refinement stays opt-in.
 
-Installed server projection **15** and CLI invocation projection **4** carry the current bindings. Old catalogs fail qualification and must be recreated with a matched executable/broker. Each new agent tool has exactly one supported schema. `kast.query` and `kast.diagnostic_check` are retired agent names. The explicit legacy `kast query run` CLI route below remains available with its original grammar; it is not a new agent alias.
+Installed server projection **15** and CLI invocation projection **4** carry the current bindings. Old catalogs fail qualification and must be recreated with a matched executable/broker. Each new agent tool has exactly one supported schema. `kast.query` and `kast.diagnostic_check` are retired agent names. The former `kast query run` and `kast diagnostic check` CLI routes are retired; use their schema-bound `kast tool` routes above.
 
 The catalog advertises `read_relations` for `relation.read` and `traverse_relations`
 for `traversal.run`. Registry-owned `semantic_query` and `impact_analyze` inputs
@@ -35,9 +35,9 @@ Search and advanced query results supply one scalar `ref`, preserving the issued
 
 Executable checks are `PublicToolContractTest`, `PublicToolSchemaTest`, `KastPublicQueryProviderTest`, `PublicToolCommandTest`, `InstalledServerProjectionTest`, `CanonicalAgentToolDefinitionsTest`, and `GeneratedCliProjectionTest`. Run `:app-server:verifyPublicQueryGeneration`, the relevant module checks, `verifyKastArchitecture`, and the existing native replay for native semantic evidence. The [search guide](../../docs/public/search.mdx) contains current examples.
 
-## Retained legacy CLI grammar
+## Historical legacy query grammar
 
-The sections below describe only `kast query run`. Its authored schema, generated defaults and explicit-null rejection remain unchanged. Projection 9 is historical context for that grammar; the current agent catalog uses the intent contracts above.
+The sections below record the former `kast query run` contract. Its authored schema and admission tests remain as historical contract evidence, but the command is no longer in the installed CLI. The current agent catalog and CLI use the intent contracts above.
 
 ## Authority and physical ownership
 
@@ -45,13 +45,12 @@ The sections below describe only `kast query run`. Its authored schema, generate
 Its generated Kotlin syntax and defaults, native parameters, and strict-target
 parameters are projections, not competing registries. `PublicQueryContract` uses
 Networknt (the existing validator) and Kotlin serialization to admit public input.
-It remains available to the explicit CLI route through the existing `:cli -> :app-server`
-dependency. Current provider calls use `PublicToolContract`. It depends on protocol contract values, not compiler/service adapters.
+Current provider and CLI tool calls use `PublicToolContract`. The historical contract depends on protocol contract values, not compiler/service adapters.
 
 The private constructor of `AdmittedPublicQuery` captures normalized public syntax
 and the lowered `QueryRunRequest`. Encoding reads the retained typed syntax; it does
 not reverse-engineer a public request from the wider canonical request grammar.
-Only the CLI's wire-preparation adapter unwraps the canonical request. Candidate
+The historical CLI's wire-preparation adapter unwrapped the canonical request. Candidate
 selection, workspace/generation admission and compiler identity remain with the
 existing query/runtime modules. The provider's only effect remains invoking the
 qualified executable. No new operation, effect, lifecycle prerequisite or service
@@ -74,8 +73,8 @@ locator is introduced.
 5. Preserve ordered steps, exact token bytes, requested source restrictions,
    finite failures, and completeness evidence. No hidden fuzzy retry, silent
    scope widening, candidate promotion, output-mode repair, or automatic deduplication.
-6. One legacy grammar serves the explicit CLI route. Old public candidate/inspect
-   syntax is rejected, not retained as a compatibility alias. Internal canonical
+6. The former legacy grammar is not retained as a CLI alias. Old public candidate/inspect
+   syntax is rejected. Internal canonical
    wire requests remain intentional evaluator contracts, not a second CLI mode.
 7. Every change to the public contract updates its examples and executable rejection
    tests. Generated artifacts are checked read-only before compilation and by CI.
@@ -158,7 +157,7 @@ success. Provider and direct CLI validate the same executable contract.
 | Closed shapes, valid examples, rejected legacy requests | `PublicQuerySchemaTest` | `:app-server:test --tests '*PublicQuerySchemaTest'` |
 | Declaring defaults reject null and preserve empty projection, stage order, tokens | `PublicQueryContractTest` | `:app-server:test --tests '*PublicQueryContractTest'` |
 | Provider retains typed admission and rejects schema drift | `KastPublicQueryProviderTest` | `:app-server:test --tests '*KastPublicQueryProviderTest'` |
-| Installed advertisement matches the public CLI grammar | `InstalledServerProjectionTest` | `:cli:test --tests '*InstalledServerProjectionTest'` |
+| Installed advertisement matches the current tool CLI grammar | `InstalledServerProjectionTest` | `:cli:test --tests '*InstalledServerProjectionTest'` |
 | Existing module/effect constraints | architecture policy | `verifyKastArchitecture` |
 | Packaged product, protocol integration and regression checks | existing product gate | `productBuildGate` |
 

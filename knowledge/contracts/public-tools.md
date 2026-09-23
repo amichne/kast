@@ -38,7 +38,7 @@ code_sources:
 
 # Public intent tools
 
-The authored tool bundle generates Kotlin request DTOs, concrete normalization defaults, closed presentation identities, full admission schemas, Codex registration schemas and separate Responses strict registrations. The same production generator retains the explicit legacy `query run` CLI grammar.
+The authored tool bundle generates Kotlin request DTOs, concrete normalization defaults, closed presentation identities, full admission schemas, Codex registration schemas and separate Responses strict registrations. `tool query_symbols` and `tool check_diagnostics` are the CLI routes for the canonical query and diagnostic operations; the legacy `query run` and `diagnostic check` routes are retired.
 
 `search_classes`, `search_functions`, `search_declarations` and `check_diagnostics` are eager. `query_symbols` is deferred. Ordinary searches fix or admit declaration kinds and request names, locations and signatures; diagnostics lower to the path, semantic diagnostic limit, optional continuation and execution grant request. Required nullable controls normalize before canonical construction. Directory/package scope shapes are exclusive, and duplicates and invalid lexical values reject.
 

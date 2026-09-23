@@ -23,6 +23,8 @@ import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutco
 import io.github.amichne.kast.protocol.wire.presentation.preparedOperationFixture
 import java.nio.file.Path
 import java.util.UUID
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
@@ -45,9 +47,15 @@ class ExistingIdeSemanticReadTest {
     private val requests =
         listOf(
             Triple(
-                "query run",
+                "tool query_symbols",
                 ExistingIdeReadOperation.QUERY_RUN,
-                """{"type":"QUERY","from":{"type":"SEARCH","query":"Example"}}""",
+                Json.encodeToString(
+                    QuerySymbolsFixture(
+                        QuerySourceFixture(QuerySourceType.ALL_DECLARATIONS, null, null),
+                        null,
+                        emptyList(),
+                    )
+                ),
             ),
             Triple(
                 "symbol discover",
@@ -74,8 +82,37 @@ class ExistingIdeSemanticReadTest {
                 ExistingIdeReadOperation.TRAVERSAL_RUN,
                 """{"exactSelector":"exact:v2:e30:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","relation":"references","maximumDepth":1,"maximumResults":10}""",
             ),
-            Triple("diagnostic check", ExistingIdeReadOperation.DIAGNOSTIC_CHECK, """{"path":"src","limit":10}"""),
+            Triple(
+                "tool check_diagnostics",
+                ExistingIdeReadOperation.DIAGNOSTIC_CHECK,
+                Json.encodeToString(CheckDiagnosticsFixture("src", 10)),
+            ),
         )
+
+    @Serializable
+    private enum class QuerySourceType {
+        @SerialName("all_declarations") ALL_DECLARATIONS
+    }
+
+    @Serializable
+    private data class QuerySourceFixture(
+        val type: QuerySourceType,
+        @SerialName("declaration_kinds") val declarationKinds: List<String>?,
+        val scope: String?,
+    )
+
+    @Serializable
+    private data class QuerySymbolsFixture(
+        val source: QuerySourceFixture,
+        val steps: List<String>?,
+        @SerialName("return_fields") val returnFields: List<String>,
+    )
+
+    @Serializable
+    private data class CheckDiagnosticsFixture(
+        @SerialName("relative_path") val relativePath: String,
+        @SerialName("max_diagnostics") val maxDiagnostics: Int,
+    )
 
     @Test
     fun `all canonical reads parse before the sole existing-host capability is invoked`() {

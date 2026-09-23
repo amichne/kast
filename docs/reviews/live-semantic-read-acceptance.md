@@ -41,7 +41,7 @@ matrix and provider invocation used that restored owner. Successful semantic
 envelopes carry the canonical fixture root and `SAVED_PSI_COMMITTED` live evidence;
 they do not claim a publication generation.
 
-## Default route and authority
+## Historical default route and authority
 
 [`selectCliRuntimePath`](../../cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeCli.kt)
 selects `query`, `symbol`, `source`, `relation`, `traversal`, and `diagnostic`
@@ -50,9 +50,9 @@ then uses the existing-host socket client. The closed read operation set is
 `query.run`, `symbol.discover`, `symbol.inspect`, `source.read`, `relation.read`,
 `traversal.run`, and `diagnostic.check`. Missing hosts reject; these reads do not
 fall back to opening a workspace, importing Gradle, starting a worker, or
-publishing a snapshot. The optional root delimiter is admitted before command
-selection, so `kast -- query run` takes the same path as `kast query run`; the
-original argument vector still reaches Clikt. A focused RED/GREEN check covers
+publishing a snapshot. The optional root delimiter was admitted before command
+selection, so `kast -- query run` took the same path as `kast query run`; the
+original argument vector still reached Clikt. A focused RED/GREEN check covered
 all seven reads in both spellings without bypassing the existing-host boundary.
 
 [`HostedCanonicalQuery`](../../runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt)
