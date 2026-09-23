@@ -120,7 +120,22 @@ private fun configuredDaemonQueryClient(environment: Map<String, String>): Daemo
                     .query(root, tool)
             is Refinement.Rejected ->
                 DaemonQueryResult.Rejected(
-                    DaemonQueryClientRejection.Transport(DaemonQueryClientFailure.EXECUTABLE_UNAVAILABLE)
+                    DaemonQueryClientRejection.Transport(
+                        when (installed.failure) {
+                            InstalledKastControlProductFailure.CODE_SOURCE_UNAVAILABLE ->
+                                DaemonQueryClientFailure.CODE_SOURCE_UNAVAILABLE
+                            InstalledKastControlProductFailure.CODE_SOURCE_INVALID ->
+                                DaemonQueryClientFailure.CODE_SOURCE_INVALID
+                            InstalledKastControlProductFailure.LIBRARY_DIRECTORY_INVALID ->
+                                DaemonQueryClientFailure.LIBRARY_DIRECTORY_INVALID
+                            InstalledKastControlProductFailure.PRODUCT_ROOT_UNAVAILABLE ->
+                                DaemonQueryClientFailure.PRODUCT_ROOT_UNAVAILABLE
+                            InstalledKastControlProductFailure.RESOURCE_DIRECTORY_UNAVAILABLE ->
+                                DaemonQueryClientFailure.RESOURCE_DIRECTORY_UNAVAILABLE
+                            InstalledKastControlProductFailure.KAST_EXECUTABLE_UNAVAILABLE ->
+                                DaemonQueryClientFailure.KAST_EXECUTABLE_UNAVAILABLE
+                        }
+                    )
                 )
         }
     }
