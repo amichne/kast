@@ -364,6 +364,20 @@ class HostedChangeAcceptanceTest(unittest.TestCase):
             with self.assertRaises(AcceptanceRejected):
                 admit_event(invalid)
 
+    def test_plan_stage_accepts_only_bounded_stage_and_outcome(self):
+        for stage in ('RESPONSE', 'IDENTITY'):
+            for outcome in ('COMPLETE', 'REJECTED'):
+                event = {'event': 'kast_native_plan_stage', 'stage': stage, 'outcome': outcome}
+                self.assertEqual(event, admit_event(event))
+                self.assertEqual(event, event_observation(event))
+        for invalid in (
+            {'event': 'kast_native_plan_stage', 'stage': 'PLAN', 'outcome': 'COMPLETE'},
+            {'event': 'kast_native_plan_stage', 'stage': 'IDENTITY', 'outcome': 'UNKNOWN'},
+            {'event': 'kast_native_plan_stage', 'stage': 'IDENTITY', 'outcome': 'REJECTED', 'source': 'private'},
+        ):
+            with self.assertRaises(AcceptanceRejected):
+                admit_event(invalid)
+
     def test_interrupted_controller_snapshot_retains_cases_without_terminal_success(self):
         workspace = Path('/private/fixture/workspace')
         report = asdict(ExpectedNativeReport(ExpectedNativeMetadata(str(workspace), 'incomplete'), None,

@@ -2,7 +2,6 @@ package io.github.amichne.kast.appserver.acceptance.hostedchange
 
 import io.github.amichne.kast.appserver.provider.BrokerProcessExecution
 import io.github.amichne.kast.appserver.provider.BrokerProcessExecutor
-import io.github.amichne.kast.appserver.provider.BrokerProcessInput
 import io.github.amichne.kast.appserver.provider.BrokerProcessRequest
 import io.github.amichne.kast.appserver.provider.JdkBrokerProcessExecutor
 import io.github.amichne.kast.kernel.Refinement
@@ -95,24 +94,12 @@ internal class NativeProcessTrace(private val privateDirectory: Path) : BrokerPr
     private val routes = CopyOnWriteArrayList<List<String>>()
     private val sequence = java.util.concurrent.atomic.AtomicInteger()
     val completedEffects = Channel<Unit>(32)
-    val plannedReferenceDigests = CopyOnWriteArrayList<String>()
     val boundaryRejections = CopyOnWriteArrayList<NativeBoundaryRejection>()
-
-    fun approvedInvocationCount(): Int = routes.count { it.lastOrNull() == "--hosted-approved-invocation" }
 
     fun isolatedStartupCount(): Int = routes.count { it.firstOrNull() in setOf("start", "prepare", "worker") }
 
     override suspend fun execute(request: BrokerProcessRequest): BrokerProcessExecution {
         routes += request.arguments
-        if (request.arguments == listOf("change", "plan")) {
-            val input =
-                request.input as? BrokerProcessInput.Document
-                    ?: throw NativeRejected(NativeFailure.RESULT_SHAPE_REJECTED)
-            val intent = Json.parseToJsonElement(input.value).jsonObject.objectAt("intent")
-            if (intent["exactTarget"] != null) {
-                plannedReferenceDigests += sha256(intent.textAt("exactTarget").toByteArray())
-            }
-        }
         val number = sequence.incrementAndGet()
         val result = JdkBrokerProcessExecutor.execute(request)
         boundaryRejections += nativeBoundaryRejection(result)
@@ -121,13 +108,19 @@ internal class NativeProcessTrace(private val privateDirectory: Path) : BrokerPr
         return result
     }
 
-    fun document(): JsonObject = buildJsonObject {
-        put("processCount", routes.size)
-        put("isolatedStartupCommandCount", routes.count { it.firstOrNull() in setOf("start", "prepare", "worker") })
-        put("approvalPrepareCount", routes.count { it.lastOrNull() == "--hosted-approval-prepare" })
-        put("approvedInvocationCount", routes.count { it.lastOrNull() == "--hosted-approved-invocation" })
-    }
+    fun document(): JsonObject =
+        Json.encodeToJsonElement(
+                NativeProcessTraceDocument.serializer(),
+                NativeProcessTraceDocument(
+                    routes.size,
+                    routes.count { it.firstOrNull() in setOf("start", "prepare", "worker") },
+                ),
+            )
+            .jsonObject
 }
+
+@Serializable
+internal data class NativeProcessTraceDocument(val processCount: Int, val isolatedStartupCommandCount: Int)
 
 internal class NativeChangeEvidence(private val report: Path) {
     private val cases = linkedMapOf<String, JsonObject>()
