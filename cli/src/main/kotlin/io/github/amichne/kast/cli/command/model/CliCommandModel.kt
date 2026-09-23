@@ -25,7 +25,6 @@ enum class CliProductCommand(val usage: String) {
     CODEX_CLI("codex"),
     CODEX_DESKTOP("codex desktop"),
     KNOWLEDGE("knowledge <query-or-resource>"),
-    IDE_TRUST_BROKER("ide trust-broker"),
     IDE_REFRESH("ide refresh <document> [--root <path>]"),
     IDE_STATUS("ide status [--root <path>]"),
     IDE_CLASSES("ide classes <name> [--root <path>]"),
@@ -53,8 +52,6 @@ sealed interface CliAction {
         data class WorkspaceLifecycle(
             val action: io.github.amichne.kast.cli.command.workspace.WorkspaceLifecycleAction
         ) : Local
-
-        data object TrustBroker : Local
 
         data class ExistingIde(
             val operation: io.github.amichne.kast.appserver.ide.ExistingIdeOperation,

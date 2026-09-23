@@ -32,7 +32,6 @@ internal fun ideCommandGroup(): LocalCommandFamily {
             IdeClassesCommand(CliProductCommand.IDE_CLASSES),
             IdeSupertypeCommand(CliProductCommand.IDE_SUPERTYPE),
             IdeCompletionCommand(CliProductCommand.IDE_COMPLETION),
-            IdeTrustBrokerCommand(),
         )
     return LocalCommandFamily(
         KastCommandGroup(
@@ -102,12 +101,6 @@ private class IdeSupertypeCommand(command: CliProductCommand) : IdeCommand("supe
     override fun help(context: Context) = "Resolve one class's explicit supertype through IDEA's existing index and K2."
 
     override fun resolveAction() = action(ExistingIdeOperation.Supertype(name))
-}
-
-private class IdeTrustBrokerCommand : LocalKastCommand("trust-broker", CliProductCommand.IDE_TRUST_BROKER) {
-    override fun help(context: Context) = "Explicitly enroll this user's broker approval key for hosted changes."
-
-    override fun resolveAction() = CliActionResolution.Selected(CliAction.Local.TrustBroker)
 }
 
 private class IdeRefreshCommand(command: CliProductCommand) : IdeCommand("refresh", command) {

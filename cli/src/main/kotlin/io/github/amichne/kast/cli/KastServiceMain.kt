@@ -7,6 +7,11 @@ import io.github.amichne.kast.appserver.AppServerManager
 import io.github.amichne.kast.appserver.DaemonManagementRejection
 import io.github.amichne.kast.appserver.InstalledAppServerManager
 import io.github.amichne.kast.appserver.PersistentBrokerServiceFailure
+import io.github.amichne.kast.cli.ide.BrokerTrustFailure
+import io.github.amichne.kast.cli.ide.BrokerTrustRegistrar
+import io.github.amichne.kast.cli.ide.BrokerTrustResult
+import io.github.amichne.kast.cli.ide.BrokerTrustStatus
+import io.github.amichne.kast.cli.ide.FilesystemBrokerTrustRegistrar
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
 import kotlin.system.exitProcess
@@ -24,6 +29,15 @@ object KastServiceMain {
             when (selection) {
                 ServiceControlSelection.Rejected ->
                     ServiceControlOutcome.Rejected(ServiceControlFailureDocument.Arguments)
+                ServiceControlSelection.Trust ->
+                    when (val installed = installedKastExecutable()) {
+                        is Refinement.Rejected ->
+                            ServiceControlOutcome.Rejected(ServiceControlFailureDocument.Product(installed.failure))
+                        is Refinement.Refined ->
+                            executePrivateTrust(
+                                FilesystemBrokerTrustRegistrar(Path.of(System.getProperty("user.home")))
+                            )
+                    }
                 is ServiceControlSelection.Selected ->
                     when (val installed = installedKastExecutable()) {
                         is Refinement.Rejected ->
@@ -40,15 +54,22 @@ object KastServiceMain {
                             )
                     }
             }
-        if (outcome is ServiceControlOutcome.Rejected) {
-            System.err.println(serviceControlJson.encodeToString<ServiceControlFailureDocument>(outcome.failure))
-            exitProcess(SERVICE_CONTROL_REJECTED_EXIT_CODE)
+        when (outcome) {
+            ServiceControlOutcome.Completed -> Unit
+            is ServiceControlOutcome.TrustCompleted ->
+                println(serviceControlJson.encodeToString(ServiceTrustCompletionDocument(outcome.status)))
+            is ServiceControlOutcome.Rejected -> {
+                System.err.println(serviceControlJson.encodeToString<ServiceControlFailureDocument>(outcome.failure))
+                exitProcess(SERVICE_CONTROL_REJECTED_EXIT_CODE)
+            }
         }
     }
 }
 
 internal sealed interface ServiceControlSelection {
     data class Selected(val action: ServiceControlAction) : ServiceControlSelection
+
+    data object Trust : ServiceControlSelection
 
     data object Rejected : ServiceControlSelection
 }
@@ -66,7 +87,15 @@ internal fun selectServiceControl(arguments: List<String>): ServiceControlSelect
         listOf("disable") -> ServiceControlSelection.Selected(ServiceControlAction.DISABLE)
         listOf("repair", "--destructive") -> ServiceControlSelection.Selected(ServiceControlAction.REPAIR)
         listOf("stop") -> ServiceControlSelection.Selected(ServiceControlAction.STOP)
+        listOf("enroll-trust") -> ServiceControlSelection.Trust
         else -> ServiceControlSelection.Rejected
+    }
+
+internal fun executePrivateTrust(registrar: BrokerTrustRegistrar): ServiceControlOutcome =
+    when (val enrollment = registrar.enroll()) {
+        is BrokerTrustResult.Complete -> ServiceControlOutcome.TrustCompleted(enrollment.status)
+        is BrokerTrustResult.Rejected ->
+            ServiceControlOutcome.Rejected(ServiceControlFailureDocument.Trust(enrollment.failure))
     }
 
 /** Match the installed wrapper's default while preserving an explicitly selected configuration. */
@@ -77,7 +106,15 @@ internal fun serviceControlEnvironment(kast: Path, environment: Map<String, Stri
 internal sealed interface ServiceControlOutcome {
     data object Completed : ServiceControlOutcome
 
+    data class TrustCompleted(val status: BrokerTrustStatus) : ServiceControlOutcome
+
     data class Rejected(val failure: ServiceControlFailureDocument) : ServiceControlOutcome
+}
+
+@Serializable
+internal data class ServiceTrustCompletionDocument(val status: BrokerTrustStatus) {
+    val outcome: String = "complete"
+    val operation: String = "private-trust-enrollment"
 }
 
 internal fun executeServiceControl(
@@ -113,6 +150,8 @@ internal sealed interface ServiceControlFailureDocument {
     @Serializable
     @SerialName("daemon")
     data class Daemon(val reason: DaemonManagementRejection) : ServiceControlFailureDocument
+
+    @Serializable @SerialName("trust") data class Trust(val failure: BrokerTrustFailure) : ServiceControlFailureDocument
 }
 
 internal val serviceControlJson = Json { encodeDefaults = true }

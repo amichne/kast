@@ -99,8 +99,9 @@ no approval requirement. Apply and recovery load the immutable stored plan and
 require a current controller decision for that exact root, host, operation and
 plan. The broker signs only a controller-approved challenge; the plugin verifies
 the signature with the explicitly enrolled key and consumes the challenge once.
-Run `kast ide trust-broker` to create or preserve the local key pair. Missing trust
-remains unavailable and is never enrolled by apply.
+Installation creates or preserves the local key pair. The private installed control
+can enroll trust for isolated acceptance fixtures. Missing trust remains unavailable
+and is never enrolled by apply.
 
 The source write, semantic verification and durable receipt are separate facts.
 Apply returns `Verified`, `AppliedUnverified` or `RecoveryRequired`; the latter
