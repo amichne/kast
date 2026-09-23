@@ -3,6 +3,7 @@ package io.github.amichne.kast.cli.installation
 import io.github.amichne.kast.appserver.InstalledUpgradePreparation
 import io.github.amichne.kast.appserver.runtime.UpgradeBlocker
 import io.github.amichne.kast.kernel.NonEmptyFailures
+import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlinx.serialization.encodeToString
@@ -13,6 +14,32 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
 class InstallationUpgradeSafetyTest {
+    @Test
+    fun `prior private service control is selected and an unsafe copy cannot fall back`(@TempDir temporary: Path) {
+        val prior = temporary.toRealPath()
+        val legacy = prior.resolve("bin/kast-complete")
+        Files.createDirectories(legacy.parent)
+        Files.writeString(legacy, "#!/bin/sh\nexit 0\n")
+        legacy.toFile().setExecutable(true)
+        assertEquals(Refinement.Refined(PriorServiceControl.Legacy(legacy)), PriorServiceControl.admit(prior))
+        val privateControl = prior.resolve("share/kast/libexec/kast-service")
+        Files.createDirectories(privateControl.parent)
+        Files.writeString(privateControl, "#!/bin/sh\nexit 0\n")
+        privateControl.toFile().setExecutable(true)
+        assertEquals(
+            Refinement.Refined(PriorServiceControl.Private(privateControl)),
+            PriorServiceControl.admit(prior),
+        )
+        assertEquals(listOf(privateControl.toString(), "disable"), PriorServiceControl.Private(privateControl).command)
+
+        Files.delete(privateControl)
+        Files.createSymbolicLink(privateControl, legacy)
+        assertEquals(
+            Refinement.Rejected<InstallationFailure>(InstallationFailure.PRIOR_RETIREMENT_EXECUTABLE_REJECTED),
+            PriorServiceControl.admit(prior),
+        )
+    }
+
     @Test
     fun `pending daemon update preserves the selected service and command`(@TempDir temporary: Path) {
         val root = temporary.toRealPath()

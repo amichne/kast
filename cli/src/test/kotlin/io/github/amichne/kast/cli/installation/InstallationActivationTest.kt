@@ -19,22 +19,25 @@ class InstallationActivationTest {
         for (profile in listOf("session", "persistent")) {
             val root = Files.createDirectory(temporary.resolve(profile)).toRealPath()
             val installation = root.resolve("installation")
-            val result =
-                executeFixtureInstallation(
-                    releaseRequest(
-                        root,
-                        installation,
-                        root.resolve("commands"),
-                        Files.createDirectory(root.resolve("home")),
-                        Files.createDirectory(root.resolve("codex-home")),
-                        "1.2.3",
-                        environmentOverrides =
-                            mapOf(
-                                "KAST_INSTALL_PROFILE" to profile,
-                                "KAST_APP_SERVER_PUBLIC_ENDPOINT" to "codex-control",
-                            ),
-                    )
+            val request =
+                releaseRequest(
+                    root,
+                    installation,
+                    root.resolve("commands"),
+                    Files.createDirectory(root.resolve("home")),
+                    Files.createDirectory(root.resolve("codex-home")),
+                    "1.2.3",
+                    environmentOverrides =
+                        mapOf(
+                            "KAST_INSTALL_PROFILE" to profile,
+                            "KAST_APP_SERVER_PUBLIC_ENDPOINT" to "codex-control",
+                        ),
                 )
+            val service = request.controlRoot.value.resolve("share/kast/libexec/kast-service")
+            Files.createDirectories(service.parent)
+            Files.writeString(service, "#!/bin/sh\nexit 0\n")
+            service.toFile().setExecutable(true)
+            val result = executeFixtureInstallation(request)
             val report = assertInstanceOf(InstallationOutcome.Complete::class.java, result).report
             assertEquals(InstallationReportStatus.INSTALLED, report.status)
             assertEquals(
@@ -49,7 +52,7 @@ class InstallationActivationTest {
     }
 
     @Test
-    fun `activation rejection retains committed installation and can resume through its installed command`(
+    fun `activation rejection retains committed installation and can resume through private control`(
         @TempDir temporary: Path
     ) {
         val root = temporary.toRealPath()
@@ -65,18 +68,21 @@ class InstallationActivationTest {
                 "1.2.3",
                 environmentOverrides = mapOf("KAST_INSTALL_PROFILE" to "persistent"),
             )
+        val service = request.controlRoot.value.resolve("share/kast/libexec/kast-service")
+        Files.createDirectories(service.parent)
         Files.writeString(
-            request.controlRoot.value.resolve("bin/kast"),
+            service,
             """
             #!/bin/sh
-            if [ "${'$'}1" = app-server ] && [ "${'$'}2" = enable ]; then
+            if [ "${'$'}1" = enable ]; then
               test -f "${'$'}HOME/activation-ready"
               exit ${'$'}?
             fi
-            exit 0
+            exit 2
             """
                 .trimIndent() + "\n",
         )
+        service.toFile().setExecutable(true)
         val result = executeFixtureInstallation(request)
         val complete = assertInstanceOf(InstallationOutcome.Complete::class.java, result)
         verifyPendingReport(complete.report)
@@ -88,7 +94,7 @@ class InstallationActivationTest {
         val identity = Files.readString(selected.resolve("installation.json"))
         Files.createFile(home.resolve("activation-ready"))
         val resume =
-            ProcessBuilder(root.resolve("commands/kast").toString(), "app-server", "enable")
+            ProcessBuilder(selected.resolve("share/kast/libexec/kast-service").toString(), "enable")
                 .apply { environment()["HOME"] = home.toString() }
                 .start()
         assertEquals(0, resume.waitFor())

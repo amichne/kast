@@ -742,11 +742,13 @@ internal object InstallationWorkflow {
     private fun enableAppServer(plan: VerifiedInstallationPlan): InstallationChildOutcome =
         executeInstallationChild(
             InstallationChildStage.APP_SERVER_ENABLE,
-            listOf(plan.commandLink.toString(), "app-server", "enable"),
+            listOf(plan.targetRoot.resolve("share/kast/libexec/kast-service").toString(), "enable"),
             mapOf(
                 "HOME" to plan.request.home.value.toString(),
                 "PATH" to (System.getenv("PATH") ?: "/usr/bin:/bin"),
                 "CODEX_HOME" to plan.request.codexHome.value.toString(),
+                "JAVA_HOME" to plan.request.javaHome.value.toString(),
+                "KAST_CONFIGURATION_FILE" to plan.targetRoot.resolve("config/environment").toString(),
             ),
         )
 

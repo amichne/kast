@@ -575,7 +575,20 @@ def retire(installation, roots):
     # local opt-out. Retirement must reconstruct that exact possible owner, not disabled identity.
     if validate_owned_configuration(installation) is RetirementConfiguration.LEGACY_ENABLED_OWNER:
         coordinator_environment[LEGACY_ENABLE_SETTING] = '1'
-    retire_child(executable, ['app-server', 'disable'], installation.root, coordinator_environment, RetirementStage.COORDINATOR)
+    private_service = installation.root / 'share/kast/libexec/kast-service'
+    try:
+        private_state = private_service.lstat()
+    except FileNotFoundError:
+        coordinator = executable
+        coordinator_arguments = ['app-server', 'disable']
+    except OSError:
+        raise retirement_unproven(RetirementStage.ADMISSION, RetirementOutcome.EXECUTABLE_UNAVAILABLE)
+    else:
+        if not stat.S_ISREG(private_state.st_mode) or not os.access(private_service, os.X_OK):
+            raise retirement_unproven(RetirementStage.ADMISSION, RetirementOutcome.EXECUTABLE_UNAVAILABLE)
+        coordinator = private_service
+        coordinator_arguments = ['disable']
+    retire_child(coordinator, coordinator_arguments, installation.root, coordinator_environment, RetirementStage.COORDINATOR)
     # Hosted-only manifests own no isolated workspace process. IDEA remains user-owned;
     # plugin activation requires the separate, explicit IDE restart after installation.
     if installation.manifest['schemaVersion'] == 1:

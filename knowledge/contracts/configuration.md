@@ -28,6 +28,7 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/configuration/SavedConfigurationIngress.kt
     symbols: [SavedConfigurationIngress]
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/KastServiceMain.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledKastCliComposition.kt
   - path: cli/src/test/kotlin/io/github/amichne/kast/cli/SavedConfigurationAdmissionTest.kt
   - path: packaging/configuration-schema.json
@@ -121,3 +122,4 @@ complete payload. The public installer always selects persistent. The checkout
 entrypoint derives the profile from its required session or persistent argument.
 
 The private daemon entry point is a declared raw-environment ingress owner. It checks managed readiness inputs and the saved-configuration rejection marker before invoking the existing coordinator configuration admission. Its generated launcher uses the existing derived `KAST_OPTS` JVM boundary; it adds no saved configuration setting.
+The private service-control entry point is also a declared raw-environment ingress owner. It selects the installed release's saved configuration only when no selector was supplied, then delegates enable or disable to the existing service manager.

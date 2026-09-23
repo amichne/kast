@@ -10,15 +10,23 @@ import java.nio.file.Path
 /** Admission preserves the exact prior command and environment across update sealing and retirement. */
 internal class PriorRetirement
 private constructor(
-    val executable: Path,
+    private val control: PriorServiceControl,
     val daemonExecutable: Path,
     val environment: Map<String, String>,
 ) {
+    val executable: Path
+        get() = control.executable
+
+    val command: List<String>
+        get() = control.command
+
     companion object {
         fun admit(prior: Path, request: InstallationRequest): Refinement<PriorRetirement, InstallationFailure> {
-            val executable = prior.resolve("bin/kast-complete")
-            if (!(regularPriorFile(executable) && Files.isExecutable(executable)))
-                return Refinement.Rejected(InstallationFailure.PRIOR_RETIREMENT_EXECUTABLE_REJECTED)
+            val control =
+                when (val admitted = PriorServiceControl.admit(prior)) {
+                    is Refinement.Refined -> admitted.value
+                    is Refinement.Rejected -> return admitted
+                }
             val saved =
                 readPriorConfiguration(prior.resolve("config/environment"))
                     ?: return Refinement.Rejected(InstallationFailure.PRIOR_RETIREMENT_CONFIGURATION_REJECTED)
@@ -36,7 +44,7 @@ private constructor(
                 )
             return Refinement.Refined(
                 PriorRetirement(
-                    executable,
+                    control,
                     prior.resolve("bin/kast"),
                     recorded?.values
                         ?: priorServiceRetirementEnvironment(
@@ -55,10 +63,43 @@ private constructor(
 internal fun retire(admitted: PriorRetirement): Refinement<Unit, InstallationFailure> =
     executeInstallationChild(
             InstallationChildStage.PRIOR_RETIREMENT,
-            listOf(admitted.executable.toString(), "app-server", "disable"),
+            admitted.command,
             admitted.environment,
         )
         .priorRetirement()
+
+internal sealed interface PriorServiceControl {
+    val executable: Path
+    val command: List<String>
+
+    data class Private(override val executable: Path) : PriorServiceControl {
+        override val command: List<String> = listOf(executable.toString(), "disable")
+    }
+
+    data class Legacy(override val executable: Path) : PriorServiceControl {
+        override val command: List<String> = listOf(executable.toString(), "app-server", "disable")
+    }
+
+    companion object {
+        fun admit(prior: Path): Refinement<PriorServiceControl, InstallationFailure> {
+            val privateControl = prior.resolve("share/kast/libexec/kast-service")
+            return when {
+                Files.exists(privateControl, LinkOption.NOFOLLOW_LINKS) -> {
+                    if (!(regularPriorFile(privateControl) && Files.isExecutable(privateControl)))
+                        Refinement.Rejected(InstallationFailure.PRIOR_RETIREMENT_EXECUTABLE_REJECTED)
+                    else Refinement.Refined(Private(privateControl))
+                }
+                Files.notExists(privateControl, LinkOption.NOFOLLOW_LINKS) -> {
+                    val legacy = prior.resolve("bin/kast-complete")
+                    if (!(regularPriorFile(legacy) && Files.isExecutable(legacy)))
+                        Refinement.Rejected(InstallationFailure.PRIOR_RETIREMENT_EXECUTABLE_REJECTED)
+                    else Refinement.Refined(Legacy(legacy))
+                }
+                else -> Refinement.Rejected(InstallationFailure.PRIOR_RETIREMENT_EXECUTABLE_REJECTED)
+            }
+        }
+    }
+}
 
 internal fun admitPrior(
     prior: Path,

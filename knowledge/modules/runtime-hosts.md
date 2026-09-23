@@ -215,6 +215,9 @@ semantic request. Preparation rejection retains its finite cause and operation I
 as known pre-execution failure evidence.
 
 Launchd invokes the private daemon entry point without the public CLI command graph. The managed readiness environment is required at ingress and then qualified by the existing coordinator. Exact published-command recovery admits both the private path and the earlier `kast broker serve` form for retirement.
+Installation activation and new-release retirement use a separate private
+service-control entry point. It admits only enable and disable; older installed
+releases retain the admitted public CLI disable path during migration.
 
 Invocation replay evidence lives in private hash-sharded records. The store reads
 only the addressed digest, preserves its input fingerprint and finite phase, and

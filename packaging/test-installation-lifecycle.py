@@ -310,6 +310,21 @@ class LifecycleTest(unittest.TestCase):
         self.assertEqual(0, code, result)
         self.assertEqual(['app-server disable'], self.log.read_text().splitlines())
 
+    def test_hosted_installation_uses_owned_private_service_control(self):
+        self.manifest['schemaVersion'] = 2
+        self.manifest['hostedPluginSha256'] = 'sha256:' + 'b' * 64
+        service = self.root / 'share/kast/libexec/kast-service'
+        service.parent.mkdir(parents=True)
+        service.write_text('#!/bin/sh\nprintf "%s\\n" "$*" >> "' + str(self.log) + '"\n')
+        service.chmod(0o700)
+        self.manifest['payloadFiles'].append({'path': 'share/kast/libexec/kast-service',
+            'sha256': 'sha256:' + hashlib.sha256(service.read_bytes()).hexdigest(), 'mode': 448})
+        self.manifest['payloadFiles'].sort(key=lambda entry: entry['path'])
+        (self.root / 'installation.json').write_text(json.dumps(self.manifest))
+        code, result = self.invoke('reset')
+        self.assertEqual(0, code, result)
+        self.assertEqual(['disable'], self.log.read_text().splitlines())
+
     def test_failed_retirement_preserves_state(self):
         self.kast.write_text('#!/bin/sh\nexit 7\n')
         self.manifest['payloadFiles'] = self.inventory()

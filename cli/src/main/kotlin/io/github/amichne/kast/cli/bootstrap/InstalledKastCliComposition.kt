@@ -132,6 +132,7 @@ internal class InstalledKastCliComposition : KastCliComposition {
     }
 }
 
+@kotlinx.serialization.Serializable
 internal enum class InstalledKastControlProductFailure {
     CODE_SOURCE_UNAVAILABLE,
     CODE_SOURCE_INVALID,
