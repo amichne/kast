@@ -96,7 +96,7 @@ live envelope against the requested root and admitted descriptor host. A typed h
 rejection can be returned before read authority exists; it does not become a
 successful canonical payload.
 
-App Server reads `share/kast/provider-catalog.json` and qualifies projection version 13
+App Server reads `share/kast/provider-catalog.json` and qualifies projection version 14
 against the canonical registry, packaged operation schemas, and declared default budgets.
 Qualification and provider startup never launch Kast; startup rereads the catalog and
 rejects digest drift. Installed payload admission and Codex schema qualification remain separate. Canonical registry input aliases

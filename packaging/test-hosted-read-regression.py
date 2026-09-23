@@ -44,7 +44,7 @@ class OperationFixture:
 
 @dataclass(frozen=True)
 class InvocationsFixture:
-    schemaVersion: int = 3
+    schemaVersion: int = 4
     operations: list[OperationFixture] = field(default_factory=lambda: [OperationFixture()])
 
 
@@ -64,7 +64,7 @@ class BootstrapFixture:
 
 @dataclass(frozen=True)
 class ProjectionFixture:
-    schemaVersion: int = 13
+    schemaVersion: int = 14
     namespace: str = 'kast'
     cliInvocations: InvocationsFixture = field(default_factory=InvocationsFixture)
     hostedBootstrap: BootstrapFixture = field(default_factory=BootstrapFixture)

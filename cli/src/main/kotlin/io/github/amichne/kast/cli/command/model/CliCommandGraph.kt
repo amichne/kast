@@ -276,12 +276,10 @@ private class CliCommandGraph(
     }
 
     fun failures(): Set<CliCommandGraphFailure> = buildSet {
-        val semanticCounts =
-            semantic.groupingBy(SemanticKastCommand<*>::operation).eachCount() +
-                (CanonicalOperation.WORKSPACE_LIFECYCLE to
-                    local.count { it.command == CliProductCommand.WORKSPACE_LIFECYCLE })
+        val semanticCounts = semantic.groupingBy(SemanticKastCommand<*>::operation).eachCount()
         io.github.amichne.kast.protocol.registry.HostedOperationProjection.publicDefinitions
             .map { it.operation }
+            .filterNot { it == CanonicalOperation.WORKSPACE_LIFECYCLE }
             .forEach { operation ->
                 when (semanticCounts[operation] ?: 0) {
                     0 -> add(CliCommandGraphFailure.MissingOperation(operation))
@@ -349,7 +347,6 @@ private fun canonicalGraph(
             knowledge,
             codex,
             ide,
-            io.github.amichne.kast.cli.command.workspace.workspaceLifecycleCommands(requestInput),
         )
 
     val root =

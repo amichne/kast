@@ -31,8 +31,8 @@ Send tagged request documents through the agent tool. For example:
 {"type":"open","root":"/absolute/worktree","requestId":"open-worktree-1"}
 ```
 
-Harnesses use the invocation binding supplied by `kast --schema`; its private CLI
-transport is an implementation detail, not a user setup interface.
+Harnesses use the hosted `workspace_lifecycle` contract from `kast --schema`.
+This tool has no CLI invocation; workspace setup goes through the connected agent.
 
 An asynchronous result contains `host`, `requestId` and `stage`. Use `status` with the
 host returned by the pending result and that request ID. Preserve returned `target`

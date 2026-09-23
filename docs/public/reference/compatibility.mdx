@@ -39,11 +39,12 @@ Load `serverProjection` from the executable's `kast --schema` output.
 
 | Contract | Version |
 | --- | --- |
-| Server projection | 13 |
-| CLI invocation projection | 3 |
+| Server projection | 14 |
+| CLI invocation projection | 4 |
 
 - Validate the catalog, schemas, policies, and bindings at provider startup.
-- Bind invocations by tool name because several tools share an operation.
+- Bind CLI invocations by tool name because several tools share an operation.
+- Invoke the hosted-only `workspace_lifecycle` tool through the connected provider.
 - Follow [Harness integration](/agent-harnesses) for the full sequence.
 
 <Note>

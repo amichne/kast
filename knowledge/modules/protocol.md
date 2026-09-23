@@ -69,7 +69,7 @@ stamp is never serialized as a workspace generation or source-state identity.
 
 The canonical read revisions are `query.run.v2`, `source.read.v4`, and version 3
 for symbol discovery, symbol inspection, relation reads, traversal, and diagnostics.
-The packaged App Server projection is version 13, and provider qualification requires
+The packaged App Server projection is version 14, and provider qualification requires
 that version and every canonical hosted tool. The build generates `provider-catalog.json`
 from the shared schema owner without CLI invocation metadata. Its successful read schemas carry mutually exclusive published and
 live variants, including the corresponding source snapshot shape. The hosted
@@ -121,7 +121,7 @@ Hosted configuration rejections retain three closed detail shapes: an unknown pa
 
 Symbol inspection preserves native failure, genuine index unavailability and unsupported declaration as distinct finite wire rejections. Hosted `AddDeclaration` planning failures retain all finite relation, traversal and diagnostic limitations in the hosted endpoint detail. The separate workspace-refresh control schema preserves typed lifecycle outcomes without adding a canonical semantic operation.
 
-The canonical `workspace.lifecycle.v2` operation has one tagged request family and closed application lifecycle outcomes. Its `workspace_lifecycle` agent projection uses the local control route rather than a semantic endpoint. The `workspace lifecycle` command is visible in CLI help and shares the public command inventory used for agent invocation bindings. Blocked lifecycle outcomes retain their finite reasons in the rejected process envelope through the separate `IdeLifecycleRejection` serializer; completed and pending outcomes retain their distinct discriminants.
+The canonical `workspace.lifecycle.v2` operation has one tagged request family and closed application lifecycle outcomes. Its `workspace_lifecycle` agent projection uses the local control route rather than a semantic endpoint. It has no public CLI invocation; the CLI invocation projection omits this hosted-only tool. Blocked lifecycle outcomes retain their finite reasons in the rejected process envelope through the separate `IdeLifecycleRejection` serializer; completed and pending outcomes retain their distinct discriminants.
 
 The canonical agent policy delegates preparation for ordinary semantic requests to
 the installed coordinator. Preparation rejection is a broker failure with typed

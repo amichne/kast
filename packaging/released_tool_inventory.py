@@ -32,9 +32,10 @@ def admit_inventory(document, configuration, schema_digest):
     cli = document['serverProjection']['cliInvocations']['operations']
     expected = dict(OPERATIONS)
     names = tuple(tool['name'] for tool in tools)
-    if (len(tools) != len(expected) or len(cli) != len(expected) or set(names) != expected.keys()
+    cli_expected = {name: operation for name, operation in expected.items() if name != 'workspace_lifecycle'}
+    if (len(tools) != len(expected) or len(cli) != len(cli_expected) or set(names) != expected.keys()
             or any(tool['operationId'] != expected[tool['name']] for tool in tools)
-            or {item['toolName']: item['operationId'] for item in cli} != expected):
+            or {item['toolName']: item['operationId'] for item in cli} != cli_expected):
         raise ReleaseRejected(ReleaseFailure.INVENTORY)
     if any(line.startswith('KAST_APP_SERVER_TOOLS=') for line in configuration.splitlines()):
         raise ReleaseRejected(ReleaseFailure.INVENTORY)

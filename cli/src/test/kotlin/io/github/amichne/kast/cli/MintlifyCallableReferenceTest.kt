@@ -7,6 +7,7 @@ import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPrep
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonArray
@@ -81,7 +82,7 @@ class MintlifyCallableReferenceTest {
                     .getValue("schema")
                     .jsonObject
                     .reference()
-            val invocation = invocationByTool.getValue(tool.name)
+            val invocation = invocationByTool[tool.name]
 
             assertEquals(tool.name, operation.getValue("operationId").jsonPrimitive.content)
             assertEquals("none", mintMetadata.getValue("playground").jsonPrimitive.content)
@@ -106,9 +107,19 @@ class MintlifyCallableReferenceTest {
             assertEquals("wide", mintMetadata.getValue("mode").jsonPrimitive.content)
             assertEquals("true", mintMetadata.getValue("hideApiMarker").jsonPrimitive.content)
             assertFalse("x-codeSamples" in operation)
-            assertTrue(
-                content.contains("```bash\nkast ${invocation.invocation.command.joinToString(" ")} < request.json\n```")
-            )
+            if (tool.name == "workspace_lifecycle") {
+                assertEquals(JsonNull, kastMetadata.getValue("cliUsage"))
+                assertTrue(content.contains("connected Kast agent session"))
+                assertFalse(content.contains("```bash"))
+            } else {
+                val command = checkNotNull(invocation)
+                assertEquals(command.cliUsage, kastMetadata.getValue("cliUsage").jsonPrimitive.content)
+                assertTrue(
+                    content.contains(
+                        "```bash\nkast ${command.invocation.command.joinToString(" ")} < request.json\n```"
+                    )
+                )
+            }
         }
     }
 

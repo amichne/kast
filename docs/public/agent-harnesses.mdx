@@ -35,15 +35,16 @@ A custom harness must load its contract from the Kast executable it invokes.
   <Step title="Admit the installed projection">
     Run `kast --schema` and consume `serverProjection`.
 
-    - Require server projection version 13.
-    - Require CLI invocation version 3.
+    - Require server projection version 14.
+    - Require CLI invocation version 4.
     - Reject missing, malformed, unsupported, or contradictory data.
     - Validate the complete contract instead of trusting version numbers alone.
   </Step>
   <Step title="Join by tool name">
     Match `hostedBootstrap.tools` with `cliInvocations.operations` by `toolName`.
 
-    Require exactly one binding per tool and verify its canonical operation ID.
+    Require exactly one binding for each CLI-invokable tool and verify its canonical
+    operation ID. `workspace_lifecycle` is hosted-only and has no CLI binding.
 
     Multiple search tools share `query.run`, so operation identity is insufficient.
   </Step>
@@ -55,7 +56,8 @@ A custom harness must load its contract from the Kast executable it invokes.
     - effect and approval policy
     - deferred-loading hint and execution budget
 
-    Invoke the executable with the admitted argument vector and repository root.
+    Invoke CLI-bound tools with the admitted argument vector and repository root.
+    Invoke hosted-only tools through a connected provider session.
 
     Never interpolate tool input into a shell command.
   </Step>
@@ -81,9 +83,9 @@ Requalify whenever the provider starts or the executable changes.
 | Deferred changes | `change_plan`, `change_apply`, `change_recover` | Keep planning and approval attached to stored changes |
 | Explicit opt-in | `symbol_lookup`, `symbol_inspect` | Expose candidate discovery and refinement when required |
 
-Keep these operations outside the agent tool catalog:
+Keep these administrative operations outside the agent tool catalog:
 
-- lifecycle and synchronization
+- service lifecycle and synchronization controls
 - topology setup and status
 - broker administration
 

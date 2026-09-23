@@ -219,17 +219,19 @@ MAXIMUM_RESPONSE_BYTES = 4 * 1024 * 1024
 
 
 def _admit_cli_invocations(document):
-    """Keep the staged product's canonical tool/operation/CLI association intact."""
+    """Keep CLI routes exact while allowing the hosted-only workspace tool."""
     projection = document['serverProjection']
     cli, bootstrap = projection['cliInvocations'], projection['hostedBootstrap']
-    if (projection['schemaVersion'] != 13 or projection['namespace'] != 'kast'
-            or cli['schemaVersion'] != 3 or bootstrap['schemaVersion'] != 1
+    if (projection['schemaVersion'] != 14 or projection['namespace'] != 'kast'
+            or cli['schemaVersion'] != 4 or bootstrap['schemaVersion'] != 1
             or not 1 <= len(cli['operations']) <= 64 or not 1 <= len(bootstrap['tools']) <= 64):
         raise ReadTransportRejected('READ_CLI_SCHEMA_REJECTED')
     tools = {tool['name']: tool for tool in bootstrap['tools']}
     operations = {operation['toolName']: operation for operation in cli['operations']}
     if (len(tools) != len(bootstrap['tools']) or len(operations) != len(cli['operations'])
-            or tools.keys() != operations.keys()):
+            or not operations.keys() <= tools.keys()
+            or (tools.keys() - operations.keys()) - {'workspace_lifecycle'}
+            or 'workspace_lifecycle' in operations):
         raise ReadTransportRejected('READ_CLI_SCHEMA_REJECTED')
     commands = {}
     for name, operation in operations.items():

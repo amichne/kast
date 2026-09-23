@@ -70,12 +70,18 @@ class InstalledServerProjectionTest {
                 .jsonArray
                 .map(JsonElement::jsonObject)
 
-        assertEquals(13, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
+        assertEquals(14, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
+        assertEquals(
+            4,
+            projection.getValue("cliInvocations").jsonObject.getValue("schemaVersion").jsonPrimitive.content.toInt(),
+        )
         assertTrue(
             bootstrap.getValue("policy").jsonPrimitive.content.contains("compiler-grounded Kotlin source intelligence")
         )
         assertEquals(
-            tools.map { it.getValue("operationId").jsonPrimitive.content },
+            tools
+                .filterNot { it.getValue("operationId").jsonPrimitive.content == "workspace.lifecycle" }
+                .map { it.getValue("operationId").jsonPrimitive.content },
             cliInvocations.map { it.getValue("operationId").jsonPrimitive.content },
         )
         assertTrue(tools.none { "cliUsage" in it || "invocation" in it })
@@ -200,7 +206,7 @@ class InstalledServerProjectionTest {
         val internalOperations = HostedOperationProjection.internalDefinitions.map { it.operation.id.value }
 
         assertEquals(14, tools.size)
-        assertEquals(13, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
+        assertEquals(14, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
         assertEquals("kast", projection.getValue("namespace").jsonPrimitive.content)
         assertEquals(
             expectedPublicOperations.toSet(),
@@ -263,7 +269,6 @@ class InstalledServerProjectionTest {
         )
         assertEquals(
             linkedMapOf(
-                "workspace_lifecycle" to listOf("workspace", "lifecycle"),
                 "search_classes" to listOf("tool", "search_classes"),
                 "search_functions" to listOf("tool", "search_functions"),
                 "search_declarations" to listOf("tool", "search_declarations"),

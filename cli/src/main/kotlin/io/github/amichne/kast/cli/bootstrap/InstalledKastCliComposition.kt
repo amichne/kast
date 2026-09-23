@@ -6,7 +6,6 @@ import io.github.amichne.kast.appserver.SavedConfigurationIngress
 import io.github.amichne.kast.appserver.host.installedCodexClientLauncher
 import io.github.amichne.kast.appserver.ide.ExistingIdeSocketClient
 import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
-import io.github.amichne.kast.appserver.ide.IdeLifecycleClient
 import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
 import io.github.amichne.kast.cli.command.CliCommandGraphFailure
@@ -14,7 +13,6 @@ import io.github.amichne.kast.cli.command.CliCommandSurface
 import io.github.amichne.kast.cli.projection.CliLocalMetadata
 import io.github.amichne.kast.cli.projection.CliLocalMetadataAdmission
 import io.github.amichne.kast.cli.projection.CliLocalMetadataFailure
-import io.github.amichne.kast.distribution.contract.configuration.ConfigurationPathSelection
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationRejection
 import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
 import io.github.amichne.kast.kernel.Refinement
@@ -112,15 +110,6 @@ internal class InstalledKastCliComposition : KastCliComposition {
                 rootDiscovery = FilesystemCanonicalRootDiscovery,
                 localMetadata = metadata,
                 productVersion = version,
-                lifecycleClient =
-                    io.github.amichne.kast.appserver.ide.IdeLifecycleClient(
-                        userHome,
-                        when (val selected = configuration.selectedIdeHome) {
-                            is ConfigurationPathSelection.Selected -> selected.path
-                            ConfigurationPathSelection.OwnerDefault ->
-                                Path.of(System.getProperty("java.home")).parent.parent.parent
-                        },
-                    ),
                 existingIdeClient =
                     io.github.amichne.kast.appserver.ide.ExistingIdeSocketClient(userHome, configuration.readLimits),
                 appServerManager = InstalledAppServerManager(executable, userHome),
