@@ -9,6 +9,9 @@ import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import io.github.amichne.kast.protocol.contract.IdeLifecycleStage
 import io.github.amichne.kast.protocol.contract.IdeProjectTarget
+import io.github.amichne.kast.protocol.contract.WorkspaceLifecycleRequest
+import io.github.amichne.kast.protocol.contract.WorkspaceRefreshEffect
+import io.github.amichne.kast.protocol.contract.WorkspaceRefreshRule
 import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -44,6 +47,7 @@ class LifecycleProjectionTest {
                 IdeLifecycleResult.Opened(target),
                 IdeLifecycleResult.Presented(target),
                 IdeLifecycleResult.Synced(target),
+                IdeLifecycleResult.Configured(target, WorkspaceRefreshRule.Off),
                 IdeLifecycleResult.Released(target),
                 IdeLifecycleResult.Closed(target),
             )
@@ -66,6 +70,36 @@ class LifecycleProjectionTest {
         assertEquals("inspected", inspection["type"]!!.jsonPrimitive.content)
         assertEquals(1, inspection["protocol"]!!.jsonPrimitive.int)
         assertEquals("best_effort", inspection["background"]!!.jsonPrimitive.content)
+
+        val configured = json.encodeToJsonElement<IdeLifecycleResult>(results[5]).jsonObject
+        assertEquals(setOf("type", "target", "rule"), configured.keys)
+        assertEquals("configured", configured.getValue("type").jsonPrimitive.content)
+    }
+
+    @Test
+    fun `hosted configuration request requires an exact project target and closed rule`() {
+        val graph =
+            (CliCommandGraphFactory.create(canonicalCliRequestPreparers()) as CliCommandGraphConstruction.Created)
+                .factory
+        val tool =
+            installedServerProjection(graph.surface).hostedBootstrap.tools.single { it.name == "workspace_lifecycle" }
+        val validator =
+            SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12).getSchema(tool.inputSchema.toString())
+        val request =
+            WorkspaceLifecycleRequest.ConfigureSync(
+                target,
+                "configure-1",
+                WorkspaceRefreshRule.TaskSuccess(
+                    ":generateSources",
+                    WorkspaceRefreshEffect.FILE_REFRESH,
+                ),
+            )
+        assertTrue(
+            validator.validate(json.encodeToString<WorkspaceLifecycleRequest>(request), InputFormat.JSON).isEmpty()
+        )
+        val missingTarget =
+            json.encodeToString<WorkspaceLifecycleRequest>(request).replace(json.encodeToString(target), "null")
+        assertTrue(validator.validate(missingTarget, InputFormat.JSON).isNotEmpty())
     }
 
     @Serializable private data class Completed(val document: IdeLifecycleResult, val status: String = "completed")

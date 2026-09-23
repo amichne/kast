@@ -18,7 +18,7 @@ import org.junit.jupiter.api.Test
 class PreferredReadProjectionTest {
     @Test
     fun `installed projection advances incompatible catalog version`() {
-        assertEquals("14", projection().getValue("schemaVersion").jsonPrimitive.content)
+        assertEquals("15", projection().getValue("schemaVersion").jsonPrimitive.content)
     }
 
     @Test

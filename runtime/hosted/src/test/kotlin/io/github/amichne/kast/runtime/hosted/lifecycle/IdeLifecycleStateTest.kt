@@ -5,6 +5,8 @@ import io.github.amichne.kast.protocol.contract.IdeLifecycleCommand
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import io.github.amichne.kast.protocol.contract.IdeProjectOwnership
+import io.github.amichne.kast.protocol.contract.WorkspaceRefreshEffect
+import io.github.amichne.kast.protocol.contract.WorkspaceRefreshRule
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import java.nio.file.Path
 import java.util.UUID
@@ -20,6 +22,34 @@ class IdeLifecycleStateTest {
     private val client = LifecycleClient("client")
 
     private fun project(ownership: IdeProjectOwnership) = state.observe(UUID.randomUUID(), root, ownership)
+
+    @Test
+    fun `refresh rule configuration keeps exact project and request identity`() {
+        val target = project(IdeProjectOwnership.BORROWED)
+        val rule = WorkspaceRefreshRule.TaskSuccess(":generateSources", WorkspaceRefreshEffect.FILE_REFRESH)
+        val command = IdeLifecycleCommand.ConfigureSync("configure", client.value, target, rule)
+        val started = state.begin(command, LifecycleRequest("configure"), client)
+        assertInstanceOf(LifecycleSubmission.Start::class.java, started)
+        assertEquals(
+            LifecycleSubmission.Existing((started as LifecycleSubmission.Start).pending),
+            state.begin(command, LifecycleRequest("configure"), client),
+        )
+        assertEquals(
+            LifecycleSubmission.Existing(IdeLifecycleResult.Blocked(IdeLifecycleFailure.REQUEST_CONFLICT)),
+            state.begin(command.copy(rule = WorkspaceRefreshRule.Off), LifecycleRequest("configure"), client),
+        )
+        assertEquals(
+            LifecycleSubmission.Existing(IdeLifecycleResult.Blocked(IdeLifecycleFailure.STALE_PROJECT)),
+            state.begin(
+                command.copy(requestId = "foreign", target = target.copy(project = UUID.randomUUID().toString())),
+                LifecycleRequest("foreign"),
+                client,
+            ),
+        )
+        val result = IdeLifecycleResult.Configured(target, rule)
+        state.complete(LifecycleRequest("configure"), result)
+        assertEquals(result, state.status(LifecycleRequest("configure")))
+    }
 
     @Test
     fun `zero projects is valid and duplicate opens join with conflict rejection`() {

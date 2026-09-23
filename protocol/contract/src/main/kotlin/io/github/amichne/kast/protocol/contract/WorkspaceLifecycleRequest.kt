@@ -22,6 +22,11 @@ sealed interface WorkspaceLifecycleRequest : OperationRequest {
         WorkspaceLifecycleRequest
 
     @Serializable
+    @SerialName("configure_sync")
+    data class ConfigureSync(val target: IdeProjectTarget, val requestId: String, val rule: WorkspaceRefreshRule) :
+        WorkspaceLifecycleRequest
+
+    @Serializable
     @SerialName("release")
     data class Release(val target: IdeProjectTarget, val requestId: String) : WorkspaceLifecycleRequest
 

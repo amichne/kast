@@ -22,7 +22,7 @@ Null controls are an intentional property of this surface. Unknown/mixed shapes,
 
 Tool identity is separate from canonical operation identity. Catalogs require unique tool names and exact bindings for CLI-invokable tools; hosted-only `workspace_lifecycle` has no CLI route. Repeated operation IDs require consistent operation effect, approval, budget and output contract. The operation continues to own all execution policy. No fake operations, second evaluator or lifecycle prerequisite are added. Source, relation, traversal and approved change tools remain; candidate lookup/refinement stays opt-in.
 
-Installed server projection **14** and CLI invocation projection **4** carry the current bindings. Old catalogs fail qualification and must be recreated with a matched executable/broker. Each new agent tool has exactly one supported schema. `kast.query` and `kast.diagnostic_check` are retired agent names. The explicit legacy `kast query run` CLI route below remains available with its original grammar; it is not a new agent alias.
+Installed server projection **15** and CLI invocation projection **4** carry the current bindings. Old catalogs fail qualification and must be recreated with a matched executable/broker. Each new agent tool has exactly one supported schema. `kast.query` and `kast.diagnostic_check` are retired agent names. The explicit legacy `kast query run` CLI route below remains available with its original grammar; it is not a new agent alias.
 
 The catalog advertises `read_relations` for `relation.read` and `traverse_relations`
 for `traversal.run`. Registry-owned `semantic_query` and `impact_analyze` inputs

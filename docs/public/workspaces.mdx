@@ -46,9 +46,10 @@ same operation; different input with that ID rejects.
 | `open` | `root`, `requestId`. Reuses without activation or reimport; otherwise links, imports and waits for semantic admission. |
 | `present` | `target`, `requestId`. Reveals the existing window and protects it from cleanup. |
 | `sync` | `target`, `requestId`, `effect`: `FILE_REFRESH` or `GRADLE_MODEL_RELOAD`. Uses the existing refresh owner. |
+| `configure_sync` | `target`, `requestId`, `rule`: `off` or an exact `task_success` task and effect. Configures that project's existing refresh owner; a `configured` result returns the admitted rule. |
 | `release` | `target`, `requestId`. Removes this caller's interest without closing. |
 | `close` | `target`, `requestId`. Closes only an eligible managed project with no other clients. |
-| `request_user_close` | `target`, `requestId`. Agent broker requests exact-target user approval for a borrowed/presented project. Direct CLI requests have no approval authority. |
+| `request_user_close` | `target`, `requestId`. Agent broker requests exact-target user approval for a borrowed/presented project. Direct requests have no approval authority. |
 | `status` | `host`, `requestId`. Retained progress or terminal result, including after closure. |
 
 Agent use is attributed to its coordinator thread. Preserve that caller identity

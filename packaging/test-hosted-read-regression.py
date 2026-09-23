@@ -64,7 +64,7 @@ class BootstrapFixture:
 
 @dataclass(frozen=True)
 class ProjectionFixture:
-    schemaVersion: int = 14
+    schemaVersion: int = 15
     namespace: str = 'kast'
     cliInvocations: InvocationsFixture = field(default_factory=InvocationsFixture)
     hostedBootstrap: BootstrapFixture = field(default_factory=BootstrapFixture)

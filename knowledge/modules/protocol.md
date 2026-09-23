@@ -69,7 +69,7 @@ stamp is never serialized as a workspace generation or source-state identity.
 
 The canonical read revisions are `query.run.v2`, `source.read.v4`, and version 3
 for symbol discovery, symbol inspection, relation reads, traversal, and diagnostics.
-The packaged App Server projection is version 14, and provider qualification requires
+The packaged App Server projection is version 15, and provider qualification requires
 that version and every canonical hosted tool. The build generates `provider-catalog.json`
 from the shared schema owner without CLI invocation metadata. Its successful read schemas carry mutually exclusive published and
 live variants, including the corresponding source snapshot shape. The hosted

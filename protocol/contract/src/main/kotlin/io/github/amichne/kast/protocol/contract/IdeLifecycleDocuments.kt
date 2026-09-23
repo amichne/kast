@@ -28,6 +28,15 @@ sealed interface IdeLifecycleCommand : OperationRequest {
     ) : IdeLifecycleCommand
 
     @Serializable
+    @SerialName("configure_sync")
+    data class ConfigureSync(
+        val requestId: String,
+        val client: String,
+        val target: IdeProjectTarget,
+        val rule: WorkspaceRefreshRule,
+    ) : IdeLifecycleCommand
+
+    @Serializable
     @SerialName("release")
     data class Release(val requestId: String, val client: String, val target: IdeProjectTarget) : IdeLifecycleCommand
 
@@ -132,6 +141,10 @@ sealed interface IdeLifecycleResult : OperationResult {
 
     @Serializable @SerialName("synced") data class Synced(val target: IdeProjectTarget) : IdeLifecycleResult
 
+    @Serializable
+    @SerialName("configured")
+    data class Configured(val target: IdeProjectTarget, val rule: WorkspaceRefreshRule) : IdeLifecycleResult
+
     @Serializable @SerialName("released") data class Released(val target: IdeProjectTarget) : IdeLifecycleResult
 
     @Serializable @SerialName("closed") data class Closed(val target: IdeProjectTarget) : IdeLifecycleResult
@@ -177,6 +190,7 @@ enum class IdeLifecycleCapabilityName {
     OPEN,
     PRESENT,
     SYNC,
+    CONFIGURE_SYNC,
     RELEASE,
     CLOSE,
     STATUS,

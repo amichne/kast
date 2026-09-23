@@ -222,7 +222,7 @@ def _admit_cli_invocations(document):
     """Keep CLI routes exact while allowing the hosted-only workspace tool."""
     projection = document['serverProjection']
     cli, bootstrap = projection['cliInvocations'], projection['hostedBootstrap']
-    if (projection['schemaVersion'] != 14 or projection['namespace'] != 'kast'
+    if (projection['schemaVersion'] != 15 or projection['namespace'] != 'kast'
             or cli['schemaVersion'] != 4 or bootstrap['schemaVersion'] != 1
             or not 1 <= len(cli['operations']) <= 64 or not 1 <= len(bootstrap['tools']) <= 64):
         raise ReadTransportRejected('READ_CLI_SCHEMA_REJECTED')
@@ -269,9 +269,10 @@ class NativeReadEnvelopeValidation:
 
 
 class HostedReadTransport:
-    def __init__(self, isolation, fixture, product, java, harness):
+    def __init__(self, isolation, fixture, product, java, harness, selected_idea_home=None):
         self.isolation, self.fixture, self.product = isolation, fixture, product
         self.java, self.harness = java, harness
+        self.selected_idea_home = selected_idea_home
         self.provider = None
         self.cli_commands = {}
         self.qualification = None
@@ -288,6 +289,8 @@ class HostedReadTransport:
         command = [str(self.java), '-cp', str(self.product / 'lib/*') + os.pathsep + str(self.harness),
             'io.github.amichne.kast.appserver.acceptance.hostedchange.NativeHostedReadMain',
             str(self.product), str(self.fixture.workspace)]
+        if self.selected_idea_home is not None:
+            command.append(str(self.selected_idea_home))
         self.provider = self.isolation.spawn(command, cwd=self.fixture.workspace,
             env=self.fixture.environment, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL)
