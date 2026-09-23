@@ -42,9 +42,6 @@ class ExistingIdeClassName private constructor(val value: String) {
 sealed interface ExistingIdeOperation {
     data object Status : ExistingIdeOperation
 
-    data class Refresh(val command: io.github.amichne.kast.protocol.contract.WorkspaceRefreshCommand) :
-        ExistingIdeOperation
-
     data class Classes(val name: ExistingIdeClassName) : ExistingIdeOperation
 
     data class Supertype(val name: ExistingIdeQualifiedClassName) : ExistingIdeOperation

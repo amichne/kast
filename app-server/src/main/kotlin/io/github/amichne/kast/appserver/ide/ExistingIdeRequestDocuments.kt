@@ -1,7 +1,5 @@
 package io.github.amichne.kast.appserver.ide
 
-import io.github.amichne.kast.protocol.contract.WorkspaceRefreshCommand
-import io.github.amichne.kast.protocol.contract.WorkspaceRefreshTransportRequest
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -56,10 +54,6 @@ fun ExistingIdeOperation.encodeControlRequest(root: CanonicalRoot): ByteArray {
             is ExistingIdeOperation.ApprovedMutation ->
                 controlJson.encodeToString(MutationRequest(path, kind, request.document, assertion.value))
             is ExistingIdeOperation.Read -> controlJson.encodeToString(ReadRequest(path, kind, request.document))
-            is ExistingIdeOperation.Refresh ->
-                controlJson.encodeToString(
-                    WorkspaceRefreshTransportRequest(path, controlJson.encodeToString<WorkspaceRefreshCommand>(command))
-                )
         }
     return encoded.toByteArray(Charsets.UTF_8)
 }

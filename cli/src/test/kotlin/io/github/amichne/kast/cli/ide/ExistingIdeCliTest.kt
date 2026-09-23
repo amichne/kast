@@ -135,12 +135,15 @@ class ExistingIdeCliTest {
             listOf(
                 listOf("ide", "--help"),
                 listOf("ide", "status", "--help"),
-                listOf("ide", "refresh", "--help"),
             )) {
             val answer = executeExistingIdeCli(argv, Path.of("/missing"), roots, client)
             assertEquals(0, answer.code)
             assertTrue(answer.document.value.isNotBlank())
         }
+        val retired = executeExistingIdeCli(listOf("ide", "refresh"), Path.of("/missing"), roots, client)
+        assertNotEquals(0, retired.code)
+        val ideHelp = executeExistingIdeCli(listOf("ide", "--help"), Path.of("/missing"), roots, client)
+        assertFalse(ideHelp.document.value.contains("refresh"))
     }
 
     @Test

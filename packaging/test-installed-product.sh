@@ -104,7 +104,6 @@ assert document["cliProjection"]["localCommands"] == [
     "knowledge <query-or-resource>",
     "codex", "codex desktop",
     "ide status [--root <path>]",
-    "ide refresh <document> [--root <path>]",
     "app-server status",
 ], document["cliProjection"]["localCommands"]
 projection = document["serverProjection"]

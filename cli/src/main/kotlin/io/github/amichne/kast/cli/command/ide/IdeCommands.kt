@@ -2,15 +2,11 @@ package io.github.amichne.kast.cli.command.ide
 
 import com.github.ajalt.clikt.core.Context
 import com.github.ajalt.clikt.core.subcommands
-import com.github.ajalt.clikt.parameters.arguments.argument
-import com.github.ajalt.clikt.parameters.arguments.convert
 import com.github.ajalt.clikt.parameters.options.convert
 import com.github.ajalt.clikt.parameters.options.option
-import io.github.amichne.kast.appserver.ide.ExistingIdeDocuments
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
 import io.github.amichne.kast.cli.command.*
 import io.github.amichne.kast.cli.ide.*
-import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
 
 sealed interface ExistingIdeRootSelection {
@@ -20,15 +16,11 @@ sealed interface ExistingIdeRootSelection {
 }
 
 internal fun ideCommandGroup(): LocalCommandFamily {
-    val commands =
-        listOf(
-            IdeStatusCommand(CliProductCommand.IDE_STATUS),
-            IdeRefreshCommand(CliProductCommand.IDE_REFRESH),
-        )
+    val commands = listOf(IdeStatusCommand(CliProductCommand.IDE_STATUS))
     return LocalCommandFamily(
         KastCommandGroup(
                 "ide",
-                "Inspect or refresh the existing IDEA endpoint; missing IDE state remains unavailable.",
+                "Inspect the existing IDEA endpoint; missing IDE state remains unavailable.",
             )
             .subcommands(commands),
         commands,
@@ -54,20 +46,4 @@ private class IdeStatusCommand(command: CliProductCommand) : IdeCommand("status"
     override fun help(context: Context) = "Describe the existing IDEA endpoint without starting a runtime."
 
     override fun resolveAction() = action(ExistingIdeOperation.Status)
-}
-
-private class IdeRefreshCommand(command: CliProductCommand) : IdeCommand("refresh", command) {
-    private val request by
-        argument("DOCUMENT", help = "Typed refresh request, status, or configure JSON document.").convert {
-            when (val parsed = ExistingIdeDocuments.admitRefreshCommand(it)) {
-                is Refinement.Refined -> parsed.value
-                is Refinement.Rejected ->
-                    fail("Expected an unambiguous workspace refresh request, status, or configure document")
-            }
-        }
-
-    override fun help(context: Context) =
-        "Explicitly refresh files or reload the linked Gradle model, inspect status, or configure an exact task-success rule."
-
-    override fun resolveAction() = action(ExistingIdeOperation.Refresh(request))
 }

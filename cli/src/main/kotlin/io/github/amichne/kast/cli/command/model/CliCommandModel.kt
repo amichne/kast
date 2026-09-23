@@ -24,7 +24,6 @@ enum class CliProductCommand(val usage: String) {
     CODEX_CLI("codex"),
     CODEX_DESKTOP("codex desktop"),
     KNOWLEDGE("knowledge <query-or-resource>"),
-    IDE_REFRESH("ide refresh <document> [--root <path>]"),
     IDE_STATUS("ide status [--root <path>]"),
 }
 
