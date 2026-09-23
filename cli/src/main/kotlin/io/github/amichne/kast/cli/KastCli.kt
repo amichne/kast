@@ -123,7 +123,6 @@ internal constructor(
             CliAction.Local.CodexCli -> launchCodex(codexClientLauncher, CodexClientLaunch.Cli)
             CliAction.Local.CodexDesktop -> launchCodex(codexClientLauncher, CodexClientLaunch.Desktop)
             is CliAction.Local.WorkspaceLifecycle -> executeLifecycle(action.action)
-            CliAction.Local.TrustBroker -> boundaryExit(CliBoundaryExitStatus.RUNTIME, "ide-trust-unavailable")
             is CliAction.Local.ExistingIde ->
                 io.github.amichne.kast.cli.ide.executeExistingIdeAction(action, start, rootDiscovery, existingIdeClient)
             is CliAction.Semantic -> boundaryExit(CliBoundaryExitStatus.USAGE, "existing-ide-command-required")

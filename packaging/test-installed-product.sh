@@ -108,7 +108,6 @@ assert document["cliProjection"]["localCommands"] == [
     "ide classes <name> [--root <path>]",
     "ide supertype <qualified-name> [--root <path>]",
     "ide generate-completion <shell>",
-    "ide trust-broker",
     "workspace lifecycle <document>",
     "app-server status",
 ], document["cliProjection"]["localCommands"]

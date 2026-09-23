@@ -42,7 +42,6 @@ internal fun selectCliRuntimePath(argv: List<String>): CliRuntimePath {
 internal class ExistingIdeCliCapabilities(
     val roots: CanonicalRootDiscoverer,
     val client: ExistingIdeClient,
-    val trust: BrokerTrustRegistrar = BrokerTrustRegistrar.Unavailable,
 )
 
 /** Hosted operations are selected before bootstrap can demand an isolated product or worker. */
@@ -92,7 +91,6 @@ internal fun executeExistingIdeCli(
             boundaryExit(CliBoundaryExitStatus.PROTOCOL, "ide-projection-rejected")
         is CliCommandParsing.Parsed ->
             when (val action = parsed.action) {
-                CliAction.Local.TrustBroker -> executeBrokerTrustEnrollment(capabilities.trust)
                 is CliAction.Local.ExistingIde -> executeExistingIdeAction(action, start, roots, client)
                 is CliAction.Semantic ->
                     when (val read = ingress.operation(action.request)) {

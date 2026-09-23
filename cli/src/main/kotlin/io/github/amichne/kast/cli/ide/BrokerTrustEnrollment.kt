@@ -1,9 +1,5 @@
 package io.github.amichne.kast.cli.ide
 
-import io.github.amichne.kast.cli.CliBoundaryExitStatus
-import io.github.amichne.kast.cli.CliExit
-import io.github.amichne.kast.cli.boundaryExit
-import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import java.nio.channels.FileChannel
 import java.nio.file.Files
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
@@ -16,8 +12,6 @@ import java.security.KeyPairGenerator
 import java.security.Signature
 import java.security.spec.PKCS8EncodedKeySpec
 import java.security.spec.X509EncodedKeySpec
-import kotlinx.serialization.EncodeDefault
-import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -44,17 +38,13 @@ internal sealed interface BrokerTrustResult {
 
 internal fun interface BrokerTrustRegistrar {
     fun enroll(): BrokerTrustResult
-
-    data object Unavailable : BrokerTrustRegistrar {
-        override fun enroll() = BrokerTrustResult.Rejected(BrokerTrustFailure.UNAVAILABLE)
-    }
 }
 
 private const val MAXIMUM_KEY_BYTES = 128
 private val privateDirectoryMode = PosixFilePermissions.fromString("rwx------")
 private val privateFileMode = PosixFilePermissions.fromString("rw-------")
 
-/** Installation and explicit local enrollment own key creation. Request handling never calls it. */
+/** Installation and private fixture setup own key creation. Request handling never calls it. */
 internal class FilesystemBrokerTrustRegistrar(private val home: Path) : BrokerTrustRegistrar {
     override fun enroll(): BrokerTrustResult =
         try {
@@ -210,24 +200,3 @@ internal class FilesystemBrokerTrustRegistrar(private val home: Path) : BrokerTr
 
     private fun rejected(failure: BrokerTrustFailure) = BrokerTrustResult.Rejected(failure)
 }
-
-@Serializable
-@OptIn(ExperimentalSerializationApi::class)
-private data class BrokerTrustEnrollmentDocument(val status: BrokerTrustStatus) {
-    @EncodeDefault val outcome: String = "complete"
-    @EncodeDefault val operation: String = "ide-trust-broker"
-}
-
-internal fun executeBrokerTrustEnrollment(registrar: BrokerTrustRegistrar): CliExit =
-    when (val result = registrar.enroll()) {
-        is BrokerTrustResult.Complete ->
-            CliExit.Complete(
-                CanonicalJsonDocument.generated(BrokerTrustEnrollmentDocument.serializer())
-                    .create(BrokerTrustEnrollmentDocument(result.status))
-            )
-        is BrokerTrustResult.Rejected ->
-            boundaryExit(
-                CliBoundaryExitStatus.RUNTIME,
-                "ide-trust-${result.failure.name.lowercase().replace('_', '-')}",
-            )
-    }

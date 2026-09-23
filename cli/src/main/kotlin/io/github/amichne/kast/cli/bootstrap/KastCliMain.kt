@@ -79,9 +79,6 @@ fun main(args: Array<String>) {
                             Path.of(System.getProperty("user.home")),
                             environment,
                         ),
-                        io.github.amichne.kast.cli.ide.FilesystemBrokerTrustRegistrar(
-                            Path.of(System.getProperty("user.home"))
-                        ),
                     ),
                 requestInput = CliRequestDocumentInput.Deferred(::readCanonicalRequestInput),
             )

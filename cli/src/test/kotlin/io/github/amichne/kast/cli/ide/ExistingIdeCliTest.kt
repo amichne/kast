@@ -93,7 +93,10 @@ class ExistingIdeCliTest {
         val roots = CanonicalRootDiscoverer { fail("Internal sync reached root discovery") }
         val client = ExistingIdeClient { _, _ -> fail("Internal sync reached host") }
         assertNotEquals(0, executeExistingIdeCli(listOf("ide", "sync"), root.path, roots, client).code)
-        assertEquals(0, executeExistingIdeCli(listOf("ide", "--help"), root.path, roots, client).code)
+        val help = executeExistingIdeCli(listOf("ide", "--help"), root.path, roots, client)
+        assertEquals(0, help.code)
+        assertFalse(help.document.value.contains("trust-broker"))
+        assertNotEquals(0, executeExistingIdeCli(listOf("ide", "trust-broker"), root.path, roots, client).code)
         for (shell in listOf("bash", "zsh", "fish")) {
             val completion =
                 executeExistingIdeCli(listOf("ide", "generate-completion", shell), root.path, roots, client)

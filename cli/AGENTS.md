@@ -59,4 +59,4 @@ Defines Kast's human-facing command graph, installed configuration and installat
 - For parsing or command ownership, start with `CliCommandGraph` and the owning command package.
 - For output compatibility, start in `projection` and follow to `protocol/wire`.
 
-- Semantic operations require an existing IDE endpoint. Bare inspection is passive; retired `start`, `stop`, and `status` commands are absent. App-server, broker, IDE, product inspection, and workspace lifecycle operations are visible in help.
+- Semantic operations require an existing IDE endpoint. Bare inspection and `app-server status` are passive; service controls and trust enrollment use the private installed control. IDE, product inspection, and workspace lifecycle operations remain visible in help.

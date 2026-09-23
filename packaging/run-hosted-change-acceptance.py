@@ -154,7 +154,7 @@ def main():
                 processes.generated_fixture = generated_fixture
                 evidence['generatedSetup'] = generated_fixture.evidence()
                 record({'event': 'stage', 'stage': 'generated-fixture-setup', 'outcome': 'completed'})
-                enrollment = subprocess.run([str(product_executable(product, isolation.root)), 'ide', 'trust-broker'],
+                enrollment = subprocess.run([str(product / 'share/kast/libexec/kast-service'), 'enroll-trust'],
                     cwd=fixture.workspace, env=fixture.environment, capture_output=True, timeout=30)
                 with private_file(private / 'enrollment.private.log') as output:
                     output.write(enrollment.stdout + enrollment.stderr)
