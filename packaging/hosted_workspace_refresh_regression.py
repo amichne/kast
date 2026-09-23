@@ -27,6 +27,11 @@ class RefreshBoundaryFailure(str, Enum):
     VALUE = 'value_rejected'
     TYPE = 'type_rejected'
     KEY = 'key_rejected'
+    HOSTED_RULE_TIMEOUT = 'HOSTED_RULE_TIMEOUT'
+    HOSTED_RULE_INSPECTION_REJECTED = 'HOSTED_RULE_INSPECTION_REJECTED'
+    HOSTED_RULE_TARGET_REJECTED = 'HOSTED_RULE_TARGET_REJECTED'
+    HOSTED_RULE_RESTORATION_REJECTED = 'HOSTED_RULE_RESTORATION_REJECTED'
+    HOSTED_RULE_RELEASE_REJECTED = 'HOSTED_RULE_RELEASE_REJECTED'
 
 
 @dataclass(frozen=True)
@@ -39,6 +44,10 @@ class RefreshBoundaryRejection:
 def refresh_rejection(stage, error):
     if isinstance(error, ReadTransportRejected):
         return RefreshBoundaryRejection(stage, error.reason, error.provider_failure)
+    if stage is RefreshStage.HOSTED_RULE and isinstance(error, ValueError):
+        known = next((reason for reason in RefreshBoundaryFailure if reason.value == str(error)), None)
+        if known is not None:
+            return RefreshBoundaryRejection(stage, known)
     cause = next(reason for kind, reason in ((OSError, RefreshBoundaryFailure.IO),
         (ValueError, RefreshBoundaryFailure.VALUE), (TypeError, RefreshBoundaryFailure.TYPE),
         (KeyError, RefreshBoundaryFailure.KEY)) if isinstance(error, kind))

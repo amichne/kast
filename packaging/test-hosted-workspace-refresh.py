@@ -71,6 +71,10 @@ class NativeWorkspaceRefreshTest(unittest.TestCase):
                          asdict(refresh_rejection(RefreshStage.MODEL_VISIBILITY, error)))
         self.assertEqual({'stage': 'model_effect', 'cause': 'value_rejected', 'providerFailure': None},
                          asdict(refresh_rejection(RefreshStage.MODEL_EFFECT, ValueError('private payload'))))
+        self.assertEqual({'stage': 'hosted_rule', 'cause': 'HOSTED_RULE_TARGET_REJECTED',
+                          'providerFailure': None},
+                         asdict(refresh_rejection(RefreshStage.HOSTED_RULE,
+                            ValueError('HOSTED_RULE_TARGET_REJECTED'))))
 
     def test_pending_effect_and_admission_must_reach_actual_completion(self):
         request = RefreshRequest('test-request', RefreshEffect.GRADLE_MODEL_RELOAD)
