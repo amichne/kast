@@ -18,6 +18,10 @@ code_sources:
   - path: packaging/generate-public-query.py
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt
     symbols: [PublicToolContract, AdmittedPublicTool, PublicToolCanonical]
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/DaemonQueryProtocol.kt
+    symbols: [DaemonQuery]
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonQueryClient.kt
+    symbols: [InstalledDaemonQueryClient]
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolMapping.kt
   - path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt
   - path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt
@@ -41,6 +45,8 @@ code_sources:
 The authored tool bundle generates Kotlin request DTOs, concrete normalization defaults, closed presentation identities, full admission schemas, Codex registration schemas and separate Responses strict registrations. `tool query_symbols` and `tool check_diagnostics` are the CLI routes for the canonical query and diagnostic operations; the legacy `query run` and `diagnostic check` routes are retired. Provider admission rejects both historical canonical input routes; supported query and diagnostic presentations retain their separate façade schema identities.
 
 `search_classes`, `search_functions`, `search_declarations` and `check_diagnostics` are eager. `query_symbols` is deferred. Ordinary searches fix or admit declaration kinds and request names, locations and signatures; diagnostics lower to the path, semantic diagnostic limit, optional continuation and execution grant request. Required nullable controls normalize before canonical construction. Directory/package scope shapes are exclusive, and duplicates and invalid lexical values reject.
+
+The `tool query_symbols` CLI route carries its admitted presentation syntax to the installed daemon over the bounded `/kast-query` Unix-socket RPC. The daemon checks installation identity, service generation, lifecycle and exact canonical root, re-admits the public schema, and calls its shared existing-IDE preparation owner. The response retains complete, qualified and operation-rejected documents or a finite boundary failure. An unavailable or rejected daemon call does not fall back to direct IDE access.
 
 The advanced pipeline preserves source meaning, step order, repeated steps and empty projections. Expansion returns related declarations; occurrence-oriented relation facts remain the relation-read contract. Query items and per-item failures expose one scalar `ref`, preserving the issued candidate or exact token verbatim. Named output schemas `CandidateRef`, `ExactSymbolRef`, and query-scoped `ContinuationRef` describe these opaque representations. No token spelling creates authority: existing runtime owners re-admit workspace, lifetime, epoch and compiler evidence.
 

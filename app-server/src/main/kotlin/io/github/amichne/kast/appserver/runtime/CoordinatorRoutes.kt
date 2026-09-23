@@ -8,11 +8,12 @@ import io.ktor.websocket.CloseReason
 import io.ktor.websocket.close
 import java.util.concurrent.atomic.AtomicInteger
 
-/** Both local control protocols share the existing connection budget and owned Unix socket. */
+/** Local control and query routes share the existing connection budget and owned Unix socket. */
 internal fun Route.coordinatorRoutes(control: CoordinatorControl) {
     val connections = AtomicInteger(0)
     controlRoute(BrokerControlRoute.RUNTIME.path, connections, control::handle)
     controlRoute(BrokerControlRoute.MANAGEMENT.path, connections, control::handleManagement)
+    controlRoute(BrokerControlRoute.QUERY.path, connections, control::handleQuery)
 }
 
 private fun Route.controlRoute(

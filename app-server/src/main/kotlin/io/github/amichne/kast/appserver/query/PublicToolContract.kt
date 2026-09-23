@@ -20,6 +20,7 @@ sealed interface PublicToolInputFailure {
     data class Parameter(val parameter: PublicToolParameter, val rule: PublicToolRule) : PublicToolInputFailure
 }
 
+@Serializable
 enum class PublicToolParameter(val path: String) {
     CLASS_NAME("class_name"),
     FUNCTION_NAME("function_name"),
@@ -30,6 +31,7 @@ enum class PublicToolParameter(val path: String) {
     DIAGNOSTIC_PATH("relative_path"),
 }
 
+@Serializable
 enum class PublicToolRule(val correction: String) {
     SIMPLE_NAME("Supply an unqualified declaration name; put its package in scope.package_name."),
     WORKSPACE_RELATIVE_PATH("Use a canonical workspace-relative path, or '.' for the root."),

@@ -32,6 +32,10 @@ code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparationActivity.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/DaemonManagementProtocol.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonManagementClient.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/DaemonQueryProtocol.kt
+    symbols: [DaemonQuery]
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonQueryClient.kt
+    symbols: [InstalledDaemonQueryClient]
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonUpgrade.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/DaemonManagement.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/CoordinatorRoutes.kt
@@ -220,6 +224,12 @@ current demand and removes only its current root binding; the historical record
 remains. A later demand may prepare again. Transport failures never replay the
 semantic request. Preparation rejection retains its finite cause and operation ID
 as known pre-execution failure evidence.
+
+The `tool query_symbols` CLI now uses a versioned read RPC on the same owned
+Unix socket. The daemon verifies its exact installation target and canonical
+settings root, re-admits the public query schema, and passes the prepared read
+to this shared demand owner. Complete, qualified and rejected native outcomes
+retain distinct replies. RPC failure does not trigger a direct IDE fallback.
 
 Launchd invokes the private daemon entry point without the public CLI command graph. The managed readiness environment is required at ingress and then qualified by the existing coordinator. Published-command recovery admits the private daemon form only when the entire plist matches the document generated from the recovered command, including launch behavior and logging. It still admits the earlier `kast broker serve` form for retirement.
 On enable, the login variant of the exact service plist is published only after the service and its private receipt are qualified. It retains the same label and daemon executable and adds the private `--login` argument. At login the daemon verifies that exact agent, retained service receipt and loaded launchd label under the service lock before clearing a prior stop. Explicit disable removes the agent, so login cannot override it. An unknown file blocks lifecycle effects. The legacy bootstrap command remains available to converge an older one-shot entry on the direct service job.

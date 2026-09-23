@@ -92,7 +92,7 @@ missing files, symlinks, incompatible metadata, and drift before provider startu
 separate evidence: the [acceptance review](../../docs/reviews/live-semantic-read-acceptance.md)
 records the final default-route CLI matrix and actual provider invocation.
 
-The current [public tool contracts](../contracts/public-tools.md) distinguish presentation identity from canonical operation identity. Three ordinary searches and deferred `query_symbols` share `query.run`; `check_diagnostics` shares `diagnostic.check`. Private admission retains each tool's schema identity and typed syntax through canonical request preparation. The `tool` command family uses the existing-IDE read path. Operation effects, budgets, reference authority and exhaustive outcomes remain with their existing owners.
+The current [public tool contracts](../contracts/public-tools.md) distinguish presentation identity from canonical operation identity. Three ordinary searches and deferred `query_symbols` share `query.run`; `check_diagnostics` shares `diagnostic.check`. Private admission retains each tool's schema identity and typed syntax through canonical request preparation. `tool query_symbols` uses a versioned daemon RPC that re-admits its public schema and exact root before native demand; other `tool` commands still use the direct existing-IDE read path. Operation effects, budgets, reference authority and exhaustive outcomes remain with their existing owners.
 
 The hosted endpoint rejection schema admits bounded, discriminated change-failure detail and rejects unknown causes or contradictory outer failure codes. Runtime encoded-shape tests validate each closed variant against this independently owned schema.
 

@@ -75,7 +75,7 @@ argument forwarding.
 
 A custom desktop client can spawn `kast-codex app-server`, send `initialize`,
 then `initialized`, and use the ordinary App Server protocol. No TCP listener or
-client-specific RPC envelope is introduced. This launch pattern takes inspiration
+desktop-specific RPC envelope is introduced. This launch pattern takes inspiration
 from [Codapter](https://github.com/kcosr/codapter/tree/429812d8976c317d4333aa51ce5106eb511f6816);
 Kast continues to use the real Codex server and existing tool broker.
 
@@ -120,11 +120,14 @@ idempotent and cannot reopen admission. Lost upstream requests retain uncertaint
 Bounded outcome logs exclude paths, request IDs and candidate hashes. This is the
 daemon admission contract; installer activation does not yet consume it.
 
-Each connection accepts one request. Management and runtime status share the
-existing control connection limit. Requests and replies have a 16 KiB bound;
+Each connection accepts one request. Management, runtime status and the narrow
+`/kast-query` read route share the
+existing control connection limit. Management requests and replies have a 16 KiB bound;
 registration reserves enough reply space before writing. Lost replies report
 an unobserved outcome and are never retried automatically. Protocol, coordinator
 enrollment and controller failures retain their finite codes through the CLI.
+The query route allows 64 KiB tool arguments and 1 MiB results, plus bounded
+protocol metadata, within the canonical semantic-read and workspace-readiness budget.
 
 Controller actions target an existing connection and delegate to the shared session
 owner, preserving observer membership, controller leases, active-turn protection
@@ -316,6 +319,9 @@ implementation imports.
 
 The coordinator no longer launches or reserves isolated workspace workers. Its
 control route admits only passive, identity-correlated status and rejects legacy
-worker demands. The configured CLI connects semantic operations to the existing
-IDEA plugin; enrollment, sessions, approvals and durable invocation settlement
+worker demands. `kast tool query_symbols` uses the versioned `/kast-query` RPC:
+the installed daemon re-admits its public schema and exact root, prepares the
+selected IDEA project, and preserves complete, qualified and rejected outcomes.
+Other configured semantic CLI operations still connect directly to the existing
+IDEA plugin. Enrollment, sessions, approvals and durable invocation settlement
 remain broker responsibilities.

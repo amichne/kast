@@ -2,6 +2,7 @@ package io.github.amichne.kast.cli.command
 
 import com.github.ajalt.clikt.core.BaseCliktCommand
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
+import io.github.amichne.kast.appserver.query.AdmittedPublicTool
 import io.github.amichne.kast.appserver.query.explanation
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.OperationRequest
@@ -50,7 +51,16 @@ sealed interface CliAction {
         ) : Local
     }
 
-    data class Semantic(val request: PreparedOperationRequest) : CliAction
+    data class Semantic(
+        val request: PreparedOperationRequest,
+        val source: SemanticSource = SemanticSource.Canonical,
+    ) : CliAction
+}
+
+sealed interface SemanticSource {
+    data object Canonical : SemanticSource
+
+    data class PublicTool(val tool: AdmittedPublicTool) : SemanticSource
 }
 
 /** Closed domain failures produced after Clikt has refined individual option values. */
@@ -121,6 +131,7 @@ internal class SemanticKastCommand<Request : OperationRequest>(
     private val serializer: KSerializer<Request>,
     private val requestInput: CliRequestDocumentInput,
     private val preparer: OperationRequestPreparer<Request>,
+    private val source: (Request) -> SemanticSource = { SemanticSource.Canonical },
 ) : KastCommand(name) {
     override fun help(context: com.github.ajalt.clikt.core.Context): String = description
 
@@ -177,7 +188,8 @@ internal class SemanticKastCommand<Request : OperationRequest>(
 
     private fun prepare(request: Request): CliActionResolution =
         when (val preparation = preparer.prepare(request)) {
-            is OperationPreparation.Prepared -> CliActionResolution.Selected(CliAction.Semantic(preparation.request))
+            is OperationPreparation.Prepared ->
+                CliActionResolution.Selected(CliAction.Semantic(preparation.request, source(request)))
             is OperationPreparation.Rejected -> CliActionResolution.ProjectionRejected(preparation.failure)
         }
 }
