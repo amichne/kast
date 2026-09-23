@@ -1,7 +1,5 @@
 package io.github.amichne.kast.appserver.provider
 
-import io.github.amichne.kast.appserver.query.PublicQueryContract
-import io.github.amichne.kast.appserver.query.PublicQueryInputFailure
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.appserver.query.PublicToolInputFailure
 import io.github.amichne.kast.appserver.schema.ValidatedJsonValue
@@ -20,8 +18,6 @@ internal sealed interface KastToolInputFailure {
     data object NotObject : KastToolInputFailure
 
     data object SchemaMismatch : KastToolInputFailure
-
-    data class Query(val reason: PublicQueryInputFailure) : KastToolInputFailure
 }
 
 internal fun admitKastInput(
@@ -34,10 +30,7 @@ internal fun admitKastInput(
     } else if (operation == CanonicalOperation.SOURCE_READ) {
         admitSourceInput(admitted)
     } else if (operation == CanonicalOperation.QUERY_RUN) {
-        when (val query = PublicQueryContract.admit(admitted)) {
-            is Refinement.Refined -> Validation.validated(KastInvocationInput.Query(query.value))
-            is Refinement.Rejected -> Validation.rejected(KastToolInputFailure.Query(query.failure))
-        }
+        Validation.rejected(KastToolInputFailure.SchemaMismatch)
     } else if (admitted.element is JsonObject) {
         Validation.validated(KastInvocationInput.Canonical(operation, admitted))
     } else {
@@ -56,16 +49,6 @@ internal fun KastInvocationInput.encodeFor(tool: QualifiedKastTool): Refinement<
             )
                 Refinement.Refined(PublicToolContract.encode(request))
             else Refinement.Rejected(KastToolInputFailure.SchemaMismatch)
-        is KastInvocationInput.Query ->
-            if (
-                tool.inputBinding == AgentToolInputBinding.Canonical &&
-                    tool.hostedDefinition.operation == CanonicalOperation.QUERY_RUN &&
-                    tool.inputSchema.digest == PublicQueryContract.schema.digest
-            ) {
-                Refinement.Refined(PublicQueryContract.encode(request))
-            } else {
-                Refinement.Rejected(KastToolInputFailure.SchemaMismatch)
-            }
         is KastInvocationInput.Canonical ->
             if (
                 tool.inputBinding == AgentToolInputBinding.Canonical &&

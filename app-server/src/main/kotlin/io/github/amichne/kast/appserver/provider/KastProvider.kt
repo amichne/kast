@@ -262,8 +262,7 @@ internal object KastProviderQualifier {
                                 is KastToolInputFailure.Source -> emptyList()
                                 is KastToolInputFailure.Facade -> listOf(reason.reason.explanation())
                                 KastToolInputFailure.NotObject,
-                                KastToolInputFailure.SchemaMismatch,
-                                is KastToolInputFailure.Query -> emptyList()
+                                KastToolInputFailure.SchemaMismatch -> emptyList()
                             }
                     }
                 guidance.map { message ->
