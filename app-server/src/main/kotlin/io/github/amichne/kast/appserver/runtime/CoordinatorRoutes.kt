@@ -13,7 +13,7 @@ internal fun Route.coordinatorRoutes(control: CoordinatorControl) {
     val connections = AtomicInteger(0)
     controlRoute(BrokerControlRoute.RUNTIME.path, connections, control::handle)
     controlRoute(BrokerControlRoute.MANAGEMENT.path, connections, control::handleManagement)
-    controlRoute(BrokerControlRoute.QUERY.path, connections, control::handleQuery)
+    controlRoute(BrokerControlRoute.READ.path, connections, control::handleRead)
 }
 
 private fun Route.controlRoute(

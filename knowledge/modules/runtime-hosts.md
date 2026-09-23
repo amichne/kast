@@ -32,10 +32,10 @@ code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparationActivity.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/DaemonManagementProtocol.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonManagementClient.kt
-  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/DaemonQueryProtocol.kt
-    symbols: [DaemonQuery]
-  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonQueryClient.kt
-    symbols: [InstalledDaemonQueryClient]
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/DaemonReadProtocol.kt
+    symbols: [DaemonRead]
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonReadClient.kt
+    symbols: [InstalledDaemonReadClient]
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonUpgrade.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/DaemonManagement.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/CoordinatorRoutes.kt
@@ -225,9 +225,9 @@ remains. A later demand may prepare again. Transport failures never replay the
 semantic request. Preparation rejection retains its finite cause and operation ID
 as known pre-execution failure evidence.
 
-The `tool query_symbols` CLI now uses a versioned read RPC on the same owned
+The `tool` CLI family now uses a versioned read RPC on the same owned
 Unix socket. The daemon verifies its exact installation target and canonical
-settings root, re-admits the public query schema, and passes the prepared read
+settings root, re-admits the selected public schema, and passes the prepared read
 to this shared demand owner. Complete, qualified and rejected native outcomes
 retain distinct replies. RPC failure does not trigger a direct IDE fallback.
 

@@ -1,9 +1,9 @@
 package io.github.amichne.kast.cli.ide
 
-import io.github.amichne.kast.appserver.DaemonQueryClient
-import io.github.amichne.kast.appserver.DaemonQueryClientRejection
-import io.github.amichne.kast.appserver.DaemonQueryFailure
-import io.github.amichne.kast.appserver.DaemonQueryResult
+import io.github.amichne.kast.appserver.DaemonReadClient
+import io.github.amichne.kast.appserver.DaemonReadClientRejection
+import io.github.amichne.kast.appserver.DaemonReadFailure
+import io.github.amichne.kast.appserver.DaemonReadResult
 import io.github.amichne.kast.appserver.ide.CanonicalRootDiscoverer
 import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
 import io.github.amichne.kast.appserver.ide.ExistingIdeClient
@@ -51,6 +51,21 @@ class ExistingIdeSemanticReadTest {
     private val requests =
         listOf(
             Triple(
+                "tool search_classes",
+                ExistingIdeReadOperation.QUERY_RUN,
+                Json.encodeToString(SearchClassesFixture("Order", null, null)),
+            ),
+            Triple(
+                "tool search_functions",
+                ExistingIdeReadOperation.QUERY_RUN,
+                Json.encodeToString(SearchFunctionsFixture("order", null, null)),
+            ),
+            Triple(
+                "tool search_declarations",
+                ExistingIdeReadOperation.QUERY_RUN,
+                Json.encodeToString(SearchDeclarationsFixture("order", null, null, listOf("property", "type_alias"))),
+            ),
+            Triple(
                 "tool query_symbols",
                 ExistingIdeReadOperation.QUERY_RUN,
                 Json.encodeToString(
@@ -92,6 +107,28 @@ class ExistingIdeSemanticReadTest {
                 Json.encodeToString(CheckDiagnosticsFixture("src", 10)),
             ),
         )
+
+    @Serializable
+    private data class SearchClassesFixture(
+        @SerialName("class_name") val name: String,
+        @SerialName("name_match") val match: String?,
+        val scope: String?,
+    )
+
+    @Serializable
+    private data class SearchFunctionsFixture(
+        @SerialName("function_name") val name: String,
+        @SerialName("name_match") val match: String?,
+        val scope: String?,
+    )
+
+    @Serializable
+    private data class SearchDeclarationsFixture(
+        @SerialName("declaration_name") val name: String,
+        @SerialName("name_match") val match: String?,
+        val scope: String?,
+        @SerialName("declaration_kinds") val kinds: List<String>?,
+    )
 
     @Serializable
     private enum class QuerySourceType {
@@ -138,24 +175,21 @@ class ExistingIdeSemanticReadTest {
                         ExistingIdeExchange.Rejected(ExistingIdeFailure.HOST_UNAVAILABLE)
                     },
                     CliRequestDocumentInput.Provided(document),
-                    DaemonQueryClient { admittedRoot, tool ->
+                    DaemonReadClient { admittedRoot, tool ->
                         assertSame(root, admittedRoot)
-                        assertEquals(
-                            io.github.amichne.kast.protocol.registry.PublicToolIdentity.QUERY_SYMBOLS,
-                            tool.identity,
-                        )
+                        assertEquals(publicIdentity(command), tool.identity)
                         daemonCalls++
-                        DaemonQueryResult.Rejected(
-                            DaemonQueryClientRejection.Server(
-                                DaemonQueryFailure.Host(ExistingIdeFailure.HOST_UNAVAILABLE)
+                        DaemonReadResult.Rejected(
+                            DaemonReadClientRejection.Server(
+                                DaemonReadFailure.Host(ExistingIdeFailure.HOST_UNAVAILABLE)
                             )
                         )
                     },
                 )
-            if (command.contains("query_symbols")) {
+            if (command.contains("tool")) {
                 assertEquals(0, calls, command)
                 assertEquals(1, daemonCalls, command)
-                assertTrue(result.document.value.contains("daemon-query-host-host-unavailable"), command)
+                assertTrue(result.document.value.contains("daemon-read-host-host-unavailable"), command)
             } else {
                 assertEquals(1, calls, "$command: ${result.document.value}")
                 assertEquals(0, daemonCalls, command)
@@ -163,6 +197,19 @@ class ExistingIdeSemanticReadTest {
             }
         }
     }
+
+    private fun publicIdentity(command: String): io.github.amichne.kast.protocol.registry.PublicToolIdentity =
+        when {
+            command.contains("search_classes") ->
+                io.github.amichne.kast.protocol.registry.PublicToolIdentity.SEARCH_CLASSES
+            command.contains("search_functions") ->
+                io.github.amichne.kast.protocol.registry.PublicToolIdentity.SEARCH_FUNCTIONS
+            command.contains("search_declarations") ->
+                io.github.amichne.kast.protocol.registry.PublicToolIdentity.SEARCH_DECLARATIONS
+            command.contains("check_diagnostics") ->
+                io.github.amichne.kast.protocol.registry.PublicToolIdentity.CHECK_DIAGNOSTICS
+            else -> io.github.amichne.kast.protocol.registry.PublicToolIdentity.QUERY_SYMBOLS
+        }
 
     @Test
     fun `read help and invalid parsing perform no stdin root or host effects`() {

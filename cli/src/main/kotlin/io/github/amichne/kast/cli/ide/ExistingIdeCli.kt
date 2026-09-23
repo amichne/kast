@@ -1,9 +1,9 @@
 package io.github.amichne.kast.cli.ide
 
-import io.github.amichne.kast.appserver.DaemonQueryClient
-import io.github.amichne.kast.appserver.DaemonQueryClientFailure
-import io.github.amichne.kast.appserver.DaemonQueryClientRejection
-import io.github.amichne.kast.appserver.DaemonQueryResult
+import io.github.amichne.kast.appserver.DaemonReadClient
+import io.github.amichne.kast.appserver.DaemonReadClientFailure
+import io.github.amichne.kast.appserver.DaemonReadClientRejection
+import io.github.amichne.kast.appserver.DaemonReadResult
 import io.github.amichne.kast.appserver.diagnosticCode
 import io.github.amichne.kast.appserver.ide.CanonicalRootDiscoverer
 import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
@@ -14,7 +14,6 @@ import io.github.amichne.kast.cli.CliTextDocument
 import io.github.amichne.kast.cli.command.*
 import io.github.amichne.kast.cli.command.ide.ExistingIdeRootSelection
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
 import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
 import io.github.amichne.kast.protocol.wire.presentation.canonicalReadRejectedDocument
@@ -46,8 +45,8 @@ internal fun selectCliRuntimePath(argv: List<String>): CliRuntimePath {
 internal class ExistingIdeCliCapabilities(
     val roots: CanonicalRootDiscoverer,
     val client: ExistingIdeClient,
-    val query: DaemonQueryClient = DaemonQueryClient { _, _ ->
-        DaemonQueryResult.Rejected(DaemonQueryClientRejection.Transport(DaemonQueryClientFailure.UNAVAILABLE))
+    val read: DaemonReadClient = DaemonReadClient { _, _ ->
+        DaemonReadResult.Rejected(DaemonReadClientRejection.Transport(DaemonReadClientFailure.UNAVAILABLE))
     },
 )
 
@@ -58,14 +57,14 @@ internal fun executeExistingIdeCli(
     roots: CanonicalRootDiscoverer,
     client: ExistingIdeClient,
     requestInput: CliRequestDocumentInput = CliRequestDocumentInput.Absent,
-    query: DaemonQueryClient = DaemonQueryClient { _, _ ->
-        DaemonQueryResult.Rejected(DaemonQueryClientRejection.Transport(DaemonQueryClientFailure.UNAVAILABLE))
+    read: DaemonReadClient = DaemonReadClient { _, _ ->
+        DaemonReadResult.Rejected(DaemonReadClientRejection.Transport(DaemonReadClientFailure.UNAVAILABLE))
     },
 ): CliExit =
     executeExistingIdeCli(
         argv = argv,
         start = start,
-        capabilities = ExistingIdeCliCapabilities(roots, client, query),
+        capabilities = ExistingIdeCliCapabilities(roots, client, read),
         requestInput = requestInput,
     )
 
@@ -123,8 +122,8 @@ private fun executeSemanticAction(
                 )
         }
     val source = action.source
-    return if (source is SemanticSource.PublicTool && source.tool.identity == PublicToolIdentity.QUERY_SYMBOLS)
-        executeDaemonQuery(start, capabilities.roots, capabilities.query, source.tool)
+    return if (source is SemanticSource.PublicTool)
+        executeDaemonRead(start, capabilities.roots, capabilities.read, source.tool)
     else
         executeExistingIdeAction(
             CliAction.Local.ExistingIde(operation, ExistingIdeRootSelection.CurrentDirectory),
@@ -134,10 +133,10 @@ private fun executeSemanticAction(
         )
 }
 
-private fun executeDaemonQuery(
+private fun executeDaemonRead(
     start: Path,
     roots: CanonicalRootDiscoverer,
-    query: DaemonQueryClient,
+    read: DaemonReadClient,
     tool: io.github.amichne.kast.appserver.query.AdmittedPublicTool,
 ): CliExit {
     val root =
@@ -146,11 +145,11 @@ private fun executeDaemonQuery(
             is CanonicalRootDiscovery.Rejected ->
                 return boundaryExit(CliBoundaryExitStatus.ROOT, selected.failure.name.lowercase())
         }
-    return when (val result = query.query(root, tool)) {
-        is DaemonQueryResult.Complete -> CliExit.Complete(result.document)
-        is DaemonQueryResult.Qualified -> CliExit.Qualified(result.document)
-        is DaemonQueryResult.OperationRejected -> CliExit.OperationRejected(result.document)
-        is DaemonQueryResult.Rejected -> boundaryExit(CliBoundaryExitStatus.RUNTIME, result.failure.diagnosticCode())
+    return when (val result = read.read(root, tool)) {
+        is DaemonReadResult.Complete -> CliExit.Complete(result.document)
+        is DaemonReadResult.Qualified -> CliExit.Qualified(result.document)
+        is DaemonReadResult.OperationRejected -> CliExit.OperationRejected(result.document)
+        is DaemonReadResult.Rejected -> boundaryExit(CliBoundaryExitStatus.RUNTIME, result.failure.diagnosticCode())
     }
 }
 

@@ -20,7 +20,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Test
 
-class DaemonQueryRouteTest {
+class DaemonReadRouteTest {
     @Test
     fun `query RPC rejects stale identity before opening a workspace or optional Codex host`() =
         withPayload { root, kast ->
@@ -41,27 +41,28 @@ class DaemonQueryRouteTest {
                 val client = HttpClient(CIO) { install(WebSockets) }
                 try {
                     val stale =
-                        DaemonQueryRequest(
+                        DaemonReadRequest(
                             DaemonManagementTarget("stale", "stale", "stale", "stale"),
                             "\u0000",
+                            DaemonReadTool.QUERY_SYMBOLS,
                             JsonNull,
                         )
-                    var result: DaemonQueryResponse? = null
+                    var result: DaemonReadResponse? = null
                     withTimeout(5_000) {
                         client.webSocket({
-                            url("ws://localhost${DaemonQueryProtocol.route}")
+                            url("ws://localhost${DaemonReadProtocol.route}")
                             unixSocket(options.socket.path.toString())
                         }) {
-                            send(DaemonQueryProtocol.json.encodeToString(DaemonQueryRequest.serializer(), stale))
+                            send(DaemonReadProtocol.json.encodeToString(DaemonReadRequest.serializer(), stale))
                             result =
-                                DaemonQueryProtocol.json.decodeFromString<DaemonQueryResponse>(
+                                DaemonReadProtocol.json.decodeFromString<DaemonReadResponse>(
                                     (incoming.receive() as Frame.Text).readText()
                                 )
                         }
                     }
                     assertEquals(
-                        DaemonQueryResponse.Rejected(
-                            DaemonQueryFailure.Protocol(DaemonQueryProtocolFailure.IDENTITY_REJECTED)
+                        DaemonReadResponse.Rejected(
+                            DaemonReadFailure.Protocol(DaemonReadProtocolFailure.IDENTITY_REJECTED)
                         ),
                         result,
                     )
