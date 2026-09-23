@@ -284,7 +284,7 @@ def run_workspace_refresh_regression(isolation, fixture, product, java, harness,
 def lifecycle_terminal(transport, request, host):
     deadline = time.monotonic() + 60
     document, _ = transport.invoke_observed('provider', 'workspace_lifecycle', request)
-    while document.get('status') == 'completed' and document.get('document', {}).get('type') == 'pending':
+    while document.get('type') == 'pending':
         if time.monotonic() >= deadline:
             raise ValueError('HOSTED_RULE_TIMEOUT')
         time.sleep(0.2)
@@ -295,15 +295,14 @@ def lifecycle_terminal(transport, request, host):
 
 def prove_hosted_rule(transport, workspace):
     inspected, _ = transport.invoke_observed('provider', 'workspace_lifecycle', {'type': 'inspect'})
-    document = inspected.get('document', {})
-    if inspected.get('status') != 'completed' or document.get('type') != 'inspected':
-        reason = inspected.get('diagnostic', {}).get('reason')
+    if inspected.get('type') != 'inspected':
+        reason = inspected.get('reason') if inspected.get('type') == 'blocked' else None
         cause = 'HOSTED_RULE_' + reason if isinstance(reason, str) else ''
         if any(known.value == cause for known in RefreshBoundaryFailure):
             raise ValueError(cause)
         raise ValueError('HOSTED_RULE_INSPECTION_REJECTED')
-    host = document.get('host')
-    targets = [project.get('target') for project in document.get('projects', [])
+    host = inspected.get('host')
+    targets = [project.get('target') for project in inspected.get('projects', [])
                if project.get('target', {}).get('root') == str(workspace)]
     if len(targets) != 1 or targets[0].get('host') != host:
         raise ValueError('HOSTED_RULE_TARGET_REJECTED')
@@ -312,24 +311,21 @@ def prove_hosted_rule(transport, workspace):
     try:
         configured = lifecycle_terminal(transport,
             {'type': 'configure_sync', 'target': target, 'requestId': str(uuid.uuid4()), 'rule': rule}, host)
-        valid = (configured.get('status') == 'completed' and
-                 configured.get('document') == {'type': 'configured', 'target': target, 'rule': rule})
+        valid = configured == {'type': 'configured', 'target': target, 'rule': rule}
         invalid = lifecycle_terminal(transport,
             {'type': 'configure_sync', 'target': target, 'requestId': str(uuid.uuid4()),
              'rule': {'type': 'task_success', 'task': '?', 'effect': 'FILE_REFRESH'}}, host)
-        rejected = (invalid.get('status') == 'rejected' and
-                    invalid.get('diagnostic') == {'type': 'blocked', 'reason': 'INVALID_REQUEST'})
+        rejected = invalid == {'type': 'blocked', 'reason': 'INVALID_REQUEST'}
         return valid, rejected
     finally:
         cleared = lifecycle_terminal(transport,
             {'type': 'configure_sync', 'target': target, 'requestId': str(uuid.uuid4()),
              'rule': {'type': 'off'}}, host)
-        if cleared.get('status') != 'completed' or cleared.get('document', {}).get('type') != 'configured':
+        if cleared != {'type': 'configured', 'target': target, 'rule': {'type': 'off'}}:
             raise ValueError('HOSTED_RULE_RESTORATION_REJECTED')
         released = lifecycle_terminal(transport,
             {'type': 'release', 'target': target, 'requestId': str(uuid.uuid4())}, host)
-        if released.get('status') != 'completed' or released.get('document') != {
-                'type': 'released', 'target': target}:
+        if released != {'type': 'released', 'target': target}:
             raise ValueError('HOSTED_RULE_RELEASE_REJECTED')
 
 

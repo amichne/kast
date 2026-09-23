@@ -182,7 +182,8 @@ class ReadTransportRejected(ValueError):
 
 def _provider_result(response):
     if response.get('kind') == 'completed':
-        document = response['envelope']['document']
+        envelope = response['envelope']
+        document = envelope['diagnostic'] if envelope.get('status') == 'rejected' else envelope['document']
         if document.get('format') == 'compact':
             sections = document.get('content', [])
             if sections and sections[0].get('text', {}).get('type') == 'returned':

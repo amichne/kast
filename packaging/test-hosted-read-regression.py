@@ -503,6 +503,9 @@ class HostedReadRegressionTest(unittest.TestCase):
                          _provider_result({'kind': 'rejected', 'failure': 'INVALID_ARGUMENTS'}))
         self.assertEqual({'status': 'complete'}, _provider_result({
             'kind': 'completed', 'envelope': {'document': {'status': 'complete'}}}))
+        self.assertEqual({'type': 'blocked', 'reason': 'INVALID_REQUEST'}, _provider_result({
+            'kind': 'completed', 'envelope': {'status': 'rejected',
+                'diagnostic': {'type': 'blocked', 'reason': 'INVALID_REQUEST'}}}))
 
     def test_invalid_argument_observation_retains_finite_failure_without_diagnostic_payload(self):
         response = _provider_result({'kind': 'rejected', 'failure': 'INVALID_ARGUMENTS'})

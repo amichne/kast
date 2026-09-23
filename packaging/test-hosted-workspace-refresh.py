@@ -47,7 +47,7 @@ class NativeWorkspaceRefreshTest(unittest.TestCase):
     def test_hosted_rule_reports_a_typed_native_inspection_blocker(self):
         transport = Mock()
         transport.invoke_observed.return_value = (
-            {'status': 'rejected', 'diagnostic': {'type': 'blocked', 'reason': 'HOST_UNAVAILABLE'}}, 'schema')
+            {'type': 'blocked', 'reason': 'HOST_UNAVAILABLE'}, 'schema')
         with self.assertRaisesRegex(ValueError, 'HOSTED_RULE_HOST_UNAVAILABLE'):
             prove_hosted_rule(transport, Path('/workspace'))
 
@@ -56,13 +56,11 @@ class NativeWorkspaceRefreshTest(unittest.TestCase):
         rule = {'type': 'task_success', 'task': ':nativeHostedRule', 'effect': 'FILE_REFRESH'}
         transport = Mock()
         transport.invoke_observed.side_effect = [
-            ({'status': 'completed', 'document': {'type': 'inspected', 'host': 'host-1',
-                'projects': [{'target': target}]}}, 'schema'),
-            ({'status': 'completed', 'document': {'type': 'configured', 'target': target, 'rule': rule}}, 'schema'),
-            ({'status': 'rejected', 'diagnostic': {'type': 'blocked', 'reason': 'INVALID_REQUEST'}}, 'schema'),
-            ({'status': 'completed', 'document': {'type': 'configured', 'target': target,
-                'rule': {'type': 'off'}}}, 'schema'),
-            ({'status': 'completed', 'document': {'type': 'released', 'target': target}}, 'schema'),
+            ({'type': 'inspected', 'host': 'host-1', 'projects': [{'target': target}]}, 'schema'),
+            ({'type': 'configured', 'target': target, 'rule': rule}, 'schema'),
+            ({'type': 'blocked', 'reason': 'INVALID_REQUEST'}, 'schema'),
+            ({'type': 'configured', 'target': target, 'rule': {'type': 'off'}}, 'schema'),
+            ({'type': 'released', 'target': target}, 'schema'),
         ]
         self.assertEqual((True, True), prove_hosted_rule(transport, Path('/workspace')))
         requests = [call.args[2] for call in transport.invoke_observed.call_args_list]
