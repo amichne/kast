@@ -62,6 +62,15 @@ val codexIntegrationStartScripts =
         dependsOn(tasks.named("jar"))
     }
 
+val mcpStartScripts =
+    tasks.register<CreateStartScripts>("mcpStartScripts") {
+        applicationName = "kast-mcp"
+        mainClass = "io.github.amichne.kast.cli.mcp.KastMcpMain"
+        outputDir = layout.buildDirectory.dir("mcp-scripts").get().asFile
+        classpath = tasks.named<CreateStartScripts>("startScripts").get().classpath
+        dependsOn(tasks.named("jar"))
+    }
+
 val daemonStartScripts =
     tasks.register<CreateStartScripts>("daemonStartScripts") {
         applicationName = "kast-daemon"
@@ -97,6 +106,11 @@ distributions.main {
             filePermissions { unix("755") }
         }
         from(codexIntegrationStartScripts) {
+            into("bin")
+            exclude("*.bat")
+            filePermissions { unix("755") }
+        }
+        from(mcpStartScripts) {
             into("bin")
             exclude("*.bat")
             filePermissions { unix("755") }

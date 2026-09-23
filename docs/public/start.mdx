@@ -45,7 +45,7 @@ Install the IDEA plugin, connect Codex, and find a declaration in your repositor
     ```
 
     The installer reports the detected IntelliJ version, verifies Kast and the
-    matching IDEA plugin, and enables the complete app-server suite and its
+    matching IDEA plugin, registers a user-level Codex MCP server, and enables the app-server suite and its
     per-user macOS login LaunchAgent. The LaunchAgent keeps the Kast
     app server available across logins and restarts it after an unexpected exit.
 
@@ -60,25 +60,19 @@ Install the IDEA plugin, connect Codex, and find a declaration in your repositor
     - Restart IDEA to load the plugin.
     - Save edited files before requesting evidence.
 
-    The agent can open the requested repository and wait for Gradle import and
-    indexing through its workspace setup tool. You do not need to run workspace
-    lifecycle commands. Resolve project trust or unsaved-document blockers if the
+    Kast opens the requested repository and waits for Gradle import and
+    indexing when a semantic request arrives. Resolve project trust or unsaved-document blockers if the
     agent reports them; see [troubleshooting](/troubleshooting).
   </Step>
-  <Step title="Register the repository and connect">
+  <Step title="Connect from a Gradle repository">
     ```console
     cd /path/to/kotlin-repository
-    "${XDG_DATA_HOME:-$HOME/.local/share}/kast/current/share/kast/libexec/kast-service" register "$PWD"
+    codex
     ```
 
-    Start the connected Codex CLI through the installed launcher:
-
-    ```shell
-    "${XDG_DATA_HOME:-$HOME/.local/share}/kast/current/bin/kast" codex
-    ```
-
-    Start a fresh task after connecting. Register each worktree you want Kast
-    to serve. The persistent broker remains available after a client closes.
+    Kast starts its MCP process for the session, discovers the exact Gradle
+    root, and prepares the IDEA project on semantic demand. No worktree
+    registration is needed.
   </Step>
   <Step title="Ask for a declaration">
     Ask: **“Use Kast to find the class OrderService.”** Replace `OrderService`
@@ -110,7 +104,7 @@ Install the IDEA plugin, connect Codex, and find a declaration in your repositor
     ```
 
     Uninstall removes Kast-owned links, installations, runtime state,
-    configuration, and services.
+    configuration, services, and the Kast-owned Codex MCP registration.
 
     Repositories and unrelated JetBrains state remain.
   </Accordion>

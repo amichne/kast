@@ -36,7 +36,7 @@ The installer creates or preserves the matching private approval key pair in
 `~/.kast/approval`. Partial or conflicting keys reject installation without replacing
 the surviving keys. Re-running the installer preserves valid enrollment.
 
-The installed daemon prepares the exact workspace and waits for IDEA readiness
+Kast prepares the exact workspace and waits for IDEA readiness
 before planning or loading an approval challenge. A trust or import blocker is
 returned for you to resolve.
 
@@ -52,8 +52,9 @@ returned for you to resolve.
 4. Review declaration placement in the stored file preview.
 5. Retain the immutable plan identity.
 6. Call `change_apply` with that identity.
-7. Approve the exact stored preview when the integration prompts.
-8. Read the complete apply result.
+7. In another terminal at the same repository root, run `${XDG_DATA_HOME:-$HOME/.local/share}/kast/current/bin/kast-mcp-complete approve apply <plan:identity>`. Review the displayed diff and type `approve`.
+8. Repeat `change_apply`. The approval is consumed once.
+9. Read the complete apply result.
 
 Planning does not change source bytes or document state.
 

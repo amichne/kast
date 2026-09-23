@@ -12,6 +12,8 @@ legacy command graph retained for migration, and hosted output projections.
 
 - [KastDaemonMain.kt](src/main/kotlin/io/github/amichne/kast/cli/KastDaemonMain.kt) - private managed daemon entry point with exact login admission outside the public command graph.
 - [KastServiceMain.kt](src/main/kotlin/io/github/amichne/kast/cli/KastServiceMain.kt) - private installation service control with typed rejection output.
+- [KastMcpMain.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt) - installed Codex stdio MCP transport and session tool dispatch.
+- [McpApproval.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/McpApproval.kt) - terminal-held preview approval and one-use mutation grant.
 
 - [PackagedProviderCatalog.kt](src/main/kotlin/io/github/amichne/kast/cli/PackagedProviderCatalog.kt) - build-time hosted schema projection for App Server qualification.
 
@@ -41,6 +43,7 @@ legacy command graph retained for migration, and hosted output projections.
 - `src/main/kotlin/io/github/amichne/kast/cli/command` - command groups and command model.
 - `src/main/kotlin/io/github/amichne/kast/cli/configuration` - typed configuration inspection and ingress.
 - `src/main/kotlin/io/github/amichne/kast/cli/installation` - installation requests and workflow.
+- `src/main/kotlin/io/github/amichne/kast/cli/mcp` - on-demand Codex MCP process.
 - `src/main/kotlin/io/github/amichne/kast/cli/projection` - canonical JSON/text documents.
 - `src/test` - command, projection, and workflow evidence.
 

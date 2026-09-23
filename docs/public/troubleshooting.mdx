@@ -32,7 +32,7 @@ See [Read a response](/reference/responses) for field names and result layers.
 
 | Symptom | First action |
 | --- | --- |
-| Tools are missing | Register the exact repository, then reconnect the Codex client to the installed broker. |
+| Tools are missing in terminal Codex | Run `codex mcp get kast`, then start a fresh `codex` session in the repository. |
 | Outer `status: rejected` | Preserve `diagnostic.boundary` and `diagnostic.reason`; collect status below. |
 | The document rejects | Follow its finite reason. Open the intended IDEA project or correct the named input as appropriate. |
 | The answer is qualified | Read limitations and item failures. Narrow scope or relation expansion before increasing bounds. |
@@ -41,8 +41,8 @@ See [Read a response](/reference/responses) for field names and result layers.
 
 ## Collect status from the same repository
 
-Use the connected agent's hosted status and `workspace_lifecycle` inspection
-for the exact repository. The installed configuration and service logs are under
+For terminal Codex, run `codex mcp get kast` and retry the semantic call after
+resolving the reported IDEA blocker. The installed configuration and service logs are under
 `${XDG_DATA_HOME:-$HOME/.local/share}/kast/current`.
 
 `admission_ready` establishes:
@@ -73,12 +73,16 @@ For `GRADLE_MODEL_UNAVAILABLE`, expect recovery to identify:
 
 A missing cached model does not prove that import is running.
 
-Semantic reads do not start import or return an empty successful search. A connected agent can request an explicit refresh through `workspace_lifecycle`.
+The installed Codex MCP server prepares the IDEA project when a semantic read
+arrives. If IDEA rejects or stalls during Gradle import, the read returns a
+failure rather than an empty successful search. In the older app-server
+connection, an agent can request an explicit refresh through `workspace_lifecycle`.
 
 Older output without `recovery` provides no automated retry instruction.
 
-If registration fails, the private `kast-service register` action writes a
-finite reason to stderr.
+If Codex MCP registration fails, the installer reports the collision or
+configuration failure. The older private `kast-service register` action writes
+a finite reason to stderr.
 
 Set `KAST_DEBUG=1` for bounded launch-stage output.
 

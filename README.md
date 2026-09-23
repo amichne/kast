@@ -20,7 +20,7 @@ You need macOS on Apple silicon, a Kotlin Gradle repository, IntelliJ IDEA
    ```
 
    The installer reports the detected IntelliJ version, verifies its matching
-   plugin, and enables the complete app-server suite and its per-user login
+   plugin, registers a user-level Codex MCP server, and enables the app-server suite and its per-user login
    LaunchAgent. If no matching IDEA plugin exists, it installs nothing.
    Installation never prompts. It uses `${XDG_DATA_HOME:-$HOME/.local/share}/kast`
    without publishing a `kast` command on `PATH`. An upgrade retires only
@@ -37,22 +37,16 @@ You need macOS on Apple silicon, a Kotlin Gradle repository, IntelliJ IDEA
 
 2. Restart IDEA to load the plugin and save edited files.
 
-3. Register the repository through the private installed service control:
+3. Start ordinary Codex from the repository:
 
    ```console
    cd /path/to/kotlin-repository
-   "${XDG_DATA_HOME:-$HOME/.local/share}/kast/current/share/kast/libexec/kast-service" register "$PWD"
+   codex
    ```
 
-   Start the connected Codex CLI through the installed launcher:
-
-   ```shell
-   "${XDG_DATA_HOME:-$HOME/.local/share}/kast/current/bin/kast" codex
-   ```
-
-   Start a fresh task after connecting. Registration is explicit for each
-   repository or worktree; Kast does not put a command on `PATH`. Desktop UI
-   discovery remains unverified; see the compatibility record.
+   Kast's MCP process discovers the exact Gradle root and prepares its IDEA
+   project when a semantic request arrives. No per-repository registration is
+   required. Desktop UI discovery remains unverified.
 
 4. Ask your agent: **“Use Kast to find the class OrderService.”** Replace the
    name with a class in your project. Check the returned status and matches.
@@ -60,8 +54,8 @@ You need macOS on Apple silicon, a Kotlin Gradle repository, IntelliJ IDEA
 See [Install and connect](https://kast.michne.com/start/) for IDE selection,
 Desktop setup, other harnesses, and uninstall instructions.
 
-The installed daemon prepares the exact repository or worktree when an agent
-requests compiler-backed work. You do not need to manage project lifecycle commands.
+Kast prepares the exact repository or worktree when an agent requests
+compiler-backed work. You do not need to manage project lifecycle commands.
 Kast asks for help only when setup encounters a user-owned decision such as project
 trust or unsaved documents.
 

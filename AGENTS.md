@@ -38,6 +38,7 @@ Kast is a Kotlin/Gradle system that gives coding agents compiler-grounded search
 - CLI main: `cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt`.
 - Semantic host: `runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt`.
 - Codex/App Server main: `app-server/src/main/kotlin/io/github/amichne/kast/appserver/KastCodexMain.kt`.
+- Codex MCP main: `cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt`.
 
 ## Navigation Hints
 
