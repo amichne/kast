@@ -23,15 +23,13 @@ Defines Kast's human-facing command graph, installed configuration and installat
 - [src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt](src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt) - executable main.
 - [src/main/kotlin/io/github/amichne/kast/cli/KastCli.kt](src/main/kotlin/io/github/amichne/kast/cli/KastCli.kt) - root CLI assembly.
 - [src/main/kotlin/io/github/amichne/kast/cli/command/model/CliCommandGraph.kt](src/main/kotlin/io/github/amichne/kast/cli/command/model/CliCommandGraph.kt) - command topology.
-- [src/main/kotlin/io/github/amichne/kast/cli/command/query/QueryCommands.kt](src/main/kotlin/io/github/amichne/kast/cli/command/query/QueryCommands.kt) - query surface.
+- [src/main/kotlin/io/github/amichne/kast/cli/command/tool/PublicToolCommands.kt](src/main/kotlin/io/github/amichne/kast/cli/command/tool/PublicToolCommands.kt) - current schema-bound query and diagnostic CLI routes.
 - [src/main/kotlin/io/github/amichne/kast/cli/configuration/SavedConfigurationIngress.kt](src/main/kotlin/io/github/amichne/kast/cli/configuration/SavedConfigurationIngress.kt) - saved configuration boundary.
 - [src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt](src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt) - installation workflow, including committed daemon upgrade resumption.
 - [src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationDaemonUpgrade.kt](src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationDaemonUpgrade.kt) - prior daemon update admission before service retirement.
 - [src/main/kotlin/io/github/amichne/kast/cli/installation/PriorRetirement.kt](src/main/kotlin/io/github/amichne/kast/cli/installation/PriorRetirement.kt) - admitted private or legacy prior command and environment retained across sealing and retirement.
 
 - [src/main/kotlin/io/github/amichne/kast/cli/ide](src/main/kotlin/io/github/amichne/kast/cli/ide) - existing-IDE client, semantic read projection, and hosted change/apply/recovery admission and projection.
-
-- [src/main/kotlin/io/github/amichne/kast/cli/command/tool/PublicToolCommands.kt](src/main/kotlin/io/github/amichne/kast/cli/command/tool/PublicToolCommands.kt) - intent-tool command projection.
 
 - [src/main/kotlin/io/github/amichne/kast/cli/command/knowledge/KnowledgeCommands.kt](src/main/kotlin/io/github/amichne/kast/cli/command/knowledge/KnowledgeCommands.kt) - local installed knowledge selector.
 - [src/main/kotlin/io/github/amichne/kast/cli/knowledge/InstalledKnowledge.kt](src/main/kotlin/io/github/amichne/kast/cli/knowledge/InstalledKnowledge.kt) - shallow search and exact typed resource reads.

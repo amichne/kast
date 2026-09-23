@@ -7706,16 +7706,6 @@
         "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/CliBoundaryContractTest.kt",
         "scope": "type:CliBoundaryContractTest/fun:every public command projection parses to its canonical operation()/val:commands",
         "kind": "JSON_LITERAL",
-        "sha256": "6f125655f4b4231d793a46f3b41ea34e37a0cddc390c679c640da427ceccb500"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/CliBoundaryContractTest.kt",
-        "scope": "type:CliBoundaryContractTest/fun:every public command projection parses to its canonical operation()/val:commands",
-        "kind": "JSON_LITERAL",
         "sha256": "0d6c9d3a91cfb0240a6bfab423aa71d743e20e3fd13c5c7512662fb4e566bc0c"
       },
       "count": 1,
@@ -7766,16 +7756,6 @@
         "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/CliBoundaryContractTest.kt",
         "scope": "type:CliBoundaryContractTest/fun:every public command projection parses to its canonical operation()/val:commands",
         "kind": "JSON_LITERAL",
-        "sha256": "f8e3d9274eae959ab7adbbea766d23316a81c14c4c8d45abf180479f8aa34533"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/CliBoundaryContractTest.kt",
-        "scope": "type:CliBoundaryContractTest/fun:every public command projection parses to its canonical operation()/val:commands",
-        "kind": "JSON_LITERAL",
         "sha256": "e839ef6abe7d52c1e6b6f8972976b901df5ebca20efc54d62b68f3089831ccc0"
       },
       "count": 1,
@@ -7789,26 +7769,6 @@
         "sha256": "93d4203454248163cfc26b6a23ecb59b361992d7a76aeb45289a890b3791f1a3"
       },
       "count": 2,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/CliBoundaryContractTest.kt",
-        "scope": "type:CliBoundaryContractTest/fun:query command admits public defaults and rejects evaluator syntax()/val:minimal",
-        "kind": "JSON_LITERAL",
-        "sha256": "a6f12fb51bb5d0127f84873dc68d272bced1d2fa17c5befa620d97d08828a764"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/CliBoundaryContractTest.kt",
-        "scope": "type:CliBoundaryContractTest/fun:query command admits public defaults and rejects evaluator syntax()/val:retired",
-        "kind": "JSON_LITERAL",
-        "sha256": "46e15b4fa897313570c42818b474e4ed8eadf679058184f03655b734d6faee9c"
-      },
-      "count": 1,
       "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
     },
     {
@@ -8433,16 +8393,6 @@
     },
     {
       "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/SavedConfigurationAdmissionTest.kt",
-        "scope": "type:SavedConfigurationAdmissionTest/fun:live read entry point rejects unreadable saved read settings before opening a host(4:Path)/val:result",
-        "kind": "JSON_LITERAL",
-        "sha256": "c7af75fa061f4526a4450ea51344ea6d9aa1951dd95b9024103a97b7b8f2130e"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
         "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/SourceReadCliContractTest.kt",
         "scope": "type:SourceReadCliContractTest/fun:source read invalid combinations fail at usage refinement()/val:invalid",
         "kind": "JSON_LITERAL",
@@ -8566,16 +8516,6 @@
         "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeSemanticReadTest.kt",
         "scope": "type:ExistingIdeSemanticReadTest/val:requests",
         "kind": "JSON_LITERAL",
-        "sha256": "c7af75fa061f4526a4450ea51344ea6d9aa1951dd95b9024103a97b7b8f2130e"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeSemanticReadTest.kt",
-        "scope": "type:ExistingIdeSemanticReadTest/val:requests",
-        "kind": "JSON_LITERAL",
         "sha256": "0d6c9d3a91cfb0240a6bfab423aa71d743e20e3fd13c5c7512662fb4e566bc0c"
       },
       "count": 1,
@@ -8617,16 +8557,6 @@
         "scope": "type:ExistingIdeSemanticReadTest/val:requests",
         "kind": "JSON_LITERAL",
         "sha256": "daec52e6e30036d221d68f47436dd7baf5aba1ac31e653bbaa648b4162400d28"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeSemanticReadTest.kt",
-        "scope": "type:ExistingIdeSemanticReadTest/val:requests",
-        "kind": "JSON_LITERAL",
-        "sha256": "546c0dea5f3bcbc63b378dd80369a9ebe4456e3a4ea143b401bca335d8f0c869"
       },
       "count": 1,
       "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."

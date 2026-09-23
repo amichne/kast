@@ -9,10 +9,8 @@ import io.github.amichne.kast.cli.CliTextDocument
 import io.github.amichne.kast.cli.CliTextDocumentAdmission
 import io.github.amichne.kast.cli.command.change.changeCommandGroup
 import io.github.amichne.kast.cli.command.codex.codexCommandGroup
-import io.github.amichne.kast.cli.command.diagnostic.diagnosticCommandGroup
 import io.github.amichne.kast.cli.command.knowledge.knowledgeCommandFamily
 import io.github.amichne.kast.cli.command.product.productCommandGroup
-import io.github.amichne.kast.cli.command.query.queryCommandGroup
 import io.github.amichne.kast.cli.command.relation.relationCommandGroup
 import io.github.amichne.kast.cli.command.source.sourceCommandGroup
 import io.github.amichne.kast.cli.command.symbol.symbolCommandGroup
@@ -74,6 +72,8 @@ internal sealed interface CliCommandGraphFailure {
     data class MissingOperation(val operation: CanonicalOperation) : CliCommandGraphFailure
 
     data class DuplicateOperation(val operation: CanonicalOperation) : CliCommandGraphFailure
+
+    data class UnexpectedOperation(val operation: CanonicalOperation) : CliCommandGraphFailure
 
     data class MissingLocal(val command: CliProductCommand) : CliCommandGraphFailure
 
@@ -139,8 +139,8 @@ private constructor(
         /**
          * Proof transition: `CanonicalCliRequestPreparers -> CliCommandGraphConstruction`.
          *
-         * Establishes exactly one semantic leaf for every publicly exposed canonical operation and exactly one leaf for
-         * every public product-local command. [CliCommandGraphFailure] closes missing and duplicate graph identities.
+         * Establishes exactly one semantic leaf for each retained CLI operation and exactly one leaf for every public
+         * product-local command. [CliCommandGraphFailure] closes missing, duplicate, and retired graph identities.
          * Clikt nodes remain private to this composition boundary.
          */
         internal fun create(preparers: CanonicalCliRequestPreparers): CliCommandGraphConstruction {
@@ -277,16 +277,19 @@ private class CliCommandGraph(
 
     fun failures(): Set<CliCommandGraphFailure> = buildSet {
         val semanticCounts = semantic.groupingBy(SemanticKastCommand<*>::operation).eachCount()
-        io.github.amichne.kast.protocol.registry.HostedOperationProjection.publicDefinitions
-            .map { it.operation }
-            .filterNot { it == CanonicalOperation.WORKSPACE_LIFECYCLE }
-            .forEach { operation ->
-                when (semanticCounts[operation] ?: 0) {
-                    0 -> add(CliCommandGraphFailure.MissingOperation(operation))
-                    1 -> Unit
-                    else -> add(CliCommandGraphFailure.DuplicateOperation(operation))
-                }
+        val retained =
+            io.github.amichne.kast.protocol.registry.HostedOperationProjection.publicDefinitions
+                .map { it.operation }
+                .filterNot { it in retiredCliOperations }
+                .toSet()
+        retained.forEach { operation ->
+            when (semanticCounts[operation] ?: 0) {
+                0 -> add(CliCommandGraphFailure.MissingOperation(operation))
+                1 -> Unit
+                else -> add(CliCommandGraphFailure.DuplicateOperation(operation))
             }
+        }
+        semanticCounts.keys.filterNot { it in retained }.forEach { add(CliCommandGraphFailure.UnexpectedOperation(it)) }
         val localCounts = local.groupingBy(LocalKastCommand::command).eachCount()
         CliProductCommand.entries.forEach { command ->
             when (localCounts[command] ?: 0) {
@@ -333,11 +336,9 @@ private fun canonicalGraph(
     val source = sourceCommandGroup(preparers, requestInput)
     val relation = relationCommandGroup(preparers, requestInput)
     val traversal = traversalCommandGroup(preparers, requestInput)
-    val query = queryCommandGroup(preparers, requestInput)
-    val diagnostic = diagnosticCommandGroup(preparers, requestInput)
     val change = changeCommandGroup(preparers, requestInput)
     val families =
-        listOf(index, topology, query, symbol, source, relation, traversal, diagnostic, change).map {
+        listOf(index, topology, symbol, source, relation, traversal, change).map {
             it.projectPublicDefinitions(CanonicalOperationDefinitions.all)
         }
     val semantic = families.flatMap(CommandFamily::semanticCommands)
@@ -364,6 +365,10 @@ private fun canonicalGraph(
         tools.surface,
     )
 }
+
+/** Hosted-only lifecycle and canonical requests superseded by schema-bound intent tool CLI routes. */
+private val retiredCliOperations =
+    setOf(CanonicalOperation.WORKSPACE_LIFECYCLE, CanonicalOperation.QUERY_RUN, CanonicalOperation.DIAGNOSTIC_CHECK)
 
 internal class CommandFamily(
     val root: KastCommandGroup,

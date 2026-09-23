@@ -99,6 +99,8 @@ document = json.loads(sys.argv[1])
 registry = json.loads(Path(sys.argv[2]).read_text())
 assert document["operationRegistry"] == registry, document
 assert document["cliProjection"]["commands"], document
+assert "query run < request.json" not in document["cliProjection"]["commands"], document
+assert "diagnostic check < request.json" not in document["cliProjection"]["commands"], document
 assert document["cliProjection"]["localCommands"] == [
     "product inspect",
     "knowledge <query-or-resource>",
@@ -135,8 +137,11 @@ assert all("invocation" not in tool and "cliUsage" not in tool for tool in boots
 PY
 
 help="$(env "${command_environment[@]}" "$kast" --help)"
-for command in tool symbol source relation traversal diagnostic change knowledge codex product ide app-server; do
+for command in tool symbol source relation traversal change knowledge codex product ide app-server; do
   grep -Eq "^  ${command}[[:space:]]" <<<"$help" || fail "missing command: $command"
+done
+for command in query diagnostic; do
+  ! grep -Eq "^  ${command}[[:space:]]" <<<"$help" || fail "retired command remains: $command"
 done
 for command in start stop status topology index broker workspace; do
   if grep -Eq "^  ${command}[[:space:]]" <<<"$help"; then fail "retired command is public: $command"; fi

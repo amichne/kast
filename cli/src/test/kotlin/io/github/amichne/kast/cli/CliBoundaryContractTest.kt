@@ -31,11 +31,6 @@ class CliBoundaryContractTest {
         val commands =
             listOf(
                 SemanticCase(
-                    listOf("query", "run"),
-                    """{"type":"QUERY","from":{"type":"ALL","kinds":["CLASS"],"scope":{"type":"DIRECTORY","value":".","sourceSets":["main"]}}}""",
-                    CanonicalOperation.QUERY_RUN,
-                ),
-                SemanticCase(
                     listOf("symbol", "discover"),
                     """{"target":{"type":"name","query":"Example","kind":"symbol","match":"fuzzy"},"limit":10}""",
                     CanonicalOperation.SYMBOL_DISCOVER,
@@ -61,11 +56,6 @@ class CliBoundaryContractTest {
                     CanonicalOperation.TRAVERSAL_RUN,
                 ),
                 SemanticCase(
-                    listOf("diagnostic", "check"),
-                    """{"path":".","limit":10}""",
-                    CanonicalOperation.DIAGNOSTIC_CHECK,
-                ),
-                SemanticCase(
                     listOf("change", "plan"),
                     """{"intent":{"kind":"add-file","relativePath":"A.kt","content":"class A"}}""",
                     CanonicalOperation.CHANGE_PLAN,
@@ -86,7 +76,14 @@ class CliBoundaryContractTest {
         assertEquals(
             io.github.amichne.kast.protocol.registry.HostedOperationProjection.publicDefinitions
                 .map { it.operation }
-                .filterNot { it == CanonicalOperation.WORKSPACE_LIFECYCLE }
+                .filterNot {
+                    it in
+                        setOf(
+                            CanonicalOperation.WORKSPACE_LIFECYCLE,
+                            CanonicalOperation.QUERY_RUN,
+                            CanonicalOperation.DIAGNOSTIC_CHECK,
+                        )
+                }
                 .toSet(),
             commands.map { it.operation }.toSet(),
         )
@@ -110,24 +107,15 @@ class CliBoundaryContractTest {
     }
 
     @Test
-    fun `query command admits public defaults and rejects evaluator syntax`() {
+    fun `retired query and diagnostic commands reject before request input`() {
         val factory = commandGraphFactory()
-        val command = listOf("query", "run")
-        val minimal =
-            factory.parse(
-                command,
-                CliRequestDocumentInput.Provided(
-                    """{"type":"QUERY","from":{"type":"SEARCH","query":"OrderService"}}"""
-                ),
+        for (command in listOf(listOf("query", "run"), listOf("diagnostic", "check"))) {
+            assertTrue(
+                factory.parse(command, CliRequestDocumentInput.Deferred { error("retired command read input") })
+                    is CliCommandParsing.Rejected,
+                command.toString(),
             )
-        assertTrue(minimal is CliCommandParsing.Parsed)
-        val action = (minimal as CliCommandParsing.Parsed).action
-        assertTrue(action is CliAction.Semantic)
-        assertEquals(CanonicalOperation.QUERY_RUN, (action as CliAction.Semantic).request.operation)
-
-        val retired =
-            """{"from":{"type":"symbols","match":{"type":"all"},"scope":{"sourceSets":["main"],"directory":null,"packageName":null},"declarationKinds":["class"]},"steps":[],"output":{"type":"symbols","fields":["name","location"]},"execution":{"kind":"exhaustive","budget":"interactive"}}"""
-        assertTrue(factory.parse(command, CliRequestDocumentInput.Provided(retired)) is CliCommandParsing.Rejected)
+        }
     }
 
     @Test

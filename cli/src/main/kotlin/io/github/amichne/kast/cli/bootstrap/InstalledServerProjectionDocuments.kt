@@ -214,12 +214,12 @@ private enum class InstalledServerTool(
     QUERY_RUN(
         operation = CanonicalOperation.QUERY_RUN,
         requestSerializer = QueryRunRequest.serializer(),
-        route = InstalledToolRoute.Cli(listOf("query", "run")),
+        route = InstalledToolRoute.HostedOnly,
     ),
     DIAGNOSTIC_CHECK(
         operation = CanonicalOperation.DIAGNOSTIC_CHECK,
         requestSerializer = DiagnosticCheckRequest.serializer(),
-        route = InstalledToolRoute.Cli(listOf("diagnostic", "check")),
+        route = InstalledToolRoute.HostedOnly,
     ),
     CHANGE_PLAN(
         operation = CanonicalOperation.CHANGE_PLAN,

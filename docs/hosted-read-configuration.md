@@ -153,12 +153,11 @@ Query continuations retain detached pipeline state and encoded-output suffixes i
 
 ## Per-call execution budgets
 
-`read_relations`, `traverse_relations`, `source_read`, `query_symbols`, all three `search_*` tools, and `query run`
+`read_relations`, `traverse_relations`, `source_read`, `query_symbols`, and all three `search_*` tools
 accept an optional `execution_budget` object with
 `max_elapsed_ms`, `max_work_units`, `max_results`, and `max_returned_bytes`.
 Supplied numbers must be positive integers. Omitted controls select configured
-defaults. Intent tools also normalize null controls to defaults; the legacy
-`query run` grammar rejects explicit null execution controls. The IDE admits each dimension against the corresponding
+defaults. Intent tools also normalize null controls to defaults. The IDE admits each dimension against the corresponding
 `KAST_READ_EXECUTION_MAX_*` operator ceiling and applicable transport capacity.
 These ceilings default to 2,147,483,646; existing semantic defaults, the 1,000-item
 canonical page capacity, response bytes, and remaining hosted deadline still
