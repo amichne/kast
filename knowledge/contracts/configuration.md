@@ -29,6 +29,8 @@ code_sources:
     symbols: [SavedConfigurationIngress]
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/KastServiceMain.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpApproval.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledKastCliComposition.kt
   - path: cli/src/test/kotlin/io/github/amichne/kast/cli/SavedConfigurationAdmissionTest.kt
   - path: packaging/configuration-schema.json
@@ -117,5 +119,5 @@ coordinator and login service; session defers activation while retaining the sam
 complete payload. The public installer always selects persistent. The checkout
 entrypoint derives the profile from its required session or persistent argument.
 
-The private daemon entry point is a declared raw-environment ingress owner. It checks managed readiness inputs and the saved-configuration rejection marker before invoking the existing coordinator configuration admission. Its generated launcher uses the existing derived `KAST_OPTS` JVM boundary; it adds no saved configuration setting.
+The private daemon entry point is a declared raw-environment ingress owner. It checks managed readiness inputs and the saved-configuration rejection marker before invoking the existing coordinator configuration admission. Its generated launcher uses the existing derived `KAST_OPTS` JVM boundary; it adds no saved configuration setting. The installed MCP process and its interactive approval helper are also declared ingress owners. They resolve the selected installation and IDEA host from saved configuration for each session; they add no saved configuration setting.
 The private service-control entry point is also a declared raw-environment ingress owner. It selects the installed release's saved configuration only when no selector was supplied, then delegates registration, enable, disable, stop, repair, or trust enrollment to the existing owners.

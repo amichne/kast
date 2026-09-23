@@ -68,10 +68,10 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
         val publicExecutables = Files.list(root.resolve("bin")).use { paths ->
             paths.filter(Files::isRegularFile).map { path -> path.fileName.toString() }.toList()
         }
-        check(publicExecutables.toSet() == setOf("kast", "kast-codex")) {
+        check(publicExecutables.toSet() == setOf("kast", "kast-codex", "kast-mcp")) {
             "control product must expose the semantic CLI and integration host: $publicExecutables"
         }
-        check(listOf("bin/kast", "bin/kast-codex", "share/kast/libexec/kast-daemon", "share/kast/libexec/kast-service").all { Files.isExecutable(root.resolve(it)) }) {
+        check(listOf("bin/kast", "bin/kast-codex", "bin/kast-mcp", "share/kast/libexec/kast-daemon", "share/kast/libexec/kast-service").all { Files.isExecutable(root.resolve(it)) }) {
             "control product kast launcher is not executable"
         }
         check(paths.none(Files::isSymbolicLink)) { "control product contains a symbolic link" }

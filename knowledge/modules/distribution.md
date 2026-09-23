@@ -53,6 +53,9 @@ code_sources:
   - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/InstallationRecoveryReceipt.kt
   - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ControlPayloadInventory.kt
   - path: install.sh
+  - path: packaging/codex-mcp-registration.py
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/McpWorkspaceOperationClient.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt
     symbols: [InstallationWorkflow]
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationRequest.kt
@@ -123,7 +126,14 @@ directory, then moves payload/state and recovery bundles aside before restaging.
 The managed filesystem adapter owns transport cleanup and entry quarantine; the CLI owns process retirement and maps the finite preparation result to `FORCE_RESET` evidence. Unknown upstream contents fail closed. Force
 replaces command collisions and starts with fresh workspace enrollment; source trees
 are untouched. A force dry run verifies and reports without performing reset effects.
-Force plugin activation moves the exact same-user Kast plugin entry into private recovery storage without following a symlink target. Both executable launchers are required; installation cannot publish a CLI-only payload.
+Force plugin activation moves the exact same-user Kast plugin entry into private recovery storage without following a symlink target. The private CLI, App Server, and MCP launchers are required; installation cannot publish a CLI-only payload.
+
+The public installer registers `kast-mcp-complete` once in user-level Codex MCP
+configuration. It checks for a foreign `kast` entry before replacing the selected
+installation and removes only its own entry on uninstall. Terminal Codex then
+discovers the exact Gradle root for each session. The MCP adapter uses the
+selected IDEA lifecycle and native workspace preparation on semantic demand;
+apply and recovery consume a separate one-use exact-plan approval grant.
 The app-server suite is always installed. Activation may still be pending with
 a finite reason when the host cannot start the service.
 

@@ -16,6 +16,8 @@
     "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledKastCliComposition.kt",
     "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt",
     "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCodexMain.kt",
+    "cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt",
+    "cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpApproval.kt",
     "cli/src/main/kotlin/io/github/amichne/kast/cli/projection/ProductInspectionDocuments.kt",
     "install.sh",
     "packaging/acceptance_environment.py",

@@ -438,7 +438,17 @@ if [[ "$action" == uninstall ]]; then
   if [[ "$mode" == plan ]]; then
     exec python3 "$lifecycle" --installation "$selected" remove --dry-run --json
   else
-    exec python3 "$lifecycle" --installation "$selected" remove --json
+    registration="$selected/share/kast/codex-mcp-registration.py"
+    if [[ -f "$registration" && ! -L "$registration" ]]; then
+      unregister_copy="$(mktemp "${TMPDIR:-/tmp}/kast-mcp-unregister.XXXXXX")"
+      cp "$registration" "$unregister_copy"
+      trap 'rm -f -- "$unregister_copy"' EXIT
+    fi
+    python3 "$lifecycle" --installation "$selected" remove --json
+    if [[ -n "${unregister_copy:-}" ]] && command -v codex >/dev/null 2>&1; then
+      python3 "$unregister_copy" uninstall "$install_root"
+    fi
+    exit 0
   fi
 fi
 
@@ -510,6 +520,12 @@ extract_hosted_plugin "$temporary_root/$plugin_name" "$plugin_stage" "$version" 
 control_root="$temporary_root/control"
 extract_control "$temporary_root/$control_name" "$control_root"
 [[ -x "$control_root/share/kast/libexec/kast-service" ]] || fail "control archive has no executable installer"
+if [[ "$mode" == apply && "$profile" == persistent ]]; then
+  require_command codex
+  registration_source="$control_root/share/kast/codex-mcp-registration.py"
+  [[ -f "$registration_source" ]] || fail "control archive has no Codex MCP registration helper"
+  python3 "$registration_source" check "$install_root" || fail "Codex MCP name 'kast' is unavailable"
+fi
 
 info "The app server provides the complete Kast suite. Persistent installations start it at login."
 note "$([[ "$mode" == plan ]] && printf 'planning' || printf 'installing') the app server and private service control"
@@ -540,6 +556,10 @@ if [[ "$mode" == plan ]]; then
   info "Installation is planned at $install_root; the IDEA plugin is planned at $idea_plugin_root/kast-ide-hosted."
 else
   activate_hosted_plugin "$plugin_stage" "$idea_plugin_root"
+  if [[ "$profile" == persistent ]]; then
+    [[ -x "$install_root/current/bin/kast-mcp-complete" ]] || fail "installed Kast MCP launcher is unavailable"
+    python3 "$install_root/current/share/kast/codex-mcp-registration.py" install "$install_root"
+  fi
   success "installed Kast $version and the plugin for IntelliJ IDEA $idea_version (build $idea_build)"
-  info "Restart IntelliJ IDEA, register each repository with $install_root/current/share/kast/libexec/kast-service register /absolute/path/to/repository, then connect through your Codex client."
+  info "Restart IntelliJ IDEA, then start a fresh Codex session in a Gradle repository."
 fi
