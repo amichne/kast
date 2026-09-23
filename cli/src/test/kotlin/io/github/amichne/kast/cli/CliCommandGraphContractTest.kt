@@ -35,13 +35,13 @@ import org.junit.jupiter.api.Test
 
 class CliCommandGraphContractTest {
     @Test
-    fun `service entry points use the public parser and provide local help`() {
+    fun `public service management uses the parser and the daemon command is absent`() {
         val graph = commandGraphFactory()
-        for (command in listOf(listOf("broker", "serve"), listOf("app-server", "bootstrap"))) {
-            assertTrue(graph.parse(command) is CliCommandParsing.Parsed)
-            assertTrue(graph.parse(command + "--help") is CliCommandParsing.Help)
-            assertTrue(graph.parse(command + "unexpected") is CliCommandParsing.Rejected)
-        }
+        val publicCommand = listOf("app-server", "bootstrap")
+        assertTrue(graph.parse(publicCommand) is CliCommandParsing.Parsed)
+        assertTrue(graph.parse(publicCommand + "--help") is CliCommandParsing.Help)
+        assertTrue(graph.parse(publicCommand + "unexpected") is CliCommandParsing.Rejected)
+        assertTrue(graph.parse(listOf("broker", "serve")) is CliCommandParsing.Rejected)
     }
 
     @Test
@@ -58,9 +58,10 @@ class CliCommandGraphContractTest {
 
         assertTrue(rootHelp is CliExit.Complete)
         assertTrue(nestedHelp is CliExit.Complete)
-        for (command in listOf("workspace", "app-server", "broker", "product", "ide")) {
+        for (command in listOf("workspace", "app-server", "product", "ide")) {
             assertTrue(Regex("(?m)^\\s+" + command + "\\s").containsMatchIn(rootHelp.document.value), command)
         }
+        assertFalse(Regex("(?m)^\\s+broker\\s").containsMatchIn(rootHelp.document.value))
         assertTrue(nestedHelp.document.value.contains("standard input"))
         assertFalse(boundaryTouched)
     }

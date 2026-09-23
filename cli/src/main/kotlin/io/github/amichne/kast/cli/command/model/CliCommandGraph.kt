@@ -7,7 +7,6 @@ import com.github.ajalt.clikt.core.subcommands
 import com.github.ajalt.clikt.parsers.CommandLineParser
 import io.github.amichne.kast.cli.CliTextDocument
 import io.github.amichne.kast.cli.CliTextDocumentAdmission
-import io.github.amichne.kast.cli.command.broker.brokerCommandGroup
 import io.github.amichne.kast.cli.command.change.changeCommandGroup
 import io.github.amichne.kast.cli.command.codex.codexCommandGroup
 import io.github.amichne.kast.cli.command.diagnostic.diagnosticCommandGroup
@@ -328,7 +327,6 @@ private fun canonicalGraph(
     val product = productCommandGroup()
     val knowledge = knowledgeCommandFamily()
     val appServer = io.github.amichne.kast.cli.command.appserver.appServerCommandGroup()
-    val broker = brokerCommandGroup()
     val codex = codexCommandGroup()
     val ide = io.github.amichne.kast.cli.command.ide.ideCommandGroup()
     val index = indexCommandGroup(preparers, requestInput)
@@ -349,7 +347,6 @@ private fun canonicalGraph(
         listOf(
             product,
             knowledge,
-            broker,
             codex,
             ide,
             io.github.amichne.kast.cli.command.workspace.workspaceLifecycleCommands(requestInput),

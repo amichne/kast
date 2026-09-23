@@ -1,7 +1,6 @@
 package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.appserver.InstalledAppServerManager
-import io.github.amichne.kast.appserver.InstalledBrokerServerRunner
 import io.github.amichne.kast.appserver.InstalledSavedConfigurationIngress
 import io.github.amichne.kast.appserver.SavedConfigurationIngress
 import io.github.amichne.kast.appserver.host.installedCodexClientLauncher
@@ -125,7 +124,6 @@ internal class InstalledKastCliComposition : KastCliComposition {
                 existingIdeClient =
                     io.github.amichne.kast.appserver.ide.ExistingIdeSocketClient(userHome, configuration.readLimits),
                 appServerManager = InstalledAppServerManager(executable, userHome),
-                brokerServerRunner = InstalledBrokerServerRunner(executable, userHome),
                 codexClientLauncher = installedCodexClientLauncher(executable, userHome),
             )
         )
