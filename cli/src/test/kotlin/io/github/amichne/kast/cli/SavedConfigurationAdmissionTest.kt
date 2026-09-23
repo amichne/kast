@@ -3,7 +3,6 @@ package io.github.amichne.kast.cli
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
@@ -68,8 +67,8 @@ class SavedConfigurationAdmissionTest {
                 workspace(temporary),
                 "io.github.amichne.kast.cli.KastCliMainKt",
                 "unreadable",
-                listOf("tool", "search_classes"),
-                Json.encodeToString(SearchClassesFixture("Example", null, null)),
+                listOf("symbol", "discover"),
+                Json.encodeToString(SymbolDiscoverFixture(NameTarget("name", "Example", "symbol", "fuzzy"), 10)),
             )
 
         assertEquals(4, result.exitCode, result.stderr)
@@ -80,12 +79,10 @@ class SavedConfigurationAdmissionTest {
         assertFalse(Files.exists(temporary.resolve("cache")))
     }
 
+    @Serializable private data class SymbolDiscoverFixture(val target: NameTarget, val limit: Int)
+
     @Serializable
-    private data class SearchClassesFixture(
-        @SerialName("class_name") val className: String,
-        @SerialName("name_match") val nameMatch: String?,
-        val scope: String?,
-    )
+    private data class NameTarget(val type: String, val query: String, val kind: String, val match: String)
 
     @Test
     fun `integration host rejects even empty and unknown markers before installation discovery or broker start`(

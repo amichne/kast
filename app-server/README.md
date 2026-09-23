@@ -121,7 +121,7 @@ Bounded outcome logs exclude paths, request IDs and candidate hashes. This is th
 daemon admission contract; installer activation does not yet consume it.
 
 Each connection accepts one request. Management, runtime status and the narrow
-`/kast-query` read route share the
+`/kast-read` public-read route share the
 existing control connection limit. Management requests and replies have a 16 KiB bound;
 registration reserves enough reply space before writing. Lost replies report
 an unobserved outcome and are never retried automatically. Protocol, coordinator
@@ -319,8 +319,8 @@ implementation imports.
 
 The coordinator no longer launches or reserves isolated workspace workers. Its
 control route admits only passive, identity-correlated status and rejects legacy
-worker demands. `kast tool query_symbols` uses the versioned `/kast-query` RPC:
-the installed daemon re-admits its public schema and exact root, prepares the
+worker demands. The `kast tool` family uses the versioned `/kast-read` RPC:
+the installed daemon re-admits each selected public schema and exact root, prepares the
 selected IDEA project, and preserves complete, qualified and rejected outcomes.
 Other configured semantic CLI operations still connect directly to the existing
 IDEA plugin. Enrollment, sessions, approvals and durable invocation settlement

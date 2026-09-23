@@ -1,10 +1,10 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.appserver.DaemonQueryClient
-import io.github.amichne.kast.appserver.DaemonQueryClientFailure
-import io.github.amichne.kast.appserver.DaemonQueryClientRejection
-import io.github.amichne.kast.appserver.DaemonQueryResult
-import io.github.amichne.kast.appserver.InstalledDaemonQueryClient
+import io.github.amichne.kast.appserver.DaemonReadClient
+import io.github.amichne.kast.appserver.DaemonReadClientFailure
+import io.github.amichne.kast.appserver.DaemonReadClientRejection
+import io.github.amichne.kast.appserver.DaemonReadResult
+import io.github.amichne.kast.appserver.InstalledDaemonReadClient
 import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.cli.command.CliRequestDocumentInput
 import io.github.amichne.kast.cli.ide.CliRuntimePath
@@ -85,7 +85,7 @@ fun main(args: Array<String>) {
                             Path.of(System.getProperty("user.home")),
                             environment,
                         ),
-                        configuredDaemonQueryClient(environment),
+                        configuredDaemonReadClient(environment),
                     ),
                 requestInput = CliRequestDocumentInput.Deferred(::readCanonicalRequestInput),
             )
@@ -108,32 +108,32 @@ fun main(args: Array<String>) {
     exitProcess(exit.code)
 }
 
-private fun configuredDaemonQueryClient(environment: Map<String, String>): DaemonQueryClient =
-    DaemonQueryClient { root, tool ->
+private fun configuredDaemonReadClient(environment: Map<String, String>): DaemonReadClient =
+    DaemonReadClient { root, tool ->
         when (val installed = installedKastExecutable()) {
             is Refinement.Refined ->
-                InstalledDaemonQueryClient(
+                InstalledDaemonReadClient(
                         installed.value,
                         Path.of(System.getProperty("user.home")),
                         environment,
                     )
-                    .query(root, tool)
+                    .read(root, tool)
             is Refinement.Rejected ->
-                DaemonQueryResult.Rejected(
-                    DaemonQueryClientRejection.Transport(
+                DaemonReadResult.Rejected(
+                    DaemonReadClientRejection.Transport(
                         when (installed.failure) {
                             InstalledKastControlProductFailure.CODE_SOURCE_UNAVAILABLE ->
-                                DaemonQueryClientFailure.CODE_SOURCE_UNAVAILABLE
+                                DaemonReadClientFailure.CODE_SOURCE_UNAVAILABLE
                             InstalledKastControlProductFailure.CODE_SOURCE_INVALID ->
-                                DaemonQueryClientFailure.CODE_SOURCE_INVALID
+                                DaemonReadClientFailure.CODE_SOURCE_INVALID
                             InstalledKastControlProductFailure.LIBRARY_DIRECTORY_INVALID ->
-                                DaemonQueryClientFailure.LIBRARY_DIRECTORY_INVALID
+                                DaemonReadClientFailure.LIBRARY_DIRECTORY_INVALID
                             InstalledKastControlProductFailure.PRODUCT_ROOT_UNAVAILABLE ->
-                                DaemonQueryClientFailure.PRODUCT_ROOT_UNAVAILABLE
+                                DaemonReadClientFailure.PRODUCT_ROOT_UNAVAILABLE
                             InstalledKastControlProductFailure.RESOURCE_DIRECTORY_UNAVAILABLE ->
-                                DaemonQueryClientFailure.RESOURCE_DIRECTORY_UNAVAILABLE
+                                DaemonReadClientFailure.RESOURCE_DIRECTORY_UNAVAILABLE
                             InstalledKastControlProductFailure.KAST_EXECUTABLE_UNAVAILABLE ->
-                                DaemonQueryClientFailure.KAST_EXECUTABLE_UNAVAILABLE
+                                DaemonReadClientFailure.KAST_EXECUTABLE_UNAVAILABLE
                         }
                     )
                 )
