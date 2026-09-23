@@ -94,12 +94,7 @@ class ExistingIdeCliTest {
         assertEquals(0, help.code)
         assertFalse(help.document.value.contains("trust-broker"))
         assertNotEquals(0, executeExistingIdeCli(listOf("ide", "trust-broker"), root.path, roots, client).code)
-        for (shell in listOf("bash", "zsh", "fish")) {
-            val completion =
-                executeExistingIdeCli(listOf("ide", "generate-completion", shell), root.path, roots, client)
-            assertEquals(0, completion.code)
-            assertFalse(completion.document.value.contains("supertype"))
-        }
+        assertFalse(help.document.value.contains("generate-completion"))
     }
 
     @Test
@@ -149,10 +144,15 @@ class ExistingIdeCliTest {
     }
 
     @Test
-    fun `retired duplicate IDE reads never reach effects`() {
+    fun `retired IDE commands never reach effects`() {
         val roots = CanonicalRootDiscoverer { fail("Retired command reached root discovery") }
         val client = ExistingIdeClient { _, _ -> fail("Retired command reached socket") }
-        for (arguments in listOf(listOf("classes", "Refinement"), listOf("supertype", "example.Child"))) {
+        for (arguments in
+            listOf(
+                listOf("classes", "Refinement"),
+                listOf("supertype", "example.Child"),
+                listOf("generate-completion", "zsh"),
+            )) {
             val result = executeExistingIdeCli(listOf("ide") + arguments, root.path, roots, client)
             assertNotEquals(0, result.code)
             assertTrue(result.document.value.contains("diagnostic"))
@@ -180,24 +180,6 @@ class ExistingIdeCliTest {
             )) {
             assertTrue(ExistingIdeQualifiedClassName.parse(name) is Refinement.Rejected)
         }
-    }
-
-    @Test
-    fun `completion is generated from the hosted command family without effects`() {
-        val roots = CanonicalRootDiscoverer { fail("Completion attempted root discovery") }
-        val client = ExistingIdeClient { _, _ -> fail("Completion attempted socket access") }
-        for (shell in listOf("bash", "zsh", "fish")) {
-            val result = executeExistingIdeCli(listOf("ide", "generate-completion", shell), root.path, roots, client)
-            assertEquals(0, result.code)
-            assertFalse(result.document.value.contains("classes"))
-            assertTrue(result.document.value.contains("status"))
-            assertFalse(result.document.value.contains("supertype"))
-            assertTrue(result.document.value.contains(if (shell == "fish") "-l root" else "--root"))
-        }
-        assertNotEquals(
-            0,
-            executeExistingIdeCli(listOf("ide", "generate-completion", "unknown"), root.path, roots, client).code,
-        )
     }
 
     @Test

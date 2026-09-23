@@ -26,7 +26,6 @@ enum class CliProductCommand(val usage: String) {
     KNOWLEDGE("knowledge <query-or-resource>"),
     IDE_REFRESH("ide refresh <document> [--root <path>]"),
     IDE_STATUS("ide status [--root <path>]"),
-    IDE_COMPLETION("ide generate-completion <shell>"),
 }
 
 /** One fully refined action selected by the public command graph. */

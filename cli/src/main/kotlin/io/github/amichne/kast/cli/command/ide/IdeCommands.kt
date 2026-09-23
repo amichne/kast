@@ -1,14 +1,11 @@
 package io.github.amichne.kast.cli.command.ide
 
-import com.github.ajalt.clikt.completion.CompletionGenerator
 import com.github.ajalt.clikt.core.Context
-import com.github.ajalt.clikt.core.PrintCompletionMessage
 import com.github.ajalt.clikt.core.subcommands
 import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.arguments.convert
 import com.github.ajalt.clikt.parameters.options.convert
 import com.github.ajalt.clikt.parameters.options.option
-import com.github.ajalt.clikt.parameters.types.choice
 import io.github.amichne.kast.appserver.ide.ExistingIdeDocuments
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
 import io.github.amichne.kast.cli.command.*
@@ -27,7 +24,6 @@ internal fun ideCommandGroup(): LocalCommandFamily {
         listOf(
             IdeStatusCommand(CliProductCommand.IDE_STATUS),
             IdeRefreshCommand(CliProductCommand.IDE_REFRESH),
-            IdeCompletionCommand(CliProductCommand.IDE_COMPLETION),
         )
     return LocalCommandFamily(
         KastCommandGroup(
@@ -37,17 +33,6 @@ internal fun ideCommandGroup(): LocalCommandFamily {
             .subcommands(commands),
         commands,
     )
-}
-
-private class IdeCompletionCommand(command: CliProductCommand) : LocalKastCommand("generate-completion", command) {
-    private val shell by argument("SHELL").choice("bash", "zsh", "fish")
-
-    override fun help(context: Context) = "Generate shell completion for the IDEA command path without connecting."
-
-    override fun resolveAction(): CliActionResolution {
-        val root = generateSequence(currentContext) { it.parent }.last().command
-        throw PrintCompletionMessage(CompletionGenerator.generateCompletionForCommand(root, shell))
-    }
 }
 
 private abstract class IdeCommand(name: String, command: CliProductCommand) : LocalKastCommand(name, command) {
