@@ -210,6 +210,16 @@ physical=$(cd "$KAST_INSTALL_ROOT/current" && pwd -P)
 class BootstrapInstallTest(IsolatedInstallerTest):
     def setUp(self):
         super().setUp()
+        self.write_script(self.fixture.root / "tools/codex", '''#!/bin/bash
+set -eu
+if [[ "$1" == mcp && "$2" == list && "${3:-}" == --json ]]; then
+  printf '[]\\n'
+elif [[ "$1" == mcp && "$2" == add ]]; then
+  exit 0
+else
+  exit 2
+fi
+''')
         self.idea = self.root / "IDEA.app/Contents"
         for child in ("Resources", "plugins/Kotlin", "jbr/Contents/Home/bin"):
             (self.idea / child).mkdir(parents=True)
@@ -231,12 +241,19 @@ class BootstrapInstallTest(IsolatedInstallerTest):
         (self.product / "bin").mkdir(parents=True)
         self.write_script(self.product / "bin/kast", '''#!/bin/bash
 python3 - <<'PYTHON'
-import json, os, subprocess, sys
+import json, os, shutil, subprocess, sys
 from pathlib import Path
 if os.environ["KAST_INSTALL_MODE"] != 'plan':
     outer = Path(os.environ['KAST_INSTALL_ROOT'])
     installed = outer / 'versions' / ('1.2.3-' + 'a' * 64)
     installed.mkdir(parents=True, exist_ok=True)
+    (installed / 'bin').mkdir()
+    launcher = installed / 'bin/kast-mcp-complete'
+    launcher.write_text('#!/bin/bash\\nexit 0\\n')
+    launcher.chmod(0o755)
+    (installed / 'share/kast').mkdir(parents=True)
+    shutil.copy2(Path(os.environ['KAST_INSTALL_CONTROL_ROOT']) / 'share/kast/codex-mcp-registration.py',
+                 installed / 'share/kast/codex-mcp-registration.py')
     commands = Path(os.environ['KAST_BIN_DIR'])
     commands.mkdir(parents=True, exist_ok=True)
     subprocess.run([sys.executable, str(Path(os.environ['KAST_INSTALL_CONTROL_ROOT']) / 'share/kast/installation-recovery.py'),
@@ -252,6 +269,9 @@ PYTHON
         (self.product / "share/kast").mkdir(parents=True)
         (self.product / "share/kast/libexec").mkdir()
         shutil.copy2(self.product / "bin/kast", self.product / "share/kast/libexec/kast-service")
+        self.write_script(self.product / 'bin/kast-mcp-complete', '#!/bin/bash\nexit 0\n')
+        shutil.copyfile(Path(__file__).with_name('codex-mcp-registration.py'),
+                        self.product / 'share/kast/codex-mcp-registration.py')
         shutil.copyfile(Path(__file__).with_name('installation-recovery.py'), self.product / 'share/kast/installation-recovery.py')
         self.control = self.assets / f"kast-control-v{self.version}-macos-aarch64.tar.gz"
         with tarfile.open(self.control, "w:gz") as archive:
