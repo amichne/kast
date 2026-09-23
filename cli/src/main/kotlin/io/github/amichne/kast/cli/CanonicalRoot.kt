@@ -5,7 +5,7 @@ import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
 
-private const val ROOT_MARKER = "settings.gradle.kts"
+private val ROOT_MARKERS = listOf("settings.gradle.kts", "settings.gradle")
 
 /** A canonical directory proven to own the repository's Gradle settings marker. */
 class CanonicalRoot internal constructor(val path: Path) {
@@ -56,9 +56,9 @@ object FilesystemCanonicalRootDiscovery : CanonicalRootDiscoverer {
 
         var candidate = canonicalStart
         while (true) {
-            val marker = candidate.resolve(ROOT_MARKER)
-            if (Files.exists(marker, LinkOption.NOFOLLOW_LINKS)) {
-                return if (Files.isRegularFile(marker, LinkOption.NOFOLLOW_LINKS)) {
+            val markers = ROOT_MARKERS.map(candidate::resolve).filter { Files.exists(it, LinkOption.NOFOLLOW_LINKS) }
+            if (markers.isNotEmpty()) {
+                return if (markers.size == 1 && Files.isRegularFile(markers.single(), LinkOption.NOFOLLOW_LINKS)) {
                     CanonicalRootDiscovery.Discovered(CanonicalRoot(candidate))
                 } else {
                     CanonicalRootDiscovery.Rejected(CanonicalRootFailure.INVALID_ROOT_MARKER)

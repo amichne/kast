@@ -92,7 +92,7 @@ val stageKastControlProduct = tasks.register<Sync>("stageKastControlProduct") {
     from(generatedControlMetadata) {
         into("share/kast")
     }
-    from(listOf("packaging/installation-lifecycle.py", "packaging/installation-recovery.py")) { into("share/kast") }
+    from(listOf("packaging/installation-lifecycle.py", "packaging/installation-recovery.py", "packaging/codex-mcp-registration.py")) { into("share/kast") }
 }
 
 val assembleKastControlDist = tasks.register<Tar>("assembleKastControlDist") {
@@ -106,7 +106,7 @@ val assembleKastControlDist = tasks.register<Tar>("assembleKastControlDist") {
     isPreserveFileTimestamps = false
     isReproducibleFileOrder = true
     eachFile {
-        if (relativePath.pathString in setOf("bin/kast", "bin/kast-codex")) permissions { unix("755") }
+        if (relativePath.pathString in setOf("bin/kast", "bin/kast-codex", "bin/kast-mcp")) permissions { unix("755") }
     }
 }
 

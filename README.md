@@ -39,15 +39,27 @@ The Codex integration is a preview; full Desktop compatibility remains
 2. Restart IDEA to load the plugin and save edited files.
    Add the selected command directory to `PATH` if needed.
 
-3. Connect from that repository:
+3. Start a fresh Codex terminal session from a Gradle repository:
 
    ```console
    cd /path/to/kotlin-repository
-   kast codex
+   codex
    ```
+
+   Installation registers Kast as a user-level MCP server. Codex starts its own
+   `kast-mcp` process in the session directory; no per-repository enrollment is
+   needed. Kast rejects calls outside a Gradle repository or without a matching
+   ready IntelliJ project.
 
 4. Ask your agent: **“Use Kast to find the class OrderService.”** Replace the
    name with a class in your project. Check the returned status and matches.
+
+For an approved source change, ask Codex to plan and then apply it. The first
+apply call requests an exact-plan approval. In a separate terminal at the same
+repository root, run
+`~/.local/share/kast/current/bin/kast-mcp-complete approve apply <plan:identity>`;
+review the stored diff and type `approve`. Then repeat the apply tool call.
+Recovery uses `approve recover <plan:identity>` and requires its own approval.
 
 See [Install and connect](https://kast.michne.com/start/) for IDE selection,
 Desktop setup, other harnesses, and uninstall instructions.

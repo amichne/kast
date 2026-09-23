@@ -22,6 +22,7 @@ code_sources:
     symbols: ["ProductInspectionDocuments"]
   - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/projection/CliBoundaryDocuments.kt"
     symbols: ["CliBoundaryDocuments"]
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt"
 icon: "life-buoy"
 keywords: ["errors", "rejected", "qualified", "bootstrap", "support"]
 ---
@@ -34,7 +35,7 @@ See [Read a response](/reference/responses) for field names and result layers.
 
 | Symptom | First action |
 | --- | --- |
-| Tools are missing | Check `kast app-server status` and the selected catalog. Confirm `KAST_ENABLE_APP_SERVER` is enabled. |
+| Tools are missing in terminal Codex | Run `codex mcp get kast`, then start a fresh `codex` session in the repository. |
 | Outer `status: rejected` | Preserve `diagnostic.boundary` and `diagnostic.reason`; collect status below. |
 | The document rejects | Follow its finite reason. Open the intended IDEA project or correct the named input as appropriate. |
 | The answer is qualified | Read limitations and item failures. Narrow scope or relation expansion before increasing bounds. |
@@ -47,14 +48,15 @@ See [Read a response](/reference/responses) for field names and result layers.
 cd /path/to/kotlin-repository
 kast
 kast ide status
-kast app-server status
+codex mcp get kast
 ```
 
 Collect these fields without changing runtime state:
 
 - Bare `kast` reports product version, semantic authority, and repository root.
 - `kast ide status` reports fresh endpoint readiness.
-- `kast app-server status` adds paths for logs, configuration, and workspace state.
+- `codex mcp get kast` shows the installed terminal tool registration.
+- `kast app-server status` adds paths for legacy App Server logs, configuration, and workspace state.
 
 `kast ide status` does not acquire a query permit or spend search budget.
 
@@ -90,7 +92,8 @@ Semantic reads do not start import or return an empty successful search. You can
 
 Older output without `recovery` provides no automated retry instruction.
 
-If startup fails, `kast codex` writes a finite reason to stderr.
+If a terminal MCP call fails, Kast returns a finite rejection and writes bounded
+stage and outcome records to the MCP process stderr.
 
 Set `KAST_DEBUG=1` for bounded launch-stage output.
 

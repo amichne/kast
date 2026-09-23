@@ -13,6 +13,7 @@ code_sources:
   - path: "runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeVerification.kt"
   - path: "runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeRecovery.kt"
   - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/ide/BrokerTrustEnrollment.kt"
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpApproval.kt"
   - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceExecution.kt"
 icon: "file-pen-line"
 ---
@@ -54,8 +55,9 @@ The command creates or preserves a matching private approval key pair in
 4. Review declaration placement in the stored file preview.
 5. Retain the immutable plan identity.
 6. Call `change_apply` with that identity.
-7. Approve the exact stored preview when the integration prompts.
-8. Read the complete apply result.
+7. For terminal Codex, run `~/.local/share/kast/current/bin/kast-mcp-complete approve apply <plan:identity>` in a separate terminal at the same repository root. Review the displayed diff and type `approve`.
+8. Repeat the `change_apply` call. The approval is consumed once.
+9. Read the complete apply result.
 
 Planning does not change source bytes or document state.
 
@@ -126,7 +128,7 @@ An attempted plan without a verified receipt cannot become a fresh mutation.
 To recover:
 
 1. Call `change_recover` with the stored plan identity.
-2. Approve recovery separately.
+2. In a separate terminal at the same repository root, run `~/.local/share/kast/current/bin/kast-mcp-complete approve recover <plan:identity>` and review the preview. Repeat the `change_recover` call.
 3. Keep every returned qualification visible.
 
 Recovery can confirm the exact preimage or roll back an exact matching postimage.

@@ -47,6 +47,8 @@ code_sources:
   - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/InstallationRecoveryReceipt.kt
   - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ControlPayloadInventory.kt
   - path: install.sh
+  - path: packaging/codex-mcp-registration.py
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt
     symbols: [InstallationWorkflow]
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationRequest.kt
@@ -70,6 +72,13 @@ fetching release-line-specific plugin bytes. An absent matching plugin is a
 fail-closed compatibility result and precedes installation effects. Public installation enables the app-server suite and defaults the per-user login
 LaunchAgent on without a prompt. `--no-interactive` also prevents collision prompts.
 Local session installation retains the complete payload and defers service activation.
+
+Terminal Codex uses a user-level MCP registration that points to the selected
+installation's `kast-mcp-complete` launcher. The installer inspects the existing
+`kast` name before installation effects and preserves a foreign registration.
+The MCP process discovers the nearest Gradle root for each Codex session and
+routes tool calls through the existing-IDE CLI boundary. Source mutation
+requires a separately prepared, one-use exact-plan approval grant.
 
 Hosted-only schema-2 installations retire their coordinator without invoking
 the retired isolated-workspace `stop` command. Legacy schema-1 installations
@@ -103,7 +112,7 @@ directory, then moves payload/state and recovery bundles aside before restaging.
 The managed filesystem adapter owns transport cleanup and entry quarantine; the CLI owns process retirement and maps the finite preparation result to `FORCE_RESET` evidence. Unknown upstream contents fail closed. Force
 replaces command collisions and starts with fresh workspace enrollment; source trees
 are untouched. A force dry run verifies and reports without performing reset effects.
-Force plugin activation moves the exact same-user Kast plugin entry into private recovery storage without following a symlink target. Both executable launchers are required; installation cannot publish a CLI-only payload.
+Force plugin activation moves the exact same-user Kast plugin entry into private recovery storage without following a symlink target. The CLI, legacy App Server, and MCP launchers are required; installation cannot publish a CLI-only payload.
 The saved app-server setting is always enabled. Activation may still be pending with
 a finite reason when the host cannot start the service.
 

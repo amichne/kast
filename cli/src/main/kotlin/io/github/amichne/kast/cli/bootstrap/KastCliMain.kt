@@ -104,12 +104,15 @@ fun main(args: Array<String>) {
 }
 
 private fun executeInstalledCommand(args: Array<String>): CliExit =
+    executeInstalledKastCli(args.toList(), Path.of("").toAbsolutePath(), CliRequestDocumentInput.Deferred(::readCanonicalRequestInput))
+
+internal fun executeInstalledKastCli(args: List<String>, start: Path, input: CliRequestDocumentInput): CliExit =
     when (val bootstrap = loadComposition(args.isEmpty())) {
         is CliBootstrap.Ready ->
             bootstrap.cli.execute(
-                args.toList(),
-                Path.of("").toAbsolutePath(),
-                CliRequestDocumentInput.Deferred(::readCanonicalRequestInput),
+                args,
+                start,
+                input,
             )
         is CliBootstrap.Inspected -> bootstrap.exit
         is CliBootstrap.Rejected ->

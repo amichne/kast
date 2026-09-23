@@ -202,6 +202,18 @@ class CliBoundaryContractTest {
         )
     }
 
+    @Test
+    fun `root discovery admits Groovy settings and rejects competing markers`(@TempDir temporary: Path) {
+        val root = Files.createDirectory(temporary.resolve("groovy"))
+        Files.writeString(root.resolve("settings.gradle"), "rootProject.name = 'fixture'")
+        assertEquals(root.toRealPath(), FilesystemCanonicalRootDiscovery.discover(root).discoveredRoot().path)
+        Files.writeString(root.resolve("settings.gradle.kts"), "rootProject.name = \"other\"")
+        assertEquals(
+            CanonicalRootDiscovery.Rejected(CanonicalRootFailure.INVALID_ROOT_MARKER),
+            FilesystemCanonicalRootDiscovery.discover(root),
+        )
+    }
+
     private fun commandGraphFactory(): CliCommandGraphFactory =
         when (val construction = CliCommandGraphFactory.create(canonicalCliRequestPreparers())) {
             is CliCommandGraphConstruction.Created -> construction.factory

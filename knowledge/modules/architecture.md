@@ -48,6 +48,7 @@ Every module role requires its matching Gradle convention. Validated module poli
 - IntelliJ and filesystem/SQLite modules own explicit effects.
 - The existing-IDE host connects proven contracts to effectful adapters.
 - App Server and CLI expose broker, installation and transport boundaries.
+- CLI filesystem writes for the one-use MCP approval grant are confined to `McpApprovalStore` by the architecture policy.
 
 The IntelliJ read adapter also depends on symbol contracts for the existing-IDE
 [hosted query](../flows/hosted-query.md). This permits detached compiler evidence
