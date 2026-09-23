@@ -42,13 +42,13 @@ Implements installer support, installed-product acceptance, configuration ingres
 
 - [hosted_change_acceptance.py](hosted_change_acceptance.py) - bounded complete artifact inventory admission and native acceptance evidence.
 - [configuration-schema.json](configuration-schema.json) - packaging-side configuration schema.
-- [installation-lifecycle.py](installation-lifecycle.py) - installed lifecycle orchestration.
+- [installation-lifecycle.py](installation-lifecycle.py) - installed lifecycle orchestration and private or legacy service retirement.
 - [installation-recovery.py](installation-recovery.py) - typed recovery receipts, inactive plugin storage outside IDEA discovery, and owned legacy migration.
 - [installed_acceptance_product.py](installed_acceptance_product.py) - acceptance product model.
 - [run-installed-product.py](run-installed-product.py) - installed-product runner.
 - [install-local.sh](install-local.sh) and [install-checkout.sh](install-checkout.sh) - packaging shell boundaries.
 - [test-installer-entrypoint.py](test-installer-entrypoint.py) - public remote-installer command contract.
-- [test-installed-product.sh](test-installed-product.sh) - installed product and local knowledge acceptance entry.
+- [test-installed-product.sh](test-installed-product.sh) - installed product, private executable, and local knowledge acceptance entry.
 - [run-hosted-change-acceptance.py](run-hosted-change-acceptance.py) - staged broker, CLI, and plugin change workflow in a private native IDE.
 - [hosted_read_regression.py](hosted_read_regression.py) - native CLI/provider read regression and bounded continuation checks.
 - [hosted_authority_read_regression.py](hosted_authority_read_regression.py) - ordinary private source edits, observed epochs, stale authority refusal, exact restoration, and provider envelope qualification.
