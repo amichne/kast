@@ -61,7 +61,8 @@ def stage_versioned_product(isolation, source: Path, plugin: Path) -> Path:
         {'kind': 'upstream-directory', 'path': str(upstream), 'expectedPhysicalDirectory': str(run),
          'identityReceipt': str(run / 'upstream-directory.json'), 'ownership': 'declared-not-observed'},
         {'kind': 'login', 'path': str(Path(isolation.environment['HOME']) / 'Library/LaunchAgents' / (label + '.login.plist')),
-         'expectedExecutable': str(root / 'bin/kast'), 'expectedLabel': label + '.login', 'ownership': 'declared-not-observed'},
+         'expectedExecutable': str(root / 'share/kast/libexec/kast-daemon'), 'expectedLabel': label,
+         'ownership': 'declared-not-observed'},
     ]
     manifest = {'schemaVersion': 2, 'semanticVersion': version, 'installationRoot': str(root),
         'payloadIdentity': 'sha256:' + payload, 'controlSha256': 'sha256:' + control_digest,

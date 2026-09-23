@@ -4,8 +4,6 @@ import io.github.amichne.kast.appserver.runtime.*
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.Path
-import java.nio.file.StandardCopyOption
-import java.nio.file.attribute.PosixFilePermissions
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.*
 
@@ -139,7 +137,6 @@ class InstalledAppServerManager(
                 is BrokerServiceLaunchCommandResolution.Rejected ->
                     return reject(AppServerManagementFailure.CONFIGURATION_REJECTED)
             }
-        val agent = command.userHome.resolve("Library/LaunchAgents/${command.serviceLabel.value}.login.plist")
         return try {
             if (action == AppServerAction.Register)
                 return runBlocking {
@@ -163,28 +160,15 @@ class InstalledAppServerManager(
             when (action) {
                 AppServerAction.Register -> error("registration is handled before service admission")
                 AppServerAction.Enable -> {
-                    val observed = LegacyLoginBootstrap.observe(agent, command.userHome, loginAgent(command))
-                    if (observed == LegacyLoginBootstrapObservation.Rejected)
+                    if (ServiceLoginAgent.observe(command) == ServiceLoginAgentObservation.REJECTED)
                         return reject(AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN)
                     if (enrollment.enroll(workspace) is Refinement.Rejected)
                         return reject(AppServerManagementFailure.ENROLLMENT_REJECTED)
-                    when (observed) {
-                        LegacyLoginBootstrapObservation.Rejected ->
-                            return reject(AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN)
-                        LegacyLoginBootstrapObservation.Absent -> {
-                            Files.createDirectories(agent.parent)
-                            writeLoginAgent(agent, command)
-                        }
-                        LegacyLoginBootstrapObservation.Exact -> Unit
-                    }
                     Files.deleteIfExists(command.stateDirectory.resolve("stopped"))
-                    bootstrap(command)
+                    bootstrapAndPublish(command)
                 }
                 AppServerAction.Repair -> {
-                    if (
-                        LegacyLoginBootstrap.observe(agent, command.userHome, loginAgent(command)) ==
-                            LegacyLoginBootstrapObservation.Rejected
-                    )
+                    if (ServiceLoginAgent.observe(command) == ServiceLoginAgentObservation.REJECTED)
                         return reject(AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN)
                     val host = MacOsPersistentBrokerServiceHost()
                     when (val reset = host.destructiveReset(command)) {
@@ -199,31 +183,26 @@ class InstalledAppServerManager(
                     Files.deleteIfExists(registry)
                     if (enrollment.enroll(workspace) is Refinement.Rejected)
                         return reject(AppServerManagementFailure.ENROLLMENT_REJECTED)
-                    when (LegacyLoginBootstrap.observe(agent, command.userHome, loginAgent(command))) {
-                        LegacyLoginBootstrapObservation.Exact -> Files.delete(agent)
-                        LegacyLoginBootstrapObservation.Absent -> Unit
-                        LegacyLoginBootstrapObservation.Rejected ->
-                            return reject(AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN)
-                    }
-                    Files.createDirectories(agent.parent)
-                    writeLoginAgent(agent, command)
+                    if (ServiceLoginAgent.remove(command) == ServiceLoginAgentChange.REJECTED)
+                        return reject(AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN)
                     Files.deleteIfExists(command.stateDirectory.resolve("stopped"))
-                    bootstrap(command)
+                    bootstrapAndPublish(command)
                 }
                 AppServerAction.Bootstrap -> {
+                    if (ServiceLoginAgent.observe(command) == ServiceLoginAgentObservation.REJECTED)
+                        return reject(AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN)
                     if (enrollment.read() is EnrollmentRead.Rejected)
                         return reject(AppServerManagementFailure.ENROLLMENT_REJECTED)
-                    // A new login runs this once. The broker is subsequently restarted by launchd.
+                    // Older one-shot login jobs converge on the directly loaded service job.
                     Files.deleteIfExists(command.stateDirectory.resolve("stopped"))
-                    bootstrap(command)
+                    bootstrapAndPublish(command)
                 }
                 AppServerAction.Status -> readAppServerStatus(kast, command, enrollment)
                 AppServerAction.Stop,
                 AppServerAction.Disable -> {
                     if (
                         action == AppServerAction.Disable &&
-                            LegacyLoginBootstrap.observe(agent, command.userHome, loginAgent(command)) ==
-                                LegacyLoginBootstrapObservation.Rejected
+                            ServiceLoginAgent.observe(command) == ServiceLoginAgentObservation.REJECTED
                     )
                         return reject(AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN)
                     val host = MacOsPersistentBrokerServiceHost()
@@ -239,12 +218,8 @@ class InstalledAppServerManager(
                         )
                     }
                     if (action == AppServerAction.Disable) {
-                        when (LegacyLoginBootstrap.observe(agent, command.userHome, loginAgent(command))) {
-                            LegacyLoginBootstrapObservation.Exact -> Files.delete(agent)
-                            LegacyLoginBootstrapObservation.Absent -> Unit
-                            LegacyLoginBootstrapObservation.Rejected ->
-                                return reject(AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN)
-                        }
+                        if (ServiceLoginAgent.remove(command) == ServiceLoginAgentChange.REJECTED)
+                            return reject(AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN)
                     }
                     complete(if (action == AppServerAction.Stop) "stopped" else "disabled")
                 }
@@ -284,35 +259,11 @@ class InstalledAppServerManager(
         return complete("ready")
     }
 
-    private fun loginAgent(command: BrokerServiceLaunchCommand): String {
-        fun escape(raw: String) =
-            raw.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
-        val arguments =
-            listOf(command.kast.toString(), "app-server", "bootstrap").joinToString("") {
-                "<string>${escape(it)}</string>"
-            }
-        val env =
-            mapOf(
-                "PATH" to command.executableSearchPath.value,
-                "CODEX_HOME" to command.codexHome.toString(),
-            ) + command.host.environment()
-        return """<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<!-- Kast App Server login bootstrap v1 -->
-<plist version="1.0"><dict><key>Label</key><string>${escape(command.serviceLabel.value)}.login</string><key>ProgramArguments</key><array>$arguments</array><key>RunAtLoad</key><true/><key>EnvironmentVariables</key><dict>${env.entries.joinToString("") { "<key>${escape(it.key)}</key><string>${escape(it.value)}</string>" }}</dict></dict></plist>
-"""
-    }
-
-    private fun writeLoginAgent(agent: Path, command: BrokerServiceLaunchCommand) {
-        val xml = loginAgent(command)
-        val temporary = Files.createTempFile(agent.parent, ".kast-login-", ".plist")
-        try {
-            Files.writeString(temporary, xml)
-            Files.setPosixFilePermissions(temporary, PosixFilePermissions.fromString("rw-------"))
-            Files.move(temporary, agent, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
-        } finally {
-            Files.deleteIfExists(temporary)
-        }
+    private fun bootstrapAndPublish(command: BrokerServiceLaunchCommand): AppServerManagementResult {
+        val started = bootstrap(command)
+        if (started !is AppServerManagementResult.Completed) return started
+        return if (ServiceLoginAgent.publish(command) == ServiceLoginAgentChange.READY) started
+        else reject(AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN)
     }
 
     private fun complete(status: String) =

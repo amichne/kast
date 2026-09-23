@@ -302,6 +302,7 @@ internal object KastCleanSlateModules {
             effects = setOf(ForbiddenEffect.PROCESS_CONTROL),
             scopedEffects = mapOf(ForbiddenEffect.FILESYSTEM_WRITE to setOf(
                     JvmClassName("io/github/amichne/kast/appserver/InstalledAppServerManager"),
+                    JvmClassName("io/github/amichne/kast/appserver/ServiceLoginAgent"),
                     JvmClassName("io/github/amichne/kast/appserver/BrokerInstallationState"),
                     JvmClassName("io/github/amichne/kast/appserver/InstalledCoordinatorConfiguration"),
                     JvmClassName("io/github/amichne/kast/appserver/WorkspaceEnrollmentStore"),

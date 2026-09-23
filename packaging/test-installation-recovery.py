@@ -3,6 +3,7 @@ from pathlib import Path
 import json
 import hashlib
 import importlib.util
+import plistlib
 from unittest.mock import patch
 import os
 import subprocess
@@ -38,6 +39,51 @@ class RecoveryTest(unittest.TestCase):
         (self.outer / 'current').symlink_to('versions/' + self.root.name)
         (self.bin / 'kast').symlink_to(self.outer / 'current/bin/kast-complete')
         return report
+
+    def direct_login(self):
+        report = self.prepare()
+        bundle = Path(report['recoveryExecutable']).parent
+        label = 'io.github.amichne.kast.broker.' + hashlib.sha256(str(self.root).encode()).hexdigest()[:32]
+        codex_home = str(self.home / '.codex')
+        profile = hashlib.sha256(codex_home.encode()).hexdigest()[:16]
+        state = self.root / 'state/broker' / profile
+        state.mkdir(parents=True)
+        document = {
+            'Label': label,
+            'ProgramArguments': ['/usr/bin/env', '-i', 'HOME=' + str(self.home),
+                                 'CODEX_HOME=' + codex_home,
+                                 str(self.root / 'share/kast/libexec/kast-daemon')],
+            'RunAtLoad': True, 'KeepAlive': {'SuccessfulExit': False}, 'ThrottleInterval': 10,
+            'StandardOutPath': str(state / 'service.log'), 'StandardErrorPath': str(state / 'service.log'),
+        }
+        raw = plistlib.dumps(document)
+        receipt = state / 'service.plist'
+        receipt.write_bytes(raw)
+        receipt.chmod(0o600)
+        agent = self.home / 'Library/LaunchAgents' / (label + '.login.plist')
+        agent.parent.mkdir(parents=True)
+        agent.write_bytes(raw)
+        agent.chmod(0o600)
+        spec = importlib.util.spec_from_file_location('recovery_login_under_test', SCRIPT)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = module
+        spec.loader.exec_module(module)
+        return module, bundle, agent, raw
+
+    def test_offline_recovery_detaches_only_exact_direct_service_login(self):
+        module, bundle, agent, raw = self.direct_login()
+        with patch.dict(os.environ, HOME=str(self.home)):
+            self.assertEqual([], module.detach_login(self.root, bundle))
+        self.assertFalse(agent.exists())
+        self.assertEqual(raw, (bundle / 'login.plist').read_bytes())
+
+    def test_offline_recovery_preserves_changed_direct_service_login(self):
+        module, bundle, agent, raw = self.direct_login()
+        agent.write_bytes(raw.replace(b'<integer>10</integer>', b'<integer>11</integer>'))
+        with patch.dict(os.environ, HOME=str(self.home)):
+            self.assertEqual([module.Failure.OWNERSHIP], module.detach_login(self.root, bundle))
+        self.assertTrue(agent.exists())
+        self.assertFalse((bundle / 'login.plist').exists())
 
     def test_damaged_payload_detaches_and_preserves_unresolved_evidence(self):
         self.prepare()

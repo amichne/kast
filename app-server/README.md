@@ -92,17 +92,18 @@ claiming an occupied task conflicts, and handoff during an active turn or pendin
 server request fails. An observer must first successfully resume the task.
 
 Stop publishes its suppression marker under the startup lock, removes only the
-identity-proven service, and waits for retirement. Attachments cannot restart it
-for that login. Explicit enable or the next login bootstrap clears suppression.
-Disable additionally removes the Kast-owned login agent. Enrollment and invocation evidence remain
+identity-proven service, and waits for retirement. Attachments cannot restart it.
+Explicit enable clears suppression; the direct daemon login job does not override
+an explicit stop. Disable additionally removes the exact Kast-owned login agent. Enrollment and invocation evidence remain
 on disk; disable does not erase execution history.
 
 ## Daemon management
 
 `kast app-server register` registers the current workspace through the running
 coordinator. Start it with `kast app-server enable` first. Registration no longer
-writes the registry from a standalone CLI process. Initial enable/repair and
-login bootstrap retain their existing installation responsibilities.
+writes the registry from a standalone CLI process. Initial enable/repair retain
+their installation responsibilities. The legacy login bootstrap remains available
+to migrate an older one-shot agent.
 
 The owned Unix socket serves a versioned, bounded `/kast-management` WebSocket
 route for passive coordinator/session status, workspace registration, and controller
@@ -174,8 +175,9 @@ Service lifecycle, deferred updates and durable storage migration remain subsequ
 Launchd starts the private `share/kast/libexec/kast-daemon` entry point directly.
 It accepts no commands and requires the managed readiness environment before
 coordinator admission. Published receipts for the earlier `kast broker serve`
-entry point remain readable for exact retirement. The login bootstrap remains a
-separate migration step.
+entry point remain readable for exact retirement. The per-user login agent
+contains the same direct daemon job as the current service submission; the
+one-shot bootstrap remains readable only for migration.
 
 ## Ownership and recovery
 

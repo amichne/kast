@@ -23,10 +23,28 @@ private data class PublishedLaunchReceipt(
     val bytes: ByteArray,
 )
 
+internal enum class PublishedPrivateDocumentObservation {
+    EXACT,
+    REJECTED,
+}
+
 object PublishedBrokerServiceCommand {
     private const val MAXIMUM_PLIST_BYTES = 64 * 1024
     private const val MAXIMUM_ARGUMENTS = 64
     private val environmentName = Regex("[A-Z][A-Z0-9_]{0,127}")
+
+    internal fun observePrivate(command: BrokerServiceLaunchCommand): PublishedPrivateDocumentObservation =
+        try {
+            val receipt = readEnvironment(command)
+            if (
+                receipt?.form == PublishedLaunchForm.PRIVATE_DAEMON &&
+                    recoverFromReceipt(command, receipt)?.identity == command.identity
+            )
+                PublishedPrivateDocumentObservation.EXACT
+            else PublishedPrivateDocumentObservation.REJECTED
+        } catch (_: Exception) {
+            PublishedPrivateDocumentObservation.REJECTED
+        }
 
     internal fun recover(observed: BrokerServiceLaunchCommand): BrokerServiceLaunchCommand? =
         try {

@@ -18,6 +18,25 @@ internal sealed interface LegacyLoginBootstrapObservation {
 }
 
 internal object LegacyLoginBootstrap {
+    fun render(command: BrokerServiceLaunchCommand): String {
+        fun escape(raw: String) =
+            raw.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
+        val arguments =
+            listOf(command.kast.toString(), "app-server", "bootstrap").joinToString("") {
+                "<string>${escape(it)}</string>"
+            }
+        val env =
+            mapOf(
+                "PATH" to command.executableSearchPath.value,
+                "CODEX_HOME" to command.codexHome.toString(),
+            ) + command.host.environment()
+        return """<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Kast App Server login bootstrap v1 -->
+<plist version="1.0"><dict><key>Label</key><string>${escape(command.serviceLabel.value)}.login</string><key>ProgramArguments</key><array>$arguments</array><key>RunAtLoad</key><true/><key>EnvironmentVariables</key><dict>${env.entries.joinToString("") { "<key>${escape(it.key)}</key><string>${escape(it.value)}</string>" }}</dict></dict></plist>
+"""
+    }
+
     fun observe(agent: Path, userHome: Path, expected: String): LegacyLoginBootstrapObservation =
         try {
             val owner = Files.getOwner(userHome)
