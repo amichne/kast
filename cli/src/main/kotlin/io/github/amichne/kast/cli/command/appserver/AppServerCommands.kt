@@ -7,11 +7,7 @@ import io.github.amichne.kast.appserver.*
 import io.github.amichne.kast.cli.command.*
 
 internal fun appServerCommandGroup(): LocalCommandFamily {
-    val actions =
-        listOf(
-            AppServerLeaf("status", CliProductCommand.APP_SERVER_STATUS, AppServerAction.Status),
-            AppServerLeaf("stop", CliProductCommand.APP_SERVER_STOP, AppServerAction.Stop),
-        )
+    val actions = listOf(AppServerLeaf("status", CliProductCommand.APP_SERVER_STATUS, AppServerAction.Status))
     val claim = ControlLeaf("claim", CliProductCommand.APP_SERVER_CLAIM, ControlOperation.CLAIM)
     val release = ControlLeaf("release", CliProductCommand.APP_SERVER_RELEASE, ControlOperation.RELEASE)
     val control = KastCommandGroup("control", "Manage the controller of an attached task.").subcommands(claim, release)

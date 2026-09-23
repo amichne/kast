@@ -57,6 +57,7 @@ internal enum class ServiceControlAction(val managerAction: AppServerAction) {
     ENABLE(AppServerAction.Enable),
     DISABLE(AppServerAction.Disable),
     REPAIR(AppServerAction.Repair),
+    STOP(AppServerAction.Stop),
 }
 
 internal fun selectServiceControl(arguments: List<String>): ServiceControlSelection =
@@ -64,6 +65,7 @@ internal fun selectServiceControl(arguments: List<String>): ServiceControlSelect
         listOf("enable") -> ServiceControlSelection.Selected(ServiceControlAction.ENABLE)
         listOf("disable") -> ServiceControlSelection.Selected(ServiceControlAction.DISABLE)
         listOf("repair", "--destructive") -> ServiceControlSelection.Selected(ServiceControlAction.REPAIR)
+        listOf("stop") -> ServiceControlSelection.Selected(ServiceControlAction.STOP)
         else -> ServiceControlSelection.Rejected
     }
 

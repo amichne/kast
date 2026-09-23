@@ -21,7 +21,6 @@ enum class CliLocalMetadataCommand {
 enum class CliProductCommand(val usage: String) {
     WORKSPACE_LIFECYCLE("workspace lifecycle <document>"),
     APP_SERVER_STATUS("app-server status"),
-    APP_SERVER_STOP("app-server stop"),
     APP_SERVER_CLAIM("app-server control claim <thread-id> <connection-id>"),
     APP_SERVER_RELEASE("app-server control release <thread-id> <connection-id>"),
     INSPECT("product inspect"),
