@@ -14,6 +14,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -25,10 +26,14 @@ class CodexProtocolQualifierTest {
         val root = Path.of(System.getenv("KAST_CODEX_SCHEMA_DIRECTORY"))
         val files = Files.walk(root).use { paths -> paths.filter { Files.isRegularFile(it) }.toList() }
         val documents =
-            CodexOwnedSchema.entries.associateWith { schema ->
-                val path = files.single { it.fileName.toString() == schema.fileName }
-                Json.parseToJsonElement(Files.readString(path)).jsonObject
-            }
+            CodexOwnedSchema.entries
+                .mapNotNull { schema ->
+                    val matches = files.filter { it.fileName.toString() == schema.fileName }
+                    if (matches.isEmpty() && schema in legacyRollbackSchemas) return@mapNotNull null
+                    val path = matches.single()
+                    schema to Json.parseToJsonElement(Files.readString(path)).jsonObject
+                }
+                .toMap()
         assertInstanceOf(
             io.github.amichne.kast.kernel.Validation.Validated::class.java,
             CodexProtocolContracts.define(documents),
@@ -253,6 +258,37 @@ class CodexProtocolQualifierTest {
     }
 
     @Test
+    fun `retired rollback schema pair may be absent but a partial pair rejects`(@TempDir temporary: Path) =
+        runBlocking {
+            val codex = executable(temporary.resolve("codex"))
+            val codexHome = Files.createDirectory(temporary.resolve("codex-home")).toRealPath()
+            val tempRoot = Files.createDirectory(temporary.resolve("temp")).toRealPath()
+            val rollback = setOf(CodexOwnedSchema.THREAD_ROLLBACK_PARAMS, CodexOwnedSchema.THREAD_ROLLBACK_RESPONSE)
+            for (omitted in listOf(rollback, setOf(CodexOwnedSchema.THREAD_ROLLBACK_PARAMS))) {
+                val options =
+                    CodexProtocolQualificationOptions.admit(
+                            UpstreamCodexExecutable.admit(codex, DesktopFacadeExecutables.none()).refinedValue(),
+                            codexHome,
+                            tempRoot,
+                            SchemaGeneratingExecutor(omit = omitted),
+                        )
+                        .refinedValue()
+                when (val result = CodexProtocolQualifier.qualify(options)) {
+                    is CodexProtocolQualification.Qualified -> {
+                        assertEquals(rollback, omitted)
+                        assertFalse(result.contracts.supports(CodexOwnedSchema.THREAD_ROLLBACK_PARAMS))
+                        assertFalse(result.contracts.supports(CodexOwnedSchema.THREAD_ROLLBACK_RESPONSE))
+                    }
+                    is CodexProtocolQualification.Rejected -> {
+                        assertEquals(setOf(CodexOwnedSchema.THREAD_ROLLBACK_PARAMS), omitted)
+                        assertEquals(CodexProtocolQualificationFailure.MISSING_REQUIRED_SCHEMA, result.failure)
+                    }
+                }
+                assertEquals(emptyList<Path>(), Files.list(tempRoot).use { paths -> paths.toList() })
+            }
+        }
+
+    @Test
     fun `duplicate required basename fails closed`(@TempDir temporary: Path) = runBlocking {
         val codex = executable(temporary.resolve("codex"))
         val codexHome = Files.createDirectory(temporary.resolve("codex-home")).toRealPath()
@@ -284,7 +320,10 @@ class CodexProtocolQualifierTest {
         assertEquals(emptyList<Path>(), Files.list(tempRoot).use { paths -> paths.toList() })
     }
 
-    private class SchemaGeneratingExecutor(private val duplicate: CodexOwnedSchema? = null) : BrokerProcessExecutor {
+    private class SchemaGeneratingExecutor(
+        private val duplicate: CodexOwnedSchema? = null,
+        private val omit: Set<CodexOwnedSchema> = emptySet(),
+    ) : BrokerProcessExecutor {
         val requests = mutableListOf<BrokerProcessRequest>()
 
         override suspend fun execute(request: BrokerProcessRequest): BrokerProcessExecution {
@@ -293,9 +332,11 @@ class CodexProtocolQualifierTest {
                 return BrokerProcessExecution.Completed(0, "codex-cli 9.9.9\n", "")
             }
             val output = Path.of(request.arguments.last())
-            CodexOwnedSchema.entries.forEach { schema ->
-                Files.writeString(output.resolve(schema.fileName), """{"type":"object"}""")
-            }
+            CodexOwnedSchema.entries
+                .filterNot { it in omit }
+                .forEach { schema ->
+                    Files.writeString(output.resolve(schema.fileName), """{"type":"object"}""")
+                }
             duplicate?.let { schema ->
                 val nested = Files.createDirectory(output.resolve("nested"))
                 Files.writeString(nested.resolve(schema.fileName), """{"type":"object"}""")

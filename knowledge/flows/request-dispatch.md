@@ -41,6 +41,10 @@ code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/BrokerFailureDocument.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolAdapter.kt
     symbols: [CodexProtocolAdapter]
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexOwnedSchemaInventory.kt
+    symbols: [CodexOwnedSchemaInventory]
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexCompiledSchemaInventory.kt
+    symbols: [CodexCompiledSchemaInventory]
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexToolCallProjection.kt
     symbols: [CodexToolCallProjector, CodexThreadHistoryProjector]
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/BrokerSessionActivity.kt
@@ -113,7 +117,10 @@ harness does not establish full Codex WebSocket or multi-client acceptance.
 
 Broker-owned dynamic tools project into the schema-admitted `mcpToolCall` display
 shape in live and history carriers while retaining the original dynamic fields.
-Their raw content remains intact, and the final Kast JSON envelope additionally
+Codex schema inventory admits the retired `thread/rollback` request and response
+schemas only as a complete pair; a client without both leaves that route as an
+unchanged upstream pass-through while `thread/revert` remains qualified. Their
+raw content remains intact, and the final Kast JSON envelope additionally
 uses the supported structured-result field. For change apply/recovery,
 `CodexPlanApprovalProjection` emits a separate native `fileChange` item containing
 the stored plan's preview and requests approval from the current controller.

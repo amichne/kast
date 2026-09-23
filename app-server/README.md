@@ -282,8 +282,10 @@ codex app-server generate-json-schema --experimental --out /tmp/kast-codex-schem
 KAST_CODEX_SCHEMA_DIRECTORY=/tmp/kast-codex-schemas ./gradlew :app-server:test
 ```
 
-The raw shape has been validated against schemas from Codex CLI 0.154.0 and the
-desktop-bundled Codex 0.153.4. Desktop renderer source inspection established the missing dynamic content; this does not
+The raw shape has been validated against schemas from Codex CLI 0.154.0, 0.156.0,
+and the desktop-bundled Codex 0.153.4. Codex 0.156.0 omits the legacy
+`thread/rollback` schema pair; Kast requires both files or neither and only projects
+that response when the pair was qualified. Desktop renderer source inspection established the missing dynamic content; this does not
 constitute a live visual acceptance test of an installed Kast build.
 
 Status separates launchd lifecycle observation, public endpoint kind/path/ownership,

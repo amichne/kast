@@ -656,6 +656,9 @@ internal class CodexProtocolAdapter(
         message: String,
         route: CodexItemResponseRoute,
     ): ProtocolRouting {
+        if (!contracts.supports(route.requestSchema) || !contracts.supports(route.responseSchema)) {
+            return ProtocolRouting.ForwardUpstream(message)
+        }
         val params = document["params"] ?: JsonObject(emptyMap())
         if (!contracts.admits(route.requestSchema, params)) {
             return ProtocolRouting.ForwardUpstream(message)

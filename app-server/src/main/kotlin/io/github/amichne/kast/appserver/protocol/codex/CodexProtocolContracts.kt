@@ -3,7 +3,6 @@ package io.github.amichne.kast.appserver.protocol.codex
 import io.github.amichne.kast.appserver.core.ProviderNamespace
 import io.github.amichne.kast.appserver.schema.CompiledJsonSchema
 import io.github.amichne.kast.appserver.schema.JsonConstraintViolation
-import io.github.amichne.kast.appserver.schema.NetworkntJsonSchemaCompiler
 import io.github.amichne.kast.appserver.schema.ValidatedJsonValue
 import io.github.amichne.kast.kernel.NonEmptyFailures
 import io.github.amichne.kast.kernel.Refinement
@@ -32,6 +31,8 @@ internal sealed interface CodexProtocolContractFailure {
 /** Compiled, complete set of installed Codex schemas for every broker-owned protocol shape. */
 internal class CodexProtocolContracts
 private constructor(private val contracts: Map<CodexOwnedSchema, CompiledJsonSchema>) {
+    internal fun supports(schema: CodexOwnedSchema): Boolean = schema in contracts
+
     internal fun admit(
         schema: CodexOwnedSchema,
         candidate: JsonElement,
@@ -41,19 +42,12 @@ private constructor(private val contracts: Map<CodexOwnedSchema, CompiledJsonSch
         internal fun define(
             documents: Map<CodexOwnedSchema, JsonObject>
         ): Validation<CodexProtocolContracts, CodexProtocolContractFailure> {
-            val failures = mutableListOf<CodexProtocolContractFailure>()
-            val compiled = linkedMapOf<CodexOwnedSchema, CompiledJsonSchema>()
-            CodexOwnedSchema.entries.forEach { schema ->
-                val document = documents[schema]
-                if (document == null) {
-                    failures += CodexProtocolContractFailure.Missing(schema)
-                } else {
-                    when (val compilation = NetworkntJsonSchemaCompiler.compile(document)) {
-                        is Refinement.Refined -> compiled[schema] = compilation.value
-                        is Refinement.Rejected -> failures += CodexProtocolContractFailure.Invalid(schema)
-                    }
+            val compiled =
+                when (val compilation = CodexCompiledSchemaInventory.compile(documents)) {
+                    is Validation.Validated -> compilation.value.schemas
+                    is Validation.Rejected -> return compilation
                 }
-            }
+            val failures = mutableListOf<CodexProtocolContractFailure>()
             val initialize = compiled[CodexOwnedSchema.INITIALIZE_PARAMS]
             if (failures.isEmpty()) {
                 CodexProjectCloseApprovalProjection.qualificationWitnesses().forEach { (schema, witness) ->
@@ -77,11 +71,12 @@ private constructor(private val contracts: Map<CodexOwnedSchema, CompiledJsonSch
                 }
             }
             if (failures.isEmpty()) {
-                ITEM_CONTAINER_PROJECTION_WITNESSES.forEach { witness ->
-                    if (!containerProjectionIsAdmitted(compiled, witness)) {
-                        failures += CodexProtocolContractFailure.ToolCallProjectionIncompatible(witness.schema)
+                ITEM_CONTAINER_PROJECTION_WITNESSES.filter { it.schema in compiled }
+                    .forEach { witness ->
+                        if (!containerProjectionIsAdmitted(compiled, witness)) {
+                            failures += CodexProtocolContractFailure.ToolCallProjectionIncompatible(witness.schema)
+                        }
                     }
-                }
             }
             return if (failures.isEmpty()) {
                 Validation.Validated(CodexProtocolContracts(compiled.toMap()))

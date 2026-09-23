@@ -24,9 +24,6 @@ import java.util.HexFormat
 import java.util.UUID
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
-import kotlinx.serialization.SerializationException
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
 
 internal enum class CodexProtocolOptionsFailure {
     CODEX_HOME_REJECTED,
@@ -249,27 +246,11 @@ internal object CodexProtocolQualifier {
                 is CodexSchemaCollection.Collected -> collection.files
                 is CodexSchemaCollection.Rejected -> return rejected(collection.failure)
             }
-        val documents = linkedMapOf<CodexOwnedSchema, JsonObject>()
-        CodexOwnedSchema.entries.forEach { required ->
-            val matches = files.filter { file ->
-                Path.of(file.relativePath).fileName.toString() == required.fileName
+        val documents =
+            when (val inventory = CodexOwnedSchemaInventory.admit(files)) {
+                is Refinement.Refined -> inventory.value.documents
+                is Refinement.Rejected -> return rejected(inventory.failure)
             }
-            if (matches.isEmpty()) {
-                return rejected(CodexProtocolQualificationFailure.MISSING_REQUIRED_SCHEMA)
-            }
-            if (matches.size != 1) {
-                return rejected(CodexProtocolQualificationFailure.AMBIGUOUS_REQUIRED_SCHEMA)
-            }
-            val document =
-                try {
-                    Json.parseToJsonElement(matches.single().bytes.toString(StandardCharsets.UTF_8)) as? JsonObject
-                } catch (_: SerializationException) {
-                    null
-                } catch (_: IllegalArgumentException) {
-                    null
-                } ?: return rejected(CodexProtocolQualificationFailure.INVALID_REQUIRED_SCHEMA)
-            documents[required] = document
-        }
         val contracts =
             when (val definition = CodexProtocolContracts.define(documents)) {
                 is Validation.Validated -> definition.value
