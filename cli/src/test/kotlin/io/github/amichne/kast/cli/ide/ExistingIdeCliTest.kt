@@ -57,22 +57,19 @@ class ExistingIdeCliTest {
 
     @Test
     fun `IDE commands route directly to the existing IDE`() {
-        for (arguments in
-            listOf(listOf("status"), listOf("classes", "Refinement"), listOf("supertype", "example.Child"))) {
-            var calls = 0
-            val result =
-                executeExistingIdeCli(
-                    listOf("ide") + arguments,
-                    root.path,
-                    CanonicalRootDiscoverer { CanonicalRootDiscovery.Discovered(root) },
-                    ExistingIdeClient { _, _ ->
-                        calls++
-                        ExistingIdeExchange.Rejected(ExistingIdeFailure.HOST_UNAVAILABLE)
-                    },
-                )
-            assertEquals(1, calls)
-            assertTrue(result.document.value.contains("ide-host-unavailable"))
-        }
+        var calls = 0
+        val result =
+            executeExistingIdeCli(
+                listOf("ide", "status"),
+                root.path,
+                CanonicalRootDiscoverer { CanonicalRootDiscovery.Discovered(root) },
+                ExistingIdeClient { _, _ ->
+                    calls++
+                    ExistingIdeExchange.Rejected(ExistingIdeFailure.HOST_UNAVAILABLE)
+                },
+            )
+        assertEquals(1, calls)
+        assertTrue(result.document.value.contains("ide-host-unavailable"))
     }
 
     @Test
@@ -101,7 +98,7 @@ class ExistingIdeCliTest {
             val completion =
                 executeExistingIdeCli(listOf("ide", "generate-completion", shell), root.path, roots, client)
             assertEquals(0, completion.code)
-            assertTrue(completion.document.value.contains("supertype"))
+            assertFalse(completion.document.value.contains("supertype"))
         }
     }
 
@@ -123,16 +120,16 @@ class ExistingIdeCliTest {
     }
 
     @Test
-    fun `full command graph retains the same IDE action`() {
+    fun `full command graph retains passive IDE status`() {
         val factory =
             io.github.amichne.kast.cli.command.CliCommandGraphFactory.create(
                 io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers()
             ) as io.github.amichne.kast.cli.command.CliCommandGraphConstruction.Created
         val parsed =
-            factory.factory.parse(listOf("ide", "supertype", "example.Child"))
+            factory.factory.parse(listOf("ide", "status"))
                 as io.github.amichne.kast.cli.command.CliCommandParsing.Parsed
         val action = parsed.action as io.github.amichne.kast.cli.command.CliAction.Local.ExistingIde
-        assertEquals("example.Child", (action.operation as ExistingIdeOperation.Supertype).name.value)
+        assertEquals(ExistingIdeOperation.Status, action.operation)
     }
 
     @Test
@@ -142,30 +139,47 @@ class ExistingIdeCliTest {
         for (argv in
             listOf(
                 listOf("ide", "--help"),
-                listOf("ide", "classes", "--help"),
-                listOf("ide", "supertype", "--help"),
                 listOf("ide", "status", "--help"),
+                listOf("ide", "refresh", "--help"),
             )) {
             val answer = executeExistingIdeCli(argv, Path.of("/missing"), roots, client)
             assertEquals(0, answer.code)
-            assertTrue(answer.document.value.contains("IDEA"))
+            assertTrue(answer.document.value.isNotBlank())
         }
     }
 
     @Test
-    fun `invalid exact names and missing values never reach effects`() {
-        val roots = CanonicalRootDiscoverer { fail("Invalid input reached root discovery") }
-        val client = ExistingIdeClient { _, _ -> fail("Invalid input reached socket") }
-        for (name in listOf("a.b", "*", "0Class", "x".repeat(513))) {
-            assertNotEquals(0, executeExistingIdeCli(listOf("ide", "classes", name), root.path, roots, client).code)
+    fun `retired duplicate IDE reads never reach effects`() {
+        val roots = CanonicalRootDiscoverer { fail("Retired command reached root discovery") }
+        val client = ExistingIdeClient { _, _ -> fail("Retired command reached socket") }
+        for (arguments in listOf(listOf("classes", "Refinement"), listOf("supertype", "example.Child"))) {
+            val result = executeExistingIdeCli(listOf("ide") + arguments, root.path, roots, client)
+            assertNotEquals(0, result.code)
+            assertTrue(result.document.value.contains("diagnostic"))
         }
-        assertNotEquals(0, executeExistingIdeCli(listOf("ide", "classes"), root.path, roots, client).code)
-        val missingName = executeExistingIdeCli(listOf("ide", "classes"), root.path, roots, client)
-        assertTrue(missingName.document.value.contains("diagnostic"))
         assertNotEquals(
             0,
             executeExistingIdeCli(listOf("ide", "status", "--root", "\u0000"), root.path, roots, client).code,
         )
+    }
+
+    @Test
+    fun `legacy endpoint selectors retain exact name admission`() {
+        for (name in listOf("a.b", "*", "0Class", "x".repeat(513))) {
+            assertTrue(ExistingIdeClassName.parse(name) is Refinement.Rejected)
+        }
+        for (name in
+            listOf(
+                ".Child",
+                "example..Child",
+                "example.Child.",
+                "example.*",
+                "example.0Child",
+                "x".repeat(513),
+                "a.".repeat(2048) + "C",
+            )) {
+            assertTrue(ExistingIdeQualifiedClassName.parse(name) is Refinement.Rejected)
+        }
     }
 
     @Test
@@ -175,9 +189,9 @@ class ExistingIdeCliTest {
         for (shell in listOf("bash", "zsh", "fish")) {
             val result = executeExistingIdeCli(listOf("ide", "generate-completion", shell), root.path, roots, client)
             assertEquals(0, result.code)
-            assertTrue(result.document.value.contains("classes"))
+            assertFalse(result.document.value.contains("classes"))
             assertTrue(result.document.value.contains("status"))
-            assertTrue(result.document.value.contains("supertype"))
+            assertFalse(result.document.value.contains("supertype"))
             assertTrue(result.document.value.contains(if (shell == "fish") "-l root" else "--root"))
         }
         assertNotEquals(
@@ -187,17 +201,17 @@ class ExistingIdeCliTest {
     }
 
     @Test
-    fun `index routing uses only the selected root and explicit existing host capability`() {
+    fun `status routing uses only the selected root and explicit existing host capability`() {
         var calls = 0
         val client = ExistingIdeClient { exact, operation ->
             assertSame(root, exact)
-            assertEquals("Refinement", (operation as ExistingIdeOperation.Classes).name.value)
+            assertEquals(ExistingIdeOperation.Status, operation)
             calls++
             ExistingIdeExchange.Rejected(ExistingIdeFailure.HOST_UNAVAILABLE)
         }
         val result =
             executeExistingIdeCli(
-                listOf("ide", "classes", "Refinement", "--root", "/workspace"),
+                listOf("ide", "status", "--root", "/workspace"),
                 Path.of("/other"),
                 CanonicalRootDiscoverer {
                     assertEquals(root.path, it)
@@ -215,47 +229,6 @@ class ExistingIdeCliTest {
         val result = ExistingIdeSocketClient(temporary).query(root, ExistingIdeOperation.Status)
         assertEquals(ExistingIdeExchange.Rejected(ExistingIdeFailure.HOST_UNAVAILABLE), result)
         assertFalse(Files.exists(temporary.resolve(".kast")))
-    }
-
-    @Test
-    fun `qualified supertype command reaches only the existing host capability`() {
-        var calls = 0
-        val result =
-            executeExistingIdeCli(
-                listOf("ide", "supertype", "example.Outer.Child", "--root", "/workspace"),
-                Path.of("/other"),
-                CanonicalRootDiscoverer {
-                    assertEquals(root.path, it)
-                    CanonicalRootDiscovery.Discovered(root)
-                },
-                ExistingIdeClient { exact, operation ->
-                    assertSame(root, exact)
-                    assertEquals("example.Outer.Child", (operation as ExistingIdeOperation.Supertype).name.value)
-                    calls++
-                    ExistingIdeExchange.Rejected(ExistingIdeFailure.HOST_UNAVAILABLE)
-                },
-            )
-        assertEquals(1, calls)
-        assertNotEquals(0, result.code)
-        assertTrue(result.document.value.contains("ide-host-unavailable"))
-    }
-
-    @Test
-    fun `qualified names reject invalid components before reaching host effects`() {
-        val roots = CanonicalRootDiscoverer { fail("Invalid selection reached root discovery") }
-        val client = ExistingIdeClient { _, _ -> fail("Invalid selection reached socket") }
-        for (name in
-            listOf(
-                ".Child",
-                "example..Child",
-                "example.Child.",
-                "example.*",
-                "example.0Child",
-                "x".repeat(513),
-                "a.".repeat(2048) + "C",
-            )) {
-            assertNotEquals(0, executeExistingIdeCli(listOf("ide", "supertype", name), root.path, roots, client).code)
-        }
     }
 
     @Test

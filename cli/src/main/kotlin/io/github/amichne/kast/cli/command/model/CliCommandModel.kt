@@ -27,8 +27,6 @@ enum class CliProductCommand(val usage: String) {
     KNOWLEDGE("knowledge <query-or-resource>"),
     IDE_REFRESH("ide refresh <document> [--root <path>]"),
     IDE_STATUS("ide status [--root <path>]"),
-    IDE_CLASSES("ide classes <name> [--root <path>]"),
-    IDE_SUPERTYPE("ide supertype <qualified-name> [--root <path>]"),
     IDE_COMPLETION("ide generate-completion <shell>"),
 }
 

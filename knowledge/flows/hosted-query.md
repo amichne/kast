@@ -335,8 +335,10 @@ remains available for the manual acceptance harness.
 The [persistent endpoint](../../experiments/host-observation/HOSTED_ENDPOINT.md)
 is owned by the separate `runtime:hosted` plugin. Normal requests use a framed
 Unix socket and retain the same packaged compatibility policy and admitted epoch
-authority across requests. The primary native `kast ide classes` command and Python
-acceptance client reject missing hosts without opening an isolated workspace.
+authority across requests. The native acceptance client rejects missing hosts
+without opening an isolated workspace. Public semantic discovery uses the
+canonical provider operations; the duplicate `kast ide classes` and
+`kast ide supertype` commands have been retired.
 After an IDE crash, the next endpoint owner may reclaim the paired socket and
 descriptor while holding the exclusive ownership lock. Reclamation requires the
 recorded PID to be absent, the descriptor to match this root and current protocol,
@@ -358,9 +360,8 @@ Incremental creation, class renaming, and deletion were qualified against the
 same original IDE index. Broader semantic CLI/App Server routing and stronger
 workspace publication remain separate integration boundaries.
 
-`kast ide supertype` uses the qualified selector. Both public indexing reads
-run before isolated bootstrap, require no Python, and leave index maintenance
-to IDEA. The earlier `kast ide` spelling shares the same implementation.
+The qualified supertype selector remains in the hosted endpoint contract for
+native and compatibility tests. Index maintenance remains with IDEA.
 The shared schemas and operation registry live in `protocol:contract`; the CLI
 loads those resources directly from its dependency. Production packaging no
 longer reads protocol assets or host properties from the acceptance experiment.
