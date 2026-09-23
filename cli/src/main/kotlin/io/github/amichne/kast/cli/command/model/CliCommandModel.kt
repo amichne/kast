@@ -20,8 +20,6 @@ enum class CliLocalMetadataCommand {
 
 enum class CliProductCommand(val usage: String) {
     WORKSPACE_LIFECYCLE("workspace lifecycle <document>"),
-    APP_SERVER_BOOTSTRAP("app-server bootstrap"),
-    APP_SERVER_REGISTER("app-server register"),
     APP_SERVER_ENABLE("app-server enable"),
     APP_SERVER_REPAIR("app-server repair --destructive"),
     APP_SERVER_STATUS("app-server status"),

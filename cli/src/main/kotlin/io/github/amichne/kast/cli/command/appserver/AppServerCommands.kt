@@ -11,8 +11,6 @@ import io.github.amichne.kast.cli.command.*
 internal fun appServerCommandGroup(): LocalCommandFamily {
     val actions =
         listOf(
-            AppServerLeaf("bootstrap", CliProductCommand.APP_SERVER_BOOTSTRAP, AppServerAction.Bootstrap),
-            AppServerLeaf("register", CliProductCommand.APP_SERVER_REGISTER, AppServerAction.Register),
             AppServerLeaf("enable", CliProductCommand.APP_SERVER_ENABLE, AppServerAction.Enable),
             AppServerRepairLeaf(),
             AppServerLeaf("status", CliProductCommand.APP_SERVER_STATUS, AppServerAction.Status),

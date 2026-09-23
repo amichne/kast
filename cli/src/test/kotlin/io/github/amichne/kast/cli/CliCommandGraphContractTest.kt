@@ -35,13 +35,15 @@ import org.junit.jupiter.api.Test
 
 class CliCommandGraphContractTest {
     @Test
-    fun `public service management uses the parser and the daemon command is absent`() {
+    fun `public service diagnostics use the parser and setup commands are absent`() {
         val graph = commandGraphFactory()
-        val publicCommand = listOf("app-server", "bootstrap")
+        val publicCommand = listOf("app-server", "status")
         assertTrue(graph.parse(publicCommand) is CliCommandParsing.Parsed)
         assertTrue(graph.parse(publicCommand + "--help") is CliCommandParsing.Help)
         assertTrue(graph.parse(publicCommand + "unexpected") is CliCommandParsing.Rejected)
         assertTrue(graph.parse(listOf("broker", "serve")) is CliCommandParsing.Rejected)
+        assertTrue(graph.parse(listOf("app-server", "bootstrap")) is CliCommandParsing.Rejected)
+        assertTrue(graph.parse(listOf("app-server", "register")) is CliCommandParsing.Rejected)
     }
 
     @Test
