@@ -17,6 +17,7 @@ Owns the persistent broker/coordinator, host attachment, existing-IDE invocation
 - [InvocationFence.kt](src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationFence.kt) - active admission and durable replay settlement; `FileInvocationRecords` owns sharded storage and legacy migration.
 
 - [InstalledWorkspacePreparation.kt](src/main/kotlin/io/github/amichne/kast/appserver/InstalledWorkspacePreparation.kt) - shared installed preparation owner and native-bound semantic demand.
+- [McpWorkspaceOperationClient.kt](src/main/kotlin/io/github/amichne/kast/appserver/McpWorkspaceOperationClient.kt) - session-owned preparation of an exact Gradle root for the Codex MCP process.
 
 - [WorkspacePreparations.kt](src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt) - daemon-owned, coalesced IDEA preparation and retained operation outcomes.
 
