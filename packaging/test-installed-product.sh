@@ -105,8 +105,6 @@ assert document["cliProjection"]["localCommands"] == [
     "codex", "codex desktop",
     "ide status [--root <path>]",
     "ide refresh <document> [--root <path>]",
-    "ide classes <name> [--root <path>]",
-    "ide supertype <qualified-name> [--root <path>]",
     "ide generate-completion <shell>",
     "workspace lifecycle <document>",
     "app-server status",
