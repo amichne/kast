@@ -8,16 +8,50 @@ timestamp: "2026-09-14T00:00:00-04:00"
 code_sources:
   - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt"
   - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/MintlifyCallableReference.kt"
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpReadPresentation.kt"
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpStructuredResults.kt"
+  - path: "relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijK2SymbolIdentity.kt"
 ---
 
 Read every Kast response as **invocation → semantic outcome → payload → coverage**.
 
-Kast retains one JSON envelope in the final content item of each model-facing
-tool reply. Compact source reads can precede it with a separate item containing
-the unchanged returned source.
+The Kast MCP transport puts a short human summary first and returns a
+consistent machine envelope in `structuredContent` for semantic reads:
+
+```json
+{
+  "status": "complete",
+  "data": {"operation": "query.run", "status": "complete", "items": [], "failures": [], "coverage": {"exhaustive": true}},
+  "coverage": {"exhaustive": true},
+  "basis": {"root": "/workspace", "host": "host-id", "epoch": 1, "contentView": "SAVED_PSI_COMMITTED", "version": 1, "hostState": "INDEXED"}
+}
+```
+
+`complete` means the requested scope was exhausted. `partial` includes
+`continuation` when available and a `stopReason`, and never proves absence.
+The finite stop reasons include budget, result limit, host interruption, and
+incomplete semantic evidence. `rejected` and `unavailable` contain a typed
+error. `data` retains the unmodified canonical document, including opaque
+references, budgets, ranges, soundness and qualifications. The second MCP text
+item also retains that document for clients that do not expose
+`structuredContent`. For diagnostics, coverage includes discovered, analyzed,
+and skipped file counts; the summary identifies IDE analysis and says a project
+build was not run.
+
+For direct MCP `change`, a schema-admitted `HOST_REJECTED` planning response
+appears as `structuredContent.status: "rejected"` with
+`error.code: "PLAN_REJECTED"`. Its `error.evidence` retains the hosted failure
+and its finite cause. For example, planning may report
+`PLANNING_EVIDENCE` with `RELATION_INCOMPLETE` and `UNSUPPORTED_ITEM` instead of
+issuing a plan identity.
+
+The older App Server integration retains one JSON envelope in the final content
+item of each model-facing tool reply. Searches and diagnostics can precede it
+with a short summary; compact source reads can precede it with the unchanged
+returned source.
 
 - Decode the final JSON envelope once.
-- Expect no appended prose summary.
+- Treat any preceding summary as display text; use the final envelope for evidence.
 - Display the same bounded document in clients with native structured output.
 - Preserve closed rejection variants for broker admission and capacity failures.
 
@@ -60,7 +94,8 @@ This illustrative published query response is complete and empty:
     "operation": "query.run",
     "status": "complete",
     "items": [],
-    "failures": []
+    "failures": [],
+    "coverage": {"exhaustive": true}
   }
 }
 ```
@@ -77,6 +112,7 @@ This qualified illustration does not establish absence:
     "status": "qualified",
     "items": [],
     "failures": [],
+    "coverage": {"exhaustive": false},
     "continuation": null,
     "terminal_reason": "upstream-incomplete",
     "qualification": {
@@ -97,8 +133,13 @@ Choose the payload model for the invoked tool.
 | `source_read` | `source.read` | `snapshot`, `region`, `entities[]`, `text` |
 | `read_relations` | `relation.read` | `relations[]`: occurrence-oriented relation facts |
 | `traverse_relations` | `traversal.run` | The graph, traversal coverage, and continuation state in the callable schema |
-| `check_diagnostics` | `diagnostic.check` | `diagnostics[]`: severity, message, and source location |
-| `change_plan`, `change_apply`, `change_recover` | Corresponding `change.*` operation | Plan, application, or recovery state; see [Change source](/change) |
+| `check_diagnostics` | `diagnostic.check` | `diagnostics[]`, `analysisKind`, and `coverage`: requested path, discovered, analyzed, and skipped files |
+| `change` | `change.run` composed from private native `change.plan`, `change.apply`, and, when needed, `change.recover` | Preview, verified receipt or failure, and any recovery evidence; see [Change source](/change) |
+
+For `source_read`, the hosted tool also accepts an exact symbol reference as
+`anchor.symbolRef`, with `region: "declaration"`, `text: {"mode":"complete","maxBytes":6000}`,
+and `entities: {"mode":"none"}`. Omit the entity limit for this form. The
+canonical source request remains available for candidate and source anchors.
 
 Use these focused references before opening a complete callable schema:
 
@@ -108,6 +149,8 @@ Use these focused references before opening a complete callable schema:
 - [Diagnostic entry](/reference/models/diagnostic)
 
 ## 4. Retain coverage and failures
+
+`analysisKind: IDE_FILE_DIAGNOSTICS` reports an IDE file scan. It does not assert a project build. A zero-diagnostic result establishes no findings only for the files shown as analyzed with exhaustive coverage. A qualified result may return zero diagnostics while files remain undiscovered or unexamined.
 
 `qualification.knownMinimum` is a known returned count, not an estimate.
 
@@ -142,6 +185,13 @@ Relation answers separate soundness from coverage.
 | `unmeasured_on_page` | Makes no missing-count claim, including inherited limitations |
 
 Neither measurement estimates every missing relation fact.
+
+`UNSUPPORTED_ITEM` can mean a provider found a candidate that Kast cannot turn
+into an exact compiler-grounded endpoint. Anonymous Kotlin object literals have
+no supported named class identity and are one such case. Retain the returned
+facts, `terminal_incomplete` qualification, and omission samples. There is no
+continuation for terminal coverage, and increasing the read budget does not
+resolve unsupported items.
 
 ### Partial traversal expansion
 

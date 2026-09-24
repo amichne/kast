@@ -51,6 +51,7 @@ class OperationRegistryContractTest {
                 "relation.read",
                 "traversal.run",
                 "diagnostic.check",
+                "change.run",
                 "change.plan",
                 "change.apply",
                 "change.recover",

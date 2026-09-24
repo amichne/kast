@@ -73,10 +73,9 @@ For `GRADLE_MODEL_UNAVAILABLE`, expect recovery to identify:
 
 A missing cached model does not prove that import is running.
 
-The installed Codex MCP server prepares the IDEA project when a semantic read
+The installed Kast MCP server prepares the IDEA project when a semantic read
 arrives. If IDEA rejects or stalls during Gradle import, the read returns a
-failure rather than an empty successful search. In the older app-server
-connection, an agent can request an explicit refresh through `workspace_lifecycle`.
+failure rather than an empty successful search. The App Server connection can request an explicit refresh through `workspace_lifecycle`.
 
 Older output without `recovery` provides no automated retry instruction.
 
@@ -88,7 +87,7 @@ Set `KAST_DEBUG=1` for bounded launch-stage output.
 
 ## Refresh an already linked workspace
 
-Use file refresh to make external file changes visible, or Gradle model reload after changing dependencies or modules. The project must already be open, trusted and linked at the selected root. Save your editor changes first; Kast does not save or discard them. In a connected agent session, call `workspace_lifecycle` with `inspect`, then `sync` using its exact project `target`, a new `requestId`, and `FILE_REFRESH` or `GRADLE_MODEL_RELOAD`. Poll a pending result with `status` and the same request ID. A deadline or failed import remains an explicit failure. Search again after refresh to acquire current references.
+Use file refresh to make external file changes visible, or Gradle model reload after changing dependencies or modules. The project must already be open, trusted and linked at the selected root. Save your editor changes first; Kast does not save or discard them. In direct MCP, call `refresh_workspace` with `{}`. If it returns `partial`, call it again in the same MCP session with the returned `requestId` until it completes; then search again to acquire current references. A request ID from another lifecycle operation is rejected. For the App Server connection, call `workspace_lifecycle` with `inspect`, then `sync` using its exact project `target`, a new `requestId`, and `FILE_REFRESH` or `GRADLE_MODEL_RELOAD`. Poll a pending result with `status` and the same request ID. A deadline or failed import remains an explicit failure.
 
 Automatic refresh is off for every new IDE host. To opt in for one exact Gradle task executed successfully by IDEA, call `workspace_lifecycle` with `configure_sync`, the exact project `target`, a new `requestId`, and a `task_success` rule. Use an `off` rule to disable it. The rule applies to that project and matches an invocation containing exactly the selected task. Terminal builds and Gradle imports do not trigger it. See [workspace lifecycle](/workspaces) for the input and result variants.
 
@@ -123,7 +122,7 @@ Automatic refresh is off for every new IDE host. To opt in for one exact Gradle 
   <Accordion title="The broker reports WORKSPACE_RECOVERY_REQUIRED">
     1. Retain the invocation journal, thread store, and IDE change records.
     2. Replace the broker.
-    3. Request fresh exact-plan recovery approval.
+    3. Preserve the plan identity and recovery evidence for manual repair.
 
     Broker replacement does not undo an effect or permit replay.
 

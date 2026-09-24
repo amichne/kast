@@ -1,7 +1,9 @@
 package io.github.amichne.kast.appserver.provider
 
+import io.github.amichne.kast.appserver.query.PublicSourceReadIntent
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.appserver.query.PublicToolInputFailure
+import io.github.amichne.kast.appserver.query.lower
 import io.github.amichne.kast.appserver.schema.ValidatedJsonValue
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.Validation
@@ -75,10 +77,23 @@ private val sourceRequestJson =
 private fun admitSourceInput(admitted: ValidatedJsonValue): Validation<KastInvocationInput, KastToolInputFailure> =
     when (
         val source =
-            io.github.amichne.kast.protocol.contract.SourceRequestIngress.decode(
-                admitted.element,
-                sourceRequestJson,
-            )
+            if (
+                (admitted.element as? JsonObject)?.get("anchor") is JsonObject &&
+                    "symbolRef" in (admitted.element["anchor"] as JsonObject)
+            ) {
+                val intent =
+                    try {
+                        sourceRequestJson.decodeFromJsonElement(PublicSourceReadIntent.serializer(), admitted.element)
+                    } catch (_: kotlinx.serialization.SerializationException) {
+                        return Validation.rejected(KastToolInputFailure.SchemaMismatch)
+                    }
+                intent.lower()
+            } else {
+                io.github.amichne.kast.protocol.contract.SourceRequestIngress.decodePublic(
+                    admitted.element,
+                    sourceRequestJson,
+                )
+            }
     ) {
         is Refinement.Refined -> Validation.validated(KastInvocationInput.Source(source.value, admitted.schemaDigest))
         is Refinement.Rejected -> Validation.rejected(KastToolInputFailure.Source(source.failure))

@@ -10,6 +10,7 @@ code_sources:
     symbols: [CanonicalOperation, CanonicalOperationResolution]
   - path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/OperationRegistry.kt
     symbols: [OperationRegistry, OperationRegistryFailure]
+  - path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/OperationDefinitionFactory.kt
   - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/OperationWireTable.kt
     symbols: [OperationWireTable, OperationWireTableFailure]
 ---

@@ -3,6 +3,7 @@ package io.github.amichne.kast.appserver.query
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.*
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
@@ -32,7 +33,11 @@ class PublicToolContractTest {
         val admitted =
             PublicToolContract.admit(
                 PublicToolIdentity.SEARCH_CLASSES,
-                Json.parseToJsonElement("""{"class_name":"OrderService","name_match":null,"scope":null}"""),
+                Json {
+                        encodeDefaults = true
+                        explicitNulls = true
+                    }
+                    .encodeToJsonElement(TestSearchClassInput.serializer(), TestSearchClassInput("OrderService")),
             )
         val request = ((admitted as Refinement.Refined).value.canonical as PublicToolCanonical.Query).request
         val source = request.from as QueryFromDocument.Symbols
@@ -50,6 +55,48 @@ class PublicToolContractTest {
         )
         assertTrue(request.steps.values.isEmpty())
     }
+
+    @Test
+    fun `ordinary search and diagnostics admit omitted defaults`() {
+        val search =
+            PublicToolContract.admit(
+                PublicToolIdentity.SEARCH_CLASSES,
+                Json.encodeToJsonElement(
+                    PublicToolSearchClasses.serializer(),
+                    PublicToolSearchClasses(text("OrderService"), null, null),
+                ),
+            ) as Refinement.Refined
+        val query = (search.value.canonical as PublicToolCanonical.Query).request
+        val source = query.from as QueryFromDocument.Symbols
+        assertEquals(SymbolDiscoveryMatchDocument.EXACT_NAME, (source.match as QueryMatchDocument.Name).matching)
+        assertEquals(listOf("main", "test"), source.scope.sourceSets.values.map { it.value })
+
+        val diagnostics =
+            PublicToolContract.admit(
+                PublicToolIdentity.CHECK_DIAGNOSTICS,
+                Json.encodeToJsonElement(
+                    PublicToolCheckDiagnostics.serializer(),
+                    PublicToolCheckDiagnostics(text("src/Main.kt"), null),
+                ),
+            ) as Refinement.Refined
+        assertEquals(100, (diagnostics.value.canonical as PublicToolCanonical.Diagnostics).request.limit.value)
+
+        val scoped =
+            PublicToolContract.admit(
+                PublicToolIdentity.SEARCH_CLASSES,
+                Json.encodeToJsonElement(
+                    PublicToolSearchClasses.serializer(),
+                    PublicToolSearchClasses(text("OrderService"), null, PublicToolDirectoryScope(text("services"))),
+                ),
+            ) as Refinement.Refined
+        val directory =
+            ((scoped.value.canonical as PublicToolCanonical.Query).request.from as QueryFromDocument.Symbols)
+                .scope
+                .directory!!
+        assertEquals(QueryContainmentDocument.DESCENDANTS, directory.containment)
+    }
+
+    private fun text(raw: String): ProtocolText = (ProtocolText.parse(raw) as Refinement.Refined).value
 }
 
 class PublicToolSchemaTest {
@@ -127,11 +174,9 @@ class PublicToolSchemaTest {
     fun `scope and name admission fail closed without normalization or widening`() {
         val directoryCases = listOf("/tmp", "../src", "a/../b", "a//b", "a/./b", "a/", "C:/src", "a\\\\b")
         directoryCases.forEach { path ->
-            val input =
-                """{"class_name":"Order","name_match":null,"scope":{"relative_directory_path":"$path","include_subdirectories":true,"source_set_names":null}}"""
+            val input = Json.encodeToJsonElement(TestSearchClassInput("Order", scope = TestSearchDirectoryScope(path)))
             assertTrue(
-                PublicToolContract.admit(PublicToolIdentity.SEARCH_CLASSES, Json.parseToJsonElement(input))
-                    is Refinement.Rejected,
+                PublicToolContract.admit(PublicToolIdentity.SEARCH_CLASSES, input) is Refinement.Rejected,
                 path,
             )
         }
@@ -139,7 +184,7 @@ class PublicToolSchemaTest {
             assertTrue(
                 PublicToolContract.admit(
                     PublicToolIdentity.SEARCH_CLASSES,
-                    Json.parseToJsonElement("""{"class_name":"$name","name_match":null,"scope":null}"""),
+                    Json.encodeToJsonElement(TestSearchClassInput(name)),
                 ) is Refinement.Rejected,
                 name,
             )
@@ -160,7 +205,12 @@ class PublicToolSchemaTest {
                 PublicToolIdentity.SEARCH_DECLARATIONS to
                     """{"declaration_name":"Order","name_match":null,"scope":null,"declaration_kinds":["class","class"]}""",
                 PublicToolIdentity.SEARCH_CLASSES to
-                    """{"class_name":"Order","name_match":null,"scope":{"relative_directory_path":".","include_subdirectories":true,"source_set_names":["main","main"]}}""",
+                    Json.encodeToString(
+                        TestSearchClassInput(
+                            "Order",
+                            scope = TestSearchDirectoryScope(".", sourceSetNames = listOf("main", "main")),
+                        )
+                    ),
                 PublicToolIdentity.QUERY_SYMBOLS to
                     """{"source":{"type":"all_declarations","declaration_kinds":null,"scope":null},"steps":[{"type":"filter_visibility","visibilities":["public","public"]}],"return_fields":null}""",
                 PublicToolIdentity.QUERY_SYMBOLS to
@@ -186,10 +236,10 @@ class PublicToolSchemaTest {
                     .jsonObject
             assertFalse("strict" in app)
             assertEquals(JsonPrimitive(true), response["strict"])
-            assertEquals(response["parameters"], app["inputSchema"])
+            assertEquals(PublicToolContract.parameters(identity), app["inputSchema"])
             assertEquals(identity.description, app.getValue("description").jsonPrimitive.content)
-            assertEquals(PublicToolContract.generationParameters(identity), app["inputSchema"])
-            visit(app.getValue("inputSchema").jsonObject) { node ->
+            assertEquals(PublicToolContract.generationParameters(identity), response["parameters"])
+            visit(response.getValue("parameters").jsonObject) { node ->
                 assertTrue(
                     node.keys.intersect(setOf("\$id", "\$schema", "default", "discriminator", "uniqueItems")).isEmpty()
                 )
@@ -228,8 +278,7 @@ class PublicToolSchemaTest {
 
     @Test
     fun `schema and tool identity are retained through encoding`() {
-        val admitted =
-            admit(PublicToolIdentity.SEARCH_CLASSES, """{"class_name":"Order","name_match":null,"scope":null}""")
+        val admitted = admit(PublicToolIdentity.SEARCH_CLASSES, Json.encodeToString(TestSearchClassInput("Order")))
         assertThrows(kotlinx.serialization.SerializationException::class.java) {
             Json.encodeToString(PublicToolRequestSerializer(PublicToolIdentity.SEARCH_FUNCTIONS), admitted)
         }
@@ -257,3 +306,17 @@ class PublicToolSchemaTest {
         node["items"]?.let { visit(it.jsonObject, check) }
     }
 }
+
+@Serializable
+private data class TestSearchClassInput(
+    val name: String,
+    @kotlinx.serialization.SerialName("name_match") val nameMatch: String? = null,
+    val scope: TestSearchDirectoryScope? = null,
+)
+
+@Serializable
+private data class TestSearchDirectoryScope(
+    @kotlinx.serialization.SerialName("relative_directory_path") val relativeDirectoryPath: String,
+    @kotlinx.serialization.SerialName("include_subdirectories") val includeSubdirectories: Boolean = true,
+    @kotlinx.serialization.SerialName("source_set_names") val sourceSetNames: List<String>? = null,
+)

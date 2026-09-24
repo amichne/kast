@@ -168,12 +168,19 @@ sealed interface RelationReadPositionDocument {
 data class RelationReadRequest(
     val exactSelector: ProtocolText,
     val relation: RelationKindDocument,
-    val limit: ProtocolCount,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val limit: ProtocolCount = defaultRelationLimit,
     val position: RelationReadPositionDocument = RelationReadPositionDocument.Start,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     @kotlinx.serialization.SerialName("execution_budget")
     val executionBudget: ExecutionBudgetDocument? = null,
 ) : OperationRequest
+
+private val defaultRelationLimit: ProtocolCount =
+    when (val parsed = ProtocolCount.parse(100)) {
+        is Refinement.Refined -> parsed.value
+        is Refinement.Rejected -> error("Invalid relation limit default")
+    }
 
 data class RelationReadResult(
     val relations: BoundedProtocolList<RelationFactDocument>,

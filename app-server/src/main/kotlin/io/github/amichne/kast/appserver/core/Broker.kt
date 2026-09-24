@@ -61,6 +61,14 @@ private constructor(
                 ObserverPresentation.None,
             )
 
+        /** A bounded human summary precedes the unchanged machine document. */
+        internal fun summary(text: String, document: JsonObject, success: Boolean): ToolPresentation =
+            ToolPresentation(
+                listOf(ToolContent(text), ToolContent(canonicalJson(document))),
+                success,
+                ObserverPresentation.None,
+            )
+
         internal fun text(
             text: String,
             success: Boolean,

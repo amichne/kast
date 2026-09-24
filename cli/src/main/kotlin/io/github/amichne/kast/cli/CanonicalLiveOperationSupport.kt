@@ -16,6 +16,7 @@ internal fun CanonicalOperation.supportsLiveEvidence(): Boolean =
         CanonicalOperation.CHANGE_APPLY,
         CanonicalOperation.CHANGE_RECOVER -> true
         CanonicalOperation.WORKSPACE_LIFECYCLE,
+        CanonicalOperation.CHANGE,
         CanonicalOperation.INDEX_SYNC,
         CanonicalOperation.TOPOLOGY_BUILD -> false
     }

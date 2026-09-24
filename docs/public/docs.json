@@ -96,9 +96,7 @@
           {
             "group": "Change source",
             "pages": [
-              "POST /callables/change_plan",
-              "POST /callables/change_apply",
-              "POST /callables/change_recover"
+              "POST /callables/change"
             ]
           },
           {

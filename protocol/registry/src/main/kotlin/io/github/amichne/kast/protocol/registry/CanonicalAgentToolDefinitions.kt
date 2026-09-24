@@ -135,14 +135,15 @@ object CanonicalAgentToolDefinitions {
             "source_read",
             "Read bounded source and structural context around a candidate, exact symbol, or source " +
                 "selector. Prefer this over unrestricted filesystem reads when the required Kotlin " +
-                "context is representable through Kast.",
+                "context is representable through Kast. Omit entityLimit for an entity-free read, " +
+                "and omit page and default budgets for the first read.",
         )
     val semanticQuery =
         tool(
             CanonicalOperationDefinitions.relationRead,
             "read_relations",
             "Read one bounded compiler-grounded semantic relation from an exact selector. Use " +
-                "a Kast search tool first when exact identity is not established.",
+                "a Kast search tool first when exact identity is not established. Omit limit for the bounded default.",
             inputAliases = setOf("semantic_query"),
         )
     val impactAnalyze =
@@ -155,6 +156,14 @@ object CanonicalAgentToolDefinitions {
             inputAliases = setOf("impact_analyze"),
         )
     val diagnosticCheck = facade(PublicToolIdentity.CHECK_DIAGNOSTICS)
+    val change =
+        tool(
+            CanonicalOperationDefinitions.change,
+            "change",
+            "Add one declaration to an existing Kotlin source file in one call. The exact search reference is " +
+                "passed unchanged. Kast plans, applies, verifies, and reports a verified receipt or a finite " +
+                "failure with recovery evidence. No separate approval request is issued.",
+        )
     val changePlan =
         tool(
             CanonicalOperationDefinitions.changePlan,
@@ -193,9 +202,7 @@ object CanonicalAgentToolDefinitions {
             semanticQuery,
             impactAnalyze,
             diagnosticCheck,
-            changePlan,
-            changeApply,
-            changeRecover,
+            change,
         )
 
     /** Legacy input names remain accepted throughout 0.40.x; removal is no earlier than 0.41.0. */
@@ -236,12 +243,10 @@ object CanonicalAgentToolDefinitions {
                 cache invalidation, forced index synchronization or restarting unrelated IDE sessions.
                 A missing semantic response does not authorize replaying a mutation.
 
-                Pass a returned exact reference unchanged to change_plan. Hosted changes support
-                AddDeclaration in one existing authored Kotlin file. Planning writes no source.
-                Review the stored preview; change_apply and change_recover each require separate
-                explicit approval of the exact plan. Apply includes semantic verification.
-                Preserve qualified unverified and recovery-required outcomes. A missing response
-                does not prove no write occurred; use durable recovery without replaying a plan.
+                Pass a returned exact reference unchanged to change. Hosted changes support
+                AddDeclaration in one existing authored Kotlin file. The single call plans, applies
+                and verifies the change. Keep the returned receipt or finite failure and recovery
+                evidence. A missing response does not prove no write occurred; never replay a plan.
                 """
                     .trimIndent()
             )

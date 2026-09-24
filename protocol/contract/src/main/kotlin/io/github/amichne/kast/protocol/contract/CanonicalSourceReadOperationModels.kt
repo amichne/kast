@@ -229,15 +229,26 @@ data class SourceReadRequest(
     val region: SourceRegionSelectionDocument,
     val entities: SourceEntitySelectionDocument,
     val text: SourceTextRequestDocument,
-    val entityLimit: SourceEntityLimitDocument,
-    val textByteLimit: SourceTextByteLimitDocument,
-    val page: SourceReadPageDocument,
+    val entityLimit: SourceEntityLimitDocument =
+        sourceReadDefault(SourceEntityLimitDocument.parse(DEFAULT_SOURCE_ENTITY_LIMIT)),
+    val textByteLimit: SourceTextByteLimitDocument =
+        sourceReadDefault(SourceTextByteLimitDocument.parse(DEFAULT_SOURCE_TEXT_BYTE_LIMIT)),
+    val page: SourceReadPageDocument = SourceReadPageDocument.First,
     @SerialName("execution_budget")
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val executionBudget: ExecutionBudgetDocument? = null,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val format: SourceReadFormatDocument = SourceReadFormatDocument.EXPANDED,
 ) : OperationRequest
+
+private const val DEFAULT_SOURCE_ENTITY_LIMIT = 250
+private const val DEFAULT_SOURCE_TEXT_BYTE_LIMIT = 65_536L
+
+private fun <T, F> sourceReadDefault(value: Refinement<T, F>): T =
+    when (value) {
+        is Refinement.Refined -> value.value
+        is Refinement.Rejected -> error("Invalid source read default")
+    }
 
 internal object SourceReadRequestSerializer : KSerializer<SourceReadRequest> {
     private val delegate = SourceReadRequest.generatedSerializer()

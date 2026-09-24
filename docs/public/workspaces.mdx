@@ -7,6 +7,14 @@ description: "Prepare and manage a workspace through the agent tool contract."
 repository or worktree for compiler-backed queries; do not ask the user to run
 workspace commands or manage lifecycle identifiers.
 
+The direct Kast MCP connection starts preparing its bound Gradle root during
+initialization. It exposes `refresh_workspace` for explicit file refresh of its
+exact open project. Call it with `{}` and, if the result is `partial`, poll with
+the returned `requestId`. A complete result means IntelliJ admitted the refresh
+and indexing; new semantic reads then acquire fresh references. It does not save
+editor buffers or reload the Gradle model. The sequence below applies to agent
+hosts that expose the separate `workspace_lifecycle` tool.
+
 ## Setup sequence
 
 1. Inspect the selected host and existing projects.
@@ -20,8 +28,9 @@ workspace commands or manage lifecycle identifiers.
 Opening reuses the installer-selected IDEA or launches it when absent. It imports
 and waits for semantic admission without deliberately activating the window.
 Background behavior is best effort. A running IDEA with an unavailable plugin,
-project trust, and unsaved documents can require user intervention. Semantic reads
-do not open projects implicitly.
+project trust, and unsaved documents can require user intervention. Hosted
+semantic reads use the workspace prepared through this lifecycle tool; direct MCP
+semantic calls join the preparation started at connection.
 
 ## Requests and identities
 

@@ -24,7 +24,6 @@ object NativeBrokerRestartMain {
         val session =
             NativeChangeSession.open(
                 inputs = inputs,
-                home = Path.of(System.getProperty("user.home")).toRealPath(),
                 stageObserver = { System.err.println(it.encode()) },
             )
         try {

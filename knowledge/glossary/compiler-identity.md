@@ -31,5 +31,5 @@ through its separate compiler-evidence issuance path.
 
 Compiler identity alone does not authorize a write. The published path requires
 a published lease. Hosted `AddDeclaration` retains its live planning basis and
-requires exact-plan approval plus a fresh matching live preimage before
+requires an internally signed exact-plan challenge plus a fresh matching live preimage before
 `LiveMutationAuthority` admits the write. An epoch alone supplies neither proof.

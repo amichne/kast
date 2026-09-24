@@ -368,7 +368,12 @@ private fun canonicalGraph(
 
 /** Hosted-only lifecycle and canonical requests superseded by schema-bound intent tool CLI routes. */
 private val retiredCliOperations =
-    setOf(CanonicalOperation.WORKSPACE_LIFECYCLE, CanonicalOperation.QUERY_RUN, CanonicalOperation.DIAGNOSTIC_CHECK)
+    setOf(
+        CanonicalOperation.WORKSPACE_LIFECYCLE,
+        CanonicalOperation.QUERY_RUN,
+        CanonicalOperation.DIAGNOSTIC_CHECK,
+        CanonicalOperation.CHANGE,
+    )
 
 internal class CommandFamily(
     val root: KastCommandGroup,

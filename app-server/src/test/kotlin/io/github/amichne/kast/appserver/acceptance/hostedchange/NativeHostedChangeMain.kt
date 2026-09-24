@@ -78,7 +78,6 @@ private class NativeHostedChangeRun(
             session =
                 NativeChangeSession.open(
                     inputs = inputs,
-                    home = Path.of(System.getProperty("user.home")).toRealPath(),
                     observeQualification = evidence::providerQualification,
                 )
             withTimeout(900_000) {

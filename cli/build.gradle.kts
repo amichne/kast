@@ -16,6 +16,7 @@ dependencies {
     testImplementation(project(":query:protocol"))
     testImplementation(testFixtures(project(":query:protocol")))
     implementation(libs.json.schema.validator)
+    implementation(libs.mcp.kotlin.core)
     // Preserve the version previously selected by the broker's direct Ktor dependency.
     constraints {
         implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")

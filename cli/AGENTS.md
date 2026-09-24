@@ -12,8 +12,12 @@ legacy command graph retained for migration, and hosted output projections.
 
 - [KastDaemonMain.kt](src/main/kotlin/io/github/amichne/kast/cli/KastDaemonMain.kt) - private managed daemon entry point with exact login admission outside the public command graph.
 - [KastServiceMain.kt](src/main/kotlin/io/github/amichne/kast/cli/KastServiceMain.kt) - private installation service control with typed rejection output.
-- [KastMcpMain.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt) - installed Codex stdio MCP transport and session tool dispatch.
-- [McpApproval.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/McpApproval.kt) - terminal-held preview approval and one-use mutation grant.
+- [KastMcpMain.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt) - installed Kast stdio MCP transport and session tool dispatch.
+- [McpWire.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/McpWire.kt) - typed MCP discovery, request, and result envelopes.
+- [McpStructuredResults.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/McpStructuredResults.kt) - schema-validated MCP result envelopes and concise health and validation summaries.
+- [McpApproval.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/McpApproval.kt) - enrolled key signing for an exact native mutation challenge.
+- [McpSingleChangeTool.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/McpSingleChangeTool.kt) - one-call direct MCP planning, application, and attempted recovery.
+- [McpWorkspaceRefreshTool.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/McpWorkspaceRefreshTool.kt) - exact open-project file refresh.
 
 - [PackagedProviderCatalog.kt](src/main/kotlin/io/github/amichne/kast/cli/PackagedProviderCatalog.kt) - build-time hosted schema projection for App Server qualification.
 
@@ -43,7 +47,8 @@ legacy command graph retained for migration, and hosted output projections.
 - `src/main/kotlin/io/github/amichne/kast/cli/command` - command groups and command model.
 - `src/main/kotlin/io/github/amichne/kast/cli/configuration` - typed configuration inspection and ingress.
 - `src/main/kotlin/io/github/amichne/kast/cli/installation` - installation requests and workflow.
-- `src/main/kotlin/io/github/amichne/kast/cli/mcp` - on-demand Codex MCP process.
+- `src/main/kotlin/io/github/amichne/kast/cli/mcp` - on-demand Kast MCP process.
+- `src/main/resources/mcp` - self-contained MCP Apps validation view.
 - `src/main/kotlin/io/github/amichne/kast/cli/projection` - canonical JSON/text documents.
 - `src/test` - command, projection, and workflow evidence.
 
@@ -60,6 +65,8 @@ legacy command graph retained for migration, and hosted output projections.
 - For parsing or command ownership, start with `CliCommandGraph` and the owning command package.
 - For output compatibility, start in `projection` and follow to `protocol/wire`.
 
-- Semantic operations use the hosted provider and require an existing IDE
-  endpoint. The private installed control owns registration, lifecycle actions,
-  and trust enrollment. Former public semantic commands reject at process ingress.
+- Semantic operations use the hosted provider. The installed MCP starts
+  preparation for the discovered Gradle root on its first valid request, launching the
+  selected IDE when needed; reads wait for its endpoint. The private installed
+  control owns registration, lifecycle actions, and trust enrollment. Former
+  public semantic commands reject at process ingress.

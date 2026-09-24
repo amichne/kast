@@ -87,6 +87,8 @@ internal fun KaSymbol.compilerProjection(): IntellijCompilerProjectionResult =
             )
         }
         is KaClassLikeSymbol -> {
+            // Anonymous object literals have no stable classId. A source range alone cannot be reused as an exact
+            // relation endpoint, so the provider must report incomplete coverage for these candidates.
             val className = classId?.asSingleFqName()?.asString() ?: return IntellijCompilerProjectionResult.Unsupported
             projected(
                 CompilerSymbolKind.CLASSLIKE,

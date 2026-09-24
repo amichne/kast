@@ -48,7 +48,7 @@ class BudgetQuery:
 @dataclass(frozen=True)
 class BudgetClassSearch:
     execution_budget: Budget
-    class_name: str = 'ReadPageBudget'
+    name: str = 'ReadPageBudget'
     name_match: str = 'exact'
     scope: None = None
 
@@ -82,7 +82,6 @@ class BudgetSource:
     region: FileRegion = field(default_factory=FileRegion)
     entities: NoEntities = field(default_factory=NoEntities)
     text: NoText = field(default_factory=NoText)
-    entityLimit: int = 100
     textByteLimit: int = 65536
     page: FirstPage = field(default_factory=FirstPage)
 

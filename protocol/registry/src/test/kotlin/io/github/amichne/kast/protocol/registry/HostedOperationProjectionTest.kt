@@ -18,6 +18,7 @@ class HostedOperationProjectionTest {
                 CanonicalOperation.RELATION_READ,
                 CanonicalOperation.TRAVERSAL_RUN,
                 CanonicalOperation.DIAGNOSTIC_CHECK,
+                CanonicalOperation.CHANGE,
                 CanonicalOperation.CHANGE_PLAN,
                 CanonicalOperation.CHANGE_APPLY,
                 CanonicalOperation.CHANGE_RECOVER,
@@ -32,17 +33,17 @@ class HostedOperationProjectionTest {
     }
 
     @Test
-    fun `only add declaration is advertised for hosted change planning`() {
+    fun `only add declaration is advertised for hosted change`() {
         assertEquals(
             HostedVariants.Intents(setOf(HostedChangeIntent.ADD_DECLARATION)),
-            CanonicalOperationDefinitions.changePlan.hostedVariants,
+            CanonicalOperationDefinitions.change.hostedVariants,
         )
         assertEquals(
             CanonicalOperationDefinitions.all
-                .filterNot { it.operation == CanonicalOperation.CHANGE_PLAN }
+                .filterNot { it.operation in setOf(CanonicalOperation.CHANGE, CanonicalOperation.CHANGE_PLAN) }
                 .associate { it.operation to HostedVariants.None },
             CanonicalOperationDefinitions.all
-                .filterNot { it.operation == CanonicalOperation.CHANGE_PLAN }
+                .filterNot { it.operation in setOf(CanonicalOperation.CHANGE, CanonicalOperation.CHANGE_PLAN) }
                 .associate { it.operation to it.hostedVariants },
         )
     }
@@ -55,10 +56,12 @@ class HostedOperationProjectionTest {
         )
         assertEquals(
             HostedBindingCompleteness.Rejected(
-                setOf(HostedBindingCompletenessFailure.MissingPublicBinding(CanonicalOperation.CHANGE_RECOVER))
+                setOf(HostedBindingCompletenessFailure.MissingPublicBinding(CanonicalOperation.CHANGE))
             ),
             HostedOperationProjection.verifyBindings(
-                HostedOperationProjection.publicDefinitions.map { it.operation }.dropLast(1)
+                HostedOperationProjection.publicDefinitions
+                    .map { it.operation }
+                    .filterNot { it == CanonicalOperation.CHANGE }
             ),
         )
     }

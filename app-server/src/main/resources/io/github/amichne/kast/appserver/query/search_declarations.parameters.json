@@ -17,7 +17,7 @@
         "fuzzy",
         null
       ],
-      "description": "null means exact, case-sensitive declaration-name matching. Exact matching returns every matching overload; it does not select one overload. Fuzzy matching requires explicit opt-in."
+      "description": "Omission or null means exact, case-sensitive declaration-name matching. Exact matching returns every matching overload; it does not select one overload. Fuzzy matching requires explicit opt-in."
     },
     "scope": {
       "anyOf": [
@@ -31,7 +31,7 @@
           "type": "null"
         }
       ],
-      "description": "null searches the session workspace recursively in source sets main and test. Otherwise choose one directory scope or one package scope. Source-set restrictions intersect with the chosen scope."
+      "description": "Omission or null searches the session workspace recursively in source sets main and test. Otherwise choose one directory scope or one package scope. Source-set restrictions intersect with the chosen scope."
     },
     "declaration_kinds": {
       "type": [
@@ -57,10 +57,7 @@
     }
   },
   "required": [
-    "declaration_name",
-    "name_match",
-    "scope",
-    "declaration_kinds"
+    "declaration_name"
   ],
   "additionalProperties": false,
   "$defs": {
@@ -90,14 +87,12 @@
           },
           "minItems": 1,
           "maxItems": 1000,
-          "description": "null selects the names main and test. Otherwise use exact imported Gradle source-set names, not paths, globs, or production/test categories. Empty and duplicate lists are rejected by server admission.",
+          "description": "Omission or null selects the names main and test. Otherwise use exact imported Gradle source-set names, not paths, globs, or production/test categories. Empty and duplicate lists are rejected by server admission.",
           "uniqueItems": true
         }
       },
       "required": [
-        "relative_directory_path",
-        "include_subdirectories",
-        "source_set_names"
+        "relative_directory_path"
       ],
       "additionalProperties": false
     },
@@ -127,14 +122,12 @@
           },
           "minItems": 1,
           "maxItems": 1000,
-          "description": "null selects the names main and test. Otherwise use exact imported Gradle source-set names, not paths, globs, or production/test categories. Empty and duplicate lists are rejected by server admission.",
+          "description": "Omission or null selects the names main and test. Otherwise use exact imported Gradle source-set names, not paths, globs, or production/test categories. Empty and duplicate lists are rejected by server admission.",
           "uniqueItems": true
         }
       },
       "required": [
-        "package_name",
-        "include_subpackages",
-        "source_set_names"
+        "package_name"
       ],
       "additionalProperties": false
     },

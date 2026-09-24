@@ -26,6 +26,7 @@ internal enum class WorkspaceExecutionFailure(val certainty: InvocationCertainty
     WORKSPACE_QUEUE_CAPACITY_EXCEEDED(InvocationCertainty.KNOWN),
     WORKSPACE_QUEUE_TIMED_OUT(InvocationCertainty.KNOWN),
     CANCELLED_BEFORE_EXECUTION(InvocationCertainty.KNOWN),
+    CANCELLED_AFTER_RECOVERY(InvocationCertainty.KNOWN),
     WORKSPACE_RECOVERY_REQUIRED(InvocationCertainty.KNOWN),
     WORKSPACE_INTERACTION_TIMED_OUT(InvocationCertainty.UNCERTAIN),
     WORKSPACE_OUTCOME_UNCERTAIN(InvocationCertainty.UNCERTAIN),
@@ -165,6 +166,7 @@ internal class WorkspaceExecution(
     }
 
     private suspend fun perform(request: Request, operation: suspend () -> ProtocolRouting) {
+        val recovery = WorkspaceRecoverySettlement()
         try {
             val queueRemaining =
                 minOf(remaining(request, policy.queueWait), remaining(request, request.interactionLimit))
@@ -187,19 +189,26 @@ internal class WorkspaceExecution(
             if (!begin(request)) return
             val routing =
                 try {
-                    withTimeout(allowance) {
-                        operation().also { currentCoroutineContext().ensureActive() }
+                    withContext(recovery) {
+                        withTimeout(allowance) {
+                            operation().also { currentCoroutineContext().ensureActive() }
+                        }
                     }
                 } catch (_: TimeoutCancellationException) {
                     finish(
                         request,
-                        WorkspaceExecutionResult.Rejected(WorkspaceExecutionFailure.WORKSPACE_INTERACTION_TIMED_OUT),
+                        recoveredOr(
+                            recovery,
+                            WorkspaceExecutionResult.Rejected(
+                                WorkspaceExecutionFailure.WORKSPACE_INTERACTION_TIMED_OUT
+                            ),
+                        ),
                     )
                     return
                 }
             finish(request, WorkspaceExecutionResult.Completed(routing))
         } catch (_: CancellationException) {
-            finish(request, interrupted(request))
+            finish(request, recoveredOr(recovery, interrupted(request)))
         } catch (_: Exception) {
             finish(request, interrupted(request))
         }
@@ -220,6 +229,14 @@ internal class WorkspaceExecution(
             if (request.phase == RequestPhase.EXECUTING) WorkspaceExecutionFailure.WORKSPACE_OUTCOME_UNCERTAIN
             else WorkspaceExecutionFailure.CANCELLED_BEFORE_EXECUTION
         )
+
+    private fun recoveredOr(
+        recovery: WorkspaceRecoverySettlement,
+        fallback: WorkspaceExecutionResult.Rejected,
+    ): WorkspaceExecutionResult.Rejected =
+        if (recovery.evidence is WorkspaceRecoveryEvidence.Proven)
+            WorkspaceExecutionResult.Rejected(WorkspaceExecutionFailure.CANCELLED_AFTER_RECOVERY)
+        else fallback
 
     @Synchronized
     private fun finish(request: Request, result: WorkspaceExecutionResult) {
