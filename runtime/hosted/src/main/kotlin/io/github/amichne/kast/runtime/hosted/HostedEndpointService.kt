@@ -281,16 +281,21 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
     ): HostedResponse =
         when (
             val result =
-                query.read(
-                    query.endpoint,
-                    request.root,
-                    outcome = { it.outcome },
-                    executionBudget = request.executionBudget(),
-                    publication = hostedReadPublicationAdmission,
-                    completion = request.completionPolicy(),
-                ) { context ->
-                    evaluateHostedCanonicalQuery(project, context, request, continuations)
-                }
+                retryPresemanticIndexing(
+                    read = {
+                        query.read(
+                            query.endpoint,
+                            request.root,
+                            outcome = { it.outcome },
+                            executionBudget = request.executionBudget(),
+                            publication = hostedReadPublicationAdmission,
+                            completion = request.completionPolicy(),
+                        ) { context ->
+                            evaluateHostedCanonicalQuery(project, context, request, continuations)
+                        }
+                    },
+                    wait = { awaitHostedSmartMode(project) },
+                )
         ) {
             is HostedSemanticReadResult.Completed -> result.value
             is HostedSemanticReadResult.Rejected ->

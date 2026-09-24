@@ -7,6 +7,7 @@ tags: [kotlin, workspace, lifecycle, intellij]
 timestamp: 2026-09-16T00:00:00Z
 code_sources:
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleNative.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleReadiness.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshService.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/IntellijWorkspaceRefreshPort.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshTaskTrigger.kt
@@ -46,6 +47,6 @@ The separate hosted workspace lifecycle boundary accepts explicit file refresh a
 
 A per-host opt-in rule maps one exact IDE-observed successful single-task Gradle invocation to the same lifecycle service. New hosts default off; imports, unsuccessful tasks, other roots and other projects cannot trigger it. Gradle callbacks schedule the request without waiting for readiness. Existing epoch listeners remain the only semantic freshness authority.
 
-Explicit application lifecycle opening uses ordinary new-frame project opening for one canonical root. Reuse neither activates nor reimports. New managed projects use the existing refresh/readiness owner: first linking and subsequent reloads share background import-data application with tool-window activation and error navigation disabled. A project-scoped initial-import operation suppresses native automatic imports during this sequence and restores its prior state afterward. Trust and global unsaved-document checks remain blockers. Background presentation is best effort.
+Explicit application lifecycle opening uses ordinary new-frame project opening for one canonical root. Reuse does not activate the window. It observes admission, waits for a native import already in progress, and requests one linked Gradle model reload if the cached model is still missing or incomplete. New managed projects use the existing refresh/readiness owner: first linking and subsequent reloads share background import-data application with tool-window activation and error navigation disabled. A project-scoped initial-import operation suppresses native automatic imports during this sequence and restores its prior state afterward. Trust and global unsaved-document checks remain blockers. Background presentation is best effort.
 
 Project use is recorded by coordinator thread identity. Presentation protects a managed project before activating its frame. Release only removes the caller's interest. Close fences new Kast work, rejects other users and in-flight native work, rechecks all unsaved documents on the EDT, and invokes normal veto-respecting close/dispose. A veto restores admission. Success requires project disposal and retirement of that project's endpoint; its result survives at application scope. Borrowed/presented closure additionally requires a verified exact-target controller assertion. Reopening the root creates a distinct project incarnation.

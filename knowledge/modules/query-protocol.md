@@ -113,6 +113,10 @@ resumable output schema. Structural schema admission does not authenticate a
 continuation. Decoding checks the authority-specific version and revision, while
 owner admission retains subject, relation and scope checks. Terminal-incomplete upstream relation work has no upstream continuation; retained
 output may still need draining while preserving that terminal coverage.
+The public one-hop relation protocol retains the exact subject reference while
+searching workspace destinations across files and packages. Its continuation
+binds that expansion boundary, subject, and relation; a retained-subject cursor
+cannot resume the expanded read.
 
 Test-only fixtures in `workspace:contract` and `query:protocol` admit a fixed live
 authority through its original owner and provide four ordered relation facts.

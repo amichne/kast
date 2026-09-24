@@ -79,6 +79,12 @@ class KastMcpServerTest {
                 .map { Json.parseToJsonElement(it).jsonObject }
                 .toList()
         assertEquals(listOf("1", "2", "3"), replies.map { it.getValue("id").jsonPrimitive.content })
+        val instructions = replies[0].getValue("result").jsonObject.getValue("instructions").jsonPrimitive.content
+        assertTrue(instructions.contains("IDE preparation"))
+        assertTrue(instructions.contains("read_relations"))
+        assertTrue(instructions.contains("continuation"))
+        assertTrue(instructions.contains("UNSUPPORTED_ITEM"))
+        assertTrue(instructions.contains("MODEL_CAPTURE_REJECTED"))
         assertEquals(
             "search_classes",
             replies[1]

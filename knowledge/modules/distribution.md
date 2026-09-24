@@ -133,7 +133,11 @@ configuration. It checks for a foreign `kast` entry before replacing the selecte
 installation and removes only its own entry on uninstall. Terminal Codex then
 discovers the exact Gradle root for each session. The MCP adapter uses the
 selected IDEA lifecycle and native workspace preparation on semantic demand;
-apply and recovery consume a separate one-use exact-plan approval grant.
+its initialize response describes that synchronous wait and automatic linked-model
+reload, exact-reference reuse,
+relation coverage, continuations, and stage-specific recovery. The terminal MCP
+catalog does not expose `workspace_lifecycle`. Apply and recovery consume a
+separate one-use exact-plan approval grant.
 The app-server suite is always installed. Activation may still be pending with
 a finite reason when the host cannot start the service.
 

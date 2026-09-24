@@ -58,6 +58,13 @@ internal class PreparedWorkspaceDemand(
     private val invoke: suspend (PreparedWorkspace, ExistingIdeOperation) -> ExistingIdeExchange,
 ) : WorkspaceDemand {
     override suspend fun query(root: CanonicalRoot, operation: ExistingIdeOperation): WorkspaceDemandResult {
+        val first = queryOnce(root, operation)
+        val failure = (first as? WorkspaceDemandResult.Rejected)?.failure as? WorkspaceDemandFailure.Operation
+        // No semantic operation was sent when identity inspection detected a changed host.
+        return if (failure?.cause == WorkspaceDemandCause.HostChanged) queryOnce(root, operation) else first
+    }
+
+    private suspend fun queryOnce(root: CanonicalRoot, operation: ExistingIdeOperation): WorkspaceDemandResult {
         val entry =
             when (val admitted = preparations.prepare(root)) {
                 is Refinement.Refined -> admitted.value

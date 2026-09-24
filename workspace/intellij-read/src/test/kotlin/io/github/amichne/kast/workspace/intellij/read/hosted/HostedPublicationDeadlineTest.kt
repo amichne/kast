@@ -22,7 +22,16 @@ class HostedPublicationDeadlineTest {
 
     private fun assertCeilingPlateau(ceiling: Long) {
         val limits =
-            ReadLimits.resolve(environment = mapOf("KAST_READ_EXECUTION_MAX_MILLIS" to ceiling.toString())).proven()
+            ReadLimits.resolve(
+                    environment =
+                        mapOf(
+                            "KAST_READ_EXECUTION_MAX_MILLIS" to ceiling.toString(),
+                            "KAST_READ_HOST_QUERY_MILLIS" to "4000",
+                            "KAST_READ_HOST_CONNECTION_MILLIS" to "5000",
+                            "KAST_READ_CLIENT_EXCHANGE_MILLIS" to "6000",
+                        )
+                )
+                .proven()
         var now = 0L
         val checkedSizes = mutableListOf<Int>()
         fun bytes(report: ExecutionBudgetReport) =
@@ -128,6 +137,7 @@ class HostedPublicationDeadlineTest {
         val result =
             executor.execute(
                 executor.endpoint,
+                shortHostLimits(),
                 publication =
                     HostedReadPublicationAdmission { report, limits ->
                         now += 4_000_000_000L
@@ -151,6 +161,7 @@ class HostedPublicationDeadlineTest {
         val result =
             executor.execute(
                 executor.endpoint,
+                shortHostLimits(),
                 publication =
                     HostedReadPublicationAdmission { report, limits ->
                         now += 100_000_000L

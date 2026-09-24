@@ -3,25 +3,29 @@ title: "Agent workspace setup"
 description: "Prepare and manage a workspace through the agent tool contract."
 ---
 
-`workspace_lifecycle` is an agent setup capability. Use it to prepare the requested
-repository or worktree for compiler-backed queries; do not ask the user to run
-workspace commands or manage lifecycle identifiers.
+Ordinary semantic calls prepare the selected repository automatically. Kast opens
+or attaches to the exact IDEA project, waits for indexing, and requests one
+linked Gradle model reload when the cached model is unavailable. The agent does
+not need to invoke `workspace_lifecycle` before a read.
 
-## Setup sequence
+`workspace_lifecycle` remains an explicit control capability for inspecting,
+presenting, syncing, releasing, or closing a selected project when requested.
+
+## Explicit control sequence
 
 1. Inspect the selected host and existing projects.
 2. Open the requested absolute repository root if it is not already available.
 3. Poll a pending operation with `status`, preserving its host and request ID.
-4. Wait for an opened result before requesting semantic evidence. Handle any
-   reported blocker according to its finite reason.
+4. Wait for an opened result before performing the requested control action.
+   Handle any reported blocker according to its finite reason.
 5. Release the caller's interest when the workspace is no longer needed. Release
    does not close a project; close only eligible agent-managed projects.
 
 Opening reuses the installer-selected IDEA or launches it when absent. It imports
 and waits for semantic admission without deliberately activating the window.
 Background behavior is best effort. A running IDEA with an unavailable plugin,
-project trust, and unsaved documents can require user intervention. Semantic reads
-do not open projects implicitly.
+project trust, and unsaved documents can require user intervention. Semantic
+readiness is still checked by the native host for each read.
 
 ## Requests and identities
 
@@ -43,7 +47,7 @@ same operation; different input with that ID rejects.
 | Action | Required input and behavior |
 | --- | --- |
 | `inspect` | No additional fields. Passive host, capabilities, projects and ownership. |
-| `open` | `root`, `requestId`. Reuses without activation or reimport; otherwise links, imports and waits for semantic admission. |
+| `open` | `root`, `requestId`. Reuses without activation and reloads a missing cached model once after any active import; otherwise links, imports and waits for semantic admission. |
 | `present` | `target`, `requestId`. Reveals the existing window and protects it from cleanup. |
 | `sync` | `target`, `requestId`, `effect`: `FILE_REFRESH` or `GRADLE_MODEL_RELOAD`. Uses the existing refresh owner. |
 | `configure_sync` | `target`, `requestId`, `rule`: `off` or an exact `task_success` task and effect. Configures that project's existing refresh owner; a `configured` result returns the admitted rule. |

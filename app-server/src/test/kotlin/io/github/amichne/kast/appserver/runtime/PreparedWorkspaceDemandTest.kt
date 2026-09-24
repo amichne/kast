@@ -122,7 +122,7 @@ class PreparedWorkspaceDemandTest {
     }
 
     @Test
-    fun `changed host rejects current demand and retains history while next demand prepares anew`() = runTest {
+    fun `changed host prepares a fresh incarnation before sending the semantic operation`() = runTest {
         val changed =
             target.copy(host = "00000000-0000-0000-0000-000000000003", project = "00000000-0000-0000-0000-000000000004")
         var opens = 0
@@ -146,18 +146,11 @@ class PreparedWorkspaceDemandTest {
                     ExistingIdeExchange.Rejected(ExistingIdeFailure.TRANSPORT_REJECTED)
                 },
             )
-        val first = async { demand.query(root, ExistingIdeOperation.Status) }
-        runCurrent()
-        val failure = (first.await() as WorkspaceDemandResult.Rejected).failure as WorkspaceDemandFailure.Operation
-        assertEquals(WorkspaceDemandCause.HostChanged, failure.cause)
-        assertEquals(0, queries)
-        val history = (preparations.observe(failure.id) as Refinement.Refined).value
-        assertEquals(target, (history.state.value as WorkspacePreparationOutcome.Complete).workspace.target)
-        val second = async { demand.query(root, ExistingIdeOperation.Status) }
+        val result = async { demand.query(root, ExistingIdeOperation.Status) }
         runCurrent()
         assertEquals(
             WorkspaceDemandResult.Native(ExistingIdeExchange.Rejected(ExistingIdeFailure.TRANSPORT_REJECTED)),
-            second.await(),
+            result.await(),
         )
         assertEquals(2, opens)
         assertEquals(1, queries)

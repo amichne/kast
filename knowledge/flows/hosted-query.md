@@ -140,6 +140,7 @@ code_sources:
   - path: protocol/contract/src/main/resources/ide-hosted/hosted-query.schema.json
   - path: protocol/contract/src/main/resources/ide-hosted/hosted-endpoint.schema.json
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/IndexingWait.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnection.kt
   - path: experiments/host-observation/kast_ide.py
   - path: experiments/host-observation/qualify_hosted_index.py
@@ -393,7 +394,7 @@ The new `tool` CLI family lowers the five [public intent tools](../contracts/pub
 
 The plugin-only runtime retirement removes isolated composition/import from the active build and topology publication from the shipped runtime graph. Topology modules remain buildable for upcoming graph work. Earlier acceptance records above remain historical. The shared `HostedSemanticServices` factory now supplies canonical reads, planning and verification inside each admitted read context. Diagnostic schema 4 distinguishes transaction evaluation from complete, qualified and rejected semantic results, retaining bounded stage and termination evidence.
 
-The host defaults to 4,000 ms and derives positive semantic and diagnostic-scope
+The host defaults to 30,000 ms and derives positive semantic and diagnostic-scope
 allowances from the time remaining after admission and model capture. A bounded
 completion reserve precedes the hard deadline. Exhaustion rejects before semantic
 evaluation, while a cooperative time-limited query can publish qualified results
@@ -403,6 +404,8 @@ Configuration also requires client exchange time to strictly exceed host connect
 time, and both provider invocation deadlines to strictly exceed client exchange
 time. These outer boundaries retain positive IPC slack even when operators lower
 their settings; semantic/host configuration equality still uses the completion reserve.
+An indexing transition rejected before semantic evaluation may wait for smart mode
+and retry once at hosted dispatch. Rejections after semantic evaluation are not replayed.
 
 Typed request decoding rejects a supplied returned-byte allowance below the wire
 owner's serialized schema/operation identity size before semantic dispatch. This is
@@ -648,4 +651,4 @@ index, compiler and contract causes. Hosted time exhaustion and cancellation
 produce separate recovery guidance; neither turns an unvalidated accumulator
 into successful evidence.
 
-Application-requested project closure fences the existing project endpoint before native disposal. Already admitted dispatch prevents closure until it leaves; a failed/vetoed close restores admission. Native semantic read admission does not invoke application lifecycle operations. The installed coordinator prepares the workspace before dispatch, and its socket client binds the request to the readiness-qualified project descriptor. Project endpoint retirement is observed on that exact service, so a successor project at the same root cannot be mistaken for the retired owner.
+Application-requested project closure fences the existing project endpoint before native disposal. Already admitted dispatch prevents closure until it leaves; a failed/vetoed close restores admission. Native semantic read admission does not invoke application lifecycle operations. The installed coordinator prepares the workspace before dispatch. For an existing project with a proven missing cached Gradle model, application opening waits for any active import and requests one linked model reload before publishing readiness. Its socket client binds the request to the readiness-qualified project descriptor. Project endpoint retirement is observed on that exact service, so a successor project at the same root cannot be mistaken for the retired owner.

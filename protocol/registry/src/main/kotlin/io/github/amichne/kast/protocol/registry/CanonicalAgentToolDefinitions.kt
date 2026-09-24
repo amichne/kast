@@ -98,9 +98,10 @@ object CanonicalAgentToolDefinitions {
         tool(
             CanonicalOperationDefinitions.workspaceLifecycle,
             "workspace_lifecycle",
-            "Prepare a workspace for Kast compiler evidence. Inspect the selected IDEA host, open the requested " +
-                "repository when needed, and poll pending work with status before semantic queries. Manage setup " +
-                "through this tool without asking the user to run workspace commands. You can also present, sync, " +
+            "Inspect or explicitly control one selected IDEA workspace. Ordinary semantic calls prepare the exact " +
+                "project and wait for native readiness automatically; " +
+                "do not use this tool as a routine read preflight. " +
+                "For a requested control operation, open, present, sync, " +
                 "configure an exact task-success refresh rule, " +
                 "release or close an exact project. Opening is background best effort. Preserve returned host and " +
                 "project identities and reuse request IDs only for the same operation. Pending work requires " +
@@ -142,7 +143,8 @@ object CanonicalAgentToolDefinitions {
             CanonicalOperationDefinitions.relationRead,
             "read_relations",
             "Read one bounded compiler-grounded semantic relation from an exact selector. Use " +
-                "a Kast search tool first when exact identity is not established.",
+                "a Kast search tool first when exact identity is not established. Related declarations " +
+                "may be in other files or packages; inspect qualifications and resume with the returned continuation.",
             inputAliases = setOf("semantic_query"),
         )
     val impactAnalyze =

@@ -164,14 +164,8 @@ internal class IntellijK2RelationSearch(
                     }
                 when (projection.confirmTarget(admitted).observedBy(observation)) {
                     IntellijK2TargetConfirmation.DIFFERENT_SYMBOL -> {
-                        val continued =
-                            when (admitted) {
-                                is IntellijRelationReferenceAdmission.Admitted.ClassConstruction ->
-                                    collector.dismissProviderItem()
-                                is IntellijRelationReferenceAdmission.Admitted.ExactSymbol ->
-                                    incompleteItem(RelationLimitation.UNRESOLVED_TARGET)
-                            }
-                        if (!continued) return termination(ProviderTermination.HALTED)
+                        // Compiler identity proves this indexed candidate is unrelated to the selected subject.
+                        if (!collector.dismissProviderItem()) return termination(ProviderTermination.HALTED)
                         continue
                     }
                     IntellijK2TargetConfirmation.UNRESOLVED -> {

@@ -25,7 +25,6 @@ import io.github.amichne.kast.protocol.contract.WorkspaceRefreshStage
 import io.github.amichne.kast.runtime.hosted.HostedEndpointService
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryService
-import io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadinessDocument
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.UUID
@@ -121,7 +120,7 @@ internal class IdeLifecycleNative(private val state: IdeLifecycleState) {
         if (existing.size > 1) return blocked(IdeLifecycleFailure.PROJECT_BUSY)
         if (existing.size == 1) {
             val target = observe(existing.single(), root, IdeProjectOwnership.BORROWED)
-            return awaitReady(existing.single(), target)
+            return awaitReady(existing.single(), target, command.requestId)
         }
         if (!TrustedProjects.isProjectTrusted(Path.of(root.value))) return blocked(IdeLifecycleFailure.TRUST_REQUIRED)
         val guard = withContext(Dispatchers.EDT) { FileDocumentManager.getInstance().unsavedDocuments.isEmpty() }
@@ -192,22 +191,23 @@ internal class IdeLifecycleNative(private val state: IdeLifecycleState) {
             else WorkspaceRefreshResult.Rejected(WorkspaceRefreshFailure.UNLINKED_BUILD)
         }
 
-    private suspend fun awaitReady(project: Project, target: IdeProjectTarget): IdeLifecycleResult {
+    private suspend fun awaitReady(project: Project, target: IdeProjectTarget, requestId: String): IdeLifecycleResult {
         if (!TrustedProjects.isProjectTrusted(project)) return blocked(IdeLifecycleFailure.TRUST_REQUIRED)
         val root =
             when (val admitted = canonicalRoot(target.root)) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> return blocked(admitted.failure)
             }
-        val query = project.getService(HostedQueryService::class.java)
-        val ready = awaitCondition {
-            project.isDisposed || query.readiness(root) == HostedReadinessDocument.AdmissionReady
-        }
-        return when {
-            project.isDisposed -> blocked(IdeLifecycleFailure.DISPOSED)
-            !ready -> blocked(IdeLifecycleFailure.DEADLINE_EXCEEDED)
-            else -> IdeLifecycleResult.Opened(target)
-        }
+        state.progress(LifecycleRequest(requestId), IdeLifecycleStage.IMPORTING)
+        return IdeLifecycleReadiness(
+                project,
+                target,
+                root,
+                project.getService(HostedQueryService::class.java),
+            ) {
+                sync(project, target, requestId, WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD)
+            }
+            .await()
     }
 
     private suspend fun sync(

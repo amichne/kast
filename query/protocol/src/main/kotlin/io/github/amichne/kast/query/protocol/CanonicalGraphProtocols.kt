@@ -27,6 +27,7 @@ import io.github.amichne.kast.relation.contract.RelationReadRejection as DomainR
 import io.github.amichne.kast.relation.contract.RelationReadResult as DomainRelationResult
 import io.github.amichne.kast.relation.contract.RelationRequest as DomainRelationRequest
 import io.github.amichne.kast.relation.contract.RelationResumeFailure as DomainRelationResumeFailure
+import io.github.amichne.kast.relation.contract.RelationSearchBoundary
 import io.github.amichne.kast.traversal.contract.TraversalLimitation
 import io.github.amichne.kast.traversal.contract.TraversalPlanResumeFailure
 import io.github.amichne.kast.traversal.contract.TraversalQualification
@@ -75,7 +76,8 @@ class CanonicalRelationReadProtocol(
         val budget = maximum.copy(resources = resources.copy(resultLimit = resultLimit))
         val domainRequest =
             when (val position = request.position) {
-                RelationReadPositionDocument.Start -> DomainRelationRequest.start(subject, meaning, budget)
+                RelationReadPositionDocument.Start ->
+                    DomainRelationRequest.start(subject, meaning, budget, RelationSearchBoundary.WORKSPACE_EXPANSION)
                 is RelationReadPositionDocument.Resume -> {
                     val continuation =
                         when (
@@ -95,6 +97,7 @@ class CanonicalRelationReadProtocol(
                                 meaning,
                                 budget,
                                 continuation,
+                                RelationSearchBoundary.WORKSPACE_EXPANSION,
                             )
                     ) {
                         is Refinement.Refined -> admitted.value

@@ -67,7 +67,7 @@ object HostedQueryWire {
                         failure = result.failure.code(),
                         detail = result.failure.detail(),
                         stage = result.stage.name,
-                        recovery = result.failure.recovery(),
+                        recovery = result.failure.recovery(result.stage),
                         executionBudget = result.executionBudget,
                     )
                 )

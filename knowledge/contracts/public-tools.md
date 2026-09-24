@@ -85,7 +85,8 @@ commands render as Bash blocks in the page content.
 `read_relations` advertises both published `v1` and live `v2` relation
 continuations in its resume input and qualified output. Both schemas use
 `RelationContinuationDocument.TOKEN_PATTERN`; the production codec preserves
-the authority's version. The [query protocol](../modules/query-protocol.md)
+the authority's version. The public read expands destinations across the
+workspace while preserving the original subject reference. The [query protocol](../modules/query-protocol.md)
 retains the stronger continuation ownership checks after structural admission.
 
 Public exact-reference syntax accepts hosted `exact:v5:` and `exact:v4:` handles alongside legacy `v2` and `v3` tokens. Returned references remain opaque and must be passed back unchanged. The host resolves compact handles before validating authority; source anchors also accept the corresponding candidate handle family.

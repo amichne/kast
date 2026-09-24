@@ -40,7 +40,7 @@ class ReadLimitConfigurationTest {
         )
         assertTrue(
             ResolvedKastConfiguration.resolve(
-                ConfigurationSources(savedInstallation = listOf("KAST_READ_HOST_QUERY_MILLIS" to "6000"))
+                ConfigurationSources(savedInstallation = listOf("KAST_READ_HOST_QUERY_MILLIS" to "32000"))
             ) is Refinement.Rejected
         )
         assertTrue(
