@@ -53,6 +53,44 @@ class McpInvestigationToolsTest {
     }
 
     @Test
+    fun `health binds a launch subdirectory to its settings owned root`() {
+        Files.writeString(root.resolve("settings.gradle.kts"), "rootProject.name = \"fixture\"")
+        val launchDirectory = Files.createDirectories(root.resolve("src/main/kotlin"))
+        val canonicalRoot = root.toRealPath()
+        val native = ExistingIdeClient { selected, operation ->
+            assertEquals(canonicalRoot, selected.path)
+            assertEquals(ExistingIdeOperation.Status, operation)
+            ExistingIdeExchange.Received(
+                CanonicalJsonDocument.generated(TestHostedStatus.serializer())
+                    .create(TestHostedStatus(canonicalRoot.toString()))
+            )
+        }
+        val tools =
+            McpInvestigationTools(
+                launchDirectory,
+                ExistingIdeCliCapabilities(FilesystemCanonicalRootDiscovery, native),
+                setOf("QUERY_RUN", "SOURCE_READ"),
+            ) { _, _ ->
+                error("semantic read must not run")
+            }
+        val exit = tools.tools.single { it.name == "health_check" }.invoke(emptyArguments())
+        assertTrue(exit is CliExit.Complete, exit.document.value)
+        val data = Json.parseToJsonElement(exit.document.value).jsonObject.getValue("data").jsonObject
+        assertEquals(canonicalRoot.toString(), data.getValue("workspaceBinding").jsonPrimitive.content)
+    }
+
+    @Test
+    fun `relation probe chooses the contract oriented subject for every kind`() {
+        for (kind in McpValidationRelationKind.entries) {
+            assertEquals(
+                if (kind == McpValidationRelationKind.CALLEES) "source" else "target",
+                kind.subjectSelector("source", "target"),
+                kind.name,
+            )
+        }
+    }
+
+    @Test
     fun `missing probes stay unverified without invoking semantics`() {
         val exit = validateWorkspace(emptyArguments(), root) { _, _ -> error("no read expected") }
         assertTrue(exit is CliExit.Complete)

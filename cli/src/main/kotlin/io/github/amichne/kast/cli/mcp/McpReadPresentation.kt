@@ -2,8 +2,6 @@ package io.github.amichne.kast.cli.mcp
 
 import io.github.amichne.kast.cli.CliBoundaryExitStatus
 import io.github.amichne.kast.cli.CliExit
-import io.github.amichne.kast.protocol.wire.CompactSourceTextDocument
-import io.github.amichne.kast.protocol.wire.presentation.CompactSourceContentDocument
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
@@ -99,31 +97,22 @@ private fun rejectedReadPresentation(name: String, exit: CliExit, canonical: Jso
 
 private fun coverageFor(name: String, header: McpCanonicalHeader, canonical: JsonElement): McpReadCoverage {
     val native = header.coverage
-    val source =
-        if (name == "source_read")
-            try {
-                readEnvelopeJson.decodeFromJsonElement<McpSourceSummaryDocument>(canonical)
-            } catch (_: SerializationException) {
-                null
-            }
-        else null
-    val structure = source?.content?.filterIsInstance<CompactSourceContentDocument.Structure>()?.singleOrNull()
-    val text = source?.content?.filterIsInstance<CompactSourceContentDocument.Source>()?.singleOrNull()?.text
-    val sourceWithheld = text is CompactSourceTextDocument.Withheld
+    val source = if (name == "source_read") sourceCompleteness(canonical) else null
     val requiresExplicitCoverage =
         name in setOf("query_symbols", "search_classes", "search_functions", "search_declarations", "check_diagnostics")
     val exhaustive =
         header.status == McpCanonicalStatus.COMPLETE &&
             (native?.exhaustive ?: !requiresExplicitCoverage) &&
-            !sourceWithheld
+            (name != "source_read" || source != null) &&
+            source?.textWithheld != true
     return McpReadCoverage(
         exhaustive = exhaustive,
         requestedPath = native?.requestedPath,
         filesDiscovered = native?.filesDiscovered,
         filesAnalyzed = native?.filesAnalyzed,
         filesSkipped = native?.filesSkipped,
-        selectedRegion = structure?.region?.let(readEnvelopeJson::encodeToJsonElement),
-        textTruncated = if (name == "source_read") sourceWithheld else null,
+        selectedRegion = source?.region,
+        textTruncated = source?.textWithheld,
     )
 }
 
@@ -294,8 +283,6 @@ private data class McpSummaryLocation(
 @Serializable private data class McpSummaryRange(val startInclusive: Int)
 
 @Serializable private data class McpSummarySignature(val qualifiedIdentity: String? = null)
-
-@Serializable private data class McpSourceSummaryDocument(val content: List<CompactSourceContentDocument>)
 
 @Serializable
 private data class McpCompleteRead(

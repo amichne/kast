@@ -1,6 +1,10 @@
 package io.github.amichne.kast.cli.mcp
 
+import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
+import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
+import io.github.amichne.kast.cli.CliBoundaryExitStatus
 import io.github.amichne.kast.cli.CliExit
+import io.github.amichne.kast.cli.boundaryExit
 import io.github.amichne.kast.cli.ide.ExistingIdeCliCapabilities
 import io.github.amichne.kast.cli.ide.executeExistingIdeCli
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
@@ -43,17 +47,20 @@ internal class McpInvestigationTools(
                     "Run explicit read-only declaration, exact-symbol, source, relation, and IDE diagnostic " +
                         "probes. Each probe reports passed, failed, or unverified independently.",
                 inputSchema = validationInputSchema(),
-                invoke = { arguments -> validateWorkspace(arguments, directory, invokeRead) },
+                invoke = ::validate,
             ),
         )
 
     private fun health(arguments: JsonObject): CliExit {
         if (arguments.isNotEmpty())
             return healthRejected(McpHealthErrorCode.INVALID_REQUEST, "No arguments are accepted")
+        val root =
+            canonicalRoot()
+                ?: return healthRejected(McpHealthErrorCode.OUT_OF_SCOPE, "No Gradle workspace owns this directory")
         val exit =
             executeExistingIdeCli(
                 argv = listOf("ide", "status"),
-                start = directory,
+                start = root,
                 capabilities = capabilities,
             )
         if (exit !is CliExit.Complete)
@@ -64,7 +71,7 @@ internal class McpInvestigationTools(
             } catch (_: SerializationException) {
                 return healthRejected(McpHealthErrorCode.INTERNAL_ERROR, "The IDE status response was invalid")
             }
-        if (observed.root != directory.toRealPath().toString() || observed.type != "KAST_IDE_HOST")
+        if (observed.root != root.toString() || observed.type != "KAST_IDE_HOST")
             return healthRejected(McpHealthErrorCode.OUT_OF_SCOPE, "The IDE host is bound to another workspace")
         val indexed = observed.readiness.status == McpNativeReadiness.ADMISSION_READY
         val data =
@@ -80,6 +87,14 @@ internal class McpInvestigationTools(
             )
         return CliExit.Complete(healthReadyFactory.create(McpHealthReady(data = data)))
     }
+
+    private fun validate(arguments: JsonObject): CliExit {
+        val root = canonicalRoot() ?: return boundaryExit(CliBoundaryExitStatus.ROOT, "not-gradle-workspace")
+        return validateWorkspace(arguments, root, invokeRead)
+    }
+
+    private fun canonicalRoot(): Path? =
+        (FilesystemCanonicalRootDiscovery.discover(directory) as? CanonicalRootDiscovery.Discovered)?.root?.path
 
     private fun healthRejected(code: McpHealthErrorCode, message: String): CliExit.OperationRejected =
         CliExit.OperationRejected(

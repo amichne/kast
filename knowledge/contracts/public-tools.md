@@ -31,6 +31,7 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpInvestigationTools.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpWorkspaceValidation.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpReadPresentation.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpSourceCompleteness.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastProvider.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexSessionProjection.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/tool/PublicToolCommands.kt
@@ -75,7 +76,10 @@ supported/unavailable operations. It makes no semantic correctness claim.
 inspection, source, relation, and IDE diagnostic scan. Missing probes and
 incomplete results are `unverified`; an exhaustive negative probe is `failed`.
 The returned probe evidence retains the original canonical read document and
-opaque references. No source mutation or change plan is used.
+opaque references. Relation probes select the contract-oriented subject (`source` for callees,
+`target` for the other kinds). Both investigation tools bind paths to the
+discovered Gradle root, even when MCP starts in a child directory. No source
+mutation or change plan is used.
 
 See the [public search guide](../../docs/public/search.mdx) and [semantic query flow](../flows/semantic-query.md).
 
@@ -179,7 +183,9 @@ required before either input spelling dispatches.
 Workspace setup belongs to the agent catalog, separately from the user CLI surface.
 The private invocation binding remains available to the harness, while root help
 and public local-command metadata omit it and the convenience `workspace open`
-command is absent. Tool guidance directs the agent through inspect, open and status
-before semantic queries, retaining exact identities and finite blockers.
+command is absent. The installed MCP session starts preparation at initialization
+for its discovered Gradle root; semantic calls join that preparation and retain
+exact identities and finite blockers. Explicit lifecycle tools remain available
+for inspection and recovery.
 
 `workspace_lifecycle` is an eager canonical effectful tool with action-specific tagged inputs for inspect, open, present, sync, configure_sync, release, close, request_user_close and status. The configure action applies a task-success refresh rule only to an exact project target. Host selection comes from installed configuration; caller identity comes from the coordinator thread. The `EXACT_PROJECT_CLOSE` approval policy applies to the explicit user-close branch. Ordinary managed cleanup still enforces ownership and shared use, while source-change `EXPLICIT` approval is unchanged.

@@ -1,5 +1,7 @@
 package io.github.amichne.kast.cli.mcp
 
+import io.github.amichne.kast.appserver.DaemonOperationFailure
+import io.github.amichne.kast.appserver.ide.CanonicalRoot
 import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
 import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.appserver.mcpWorkspaceOperationClient
@@ -16,6 +18,7 @@ import io.github.amichne.kast.cli.ide.executeExistingIdeCli
 import io.github.amichne.kast.cli.installedHostedBootstrap
 import io.github.amichne.kast.cli.installedServerBindings
 import io.github.amichne.kast.cli.supportsLiveEvidence
+import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.registry.AgentToolInputBinding
 import io.github.amichne.kast.protocol.registry.CanonicalAgentToolDefinitions
 import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
@@ -100,6 +103,7 @@ object KastMcpMain {
                 invoke = invokeCanonical,
                 root = { FilesystemCanonicalRootDiscovery.discover(directory) },
                 supplemental = investigation.tools,
+                onInitialize = read::start,
             )
             .run(BufferedInputStream(System.`in`), System.out)
     }
@@ -110,10 +114,14 @@ internal class KastMcpServer(
     private val invoke: (String, JsonObject) -> CliExit,
     private val root: () -> CanonicalRootDiscovery,
     private val supplemental: List<McpSupplementalTool> = emptyList(),
+    private val onInitialize: (CanonicalRoot) -> Refinement<Unit, DaemonOperationFailure> = {
+        Refinement.Refined(Unit)
+    },
     private val diagnostic: PrintStream = System.err,
 ) {
     private val tools = catalog.associateBy { it.name }
     private val supplementalByName = supplemental.associateBy { it.name }
+    private var initialized = false
 
     @Suppress("LoopWithTooManyJumpStatements")
     fun run(input: BufferedInputStream, output: PrintStream) {
@@ -123,7 +131,7 @@ internal class KastMcpServer(
             val id = request.id ?: continue
             val response =
                 when (request.method) {
-                    "initialize" -> success(id, McpInitializeResult())
+                    "initialize" -> initialize(id)
                     "ping" -> success(id, McpEmptyResult())
                     "tools/list" ->
                         success(
@@ -139,6 +147,24 @@ internal class KastMcpServer(
             output.println(mcpWire.encodeToString(response))
             output.flush()
         }
+    }
+
+    private fun initialize(id: JsonElement): McpResponse {
+        if (!initialized) {
+            initialized = true
+            val outcome =
+                when (val discovered = root()) {
+                    is CanonicalRootDiscovery.Discovered -> onInitialize(discovered.root)
+                    is CanonicalRootDiscovery.Rejected ->
+                        Refinement.Rejected(DaemonOperationFailure.Root(discovered.failure))
+                }
+            report(
+                "workspace",
+                McpCallStage.PREPARATION,
+                if (outcome is Refinement.Refined) McpCallOutcome.STARTED else McpCallOutcome.REJECTED,
+            )
+        }
+        return success(id, McpInitializeResult())
     }
 
     private fun decodeRequest(line: String): McpRequest? =
@@ -297,6 +323,7 @@ private data class McpCallEvent(
 @Serializable
 private enum class McpCallStage {
     ADMISSION,
+    PREPARATION,
     EXECUTION,
 }
 

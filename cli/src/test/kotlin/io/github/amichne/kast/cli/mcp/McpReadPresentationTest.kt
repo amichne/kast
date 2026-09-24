@@ -3,6 +3,7 @@ package io.github.amichne.kast.cli.mcp
 import io.github.amichne.kast.cli.CliExit
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import io.github.amichne.kast.protocol.wire.presentation.DiagnosticCoverageCliDocument
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
@@ -62,6 +63,40 @@ class McpReadPresentationTest {
         assertEquals("INVALID_REQUEST", error.getValue("code").jsonPrimitive.content)
         assertEquals(Json.parseToJsonElement(document.value), error.getValue("evidence"))
     }
+
+    @Test
+    fun `expanded returned source retains its selected region and completeness`() {
+        val document =
+            CanonicalJsonDocument.generated(TestExpandedSourceDocument.serializer())
+                .create(TestExpandedSourceDocument(text = TestExpandedText.Returned()))
+        val envelope =
+            requireNotNull(mcpReadPresentation("source_read", CliExit.Complete(document))).envelope.jsonObject
+        val coverage = envelope.getValue("coverage").jsonObject
+        assertEquals("complete", envelope.getValue("status").jsonPrimitive.content)
+        assertEquals("true", coverage.getValue("exhaustive").jsonPrimitive.content)
+        assertEquals("false", coverage.getValue("textTruncated").jsonPrimitive.content)
+        assertEquals(
+            Json.parseToJsonElement(document.value).jsonObject.getValue("region"),
+            coverage.getValue("selectedRegion"),
+        )
+    }
+
+    @Test
+    fun `expanded withheld source is partial even when canonical status is complete`() {
+        val document =
+            CanonicalJsonDocument.generated(TestExpandedSourceDocument.serializer())
+                .create(TestExpandedSourceDocument(text = TestExpandedText.Withheld()))
+        val envelope =
+            requireNotNull(mcpReadPresentation("source_read", CliExit.Complete(document))).envelope.jsonObject
+        val coverage = envelope.getValue("coverage").jsonObject
+        assertEquals("partial", envelope.getValue("status").jsonPrimitive.content)
+        assertEquals("false", coverage.getValue("exhaustive").jsonPrimitive.content)
+        assertEquals("true", coverage.getValue("textTruncated").jsonPrimitive.content)
+        assertEquals(
+            Json.parseToJsonElement(document.value).jsonObject.getValue("region"),
+            coverage.getValue("selectedRegion"),
+        )
+    }
 }
 
 private fun queryDocument(items: List<TestQueryItem>): CanonicalJsonDocument =
@@ -120,3 +155,41 @@ private data class TestPartialDiagnostics(
 
 @Serializable
 private data class TestHostRejection(val failure: String = "INVALID_REQUEST", val type: String = "HOST_REJECTED")
+
+@Serializable
+private data class TestExpandedSourceDocument(
+    val operation: String = "source.read",
+    val status: String = "complete",
+    val region: TestExpandedRegion = TestExpandedRegion(),
+    val text: TestExpandedText,
+    val live: TestLive = TestLive(),
+)
+
+@Serializable
+private data class TestExpandedRegion(
+    val kind: String = "declaration",
+    val selection: TestExpandedSelection = TestExpandedSelection(),
+)
+
+@Serializable
+private data class TestExpandedSelection(
+    val selector: String = "exact:v5:Registry",
+    val range: TestExpandedRange = TestExpandedRange(),
+)
+
+@Serializable private data class TestExpandedRange(val startInclusive: Int = 0, val endExclusive: Int = 8)
+
+@Serializable
+private sealed interface TestExpandedText {
+    @Serializable
+    @SerialName("returned")
+    data class Returned(
+        val selection: TestExpandedSelection = TestExpandedSelection(),
+        val text: String = "class R",
+        val lines: TestExpandedLines = TestExpandedLines(),
+    ) : TestExpandedText
+
+    @Serializable @SerialName("withheld") data class Withheld(val reason: String = "byte-limit") : TestExpandedText
+}
+
+@Serializable private data class TestExpandedLines(val startInclusive: Long = 1, val endInclusive: Long = 1)

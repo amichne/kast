@@ -153,11 +153,12 @@ private class WorkspaceValidator(
         val target =
             endpoint(probe.target, declaration, inspected)
                 ?: return McpProbe.unverified("Relation target could not be inspected exactly")
+        val subject = probe.kind.subjectSelector(source.selector, target.selector)
         val response =
             read<McpRelationDocument>(
                 "read_relations",
                 validationInputJson
-                    .encodeToJsonElement(McpRelationRequest(source.selector, probe.kind.name.lowercase(), limit = 1000))
+                    .encodeToJsonElement(McpRelationRequest(subject, probe.kind.name.lowercase(), limit = 1000))
                     .jsonObject,
             )
         val facts =
@@ -271,6 +272,18 @@ private class WorkspaceValidator(
         else NativeRead.Partial(value, evidence)
     }
 }
+
+/** Relation facts are oriented by the native contract, not by the probe's source field. */
+internal fun McpValidationRelationKind.subjectSelector(source: String, target: String): String =
+    when (this) {
+        McpValidationRelationKind.CALLEES -> source
+        McpValidationRelationKind.REFERENCES,
+        McpValidationRelationKind.CALLERS,
+        McpValidationRelationKind.IMPLEMENTATIONS,
+        McpValidationRelationKind.INHERITORS,
+        McpValidationRelationKind.OVERRIDES,
+        McpValidationRelationKind.TYPE_USES -> target
+    }
 
 private data class ExactDiscovery(val probe: McpProbe, val candidate: String?)
 

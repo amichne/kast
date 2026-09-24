@@ -60,9 +60,10 @@ Install the IDEA plugin, connect Codex, and find a declaration in your repositor
     - Restart IDEA to load the plugin.
     - Save edited files before requesting evidence.
 
-    Kast opens the requested repository and waits for Gradle import and
-    indexing when a semantic request arrives. Resolve project trust or unsaved-document blockers if the
-    agent reports them; see [troubleshooting](/troubleshooting).
+    Kast starts opening the bound repository when the MCP session connects.
+    Semantic requests wait for Gradle import and indexing. Resolve project trust
+    or unsaved-document blockers if the agent reports them; see
+    [troubleshooting](/troubleshooting).
   </Step>
   <Step title="Connect from a Gradle repository">
     ```console
@@ -71,7 +72,8 @@ Install the IDEA plugin, connect Codex, and find a declaration in your repositor
     ```
 
     Kast starts its MCP process for the session, discovers the exact Gradle
-    root, and prepares the IDEA project on semantic demand. No worktree
+    root, and starts preparing the IDEA project in the background. It uses the
+    selected IDEA without deliberately taking focus. No worktree
     registration is needed.
   </Step>
   <Step title="Ask for a declaration">

@@ -44,7 +44,9 @@ The examples below show the tool inputs for direct calls or harness integration.
 | Explicit read-only semantic probes | `kast.validate_workspace` |
 
 `health_check` takes `{}` and reports the bound workspace, saved/indexed state,
-and host capabilities. It does not establish that semantic answers are correct.
+and host capabilities. An immediate check can find launch or import still in
+progress; semantic calls wait for that preparation. It does not establish that
+semantic answers are correct.
 
 To validate the installation against known code, supply explicit probes:
 

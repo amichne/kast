@@ -1,13 +1,16 @@
 package io.github.amichne.kast.cli.mcp
 
+import io.github.amichne.kast.appserver.DaemonOperationFailure
 import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
 import io.github.amichne.kast.appserver.ide.CanonicalRootFailure
+import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
 import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.cli.CliExit
 import io.github.amichne.kast.cli.CliTextDocument
 import io.github.amichne.kast.cli.CliTextDocumentAdmission
 import io.github.amichne.kast.cli.InstalledHostedToolDocument
 import io.github.amichne.kast.cli.InstalledServerExecutionBudgetDocument
+import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import java.io.BufferedInputStream
 import java.io.ByteArrayInputStream
@@ -32,6 +35,65 @@ class KastMcpServerTest {
     private fun admittedRoot(): CanonicalRootDiscovery {
         Files.writeString(temporary.resolve("settings.gradle.kts"), "rootProject.name = \"fixture\"")
         return FilesystemCanonicalRootDiscovery.discover(temporary)
+    }
+
+    @Test
+    fun `initialize starts preparation for the bound Gradle root once`() {
+        val selected = (admittedRoot() as CanonicalRootDiscovery.Discovered).root
+        var starts = 0
+        val output = ByteArrayOutputStream()
+        KastMcpServer(
+                catalog = emptyList(),
+                invoke = { _, _ -> error("semantic invocation was not requested") },
+                root = { CanonicalRootDiscovery.Discovered(selected) },
+                onInitialize = { root ->
+                    assertEquals(selected, root)
+                    starts++
+                    Refinement.Refined(Unit)
+                },
+                diagnostic = PrintStream(ByteArrayOutputStream()),
+            )
+            .run(
+                BufferedInputStream(
+                    ByteArrayInputStream(
+                        (1..2)
+                            .joinToString(separator = "\n", postfix = "\n") {
+                                testMcpJson.encodeToString(TestInitializeRequest(id = it))
+                            }
+                            .toByteArray()
+                    )
+                ),
+                PrintStream(output),
+            )
+        assertEquals(1, starts)
+        assertEquals(2, output.toString(Charsets.UTF_8).lineSequence().count(String::isNotBlank))
+    }
+
+    @Test
+    fun `preparation rejection is recorded without fabricating readiness`() {
+        val diagnostics = ByteArrayOutputStream()
+        val output = ByteArrayOutputStream()
+        KastMcpServer(
+                catalog = emptyList(),
+                invoke = { _, _ -> error("semantic invocation was not requested") },
+                root = { admittedRoot() },
+                onInitialize = {
+                    Refinement.Rejected(DaemonOperationFailure.Host(ExistingIdeFailure.CONFIGURATION_REJECTED))
+                },
+                diagnostic = PrintStream(diagnostics),
+            )
+            .run(
+                BufferedInputStream(
+                    ByteArrayInputStream(
+                        (testMcpJson.encodeToString(TestInitializeRequest(id = 1)) + "\n").toByteArray()
+                    )
+                ),
+                PrintStream(output),
+            )
+        assertEquals(1, output.toString(Charsets.UTF_8).lineSequence().count(String::isNotBlank))
+        val event = Json.parseToJsonElement(diagnostics.toString(Charsets.UTF_8).trim()).jsonObject
+        assertEquals("PREPARATION", event.getValue("stage").jsonPrimitive.content)
+        assertEquals("REJECTED", event.getValue("outcome").jsonPrimitive.content)
     }
 
     @Test
@@ -193,6 +255,18 @@ class KastMcpServerTest {
 }
 
 @Serializable private data class TestSchema(val type: String)
+
+private val testMcpJson = Json { encodeDefaults = true }
+
+@Serializable
+private data class TestInitializeRequest(
+    val jsonrpc: String = "2.0",
+    val id: Int,
+    val method: String = "initialize",
+    val params: TestInitializeParams = TestInitializeParams(),
+)
+
+@Serializable private data class TestInitializeParams(val protocolVersion: String = "2025-06-18")
 
 @Serializable
 private data class TestCallRequest(

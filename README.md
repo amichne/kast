@@ -54,8 +54,10 @@ You need macOS on Apple silicon, a Kotlin Gradle repository, IntelliJ IDEA
 See [Install and connect](https://kast.michne.com/start/) for IDE selection,
 Desktop setup, other harnesses, and uninstall instructions.
 
-Kast prepares the exact repository or worktree when an agent requests
-compiler-backed work. You do not need to manage project lifecycle commands.
+The Kast MCP session starts preparing the exact repository or worktree when it
+connects. It reuses the selected IDEA or launches it in the background, then
+opens and imports that project. Compiler-backed calls join the same preparation
+and wait for readiness. You do not need to manage project lifecycle commands.
 Kast asks for help only when setup encounters a user-owned decision such as project
 trust or unsaved documents.
 
@@ -75,9 +77,10 @@ in the result evidence, with its exact `ref` values and detailed qualifications.
 Keep those limits and returned `ref` values
 when following up. See [Read a response](https://kast.michne.com/reference/responses/).
 
-For an installation check, call `health_check` with `{}`. It reports the exact
-workspace and IDEA readiness without asserting semantic correctness. Call
-`validate_workspace` with an explicit declaration, relation, or diagnostic path
+For an installation check, call `health_check` with `{}` after preparation
+finishes. It reports the exact workspace and IDEA readiness without asserting
+semantic correctness. During launch or import it can still report an unavailable
+host. Call `validate_workspace` with an explicit declaration, relation, or diagnostic path
 to run read-only semantic probes. Each stage reports `passed`, `failed`, or
 `unverified`; an incomplete read never passes a probe.
 
