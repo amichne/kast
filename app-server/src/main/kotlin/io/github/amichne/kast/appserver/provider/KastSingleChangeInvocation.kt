@@ -12,7 +12,9 @@ import io.github.amichne.kast.appserver.ide.HostedMutationOperation
 import io.github.amichne.kast.appserver.ide.HostedPlanIdentity
 import io.github.amichne.kast.appserver.runtime.HostedChangeApprovalOperation
 import io.github.amichne.kast.appserver.runtime.HostedPlanApprovalRequest
+import io.github.amichne.kast.appserver.runtime.ResolvedMutationRecovery
 import io.github.amichne.kast.appserver.runtime.WorkspaceDemandResult
+import io.github.amichne.kast.appserver.runtime.WorkspaceRecoverySettlement
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ChangeApplyRequest
 import io.github.amichne.kast.protocol.contract.ChangePlanRequest
@@ -29,6 +31,7 @@ import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutco
 import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -128,9 +131,12 @@ internal class KastSingleChangeInvocation(private val options: KastProviderOptio
                 phase(root, operation)
             } catch (cancelled: CancellationException) {
                 withContext(NonCancellable) {
-                    withTimeoutOrNull(OperationExecutionBudget.SEMANTIC_READ.operation.value) {
-                        recover(root, identity, context)
-                    }
+                    val recovery =
+                        withTimeoutOrNull(OperationExecutionBudget.SEMANTIC_READ.operation.value) {
+                            recover(root, identity, context)
+                        }
+                    if (recovery is RecoveryAttempt.Resolved)
+                        currentCoroutineContext()[WorkspaceRecoverySettlement]?.confirm(recovery.state)
                 }
                 throw cancelled
             } catch (_: RuntimeException) {
@@ -155,9 +161,11 @@ internal class KastSingleChangeInvocation(private val options: KastProviderOptio
                 context,
             )
         val recovery = recover(root, identity, context)
-        val failure = if (recovery == null) ChangeRejection.RECOVERY_UNAVAILABLE else ChangeRejection.APPLY_UNVERIFIED
+        val failure =
+            if (recovery is RecoveryAttempt.Resolved) ChangeRejection.APPLY_UNVERIFIED
+            else ChangeRejection.RECOVERY_UNAVAILABLE
         return result(
-            ChangeRunDocument.Rejected(ChangeRunError(failure, identity, plan, applicationDocument, recovery)),
+            ChangeRunDocument.Rejected(ChangeRunError(failure, identity, plan, applicationDocument, recovery.document)),
             context,
         )
     }
@@ -186,13 +194,38 @@ internal class KastSingleChangeInvocation(private val options: KastProviderOptio
         return application.document
     }
 
-    private suspend fun recover(root: CanonicalRoot, identity: String, context: BrokerInvocationContext): JsonObject? {
-        val assertion = authorize(HostedChangeApprovalOperation.RECOVER, identity, context) ?: return null
-        val operation = mutation(HostedMutationOperation.CHANGE_RECOVER, identity, assertion) ?: return null
-        return try {
-            phase(root, operation).document
-        } catch (_: RuntimeException) {
-            null
+    private suspend fun recover(
+        root: CanonicalRoot,
+        identity: String,
+        context: BrokerInvocationContext,
+    ): RecoveryAttempt {
+        val assertion =
+            authorize(HostedChangeApprovalOperation.RECOVER, identity, context)
+                ?: return RecoveryAttempt.Unresolved(null)
+        val operation =
+            mutation(HostedMutationOperation.CHANGE_RECOVER, identity, assertion)
+                ?: return RecoveryAttempt.Unresolved(null)
+        val phase =
+            try {
+                phase(root, operation)
+            } catch (_: RuntimeException) {
+                return RecoveryAttempt.Unresolved(null)
+            }
+        val document = phase.document ?: return RecoveryAttempt.Unresolved(null)
+        if (phase !is NativePhase.Complete) return RecoveryAttempt.Unresolved(document)
+        val state =
+            try {
+                changeJson.decodeFromJsonElement<NativeRecoveryState>(document)
+            } catch (_: SerializationException) {
+                return RecoveryAttempt.Unresolved(document)
+            }
+        if (state.status != NativeStatus.COMPLETE) return RecoveryAttempt.Unresolved(document)
+        return when (state.state) {
+            NativeRecoveryOutcome.PRIOR_STATE ->
+                RecoveryAttempt.Resolved(document, ResolvedMutationRecovery.PRIOR_STATE)
+            NativeRecoveryOutcome.ROLLED_BACK ->
+                RecoveryAttempt.Resolved(document, ResolvedMutationRecovery.ROLLED_BACK)
+            NativeRecoveryOutcome.RECOVERY_REQUIRED -> RecoveryAttempt.Unresolved(document)
         }
     }
 
@@ -306,9 +339,26 @@ private sealed interface NativePhase {
     data class Rejected(override val document: JsonObject?) : NativePhase
 }
 
+private sealed interface RecoveryAttempt {
+    val document: JsonObject?
+
+    data class Resolved(override val document: JsonObject, val state: ResolvedMutationRecovery) : RecoveryAttempt
+
+    data class Unresolved(override val document: JsonObject?) : RecoveryAttempt
+}
+
 @Serializable private data class StoredPlan(val status: NativeStatus, val planIdentity: String)
 
 @Serializable private data class ApplicationState(val status: NativeStatus, val state: NativeApplyState? = null)
+
+@Serializable private data class NativeRecoveryState(val status: NativeStatus, val state: NativeRecoveryOutcome)
+
+@Serializable
+private enum class NativeRecoveryOutcome {
+    @SerialName("prior_state") PRIOR_STATE,
+    @SerialName("rolled_back") ROLLED_BACK,
+    @SerialName("recovery_required") RECOVERY_REQUIRED,
+}
 
 @Serializable
 private enum class NativeStatus {

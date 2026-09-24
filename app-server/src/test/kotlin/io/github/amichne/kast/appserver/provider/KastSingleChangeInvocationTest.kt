@@ -7,8 +7,11 @@ import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
 import io.github.amichne.kast.appserver.ide.ExistingIdeClient
 import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
+import io.github.amichne.kast.appserver.runtime.ResolvedMutationRecovery
 import io.github.amichne.kast.appserver.runtime.WorkspaceDemand
 import io.github.amichne.kast.appserver.runtime.WorkspaceDemandResult
+import io.github.amichne.kast.appserver.runtime.WorkspaceRecoveryEvidence
+import io.github.amichne.kast.appserver.runtime.WorkspaceRecoverySettlement
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ChangeIntentDocument
 import io.github.amichne.kast.protocol.contract.ChangeRequest
@@ -19,10 +22,11 @@ import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
 import java.security.KeyPairGenerator
 import java.util.UUID
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.jsonObject
@@ -150,32 +154,25 @@ class KastSingleChangeInvocationTest {
     fun `cancelled apply still attempts recovery outside the cancelled job`() = runBlocking {
         enroll()
         val enteredApply = CompletableDeferred<Unit>()
+        val cancellation = CompletableDeferred<Throwable>()
+        val settlement = WorkspaceRecoverySettlement()
         val observed = mutableListOf<String>()
-        val job = async {
-            invocation { operation ->
-                when (operation) {
-                    is ExistingIdeOperation.Plan -> {
-                        observed += "plan"
-                        semantic(TestPlan())
-                    }
-                    is ExistingIdeOperation.ApprovalPreparation -> {
-                        observed += "prepare-${operation.kind.name}"
-                        ExistingIdeExchange.Received(document(challenge(operation.kind.name)))
-                    }
-                    is ExistingIdeOperation.ApprovedMutation -> {
-                        observed += "write-${operation.kind.name}"
-                        if (operation.kind.name == "CHANGE_APPLY") {
-                            enteredApply.complete(Unit)
-                            awaitCancellation()
-                        } else semantic(TestRecovery())
-                    }
-                    else -> error("Unexpected operation")
+        val job =
+            launch(settlement) {
+                try {
+                    invocation { operation -> cancelledApplyOperation(operation, enteredApply, observed) }
+                } catch (failure: Throwable) {
+                    cancellation.complete(failure)
                 }
             }
-        }
 
         enteredApply.await()
         job.cancelAndJoin()
+        assertInstanceOf(CancellationException::class.java, cancellation.await())
+        assertEquals(
+            WorkspaceRecoveryEvidence.Proven(ResolvedMutationRecovery.ROLLED_BACK),
+            settlement.evidence,
+        )
         assertEquals(
             listOf(
                 "plan",
@@ -187,6 +184,56 @@ class KastSingleChangeInvocationTest {
             observed,
         )
     }
+
+    @Test
+    fun `cancelled apply with incomplete recovery retains uncertainty`() = runBlocking {
+        enroll()
+        val enteredApply = CompletableDeferred<Unit>()
+        val cancellation = CompletableDeferred<Throwable>()
+        val settlement = WorkspaceRecoverySettlement()
+        val observed = mutableListOf<String>()
+        val incomplete =
+            ExistingIdeExchange.Semantic(ProjectedOperationOutcome.Qualified(document(TestRecoveryRequired())))
+        val job =
+            launch(settlement) {
+                try {
+                    invocation { operation -> cancelledApplyOperation(operation, enteredApply, observed, incomplete) }
+                } catch (failure: Throwable) {
+                    cancellation.complete(failure)
+                }
+            }
+
+        enteredApply.await()
+        job.cancelAndJoin()
+        assertInstanceOf(CancellationException::class.java, cancellation.await())
+        assertEquals(WorkspaceRecoveryEvidence.Unproven, settlement.evidence)
+        assertEquals("write-CHANGE_RECOVER", observed.last())
+    }
+
+    private suspend fun cancelledApplyOperation(
+        operation: ExistingIdeOperation,
+        enteredApply: CompletableDeferred<Unit>,
+        observed: MutableList<String>,
+        recovery: ExistingIdeExchange = semantic(TestRecovery()),
+    ): ExistingIdeExchange =
+        when (operation) {
+            is ExistingIdeOperation.Plan -> {
+                observed += "plan"
+                semantic(TestPlan())
+            }
+            is ExistingIdeOperation.ApprovalPreparation -> {
+                observed += "prepare-${operation.kind.name}"
+                ExistingIdeExchange.Received(document(challenge(operation.kind.name)))
+            }
+            is ExistingIdeOperation.ApprovedMutation -> {
+                observed += "write-${operation.kind.name}"
+                if (operation.kind.name == "CHANGE_APPLY") {
+                    enteredApply.complete(Unit)
+                    awaitCancellation()
+                } else recovery
+            }
+            else -> error("Unexpected operation")
+        }
 
     private suspend fun invocation(
         observe: suspend (ExistingIdeOperation) -> ExistingIdeExchange
@@ -256,6 +303,9 @@ private data class TestUnverified(val status: String = "qualified", val state: S
 private data class TestHostRejection(val type: String = "rejected", val failure: String = "SOURCE_CHANGED")
 
 @Serializable private data class TestRecovery(val status: String = "complete", val state: String = "rolled_back")
+
+@Serializable
+private data class TestRecoveryRequired(val status: String = "qualified", val state: String = "recovery_required")
 
 @Serializable
 private data class TestChallenge(

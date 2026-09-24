@@ -156,8 +156,10 @@ Output validity and semantic success remain separate from this settlement decisi
 All writing effects and unknown provider effects retain recovery-required
 handling after output rejection. Provider failures, cancellation, and timeouts
 remain uncertain even for reads; read metadata cannot prove that an execution has
-terminated. Deterministic gates test queued and later calls, mutation without
-replay, independent workspaces, and retirement held across cancellation/deadline.
+terminated. A cancelled change apply is settled as known only when exact native
+recovery completes in `prior_state` or `rolled_back`; its workspace lane can then
+serve later requests. Deterministic gates test queued and later calls, mutation
+without replay, independent workspaces, and retirement held across cancellation/deadline.
 
 `HostedResponse` carries the original typed semantic outcome beside the encoded document until transport ends. Completion, qualification and rejection have separate endpoint observations. Encoding rejection and size rejection retain the semantic value for diagnosis. Read transaction success alone is `EVALUATED`; the canonical path additionally retains semantic `COMPLETE`, `QUALIFIED` or `REJECTED` evidence. Change-storage failures retain their finite cause in schema-admitted `HOST_REJECTED.detail` and in default bounded storage observations.
 

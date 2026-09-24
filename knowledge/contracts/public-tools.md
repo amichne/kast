@@ -67,7 +67,9 @@ The advanced pipeline preserves source meaning, step order, repeated steps and e
 
 Installed projection 15 retains the full canonical hosted tool inventory. App Server qualifies the packaged hosted catalog directly; CLI invocation version 4 remains a separate public CLI projection and omits hosted-only `workspace_lifecycle`. Repeated canonical operation IDs are allowed only with consistent effect, approval, budget and output metadata. Private admitted requests retain their presentation and schema identities through transport encoding, excluding cross-tool substitution. Old persisted catalogs reject rather than silently accepting a new grammar. Source, relation and traversal defaults remain unchanged. Raw candidate lookup/refinement requires explicit selection. The deferred `change` tool has approval policy `NONE` and performs
 native planning, exact challenge signing, apply, verification, and attempted
-recovery inside one invocation. Native change phases remain available to the
+recovery inside one invocation. A cancelled apply releases the App Server
+workspace lane only when native recovery proves `prior_state` or `rolled_back`.
+Native change phases remain available to the
 private coordinator and CLI adapter; they are absent from the agent catalog.
 The hosted planning schema admits only `add-declaration`; unsupported canonical
 intents do not enter another runtime.

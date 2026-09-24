@@ -376,7 +376,15 @@ internal class BrokerSessionHub(
                                                             invocation.settle(
                                                                 messages.rejectedInvocation(
                                                                     doc,
-                                                                    InvocationFenceFailure.OUTCOME_UNCERTAIN,
+                                                                    if (
+                                                                        failure is CancellationException &&
+                                                                            currentCoroutineContext()[
+                                                                                    WorkspaceRecoverySettlement]
+                                                                                ?.evidence is
+                                                                                WorkspaceRecoveryEvidence.Proven
+                                                                    )
+                                                                        InvocationFenceFailure.CANCELLED_AFTER_RECOVERY
+                                                                    else InvocationFenceFailure.OUTCOME_UNCERTAIN,
                                                                 )
                                                             )
                                                             throw failure

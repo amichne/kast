@@ -84,8 +84,10 @@ separate recovery path.
 
 If the broker coroutine is cancelled after apply starts, a bounded,
 non-cancelled cleanup context attempts exact-plan recovery before cancellation
-propagates. The workspace lane still treats the interrupted invocation as
-uncertain; cleanup does not fabricate a delivered receipt.
+propagates. Only a complete native `prior_state` or `rolled_back` result proves
+the effect settled. The broker records a known `CANCELLED_AFTER_RECOVERY`
+failure and releases the workspace lane; incomplete recovery remains uncertain.
+Cleanup does not fabricate a delivered receipt.
 
 Apply compares the plan with a fresh live root, host, epoch, content view and
 model, then observes the exact saved preimage. `LiveMutationAuthority` retains

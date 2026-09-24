@@ -140,7 +140,9 @@ semantic demand joins the same preparation and waits for exact readiness. The
 direct MCP `refresh_workspace` tool invokes native `FILE_REFRESH` for that root.
 Its `change` tool plans, signs the exact native challenge, applies, and verifies
 within one call, attempting recovery if application is unverified. The App Server exposes the same single `change` operation and signs its exact
-plan internally.
+plan internally. If apply is cancelled, only a complete native `prior_state` or
+`rolled_back` recovery settles the invocation as known and releases the App
+Server workspace lane. Incomplete recovery leaves the lane protected.
 The app-server suite is always installed. Activation may still be pending with
 a finite reason when the host cannot start the service.
 

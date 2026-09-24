@@ -10,6 +10,8 @@ import java.nio.file.Path
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.TestTimeSource
 import kotlinx.coroutines.*
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
@@ -104,4 +106,56 @@ class WorkspaceExecutionBudgetTest {
                 scope.cancel()
             }
         }
+
+    @Test
+    fun `proved recovery after cancellation releases the workspace lane`(@TempDir directory: Path): Unit = runBlocking {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        try {
+            val executions = WorkspaceExecution(scope, WorkspaceExecutionPolicy.Default)
+            val workspace =
+                BrokerWorkspaceId.derive(requireNotNull(CanonicalBrokerDirectory.admit(directory.toRealPath())))
+            val thread = requireNotNull(BrokerThreadId.admit("thread"))
+            val turn = requireNotNull(BrokerTurnId.admit("turn"))
+            fun identity(call: String) =
+                WorkspaceExecutionIdentity(
+                    workspace,
+                    ClientConnectionId.fresh(),
+                    thread,
+                    turn,
+                    requireNotNull(BrokerCallId.admit(call)),
+                )
+            val entered = CompletableDeferred<Unit>()
+            val first =
+                executions.submit(identity("first")) {
+                    entered.complete(Unit)
+                    try {
+                        awaitCancellation()
+                    } catch (_: CancellationException) {
+                        currentCoroutineContext()[WorkspaceRecoverySettlement]?.confirm(
+                            ResolvedMutationRecovery.ROLLED_BACK
+                        )
+                        throw CancellationException("cancelled after recovered mutation")
+                    }
+                }
+            entered.await()
+            executions.cancel(workspace, thread, turn)
+            assertEquals(
+                WorkspaceExecutionResult.Rejected(WorkspaceExecutionFailure.CANCELLED_AFTER_RECOVERY),
+                first.await(),
+            )
+            val second =
+                executions.submit(identity("second")) {
+                    ProtocolRouting.ReplyUpstream(Json.encodeToString(TestKnownReply()))
+                }
+            assertTrue(second.await() is WorkspaceExecutionResult.Completed)
+            val events = executions.snapshot().getValue("events").jsonArray.map { it.jsonObject }
+            val settled = events.last { it.getValue("callId").jsonPrimitive.content == "first" }
+            assertEquals("rejected", settled.getValue("outcome").jsonPrimitive.content)
+            assertEquals("known", settled.getValue("certainty").jsonPrimitive.content)
+        } finally {
+            scope.cancel()
+        }
+    }
 }
+
+@Serializable private data class TestKnownReply(val status: String = "complete")
