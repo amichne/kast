@@ -30,6 +30,16 @@ internal class McpWorkspaceRefreshTool(
 ) {
     constructor(directory: Path, client: McpWorkspaceOperationClient) : this(directory, client::lifecycle)
 
+    private data class IssuedRefresh(val target: IdeProjectTarget, val effect: WorkspaceRefreshEffect)
+
+    private sealed interface RefreshDispatch {
+        data class Ready(val requestId: String, val operation: WorkspaceLifecycleRequest) : RefreshDispatch
+
+        data class Rejected(val failure: McpRefreshFailure) : RefreshDispatch
+    }
+
+    private val pending = mutableMapOf<String, IssuedRefresh>()
+
     val tool =
         McpSupplementalTool(
             name = "refresh_workspace",
@@ -62,15 +72,35 @@ internal class McpWorkspaceRefreshTool(
         if (targets.isEmpty()) return rejected(McpRefreshFailure.PROJECT_NOT_OPEN)
         if (targets.size != 1) return rejected(McpRefreshFailure.AMBIGUOUS_PROJECT)
         val target = targets.single()
+        val dispatch =
+            when (val admitted = dispatch(input, target)) {
+                is RefreshDispatch.Ready -> admitted
+                is RefreshDispatch.Rejected -> return rejected(admitted.failure)
+            }
+        val result = lifecycle(dispatch.operation)
+        val projected = project(result, target, dispatch.requestId)
+        if (result is IdeLifecycleResult.Pending && projected is CliExit.Qualified)
+            pending[dispatch.requestId] = IssuedRefresh(target, WorkspaceRefreshEffect.FILE_REFRESH)
+        else pending.remove(dispatch.requestId)
+        return projected
+    }
+
+    private fun dispatch(input: McpRefreshInput, target: IdeProjectTarget): RefreshDispatch {
         val requestId = input.requestId ?: UUID.randomUUID().toString()
-        if (runCatching { UUID.fromString(requestId) }.isFailure) return rejected(McpRefreshFailure.INVALID_REQUEST)
-        val result =
-            lifecycle(
-                if (input.requestId == null)
-                    WorkspaceLifecycleRequest.Sync(target, requestId, WorkspaceRefreshEffect.FILE_REFRESH)
-                else WorkspaceLifecycleRequest.Status(target.host, requestId)
-            )
-        return project(result, target, requestId)
+        if (runCatching { UUID.fromString(requestId) }.isFailure)
+            return RefreshDispatch.Rejected(McpRefreshFailure.INVALID_REQUEST)
+        if (input.requestId != null) {
+            val issued = pending[requestId] ?: return RefreshDispatch.Rejected(McpRefreshFailure.UNKNOWN_REQUEST)
+            if (issued != IssuedRefresh(target, WorkspaceRefreshEffect.FILE_REFRESH)) {
+                pending.remove(requestId)
+                return RefreshDispatch.Rejected(McpRefreshFailure.IDENTITY_MISMATCH)
+            }
+        } else if (pending.size >= MAX_PENDING) return RefreshDispatch.Rejected(McpRefreshFailure.CAPACITY_EXCEEDED)
+        val operation =
+            if (input.requestId == null)
+                WorkspaceLifecycleRequest.Sync(target, requestId, WorkspaceRefreshEffect.FILE_REFRESH)
+            else WorkspaceLifecycleRequest.Status(target.host, requestId)
+        return RefreshDispatch.Ready(requestId, operation)
     }
 
     private fun project(result: IdeLifecycleResult, target: IdeProjectTarget, requestId: String): CliExit =
@@ -145,9 +175,13 @@ private enum class McpRefreshFailure {
     PROJECT_NOT_OPEN,
     AMBIGUOUS_PROJECT,
     IDENTITY_MISMATCH,
+    UNKNOWN_REQUEST,
+    CAPACITY_EXCEEDED,
     LIFECYCLE_REJECTED,
     UNEXPECTED_RESULT,
 }
+
+private const val MAX_PENDING = 64
 
 private val refreshJson = Json { encodeDefaults = true }
 private val refreshDocument = CanonicalJsonDocument.generated(McpRefreshResult.serializer())

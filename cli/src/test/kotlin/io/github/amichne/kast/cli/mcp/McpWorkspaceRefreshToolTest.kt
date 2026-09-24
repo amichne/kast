@@ -85,6 +85,66 @@ class McpWorkspaceRefreshToolTest {
         assertEquals("UNSAVED_DOCUMENTS", error.getValue("cause").jsonPrimitive.content)
     }
 
+    @Test
+    fun `foreign pending ID cannot be attributed to this file refresh`() {
+        Files.writeString(root.resolve("settings.gradle.kts"), "rootProject.name = \"fixture\"")
+        val target = IdeProjectTarget("host", "project", root.toRealPath().toString())
+        val observed = mutableListOf<WorkspaceLifecycleRequest>()
+        val tool =
+            McpWorkspaceRefreshTool(root) { request ->
+                    observed += request
+                    when (request) {
+                        WorkspaceLifecycleRequest.Inspect -> inspected(target)
+                        is WorkspaceLifecycleRequest.Status ->
+                            IdeLifecycleResult.Pending(request.requestId, IdeLifecycleStage.ADMISSION, target.host)
+                        else -> error("unexpected lifecycle request")
+                    }
+                }
+                .tool
+
+        val foreign = java.util.UUID.randomUUID().toString()
+        val result = tool.invoke(refreshInput(foreign))
+        assertInstanceOf(CliExit.OperationRejected::class.java, result)
+        val error = Json.parseToJsonElement(result.document.value).jsonObject.getValue("error").jsonObject
+        assertEquals("UNKNOWN_REQUEST", error.getValue("code").jsonPrimitive.content)
+        assertEquals(listOf(WorkspaceLifecycleRequest.Inspect), observed)
+    }
+
+    @Test
+    fun `pending refresh ID cannot be polled after its project identity changes`() {
+        Files.writeString(root.resolve("settings.gradle.kts"), "rootProject.name = \"fixture\"")
+        val first = IdeProjectTarget("host", "first", root.toRealPath().toString())
+        val replacement = IdeProjectTarget("host", "replacement", root.toRealPath().toString())
+        val observed = mutableListOf<WorkspaceLifecycleRequest>()
+        val tool =
+            McpWorkspaceRefreshTool(root) { request ->
+                    observed += request
+                    when (request) {
+                        WorkspaceLifecycleRequest.Inspect -> inspected(if (observed.size == 1) first else replacement)
+                        is WorkspaceLifecycleRequest.Sync ->
+                            IdeLifecycleResult.Pending(request.requestId, IdeLifecycleStage.ADMISSION, first.host)
+                        else -> error("status must not poll a replacement project")
+                    }
+                }
+                .tool
+
+        val started = tool.invoke(refreshInput())
+        assertInstanceOf(CliExit.Qualified::class.java, started)
+        val requestId =
+            Json.parseToJsonElement(started.document.value)
+                .jsonObject
+                .getValue("data")
+                .jsonObject
+                .getValue("requestId")
+                .jsonPrimitive
+                .content
+        val result = tool.invoke(refreshInput(requestId))
+        assertInstanceOf(CliExit.OperationRejected::class.java, result)
+        val error = Json.parseToJsonElement(result.document.value).jsonObject.getValue("error").jsonObject
+        assertEquals("IDENTITY_MISMATCH", error.getValue("code").jsonPrimitive.content)
+        assertEquals(3, observed.size)
+    }
+
     private fun inspected(vararg targets: IdeProjectTarget) =
         IdeLifecycleResult.Inspected(
             "host",

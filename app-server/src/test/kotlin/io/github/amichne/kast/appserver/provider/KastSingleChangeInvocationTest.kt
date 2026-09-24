@@ -19,6 +19,10 @@ import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
 import java.security.KeyPairGenerator
 import java.util.UUID
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.jsonObject
@@ -142,8 +146,50 @@ class KastSingleChangeInvocationTest {
         assertEquals(listOf("plan", "prepare-CHANGE_APPLY", "write-CHANGE_APPLY"), observed)
     }
 
+    @Test
+    fun `cancelled apply still attempts recovery outside the cancelled job`() = runBlocking {
+        enroll()
+        val enteredApply = CompletableDeferred<Unit>()
+        val observed = mutableListOf<String>()
+        val job = async {
+            invocation { operation ->
+                when (operation) {
+                    is ExistingIdeOperation.Plan -> {
+                        observed += "plan"
+                        semantic(TestPlan())
+                    }
+                    is ExistingIdeOperation.ApprovalPreparation -> {
+                        observed += "prepare-${operation.kind.name}"
+                        ExistingIdeExchange.Received(document(challenge(operation.kind.name)))
+                    }
+                    is ExistingIdeOperation.ApprovedMutation -> {
+                        observed += "write-${operation.kind.name}"
+                        if (operation.kind.name == "CHANGE_APPLY") {
+                            enteredApply.complete(Unit)
+                            awaitCancellation()
+                        } else semantic(TestRecovery())
+                    }
+                    else -> error("Unexpected operation")
+                }
+            }
+        }
+
+        enteredApply.await()
+        job.cancelAndJoin()
+        assertEquals(
+            listOf(
+                "plan",
+                "prepare-CHANGE_APPLY",
+                "write-CHANGE_APPLY",
+                "prepare-CHANGE_RECOVER",
+                "write-CHANGE_RECOVER",
+            ),
+            observed,
+        )
+    }
+
     private suspend fun invocation(
-        observe: (ExistingIdeOperation) -> ExistingIdeExchange
+        observe: suspend (ExistingIdeOperation) -> ExistingIdeExchange
     ): io.github.amichne.kast.appserver.core.ProviderCall<KastInvocationOutput> {
         val root = CanonicalRoot(home.toRealPath())
         val options =

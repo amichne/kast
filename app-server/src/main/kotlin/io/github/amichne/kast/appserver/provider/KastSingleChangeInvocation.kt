@@ -22,11 +22,16 @@ import io.github.amichne.kast.protocol.contract.ChangeRequest
 import io.github.amichne.kast.protocol.contract.ChangeRunDocument
 import io.github.amichne.kast.protocol.contract.ChangeRunError
 import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import io.github.amichne.kast.protocol.wire.presentation.OperationPreparation
 import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
 import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.runInterruptible
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
@@ -121,6 +126,13 @@ internal class KastSingleChangeInvocation(private val options: KastProviderOptio
         val application =
             try {
                 phase(root, operation)
+            } catch (cancelled: CancellationException) {
+                withContext(NonCancellable) {
+                    withTimeoutOrNull(OperationExecutionBudget.SEMANTIC_READ.operation.value) {
+                        recover(root, identity, context)
+                    }
+                }
+                throw cancelled
             } catch (_: RuntimeException) {
                 NativePhase.Incomplete(null)
             }

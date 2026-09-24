@@ -82,6 +82,11 @@ A definitive host or semantic apply rejection remains `APPLY_REJECTED` with its
 host document and does not start recovery. An uncertain apply retains its
 separate recovery path.
 
+If the broker coroutine is cancelled after apply starts, a bounded,
+non-cancelled cleanup context attempts exact-plan recovery before cancellation
+propagates. The workspace lane still treats the interrupted invocation as
+uncertain; cleanup does not fabricate a delivered receipt.
+
 Apply compares the plan with a fresh live root, host, epoch, content view and
 model, then observes the exact saved preimage. `LiveMutationAuthority` retains
 that proof and the approved write set. A pre-write observation guards the
