@@ -288,7 +288,9 @@ def render_tools(authority: dict) -> dict[Path, str]:
         for kind, kotlin in [('string', 'ProtocolText'), ('boolean', 'Boolean'), ('integer', 'Int')]:
             if tagged_type(spec, kind): return kotlin + nullable_suffix
         raise ValueError(f'Unsupported facade schema {spec}')
-    lines = [HEADER.replace('query.schema.json', 'tools.schema.json'),
+    lines = [HEADER.replace('query.schema.json', 'tools.schema.json')
+             .replace('@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)',
+                      '@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)\n@file:Suppress("ConstructorParameterNaming")'),
              'import io.github.amichne.kast.protocol.registry.PublicToolIdentity\n',
              'import kotlinx.serialization.json.*\n\n',
              'internal sealed interface PublicToolDocument\n\n']

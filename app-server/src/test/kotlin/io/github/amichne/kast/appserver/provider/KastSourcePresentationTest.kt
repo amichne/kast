@@ -48,10 +48,10 @@ class KastSourcePresentationTest {
                 )
                 .jsonObject
         val presentation = presentKastSourceOrOutcome(document, true)
-        assertEquals(
-            "OrderService — class\nsrc/OrderService.kt @ offset 28\ncom.example.OrderService\n1 result; requested scope exhausted",
-            presentation.content.first().text,
-        )
+        val summary =
+            "OrderService — class\nsrc/OrderService.kt @ offset 28\n" +
+                "com.example.OrderService\n1 result; requested scope exhausted"
+        assertEquals(summary, presentation.content.first().text)
         assertEquals(document, json.parseToJsonElement(presentation.content.last().text))
     }
 

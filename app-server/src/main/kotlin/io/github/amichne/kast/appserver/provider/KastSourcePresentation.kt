@@ -7,6 +7,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.intOrNull
 
 /** Reads only the already schema-admitted source result; source bytes are never reformatted. */
+@Suppress("CognitiveComplexMethod", "CyclomaticComplexMethod")
 internal fun presentKastSourceOrOutcome(document: JsonObject, success: Boolean): ToolPresentation {
     fun JsonObject.string(key: String): String? = (this[key] as? JsonPrimitive)?.takeIf { it.isString }?.content
     val payload = document["document"] as? JsonObject ?: return ToolPresentation.outcome(document, success)
@@ -33,6 +34,7 @@ internal fun presentKastSourceOrOutcome(document: JsonObject, success: Boolean):
 
 private fun JsonObject.string(key: String): String? = (this[key] as? JsonPrimitive)?.takeIf { it.isString }?.content
 
+@Suppress("CognitiveComplexMethod", "CyclomaticComplexMethod")
 private fun querySummary(payload: JsonObject): String? {
     val status = payload.string("status")
     if (status != "complete" && status != "qualified") return null
@@ -61,7 +63,7 @@ private fun querySummary(payload: JsonObject): String? {
     val completion = if (status == "complete") "requested scope exhausted" else "partial; absence unverified"
     val failureNote = if (failures.isEmpty()) "" else "; ${failures.size} item failures"
     val count = "${items.size} ${if (items.size == 1) "result" else "results"}; $completion$failureNote"
-    return (lines + count).joinToString("\n").take(4_000)
+    return (lines + count).joinToString("\n").take(MAX_SUMMARY_CHARS)
 }
 
 private fun diagnosticSummary(payload: JsonObject): String? {
@@ -78,10 +80,14 @@ private fun diagnosticSummary(payload: JsonObject): String? {
     val clean = status == "complete" && diagnostics.isEmpty() && analyzed != null && analyzed == discovered
     val opening =
         if (clean) "No diagnostics in $coverage."
-        else
-            "${diagnostics.size} diagnostics returned; $coverage${if (status == "qualified") "; scan incomplete" else ""}."
+        else {
+            val incomplete = if (status == "qualified") "; scan incomplete" else ""
+            "${diagnostics.size} diagnostics returned; $coverage$incomplete."
+        }
     return "$opening IDE file diagnostics; project build not run."
 }
+
+private const val MAX_SUMMARY_CHARS = 4_000
 
 /** Dynamic members of the source schema after the provider has admitted its result envelope. */
 internal data class SourcePresentationParts(val structure: JsonObject, val text: JsonObject)

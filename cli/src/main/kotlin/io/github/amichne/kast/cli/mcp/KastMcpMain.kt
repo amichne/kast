@@ -49,50 +49,57 @@ object KastMcpMain {
         val home = Path.of(System.getProperty("user.home"))
         val approvals = McpApprovalStore(home)
         val read = mcpWorkspaceOperationClient(home, System.getenv())
+        val capabilities =
+            ExistingIdeCliCapabilities(
+                FilesystemCanonicalRootDiscovery,
+                configuredExistingIdeClient(home, System.getenv()),
+                read,
+            )
+        val invokeCanonical: (String, JsonObject) -> CliExit = invokeCanonical@{ name, arguments ->
+            val definition = selected.single { it.name.value == name }
+            val command =
+                when (val binding = definition.inputBinding) {
+                    is AgentToolInputBinding.Facade -> listOf("tool", binding.identity.toolName)
+                    AgentToolInputBinding.Canonical ->
+                        when (val route = bindings.getValue(name).invocation) {
+                            is InstalledInvocationBinding.Cli -> route.document.invocation.command
+                            InstalledInvocationBinding.HostedOnly ->
+                                return@invokeCanonical boundaryExit(
+                                    CliBoundaryExitStatus.USAGE,
+                                    "mcp-tool-unsupported",
+                                )
+                        }
+                }
+            val mutation = name == "change_apply" || name == "change_recover"
+            val admittedRoot =
+                (FilesystemCanonicalRootDiscovery.discover(directory) as? CanonicalRootDiscovery.Discovered)?.root?.path
+            val grant = if (mutation && admittedRoot != null) approvals.take(name, arguments, admittedRoot) else null
+            if (mutation && grant == null)
+                boundaryExit(CliBoundaryExitStatus.USAGE, "approval-required-run-kast-mcp-approve")
+            else
+                executeExistingIdeCli(
+                    argv = if (mutation) command + "--hosted-approved-invocation" else command,
+                    start = directory,
+                    capabilities = capabilities,
+                    requestInput =
+                        CliRequestDocumentInput.Provided(
+                            if (grant != null) mcpWire.encodeToString(McpApprovedArguments(arguments, grant))
+                            else arguments.toString()
+                        ),
+                )
+        }
+        val investigation =
+            McpInvestigationTools(
+                directory,
+                capabilities,
+                selected.map { it.operation.operation.id.value.uppercase().replace('.', '_') }.toSet(),
+                invokeCanonical,
+            )
         KastMcpServer(
                 catalog = selected.map { catalog.getValue(it.name.value) },
-                invoke = { name, arguments ->
-                    val definition = selected.single { it.name.value == name }
-                    val command =
-                        when (val binding = definition.inputBinding) {
-                            is AgentToolInputBinding.Facade -> listOf("tool", binding.identity.toolName)
-                            AgentToolInputBinding.Canonical ->
-                                when (val route = bindings.getValue(name).invocation) {
-                                    is InstalledInvocationBinding.Cli -> route.document.invocation.command
-                                    InstalledInvocationBinding.HostedOnly ->
-                                        return@KastMcpServer boundaryExit(
-                                            CliBoundaryExitStatus.USAGE,
-                                            "mcp-tool-unsupported",
-                                        )
-                                }
-                        }
-                    val mutation = name == "change_apply" || name == "change_recover"
-                    val admittedRoot =
-                        (FilesystemCanonicalRootDiscovery.discover(directory) as? CanonicalRootDiscovery.Discovered)
-                            ?.root
-                            ?.path
-                    val grant =
-                        if (mutation && admittedRoot != null) approvals.take(name, arguments, admittedRoot) else null
-                    if (mutation && grant == null)
-                        boundaryExit(CliBoundaryExitStatus.USAGE, "approval-required-run-kast-mcp-approve")
-                    else
-                        executeExistingIdeCli(
-                            argv = if (mutation) command + "--hosted-approved-invocation" else command,
-                            start = directory,
-                            capabilities =
-                                ExistingIdeCliCapabilities(
-                                    FilesystemCanonicalRootDiscovery,
-                                    configuredExistingIdeClient(home, System.getenv()),
-                                    read,
-                                ),
-                            requestInput =
-                                CliRequestDocumentInput.Provided(
-                                    if (grant != null) mcpWire.encodeToString(McpApprovedArguments(arguments, grant))
-                                    else arguments.toString()
-                                ),
-                        )
-                },
+                invoke = invokeCanonical,
                 root = { FilesystemCanonicalRootDiscovery.discover(directory) },
+                supplemental = investigation.tools,
             )
             .run(BufferedInputStream(System.`in`), System.out)
     }
@@ -102,9 +109,11 @@ internal class KastMcpServer(
     private val catalog: List<io.github.amichne.kast.cli.InstalledHostedToolDocument>,
     private val invoke: (String, JsonObject) -> CliExit,
     private val root: () -> CanonicalRootDiscovery,
+    private val supplemental: List<McpSupplementalTool> = emptyList(),
     private val diagnostic: PrintStream = System.err,
 ) {
     private val tools = catalog.associateBy { it.name }
+    private val supplementalByName = supplemental.associateBy { it.name }
 
     @Suppress("LoopWithTooManyJumpStatements")
     fun run(input: BufferedInputStream, output: PrintStream) {
@@ -119,7 +128,10 @@ internal class KastMcpServer(
                     "tools/list" ->
                         success(
                             id,
-                            McpToolList(catalog.map { McpTool(it.name, it.description, it.inputSchema) }),
+                            McpToolList(
+                                catalog.map { McpTool(it.name, it.description, it.inputSchema) } +
+                                    supplemental.map { McpTool(it.name, it.description, it.inputSchema) }
+                            ),
                         )
                     "tools/call" -> call(id, request.params)
                     else -> McpResponse(id, error = McpError(-32601, "method-not-found"))
@@ -145,7 +157,7 @@ internal class KastMcpServer(
             } catch (_: SerializationException) {
                 return rejected(id, McpCallFailure.INVALID_ARGUMENTS)
             }
-        if (call.name !in tools) return rejected(id, McpCallFailure.UNKNOWN_TOOL)
+        if (call.name !in tools && call.name !in supplementalByName) return rejected(id, McpCallFailure.UNKNOWN_TOOL)
         report(call.name, McpCallStage.ADMISSION, McpCallOutcome.STARTED)
         if (root() !is CanonicalRootDiscovery.Discovered) {
             report(call.name, McpCallStage.ADMISSION, McpCallOutcome.REJECTED)
@@ -155,7 +167,7 @@ internal class KastMcpServer(
         report(call.name, McpCallStage.EXECUTION, McpCallOutcome.STARTED)
         val exit =
             try {
-                invoke(call.name, call.arguments)
+                supplementalByName[call.name]?.invoke?.invoke(call.arguments) ?: invoke(call.name, call.arguments)
             } catch (_: RuntimeException) {
                 report(call.name, McpCallStage.EXECUTION, McpCallOutcome.REJECTED)
                 return rejected(id, McpCallFailure.INVOCATION_FAILED)

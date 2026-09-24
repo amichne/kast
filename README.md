@@ -73,6 +73,12 @@ scope; a **qualified** answer carries limits; a **rejected** request provides no
 successful semantic result. Keep those limits and returned `ref` values
 when following up. See [Read a response](https://kast.michne.com/reference/responses/).
 
+For an installation check, call `health_check` with `{}`. It reports the exact
+workspace and IDEA readiness without asserting semantic correctness. Call
+`validate_workspace` with an explicit declaration, relation, or diagnostic path
+to run read-only semantic probes. Each stage reports `passed`, `failed`, or
+`unverified`; an incomplete read never passes a probe.
+
 ## Develop Kast
 
 Use Java 25 or newer and the Python version in [`.python-version`](.python-version).

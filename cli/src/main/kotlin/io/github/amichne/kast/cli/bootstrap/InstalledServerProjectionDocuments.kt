@@ -620,6 +620,7 @@ internal fun changeFilePreviewsSchema(): JsonObject =
         )
     )
 
+@Suppress("LongMethod")
 private fun queryRunDocumentSchema(operation: CanonicalOperation): JsonObject =
     unionSchema(
         operationOutcomeVariant(

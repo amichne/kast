@@ -3,7 +3,32 @@
 package io.github.amichne.kast.appserver.query
 
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.protocol.contract.*
+import io.github.amichne.kast.protocol.contract.ExecutionBudgetDocument
+import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.SourceBodyKindDocument
+import io.github.amichne.kast.protocol.contract.SourceContainmentDocument
+import io.github.amichne.kast.protocol.contract.SourceEnclosingRegionKindDocument
+import io.github.amichne.kast.protocol.contract.SourceEntityFilterDocument
+import io.github.amichne.kast.protocol.contract.SourceEntityLimitDocument
+import io.github.amichne.kast.protocol.contract.SourceEntitySelectionDocument
+import io.github.amichne.kast.protocol.contract.SourceLineCountDocument
+import io.github.amichne.kast.protocol.contract.SourceReadAnchorDocument
+import io.github.amichne.kast.protocol.contract.SourceReadAnchorDocumentFailure
+import io.github.amichne.kast.protocol.contract.SourceReadCause
+import io.github.amichne.kast.protocol.contract.SourceReadFailureDetail
+import io.github.amichne.kast.protocol.contract.SourceReadFormatDocument
+import io.github.amichne.kast.protocol.contract.SourceReadPageDocument
+import io.github.amichne.kast.protocol.contract.SourceReadRequest
+import io.github.amichne.kast.protocol.contract.SourceReferenceFailure
+import io.github.amichne.kast.protocol.contract.SourceReferenceRole
+import io.github.amichne.kast.protocol.contract.SourceRegionSelectionDocument
+import io.github.amichne.kast.protocol.contract.SourceRequestField
+import io.github.amichne.kast.protocol.contract.SourceRequestIngress
+import io.github.amichne.kast.protocol.contract.SourceRequestPath
+import io.github.amichne.kast.protocol.contract.SourceRequestRule
+import io.github.amichne.kast.protocol.contract.SourceRequestSerializationException
+import io.github.amichne.kast.protocol.contract.SourceTextByteLimitDocument
+import io.github.amichne.kast.protocol.contract.SourceTextRequestDocument
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -64,6 +89,7 @@ sealed interface PublicSourceEntities {
     ) : PublicSourceEntities
 }
 
+@Suppress("CognitiveComplexMethod", "CyclomaticComplexMethod", "LongMethod")
 internal fun PublicSourceReadIntent.lower(): Refinement<SourceReadRequest, SourceReadCause> {
     val admittedAnchor =
         when (val admitted = SourceReadAnchorDocument.admit(anchor.symbolRef)) {

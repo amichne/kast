@@ -10,6 +10,10 @@ code_sources:
     symbols: ["PublicToolContract", "AdmittedPublicTool", "PublicToolRequestSerializer"]
   - path: "protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt"
     symbols: ["CanonicalAgentToolDefinitions"]
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpInvestigationTools.kt"
+    symbols: ["McpInvestigationTools"]
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpWorkspaceValidation.kt"
+    symbols: ["validateWorkspace"]
   - path: "query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySource.kt"
     symbols: ["QuerySourceSyntax"]
   - path: "query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPlan.kt"
@@ -36,6 +40,30 @@ The examples below show the tool inputs for direct calls or harness integration.
 | Unknown/mixed kinds, properties or type aliases | `kast.search_declarations` |
 | Compiler diagnostics for a file or directory | `kast.check_diagnostics` |
 | Enumeration, returned references or ordered transformations | `kast.query_symbols` (deferred) |
+| Passive host and workspace readiness | `kast.health_check` |
+| Explicit read-only semantic probes | `kast.validate_workspace` |
+
+`health_check` takes `{}` and reports the bound workspace, saved/indexed state,
+and host capabilities. It does not establish that semantic answers are correct.
+
+To validate the installation against known code, supply explicit probes:
+
+```json
+{
+  "declaration": {
+    "kind": "class",
+    "name": "OrderService",
+    "file": "services/orders/src/main/kotlin/com/example/orders/OrderService.kt"
+  },
+  "diagnosticPath": "services/orders/src/main/kotlin/com/example/orders/OrderService.kt"
+}
+```
+
+`validate_workspace` discovers the declaration, inspects its exact identity,
+reads source, and scans IDE diagnostics. A relation probe additionally accepts
+`kind`, `source: {file, name}`, and `target: {file, name}`. Every stage returns
+`passed`, `failed`, or `unverified` with the underlying Kast result as evidence.
+Missing probes and incomplete scans stay `unverified`.
 
 ## Find your first declaration
 

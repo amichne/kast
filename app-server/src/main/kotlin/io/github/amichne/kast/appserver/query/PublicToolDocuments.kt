@@ -1,5 +1,6 @@
 // Generated from tools.schema.json by packaging/generate-public-query.py. Do not edit.
 @file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+@file:Suppress("ConstructorParameterNaming")
 
 package io.github.amichne.kast.appserver.query
 

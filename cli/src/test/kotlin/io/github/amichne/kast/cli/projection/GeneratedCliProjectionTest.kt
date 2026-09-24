@@ -345,6 +345,7 @@ class GeneratedCliProjectionTest {
     }
 
     @Test
+    @Suppress("LongMethod")
     fun `generated qualified documents append qualification after payload`() {
         val diagnosticsProjected =
             diagnosticCheckCliProjector.project(
