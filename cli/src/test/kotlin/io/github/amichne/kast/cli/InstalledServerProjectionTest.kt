@@ -4,14 +4,22 @@ import com.networknt.schema.InputFormat
 import com.networknt.schema.SchemaRegistry
 import com.networknt.schema.SpecificationVersion
 import io.github.amichne.kast.appserver.BrokerOperationalLimits
+import io.github.amichne.kast.appserver.query.PublicSourceAnchor
+import io.github.amichne.kast.appserver.query.PublicSourceEntities
+import io.github.amichne.kast.appserver.query.PublicSourceReadIntent
+import io.github.amichne.kast.appserver.query.PublicSourceReadRequestSerializer
+import io.github.amichne.kast.appserver.query.PublicSourceText
 import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.SourceEntitySelectionDocument
 import io.github.amichne.kast.protocol.registry.HostedOperationProjection
 import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -26,6 +34,33 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class InstalledServerProjectionTest {
+    @Test
+    fun `source read public intent admits entity free declaration without unused controls`() {
+        val selector =
+            (ProtocolText.parse("exact:v2:e30:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a")
+                    as io.github.amichne.kast.kernel.Refinement.Refined)
+                .value
+        val request =
+            PublicSourceReadIntent(
+                anchor = PublicSourceAnchor(selector),
+                text = PublicSourceText.Complete(6000),
+                entities = PublicSourceEntities.None,
+            )
+        val encoded = Json { classDiscriminator = "type" }.encodeToString(PublicSourceReadIntent.serializer(), request)
+        val schema = projectionTools().tool("source_read").getValue("inputSchema").jsonObject
+        schema.assertAdmits(encoded)
+        val lowered = Json { classDiscriminator = "type" }.decodeFromString(PublicSourceReadRequestSerializer, encoded)
+        assertEquals(SourceEntitySelectionDocument.None, lowered.entities)
+        val contradictory = Json {
+            encodeDefaults = true
+        }
+            .encodeToString(
+                InvalidSourceIntent.serializer(),
+                InvalidSourceIntent(PublicSourceAnchor(selector)),
+            )
+        schema.assertRejects(contradictory)
+    }
+
     @Test
     fun `traversal resume input admits both supported checkpoint versions and rejects unknown versions`() {
         val schema =
@@ -137,10 +172,7 @@ class InstalledServerProjectionTest {
         tools
             .tool("check_diagnostics")
             .outputSchema()
-            .assertAdmits(
-                """{"status":"completed","document":{"operation":"diagnostic.check","status":"complete",""" +
-                    """"diagnostics":[]}}"""
-            )
+            .assertAdmits(LiveReadOutputSchemaTest().completeEnvelope(CanonicalOperation.DIAGNOSTIC_CHECK))
     }
 
     @Test
@@ -179,12 +211,7 @@ class InstalledServerProjectionTest {
             ),
             input,
         )
-        query
-            .outputSchema()
-            .assertAdmits(
-                """{"status":"completed","document":{"operation":"query.run","status":"complete","items":[],""" +
-                    """"failures":[]}}"""
-            )
+        query.outputSchema().assertAdmits(LiveReadOutputSchemaTest().completeEnvelope(CanonicalOperation.QUERY_RUN))
         query.outputSchema().assertAdmits(LiveReadOutputSchemaTest().qualifiedEnvelope(CanonicalOperation.QUERY_RUN))
     }
 
@@ -321,11 +348,7 @@ class InstalledServerProjectionTest {
                 """"candidateEvidenceMismatches":[],"duplicateSymbols":[],"missingEdgeTargets":[],""" +
                 """"mismatchedEdgeEndpoints":[]}}"""
         val longMessage = "x".repeat(20_000)
-        val diagnostic =
-            """{"status":"completed","document":{"operation":"diagnostic.check","status":"complete",""" +
-                """"diagnostics":[{"severity":"warning","code":"LONG_MESSAGE","message":"$longMessage",""" +
-                """"location":{"candidateSelector":"candidate:diagnostic","file":"src/A.kt",""" +
-                """"range":{"startInclusive":0,"endExclusive":0}}}]}}"""
+        val diagnostic = LiveReadOutputSchemaTest().diagnosticEnvelopeWithMessage(longMessage)
 
         assertAll(
             { installedServerOutputSchema(CanonicalOperation.TOPOLOGY_BUILD).assertAdmits(coverage) },
@@ -512,6 +535,14 @@ class InstalledServerProjectionTest {
         val messages = validate(document)
         assertTrue(messages.isNotEmpty(), "schema admitted contradictory document")
     }
+
+    @Serializable
+    private data class InvalidSourceIntent(
+        val anchor: PublicSourceAnchor,
+        val entities: InvalidEntityNone = InvalidEntityNone(),
+    )
+
+    @Serializable private data class InvalidEntityNone(val mode: String = "none", val limit: Int = 0)
 
     private fun JsonObject.validate(document: String): Set<String> =
         schemaRegistry.getSchema(toString()).validate(document, InputFormat.JSON).mapTo(linkedSetOf()) { it.message }

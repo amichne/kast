@@ -72,6 +72,7 @@ host request
 ```
 
 Registry construction proves that every canonical operation has one definition. Wire-table construction proves that each has one serializer binding. Hosted dispatch uses those typed bindings; `HostedSemanticServices` supplies the request-scoped domain services. Host adapters may change presentation, but they must preserve qualification and rejection.
+The Codex-facing provider prepends a bounded search or diagnostic summary when the validated result has enough coverage evidence. The unchanged machine document follows, retaining opaque references, budgets, and exact qualifications.
 
 For the five reads, a supplied byte limit below the serialized wire schema and
 operation identity rejects before handler selection. No semantic grant is invented
@@ -164,7 +165,8 @@ replay, independent workspaces, and retirement held across cancellation/deadline
 `HostedResponse` carries the original typed semantic outcome beside the encoded document until transport ends. Completion, qualification and rejection have separate endpoint observations. Encoding rejection and size rejection retain the semantic value for diagnosis. Read transaction success alone is `EVALUATED`; the canonical path additionally retains semantic `COMPLETE`, `QUALIFIED` or `REJECTED` evidence. Change-storage failures retain their finite cause in schema-admitted `HOST_REJECTED.detail` and in default bounded storage observations.
 
 Model-facing Codex replies retain one JSON envelope as their final content item.
-Compact source presentation can precede it with unchanged returned source text.
+Search and diagnostic presentation can precede it with a bounded human summary;
+compact source presentation can precede it with unchanged returned source text.
 Terminal broker admission,
 capacity and cancellation paths also retain typed JSON rejection or cancellation
 data; uncertainty is not converted into success. A supported native desktop

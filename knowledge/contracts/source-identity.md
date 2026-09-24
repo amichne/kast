@@ -133,6 +133,9 @@ read capability. Native revalidation remains mandatory after lookup.
 
 `SourceReadRequest.format` defaults to `expanded`. Selecting `compact` changes
 representation without changing source enumeration or reference authority.
+The hosted public source intent accepts an unchanged exact `anchor.symbolRef`,
+declaration region, text mode and entity mode, then lowers to the canonical
+request with compact format. Entity-free intent has no entity limit field.
 Compact responses return each distinct source selector once in a response-local
 selection table. Integer IDs join selections, parents, callees, and local targets
 to that table; they are not valid follow-up selectors. Pass the table entry's

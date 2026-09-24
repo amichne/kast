@@ -50,6 +50,48 @@ class PublicToolContractTest {
         )
         assertTrue(request.steps.values.isEmpty())
     }
+
+    @Test
+    fun `ordinary search and diagnostics admit omitted defaults`() {
+        val search =
+            PublicToolContract.admit(
+                PublicToolIdentity.SEARCH_CLASSES,
+                Json.encodeToJsonElement(
+                    PublicToolSearchClasses.serializer(),
+                    PublicToolSearchClasses(text("OrderService"), null, null),
+                ),
+            ) as Refinement.Refined
+        val query = (search.value.canonical as PublicToolCanonical.Query).request
+        val source = query.from as QueryFromDocument.Symbols
+        assertEquals(SymbolDiscoveryMatchDocument.EXACT_NAME, (source.match as QueryMatchDocument.Name).matching)
+        assertEquals(listOf("main", "test"), source.scope.sourceSets.values.map { it.value })
+
+        val diagnostics =
+            PublicToolContract.admit(
+                PublicToolIdentity.CHECK_DIAGNOSTICS,
+                Json.encodeToJsonElement(
+                    PublicToolCheckDiagnostics.serializer(),
+                    PublicToolCheckDiagnostics(text("src/Main.kt"), null),
+                ),
+            ) as Refinement.Refined
+        assertEquals(100, (diagnostics.value.canonical as PublicToolCanonical.Diagnostics).request.limit.value)
+
+        val scoped =
+            PublicToolContract.admit(
+                PublicToolIdentity.SEARCH_CLASSES,
+                Json.encodeToJsonElement(
+                    PublicToolSearchClasses.serializer(),
+                    PublicToolSearchClasses(text("OrderService"), null, PublicToolDirectoryScope(text("services"))),
+                ),
+            ) as Refinement.Refined
+        val directory =
+            ((scoped.value.canonical as PublicToolCanonical.Query).request.from as QueryFromDocument.Symbols)
+                .scope
+                .directory!!
+        assertEquals(QueryContainmentDocument.DESCENDANTS, directory.containment)
+    }
+
+    private fun text(raw: String): ProtocolText = (ProtocolText.parse(raw) as Refinement.Refined).value
 }
 
 class PublicToolSchemaTest {
@@ -186,10 +228,10 @@ class PublicToolSchemaTest {
                     .jsonObject
             assertFalse("strict" in app)
             assertEquals(JsonPrimitive(true), response["strict"])
-            assertEquals(response["parameters"], app["inputSchema"])
+            assertEquals(PublicToolContract.parameters(identity), app["inputSchema"])
             assertEquals(identity.description, app.getValue("description").jsonPrimitive.content)
-            assertEquals(PublicToolContract.generationParameters(identity), app["inputSchema"])
-            visit(app.getValue("inputSchema").jsonObject) { node ->
+            assertEquals(PublicToolContract.generationParameters(identity), response["parameters"])
+            visit(response.getValue("parameters").jsonObject) { node ->
                 assertTrue(
                     node.keys.intersect(setOf("\$id", "\$schema", "default", "discriminator", "uniqueItems")).isEmpty()
                 )

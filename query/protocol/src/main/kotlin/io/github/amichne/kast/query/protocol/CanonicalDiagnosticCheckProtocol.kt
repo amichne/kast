@@ -91,13 +91,14 @@ class CanonicalDiagnosticCheckProtocol(
                     }
                 }
             }
-        return project(stored, current, report)
+        return project(stored, current, report, request.path)
     }
 
     private fun project(
         stored: DiagnosticStoredPage,
         current: SemanticReadAuthority,
         report: ExecutionBudgetReport?,
+        requestedPath: ProtocolText,
     ): OperationOutcome<DiagnosticCheckResult, DiagnosticCheckQualification, DiagnosticCheckRejection> {
         val page =
             when (val result = stored.result) {
@@ -115,7 +116,7 @@ class CanonicalDiagnosticCheckProtocol(
             BoundedProtocolList.create(documents).refinedOrNull()
                 ?: return OperationOutcome.Rejected(DiagnosticCheckRejection.OUTPUT_GRANT_TOO_SMALL)
         val progress =
-            when (val projected = page.progress(stored.result, report)) {
+            when (val projected = page.progress(stored.result, report, requestedPath)) {
                 is Refinement.Refined -> projected.value
                 is Refinement.Rejected -> return OperationOutcome.Rejected(projected.failure)
             }
@@ -150,6 +151,7 @@ class CanonicalDiagnosticCheckProtocol(
 private fun DiagnosticScanPage.progress(
     result: DiagnosticScanResult,
     report: ExecutionBudgetReport?,
+    requestedPath: ProtocolText,
 ): Refinement<DiagnosticProgressDocument, DiagnosticCheckRejection> {
     val analyzed = analyzedFiles.map {
         ProtocolText.parse(it.value).refinedOrNull()
@@ -180,7 +182,7 @@ private fun DiagnosticScanPage.progress(
             is Refinement.Rejected -> return Refinement.Rejected(DiagnosticCheckRejection.COMPILER_CONTRACT_VIOLATION)
         }
     return Refinement.Refined(
-        DiagnosticProgressDocument(stage, inventory, analyzed, report, result.progressStop(), known)
+        DiagnosticProgressDocument(stage, inventory, analyzed, report, result.progressStop(), known, requestedPath)
     )
 }
 

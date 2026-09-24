@@ -112,6 +112,7 @@ metadata still require checked SHA-256 values. Source attachments are not checke
 tampering; do not treat them as evidence for release provenance. For an intentional
 dependency update, review newly generated checksums against the publisher before
 committing the metadata; keep verification enabled for builds and IDE sync.
+A successful CLI build does not establish that IDEA imported the Gradle model.
 
 Choose a local installation from the repository root:
 
@@ -127,6 +128,8 @@ Both modes build the working tree, including uncommitted changes, and verify the
 matched control and IDEA plugin archives. Restart IDEA to load the plugin.
 Session mode isolates configuration and broker sockets, disables persistent
 services, and keeps temporary files under `$KAST_SESSION_ROOT`.
+It still stages the Kast plugin in the selected IDEA profile. Restore the
+persistent plugin before the next IDEA restart when leaving a session install.
 
 Run persistent installation from a shell without an active Kast session. It
 honors `KAST_INSTALL_ROOT` and `KAST_BIN_DIR`, stops the previous installed App

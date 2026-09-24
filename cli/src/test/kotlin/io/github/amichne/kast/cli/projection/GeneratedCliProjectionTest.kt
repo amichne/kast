@@ -56,6 +56,9 @@ import io.github.amichne.kast.protocol.wire.presentation.symbolDiscoverCliProjec
 import io.github.amichne.kast.protocol.wire.presentation.symbolInspectCliProjector
 import io.github.amichne.kast.protocol.wire.presentation.traversalRunCliProjector
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -65,6 +68,77 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class GeneratedCliProjectionTest {
+    @Test
+    fun `completed empty query reports exhausted scope`() {
+        val result = QueryRunResult(bounded(emptyList()), bounded(emptyList()))
+        val outcome = OperationOutcome.Complete(evidence(CanonicalOperation.QUERY_RUN, result))
+        val projected = queryRunCliProjector.project(outcome) as ProjectedOperationOutcome.Complete
+        val document = Json.parseToJsonElement(projected.document.value).jsonObject
+        assertTrue(document.getValue("items").jsonArray.isEmpty())
+        assertTrue(document.getValue("coverage").jsonObject.getValue("exhaustive").jsonPrimitive.boolean)
+    }
+
+    @Test
+    fun `diagnostic projection reports exact analyzed file coverage`() {
+        val progress =
+            DiagnosticProgressDocument(
+                stage = DiagnosticProgressStage.FINISHED,
+                inventory = DiagnosticInventoryDocument.Exhausted(ProtocolCount.parse(1).refined()),
+                analyzedFiles = listOf(text("src/A.kt")),
+                stop = DiagnosticProgressStop.FINISHED,
+                knownDiagnosticCount = DiagnosticKnownCountDocument.parse(0).refined(),
+                requestedPath = text("src/A.kt"),
+            )
+        val outcome =
+            OperationOutcome.Complete(
+                evidence(CanonicalOperation.DIAGNOSTIC_CHECK, DiagnosticCheckResult(bounded(emptyList()), progress))
+            )
+        val projected = diagnosticCheckCliProjector.project(outcome) as ProjectedOperationOutcome.Complete
+        val document = Json.parseToJsonElement(projected.document.value).jsonObject
+        assertEquals("IDE_FILE_DIAGNOSTICS", document.getValue("analysisKind").jsonPrimitive.content)
+        val coverage = document.getValue("coverage").jsonObject
+        assertEquals("src/A.kt", coverage.getValue("requestedPath").jsonPrimitive.content)
+        assertEquals(1, coverage.getValue("filesDiscovered").jsonPrimitive.int)
+        assertEquals(1, coverage.getValue("filesAnalyzed").jsonPrimitive.int)
+        assertEquals(0, coverage.getValue("filesSkipped").jsonPrimitive.int)
+        assertTrue(coverage.getValue("exhaustive").jsonPrimitive.boolean)
+    }
+
+    @Test
+    fun `unfinished empty diagnostic scan does not assert exhaustive absence`() {
+        val progress =
+            DiagnosticProgressDocument(
+                stage = DiagnosticProgressStage.ANALYSIS,
+                inventory = DiagnosticInventoryDocument.Exhausted(ProtocolCount.parse(2).refined()),
+                analyzedFiles = listOf(text("src/A.kt")),
+                stop = DiagnosticProgressStop.ANALYSIS_PENDING,
+                knownDiagnosticCount = DiagnosticKnownCountDocument.parse(0).refined(),
+                requestedPath = text("src"),
+            )
+        val qualification =
+            DiagnosticCheckQualification.create(
+                    DiagnosticKnownCountDocument.parse(0).refined(),
+                    resultLimitReached = false,
+                    analyzedFiles = listOf(text("src/A.kt")),
+                    limitations =
+                        listOf(
+                            DiagnosticLimitationDocument(text("src/B.kt"), DiagnosticLimitationReasonDocument.INDEXING)
+                        ),
+                )
+                .refined()
+        val outcome =
+            OperationOutcome.Qualified(
+                evidence(CanonicalOperation.DIAGNOSTIC_CHECK, DiagnosticCheckResult(bounded(emptyList()), progress)),
+                qualification,
+            )
+        val projected = diagnosticCheckCliProjector.project(outcome) as ProjectedOperationOutcome.Qualified
+        val coverage = Json.parseToJsonElement(projected.document.value).jsonObject.getValue("coverage").jsonObject
+        assertEquals(2, coverage.getValue("filesDiscovered").jsonPrimitive.int)
+        assertEquals(1, coverage.getValue("filesAnalyzed").jsonPrimitive.int)
+        assertEquals(JsonNull, coverage.getValue("filesSkipped"))
+        assertEquals(false, coverage.getValue("exhaustive").jsonPrimitive.boolean)
+    }
+
     @Test
     fun `symbol ref output is derived from the same exact token without changing overload identity`() {
         val tokens = listOf("exact:v3:first-overload", "exact:v3:second-overload")
@@ -304,17 +378,23 @@ class GeneratedCliProjectionTest {
                 )
             ) as ProjectedOperationOutcome.Qualified
 
+        val diagnosticsDocument = Json.parseToJsonElement(diagnosticsProjected.document.value).jsonObject
+        assertEquals("diagnostic.check", diagnosticsDocument.getValue("operation").jsonPrimitive.content)
+        assertEquals("qualified", diagnosticsDocument.getValue("status").jsonPrimitive.content)
+        assertEquals("IDE_FILE_DIAGNOSTICS", diagnosticsDocument.getValue("analysisKind").jsonPrimitive.content)
+        assertEquals(1, diagnosticsDocument.getValue("diagnostics").jsonArray.size)
         assertEquals(
-            "{\"operation\":\"diagnostic.check\",\"status\":\"qualified\"," +
-                "\"diagnostics\":[{\"severity\":\"warning\",\"code\":\"UNUSED_SYMBOL\"," +
-                "\"message\":\"warning\",\"location\":{" +
-                "\"candidateSelector\":\"candidate:diagnostic\"," +
-                "\"file\":\"src/A.kt\"," +
-                "\"range\":{\"startInclusive\":4,\"endExclusive\":4}}}]," +
-                "\"qualification\":{\"knownDiagnosticCount\":1," +
-                "\"resultLimitReached\":false,\"analyzedFiles\":[]," +
-                "\"limitations\":[{\"file\":\"src/A.kt\",\"reason\":\"indexing\"}]}}",
-            diagnosticsProjected.document.value,
+            "indexing",
+            diagnosticsDocument
+                .getValue("qualification")
+                .jsonObject
+                .getValue("limitations")
+                .jsonArray
+                .single()
+                .jsonObject
+                .getValue("reason")
+                .jsonPrimitive
+                .content,
         )
     }
 

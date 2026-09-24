@@ -9,7 +9,10 @@ import io.github.amichne.kast.protocol.contract.DiagnosticCheckFailure
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckQualification
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckResult
 import io.github.amichne.kast.protocol.contract.DiagnosticDocument
+import io.github.amichne.kast.protocol.contract.DiagnosticInventoryDocument
 import io.github.amichne.kast.protocol.contract.DiagnosticLimitationDocument
+import io.github.amichne.kast.protocol.contract.DiagnosticProgressDocument
+import io.github.amichne.kast.protocol.contract.DiagnosticProgressStage
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
 import io.github.amichne.kast.protocol.contract.ReadRecoveryGuidance
 import io.github.amichne.kast.protocol.contract.RelationFactDocument
@@ -155,6 +158,8 @@ object CanonicalReadCliDocuments {
                         status = "complete",
                         diagnostics = result.diagnostics.values.map { it.toCliDocument() },
                         progress = result.progress,
+                        analysisKind = DiagnosticAnalysisKindCliDocument.IDE_FILE_DIAGNOSTICS,
+                        coverage = result.progress?.coverage(exhaustive = true),
                         live = live,
                     )
                 )
@@ -167,6 +172,8 @@ object CanonicalReadCliDocuments {
                         diagnostics = result.diagnostics.values.map { it.toCliDocument() },
                         progress = result.progress,
                         qualification = qualification.toCliDocument(),
+                        analysisKind = DiagnosticAnalysisKindCliDocument.IDE_FILE_DIAGNOSTICS,
+                        coverage = result.progress?.coverage(exhaustive = false),
                         live = live,
                     )
                 )
@@ -239,6 +246,9 @@ private data class DiagnosticCompleteCliDocument(
     val diagnostics: List<DiagnosticCliDocument>,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val progress: io.github.amichne.kast.protocol.contract.DiagnosticProgressDocument? = null,
+    val analysisKind: DiagnosticAnalysisKindCliDocument,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val coverage: DiagnosticCoverageCliDocument? = null,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val live: LiveReadCliEvidence? = null,
 )
@@ -251,9 +261,39 @@ private data class DiagnosticQualifiedCliDocument(
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val progress: io.github.amichne.kast.protocol.contract.DiagnosticProgressDocument? = null,
     val qualification: DiagnosticQualificationCliDocument,
+    val analysisKind: DiagnosticAnalysisKindCliDocument,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val coverage: DiagnosticCoverageCliDocument? = null,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val live: LiveReadCliEvidence? = null,
 )
+
+@Serializable
+enum class DiagnosticAnalysisKindCliDocument {
+    IDE_FILE_DIAGNOSTICS
+}
+
+@Serializable
+data class DiagnosticCoverageCliDocument(
+    val requestedPath: String?,
+    val filesDiscovered: Int?,
+    val filesAnalyzed: Int,
+    val filesSkipped: Int?,
+    val exhaustive: Boolean,
+)
+
+private fun DiagnosticProgressDocument.coverage(exhaustive: Boolean): DiagnosticCoverageCliDocument {
+    val discovered = (inventory as? DiagnosticInventoryDocument.Exhausted)?.totalFiles?.value
+    val analyzed = analyzedFiles.size
+    val finished = stage == DiagnosticProgressStage.FINISHED
+    return DiagnosticCoverageCliDocument(
+        requestedPath = requestedPath?.value,
+        filesDiscovered = discovered,
+        filesAnalyzed = analyzed,
+        filesSkipped = if (finished) discovered?.minus(analyzed)?.takeIf { it >= 0 } else null,
+        exhaustive = exhaustive && finished && discovered == analyzed,
+    )
+}
 
 @Serializable
 private data class DiagnosticQualificationCliDocument(

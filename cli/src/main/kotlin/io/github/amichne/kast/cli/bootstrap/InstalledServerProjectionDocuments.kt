@@ -1,5 +1,6 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.appserver.query.PublicSourceReadIntent
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.cli.bootstrap.HostedRejectionSchemas
 import io.github.amichne.kast.cli.command.CliCommandSurface
@@ -267,7 +268,12 @@ private enum class InstalledServerTool(
                 when (val input = definition.inputBinding) {
                     is AgentToolInputBinding.Facade -> PublicToolContract.parameters(input.identity)
                     AgentToolInputBinding.Canonical ->
-                        generatedHostedRequestSchema(requestSerializer, definition.operation.hostedVariants)
+                        if (operation == CanonicalOperation.SOURCE_READ)
+                            unionSchema(
+                                generatedHostedRequestSchema(requestSerializer, definition.operation.hostedVariants),
+                                generatedRequestSchema(PublicSourceReadIntent.serializer()),
+                            )
+                        else generatedHostedRequestSchema(requestSerializer, definition.operation.hostedVariants)
                 },
             outputSchema = installedServerOutputSchema(operation),
         )
@@ -568,6 +574,19 @@ private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject =
                 diagnosticQualificationSchema(),
                 ServerSchemaProperty("diagnostics", arraySchema(diagnosticSchema())),
                 ServerSchemaProperty(
+                    "analysisKind",
+                    generatedRequestSchema(
+                        io.github.amichne.kast.protocol.wire.presentation.DiagnosticAnalysisKindCliDocument.serializer()
+                    ),
+                ),
+                ServerSchemaProperty(
+                    "coverage",
+                    generatedRequestSchema(
+                        io.github.amichne.kast.protocol.wire.presentation.DiagnosticCoverageCliDocument.serializer()
+                    ),
+                    required = false,
+                ),
+                ServerSchemaProperty(
                     "progress",
                     generatedRequestSchema(
                         io.github.amichne.kast.protocol.contract.DiagnosticProgressDocument.serializer()
@@ -607,6 +626,12 @@ private fun queryRunDocumentSchema(operation: CanonicalOperation): JsonObject =
             operation,
             "complete",
             ServerSchemaProperty("items", arraySchema(queryResultItemSchema())),
+            ServerSchemaProperty(
+                "coverage",
+                generatedRequestSchema(
+                    io.github.amichne.kast.protocol.wire.presentation.QueryCoverageCliDocument.serializer()
+                ),
+            ),
             executionBudgetProperty(),
             referenceAcquisitionsProperty(),
             ServerSchemaProperty("failures", arraySchema(queryItemFailureSchema())),
@@ -623,6 +648,12 @@ private fun queryRunDocumentSchema(operation: CanonicalOperation): JsonObject =
                 queryTerminalReasonSchema(),
             ),
             ServerSchemaProperty("items", arraySchema(queryResultItemSchema())),
+            ServerSchemaProperty(
+                "coverage",
+                generatedRequestSchema(
+                    io.github.amichne.kast.protocol.wire.presentation.QueryCoverageCliDocument.serializer()
+                ),
+            ),
             executionBudgetProperty(),
             referenceAcquisitionsProperty(),
             ServerSchemaProperty("failures", arraySchema(queryItemFailureSchema())),

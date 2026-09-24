@@ -18,16 +18,29 @@ import io.github.amichne.kast.appserver.core.ToolLoading
 import io.github.amichne.kast.appserver.core.ToolName
 import io.github.amichne.kast.appserver.core.ToolPresentation
 import io.github.amichne.kast.appserver.protocol.codex.BrokerFailureDocument
+import io.github.amichne.kast.appserver.query.PublicSourceAnchor
+import io.github.amichne.kast.appserver.query.PublicSourceEntities
+import io.github.amichne.kast.appserver.query.PublicSourceReadIntent
+import io.github.amichne.kast.appserver.query.PublicSourceText
 import io.github.amichne.kast.appserver.schema.JsonDomainDefinition
 import io.github.amichne.kast.appserver.schema.NetworkntJsonSchemaCompiler
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.RefinementDefinition
 import io.github.amichne.kast.kernel.Validation
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.SourceEntityLimitDocument
+import io.github.amichne.kast.protocol.contract.SourceEntitySelectionDocument
+import io.github.amichne.kast.protocol.contract.SourceReadAnchorDocument
 import io.github.amichne.kast.protocol.contract.SourceReadFailureDetail
+import io.github.amichne.kast.protocol.contract.SourceReadFormatDocument
+import io.github.amichne.kast.protocol.contract.SourceReadRequest
+import io.github.amichne.kast.protocol.contract.SourceRegionSelectionDocument
 import io.github.amichne.kast.protocol.contract.SourceRequestField
+import io.github.amichne.kast.protocol.contract.SourceRequestIngress
 import io.github.amichne.kast.protocol.contract.SourceRequestPath
 import io.github.amichne.kast.protocol.contract.SourceRequestRule
+import io.github.amichne.kast.protocol.contract.SourceTextRequestDocument
 import java.nio.file.Path
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.Serializable
@@ -40,6 +53,59 @@ import org.junit.jupiter.api.io.TempDir
 
 class SourceInputRejectionTest {
     private val json = Json { encodeDefaults = true }
+
+    @Test
+    fun `public source intent lowers exact reference with no entity limit`() {
+        val selector =
+            ProtocolText.parse("exact:v2:e30:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a")
+                .refined()
+        val intent =
+            PublicSourceReadIntent(
+                anchor = PublicSourceAnchor(selector),
+                text = PublicSourceText.Complete(6000),
+                entities = PublicSourceEntities.None,
+            )
+        val raw = Json { classDiscriminator = "type" }.encodeToJsonElement(PublicSourceReadIntent.serializer(), intent)
+        val schema =
+            NetworkntJsonSchemaCompiler.compile(
+                    json.encodeToJsonElement(ObjectSchema.serializer(), ObjectSchema()).jsonObject
+                )
+                .refined()
+        val admitted =
+            admitKastInput(CanonicalOperation.SOURCE_READ, schema.admit(raw).validated()) as Validation.Validated
+        val request = (admitted.value as KastInvocationInput.Source).request
+        assertEquals(SourceReadAnchorDocument.Symbol(selector), request.anchor)
+        assertEquals(SourceEntitySelectionDocument.None, request.entities)
+        assertEquals(250, request.entityLimit.value)
+        assertEquals(6000, request.textByteLimit.value)
+        assertEquals(SourceReadFormatDocument.COMPACT, request.format)
+    }
+
+    @Test
+    fun `entity free source request rejects an explicit entity limit at public ingress`() {
+        val selector =
+            (ProtocolText.parse("exact:v2:e30:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a")
+                    as Refinement.Refined)
+                .value
+        val request =
+            SourceReadRequest(
+                anchor = SourceReadAnchorDocument.Symbol(selector),
+                region = SourceRegionSelectionDocument.Anchor,
+                entities = SourceEntitySelectionDocument.None,
+                text = SourceTextRequestDocument.Complete,
+                entityLimit = (SourceEntityLimitDocument.parse(10) as Refinement.Refined).value,
+            )
+        val raw = json.encodeToJsonElement(SourceReadRequest.serializer(), request)
+        assertEquals(
+            Refinement.Rejected(
+                SourceReadFailureDetail.RequestRejected(
+                    SourceRequestField(SourceRequestPath.ENTITY_LIMIT),
+                    SourceRequestRule.ENTITY_LIMIT_NOT_APPLICABLE,
+                )
+            ),
+            SourceRequestIngress.decodePublic(raw, json),
+        )
+    }
 
     @Test
     fun `source schema rejection emits finite physical field before runtime startup`(@TempDir directory: Path) =

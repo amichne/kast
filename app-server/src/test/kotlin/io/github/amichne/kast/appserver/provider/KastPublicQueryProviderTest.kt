@@ -19,8 +19,10 @@ import io.github.amichne.kast.appserver.ide.ExistingIdeReadOperation
 import io.github.amichne.kast.appserver.installedKastCatalogFixture
 import io.github.amichne.kast.appserver.query.PublicToolCanonical
 import io.github.amichne.kast.appserver.query.PublicToolContract
+import io.github.amichne.kast.appserver.query.PublicToolSearchClasses
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.Validation
+import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import io.github.amichne.kast.protocol.wire.presentation.OperationPreparation
@@ -47,7 +49,11 @@ class KastPublicQueryProviderTest {
     fun `provider preserves schema-bound facade syntax without preparing lifecycle`(@TempDir root: Path) = runBlocking {
         val executor = RecordingExecutor(capability())
         val broker = broker(root, executor)
-        val raw = """{"class_name":"Order","name_match":null,"scope":null}"""
+        val raw =
+            Json.encodeToString(
+                PublicToolSearchClasses.serializer(),
+                PublicToolSearchClasses(ProtocolText.parse("Order").refined()),
+            )
         assertTrue(broker.dispatch(request(root, PublicToolIdentity.SEARCH_CLASSES, raw)) is BrokerDispatch.Completed)
         val read = assertInstanceOf(ExistingIdeOperation.Read::class.java, executor.operations.single())
         val parsed = PublicToolContract.admit(PublicToolIdentity.SEARCH_CLASSES, Json.parseToJsonElement(raw)).refined()
@@ -101,7 +107,6 @@ class KastPublicQueryProviderTest {
         listOf(
                 """{"class_name":"Order","name_match":null,"scope":null,"execution":{"kind":"exhaustive"}}""",
                 """{"class_name":"Order","name_match":null,"scope":{"relative_directory_path":"../src","include_subdirectories":true,"source_set_names":null}}""",
-                """{"class_name":"Order","name_match":null}""",
             )
             .forEach {
                 assertTrue(

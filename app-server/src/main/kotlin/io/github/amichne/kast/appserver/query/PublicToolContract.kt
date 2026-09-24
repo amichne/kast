@@ -146,7 +146,7 @@ fun PublicToolInputFailure.explanation(): String =
     when (this) {
         PublicToolInputFailure.SchemaMismatch -> "Tool contract mismatch; use the schema for the selected tool."
         PublicToolInputFailure.SchemaRejected ->
-            "Arguments must contain exactly the selected tool's required fields. Supply null for default controls."
+            "Arguments must satisfy the selected tool's fields and closed variants. Omit default controls when unused."
         PublicToolInputFailure.SyntaxRejected -> "Arguments violate the selected tool's bounded value grammar."
         is PublicToolInputFailure.Parameter -> "${parameter.path}: ${rule.correction}"
     }

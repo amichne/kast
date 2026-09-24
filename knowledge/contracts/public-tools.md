@@ -26,6 +26,8 @@ code_sources:
   - path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt
   - path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastQueryInput.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicSourceReadIntent.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/source/SourceCommands.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastProvider.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexSessionProjection.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/tool/PublicToolCommands.kt
@@ -44,7 +46,13 @@ code_sources:
 
 The authored tool bundle generates Kotlin request DTOs, concrete normalization defaults, closed presentation identities, full admission schemas, Codex registration schemas and separate Responses strict registrations. The hosted `query_symbols` and `check_diagnostics` presentations lower to canonical query and diagnostic operations. The former CLI routes are retired; provider admission retains distinct schemas for these presentations.
 
-`search_classes`, `search_functions`, `search_declarations` and `check_diagnostics` are eager. `query_symbols` is deferred. Ordinary searches fix or admit declaration kinds and request names, locations and signatures; diagnostics lower to the path, semantic diagnostic limit, optional continuation and execution grant request. Required nullable controls normalize before canonical construction. Directory/package scope shapes are exclusive, and duplicates and invalid lexical values reject.
+`search_classes`, `search_functions`, `search_declarations` and `check_diagnostics` are eager. `query_symbols` is deferred. Ordinary searches fix or admit declaration kinds and request names, locations and signatures; diagnostics lower to the path, semantic diagnostic limit, optional continuation and execution grant request. Optional nullable controls normalize before canonical construction. Directory/package scope shapes are exclusive, and duplicates and invalid lexical values reject.
+
+The hosted and MCP `source_read` input schema admits a declaration-oriented public
+intent with `anchor.symbolRef`, `region`, `text.mode`, and `entities.mode`.
+`entities: {mode: none}` has no entity limit; `matching` owns its optional
+positive limit. The public shape lowers through the same canonical source read
+operation at either ingress and keeps the exact reference unchanged.
 
 Hosted tools pass admitted requests through the provider and shared workspace preparation owner. The daemon checks exact workspace identity before the existing-IDE operation. Complete, qualified, and rejected results retain their distinct documents. There is no semantic CLI operation RPC or direct-IDE fallback.
 
@@ -54,7 +62,7 @@ Installed projection 15 retains the full canonical hosted tool inventory. App Se
 `EXPLICIT` exact-plan approval. The hosted planning schema admits only
 `add-declaration`; unsupported canonical intents do not enter another runtime.
 
-The 32-example corpus, typed lowering, duplicate/path rejection, CLI wire parity and production provider routing are deterministic proofs. Codex schemas omit the Responses-only `strict` field and retain separate stronger admission constraints. These checks do not by themselves establish live API acceptance or improved model first-call accuracy.
+The example corpus, typed lowering, duplicate/path rejection, CLI wire parity and production provider routing are deterministic proofs. Codex schemas admit omitted default controls; Responses strict registrations retain explicit nullable fields. Server admission retains separate stronger constraints. These checks do not by themselves establish live API acceptance or improved model first-call accuracy.
 
 See the [public search guide](../../docs/public/search.mdx) and [semantic query flow](../flows/semantic-query.md).
 

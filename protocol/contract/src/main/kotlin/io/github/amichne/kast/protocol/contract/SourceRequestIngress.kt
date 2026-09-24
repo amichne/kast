@@ -7,6 +7,7 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 
 /** Parser exceptions carry only finite authored evidence, never parser messages or request bytes. */
 class SourceRequestSerializationException(val failure: SourceReadCause) :
@@ -15,29 +16,48 @@ class SourceRequestSerializationException(val failure: SourceReadCause) :
 /** Physical ingress for SOURCE only. The returned request retains the generated DTO's refined values. */
 object SourceRequestIngress {
     fun decode(element: JsonElement, json: Json): Refinement<SourceReadRequest, SourceReadCause> =
+        decodeWithPolicy(element, json, SourceEntityLimitPolicy.CANONICAL)
+
+    fun decodePublic(element: JsonElement, json: Json): Refinement<SourceReadRequest, SourceReadCause> =
+        decodeWithPolicy(element, json, SourceEntityLimitPolicy.PUBLIC)
+
+    private fun decodeWithPolicy(
+        element: JsonElement,
+        json: Json,
+        policy: SourceEntityLimitPolicy,
+    ): Refinement<SourceReadRequest, SourceReadCause> =
         try {
             val root = sourceRoot(element)
             validateSourceAnchor(root)
             validateSourceRegion(root)
             validateSourceEntities(root)
+            if (
+                policy == SourceEntityLimitPolicy.PUBLIC &&
+                    "entityLimit" in root &&
+                    ((root["entities"] as? JsonObject)?.get("type") as? JsonPrimitive)?.content == "none"
+            ) {
+                rejectSourceField(SourceRequestPath.ENTITY_LIMIT, SourceRequestRule.ENTITY_LIMIT_NOT_APPLICABLE)
+            }
             validateSourceText(root)
-            sourceNumber(
-                root,
-                "entityLimit",
-                SourceRequestPath.ENTITY_LIMIT,
-                1,
-                MAX_SOURCE_READ_ENTITY_LIMIT.toLong(),
-                SourceRequestRule.ENTITY_COUNT,
-            )
-            sourceNumber(
-                root,
-                "textByteLimit",
-                SourceRequestPath.TEXT_BYTE_LIMIT,
-                1,
-                Long.MAX_VALUE,
-                SourceRequestRule.BYTE_COUNT,
-            )
-            validateSourcePage(root)
+            if ("entityLimit" in root)
+                sourceNumber(
+                    root,
+                    "entityLimit",
+                    SourceRequestPath.ENTITY_LIMIT,
+                    1,
+                    MAX_SOURCE_READ_ENTITY_LIMIT.toLong(),
+                    SourceRequestRule.ENTITY_COUNT,
+                )
+            if ("textByteLimit" in root)
+                sourceNumber(
+                    root,
+                    "textByteLimit",
+                    SourceRequestPath.TEXT_BYTE_LIMIT,
+                    1,
+                    Long.MAX_VALUE,
+                    SourceRequestRule.BYTE_COUNT,
+                )
+            if ("page" in root) validateSourcePage(root)
             validateSourceExecutionBudget(root)
             if ("format" in root)
                 sourceChoice(
@@ -59,6 +79,11 @@ object SourceRequestIngress {
         } catch (failure: SourceRequestSerializationException) {
             Refinement.Rejected(failure.failure)
         }
+}
+
+private enum class SourceEntityLimitPolicy {
+    CANONICAL,
+    PUBLIC,
 }
 
 private fun validateSourceAnchor(root: JsonObject) {

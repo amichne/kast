@@ -13,11 +13,11 @@ code_sources:
 Read every Kast response as **invocation → semantic outcome → payload → coverage**.
 
 Kast retains one JSON envelope in the final content item of each model-facing
-tool reply. Compact source reads can precede it with a separate item containing
-the unchanged returned source.
+tool reply. Searches and diagnostics can precede it with a short summary; compact
+source reads can precede it with the unchanged returned source.
 
 - Decode the final JSON envelope once.
-- Expect no appended prose summary.
+- Treat any preceding summary as display text; use the final envelope for evidence.
 - Display the same bounded document in clients with native structured output.
 - Preserve closed rejection variants for broker admission and capacity failures.
 
@@ -60,7 +60,8 @@ This illustrative published query response is complete and empty:
     "operation": "query.run",
     "status": "complete",
     "items": [],
-    "failures": []
+    "failures": [],
+    "coverage": {"exhaustive": true}
   }
 }
 ```
@@ -77,6 +78,7 @@ This qualified illustration does not establish absence:
     "status": "qualified",
     "items": [],
     "failures": [],
+    "coverage": {"exhaustive": false},
     "continuation": null,
     "terminal_reason": "upstream-incomplete",
     "qualification": {
@@ -97,8 +99,13 @@ Choose the payload model for the invoked tool.
 | `source_read` | `source.read` | `snapshot`, `region`, `entities[]`, `text` |
 | `read_relations` | `relation.read` | `relations[]`: occurrence-oriented relation facts |
 | `traverse_relations` | `traversal.run` | The graph, traversal coverage, and continuation state in the callable schema |
-| `check_diagnostics` | `diagnostic.check` | `diagnostics[]`: severity, message, and source location |
+| `check_diagnostics` | `diagnostic.check` | `diagnostics[]`, `analysisKind`, and `coverage`: requested path, discovered, analyzed, and skipped files |
 | `change_plan`, `change_apply`, `change_recover` | Corresponding `change.*` operation | Plan, application, or recovery state; see [Change source](/change) |
+
+For `source_read`, the hosted tool also accepts an exact symbol reference as
+`anchor.symbolRef`, with `region: "declaration"`, `text: {"mode":"complete","maxBytes":6000}`,
+and `entities: {"mode":"none"}`. Omit the entity limit for this form. The
+canonical source request remains available for candidate and source anchors.
 
 Use these focused references before opening a complete callable schema:
 
@@ -108,6 +115,8 @@ Use these focused references before opening a complete callable schema:
 - [Diagnostic entry](/reference/models/diagnostic)
 
 ## 4. Retain coverage and failures
+
+`analysisKind: IDE_FILE_DIAGNOSTICS` reports an IDE file scan. It does not assert a project build. A zero-diagnostic result establishes no findings only for the files shown as analyzed with exhaustive coverage. A qualified result may return zero diagnostics while files remain undiscovered or unexamined.
 
 `qualification.knownMinimum` is a known returned count, not an estimate.
 

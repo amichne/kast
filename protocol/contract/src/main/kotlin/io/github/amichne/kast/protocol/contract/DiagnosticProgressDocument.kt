@@ -40,4 +40,5 @@ data class DiagnosticProgressDocument(
     @SerialName("execution_budget") val executionBudget: ExecutionBudgetReport? = null,
     val stop: DiagnosticProgressStop,
     val knownDiagnosticCount: DiagnosticKnownCountDocument,
+    val requestedPath: ProtocolText? = null,
 )

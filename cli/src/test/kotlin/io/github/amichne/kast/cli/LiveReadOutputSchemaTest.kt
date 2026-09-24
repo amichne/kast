@@ -546,6 +546,31 @@ class LiveReadOutputSchemaTest {
     internal fun qualifiedEnvelope(operation: CanonicalOperation): String =
         completedSchemaEnvelope(qualifiedDocuments(published).first { it.first == operation }.second)
 
+    internal fun completeEnvelope(operation: CanonicalOperation): String =
+        completedSchemaEnvelope(completeDocuments(published).first { it.first == operation }.second)
+
+    internal fun diagnosticEnvelopeWithMessage(message: String): String {
+        val finding =
+            DiagnosticDocument(
+                severity = DiagnosticSeverityDocument.WARNING,
+                code = text("LONG_MESSAGE"),
+                message = text(message),
+                location =
+                    DiagnosticLocationDocument(
+                        candidateSelector = text("candidate:diagnostic"),
+                        file = text("src/A.kt"),
+                        range = DiagnosticRangeDocument.create(offset(0), offset(0)).refined(),
+                    ),
+            )
+        val result = DiagnosticCheckResult(BoundedProtocolList.create(listOf(finding)).refined())
+        return completedSchemaEnvelope(
+            CanonicalReadCliDocuments.projectDiagnostics(
+                    complete(CanonicalOperation.DIAGNOSTIC_CHECK, published, result)
+                )
+                .document()
+        )
+    }
+
     internal fun assertAdmits(operation: CanonicalOperation, document: JsonObject) {
         val errors = validate(operation, document)
         assertTrue(errors.isEmpty(), "$operation rejected its emitted document: $errors")

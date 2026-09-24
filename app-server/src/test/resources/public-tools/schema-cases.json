@@ -208,12 +208,12 @@
     "schema_valid": false
   },
   {
-    "id": "strict-presence-required",
+    "id": "ordinary-defaults-omitted",
     "tool": "search_classes",
     "arguments": {
       "class_name": "OrderService"
     },
-    "schema_valid": false
+    "schema_valid": true
   },
   {
     "id": "diagnostic-file",

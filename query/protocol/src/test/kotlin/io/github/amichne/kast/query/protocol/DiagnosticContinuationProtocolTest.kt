@@ -154,6 +154,7 @@ class DiagnosticContinuationProtocolTest {
         assertEquals(1, scans)
         val typed = first as OperationOutcome.Qualified
         assertEquals(DiagnosticInventoryDocument.Enumerating, typed.evidence.payload.progress?.inventory)
+        assertEquals(request.path, typed.evidence.payload.progress?.requestedPath)
         assertEquals(DiagnosticProgressStop.ENUMERATION_FILE_LIMIT, typed.evidence.payload.progress?.stop)
         assertNotNull(typed.qualification.continuation)
         assertEquals(0, typed.qualification.knownDiagnosticCount.value)

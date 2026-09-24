@@ -135,14 +135,15 @@ object CanonicalAgentToolDefinitions {
             "source_read",
             "Read bounded source and structural context around a candidate, exact symbol, or source " +
                 "selector. Prefer this over unrestricted filesystem reads when the required Kotlin " +
-                "context is representable through Kast.",
+                "context is representable through Kast. Omit entityLimit for an entity-free read, " +
+                "and omit page and default budgets for the first read.",
         )
     val semanticQuery =
         tool(
             CanonicalOperationDefinitions.relationRead,
             "read_relations",
             "Read one bounded compiler-grounded semantic relation from an exact selector. Use " +
-                "a Kast search tool first when exact identity is not established.",
+                "a Kast search tool first when exact identity is not established. Omit limit for the bounded default.",
             inputAliases = setOf("semantic_query"),
         )
     val impactAnalyze =
