@@ -7,7 +7,6 @@ import com.intellij.openapi.externalSystem.model.ProjectSystemId
 import com.intellij.openapi.externalSystem.service.execution.ProgressExecutionMode
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.openapi.externalSystem.util.ExternalSystemUtil
-import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
@@ -16,6 +15,8 @@ import com.intellij.openapi.vfs.newvfs.RefreshQueue
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshEffect
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshFailure as PublicFailure
+import io.github.amichne.kast.runtime.hosted.HostedVfsRefreshOutcome
+import io.github.amichne.kast.runtime.hosted.saveProjectDocuments
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryService
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadinessDocument
@@ -39,8 +40,7 @@ internal class IntellijWorkspaceRefreshPort(
         com.intellij.openapi.application.ApplicationManager.getApplication().assertIsDispatchThread()
         if (project.isDisposed) return Refinement.Rejected(PublicFailure.DISPOSED)
         if (!TrustedProjects.isProjectTrusted(project)) return Refinement.Rejected(PublicFailure.UNLINKED_BUILD)
-        if (FileDocumentManager.getInstance().unsavedDocuments.isNotEmpty())
-            return Refinement.Rejected(PublicFailure.UNSAVED_DOCUMENTS)
+        if (!saveProjectDocuments(root)) return Refinement.Rejected(PublicFailure.UNSAVED_DOCUMENTS)
         if (ExternalSystemApiUtil.getSettings(project, GRADLE).linkedProjectsSettings.isNotEmpty())
             return Refinement.Rejected(PublicFailure.UNLINKED_BUILD)
         linkState =
@@ -71,9 +71,7 @@ internal class IntellijWorkspaceRefreshPort(
                 settings.linkedProjectsSettings.none { it.externalProjectPath == root.value }
         )
             return Refinement.Rejected(PublicFailure.UNLINKED_BUILD)
-        // Native lifecycle must never silently save or discard an editor buffer.
-        if (FileDocumentManager.getInstance().unsavedDocuments.isNotEmpty())
-            return Refinement.Rejected(PublicFailure.UNSAVED_DOCUMENTS)
+        if (!saveProjectDocuments(root)) return Refinement.Rejected(PublicFailure.UNSAVED_DOCUMENTS)
         return Refinement.Refined(Unit)
     }
 
@@ -135,6 +133,33 @@ internal class IntellijWorkspaceRefreshPort(
                     complete(
                         if (project.isDisposed) WorkspaceRefreshEffectResult.DISPOSED
                         else WorkspaceRefreshEffectResult.SUCCEEDED
+                    )
+                },
+                directory,
+            )
+    }
+
+    /** Automatic read admission uses this same explicit effect owner. */
+    fun refreshForRead(complete: (HostedVfsRefreshOutcome) -> Unit) {
+        if (project.isDisposed) {
+            complete(HostedVfsRefreshOutcome.PROJECT_DISPOSED)
+            return
+        }
+        val directory = LocalFileSystem.getInstance().findFileByPath(root.value)
+        if (directory == null) {
+            complete(HostedVfsRefreshOutcome.ROOT_UNAVAILABLE)
+            return
+        }
+        // Include nested source and Gradle inputs even when the IDE window is backgrounded.
+        VfsUtil.markDirty(true, true, directory)
+        RefreshQueue.getInstance()
+            .refresh(
+                true,
+                true,
+                {
+                    complete(
+                        if (project.isDisposed) HostedVfsRefreshOutcome.PROJECT_DISPOSED
+                        else HostedVfsRefreshOutcome.READY
                     )
                 },
                 directory,

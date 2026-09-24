@@ -22,14 +22,9 @@ import org.junit.jupiter.api.Test
 
 class McpWorkspaceOperationClientTest {
     @Test
-    fun `explicit refresh uses the session lifecycle client without semantic read`() {
-        val target = IdeProjectTarget("host", "project", "/workspace")
-        val request =
-            WorkspaceLifecycleRequest.Sync(
-                target,
-                "request",
-                io.github.amichne.kast.protocol.contract.WorkspaceRefreshEffect.FILE_REFRESH,
-            )
+    fun `inspection uses the session lifecycle client without semantic read`() {
+        val request = WorkspaceLifecycleRequest.Inspect
+        val inspected = IdeLifecycleResult.Inspected("host", "/ide", "build", emptyList())
         var observedClient: String? = null
         var observedRequest: WorkspaceLifecycleRequest? = null
         val lifecycle =
@@ -37,7 +32,7 @@ class McpWorkspaceOperationClientTest {
                 override fun execute(request: WorkspaceLifecycleRequest, client: String): IdeLifecycleResult {
                     observedRequest = request
                     observedClient = client
-                    return IdeLifecycleResult.Synced(target)
+                    return inspected
                 }
 
                 override fun approvedClose(
@@ -52,7 +47,7 @@ class McpWorkspaceOperationClientTest {
                 lifecycle,
             )
 
-        assertEquals(IdeLifecycleResult.Synced(target), session.lifecycle(request))
+        assertEquals(inspected, session.lifecycle(request))
         assertEquals(request, observedRequest)
         assertEquals("kast-mcp", observedClient)
     }

@@ -101,11 +101,11 @@ object CanonicalAgentToolDefinitions {
             "Inspect or explicitly control one selected IDEA workspace. Ordinary semantic calls prepare the exact " +
                 "project and wait for native readiness automatically; " +
                 "do not use this tool as a routine read preflight. " +
-                "For a requested control operation, open, present, sync, " +
-                "configure an exact task-success refresh rule, " +
-                "release or close an exact project. Opening is background best effort. Preserve returned host and " +
+                "For a requested control operation, open, present, release or close an exact project. " +
+                "The host owns document save, VFS refresh and model reload selection. " +
+                "Opening is background best effort. Preserve returned host and " +
                 "project identities and reuse request IDs only for the same operation. Pending work requires " +
-                "status, not repeated open or sync. Unsaved documents and trust require user " +
+                "status, not repeated open. Trust and failed saves require user " +
                 "resolution. Release never closes a project. Borrowed or presented projects are protected from agent " +
                 "cleanup; request_user_close requests exact-target controller approval.",
             approval = HostedApprovalPolicy.EXACT_PROJECT_CLOSE,

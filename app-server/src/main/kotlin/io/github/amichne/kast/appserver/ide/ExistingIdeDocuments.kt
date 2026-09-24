@@ -121,7 +121,12 @@ object ExistingIdeDocuments {
         operation: ExistingIdeOperation,
         context: ResponseContext,
     ): ExistingIdeExchange {
-        if (node.path("type").asString() == "HOST_REJECTED") return hostRejected(node.toString())
+        if (node.path("type").asString() == "HOST_REJECTED") {
+            val recovery =
+                if (node.path("failure").asString() == "MODEL_REFRESH_REQUIRED") HostedPresemanticRecovery.ModelReload
+                else HostedPresemanticRecovery.None
+            return hostRejected(node.toString(), recovery)
+        }
         if (operation != ExistingIdeOperation.Status || node.path("type").asString() != "KAST_IDE_HOST")
             return responseRejected()
         return if (
@@ -256,9 +261,13 @@ object ExistingIdeDocuments {
             CanonicalJsonDocument.generated(JsonElement.serializer()).create(Json.parseToJsonElement(raw))
         )
 
-    private fun hostRejected(raw: String) =
+    private fun hostRejected(
+        raw: String,
+        recovery: HostedPresemanticRecovery = HostedPresemanticRecovery.None,
+    ) =
         ExistingIdeExchange.HostRejected(
-            CanonicalJsonDocument.generated(JsonElement.serializer()).create(Json.parseToJsonElement(raw))
+            CanonicalJsonDocument.generated(JsonElement.serializer()).create(Json.parseToJsonElement(raw)),
+            recovery,
         )
 }
 

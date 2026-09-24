@@ -5,7 +5,6 @@ import com.intellij.ide.trustedProjects.TrustedProjects
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.asContextElement
-import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.project.ex.ProjectManagerEx
@@ -23,6 +22,7 @@ import io.github.amichne.kast.protocol.contract.WorkspaceRefreshFailure
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshResult
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshStage
 import io.github.amichne.kast.runtime.hosted.HostedEndpointService
+import io.github.amichne.kast.runtime.hosted.saveProjectDocuments
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryService
 import java.nio.file.Files
@@ -36,6 +36,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.plugins.gradle.settings.GradleSettings
 
 /** Ordinary graphical 262 APIs only. No force closure, global preferences, or implicit trust. */
+@Suppress("LargeClass") // One owner retains the native project and lifecycle effect order.
 internal class IdeLifecycleNative(private val state: IdeLifecycleState) {
     private val projects = java.util.concurrent.ConcurrentHashMap<UUID, Project>()
 
@@ -105,7 +106,11 @@ internal class IdeLifecycleNative(private val state: IdeLifecycleState) {
             is IdeLifecycleCommand.Sync ->
                 withTarget(command.target) { sync(it, command.target, command.requestId, command.effect) }
             is IdeLifecycleCommand.ConfigureSync ->
-                withTarget(command.target) { configureSync(it, command.target, command.rule) }
+                withTarget(command.target) { project ->
+                    withContext(Dispatchers.EDT + ModalityState.nonModal().asContextElement()) {
+                        configureSync(project, command.target, command.rule)
+                    }
+                }
             is IdeLifecycleCommand.Close -> withTarget(command.target) { close(it, command.target) }
             else -> blocked(IdeLifecycleFailure.INVALID_REQUEST)
         }
@@ -118,13 +123,33 @@ internal class IdeLifecycleNative(private val state: IdeLifecycleState) {
             }
         val existing = existingProjects(root)
         if (existing.size > 1) return blocked(IdeLifecycleFailure.PROJECT_BUSY)
-        if (existing.size == 1) {
-            val target = observe(existing.single(), root, IdeProjectOwnership.BORROWED)
-            return awaitReady(existing.single(), target, command.requestId)
+        if (existing.size == 1) return openExisting(existing.single(), root, command.requestId)
+        return openNew(root, command.requestId)
+    }
+
+    private suspend fun openExisting(
+        project: Project,
+        root: CanonicalWorkspaceRoot,
+        requestId: String,
+    ): IdeLifecycleResult {
+        val target = observe(project, root, IdeProjectOwnership.BORROWED)
+        val endpoint = project.getService(HostedEndpointService::class.java)
+        if (!awaitCondition { project.isDisposed || endpoint.lifecycleRefreshReady() })
+            return blocked(IdeLifecycleFailure.DEADLINE_EXCEEDED)
+        if (project.isDisposed) return blocked(IdeLifecycleFailure.DISPOSED)
+        lifecycleVfsFailure(endpoint, root)?.let {
+            return blocked(it)
         }
+        val revision = endpoint.lifecycleModelRevision() ?: return blocked(IdeLifecycleFailure.PLATFORM_UNAVAILABLE)
+        return awaitReady(project, target, requestId, endpoint.lifecycleShouldReloadModel()).also { result ->
+            if (result is IdeLifecycleResult.Opened) endpoint.lifecycleModelImported(revision)
+        }
+    }
+
+    private suspend fun openNew(root: CanonicalWorkspaceRoot, requestId: String): IdeLifecycleResult {
         if (!TrustedProjects.isProjectTrusted(Path.of(root.value))) return blocked(IdeLifecycleFailure.TRUST_REQUIRED)
-        val guard = withContext(Dispatchers.EDT) { FileDocumentManager.getInstance().unsavedDocuments.isEmpty() }
-        if (!guard) return blocked(IdeLifecycleFailure.UNSAVED_DOCUMENTS)
+        if (!withContext(Dispatchers.EDT) { saveProjectDocuments(root) })
+            return blocked(IdeLifecycleFailure.UNSAVED_DOCUMENTS)
         val importScopes = mutableListOf<InitialImportScope>()
         try {
             val project = openNative(root, importScopes) ?: return blocked(IdeLifecycleFailure.OPEN_FAILED)
@@ -133,10 +158,17 @@ internal class IdeLifecycleNative(private val state: IdeLifecycleState) {
             if (!awaitCondition { project.isDisposed || (project.isInitialized && endpoint.lifecycleRefreshReady()) })
                 return blocked(IdeLifecycleFailure.DEADLINE_EXCEEDED)
             if (project.isDisposed) return blocked(IdeLifecycleFailure.DISPOSED)
-            state.progress(LifecycleRequest(command.requestId), IdeLifecycleStage.IMPORTING)
-            val initial = initialImport(project, endpoint, root, command.requestId)
-            return when (val imported = awaitRefresh(endpoint, target, command.requestId, initial)) {
-                is IdeLifecycleResult.Synced -> IdeLifecycleResult.Opened(target)
+            lifecycleVfsFailure(endpoint, root)?.let {
+                return blocked(it)
+            }
+            val revision = endpoint.lifecycleModelRevision() ?: return blocked(IdeLifecycleFailure.PLATFORM_UNAVAILABLE)
+            state.progress(LifecycleRequest(requestId), IdeLifecycleStage.IMPORTING)
+            val initial = initialImport(project, endpoint, root, requestId)
+            return when (val imported = awaitRefresh(endpoint, target, requestId, initial)) {
+                is IdeLifecycleResult.Synced -> {
+                    endpoint.lifecycleModelImported(revision)
+                    IdeLifecycleResult.Opened(target)
+                }
                 else -> imported
             }
         } finally {
@@ -191,7 +223,12 @@ internal class IdeLifecycleNative(private val state: IdeLifecycleState) {
             else WorkspaceRefreshResult.Rejected(WorkspaceRefreshFailure.UNLINKED_BUILD)
         }
 
-    private suspend fun awaitReady(project: Project, target: IdeProjectTarget, requestId: String): IdeLifecycleResult {
+    private suspend fun awaitReady(
+        project: Project,
+        target: IdeProjectTarget,
+        requestId: String,
+        refreshExistingModel: Boolean,
+    ): IdeLifecycleResult {
         if (!TrustedProjects.isProjectTrusted(project)) return blocked(IdeLifecycleFailure.TRUST_REQUIRED)
         val root =
             when (val admitted = canonicalRoot(target.root)) {
@@ -204,6 +241,7 @@ internal class IdeLifecycleNative(private val state: IdeLifecycleState) {
                 target,
                 root,
                 project.getService(HostedQueryService::class.java),
+                refreshExistingModel = refreshExistingModel,
             ) {
                 sync(project, target, requestId, WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD)
             }
@@ -222,7 +260,9 @@ internal class IdeLifecycleNative(private val state: IdeLifecycleState) {
             endpoint,
             target,
             requestId,
-            endpoint.lifecycleRefresh(WorkspaceRefreshCommand.Request(requestId, effect)),
+            withContext(Dispatchers.EDT + ModalityState.nonModal().asContextElement()) {
+                endpoint.lifecycleRefresh(WorkspaceRefreshCommand.Request(requestId, effect))
+            },
         )
     }
 
@@ -273,6 +313,11 @@ internal class IdeLifecycleNative(private val state: IdeLifecycleState) {
     }
 
     private suspend fun close(project: Project, target: IdeProjectTarget): IdeLifecycleResult {
+        val root =
+            when (val admitted = canonicalRoot(target.root)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return blocked(IdeLifecycleFailure.STALE_PROJECT)
+            }
         val endpoint = project.getService(HostedEndpointService::class.java)
         if (endpoint.lifecycleHasWork()) return blocked(IdeLifecycleFailure.PROJECT_BUSY)
         if (!endpoint.lifecycleAdmission.beginClose()) return blocked(IdeLifecycleFailure.PROJECT_BUSY)
@@ -287,8 +332,7 @@ internal class IdeLifecycleNative(private val state: IdeLifecycleState) {
                                 .getInstance()
                                 .hasTaskOfTypeInProgress(it, project)
                         } -> blocked(IdeLifecycleFailure.PROJECT_BUSY)
-                        FileDocumentManager.getInstance().unsavedDocuments.isNotEmpty() ->
-                            blocked(IdeLifecycleFailure.UNSAVED_DOCUMENTS)
+                        !saveProjectDocuments(root) -> blocked(IdeLifecycleFailure.UNSAVED_DOCUMENTS)
                         !ProjectManager.getInstance().closeAndDispose(project) ->
                             blocked(IdeLifecycleFailure.CLOSE_VETOED)
                         else -> IdeLifecycleResult.Closed(target)

@@ -58,12 +58,10 @@ Install the IDEA plugin, connect Codex, and find a declaration in your repositor
   </Step>
   <Step title="Prepare IDEA">
     - Restart IDEA to load the plugin.
-    - Save edited files before requesting evidence.
-
     Kast starts opening the bound repository when the MCP session connects.
-    Semantic requests wait for Gradle import and indexing. Resolve project trust
-    or unsaved-document blockers if the agent reports them; see
-    [troubleshooting](/troubleshooting).
+    Semantic requests save project editor buffers, refresh changed files or
+    the Gradle model, and wait for import and indexing. Resolve project trust
+    or a failed save if the agent reports it; see [troubleshooting](/troubleshooting).
   </Step>
   <Step title="Connect from a Gradle repository">
     ```console

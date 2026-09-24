@@ -48,16 +48,6 @@ internal object McpStructuredResults {
             )
             .jsonObject
 
-    val refreshSchema: JsonObject =
-        wire
-            .encodeToJsonElement(
-                McpOutputSchema(
-                    oneOf =
-                        listOf(variant("complete", "data"), variant("partial", "data"), variant("rejected", "error"))
-                )
-            )
-            .jsonObject
-
     val changeSchema: JsonObject =
         wire
             .encodeToJsonElement(
@@ -80,7 +70,6 @@ internal object McpStructuredResults {
         when {
             hasMcpReadPresentation(name) -> readSchema
             name == "health_check" || name == "validate_workspace" -> investigationSchema
-            name == "refresh_workspace" -> refreshSchema
             name == "change" -> changeSchema
             else -> genericSchema
         }

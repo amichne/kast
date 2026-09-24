@@ -3,20 +3,24 @@
 package io.github.amichne.kast.appserver.runtime
 
 import io.github.amichne.kast.appserver.ide.CanonicalRoot
+import io.github.amichne.kast.appserver.ide.ExistingIdeClassName
 import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
 import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
+import io.github.amichne.kast.appserver.ide.HostedPresemanticRecovery
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import io.github.amichne.kast.protocol.contract.IdeProjectDescription
 import io.github.amichne.kast.protocol.contract.IdeProjectOwnership
 import io.github.amichne.kast.protocol.contract.IdeProjectTarget
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import java.nio.file.Path
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.Serializable
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -160,6 +164,45 @@ class PreparedWorkspaceDemandTest {
         )
         preparations.close()
     }
+
+    @Test
+    fun `model-change rejection reopens once before replaying a read`() = runTest {
+        var opens = 0
+        var queries = 0
+        val preparations =
+            WorkspacePreparations(
+                this,
+                {
+                    opens++
+                    IdeLifecycleResult.Opened(target)
+                },
+            )
+        val rejected =
+            ExistingIdeExchange.HostRejected(
+                CanonicalJsonDocument.generated(ModelRefreshRejection.serializer()).create(ModelRefreshRejection()),
+                HostedPresemanticRecovery.ModelReload,
+            )
+        val completed = ExistingIdeExchange.Rejected(ExistingIdeFailure.TRANSPORT_REJECTED)
+        val demand =
+            PreparedWorkspaceDemand(
+                preparations,
+                { inspected(target) },
+                { _, _ -> if (++queries == 1) rejected else completed },
+            )
+        val name = (ExistingIdeClassName.parse("Subject") as Refinement.Refined).value
+        val result = async { demand.query(root, ExistingIdeOperation.Classes(name)) }
+        runCurrent()
+        assertEquals(WorkspaceDemandResult.Native(completed), result.await())
+        assertEquals(2, opens)
+        assertEquals(2, queries)
+        preparations.close()
+    }
+
+    @Serializable
+    private data class ModelRefreshRejection(
+        val type: String = "HOST_REJECTED",
+        val failure: String = "MODEL_REFRESH_REQUIRED",
+    )
 
     private fun inspected(value: IdeProjectTarget) =
         IdeLifecycleResult.Inspected(

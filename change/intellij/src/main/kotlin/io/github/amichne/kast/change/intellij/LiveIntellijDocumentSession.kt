@@ -203,8 +203,7 @@ internal class LiveIntellijDocumentSession(
         }
         return when {
             DumbService.getInstance(project).isDumb -> rejected(stage, IntellijWriteBoundaryFailure.DUMB_MODE)
-            FileDocumentManager.getInstance().unsavedDocuments.isNotEmpty() ->
-                rejected(stage, IntellijWriteBoundaryFailure.DIRTY_DOCUMENTS)
+            hasUnsavedProjectDocuments(project) -> rejected(stage, IntellijWriteBoundaryFailure.DIRTY_DOCUMENTS)
             PsiDocumentManager.getInstance(project).hasUncommitedDocuments() ->
                 rejected(stage, IntellijWriteBoundaryFailure.UNCOMMITTED_DOCUMENTS)
             prepared.document.text != expected -> rejected(stage, IntellijWriteBoundaryFailure.DOCUMENT_IMAGE_CHANGED)

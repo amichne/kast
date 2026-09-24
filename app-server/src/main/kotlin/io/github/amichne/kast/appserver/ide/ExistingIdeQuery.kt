@@ -145,7 +145,18 @@ sealed interface ExistingIdeExchange {
 
     class Semantic constructor(val outcome: ProjectedOperationOutcome) : ExistingIdeExchange
 
-    class HostRejected constructor(val document: CanonicalJsonDocument) : ExistingIdeExchange
+    class HostRejected
+    constructor(
+        val document: CanonicalJsonDocument,
+        val recovery: HostedPresemanticRecovery = HostedPresemanticRecovery.None,
+    ) : ExistingIdeExchange
 
     data class Rejected(val failure: ExistingIdeFailure) : ExistingIdeExchange
+}
+
+/** Schema-admitted host failure that proves no semantic operation was evaluated. */
+sealed interface HostedPresemanticRecovery {
+    data object None : HostedPresemanticRecovery
+
+    data object ModelReload : HostedPresemanticRecovery
 }

@@ -8,7 +8,6 @@ timestamp: 2026-09-22T00:00:00Z
 code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/KastDaemonMain.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/McpWorkspaceOperationClient.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpWorkspaceRefreshTool.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpSingleChangeTool.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationTrustEnrollment.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/PackagedProviderCatalog.kt
@@ -139,8 +138,8 @@ initialization queues native preparation for that root using the selected IDEA
 lifecycle. Later semantic demand joins the same preparation and waits for exact
 readiness. The initialize response explains that wait, automatic linked-model
 reload, exact-reference reuse, relation coverage, continuations, and stage-specific
-recovery. The direct MCP `refresh_workspace` tool invokes native `FILE_REFRESH`
-for that root; the terminal MCP catalog does not expose `workspace_lifecycle`.
+recovery. The terminal MCP catalog does not expose manual refresh or
+`workspace_lifecycle`.
 Its `change` tool plans, signs the exact native challenge, applies, and verifies
 within one call, attempting recovery if application is unverified. The App Server exposes the same single `change` operation and signs its exact
 plan internally. If apply is cancelled, only a complete native `prior_state` or

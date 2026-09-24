@@ -63,7 +63,8 @@ private const val KAST_MCP_INSTRUCTIONS =
     "Kast reads the saved, indexed Kotlin/Gradle project in IntelliJ IDEA. " +
         "Call tools from the repository root. Each semantic call waits for bounded IDE preparation and indexing " +
         "before the read; a missing cached Gradle model triggers one linked-project reload. Wait for the response " +
-        "and follow its finite recovery instruction if preparation rejects. Unsaved editor buffers block refresh. " +
+        "and follow its finite recovery instruction if preparation rejects. Kast saves project editor buffers " +
+        "and refreshes the VFS or Gradle model when needed; callers do not need to request a manual sync. " +
         "Search classes or functions by name first, preserve returned symbol references verbatim, then use " +
         "read_relations with callees or callers for one semantic hop. " +
         "Relation destinations may be in other packages. " +

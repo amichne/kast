@@ -9,6 +9,7 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeCli.kt
     symbols: [selectCliRuntimePath]
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostedProjectAdmission.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedGradleChangeTracker.kt
   - path: packaging/hosted_wire_schema.py
   - path: packaging/hosted_peer_probe.py
   - path: packaging/hosted_concurrent_read.py
@@ -641,7 +642,7 @@ candidate prefix, including its local selection table and retained-output cursor
 An indivisible source text that prevents any prefix fitting becomes explicitly
 withheld with text-byte qualification; source bytes are never truncated.
 
-The `WORKSPACE_REFRESH` control request is dispatched separately from semantic reads and remains available to the disposable native acceptance fixture over the owned socket. The public `workspace_lifecycle` tool selects explicit sync and per-project task-success configuration through an exact target. Its native lifecycle admission preserves the host, project and request identities; pending results remain qualified and failures remain rejections. The [workspace lifecycle owner](../modules/workspace.md) describes its asynchronous effects and opt-in task rule.
+The `WORKSPACE_REFRESH` control request is dispatched separately from semantic reads and remains available to the disposable native acceptance fixture over the owned socket. The public `workspace_lifecycle` input no longer selects a refresh effect or task-success rule. The hosted endpoint saves project-owned editor buffers and forces a project VFS disk comparison before ordinary semantic dispatch; failures are finite and observed at that boundary. Native lifecycle admission preserves host, project and request identities; pending results remain qualified and failures remain rejections. The [workspace lifecycle owner](../modules/workspace.md) describes its asynchronous effects and internal task rule.
 
 Fresh exact-symbol reads use the request-local acquisition wrapper described in
 [query protocol](../modules/query-protocol.md#automatic-acquisition-for-fresh-reads).
@@ -651,4 +652,4 @@ index, compiler and contract causes. Hosted time exhaustion and cancellation
 produce separate recovery guidance; neither turns an unvalidated accumulator
 into successful evidence.
 
-Application-requested project closure fences the existing project endpoint before native disposal. Already admitted dispatch prevents closure until it leaves; a failed/vetoed close restores admission. Native semantic read admission does not invoke application lifecycle operations. The installed coordinator prepares the workspace before dispatch. For an existing project with a proven missing cached Gradle model, application opening waits for any active import and requests one linked model reload before publishing readiness. Its socket client binds the request to the readiness-qualified project descriptor. Project endpoint retirement is observed on that exact service, so a successor project at the same root cannot be mistaken for the retired owner.
+Application-requested project closure fences the existing project endpoint before native disposal. Already admitted dispatch prevents closure until it leaves; a failed/vetoed close restores admission. Native semantic read admission does not invoke application lifecycle operations. The installed coordinator prepares the workspace before dispatch. For an existing project, application opening waits for any active import and requests one linked model reload on first attach, after tracked Gradle changes, or when the cached model is missing. Subsequent clean openings reuse the admitted model. Its socket client binds the request to the readiness-qualified project descriptor. Project endpoint retirement is observed on that exact service, so a successor project at the same root cannot be mistaken for the retired owner.

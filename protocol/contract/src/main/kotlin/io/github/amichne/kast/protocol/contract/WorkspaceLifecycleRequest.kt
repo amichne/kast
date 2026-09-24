@@ -17,16 +17,6 @@ sealed interface WorkspaceLifecycleRequest : OperationRequest {
     data class Present(val target: IdeProjectTarget, val requestId: String) : WorkspaceLifecycleRequest
 
     @Serializable
-    @SerialName("sync")
-    data class Sync(val target: IdeProjectTarget, val requestId: String, val effect: WorkspaceRefreshEffect) :
-        WorkspaceLifecycleRequest
-
-    @Serializable
-    @SerialName("configure_sync")
-    data class ConfigureSync(val target: IdeProjectTarget, val requestId: String, val rule: WorkspaceRefreshRule) :
-        WorkspaceLifecycleRequest
-
-    @Serializable
     @SerialName("release")
     data class Release(val target: IdeProjectTarget, val requestId: String) : WorkspaceLifecycleRequest
 
