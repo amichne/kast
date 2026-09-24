@@ -87,7 +87,7 @@ class McpSingleChangeToolTest {
         assertEquals("rejected", output.getValue("status").jsonPrimitive.content)
         assertTrue(McpStructuredResults.validates("change", output))
         val error = output.getValue("error").jsonObject
-        assertEquals("APPLICATION_UNVERIFIED", error.getValue("code").jsonPrimitive.content)
+        assertEquals("APPLY_UNVERIFIED", error.getValue("code").jsonPrimitive.content)
         assertEquals(
             "recovery_required",
             error.getValue("application").jsonObject.getValue("state").jsonPrimitive.content,
@@ -121,7 +121,7 @@ class McpSingleChangeToolTest {
         assertInstanceOf(CliExit.OperationRejected::class.java, result)
         val output = Json.parseToJsonElement(result.document.value).jsonObject
         val error = output.getValue("error").jsonObject
-        assertEquals("APPLICATION_RESPONSE_UNAVAILABLE", error.getValue("code").jsonPrimitive.content)
+        assertEquals("APPLY_UNVERIFIED", error.getValue("code").jsonPrimitive.content)
         assertEquals("restored", error.getValue("recovery").jsonObject.getValue("state").jsonPrimitive.content)
         assertEquals(McpChangePhase.RECOVER, phases.last())
     }
@@ -145,7 +145,7 @@ class McpSingleChangeToolTest {
         assertInstanceOf(CliExit.OperationRejected::class.java, result)
         assertEquals(listOf(McpChangePhase.PLAN), phases)
         assertEquals(
-            "PLAN_REJECTED",
+            "PLANNING_REJECTED",
             Json.parseToJsonElement(result.document.value)
                 .jsonObject
                 .getValue("error")
