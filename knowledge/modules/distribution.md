@@ -131,7 +131,7 @@ Force plugin activation moves the exact same-user Kast plugin entry into private
 The public installer registers `kast-mcp-complete` once in user-level Codex MCP
 configuration. It checks for a foreign `kast` entry before replacing the selected
 installation and removes only its own entry on uninstall. Terminal Codex then
-discovers the exact Gradle root for each session. MCP initialization queues
+discovers the exact Gradle root for each session. Modern discovery or legacy initialization queues
 native preparation for that root using the selected IDEA lifecycle. Later
 semantic demand joins the same preparation and waits for exact readiness;
 apply and recovery consume a separate one-use exact-plan approval grant.

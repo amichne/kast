@@ -45,7 +45,7 @@ You need macOS on Apple silicon, a Kotlin Gradle repository, IntelliJ IDEA
    ```
 
    Kast's MCP process discovers the exact Gradle root and prepares its IDEA
-   project when a semantic request arrives. No per-repository registration is
+   project on the first valid request. No per-repository registration is
    required. Desktop UI discovery remains unverified.
 
 4. Ask your agent: **“Use Kast to find the class OrderService.”** Replace the
@@ -54,8 +54,9 @@ You need macOS on Apple silicon, a Kotlin Gradle repository, IntelliJ IDEA
 See [Install and connect](https://kast.michne.com/start/) for IDE selection,
 Desktop setup, other harnesses, and uninstall instructions.
 
-The Kast MCP session starts preparing the exact repository or worktree when it
-connects. It reuses the selected IDEA or launches it in the background, then
+The Kast MCP session starts preparing the exact repository or worktree on its
+first valid request: any 2026-07-28 request, commonly `server/discover`, or
+`initialize` for handshake clients. It reuses the selected IDEA or launches it in the background, then
 opens and imports that project. Compiler-backed calls join the same preparation
 and wait for readiness. You do not need to manage project lifecycle commands.
 Kast asks for help only when setup encounters a user-owned decision such as project
@@ -74,15 +75,21 @@ Reads use saved, indexed IDEA state. In the direct MCP result envelope,
 **complete** means the requested scope was exhausted; **partial** includes a
 stop reason and does not prove absence. The original canonical document remains
 in the result evidence, with its exact `ref` values and detailed qualifications.
+Machine-readable results include schema-validated `structuredContent`. The first
+text item summarizes semantic reads; the canonical document also remains as text
+for clients that do not expose structured results to the model.
 Keep those limits and returned `ref` values
 when following up. See [Read a response](https://kast.michne.com/reference/responses/).
 
 For an installation check, call `health_check` with `{}` after preparation
 finishes. It reports the exact workspace and IDEA readiness without asserting
-semantic correctness. During launch or import it can still report an unavailable
+semantic correctness or repeating the tool inventory. MCP `tools/list` discovers
+callable tools. During launch or import it can still report an unavailable
 host. Call `validate_workspace` with an explicit declaration, relation, or diagnostic path
 to run read-only semantic probes. Each stage reports `passed`, `failed`, or
 `unverified`; an incomplete read never passes a probe.
+Hosts supporting MCP Apps can render these five probe outcomes from
+`ui://kast/validation`. Other hosts receive the text summary and structured result.
 
 ## Develop Kast
 

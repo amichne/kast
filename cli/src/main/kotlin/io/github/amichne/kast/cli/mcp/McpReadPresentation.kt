@@ -28,6 +28,8 @@ private val semanticReadNames =
 
 internal data class McpReadPresentation(val summary: String, val envelope: JsonElement)
 
+internal fun hasMcpReadPresentation(name: String): Boolean = name in semanticReadNames
+
 /** The canonical document is opaque data in this transport projection and is also returned unchanged as text. */
 internal fun mcpReadPresentation(name: String, exit: CliExit): McpReadPresentation? {
     if (name !in semanticReadNames) return null

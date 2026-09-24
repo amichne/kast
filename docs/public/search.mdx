@@ -43,8 +43,8 @@ The examples below show the tool inputs for direct calls or harness integration.
 | Passive host and workspace readiness | `kast.health_check` |
 | Explicit read-only semantic probes | `kast.validate_workspace` |
 
-`health_check` takes `{}` and reports the bound workspace, saved/indexed state,
-and host capabilities. An immediate check can find launch or import still in
+`health_check` takes `{}` and reports the bound workspace and saved/indexed state.
+Discover callable tools through MCP `tools/list`. An immediate check can find launch or import still in
 progress; semantic calls wait for that preparation. It does not establish that
 semantic answers are correct.
 
@@ -66,6 +66,9 @@ reads source, and scans IDE diagnostics. A relation probe additionally accepts
 `kind`, `source: {file, name}`, and `target: {file, name}`. Every stage returns
 `passed`, `failed`, or `unverified` with the underlying Kast result as evidence.
 Missing probes and incomplete scans stay `unverified`.
+Hosts with MCP Apps support can render the probe table from
+`ui://kast/validation`; the text summary and structured result remain available
+without a rendered view.
 
 ## Find your first declaration
 

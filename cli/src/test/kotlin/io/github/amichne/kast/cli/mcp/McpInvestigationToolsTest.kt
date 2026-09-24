@@ -48,7 +48,8 @@ class McpInvestigationToolsTest {
         val data = Json.parseToJsonElement(exit.document.value).jsonObject.getValue("data").jsonObject
         assertEquals("READY", data.getValue("readiness").jsonPrimitive.content)
         assertEquals("INDEXED", data.getValue("hostState").jsonPrimitive.content)
-        assertTrue(data.getValue("unavailableCapabilities").jsonArray.isEmpty())
+        assertTrue("supportedCapabilities" !in data)
+        assertTrue("unavailableCapabilities" !in data)
         assertEquals(1, statusCalls)
     }
 
@@ -77,6 +78,29 @@ class McpInvestigationToolsTest {
         assertTrue(exit is CliExit.Complete, exit.document.value)
         val data = Json.parseToJsonElement(exit.document.value).jsonObject.getValue("data").jsonObject
         assertEquals(canonicalRoot.toString(), data.getValue("workspaceBinding").jsonPrimitive.content)
+    }
+
+    @Test
+    fun `health rejects a host missing required operations without exposing inventory`() {
+        Files.writeString(root.resolve("settings.gradle.kts"), "rootProject.name = \"fixture\"")
+        val native = ExistingIdeClient { selected, operation ->
+            assertEquals(ExistingIdeOperation.Status, operation)
+            ExistingIdeExchange.Received(
+                CanonicalJsonDocument.generated(TestHostedStatus.serializer())
+                    .create(TestHostedStatus(selected.path.toString(), operations = emptyList()))
+            )
+        }
+        val tools = McpInvestigationTools(
+            root,
+            ExistingIdeCliCapabilities(FilesystemCanonicalRootDiscovery, native),
+            setOf("QUERY_RUN"),
+        ) { _, _ -> error("semantic read must not run") }
+        val exit = tools.tools.single { it.name == "health_check" }.invoke(emptyArguments())
+        assertTrue(exit is CliExit.OperationRejected)
+        val result = Json.parseToJsonElement(exit.document.value).jsonObject
+        assertEquals("HOST_UNAVAILABLE", result.getValue("error").jsonObject.getValue("code").jsonPrimitive.content)
+        assertTrue("supportedCapabilities" !in result)
+        assertTrue("unavailableCapabilities" !in result)
     }
 
     @Test

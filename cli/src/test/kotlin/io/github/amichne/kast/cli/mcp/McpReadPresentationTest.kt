@@ -21,6 +21,7 @@ class McpReadPresentationTest {
         val presented = mcpReadPresentation("search_classes", CliExit.Complete(document))
         assertNotNull(presented)
         val envelope = requireNotNull(presented).envelope.jsonObject
+        assertTrue(McpStructuredResults.validates("search_classes", envelope))
         assertEquals("complete", envelope.getValue("status").jsonPrimitive.content)
         assertEquals("true", envelope.getValue("coverage").jsonObject.getValue("exhaustive").jsonPrimitive.content)
         assertEquals(
@@ -47,6 +48,7 @@ class McpReadPresentationTest {
             CanonicalJsonDocument.generated(TestPartialDiagnostics.serializer()).create(TestPartialDiagnostics())
         val presented = requireNotNull(mcpReadPresentation("check_diagnostics", CliExit.Qualified(document)))
         val envelope = presented.envelope.jsonObject
+        assertTrue(McpStructuredResults.validates("check_diagnostics", envelope))
         assertEquals("partial", envelope.getValue("status").jsonPrimitive.content)
         assertEquals("budget", envelope.getValue("stopReason").jsonPrimitive.content)
         assertEquals("false", envelope.getValue("coverage").jsonObject.getValue("exhaustive").jsonPrimitive.content)
@@ -58,6 +60,7 @@ class McpReadPresentationTest {
         val document = CanonicalJsonDocument.generated(TestHostRejection.serializer()).create(TestHostRejection())
         val presented = requireNotNull(mcpReadPresentation("source_read", CliExit.OperationRejected(document)))
         val envelope = presented.envelope.jsonObject
+        assertTrue(McpStructuredResults.validates("source_read", envelope))
         assertEquals("rejected", envelope.getValue("status").jsonPrimitive.content)
         val error = envelope.getValue("error").jsonObject
         assertEquals("INVALID_REQUEST", error.getValue("code").jsonPrimitive.content)

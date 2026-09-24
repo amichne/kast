@@ -70,8 +70,9 @@ The example corpus, typed lowering, duplicate/path rejection, CLI wire parity an
 
 The Kast MCP process adds two session investigation tools outside the
 canonical compiler operation catalog. `health_check` passively reads the exact
-host description and reports workspace binding, saved/indexed readiness, and
-supported/unavailable operations. It makes no semantic correctness claim.
+host description and reports workspace binding and saved/indexed readiness.
+MCP `tools/list` owns callable discovery; native operation checks remain internal.
+The health result makes no semantic correctness claim.
 `validate_workspace` composes existing read calls in order: discovery, exact
 inspection, source, relation, and IDE diagnostic scan. Missing probes and
 incomplete results are `unverified`; an exhaustive negative probe is `failed`.
@@ -80,6 +81,11 @@ opaque references. Relation probes select the contract-oriented subject (`source
 `target` for the other kinds). Both investigation tools bind paths to the
 discovered Gradle root, even when MCP starts in a child directory. No source
 mutation or change plan is used.
+The stdio MCP boundary serves both the 2026-07-28 per-request metadata era and
+the earlier initialize handshake. Its first valid request starts the same
+workspace preparation. `tools/list` carries a deterministic catalog with
+schema-validated structured result shapes; `validate_workspace` links an MCP
+Apps resource while retaining text and structured fallbacks.
 
 See the [public search guide](../../docs/public/search.mdx) and [semantic query flow](../flows/semantic-query.md).
 

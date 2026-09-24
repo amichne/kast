@@ -44,7 +44,7 @@ simultaneously supplied published/live evidence.
 
 The Kast MCP transport projects each semantic read into
 `structuredContent` with a consistent `complete`, `partial`, `rejected`, or
-`unavailable` status. It keeps the entire canonical document as opaque `data`
+`unavailable` status. The advertised output schema is validated before return. It keeps the entire canonical document as opaque `data`
 or rejection evidence and also as the second text item. Its summary is display
 text, not an authority. `coverage.exhaustive` and `basis` sit beside `data`;
 diagnostic counts and source region/truncation state appear in coverage when

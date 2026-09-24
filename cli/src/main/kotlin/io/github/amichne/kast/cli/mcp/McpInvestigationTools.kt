@@ -36,7 +36,7 @@ internal class McpInvestigationTools(
             McpSupplementalTool(
                 name = "health_check",
                 description =
-                    "Observe exact workspace binding, saved/indexed readiness, and supported host operations. " +
+                    "Observe exact workspace binding and saved/indexed readiness. " +
                         "This passive check does not validate semantic answers.",
                 inputSchema = investigationJson.encodeToJsonElement(McpEmptyInputSchema()),
                 invoke = ::health,
@@ -73,6 +73,8 @@ internal class McpInvestigationTools(
             }
         if (observed.root != root.toString() || observed.type != "KAST_IDE_HOST")
             return healthRejected(McpHealthErrorCode.OUT_OF_SCOPE, "The IDE host is bound to another workspace")
+        if (!observed.operations.containsAll(expectedOperations))
+            return healthRejected(McpHealthErrorCode.HOST_UNAVAILABLE, "The IDE host lacks required Kast operations")
         val indexed = observed.readiness.status == McpNativeReadiness.ADMISSION_READY
         val data =
             McpHealthData(
@@ -81,8 +83,6 @@ internal class McpInvestigationTools(
                 readiness = if (indexed) McpHealthReadiness.READY else McpHealthReadiness.UNAVAILABLE,
                 contentView = if (indexed) McpHealthContentView.SAVED_PSI_COMMITTED else null,
                 hostState = if (indexed) McpHealthHostState.INDEXED else McpHealthHostState.UNAVAILABLE,
-                supportedCapabilities = observed.operations.sorted(),
-                unavailableCapabilities = (expectedOperations - observed.operations.toSet()).sorted(),
                 readinessEvidence = observed.readiness.rejection,
             )
         return CliExit.Complete(healthReadyFactory.create(McpHealthReady(data = data)))
@@ -146,8 +146,6 @@ private data class McpHealthData(
     val readiness: McpHealthReadiness,
     val contentView: McpHealthContentView?,
     val hostState: McpHealthHostState,
-    val supportedCapabilities: List<String>,
-    val unavailableCapabilities: List<String>,
     /** Only the native readiness refusal is dynamic; the surrounding contract is typed. */
     val readinessEvidence: JsonElement?,
 )
@@ -195,6 +193,6 @@ private enum class McpHealthErrorCode {
     INTERNAL_ERROR,
 }
 
-private val investigationJson = Json { ignoreUnknownKeys = true }
+private val investigationJson = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 private val healthReadyFactory = CanonicalJsonDocument.generated(McpHealthReady.serializer())
 private val healthRejectedFactory = CanonicalJsonDocument.generated(McpHealthRejected.serializer())
