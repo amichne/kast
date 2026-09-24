@@ -75,7 +75,7 @@ class SourceFunctionRequest:
 
 @dataclass(frozen=True)
 class SourceBudgetAnchorSearch:
-    class_name: str = field(default='ReadPageBudget', init=False)
+    name: str = field(default='ReadPageBudget', init=False)
     name_match: str = field(default='exact', init=False)
     scope: None = field(default=None, init=False)
 

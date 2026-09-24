@@ -20,7 +20,7 @@ class EnumBudget:
 
 @dataclass(frozen=True)
 class EnumClassSearch:
-    class_name: str
+    name: str
     name_match: str
     scope: EnumScope = field(default_factory=EnumScope, init=False)
     execution_budget: EnumBudget = field(default_factory=EnumBudget, init=False)

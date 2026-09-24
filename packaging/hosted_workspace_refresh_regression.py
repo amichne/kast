@@ -113,7 +113,7 @@ class RefreshTransportRequest:
 
 @dataclass(frozen=True)
 class RefreshClassSearch:
-    class_name: str
+    name: str
     name_match: str = 'exact'
     scope: None = None
 
