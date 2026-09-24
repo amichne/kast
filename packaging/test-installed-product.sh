@@ -114,7 +114,7 @@ bootstrap = projection['hostedBootstrap']
 assert [tool['name'] for tool in bootstrap['tools']] == [
     'workspace_lifecycle', 'search_classes', 'search_functions', 'search_declarations',
     'query_symbols', 'symbol_lookup', 'symbol_inspect', 'source_read', 'read_relations',
-    'traverse_relations', 'check_diagnostics', 'change_plan', 'change_apply', 'change_recover',
+    'traverse_relations', 'check_diagnostics', 'change',
 ]
 assert 'compiler-grounded Kotlin source intelligence' in bootstrap['policy']
 assert 'cliInvocations' not in projection

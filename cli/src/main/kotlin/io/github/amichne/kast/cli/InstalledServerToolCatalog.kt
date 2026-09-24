@@ -7,6 +7,7 @@ import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ChangeApplyRequest
 import io.github.amichne.kast.protocol.contract.ChangePlanRequest
 import io.github.amichne.kast.protocol.contract.ChangeRecoverRequest
+import io.github.amichne.kast.protocol.contract.ChangeRequest
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRequest
 import io.github.amichne.kast.protocol.contract.IndexSyncRequest
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
@@ -219,6 +220,11 @@ private enum class InstalledServerTool(
     DIAGNOSTIC_CHECK(
         operation = CanonicalOperation.DIAGNOSTIC_CHECK,
         requestSerializer = DiagnosticCheckRequest.serializer(),
+        route = InstalledToolRoute.HostedOnly,
+    ),
+    CHANGE(
+        operation = CanonicalOperation.CHANGE,
+        requestSerializer = ChangeRequest.serializer(),
         route = InstalledToolRoute.HostedOnly,
     ),
     CHANGE_PLAN(

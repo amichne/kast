@@ -23,6 +23,7 @@ code_sources:
   - path: change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/ChangePlanIssuance.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/core/AgentSessionBootstrap.kt
     symbols: [HostedToolDefinition]
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastSingleChangeInvocation.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexSessionProjection.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolAdapter.kt
   - path: change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/LiveChangeBasis.kt
@@ -47,7 +48,7 @@ code_sources:
 # Semantic change lifecycle
 
 ```text
-exact selector -> immutable plan + stored preview -> exact-plan approval
+exact selector -> immutable plan + stored preview -> internal exact-plan signing
                -> fresh preimage admission -> IDE write -> semantic verification
                                                   -> durable verified receipt
                                                   -> qualified recovery evidence
@@ -67,14 +68,15 @@ it before returning its identity and preview. The CLI preserves reference bytes
 and routes the entire change family before isolated bootstrap. Unsupported
 intents and absent hosts reject without worker fallback.
 
-`change_plan` needs no approval. Apply and recovery ask the broker to load the
-stored preview and a host challenge. A separate native `fileChange` item and
-approval request correlate the current controller with the exact plan, root,
-host and operation. Only that controller's accepted decision reaches the signing
-gateway. The plugin verifies the Ed25519 assertion against the explicitly
-enrolled key and consumes the challenge once. Catalog metadata and plan identity
-do not grant write authority. Concurrent requests retain distinct challenges for
-the same plan; only the cryptographically matched challenge is consumed.
+The agent-facing `change` invocation creates the plan, prepares the host's
+exact challenge, signs it with the enrolled key, applies the mutation, and
+attempts recovery on an unverified result. The caller receives one completion
+or a finite failure carrying retained phase evidence. Native plan, apply, and
+recovery remain private effect boundaries. The plugin verifies the Ed25519
+assertion against the explicitly enrolled key and consumes the challenge once.
+Plan identity alone does not grant write authority. Concurrent requests retain
+distinct challenges for the same plan; only the cryptographically matched
+challenge is consumed.
 
 Apply compares the plan with a fresh live root, host, epoch, content view and
 model, then observes the exact saved preimage. `LiveMutationAuthority` retains

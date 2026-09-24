@@ -46,6 +46,7 @@ import kotlinx.serialization.json.JsonObject
 
 internal class KastProviderOptions(
     val catalogSource: KastCatalogSource,
+    val userHome: Path = Path.of(System.getProperty("user.home")),
     val catalogObserver: KastCatalogObserver = JsonLineKastCatalogObserver,
     val readLimits: ReadLimits = ReadLimits.Default,
     val ideClient: io.github.amichne.kast.appserver.ide.ExistingIdeClient =
@@ -64,6 +65,7 @@ internal class KastProviderOptions(
     fun withWorkspaceDemand(demand: io.github.amichne.kast.appserver.runtime.WorkspaceDemand) =
         KastProviderOptions(
             catalogSource = catalogSource,
+            userHome = userHome,
             catalogObserver = catalogObserver,
             readLimits = readLimits,
             ideClient = ideClient,

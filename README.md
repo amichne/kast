@@ -1,6 +1,6 @@
 # Kast
 
-Kast gives coding agents compiler-grounded search, diagnostics, and approved
+Kast gives coding agents compiler-grounded search, diagnostics, and controlled
 source changes for the Kotlin project open in IntelliJ IDEA. Find declarations
 and follow their relationships with the compiler’s identities and evidence.
 
@@ -68,7 +68,7 @@ trust or unsaved documents.
 | --- | --- |
 | Find classes, functions, or properties | [Search declarations](https://kast.michne.com/search/) |
 | Follow callers and implementations | [Query pipelines](https://kast.michne.com/query-pipelines/) |
-| Add a declaration with an approved preview | [Change source](https://kast.michne.com/change/) |
+| Add a declaration in one call | [Change source](https://kast.michne.com/change/) |
 | Connect another agent host | [Harness integration](https://kast.michne.com/agent-harnesses/) |
 
 Reads use saved, indexed IDEA state. In the direct MCP result envelope,

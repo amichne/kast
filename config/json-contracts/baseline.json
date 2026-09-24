@@ -4624,26 +4624,6 @@
     {
       "fingerprint": {
         "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/KastProviderTest.kt",
-        "scope": "type:KastProviderTest/fun:approved exact plan reaches private transport and substitution never invokes process(4:Path)/declaration:<anonymous>/val:arguments",
-        "kind": "JSON_BUILDER",
-        "sha256": "e3c2337624883bcb7a0e1a37f38831cb1dbf49c1c7bd1d8a9c81a51a733def62"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/KastProviderTest.kt",
-        "scope": "type:KastProviderTest/fun:approved exact plan reaches private transport and substitution never invokes process(4:Path)/declaration:<anonymous>/val:substituted",
-        "kind": "JSON_BUILDER",
-        "sha256": "f4bdae0fc155bb81bafe6082dc0a0b069cb9ee6608a9a557f2749c00ad7a7b21"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/KastProviderTest.kt",
         "scope": "type:KastProviderTest/fun:approvedGrant(4:Path)/val:resolution",
         "kind": "JSON_BUILDER",
         "sha256": "5983cd871100acc8c48bf479790a5df4368efc425a3e8f8858178cd3c8dec12e"
@@ -5787,26 +5767,6 @@
         "scope": "type:BrokerPlanApprovalsTest/type:Fixture/val:manager/declaration:<anonymous>",
         "kind": "JSON_BUILDER",
         "sha256": "5dd21ba498d77ee19122e3e156bd7b2259932e24358608b869907ab67cf10ee7"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/BrokerSessionHubTest.kt",
-        "scope": "type:BrokerSessionHubTest/fun:native exact approval waits outside workspace lane and carries proof only after controller accepts(4:Path)/declaration:<anonymous>",
-        "kind": "JSON_BUILDER",
-        "sha256": "4e5e4b7c3504e5a84d00744dde0ed1e9016519c0ae97a1f1213b129772145d57"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/BrokerSessionHubTest.kt",
-        "scope": "type:BrokerSessionHubTest/fun:native exact approval waits outside workspace lane and carries proof only after controller accepts(4:Path)/declaration:<anonymous>/declaration:<anonymous>",
-        "kind": "JSON_BUILDER",
-        "sha256": "5983cd871100acc8c48bf479790a5df4368efc425a3e8f8858178cd3c8dec12e"
       },
       "count": 1,
       "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."

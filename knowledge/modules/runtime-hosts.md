@@ -1,7 +1,7 @@
 ---
 type: Kotlin Module Group
 title: Runtime and process hosts
-description: The existing IDEA plugin owns semantic execution; CLI and App Server own installation, transport, sessions and approval.
+description: The existing IDEA plugin owns semantic execution; CLI and App Server own installation, transport, sessions and exact challenge signing.
 resource: file://runtime
 tags: [kotlin, runtime, server, indexer, cli]
 timestamp: 2026-09-16T00:00:00Z
@@ -111,7 +111,7 @@ The plugin archive contains the semantic contracts, services, IntelliJ adapters 
 
 The hosted provider admits public intent tools and supported changes through the existing IDEA plugin. A missing host rejects. The private installed `kast` executable retains product-version inspection for release identity; former semantic CLI routes reject.
 
-App Server owns persistent sessions, the invocation journal, controller approvals, provider qualification and workspace lanes. `CoordinatorControl` provides bounded owner-correlated status with zero worker reservations and rejects retired worker demands. New Codex threads automatically persist an unregistered canonical working directory (or explicit containing root) before binding. Existing containing registrations are reused. Registration preserves closed failures and emits bounded, payload-free startup evidence. Thread-binding validation for resume and invocation remains read-only. Workspace enrollment remains routing data. It grants no importer or worker capability. Provider qualification verifies the packaged catalog against the canonical registry. Installed semantic provider calls first use the shared workspace preparation owner. They then use the App Server-owned IDEA client directly; approval challenges use the same workspace demand before immutable plan loading, preserving canonical request admission, finite failures, root/host binding and operation output validation. Pure request and result projection lives in `protocol:wire`.
+App Server owns persistent sessions, the invocation journal, project-close controller approval, provider qualification and workspace lanes. `CoordinatorControl` provides bounded owner-correlated status with zero worker reservations and rejects retired worker demands. New Codex threads automatically persist an unregistered canonical working directory (or explicit containing root) before binding. Existing containing registrations are reused. Registration preserves closed failures and emits bounded, payload-free startup evidence. Thread-binding validation for resume and invocation remains read-only. Workspace enrollment remains routing data. It grants no importer or worker capability. Provider qualification verifies the packaged catalog against the canonical registry. Installed semantic provider calls first use the shared workspace preparation owner. They then use the App Server-owned IDEA client directly; internal change challenges use the same workspace demand before immutable plan loading, preserving canonical request admission, finite failures, root/host binding and operation output validation. Pure request and result projection lives in `protocol:wire`.
 
 Installed service admission derives the Java runtime from the saved IDEA selection, so a caller's ambient `JAVA_HOME` cannot change broker identity. When no IDE was selected, the ambient runtime remains the fallback and invalid paths reject. A managed upstream socket alias is admitted only when its resolved socket is open in the launched Codex process; the alias and target identities are retained and rechecked before and after later connections. A successful WebSocket probe alone does not prove ownership. Unproven aliases reject with `SOCKET_ALIAS_OWNER_UNPROVEN`.
 
@@ -248,7 +248,7 @@ only the addressed digest, preserves its input fingerprint and finite phase, and
 rejects attempts to settle a terminal record or a historical admission owned by a
 previous process. Active capacity is separate from durable history; the response
 cache evicts only completed results at its separate bound. Durable admission
-precedes approvals and workspace submission; known pre-execution rejections settle
+precedes workspace submission; known pre-execution rejections settle
 before response publication. Duplicate active calls join the original result.
 An evicted completed response cannot authorize another prompt or execution. Legacy migration validates and verifies a
 locked stage before publishing the layout marker and retains the original

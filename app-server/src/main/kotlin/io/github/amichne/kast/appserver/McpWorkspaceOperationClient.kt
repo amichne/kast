@@ -8,6 +8,7 @@ import io.github.amichne.kast.appserver.ide.ExistingIdeSocketClient
 import io.github.amichne.kast.appserver.ide.HostedApprovalAssertion
 import io.github.amichne.kast.appserver.ide.HostedMutationOperation
 import io.github.amichne.kast.appserver.ide.HostedPlanIdentity
+import io.github.amichne.kast.appserver.ide.WorkspaceLifecycleClient
 import io.github.amichne.kast.appserver.query.PublicToolCanonical
 import io.github.amichne.kast.appserver.runtime.JsonLineWorkspacePreparationObserver
 import io.github.amichne.kast.appserver.runtime.PreparedWorkspaceDemand
@@ -16,6 +17,8 @@ import io.github.amichne.kast.appserver.runtime.WorkspaceDemandResult
 import io.github.amichne.kast.appserver.runtime.WorkspacePreparations
 import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
+import io.github.amichne.kast.protocol.contract.WorkspaceLifecycleRequest
 import io.github.amichne.kast.protocol.wire.presentation.OperationPreparation
 import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
 import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
@@ -31,7 +34,11 @@ class McpWorkspaceOperationClient
 internal constructor(
     private val delegate: DaemonOperationClient,
     private val preparations: WorkspacePreparations?,
+    private val lifecycle: WorkspaceLifecycleClient = WorkspaceLifecycleClient.Unavailable,
 ) : DaemonOperationClient by delegate {
+    /** Explicit session lifecycle effect; semantic reads never call this path. */
+    fun lifecycle(request: WorkspaceLifecycleRequest): IdeLifecycleResult = lifecycle.execute(request, "kast-mcp")
+
     fun start(root: CanonicalRoot): Refinement<Unit, DaemonOperationFailure> {
         val owner =
             preparations
@@ -101,7 +108,7 @@ fun mcpWorkspaceOperationClient(home: Path, environment: Map<String, String>): M
                 )
         }
     }
-    return McpWorkspaceOperationClient(delegate, preparations)
+    return McpWorkspaceOperationClient(delegate, preparations, lifecycle)
 }
 
 private fun rejectedMcpConfiguration() =
@@ -114,6 +121,7 @@ private fun rejectedMcpConfiguration() =
             )
         },
         null,
+        WorkspaceLifecycleClient.Unavailable,
     )
 
 private val mcpPreparers = canonicalCliRequestPreparers()

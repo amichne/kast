@@ -63,8 +63,8 @@ dependencies from semantic service modules.
 It depends only on `kernel`, `protocol:contract`, and `change:contract`; the
 plan-storage interface is defined in `change:contract`. Its dependency closure
 cannot acquire workspace startup, import, IntelliJ, SQLite, or isolated-runtime
-capabilities. The hosted coordinator composes the separate live plan, approval, guarded write,
-verification and recovery adapters. Their IntelliJ and SQLite effects remain
+capabilities. The hosted coordinator composes the native live plan, internal exact-challenge
+signing, guarded write, verification and recovery adapters in one caller invocation. Their IntelliJ and SQLite effects remain
 explicit host dependencies; a live plan does not acquire worker-start authority.
 
 ## Formatting and structural checks

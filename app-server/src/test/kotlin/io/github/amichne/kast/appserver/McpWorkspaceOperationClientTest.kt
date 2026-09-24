@@ -3,6 +3,7 @@
 package io.github.amichne.kast.appserver
 
 import io.github.amichne.kast.appserver.ide.CanonicalRoot
+import io.github.amichne.kast.appserver.ide.WorkspaceLifecycleClient
 import io.github.amichne.kast.appserver.runtime.WorkspacePreparationActivity
 import io.github.amichne.kast.appserver.runtime.WorkspacePreparationActivityOutcome
 import io.github.amichne.kast.appserver.runtime.WorkspacePreparationFailure
@@ -20,6 +21,42 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 class McpWorkspaceOperationClientTest {
+    @Test
+    fun `explicit refresh uses the session lifecycle client without semantic read`() {
+        val target = IdeProjectTarget("host", "project", "/workspace")
+        val request =
+            WorkspaceLifecycleRequest.Sync(
+                target,
+                "request",
+                io.github.amichne.kast.protocol.contract.WorkspaceRefreshEffect.FILE_REFRESH,
+            )
+        var observedClient: String? = null
+        var observedRequest: WorkspaceLifecycleRequest? = null
+        val lifecycle =
+            object : WorkspaceLifecycleClient {
+                override fun execute(request: WorkspaceLifecycleRequest, client: String): IdeLifecycleResult {
+                    observedRequest = request
+                    observedClient = client
+                    return IdeLifecycleResult.Synced(target)
+                }
+
+                override fun approvedClose(
+                    invocation: io.github.amichne.kast.protocol.contract.ApprovedProjectCloseInvocation,
+                    client: String,
+                ): IdeLifecycleResult = error("close was not requested")
+            }
+        val session =
+            McpWorkspaceOperationClient(
+                DaemonOperationClient { _, _ -> error("semantic read was not requested") },
+                null,
+                lifecycle,
+            )
+
+        assertEquals(IdeLifecycleResult.Synced(target), session.lifecycle(request))
+        assertEquals(request, observedRequest)
+        assertEquals("kast-mcp", observedClient)
+    }
+
     @Test
     fun `startup queues one exact open and retains finite terminal evidence`() = runTest {
         val root = CanonicalRoot(Path.of("/workspace"))

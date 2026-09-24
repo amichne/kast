@@ -304,6 +304,8 @@ class KastMcpServerTest {
         )
         assertEquals("true", result.getValue("isError").jsonPrimitive.content)
         assertTrue(diagnostics.toString(Charsets.UTF_8).contains("\"outcome\":\"REJECTED\""))
+        assertTrue(diagnostics.toString(Charsets.UTF_8).contains("\"resultVariant\":\"COMPLETE\""))
+        assertTrue(diagnostics.toString(Charsets.UTF_8).contains("\"schemaFailure\":\"SCHEMA_VIOLATION\""))
         assertTrue(!diagnostics.toString(Charsets.UTF_8).contains("\"outcome\":\"COMPLETED\""))
     }
 

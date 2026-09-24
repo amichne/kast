@@ -82,6 +82,12 @@ private fun SerialDescriptor.toJsonSchema(
         PrimitiveKind.DOUBLE -> buildJsonObject { put("type", "number") }
         SerialKind.ENUM -> enumSchema(annotations)
         StructureKind.LIST -> arraySchema(annotations)
+        StructureKind.MAP ->
+            if (serialName.removeSuffix("?") == "kotlinx.serialization.json.JsonObject") {
+                OBJECT_SCHEMA_JSON.encodeToJsonElement(OpenObjectSchema.serializer(), OpenObjectSchema()).jsonObject
+            } else {
+                error("Unsupported canonical request descriptor kind $kind at $serialName")
+            }
         StructureKind.CLASS,
         StructureKind.OBJECT -> objectSchema()
         PolymorphicKind.SEALED -> sealedSchema()
@@ -174,6 +180,8 @@ private fun arrayVariant(
 }
 
 /** Property names and child schemas are the JSON Schema contract's dynamic boundary. */
+@Serializable private data class OpenObjectSchema(val type: String = "object", val additionalProperties: Boolean = true)
+
 @Serializable
 private data class GeneratedObjectSchemaDocument(
     val type: String = "object",

@@ -8,8 +8,12 @@ repository or worktree for compiler-backed queries; do not ask the user to run
 workspace commands or manage lifecycle identifiers.
 
 The direct Kast MCP connection starts preparing its bound Gradle root during
-initialization. The sequence below applies to agent hosts that expose the
-separate `workspace_lifecycle` tool.
+initialization. It exposes `refresh_workspace` for explicit file refresh of its
+exact open project. Call it with `{}` and, if the result is `partial`, poll with
+the returned `requestId`. A complete result means IntelliJ admitted the refresh
+and indexing; new semantic reads then acquire fresh references. It does not save
+editor buffers or reload the Gradle model. The sequence below applies to agent
+hosts that expose the separate `workspace_lifecycle` tool.
 
 ## Setup sequence
 

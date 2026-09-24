@@ -170,7 +170,13 @@ internal data class McpCallResult(
 
 @Serializable internal data class McpRejected(val status: String = "rejected", val error: McpCallError)
 
-@Serializable internal data class McpCallError(val code: McpCallFailure, val message: String)
+@Serializable
+internal data class McpCallError(
+    val code: McpCallFailure,
+    val message: String,
+    /** Schema-admitted host rejection, retained without reinterpreting its closed cause. */
+    val evidence: JsonElement? = null,
+)
 
 @Serializable
 internal enum class McpCallFailure {
@@ -178,6 +184,7 @@ internal enum class McpCallFailure {
     UNKNOWN_TOOL,
     NOT_GRADLE_WORKSPACE,
     INVOCATION_FAILED,
+    HOSTED_OPERATION_REJECTED,
     INVALID_RESULT_SCHEMA;
 
     val nextAction: String
@@ -187,6 +194,7 @@ internal enum class McpCallFailure {
                 UNKNOWN_TOOL -> "Call tools/list and choose a listed tool name."
                 NOT_GRADLE_WORKSPACE -> "Start Kast MCP inside the intended Gradle workspace."
                 INVOCATION_FAILED -> "Call health_check to inspect workspace readiness before retrying."
+                HOSTED_OPERATION_REJECTED -> "Inspect the hosted rejection evidence for the specific cause."
                 INVALID_RESULT_SCHEMA -> "Report the Kast result schema failure with the tool name."
             }
 }
@@ -197,7 +205,40 @@ internal data class McpCallEvent(
     val tool: String,
     val stage: McpCallStage,
     val outcome: McpCallOutcome,
+    val resultVariant: McpResultVariant? = null,
+    val schemaFailure: McpResultSchemaFailure? = null,
+    val schemaField: McpResultSchemaField? = null,
 )
+
+@Serializable
+internal enum class McpResultVariant {
+    COMPLETE,
+    PARTIAL,
+    QUALIFIED,
+    REJECTED,
+    UNAVAILABLE,
+    HOST_REJECTED,
+    UNKNOWN,
+}
+
+@Serializable
+internal enum class McpResultSchemaFailure {
+    UNPARSEABLE_DOCUMENT,
+    MISSING_STATUS,
+    INVALID_STATUS_TYPE,
+    SCHEMA_VIOLATION,
+}
+
+@Serializable
+internal enum class McpResultSchemaField {
+    STATUS,
+    DATA,
+    COVERAGE,
+    BASIS,
+    STOP_REASON,
+    ERROR,
+    UNKNOWN,
+}
 
 @Serializable
 internal enum class McpCallStage {

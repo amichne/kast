@@ -164,6 +164,8 @@ private fun operationProcessDocumentSchema(operation: CanonicalOperation): JsonO
 
 private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject =
     when (operation) {
+        CanonicalOperation.CHANGE ->
+            generatedRequestSchema(io.github.amichne.kast.protocol.contract.ChangeRunDocument.serializer())
         CanonicalOperation.WORKSPACE_LIFECYCLE ->
             generatedRequestSchema(io.github.amichne.kast.protocol.contract.IdeLifecycleResult.serializer())
         CanonicalOperation.INDEX_SYNC ->

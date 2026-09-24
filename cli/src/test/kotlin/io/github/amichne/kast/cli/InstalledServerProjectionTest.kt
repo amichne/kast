@@ -115,7 +115,9 @@ class InstalledServerProjectionTest {
         )
         assertEquals(
             tools
-                .filterNot { it.getValue("operationId").jsonPrimitive.content == "workspace.lifecycle" }
+                .filterNot {
+                    it.getValue("operationId").jsonPrimitive.content in setOf("workspace.lifecycle", "change.run")
+                }
                 .map { it.getValue("operationId").jsonPrimitive.content },
             cliInvocations.map { it.getValue("operationId").jsonPrimitive.content },
         )
@@ -157,9 +159,7 @@ class InstalledServerProjectionTest {
                 "relation.read",
                 "traversal.run",
                 "diagnostic.check",
-                "change.plan",
-                "change.apply",
-                "change.recover",
+                "change.run",
             ),
             tools.map { it.getValue("operationId").jsonPrimitive.content },
         )
@@ -229,10 +229,13 @@ class InstalledServerProjectionTest {
         val tools = bootstrap.getValue("tools").jsonArray.map { it.jsonObject }
         val invocations =
             projection.getValue("cliInvocations").jsonObject.getValue("operations").jsonArray.map { it.jsonObject }
-        val expectedPublicOperations = HostedOperationProjection.publicDefinitions.map { it.operation.id.value }
+        val expectedPublicOperations =
+            io.github.amichne.kast.protocol.registry.CanonicalAgentToolDefinitions.all.map {
+                it.operation.operation.id.value
+            }
         val internalOperations = HostedOperationProjection.internalDefinitions.map { it.operation.id.value }
 
-        assertEquals(14, tools.size)
+        assertEquals(12, tools.size)
         assertEquals(15, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
         assertEquals("kast", projection.getValue("namespace").jsonPrimitive.content)
         assertEquals(
@@ -252,9 +255,7 @@ class InstalledServerProjectionTest {
                 "read_relations",
                 "traverse_relations",
                 "check_diagnostics",
-                "change_plan",
-                "change_apply",
-                "change_recover",
+                "change",
             ),
             tools.map { it.getValue("name").jsonPrimitive.content },
         )
@@ -306,16 +307,13 @@ class InstalledServerProjectionTest {
                 "read_relations" to listOf("relation", "read"),
                 "traverse_relations" to listOf("traversal", "run"),
                 "check_diagnostics" to listOf("tool", "check_diagnostics"),
-                "change_plan" to listOf("change", "plan"),
-                "change_apply" to listOf("change", "apply"),
-                "change_recover" to listOf("change", "recover"),
             ),
             invocations.associate { invocation ->
                 invocation.getValue("toolName").jsonPrimitive.content to invocation.cliCommand()
             },
         )
         assertTrue(invocations.all { "bindings" !in it.getValue("invocation").jsonObject })
-        assertEquals(11, tools.map { it.getValue("outputSchema") }.distinct().size)
+        assertEquals(9, tools.map { it.getValue("outputSchema") }.distinct().size)
 
         assertTrue(
             tools
@@ -327,7 +325,7 @@ class InstalledServerProjectionTest {
 
         val changeIntentVariants =
             tools
-                .tool("change_plan")
+                .tool("change")
                 .getValue("inputSchema")
                 .jsonObject
                 .getValue("properties")

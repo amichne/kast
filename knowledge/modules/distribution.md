@@ -7,6 +7,9 @@ tags: [distribution, configuration, packaging, release]
 timestamp: 2026-09-22T00:00:00Z
 code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/KastDaemonMain.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/McpWorkspaceOperationClient.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpWorkspaceRefreshTool.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpSingleChangeTool.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationTrustEnrollment.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/PackagedProviderCatalog.kt
   - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/ControlDistributionAdmissionMain.kt
@@ -133,8 +136,11 @@ configuration. It checks for a foreign `kast` entry before replacing the selecte
 installation and removes only its own entry on uninstall. Terminal Codex then
 discovers the exact Gradle root for each session. Modern discovery or legacy initialization queues
 native preparation for that root using the selected IDEA lifecycle. Later
-semantic demand joins the same preparation and waits for exact readiness;
-apply and recovery consume a separate one-use exact-plan approval grant.
+semantic demand joins the same preparation and waits for exact readiness. The
+direct MCP `refresh_workspace` tool invokes native `FILE_REFRESH` for that root.
+Its `change` tool plans, signs the exact native challenge, applies, and verifies
+within one call, attempting recovery if application is unverified. The App Server exposes the same single `change` operation and signs its exact
+plan internally.
 The app-server suite is always installed. Activation may still be pending with
 a finite reason when the host cannot start the service.
 

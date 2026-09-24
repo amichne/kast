@@ -108,7 +108,7 @@ rejects digest drift. Installed payload admission and Codex schema qualification
 resolve to the selected preferred tool route; omitted tools and incompatible
 catalog bindings reject before provider invocation. Provider invocation uses the App Server-owned
 IDEA socket client directly, with canonical admission and admitted output and elapsed-time settings. The installed coordinator first prepares the exact root, validates the live application/project identity, and retains that project through descriptor admission. Preparation failures are known pre-execution rejections with typed causes and operation IDs.
-Approval preparation uses the same direct client; exact approval binding precedes effects.
+The one-call `change` route prepares the host challenge through the same direct client and signs it internally before any source effect.
 Pure request preparation and outcome projection are shared from `protocol:wire`. `selectCliRuntimePath` now selects the seven existing-IDE reads before
 installed bootstrap in `KastCliMain`; saved read settings are admitted before the socket is opened. Invalid settings and missing hosts remain distinct rejections. The
 [native acceptance review](../../docs/reviews/live-semantic-read-acceptance.md)
@@ -122,17 +122,14 @@ Codex schema inventory admits the retired `thread/rollback` request and response
 schemas only as a complete pair; a client without both leaves that route as an
 unchanged upstream pass-through while `thread/revert` remains qualified. Their
 raw content remains intact, and the final Kast JSON envelope additionally
-uses the supported structured-result field. For change apply/recovery,
-`CodexPlanApprovalProjection` emits a separate native `fileChange` item containing
-the stored plan's preview and requests approval from the current controller.
-`HostedPlanApprovalGateway` signs only a correlated controller-approved challenge;
-the tool-result projection and approval preview remain distinct. Native schema
-admission and module tests establish the protocol shapes, while desktop rendering
-remains unqualified.
+uses the supported structured-result field. The `change` tool keeps the native plan, apply, and recovery documents in
+one caller-visible completion or finite failure. No source-change approval item
+is sent to a controller. Native schema admission and module tests establish the
+protocol shapes, while desktop rendering remains unqualified.
 
 The entire `change` CLI family routes to the existing-IDE path before installed
-bootstrap. Hosted ingress admits `AddDeclaration` planning and requires the
-broker's approved invocation for apply/recovery. The endpoint protocol is version
+bootstrap. Hosted ingress admits `AddDeclaration` planning; the one-call coordinator signs
+exact host challenges before the private apply/recovery operations. The endpoint protocol is version
 3. Its added change routes retain canonical complete/qualified/rejected envelopes;
 missing hosts, unsupported intents and unapproved writes cannot fall back to an
 isolated worker. A stored verified apply receipt is historical evidence, so its
@@ -191,10 +188,13 @@ cannot claim or release another connection by supplying its identifier. Manageme
 inspection observes pending/prepared/rejected/closed session state without admitting
 an optional host.
 
-Apply and recovery approval challenges share the installed workspace preparation owner. A workspace rejection is projected before controller registration, preserving its operation identity and finite cause. Controller approval and grant redemption remain separate from workspace readiness.
+Apply and recovery challenges share the installed workspace preparation
+owner. A workspace rejection is projected before source effects. The enrolled
+signer binds each challenge to the exact plan, root, host, operation, and caller
+invocation.
 
-Invocation admission persists intent before approval preparation or workspace
-submission. Known approval refusals, binding rejections and queued cancellations
+Invocation admission persists intent before workspace submission. Known binding
+rejections and queued cancellations
 are durably completed before their responses are published. Executing calls settle
 inside the workspace permit so persistence failure remains uncertain before the
 lane can advance. The response owner publishes once, preserves uncertain outcomes,

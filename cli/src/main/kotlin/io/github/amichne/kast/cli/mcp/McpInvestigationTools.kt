@@ -22,6 +22,7 @@ internal data class McpSupplementalTool(
     val name: String,
     val description: String,
     val inputSchema: JsonElement,
+    val readOnly: Boolean = true,
     val invoke: (JsonObject) -> CliExit,
 )
 
