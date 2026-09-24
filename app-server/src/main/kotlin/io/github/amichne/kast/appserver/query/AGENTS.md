@@ -11,8 +11,8 @@ payload, candidate output, an INSPECT stage, magic wildcard, or implicit retry.
 The historical `query run` contract keeps declaring defaults and rejects explicit null
 for ordinary controls in its retained admission tests. Pagination continuation is optional nullable context: absent
 or null starts a query, while a value must retain exact opaque bytes.
-The intent tools in `tools.schema.json` require controls to be present; normalize
-null once through the generated defaults before canonical construction. Admit
+The intent tools in `tools.schema.json` allow default controls to be omitted;
+normalize omission or explicit null once through the generated defaults before canonical construction. Admit
 those requests through `AdmittedPublicTool`, retaining tool identity and schema
 identity in addition to the canonical operation. Invalid and empty are not synonyms for omitted. Preserve ordered stages and exact token bytes. Keep all workspace,
 generation, semantic identity and completeness checks in their existing owners.

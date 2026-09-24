@@ -56,6 +56,7 @@ import io.github.amichne.kast.protocol.wire.presentation.symbolDiscoverCliProjec
 import io.github.amichne.kast.protocol.wire.presentation.symbolInspectCliProjector
 import io.github.amichne.kast.protocol.wire.presentation.traversalRunCliProjector
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -65,6 +66,16 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class GeneratedCliProjectionTest {
+    @Test
+    fun `completed empty query reports exhausted scope`() {
+        val result = QueryRunResult(bounded(emptyList()), bounded(emptyList()))
+        val outcome = OperationOutcome.Complete(evidence(CanonicalOperation.QUERY_RUN, result))
+        val projected = queryRunCliProjector.project(outcome) as ProjectedOperationOutcome.Complete
+        val document = Json.parseToJsonElement(projected.document.value).jsonObject
+        assertTrue(document.getValue("items").jsonArray.isEmpty())
+        assertTrue(document.getValue("coverage").jsonObject.getValue("exhaustive").jsonPrimitive.boolean)
+    }
+
     @Test
     fun `symbol ref output is derived from the same exact token without changing overload identity`() {
         val tokens = listOf("exact:v3:first-overload", "exact:v3:second-overload")
@@ -271,6 +282,7 @@ class GeneratedCliProjectionTest {
     }
 
     @Test
+    @Suppress("LongMethod")
     fun `generated qualified documents append qualification after payload`() {
         val diagnosticsProjected =
             diagnosticCheckCliProjector.project(
@@ -304,17 +316,23 @@ class GeneratedCliProjectionTest {
                 )
             ) as ProjectedOperationOutcome.Qualified
 
+        val diagnosticsDocument = Json.parseToJsonElement(diagnosticsProjected.document.value).jsonObject
+        assertEquals("diagnostic.check", diagnosticsDocument.getValue("operation").jsonPrimitive.content)
+        assertEquals("qualified", diagnosticsDocument.getValue("status").jsonPrimitive.content)
+        assertEquals("IDE_FILE_DIAGNOSTICS", diagnosticsDocument.getValue("analysisKind").jsonPrimitive.content)
+        assertEquals(1, diagnosticsDocument.getValue("diagnostics").jsonArray.size)
         assertEquals(
-            "{\"operation\":\"diagnostic.check\",\"status\":\"qualified\"," +
-                "\"diagnostics\":[{\"severity\":\"warning\",\"code\":\"UNUSED_SYMBOL\"," +
-                "\"message\":\"warning\",\"location\":{" +
-                "\"candidateSelector\":\"candidate:diagnostic\"," +
-                "\"file\":\"src/A.kt\"," +
-                "\"range\":{\"startInclusive\":4,\"endExclusive\":4}}}]," +
-                "\"qualification\":{\"knownDiagnosticCount\":1," +
-                "\"resultLimitReached\":false,\"analyzedFiles\":[]," +
-                "\"limitations\":[{\"file\":\"src/A.kt\",\"reason\":\"indexing\"}]}}",
-            diagnosticsProjected.document.value,
+            "indexing",
+            diagnosticsDocument
+                .getValue("qualification")
+                .jsonObject
+                .getValue("limitations")
+                .jsonArray
+                .single()
+                .jsonObject
+                .getValue("reason")
+                .jsonPrimitive
+                .content,
         )
     }
 

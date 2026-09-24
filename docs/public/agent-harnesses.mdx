@@ -63,38 +63,20 @@ Requalify whenever the provider starts or the installed release changes.
 
 ## Choose what the agent sees
 
+The App Server and direct MCP expose `change` as one effectful operation.
+Direct MCP also exposes `refresh_workspace` for an explicit file refresh of its
+bound project.
+
 | Availability | Tools | Why |
 | --- | --- | --- |
 | Eager defaults | `search_classes`, `search_functions`, `search_declarations`, `check_diagnostics` | Directly express common reader intent |
 | Deferred defaults | `query_symbols`, `source_read`, `read_relations`, `traverse_relations` | Add pipelines, source, relations, and traversal when needed |
-| Deferred changes | `change_plan`, `change_apply`, `change_recover` | Keep planning and approval attached to stored changes |
+| Deferred change | `change` | Plan, sign, apply, verify, and attempt recovery in one call |
 | Explicit opt-in | `symbol_lookup`, `symbol_inspect` | Expose candidate discovery and refinement when required |
 
-Keep these administrative operations outside the agent tool catalog:
-
-- service lifecycle and synchronization controls
-- topology setup and status
-- broker administration
-
-Reads use the saved IDEA project and return a typed blocker when evidence is unavailable.
-
-## Preserve approval as an operation
-
-Approval follows the operation:
-
-| Operation | Approval |
-| --- | --- |
-| `change_plan` | None |
-| `change_apply` | Exact stored plan |
-| `change_recover` | Exact stored plan, approved separately |
-
-A plan ID or `EXPLICIT` catalog field is not approval.
-
-The included integration shows the stored preview and asks the current controller.
-
-Decline, cancellation, lost control, and expiration reject before writing.
-
-A custom harness must implement the installed approval contract.
+The installed signing key authorizes only the exact stored plan prepared by the
+IDE. The caller does not handle a plan ID or submit an approval response.
+Project close retains its separate exact-target approval policy.
 
 Follow [Change source](/change) for trust, plan lifetime, apply states, and recovery.
 
@@ -105,7 +87,7 @@ Never render `applied_unverified` or `recovery_required` as verified success.
 <AccordionGroup>
   <Accordion title="Use the complete suite">
     The hosted catalog includes raw symbol tools and workspace lifecycle
-    operations. Mutation approval remains required.
+    operations. The `change` call signs its exact plan internally.
 
     `KAST_APP_SERVER_TOOLS` and `KAST_ENABLE_APP_SERVER` are retired. Remove them
     from saved configuration and the launch environment; they reject startup.

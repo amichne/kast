@@ -1,8 +1,6 @@
 package io.github.amichne.kast.appserver.runtime
 
 import io.github.amichne.kast.appserver.WorkspaceEnrollment
-import io.github.amichne.kast.appserver.core.ObserverFileChange
-import io.github.amichne.kast.appserver.core.ObserverFileChangeKind
 import io.github.amichne.kast.appserver.protocol.codex.ProtocolCloseFailure
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
@@ -16,13 +14,11 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
-import kotlinx.serialization.json.put
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
@@ -34,78 +30,18 @@ import org.junit.jupiter.api.io.TempDir
 
 class BrokerSessionHubTest {
     @Test
-    fun `native exact approval waits outside workspace lane and carries proof only after controller accepts`(
-        @TempDir root: Path
-    ) = runBlocking {
-        val gateway =
-            object : HostedPlanApprovalGateway {
-                override suspend fun prepare(
-                    request: HostedPlanApprovalRequest
-                ): Refinement<HostedPlanApprovalChallenge, HostedPlanApprovalFailure> {
-                    val subject =
-                        ExactPlanApprovalSubject.admit(
-                                planIdentity = request.planIdentity,
-                                hostedChallenge = "b".repeat(64),
-                                operation = request.operation,
-                                root = request.invocation.workingDirectory,
-                                host = HostedApprovalOwnerId.admit("11111111-1111-1111-1111-111111111111").refined(),
-                            )
-                            .refined()
-                    return HostedPlanApprovalChallenge.fromStoredPlan(
-                        request,
-                        subject,
-                        ObserverFileChange.admit(
-                                "src/Main.kt",
-                                ObserverFileChangeKind.UPDATE,
-                                "@@ -1 +1 @@\n-old\n+new\n",
-                            )
-                            .refined(),
-                    )
-                }
-
-                override suspend fun redeem(approval: ControllerApprovedPlan) =
-                    HostedPlanApprovalGrant.fromSignedControllerApproval(approval, "e30.${"a".repeat(86)}")
-            }
-        val fixture = HubTestFixture(root, planGateway = gateway)
+    fun `legacy phase tool resolves without requesting controller approval`(@TempDir root: Path) = runBlocking {
+        val fixture = HubTestFixture(root)
         try {
             val peer = fixture.connect()
             fixture.bind(peer, "thread/start")
-            peer.upstream.received.send(
-                BrokerUpstreamFrame.Text(
-                    """
-                    |{"id":70,"method":"item/tool/call","params":{"threadId":"thread-1","turnId":"turn-apply",
-                    |"callId":"apply","namespace":"kast","tool":"change_apply",
-                    |"arguments":{"planIdentity":"plan:${"a".repeat(64)}"}}}
-                    """
-                        .trimMargin()
-                )
-            )
-            val started = Json.parseToJsonElement(withTimeout(1000) { peer.session.output.receive() }).jsonObject
-            assertEquals("item/started", started["method"]?.jsonPrimitive?.content)
-            val approval = Json.parseToJsonElement(withTimeout(1000) { peer.session.output.receive() }).jsonObject
-            assertEquals("item/fileChange/requestApproval", approval["method"]?.jsonPrimitive?.content)
-            assertTrue(fixture.approvedInvocations.isEmpty())
-            peer.upstream.received.send(
-                BrokerUpstreamFrame.Text(toolCall(thread = "thread-1", call = "read", request = 71, independent = true))
-            )
-            val readReply = Json.parseToJsonElement(withTimeout(1000) { peer.upstream.sent.receive() }).jsonObject
-            assertEquals(JsonPrimitive(71), readReply["id"])
-            assertTrue(fixture.approvedInvocations.isEmpty())
-            peer.session.accept(
-                buildJsonObject {
-                    put("id", approval.getValue("id"))
-                    put("result", buildJsonObject { put("decision", "accept") })
-                }
-                    .toString()
-            )
-            val reply = Json.parseToJsonElement(withTimeout(1000) { peer.upstream.sent.receive() }).jsonObject
+            val arguments = LegacyPhaseArgs("plan:${"a".repeat(64)}")
+            val call = LegacyPhaseCall(params = LegacyPhaseParams(arguments = arguments))
+            peer.upstream.received.send(BrokerUpstreamFrame.Text(Json { encodeDefaults = true }.encodeToString(call)))
+            val reply = Json.parseToJsonElement(withTimeout(1_000) { peer.upstream.sent.receive() }).jsonObject
             assertEquals(JsonPrimitive(70), reply["id"])
-            assertInstanceOf(BrokerInvocationApproval.Granted::class.java, fixture.approvedInvocations.single())
-            val resolved = Json.parseToJsonElement(withTimeout(1000) { peer.session.output.receive() }).jsonObject
-            val completed = Json.parseToJsonElement(withTimeout(1000) { peer.session.output.receive() }).jsonObject
-            assertEquals("serverRequest/resolved", resolved["method"]?.jsonPrimitive?.content)
-            assertEquals("item/completed", completed["method"]?.jsonPrimitive?.content)
-            assertTrue(peer.upstream.sent.tryReceive().isFailure)
+            assertTrue(fixture.approvedInvocations.isEmpty())
+            assertTrue(peer.session.output.tryReceive().isFailure)
         } finally {
             fixture.hub.close()
         }
@@ -739,6 +675,25 @@ class BrokerSessionHubTest {
                 fixture.hub.close()
             }
         }
+
+    @kotlinx.serialization.Serializable
+    private data class LegacyPhaseCall(
+        val id: Int = 70,
+        val method: String = "item/tool/call",
+        val params: LegacyPhaseParams,
+    )
+
+    @kotlinx.serialization.Serializable
+    private data class LegacyPhaseParams(
+        val threadId: String = "thread-1",
+        val turnId: String = "turn-apply",
+        val callId: String = "apply",
+        val namespace: String = "kast",
+        val tool: String = "change_apply",
+        val arguments: LegacyPhaseArgs,
+    )
+
+    @kotlinx.serialization.Serializable private data class LegacyPhaseArgs(val planIdentity: String)
 
     @kotlinx.serialization.Serializable private data class QueueBarrier(val method: String)
 

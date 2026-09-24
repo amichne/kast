@@ -76,6 +76,8 @@ query plan, executes the supplied `QueryOperations`, and projects complete,
 qualified, or rejected results. The other read protocols use the same reference
 and evidence vocabulary around their domain operations. The existing-IDE host uses this boundary; historical published-evidence tests exercise the same contracts without granting a production publication owner.
 
+Diagnostic progress retains the requested path alongside file inventory and analyzed files. The CLI derives discovered, analyzed, skipped, and exhaustive coverage from that progress, and labels the result as IDE file diagnostics.
+
 `QueryReferenceAuthority` separates reference issuance and restoration from
 execution authority. Published references retain their generation. Live
 references require a freshly admitted authority from the original host; decoded

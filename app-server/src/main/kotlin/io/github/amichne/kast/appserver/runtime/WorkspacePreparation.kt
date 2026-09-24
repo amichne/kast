@@ -43,6 +43,7 @@ enum class WorkspacePreparationFailure {
     CAPACITY_EXCEEDED,
     CLOSED,
     UNKNOWN_OPERATION,
+    REQUEST_ID_MISMATCH,
     RESPONSE_REJECTED,
     DEADLINE_EXCEEDED,
     INTERRUPTED,
@@ -84,7 +85,8 @@ internal fun admitPreparationProgress(
     previous: NativePreparationProgress?,
 ): Refinement<NativePreparationProgress, WorkspacePreparationFailure> {
     fun reject() = Refinement.Rejected(WorkspacePreparationFailure.RESPONSE_REJECTED)
-    if (pending.requestId != id.value.toString()) return reject()
+    if (pending.requestId != id.value.toString())
+        return Refinement.Rejected(WorkspacePreparationFailure.REQUEST_ID_MISMATCH)
     val host = canonicalPreparationUuid(pending.host) ?: return reject()
     if (previous != null) {
         if (host != previous.host) return reject()

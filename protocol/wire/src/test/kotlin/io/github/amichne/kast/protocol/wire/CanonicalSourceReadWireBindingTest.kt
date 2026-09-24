@@ -52,6 +52,26 @@ import org.junit.jupiter.api.Test
 
 class CanonicalSourceReadWireBindingTest {
     @Test
+    fun `source read wire retains default limits and first page for installed hosts`() {
+        val request =
+            SourceReadRequest(
+                anchor = SourceReadAnchorDocument.Symbol(text(exactSelectorToken())),
+                region = SourceRegionSelectionDocument.Anchor,
+                entities = SourceEntitySelectionDocument.None,
+                text = SourceTextRequestDocument.Complete,
+            )
+        val binding = CanonicalOperationWireBindings.sourceRead
+        val encoded = binding.encodeRequest(request).encodedDocument()
+        assertEquals(true, encoded.contains("\"entityLimit\":250"))
+        assertEquals(true, encoded.contains("\"textByteLimit\":65536"))
+        assertEquals(true, encoded.contains("\"page\":{\"type\":\"first\"}"))
+        assertEquals(
+            WireDecoding.Decoded(request),
+            binding.decodeRequest(WireRequestEnvelope.admit(encoded).admittedRequest()),
+        )
+    }
+
+    @Test
     fun `returned source line evidence round trips and rejects impossible line spans`() {
         val binding = CanonicalOperationWireBindings.sourceRead
         val result = sourceReadResult()
@@ -148,6 +168,12 @@ class CanonicalSourceReadWireBindingTest {
     fun `strict request decoder rejects unknown unions additional fields and invalid bounds`() {
         val binding = CanonicalOperationWireBindings.sourceRead
         val encoded = binding.encodeRequest(sourceReadRequest()).encodedDocument()
+        val bounded =
+            binding
+                .encodeRequest(
+                    sourceReadRequest().copy(entityLimit = SourceEntityLimitDocument.parse(10).refinedValue())
+                )
+                .encodedDocument()
         val selector = exactSelectorToken()
         val invalidDocuments =
             listOf(
@@ -156,7 +182,7 @@ class CanonicalSourceReadWireBindingTest {
                     "\"selector\":\"$selector\"",
                     "\"selector\":\"$selector\",\"unknown\":true",
                 ),
-                encoded.replace("\"entityLimit\":250", "\"entityLimit\":0"),
+                bounded.replace("\"entityLimit\":10", "\"entityLimit\":0"),
             )
 
         invalidDocuments.forEach { invalid ->

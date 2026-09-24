@@ -136,7 +136,7 @@ class PublicExecutionBudgetTest {
 @Serializable
 private data class InvalidSearch<T>(
     @kotlinx.serialization.SerialName("execution_budget") val executionBudget: InvalidBudget<T>,
-    @kotlinx.serialization.SerialName("class_name") val className: String = "Service",
+    @kotlinx.serialization.SerialName("name") val className: String = "Service",
     @kotlinx.serialization.SerialName("name_match") val nameMatch: String? = null,
     val scope: String? = null,
 )

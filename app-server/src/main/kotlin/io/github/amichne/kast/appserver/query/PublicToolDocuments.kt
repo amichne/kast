@@ -1,5 +1,6 @@
 // Generated from tools.schema.json by packaging/generate-public-query.py. Do not edit.
 @file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+@file:Suppress("ConstructorParameterNaming")
 
 package io.github.amichne.kast.appserver.query
 
@@ -73,31 +74,31 @@ internal sealed interface PublicToolStep
 @Serializable
 internal data class PublicToolDirectoryScope(
     val relative_directory_path: ProtocolText,
-    val include_subdirectories: Boolean,
-    val source_set_names: BoundedProtocolList<ProtocolText>?,
+    val include_subdirectories: Boolean = true,
+    val source_set_names: BoundedProtocolList<ProtocolText>? = null,
 ) : PublicToolScope
 
 @Serializable
 internal data class PublicToolPackageScope(
     val package_name: ProtocolText,
-    val include_subpackages: Boolean,
-    val source_set_names: BoundedProtocolList<ProtocolText>?,
+    val include_subpackages: Boolean = true,
+    val source_set_names: BoundedProtocolList<ProtocolText>? = null,
 ) : PublicToolScope
 
 @Serializable
 @SerialName("search_declarations")
 internal data class PublicToolSearchSource(
     val declaration_name: ProtocolText,
-    val name_match: PublicToolNameMatch?,
-    val declaration_kinds: BoundedProtocolList<PublicToolDeclarationKinds>?,
-    val scope: PublicToolScope?,
+    val name_match: PublicToolNameMatch? = null,
+    val declaration_kinds: BoundedProtocolList<PublicToolDeclarationKinds>? = null,
+    val scope: PublicToolScope? = null,
 ) : PublicToolSource
 
 @Serializable
 @SerialName("all_declarations")
 internal data class PublicToolAllSource(
-    val declaration_kinds: BoundedProtocolList<PublicToolDeclarationKinds>?,
-    val scope: PublicToolScope?,
+    val declaration_kinds: BoundedProtocolList<PublicToolDeclarationKinds>? = null,
+    val scope: PublicToolScope? = null,
 ) : PublicToolSource
 
 @Serializable
@@ -124,9 +125,9 @@ internal data object PublicToolDistinctSymbols : PublicToolStep
 
 @Serializable
 internal data class PublicToolSearchClasses(
-    val class_name: ProtocolText,
-    val name_match: PublicToolNameMatch?,
-    val scope: PublicToolScope?,
+    val name: ProtocolText,
+    val name_match: PublicToolNameMatch? = null,
+    val scope: PublicToolScope? = null,
     @SerialName("execution_budget")
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val executionBudget: ExecutionBudgetDocument? = null,
@@ -135,8 +136,8 @@ internal data class PublicToolSearchClasses(
 @Serializable
 internal data class PublicToolSearchFunctions(
     val function_name: ProtocolText,
-    val name_match: PublicToolNameMatch?,
-    val scope: PublicToolScope?,
+    val name_match: PublicToolNameMatch? = null,
+    val scope: PublicToolScope? = null,
     @SerialName("execution_budget")
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val executionBudget: ExecutionBudgetDocument? = null,
@@ -145,9 +146,9 @@ internal data class PublicToolSearchFunctions(
 @Serializable
 internal data class PublicToolSearchDeclarations(
     val declaration_name: ProtocolText,
-    val name_match: PublicToolNameMatch?,
-    val scope: PublicToolScope?,
-    val declaration_kinds: BoundedProtocolList<PublicToolDeclarationKinds>?,
+    val name_match: PublicToolNameMatch? = null,
+    val scope: PublicToolScope? = null,
+    val declaration_kinds: BoundedProtocolList<PublicToolDeclarationKinds>? = null,
     @SerialName("execution_budget")
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val executionBudget: ExecutionBudgetDocument? = null,
@@ -156,7 +157,7 @@ internal data class PublicToolSearchDeclarations(
 @Serializable
 internal data class PublicToolCheckDiagnostics(
     val relative_path: ProtocolText,
-    val max_diagnostics: Int?,
+    val max_diagnostics: Int? = null,
     val continuation: ProtocolText? = null,
     @SerialName("execution_budget")
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)

@@ -7,9 +7,6 @@ import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
 import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
 import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
-import io.github.amichne.kast.appserver.ide.HostedApprovalAssertion
-import io.github.amichne.kast.appserver.ide.HostedMutationOperation
-import io.github.amichne.kast.appserver.ide.HostedPlanIdentity
 import io.github.amichne.kast.appserver.query.PublicToolCanonical
 import io.github.amichne.kast.appserver.runtime.BrokerInvocationApproval
 import io.github.amichne.kast.kernel.Refinement
@@ -63,13 +60,15 @@ internal class KastDirectInvocation(private val options: KastProviderOptions) {
             }
         if (tool.hostedDefinition.operation == CanonicalOperation.WORKSPACE_LIFECYCLE)
             return lifecycle(admission.arguments, context)
+        if (tool.hostedDefinition.operation == CanonicalOperation.CHANGE)
+            return KastSingleChangeInvocation(options).invoke(input, context)
         val request =
             when (val prepared = prepare(input)) {
                 is Refinement.Refined -> prepared.value
                 is Refinement.Rejected -> return ProviderCall.Rejected(prepared.failure.providerFailure())
             }
         val operation =
-            when (val admitted = operation(request, context)) {
+            when (val admitted = operation(request)) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> return ProviderCall.Rejected(admitted.failure.providerFailure())
             }
@@ -154,35 +153,13 @@ internal class KastDirectInvocation(private val options: KastProviderOptions) {
             )
         )
 
-    private fun operation(
-        request: PreparedOperationRequest,
-        context: BrokerInvocationContext,
-    ): Refinement<ExistingIdeOperation, ExistingIdeFailure> =
+    private fun operation(request: PreparedOperationRequest): Refinement<ExistingIdeOperation, ExistingIdeFailure> =
         when (request.operation) {
             CanonicalOperation.CHANGE_PLAN -> ExistingIdeOperation.Plan.admit(request)
             CanonicalOperation.CHANGE_APPLY,
-            CanonicalOperation.CHANGE_RECOVER -> {
-                val approval = context.approval
-                if (approval !is BrokerInvocationApproval.Granted)
-                    return Refinement.Rejected(ExistingIdeFailure.APPROVAL_REQUIRED)
-                val kind =
-                    if (request.operation == CanonicalOperation.CHANGE_APPLY) HostedMutationOperation.CHANGE_APPLY
-                    else HostedMutationOperation.CHANGE_RECOVER
-                val identity =
-                    when (
-                        val admitted = HostedPlanIdentity.parse("plan:${approval.grant.approval.subject.planIdentity}")
-                    ) {
-                        is Refinement.Refined -> admitted.value
-                        is Refinement.Rejected -> return admitted
-                    }
-                val assertion =
-                    when (val admitted = HostedApprovalAssertion.parse(approval.grant.assertion)) {
-                        is Refinement.Refined -> admitted.value
-                        is Refinement.Rejected -> return admitted
-                    }
-                ExistingIdeOperation.ApprovedMutation.admit(request, kind, identity, assertion)
-            }
+            CanonicalOperation.CHANGE_RECOVER -> Refinement.Rejected(ExistingIdeFailure.OPERATION_UNSUPPORTED)
             CanonicalOperation.WORKSPACE_LIFECYCLE,
+            CanonicalOperation.CHANGE,
             CanonicalOperation.INDEX_SYNC,
             CanonicalOperation.TOPOLOGY_BUILD -> Refinement.Rejected(ExistingIdeFailure.OPERATION_UNSUPPORTED)
             CanonicalOperation.QUERY_RUN,
@@ -214,6 +191,7 @@ internal class KastDirectInvocation(private val options: KastProviderOptions) {
                         decode(input, TraversalRunRequest.serializer(), preparers.traversalRun)
                     CanonicalOperation.CHANGE_PLAN ->
                         decode(input, ChangePlanRequest.serializer(), preparers.changePlan)
+                    CanonicalOperation.CHANGE -> Refinement.Rejected(ExistingIdeFailure.OPERATION_UNSUPPORTED)
                     CanonicalOperation.CHANGE_APPLY ->
                         decode(input, ChangeApplyRequest.serializer(), preparers.changeApply)
                     CanonicalOperation.CHANGE_RECOVER ->

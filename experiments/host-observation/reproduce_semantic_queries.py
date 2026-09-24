@@ -205,7 +205,7 @@ def invocation(case, surface):
         if not case.steps and case.select == tuple(FIELDS):
             tool = case.preferred_tool
             if tool in {"search_classes", "search_functions"}:
-                name = "class_name" if tool == "search_classes" else "function_name"
+                name = "name" if tool == "search_classes" else "function_name"
                 arguments[name] = arguments.pop("declaration_name")
                 arguments.pop("declaration_kinds")
             elif tool != "search_declarations":

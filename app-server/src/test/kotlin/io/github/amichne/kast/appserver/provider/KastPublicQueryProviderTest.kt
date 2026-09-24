@@ -19,8 +19,10 @@ import io.github.amichne.kast.appserver.ide.ExistingIdeReadOperation
 import io.github.amichne.kast.appserver.installedKastCatalogFixture
 import io.github.amichne.kast.appserver.query.PublicToolCanonical
 import io.github.amichne.kast.appserver.query.PublicToolContract
+import io.github.amichne.kast.appserver.query.PublicToolSearchClasses
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.Validation
+import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import io.github.amichne.kast.protocol.wire.presentation.OperationPreparation
@@ -47,7 +49,11 @@ class KastPublicQueryProviderTest {
     fun `provider preserves schema-bound facade syntax without preparing lifecycle`(@TempDir root: Path) = runBlocking {
         val executor = RecordingExecutor(capability())
         val broker = broker(root, executor)
-        val raw = """{"class_name":"Order","name_match":null,"scope":null}"""
+        val raw =
+            Json.encodeToString(
+                PublicToolSearchClasses.serializer(),
+                PublicToolSearchClasses(ProtocolText.parse("Order").refined()),
+            )
         assertTrue(broker.dispatch(request(root, PublicToolIdentity.SEARCH_CLASSES, raw)) is BrokerDispatch.Completed)
         val read = assertInstanceOf(ExistingIdeOperation.Read::class.java, executor.operations.single())
         val parsed = PublicToolContract.admit(PublicToolIdentity.SEARCH_CLASSES, Json.parseToJsonElement(raw)).refined()
@@ -66,7 +72,11 @@ class KastPublicQueryProviderTest {
                 request(
                     root,
                     PublicToolIdentity.SEARCH_CLASSES,
-                    """{"class_name":"Order","name_match":null,"scope":null}""",
+                    Json {
+                            encodeDefaults = true
+                            explicitNulls = true
+                        }
+                        .encodeToString(KastSearchInput("Order")),
                 )
             ) is BrokerDispatch.Completed
         )
@@ -84,7 +94,7 @@ class KastPublicQueryProviderTest {
                 request(
                     root,
                     PublicToolIdentity.SEARCH_FUNCTIONS,
-                    """{"class_name":"Order","name_match":null,"scope":null}""",
+                    Json.encodeToString(KastSearchInput("Order")),
                 )
             ) is BrokerDispatch.Rejected
         )
@@ -99,9 +109,8 @@ class KastPublicQueryProviderTest {
         val executor = RecordingExecutor(capability())
         val broker = broker(root, executor)
         listOf(
-                """{"class_name":"Order","name_match":null,"scope":null,"execution":{"kind":"exhaustive"}}""",
-                """{"class_name":"Order","name_match":null,"scope":{"relative_directory_path":"../src","include_subdirectories":true,"source_set_names":null}}""",
-                """{"class_name":"Order","name_match":null}""",
+                Json.encodeToString(KastSearchInput("Order", execution = KastInvalidExecution())),
+                Json.encodeToString(KastSearchInput("Order", scope = KastDirectoryScope("../src"))),
             )
             .forEach {
                 assertTrue(
@@ -113,7 +122,7 @@ class KastPublicQueryProviderTest {
                 request(
                     root,
                     PublicToolIdentity.SEARCH_CLASSES,
-                    """{"class_name":"Order","name_match":null,"scope":{"relative_directory_path":"/PRIVATE_SECRET_PATH","include_subdirectories":true,"source_set_names":null}}""",
+                    Json.encodeToString(KastSearchInput("Order", scope = KastDirectoryScope("/PRIVATE_SECRET_PATH"))),
                 )
             ) as BrokerDispatch.Rejected
         val guidance = (pathFailure.failure as BrokerFailure.InvalidArguments).guidance.single().value
@@ -180,6 +189,24 @@ class KastPublicQueryProviderTest {
 
     @Serializable
     private data class HostRejection(val type: String = "HOST_REJECTED", val failure: String = "DIRTY_DOCUMENTS")
+
+    @Serializable
+    private data class KastSearchInput(
+        val name: String,
+        @kotlinx.serialization.SerialName("name_match") val nameMatch: String? = null,
+        val scope: KastDirectoryScope? = null,
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        val execution: KastInvalidExecution? = null,
+    )
+
+    @Serializable
+    private data class KastDirectoryScope(
+        @kotlinx.serialization.SerialName("relative_directory_path") val relativeDirectoryPath: String,
+        @kotlinx.serialization.SerialName("include_subdirectories") val includeSubdirectories: Boolean = true,
+        @kotlinx.serialization.SerialName("source_set_names") val sourceSetNames: List<String>? = null,
+    )
+
+    @Serializable private data class KastInvalidExecution(val kind: String = "exhaustive")
 
     private class RecordingExecutor(private val schema: String) : KastCatalogSource {
         val operations = mutableListOf<ExistingIdeOperation>()

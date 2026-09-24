@@ -149,6 +149,7 @@ enum class SourceRequestRule {
     @SerialName("format") FORMAT,
     @SerialName("line-count-0-to-1000") LINE_COUNT,
     @SerialName("entity-count-1-to-1000") ENTITY_COUNT,
+    @SerialName("entity-limit-not-applicable") ENTITY_LIMIT_NOT_APPLICABLE,
     @SerialName("positive-byte-count") BYTE_COUNT,
     @SerialName("filter-count-1-to-4") FILTER_COUNT,
     @SerialName("nonempty-unique-values") NONEMPTY_UNIQUE_VALUES,
@@ -284,6 +285,7 @@ private fun SourceRequestRule.expectation(): SourceRequestExpectation =
         SourceRequestRule.FORMAT -> SourceRequestExpectation.Alternatives(listOf("expanded", "compact"))
         SourceRequestRule.LINE_COUNT -> SourceRequestExpectation.Bounds(0, MAX_SOURCE_READ_LINE_COUNT.toLong())
         SourceRequestRule.ENTITY_COUNT -> SourceRequestExpectation.Bounds(1, MAX_SOURCE_READ_ENTITY_LIMIT.toLong())
+        SourceRequestRule.ENTITY_LIMIT_NOT_APPLICABLE -> SourceRequestExpectation.Rule
         SourceRequestRule.BYTE_COUNT -> SourceRequestExpectation.Bounds(1, Long.MAX_VALUE)
         SourceRequestRule.FILTER_COUNT -> SourceRequestExpectation.Bounds(1, MAX_SOURCE_FILTERS.toLong())
         SourceRequestRule.REQUIRED,
@@ -300,6 +302,7 @@ private fun SourceRequestRule.expectation(): SourceRequestExpectation =
     }
 
 private fun SourceRequestRule.expectation(path: SourceRequestPath): SourceRequestExpectation {
+    if (this == SourceRequestRule.ENTITY_LIMIT_NOT_APPLICABLE) return SourceRequestExpectation.Rule
     val own = expectation()
     if (own != SourceRequestExpectation.Rule) return own
     return when (path) {

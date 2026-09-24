@@ -11,6 +11,13 @@ not need to invoke `workspace_lifecycle` before a read.
 `workspace_lifecycle` remains an explicit control capability for inspecting,
 presenting, syncing, releasing, or closing a selected project when requested.
 
+The direct Kast MCP connection starts preparing its bound Gradle root during
+initialization. It exposes `refresh_workspace` for explicit file refresh of its
+exact open project. Call it with `{}` and, if the result is `partial`, poll with
+the returned `requestId`. A complete result means IntelliJ admitted the refresh
+and indexing; new semantic reads then acquire fresh references. It does not save
+editor buffers or reload the Gradle model.
+
 ## Explicit control sequence
 
 1. Inspect the selected host and existing projects.
@@ -24,8 +31,10 @@ presenting, syncing, releasing, or closing a selected project when requested.
 Opening reuses the installer-selected IDEA or launches it when absent. It imports
 and waits for semantic admission without deliberately activating the window.
 Background behavior is best effort. A running IDEA with an unavailable plugin,
-project trust, and unsaved documents can require user intervention. Semantic
-readiness is still checked by the native host for each read.
+project trust, and unsaved documents can require user intervention. Hosted
+semantic reads use the workspace prepared through this lifecycle tool; direct MCP
+semantic calls join the preparation started at connection.
+Semantic readiness is still checked by the native host for each read.
 
 ## Requests and identities
 

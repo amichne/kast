@@ -7,6 +7,9 @@ tags: [distribution, configuration, packaging, release]
 timestamp: 2026-09-22T00:00:00Z
 code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/KastDaemonMain.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/McpWorkspaceOperationClient.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpWorkspaceRefreshTool.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpSingleChangeTool.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationTrustEnrollment.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/PackagedProviderCatalog.kt
   - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/ControlDistributionAdmissionMain.kt
@@ -131,13 +134,18 @@ Force plugin activation moves the exact same-user Kast plugin entry into private
 The public installer registers `kast-mcp-complete` once in user-level Codex MCP
 configuration. It checks for a foreign `kast` entry before replacing the selected
 installation and removes only its own entry on uninstall. Terminal Codex then
-discovers the exact Gradle root for each session. The MCP adapter uses the
-selected IDEA lifecycle and native workspace preparation on semantic demand;
-its initialize response describes that synchronous wait and automatic linked-model
-reload, exact-reference reuse,
-relation coverage, continuations, and stage-specific recovery. The terminal MCP
-catalog does not expose `workspace_lifecycle`. Apply and recovery consume a
-separate one-use exact-plan approval grant.
+discovers the exact Gradle root for each session. Modern discovery or legacy
+initialization queues native preparation for that root using the selected IDEA
+lifecycle. Later semantic demand joins the same preparation and waits for exact
+readiness. The initialize response explains that wait, automatic linked-model
+reload, exact-reference reuse, relation coverage, continuations, and stage-specific
+recovery. The direct MCP `refresh_workspace` tool invokes native `FILE_REFRESH`
+for that root; the terminal MCP catalog does not expose `workspace_lifecycle`.
+Its `change` tool plans, signs the exact native challenge, applies, and verifies
+within one call, attempting recovery if application is unverified. The App Server exposes the same single `change` operation and signs its exact
+plan internally. If apply is cancelled, only a complete native `prior_state` or
+`rolled_back` recovery settles the invocation as known and releases the App
+Server workspace lane. Incomplete recovery leaves the lane protected.
 The app-server suite is always installed. Activation may still be pending with
 a finite reason when the host cannot start the service.
 

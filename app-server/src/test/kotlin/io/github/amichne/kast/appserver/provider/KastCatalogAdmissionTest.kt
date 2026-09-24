@@ -43,18 +43,16 @@ class KastCatalogAdmissionTest {
                             hostedBootstrap =
                                 bootstrap.copy(
                                     tools =
-                                        tools.dropLast(1) + tools.last().copy(approvalPolicy = KastApprovalPolicy.NONE)
+                                        tools.dropLast(1) +
+                                            tools.last().copy(approvalPolicy = KastApprovalPolicy.EXPLICIT)
                                 )
                         )
                 ),
             )
+        val expected = KastProviderQualification.Rejected(KastQualificationFailure.SCHEMA_INCOMPATIBLE)
         for (document in cases) {
-            assertEquals(
-                KastProviderQualification.Rejected(KastQualificationFailure.SCHEMA_INCOMPATIBLE),
-                KastProviderQualifier.qualify(
-                    KastProviderOptions(KastCatalogSource { Refinement.Refined(Json.encodeToString(document)) })
-                ),
-            )
+            val candidate = KastProviderOptions(KastCatalogSource { Refinement.Refined(Json.encodeToString(document)) })
+            assertEquals(expected, KastProviderQualifier.qualify(candidate))
         }
         assertInstanceOf(
             KastProviderQualification.Qualified::class.java,

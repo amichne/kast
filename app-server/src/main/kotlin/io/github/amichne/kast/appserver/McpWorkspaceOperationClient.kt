@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver
 
+import io.github.amichne.kast.appserver.ide.CanonicalRoot
 import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
 import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
@@ -7,13 +8,17 @@ import io.github.amichne.kast.appserver.ide.ExistingIdeSocketClient
 import io.github.amichne.kast.appserver.ide.HostedApprovalAssertion
 import io.github.amichne.kast.appserver.ide.HostedMutationOperation
 import io.github.amichne.kast.appserver.ide.HostedPlanIdentity
+import io.github.amichne.kast.appserver.ide.WorkspaceLifecycleClient
 import io.github.amichne.kast.appserver.query.PublicToolCanonical
+import io.github.amichne.kast.appserver.runtime.JsonLineWorkspacePreparationObserver
 import io.github.amichne.kast.appserver.runtime.PreparedWorkspaceDemand
 import io.github.amichne.kast.appserver.runtime.WorkspaceDemandFailure
 import io.github.amichne.kast.appserver.runtime.WorkspaceDemandResult
 import io.github.amichne.kast.appserver.runtime.WorkspacePreparations
 import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
+import io.github.amichne.kast.protocol.contract.WorkspaceLifecycleRequest
 import io.github.amichne.kast.protocol.wire.presentation.OperationPreparation
 import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
 import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
@@ -24,9 +29,30 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.runInterruptible
 
+/** One MCP session owns both eager preparation and later semantic demand for the same root. */
+class McpWorkspaceOperationClient
+internal constructor(
+    private val delegate: DaemonOperationClient,
+    private val preparations: WorkspacePreparations?,
+    private val lifecycle: WorkspaceLifecycleClient = WorkspaceLifecycleClient.Unavailable,
+) : DaemonOperationClient by delegate {
+    /** Explicit session lifecycle effect; semantic reads never call this path. */
+    fun lifecycle(request: WorkspaceLifecycleRequest): IdeLifecycleResult = lifecycle.execute(request, "kast-mcp")
+
+    fun start(root: CanonicalRoot): Refinement<Unit, DaemonOperationFailure> {
+        val owner =
+            preparations
+                ?: return Refinement.Rejected(DaemonOperationFailure.Host(ExistingIdeFailure.CONFIGURATION_REJECTED))
+        return when (val admission = owner.prepare(root)) {
+            is Refinement.Refined -> Refinement.Refined(Unit)
+            is Refinement.Rejected -> Refinement.Rejected(DaemonOperationFailure.Preparation(admission.failure))
+        }
+    }
+}
+
 /** Session-owned MCP adapter. The existing IDEA lifecycle and compiler host retain semantic authority. */
 @Suppress("LongMethod")
-fun mcpWorkspaceOperationClient(home: Path, environment: Map<String, String>): DaemonOperationClient {
+fun mcpWorkspaceOperationClient(home: Path, environment: Map<String, String>): McpWorkspaceOperationClient {
     val sources =
         when (val saved = InstalledSavedConfigurationIngress.load(environment)) {
             is SavedConfigurationIngress.Loaded -> saved.sources
@@ -44,6 +70,7 @@ fun mcpWorkspaceOperationClient(home: Path, environment: Map<String, String>): D
         WorkspacePreparations(
             CoroutineScope(SupervisorJob() + dispatcher),
             { request -> runInterruptible(dispatcher) { lifecycle.execute(request, "kast-mcp") } },
+            observer = JsonLineWorkspacePreparationObserver(System.err),
         )
     val demand =
         PreparedWorkspaceDemand(
@@ -58,7 +85,7 @@ fun mcpWorkspaceOperationClient(home: Path, environment: Map<String, String>): D
             },
             { workspace, operation -> runInterruptible(dispatcher) { native.queryPrepared(workspace, operation) } },
         )
-    return DaemonOperationClient { root, call ->
+    val delegate = DaemonOperationClient { root, call ->
         val operation =
             when (val admitted = mcpOperation(call)) {
                 is Refinement.Refined -> admitted.value
@@ -81,13 +108,21 @@ fun mcpWorkspaceOperationClient(home: Path, environment: Map<String, String>): D
                 )
         }
     }
+    return McpWorkspaceOperationClient(delegate, preparations, lifecycle)
 }
 
-private fun rejectedMcpConfiguration() = DaemonOperationClient { _, _ ->
-    DaemonOperationResult.Rejected(
-        DaemonOperationClientRejection.Server(DaemonOperationFailure.Host(ExistingIdeFailure.CONFIGURATION_REJECTED))
+private fun rejectedMcpConfiguration() =
+    McpWorkspaceOperationClient(
+        DaemonOperationClient { _, _ ->
+            DaemonOperationResult.Rejected(
+                DaemonOperationClientRejection.Server(
+                    DaemonOperationFailure.Host(ExistingIdeFailure.CONFIGURATION_REJECTED)
+                )
+            )
+        },
+        null,
+        WorkspaceLifecycleClient.Unavailable,
     )
-}
 
 private val mcpPreparers = canonicalCliRequestPreparers()
 

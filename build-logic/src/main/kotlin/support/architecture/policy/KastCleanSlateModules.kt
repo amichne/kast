@@ -339,7 +339,6 @@ internal object KastCleanSlateModules {
             scopedEffects = mapOf(
                 ForbiddenEffect.FILESYSTEM_WRITE to setOf(
                     JvmClassName("io/github/amichne/kast/cli/ide/FilesystemBrokerTrustRegistrar"),
-                    JvmClassName("io/github/amichne/kast/cli/mcp/McpApprovalStore"),
                     JvmClassName(
                         "io/github/amichne/kast/cli/installation/InstallationWorkflow",
                     ),

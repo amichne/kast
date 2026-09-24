@@ -44,6 +44,26 @@ sealed interface ChangeIntentDocument {
 
 @Serializable data class ChangePlanRequest(val intent: ChangeIntentDocument) : OperationRequest
 
+/** One agent-facing change request. The host still stores and verifies an exact intermediate plan. */
+@Serializable data class ChangeRequest(val intent: ChangeIntentDocument) : OperationRequest
+
+@Serializable
+data class ChangeResult(val planIdentity: ProtocolText, val receiptIdentity: ProtocolText) : OperationResult
+
+@Serializable
+enum class ChangeQualification : OperationQualification {
+    RECOVERY_REQUIRED
+}
+
+@Serializable
+enum class ChangeRejection : OperationRejection {
+    PLANNING_REJECTED,
+    AUTHORIZATION_UNAVAILABLE,
+    APPLY_REJECTED,
+    APPLY_UNVERIFIED,
+    RECOVERY_UNAVAILABLE,
+}
+
 enum class ChangeFilePreviewKind {
     ADD,
     DELETE,

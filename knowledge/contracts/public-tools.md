@@ -26,6 +26,15 @@ code_sources:
   - path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt
   - path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastQueryInput.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicSourceReadIntent.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/source/SourceCommands.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpInvestigationTools.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpWorkspaceRefreshTool.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpSingleChangeTool.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpDirectToolCatalog.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpWorkspaceValidation.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpReadPresentation.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpSourceCompleteness.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastProvider.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexSessionProjection.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/tool/PublicToolCommands.kt
@@ -44,17 +53,56 @@ code_sources:
 
 The authored tool bundle generates Kotlin request DTOs, concrete normalization defaults, closed presentation identities, full admission schemas, Codex registration schemas and separate Responses strict registrations. The hosted `query_symbols` and `check_diagnostics` presentations lower to canonical query and diagnostic operations. The former CLI routes are retired; provider admission retains distinct schemas for these presentations.
 
-`search_classes`, `search_functions`, `search_declarations` and `check_diagnostics` are eager. `query_symbols` is deferred. Ordinary searches fix or admit declaration kinds and request names, locations and signatures; diagnostics lower to the path, semantic diagnostic limit, optional continuation and execution grant request. Required nullable controls normalize before canonical construction. Directory/package scope shapes are exclusive, and duplicates and invalid lexical values reject.
+`search_classes`, `search_functions`, `search_declarations` and `check_diagnostics` are eager. `query_symbols` is deferred. Ordinary searches fix or admit declaration kinds and request names, locations and signatures; diagnostics lower to the path, semantic diagnostic limit, optional continuation and execution grant request. Optional nullable controls normalize before canonical construction. Directory/package scope shapes are exclusive, and duplicates and invalid lexical values reject.
+
+The hosted and MCP `source_read` input schema admits a declaration-oriented public
+intent with `anchor.symbolRef`, `region`, `text.mode`, and `entities.mode`.
+`entities: {mode: none}` has no entity limit; `matching` owns its optional
+positive limit. The public shape lowers through the same canonical source read
+operation at either ingress and keeps the exact reference unchanged.
 
 Hosted tools pass admitted requests through the provider and shared workspace preparation owner. The daemon checks exact workspace identity before the existing-IDE operation. Complete, qualified, and rejected results retain their distinct documents. There is no semantic CLI operation RPC or direct-IDE fallback.
 
 The advanced pipeline preserves source meaning, step order, repeated steps and empty projections. Expansion returns related declarations; occurrence-oriented relation facts remain the relation-read contract. Query items and per-item failures expose one scalar `ref`, preserving the issued candidate or exact token verbatim. Named output schemas `CandidateRef`, `ExactSymbolRef`, and query-scoped `ContinuationRef` describe these opaque representations. No token spelling creates authority: existing runtime owners re-admit workspace, lifetime, epoch and compiler evidence.
 
-Installed projection 15 retains the full canonical hosted tool inventory. App Server qualifies the packaged hosted catalog directly; CLI invocation version 4 remains a separate public CLI projection and omits hosted-only `workspace_lifecycle`. Repeated canonical operation IDs are allowed only with consistent effect, approval, budget and output metadata. Private admitted requests retain their presentation and schema identities through transport encoding, excluding cross-tool substitution. Old persisted catalogs reject rather than silently accepting a new grammar. Source, relation and traversal defaults remain unchanged. Raw candidate lookup/refinement requires explicit selection. Native-qualified change tools are deferred defaults; `change_plan` has approval policy `NONE`, while apply and recovery retain
-`EXPLICIT` exact-plan approval. The hosted planning schema admits only
-`add-declaration`; unsupported canonical intents do not enter another runtime.
+Installed projection 15 retains the full canonical hosted tool inventory. App Server qualifies the packaged hosted catalog directly; CLI invocation version 4 remains a separate public CLI projection and omits hosted-only `workspace_lifecycle`. Repeated canonical operation IDs are allowed only with consistent effect, approval, budget and output metadata. Private admitted requests retain their presentation and schema identities through transport encoding, excluding cross-tool substitution. Old persisted catalogs reject rather than silently accepting a new grammar. Source, relation and traversal defaults remain unchanged. Raw candidate lookup/refinement requires explicit selection. The deferred `change` tool has approval policy `NONE` and performs
+native planning, exact challenge signing, apply, verification, and attempted
+recovery inside one invocation. A cancelled apply releases the App Server
+workspace lane only when native recovery proves `prior_state` or `rolled_back`.
+Native change phases remain available to the
+private coordinator and CLI adapter; they are absent from the agent catalog.
+The hosted planning schema admits only `add-declaration`; unsupported canonical
+intents do not enter another runtime.
 
-The 32-example corpus, typed lowering, duplicate/path rejection, CLI wire parity and production provider routing are deterministic proofs. Codex schemas omit the Responses-only `strict` field and retain separate stronger admission constraints. These checks do not by themselves establish live API acceptance or improved model first-call accuracy.
+The example corpus, typed lowering, duplicate/path rejection, CLI wire parity and production provider routing are deterministic proofs. Kast MCP schemas admit omitted default controls; Responses strict registrations retain explicit nullable fields. Server admission retains separate stronger constraints. These checks do not by themselves establish live API acceptance or improved model first-call accuracy.
+
+The direct Kast MCP process adds session tools outside the
+canonical compiler operation catalog. `health_check` passively reads the exact
+host description and reports workspace binding and saved/indexed readiness.
+MCP `tools/list` owns callable discovery; native operation checks remain internal.
+The health result makes no semantic correctness claim.
+`validate_workspace` composes existing read calls in order: discovery, exact
+inspection, source, relation, and IDE diagnostic scan. Missing probes and
+incomplete results are `unverified`; an exhaustive negative probe is `failed`.
+`refresh_workspace` selects the session's exact open project and requests
+`FILE_REFRESH` through the native lifecycle; a pending request is polled by its
+ID. It does not save documents or reload Gradle. The direct MCP `change` tool
+uses the planning input, prepares an exact-plan assertion internally, applies
+once, and returns the plan and verified receipt together. An unverified apply
+attempts recovery and retains both outcomes. Only a complete `prior_state` or
+`rolled_back` recovery yields `APPLY_UNVERIFIED`; qualified or rejected recovery
+yields `RECOVERY_UNAVAILABLE` with its document. The direct
+MCP and App Server catalogs omit the three native change phases.
+The returned probe evidence retains the original canonical read document and
+opaque references. Relation probes select the contract-oriented subject (`source` for callees,
+`target` for the other kinds). Both investigation tools bind paths to the
+discovered Gradle root, even when MCP starts in a child directory. No source
+mutation or change plan is used.
+The stdio MCP boundary serves both the 2026-07-28 per-request metadata era and
+the earlier initialize handshake. Its first valid request starts the same
+workspace preparation. `tools/list` carries a deterministic catalog with
+schema-validated structured result shapes; `validate_workspace` links an MCP
+Apps resource while retaining text and structured fallbacks.
 
 See the [public search guide](../../docs/public/search.mdx) and [semantic query flow](../flows/semantic-query.md).
 
@@ -95,7 +143,7 @@ The published agent policy delegates ordinary workspace preparation to the insta
 daemon. Agents do not orchestrate opening, polling, enablement or repair commands
 for semantic reads. Preparation blockers retain their cause and operation identity.
 Installation authorization excludes cache invalidation, forced synchronization and
-unrelated IDE restarts. Exact-plan mutation approvals remain separate.
+unrelated IDE restarts. The exact-plan challenge is signed inside the single change invocation.
 
 Kast's Codex response retains the admitted CLI envelope in its final JSON text
 item. Compact source reads with returned text prepend the unchanged source in a
@@ -159,7 +207,9 @@ required before either input spelling dispatches.
 Workspace setup belongs to the agent catalog, separately from the user CLI surface.
 The private invocation binding remains available to the harness, while root help
 and public local-command metadata omit it and the convenience `workspace open`
-command is absent. Tool guidance directs the agent through inspect, open and status
-before semantic queries, retaining exact identities and finite blockers.
+command is absent. The installed MCP session starts preparation at initialization
+for its discovered Gradle root; semantic calls join that preparation and retain
+exact identities and finite blockers. Explicit lifecycle tools remain available
+for inspection and recovery.
 
-`workspace_lifecycle` is an eager canonical effectful tool with action-specific tagged inputs for inspect, open, present, sync, configure_sync, release, close, request_user_close and status. The configure action applies a task-success refresh rule only to an exact project target. Host selection comes from installed configuration; caller identity comes from the coordinator thread. The `EXACT_PROJECT_CLOSE` approval policy applies to the explicit user-close branch. Ordinary managed cleanup still enforces ownership and shared use, while source-change `EXPLICIT` approval is unchanged.
+`workspace_lifecycle` is an eager canonical effectful tool with action-specific tagged inputs for inspect, open, present, sync, configure_sync, release, close, request_user_close and status. The configure action applies a task-success refresh rule only to an exact project target. Host selection comes from installed configuration; caller identity comes from the coordinator thread. The `EXACT_PROJECT_CLOSE` approval policy applies to the explicit user-close branch. Ordinary managed cleanup still enforces ownership and shared use, while source changes use one internally signed `change` invocation.

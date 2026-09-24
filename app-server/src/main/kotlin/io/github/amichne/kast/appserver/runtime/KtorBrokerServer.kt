@@ -209,7 +209,6 @@ internal data class KtorBrokerServerOptions(
     val invocationJournal: java.nio.file.Path? = null,
     val enrollment: io.github.amichne.kast.appserver.WorkspaceEnrollment =
         io.github.amichne.kast.appserver.WorkspaceEnrollment.ProtocolFixture,
-    val planApprovalGateway: HostedPlanApprovalGateway = HostedPlanApprovalGateway.Unavailable,
     val projectCloseSigner:
         (ControllerApprovedProjectClose) -> io.github.amichne.kast.kernel.Refinement<
                 ProjectCloseApprovalGrant,

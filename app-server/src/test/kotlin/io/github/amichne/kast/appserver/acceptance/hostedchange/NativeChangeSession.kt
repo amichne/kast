@@ -7,7 +7,6 @@ import io.github.amichne.kast.appserver.core.BrokerLimits
 import io.github.amichne.kast.appserver.core.CanonicalBrokerDirectory
 import io.github.amichne.kast.appserver.protocol.FileThreadCatalogStore
 import io.github.amichne.kast.appserver.protocol.FileThreadCatalogStoreOpen
-import io.github.amichne.kast.appserver.provider.KastHostedPlanApprovalGateway
 import io.github.amichne.kast.appserver.provider.KastProviderOptions
 import io.github.amichne.kast.appserver.provider.KastProviderQualifier
 import io.github.amichne.kast.appserver.runtime.BrokerSessionHub
@@ -107,7 +106,6 @@ private constructor(
     companion object {
         suspend fun open(
             inputs: NativeHostedChangeInputs,
-            home: Path,
             observeQualification: (NativeProviderQualificationObservation) -> Unit = {
                 System.err.println(it.encodeObservation())
             },
@@ -145,7 +143,6 @@ private constructor(
                             WorkspaceEnrollment.Enrolled(checkNotNull(CanonicalBrokerDirectory.admit(workspace))),
                         sessionBootstrap = qualification.bootstrap,
                         bindingOwner = BrokerInstallationState.admit(product).nativeValue(),
-                        planApprovalGateway = KastHostedPlanApprovalGateway(options, home),
                         invocationJournal = privateDirectory.resolve("invocations.json"),
                         sessionActivitySink = activities,
                     )

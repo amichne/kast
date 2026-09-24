@@ -28,6 +28,7 @@ internal fun canonicalReadRejectionSchema(operation: CanonicalOperation): JsonOb
         CanonicalOperation.QUERY_RUN,
         CanonicalOperation.SYMBOL_DISCOVER,
         CanonicalOperation.DIAGNOSTIC_CHECK,
+        CanonicalOperation.CHANGE,
         CanonicalOperation.CHANGE_PLAN,
         CanonicalOperation.CHANGE_APPLY,
         CanonicalOperation.CHANGE_RECOVER -> textSchema("Closed rejection reason.")

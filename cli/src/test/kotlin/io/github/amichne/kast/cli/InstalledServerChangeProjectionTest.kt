@@ -5,12 +5,18 @@ import com.networknt.schema.SchemaRegistry
 import com.networknt.schema.SpecificationVersion
 import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
+import io.github.amichne.kast.protocol.contract.ChangeRejection
+import io.github.amichne.kast.protocol.contract.ChangeRunDocument
+import io.github.amichne.kast.protocol.contract.ChangeRunError
 import io.github.amichne.kast.protocol.registry.HostedApprovalPolicy
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -20,7 +26,7 @@ import org.junit.jupiter.api.Test
 
 class InstalledServerChangeProjectionTest {
     @Test
-    fun `installed broker exposes workflow facade names and explicit change approval`() {
+    fun `installed broker exposes one change tool without approval`() {
         val tools = projectionTools()
         val invocations = projectionInvocations()
 
@@ -37,26 +43,19 @@ class InstalledServerChangeProjectionTest {
                 "read_relations",
                 "traverse_relations",
                 "check_diagnostics",
-                "change_plan",
-                "change_apply",
-                "change_recover",
+                "change",
             ),
             tools.map { it.getValue("name").jsonPrimitive.content },
         )
         assertEquals(listOf("symbol", "inspect"), invocations.invocation("symbol_inspect").cliCommand())
-        assertTrue(
-            tools
-                .filter { it.getValue("name").jsonPrimitive.content in setOf("change_apply", "change_recover") }
-                .all { tool ->
-                    tool.getValue("approvalPolicy").jsonPrimitive.content ==
-                        HostedApprovalPolicy.EXPLICIT.name.lowercase()
-                }
+        assertEquals(
+            HostedApprovalPolicy.NONE.name.lowercase(),
+            tools.tool("change").getValue("approvalPolicy").jsonPrimitive.content,
         )
         assertTrue(
             tools
                 .filterNot {
-                    it.getValue("name").jsonPrimitive.content.startsWith("change_") ||
-                        it.getValue("name").jsonPrimitive.content == "workspace_lifecycle"
+                    it.getValue("name").jsonPrimitive.content == "workspace_lifecycle"
                 }
                 .all { tool ->
                     tool.getValue("approvalPolicy").jsonPrimitive.content == HostedApprovalPolicy.NONE.name.lowercase()
@@ -65,50 +64,37 @@ class InstalledServerChangeProjectionTest {
     }
 
     @Test
-    fun `change schemas admit their emitted proof carrying previews`() {
+    fun `change schema admits complete and rejected one call outcomes`() {
         val tools = projectionTools()
-        val preview =
-            """"changes":[{"path":"src/main/kotlin/demo/EventConsumer.kt","kind":"update",""" +
-                """"diff":"@@ class EventConsumer @@\n-old\n+new"}]"""
-
-        tools
-            .tool("change_plan")
-            .outputSchema()
-            .assertAdmits(
-                """{"status":"completed","document":{"operation":"change.plan","status":"complete",""" +
-                    """"planIdentity":"plan:opaque",$preview}}"""
-            )
-        tools
-            .tool("change_apply")
-            .outputSchema()
-            .assertAdmits(
-                """{"status":"completed","document":{"operation":"change.apply","status":"complete",""" +
-                    """"state":"verified","receiptIdentity":"receipt:opaque",$preview}}"""
-            )
+        val schema = tools.tool("change").outputSchema()
+        schema.assertAdmits(completeChange())
+        schema.assertAdmits(rejectedChange())
     }
 
     @Test
-    fun `hosted change output schemas admit live provenance and reject malformed provenance`() {
-        val live =
-            """"live":{"root":"/workspace","host":"00000000-0000-0000-0000-000000000001",
-            "epoch":8,"contentView":"SAVED_PSI_COMMITTED","version":1}"""
-        val preview = """"changes":[{"path":"src/Target.kt","kind":"update","diff":"+fun added() = 1"}]"""
-        val cases =
-            mapOf(
-                "change_plan" to """"operation":"change.plan","planIdentity":"plan:opaque",$preview""",
-                "change_apply" to
-                    """"operation":"change.apply","state":"verified","receiptIdentity":"receipt:opaque",$preview""",
-                "change_recover" to """"operation":"change.recover","state":"rolled-back"""",
-            )
-        val tools = projectionTools()
-        for ((tool, payload) in cases) {
-            val schema = tools.tool(tool).outputSchema()
-            val document = """{"status":"completed","document":{"status":"complete",$payload,$live}}"""
-            schema.assertAdmits(document)
-            assertTrue(schema.validate(document.replace("\"version\":1", "\"version\":2")).isNotEmpty())
-            assertTrue(schema.validate(document.replace("\"epoch\":8,", "")).isNotEmpty())
-        }
+    fun `hosted change output rejects unknown result and failure variants`() {
+        val schema = projectionTools().tool("change").outputSchema()
+        val unknownResult = completeChange().replace("\"status\":\"complete\"", "\"status\":\"unknown\"")
+        assertTrue(schema.validate(unknownResult).isNotEmpty())
+        assertTrue(schema.validate(rejectedChange().replace("PLANNING_REJECTED", "UNKNOWN")).isNotEmpty())
     }
+
+    private fun completeChange(): String =
+        changeTestJson.encodeToString(
+            TestChangeEnvelope(
+                document =
+                    ChangeRunDocument.Complete(
+                        "plan:opaque",
+                        changeTestJson.encodeToJsonElement(TestChangePhase()).jsonObject,
+                        changeTestJson.encodeToJsonElement(TestChangePhase(state = "verified")).jsonObject,
+                    )
+            )
+        )
+
+    private fun rejectedChange(): String =
+        changeTestJson.encodeToString(
+            TestChangeEnvelope(document = ChangeRunDocument.Rejected(ChangeRunError(ChangeRejection.PLANNING_REJECTED)))
+        )
 
     private fun commandGraphFactory(): CliCommandGraphFactory =
         when (val construction = CliCommandGraphFactory.create(canonicalCliRequestPreparers())) {
@@ -174,3 +160,9 @@ class InstalledServerChangeProjectionTest {
         it.getValue("toolName").jsonPrimitive.content == name
     }
 }
+
+@Serializable private data class TestChangeEnvelope(val status: String = "completed", val document: ChangeRunDocument)
+
+@Serializable private data class TestChangePhase(val status: String = "complete", val state: String? = null)
+
+private val changeTestJson = Json { encodeDefaults = true }
