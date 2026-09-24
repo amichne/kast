@@ -46,6 +46,7 @@ Implements installer support, installed-product acceptance, configuration ingres
 - [installation-lifecycle.py](installation-lifecycle.py) - installed lifecycle orchestration and private or legacy service retirement.
 - [installation-recovery.py](installation-recovery.py) - typed recovery receipts, inactive plugin storage outside IDEA discovery, and exact legacy or direct-service login detachment.
 - [codex-mcp-registration.py](codex-mcp-registration.py) - collision-safe user-level Codex MCP registration for persistent installations.
+- [released_tool_inventory.py](released_tool_inventory.py) - installed public tool inventory and hosted-only invocation admission.
 - [installed_acceptance_product.py](installed_acceptance_product.py) - acceptance product model.
 - [run-installed-product.py](run-installed-product.py) - installed-product runner.
 - [install-local.sh](install-local.sh) and [install-checkout.sh](install-checkout.sh) - packaging shell boundaries.

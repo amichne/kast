@@ -15,7 +15,9 @@ legacy command graph retained for migration, and hosted output projections.
 - [KastMcpMain.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt) - installed Kast stdio MCP transport and session tool dispatch.
 - [McpWire.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/McpWire.kt) - typed MCP discovery, request, and result envelopes.
 - [McpStructuredResults.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/McpStructuredResults.kt) - schema-validated MCP result envelopes and concise health and validation summaries.
-- [McpApproval.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/McpApproval.kt) - terminal-held preview approval and one-use mutation grant.
+- [McpApproval.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/McpApproval.kt) - enrolled key signing for an exact native mutation challenge.
+- [McpSingleChangeTool.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/McpSingleChangeTool.kt) - one-call direct MCP planning, application, and attempted recovery.
+- [McpWorkspaceRefreshTool.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/McpWorkspaceRefreshTool.kt) - exact open-project file refresh.
 
 - [PackagedProviderCatalog.kt](src/main/kotlin/io/github/amichne/kast/cli/PackagedProviderCatalog.kt) - build-time hosted schema projection for App Server qualification.
 
