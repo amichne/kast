@@ -8,6 +8,7 @@ import io.github.amichne.kast.cli.CliTextDocument
 import io.github.amichne.kast.cli.CliTextDocumentAdmission
 import io.github.amichne.kast.cli.InstalledHostedToolDocument
 import io.github.amichne.kast.cli.InstalledServerExecutionBudgetDocument
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import java.io.BufferedInputStream
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -141,6 +142,54 @@ class KastMcpServerTest {
         assertTrue(output.toString(Charsets.UTF_8).contains("\"isError\":false"))
         assertTrue(diagnostics.toString(Charsets.UTF_8).contains("\"outcome\":\"COMPLETED\""))
     }
+
+    @Test
+    fun `semantic call returns a compact summary and structured evidence`() {
+        val document = CanonicalJsonDocument.generated(TestSearchPayload.serializer()).create(TestSearchPayload())
+        val output = ByteArrayOutputStream()
+        KastMcpServer(
+                catalog =
+                    listOf(
+                        InstalledHostedToolDocument(
+                            "query.run",
+                            "search_classes",
+                            "Search classes",
+                            false,
+                            "read",
+                            "none",
+                            InstalledServerExecutionBudgetDocument(1000, 1000),
+                            Json.encodeToJsonElement(TestSchema("object")),
+                            Json.encodeToJsonElement(TestSchema("object")),
+                        )
+                    ),
+                invoke = { _, _ -> CliExit.Complete(document) },
+                root = { admittedRoot() },
+                diagnostic = PrintStream(ByteArrayOutputStream()),
+            )
+            .run(
+                BufferedInputStream(
+                    ByteArrayInputStream(
+                        (Json { encodeDefaults = true }
+                                .encodeToString(
+                                    TestCallRequest(params = TestCallParams("search_classes", TestEmptyArguments()))
+                                ) + "\n")
+                            .toByteArray()
+                    )
+                ),
+                PrintStream(output),
+            )
+        val result =
+            Json.parseToJsonElement(output.toString(Charsets.UTF_8).trim()).jsonObject.getValue("result").jsonObject
+        val content = result.getValue("content").jsonArray
+        assertEquals(
+            "0 results; requested scope exhausted",
+            content.first().jsonObject.getValue("text").jsonPrimitive.content,
+        )
+        assertEquals(document.value, content.last().jsonObject.getValue("text").jsonPrimitive.content)
+        val structured = result.getValue("structuredContent").jsonObject
+        assertEquals("complete", structured.getValue("status").jsonPrimitive.content)
+        assertEquals(Json.parseToJsonElement(document.value), structured.getValue("data"))
+    }
 }
 
 @Serializable private data class TestSchema(val type: String)
@@ -156,3 +205,23 @@ private data class TestCallRequest(
 @Serializable private data class TestCallParams(val name: String, val arguments: TestEmptyArguments)
 
 @Serializable private class TestEmptyArguments
+
+@Serializable
+private data class TestSearchPayload(
+    val operation: String = "query.run",
+    val status: String = "complete",
+    val items: List<String> = emptyList(),
+    val coverage: TestSearchCoverage = TestSearchCoverage(),
+    val live: TestSearchLive = TestSearchLive(),
+)
+
+@Serializable private data class TestSearchCoverage(val exhaustive: Boolean = true)
+
+@Serializable
+private data class TestSearchLive(
+    val root: String = "/workspace",
+    val host: String = "host-1",
+    val epoch: Int = 1,
+    val contentView: String = "SAVED_PSI_COMMITTED",
+    val version: Int = 1,
+)

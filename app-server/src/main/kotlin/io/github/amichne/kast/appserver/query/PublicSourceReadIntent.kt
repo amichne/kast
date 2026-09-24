@@ -7,7 +7,6 @@ import io.github.amichne.kast.protocol.contract.ExecutionBudgetDocument
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.SourceBodyKindDocument
 import io.github.amichne.kast.protocol.contract.SourceContainmentDocument
-import io.github.amichne.kast.protocol.contract.SourceEnclosingRegionKindDocument
 import io.github.amichne.kast.protocol.contract.SourceEntityFilterDocument
 import io.github.amichne.kast.protocol.contract.SourceEntityLimitDocument
 import io.github.amichne.kast.protocol.contract.SourceEntitySelectionDocument
@@ -118,8 +117,7 @@ internal fun PublicSourceReadIntent.lower(): Refinement<SourceReadRequest, Sourc
         }
     val selectedRegion =
         when (region) {
-            PublicSourceRegion.DECLARATION ->
-                SourceRegionSelectionDocument.Enclosing(SourceEnclosingRegionKindDocument.DECLARATION)
+            PublicSourceRegion.DECLARATION -> SourceRegionSelectionDocument.Anchor
             PublicSourceRegion.FILE -> SourceRegionSelectionDocument.File
             PublicSourceRegion.CLASS_BODY -> SourceRegionSelectionDocument.Body(SourceBodyKindDocument.CLASS)
             PublicSourceRegion.CALLABLE_BODY -> SourceRegionSelectionDocument.Body(SourceBodyKindDocument.CALLABLE)

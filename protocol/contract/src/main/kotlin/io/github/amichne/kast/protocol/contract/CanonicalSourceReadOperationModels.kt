@@ -229,11 +229,10 @@ data class SourceReadRequest(
     val region: SourceRegionSelectionDocument,
     val entities: SourceEntitySelectionDocument,
     val text: SourceTextRequestDocument,
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    val entityLimit: SourceEntityLimitDocument = sourceReadDefault(SourceEntityLimitDocument.parse(250)),
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    val textByteLimit: SourceTextByteLimitDocument = sourceReadDefault(SourceTextByteLimitDocument.parse(65_536)),
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val entityLimit: SourceEntityLimitDocument =
+        sourceReadDefault(SourceEntityLimitDocument.parse(DEFAULT_SOURCE_ENTITY_LIMIT)),
+    val textByteLimit: SourceTextByteLimitDocument =
+        sourceReadDefault(SourceTextByteLimitDocument.parse(DEFAULT_SOURCE_TEXT_BYTE_LIMIT)),
     val page: SourceReadPageDocument = SourceReadPageDocument.First,
     @SerialName("execution_budget")
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
@@ -241,6 +240,9 @@ data class SourceReadRequest(
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val format: SourceReadFormatDocument = SourceReadFormatDocument.EXPANDED,
 ) : OperationRequest
+
+private const val DEFAULT_SOURCE_ENTITY_LIMIT = 250
+private const val DEFAULT_SOURCE_TEXT_BYTE_LIMIT = 65_536L
 
 private fun <T, F> sourceReadDefault(value: Refinement<T, F>): T =
     when (value) {

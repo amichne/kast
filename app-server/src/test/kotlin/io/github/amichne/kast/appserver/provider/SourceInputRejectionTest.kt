@@ -75,6 +75,7 @@ class SourceInputRejectionTest {
             admitKastInput(CanonicalOperation.SOURCE_READ, schema.admit(raw).validated()) as Validation.Validated
         val request = (admitted.value as KastInvocationInput.Source).request
         assertEquals(SourceReadAnchorDocument.Symbol(selector), request.anchor)
+        assertEquals(SourceRegionSelectionDocument.Anchor, request.region)
         assertEquals(SourceEntitySelectionDocument.None, request.entities)
         assertEquals(250, request.entityLimit.value)
         assertEquals(6000, request.textByteLimit.value)

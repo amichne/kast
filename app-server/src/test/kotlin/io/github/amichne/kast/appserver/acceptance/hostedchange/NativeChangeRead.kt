@@ -9,7 +9,7 @@ import kotlinx.serialization.json.put
 
 internal class NativeChangeRead(private val peer: NativeChangePeer) {
     suspend fun searchClass(): JsonObject =
-        search(tool = "search_classes", field = "class_name", name = "NativeChangeTarget", count = 1)
+        search(tool = "search_classes", field = "name", name = "NativeChangeTarget", count = 1)
 
     suspend fun searchFunction(name: String, count: Int): JsonObject =
         search(tool = "search_functions", field = "function_name", name = name, count = count)

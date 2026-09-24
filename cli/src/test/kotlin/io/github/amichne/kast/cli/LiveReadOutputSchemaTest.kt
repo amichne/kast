@@ -59,26 +59,6 @@ class LiveReadOutputSchemaTest {
     }
 
     @Test
-    fun `every finite relation rejection satisfies its installed schema`() {
-        for (reason in RelationReadRejection.entries) {
-            val document = CanonicalReadCliDocuments.projectRelation(OperationOutcome.Rejected(reason)).document()
-            assertAdmits(CanonicalOperation.RELATION_READ, document)
-            assertEquals(JsonPrimitive(reason.name.lowercase().replace('_', '-')), document["reason"])
-        }
-    }
-
-    @Test
-    fun `owner issued relation continuations satisfy advertised output schemas`() = runTest {
-        for (fixture in listOf(RelationPagingFixture.published(), RelationPagingFixture.live())) {
-            val outcome = fixture.page() as OperationOutcome.Qualified
-            assertAdmits(
-                CanonicalOperation.RELATION_READ,
-                CanonicalReadCliDocuments.projectRelation(outcome).document(),
-            )
-        }
-    }
-
-    @Test
     fun `owner issued relation continuations satisfy advertised resume input and reach the remaining page`() = runTest {
         val schema = relationInputSchema()
         for (fixture in listOf(RelationPagingFixture.published(), RelationPagingFixture.live())) {

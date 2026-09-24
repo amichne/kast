@@ -3,6 +3,7 @@ package io.github.amichne.kast.appserver.query
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.*
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
@@ -32,7 +33,11 @@ class PublicToolContractTest {
         val admitted =
             PublicToolContract.admit(
                 PublicToolIdentity.SEARCH_CLASSES,
-                Json.parseToJsonElement("""{"class_name":"OrderService","name_match":null,"scope":null}"""),
+                Json {
+                        encodeDefaults = true
+                        explicitNulls = true
+                    }
+                    .encodeToJsonElement(TestSearchClassInput.serializer(), TestSearchClassInput("OrderService")),
             )
         val request = ((admitted as Refinement.Refined).value.canonical as PublicToolCanonical.Query).request
         val source = request.from as QueryFromDocument.Symbols
@@ -169,11 +174,9 @@ class PublicToolSchemaTest {
     fun `scope and name admission fail closed without normalization or widening`() {
         val directoryCases = listOf("/tmp", "../src", "a/../b", "a//b", "a/./b", "a/", "C:/src", "a\\\\b")
         directoryCases.forEach { path ->
-            val input =
-                """{"class_name":"Order","name_match":null,"scope":{"relative_directory_path":"$path","include_subdirectories":true,"source_set_names":null}}"""
+            val input = Json.encodeToJsonElement(TestSearchClassInput("Order", scope = TestSearchDirectoryScope(path)))
             assertTrue(
-                PublicToolContract.admit(PublicToolIdentity.SEARCH_CLASSES, Json.parseToJsonElement(input))
-                    is Refinement.Rejected,
+                PublicToolContract.admit(PublicToolIdentity.SEARCH_CLASSES, input) is Refinement.Rejected,
                 path,
             )
         }
@@ -181,7 +184,7 @@ class PublicToolSchemaTest {
             assertTrue(
                 PublicToolContract.admit(
                     PublicToolIdentity.SEARCH_CLASSES,
-                    Json.parseToJsonElement("""{"class_name":"$name","name_match":null,"scope":null}"""),
+                    Json.encodeToJsonElement(TestSearchClassInput(name)),
                 ) is Refinement.Rejected,
                 name,
             )
@@ -202,7 +205,12 @@ class PublicToolSchemaTest {
                 PublicToolIdentity.SEARCH_DECLARATIONS to
                     """{"declaration_name":"Order","name_match":null,"scope":null,"declaration_kinds":["class","class"]}""",
                 PublicToolIdentity.SEARCH_CLASSES to
-                    """{"class_name":"Order","name_match":null,"scope":{"relative_directory_path":".","include_subdirectories":true,"source_set_names":["main","main"]}}""",
+                    Json.encodeToString(
+                        TestSearchClassInput(
+                            "Order",
+                            scope = TestSearchDirectoryScope(".", sourceSetNames = listOf("main", "main")),
+                        )
+                    ),
                 PublicToolIdentity.QUERY_SYMBOLS to
                     """{"source":{"type":"all_declarations","declaration_kinds":null,"scope":null},"steps":[{"type":"filter_visibility","visibilities":["public","public"]}],"return_fields":null}""",
                 PublicToolIdentity.QUERY_SYMBOLS to
@@ -270,8 +278,7 @@ class PublicToolSchemaTest {
 
     @Test
     fun `schema and tool identity are retained through encoding`() {
-        val admitted =
-            admit(PublicToolIdentity.SEARCH_CLASSES, """{"class_name":"Order","name_match":null,"scope":null}""")
+        val admitted = admit(PublicToolIdentity.SEARCH_CLASSES, Json.encodeToString(TestSearchClassInput("Order")))
         assertThrows(kotlinx.serialization.SerializationException::class.java) {
             Json.encodeToString(PublicToolRequestSerializer(PublicToolIdentity.SEARCH_FUNCTIONS), admitted)
         }
@@ -299,3 +306,17 @@ class PublicToolSchemaTest {
         node["items"]?.let { visit(it.jsonObject, check) }
     }
 }
+
+@Serializable
+private data class TestSearchClassInput(
+    val name: String,
+    @kotlinx.serialization.SerialName("name_match") val nameMatch: String? = null,
+    val scope: TestSearchDirectoryScope? = null,
+)
+
+@Serializable
+private data class TestSearchDirectoryScope(
+    @kotlinx.serialization.SerialName("relative_directory_path") val relativeDirectoryPath: String,
+    @kotlinx.serialization.SerialName("include_subdirectories") val includeSubdirectories: Boolean = true,
+    @kotlinx.serialization.SerialName("source_set_names") val sourceSetNames: List<String>? = null,
+)

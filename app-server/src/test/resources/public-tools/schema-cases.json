@@ -3,7 +3,7 @@
     "id": "class-defaults",
     "tool": "search_classes",
     "arguments": {
-      "class_name": "OrderService",
+      "name": "OrderService",
       "name_match": null,
       "scope": null
     },
@@ -47,7 +47,7 @@
     "id": "class-directory",
     "tool": "search_classes",
     "arguments": {
-      "class_name": "OrderService",
+      "name": "OrderService",
       "name_match": null,
       "scope": {
         "relative_directory_path": "services/orders",
@@ -93,7 +93,7 @@
     "id": "fuzzy-explicit",
     "tool": "search_classes",
     "arguments": {
-      "class_name": "OrderService",
+      "name": "OrderService",
       "name_match": "fuzzy",
       "scope": null
     },
@@ -113,7 +113,7 @@
     "id": "diagnostic-field-in-search",
     "tool": "search_classes",
     "arguments": {
-      "class_name": "OrderService",
+      "name": "OrderService",
       "name_match": null,
       "scope": null,
       "max_diagnostics": 10
@@ -124,7 +124,7 @@
     "id": "no-redundant-root-type",
     "tool": "search_classes",
     "arguments": {
-      "class_name": "OrderService",
+      "name": "OrderService",
       "name_match": null,
       "scope": null,
       "type": "QUERY"
@@ -135,7 +135,7 @@
     "id": "no-canonical-scope-envelope",
     "tool": "search_classes",
     "arguments": {
-      "class_name": "OrderService",
+      "name": "OrderService",
       "name_match": null,
       "scope": {
         "type": "DIRECTORY",
@@ -148,7 +148,7 @@
     "id": "no-mixed-scope",
     "tool": "search_classes",
     "arguments": {
-      "class_name": "OrderService",
+      "name": "OrderService",
       "name_match": null,
       "scope": {
         "relative_directory_path": "services/orders",
@@ -165,7 +165,7 @@
     "id": "no-empty-source-set-selection",
     "tool": "search_classes",
     "arguments": {
-      "class_name": "OrderService",
+      "name": "OrderService",
       "name_match": null,
       "scope": {
         "relative_directory_path": "services/orders",
@@ -179,7 +179,7 @@
     "id": "no-search-file-scope",
     "tool": "search_classes",
     "arguments": {
-      "class_name": "OrderService",
+      "name": "OrderService",
       "name_match": null,
       "scope": {
         "relative_file_path": "src/Main.kt"
@@ -191,7 +191,7 @@
     "id": "null-name-rejected",
     "tool": "search_classes",
     "arguments": {
-      "class_name": null,
+      "name": null,
       "name_match": null,
       "scope": null
     },
@@ -201,7 +201,7 @@
     "id": "unknown-match-rejected",
     "tool": "search_classes",
     "arguments": {
-      "class_name": "OrderService",
+      "name": "OrderService",
       "name_match": "regex",
       "scope": null
     },
@@ -211,7 +211,7 @@
     "id": "ordinary-defaults-omitted",
     "tool": "search_classes",
     "arguments": {
-      "class_name": "OrderService"
+      "name": "OrderService"
     },
     "schema_valid": true
   },

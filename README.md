@@ -11,7 +11,7 @@ and follow their relationships with the compiler’s identities and evidence.
 ## Get started
 
 You need macOS on Apple silicon, a Kotlin Gradle repository, IntelliJ IDEA
-`262.*` with its bundled Kotlin plugin and Java 25 JBR, and a compatible Codex client.
+`262.*` with its bundled Kotlin plugin and Java 25 JBR, and a compatible MCP client.
 
 1. Install Kast and its IDEA plugin:
 
@@ -20,7 +20,7 @@ You need macOS on Apple silicon, a Kotlin Gradle repository, IntelliJ IDEA
    ```
 
    The installer reports the detected IntelliJ version, verifies its matching
-   plugin, registers a user-level Codex MCP server, and enables the app-server suite and its per-user login
+   plugin, registers Kast's MCP server with Codex, and enables the app-server suite and its per-user login
    LaunchAgent. If no matching IDEA plugin exists, it installs nothing.
    Installation never prompts. It uses `${XDG_DATA_HOME:-$HOME/.local/share}/kast`
    without publishing a `kast` command on `PATH`. An upgrade retires only
@@ -68,9 +68,11 @@ trust or unsaved documents.
 | Add a declaration with an approved preview | [Change source](https://kast.michne.com/change/) |
 | Connect another agent host | [Harness integration](https://kast.michne.com/agent-harnesses/) |
 
-Reads use saved, indexed IDEA state. A **complete** answer covers its declared
-scope; a **qualified** answer carries limits; a **rejected** request provides no
-successful semantic result. Keep those limits and returned `ref` values
+Reads use saved, indexed IDEA state. In the direct MCP result envelope,
+**complete** means the requested scope was exhausted; **partial** includes a
+stop reason and does not prove absence. The original canonical document remains
+in the result evidence, with its exact `ref` values and detailed qualifications.
+Keep those limits and returned `ref` values
 when following up. See [Read a response](https://kast.michne.com/reference/responses/).
 
 For an installation check, call `health_check` with `{}`. It reports the exact

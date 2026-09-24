@@ -48,12 +48,11 @@ import java.security.MessageDigest
 import java.util.Base64
 import java.util.UUID
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Test
 
 class CanonicalSourceReadWireBindingTest {
     @Test
-    fun `source read none omits unused limits and first page`() {
+    fun `source read wire retains default limits and first page for installed hosts`() {
         val request =
             SourceReadRequest(
                 anchor = SourceReadAnchorDocument.Symbol(text(exactSelectorToken())),
@@ -63,8 +62,9 @@ class CanonicalSourceReadWireBindingTest {
             )
         val binding = CanonicalOperationWireBindings.sourceRead
         val encoded = binding.encodeRequest(request).encodedDocument()
-        assertFalse(encoded.contains("\"entityLimit\""))
-        assertFalse(encoded.contains("\"page\""))
+        assertEquals(true, encoded.contains("\"entityLimit\":250"))
+        assertEquals(true, encoded.contains("\"textByteLimit\":65536"))
+        assertEquals(true, encoded.contains("\"page\":{\"type\":\"first\"}"))
         assertEquals(
             WireDecoding.Decoded(request),
             binding.decodeRequest(WireRequestEnvelope.admit(encoded).admittedRequest()),

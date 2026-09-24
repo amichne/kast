@@ -70,7 +70,7 @@ Missing probes and incomplete scans stay `unverified`.
 Call `kast.search_classes` with:
 
 ```json
-{"class_name":"OrderService"}
+{"name":"OrderService"}
 ```
 
 Send that input to the hosted `kast.search_classes` tool in the connected session.
@@ -132,7 +132,7 @@ A package scope instead uses semantic Kotlin package names:
 
 ```json
 {
-  "class_name": "OrderService",
+  "name": "OrderService",
   "scope": {
     "package_name": "com.example.orders",
     "include_subpackages": false

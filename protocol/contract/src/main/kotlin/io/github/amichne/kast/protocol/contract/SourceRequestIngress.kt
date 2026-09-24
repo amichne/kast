@@ -39,24 +39,7 @@ object SourceRequestIngress {
                 rejectSourceField(SourceRequestPath.ENTITY_LIMIT, SourceRequestRule.ENTITY_LIMIT_NOT_APPLICABLE)
             }
             validateSourceText(root)
-            if ("entityLimit" in root)
-                sourceNumber(
-                    root,
-                    "entityLimit",
-                    SourceRequestPath.ENTITY_LIMIT,
-                    1,
-                    MAX_SOURCE_READ_ENTITY_LIMIT.toLong(),
-                    SourceRequestRule.ENTITY_COUNT,
-                )
-            if ("textByteLimit" in root)
-                sourceNumber(
-                    root,
-                    "textByteLimit",
-                    SourceRequestPath.TEXT_BYTE_LIMIT,
-                    1,
-                    Long.MAX_VALUE,
-                    SourceRequestRule.BYTE_COUNT,
-                )
+            validateSourceLimits(root)
             if ("page" in root) validateSourcePage(root)
             validateSourceExecutionBudget(root)
             if ("format" in root)
@@ -79,6 +62,27 @@ object SourceRequestIngress {
         } catch (failure: SourceRequestSerializationException) {
             Refinement.Rejected(failure.failure)
         }
+}
+
+private fun validateSourceLimits(root: JsonObject) {
+    if ("entityLimit" in root)
+        sourceNumber(
+            root,
+            "entityLimit",
+            SourceRequestPath.ENTITY_LIMIT,
+            1,
+            MAX_SOURCE_READ_ENTITY_LIMIT.toLong(),
+            SourceRequestRule.ENTITY_COUNT,
+        )
+    if ("textByteLimit" in root)
+        sourceNumber(
+            root,
+            "textByteLimit",
+            SourceRequestPath.TEXT_BYTE_LIMIT,
+            1,
+            Long.MAX_VALUE,
+            SourceRequestRule.BYTE_COUNT,
+        )
 }
 
 private enum class SourceEntityLimitPolicy {

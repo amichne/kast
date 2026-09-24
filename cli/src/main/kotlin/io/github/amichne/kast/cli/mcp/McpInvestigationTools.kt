@@ -72,8 +72,8 @@ internal class McpInvestigationTools(
                 workspaceBinding = observed.root,
                 host = observed.host,
                 readiness = if (indexed) McpHealthReadiness.READY else McpHealthReadiness.UNAVAILABLE,
-                contentView = if (indexed) "SAVED_PSI_COMMITTED" else null,
-                hostState = if (indexed) "INDEXED" else "UNAVAILABLE",
+                contentView = if (indexed) McpHealthContentView.SAVED_PSI_COMMITTED else null,
+                hostState = if (indexed) McpHealthHostState.INDEXED else McpHealthHostState.UNAVAILABLE,
                 supportedCapabilities = observed.operations.sorted(),
                 unavailableCapabilities = (expectedOperations - observed.operations.toSet()).sorted(),
                 readinessEvidence = observed.readiness.rejection,
@@ -129,8 +129,8 @@ private data class McpHealthData(
     val workspaceBinding: String,
     val host: String,
     val readiness: McpHealthReadiness,
-    val contentView: String?,
-    val hostState: String,
+    val contentView: McpHealthContentView?,
+    val hostState: McpHealthHostState,
     val supportedCapabilities: List<String>,
     val unavailableCapabilities: List<String>,
     /** Only the native readiness refusal is dynamic; the surrounding contract is typed. */
@@ -141,6 +141,17 @@ private data class McpHealthData(
 private enum class McpHealthReadiness {
     READY,
     UNAVAILABLE,
+}
+
+@Serializable
+private enum class McpHealthHostState {
+    INDEXED,
+    UNAVAILABLE,
+}
+
+@Serializable
+private enum class McpHealthContentView {
+    SAVED_PSI_COMMITTED
 }
 
 @Serializable

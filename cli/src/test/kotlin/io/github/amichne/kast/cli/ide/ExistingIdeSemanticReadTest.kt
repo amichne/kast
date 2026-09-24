@@ -112,7 +112,7 @@ class ExistingIdeSemanticReadTest {
 
     @Serializable
     private data class SearchClassesFixture(
-        @SerialName("class_name") val name: String,
+        @SerialName("name") val name: String,
         @SerialName("name_match") val match: String?,
         val scope: String?,
     )

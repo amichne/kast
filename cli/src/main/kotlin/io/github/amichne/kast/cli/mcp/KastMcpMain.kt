@@ -30,7 +30,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
 
-/** Codex owns this stdio process. No Codex App Server or broker is started by the MCP transport. */
+/** The MCP client owns this stdio process. No app server or broker is started by this transport. */
 object KastMcpMain {
     @JvmStatic
     @Suppress("CognitiveComplexMethod", "CyclomaticComplexMethod", "LongMethod")
@@ -178,11 +178,15 @@ internal class KastMcpServer(
             if (exit is CliExit.BoundaryRejected || exit is CliExit.OperationRejected) McpCallOutcome.REJECTED
             else McpCallOutcome.COMPLETED,
         )
+        val presentation = mcpReadPresentation(call.name, exit)
         return success(
             id,
             McpCallResult(
-                content = listOf(McpTextContent(exit.document.value)),
+                content =
+                    if (presentation == null) listOf(McpTextContent(exit.document.value))
+                    else listOf(McpTextContent(presentation.summary), McpTextContent(exit.document.value)),
                 isError = exit is CliExit.BoundaryRejected || exit is CliExit.OperationRejected,
+                structuredContent = presentation?.envelope,
             ),
         )
     }
@@ -260,7 +264,13 @@ private data class McpInitializeResult(
 
 @Serializable private data class McpToolCall(val name: String, val arguments: JsonObject)
 
-@Serializable private data class McpCallResult(val content: List<McpTextContent>, val isError: Boolean)
+@Serializable
+private data class McpCallResult(
+    val content: List<McpTextContent>,
+    val isError: Boolean,
+    /** Full machine envelope; the second text item retains the canonical response for older clients. */
+    val structuredContent: JsonElement? = null,
+)
 
 @Serializable private data class McpTextContent(val text: String, val type: String = "text")
 

@@ -4786,47 +4786,7 @@
         "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/KastPublicQueryProviderTest.kt",
         "scope": "type:KastPublicQueryProviderTest/fun:multiple search presentations bind distinct schemas to one operation(4:Path)/declaration:<anonymous>",
         "kind": "JSON_LITERAL",
-        "sha256": "e5c65e78d7a63c9f1398b5c90990d9518820cf6ccef6e6771a117bb126cd3caf"
-      },
-      "count": 2,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/KastPublicQueryProviderTest.kt",
-        "scope": "type:KastPublicQueryProviderTest/fun:multiple search presentations bind distinct schemas to one operation(4:Path)/declaration:<anonymous>",
-        "kind": "JSON_LITERAL",
         "sha256": "ed40d5b6528686de2aff9a416609a83e1e6ba76ceeabb2a85b36c0382d147615"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/KastPublicQueryProviderTest.kt",
-        "scope": "type:KastPublicQueryProviderTest/fun:invalid controls and lexical paths fail before semantic invocation(4:Path)/declaration:<anonymous>",
-        "kind": "JSON_LITERAL",
-        "sha256": "389df52a207dc7f73a2985303abcf7bd77479b461e5346c517e62304e0b68d5a"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/KastPublicQueryProviderTest.kt",
-        "scope": "type:KastPublicQueryProviderTest/fun:invalid controls and lexical paths fail before semantic invocation(4:Path)/declaration:<anonymous>",
-        "kind": "JSON_LITERAL",
-        "sha256": "50057149a9ff4b08a7def9e4d77d4e99f3cf3d042b29afad8606556972030340"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/KastPublicQueryProviderTest.kt",
-        "scope": "type:KastPublicQueryProviderTest/fun:invalid controls and lexical paths fail before semantic invocation(4:Path)/declaration:<anonymous>/val:pathFailure",
-        "kind": "JSON_LITERAL",
-        "sha256": "209ab737009feaec0a70cea741ca59de4b09acbc111c23980fa34b02067dba52"
       },
       "count": 1,
       "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
@@ -5694,16 +5654,6 @@
     {
       "fingerprint": {
         "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolContractTest.kt",
-        "scope": "type:PublicToolContractTest/fun:class facade compiles explicit null once to exact scoped exhaustive search()/val:admitted",
-        "kind": "JSON_LITERAL",
-        "sha256": "109f91b57ce3e9281a53151947ed2adb73274ab4a2dc77bf6ed2c1deb1ef9dfe"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolContractTest.kt",
         "scope": "type:PublicToolSchemaTest/fun:schema syntax does not manufacture exact reference authority()/val:admitted",
         "kind": "JSON_LITERAL",
         "sha256": "f23c20093333778b0b22600679d15d2d96c09e2b519dfa2aee8e024cc6869f9b"
@@ -5744,26 +5694,6 @@
     {
       "fingerprint": {
         "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolContractTest.kt",
-        "scope": "type:PublicToolSchemaTest/fun:scope and name admission fail closed without normalization or widening()/declaration:<anonymous>/val:input",
-        "kind": "JSON_LITERAL",
-        "sha256": "b9fa663750238204c1fc962e24be7efaf3fafe11cdeed7fd4c2f87b7c0c4cde6"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolContractTest.kt",
-        "scope": "type:PublicToolSchemaTest/fun:scope and name admission fail closed without normalization or widening()/declaration:<anonymous>",
-        "kind": "JSON_LITERAL",
-        "sha256": "3286bad213f9fcdfe9f5150ca9f5cc34789c6faac7bbc7dd60422168794a0d77"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolContractTest.kt",
         "scope": "type:PublicToolSchemaTest/fun:scope and name admission fail closed without normalization or widening()/val:input",
         "kind": "JSON_LITERAL",
         "sha256": "c8b94e49e0a667512131f637af6405da8210c23990c1ed17ca0f37d75bc0563d"
@@ -5786,16 +5716,6 @@
         "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolContractTest.kt",
         "scope": "type:PublicToolSchemaTest/fun:duplicate sets reject at the shared server boundary()",
         "kind": "JSON_LITERAL",
-        "sha256": "a26b1d37d715c83f392e3d277a2b461a612786aae37f0c7b5d1cb193432bbdbd"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolContractTest.kt",
-        "scope": "type:PublicToolSchemaTest/fun:duplicate sets reject at the shared server boundary()",
-        "kind": "JSON_LITERAL",
         "sha256": "37fd62698c2a3e0a2e6497768c8a525192ecd725142ca1d6b18164fd07d8964f"
       },
       "count": 1,
@@ -5807,16 +5727,6 @@
         "scope": "type:PublicToolSchemaTest/fun:duplicate sets reject at the shared server boundary()",
         "kind": "JSON_LITERAL",
         "sha256": "ed8c9865c6f6d23fcb0375d871907ad11b05fe3f51ed15a182ea611dca55ec61"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolContractTest.kt",
-        "scope": "type:PublicToolSchemaTest/fun:schema and tool identity are retained through encoding()/val:admitted",
-        "kind": "JSON_LITERAL",
-        "sha256": "e5c65e78d7a63c9f1398b5c90990d9518820cf6ccef6e6771a117bb126cd3caf"
       },
       "count": 1,
       "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
@@ -8277,16 +8187,6 @@
         "scope": "type:LiveReadOutputSchemaTest/fun:with(6:String,11:JsonElement)10:JsonObject",
         "kind": "JSON_OBJECT",
         "sha256": "948810b4f4285cc8fff66ff7c878a63869ef51ba16ced34eff950fa4379c443e"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/PublicToolCommandTest.kt",
-        "scope": "type:PublicToolCommandTest/fun:all public tools share CLI admission and canonical wire lowering()/val:examples",
-        "kind": "JSON_LITERAL",
-        "sha256": "e5c65e78d7a63c9f1398b5c90990d9518820cf6ccef6e6771a117bb126cd3caf"
       },
       "count": 1,
       "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."

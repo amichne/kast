@@ -136,6 +136,10 @@ representation without changing source enumeration or reference authority.
 The hosted public source intent accepts an unchanged exact `anchor.symbolRef`,
 declaration region, text mode and entity mode, then lowers to the canonical
 request with compact format. Entity-free intent has no entity limit field.
+For an exact declaration reference, the public `declaration` region selects
+that reference's anchor. Internal source wire encoding still includes the
+default entity limit, text byte limit, and first page for installed host
+compatibility; these fields are not required in the public request.
 Compact responses return each distinct source selector once in a response-local
 selection table. Integer IDs join selections, parents, callees, and local targets
 to that table; they are not valid follow-up selectors. Pass the table entry's

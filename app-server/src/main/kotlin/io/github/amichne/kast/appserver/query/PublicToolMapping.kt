@@ -8,7 +8,7 @@ internal fun PublicToolDocument.lower(): Refinement<PublicToolCanonical, PublicT
     when (this) {
         is PublicToolSearchClasses ->
             search(
-                class_name,
+                name,
                 name_match,
                 scope,
                 listOf(PublicToolDeclarationKinds.CLASS),

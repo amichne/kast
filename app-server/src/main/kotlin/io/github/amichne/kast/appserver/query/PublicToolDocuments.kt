@@ -125,7 +125,7 @@ internal data object PublicToolDistinctSymbols : PublicToolStep
 
 @Serializable
 internal data class PublicToolSearchClasses(
-    val class_name: ProtocolText,
+    val name: ProtocolText,
     val name_match: PublicToolNameMatch? = null,
     val scope: PublicToolScope? = null,
     @SerialName("execution_budget")

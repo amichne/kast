@@ -8,7 +8,6 @@ import io.github.amichne.kast.protocol.wire.presentation.DiagnosticCoverageCliDo
 import io.github.amichne.kast.protocol.wire.presentation.RelationFactCliDocument
 import io.github.amichne.kast.protocol.wire.presentation.SymbolCliDocument
 import io.github.amichne.kast.protocol.wire.presentation.SymbolDiscoveryCliDocument
-import java.nio.file.InvalidPathException
 import java.nio.file.Path
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -63,68 +62,11 @@ internal fun validateWorkspace(
 private fun invalidValidationRequest(): CliExit.OperationRejected =
     CliExit.OperationRejected(
         validationRejectedFactory.create(
-            McpValidationRejected(error = McpValidationError("INVALID_REQUEST", "Invalid semantic probe request"))
+            McpValidationRejected(
+                error = McpValidationError(McpValidationErrorCode.INVALID_REQUEST, "Invalid semantic probe request")
+            )
         )
     )
-
-@Serializable
-private data class McpValidationRequest(
-    val declaration: McpValidationDeclaration? = null,
-    val relation: McpValidationRelation? = null,
-    val diagnosticPath: String? = null,
-)
-
-@Serializable
-private data class McpValidationDeclaration(
-    val kind: McpValidationKind,
-    val name: String,
-    val file: String,
-)
-
-@Serializable
-private enum class McpValidationKind(val lookupKind: String, val discoveryKind: String, val inspectedKind: String) {
-    @SerialName("class") CLASS("class", "class", "classlike"),
-    @SerialName("function") FUNCTION("symbol", "function", "function"),
-    @SerialName("property") PROPERTY("symbol", "property", "property"),
-    @SerialName("type_alias") TYPE_ALIAS("symbol", "type-alias", "type-alias"),
-}
-
-@Serializable
-private data class McpValidationRelation(
-    val kind: McpValidationRelationKind,
-    val source: McpValidationEndpoint,
-    val target: McpValidationEndpoint,
-)
-
-@Serializable
-private enum class McpValidationRelationKind {
-    @SerialName("references") REFERENCES,
-    @SerialName("callers") CALLERS,
-    @SerialName("callees") CALLEES,
-    @SerialName("implementations") IMPLEMENTATIONS,
-    @SerialName("inheritors") INHERITORS,
-    @SerialName("overrides") OVERRIDES,
-    @SerialName("type_uses") TYPE_USES,
-}
-
-@Serializable private data class McpValidationEndpoint(val file: String, val name: String)
-
-private fun McpValidationRequest.valid(root: Path): Boolean =
-    listOfNotNull(declaration?.name, relation?.source?.name, relation?.target?.name).all { it.isNotBlank() } &&
-        listOfNotNull(declaration?.file, relation?.source?.file, relation?.target?.file, diagnosticPath).all {
-            root.resolveProbePath(it) != null
-        }
-
-private fun Path.resolveProbePath(raw: String): Path? {
-    if (raw.isBlank()) return null
-    return try {
-        val candidate = Path.of(raw)
-        val resolved = (if (candidate.isAbsolute) candidate else resolve(candidate)).normalize()
-        resolved.takeIf { it.startsWith(this.normalize()) }
-    } catch (_: InvalidPathException) {
-        null
-    }
-}
 
 private class WorkspaceValidator(
     private val root: Path,
@@ -237,7 +179,7 @@ private class WorkspaceValidator(
         inspected: SymbolCliDocument?,
     ): SymbolCliDocument? {
         val isInspectedDeclaration = declaration != null && inspected != null && endpoint.name == declaration.name
-        if (isInspectedDeclaration && root.resolveProbePath(endpoint.file)?.toString() == inspected?.file)
+        if (isInspectedDeclaration && root.resolveProbePath(endpoint.file)?.toString() == inspected.file)
             return inspected
         val response =
             read<McpDiscoveryDocument>(
@@ -317,14 +259,14 @@ private class WorkspaceValidator(
             } catch (_: SerializationException) {
                 return NativeRead.Rejected(evidence)
             }
-        if (header.status == McpReadStatus.REJECTED) return NativeRead.Rejected(evidence)
+        if (header.status == McpValidationReadStatus.REJECTED) return NativeRead.Rejected(evidence)
         val value =
             try {
                 validationOutputJson.decodeFromJsonElement<T>(evidence)
             } catch (_: SerializationException) {
                 return NativeRead.Rejected(evidence)
             }
-        return if (header.status == McpReadStatus.COMPLETE && exit is CliExit.Complete)
+        return if (header.status == McpValidationReadStatus.COMPLETE && exit is CliExit.Complete)
             NativeRead.Complete(value, evidence)
         else NativeRead.Partial(value, evidence)
     }
@@ -346,10 +288,10 @@ private sealed interface NativeRead<out T> {
 
 private fun NativeRead<*>.unverified(message: String): McpProbe = McpProbe.unverified(message, evidence)
 
-@Serializable private data class McpReadHeader(val status: McpReadStatus)
+@Serializable private data class McpReadHeader(val status: McpValidationReadStatus)
 
 @Serializable
-private enum class McpReadStatus {
+private enum class McpValidationReadStatus {
     @SerialName("complete") COMPLETE,
     @SerialName("qualified") QUALIFIED,
     @SerialName("rejected") REJECTED,
@@ -392,24 +334,32 @@ private data class McpDiscoveryTarget(
 @Serializable
 private data class McpSourceRequest(
     val anchor: McpSourceAnchor,
-    val region: McpSourceRegion = McpSourceRegion(),
+    val region: McpSourceRegion = McpSourceRegion.DECLARATION,
     val text: McpSourceText = McpSourceText(),
     val entities: McpSourceEntities = McpSourceEntities(),
-    val entityLimit: Int = 1,
-    val textByteLimit: Int = 6000,
-    val page: McpSourcePage = McpSourcePage(),
-    val format: String = "compact",
 )
 
-@Serializable private data class McpSourceAnchor(val selector: String, val type: String = "symbol")
+@Serializable private data class McpSourceAnchor(val symbolRef: String)
 
-@Serializable private data class McpSourceRegion(val type: String = "anchor")
+@Serializable
+private enum class McpSourceRegion {
+    @SerialName("declaration") DECLARATION
+}
 
-@Serializable private data class McpSourceText(val type: String = "complete")
+@Serializable
+private data class McpSourceText(val mode: McpSourceTextMode = McpSourceTextMode.COMPLETE, val maxBytes: Int = 6000)
 
-@Serializable private data class McpSourceEntities(val type: String = "none")
+@Serializable
+private enum class McpSourceTextMode {
+    @SerialName("complete") COMPLETE
+}
 
-@Serializable private data class McpSourcePage(val type: String = "first")
+@Serializable private data class McpSourceEntities(val mode: McpSourceEntityMode = McpSourceEntityMode.NONE)
+
+@Serializable
+private enum class McpSourceEntityMode {
+    @SerialName("none") NONE
+}
 
 @Serializable
 private data class McpRelationRequest(
@@ -429,119 +379,7 @@ private data class McpDiagnosticRequest(
 
 @Serializable private data class McpDiagnosticBudget(@SerialName("max_work_units") val maxWorkUnits: Int = 1_000_000)
 
-@Serializable private data class McpValidationResult(val status: String = "complete", val data: McpValidationData)
-
-@Serializable
-private data class McpValidationData(
-    val discovery: McpProbe,
-    val exactInspection: McpProbe,
-    val sourceRead: McpProbe,
-    val relation: McpProbe,
-    val diagnostics: McpProbe,
-)
-
-@Serializable
-private data class McpProbe(val status: McpProbeStatus, val message: String, val evidence: JsonElement? = null) {
-    companion object {
-        fun passed(message: String, evidence: JsonElement? = null) = McpProbe(McpProbeStatus.PASSED, message, evidence)
-
-        fun failed(message: String, evidence: JsonElement? = null) = McpProbe(McpProbeStatus.FAILED, message, evidence)
-
-        fun unverified(message: String, evidence: JsonElement? = null) =
-            McpProbe(McpProbeStatus.UNVERIFIED, message, evidence)
-    }
-}
-
-@Serializable
-private enum class McpProbeStatus {
-    @SerialName("passed") PASSED,
-    @SerialName("failed") FAILED,
-    @SerialName("unverified") UNVERIFIED,
-}
-
-@Serializable private data class McpValidationRejected(val status: String = "rejected", val error: McpValidationError)
-
-@Serializable private data class McpValidationError(val code: String, val message: String)
-
 private val validationInputJson = Json { encodeDefaults = true }
 private val validationOutputJson = Json { ignoreUnknownKeys = true }
 private val validationResultFactory = CanonicalJsonDocument.generated(McpValidationResult.serializer())
 private val validationRejectedFactory = CanonicalJsonDocument.generated(McpValidationRejected.serializer())
-
-/** Exact input schema for the three optional probes. Missing probes remain unverified in output. */
-internal fun validationInputSchema(): JsonElement = validationSchemaJson.encodeToJsonElement(McpValidationInputSchema())
-
-@Serializable
-private data class McpValidationInputSchema(
-    val type: String = "object",
-    val properties: McpValidationProperties = McpValidationProperties(),
-    val additionalProperties: Boolean = false,
-)
-
-@Serializable
-private data class McpValidationProperties(
-    val declaration: McpValidationDeclarationSchema = McpValidationDeclarationSchema(),
-    val relation: McpValidationRelationSchema = McpValidationRelationSchema(),
-    val diagnosticPath: McpValidationStringSchema = McpValidationStringSchema(),
-)
-
-@Serializable
-private data class McpValidationDeclarationSchema(
-    val type: String = "object",
-    val properties: McpValidationDeclarationProperties = McpValidationDeclarationProperties(),
-    val required: List<String> = listOf("kind", "name", "file"),
-    val additionalProperties: Boolean = false,
-)
-
-@Serializable
-private data class McpValidationDeclarationProperties(
-    val kind: McpValidationStringSchema =
-        McpValidationStringSchema(options = listOf("class", "function", "property", "type_alias")),
-    val name: McpValidationStringSchema = McpValidationStringSchema(),
-    val file: McpValidationStringSchema = McpValidationStringSchema(),
-)
-
-@Serializable
-private data class McpValidationRelationSchema(
-    val type: String = "object",
-    val properties: McpValidationRelationProperties = McpValidationRelationProperties(),
-    val required: List<String> = listOf("kind", "source", "target"),
-    val additionalProperties: Boolean = false,
-)
-
-@Serializable
-private data class McpValidationRelationProperties(
-    val kind: McpValidationStringSchema =
-        McpValidationStringSchema(
-            options =
-                listOf("references", "callers", "callees", "implementations", "inheritors", "overrides", "type_uses")
-        ),
-    val source: McpValidationEndpointSchema = McpValidationEndpointSchema(),
-    val target: McpValidationEndpointSchema = McpValidationEndpointSchema(),
-)
-
-@Serializable
-private data class McpValidationEndpointSchema(
-    val type: String = "object",
-    val properties: McpValidationEndpointProperties = McpValidationEndpointProperties(),
-    val required: List<String> = listOf("file", "name"),
-    val additionalProperties: Boolean = false,
-)
-
-@Serializable
-private data class McpValidationEndpointProperties(
-    val file: McpValidationStringSchema = McpValidationStringSchema(),
-    val name: McpValidationStringSchema = McpValidationStringSchema(),
-)
-
-@Serializable
-private data class McpValidationStringSchema(
-    val type: String = "string",
-    @SerialName("enum") val options: List<String>? = null,
-    val minLength: Int = 1,
-)
-
-private val validationSchemaJson = Json {
-    encodeDefaults = true
-    explicitNulls = false
-}

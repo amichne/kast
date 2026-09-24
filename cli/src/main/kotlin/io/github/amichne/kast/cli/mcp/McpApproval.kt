@@ -66,7 +66,7 @@ private data class StoredApproval(
     val assertion: String,
 )
 
-/** Deliberately separate from the Codex MCP process: a grant can only be prepared in a terminal. */
+/** Deliberately separate from the Kast MCP process: a grant can only be prepared in a terminal. */
 internal object McpApprovalHelper {
     @Suppress("CyclomaticComplexMethod", "LongMethod", "ComplexCondition", "MagicNumber")
     fun run(args: List<String>): Int {

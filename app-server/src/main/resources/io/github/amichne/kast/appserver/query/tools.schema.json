@@ -380,7 +380,7 @@
       "schema": {
         "type": "object",
         "properties": {
-          "class_name": {
+          "name": {
             "type": "string",
             "description": "Simple class-like declaration name, such as OrderService. Not a qualified name, signature, regex, glob, or natural-language request. Use package_name in scope for package qualification. All matching declarations remain separate results.",
             "minLength": 1,
@@ -417,7 +417,7 @@
           }
         },
         "required": [
-          "class_name"
+          "name"
         ],
         "additionalProperties": false
       },
