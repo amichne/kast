@@ -20,6 +20,7 @@ Owns the persistent broker/coordinator, host attachment, existing-IDE invocation
 - [McpWorkspaceOperationClient.kt](src/main/kotlin/io/github/amichne/kast/appserver/McpWorkspaceOperationClient.kt) - session-owned preparation of an exact Gradle root for the Codex MCP process.
 
 - [WorkspacePreparations.kt](src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt) - daemon-owned, coalesced IDEA preparation and retained operation outcomes.
+- [WorkspacePreparation.kt](src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparation.kt) - request identity, stage admission, and finite preparation failures.
 
 - [DaemonManagementProtocol.kt](src/main/kotlin/io/github/amichne/kast/appserver/DaemonManagementProtocol.kt) - versioned local management requests and finite rejections.
 - [InstalledDaemonManagementClient.kt](src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonManagementClient.kt) - ownership-qualified registration, session inspection, controller operations and update handoff without Codex initialization.
