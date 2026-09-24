@@ -406,7 +406,9 @@ time, and both provider invocation deadlines to strictly exceed client exchange
 time. These outer boundaries retain positive IPC slack even when operators lower
 their settings; semantic/host configuration equality still uses the completion reserve.
 An indexing transition rejected before semantic evaluation may wait for smart mode
-and retry once at hosted dispatch. Rejections after semantic evaluation are not replayed.
+and retry once at hosted dispatch. A canonical read whose final freshness check
+observes a moved VFS epoch discards that result and repeats within the same host
+deadline. Other post-evaluation rejections and change workflows are not replayed.
 
 Typed request decoding rejects a supplied returned-byte allowance below the wire
 owner's serialized schema/operation identity size before semantic dispatch. This is

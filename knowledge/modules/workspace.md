@@ -28,6 +28,8 @@ code_sources:
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadPublicationAdmission.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryService.kt
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedEpochAdmission.kt
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadReplayPolicy.kt
 ---
 
 # Workspace
@@ -36,7 +38,7 @@ The active workspace modules are `workspace:contract` and `workspace:intellij-re
 
 `SemanticReadAuthority` distinguishes historical published leases from `LiveSemanticReadAuthority`. Live authority retains an opaque IDE epoch and the original host identity. Its detached reference can be restored only by that owner against newly admitted freshness. Retirement is terminal; a moved epoch never revives an earlier reference. IDE counters do not become published generations.
 
-`HostedQueryService` creates and ends a request-scoped context, validates authority before and after evaluation, and drains work before releasing its permit. Semantic objects stay inside the admitted read lifetime. Saved documents, committed PSI and source ownership remain explicit obligations.
+`HostedQueryService` creates and ends a request-scoped context, validates authority before and after evaluation, and drains work before releasing its permit. Before model capture it waits within the host deadline when IDEA preempts an epoch sample or the sampled epoch moves during freshness admission. Canonical semantic reads may discard and repeat an evaluation if final freshness detects a moved VFS epoch; change workflows retain one evaluation. Both loops share the original host deadline and report bounded diagnostic counters. Other epoch failures remain exact rejections. Semantic objects stay inside the admitted read lifetime. Saved documents, committed PSI and source ownership remain explicit obligations.
 
 Published lease and lifecycle types remain available for historical protocol contracts and tests. Their former `workspace:service` transition coordinator and `workspace:intellij` importer are retired and absent from the build. The retained topology publisher accepts complete generations but is not wired into the production plugin. See [historical publication](../flows/workspace-publication.md) and [existing-IDE reads](../flows/hosted-query.md).
 
