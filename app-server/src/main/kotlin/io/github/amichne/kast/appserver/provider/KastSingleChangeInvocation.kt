@@ -130,14 +130,7 @@ internal class KastSingleChangeInvocation(private val options: KastProviderOptio
             try {
                 phase(root, operation)
             } catch (cancelled: CancellationException) {
-                withContext(NonCancellable) {
-                    val recovery =
-                        withTimeoutOrNull(OperationExecutionBudget.SEMANTIC_READ.operation.value) {
-                            recover(root, identity, context)
-                        }
-                    if (recovery is RecoveryAttempt.Resolved)
-                        currentCoroutineContext()[WorkspaceRecoverySettlement]?.confirm(recovery.state)
-                }
+                settleCancelledApply(root, identity, context)
                 throw cancelled
             } catch (_: RuntimeException) {
                 NativePhase.Incomplete(null)
@@ -160,7 +153,13 @@ internal class KastSingleChangeInvocation(private val options: KastProviderOptio
                 ),
                 context,
             )
-        val recovery = recover(root, identity, context)
+        val recovery =
+            try {
+                recover(root, identity, context)
+            } catch (cancelled: CancellationException) {
+                settleCancelledApply(root, identity, context)
+                throw cancelled
+            }
         val failure =
             if (recovery is RecoveryAttempt.Resolved) ChangeRejection.APPLY_UNVERIFIED
             else ChangeRejection.RECOVERY_UNAVAILABLE
@@ -194,6 +193,21 @@ internal class KastSingleChangeInvocation(private val options: KastProviderOptio
         return application.document
     }
 
+    private suspend fun settleCancelledApply(
+        root: CanonicalRoot,
+        identity: String,
+        context: BrokerInvocationContext,
+    ) {
+        withContext(NonCancellable) {
+            val recovery =
+                withTimeoutOrNull(OperationExecutionBudget.SEMANTIC_READ.operation.value) {
+                    recover(root, identity, context)
+                }
+            if (recovery is RecoveryAttempt.Resolved)
+                currentCoroutineContext()[WorkspaceRecoverySettlement]?.confirm(recovery.state)
+        }
+    }
+
     private suspend fun recover(
         root: CanonicalRoot,
         identity: String,
@@ -208,6 +222,8 @@ internal class KastSingleChangeInvocation(private val options: KastProviderOptio
         val phase =
             try {
                 phase(root, operation)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (_: RuntimeException) {
                 return RecoveryAttempt.Unresolved(null)
             }
@@ -292,7 +308,7 @@ internal class KastSingleChangeInvocation(private val options: KastProviderOptio
 
     private suspend fun phase(root: CanonicalRoot, operation: ExistingIdeOperation): NativePhase =
         when (val demanded = options.workspaceDemand.query(root, operation)) {
-            is WorkspaceDemandResult.Rejected -> NativePhase.Incomplete(null)
+            is WorkspaceDemandResult.Rejected -> NativePhase.Rejected(null)
             is WorkspaceDemandResult.Native ->
                 when (val exchange = demanded.exchange) {
                     is ExistingIdeExchange.Rejected -> NativePhase.Incomplete(null)

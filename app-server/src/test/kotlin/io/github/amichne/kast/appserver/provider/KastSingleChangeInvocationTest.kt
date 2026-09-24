@@ -9,7 +9,9 @@ import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
 import io.github.amichne.kast.appserver.runtime.ResolvedMutationRecovery
 import io.github.amichne.kast.appserver.runtime.WorkspaceDemand
+import io.github.amichne.kast.appserver.runtime.WorkspaceDemandFailure
 import io.github.amichne.kast.appserver.runtime.WorkspaceDemandResult
+import io.github.amichne.kast.appserver.runtime.WorkspacePreparationFailure
 import io.github.amichne.kast.appserver.runtime.WorkspaceRecoveryEvidence
 import io.github.amichne.kast.appserver.runtime.WorkspaceRecoverySettlement
 import io.github.amichne.kast.kernel.Refinement
@@ -37,6 +39,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
+@Suppress("LargeClass") // The shared enrolled-host fixture keeps the change cases at one execution boundary.
 class KastSingleChangeInvocationTest {
     @TempDir lateinit var home: Path
 
@@ -151,6 +154,58 @@ class KastSingleChangeInvocationTest {
     }
 
     @Test
+    fun `workspace preparation rejection before apply remains apply rejected`() = runBlocking {
+        enroll()
+        val observed = mutableListOf<String>()
+        val output = invocationWithDemand { root, operation ->
+            when (operation) {
+                is ExistingIdeOperation.Plan -> {
+                    observed += "plan"
+                    WorkspaceDemandResult.Native(semantic(TestPlan()))
+                }
+                is ExistingIdeOperation.ApprovalPreparation -> {
+                    observed += "prepare-${operation.kind.name}"
+                    WorkspaceDemandResult.Native(ExistingIdeExchange.Received(document(challenge(operation.kind.name))))
+                }
+                is ExistingIdeOperation.ApprovedMutation -> {
+                    observed += "write-${operation.kind.name}"
+                    WorkspaceDemandResult.Rejected(
+                        WorkspaceDemandFailure.Admission(root, WorkspacePreparationFailure.RESPONSE_REJECTED)
+                    )
+                }
+                else -> error("Unexpected operation")
+            }
+        }
+        val result = (output as io.github.amichne.kast.appserver.core.ProviderCall.Completed).value
+        val error = result.document.getValue("document").jsonObject.getValue("error").jsonObject
+        assertEquals("APPLY_REJECTED", error.getValue("code").jsonPrimitive.content)
+        assertEquals(listOf("plan", "prepare-CHANGE_APPLY", "write-CHANGE_APPLY"), observed)
+    }
+
+    @Test
+    fun `cancelled post apply recovery retries non cancellably and settles proof`() = runBlocking {
+        enroll()
+        val enteredRecovery = CompletableDeferred<Unit>()
+        val cancellation = CompletableDeferred<Throwable>()
+        val settlement = WorkspaceRecoverySettlement()
+        val recoveryCalls = mutableListOf<Unit>()
+        val job =
+            launch(settlement) {
+                try {
+                    invocation { operation -> cancelledRecoveryOperation(operation, enteredRecovery, recoveryCalls) }
+                } catch (failure: Throwable) {
+                    cancellation.complete(failure)
+                }
+            }
+
+        enteredRecovery.await()
+        job.cancelAndJoin()
+        assertInstanceOf(CancellationException::class.java, cancellation.await())
+        assertEquals(2, recoveryCalls.size)
+        assertEquals(WorkspaceRecoveryEvidence.Proven(ResolvedMutationRecovery.ROLLED_BACK), settlement.evidence)
+    }
+
+    @Test
     fun `cancelled apply still attempts recovery outside the cancelled job`() = runBlocking {
         enroll()
         val enteredApply = CompletableDeferred<Unit>()
@@ -235,8 +290,37 @@ class KastSingleChangeInvocationTest {
             else -> error("Unexpected operation")
         }
 
+    private suspend fun cancelledRecoveryOperation(
+        operation: ExistingIdeOperation,
+        enteredRecovery: CompletableDeferred<Unit>,
+        recoveryCalls: MutableList<Unit>,
+    ): ExistingIdeExchange =
+        when (operation) {
+            is ExistingIdeOperation.Plan -> semantic(TestPlan())
+            is ExistingIdeOperation.ApprovalPreparation ->
+                ExistingIdeExchange.Received(document(challenge(operation.kind.name)))
+            is ExistingIdeOperation.ApprovedMutation ->
+                if (operation.kind.name == "CHANGE_APPLY")
+                    ExistingIdeExchange.Semantic(ProjectedOperationOutcome.Qualified(document(TestUnverified())))
+                else {
+                    recoveryCalls += Unit
+                    if (recoveryCalls.size == 1) {
+                        enteredRecovery.complete(Unit)
+                        awaitCancellation()
+                    }
+                    semantic(TestRecovery())
+                }
+            else -> error("Unexpected operation")
+        }
+
     private suspend fun invocation(
         observe: suspend (ExistingIdeOperation) -> ExistingIdeExchange
+    ): io.github.amichne.kast.appserver.core.ProviderCall<KastInvocationOutput> = invocationWithDemand { _, operation ->
+        WorkspaceDemandResult.Native(observe(operation))
+    }
+
+    private suspend fun invocationWithDemand(
+        observe: suspend (CanonicalRoot, ExistingIdeOperation) -> WorkspaceDemandResult
     ): io.github.amichne.kast.appserver.core.ProviderCall<KastInvocationOutput> {
         val root = CanonicalRoot(home.toRealPath())
         val options =
@@ -248,7 +332,7 @@ class KastSingleChangeInvocationTest {
                 workspaceDemand =
                     WorkspaceDemand { selected, operation ->
                         assertEquals(root, selected)
-                        WorkspaceDemandResult.Native(observe(operation))
+                        observe(selected, operation)
                     },
             )
         val context =

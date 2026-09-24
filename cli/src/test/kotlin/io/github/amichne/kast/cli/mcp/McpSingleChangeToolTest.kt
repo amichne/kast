@@ -92,7 +92,7 @@ class McpSingleChangeToolTest {
             "recovery_required",
             error.getValue("application").jsonObject.getValue("state").jsonPrimitive.content,
         )
-        assertEquals("restored", error.getValue("recovery").jsonObject.getValue("state").jsonPrimitive.content)
+        assertEquals("rolled_back", error.getValue("recovery").jsonObject.getValue("state").jsonPrimitive.content)
         assertEquals(McpChangePhase.RECOVER, phases.last())
     }
 
@@ -122,8 +122,58 @@ class McpSingleChangeToolTest {
         val output = Json.parseToJsonElement(result.document.value).jsonObject
         val error = output.getValue("error").jsonObject
         assertEquals("APPLY_UNVERIFIED", error.getValue("code").jsonPrimitive.content)
-        assertEquals("restored", error.getValue("recovery").jsonObject.getValue("state").jsonPrimitive.content)
+        assertEquals("rolled_back", error.getValue("recovery").jsonObject.getValue("state").jsonPrimitive.content)
         assertEquals(McpChangePhase.RECOVER, phases.last())
+    }
+
+    @Test
+    fun `qualified recovery remains unavailable even with a parseable document`() {
+        val tool =
+            McpSingleChangeTool(
+                    root,
+                    Json.encodeToJsonElement(TestInputSchema()),
+                    { phase, _ ->
+                        when (phase) {
+                            McpChangePhase.PLAN -> complete(TestPlan())
+                            McpChangePhase.PREPARE_APPLY -> complete(challenge("CHANGE_APPLY"))
+                            McpChangePhase.APPLY -> qualified(TestUnverifiedApplication())
+                            McpChangePhase.PREPARE_RECOVER -> complete(challenge("CHANGE_RECOVER"))
+                            McpChangePhase.RECOVER -> qualified(TestRecoveryRequired())
+                        }
+                    },
+                    { "signed-for-${it.operation}" },
+                )
+                .tool
+
+        val result = tool.invoke(Json.encodeToJsonElement(TestIntent()).jsonObject)
+        val error = Json.parseToJsonElement(result.document.value).jsonObject.getValue("error").jsonObject
+        assertEquals("RECOVERY_UNAVAILABLE", error.getValue("code").jsonPrimitive.content)
+        assertEquals("recovery_required", error.getValue("recovery").jsonObject.getValue("state").jsonPrimitive.content)
+    }
+
+    @Test
+    fun `rejected recovery remains unavailable even with a parseable document`() {
+        val tool =
+            McpSingleChangeTool(
+                    root,
+                    Json.encodeToJsonElement(TestInputSchema()),
+                    { phase, _ ->
+                        when (phase) {
+                            McpChangePhase.PLAN -> complete(TestPlan())
+                            McpChangePhase.PREPARE_APPLY -> complete(challenge("CHANGE_APPLY"))
+                            McpChangePhase.APPLY -> qualified(TestUnverifiedApplication())
+                            McpChangePhase.PREPARE_RECOVER -> complete(challenge("CHANGE_RECOVER"))
+                            McpChangePhase.RECOVER -> CliExit.OperationRejected(document(TestRecoveryRejection()))
+                        }
+                    },
+                    { "signed-for-${it.operation}" },
+                )
+                .tool
+
+        val result = tool.invoke(Json.encodeToJsonElement(TestIntent()).jsonObject)
+        val error = Json.parseToJsonElement(result.document.value).jsonObject.getValue("error").jsonObject
+        assertEquals("RECOVERY_UNAVAILABLE", error.getValue("code").jsonPrimitive.content)
+        assertEquals("rejected", error.getValue("recovery").jsonObject.getValue("status").jsonPrimitive.content)
     }
 
     @Test
@@ -191,6 +241,12 @@ private data class TestApplication(
 @Serializable
 private data class TestUnverifiedApplication(val status: String = "qualified", val state: String = "recovery_required")
 
-@Serializable private data class TestRecovery(val status: String = "complete", val state: String = "restored")
+@Serializable private data class TestRecovery(val status: String = "complete", val state: String = "rolled_back")
+
+@Serializable
+private data class TestRecoveryRequired(val status: String = "qualified", val state: String = "recovery_required")
+
+@Serializable
+private data class TestRecoveryRejection(val status: String = "rejected", val reason: String = "journal_unavailable")
 
 @Serializable private data class TestPlanningRejection(val status: String = "rejected", val reason: String = "stale")

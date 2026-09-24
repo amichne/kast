@@ -89,7 +89,9 @@ incomplete results are `unverified`; an exhaustive negative probe is `failed`.
 ID. It does not save documents or reload Gradle. The direct MCP `change` tool
 uses the planning input, prepares an exact-plan assertion internally, applies
 once, and returns the plan and verified receipt together. An unverified apply
-attempts recovery and retains both outcomes as qualified evidence. The direct
+attempts recovery and retains both outcomes. Only a complete `prior_state` or
+`rolled_back` recovery yields `APPLY_UNVERIFIED`; qualified or rejected recovery
+yields `RECOVERY_UNAVAILABLE` with its document. The direct
 MCP and App Server catalogs omit the three native change phases.
 The returned probe evidence retains the original canonical read document and
 opaque references. Relation probes select the contract-oriented subject (`source` for callees,

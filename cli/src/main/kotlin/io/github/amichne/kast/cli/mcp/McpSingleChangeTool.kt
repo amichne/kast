@@ -92,17 +92,25 @@ internal class McpSingleChangeTool(
         application: JsonObject?,
     ): CliExit {
         val assertion = runCatching { authorize(McpChangePhase.PREPARE_RECOVER, identity) }.getOrNull()
-        val recovery =
+        val recovered =
             if (assertion == null) null
+            else runCatching { operation(McpChangePhase.RECOVER, approvedArguments(identity, assertion)) }.getOrNull()
+        val recovery = recovered?.let(::document)
+        val resolved =
+            if (recovered !is CliExit.Complete || recovery == null) false
             else
-                runCatching { document(operation(McpChangePhase.RECOVER, approvedArguments(identity, assertion))) }
-                    .getOrNull()
+                try {
+                    val state = changeJson.decodeFromJsonElement<McpRecoveryState>(recovery)
+                    state.status == McpRecoveryStatus.COMPLETE &&
+                        state.state in setOf(McpRecoveryOutcome.PRIOR_STATE, McpRecoveryOutcome.ROLLED_BACK)
+                } catch (_: SerializationException) {
+                    false
+                }
         return CliExit.OperationRejected(
             changeDocument.create(
                 ChangeRunDocument.Rejected(
                     ChangeRunError(
-                        if (recovery == null) ChangeRejection.RECOVERY_UNAVAILABLE
-                        else ChangeRejection.APPLY_UNVERIFIED,
+                        if (resolved) ChangeRejection.APPLY_UNVERIFIED else ChangeRejection.RECOVERY_UNAVAILABLE,
                         identity,
                         plan,
                         application,
@@ -219,6 +227,22 @@ private enum class McpApplicationStatus {
 private enum class McpApplicationOutcome {
     @SerialName("verified") VERIFIED,
     @SerialName("applied_unverified") APPLIED_UNVERIFIED,
+    @SerialName("recovery_required") RECOVERY_REQUIRED,
+}
+
+@Serializable private data class McpRecoveryState(val status: McpRecoveryStatus, val state: McpRecoveryOutcome)
+
+@Serializable
+private enum class McpRecoveryStatus {
+    @SerialName("complete") COMPLETE,
+    @SerialName("qualified") QUALIFIED,
+    @SerialName("rejected") REJECTED,
+}
+
+@Serializable
+private enum class McpRecoveryOutcome {
+    @SerialName("prior_state") PRIOR_STATE,
+    @SerialName("rolled_back") ROLLED_BACK,
     @SerialName("recovery_required") RECOVERY_REQUIRED,
 }
 

@@ -79,10 +79,12 @@ distinct challenges for the same plan; only the cryptographically matched
 challenge is consumed.
 
 A definitive host or semantic apply rejection remains `APPLY_REJECTED` with its
-host document and does not start recovery. An uncertain apply retains its
+host document and does not start recovery. A workspace preparation rejection
+before dispatch also remains `APPLY_REJECTED`. An uncertain apply retains its
 separate recovery path.
 
-If the broker coroutine is cancelled after apply starts, a bounded,
+If the broker coroutine is cancelled after apply starts, including during its
+first recovery attempt, a bounded,
 non-cancelled cleanup context attempts exact-plan recovery before cancellation
 propagates. Only a complete native `prior_state` or `rolled_back` result proves
 the effect settled. The broker records a known `CANCELLED_AFTER_RECOVERY`
