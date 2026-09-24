@@ -318,6 +318,9 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
                             executionBudget = request.executionBudget(),
                             publication = hostedReadPublicationAdmission,
                             completion = request.completionPolicy(),
+                            replay =
+                                io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadReplayPolicy
+                                    .RETRY_MOVED_READ,
                         ) { context ->
                             evaluateHostedCanonicalQuery(project, context, request, continuations)
                         }
