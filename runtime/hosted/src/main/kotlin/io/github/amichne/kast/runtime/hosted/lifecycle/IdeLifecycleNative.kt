@@ -106,7 +106,11 @@ internal class IdeLifecycleNative(private val state: IdeLifecycleState) {
             is IdeLifecycleCommand.Sync ->
                 withTarget(command.target) { sync(it, command.target, command.requestId, command.effect) }
             is IdeLifecycleCommand.ConfigureSync ->
-                withTarget(command.target) { configureSync(it, command.target, command.rule) }
+                withTarget(command.target) { project ->
+                    withContext(Dispatchers.EDT + ModalityState.nonModal().asContextElement()) {
+                        configureSync(project, command.target, command.rule)
+                    }
+                }
             is IdeLifecycleCommand.Close -> withTarget(command.target) { close(it, command.target) }
             else -> blocked(IdeLifecycleFailure.INVALID_REQUEST)
         }
@@ -256,7 +260,9 @@ internal class IdeLifecycleNative(private val state: IdeLifecycleState) {
             endpoint,
             target,
             requestId,
-            endpoint.lifecycleRefresh(WorkspaceRefreshCommand.Request(requestId, effect)),
+            withContext(Dispatchers.EDT + ModalityState.nonModal().asContextElement()) {
+                endpoint.lifecycleRefresh(WorkspaceRefreshCommand.Request(requestId, effect))
+            },
         )
     }
 

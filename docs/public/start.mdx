@@ -58,11 +58,10 @@ Install the IDEA plugin, connect Codex, and find a declaration in your repositor
   </Step>
   <Step title="Prepare IDEA">
     - Restart IDEA to load the plugin.
-    - Save edited files before requesting evidence.
-
-    Kast opens the requested repository and waits for Gradle import and
-    indexing when a semantic request arrives. Resolve project trust or unsaved-document blockers if the
-    agent reports them; see [troubleshooting](/troubleshooting).
+    Kast opens the requested repository, saves project editor buffers, refreshes
+    changed files or the Gradle model, and waits for indexing when a semantic
+    request arrives. Resolve project trust or a failed save if the agent reports
+    it; see [troubleshooting](/troubleshooting).
   </Step>
   <Step title="Connect from a Gradle repository">
     ```console

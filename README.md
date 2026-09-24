@@ -56,8 +56,8 @@ Desktop setup, other harnesses, and uninstall instructions.
 
 Kast prepares the exact repository or worktree when an agent requests
 compiler-backed work. You do not need to manage project lifecycle commands.
-Kast asks for help only when setup encounters a user-owned decision such as project
-trust or unsaved documents.
+Kast saves project editor buffers and refreshes files or the Gradle model as needed.
+It asks for help only when project trust or a failed save needs user action.
 
 ## Work with Kotlin
 

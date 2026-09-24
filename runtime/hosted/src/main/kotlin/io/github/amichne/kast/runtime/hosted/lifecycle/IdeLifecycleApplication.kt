@@ -226,6 +226,8 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
             }
         else Refinement.Refined(command)
 
+    // Native failures become finite lifecycle outcomes with bounded stage evidence.
+    @Suppress("TooGenericExceptionCaught")
     private fun executeEffect(admitted: IdeLifecycleCommand, request: LifecycleRequest) {
         // Application scope owns native work. Peer cancellation never cancels the operation.
         scope.launch {
@@ -236,7 +238,16 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
                     IdeLifecycleResult.Blocked(IdeLifecycleFailure.SHUTDOWN)
                 } catch (_: com.intellij.openapi.progress.ProcessCanceledException) {
                     IdeLifecycleResult.Blocked(IdeLifecycleFailure.CANCELLED)
-                } catch (_: RuntimeException) {
+                } catch (failure: RuntimeException) {
+                    val origin =
+                        failure.stackTrace.take(12).joinToString(",") {
+                            "${it.className.take(128)}:${it.methodName.take(128)}:${it.lineNumber}"
+                        }
+                    logger.warn(
+                        "kast_lifecycle_effect stage=EXECUTION outcome=PLATFORM_UNAVAILABLE " +
+                            "exception=${failure.javaClass.name.take(128)} " +
+                            "origin=$origin"
+                    )
                     IdeLifecycleResult.Blocked(IdeLifecycleFailure.PLATFORM_UNAVAILABLE)
                 }
             state.complete(request, result)
