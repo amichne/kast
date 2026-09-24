@@ -101,21 +101,27 @@ internal fun readHostedKotlin(
     }
 }
 
-/** Conservatively rejects dirty dependencies anywhere in the host, including other projects. */
+/** Saved-content admission is scoped to the project under observation. */
 internal sealed interface SavedDocuments {
     data object Clean : SavedDocuments
 
     data class Rejected(val failure: HostedQueryFailure) : SavedDocuments
 }
 
-internal fun checkSavedDocuments(project: Project): SavedDocuments =
-    when {
-        FileDocumentManager.getInstance().unsavedDocuments.isNotEmpty() ->
-            SavedDocuments.Rejected(HostedQueryFailure.DIRTY_DOCUMENTS)
+internal fun checkSavedDocuments(project: Project): SavedDocuments {
+    val root =
+        project.basePath?.let { java.nio.file.Path.of(it) }
+            ?: return SavedDocuments.Rejected(HostedQueryFailure.DIRTY_DOCUMENTS)
+    val documents = FileDocumentManager.getInstance()
+    return when {
+        documents.unsavedDocuments.any { document ->
+            documents.getFile(document)?.path?.let { java.nio.file.Path.of(it).normalize().startsWith(root) } == true
+        } -> SavedDocuments.Rejected(HostedQueryFailure.DIRTY_DOCUMENTS)
         PsiDocumentManager.getInstance(project).hasUncommitedDocuments() ->
             SavedDocuments.Rejected(HostedQueryFailure.UNCOMMITTED_DOCUMENTS)
         else -> SavedDocuments.Clean
     }
+}
 
 internal fun verifyHostedContent(project: Project, evidence: HostedInheritorEvidence): SavedDocuments {
     return verifyHostedDeclarations(project, listOf(evidence.supertype, evidence.inheritor))

@@ -10,7 +10,6 @@ import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import io.github.amichne.kast.protocol.contract.IdeLifecycleStage
 import io.github.amichne.kast.protocol.contract.IdeProjectTarget
 import io.github.amichne.kast.protocol.contract.WorkspaceLifecycleRequest
-import io.github.amichne.kast.protocol.contract.WorkspaceRefreshEffect
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshRule
 import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
 import kotlinx.serialization.Serializable
@@ -77,7 +76,7 @@ class LifecycleProjectionTest {
     }
 
     @Test
-    fun `hosted configuration request requires an exact project target and closed rule`() {
+    fun `hosted lifecycle request requires exact target and rejects manual sync variants`() {
         val graph =
             (CliCommandGraphFactory.create(canonicalCliRequestPreparers()) as CliCommandGraphConstruction.Created)
                 .factory
@@ -85,21 +84,17 @@ class LifecycleProjectionTest {
             installedServerProjection(graph.surface).hostedBootstrap.tools.single { it.name == "workspace_lifecycle" }
         val validator =
             SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12).getSchema(tool.inputSchema.toString())
-        val request =
-            WorkspaceLifecycleRequest.ConfigureSync(
-                target,
-                "configure-1",
-                WorkspaceRefreshRule.TaskSuccess(
-                    ":generateSources",
-                    WorkspaceRefreshEffect.FILE_REFRESH,
-                ),
-            )
+        val request = WorkspaceLifecycleRequest.Present(target, "present-1")
         assertTrue(
             validator.validate(json.encodeToString<WorkspaceLifecycleRequest>(request), InputFormat.JSON).isEmpty()
         )
         val missingTarget =
             json.encodeToString<WorkspaceLifecycleRequest>(request).replace(json.encodeToString(target), "null")
         assertTrue(validator.validate(missingTarget, InputFormat.JSON).isNotEmpty())
+        for (action in listOf("sync", "configure_sync")) {
+            val manual = json.encodeToString<WorkspaceLifecycleRequest>(request).replace("present", action)
+            assertTrue(validator.validate(manual, InputFormat.JSON).isNotEmpty(), action)
+        }
     }
 
     @Serializable private data class Completed(val document: IdeLifecycleResult, val status: String = "completed")

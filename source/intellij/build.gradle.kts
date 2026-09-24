@@ -76,8 +76,11 @@ dependencies {
     compileOnly(javaPluginLibs)
 
     testImplementation("com.jetbrains.intellij.platform:core:$ideaPlatformBuild")
+    testImplementation("com.jetbrains.intellij.platform:core-impl:$ideaPlatformBuild")
+    testImplementation("com.jetbrains.intellij.platform:syntax-psi:$ideaPlatformBuild")
     testImplementation("com.jetbrains.intellij.platform:analysis:$ideaPlatformBuild")
     testImplementation("com.jetbrains.intellij.platform:lang:$ideaPlatformBuild")
     testImplementation("com.jetbrains.intellij.platform:util:$ideaPlatformBuild")
     testImplementation(javaPluginLibs)
+    testImplementation(kotlinPluginLibs)
 }

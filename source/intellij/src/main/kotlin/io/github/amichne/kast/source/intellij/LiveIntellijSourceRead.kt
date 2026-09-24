@@ -75,10 +75,11 @@ import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolVisibility
 import org.jetbrains.kotlin.analysis.api.symbols.KaTypeAliasSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaValueParameterSymbol
 import org.jetbrains.kotlin.idea.references.mainReference
-import org.jetbrains.kotlin.psi.KtCallExpression
+import org.jetbrains.kotlin.psi.KtCallElement
 import org.jetbrains.kotlin.psi.KtClassBody
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtConstructor
+import org.jetbrains.kotlin.psi.KtConstructorCalleeExpression
 import org.jetbrains.kotlin.psi.KtDeclaration
 import org.jetbrains.kotlin.psi.KtDeclarationWithBody
 import org.jetbrains.kotlin.psi.KtDestructuringDeclaration
@@ -94,6 +95,7 @@ import org.jetbrains.kotlin.psi.KtPrimaryConstructor
 import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtTypeAlias
 import org.jetbrains.kotlin.psi.KtTypeParameter
+import org.jetbrains.kotlin.psi.KtUserType
 
 internal class LiveIntellijSourceRegionAccess(
     private val project: Project,
@@ -397,7 +399,7 @@ internal class LiveIntellijSourceRegionAccess(
     }
 }
 
-private data class LiveSourceDocument(
+internal data class LiveSourceDocument(
     val snapshot: SourceSnapshot,
     val text: String,
     val psiFile: KtFile,
@@ -420,7 +422,7 @@ private sealed interface LiveSourceAnchorResult {
     data class Rejected(val reason: IntellijSourceReadRejection) : LiveSourceAnchorResult
 }
 
-private data class NativeSourceRegion(
+internal data class NativeSourceRegion(
     val range: TextRange,
     val kind: SourceRegionKind,
     val element: PsiElement,
@@ -503,7 +505,7 @@ private fun PsiElement?.strictAncestors(selector: SourceSelector): Sequence<PsiE
                 element.textRange.endOffset > selector.range.endExclusive.value
         }
 
-private enum class NativeVisibilityTarget {
+internal enum class NativeVisibilityTarget {
     DECLARATION,
     PRIMARY_CONSTRUCTOR_PROPERTY,
 }
@@ -584,7 +586,7 @@ private fun projectEntities(
     }
 }
 
-private class NativeSourceEntityEnumerator(
+internal class NativeSourceEntityEnumerator(
     private val document: LiveSourceDocument,
     private val region: NativeSourceRegion,
     private val regionSelector: SourceSelector,
@@ -644,7 +646,7 @@ private class NativeSourceEntityEnumerator(
             return
         }
         when {
-            element is KtCallExpression -> {
+            element is KtCallElement -> {
                 visitCall(element, parent, classPropertyParent)
             }
             element is KtNameReferenceExpression -> {
@@ -682,13 +684,14 @@ private class NativeSourceEntityEnumerator(
     }
 
     private fun visitCall(
-        call: KtCallExpression,
+        call: KtCallElement,
         parent: NativeStructuralParent,
         classPropertyParent: NativeStructuralParent?,
     ) {
         if (includeCalls) {
             val callee = call.calleeExpression ?: return qualify(SourceReadLimitation.UNSUPPORTED_ENTITY)
-            val name = (callee as? KtNameReferenceExpression)?.referencedName()
+            val reference = call.calleeNameReference()
+            val name = reference?.referencedName()
             val entityName =
                 name?.let(SourceEntityName::present)?.let { admitted ->
                     when (admitted) {
@@ -717,7 +720,7 @@ private class NativeSourceEntityEnumerator(
                             callSelector,
                             sourceNestingDepth(parent.depth),
                             calleeSelector,
-                            (callee as? KtNameReferenceExpression)?.let(target)
+                            reference?.let(target)
                                 ?: SourceEntityTarget.Unresolved(CompilerUnresolvedReason.UNSUPPORTED_TARGET),
                         )
                 ) {
@@ -763,7 +766,11 @@ private class NativeSourceEntityEnumerator(
         parent: NativeStructuralParent,
         classPropertyParent: NativeStructuralParent?,
     ) {
-        val name = declaration.sourceEntityName(kind) ?: return qualify(SourceReadLimitation.UNSUPPORTED_ENTITY)
+        val name = declaration.sourceEntityName(kind)
+        if (name == null) {
+            visitUnnamedDeclaration(declaration, parent, classPropertyParent)
+            return
+        }
         val selector =
             issueEntitySelector(declaration.textRange, kind.entityKind(), name, parent.selector)
                 ?: return reject(IntellijSourceReadRejection.CONTRACT_VIOLATION)
@@ -800,6 +807,25 @@ private class NativeSourceEntityEnumerator(
                 classPropertyParent
             }
         visitChildren(declaration, childParent, classParent)
+    }
+
+    private fun visitUnnamedDeclaration(
+        declaration: KtNamedDeclaration,
+        parent: NativeStructuralParent,
+        classPropertyParent: NativeStructuralParent?,
+    ) {
+        if (includeDeclarations) qualify(SourceReadLimitation.UNSUPPORTED_ENTITY)
+        // An object literal has no stable name; its construction and members retain their scope.
+        if (declaration !is org.jetbrains.kotlin.psi.KtObjectDeclaration || !declaration.isObjectLiteral()) return
+        val range =
+            document.snapshot.sourceRange(declaration.textRange)
+                ?: return reject(IntellijSourceReadRejection.CONTRACT_VIOLATION)
+        val nested =
+            when (val issued = SourceSelector.issueNested(parent.selector, range, SourceRegionKind.DECLARATION)) {
+                is Refinement.Refined -> issued.value
+                is Refinement.Rejected -> return reject(IntellijSourceReadRejection.CONTRACT_VIOLATION)
+            }
+        visitChildren(declaration, NativeStructuralParent(nested, parent.depth + 1), classPropertyParent)
     }
 
     private fun visitConstructorProperty(
@@ -1008,7 +1034,17 @@ private fun KtParameter.isSupportedValueParameter(): Boolean =
 
 private fun KtNameReferenceExpression.referencedName(): String? = getReferencedName().takeIf { it.isNotBlank() }
 
-private fun KtNameReferenceExpression.isCallCallee(): Boolean = (parent as? KtCallExpression)?.calleeExpression === this
+private fun KtCallElement.calleeNameReference(): KtNameReferenceExpression? =
+    when (val callee = calleeExpression) {
+        is KtNameReferenceExpression -> callee
+        is KtConstructorCalleeExpression ->
+            (callee.typeReference?.typeElement as? KtUserType)?.referenceExpression as? KtNameReferenceExpression
+        else -> null
+    }
+
+private fun KtNameReferenceExpression.isCallCallee(): Boolean =
+    com.intellij.psi.util.PsiTreeUtil.getParentOfType(this, KtCallElement::class.java, false)?.calleeNameReference() ===
+        this
 
 private fun KtNamedDeclaration.candidateSelector(
     snapshot: SourceSnapshot,

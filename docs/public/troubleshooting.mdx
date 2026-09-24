@@ -89,8 +89,14 @@ with its returned request ID until the exact project is ready or a finite
 failure is reported. A pending result does not establish a failed search.
 If indexing starts between preparation and read admission, Kast waits briefly
 for smart mode and retries once when semantic evaluation has not begun.
-Unsaved editor buffers block automatic refresh; Kast does not save unrelated
-buffers or invalidate all IDEA indexes. When a relation is `qualified`, keep its known facts and omission
+The host also refreshes the project VFS and waits for its completion before
+semantic dispatch, including while IDEA is in the background. An unavailable
+root returns `IO_UNAVAILABLE`; a refresh deadline returns `DEADLINE_EXCEEDED`.
+Kast saves unsaved editor buffers under the selected project root before this
+refresh. A buffer that cannot be saved returns `UNSAVED_DOCUMENTS`; buffers in
+other projects are left alone. A changed Gradle input blocks semantic dispatch
+until the coordinator completes native model import and retries a safe read once.
+An import failure remains a finite rejection. When a relation is `qualified`, keep its known facts and omission
 reasons. Resume only when a continuation is returned; terminal incomplete
 coverage has no resumable upstream work. `read_relations` can find callees in
 another package even when the subject was found with a narrow discovery scope.
@@ -103,9 +109,13 @@ Set `KAST_DEBUG=1` for bounded launch-stage output.
 
 ## Refresh an already linked workspace
 
-Use file refresh to make external file changes visible, or Gradle model reload after changing dependencies or modules. The project must already be open, trusted and linked at the selected root. Save your editor changes first; Kast does not save or discard them. In a connected agent session, call `workspace_lifecycle` with `inspect`, then `sync` using its exact project `target`, a new `requestId`, and `FILE_REFRESH` or `GRADLE_MODEL_RELOAD`. Poll a pending result with `status` and the same request ID. A deadline or failed import remains an explicit failure. Search again after refresh to acquire current references.
-
-Automatic refresh is off for every new IDE host. To opt in for one exact Gradle task executed successfully by IDEA, call `workspace_lifecycle` with `configure_sync`, the exact project `target`, a new `requestId`, and a `task_success` rule. Use an `off` rule to disable it. The rule applies to that project and matches an invocation containing exactly the selected task. Terminal builds and Gradle imports do not trigger it. See [workspace lifecycle](/workspaces) for the input and result variants.
+Ordinary reads save project-owned editor buffers and force a disk comparison of
+the project VFS before semantic admission. Kast waits for a missing cached Gradle
+model through native import and requests one linked-project reload on first
+attach, after changed Gradle inputs, or when the cached model is missing.
+Agents do not choose `FILE_REFRESH` or `GRADLE_MODEL_RELOAD` through
+`workspace_lifecycle`. An import failure remains a finite blocker; inspect the
+IDE's Gradle error, correct its cause, and retry the semantic operation.
 
 ## Resolve the common boundaries
 

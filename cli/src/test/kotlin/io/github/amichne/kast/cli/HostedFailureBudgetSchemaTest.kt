@@ -175,6 +175,8 @@ class HostedFailureBudgetSchemaTest {
             "DIRECTORY_REJECTED",
             "SOCKET_UNAVAILABLE",
             "PLATFORM_UNAVAILABLE",
+            "UNSAVED_DOCUMENTS",
+            "MODEL_REFRESH_REQUIRED",
             "RESPONSE_REJECTED",
             "RESULT_TOO_LARGE",
             "APPROVAL_UNAVAILABLE",
