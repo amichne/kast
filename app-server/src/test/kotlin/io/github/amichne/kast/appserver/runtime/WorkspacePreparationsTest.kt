@@ -151,15 +151,21 @@ class WorkspacePreparationsTest {
     fun `foreign root incarnation and unexpected outcome cannot become readiness`() = runTest {
         val replies =
             listOf(
-                IdeLifecycleResult.Opened(target.copy(root = "/other")),
-                IdeLifecycleResult.Opened(target.copy(host = "not-a-host")),
-                IdeLifecycleResult.Opened(target.copy(project = "not-a-project")),
-                IdeLifecycleResult.Presented(target),
-                IdeLifecycleResult.Pending("foreign-request", IdeLifecycleStage.OPENING, target.host),
-                IdeLifecycleResult.Pending(requestId.value.toString(), IdeLifecycleStage.CLOSING, target.host),
+                IdeLifecycleResult.Opened(target.copy(root = "/other")) to
+                    WorkspacePreparationFailure.RESPONSE_REJECTED,
+                IdeLifecycleResult.Opened(target.copy(host = "not-a-host")) to
+                    WorkspacePreparationFailure.RESPONSE_REJECTED,
+                IdeLifecycleResult.Opened(target.copy(project = "not-a-project")) to
+                    WorkspacePreparationFailure.RESPONSE_REJECTED,
+                IdeLifecycleResult.Presented(target) to WorkspacePreparationFailure.RESPONSE_REJECTED,
+                IdeLifecycleResult.Pending("foreign-request", IdeLifecycleStage.OPENING, target.host) to
+                    WorkspacePreparationFailure.REQUEST_ID_MISMATCH,
+                IdeLifecycleResult.Pending(requestId.value.toString(), IdeLifecycleStage.CLOSING, target.host) to
+                    WorkspacePreparationFailure.RESPONSE_REJECTED,
             )
-        for (reply in replies) {
+        for ((reply, failure) in replies) {
             var calls = 0
+            val events = mutableListOf<WorkspacePreparationActivity>()
             val preparations =
                 WorkspacePreparations(
                     this,
@@ -167,14 +173,16 @@ class WorkspacePreparationsTest {
                         calls++
                         reply
                     },
+                    observer = WorkspacePreparationObserver { events += it },
                     newId = { requestId },
                 )
             val entry = (preparations.prepare(root) as Refinement.Refined).value
             runCurrent()
             assertEquals(
-                WorkspacePreparationOutcome.Rejected(WorkspacePreparationFailure.RESPONSE_REJECTED),
+                WorkspacePreparationOutcome.Rejected(failure),
                 entry.state.value,
             )
+            assertEquals(WorkspacePreparationActivityOutcome.Rejected(failure), events.last().outcome)
             assertEquals(1, calls)
             preparations.close()
         }
