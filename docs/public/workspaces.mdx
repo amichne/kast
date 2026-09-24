@@ -13,6 +13,10 @@ not need to invoke `workspace_lifecycle` before a read.
 presenting, releasing, or closing a selected project when requested. Agents do
 not select a refresh effect.
 
+The direct Kast MCP connection starts preparing its bound Gradle root during
+initialization. Semantic calls join that preparation and refresh their source
+and model state when needed.
+
 ## Explicit control sequence
 
 1. Inspect the selected host and existing projects.

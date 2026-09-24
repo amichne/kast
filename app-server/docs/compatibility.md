@@ -222,7 +222,7 @@ Projection 8 expressed the same discovery intent with the former public query CL
 
 ```sh
 kast tool search_classes <<'JSON'
-{"class_name":"KtorBrokerServer","name_match":null,"scope":{"relative_directory_path":"app-server","include_subdirectories":true,"source_set_names":["main"]}}
+{"name":"KtorBrokerServer","name_match":null,"scope":{"relative_directory_path":"app-server","include_subdirectories":true,"source_set_names":["main"]}}
 JSON
 ```
 

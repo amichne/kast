@@ -1,0 +1,406 @@
+package io.github.amichne.kast.appserver.provider
+
+import io.github.amichne.kast.appserver.core.BrokerInvocationContext
+import io.github.amichne.kast.appserver.ide.CanonicalRoot
+import io.github.amichne.kast.appserver.ide.CanonicalRootDiscoverer
+import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
+import io.github.amichne.kast.appserver.ide.ExistingIdeClient
+import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
+import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
+import io.github.amichne.kast.appserver.runtime.ResolvedMutationRecovery
+import io.github.amichne.kast.appserver.runtime.WorkspaceDemand
+import io.github.amichne.kast.appserver.runtime.WorkspaceDemandFailure
+import io.github.amichne.kast.appserver.runtime.WorkspaceDemandResult
+import io.github.amichne.kast.appserver.runtime.WorkspacePreparationFailure
+import io.github.amichne.kast.appserver.runtime.WorkspaceRecoveryEvidence
+import io.github.amichne.kast.appserver.runtime.WorkspaceRecoverySettlement
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.ChangeIntentDocument
+import io.github.amichne.kast.protocol.contract.ChangeRequest
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
+import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.attribute.PosixFilePermissions
+import java.security.KeyPairGenerator
+import java.util.UUID
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
+
+@Suppress("LargeClass") // The shared enrolled-host fixture keeps the change cases at one execution boundary.
+class KastSingleChangeInvocationTest {
+    @TempDir lateinit var home: Path
+
+    @Test
+    fun `one broker call plans signs and returns verified receipt without controller approval`() = runBlocking {
+        enroll()
+        val observed = mutableListOf<String>()
+        val invocation = invocation { operation ->
+            when (operation) {
+                is ExistingIdeOperation.Plan -> {
+                    observed += "plan"
+                    semantic(TestPlan())
+                }
+                is ExistingIdeOperation.ApprovalPreparation -> {
+                    observed += "prepare-${operation.kind.name}"
+                    ExistingIdeExchange.Received(document(challenge(operation.kind.name)))
+                }
+                is ExistingIdeOperation.ApprovedMutation -> {
+                    observed += "write-${operation.kind.name}"
+                    semantic(TestApplication())
+                }
+                else -> error("Unexpected operation")
+            }
+        }
+
+        assertInstanceOf(io.github.amichne.kast.appserver.core.ProviderCall.Completed::class.java, invocation)
+        val output = (invocation as io.github.amichne.kast.appserver.core.ProviderCall.Completed).value
+        assertTrue(output.success)
+        val body = output.document.getValue("document").jsonObject
+        assertEquals("complete", body.getValue("status").jsonPrimitive.content)
+        assertEquals(
+            "receipt:verified",
+            body.getValue("application").jsonObject.getValue("receiptIdentity").jsonPrimitive.content,
+        )
+        assertEquals(listOf("plan", "prepare-CHANGE_APPLY", "write-CHANGE_APPLY"), observed)
+    }
+
+    @Test
+    fun `unverified write recovers inside the same broker call and returns failure evidence`() = runBlocking {
+        enroll()
+        val observed = mutableListOf<String>()
+        val invocation = invocation { operation ->
+            when (operation) {
+                is ExistingIdeOperation.Plan -> {
+                    observed += "plan"
+                    semantic(TestPlan())
+                }
+                is ExistingIdeOperation.ApprovalPreparation -> {
+                    observed += "prepare-${operation.kind.name}"
+                    ExistingIdeExchange.Received(document(challenge(operation.kind.name)))
+                }
+                is ExistingIdeOperation.ApprovedMutation -> {
+                    observed += "write-${operation.kind.name}"
+                    if (operation.kind.name == "CHANGE_APPLY")
+                        ExistingIdeExchange.Semantic(ProjectedOperationOutcome.Qualified(document(TestUnverified())))
+                    else semantic(TestRecovery())
+                }
+                else -> error("Unexpected operation")
+            }
+        }
+        assertInstanceOf(io.github.amichne.kast.appserver.core.ProviderCall.Completed::class.java, invocation)
+        val output = (invocation as io.github.amichne.kast.appserver.core.ProviderCall.Completed).value
+        assertTrue(!output.success)
+        val body = output.document.getValue("document").jsonObject
+        assertEquals("rejected", body.getValue("status").jsonPrimitive.content)
+        val error = body.getValue("error").jsonObject
+        assertEquals("APPLY_UNVERIFIED", error.getValue("code").jsonPrimitive.content)
+        assertEquals("rolled_back", error.getValue("recovery").jsonObject.getValue("state").jsonPrimitive.content)
+        assertEquals(
+            listOf(
+                "plan",
+                "prepare-CHANGE_APPLY",
+                "write-CHANGE_APPLY",
+                "prepare-CHANGE_RECOVER",
+                "write-CHANGE_RECOVER",
+            ),
+            observed,
+        )
+    }
+
+    @Test
+    fun `host rejection remains apply rejected and never starts recovery`() = runBlocking {
+        enroll()
+        val observed = mutableListOf<String>()
+        val invocation = invocation { operation ->
+            when (operation) {
+                is ExistingIdeOperation.Plan -> {
+                    observed += "plan"
+                    semantic(TestPlan())
+                }
+                is ExistingIdeOperation.ApprovalPreparation -> {
+                    observed += "prepare-${operation.kind.name}"
+                    ExistingIdeExchange.Received(document(challenge(operation.kind.name)))
+                }
+                is ExistingIdeOperation.ApprovedMutation -> {
+                    observed += "write-${operation.kind.name}"
+                    ExistingIdeExchange.HostRejected(document(TestHostRejection()))
+                }
+                else -> error("Unexpected operation")
+            }
+        }
+        assertInstanceOf(io.github.amichne.kast.appserver.core.ProviderCall.Completed::class.java, invocation)
+        val output = (invocation as io.github.amichne.kast.appserver.core.ProviderCall.Completed).value
+        assertTrue(!output.success)
+        val error = output.document.getValue("document").jsonObject.getValue("error").jsonObject
+        assertEquals("APPLY_REJECTED", error.getValue("code").jsonPrimitive.content)
+        assertEquals(
+            "SOURCE_CHANGED",
+            error.getValue("application").jsonObject.getValue("failure").jsonPrimitive.content,
+        )
+        assertEquals(listOf("plan", "prepare-CHANGE_APPLY", "write-CHANGE_APPLY"), observed)
+    }
+
+    @Test
+    fun `workspace preparation rejection before apply remains apply rejected`() = runBlocking {
+        enroll()
+        val observed = mutableListOf<String>()
+        val output = invocationWithDemand { root, operation ->
+            when (operation) {
+                is ExistingIdeOperation.Plan -> {
+                    observed += "plan"
+                    WorkspaceDemandResult.Native(semantic(TestPlan()))
+                }
+                is ExistingIdeOperation.ApprovalPreparation -> {
+                    observed += "prepare-${operation.kind.name}"
+                    WorkspaceDemandResult.Native(ExistingIdeExchange.Received(document(challenge(operation.kind.name))))
+                }
+                is ExistingIdeOperation.ApprovedMutation -> {
+                    observed += "write-${operation.kind.name}"
+                    WorkspaceDemandResult.Rejected(
+                        WorkspaceDemandFailure.Admission(root, WorkspacePreparationFailure.RESPONSE_REJECTED)
+                    )
+                }
+                else -> error("Unexpected operation")
+            }
+        }
+        val result = (output as io.github.amichne.kast.appserver.core.ProviderCall.Completed).value
+        val error = result.document.getValue("document").jsonObject.getValue("error").jsonObject
+        assertEquals("APPLY_REJECTED", error.getValue("code").jsonPrimitive.content)
+        assertEquals(listOf("plan", "prepare-CHANGE_APPLY", "write-CHANGE_APPLY"), observed)
+    }
+
+    @Test
+    fun `cancelled post apply recovery retries non cancellably and settles proof`() = runBlocking {
+        enroll()
+        val enteredRecovery = CompletableDeferred<Unit>()
+        val cancellation = CompletableDeferred<Throwable>()
+        val settlement = WorkspaceRecoverySettlement()
+        val recoveryCalls = mutableListOf<Unit>()
+        val job =
+            launch(settlement) {
+                try {
+                    invocation { operation -> cancelledRecoveryOperation(operation, enteredRecovery, recoveryCalls) }
+                } catch (failure: Throwable) {
+                    cancellation.complete(failure)
+                }
+            }
+
+        enteredRecovery.await()
+        job.cancelAndJoin()
+        assertInstanceOf(CancellationException::class.java, cancellation.await())
+        assertEquals(2, recoveryCalls.size)
+        assertEquals(WorkspaceRecoveryEvidence.Proven(ResolvedMutationRecovery.ROLLED_BACK), settlement.evidence)
+    }
+
+    @Test
+    fun `cancelled apply still attempts recovery outside the cancelled job`() = runBlocking {
+        enroll()
+        val enteredApply = CompletableDeferred<Unit>()
+        val cancellation = CompletableDeferred<Throwable>()
+        val settlement = WorkspaceRecoverySettlement()
+        val observed = mutableListOf<String>()
+        val job =
+            launch(settlement) {
+                try {
+                    invocation { operation -> cancelledApplyOperation(operation, enteredApply, observed) }
+                } catch (failure: Throwable) {
+                    cancellation.complete(failure)
+                }
+            }
+
+        enteredApply.await()
+        job.cancelAndJoin()
+        assertInstanceOf(CancellationException::class.java, cancellation.await())
+        assertEquals(
+            WorkspaceRecoveryEvidence.Proven(ResolvedMutationRecovery.ROLLED_BACK),
+            settlement.evidence,
+        )
+        assertEquals(
+            listOf(
+                "plan",
+                "prepare-CHANGE_APPLY",
+                "write-CHANGE_APPLY",
+                "prepare-CHANGE_RECOVER",
+                "write-CHANGE_RECOVER",
+            ),
+            observed,
+        )
+    }
+
+    @Test
+    fun `cancelled apply with incomplete recovery retains uncertainty`() = runBlocking {
+        enroll()
+        val enteredApply = CompletableDeferred<Unit>()
+        val cancellation = CompletableDeferred<Throwable>()
+        val settlement = WorkspaceRecoverySettlement()
+        val observed = mutableListOf<String>()
+        val incomplete =
+            ExistingIdeExchange.Semantic(ProjectedOperationOutcome.Qualified(document(TestRecoveryRequired())))
+        val job =
+            launch(settlement) {
+                try {
+                    invocation { operation -> cancelledApplyOperation(operation, enteredApply, observed, incomplete) }
+                } catch (failure: Throwable) {
+                    cancellation.complete(failure)
+                }
+            }
+
+        enteredApply.await()
+        job.cancelAndJoin()
+        assertInstanceOf(CancellationException::class.java, cancellation.await())
+        assertEquals(WorkspaceRecoveryEvidence.Unproven, settlement.evidence)
+        assertEquals("write-CHANGE_RECOVER", observed.last())
+    }
+
+    private suspend fun cancelledApplyOperation(
+        operation: ExistingIdeOperation,
+        enteredApply: CompletableDeferred<Unit>,
+        observed: MutableList<String>,
+        recovery: ExistingIdeExchange = semantic(TestRecovery()),
+    ): ExistingIdeExchange =
+        when (operation) {
+            is ExistingIdeOperation.Plan -> {
+                observed += "plan"
+                semantic(TestPlan())
+            }
+            is ExistingIdeOperation.ApprovalPreparation -> {
+                observed += "prepare-${operation.kind.name}"
+                ExistingIdeExchange.Received(document(challenge(operation.kind.name)))
+            }
+            is ExistingIdeOperation.ApprovedMutation -> {
+                observed += "write-${operation.kind.name}"
+                if (operation.kind.name == "CHANGE_APPLY") {
+                    enteredApply.complete(Unit)
+                    awaitCancellation()
+                } else recovery
+            }
+            else -> error("Unexpected operation")
+        }
+
+    private suspend fun cancelledRecoveryOperation(
+        operation: ExistingIdeOperation,
+        enteredRecovery: CompletableDeferred<Unit>,
+        recoveryCalls: MutableList<Unit>,
+    ): ExistingIdeExchange =
+        when (operation) {
+            is ExistingIdeOperation.Plan -> semantic(TestPlan())
+            is ExistingIdeOperation.ApprovalPreparation ->
+                ExistingIdeExchange.Received(document(challenge(operation.kind.name)))
+            is ExistingIdeOperation.ApprovedMutation ->
+                if (operation.kind.name == "CHANGE_APPLY")
+                    ExistingIdeExchange.Semantic(ProjectedOperationOutcome.Qualified(document(TestUnverified())))
+                else {
+                    recoveryCalls += Unit
+                    if (recoveryCalls.size == 1) {
+                        enteredRecovery.complete(Unit)
+                        awaitCancellation()
+                    }
+                    semantic(TestRecovery())
+                }
+            else -> error("Unexpected operation")
+        }
+
+    private suspend fun invocation(
+        observe: suspend (ExistingIdeOperation) -> ExistingIdeExchange
+    ): io.github.amichne.kast.appserver.core.ProviderCall<KastInvocationOutput> = invocationWithDemand { _, operation ->
+        WorkspaceDemandResult.Native(observe(operation))
+    }
+
+    private suspend fun invocationWithDemand(
+        observe: suspend (CanonicalRoot, ExistingIdeOperation) -> WorkspaceDemandResult
+    ): io.github.amichne.kast.appserver.core.ProviderCall<KastInvocationOutput> {
+        val root = CanonicalRoot(home.toRealPath())
+        val options =
+            KastProviderOptions(
+                catalogSource = KastCatalogSource { error("Catalog not needed") },
+                userHome = home,
+                roots = CanonicalRootDiscoverer { CanonicalRootDiscovery.Discovered(root) },
+                ideClient = ExistingIdeClient { _, _ -> error("Direct fallback forbidden") },
+                workspaceDemand =
+                    WorkspaceDemand { selected, operation ->
+                        assertEquals(root, selected)
+                        observe(selected, operation)
+                    },
+            )
+        val context =
+            (BrokerInvocationContext.admit("thread", "turn", "call", home.toRealPath()) as Refinement.Refined).value
+        val target =
+            (io.github.amichne.kast.protocol.contract.ProtocolText.parse("exact:test") as Refinement.Refined).value
+        val source =
+            (io.github.amichne.kast.protocol.contract.ProtocolText.parse("fun added() = Unit") as Refinement.Refined)
+                .value
+        return KastSingleChangeInvocation(options)
+            .invoke(ChangeRequest(ChangeIntentDocument.AddDeclaration(target, source)), context)
+    }
+
+    private fun challenge(operation: String) =
+        TestChallenge(
+            operation = operation,
+            root = home.toRealPath().toString(),
+            host = UUID.randomUUID().toString(),
+        )
+
+    private fun enroll() {
+        val directory = Files.createDirectories(home.resolve(".kast/approval"))
+        Files.setPosixFilePermissions(directory, PosixFilePermissions.fromString("rwx------"))
+        val keys = KeyPairGenerator.getInstance("Ed25519").generateKeyPair()
+        listOf("broker.pk8" to keys.private.encoded, "broker.pub" to keys.public.encoded).forEach { (name, bytes) ->
+            Files.write(directory.resolve(name), bytes)
+            Files.setPosixFilePermissions(directory.resolve(name), PosixFilePermissions.fromString("rw-------"))
+        }
+    }
+
+    private inline fun <reified T> document(value: T): CanonicalJsonDocument =
+        CanonicalJsonDocument.generated(kotlinx.serialization.serializer<T>()).create(value)
+
+    private inline fun <reified T> semantic(value: T): ExistingIdeExchange =
+        ExistingIdeExchange.Semantic(ProjectedOperationOutcome.Complete(document(value)))
+}
+
+@Serializable
+private data class TestPlan(val status: String = "complete", val planIdentity: String = "plan:${"a".repeat(64)}")
+
+@Serializable
+private data class TestApplication(
+    val status: String = "complete",
+    val state: String = "verified",
+    val receiptIdentity: String = "receipt:verified",
+)
+
+@Serializable
+private data class TestUnverified(val status: String = "qualified", val state: String = "recovery_required")
+
+@Serializable
+private data class TestHostRejection(val type: String = "rejected", val failure: String = "SOURCE_CHANGED")
+
+@Serializable private data class TestRecovery(val status: String = "complete", val state: String = "rolled_back")
+
+@Serializable
+private data class TestRecoveryRequired(val status: String = "qualified", val state: String = "recovery_required")
+
+@Serializable
+private data class TestChallenge(
+    val version: Int = 1,
+    val operation: String,
+    val root: String,
+    val host: String,
+    val planId: String = "a".repeat(64),
+    val challenge: String = "b".repeat(64),
+    val preview: TestPreview = TestPreview(),
+)
+
+@Serializable
+private data class TestPreview(val path: String = "src/Target.kt", val diff: String = "+fun added() = Unit")

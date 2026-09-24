@@ -127,21 +127,23 @@ class HostedCapabilitySet private constructor(val capabilities: List<HostedCapab
 /** One in-process projection of the canonical definition authority for endpoint publication. */
 object CanonicalHostedCapabilities {
     val capabilities: List<HostedCapability> =
-        HostedOperationProjection.publicDefinitions.map { definition ->
-            val intents =
-                when (val variants = definition.hostedVariants) {
-                    is HostedVariants.Intents ->
-                        variants.intents.mapTo(linkedSetOf()) { intent ->
-                            when (intent.identity) {
-                                HostedCapabilityIntent.ADD_DECLARATION.identity ->
-                                    HostedCapabilityIntent.ADD_DECLARATION
-                                else -> error("Canonical hosted intent has no wire representation")
+        HostedOperationProjection.publicDefinitions
+            .filterNot { it.operation == CanonicalOperation.CHANGE }
+            .map { definition ->
+                val intents =
+                    when (val variants = definition.hostedVariants) {
+                        is HostedVariants.Intents ->
+                            variants.intents.mapTo(linkedSetOf()) { intent ->
+                                when (intent.identity) {
+                                    HostedCapabilityIntent.ADD_DECLARATION.identity ->
+                                        HostedCapabilityIntent.ADD_DECLARATION
+                                    else -> error("Canonical hosted intent has no wire representation")
+                                }
                             }
-                        }
-                    HostedVariants.None -> emptySet()
-                }
-            HostedCapability.create(definition.operation, intents)
-        }
+                        HostedVariants.None -> emptySet()
+                    }
+                HostedCapability.create(definition.operation, intents)
+            }
 
     val candidates: List<HostedCapabilityCandidate> = capabilities.map(HostedCapability::candidate)
 

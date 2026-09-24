@@ -96,7 +96,7 @@ def main():
                         continue
                     result = subprocess.run([str(product / 'bin/kast'), 'tool', 'search_classes'],
                         cwd=fixture.workspace, env=fixture.environment,
-                        input=json.dumps({'class_name': 'NativeChangeTarget', 'name_match': None, 'scope': None}),
+                        input=json.dumps({'name': 'NativeChangeTarget', 'name_match': None, 'scope': None}),
                         capture_output=True, text=True, timeout=15)
                     try:
                         document = json.loads(result.stdout) if result.stdout else {}

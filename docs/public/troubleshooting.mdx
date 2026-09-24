@@ -74,7 +74,7 @@ inspect IDEA's Gradle error and the returned lifecycle failure before retrying.
 
 A missing cached model does not prove that import is running.
 
-The installed Codex MCP server prepares the IDEA project when a semantic read
+The installed Kast MCP server prepares the IDEA project when a semantic read
 arrives. If IDEA rejects or stalls during Gradle import, the read returns a
 failure rather than an empty successful search. The app-server
 `workspace_lifecycle` tool remains available for explicitly requested control.
@@ -107,7 +107,7 @@ a finite reason to stderr.
 
 Set `KAST_DEBUG=1` for bounded launch-stage output.
 
-## Refresh an already linked workspace
+## Automatic refresh of a linked workspace
 
 Ordinary reads save project-owned editor buffers and force a disk comparison of
 the project VFS before semantic admission. Kast waits for a missing cached Gradle
@@ -148,7 +148,7 @@ IDE's Gradle error, correct its cause, and retry the semantic operation.
   <Accordion title="The broker reports WORKSPACE_RECOVERY_REQUIRED">
     1. Retain the invocation journal, thread store, and IDE change records.
     2. Replace the broker.
-    3. Request fresh exact-plan recovery approval.
+    3. Preserve the plan identity and recovery evidence for manual repair.
 
     Broker replacement does not undo an effect or permit replay.
 

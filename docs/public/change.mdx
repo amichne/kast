@@ -2,9 +2,9 @@
 type: "Workflow Guide"
 title: "Add a Kotlin declaration"
 sidebarTitle: "Change source"
-description: "Review a stored preview, approve one exact plan, and act on the returned apply state."
+description: "Add a declaration in one MCP call and inspect the verified or recovery outcome."
 resource: "file://docs/public/change.mdx"
-tags: ["change", "approval", "verification", "recovery"]
+tags: ["change", "verification", "recovery"]
 timestamp: "2026-09-14T00:00:00-04:00"
 code_sources:
   - path: "protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt"
@@ -12,6 +12,7 @@ code_sources:
   - path: "runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeApply.kt"
   - path: "runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeVerification.kt"
   - path: "runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeRecovery.kt"
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpSingleChangeTool.kt"
   - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/ide/BrokerTrustEnrollment.kt"
   - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceExecution.kt"
 icon: "file-pen-line"
@@ -24,7 +25,7 @@ Kast can add one declaration to an existing Kotlin source file in the open Intel
   It rejects new files, replacements, multi-file renames, and arbitrary text edits.
 </Note>
 
-## Before planning
+## Before changing source
 
 Complete these prerequisites:
 
@@ -32,35 +33,31 @@ Complete these prerequisites:
 - Use the selected IntelliJ installation with the matched Kast plugin.
 - Save your work before planning.
 
-The installer creates or preserves the matching private approval key pair in
+The installer creates or preserves the matching private change key pair in
 `~/.kast/approval`. Partial or conflicting keys reject installation without replacing
 the surviving keys. Re-running the installer preserves valid enrollment.
 
 Kast prepares the exact workspace and waits for IDEA readiness
-before planning or loading an approval challenge. A trust or import blocker is
+before planning or applying a change. A trust or import blocker is
 returned for you to resolve.
 
-- Applying a plan does not enroll trust automatically.
-- The three change tools are deferred defaults.
-- The [harness contract](/agent-harnesses) defines catalog configuration.
+- A change does not enroll trust automatically.
+- Direct MCP and App Server expose one `change` tool. The native plan, apply, and recovery phases remain private.
 
-## Plan, review, and apply
+## Add a declaration
 
 1. [Search](/search) for the target declaration.
-2. Pass its unchanged `ref` to `change_plan` as `intent.exactTarget`.
+2. Pass its unchanged `ref` to `change` as `intent.exactTarget`.
 3. Include `intent.kind: "add-declaration"` and the Kotlin source in `intent.declaration`.
-4. Review declaration placement in the stored file preview.
-5. Retain the immutable plan identity.
-6. Call `change_apply` with that identity.
-7. In another terminal at the same repository root, run `${XDG_DATA_HOME:-$HOME/.local/share}/kast/current/bin/kast-mcp-complete approve apply <plan:identity>`. Review the displayed diff and type `approve`.
-8. Repeat `change_apply`. The approval is consumed once.
-9. Read the complete apply result.
+4. Inspect the returned `plan` preview and `application` outcome. A `complete`
+   result contains a verified receipt. A failed result retains any uncertain
+   application and attempted recovery evidence.
 
-Planning does not change source bytes or document state.
-
-Declining or cancelling approval also leaves source unchanged.
-
-Apply performs semantic verification before returning.
+The one-call tool plans, signs the exact stored plan through the installed
+private key, applies it, and verifies the result. It does not ask for a separate
+terminal approval. Planning rejection or unavailable signing leaves source
+unchanged. Applying still rechecks the IDE owner, epoch, project model and saved
+source before mutation.
 
 Use this planning shape with a returned token and the intended Kotlin source:
 
@@ -74,34 +71,30 @@ Use this planning shape with a returned token and the intended Kotlin source:
 }
 ```
 
-Apply and recovery each accept `{ "planIdentity": "<returned plan identity>" }`.
-
 The placeholder describes the schema.
 
 It is not an admitted identity.
 
-## Approval boundary
+## Write boundary
 
-Approval covers the stored intent, target, source preimage, and write set.
-
-- Create and approve a new plan when any approved value changes.
-- Do not treat a plan identity as write authorization.
-- Expect apply to recheck the IDE owner, epoch, project model, and saved source.
-- Expect a stale plan to reject before mutation.
-- Search again after reopening an unloaded or closed project owner.
+The stored plan still binds the intent, target, source preimage and write set.
+The host rejects a stale plan before mutation. Search again after reopening an
+unloaded or closed project owner.
 
 ## Decide what happened from the response
 
-| `document.state` | Meaning | Next action |
+| `application.state` | Meaning | Next action |
 | --- | --- | --- |
 | `verified` | The write and required semantic obligations are recorded in a durable receipt. | Keep the receipt; obtain fresh references for further work. |
-| `applied_unverified` | A write occurred, but verification or receipt persistence did not complete. | Preserve the result and use approved recovery. |
-| `recovery_required` | An attempted effect remains uncertain or needs reconciliation. | Preserve the result and use approved recovery. |
+| `applied_unverified` | A write occurred, but verification or receipt persistence did not complete. | Inspect the automatic recovery result and retain the plan identity. |
+| `recovery_required` | An attempted effect remains uncertain or needs reconciliation. | Inspect the automatic recovery result and retain the plan identity. |
 
-Read the outer invocation status before `document.status` and `document.state`.
+Read the top-level `status` first. On a rejected result, inspect
+`error.application` and `error.recovery` for the retained phase outcomes.
 
 - A verified apply is `complete`.
-- Both uncertain states are `qualified`.
+- Direct MCP and App Server report uncertain outcomes as `rejected` with the
+  retained plan, application, and recovery evidence.
 - A pre-mutation rejection proves that the attempt wrote nothing.
 - A lost response does not prove that nothing was written.
 
@@ -122,11 +115,10 @@ Repeating a verified apply returns its stored receipt without another insertion.
 
 An attempted plan without a verified receipt cannot become a fresh mutation.
 
-To recover:
-
-1. Call `change_recover` with the stored plan identity.
-2. Approve recovery separately.
-3. Keep every returned qualification visible.
+The `change` call attempts recovery before returning a failed
+application outcome. It returns the original application and the recovery
+response together; a missing or rejected recovery remains a failure and must
+not be described as a verified write.
 
 Recovery can confirm the exact preimage or roll back an exact matching postimage.
 
@@ -142,7 +134,7 @@ A newly opened project owner may perform recovery but cannot apply the retired o
 
 1. Replace the broker while retaining its invocation journal and thread store.
 2. Keep the IDE's durable change records.
-3. Request fresh recovery approval.
+3. Preserve the returned plan identity and recovery evidence for manual repair.
 
 Broker replacement does not erase an effect or revive an attempted plan.
 

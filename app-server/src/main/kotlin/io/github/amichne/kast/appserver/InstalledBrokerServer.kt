@@ -190,6 +190,7 @@ internal sealed interface InstalledBrokerServerConfiguration {
                         io.github.amichne.kast.appserver.provider.PackagedKastCatalog(
                             kast.path.parent.parent.resolve("share/kast/provider-catalog.json")
                         ),
+                    userHome = canonicalUserHome,
                     readLimits = configuration.readLimits,
                     ideClient =
                         io.github.amichne.kast.appserver.ide.ExistingIdeSocketClient(
@@ -601,11 +602,6 @@ internal object InstalledBrokerHost {
                 maximumMessageBytes = options.maximumMessageBytes,
                 activitySink = JsonLineBrokerInvocationActivitySink(System.err),
                 sessionBootstrap = kastQualification.bootstrap,
-                planApprovalGateway =
-                    io.github.amichne.kast.appserver.provider.KastHostedPlanApprovalGateway(
-                        options.kastOptions,
-                        options.approvalHome.path,
-                    ),
                 projectCloseSigner =
                     io.github.amichne.kast.appserver.provider.EnrolledPlanApprovalSigner(options.approvalHome.path)::
                         signProjectClose,

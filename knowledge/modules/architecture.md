@@ -48,7 +48,7 @@ Every module role requires its matching Gradle convention. Validated module poli
 - IntelliJ and filesystem/SQLite modules own explicit effects.
 - The existing-IDE host connects proven contracts to effectful adapters.
 - App Server and CLI expose broker, installation and transport boundaries.
-- The MCP launcher retains the hosted catalog and confines one-use approval-file writes to `McpApprovalStore`.
+- The MCP launcher retains the hosted catalog and uses Kotlin MCP SDK tool annotations at its adapter boundary. Its one-call change tool signs an exact internal plan challenge without an interactive approval file.
 
 The App Server's direct login-agent publisher and the installation service lock are explicit scoped filesystem-write owners. The publisher writes or removes only the qualified per-user launchd entry; the lock serializes launchd start, retirement, and direct login resumption.
 
@@ -63,8 +63,8 @@ dependencies from semantic service modules.
 It depends only on `kernel`, `protocol:contract`, and `change:contract`; the
 plan-storage interface is defined in `change:contract`. Its dependency closure
 cannot acquire workspace startup, import, IntelliJ, SQLite, or isolated-runtime
-capabilities. The hosted coordinator composes the separate live plan, approval, guarded write,
-verification and recovery adapters. Their IntelliJ and SQLite effects remain
+capabilities. The hosted coordinator composes the native live plan, internal exact-challenge
+signing, guarded write, verification and recovery adapters in one caller invocation. Their IntelliJ and SQLite effects remain
 explicit host dependencies; a live plan does not acquire worker-start authority.
 
 ## Formatting and structural checks

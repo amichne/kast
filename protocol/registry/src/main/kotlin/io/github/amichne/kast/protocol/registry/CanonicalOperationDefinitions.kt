@@ -1,28 +1,26 @@
 package io.github.amichne.kast.protocol.registry
 
-import io.github.amichne.kast.kernel.CapabilityId
-import io.github.amichne.kast.kernel.CapabilityMarker
-import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
-import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.kernel.ResourceBudget
-import io.github.amichne.kast.kernel.ResultLimit
-import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ChangeApplyCapability
 import io.github.amichne.kast.protocol.contract.ChangeApplyQualification
 import io.github.amichne.kast.protocol.contract.ChangeApplyRejection
 import io.github.amichne.kast.protocol.contract.ChangeApplyRequest
 import io.github.amichne.kast.protocol.contract.ChangeApplyResult
+import io.github.amichne.kast.protocol.contract.ChangeCapability
 import io.github.amichne.kast.protocol.contract.ChangePlanCapability
 import io.github.amichne.kast.protocol.contract.ChangePlanQualification
 import io.github.amichne.kast.protocol.contract.ChangePlanRejection
 import io.github.amichne.kast.protocol.contract.ChangePlanRequest
 import io.github.amichne.kast.protocol.contract.ChangePlanResult
+import io.github.amichne.kast.protocol.contract.ChangeQualification
 import io.github.amichne.kast.protocol.contract.ChangeRecoverCapability
 import io.github.amichne.kast.protocol.contract.ChangeRecoverQualification
 import io.github.amichne.kast.protocol.contract.ChangeRecoverRejection
 import io.github.amichne.kast.protocol.contract.ChangeRecoverRequest
 import io.github.amichne.kast.protocol.contract.ChangeRecoverResult
+import io.github.amichne.kast.protocol.contract.ChangeRejection
+import io.github.amichne.kast.protocol.contract.ChangeRequest
+import io.github.amichne.kast.protocol.contract.ChangeResult
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckCapability
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckFailure
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckQualification
@@ -33,11 +31,6 @@ import io.github.amichne.kast.protocol.contract.IndexSyncQualification
 import io.github.amichne.kast.protocol.contract.IndexSyncRejection
 import io.github.amichne.kast.protocol.contract.IndexSyncRequest
 import io.github.amichne.kast.protocol.contract.IndexSyncResult
-import io.github.amichne.kast.protocol.contract.OperationQualification
-import io.github.amichne.kast.protocol.contract.OperationRejection
-import io.github.amichne.kast.protocol.contract.OperationRequest
-import io.github.amichne.kast.protocol.contract.OperationResult
-import io.github.amichne.kast.protocol.contract.OperationTypeBinding
 import io.github.amichne.kast.protocol.contract.QueryRunCapability
 import io.github.amichne.kast.protocol.contract.QueryRunFailure
 import io.github.amichne.kast.protocol.contract.QueryRunQualification
@@ -48,7 +41,6 @@ import io.github.amichne.kast.protocol.contract.RelationReadFailure
 import io.github.amichne.kast.protocol.contract.RelationReadQualification
 import io.github.amichne.kast.protocol.contract.RelationReadRequest
 import io.github.amichne.kast.protocol.contract.RelationReadResult
-import io.github.amichne.kast.protocol.contract.SchemaIdentity
 import io.github.amichne.kast.protocol.contract.SourceReadCapability
 import io.github.amichne.kast.protocol.contract.SourceReadFailure
 import io.github.amichne.kast.protocol.contract.SourceReadQualification
@@ -74,7 +66,6 @@ import io.github.amichne.kast.protocol.contract.TraversalRunFailure
 import io.github.amichne.kast.protocol.contract.TraversalRunQualification
 import io.github.amichne.kast.protocol.contract.TraversalRunRequest
 import io.github.amichne.kast.protocol.contract.TraversalRunResult
-import kotlin.reflect.KClass
 
 /** Sole metadata catalog for canonical operations and their explicit publication authority. */
 object CanonicalOperationDefinitions {
@@ -245,6 +236,23 @@ object CanonicalOperationDefinitions {
             schema = schema("kast.diagnostic.check.v4"),
         )
 
+    val change =
+        definition(
+            CanonicalOperation.CHANGE,
+            ChangeRequest::class,
+            ChangeResult::class,
+            ChangeQualification::class,
+            ChangeRejection::class,
+            ChangeCapability::class,
+            OperationLane.SOURCE_WRITE,
+            OperationEffect.INTELLIJ_WRITE,
+            OperationCost.PHYSICAL_EFFECT,
+            OperationScope.FILE,
+            CompletenessPolicy.COMPLETE_REQUIRED,
+            HostedExposure.PUBLIC,
+            hostedVariants = HostedVariants.Intents(setOf(HostedChangeIntent.ADD_DECLARATION)),
+        )
+
     val changePlan =
         definition(
             CanonicalOperation.CHANGE_PLAN,
@@ -307,6 +315,7 @@ object CanonicalOperationDefinitions {
             relationRead,
             traversalRun,
             diagnosticCheck,
+            change,
             changePlan,
             changeApply,
             changeRecover,
@@ -318,67 +327,5 @@ object CanonicalOperationDefinitions {
             is OperationRegistryConstruction.Created -> construction.registry
             is OperationRegistryConstruction.Rejected ->
                 error("Invalid canonical operation registry: ${construction.failures}")
-        }
-
-    private fun <
-        Request : OperationRequest,
-        Result : OperationResult,
-        Qualification : OperationQualification,
-        Rejection : OperationRejection,
-        Capability : CapabilityMarker,
-    > definition(
-        operation: CanonicalOperation,
-        requestType: KClass<Request>,
-        resultType: KClass<Result>,
-        qualificationType: KClass<Qualification>,
-        rejectionType: KClass<Rejection>,
-        capabilityType: KClass<Capability>,
-        lane: OperationLane,
-        effect: OperationEffect,
-        cost: OperationCost,
-        scope: OperationScope,
-        completeness: CompletenessPolicy,
-        hostedExposure: HostedExposure,
-        hostedVariants: HostedVariants = HostedVariants.None,
-        schema: SchemaIdentity = schema("kast.${operation.id.value}.v2"),
-    ): OperationDefinition<Request, Result, Capability, Qualification, Rejection> =
-        OperationDefinition(
-            operation = operation,
-            types =
-                OperationTypeBinding(
-                    requestType = requestType,
-                    resultType = resultType,
-                    qualificationType = qualificationType,
-                    rejectionType = rejectionType,
-                    schema = schema,
-                ),
-            requiredCapability = capability(operation),
-            capabilityType = capabilityType,
-            lane = lane,
-            effect = effect,
-            cost = cost,
-            scope = scope,
-            budget = standardBudget(),
-            completeness = completeness,
-            hostedExposure = hostedExposure,
-            hostedVariants = hostedVariants,
-        )
-
-    private fun capability(operation: CanonicalOperation): CapabilityId =
-        refined(CapabilityId.parse("capability.${operation.id.value}"))
-
-    private fun schema(raw: String): SchemaIdentity = refined(SchemaIdentity.parse(raw))
-
-    private fun standardBudget(): ResourceBudget =
-        ResourceBudget(
-            resultLimit = refined(ResultLimit.parse(250)),
-            workUnitLimit = refined(WorkUnitLimit.parse(10_000)),
-            elapsedTimeLimit = refined(ElapsedTimeLimitMillis.parse(5_000)),
-        )
-
-    private fun <Strong, Failure> refined(value: Refinement<Strong, Failure>): Strong =
-        when (value) {
-            is Refinement.Refined -> value.value
-            is Refinement.Rejected -> error("Invalid compile-time canonical operation metadata")
         }
 }

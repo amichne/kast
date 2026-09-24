@@ -19,7 +19,6 @@ import io.github.amichne.kast.appserver.ide.ExistingIdeClient
 import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
 import io.github.amichne.kast.appserver.ide.ExistingIdeReadOperation
-import io.github.amichne.kast.appserver.ide.HostedMutationOperation
 import io.github.amichne.kast.appserver.installedKastCatalogFixture
 import io.github.amichne.kast.appserver.runtime.BrokerInvocationApproval
 import io.github.amichne.kast.appserver.runtime.ClientConnectionId
@@ -55,9 +54,7 @@ import org.junit.jupiter.api.io.TempDir
 
 class KastProviderTest {
     @Test
-    fun `approved exact plan reaches private transport and substitution never invokes process`(
-        @TempDir temporary: Path
-    ) =
+    fun `phase tools are absent even when an old approval grant is supplied`(@TempDir temporary: Path) =
         runBlocking<Unit> {
             val cwd = temporary.toRealPath()
             val executor = RecordingCatalogSource(capabilitySchema().replace("\"plan\"", "\"planIdentity\""))
@@ -81,23 +78,26 @@ class KastProviderTest {
                         approval = BrokerInvocationApproval.Granted(grant),
                     )
                     .refinedValue()
-            val arguments = buildJsonObject { put("planIdentity", "plan:${"a".repeat(64)}") }
-            assertInstanceOf(
-                BrokerDispatch.Completed::class.java,
-                broker.dispatch(
-                    BrokerDispatchRequest(ToolAddress(namespace("kast"), toolName("change_apply")), arguments, approved)
-                ),
-            )
-            val mutation = assertInstanceOf(ExistingIdeOperation.ApprovedMutation::class.java, operations.single())
-            assertEquals(HostedMutationOperation.CHANGE_APPLY, mutation.kind)
-            assertEquals("plan:${"a".repeat(64)}", mutation.identity.value)
-            assertEquals(grant.assertion, mutation.assertion.value)
+            val arguments = Json.encodeToJsonElement(PhaseIdentityArguments("plan:${"a".repeat(64)}")).jsonObject
+            val rejected =
+                assertInstanceOf(
+                    BrokerDispatch.Rejected::class.java,
+                    broker.dispatch(
+                        BrokerDispatchRequest(
+                            ToolAddress(namespace("kast"), toolName("change_apply")),
+                            arguments,
+                            approved,
+                        )
+                    ),
+                )
+            assertInstanceOf(BrokerFailure.UnknownTool::class.java, rejected.failure)
+            assertTrue(operations.isEmpty())
             val count = operations.size
             val substituted =
                 broker.dispatch(
                     BrokerDispatchRequest(
                         ToolAddress(namespace("kast"), toolName("change_apply")),
-                        buildJsonObject { put("planIdentity", "plan:${"c".repeat(64)}") },
+                        Json.encodeToJsonElement(PhaseIdentityArguments("plan:${"c".repeat(64)}")).jsonObject,
                         approved,
                     )
                 )
@@ -350,9 +350,7 @@ class KastProviderTest {
         }
 
     @Test
-    fun `complete suite retains change route but cannot invoke change without controller approval`(
-        @TempDir temporary: Path
-    ) =
+    fun `complete suite retains one change route and omits phase tools`(@TempDir temporary: Path) =
         runBlocking<Unit> {
             val executable = executable(temporary.resolve("kast"))
             val cwd = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
@@ -389,8 +387,7 @@ class KastProviderTest {
                 )
 
             val rejected = assertInstanceOf(BrokerDispatch.Rejected::class.java, completed)
-            val failure = assertInstanceOf(BrokerFailure.ProviderInvocationRejected::class.java, rejected.failure)
-            assertEquals(ProviderFailureCode.APPROVAL_REQUIRED, failure.code)
+            assertInstanceOf(BrokerFailure.UnknownTool::class.java, rejected.failure)
             assertEquals(2, executor.reads)
             val invalidRead = assertInstanceOf(BrokerDispatch.Rejected::class.java, explicit)
             val invalidInput =
@@ -815,5 +812,7 @@ class KastProviderTest {
 }
 
 @Serializable private data class ApprovalPlanArguments(val plan: String)
+
+@Serializable private data class PhaseIdentityArguments(val planIdentity: String)
 
 @Serializable private data class SymbolQueryArguments(val query: String)

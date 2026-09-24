@@ -6,6 +6,7 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import io.github.amichne.kast.protocol.wire.*
 import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
@@ -15,7 +16,7 @@ class PublicToolCommandTest {
     fun `all public tools share CLI admission and canonical wire lowering`() {
         val examples =
             mapOf(
-                PublicToolIdentity.SEARCH_CLASSES to """{"class_name":"Order","name_match":null,"scope":null}""",
+                PublicToolIdentity.SEARCH_CLASSES to Json.encodeToString(SearchClassArguments("Order")),
                 PublicToolIdentity.SEARCH_FUNCTIONS to """{"function_name":"order","name_match":null,"scope":null}""",
                 PublicToolIdentity.SEARCH_DECLARATIONS to
                     """{"declaration_name":"order","name_match":null,"scope":null,"declaration_kinds":["property","type_alias"]}""",
@@ -54,3 +55,5 @@ class PublicToolCommandTest {
         )
     }
 }
+
+@Serializable private data class SearchClassArguments(val name: String)

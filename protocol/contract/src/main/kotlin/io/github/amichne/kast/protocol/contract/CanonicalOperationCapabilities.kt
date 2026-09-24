@@ -22,6 +22,8 @@ interface DiagnosticCheckCapability : CapabilityMarker
 
 interface ChangePlanCapability : CapabilityMarker
 
+interface ChangeCapability : CapabilityMarker
+
 interface ChangeApplyCapability : CapabilityMarker
 
 interface ChangeRecoverCapability : CapabilityMarker

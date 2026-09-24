@@ -28,6 +28,7 @@ class CliSurfaceContractTest {
                             CanonicalOperation.WORKSPACE_LIFECYCLE,
                             CanonicalOperation.QUERY_RUN,
                             CanonicalOperation.DIAGNOSTIC_CHECK,
+                            CanonicalOperation.CHANGE,
                         )
                 },
             surface.semanticCommands.map { it.operation },

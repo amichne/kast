@@ -77,7 +77,7 @@ class NativeProcesses:
                     continue
                 result = subprocess.run([str(product_executable(self.product, self.fixture.workspace.parent)), 'tool', 'search_classes'],
                     cwd=self.fixture.workspace, env=self.fixture.environment,
-                    input=json.dumps({'class_name': 'NativeChangeTarget', 'name_match': None, 'scope': None}),
+                    input=json.dumps({'name': 'NativeChangeTarget', 'name_match': None, 'scope': None}),
                     capture_output=True, text=True, timeout=30)
                 if len(result.stdout) > 4 * 1024 * 1024:
                     raise AcceptanceRejected(AcceptanceFailure.READINESS)

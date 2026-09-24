@@ -15,6 +15,7 @@ enum class CanonicalOperation(val id: OperationId) {
     RELATION_READ(canonicalOperationId("relation.read")),
     TRAVERSAL_RUN(canonicalOperationId("traversal.run")),
     DIAGNOSTIC_CHECK(canonicalOperationId("diagnostic.check")),
+    CHANGE(canonicalOperationId("change.run")),
     CHANGE_PLAN(canonicalOperationId("change.plan")),
     CHANGE_APPLY(canonicalOperationId("change.apply")),
     CHANGE_RECOVER(canonicalOperationId("change.recover"));

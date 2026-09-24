@@ -77,7 +77,6 @@ internal class HubTestFixture(
     invocationJournal: Path? = null,
     executionPolicy: WorkspaceExecutionPolicy = WorkspaceExecutionPolicy.Default,
     cancellationRetirement: CompletableDeferred<Unit>? = null,
-    planGateway: HostedPlanApprovalGateway? = null,
     closeSigner:
         ((ControllerApprovedProjectClose) -> Refinement<ProjectCloseApprovalGrant, HostedPlanApprovalFailure>)? =
         null,
@@ -148,7 +147,7 @@ internal class HubTestFixture(
             present = { ToolPresentation.text(it.toString(), true) },
         )
     private val bootstrap =
-        if (planGateway == null && closeSigner == null) null
+        if (closeSigner == null) null
         else {
             val canonical = CanonicalAgentToolDefinitions.changeApply
             val apply =
@@ -171,19 +170,17 @@ internal class HubTestFixture(
                     approval = HostedApprovalPolicy.NONE,
                 )
             (AgentSessionBootstrap.qualify(
-                    listOf(query, apply) +
-                        if (closeSigner == null) emptyList()
-                        else
-                            listOf(
-                                apply.copy(
-                                    operation = CanonicalOperation.WORKSPACE_LIFECYCLE,
-                                    name = CanonicalAgentToolDefinitions.workspaceLifecycle.name,
-                                    approval = HostedApprovalPolicy.NONE,
-                                )
-                            ),
+                    listOf(
+                        query,
+                        apply,
+                        apply.copy(
+                            operation = CanonicalOperation.WORKSPACE_LIFECYCLE,
+                            name = CanonicalAgentToolDefinitions.workspaceLifecycle.name,
+                            approval = HostedApprovalPolicy.NONE,
+                        ),
+                    ),
                     CanonicalAgentToolDefinitions.policy,
-                    setOf(tool.name, changeTool.name) +
-                        if (closeSigner == null) emptySet() else setOf(lifecycleTool.name),
+                    setOf(tool.name, changeTool.name, lifecycleTool.name),
                 ) as AgentSessionBootstrapQualification.Qualified)
                 .bootstrap
         }
@@ -193,11 +190,7 @@ internal class HubTestFixture(
                     ProviderRegistration.define(
                             namespace = ProviderNamespace.admit("kast").refined(),
                             version = ProviderVersion.admit("1").refined(),
-                            tools =
-                                if (planGateway == null && closeSigner == null) listOf(tool)
-                                else
-                                    listOf(tool, changeTool) +
-                                        if (closeSigner == null) emptyList() else listOf(lifecycleTool),
+                            tools = if (closeSigner == null) listOf(tool) else listOf(tool, changeTool, lifecycleTool),
                             start = { ProviderStartup.Started(Unit) },
                         )
                         .validated()
@@ -227,7 +220,6 @@ internal class HubTestFixture(
                 maximumMessageBytes = 4 * 1_024 * 1_024,
                 enrollment = enrollment,
                 sessionBootstrap = bootstrap,
-                planApprovalGateway = planGateway ?: HostedPlanApprovalGateway.Unavailable,
                 projectCloseSigner =
                     closeSigner ?: { Refinement.Rejected(HostedPlanApprovalFailure.SIGNING_UNAVAILABLE) },
                 invocationJournal = invocationJournal,

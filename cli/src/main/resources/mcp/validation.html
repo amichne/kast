@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kast workspace validation</title>
+  <style>
+    :root { color-scheme: light dark; font: 14px/1.45 system-ui, sans-serif; }
+    body { margin: 0; padding: 20px; color: light-dark(#1b2633, #ebf1f6); background: light-dark(#fff, #18212b); }
+    h1 { margin: 0 0 4px; font-size: 18px; }
+    p { margin: 0 0 14px; color: light-dark(#536171, #b5c1cd); }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { padding: 10px 8px; border-top: 1px solid light-dark(#e5eaf0, #354454); text-align: left; vertical-align: top; }
+    th { width: 30%; font-weight: 600; }
+    .state { display: inline-block; padding: 2px 8px; border-radius: 12px; font-weight: 600; }
+    .passed { color: #116149; background: #dff4e9; }
+    .failed { color: #a62828; background: #fde8e8; }
+    .unverified { color: #765600; background: #fff2c9; }
+    .message { margin-top: 4px; overflow-wrap: anywhere; }
+  </style>
+</head>
+<body>
+  <h1>Workspace validation</h1>
+  <p id="summary">Waiting for Kast’s probe results.</p>
+  <table aria-label="Validation probes"><tbody id="probes"></tbody></table>
+  <script>
+    const labels = {
+      discovery: 'Declaration discovery', exactInspection: 'Exact inspection',
+      sourceRead: 'Source read', relation: 'Relation', diagnostics: 'Diagnostics'
+    };
+    function render(result) {
+      const summary = document.getElementById('summary');
+      const body = document.getElementById('probes');
+      body.replaceChildren();
+      const payload = result && result.structuredContent;
+      if (!payload || payload.status === 'rejected') {
+        summary.textContent = payload?.error?.message || 'Validation result unavailable.';
+        return;
+      }
+      const data = payload.data || {};
+      const counts = { passed: 0, failed: 0, unverified: 0 };
+      for (const [key, label] of Object.entries(labels)) {
+        const probe = data[key] || { status: 'unverified', message: 'No result.' };
+        const status = Object.hasOwn(counts, probe.status) ? probe.status : 'unverified';
+        counts[status]++;
+        const row = document.createElement('tr');
+        const name = document.createElement('th'); name.scope = 'row'; name.textContent = label;
+        const detail = document.createElement('td');
+        const badge = document.createElement('span'); badge.className = 'state ' + status; badge.textContent = status;
+        const message = document.createElement('div'); message.className = 'message'; message.textContent = probe.message || '';
+        detail.append(badge, message); row.append(name, detail); body.append(row);
+      }
+      summary.textContent = `${counts.passed} passed · ${counts.failed} failed · ${counts.unverified} unverified`;
+    }
+    window.renderKastValidation = render;
+    window.addEventListener('message', event => {
+      if (event.source !== window.parent) return;
+      const message = event.data;
+      if (message?.id === 'kast-init' && message.result) {
+        window.parent.postMessage({ jsonrpc: '2.0', method: 'ui/notifications/initialized' }, '*');
+      }
+      if (message?.method === 'ui/notifications/tool-result') render(message.params);
+    });
+    if (window.parent !== window) {
+      window.parent.postMessage({
+        jsonrpc: '2.0', id: 'kast-init', method: 'ui/initialize',
+        params: { protocolVersion: '2026-01-26', appCapabilities: { availableDisplayModes: ['inline'] } }
+      }, '*');
+    }
+  </script>
+</body>
+</html>
