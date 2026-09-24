@@ -145,7 +145,8 @@ object CanonicalAgentToolDefinitions {
             "read_relations",
             "Read one bounded compiler-grounded semantic relation from an exact selector. Use " +
                 "a Kast search tool first when exact identity is not established. Related declarations " +
-                "may be in other files or packages; inspect qualifications and resume with the returned continuation. " +
+                "may be in other files or packages; inspect qualifications and resume with the " +
+                "returned continuation. " +
                 "Omit limit for the bounded default.",
             inputAliases = setOf("semantic_query"),
         )
