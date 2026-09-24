@@ -60,6 +60,8 @@ legacy command graph retained for migration, and hosted output projections.
 - For parsing or command ownership, start with `CliCommandGraph` and the owning command package.
 - For output compatibility, start in `projection` and follow to `protocol/wire`.
 
-- Semantic operations use the hosted provider and require an existing IDE
-  endpoint. The private installed control owns registration, lifecycle actions,
-  and trust enrollment. Former public semantic commands reject at process ingress.
+- Semantic operations use the hosted provider. The installed MCP starts
+  preparation for the discovered Gradle root at initialization, launching the
+  selected IDE when needed; reads wait for its endpoint. The private installed
+  control owns registration, lifecycle actions, and trust enrollment. Former
+  public semantic commands reject at process ingress.
