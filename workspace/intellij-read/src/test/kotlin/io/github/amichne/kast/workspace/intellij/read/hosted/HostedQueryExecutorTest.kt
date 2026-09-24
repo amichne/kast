@@ -78,7 +78,7 @@ class HostedQueryExecutorTest {
                     HostedReadDiagnostics({ testScheduler.currentTime * 1_000_000 }, policy, receipts::add)
                 }
             val result =
-                executor.execute(executor.endpoint) { progress ->
+                executor.execute(executor.endpoint, shortHostLimits()) { progress ->
                     delay(3800)
                     runHostedReadTransaction(progress, { io.github.amichne.kast.kernel.Refinement.Refined(Unit) }) {
                         error("Exhausted allowance must never invoke the evaluator")

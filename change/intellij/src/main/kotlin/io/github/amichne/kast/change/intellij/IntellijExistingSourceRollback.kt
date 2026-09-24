@@ -266,7 +266,7 @@ private fun finalRecoveryPrecondition(
     }
     val loaded = target.loaded
     if (
-        FileDocumentManager.getInstance().unsavedDocuments.isNotEmpty() ||
+        hasUnsavedProjectDocuments(project) ||
             PsiDocumentManager.getInstance(project).hasUncommitedDocuments() ||
             loaded.document.text != input.postimage
     ) {

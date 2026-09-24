@@ -56,7 +56,25 @@ internal data class McpInitializeResult(
     val protocolVersion: String = "2025-06-18",
     val capabilities: McpCapabilities = McpCapabilities(),
     val serverInfo: McpServerInfo = McpServerInfo(),
+    val instructions: String = KAST_MCP_INSTRUCTIONS,
 )
+
+private const val KAST_MCP_INSTRUCTIONS =
+    "Kast reads the saved, indexed Kotlin/Gradle project in IntelliJ IDEA. " +
+        "Call tools from the repository root. Each semantic call waits for bounded IDE preparation and indexing " +
+        "before the read; a missing cached Gradle model triggers one linked-project reload. Wait for the response " +
+        "and follow its finite recovery instruction if preparation rejects. Kast saves project editor buffers " +
+        "and refreshes the VFS or Gradle model when needed; callers do not need to request a manual sync. " +
+        "Search classes or functions by name first, preserve returned symbol references verbatim, then use " +
+        "read_relations with callees or callers for one semantic hop. " +
+        "Relation destinations may be in other packages. " +
+        "Read both the outer invocation status and inner semantic status: qualified results are a known minimum, " +
+        "never proof of absence. Inspect limitations and omission reasons such as UNSUPPORTED_ITEM; resume only when " +
+        "a continuation is returned, using the same subject and relation. " +
+        "For BUDGET_EXCEEDED inspect the reported stage and execution_budget. A MODEL_CAPTURE timeout " +
+        "precedes semantic search; a SEMANTIC_READ timeout may benefit from a narrower scope. " +
+        "MODEL_CAPTURE_REJECTED happens before semantic search; " +
+        "inspect the finite capture reason and the IDE's kast_semantic_read receipt."
 
 @Serializable
 internal data class McpCapabilities(

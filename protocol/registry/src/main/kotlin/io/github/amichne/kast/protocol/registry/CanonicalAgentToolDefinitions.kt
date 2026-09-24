@@ -98,13 +98,14 @@ object CanonicalAgentToolDefinitions {
         tool(
             CanonicalOperationDefinitions.workspaceLifecycle,
             "workspace_lifecycle",
-            "Prepare a workspace for Kast compiler evidence. Inspect the selected IDEA host, open the requested " +
-                "repository when needed, and poll pending work with status before semantic queries. Manage setup " +
-                "through this tool without asking the user to run workspace commands. You can also present, sync, " +
-                "configure an exact task-success refresh rule, " +
-                "release or close an exact project. Opening is background best effort. Preserve returned host and " +
+            "Inspect or explicitly control one selected IDEA workspace. Ordinary semantic calls prepare the exact " +
+                "project and wait for native readiness automatically; " +
+                "do not use this tool as a routine read preflight. " +
+                "For a requested control operation, open, present, release or close an exact project. " +
+                "The host owns document save, VFS refresh and model reload selection. " +
+                "Opening is background best effort. Preserve returned host and " +
                 "project identities and reuse request IDs only for the same operation. Pending work requires " +
-                "status, not repeated open or sync. Unsaved documents and trust require user " +
+                "status, not repeated open. Trust and failed saves require user " +
                 "resolution. Release never closes a project. Borrowed or presented projects are protected from agent " +
                 "cleanup; request_user_close requests exact-target controller approval.",
             approval = HostedApprovalPolicy.EXACT_PROJECT_CLOSE,
@@ -143,7 +144,10 @@ object CanonicalAgentToolDefinitions {
             CanonicalOperationDefinitions.relationRead,
             "read_relations",
             "Read one bounded compiler-grounded semantic relation from an exact selector. Use " +
-                "a Kast search tool first when exact identity is not established. Omit limit for the bounded default.",
+                "a Kast search tool first when exact identity is not established. Related declarations " +
+                "may be in other files or packages; inspect qualifications and resume with the " +
+                "returned continuation. " +
+                "Omit limit for the bounded default.",
             inputAliases = setOf("semantic_query"),
         )
     val impactAnalyze =

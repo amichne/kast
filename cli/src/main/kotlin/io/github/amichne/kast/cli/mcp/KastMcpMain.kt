@@ -88,7 +88,7 @@ object KastMcpMain {
                 catalog = visible.map { catalog.getValue(it.name.value) },
                 invoke = invokeCanonical,
                 root = { FilesystemCanonicalRootDiscovery.discover(directory) },
-                supplemental = investigation.tools + McpWorkspaceRefreshTool(directory, read).tool + change.tool,
+                supplemental = investigation.tools + change.tool,
                 onInitialize = read::start,
             )
             .run(BufferedInputStream(System.`in`), System.out)

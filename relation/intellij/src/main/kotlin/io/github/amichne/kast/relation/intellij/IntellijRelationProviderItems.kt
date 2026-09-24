@@ -12,7 +12,10 @@ import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
 import org.jetbrains.kotlin.idea.references.KtReference
 import org.jetbrains.kotlin.psi.KtCallElement
+import org.jetbrains.kotlin.psi.KtConstructorCalleeExpression
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
+import org.jetbrains.kotlin.psi.KtObjectDeclaration
+import org.jetbrains.kotlin.psi.KtUserType
 
 internal enum class CallOwnershipFailure(val limitation: RelationLimitation) {
     UNSUPPORTED_BOUNDARY(RelationLimitation.UNSUPPORTED_ITEM),
@@ -119,6 +122,9 @@ private fun PsiElement.lexicalDeclaration(): ContainingDeclaration {
             is org.jetbrains.kotlin.psi.KtPropertyAccessor -> return ContainingDeclaration.Deferred(element)
             is org.jetbrains.kotlin.psi.KtProperty -> if (!element.isLocal) return ContainingDeclaration.Found(element)
             is org.jetbrains.kotlin.psi.KtParameter -> Unit
+            // Object literals run their constructor and initializer path in the enclosing callable.
+            // Named members are found first and retain their own lexical ownership.
+            is KtObjectDeclaration -> if (!element.isObjectLiteral()) return ContainingDeclaration.Found(element)
             is KtNamedDeclaration -> return ContainingDeclaration.Found(element)
             is com.intellij.psi.PsiMember -> if (element is PsiNamedElement) return ContainingDeclaration.Found(element)
         }
@@ -174,12 +180,19 @@ internal fun PsiElement.nearestSupportedDeclaration(
         ?.let(SupportedContainingDeclaration::Found) ?: SupportedContainingDeclaration.Unsupported
 
 internal fun KtCallElement.calleeReferences(): KotlinCallReferences {
-    val references = calleeExpression?.references?.filterIsInstance<KtReference>().orEmpty()
+    val references = calleeReferenceSite()?.references?.filterIsInstance<KtReference>().orEmpty()
     return if (references.isEmpty()) {
         KotlinCallReferences.Unresolved
     } else {
         KotlinCallReferences.Found(references)
     }
 }
+
+/** A supertype constructor's reference belongs to its user type, not the wrapper callee PSI. */
+internal fun KtCallElement.calleeReferenceSite(): PsiElement? =
+    when (val callee = calleeExpression) {
+        is KtConstructorCalleeExpression -> (callee.typeReference?.typeElement as? KtUserType)?.referenceExpression
+        else -> callee
+    }
 
 internal fun resumable(limitation: RelationLimitation) = IntellijRelationTermination.Resumable(setOf(limitation))

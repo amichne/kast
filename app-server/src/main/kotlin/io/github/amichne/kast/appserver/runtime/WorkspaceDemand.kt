@@ -4,6 +4,7 @@ import io.github.amichne.kast.appserver.ide.CanonicalRoot
 import io.github.amichne.kast.appserver.ide.ExistingIdeClient
 import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
+import io.github.amichne.kast.appserver.ide.HostedPresemanticRecovery
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
@@ -58,6 +59,18 @@ internal class PreparedWorkspaceDemand(
     private val invoke: suspend (PreparedWorkspace, ExistingIdeOperation) -> ExistingIdeExchange,
 ) : WorkspaceDemand {
     override suspend fun query(root: CanonicalRoot, operation: ExistingIdeOperation): WorkspaceDemandResult {
+        val first = queryOnce(root, operation)
+        val failure = (first as? WorkspaceDemandResult.Rejected)?.failure as? WorkspaceDemandFailure.Operation
+        // No semantic operation was sent when identity inspection detected a changed host.
+        val modelReload = (first as? WorkspaceDemandResult.Native)?.exchange as? ExistingIdeExchange.HostRejected
+        val retryableModelChange =
+            modelReload?.recovery == HostedPresemanticRecovery.ModelReload && operation.canRetryAfterModelReload()
+        return if (failure?.cause == WorkspaceDemandCause.HostChanged || retryableModelChange)
+            queryOnce(root, operation)
+        else first
+    }
+
+    private suspend fun queryOnce(root: CanonicalRoot, operation: ExistingIdeOperation): WorkspaceDemandResult {
         val entry =
             when (val admitted = preparations.prepare(root)) {
                 is Refinement.Refined -> admitted.value
@@ -80,9 +93,15 @@ internal class PreparedWorkspaceDemand(
         when (val observed = inspect()) {
             is IdeLifecycleResult.Inspected -> {
                 val exact = observed.projects.filter { it.target.root == workspace.root.path.toString() }
-                if (observed.host == workspace.host.toString() && exact.singleOrNull()?.target == workspace.target)
-                    WorkspaceDemandResult.Native(invoke(workspace, operation))
-                else {
+                if (observed.host == workspace.host.toString() && exact.singleOrNull()?.target == workspace.target) {
+                    val exchange = invoke(workspace, operation)
+                    if (
+                        exchange is ExistingIdeExchange.HostRejected &&
+                            exchange.recovery == HostedPresemanticRecovery.ModelReload
+                    )
+                        preparations.invalidate(entry.id, workspace)
+                    WorkspaceDemandResult.Native(exchange)
+                } else {
                     preparations.invalidate(entry.id, workspace)
                     rejected(entry, WorkspaceDemandCause.HostChanged)
                 }
@@ -94,3 +113,14 @@ internal class PreparedWorkspaceDemand(
     private fun rejected(entry: WorkspacePreparation, cause: WorkspaceDemandCause) =
         WorkspaceDemandResult.Rejected(WorkspaceDemandFailure.Operation(entry.id, entry.root, cause))
 }
+
+private fun ExistingIdeOperation.canRetryAfterModelReload(): Boolean =
+    when (this) {
+        is ExistingIdeOperation.Read,
+        is ExistingIdeOperation.Classes,
+        is ExistingIdeOperation.Supertype,
+        is ExistingIdeOperation.Plan,
+        is ExistingIdeOperation.ApprovalPreparation,
+        is ExistingIdeOperation.ApprovedMutation -> true
+        ExistingIdeOperation.Status -> false
+    }

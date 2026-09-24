@@ -21,6 +21,7 @@ import io.github.amichne.kast.workspace.intellij.read.hosted.HostedSemanticReadC
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedSemanticReadResult
 
 /** Verification is part of apply completion and reacquires its own live read after the source effect. */
+@Suppress("LongMethod") // Keep the post-write proof and receipt issuance in one ordered effect boundary.
 internal suspend fun completeHostedApplication(
     project: Project,
     query: HostedQueryService,
@@ -39,15 +40,20 @@ internal suspend fun completeHostedApplication(
     val verification =
         when (
             val read =
-                query.read(query.endpoint, plan.basis.observation.reference.workspaceRoot) { context ->
-                    HostedLiveAddDeclarationVerifier.verify(
-                        project = project,
-                        context = context,
-                        plan = plan,
-                        expectedPostimage = write.content,
-                        ports = verificationPorts(project, context),
-                    )
-                }
+                retryPresemanticIndexing(
+                    read = {
+                        query.read(query.endpoint, plan.basis.observation.reference.workspaceRoot) { context ->
+                            HostedLiveAddDeclarationVerifier.verify(
+                                project,
+                                context,
+                                plan,
+                                write.content,
+                                verificationPorts(project, context),
+                            )
+                        }
+                    },
+                    wait = { awaitHostedSmartMode(project) },
+                )
         ) {
             is HostedSemanticReadResult.Completed ->
                 when (val verified = read.value) {

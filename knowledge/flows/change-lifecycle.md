@@ -31,6 +31,7 @@ code_sources:
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangePlanning.kt
   - path: change/intellij/src/main/kotlin/io/github/amichne/kast/change/intellij/LiveWriteObservation.kt
   - path: change/intellij/src/main/kotlin/io/github/amichne/kast/change/intellij/LiveIntellijDocumentSession.kt
+  - path: change/intellij/src/main/kotlin/io/github/amichne/kast/change/intellij/ProjectDocumentAdmission.kt
   - path: change/intellij/src/main/kotlin/io/github/amichne/kast/change/intellij/PhysicalWriteCompletion.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeApprovals.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeApply.kt
@@ -96,6 +97,8 @@ model, then observes the exact saved preimage. `LiveMutationAuthority` retains
 that proof and the approved write set. A pre-write observation guards the
 IntelliJ write command; the adapter receives only the admitted single-file effect.
 Durable pre-write and applied records retain recovery evidence across effects.
+Pre-write and rollback document admission considers unsaved buffers under the
+selected project root, so unrelated IDE projects cannot block an authorized write.
 
 The IntelliJ command group belongs to one document mutation session. Mutation
 and any local restoration share that group; separate admitted attempts have

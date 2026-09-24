@@ -129,7 +129,7 @@ class HostedReadDiagnosticsTest {
             result,
         )
         val receipt = receipts.single()
-        assertEquals(HostedSemanticEntry.Entered(3_400_000_000), receipt.semanticEntry)
+        assertEquals(HostedSemanticEntry.Entered(29_400_000_000), receipt.semanticEntry)
         assertEquals(2_400_000_000, receipt.durationNanos)
         assertEquals(HostedDiagnosticOutcome.Completed, receipt.outcome)
         assertEquals(HostedExecution.Completed(7), executor.execute(executor.endpoint) { 7 })

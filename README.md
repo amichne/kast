@@ -59,8 +59,8 @@ first valid request: any 2026-07-28 request, commonly `server/discover`, or
 `initialize` for handshake clients. It reuses the selected IDEA or launches it in the background, then
 opens and imports that project. Compiler-backed calls join the same preparation
 and wait for readiness. You do not need to manage project lifecycle commands.
-Kast asks for help only when setup encounters a user-owned decision such as project
-trust or unsaved documents.
+Kast saves project editor buffers and refreshes files or the Gradle model as needed.
+It asks for help when project trust or a failed save needs user action.
 
 ## Work with Kotlin
 

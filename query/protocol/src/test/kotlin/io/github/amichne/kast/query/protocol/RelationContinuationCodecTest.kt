@@ -12,6 +12,7 @@ import io.github.amichne.kast.relation.contract.RelationOperations
 import io.github.amichne.kast.relation.contract.RelationReadResult
 import io.github.amichne.kast.relation.contract.RelationRequest as DomainRelationRequest
 import io.github.amichne.kast.relation.contract.RelationResultCount
+import io.github.amichne.kast.relation.contract.RelationSearchBoundary
 import io.github.amichne.kast.relation.contract.RelationWorkCount
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -20,6 +21,13 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class RelationContinuationCodecTest {
+    @Test
+    fun `public relation reads expand across package and file boundaries`() = runTest {
+        val fixture = RelationPagingFixture.live()
+        fixture.page()
+        assertEquals(listOf(RelationSearchBoundary.WORKSPACE_EXPANSION), fixture.observedBoundaries)
+    }
+
     @Test
     fun `published and live owner issued pages resume after the exact consumed prefix`() = runTest {
         for ((fixture, version) in

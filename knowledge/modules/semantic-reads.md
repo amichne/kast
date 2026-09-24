@@ -148,6 +148,10 @@ Read [semantic query](../flows/semantic-query.md) for execution order and [compi
 
 Native symbol/relation adapters accept an optional request-local observation capability. Finite counters and termination reasons distinguish name/candidate caps from work/time/result/byte budgets, and unresolved K2 symbols from resolved non-Kotlin PSI or non-Kotlin references. The hosted boundary owns default publication and records effective limits. The [synthetic reproduction report](../../docs/reviews/hosted-semantic-reproduction.md) records the original native causes and the corrected separation of subject selection from workspace expansion.
 
+For reference relations, a K2 identity that differs from the selected subject
+proves an indexed candidate is unrelated and is dismissed without an omission.
+An unavailable K2 identity still qualifies coverage as unresolved.
+
 The corrected scoped `ALL` path enumerates Kotlin declarations through the admitted file-type index without workspace name enumeration. Generated primary-constructor properties retain K2 property identity. Java reference endpoints retain compiler identity, and workspace expansion preserves original subject restrictions separately from destination admission. [Read-limit settings](../../docs/hosted-read-configuration.md) tune operational bounds while default logs preserve stages, outcomes and their effective values.
 
 Search planning applies cheap scope and declaration-family constraints before

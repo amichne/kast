@@ -9,6 +9,20 @@ import org.junit.jupiter.api.Test
 
 class HostedReadRecoveryTest {
     @Test
+    fun `capture timeout identifies the host preparation deadline`() {
+        val document =
+            Json.parseToJsonElement(
+                    HostedQueryWire.encode(
+                        HostedQueryResult.Rejected(HostedQueryFailure.BUDGET_EXCEEDED, HostedQueryStage.MODEL_CAPTURE)
+                    )
+                )
+                .jsonObject
+        val recovery = document.getValue("recovery").jsonObject
+        assertEquals("increase_host_deadline", recovery.getValue("kind").jsonPrimitive.content)
+        assertEquals("MODEL_CAPTURE", document.getValue("stage").jsonPrimitive.content)
+    }
+
+    @Test
     fun `exhaustion and cancellation have different actionable recovery`() {
         for ((failure, expected) in
             listOf(

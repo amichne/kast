@@ -45,6 +45,9 @@ code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastDirectInvocation.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastInvocationAdmission.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleApplication.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleReadiness.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedVfsRefreshOutcome.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedGradleChangeTracker.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/WorkspaceStartupEnrollment.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/BrokerPublicEndpoint.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/ManagedCodexUpstream.kt
@@ -76,6 +79,7 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt
     symbols: [KastCliMain]
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/IndexingWait.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint.kt
   - path: runtime/hosted/build.gradle.kts
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/compatibility/IdeHostCompatibility.kt
@@ -175,7 +179,7 @@ inferring IDEA authority. Installed transport acceptance does not qualify stock
 interactive CLI or Desktop tool exposure; the explicit CLI route and Desktop
 façade remain pending those gates.
 
-The hosted endpoint also composes an explicit workspace refresh owner outside `workspace:intellij-read`. Its existing socket accepts file refresh, Gradle model reload, bounded status and one opt-in task-success rule per project. `workspace_lifecycle sync` and `configure_sync` select those effects through an exact project target. The direct refresh request remains for disposable native acceptance and requires an already linked project. Initial linking is admitted only through explicit application lifecycle opening; semantic read admission remains passive.
+The hosted endpoint also composes a workspace refresh owner outside `workspace:intellij-read`. Its internal socket retains file refresh, Gradle model reload, bounded status and one task-success rule per project. Public `workspace_lifecycle` requests do not select refresh effects. The direct refresh request remains for disposable native acceptance and requires an already linked project. Initial linking is admitted only through application lifecycle opening; semantic request admission saves project-owned documents and refreshes VFS before entering the passive compiler read. Gradle-aware VFS events mark the imported model stale; a read returns a typed presemantic blocker, and the coordinator reopens and retries one safe read after native import.
 
 Fresh semantic reads additionally use `ReacquiringQueryReferences`, backed by the
 separate detached exact-locator store. Its request-local accounting charges
@@ -185,7 +189,7 @@ and mutation planning do not use this capability. The
 [query protocol](query-protocol.md#automatic-acquisition-for-fresh-reads) specifies
 the identity checks and returned handle metadata.
 
-The plugin additionally owns one `IdeLifecycleApplication` service and user-scoped control endpoint per selected graphical application home. It remains available with zero projects, advertises actual build, host incarnation and capabilities, and retains at most 256 operation records. The endpoint reuses existing ownership and framed transport. Project semantic services remain project-scoped. The agent-only `workspace_lifecycle` tool calls the App Server-owned lifecycle client directly and exposes inspect/open/present/sync/release/close/status. `request_user_close` uses the existing controller lease and enrolled signing authority to approve one exact target; session-wide approval is insufficient. Native semantic admission remains passive; the daemon uses opening before semantic dispatch and never obtains user-close authority from that preparation.
+The plugin additionally owns one `IdeLifecycleApplication` service and user-scoped control endpoint per selected graphical application home. It remains available with zero projects, advertises actual build, host incarnation and capabilities, and retains at most 256 operation records. The endpoint reuses existing ownership and framed transport. Project semantic services remain project-scoped. The agent-only `workspace_lifecycle` tool calls the App Server-owned lifecycle client directly and exposes inspect/open/present/release/close/status. `request_user_close` uses the existing controller lease and enrolled signing authority to approve one exact target; session-wide approval is insufficient. The daemon uses opening before semantic dispatch and never obtains user-close authority from that preparation. Existing-project opening waits through active import and requests one linked Gradle model reload on first attach, after tracked Gradle changes, or when the cached model is unavailable. A clean subsequent opening reuses the admitted model. Project-owned documents are saved before refresh or read; a failed save rejects. An indexing transition rejected before semantic evaluation waits briefly for smart mode and retries the read once; a rejection after evaluation does not replay work.
 
 App Server qualifies its complete tool catalog from the bounded packaged provider
 contract and canonical registry. It has no Kast process executor or CLI version
@@ -225,9 +229,9 @@ A bounded 256-record table rejects excess roots without discarding evidence. Clo
 settles pending records without closing IDEA projects. Preparation events expose
 bounded typed stage/outcome evidence without roots or payloads. Installed tool demand shares this owner and waits within the canonical readiness
 budget. Before one semantic exchange, it requires a fresh selected-application
-inspection and an exact project descriptor match. A proven host change rejects the
-current demand and removes only its current root binding; the historical record
-remains. A later demand may prepare again. Transport failures never replay the
+inspection and an exact project descriptor match. A proven host change removes only
+the current root binding and starts one fresh preparation before semantic dispatch;
+the historical record remains. A second change rejects. Transport failures never replay the
 semantic request. Preparation rejection retains its finite cause and operation ID
 as known pre-execution failure evidence.
 

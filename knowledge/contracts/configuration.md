@@ -83,7 +83,7 @@ byte-for-byte agreement with that owner-generated output.
 
 Broker configuration identity remains owner-correlated while coordinator status admits zero workers. The private executable admits only product version inspection; former semantic and configuration commands reject.
 
-The default host query limit is 4,000 ms. At semantic entry the host derives smaller positive semantic and diagnostic-scope allowances from remaining request time, preserving the configured policy separately in diagnostics. See the deadline admission rules in the read configuration guide.
+The default host query limit is 30,000 ms, with 31,000 ms for the host connection and 32,000 ms for the client exchange. This gives cached Gradle model capture time before semantic search while retaining strict outer deadlines. At semantic entry the host derives smaller positive semantic and diagnostic-scope allowances from remaining request time, preserving the configured policy separately in diagnostics. See the deadline admission rules in the read configuration guide.
 
 `HOST_REFERENCE_ENTRIES` and `HOST_REFERENCE_BYTES` bound the project-owned compact-reference table. Their defaults are 16,384 entries and 33,554,432 UTF-8 bytes; both are positive typed read limits. Capacity preserves a valid inline representation instead of evicting current-epoch handles.
 

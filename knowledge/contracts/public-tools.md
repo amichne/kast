@@ -29,7 +29,6 @@ code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicSourceReadIntent.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/source/SourceCommands.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpInvestigationTools.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpWorkspaceRefreshTool.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpSingleChangeTool.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpDirectToolCatalog.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpWorkspaceValidation.kt
@@ -84,9 +83,7 @@ The health result makes no semantic correctness claim.
 `validate_workspace` composes existing read calls in order: discovery, exact
 inspection, source, relation, and IDE diagnostic scan. Missing probes and
 incomplete results are `unverified`; an exhaustive negative probe is `failed`.
-`refresh_workspace` selects the session's exact open project and requests
-`FILE_REFRESH` through the native lifecycle; a pending request is polled by its
-ID. It does not save documents or reload Gradle. The direct MCP `change` tool
+The direct MCP `change` tool
 uses the planning input, prepares an exact-plan assertion internally, applies
 once, and returns the plan and verified receipt together. An unverified apply
 attempts recovery and retains both outcomes. Only a complete `prior_state` or
@@ -133,7 +130,8 @@ commands render as Bash blocks in the page content.
 `read_relations` advertises both published `v1` and live `v2` relation
 continuations in its resume input and qualified output. Both schemas use
 `RelationContinuationDocument.TOKEN_PATTERN`; the production codec preserves
-the authority's version. The [query protocol](../modules/query-protocol.md)
+the authority's version. The public read expands destinations across the
+workspace while preserving the original subject reference. The [query protocol](../modules/query-protocol.md)
 retains the stronger continuation ownership checks after structural admission.
 
 Public exact-reference syntax accepts hosted `exact:v5:` and `exact:v4:` handles alongside legacy `v2` and `v3` tokens. Returned references remain opaque and must be passed back unchanged. The host resolves compact handles before validating authority; source anchors also accept the corresponding candidate handle family.
@@ -211,4 +209,4 @@ for its discovered Gradle root; semantic calls join that preparation and retain
 exact identities and finite blockers. Explicit lifecycle tools remain available
 for inspection and recovery.
 
-`workspace_lifecycle` is an eager canonical effectful tool with action-specific tagged inputs for inspect, open, present, sync, configure_sync, release, close, request_user_close and status. The configure action applies a task-success refresh rule only to an exact project target. Host selection comes from installed configuration; caller identity comes from the coordinator thread. The `EXACT_PROJECT_CLOSE` approval policy applies to the explicit user-close branch. Ordinary managed cleanup still enforces ownership and shared use, while source changes use one internally signed `change` invocation.
+`workspace_lifecycle` is an eager canonical effectful tool with action-specific tagged inputs for inspect, open, present, release, close, request_user_close and status. The public input excludes sync effect selection and task-success refresh configuration; those remain native implementation details. Host selection comes from installed configuration; caller identity comes from the coordinator thread. The `EXACT_PROJECT_CLOSE` approval policy applies to the explicit user-close branch. Ordinary managed cleanup still enforces ownership and shared use. Source changes use one internally signed `change` invocation.

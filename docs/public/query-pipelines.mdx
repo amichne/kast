@@ -124,7 +124,7 @@ define checkpoint size, count, aggregate bytes, and lifetime.
 - Read qualification and item failures.
 - Apply source-set restrictions to `query_symbols` discovery subjects only.
 - Keep expansion destinations outside that discovery restriction.
-- Preserve the admitted subject scope for `read_relations` and `traverse_relations`.
+- Preserve the exact subject reference for `read_relations`; its destinations may be in other files and packages. A returned continuation stays bound to that subject and relation.
 - Keep incomplete upstream coverage after buffered output drains.
 
 ## Traverse a large graph
