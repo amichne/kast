@@ -19,6 +19,7 @@ import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaTypeAliasSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaValueParameterSymbol
+import org.jetbrains.kotlin.psi.KtNamedFunction
 
 internal data class IntellijCompilerProjection(
     val kind: CompilerSymbolKind,
@@ -59,11 +60,7 @@ internal fun KaSymbol.compilerProjection(): IntellijCompilerProjectionResult =
                 functionSignature("$owner.<init>"),
             )
         }
-        is KaFunctionSymbol -> {
-            val callable =
-                callableId?.asSingleFqName()?.asString() ?: return IntellijCompilerProjectionResult.Unsupported
-            projected(CompilerSymbolKind.FUNCTION, callable, functionSignature(callable))
-        }
+        is KaFunctionSymbol -> projectedFunction()
         is KaKotlinPropertySymbol -> {
             val callable =
                 callableId?.asSingleFqName()?.asString() ?: return IntellijCompilerProjectionResult.Unsupported
@@ -98,6 +95,24 @@ internal fun KaSymbol.compilerProjection(): IntellijCompilerProjectionResult =
         }
         else -> IntellijCompilerProjectionResult.Unsupported
     }
+
+private fun KaFunctionSymbol.projectedFunction(): IntellijCompilerProjectionResult {
+    val callable =
+        callableId?.asSingleFqName()?.asString()
+            ?: (psi as? KtNamedFunction)?.let { function ->
+                function.containingFile.virtualFile?.url?.let(function::sourceBoundCallableIdentity)
+            }
+            ?: return IntellijCompilerProjectionResult.Unsupported
+    return projected(CompilerSymbolKind.FUNCTION, callable, functionSignature(callable))
+}
+
+/** A K2-resolved local function has no callableId; its exact file and PSI position bind its compiler signature. */
+internal fun KtNamedFunction.sourceBoundCallableIdentity(fileUrl: String): String? {
+    if (fileUrl.isBlank()) return null
+    val name = name?.takeIf(String::isNotBlank) ?: return null
+    val offset = textRange?.startOffset ?: return null
+    return "local@$fileUrl#$offset.$name"
+}
 
 /**
  * Proof transition: `(KaSymbol, KaSymbol) -> IntellijSymbolIdentityComparison`.
