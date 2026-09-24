@@ -12,34 +12,44 @@ import kotlinx.serialization.json.jsonPrimitive
 
 /** The canonical payload under `data` is intentionally opaque; its owner retains the full operation contract. */
 internal object McpStructuredResults {
-    private val wire = Json { encodeDefaults = true; explicitNulls = false }
+    private val wire = Json {
+        encodeDefaults = true
+        explicitNulls = false
+    }
     private val registry = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12)
 
     val readSchema: JsonObject =
-        wire.encodeToJsonElement(
-            McpOutputSchema(
-                oneOf = listOf(
-                    variant("complete", "data", "coverage", "basis"),
-                    variant("partial", "data", "coverage", "basis", "stopReason"),
-                    variant("rejected", "error"),
-                    variant("unavailable", "error"),
+        wire
+            .encodeToJsonElement(
+                McpOutputSchema(
+                    oneOf =
+                        listOf(
+                            variant("complete", "data", "coverage", "basis"),
+                            variant("partial", "data", "coverage", "basis", "stopReason"),
+                            variant("rejected", "error"),
+                            variant("unavailable", "error"),
+                        )
                 )
             )
-        ).jsonObject
+            .jsonObject
 
     val investigationSchema: JsonObject =
-        wire.encodeToJsonElement(
-            McpOutputSchema(
-                oneOf = listOf(
-                    variant("complete", "data"),
-                    variant("rejected", "error"),
+        wire
+            .encodeToJsonElement(
+                McpOutputSchema(
+                    oneOf =
+                        listOf(
+                            variant("complete", "data"),
+                            variant("rejected", "error"),
+                        )
                 )
             )
-        ).jsonObject
+            .jsonObject
 
-    val genericSchema: JsonObject = wire.encodeToJsonElement(
-        McpStatusSchema(properties = mapOf("status" to McpOutputProperty(type = "string")))
-    ).jsonObject
+    val genericSchema: JsonObject =
+        wire
+            .encodeToJsonElement(McpStatusSchema(properties = mapOf("status" to McpOutputProperty(type = "string"))))
+            .jsonObject
 
     fun schemaFor(name: String): JsonObject =
         when {
@@ -62,11 +72,11 @@ internal object McpStructuredResults {
     fun validationSummary(content: JsonObject?): String {
         val data = content?.get("data") as? JsonObject
         if (data == null) return "Workspace validation rejected: ${errorCode(content)}"
-        return listOf("discovery", "exactInspection", "sourceRead", "relation", "diagnostics")
-            .joinToString("; ") { name ->
-                val probe = data[name] as? JsonObject
-                "$name ${probe?.get("status")?.jsonPrimitive?.content ?: "unverified"}"
-            }
+        return listOf("discovery", "exactInspection", "sourceRead", "relation", "diagnostics").joinToString("; ") { name
+            ->
+            val probe = data[name] as? JsonObject
+            "$name ${probe?.get("status")?.jsonPrimitive?.content ?: "unverified"}"
+        }
     }
 
     private fun errorCode(content: JsonObject?): String =

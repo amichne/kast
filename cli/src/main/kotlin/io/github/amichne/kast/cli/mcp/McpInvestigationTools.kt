@@ -193,6 +193,9 @@ private enum class McpHealthErrorCode {
     INTERNAL_ERROR,
 }
 
-private val investigationJson = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+private val investigationJson = Json {
+    ignoreUnknownKeys = true
+    encodeDefaults = true
+}
 private val healthReadyFactory = CanonicalJsonDocument.generated(McpHealthReady.serializer())
 private val healthRejectedFactory = CanonicalJsonDocument.generated(McpHealthRejected.serializer())

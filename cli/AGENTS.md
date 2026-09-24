@@ -13,6 +13,7 @@ legacy command graph retained for migration, and hosted output projections.
 - [KastDaemonMain.kt](src/main/kotlin/io/github/amichne/kast/cli/KastDaemonMain.kt) - private managed daemon entry point with exact login admission outside the public command graph.
 - [KastServiceMain.kt](src/main/kotlin/io/github/amichne/kast/cli/KastServiceMain.kt) - private installation service control with typed rejection output.
 - [KastMcpMain.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt) - installed Kast stdio MCP transport and session tool dispatch.
+- [McpWire.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/McpWire.kt) - typed MCP discovery, request, and result envelopes.
 - [McpStructuredResults.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/McpStructuredResults.kt) - schema-validated MCP result envelopes and concise health and validation summaries.
 - [McpApproval.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/McpApproval.kt) - terminal-held preview approval and one-use mutation grant.
 

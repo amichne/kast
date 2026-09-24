@@ -14,7 +14,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.encodeToJsonElement
-import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -90,11 +89,14 @@ class McpInvestigationToolsTest {
                     .create(TestHostedStatus(selected.path.toString(), operations = emptyList()))
             )
         }
-        val tools = McpInvestigationTools(
-            root,
-            ExistingIdeCliCapabilities(FilesystemCanonicalRootDiscovery, native),
-            setOf("QUERY_RUN"),
-        ) { _, _ -> error("semantic read must not run") }
+        val tools =
+            McpInvestigationTools(
+                root,
+                ExistingIdeCliCapabilities(FilesystemCanonicalRootDiscovery, native),
+                setOf("QUERY_RUN"),
+            ) { _, _ ->
+                error("semantic read must not run")
+            }
         val exit = tools.tools.single { it.name == "health_check" }.invoke(emptyArguments())
         assertTrue(exit is CliExit.OperationRejected)
         val result = Json.parseToJsonElement(exit.document.value).jsonObject
