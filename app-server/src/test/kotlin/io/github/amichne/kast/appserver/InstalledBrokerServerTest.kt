@@ -110,6 +110,8 @@ class InstalledBrokerServerTest {
                         as InstalledBrokerServerConfiguration.Configured)
                     .options
 
+            assertEquals(user, configured(base).kastOptions.userHome)
+
             assertEquals(
                 listOf(
                     "-c",

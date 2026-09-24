@@ -28,9 +28,6 @@ object KastMcpMain {
     @JvmStatic
     @Suppress("CognitiveComplexMethod", "CyclomaticComplexMethod", "LongMethod")
     fun main(args: Array<String>) {
-        if (args.firstOrNull() == "approve") {
-            kotlin.system.exitProcess(McpApprovalHelper.run(args.drop(1)))
-        }
         if (args.isNotEmpty()) return
         val graph = CliCommandGraphFactory.create(canonicalCliRequestPreparers())
         if (graph !is CliCommandGraphConstruction.Created) return
@@ -44,7 +41,6 @@ object KastMcpMain {
             (FilesystemCanonicalRootDiscovery.discover(directory) as? CanonicalRootDiscovery.Discovered)?.root?.path
                 ?: directory
         val home = Path.of(System.getProperty("user.home"))
-        val approvals = McpApprovalStore(home)
         val read = mcpWorkspaceOperationClient(home, System.getenv())
         val capabilities =
             ExistingIdeCliCapabilities(
@@ -67,23 +63,12 @@ object KastMcpMain {
                                 )
                         }
                 }
-            val mutation = name == "change_apply" || name == "change_recover"
-            val admittedRoot =
-                (FilesystemCanonicalRootDiscovery.discover(directory) as? CanonicalRootDiscovery.Discovered)?.root?.path
-            val grant = if (mutation && admittedRoot != null) approvals.take(name, arguments, admittedRoot) else null
-            if (mutation && grant == null)
-                boundaryExit(CliBoundaryExitStatus.USAGE, "approval-required-run-kast-mcp-approve")
-            else
-                executeExistingIdeCli(
-                    argv = if (mutation) command + "--hosted-approved-invocation" else command,
-                    start = directory,
-                    capabilities = capabilities,
-                    requestInput =
-                        CliRequestDocumentInput.Provided(
-                            if (grant != null) mcpWire.encodeToString(McpApprovedArguments(arguments, grant))
-                            else arguments.toString()
-                        ),
-                )
+            executeExistingIdeCli(
+                argv = command,
+                start = directory,
+                capabilities = capabilities,
+                requestInput = CliRequestDocumentInput.Provided(arguments.toString()),
+            )
         }
         val investigation =
             McpInvestigationTools(

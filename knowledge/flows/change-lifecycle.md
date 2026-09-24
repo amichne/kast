@@ -78,6 +78,10 @@ Plan identity alone does not grant write authority. Concurrent requests retain
 distinct challenges for the same plan; only the cryptographically matched
 challenge is consumed.
 
+A definitive host or semantic apply rejection remains `APPLY_REJECTED` with its
+host document and does not start recovery. An uncertain apply retains its
+separate recovery path.
+
 Apply compares the plan with a fresh live root, host, epoch, content view and
 model, then observes the exact saved preimage. `LiveMutationAuthority` retains
 that proof and the approved write set. A pre-write observation guards the

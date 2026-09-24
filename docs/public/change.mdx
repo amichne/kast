@@ -89,11 +89,12 @@ unloaded or closed project owner.
 | `applied_unverified` | A write occurred, but verification or receipt persistence did not complete. | Inspect the automatic recovery result and retain the plan identity. |
 | `recovery_required` | An attempted effect remains uncertain or needs reconciliation. | Inspect the automatic recovery result and retain the plan identity. |
 
-Read the top-level `status` before `application.status` and `application.state`.
+Read the top-level `status` first. On a rejected result, inspect
+`error.application` and `error.recovery` for the retained phase outcomes.
 
 - A verified apply is `complete`.
-- Direct MCP reports uncertain states as `qualified`; App Server reports a
-  `rejected` `change.run` document with the retained phase evidence.
+- Direct MCP and App Server report uncertain outcomes as `rejected` with the
+  retained plan, application, and recovery evidence.
 - A pre-mutation rejection proves that the attempt wrote nothing.
 - A lost response does not prove that nothing was written.
 

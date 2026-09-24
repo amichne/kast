@@ -41,15 +41,15 @@ internal class McpSingleChangeTool(
         val planned = operation(McpChangePhase.PLAN, arguments)
         val planDocument = document(planned) ?: return rejected(McpChangeFailure.INVALID_PLAN_RESULT)
         if (planned !is CliExit.Complete && planned !is CliExit.Qualified)
-            return rejected(McpChangeFailure.PLAN_REJECTED, evidence = planDocument)
+            return rejected(McpChangeFailure.PLAN_REJECTED, plan = planDocument)
         val plan =
             try {
                 changeJson.decodeFromJsonElement<McpStoredPlan>(planDocument)
             } catch (_: SerializationException) {
-                return rejected(McpChangeFailure.INVALID_PLAN_RESULT, evidence = planDocument)
+                return rejected(McpChangeFailure.INVALID_PLAN_RESULT, plan = planDocument)
             }
         if (plan.status != McpPlanStatus.COMPLETE || !PLAN_ID.matches(plan.planIdentity))
-            return rejected(McpChangeFailure.INVALID_PLAN_RESULT, evidence = planDocument)
+            return rejected(McpChangeFailure.INVALID_PLAN_RESULT, plan = planDocument)
 
         return apply(plan.planIdentity, planDocument)
     }
@@ -57,12 +57,12 @@ internal class McpSingleChangeTool(
     private fun apply(identity: String, planDocument: JsonElement): CliExit {
         val assertion =
             authorize(McpChangePhase.PREPARE_APPLY, identity)
-                ?: return rejected(McpChangeFailure.AUTHORIZATION_UNAVAILABLE, identity, planDocument)
+                ?: return rejected(McpChangeFailure.AUTHORIZATION_UNAVAILABLE, identity, plan = planDocument)
         val applied =
             try {
                 operation(McpChangePhase.APPLY, approvedArguments(identity, assertion))
             } catch (_: RuntimeException) {
-                return recover(identity, planDocument, null, McpChangeIssue.APPLICATION_RESPONSE_UNAVAILABLE)
+                return recover(identity, planDocument, null, McpChangeFailure.APPLICATION_RESPONSE_UNAVAILABLE)
             }
         val application =
             document(applied)
@@ -70,10 +70,10 @@ internal class McpSingleChangeTool(
                     identity,
                     planDocument,
                     null,
-                    McpChangeIssue.APPLICATION_RESPONSE_UNAVAILABLE,
+                    McpChangeFailure.APPLICATION_RESPONSE_UNAVAILABLE,
                 )
         if (applied is CliExit.OperationRejected)
-            return rejected(McpChangeFailure.APPLY_REJECTED, identity, application)
+            return rejected(McpChangeFailure.APPLY_REJECTED, identity, planDocument, application)
         val state =
             try {
                 changeJson.decodeFromJsonElement<McpApplicationState>(application)
@@ -82,7 +82,7 @@ internal class McpSingleChangeTool(
                     identity,
                     planDocument,
                     application,
-                    McpChangeIssue.APPLICATION_RESPONSE_UNAVAILABLE,
+                    McpChangeFailure.APPLICATION_RESPONSE_UNAVAILABLE,
                 )
             }
         if (
@@ -93,14 +93,14 @@ internal class McpSingleChangeTool(
             return CliExit.Complete(
                 changeDocument.create(McpSingleChangeResult.Complete(identity, planDocument, application))
             )
-        return recover(identity, planDocument, application, McpChangeIssue.APPLICATION_UNVERIFIED)
+        return recover(identity, planDocument, application, McpChangeFailure.APPLICATION_UNVERIFIED)
     }
 
     private fun recover(
         identity: String,
         plan: JsonElement,
         application: JsonElement?,
-        issue: McpChangeIssue,
+        issue: McpChangeFailure,
     ): CliExit {
         val assertion = runCatching { authorize(McpChangePhase.PREPARE_RECOVER, identity) }.getOrNull()
         val recovery =
@@ -108,14 +108,16 @@ internal class McpSingleChangeTool(
             else
                 runCatching { document(operation(McpChangePhase.RECOVER, approvedArguments(identity, assertion))) }
                     .getOrNull()
-        return CliExit.Qualified(
+        return CliExit.OperationRejected(
             changeDocument.create(
-                McpSingleChangeResult.Qualified(
-                    identity,
-                    plan,
-                    application,
-                    recovery,
-                    if (recovery == null) McpChangeIssue.RECOVERY_UNAVAILABLE else issue,
+                McpSingleChangeResult.Rejected(
+                    McpChangeError(
+                        if (recovery == null) McpChangeFailure.RECOVERY_UNAVAILABLE else issue,
+                        identity,
+                        plan,
+                        application,
+                        recovery,
+                    )
                 )
             )
         )
@@ -147,10 +149,11 @@ internal class McpSingleChangeTool(
     private fun rejected(
         failure: McpChangeFailure,
         identity: String? = null,
-        evidence: JsonElement? = null,
+        plan: JsonElement? = null,
+        application: JsonElement? = null,
     ): CliExit.OperationRejected =
         CliExit.OperationRejected(
-            changeDocument.create(McpSingleChangeResult.Rejected(McpChangeError(failure, identity, evidence)))
+            changeDocument.create(McpSingleChangeResult.Rejected(McpChangeError(failure, identity, plan, application)))
         )
 
     companion object {
@@ -237,21 +240,17 @@ private sealed interface McpSingleChangeResult {
     data class Complete(val planIdentity: String, val plan: JsonElement, val application: JsonElement) :
         McpSingleChangeResult
 
-    @Serializable
-    @SerialName("qualified")
-    data class Qualified(
-        val planIdentity: String,
-        val plan: JsonElement,
-        val application: JsonElement?,
-        val recovery: JsonElement?,
-        val issue: McpChangeIssue,
-    ) : McpSingleChangeResult
-
     @Serializable @SerialName("rejected") data class Rejected(val error: McpChangeError) : McpSingleChangeResult
 }
 
 @Serializable
-private data class McpChangeError(val code: McpChangeFailure, val planIdentity: String?, val evidence: JsonElement?)
+private data class McpChangeError(
+    val code: McpChangeFailure,
+    val planIdentity: String? = null,
+    val plan: JsonElement? = null,
+    val application: JsonElement? = null,
+    val recovery: JsonElement? = null,
+)
 
 @Serializable
 private enum class McpChangeFailure {
@@ -259,10 +258,6 @@ private enum class McpChangeFailure {
     INVALID_PLAN_RESULT,
     AUTHORIZATION_UNAVAILABLE,
     APPLY_REJECTED,
-}
-
-@Serializable
-private enum class McpChangeIssue {
     APPLICATION_UNVERIFIED,
     APPLICATION_RESPONSE_UNAVAILABLE,
     RECOVERY_UNAVAILABLE,

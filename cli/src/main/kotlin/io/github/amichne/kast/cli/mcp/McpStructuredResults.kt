@@ -65,7 +65,6 @@ internal object McpStructuredResults {
                     oneOf =
                         listOf(
                             variant("complete", "planIdentity", "plan", "application"),
-                            variant("qualified", "planIdentity", "plan", "issue"),
                             variant("rejected", "error"),
                         )
                 )

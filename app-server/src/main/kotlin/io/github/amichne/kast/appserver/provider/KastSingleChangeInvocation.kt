@@ -125,19 +125,16 @@ internal class KastSingleChangeInvocation(private val options: KastProviderOptio
                 NativePhase.Incomplete(null)
             }
         val applicationDocument = application.document
-        val state = applicationDocument?.let { document ->
-            try {
-                changeJson.decodeFromJsonElement<ApplicationState>(document)
-            } catch (_: SerializationException) {
-                null
-            }
-        }
-        if (
-            application is NativePhase.Complete &&
-                state?.status == NativeStatus.COMPLETE &&
-                state.state == NativeApplyState.VERIFIED
-        )
-            return result(ChangeRunDocument.Complete(identity, plan, applicationDocument), context)
+        if (application is NativePhase.Rejected)
+            return result(
+                ChangeRunDocument.Rejected(
+                    ChangeRunError(ChangeRejection.APPLY_REJECTED, identity, plan, applicationDocument)
+                ),
+                context,
+            )
+        val state = applicationState(applicationDocument)
+        val verified = verifiedApplication(application, state)
+        if (verified != null) return result(ChangeRunDocument.Complete(identity, plan, verified), context)
         if (application is NativePhase.Incomplete && state?.status == NativeStatus.REJECTED)
             return result(
                 ChangeRunDocument.Rejected(
@@ -162,6 +159,20 @@ internal class KastSingleChangeInvocation(private val options: KastProviderOptio
             ChangeRunDocument.Rejected(ChangeRunError(ChangeRejection.AUTHORIZATION_UNAVAILABLE, identity, plan)),
             context,
         )
+
+    private fun applicationState(document: JsonObject?): ApplicationState? = document?.let {
+        try {
+            changeJson.decodeFromJsonElement<ApplicationState>(it)
+        } catch (_: SerializationException) {
+            null
+        }
+    }
+
+    private fun verifiedApplication(application: NativePhase, state: ApplicationState?): JsonObject? {
+        if (application !is NativePhase.Complete) return null
+        if (state?.status != NativeStatus.COMPLETE || state.state != NativeApplyState.VERIFIED) return null
+        return application.document
+    }
 
     private suspend fun recover(root: CanonicalRoot, identity: String, context: BrokerInvocationContext): JsonObject? {
         val assertion = authorize(HostedChangeApprovalOperation.RECOVER, identity, context) ?: return null
@@ -240,13 +251,13 @@ internal class KastSingleChangeInvocation(private val options: KastProviderOptio
             is WorkspaceDemandResult.Native ->
                 when (val exchange = demanded.exchange) {
                     is ExistingIdeExchange.Rejected -> NativePhase.Incomplete(null)
-                    is ExistingIdeExchange.HostRejected -> NativePhase.Incomplete(document(exchange.document))
+                    is ExistingIdeExchange.HostRejected -> NativePhase.Rejected(document(exchange.document))
                     is ExistingIdeExchange.Received -> NativePhase.Incomplete(document(exchange.document))
                     is ExistingIdeExchange.Semantic ->
                         when (val outcome = exchange.outcome) {
                             is ProjectedOperationOutcome.Complete -> NativePhase.Complete(document(outcome.document))
                             is ProjectedOperationOutcome.Qualified -> NativePhase.Incomplete(document(outcome.document))
-                            is ProjectedOperationOutcome.Rejected -> NativePhase.Incomplete(document(outcome.document))
+                            is ProjectedOperationOutcome.Rejected -> NativePhase.Rejected(document(outcome.document))
                         }
                 }
         }
@@ -279,6 +290,8 @@ private sealed interface NativePhase {
     data class Complete(override val document: JsonObject?) : NativePhase
 
     data class Incomplete(override val document: JsonObject?) : NativePhase
+
+    data class Rejected(override val document: JsonObject?) : NativePhase
 }
 
 @Serializable private data class StoredPlan(val status: NativeStatus, val planIdentity: String)

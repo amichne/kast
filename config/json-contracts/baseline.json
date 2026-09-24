@@ -5713,66 +5713,6 @@
     },
     {
       "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/BrokerPlanApprovalsTest.kt",
-        "scope": "type:BrokerPlanApprovalsTest/fun:only correlated controller accept signs the immutable hosted challenge(4:Path)/declaration:<anonymous>/val:answer",
-        "kind": "JSON_BUILDER",
-        "sha256": "efd315fb6e6c315aaa2cfc0baae75459b13375b77daac5d254274c516fa2adcd"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/BrokerPlanApprovalsTest.kt",
-        "scope": "type:BrokerPlanApprovalsTest/fun:only correlated controller accept signs the immutable hosted challenge(4:Path)/declaration:<anonymous>/val:answer/declaration:<anonymous>",
-        "kind": "JSON_BUILDER",
-        "sha256": "5983cd871100acc8c48bf479790a5df4368efc425a3e8f8858178cd3c8dec12e"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/BrokerPlanApprovalsTest.kt",
-        "scope": "type:BrokerPlanApprovalsTest/fun:decline cancel session approval and malformed responses never reach signer(4:Path)/declaration:<anonymous>",
-        "kind": "JSON_BUILDER",
-        "sha256": "dfa38da03cd5ec222de05c9ce5353c65149dc9f80abe8b5909deaea46c8543e5"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/BrokerPlanApprovalsTest.kt",
-        "scope": "type:BrokerPlanApprovalsTest/fun:decline cancel session approval and malformed responses never reach signer(4:Path)/declaration:<anonymous>/declaration:<anonymous>",
-        "kind": "JSON_BUILDER",
-        "sha256": "e04f093b44fb1ad106a6f6edf75944a0900a3ea29e024378448494be330b2780"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/BrokerPlanApprovalsTest.kt",
-        "scope": "type:BrokerPlanApprovalsTest/type:Fixture/val:request",
-        "kind": "JSON_BUILDER",
-        "sha256": "1f06e10b4279b120ccc73bbfc77fba380bb7c3c78ff95e79572c8d6970cf3d22"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/BrokerPlanApprovalsTest.kt",
-        "scope": "type:BrokerPlanApprovalsTest/type:Fixture/val:manager/declaration:<anonymous>",
-        "kind": "JSON_BUILDER",
-        "sha256": "5dd21ba498d77ee19122e3e156bd7b2259932e24358608b869907ab67cf10ee7"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
         "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/BrokerSessionHubTest.kt",
         "scope": "type:BrokerSessionHubTest/fun:tool display records bounded success and rejection evidence without payloads(4:Path)/declaration:<anonymous>/val:completed",
         "kind": "JSON_LITERAL",

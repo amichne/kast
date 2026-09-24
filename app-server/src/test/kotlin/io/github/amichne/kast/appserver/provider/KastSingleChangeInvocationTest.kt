@@ -109,6 +109,39 @@ class KastSingleChangeInvocationTest {
         )
     }
 
+    @Test
+    fun `host rejection remains apply rejected and never starts recovery`() = runBlocking {
+        enroll()
+        val observed = mutableListOf<String>()
+        val invocation = invocation { operation ->
+            when (operation) {
+                is ExistingIdeOperation.Plan -> {
+                    observed += "plan"
+                    semantic(TestPlan())
+                }
+                is ExistingIdeOperation.ApprovalPreparation -> {
+                    observed += "prepare-${operation.kind.name}"
+                    ExistingIdeExchange.Received(document(challenge(operation.kind.name)))
+                }
+                is ExistingIdeOperation.ApprovedMutation -> {
+                    observed += "write-${operation.kind.name}"
+                    ExistingIdeExchange.HostRejected(document(TestHostRejection()))
+                }
+                else -> error("Unexpected operation")
+            }
+        }
+        assertInstanceOf(io.github.amichne.kast.appserver.core.ProviderCall.Completed::class.java, invocation)
+        val output = (invocation as io.github.amichne.kast.appserver.core.ProviderCall.Completed).value
+        assertTrue(!output.success)
+        val error = output.document.getValue("document").jsonObject.getValue("error").jsonObject
+        assertEquals("APPLY_REJECTED", error.getValue("code").jsonPrimitive.content)
+        assertEquals(
+            "SOURCE_CHANGED",
+            error.getValue("application").jsonObject.getValue("failure").jsonPrimitive.content,
+        )
+        assertEquals(listOf("plan", "prepare-CHANGE_APPLY", "write-CHANGE_APPLY"), observed)
+    }
+
     private suspend fun invocation(
         observe: (ExistingIdeOperation) -> ExistingIdeExchange
     ): io.github.amichne.kast.appserver.core.ProviderCall<KastInvocationOutput> {
@@ -172,6 +205,9 @@ private data class TestApplication(
 
 @Serializable
 private data class TestUnverified(val status: String = "qualified", val state: String = "recovery_required")
+
+@Serializable
+private data class TestHostRejection(val type: String = "rejected", val failure: String = "SOURCE_CHANGED")
 
 @Serializable private data class TestRecovery(val status: String = "complete", val state: String = "rolled_back")
 

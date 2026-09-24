@@ -82,15 +82,17 @@ class McpSingleChangeToolTest {
                 .tool
 
         val result = tool.invoke(Json.encodeToJsonElement(TestIntent()).jsonObject)
-        assertInstanceOf(CliExit.Qualified::class.java, result)
+        assertInstanceOf(CliExit.OperationRejected::class.java, result)
         val output = Json.parseToJsonElement(result.document.value).jsonObject
-        assertEquals("qualified", output.getValue("status").jsonPrimitive.content)
+        assertEquals("rejected", output.getValue("status").jsonPrimitive.content)
         assertTrue(McpStructuredResults.validates("change", output))
+        val error = output.getValue("error").jsonObject
+        assertEquals("APPLICATION_UNVERIFIED", error.getValue("code").jsonPrimitive.content)
         assertEquals(
             "recovery_required",
-            output.getValue("application").jsonObject.getValue("state").jsonPrimitive.content,
+            error.getValue("application").jsonObject.getValue("state").jsonPrimitive.content,
         )
-        assertEquals("restored", output.getValue("recovery").jsonObject.getValue("state").jsonPrimitive.content)
+        assertEquals("restored", error.getValue("recovery").jsonObject.getValue("state").jsonPrimitive.content)
         assertEquals(McpChangePhase.RECOVER, phases.last())
     }
 
@@ -116,10 +118,11 @@ class McpSingleChangeToolTest {
                 .tool
 
         val result = tool.invoke(Json.encodeToJsonElement(TestIntent()).jsonObject)
-        assertInstanceOf(CliExit.Qualified::class.java, result)
+        assertInstanceOf(CliExit.OperationRejected::class.java, result)
         val output = Json.parseToJsonElement(result.document.value).jsonObject
-        assertEquals("APPLICATION_RESPONSE_UNAVAILABLE", output.getValue("issue").jsonPrimitive.content)
-        assertEquals("restored", output.getValue("recovery").jsonObject.getValue("state").jsonPrimitive.content)
+        val error = output.getValue("error").jsonObject
+        assertEquals("APPLICATION_RESPONSE_UNAVAILABLE", error.getValue("code").jsonPrimitive.content)
+        assertEquals("restored", error.getValue("recovery").jsonObject.getValue("state").jsonPrimitive.content)
         assertEquals(McpChangePhase.RECOVER, phases.last())
     }
 

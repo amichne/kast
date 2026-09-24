@@ -48,7 +48,7 @@ Every module role requires its matching Gradle convention. Validated module poli
 - IntelliJ and filesystem/SQLite modules own explicit effects.
 - The existing-IDE host connects proven contracts to effectful adapters.
 - App Server and CLI expose broker, installation and transport boundaries.
-- The MCP launcher retains the hosted catalog, uses Kotlin MCP SDK tool annotations at its adapter boundary, and confines one-use approval-file writes to `McpApprovalStore`.
+- The MCP launcher retains the hosted catalog and uses Kotlin MCP SDK tool annotations at its adapter boundary. Its one-call change tool signs an exact internal plan challenge without an interactive approval file.
 
 The App Server's direct login-agent publisher and the installation service lock are explicit scoped filesystem-write owners. The publisher writes or removes only the qualified per-user launchd entry; the lock serializes launchd start, retirement, and direct login resumption.
 
