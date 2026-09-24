@@ -15,6 +15,7 @@ import com.intellij.openapi.vfs.newvfs.RefreshQueue
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshEffect
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshFailure as PublicFailure
+import io.github.amichne.kast.runtime.hosted.HostedVfsRefreshOutcome
 import io.github.amichne.kast.runtime.hosted.saveProjectDocuments
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryService
@@ -132,6 +133,33 @@ internal class IntellijWorkspaceRefreshPort(
                     complete(
                         if (project.isDisposed) WorkspaceRefreshEffectResult.DISPOSED
                         else WorkspaceRefreshEffectResult.SUCCEEDED
+                    )
+                },
+                directory,
+            )
+    }
+
+    /** Automatic read admission uses this same explicit effect owner. */
+    fun refreshForRead(complete: (HostedVfsRefreshOutcome) -> Unit) {
+        if (project.isDisposed) {
+            complete(HostedVfsRefreshOutcome.PROJECT_DISPOSED)
+            return
+        }
+        val directory = LocalFileSystem.getInstance().findFileByPath(root.value)
+        if (directory == null) {
+            complete(HostedVfsRefreshOutcome.ROOT_UNAVAILABLE)
+            return
+        }
+        // Include nested source and Gradle inputs even when the IDE window is backgrounded.
+        VfsUtil.markDirty(true, true, directory)
+        RefreshQueue.getInstance()
+            .refresh(
+                true,
+                true,
+                {
+                    complete(
+                        if (project.isDisposed) HostedVfsRefreshOutcome.PROJECT_DISPOSED
+                        else HostedVfsRefreshOutcome.READY
                     )
                 },
                 directory,

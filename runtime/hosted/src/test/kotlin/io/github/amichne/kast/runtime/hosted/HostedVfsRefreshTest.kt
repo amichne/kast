@@ -13,11 +13,11 @@ import org.junit.jupiter.api.Test
 class HostedVfsRefreshTest {
     @Test
     fun `read admission waits for refresh callback before reporting ready`() = runTest {
-        var complete: (() -> Unit)? = null
+        var complete: ((HostedVfsRefreshOutcome) -> Unit)? = null
         val pending = async { awaitVfsRefresh({ false }) { callback -> complete = callback } }
         runCurrent()
         assertNull(pending.getCompletedOrNull())
-        complete!!()
+        complete!!(HostedVfsRefreshOutcome.READY)
         assertEquals(HostedVfsRefreshOutcome.READY, pending.await())
     }
 
@@ -36,6 +36,10 @@ class HostedVfsRefreshTest {
             HostedVfsRefreshOutcome.FAILED,
             awaitVfsRefresh({ false }) { throw IllegalStateException("native refresh failed") },
         )
+        assertEquals(
+            HostedVfsRefreshOutcome.ROOT_UNAVAILABLE,
+            awaitVfsRefresh({ false }) { it(HostedVfsRefreshOutcome.ROOT_UNAVAILABLE) },
+        )
         assertEquals(null, HostedVfsRefreshOutcome.READY.failure())
         assertEquals(HostedEndpointFailure.IO_UNAVAILABLE, HostedVfsRefreshOutcome.ROOT_UNAVAILABLE.failure())
         assertEquals(HostedEndpointFailure.UNSAVED_DOCUMENTS, HostedVfsRefreshOutcome.UNSAVED_DOCUMENTS.failure())
@@ -53,11 +57,11 @@ class HostedVfsRefreshTest {
         )
         assertEquals(false, started)
         disposed = false
-        var complete: (() -> Unit)? = null
+        var complete: ((HostedVfsRefreshOutcome) -> Unit)? = null
         val pending = async { awaitVfsRefresh({ disposed }) { callback -> complete = callback } }
         runCurrent()
         disposed = true
-        complete!!()
+        complete!!(HostedVfsRefreshOutcome.READY)
         assertEquals(HostedVfsRefreshOutcome.PROJECT_DISPOSED, pending.await())
     }
 

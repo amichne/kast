@@ -133,7 +133,7 @@ internal class IdeLifecycleNative(private val state: IdeLifecycleState) {
         if (!awaitCondition { project.isDisposed || endpoint.lifecycleRefreshReady() })
             return blocked(IdeLifecycleFailure.DEADLINE_EXCEEDED)
         if (project.isDisposed) return blocked(IdeLifecycleFailure.DISPOSED)
-        lifecycleVfsFailure(project, root)?.let {
+        lifecycleVfsFailure(endpoint, root)?.let {
             return blocked(it)
         }
         val revision = endpoint.lifecycleModelRevision() ?: return blocked(IdeLifecycleFailure.PLATFORM_UNAVAILABLE)
@@ -154,7 +154,7 @@ internal class IdeLifecycleNative(private val state: IdeLifecycleState) {
             if (!awaitCondition { project.isDisposed || (project.isInitialized && endpoint.lifecycleRefreshReady()) })
                 return blocked(IdeLifecycleFailure.DEADLINE_EXCEEDED)
             if (project.isDisposed) return blocked(IdeLifecycleFailure.DISPOSED)
-            lifecycleVfsFailure(project, root)?.let {
+            lifecycleVfsFailure(endpoint, root)?.let {
                 return blocked(it)
             }
             val revision = endpoint.lifecycleModelRevision() ?: return blocked(IdeLifecycleFailure.PLATFORM_UNAVAILABLE)

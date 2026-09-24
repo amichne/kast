@@ -4,9 +4,6 @@ import com.intellij.openapi.application.EDT
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.vfs.LocalFileSystem
-import com.intellij.openapi.vfs.VfsUtil
-import com.intellij.openapi.vfs.newvfs.RefreshQueue
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import kotlin.coroutines.resume
 import kotlinx.coroutines.CancellationException
@@ -35,10 +32,14 @@ internal fun HostedVfsRefreshOutcome.failure(): HostedEndpointFailure? =
     }
 
 /** Mirrors foreground project synchronization before a semantic operation enters its read epoch. */
-internal suspend fun awaitHostedVfsRefresh(project: Project, root: CanonicalWorkspaceRoot): HostedVfsRefreshOutcome {
+internal suspend fun awaitHostedVfsRefresh(
+    project: Project,
+    root: CanonicalWorkspaceRoot,
+    start: (completed: (HostedVfsRefreshOutcome) -> Unit) -> Unit,
+): HostedVfsRefreshOutcome {
     val outcome =
         try {
-            refreshProjectVfs(project, root)
+            refreshProjectVfs(project, root, start)
         } catch (cancellation: CancellationException) {
             throw cancellation
         } catch (cancellation: ProcessCanceledException) {
@@ -51,39 +52,37 @@ internal suspend fun awaitHostedVfsRefresh(project: Project, root: CanonicalWork
     return outcome
 }
 
-private suspend fun refreshProjectVfs(project: Project, root: CanonicalWorkspaceRoot): HostedVfsRefreshOutcome {
+private suspend fun refreshProjectVfs(
+    project: Project,
+    root: CanonicalWorkspaceRoot,
+    start: (completed: (HostedVfsRefreshOutcome) -> Unit) -> Unit,
+): HostedVfsRefreshOutcome {
     if (project.isDisposed) return HostedVfsRefreshOutcome.PROJECT_DISPOSED
-    val directory =
-        LocalFileSystem.getInstance().findFileByPath(root.value) ?: return HostedVfsRefreshOutcome.ROOT_UNAVAILABLE
     if (!withContext(Dispatchers.EDT) { saveProjectDocuments(root) }) return HostedVfsRefreshOutcome.UNSAVED_DOCUMENTS
-    // A backgrounded IDE may not have observed a watcher event. Compare disk before the callback.
-    VfsUtil.markDirty(true, true, directory)
-    return awaitVfsRefresh(
-        disposed = { project.isDisposed },
-        start = { completed -> RefreshQueue.getInstance().refresh(true, true, completed, directory) },
-    )
+    return awaitVfsRefresh(disposed = { project.isDisposed }, start = start)
 }
 
 /** The callback is the native completion boundary; timeout never authorizes a stale read. */
 internal suspend fun awaitVfsRefresh(
     disposed: () -> Boolean,
-    start: (completed: () -> Unit) -> Unit,
+    start: (completed: (HostedVfsRefreshOutcome) -> Unit) -> Unit,
 ): HostedVfsRefreshOutcome {
     if (disposed()) return HostedVfsRefreshOutcome.PROJECT_DISPOSED
-    try {
-        withTimeoutOrNull(VFS_REFRESH_WAIT_MILLIS) {
-            suspendCancellableCoroutine<Unit> { continuation ->
-                start { if (continuation.isActive) continuation.resume(Unit) }
-            }
-        } ?: return HostedVfsRefreshOutcome.DEADLINE_EXCEEDED
-    } catch (cancellation: CancellationException) {
-        throw cancellation
-    } catch (cancellation: ProcessCanceledException) {
-        throw cancellation
-    } catch (_: RuntimeException) {
-        return HostedVfsRefreshOutcome.FAILED
-    }
-    return if (disposed()) HostedVfsRefreshOutcome.PROJECT_DISPOSED else HostedVfsRefreshOutcome.READY
+    val result =
+        try {
+            withTimeoutOrNull(VFS_REFRESH_WAIT_MILLIS) {
+                suspendCancellableCoroutine<HostedVfsRefreshOutcome> { continuation ->
+                    start { outcome -> if (continuation.isActive) continuation.resume(outcome) }
+                }
+            } ?: return HostedVfsRefreshOutcome.DEADLINE_EXCEEDED
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (cancellation: ProcessCanceledException) {
+            throw cancellation
+        } catch (_: RuntimeException) {
+            return HostedVfsRefreshOutcome.FAILED
+        }
+    return if (disposed()) HostedVfsRefreshOutcome.PROJECT_DISPOSED else result
 }
 
 private const val VFS_REFRESH_WAIT_MILLIS = 10_000L

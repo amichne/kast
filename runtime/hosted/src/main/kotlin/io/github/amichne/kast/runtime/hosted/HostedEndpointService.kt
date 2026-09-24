@@ -99,6 +99,12 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
         modelTracker.get()?.modelImported(startedAt)
     }
 
+    internal suspend fun lifecycleVfsRefresh(root: CanonicalWorkspaceRoot): HostedVfsRefreshOutcome =
+        when (val owner = refreshOwner.get()) {
+            is RefreshOwner.Available -> awaitHostedVfsRefresh(project, root, owner.value::refreshForRead)
+            else -> HostedVfsRefreshOutcome.FAILED
+        }
+
     internal fun lifecycleInitialImport(
         requestId: String
     ): io.github.amichne.kast.protocol.contract.WorkspaceRefreshResult =
@@ -254,7 +260,7 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
             return HostedResponse.Rejected(HostedEndpointFailure.WRONG_ROOT)
         }
         if (request !is HostedRequest.Describe && request !is HostedRequest.Refresh) {
-            val refreshFailure = awaitHostedVfsRefresh(project, root).failure()
+            val refreshFailure = awaitHostedVfsRefresh(project, root, refresh::refreshForRead).failure()
             if (refreshFailure != null) return HostedResponse.Rejected(refreshFailure)
             if (gradleChanges.needsModelReload()) {
                 observer.rejected(HostedEndpointStage.READINESS, HostedEndpointFailure.MODEL_REFRESH_REQUIRED)
