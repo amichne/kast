@@ -4,7 +4,7 @@ title: Request dispatch
 description: Hosted requests retain canonical outcomes through native evaluation, bounded encoding and host projection.
 resource: file://runtime/hosted
 tags: [runtime, protocol, dispatch]
-timestamp: 2026-09-16T00:00:00Z
+timestamp: 2026-09-25T00:00:00Z
 code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastDirectInvocation.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastInvocationAdmission.kt
@@ -74,6 +74,8 @@ host request
 Registry construction proves that every canonical operation has one definition. Wire-table construction proves that each has one serializer binding. Hosted dispatch uses those typed bindings; `HostedSemanticServices` supplies the request-scoped domain services. Host adapters may change presentation, but they must preserve qualification and rejection.
 The Codex-facing provider prepends a bounded search or diagnostic summary when the validated result has enough coverage evidence. The unchanged machine document follows, retaining opaque references, budgets, and exact qualifications.
 
+The optional exact-symbol source projection is performed by the query evaluator inside this same hosted read, before typed query result projection. It uses the source read port rather than a second client exchange, preserving the query's authority, budget, and finite source failure.
+
 For the five reads, a supplied byte limit below the serialized wire schema and
 operation identity rejects before handler selection. No semantic grant is invented
 for this rejection. Satisfying that necessary lower bound does not establish that a
@@ -138,7 +140,7 @@ the admitted endpoint owner.
 
 See [protocol](../modules/protocol.md) and [operation outcomes](../contracts/operation-outcomes.md).
 
-The current [public tool contracts](../contracts/public-tools.md) distinguish presentation identity from canonical operation identity. Three ordinary searches and deferred `query_symbols` share `query.run`; `check_diagnostics` shares `diagnostic.check`. Private admission retains each tool's schema identity and typed syntax through canonical request preparation. Every `tool` command uses a versioned daemon RPC that re-admits its selected public schema and exact root before native demand. Operation effects, budgets, reference authority and exhaustive outcomes remain with their existing owners.
+The current [public tool contracts](../contracts/public-tools.md) distinguish presentation identity from canonical operation identity. Eager `query_symbols` owns declaration discovery and pipelines through `query.run`; `check_diagnostics` owns `diagnostic.check`. Private admission retains each tool's schema identity and typed syntax through canonical request preparation. Every `tool` command uses a versioned daemon RPC that re-admits its selected public schema and exact root before native demand. Operation effects, budgets, reference authority and exhaustive outcomes remain with their existing owners.
 
 The broker validates each encoded provider result against its qualified output
 schema before presentation. Output-contract rejection retains a deduplicated set

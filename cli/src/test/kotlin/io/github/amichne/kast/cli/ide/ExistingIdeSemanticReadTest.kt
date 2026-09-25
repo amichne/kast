@@ -53,21 +53,6 @@ class ExistingIdeSemanticReadTest {
     private val requests =
         listOf(
             Triple(
-                "tool search_classes",
-                ExistingIdeReadOperation.QUERY_RUN,
-                Json.encodeToString(SearchClassesFixture("Order", null, null)),
-            ),
-            Triple(
-                "tool search_functions",
-                ExistingIdeReadOperation.QUERY_RUN,
-                Json.encodeToString(SearchFunctionsFixture("order", null, null)),
-            ),
-            Triple(
-                "tool search_declarations",
-                ExistingIdeReadOperation.QUERY_RUN,
-                Json.encodeToString(SearchDeclarationsFixture("order", null, null, listOf("property", "type_alias"))),
-            ),
-            Triple(
                 "tool query_symbols",
                 ExistingIdeReadOperation.QUERY_RUN,
                 Json.encodeToString(
@@ -109,28 +94,6 @@ class ExistingIdeSemanticReadTest {
                 Json.encodeToString(CheckDiagnosticsFixture("src", 10)),
             ),
         )
-
-    @Serializable
-    private data class SearchClassesFixture(
-        @SerialName("name") val name: String,
-        @SerialName("name_match") val match: String?,
-        val scope: String?,
-    )
-
-    @Serializable
-    private data class SearchFunctionsFixture(
-        @SerialName("function_name") val name: String,
-        @SerialName("name_match") val match: String?,
-        val scope: String?,
-    )
-
-    @Serializable
-    private data class SearchDeclarationsFixture(
-        @SerialName("declaration_name") val name: String,
-        @SerialName("name_match") val match: String?,
-        val scope: String?,
-        @SerialName("declaration_kinds") val kinds: List<String>?,
-    )
 
     @Serializable
     private enum class QuerySourceType {
@@ -210,12 +173,6 @@ class ExistingIdeSemanticReadTest {
 
     private fun publicIdentity(command: String): io.github.amichne.kast.protocol.registry.PublicToolIdentity =
         when {
-            command.contains("search_classes") ->
-                io.github.amichne.kast.protocol.registry.PublicToolIdentity.SEARCH_CLASSES
-            command.contains("search_functions") ->
-                io.github.amichne.kast.protocol.registry.PublicToolIdentity.SEARCH_FUNCTIONS
-            command.contains("search_declarations") ->
-                io.github.amichne.kast.protocol.registry.PublicToolIdentity.SEARCH_DECLARATIONS
             command.contains("check_diagnostics") ->
                 io.github.amichne.kast.protocol.registry.PublicToolIdentity.CHECK_DIAGNOSTICS
             else -> io.github.amichne.kast.protocol.registry.PublicToolIdentity.QUERY_SYMBOLS

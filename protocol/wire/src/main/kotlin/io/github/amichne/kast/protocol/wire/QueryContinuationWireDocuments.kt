@@ -44,5 +44,6 @@ internal enum class QueryLimitationWireDocument {
     @SerialName("discovery-incomplete") DISCOVERY_INCOMPLETE,
     @SerialName("refinement-incomplete") REFINEMENT_INCOMPLETE,
     @SerialName("visibility-incomplete") VISIBILITY_INCOMPLETE,
+    @SerialName("source-incomplete") SOURCE_INCOMPLETE,
     @SerialName("relation-incomplete") RELATION_INCOMPLETE,
 }

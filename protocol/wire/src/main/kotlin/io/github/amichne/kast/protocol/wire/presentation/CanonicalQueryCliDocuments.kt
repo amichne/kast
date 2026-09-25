@@ -156,8 +156,17 @@ private sealed interface QueryResultItemCliDocument {
         val location: QueryExactLocationCliDocument?,
         val signature: CompilerSignatureCliDocument?,
         val connections: List<RelationFactCliDocument>,
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        val source: QuerySourceWindowCliDocument? = null,
     ) : QueryResultItemCliDocument
 }
+
+@Serializable
+private data class QuerySourceWindowCliDocument(
+    val text: String,
+    val startLine: Long,
+    val endLine: Long,
+)
 
 @Serializable private data class QueryCandidateLocationCliDocument(val file: String, val offset: Int)
 
@@ -176,6 +185,10 @@ private sealed interface QueryItemFailureCliDocument {
     @Serializable
     @SerialName("predicate")
     data class Predicate(val ref: String, val reason: String) : QueryItemFailureCliDocument
+
+    @Serializable
+    @SerialName("source")
+    data class Source(val ref: String, val reason: String) : QueryItemFailureCliDocument
 
     @Serializable
     @SerialName("relation")
@@ -234,6 +247,13 @@ private fun QueryResultItemDocument.toCliDocument(): QueryResultItemCliDocument 
                 },
                 signature?.toCliDocument(),
                 connections.values.map(RelationFactDocument::toCliDocument),
+                source?.let {
+                    QuerySourceWindowCliDocument(
+                        it.text.value,
+                        it.lines.startInclusive.value,
+                        it.lines.endInclusive.value,
+                    )
+                },
             )
     }
 
@@ -245,6 +265,7 @@ private fun QueryItemFailureDocument.toCliDocument(): QueryItemFailureCliDocumen
             QueryItemFailureCliDocument.ExactReference(ref.toCliDocument(), reason.cliName())
         is QueryItemFailureDocument.Predicate ->
             QueryItemFailureCliDocument.Predicate(ref.toCliDocument(), reason.cliName())
+        is QueryItemFailureDocument.Source -> QueryItemFailureCliDocument.Source(ref.toCliDocument(), reason.cliName())
         is QueryItemFailureDocument.Relation ->
             QueryItemFailureCliDocument.Relation(
                 ref.toCliDocument(),
@@ -269,6 +290,11 @@ private fun QueryRunRejection.toCliDocument(): QueryRejectionCliDocument =
         is QueryRunRejection.ReferenceRejected ->
             QueryRejectionCliDocument.ReferenceRejected(
                 "from.values[${position.value}]",
+                reason.cliName(),
+            )
+        is QueryRunRejection.StepReferenceRejected ->
+            QueryRejectionCliDocument.ReferenceRejected(
+                "steps[${stepPosition.value}].values[${referencePosition.value}]",
                 reason.cliName(),
             )
         is QueryRunRejection.SourceRejected ->

@@ -4,7 +4,7 @@ title: Semantic read domains
 description: Domain contracts refine discovery into exact compiler identity and compose source, relation, traversal, diagnostics, and queries without erasing evidence.
 resource: file://query
 tags: [kotlin, semantic, query, compiler]
-timestamp: 2026-09-16T00:00:00Z
+timestamp: 2026-09-25T00:00:00Z
 code_sources:
   - path: diagnostic/intellij/src/main/kotlin/io/github/amichne/kast/diagnostic/intellij/DiagnosticReadAttempts.kt
   - path: diagnostic/intellij/src/test/kotlin/io/github/amichne/kast/diagnostic/intellij/DiagnosticReadAttemptTest.kt
@@ -83,6 +83,8 @@ code_sources:
 
 Symbol discovery returns bounded candidates; exact resolution refines a candidate into compiler identity. Source reads, relation reads, traversal, and diagnostics consume exact, workspace-bound requests rather than re-parsing loose names.
 
+An exact-symbol query can opt into a five-line source window. The query service asks the source port for the symbol's file region within the same admitted read; the source adapter revalidates the exact anchor and committed document before returning text. Returned text and line coordinates retain that source proof through query projection. Failure stays a finite query item cause and incomplete qualification.
+
 Read contracts share `SemanticReadAuthority`, retaining either a published lease
 or original-owner live IDE admission. Symbol, relation, and diagnostic services
 use an authority-validation port before and after compiler work. Source service
@@ -129,7 +131,7 @@ policy roots before exact source-set names are found absent from that owner.
 An unknown owner or a policy that excludes the available roots still rejects.
 Library inclusion cannot add results to that proven empty source-set scope.
 
-The query domain provides a closed linear algebra over these operations. `QueryPlanCompiler` rejects type-incompatible stage transitions before execution. `QueryService` then interprets only an admitted plan and retains per-item failures and limitations instead of promoting partial work to completeness.
+The query domain provides closed typed stages over these operations, including exact-reference fan-in and primitive predicates. `QueryPlanCompiler` rejects type-incompatible transitions before execution. `QueryService` then interprets only an admitted plan and retains per-item failures and limitations instead of promoting partial work to completeness.
 
 Visibility filters consume `SourceDeclarationVisibility`, a proof for the exact
 selected declaration and snapshot. The internal self read is distinct from the

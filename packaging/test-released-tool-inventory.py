@@ -43,21 +43,21 @@ class Schema:
 
 class InventoryTest(unittest.TestCase):
     def setUp(self):
-        self.tools = tuple(Tool(name, operation, 'intellij_write' if name == 'change' else 'intellij_read')
+        self.tools = tuple(Tool(name, operation, 'none' if name == 'change_plan' else ('intellij_write' if name.startswith('change_') else 'intellij_read'))
                            for name, operation in OPERATIONS)
         self.cli = Invocations(tuple(Invocation(name, operation) for name, operation in OPERATIONS
-                                     if name not in ('workspace_lifecycle', 'change')))
+                                     if name != 'workspace_lifecycle'))
         self.defaults = tuple(name for name, _ in OPERATIONS)
         self.configuration = 'KAST_APP_SERVER_PUBLIC_ENDPOINT=private\n'
 
     def schema(self, tools):
         return asdict(Schema(Projection(Bootstrap(tools), self.cli)))
 
-    def test_all_twelve_advertised_tools_and_defaults_are_distinct_from_ten_explicit_reads(self):
+    def test_eleven_advertised_tools_and_defaults_are_distinct_from_seven_explicit_reads(self):
         admitted = admit_inventory(self.schema(self.tools), self.configuration, 'a' * 64)
-        self.assertEqual(len(admitted.advertisedTools), 12)
-        self.assertEqual(len(admitted.configuredDefaultTools), 12)
-        self.assertEqual(len(admitted.explicitReadTools), 10)
+        self.assertEqual(len(admitted.advertisedTools), 11)
+        self.assertEqual(len(admitted.configuredDefaultTools), 11)
+        self.assertEqual(len(admitted.explicitReadTools), 7)
         self.assertIn('symbol_lookup', admitted.explicitReadTools)
         self.assertIn('symbol_lookup', admitted.configuredDefaultTools)
 
@@ -69,11 +69,6 @@ class InventoryTest(unittest.TestCase):
 
     def test_workspace_tool_has_no_cli_invocation(self):
         self.cli = Invocations(self.cli.operations + (Invocation('workspace_lifecycle', 'workspace.lifecycle'),))
-        with self.assertRaises(ReleaseRejected):
-            admit_inventory(self.schema(self.tools), self.configuration, 'a' * 64)
-
-    def test_change_tool_has_no_cli_invocation(self):
-        self.cli = Invocations(self.cli.operations + (Invocation('change', 'change.run'),))
         with self.assertRaises(ReleaseRejected):
             admit_inventory(self.schema(self.tools), self.configuration, 'a' * 64)
 

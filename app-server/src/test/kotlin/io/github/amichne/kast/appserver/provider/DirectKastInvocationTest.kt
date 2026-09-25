@@ -15,6 +15,7 @@ import io.github.amichne.kast.appserver.ide.ExistingIdeClient
 import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
 import io.github.amichne.kast.appserver.installedKastCatalogFixture
+import io.github.amichne.kast.appserver.publicNameQuery
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.Validation
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
@@ -22,7 +23,6 @@ import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import java.nio.file.Path
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
@@ -61,18 +61,9 @@ class DirectKastInvocationTest {
                     BrokerDispatchRequest(
                         ToolAddress(
                             (ProviderNamespace.admit("kast") as Refinement.Refined).value,
-                            (ToolName.admit("search_classes") as Refinement.Refined).value,
+                            (ToolName.admit("query_symbols") as Refinement.Refined).value,
                         ),
-                        Json.encodeToJsonElement(
-                            io.github.amichne.kast.appserver.query.PublicToolSearchClasses.serializer(),
-                            io.github.amichne.kast.appserver.query.PublicToolSearchClasses(
-                                (io.github.amichne.kast.protocol.contract.ProtocolText.parse("Order")
-                                        as Refinement.Refined)
-                                    .value,
-                                null,
-                                null,
-                            ),
-                        ),
+                        publicNameQuery(),
                         (BrokerInvocationContext.admit("thread", "turn", "call", root) as Refinement.Refined).value,
                     )
                 )

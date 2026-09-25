@@ -8,6 +8,7 @@ timestamp: "2026-09-14T00:00:00-04:00"
 code_sources:
   - path: "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json"
   - path: "query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPlan.kt"
+  - path: "query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt"
 ---
 
 `kast.query_symbols` applies an ordered pipeline to Kotlin declarations.
@@ -34,7 +35,7 @@ This example filters public functions before finding their callers:
 | Part | Supported values |
 | --- | --- |
 | Sources | `search_declarations`, `all_declarations`, `symbol_refs` |
-| Steps | `filter_visibility`, `expand_relation`, `distinct_symbols` |
+| Steps | `filter_visibility`, `filter_jq`, `expand_relation`, `append_symbol_refs`, `distinct_symbols` |
 
 Step order changes the result:
 
@@ -42,6 +43,7 @@ Step order changes the result:
 - Filter after expansion to keep only public callers.
 - Expect discovery sources to deduplicate after compiler refinement.
 - Add `distinct_symbols` to deduplicate downstream results.
+- Append exact references from earlier query results at any point; later steps act on the combined stream.
 
 Kast preserves every explicit step in order.
 
@@ -67,6 +69,32 @@ Copy `ref` verbatim into the `symbol_refs` source:
 - Use `read_relations` for occurrence-oriented facts such as use-site locations.
 - Use query expansion for related declarations.
 
+## Combine earlier query results
+
+Run each input query, copy its returned exact `ref` values, and append them in a later pipeline. For example, start from one query result and combine it with another:
+
+```json
+{
+  "source": {"type":"symbol_refs","symbol_refs":["<first exact ref>"]},
+  "steps": [
+    {"type":"append_symbol_refs","symbol_refs":["<second exact ref>","<third exact ref>"]},
+    {"type":"distinct_symbols"},
+    {"type":"filter_jq","expression":"select(.kind == \"function\")"}
+  ],
+  "return_fields": ["name","location"]
+}
+```
+
+`append_symbol_refs` retains stream order and duplicates. `distinct_symbols` turns the combined stream into a set of exact identities. Every appended reference is revalidated against the current workspace generation and spends the same query budget. A stale reference rejects with its step and reference positions.
+
+The bounded `filter_jq` step accepts these jq `select` forms over primitive symbol fields `name`, `kind`, and `file`:
+
+- `select(.name == "PaymentService")` and `select(.kind != "property")`
+- `select(.file | startswith("/workspace/services"))`
+- `select(.file | endswith(".kt"))`
+
+The literal must be a non-empty JSON string and the expression is limited to 512 characters. Other jq syntax rejects during admission. The predicate reads the compiler-grounded symbol description and does not start a source read. `file` is the symbol's stable file path or URL; `kind` uses `class`, `constructor`, `function`, `property`, or `type_alias`.
+
 
 ## Continue an ordered pipeline
 
@@ -82,6 +110,7 @@ The checkpoint retains:
 - unfinished relation expansion
 - pending output
 - identities seen by each distinct stage
+- pending appended references
 
 Resuming does not rerun an emitted prefix.
 

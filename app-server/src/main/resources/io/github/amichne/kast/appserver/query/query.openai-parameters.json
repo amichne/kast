@@ -119,7 +119,8 @@
       "enum": [
         "NAME",
         "LOCATION",
-        "SIGNATURE"
+        "SIGNATURE",
+        "SOURCE"
       ],
       "description": "Optional result projection. Existing ref and kind fields are always retained."
     },
@@ -147,7 +148,7 @@
         "$ref": "#/$defs/Field"
       },
       "minItems": 0,
-      "maxItems": 3,
+      "maxItems": 4,
       "description": "Omitted returns name and location. Empty requests ref and kind only; it does not restore defaults."
     },
     "Steps": {

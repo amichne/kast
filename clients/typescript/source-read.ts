@@ -15,26 +15,6 @@ export function admitExactSymbolSelector(raw: string): ExactSymbolSelectorAdmiss
 }
 
 export type SourceReadRequest = ({
-  "symbol": ExactSymbolSelector;
-  "region"?: "declaration" | "body" | "class-body" | "file";
-  "text"?: {
-    "mode": "complete";
-  } | {
-    "mode": "none";
-  } | {
-    "mode": "window";
-    "beforeLines"?: number;
-    "afterLines"?: number;
-    "maximumBytes": number;
-  };
-  "entities"?: {
-    "mode": "declarations";
-    "limit": number;
-  } | {
-    "mode": "none";
-  };
-  "format"?: "expanded" | "compact";
-} & { "anchor"?: never; "entityLimit"?: never; "execution_budget"?: never; "page"?: never; "textByteLimit"?: never }) | ({
   "anchor": {
     "type": "candidate";
     "selector": string;
@@ -66,7 +46,11 @@ export type SourceReadRequest = ({
       "kinds": Array<"classlike" | "constructor" | "function" | "property" | "type-alias">;
       "visibility": {
         "type": "any";
-      } | {
+      };
+    } | {
+      "type": "declaration";
+      "kinds": Array<"classlike" | "constructor" | "function" | "property" | "type-alias">;
+      "visibility": {
         "type": "exact";
         "values": Array<"public" | "protected" | "internal" | "private" | "local">;
       };
@@ -75,8 +59,6 @@ export type SourceReadRequest = ({
     } | {
       "type": "references";
     }>;
-  } | {
-    "type": "none";
   };
   "text": {
     "type": "complete";
@@ -104,6 +86,75 @@ export type SourceReadRequest = ({
   "format"?: "expanded" | "compact";
 } & { "symbol"?: never }) | ({
   "anchor": {
+    "type": "candidate";
+    "selector": string;
+  } | {
+    "type": "source";
+    "selector": string;
+  } | {
+    "type": "symbol";
+    "selector": string;
+  };
+  "region": {
+    "type": "anchor";
+  } | {
+    "type": "body";
+    "kind": "callable" | "class";
+  } | {
+    "type": "enclosing";
+    "kind": "declaration" | "callable-body" | "class-body";
+  } | {
+    "type": "file";
+  };
+  "entities": {
+    "type": "none";
+  };
+  "text": {
+    "type": "complete";
+  } | {
+    "type": "none";
+  } | {
+    "type": "window";
+    "beforeLines": number;
+    "afterLines": number;
+  };
+  "entityLimit"?: number;
+  "textByteLimit"?: number;
+  "page"?: {
+    "type": "continue";
+    "continuation": string;
+  } | {
+    "type": "first";
+  };
+  "execution_budget"?: {
+    "max_elapsed_ms"?: number | null;
+    "max_work_units"?: number | null;
+    "max_results"?: number | null;
+    "max_returned_bytes"?: number | null;
+  } | null;
+  "format"?: "expanded" | "compact";
+} & { "symbol"?: never }) | ({
+  "symbol": ExactSymbolSelector;
+  "region"?: "declaration" | "body" | "class-body" | "file";
+  "text"?: {
+    "mode": "complete";
+  } | {
+    "mode": "none";
+  } | {
+    "mode": "window";
+    "beforeLines"?: number;
+    "afterLines"?: number;
+    "maximumBytes": number;
+  };
+  "entities"?: {
+    "mode": "declarations";
+    "limit": number;
+  } | {
+    "mode": "none";
+  };
+  "format"?: "expanded" | "compact";
+} & { "anchor"?: never; "entityLimit"?: never; "execution_budget"?: never; "page"?: never; "textByteLimit"?: never }) | ({
+  "anchor": {
     "symbolRef": string;
   };
   "region"?: "declaration" | "file" | "class_body" | "callable_body";
@@ -127,7 +178,11 @@ export type SourceReadRequest = ({
       "kinds": Array<"classlike" | "constructor" | "function" | "property" | "type-alias">;
       "visibility": {
         "type": "any";
-      } | {
+      };
+    } | {
+      "type": "declaration";
+      "kinds": Array<"classlike" | "constructor" | "function" | "property" | "type-alias">;
+      "visibility": {
         "type": "exact";
         "values": Array<"public" | "protected" | "internal" | "private" | "local">;
       };
@@ -138,7 +193,36 @@ export type SourceReadRequest = ({
     }>;
     "limit"?: number | null;
     "containment"?: "direct" | "descendants";
+  };
+  "page"?: {
+    "type": "continue";
+    "continuation": string;
   } | {
+    "type": "first";
+  };
+  "execution_budget"?: {
+    "max_elapsed_ms"?: number | null;
+    "max_work_units"?: number | null;
+    "max_results"?: number | null;
+    "max_returned_bytes"?: number | null;
+  } | null;
+} & { "entityLimit"?: never; "format"?: never; "symbol"?: never; "textByteLimit"?: never }) | ({
+  "anchor": {
+    "symbolRef": string;
+  };
+  "region"?: "declaration" | "file" | "class_body" | "callable_body";
+  "text"?: {
+    "mode": "complete";
+    "maxBytes"?: number | null;
+  } | {
+    "mode": "none";
+  } | {
+    "mode": "window";
+    "beforeLines": number;
+    "afterLines": number;
+    "maxBytes"?: number | null;
+  };
+  "entities"?: {
     "mode": "none";
   };
   "page"?: {

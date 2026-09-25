@@ -111,13 +111,6 @@ class RefreshTransportRequest:
     type: str = field(default='WORKSPACE_REFRESH', init=False)
 
 
-@dataclass(frozen=True)
-class RefreshClassSearch:
-    name: str
-    name_match: str = 'exact'
-    scope: None = None
-
-
 class VisibilityReason(str, Enum):
     WORKSPACE_NOT_READY = 'workspace-not-ready'
     QUERY_REJECTED = 'query-rejected'
@@ -331,7 +324,8 @@ def prove_hosted_rule(transport, workspace):
 
 def observe_visibility(transport, name):
     started = time.monotonic_ns()
-    response, _ = transport.invoke_observed('cli', 'search_classes', asdict(RefreshClassSearch(name)))
+    from query_name_request import name_query
+    response, _ = transport.invoke_observed('cli', 'query_symbols', asdict(name_query(name, ('class',))))
     elapsed = time.monotonic_ns() - started
     items = response.get('items', [])
     qualification = response.get('qualification')

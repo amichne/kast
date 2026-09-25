@@ -60,6 +60,7 @@ internal enum class PublicQueryField {
     NAME,
     LOCATION,
     SIGNATURE,
+    SOURCE,
 }
 
 @Serializable

@@ -261,7 +261,7 @@ private enum class InstalledServerTool(
                     is AgentToolInputBinding.Facade -> PublicToolContract.parameters(input.identity)
                     AgentToolInputBinding.Canonical ->
                         if (operation == CanonicalOperation.SOURCE_READ)
-                            unionSchema(
+                            sourceReadToolInputSchema(
                                 generatedHostedRequestSchema(requestSerializer, definition.operation.hostedVariants),
                                 generatedRequestSchema(PublicSourceReadIntent.serializer()),
                             )

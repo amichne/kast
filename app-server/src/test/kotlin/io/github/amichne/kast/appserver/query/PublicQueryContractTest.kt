@@ -86,6 +86,24 @@ class PublicQueryContractTest {
     }
 
     @Test
+    fun `source selection survives public query lowering`() {
+        val fields =
+            (io.github.amichne.kast.protocol.contract.BoundedProtocolList.create(listOf(PublicQueryField.SOURCE))
+                    as Refinement.Refined)
+                .value
+        val input =
+            json.encodeToJsonElement(
+                PublicQueryDocument.serializer(),
+                PublicQueryDocument(PublicQueryDocumentType.QUERY, PublicQueryAll(), select = fields),
+            )
+        val request = (PublicQueryContract.admit(input) as Refinement.Refined).value.canonicalRequest
+        assertEquals(
+            listOf(QuerySymbolFieldDocument.SOURCE),
+            (request.output as QueryOutputDocument.Symbols).fields.values,
+        )
+    }
+
+    @Test
     fun `pipeline order survives lowering`() {
         val request =
             parse(

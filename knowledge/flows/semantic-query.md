@@ -4,7 +4,7 @@ title: Semantic query
 description: Query syntax and restored references are admitted into compatible stages and evaluated under one published or live authority with bounded resource accounting.
 resource: file://query/service
 tags: [query, symbol, source, relation]
-timestamp: 2026-09-13T00:00:00Z
+timestamp: 2026-09-25T00:00:00Z
 code_sources:
   - path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineCheckpoint.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCheckpointStore.kt
@@ -17,6 +17,8 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt
   - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPlan.kt
     symbols: [QueryPlanCompiler, AdmittedQueryPlan]
+  - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt
+    symbols: [QueryStepSyntax, QueryPredicate]
   - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryExecution.kt
   - path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryExecutionState.kt
     symbols: [QueryExecutionState]
@@ -25,6 +27,7 @@ code_sources:
   - path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryServiceSupport.kt
     symbols: [visibilityRequest]
   - path: query/service/src/test/kotlin/io/github/amichne/kast/query/service/QueryServiceTest.kt
+  - path: query/service/src/test/kotlin/io/github/amichne/kast/query/service/QueryServiceSourceTest.kt
   - path: source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceDeclarationVisibility.kt
     symbols: [SourceDeclarationVisibility, SourceDeclarationVisibilityFailure]
   - path: source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceReadRequest.kt
@@ -55,6 +58,10 @@ host admission -> current authority + request budget
 ```
 
 The pure plan compiler prevents candidate-only and exact-symbol stages from being combined incorrectly. Execution uses a single request state to track `SemanticReadAuthority`, time, work units, encoded bytes, result capacity, limitations, and item failures. A live authority is supplied by its admitted host; decoding a reference never creates one.
+
+An append-reference stage admits exact outputs from earlier queries under the current authority, then schedules them after the upstream stream. Later predicates, relation hops, and distinct stages see both inputs. Appended items share the parent work and checkpoint budget; distinct is the explicit set-union choice. The public bounded jq spelling is refined to a typed predicate over compiler-grounded name, kind, or file text before the service evaluates it without a source read. A resumed request uses the checkpoint's already admitted plan after exact request and authority matching, so it does not reacquire old tokens for each page.
+
+An exact-symbol output may request `SOURCE`. At its emit stage, the service calls the existing source port with the same exact selector and read authority, a file region, no entity enumeration, and a fixed five-line window on each side. Returned text keeps its normalized committed-text proof and one-based line range. Source rejection or withheld text qualifies the query with a finite item cause; output and checkpoint bytes account for returned text. This adds one source read per emitted symbol and does not alter candidate-only results.
 
 Discovery may remain a candidate result. Exact-only operations force refinement, and failed refinements remain visible as limitations. Relation continuations and child budgets are derived from remaining parent capacity.
 
@@ -109,7 +116,7 @@ The [opt-in synthetic reproduction](../../docs/reviews/hosted-semantic-reproduct
 
 The corrected scoped `ALL` path enumerates Kotlin declarations through the admitted file-type index without workspace name enumeration. Generated primary-constructor properties retain K2 property identity. Java reference endpoints retain compiler identity, and workspace expansion preserves original subject restrictions separately from destination admission. [Read-limit settings](../../docs/hosted-read-configuration.md) tune operational bounds while default logs preserve stages, outcomes and their effective values.
 
-The current [public tool contracts](../contracts/public-tools.md) distinguish presentation identity from canonical operation identity. Three ordinary searches and deferred `query_symbols` share `query.run`; `check_diagnostics` shares `diagnostic.check`. Hosted admission retains each tool's schema identity and typed syntax. The connected provider selects an enrolled workspace, then uses shared existing-IDE preparation and read dispatch. Operation effects, budgets, reference authority and exhaustive outcomes remain with their existing owners.
+The current [public tool contracts](../contracts/public-tools.md) distinguish presentation identity from canonical operation identity. Eager `query_symbols` owns declaration discovery and pipelines through `query.run`; `check_diagnostics` owns `diagnostic.check`. Hosted admission retains each tool's schema identity and typed syntax. The connected provider selects an enrolled workspace, then uses shared existing-IDE preparation and read dispatch. Operation effects, budgets, reference authority and exhaustive outcomes remain with their existing owners.
 
 Cheap scope and declaration-family constraints precede native collection. Mixed-family syntax issues one symbol discovery request with all requested kinds retained. Project-only fuzzy declarations use scoped Kotlin files, and exact searches select only requested short-name index families. Package PSI runs outside native index callbacks before candidate collection. Qualified partial results retain their limitations through exact refinement.
 

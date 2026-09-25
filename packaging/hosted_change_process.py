@@ -1,5 +1,6 @@
 """Owned native processes and strict event transport for hosted change acceptance."""
 import hashlib
+from dataclasses import asdict
 from enum import Enum
 import json
 import os
@@ -15,6 +16,7 @@ from hosted_generated_fixture import amend_generated_provenance
 from native_fixture_probe import NativeFixtureProbe, NativeFixtureProbeError
 from hosted_change_acceptance import (AcceptanceFailure, AcceptanceRejected, admitted_live,
                                       admit_event, event_observation, startup_discovery_state, StartupDiscoveryState)
+from query_name_request import name_query
 
 
 def private_file(path: Path):
@@ -75,9 +77,9 @@ class NativeProcesses:
                 if descriptor.get('hostPid') != self.ide.pid:
                     time.sleep(0.1)
                     continue
-                result = subprocess.run([str(product_executable(self.product, self.fixture.workspace.parent)), 'tool', 'search_classes'],
+                result = subprocess.run([str(product_executable(self.product, self.fixture.workspace.parent)), 'tool', 'query_symbols'],
                     cwd=self.fixture.workspace, env=self.fixture.environment,
-                    input=json.dumps({'name': 'NativeChangeTarget', 'name_match': None, 'scope': None}),
+                    input=json.dumps(asdict(name_query('NativeChangeTarget', ('class',)))),
                     capture_output=True, text=True, timeout=30)
                 if len(result.stdout) > 4 * 1024 * 1024:
                     raise AcceptanceRejected(AcceptanceFailure.READINESS)

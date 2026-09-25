@@ -1,5 +1,13 @@
 # Knowledge-base update log
 
+## 2026-09-25 — Pre-1.0 agent catalog trim
+
+Removed the three overlapping declaration-search facades and the two relation-name aliases from the published and installed catalogs. `query_symbols` is the eager declaration search and pipeline entry point; file or text discovery, candidate refinement, relation occurrences, and multi-step traversal retain separate tools. Copilot input schema regression checks enforce bounded composition depth for every installed tool, and native fixtures now query through the retained public surface.
+
+## 2026-09-25 — Exact-symbol source windows and read throughput
+
+Added an opt-in five-line source window to query symbol output, retaining exact source text, one-based lines, per-item source failures, and incomplete coverage through public schemas and wire projection. Documented the persistent provider path, per-project semantic mutex, and short transport and connected semantic serial/parallel observations; controlled native throughput with the new source field remains unmeasured.
+
 ## 2026-09-22 — Daemon-owned workspace registration
 
 Added bounded typed management status and registration on the existing owned Unix

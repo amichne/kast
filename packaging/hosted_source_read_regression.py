@@ -73,19 +73,17 @@ class SourceFunctionRequest:
     execution_budget: SourceExecutionBudget = field(default_factory=SourceExecutionBudget)
 
 
-@dataclass(frozen=True)
-class SourceBudgetAnchorSearch:
-    name: str = field(default='ReadPageBudget', init=False)
-    name_match: str = field(default='exact', init=False)
-    scope: None = field(default=None, init=False)
+def source_budget_anchor_query():
+    from query_name_request import name_query
+    return name_query('ReadPageBudget', ('class',))
 
 
 def run_source_paging_regression(replay):
     _check_page(replay, 'source-stop-at-eligible-page', replay.seeds['logger']['ref'], 'loggerFunction')
-    response = replay.transport.invoke(replay.surface, 'search_classes', asdict(SourceBudgetAnchorSearch()))
+    response = replay.transport.invoke(replay.surface, 'query_symbols', asdict(source_budget_anchor_query()))
     items = response.get('items', [])
     admitted = response.get('status') == 'complete' and len(items) == 1 and bool(items[0].get('ref'))
-    replay.record('source-budget-fixture-anchor', 'search_classes', {
+    replay.record('source-budget-fixture-anchor', 'query_symbols', {
         'exactAnchor': admitted, 'sameLiveAuthority': response.get('live') == replay.live,
     }, len(items), response)
     if admitted:

@@ -28,7 +28,7 @@ class KastToolRpcBridgeTest {
     @Test
     fun `catalog exposes direct tools and invokes one native read without an MCP exchange`() {
         Files.writeString(temporary.resolve("settings.gradle.kts"), "rootProject.name = \"fixture\"")
-        val read = installedHostedBootstrap().tools.single { it.name == "search_classes" }
+        val read = installedHostedBootstrap().tools.single { it.name == "query_symbols" }
         val schema = Json.encodeToJsonElement(TestInputSchema())
         val document = CanonicalJsonDocument.generated(TestResult.serializer()).create(TestResult())
         var preparationCount = 0
@@ -56,15 +56,15 @@ class KastToolRpcBridgeTest {
         val bridge = KastToolRpcBridge(session)
         val catalog = assertInstanceOf(ToolRpcReply.Catalog::class.java, bridge.catalog()).catalog
         assertEquals(1, catalog.schemaVersion)
-        assertEquals(listOf("change", "health_check", "search_classes"), catalog.tools.map { it.name })
+        assertEquals(listOf("change", "health_check", "query_symbols"), catalog.tools.map { it.name })
         assertEquals(
             listOf(ToolRpcToolEffect.WRITE, ToolRpcToolEffect.READ, ToolRpcToolEffect.READ),
             catalog.tools.map { it.effect },
         )
         val emptyRequest = Json.encodeToString(TestEmptyRequest())
-        val complete = assertInstanceOf(ToolRpcReply.Complete::class.java, bridge.call("search_classes", emptyRequest))
+        val complete = assertInstanceOf(ToolRpcReply.Complete::class.java, bridge.call("query_symbols", emptyRequest))
         assertEquals("complete", complete.document.jsonObject.getValue("status").jsonPrimitive.content)
-        assertEquals("search_classes", invokedName)
+        assertEquals("query_symbols", invokedName)
         assertEquals(1, preparationCount)
         assertInstanceOf(ToolRpcReply.RejectedDocument::class.java, bridge.call("change", emptyRequest))
         assertEquals(2, preparationCount)
@@ -74,7 +74,7 @@ class KastToolRpcBridgeTest {
     fun `unknown and malformed calls reject before native preparation`() {
         val session =
             KastDirectToolSession(
-                catalog = listOf(installedHostedBootstrap().tools.single { it.name == "search_classes" }),
+                catalog = listOf(installedHostedBootstrap().tools.single { it.name == "query_symbols" }),
                 supplemental = emptyList(),
                 root = { error("root must not be inspected") },
                 start = { error("preparation must not start") },
@@ -87,7 +87,7 @@ class KastToolRpcBridgeTest {
         )
         assertEquals(
             ToolRpcFailure.INVALID_ARGUMENTS,
-            (bridge.call("search_classes", "[") as ToolRpcReply.Rejected).failure,
+            (bridge.call("query_symbols", "[") as ToolRpcReply.Rejected).failure,
         )
     }
 

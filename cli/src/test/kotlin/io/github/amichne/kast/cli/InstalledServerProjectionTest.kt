@@ -110,9 +110,7 @@ class InstalledServerProjectionTest {
             4,
             projection.getValue("cliInvocations").jsonObject.getValue("schemaVersion").jsonPrimitive.content.toInt(),
         )
-        assertTrue(
-            bootstrap.getValue("policy").jsonPrimitive.content.contains("compiler-grounded Kotlin source intelligence")
-        )
+        assertTrue(bootstrap.getValue("policy").jsonPrimitive.content.contains("Use kast.query_symbols"))
         assertEquals(
             tools
                 .filterNot {
@@ -149,9 +147,6 @@ class InstalledServerProjectionTest {
         assertEquals(
             listOf(
                 "workspace.lifecycle",
-                "query.run",
-                "query.run",
-                "query.run",
                 "query.run",
                 "symbol.discover",
                 "symbol.inspect",
@@ -235,7 +230,7 @@ class InstalledServerProjectionTest {
             }
         val internalOperations = HostedOperationProjection.internalDefinitions.map { it.operation.id.value }
 
-        assertEquals(12, tools.size)
+        assertEquals(9, tools.size)
         assertEquals(15, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
         assertEquals("kast", projection.getValue("namespace").jsonPrimitive.content)
         assertEquals(
@@ -245,9 +240,6 @@ class InstalledServerProjectionTest {
         assertEquals(
             listOf(
                 "workspace_lifecycle",
-                "search_classes",
-                "search_functions",
-                "search_declarations",
                 "query_symbols",
                 "symbol_lookup",
                 "symbol_inspect",
@@ -259,9 +251,9 @@ class InstalledServerProjectionTest {
             ),
             tools.map { it.getValue("name").jsonPrimitive.content },
         )
-        assertTrue(tools.tool("query_symbols").getValue("deferLoading").jsonPrimitive.content.toBoolean())
+        assertFalse(tools.tool("query_symbols").getValue("deferLoading").jsonPrimitive.content.toBoolean())
         assertEquals(
-            setOf("search_classes", "search_functions", "search_declarations", "check_diagnostics"),
+            setOf("query_symbols", "check_diagnostics"),
             tools
                 .filterNot { it.getValue("deferLoading").jsonPrimitive.boolean }
                 .map { it.getValue("name").jsonPrimitive.content }
@@ -297,9 +289,6 @@ class InstalledServerProjectionTest {
         )
         assertEquals(
             linkedMapOf(
-                "search_classes" to listOf("tool", "search_classes"),
-                "search_functions" to listOf("tool", "search_functions"),
-                "search_declarations" to listOf("tool", "search_declarations"),
                 "query_symbols" to listOf("tool", "query_symbols"),
                 "symbol_lookup" to listOf("symbol", "discover"),
                 "symbol_inspect" to listOf("symbol", "inspect"),

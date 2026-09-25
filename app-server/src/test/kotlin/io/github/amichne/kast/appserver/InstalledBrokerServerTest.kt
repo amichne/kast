@@ -352,7 +352,7 @@ class InstalledBrokerServerTest {
                         .getValue("developerInstructions")
                         .jsonPrimitive
                         .content
-                        .contains("Kast provides compiler-grounded Kotlin source intelligence")
+                        .contains("Use kast.query_symbols for declaration-name search")
                 )
                 val kastNamespace =
                     bootstrapped
@@ -363,9 +363,6 @@ class InstalledBrokerServerTest {
                 assertEquals(
                     listOf(
                         "workspace_lifecycle",
-                        "search_classes",
-                        "search_functions",
-                        "search_declarations",
                         "query_symbols",
                         "symbol_lookup",
                         "symbol_inspect",

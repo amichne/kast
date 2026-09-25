@@ -22,13 +22,11 @@ sealed interface PublicToolInputFailure {
 
 @Serializable
 enum class PublicToolParameter(val path: String) {
-    CLASS_NAME("name"),
-    FUNCTION_NAME("function_name"),
     SOURCE_DECLARATION_NAME("source.declaration_name"),
-    DECLARATION_NAME("declaration_name"),
     DIRECTORY("scope.relative_directory_path"),
     PACKAGE("scope.package_name"),
     DIAGNOSTIC_PATH("relative_path"),
+    JQ_EXPRESSION("steps.expression"),
 }
 
 @Serializable
@@ -36,6 +34,9 @@ enum class PublicToolRule(val correction: String) {
     SIMPLE_NAME("Supply an unqualified declaration name; put its package in scope.package_name."),
     WORKSPACE_RELATIVE_PATH("Use a canonical workspace-relative path, or '.' for the root."),
     PACKAGE_NAME("Supply a Kotlin package name such as com.example.orders."),
+    SUPPORTED_JQ_FILTER(
+        "Use select(.name == \"value\") or select(.file | endswith(\".kt\")); see the query pipeline contract."
+    ),
 }
 
 /** Closed lowering result. The operation retains execution, effect, and compiler authority. */
@@ -146,7 +147,7 @@ fun PublicToolInputFailure.explanation(): String =
     when (this) {
         PublicToolInputFailure.SchemaMismatch -> "Tool contract mismatch; use the schema for the selected tool."
         PublicToolInputFailure.SchemaRejected ->
-            "Arguments must satisfy the selected tool's fields and closed variants. Omit default controls when unused."
+            "Arguments must contain exactly the selected tool's required fields. Supply null for default controls."
         PublicToolInputFailure.SyntaxRejected -> "Arguments violate the selected tool's bounded value grammar."
         is PublicToolInputFailure.Parameter -> "${parameter.path}: ${rule.correction}"
     }

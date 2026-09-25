@@ -112,26 +112,53 @@ class SourceReadProjectionTest {
     fun `source schema branches are disjoint closed and explicit about required fields`() {
         val schema = projectionTools().tool("source_read").getValue("inputSchema").jsonObject
         val alternatives = schema.getValue("anyOf").jsonArray.map(JsonElement::jsonObject)
-        assertEquals(2, alternatives.size)
-        val branches = alternatives[0].getValue("oneOf").jsonArray.map(JsonElement::jsonObject)
-        assertEquals(2, branches.size)
+        assertEquals(5, alternatives.size)
+        val simple = alternatives.single { "symbol" in it.getValue("properties").jsonObject }
         assertEquals(
             setOf("symbol"),
-            branches[0].getValue("required").jsonArray.map { it.jsonPrimitive.content }.toSet(),
+            simple.getValue("required").jsonArray.map { it.jsonPrimitive.content }.toSet(),
         )
-        assertTrue("anchor" !in branches[0].getValue("properties").jsonObject)
-        assertTrue("symbol" !in branches[1].getValue("properties").jsonObject)
-        assertEquals(
-            setOf("anchor", "region", "entities", "text"),
-            branches[1].getValue("required").jsonArray.map { it.jsonPrimitive.content }.toSet(),
-        )
-        val public = alternatives[1]
-        assertEquals(setOf("anchor"), public.getValue("required").jsonArray.map { it.jsonPrimitive.content }.toSet())
-        assertTrue("symbol" !in public.getValue("properties").jsonObject)
-        assertTrue("entityLimit" !in public.getValue("properties").jsonObject)
+        val canonical = alternatives.filter {
+            val properties = it.getValue("properties").jsonObject
+            "anchor" in properties && properties["region"]?.jsonObject?.get("anyOf") != null
+        }
+        val public = alternatives.filter {
+            val properties = it.getValue("properties").jsonObject
+            "anchor" in properties && properties["region"]?.jsonObject?.get("type")?.jsonPrimitive?.content == "string"
+        }
+        assertEquals(2, canonical.size)
+        assertEquals(2, public.size)
+        canonical.forEach { branch ->
+            assertEquals(
+                setOf("anchor", "region", "entities", "text"),
+                branch.getValue("required").jsonArray.map { it.jsonPrimitive.content }.toSet(),
+            )
+        }
+        public.forEach { branch ->
+            assertEquals(
+                setOf("anchor"),
+                branch.getValue("required").jsonArray.map { it.jsonPrimitive.content }.toSet(),
+            )
+            assertTrue("entityLimit" !in branch.getValue("properties").jsonObject)
+        }
+    }
+
+    @Test
+    fun `source schema region shapes and object branches remain closed`() {
+        val schema = projectionTools().tool("source_read").getValue("inputSchema").jsonObject
+        val alternatives = schema.getValue("anyOf").jsonArray.map(JsonElement::jsonObject)
+        val canonical = alternatives.filter {
+            val properties = it.getValue("properties").jsonObject
+            "anchor" in properties && properties["region"]?.jsonObject?.get("anyOf") != null
+        }
+        val public = alternatives.filter {
+            val properties = it.getValue("properties").jsonObject
+            "anchor" in properties && properties["region"]?.jsonObject?.get("type")?.jsonPrimitive?.content == "string"
+        }
         assertEquals(
             "object",
-            branches[1]
+            canonical
+                .first()
                 .getValue("properties")
                 .jsonObject
                 .getValue("region")
@@ -147,6 +174,7 @@ class SourceReadProjectionTest {
         assertEquals(
             "string",
             public
+                .first()
                 .getValue("properties")
                 .jsonObject
                 .getValue("region")
@@ -155,20 +183,21 @@ class SourceReadProjectionTest {
                 .jsonPrimitive
                 .content,
         )
-        fun assertClosed(value: JsonElement) {
-            when (value) {
-                is JsonObject -> {
-                    if ((value["type"] as? kotlinx.serialization.json.JsonPrimitive)?.content == "object") {
-                        assertEquals(false, value["additionalProperties"]?.jsonPrimitive?.booleanOrNull)
-                        assertTrue(value["properties"] is JsonObject)
-                    }
-                    value.values.forEach(::assertClosed)
-                }
-                is kotlinx.serialization.json.JsonArray -> value.forEach(::assertClosed)
-                else -> Unit
-            }
-        }
         assertClosed(schema)
+    }
+
+    private fun assertClosed(value: JsonElement) {
+        when (value) {
+            is JsonObject -> {
+                if ((value["type"] as? kotlinx.serialization.json.JsonPrimitive)?.content == "object") {
+                    assertEquals(false, value["additionalProperties"]?.jsonPrimitive?.booleanOrNull)
+                    assertTrue(value["properties"] is JsonObject)
+                }
+                value.values.forEach(::assertClosed)
+            }
+            is kotlinx.serialization.json.JsonArray -> value.forEach(::assertClosed)
+            else -> Unit
+        }
     }
 
     private fun projectionTools(): List<JsonObject> = InstalledServerProjectionTest().projectionTools()

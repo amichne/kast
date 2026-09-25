@@ -4,7 +4,7 @@ title: Protocol
 description: Canonical operation contracts are completed by an exact registry and projected into generated wire documents.
 resource: file://protocol
 tags: [kotlin, protocol, serialization]
-timestamp: 2026-09-16T00:00:00Z
+timestamp: 2026-09-25T00:00:00Z
 code_sources:
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/IdeLifecycleDocuments.kt
   - path: cli/src/test/kotlin/io/github/amichne/kast/cli/HostedFailureBudgetSchemaTest.kt
@@ -32,6 +32,9 @@ code_sources:
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalSourceReadOperationModels.kt
   - path: protocol/contract/src/main/resources/ide-hosted/hosted-endpoint.schema.json
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/QuerySourceWindowSchema.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QuerySourceWindowDocument.kt
+  - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/QuerySourceWireDocuments.kt
   - path: cli/src/test/kotlin/io/github/amichne/kast/cli/InstalledServerProjectionTest.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/HostedRejectionSchemas.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastProvider.kt
@@ -60,6 +63,8 @@ subject to full envelope fitting; the identity bound does not promise they will 
 Semantic-read admission and projection live in the separate
 [`query:protocol` module](query-protocol.md). Hosts supply current authority and
 domain operations to that reusable boundary.
+
+An exact query can project a bounded source window with normalized text and an inclusive one-based line range. The canonical contract and wire DTO retain finite source failures; the installed output schema admits the optional window.
 
 Successful wire envelopes preserve the distinction between a published
 generation and live IDE provenance. Decoding rejects a success envelope with
@@ -92,7 +97,7 @@ missing files, symlinks, incompatible metadata, and drift before provider startu
 separate evidence: the [acceptance review](../../docs/reviews/live-semantic-read-acceptance.md)
 records the final default-route CLI matrix and actual provider invocation.
 
-The current [public tool contracts](../contracts/public-tools.md) distinguish presentation identity from canonical operation identity. Three ordinary searches and deferred `query_symbols` share `query.run`; `check_diagnostics` shares `diagnostic.check`. Private admission retains each tool's schema identity and typed syntax through canonical request preparation. Every `tool` command uses a versioned daemon RPC that re-admits its selected public schema and exact root before native demand. Operation effects, budgets, reference authority and exhaustive outcomes remain with their existing owners.
+The current [public tool contracts](../contracts/public-tools.md) distinguish presentation identity from canonical operation identity. Eager `query_symbols` owns declaration discovery and pipelines through `query.run`; `check_diagnostics` owns `diagnostic.check`. Private admission retains each tool's schema identity and typed syntax through canonical request preparation. Every `tool` command uses a versioned daemon RPC that re-admits its selected public schema and exact root before native demand. Operation effects, budgets, reference authority and exhaustive outcomes remain with their existing owners.
 
 The hosted endpoint rejection schema admits bounded, discriminated change-failure detail and rejects unknown causes or contradictory outer failure codes. Runtime encoded-shape tests validate each closed variant against this independently owned schema.
 

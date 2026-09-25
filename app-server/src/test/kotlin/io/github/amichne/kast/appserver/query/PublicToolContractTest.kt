@@ -1,14 +1,93 @@
 package io.github.amichne.kast.appserver.query
 
+import io.github.amichne.kast.appserver.publicNameQuery
+import io.github.amichne.kast.appserver.publicToolCase
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.*
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
 class PublicToolContractTest {
+    @Test
+    fun `query symbols admits appended outputs and jq filtering as ordered steps`() {
+        val reference = (ProtocolText.parse("NON_ISSUED_SCHEMA_TEST_ONLY") as Refinement.Refined).value
+        val expression = (ProtocolText.parse("select(.kind == \"class\")") as Refinement.Refined).value
+        val refs = (BoundedProtocolList.create(listOf(reference)) as Refinement.Refined).value
+        val steps =
+            (BoundedProtocolList.create(
+                    listOf<PublicToolStep>(
+                        PublicToolAppendSymbolRefs(refs),
+                        PublicToolFilterJq(expression),
+                        PublicToolDistinctSymbols,
+                    )
+                ) as Refinement.Refined)
+                .value
+        val input = PublicToolQuerySymbols(PublicToolReferenceSource(refs), steps, null)
+        val admitted =
+            PublicToolContract.admit(
+                PublicToolIdentity.QUERY_SYMBOLS,
+                Json.encodeToJsonElement(PublicToolQuerySymbols.serializer(), input),
+            ) as Refinement.Refined
+        val lowered = (admitted.value.canonical as PublicToolCanonical.Query).request.steps.values
+        assertEquals(
+            listOf(
+                QueryStepDocument.AppendReferences::class,
+                QueryStepDocument.Where::class,
+                QueryStepDocument.Distinct::class,
+            ),
+            lowered.map { it::class },
+        )
+        assertEquals(refs, (lowered[0] as QueryStepDocument.AppendReferences).values)
+        assertEquals(
+            QueryPrimitiveFieldDocument.KIND,
+            ((lowered[1] as QueryStepDocument.Where).predicate as QueryPredicateDocument.Primitive).field,
+        )
+    }
+
+    @Test
+    fun `unsupported jq expression rejects at public admission`() {
+        val reference = (ProtocolText.parse("NON_ISSUED_SCHEMA_TEST_ONLY") as Refinement.Refined).value
+        val expression = (ProtocolText.parse("select(.name | test(\".*\"))") as Refinement.Refined).value
+        val refs = (BoundedProtocolList.create(listOf(reference)) as Refinement.Refined).value
+        val steps =
+            (BoundedProtocolList.create(listOf<PublicToolStep>(PublicToolFilterJq(expression))) as Refinement.Refined)
+                .value
+        val input = PublicToolQuerySymbols(PublicToolReferenceSource(refs), steps, null)
+        val result =
+            PublicToolContract.admit(
+                PublicToolIdentity.QUERY_SYMBOLS,
+                Json.encodeToJsonElement(PublicToolQuerySymbols.serializer(), input),
+            )
+        assertEquals(
+            PublicToolInputFailure.Parameter(PublicToolParameter.JQ_EXPRESSION, PublicToolRule.SUPPORTED_JQ_FILTER),
+            (result as Refinement.Rejected).failure,
+        )
+    }
+
+    @Test
+    fun `query symbols source field lowers to canonical source projection`() {
+        val refs =
+            (BoundedProtocolList.create(listOf((ProtocolText.parse("NON_ISSUED") as Refinement.Refined).value))
+                    as Refinement.Refined)
+                .value
+        val fields = (BoundedProtocolList.create(listOf(PublicToolReturnFields.SOURCE)) as Refinement.Refined).value
+        val admitted =
+            PublicToolContract.admit(
+                PublicToolIdentity.QUERY_SYMBOLS,
+                Json.encodeToJsonElement(
+                    PublicToolQuerySymbols.serializer(),
+                    PublicToolQuerySymbols(PublicToolReferenceSource(refs), PublicToolDefaults.steps, fields),
+                ),
+            ) as Refinement.Refined
+        val request = (admitted.value.canonical as PublicToolCanonical.Query).request
+        assertEquals(
+            listOf(QuerySymbolFieldDocument.SOURCE),
+            (request.output as QueryOutputDocument.Symbols).fields.values,
+        )
+    }
+
     @Test
     fun `pipeline continuation retains exact opaque bytes through facade lowering`() {
         val token = (ProtocolText.parse("query:v1:EXAMPLE_NOT_ISSUED") as Refinement.Refined).value
@@ -29,15 +108,20 @@ class PublicToolContractTest {
     }
 
     @Test
-    fun `class facade compiles explicit null once to exact scoped exhaustive search`() {
+    fun `query name search compiles explicit null once to exact scoped exhaustive search`() {
         val admitted =
             PublicToolContract.admit(
-                PublicToolIdentity.SEARCH_CLASSES,
-                Json {
-                        encodeDefaults = true
-                        explicitNulls = true
-                    }
-                    .encodeToJsonElement(TestSearchClassInput.serializer(), TestSearchClassInput("OrderService")),
+                PublicToolIdentity.QUERY_SYMBOLS,
+                publicNameQuery(
+                    "OrderService",
+                    listOf(PublicToolDeclarationKinds.CLASS),
+                    fields =
+                        listOf(
+                            PublicToolReturnFields.NAME,
+                            PublicToolReturnFields.LOCATION,
+                            PublicToolReturnFields.SIGNATURE,
+                        ),
+                ),
             )
         val request = ((admitted as Refinement.Refined).value.canonical as PublicToolCanonical.Query).request
         val source = request.from as QueryFromDocument.Symbols
@@ -55,48 +139,6 @@ class PublicToolContractTest {
         )
         assertTrue(request.steps.values.isEmpty())
     }
-
-    @Test
-    fun `ordinary search and diagnostics admit omitted defaults`() {
-        val search =
-            PublicToolContract.admit(
-                PublicToolIdentity.SEARCH_CLASSES,
-                Json.encodeToJsonElement(
-                    PublicToolSearchClasses.serializer(),
-                    PublicToolSearchClasses(text("OrderService"), null, null),
-                ),
-            ) as Refinement.Refined
-        val query = (search.value.canonical as PublicToolCanonical.Query).request
-        val source = query.from as QueryFromDocument.Symbols
-        assertEquals(SymbolDiscoveryMatchDocument.EXACT_NAME, (source.match as QueryMatchDocument.Name).matching)
-        assertEquals(listOf("main", "test"), source.scope.sourceSets.values.map { it.value })
-
-        val diagnostics =
-            PublicToolContract.admit(
-                PublicToolIdentity.CHECK_DIAGNOSTICS,
-                Json.encodeToJsonElement(
-                    PublicToolCheckDiagnostics.serializer(),
-                    PublicToolCheckDiagnostics(text("src/Main.kt"), null),
-                ),
-            ) as Refinement.Refined
-        assertEquals(100, (diagnostics.value.canonical as PublicToolCanonical.Diagnostics).request.limit.value)
-
-        val scoped =
-            PublicToolContract.admit(
-                PublicToolIdentity.SEARCH_CLASSES,
-                Json.encodeToJsonElement(
-                    PublicToolSearchClasses.serializer(),
-                    PublicToolSearchClasses(text("OrderService"), null, PublicToolDirectoryScope(text("services"))),
-                ),
-            ) as Refinement.Refined
-        val directory =
-            ((scoped.value.canonical as PublicToolCanonical.Query).request.from as QueryFromDocument.Symbols)
-                .scope
-                .directory!!
-        assertEquals(QueryContainmentDocument.DESCENDANTS, directory.containment)
-    }
-
-    private fun text(raw: String): ProtocolText = (ProtocolText.parse(raw) as Refinement.Refined).value
 }
 
 class PublicToolSchemaTest {
@@ -106,23 +148,24 @@ class PublicToolSchemaTest {
             requireNotNull(javaClass.getResourceAsStream("/public-tools/schema-cases.json")).bufferedReader().use {
                 Json.parseToJsonElement(it.readText()).jsonArray
             }
-        assertEquals(32, cases.size)
+        assertEquals(34, cases.size)
         cases.forEach { case ->
             val row = case.jsonObject
             val identity =
                 PublicToolIdentity.entries.single { it.toolName == row.getValue("tool").jsonPrimitive.content }
             val arguments = row.getValue("arguments")
-            val valid = row.getValue("schema_valid").jsonPrimitive.boolean
+            val schemaValid = row.getValue("schema_valid").jsonPrimitive.boolean
+            val admitted = row["admission_valid"]?.jsonPrimitive?.boolean ?: schemaValid
             assertEquals(
-                valid,
+                schemaValid,
                 PublicToolContract.schema(identity).admit(arguments)
                     is io.github.amichne.kast.kernel.Validation.Validated,
-                row.getValue("id").toString(),
+                "schema: ${row.getValue("id")}",
             )
             assertEquals(
-                valid,
+                admitted,
                 PublicToolContract.admit(identity, arguments) is Refinement.Refined,
-                row.getValue("id").toString(),
+                "admission: ${row.getValue("id")}",
             )
         }
     }
@@ -172,26 +215,39 @@ class PublicToolSchemaTest {
 
     @Test
     fun `scope and name admission fail closed without normalization or widening`() {
-        val directoryCases = listOf("/tmp", "../src", "a/../b", "a//b", "a/./b", "a/", "C:/src", "a\\\\b")
-        directoryCases.forEach { path ->
-            val input = Json.encodeToJsonElement(TestSearchClassInput("Order", scope = TestSearchDirectoryScope(path)))
+        (0..8).forEach { index ->
             assertTrue(
-                PublicToolContract.admit(PublicToolIdentity.SEARCH_CLASSES, input) is Refinement.Rejected,
-                path,
+                PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, publicToolCase("invalid-directory-$index"))
+                    is Refinement.Rejected,
+                index.toString(),
             )
         }
-        listOf("com.example.Order", "Order*", "Order()", "find orders", "").forEach { name ->
+        (0..4).forEach { index ->
             assertTrue(
-                PublicToolContract.admit(
-                    PublicToolIdentity.SEARCH_CLASSES,
-                    Json.encodeToJsonElement(TestSearchClassInput(name)),
-                ) is Refinement.Rejected,
-                name,
+                PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, publicToolCase("invalid-name-$index"))
+                    is Refinement.Rejected,
+                index.toString(),
             )
         }
-        val input =
-            """{"function_name":"createOrder","name_match":"fuzzy","scope":{"package_name":"com.example","include_subpackages":false,"source_set_names":["integrationTest"]}}"""
-        val request = (admit(PublicToolIdentity.SEARCH_FUNCTIONS, input).canonical as PublicToolCanonical.Query).request
+        val packageName = (ProtocolText.parse("com.example") as Refinement.Refined).value
+        val sourceSet = (ProtocolText.parse("integrationTest") as Refinement.Refined).value
+        val scoped =
+            PublicToolPackageScope(
+                packageName,
+                false,
+                (BoundedProtocolList.create(listOf(sourceSet)) as Refinement.Refined).value,
+            )
+        val admitted =
+            PublicToolContract.admit(
+                PublicToolIdentity.QUERY_SYMBOLS,
+                publicNameQuery(
+                    "createOrder",
+                    listOf(PublicToolDeclarationKinds.FUNCTION),
+                    scoped,
+                    PublicToolNameMatch.FUZZY,
+                ),
+            ) as Refinement.Refined
+        val request = (admitted.value.canonical as PublicToolCanonical.Query).request
         val source = request.from as QueryFromDocument.Symbols
         assertEquals(SymbolDiscoveryMatchDocument.FUZZY, (source.match as QueryMatchDocument.Name).matching)
         assertEquals(QueryContainmentDocument.DIRECT, source.scope.packageName!!.containment)
@@ -201,24 +257,12 @@ class PublicToolSchemaTest {
 
     @Test
     fun `duplicate sets reject at the shared server boundary`() {
-        listOf(
-                PublicToolIdentity.SEARCH_DECLARATIONS to
-                    """{"declaration_name":"Order","name_match":null,"scope":null,"declaration_kinds":["class","class"]}""",
-                PublicToolIdentity.SEARCH_CLASSES to
-                    Json.encodeToString(
-                        TestSearchClassInput(
-                            "Order",
-                            scope = TestSearchDirectoryScope(".", sourceSetNames = listOf("main", "main")),
-                        )
-                    ),
-                PublicToolIdentity.QUERY_SYMBOLS to
-                    """{"source":{"type":"all_declarations","declaration_kinds":null,"scope":null},"steps":[{"type":"filter_visibility","visibilities":["public","public"]}],"return_fields":null}""",
-                PublicToolIdentity.QUERY_SYMBOLS to
-                    """{"source":{"type":"all_declarations","declaration_kinds":null,"scope":null},"steps":null,"return_fields":["name","name"]}""",
+        listOf("duplicate-kinds", "duplicate-source-sets", "duplicate-visibility", "duplicate-return-fields").forEach {
+            id ->
+            assertTrue(
+                PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, publicToolCase(id)) is Refinement.Rejected
             )
-            .forEach { (identity, raw) ->
-                assertTrue(PublicToolContract.admit(identity, Json.parseToJsonElement(raw)) is Refinement.Rejected)
-            }
+        }
     }
 
     @Test
@@ -236,8 +280,8 @@ class PublicToolSchemaTest {
                     .jsonObject
             assertFalse("strict" in app)
             assertEquals(JsonPrimitive(true), response["strict"])
-            assertEquals(PublicToolContract.parameters(identity), app["inputSchema"])
             assertEquals(identity.description, app.getValue("description").jsonPrimitive.content)
+            assertEquals(PublicToolContract.parameters(identity), app["inputSchema"])
             assertEquals(PublicToolContract.generationParameters(identity), response["parameters"])
             visit(response.getValue("parameters").jsonObject) { node ->
                 assertTrue(
@@ -255,18 +299,7 @@ class PublicToolSchemaTest {
     }
 
     @Test
-    fun `ordinary tool prompts contain only reachable scope definitions`() {
-        listOf(
-                PublicToolIdentity.SEARCH_CLASSES,
-                PublicToolIdentity.SEARCH_FUNCTIONS,
-                PublicToolIdentity.SEARCH_DECLARATIONS,
-            )
-            .forEach { identity ->
-                assertEquals(
-                    setOf("DirectoryScope", "PackageScope", "ExecutionBudget"),
-                    PublicToolContract.generationParameters(identity).getValue("\$defs").jsonObject.keys,
-                )
-            }
+    fun `tool prompts contain only reachable definitions`() {
         assertEquals(
             setOf("ExecutionBudget"),
             PublicToolContract.generationParameters(PublicToolIdentity.CHECK_DIAGNOSTICS)
@@ -278,16 +311,17 @@ class PublicToolSchemaTest {
 
     @Test
     fun `schema and tool identity are retained through encoding`() {
-        val admitted = admit(PublicToolIdentity.SEARCH_CLASSES, Json.encodeToString(TestSearchClassInput("Order")))
+        val admitted =
+            (PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, publicNameQuery()) as Refinement.Refined).value
         assertThrows(kotlinx.serialization.SerializationException::class.java) {
-            Json.encodeToString(PublicToolRequestSerializer(PublicToolIdentity.SEARCH_FUNCTIONS), admitted)
+            Json.encodeToString(PublicToolRequestSerializer(PublicToolIdentity.CHECK_DIAGNOSTICS), admitted)
         }
         val raw =
-            PublicToolContract.schema(PublicToolIdentity.SEARCH_CLASSES).admit(PublicToolContract.encode(admitted))
+            PublicToolContract.schema(PublicToolIdentity.QUERY_SYMBOLS).admit(PublicToolContract.encode(admitted))
                 as io.github.amichne.kast.kernel.Validation.Validated
         assertEquals(
             Refinement.Rejected(PublicToolInputFailure.SchemaMismatch),
-            PublicToolContract.admit(PublicToolIdentity.SEARCH_FUNCTIONS, raw.value),
+            PublicToolContract.admit(PublicToolIdentity.CHECK_DIAGNOSTICS, raw.value),
         )
     }
 
@@ -306,17 +340,3 @@ class PublicToolSchemaTest {
         node["items"]?.let { visit(it.jsonObject, check) }
     }
 }
-
-@Serializable
-private data class TestSearchClassInput(
-    val name: String,
-    @kotlinx.serialization.SerialName("name_match") val nameMatch: String? = null,
-    val scope: TestSearchDirectoryScope? = null,
-)
-
-@Serializable
-private data class TestSearchDirectoryScope(
-    @kotlinx.serialization.SerialName("relative_directory_path") val relativeDirectoryPath: String,
-    @kotlinx.serialization.SerialName("include_subdirectories") val includeSubdirectories: Boolean = true,
-    @kotlinx.serialization.SerialName("source_set_names") val sourceSetNames: List<String>? = null,
-)

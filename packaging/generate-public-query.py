@@ -262,7 +262,7 @@ def render_tools(authority: dict) -> dict[Path, str]:
     enums = {}
     unions = {'Scope': ['DirectoryScope', 'PackageScope'],
               'Source': ['SearchSource', 'AllSource', 'ReferenceSource'],
-              'Step': ['FilterVisibility', 'ExpandRelation', 'DistinctSymbols']}
+              'Step': ['FilterVisibility', 'ExpandRelation', 'DistinctSymbols', 'AppendSymbolRefs', 'FilterJq']}
     parents = {child: parent for parent, children in unions.items() for child in children}
     def typ(spec, prop):
         if '$ref' in spec:
@@ -349,7 +349,6 @@ def render_tools(authority: dict) -> dict[Path, str]:
     lines.append('    val sourceSets = ' + bounded([text_value(s) for s in defaults['source_set_names']]) + '\n')
     lines.append('    val declarationKinds = ' + bounded(['PublicToolDeclarationKinds.' + enum_entry(s) for s in defaults['declaration_kinds']]) + '\n')
     lines.append('    val returnFields = ' + bounded(['PublicToolReturnFields.' + enum_entry(s) for s in defaults['return_fields']]) + '\n')
-    lines.append('    val searchFields = ' + bounded(['PublicToolReturnFields.' + enum_entry(s) for s in defaults['search_fields']]) + '\n')
     lines.append('    val steps: BoundedProtocolList<PublicToolStep> = toolDefault(BoundedProtocolList.create(emptyList()))\n')
     if defaults['steps'] != []: raise ValueError('Only empty default transformations are supported')
     lines.append(f'    const val maxDiagnostics = {defaults["max_diagnostics"]}\n')
@@ -368,10 +367,22 @@ def render_tools(authority: dict) -> dict[Path, str]:
                       'package io.github.amichne.kast.protocol.registry\n\n',
                       'import io.github.amichne.kast.protocol.contract.CanonicalOperation\n\n',
                       '/** Closed presentation identities; canonical operations retain effect and budget ownership. */\n',
-                      'enum class PublicToolIdentity(val toolName: String, val operation: CanonicalOperation, val description: String, val loading: HostedToolLoading) {\n']
+                      'enum class PublicToolIdentity(\n'
+                      '    val toolName: String,\n'
+                      '    val operation: CanonicalOperation,\n'
+                      '    val description: String,\n'
+                      '    val loading: HostedToolLoading,\n'
+                      ') {\n']
     operations = {'query.run': 'QUERY_RUN', 'diagnostic.check': 'DIAGNOSTIC_CHECK'}
     for tool in authority['tools']:
-        identity_lines.append(f'    {enum_entry(tool["name"])}({json.dumps(tool["name"])}, CanonicalOperation.{operations[tool["operation"]]},\n        {json.dumps(tool["description"])}, HostedToolLoading.{"DEFERRED" if tool["deferLoading"] else "EAGER"}),\n')
+        description = ' +\n            '.join(json.dumps(tool['description'][offset:offset + 90])
+                                             for offset in range(0, len(tool['description']), 90))
+        identity_lines.append(
+            f'    {enum_entry(tool["name"])}({json.dumps(tool["name"])}, CanonicalOperation.{operations[tool["operation"]]},\n'
+            f'        {description},\n'
+            f'        HostedToolLoading.{"DEFERRED" if tool["deferLoading"] else "EAGER"},\n'
+            '    ),\n'
+        )
     identity_lines.append('}\n')
     outputs[ROOT / 'protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt'] = ''.join(identity_lines)
     registrations = []

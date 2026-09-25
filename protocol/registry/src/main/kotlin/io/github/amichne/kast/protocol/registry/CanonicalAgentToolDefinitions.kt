@@ -69,7 +69,6 @@ data class AgentToolDefinition(
     val approval: HostedApprovalPolicy,
     val loading: HostedToolLoading,
     val inputBinding: AgentToolInputBinding = AgentToolInputBinding.Canonical,
-    val inputAliases: Set<AgentToolName> = emptySet(),
 )
 
 enum class AgentToolPolicyFailure {
@@ -111,24 +110,21 @@ object CanonicalAgentToolDefinitions {
             approval = HostedApprovalPolicy.EXACT_PROJECT_CLOSE,
         )
     val query = facade(PublicToolIdentity.QUERY_SYMBOLS)
-    val searchClasses = facade(PublicToolIdentity.SEARCH_CLASSES)
-    val searchFunctions = facade(PublicToolIdentity.SEARCH_FUNCTIONS)
-    val searchDeclarations = facade(PublicToolIdentity.SEARCH_DECLARATIONS)
     val symbolLookup =
         tool(
             CanonicalOperationDefinitions.symbolDiscover,
             "symbol_lookup",
-            "Find bounded Kotlin declaration candidates in the current workspace. Use when an exact " +
-                "selector is not already available. Returned candidate selectors are proof-carrying " +
-                "identities and must be preserved verbatim.",
+            "Discover bounded file, name, location or source-text candidates for explicit " +
+                "refinement. Use query_symbols for declaration results and semantic pipelines. " +
+                "Preserve returned candidate selectors verbatim for symbol_inspect or source_read.",
         )
     val symbolInspect =
         tool(
             CanonicalOperationDefinitions.symbolInspect,
             "symbol_inspect",
-            "Refine a candidate into exact compiler-grounded symbol identity or inspect an existing " +
-                "exact selector. Prefer the returned exact selector over reconstructing symbol " +
-                "identity from source text.",
+            "Refine a symbol_lookup candidate into exact compiler-grounded identity, or explicitly " +
+                "revalidate an existing exact selector. Use query_symbols for declaration search. Preserve " +
+                "the returned exact selector verbatim.",
         )
     val sourceRead =
         tool(
@@ -142,25 +138,21 @@ object CanonicalAgentToolDefinitions {
                 "when Kast can represent the required Kotlin context. Omit entityLimit for an " +
                 "entity-free read, and omit page and default budgets for the first read.",
         )
-    val semanticQuery =
+    val relationRead =
         tool(
             CanonicalOperationDefinitions.relationRead,
             "read_relations",
-            "Read one bounded compiler-grounded semantic relation from an exact selector. Use " +
-                "a Kast search tool first when exact identity is not established. Related declarations " +
-                "may be in other files or packages; inspect qualifications and resume with the " +
-                "returned continuation. " +
-                "Omit limit for the bounded default.",
-            inputAliases = setOf("semantic_query"),
+            "Read individual compiler-grounded relation occurrences from one exact selector, including " +
+                "distinct call sites. Use query_symbols for declaration search and traverse_relations for " +
+                "bounded multi-step reachability. Inspect qualifications and resume with the returned continuation.",
         )
-    val impactAnalyze =
+    val traversalRun =
         tool(
             CanonicalOperationDefinitions.traversalRun,
             "traverse_relations",
-            "Traverse bounded compiler-grounded semantic relations from an exact selector. Returned " +
-                "reachability is qualified by depth, scope, relation evidence and execution budgets; " +
-                "it does not guarantee breakage analysis or test selection.",
-            inputAliases = setOf("impact_analyze"),
+            "Traverse multi-step compiler-grounded relations from an exact selector. Use read_relations " +
+                "for individual occurrence facts. Reachability is qualified by depth, scope, relation " +
+                "evidence and execution budgets; it does not guarantee breakage or test selection.",
         )
     val diagnosticCheck = facade(PublicToolIdentity.CHECK_DIAGNOSTICS)
     val change =
@@ -199,43 +191,35 @@ object CanonicalAgentToolDefinitions {
     val all: List<AgentToolDefinition> =
         listOf(
             workspaceLifecycle,
-            searchClasses,
-            searchFunctions,
-            searchDeclarations,
             query,
             symbolLookup,
             symbolInspect,
             sourceRead,
-            semanticQuery,
-            impactAnalyze,
+            relationRead,
+            traversalRun,
             diagnosticCheck,
             change,
         )
 
-    /** Legacy input names remain accepted throughout 0.40.x; removal is no earlier than 0.41.0. */
+    /** Only published tool names are accepted. */
     fun resolveInput(raw: String): Refinement<AgentToolDefinition, AgentToolInputFailure> {
-        val matches = all.filter { definition ->
-            definition.name.value == raw || definition.inputAliases.any { it.value == raw }
-        }
-        return when (matches.size) {
-            0 -> Refinement.Rejected(AgentToolInputFailure.UNKNOWN)
-            1 -> Refinement.Refined(matches.single())
-            else -> Refinement.Rejected(AgentToolInputFailure.AMBIGUOUS)
-        }
+        val match = all.singleOrNull { it.name.value == raw }
+        return if (match == null) Refinement.Rejected(AgentToolInputFailure.UNKNOWN) else Refinement.Refined(match)
     }
 
     val policy: AgentToolPolicy =
         refined(
             AgentToolPolicy.parse(
                 """
-                Kast provides compiler-grounded Kotlin source intelligence for the current repository.
-
-                Use kast.search_classes for class-like names, kast.search_functions for functions,
-                and kast.search_declarations for mixed kinds, properties or type aliases. Exact
-                matching is default; request fuzzy explicitly. Apply known directory, package,
-                source-set, declaration-kind and exact-name constraints before expensive work.
-                Use kast.check_diagnostics for compiler diagnostics, deferred kast.query_symbols
-                for enumeration and ordered pipelines, and read_relations for occurrence facts.
+                Use kast.query_symbols for declaration-name search, enumeration, returned exact
+                references, and ordered pipelines. Restrict declaration kinds and scope before
+                expensive work; exact matching is default and fuzzy requires explicit opt-in.
+                Use symbol_lookup only when candidate discovery by file, location, name or
+                source text is required; use symbol_inspect to refine a candidate or revalidate
+                an exact selector. Use source_read
+                for bounded source context, read_relations for occurrence facts, and
+                traverse_relations for multi-step reachability. Use kast.check_diagnostics
+                for compiler diagnostics.
                 Preserve returned symbol references verbatim, including compact host handles.
                 Do not reconstruct handles. Reads may reacquire retained exact handles;
                 keep reference_acquisitions. If unavailable, use a scoped search.
@@ -262,9 +246,6 @@ object CanonicalAgentToolDefinitions {
     private fun facade(identity: PublicToolIdentity): AgentToolDefinition {
         val operation =
             when (identity) {
-                PublicToolIdentity.SEARCH_CLASSES,
-                PublicToolIdentity.SEARCH_FUNCTIONS,
-                PublicToolIdentity.SEARCH_DECLARATIONS,
                 PublicToolIdentity.QUERY_SYMBOLS -> CanonicalOperationDefinitions.queryRun
                 PublicToolIdentity.CHECK_DIAGNOSTICS -> CanonicalOperationDefinitions.diagnosticCheck
             }
@@ -284,7 +265,6 @@ object CanonicalAgentToolDefinitions {
         description: String,
         approval: HostedApprovalPolicy = HostedApprovalPolicy.NONE,
         loading: HostedToolLoading = HostedToolLoading.DEFERRED,
-        inputAliases: Set<String> = emptySet(),
     ): AgentToolDefinition =
         AgentToolDefinition(
             operation,
@@ -292,7 +272,6 @@ object CanonicalAgentToolDefinitions {
             refined(ProtocolText.parse(description)),
             approval,
             loading,
-            inputAliases = inputAliases.mapTo(linkedSetOf()) { refined(AgentToolName.parse(it)) },
         )
 
     private fun <Value, Failure> refined(value: Refinement<Value, Failure>): Value =
@@ -311,6 +290,5 @@ sealed interface AgentToolInputBinding {
 
 /** Closed failure at the canonical hosted-tool input-name boundary. */
 enum class AgentToolInputFailure {
-    UNKNOWN,
-    AMBIGUOUS,
+    UNKNOWN
 }

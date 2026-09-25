@@ -10,7 +10,7 @@ from released_acceptance_product import product_executable
 
 from hosted_change_acceptance import admitted_live, AcceptanceRejected
 from hosted_read_transport import ReadTransportRejected, ReadTransportFailure, ReadProviderFailure
-from hosted_source_read_regression import SourceBudgetAnchorSearch, SourceFunctionRequest, SymbolAnchor
+from hosted_source_read_regression import source_budget_anchor_query, SourceFunctionRequest, SymbolAnchor
 from native_fixture_probe import NativeFixtureProbe, NativeFixtureProbeError
 
 
@@ -276,7 +276,7 @@ class _AuthorityReplay:
         self.cases.append(AuthorityCase(name, surface, digest, surface is AuthoritySurface.PROVIDER, reason))
 
     def search(self, surface):
-        response, digest = self.call(surface, 'search_classes', SourceBudgetAnchorSearch())
+        response, digest = self.call(surface, 'query_symbols', source_budget_anchor_query())
         items = response.get('items', [])
         _demand(response.get('status') == 'complete' and len(items) == 1
             and isinstance(items[0].get('ref'), str) and bool(items[0]['ref']), AuthorityFailure.ISSUER)

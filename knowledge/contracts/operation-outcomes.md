@@ -64,6 +64,8 @@ for both unadmitted and budget-bearing rejections. The wire retains the finite
 failure and budget; projection derives the action again after decoding rather
 than accepting a separate action as authority.
 
+An appended query reference rejection retains both the step and reference positions. It uses the same finite reference reason and recovery action as a source reference rejection.
+
 | Action | Required direction |
 | --- | --- |
 | `reacquire_authority` | Obtain fresh authority for a stale, foreign, malformed or otherwise unusable opaque reference; do not repair its text. |

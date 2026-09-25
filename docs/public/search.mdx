@@ -1,7 +1,7 @@
 ---
 type: "Usage Guide"
 title: "Find Kotlin declarations"
-description: "Choose a search tool, narrow its scope, and reuse the exact compiler result."
+description: "Query declarations, narrow scope, and reuse the exact compiler result."
 resource: "file://docs/public/search.mdx"
 tags: ["search", "query", "agents", "Kotlin"]
 timestamp: "2026-09-14T00:00:00-04:00"
@@ -10,24 +10,22 @@ code_sources:
     symbols: ["PublicToolContract", "AdmittedPublicTool", "PublicToolRequestSerializer"]
   - path: "protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt"
     symbols: ["CanonicalAgentToolDefinitions"]
-  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpInvestigationTools.kt"
-    symbols: ["McpInvestigationTools"]
-  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpWorkspaceValidation.kt"
-    symbols: ["validateWorkspace"]
   - path: "query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySource.kt"
     symbols: ["QuerySourceSyntax"]
   - path: "query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPlan.kt"
-    symbols: ["QueryStepSyntax", "AdmittedQueryPlan"]
+    symbols: ["AdmittedQueryPlan"]
+  - path: "query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt"
+    symbols: ["QueryStepSyntax"]
   - path: "query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryExecution.kt"
     symbols: ["QueryExecutionResult", "QueryCoverage"]
 icon: "scan-search"
-keywords: ["kast.search_classes", "symbol search", "semantic relationships", "agent use"]
+keywords: ["kast.query_symbols", "symbol search", "semantic relationships", "agent use"]
 ---
 
 Ask your agent to use Kast to find a declaration by name. For example:
 **“Use Kast to find OrderService, then show its callers.”**
 
-The examples below show inputs shared by the direct MCP and tool RPC connections.
+The examples below show the tool inputs for direct calls or harness integration.
 
 <Note>
   Every search uses the session workspace's saved, indexed IntelliJ state.
@@ -35,55 +33,28 @@ The examples below show inputs shared by the direct MCP and tool RPC connections
 
 | Intent | Tool |
 |---|---|
-| Known class-like declaration name | `search_classes` |
-| Known function or method name | `search_functions` |
-| Unknown/mixed kinds, properties or type aliases | `search_declarations` |
-| Compiler diagnostics for a file or directory | `check_diagnostics` |
-| Enumeration, returned references or ordered transformations | `query_symbols` |
-| Passive host and workspace readiness | `health_check` |
-| Explicit read-only semantic probes | `validate_workspace` |
-
-`health_check` takes `{}` and reports the bound workspace and saved/indexed state.
-Discover callable tools through MCP `tools/list` or RPC `catalog`. An immediate check can find launch or import still in
-progress; semantic calls wait for that preparation. It does not establish that
-semantic answers are correct.
-
-To validate the installation against known code, supply explicit probes:
-
-```json
-{
-  "declaration": {
-    "kind": "class",
-    "name": "OrderService",
-    "file": "services/orders/src/main/kotlin/com/example/orders/OrderService.kt"
-  },
-  "diagnosticPath": "services/orders/src/main/kotlin/com/example/orders/OrderService.kt"
-}
-```
-
-`validate_workspace` discovers the declaration, inspects its exact identity,
-reads source, and scans IDE diagnostics. A relation probe additionally accepts
-`kind`, `source: {file, name}`, and `target: {file, name}`. Every stage returns
-`passed`, `failed`, or `unverified` with the underlying Kast result as evidence.
-Missing probes and incomplete scans stay `unverified`.
-Hosts with MCP Apps support can render the probe table from
-`ui://kast/validation`; the text summary and structured result remain available
-without a rendered view.
+| Declaration names, enumeration, returned references, or ordered transformations | `kast.query_symbols` |
+| File, location, name, or source-text candidate discovery | `kast.symbol_lookup` |
+| Candidate refinement or exact-selector revalidation | `kast.symbol_inspect` |
+| Individual relation occurrences | `kast.read_relations` |
+| Multi-step reachability | `kast.traverse_relations` |
+| Compiler diagnostics for a file or directory | `kast.check_diagnostics` |
 
 ## Find your first declaration
 
-Call `search_classes` with:
+Call `kast.query_symbols` with:
 
 ```json
-{"name":"OrderService"}
+{"source":{"type":"search_declarations","declaration_name":"OrderService","name_match":null,"declaration_kinds":["class"],"scope":null},"steps":null,"return_fields":["name","location","signature"]}
 ```
 
-Send that input to `search_classes` in your connected client.
+Send that input to the hosted `kast.query_symbols` tool in the connected session.
 
 Use these request rules:
 
-- Use `function_name` with `search_functions`.
-- Omit default controls for exact, case-sensitive matching under recursive directory `.`.
+- Set `declaration_kinds` to `["function"]` for methods or `["property"]` for properties.
+- Keep every control field present.
+- Use `null` for exact, case-sensitive matching under recursive directory `.`.
 - Expect the default source sets to be exactly `main` and `test`.
 - Use a package scope when a simple declaration name needs qualification.
 - Set `"name_match":"fuzzy"` explicitly because Kast never retries fuzzily.
@@ -103,21 +74,36 @@ equality key.
 
 ### Search properties or mixed kinds
 
-For a property or an unknown declaration kind, call `search_declarations`:
+For a property or an unknown declaration kind, use `query_symbols`:
 
 ```json
 {
-  "declaration_name": "retryCount",
-  "declaration_kinds": ["property"]
+  "source": {"type": "search_declarations", "declaration_name": "retryCount", "name_match": null, "scope": null, "declaration_kinds": ["property"]},
+  "steps": null,
+  "return_fields": null
 }
 ```
 
-Omitting `declaration_kinds` includes `class`, `function`, `property`, and
+`declaration_kinds: null` includes `class`, `function`, `property`, and
 `type_alias`.
 
 Empty or duplicate selections reject.
 
 Constructor discovery is not advertised.
+
+## Include source with a symbol query
+
+Request `source` in `query_symbols.return_fields` when the result needs code as well as identity:
+
+```json
+{
+  "source": {"type": "search_declarations", "declaration_name": "submitOrder", "name_match": "exact", "declaration_kinds": ["function"], "scope": null},
+  "steps": [],
+  "return_fields": ["name", "location", "source"]
+}
+```
+
+Each exact symbol receives its committed declaration lines plus up to five whole lines before and after them, clipped to the file. The result includes the text and its one-based start and end lines. This projection costs one source read per emitted symbol and shares the query's work, time, and output limits. If a window cannot be proved, Kast qualifies the query with `SOURCE_INCOMPLETE` and a finite per-item source failure.
 
 ## Narrow the search
 
@@ -125,11 +111,13 @@ A directory scope uses paths relative to the session workspace root:
 
 ```json
 {
-  "function_name": "submitOrder",
-  "scope": {
+  "source": {"type": "search_declarations", "declaration_name": "submitOrder", "name_match": null, "declaration_kinds": ["function"], "scope": {
     "relative_directory_path": "services/orders",
+    "include_subdirectories": true,
     "source_set_names": ["main"]
-  }
+  }},
+  "steps": null,
+  "return_fields": null
 }
 ```
 
@@ -137,16 +125,18 @@ A package scope instead uses semantic Kotlin package names:
 
 ```json
 {
-  "name": "OrderService",
-  "scope": {
+  "source": {"type": "search_declarations", "declaration_name": "OrderService", "name_match": null, "declaration_kinds": ["class"], "scope": {
     "package_name": "com.example.orders",
-    "include_subpackages": false
-  }
+    "include_subpackages": false,
+    "source_set_names": null
+  }},
+  "steps": null,
+  "return_fields": null
 }
 ```
 
 Use either directory or package scope, with paths relative to the repository.
-Omitting `source_set_names` selects `main` and `test`; other source sets must belong
+`source_set_names: null` selects `main` and `test`; other source sets must belong
 to the imported Gradle model. Generated and library sources are excluded from
 live discovery. Scope restricts discovery subjects; later relationship expansion
 can reach other declarations.
@@ -158,13 +148,13 @@ Use the **Tool contracts** tab for the complete input schemas.
 Call `kast.check_diagnostics`:
 
 ```json
-{"relative_path":"src/main/kotlin/orders/OrderService.kt"}
+{"relative_path":"src/main/kotlin/orders/OrderService.kt","max_diagnostics":null}
 ```
 
 A path may name a file or directory.
 
 - Use `.` for the workspace root.
-- Omit `max_diagnostics` to return at most 100 entries.
+- Use `null` to return at most 100 entries.
 - Use a positive limit up to 1000.
 - Do not treat this request as a project build.
 - Keep the host's diagnostic scope policy separate from logging detail.

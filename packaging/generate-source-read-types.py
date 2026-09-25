@@ -20,6 +20,8 @@ def render(schema: dict, depth: int = 0, symbol: bool = False) -> str:
     if "enum" in schema:
         return " | ".join(json.dumps(value) for value in schema["enum"])
     kind = schema.get("type")
+    if isinstance(kind, list):
+        return " | ".join(render({**schema, "type": member}, depth, symbol) for member in kind)
     if kind == "object":
         if schema.get("additionalProperties") is not False:
             raise ValueError("source_read object must be closed")

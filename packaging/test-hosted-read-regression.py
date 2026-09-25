@@ -19,10 +19,10 @@ from hosted_peer_probe import PeerAttempt, PeerCase, PeerFailure, PeerOutcome, T
 from hosted_transport_observation import TransportSummary, TransportWitnessFailure, TransportWitnessRejected
 
 from hosted_read_fixture import ReadFixtureRejected, prepare_read_fixture
-from hosted_enum_read_regression import EnumClassSearch, run_enum_read_regression
-from hosted_budget_read_regression import BudgetClassSearch, BudgetSource, WorkBudget
-from hosted_source_read_regression import SourceBudgetAnchorSearch, SymbolAnchor
-from hosted_workspace_refresh_regression import RefreshClassSearch
+from hosted_enum_read_regression import run_enum_read_regression
+from hosted_budget_read_regression import BudgetSource, WorkBudget
+from hosted_source_read_regression import SymbolAnchor, source_budget_anchor_query
+from query_name_request import name_query
 from hosted_read_regression import (_ReadReplay, _read_observation, _reproduction,
     ReadRegressionStage, regression_rejection, MAX_READ_RECEIPTS, ReadReceiptRejected, ReadReceiptFailure)
 from hosted_peer_probe import EndpointAdmissionRejected, EndpointAdmissionFailure
@@ -150,14 +150,13 @@ def enum_response(names):
 class HostedReadRegressionTest(unittest.TestCase):
     def test_native_search_and_entity_free_source_requests_use_current_fields(self):
         searches = (
-            EnumClassSearch('Mode', 'exact'),
-            BudgetClassSearch(WorkBudget()),
-            SourceBudgetAnchorSearch(),
-            RefreshClassSearch('Mode'),
+            name_query('Mode', ('class',)),
+            source_budget_anchor_query(),
+            name_query('Mode', ('class',)),
         )
         for request in searches:
             payload = asdict(request)
-            self.assertIn('name', payload)
+            self.assertIn('source', payload)
             self.assertNotIn('class_name', payload)
         source = asdict(BudgetSource(SymbolAnchor('exact:source'), WorkBudget()))
         self.assertEqual({'type': 'none'}, source['entities'])
@@ -620,7 +619,6 @@ def load_tests(loader, tests, _pattern):
                  'test-hosted-vfs-overflow-regression.py', 'test-hosted-source-failure-regression.py',
                  'test-hosted-diagnostic-pages-regression.py',
                  'test-hosted-resume-budget-regression.py', 'test-hosted-raw-symbol-regression.py',
-                 'test-hosted-read-name-regression.py',
                  'test-released-acceptance-product.py', 'test-released-tool-inventory.py',
                  'test-released-upgrade-acceptance.py', 'test-released-coordinator-acceptance.py'):
         spec = importlib.util.spec_from_file_location(name[:-3].replace('-', '_'), Path(__file__).with_name(name))

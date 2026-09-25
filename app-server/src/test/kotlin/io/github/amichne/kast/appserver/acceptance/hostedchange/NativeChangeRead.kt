@@ -1,28 +1,26 @@
 package io.github.amichne.kast.appserver.acceptance.hostedchange
 
+import io.github.amichne.kast.appserver.publicNameQuery
+import io.github.amichne.kast.appserver.query.PublicToolDeclarationKinds
 import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
+import kotlinx.serialization.json.jsonObject
 
 internal class NativeChangeRead(private val peer: NativeChangePeer) {
-    suspend fun searchClass(): JsonObject =
-        search(tool = "search_classes", field = "name", name = "NativeChangeTarget", count = 1)
+    suspend fun searchClass(): JsonObject = searchClass("NativeChangeTarget", 1)
+
+    suspend fun searchClass(name: String, count: Int): JsonObject =
+        search(name = name, kind = PublicToolDeclarationKinds.CLASS, count = count)
 
     suspend fun searchFunction(name: String, count: Int): JsonObject =
-        search(tool = "search_functions", field = "function_name", name = name, count = count)
+        search(name = name, kind = PublicToolDeclarationKinds.FUNCTION, count = count)
 
-    suspend fun search(tool: String, field: String, name: String, count: Int): JsonObject {
+    suspend fun search(name: String, kind: PublicToolDeclarationKinds, count: Int): JsonObject {
         val result =
             peer.call(
-                tool,
-                buildJsonObject {
-                    put(field, name)
-                    put("name_match", JsonNull)
-                    put("scope", JsonNull)
-                },
+                "query_symbols",
+                publicNameQuery(name, listOf(kind)).jsonObject,
             )
         val payload = result.document()
         demand(!result.rejected() && payload["status"] == JsonPrimitive("complete"), NativeFailure.PROVIDER_REJECTED)

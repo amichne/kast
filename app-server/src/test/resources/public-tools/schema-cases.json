@@ -1,221 +1,5 @@
 [
   {
-    "id": "class-defaults",
-    "tool": "search_classes",
-    "arguments": {
-      "name": "OrderService",
-      "name_match": null,
-      "scope": null
-    },
-    "schema_valid": true
-  },
-  {
-    "id": "function-defaults",
-    "tool": "search_functions",
-    "arguments": {
-      "function_name": "createOrder",
-      "name_match": null,
-      "scope": null
-    },
-    "schema_valid": true
-  },
-  {
-    "id": "generic-defaults",
-    "tool": "search_declarations",
-    "arguments": {
-      "declaration_name": "OrderService",
-      "name_match": null,
-      "scope": null,
-      "declaration_kinds": null
-    },
-    "schema_valid": true
-  },
-  {
-    "id": "property-search",
-    "tool": "search_declarations",
-    "arguments": {
-      "declaration_name": "retryCount",
-      "name_match": "exact",
-      "scope": null,
-      "declaration_kinds": [
-        "property"
-      ]
-    },
-    "schema_valid": true
-  },
-  {
-    "id": "class-directory",
-    "tool": "search_classes",
-    "arguments": {
-      "name": "OrderService",
-      "name_match": null,
-      "scope": {
-        "relative_directory_path": "services/orders",
-        "include_subdirectories": true,
-        "source_set_names": [
-          "main"
-        ]
-      }
-    },
-    "schema_valid": true
-  },
-  {
-    "id": "function-package",
-    "tool": "search_functions",
-    "arguments": {
-      "function_name": "createOrder",
-      "name_match": null,
-      "scope": {
-        "package_name": "com.example.orders",
-        "include_subpackages": false,
-        "source_set_names": null
-      }
-    },
-    "schema_valid": true
-  },
-  {
-    "id": "custom-source-set",
-    "tool": "search_functions",
-    "arguments": {
-      "function_name": "createOrder",
-      "name_match": null,
-      "scope": {
-        "relative_directory_path": "services/orders",
-        "include_subdirectories": true,
-        "source_set_names": [
-          "integrationTest"
-        ]
-      }
-    },
-    "schema_valid": true
-  },
-  {
-    "id": "fuzzy-explicit",
-    "tool": "search_classes",
-    "arguments": {
-      "name": "OrderService",
-      "name_match": "fuzzy",
-      "scope": null
-    },
-    "schema_valid": true
-  },
-  {
-    "id": "wrong-name-key",
-    "tool": "search_classes",
-    "arguments": {
-      "function_name": "createOrder",
-      "name_match": null,
-      "scope": null
-    },
-    "schema_valid": false
-  },
-  {
-    "id": "diagnostic-field-in-search",
-    "tool": "search_classes",
-    "arguments": {
-      "name": "OrderService",
-      "name_match": null,
-      "scope": null,
-      "max_diagnostics": 10
-    },
-    "schema_valid": false
-  },
-  {
-    "id": "no-redundant-root-type",
-    "tool": "search_classes",
-    "arguments": {
-      "name": "OrderService",
-      "name_match": null,
-      "scope": null,
-      "type": "QUERY"
-    },
-    "schema_valid": false
-  },
-  {
-    "id": "no-canonical-scope-envelope",
-    "tool": "search_classes",
-    "arguments": {
-      "name": "OrderService",
-      "name_match": null,
-      "scope": {
-        "type": "DIRECTORY",
-        "value": "."
-      }
-    },
-    "schema_valid": false
-  },
-  {
-    "id": "no-mixed-scope",
-    "tool": "search_classes",
-    "arguments": {
-      "name": "OrderService",
-      "name_match": null,
-      "scope": {
-        "relative_directory_path": "services/orders",
-        "include_subdirectories": true,
-        "source_set_names": [
-          "main"
-        ],
-        "package_name": "com.example"
-      }
-    },
-    "schema_valid": false
-  },
-  {
-    "id": "no-empty-source-set-selection",
-    "tool": "search_classes",
-    "arguments": {
-      "name": "OrderService",
-      "name_match": null,
-      "scope": {
-        "relative_directory_path": "services/orders",
-        "include_subdirectories": true,
-        "source_set_names": []
-      }
-    },
-    "schema_valid": false
-  },
-  {
-    "id": "no-search-file-scope",
-    "tool": "search_classes",
-    "arguments": {
-      "name": "OrderService",
-      "name_match": null,
-      "scope": {
-        "relative_file_path": "src/Main.kt"
-      }
-    },
-    "schema_valid": false
-  },
-  {
-    "id": "null-name-rejected",
-    "tool": "search_classes",
-    "arguments": {
-      "name": null,
-      "name_match": null,
-      "scope": null
-    },
-    "schema_valid": false
-  },
-  {
-    "id": "unknown-match-rejected",
-    "tool": "search_classes",
-    "arguments": {
-      "name": "OrderService",
-      "name_match": "regex",
-      "scope": null
-    },
-    "schema_valid": false
-  },
-  {
-    "id": "ordinary-defaults-omitted",
-    "tool": "search_classes",
-    "arguments": {
-      "name": "OrderService"
-    },
-    "schema_valid": true
-  },
-  {
     "id": "diagnostic-file",
     "tool": "check_diagnostics",
     "arguments": {
@@ -412,6 +196,393 @@
       },
       "steps": null,
       "return_fields": null
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "provider-unknown-execution",
+    "tool": "query_symbols",
+    "arguments": {
+      "source": {
+        "type": "search_declarations",
+        "declaration_name": "Order",
+        "name_match": null,
+        "declaration_kinds": null,
+        "scope": null
+      },
+      "steps": null,
+      "return_fields": null,
+      "execution": {
+        "kind": "exhaustive"
+      }
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "provider-missing-controls",
+    "tool": "query_symbols",
+    "arguments": {
+      "source": {
+        "type": "search_declarations",
+        "declaration_name": "Order",
+        "name_match": null,
+        "declaration_kinds": null,
+        "scope": null
+      }
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "invalid-directory-0",
+    "tool": "query_symbols",
+    "arguments": {
+      "source": {
+        "type": "search_declarations",
+        "declaration_name": "Order",
+        "name_match": null,
+        "declaration_kinds": null,
+        "scope": {
+          "relative_directory_path": "/tmp",
+          "include_subdirectories": true,
+          "source_set_names": null
+        }
+      },
+      "steps": null,
+      "return_fields": null
+    },
+    "schema_valid": true,
+    "admission_valid": false
+  },
+  {
+    "id": "invalid-directory-1",
+    "tool": "query_symbols",
+    "arguments": {
+      "source": {
+        "type": "search_declarations",
+        "declaration_name": "Order",
+        "name_match": null,
+        "declaration_kinds": null,
+        "scope": {
+          "relative_directory_path": "../src",
+          "include_subdirectories": true,
+          "source_set_names": null
+        }
+      },
+      "steps": null,
+      "return_fields": null
+    },
+    "schema_valid": true,
+    "admission_valid": false
+  },
+  {
+    "id": "invalid-directory-2",
+    "tool": "query_symbols",
+    "arguments": {
+      "source": {
+        "type": "search_declarations",
+        "declaration_name": "Order",
+        "name_match": null,
+        "declaration_kinds": null,
+        "scope": {
+          "relative_directory_path": "a/../b",
+          "include_subdirectories": true,
+          "source_set_names": null
+        }
+      },
+      "steps": null,
+      "return_fields": null
+    },
+    "schema_valid": true,
+    "admission_valid": false
+  },
+  {
+    "id": "invalid-directory-3",
+    "tool": "query_symbols",
+    "arguments": {
+      "source": {
+        "type": "search_declarations",
+        "declaration_name": "Order",
+        "name_match": null,
+        "declaration_kinds": null,
+        "scope": {
+          "relative_directory_path": "a//b",
+          "include_subdirectories": true,
+          "source_set_names": null
+        }
+      },
+      "steps": null,
+      "return_fields": null
+    },
+    "schema_valid": true,
+    "admission_valid": false
+  },
+  {
+    "id": "invalid-directory-4",
+    "tool": "query_symbols",
+    "arguments": {
+      "source": {
+        "type": "search_declarations",
+        "declaration_name": "Order",
+        "name_match": null,
+        "declaration_kinds": null,
+        "scope": {
+          "relative_directory_path": "a/./b",
+          "include_subdirectories": true,
+          "source_set_names": null
+        }
+      },
+      "steps": null,
+      "return_fields": null
+    },
+    "schema_valid": true,
+    "admission_valid": false
+  },
+  {
+    "id": "invalid-directory-5",
+    "tool": "query_symbols",
+    "arguments": {
+      "source": {
+        "type": "search_declarations",
+        "declaration_name": "Order",
+        "name_match": null,
+        "declaration_kinds": null,
+        "scope": {
+          "relative_directory_path": "a/",
+          "include_subdirectories": true,
+          "source_set_names": null
+        }
+      },
+      "steps": null,
+      "return_fields": null
+    },
+    "schema_valid": true,
+    "admission_valid": false
+  },
+  {
+    "id": "invalid-directory-6",
+    "tool": "query_symbols",
+    "arguments": {
+      "source": {
+        "type": "search_declarations",
+        "declaration_name": "Order",
+        "name_match": null,
+        "declaration_kinds": null,
+        "scope": {
+          "relative_directory_path": "C:/src",
+          "include_subdirectories": true,
+          "source_set_names": null
+        }
+      },
+      "steps": null,
+      "return_fields": null
+    },
+    "schema_valid": true,
+    "admission_valid": false
+  },
+  {
+    "id": "invalid-directory-7",
+    "tool": "query_symbols",
+    "arguments": {
+      "source": {
+        "type": "search_declarations",
+        "declaration_name": "Order",
+        "name_match": null,
+        "declaration_kinds": null,
+        "scope": {
+          "relative_directory_path": "a\\b",
+          "include_subdirectories": true,
+          "source_set_names": null
+        }
+      },
+      "steps": null,
+      "return_fields": null
+    },
+    "schema_valid": true,
+    "admission_valid": false
+  },
+  {
+    "id": "invalid-directory-8",
+    "tool": "query_symbols",
+    "arguments": {
+      "source": {
+        "type": "search_declarations",
+        "declaration_name": "Order",
+        "name_match": null,
+        "declaration_kinds": null,
+        "scope": {
+          "relative_directory_path": "/PRIVATE_SECRET_PATH",
+          "include_subdirectories": true,
+          "source_set_names": null
+        }
+      },
+      "steps": null,
+      "return_fields": null
+    },
+    "schema_valid": true,
+    "admission_valid": false
+  },
+  {
+    "id": "invalid-name-0",
+    "tool": "query_symbols",
+    "arguments": {
+      "source": {
+        "type": "search_declarations",
+        "declaration_name": "com.example.Order",
+        "name_match": null,
+        "declaration_kinds": null,
+        "scope": null
+      },
+      "steps": null,
+      "return_fields": null
+    },
+    "schema_valid": true,
+    "admission_valid": false
+  },
+  {
+    "id": "invalid-name-1",
+    "tool": "query_symbols",
+    "arguments": {
+      "source": {
+        "type": "search_declarations",
+        "declaration_name": "Order*",
+        "name_match": null,
+        "declaration_kinds": null,
+        "scope": null
+      },
+      "steps": null,
+      "return_fields": null
+    },
+    "schema_valid": true,
+    "admission_valid": false
+  },
+  {
+    "id": "invalid-name-2",
+    "tool": "query_symbols",
+    "arguments": {
+      "source": {
+        "type": "search_declarations",
+        "declaration_name": "Order()",
+        "name_match": null,
+        "declaration_kinds": null,
+        "scope": null
+      },
+      "steps": null,
+      "return_fields": null
+    },
+    "schema_valid": true,
+    "admission_valid": false
+  },
+  {
+    "id": "invalid-name-3",
+    "tool": "query_symbols",
+    "arguments": {
+      "source": {
+        "type": "search_declarations",
+        "declaration_name": "find orders",
+        "name_match": null,
+        "declaration_kinds": null,
+        "scope": null
+      },
+      "steps": null,
+      "return_fields": null
+    },
+    "schema_valid": true,
+    "admission_valid": false
+  },
+  {
+    "id": "invalid-name-4",
+    "tool": "query_symbols",
+    "arguments": {
+      "source": {
+        "type": "search_declarations",
+        "declaration_name": "",
+        "name_match": null,
+        "declaration_kinds": null,
+        "scope": null
+      },
+      "steps": null,
+      "return_fields": null
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "duplicate-kinds",
+    "tool": "query_symbols",
+    "arguments": {
+      "source": {
+        "type": "search_declarations",
+        "declaration_name": "Order",
+        "name_match": null,
+        "declaration_kinds": [
+          "class",
+          "class"
+        ],
+        "scope": null
+      },
+      "steps": null,
+      "return_fields": null
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "duplicate-source-sets",
+    "tool": "query_symbols",
+    "arguments": {
+      "source": {
+        "type": "search_declarations",
+        "declaration_name": "Order",
+        "name_match": null,
+        "declaration_kinds": null,
+        "scope": {
+          "relative_directory_path": ".",
+          "include_subdirectories": true,
+          "source_set_names": [
+            "main",
+            "main"
+          ]
+        }
+      },
+      "steps": null,
+      "return_fields": null
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "duplicate-visibility",
+    "tool": "query_symbols",
+    "arguments": {
+      "source": {
+        "type": "all_declarations",
+        "declaration_kinds": null,
+        "scope": null
+      },
+      "steps": [
+        {
+          "type": "filter_visibility",
+          "visibilities": [
+            "public",
+            "public"
+          ]
+        }
+      ],
+      "return_fields": null
+    },
+    "schema_valid": false
+  },
+  {
+    "id": "duplicate-return-fields",
+    "tool": "query_symbols",
+    "arguments": {
+      "source": {
+        "type": "all_declarations",
+        "declaration_kinds": null,
+        "scope": null
+      },
+      "steps": null,
+      "return_fields": [
+        "name",
+        "name"
+      ]
     },
     "schema_valid": false
   }

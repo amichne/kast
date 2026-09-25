@@ -47,20 +47,14 @@ class PublicExecutionBudgetTest {
     }
 
     @Test
-    fun `every search and query facade retains all four requested allowances`() {
+    fun `query facade retains all four requested allowances`() {
         val refs = (BoundedProtocolList.create(listOf(name)) as Refinement.Refined).value
         val cases =
             listOf(
-                PublicToolIdentity.SEARCH_CLASSES to
-                    json.encodeToJsonElement(PublicToolSearchClasses(name, null, null, budget)),
-                PublicToolIdentity.SEARCH_FUNCTIONS to
-                    json.encodeToJsonElement(PublicToolSearchFunctions(name, null, null, budget)),
-                PublicToolIdentity.SEARCH_DECLARATIONS to
-                    json.encodeToJsonElement(PublicToolSearchDeclarations(name, null, null, null, budget)),
                 PublicToolIdentity.QUERY_SYMBOLS to
                     json.encodeToJsonElement(
                         PublicToolQuerySymbols(PublicToolReferenceSource(refs), null, null, null, budget)
-                    ),
+                    )
             )
         for ((identity, document) in cases) {
             val admitted = PublicToolContract.admit(identity, document) as Refinement.Refined
@@ -72,34 +66,29 @@ class PublicExecutionBudgetTest {
 
     @Test
     fun `quoted and nonpositive caller allowances fail public admission`() {
+        val refs = (BoundedProtocolList.create(listOf(name)) as Refinement.Refined).value
         val invalid =
             listOf(
-                json.encodeToJsonElement(InvalidSearch(InvalidBudget("100"))),
-                json.encodeToJsonElement(InvalidSearch(InvalidBudget(0))),
-                json.encodeToJsonElement(InvalidSearch(InvalidBudget(-1))),
-                json.encodeToJsonElement(InvalidSearch(InvalidBudget(1.5))),
+                json.encodeToJsonElement(InvalidQuery(PublicToolReferenceSource(refs), InvalidBudget("100"))),
+                json.encodeToJsonElement(InvalidQuery(PublicToolReferenceSource(refs), InvalidBudget(0))),
+                json.encodeToJsonElement(InvalidQuery(PublicToolReferenceSource(refs), InvalidBudget(-1))),
+                json.encodeToJsonElement(InvalidQuery(PublicToolReferenceSource(refs), InvalidBudget(1.5))),
             )
         for (document in invalid) assertInstanceOf(
             Refinement.Rejected::class.java,
-            PublicToolContract.admit(PublicToolIdentity.SEARCH_CLASSES, document),
+            PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, document),
         )
     }
 
     @Test
-    fun `all query backed facades reject every malformed budget dimension before canonical lowering`() {
+    fun `query facade rejects every malformed budget dimension before canonical lowering`() {
         val refs = (BoundedProtocolList.create(listOf(name)) as Refinement.Refined).value
         val inputs =
             listOf(
-                PublicToolIdentity.SEARCH_CLASSES to
-                    json.encodeToJsonElement(PublicToolSearchClasses(name, null, null, budget)),
-                PublicToolIdentity.SEARCH_FUNCTIONS to
-                    json.encodeToJsonElement(PublicToolSearchFunctions(name, null, null, budget)),
-                PublicToolIdentity.SEARCH_DECLARATIONS to
-                    json.encodeToJsonElement(PublicToolSearchDeclarations(name, null, null, null, budget)),
                 PublicToolIdentity.QUERY_SYMBOLS to
                     json.encodeToJsonElement(
                         PublicToolQuerySymbols(PublicToolReferenceSource(refs), null, null, null, budget)
-                    ),
+                    )
             )
         val encodedBudget = json.encodeToString(ExecutionBudgetDocument.serializer(), budget)
         for ((identity, input) in inputs) {
@@ -134,11 +123,11 @@ class PublicExecutionBudgetTest {
 }
 
 @Serializable
-private data class InvalidSearch<T>(
+private data class InvalidQuery<T>(
+    val source: PublicToolReferenceSource,
     @kotlinx.serialization.SerialName("execution_budget") val executionBudget: InvalidBudget<T>,
-    @kotlinx.serialization.SerialName("name") val className: String = "Service",
-    @kotlinx.serialization.SerialName("name_match") val nameMatch: String? = null,
-    val scope: String? = null,
+    val steps: String? = null,
+    @SerialName("return_fields") val returnFields: String? = null,
 )
 
 @Serializable

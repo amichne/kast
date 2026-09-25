@@ -15,6 +15,8 @@ import io.github.amichne.kast.query.contract.QueryOperations
 import io.github.amichne.kast.query.contract.QueryResult
 import io.github.amichne.kast.query.contract.QueryResultSet
 import io.github.amichne.kast.query.contract.QuerySymbol
+import io.github.amichne.kast.query.contract.QuerySymbolField
+import io.github.amichne.kast.query.contract.QuerySymbolSource
 import io.github.amichne.kast.query.contract.QueryTerminalReason
 import io.github.amichne.kast.relation.contract.RelationIncompleteCoverage
 import io.github.amichne.kast.relation.contract.RelationOperations
@@ -96,6 +98,13 @@ class QueryService(
                 is PipelineTask.Candidate -> candidate(task)
                 is PipelineTask.Symbol -> symbol(task)
                 is PipelineTask.Related -> related(task)
+                is PipelineTask.AppendReferences -> {
+                    tasks.removeFirst()
+                    task.stage.references.values.asReversed().forEach {
+                        tasks.addFirst(PipelineTask.Revalidate(it, task.stage.next))
+                    }
+                    true
+                }
                 is PipelineTask.Discover -> {
                     when (val result = stages.discover(task.syntax, state)) {
                         DiscoveryExecution.NotStarted -> false
@@ -156,7 +165,7 @@ class QueryService(
 
         private suspend fun symbol(task: PipelineTask.Symbol): Boolean =
             when (val stage = task.stage) {
-                is ExactQueryStage.Emit -> emit(task.value.projectedUtf8Size()) { symbols += task.value }
+                is ExactQueryStage.Emit -> emitSymbol(task, stage)
                 is ExactQueryStage.Distinct -> {
                     tasks.removeFirst()
                     if (
@@ -167,16 +176,11 @@ class QueryService(
                         tasks.addFirst(task.copy(stage = stage.next))
                     true
                 }
-                is ExactQueryStage.Where -> {
-                    when (val admitted = state.sourceResources()) {
-                        is Refinement.Rejected -> false
-                        is Refinement.Refined -> {
-                            val values = stages.where(task.value, stage.predicate, state, admitted.value)
-                            tasks.removeFirst()
-                            values.asReversed().forEach { tasks.addFirst(PipelineTask.Symbol(it, stage.next)) }
-                            true
-                        }
-                    }
+                is ExactQueryStage.Where -> where(task, stage)
+                is ExactQueryStage.AppendReferences -> {
+                    tasks.removeFirst()
+                    tasks.addFirst(task.copy(stage = stage.next))
+                    true
                 }
                 is ExactQueryStage.Related -> {
                     tasks.removeFirst()
@@ -184,6 +188,40 @@ class QueryService(
                     true
                 }
             }
+
+        private suspend fun where(task: PipelineTask.Symbol, stage: ExactQueryStage.Where): Boolean =
+            when (val predicate = stage.predicate) {
+                is io.github.amichne.kast.query.contract.QueryPredicate.Primitive -> {
+                    tasks.removeFirst()
+                    if (stages.matchesPrimitive(task.value, predicate)) tasks.addFirst(task.copy(stage = stage.next))
+                    true
+                }
+                is io.github.amichne.kast.query.contract.QueryPredicate.Visibility ->
+                    when (val admitted = state.sourceResources()) {
+                        is Refinement.Rejected -> false
+                        is Refinement.Refined -> {
+                            val values = stages.whereVisibility(task.value, predicate, state, admitted.value)
+                            tasks.removeFirst()
+                            values.asReversed().forEach { tasks.addFirst(PipelineTask.Symbol(it, stage.next)) }
+                            true
+                        }
+                    }
+            }
+
+        private suspend fun emitSymbol(task: PipelineTask.Symbol, stage: ExactQueryStage.Emit): Boolean {
+            if (QuerySymbolField.SOURCE !in stage.fields.values || task.value.source !is QuerySymbolSource.Pending)
+                return emit(task.value.projectedUtf8Size()) { symbols += task.value }
+            val resources =
+                when (val admitted = state.sourceResources()) {
+                    is Refinement.Rejected -> return false
+                    is Refinement.Refined -> admitted.value
+                }
+            tasks.removeFirst()
+            tasks.addFirst(task.copy(value = stages.sourceWindow(task.value, state, resources)))
+            if (state.contractViolation)
+                rejection = QueryExecutionResult.Rejected(QueryExecutionRejection.INTERNAL_CONTRACT_VIOLATION)
+            return true
+        }
 
         private suspend fun related(task: PipelineTask.Related): Boolean {
             val childBudget = state.relationBudget(request.budget.resources.resultLimit.value) ?: return false

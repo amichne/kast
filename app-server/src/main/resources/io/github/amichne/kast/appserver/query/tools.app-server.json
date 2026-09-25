@@ -4,520 +4,6 @@
   "tools": [
     {
       "type": "function",
-      "name": "search_classes",
-      "description": "Find named class-like declarations supported by Kast. This searches declaration names, not use sites or source text. Constructors are not included. Returns names, locations, signatures, opaque symbol references, and completeness evidence. Uses the session workspace's saved, indexed IntelliJ state; unavailable or unready hosts reject the read. No hidden fuzzy retry or scope widening.",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "Simple class-like declaration name, such as OrderService. Not a qualified name, signature, regex, glob, or natural-language request. Use package_name in scope for package qualification. All matching declarations remain separate results.",
-            "minLength": 1,
-            "maxLength": 256
-          },
-          "name_match": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "enum": [
-              "exact",
-              "fuzzy",
-              null
-            ],
-            "description": "Omission or null means exact, case-sensitive declaration-name matching. Exact matching returns every matching overload; it does not select one overload. Fuzzy matching requires explicit opt-in."
-          },
-          "scope": {
-            "anyOf": [
-              {
-                "$ref": "#/$defs/DirectoryScope"
-              },
-              {
-                "$ref": "#/$defs/PackageScope"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Omission or null searches the session workspace recursively in source sets main and test. Otherwise choose one directory scope or one package scope. Source-set restrictions intersect with the chosen scope."
-          },
-          "execution_budget": {
-            "$ref": "#/$defs/ExecutionBudget"
-          }
-        },
-        "required": [
-          "name"
-        ],
-        "additionalProperties": false,
-        "$defs": {
-          "DirectoryScope": {
-            "type": "object",
-            "properties": {
-              "relative_directory_path": {
-                "type": "string",
-                "description": "Directory relative to the session workspace root, such as services/orders. Use '.' for the root. Not a file path, absolute path, glob, or package name. Parent traversal and non-canonical paths are rejected by server admission.",
-                "minLength": 1,
-                "maxLength": 1048576
-              },
-              "include_subdirectories": {
-                "type": "boolean",
-                "description": "true includes the named directory and nested directories; false selects only the named directory."
-              },
-              "source_set_names": {
-                "type": [
-                  "array",
-                  "null"
-                ],
-                "items": {
-                  "type": "string",
-                  "description": "Exact imported Gradle source-set name, such as main, integrationTest, or commonMain.",
-                  "minLength": 1,
-                  "maxLength": 1048576
-                },
-                "minItems": 1,
-                "maxItems": 1000,
-                "description": "Omission or null selects the names main and test. Otherwise use exact imported Gradle source-set names, not paths, globs, or production/test categories. Empty and duplicate lists are rejected by server admission.",
-                "uniqueItems": true
-              }
-            },
-            "required": [
-              "relative_directory_path"
-            ],
-            "additionalProperties": false
-          },
-          "PackageScope": {
-            "type": "object",
-            "properties": {
-              "package_name": {
-                "type": "string",
-                "description": "Semantic Kotlin package name, such as com.example.orders. Not a filesystem path. Uses Kast's supported package-name grammar.",
-                "minLength": 1,
-                "maxLength": 1048576
-              },
-              "include_subpackages": {
-                "type": "boolean",
-                "description": "true includes the named package and subpackages; false selects only the named package."
-              },
-              "source_set_names": {
-                "type": [
-                  "array",
-                  "null"
-                ],
-                "items": {
-                  "type": "string",
-                  "description": "Exact imported Gradle source-set name, such as main, integrationTest, or commonMain.",
-                  "minLength": 1,
-                  "maxLength": 1048576
-                },
-                "minItems": 1,
-                "maxItems": 1000,
-                "description": "Omission or null selects the names main and test. Otherwise use exact imported Gradle source-set names, not paths, globs, or production/test categories. Empty and duplicate lists are rejected by server admission.",
-                "uniqueItems": true
-              }
-            },
-            "required": [
-              "package_name"
-            ],
-            "additionalProperties": false
-          },
-          "ExecutionBudget": {
-            "type": [
-              "object",
-              "null"
-            ],
-            "description": "Optional execution allowances. Null or omitted dimensions use configured defaults; positive values are independently clamped to operator and transport ceilings. These controls do not alter query take, scope, or projection.",
-            "properties": {
-              "max_elapsed_ms": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "minimum": 1,
-                "maximum": 9223372036854775807
-              },
-              "max_work_units": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "minimum": 1,
-                "maximum": 9223372036854775807
-              },
-              "max_results": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "minimum": 1,
-                "maximum": 2147483647
-              },
-              "max_returned_bytes": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "minimum": 1,
-                "maximum": 9223372036854775807
-              }
-            },
-            "required": [],
-            "additionalProperties": false
-          }
-        }
-      },
-      "deferLoading": false
-    },
-    {
-      "type": "function",
-      "name": "search_functions",
-      "description": "Find named functions and methods. This searches declaration names, not call sites or source text. Returns every matching overload separately. Returns names, locations, signatures, opaque symbol references, and completeness evidence. Uses the session workspace's saved, indexed IntelliJ state; unavailable or unready hosts reject the read. No hidden fuzzy retry or scope widening.",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "function_name": {
-            "type": "string",
-            "description": "Simple function or method declaration name, such as createOrder. Not a qualified name, signature, regex, glob, or natural-language request. Use package_name in scope for package qualification. All matching declarations remain separate results.",
-            "minLength": 1,
-            "maxLength": 256
-          },
-          "name_match": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "enum": [
-              "exact",
-              "fuzzy",
-              null
-            ],
-            "description": "Omission or null means exact, case-sensitive declaration-name matching. Exact matching returns every matching overload; it does not select one overload. Fuzzy matching requires explicit opt-in."
-          },
-          "scope": {
-            "anyOf": [
-              {
-                "$ref": "#/$defs/DirectoryScope"
-              },
-              {
-                "$ref": "#/$defs/PackageScope"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Omission or null searches the session workspace recursively in source sets main and test. Otherwise choose one directory scope or one package scope. Source-set restrictions intersect with the chosen scope."
-          },
-          "execution_budget": {
-            "$ref": "#/$defs/ExecutionBudget"
-          }
-        },
-        "required": [
-          "function_name"
-        ],
-        "additionalProperties": false,
-        "$defs": {
-          "DirectoryScope": {
-            "type": "object",
-            "properties": {
-              "relative_directory_path": {
-                "type": "string",
-                "description": "Directory relative to the session workspace root, such as services/orders. Use '.' for the root. Not a file path, absolute path, glob, or package name. Parent traversal and non-canonical paths are rejected by server admission.",
-                "minLength": 1,
-                "maxLength": 1048576
-              },
-              "include_subdirectories": {
-                "type": "boolean",
-                "description": "true includes the named directory and nested directories; false selects only the named directory."
-              },
-              "source_set_names": {
-                "type": [
-                  "array",
-                  "null"
-                ],
-                "items": {
-                  "type": "string",
-                  "description": "Exact imported Gradle source-set name, such as main, integrationTest, or commonMain.",
-                  "minLength": 1,
-                  "maxLength": 1048576
-                },
-                "minItems": 1,
-                "maxItems": 1000,
-                "description": "Omission or null selects the names main and test. Otherwise use exact imported Gradle source-set names, not paths, globs, or production/test categories. Empty and duplicate lists are rejected by server admission.",
-                "uniqueItems": true
-              }
-            },
-            "required": [
-              "relative_directory_path"
-            ],
-            "additionalProperties": false
-          },
-          "PackageScope": {
-            "type": "object",
-            "properties": {
-              "package_name": {
-                "type": "string",
-                "description": "Semantic Kotlin package name, such as com.example.orders. Not a filesystem path. Uses Kast's supported package-name grammar.",
-                "minLength": 1,
-                "maxLength": 1048576
-              },
-              "include_subpackages": {
-                "type": "boolean",
-                "description": "true includes the named package and subpackages; false selects only the named package."
-              },
-              "source_set_names": {
-                "type": [
-                  "array",
-                  "null"
-                ],
-                "items": {
-                  "type": "string",
-                  "description": "Exact imported Gradle source-set name, such as main, integrationTest, or commonMain.",
-                  "minLength": 1,
-                  "maxLength": 1048576
-                },
-                "minItems": 1,
-                "maxItems": 1000,
-                "description": "Omission or null selects the names main and test. Otherwise use exact imported Gradle source-set names, not paths, globs, or production/test categories. Empty and duplicate lists are rejected by server admission.",
-                "uniqueItems": true
-              }
-            },
-            "required": [
-              "package_name"
-            ],
-            "additionalProperties": false
-          },
-          "ExecutionBudget": {
-            "type": [
-              "object",
-              "null"
-            ],
-            "description": "Optional execution allowances. Null or omitted dimensions use configured defaults; positive values are independently clamped to operator and transport ceilings. These controls do not alter query take, scope, or projection.",
-            "properties": {
-              "max_elapsed_ms": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "minimum": 1,
-                "maximum": 9223372036854775807
-              },
-              "max_work_units": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "minimum": 1,
-                "maximum": 9223372036854775807
-              },
-              "max_results": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "minimum": 1,
-                "maximum": 2147483647
-              },
-              "max_returned_bytes": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "minimum": 1,
-                "maximum": 9223372036854775807
-              }
-            },
-            "required": [],
-            "additionalProperties": false
-          }
-        }
-      },
-      "deferLoading": false
-    },
-    {
-      "type": "function",
-      "name": "search_declarations",
-      "description": "Find named declarations when the kind is unknown or when searching properties or type aliases. Prefer search_classes or search_functions when that kind is known. Not a source-text or usage search. Returns names, locations, signatures, opaque symbol references, and completeness evidence. Uses the session workspace's saved, indexed IntelliJ state; unavailable or unready hosts reject the read. No hidden fuzzy retry or scope widening.",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "declaration_name": {
-            "type": "string",
-            "description": "Simple declaration name, such as createOrder. Not a qualified name, signature, regex, glob, or natural-language request. Use package_name in scope for package qualification. All matching declarations remain separate results.",
-            "minLength": 1,
-            "maxLength": 256
-          },
-          "name_match": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "enum": [
-              "exact",
-              "fuzzy",
-              null
-            ],
-            "description": "Omission or null means exact, case-sensitive declaration-name matching. Exact matching returns every matching overload; it does not select one overload. Fuzzy matching requires explicit opt-in."
-          },
-          "scope": {
-            "anyOf": [
-              {
-                "$ref": "#/$defs/DirectoryScope"
-              },
-              {
-                "$ref": "#/$defs/PackageScope"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Omission or null searches the session workspace recursively in source sets main and test. Otherwise choose one directory scope or one package scope. Source-set restrictions intersect with the chosen scope."
-          },
-          "declaration_kinds": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "type": "string",
-              "enum": [
-                "class",
-                "function",
-                "property",
-                "type_alias"
-              ]
-            },
-            "minItems": 1,
-            "maxItems": 4,
-            "description": "null includes all four supported declaration families. Supply a non-empty, non-duplicate list to restrict them. The class family means Kast's supported class-like declarations. Constructors are not included.",
-            "uniqueItems": true
-          },
-          "execution_budget": {
-            "$ref": "#/$defs/ExecutionBudget"
-          }
-        },
-        "required": [
-          "declaration_name"
-        ],
-        "additionalProperties": false,
-        "$defs": {
-          "DirectoryScope": {
-            "type": "object",
-            "properties": {
-              "relative_directory_path": {
-                "type": "string",
-                "description": "Directory relative to the session workspace root, such as services/orders. Use '.' for the root. Not a file path, absolute path, glob, or package name. Parent traversal and non-canonical paths are rejected by server admission.",
-                "minLength": 1,
-                "maxLength": 1048576
-              },
-              "include_subdirectories": {
-                "type": "boolean",
-                "description": "true includes the named directory and nested directories; false selects only the named directory."
-              },
-              "source_set_names": {
-                "type": [
-                  "array",
-                  "null"
-                ],
-                "items": {
-                  "type": "string",
-                  "description": "Exact imported Gradle source-set name, such as main, integrationTest, or commonMain.",
-                  "minLength": 1,
-                  "maxLength": 1048576
-                },
-                "minItems": 1,
-                "maxItems": 1000,
-                "description": "Omission or null selects the names main and test. Otherwise use exact imported Gradle source-set names, not paths, globs, or production/test categories. Empty and duplicate lists are rejected by server admission.",
-                "uniqueItems": true
-              }
-            },
-            "required": [
-              "relative_directory_path"
-            ],
-            "additionalProperties": false
-          },
-          "PackageScope": {
-            "type": "object",
-            "properties": {
-              "package_name": {
-                "type": "string",
-                "description": "Semantic Kotlin package name, such as com.example.orders. Not a filesystem path. Uses Kast's supported package-name grammar.",
-                "minLength": 1,
-                "maxLength": 1048576
-              },
-              "include_subpackages": {
-                "type": "boolean",
-                "description": "true includes the named package and subpackages; false selects only the named package."
-              },
-              "source_set_names": {
-                "type": [
-                  "array",
-                  "null"
-                ],
-                "items": {
-                  "type": "string",
-                  "description": "Exact imported Gradle source-set name, such as main, integrationTest, or commonMain.",
-                  "minLength": 1,
-                  "maxLength": 1048576
-                },
-                "minItems": 1,
-                "maxItems": 1000,
-                "description": "Omission or null selects the names main and test. Otherwise use exact imported Gradle source-set names, not paths, globs, or production/test categories. Empty and duplicate lists are rejected by server admission.",
-                "uniqueItems": true
-              }
-            },
-            "required": [
-              "package_name"
-            ],
-            "additionalProperties": false
-          },
-          "ExecutionBudget": {
-            "type": [
-              "object",
-              "null"
-            ],
-            "description": "Optional execution allowances. Null or omitted dimensions use configured defaults; positive values are independently clamped to operator and transport ceilings. These controls do not alter query take, scope, or projection.",
-            "properties": {
-              "max_elapsed_ms": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "minimum": 1,
-                "maximum": 9223372036854775807
-              },
-              "max_work_units": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "minimum": 1,
-                "maximum": 9223372036854775807
-              },
-              "max_results": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "minimum": 1,
-                "maximum": 2147483647
-              },
-              "max_returned_bytes": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "minimum": 1,
-                "maximum": 9223372036854775807
-              }
-            },
-            "required": [],
-            "additionalProperties": false
-          }
-        }
-      },
-      "deferLoading": false
-    },
-    {
-      "type": "function",
       "name": "check_diagnostics",
       "description": "Check compiler diagnostics for a file or recursively beneath a directory in the session workspace. Use '.' explicitly for the workspace root. This is not symbol search and does not build the project. Results retain incomplete-coverage evidence; an incomplete empty result does not establish that the scope is clean. Requires the saved, indexed IntelliJ state.",
       "inputSchema": {
@@ -606,7 +92,7 @@
     {
       "type": "function",
       "name": "query_symbols",
-      "description": "Advanced ordered symbol pipelines: search or enumerate declarations, start from returned references, filter visibility, expand semantic relations, and explicitly deduplicate. Prefer the dedicated search tools for ordinary name searches. Source restrictions do not constrain expansion destinations. Compiler identity, bounded work, and completeness remain owned by Kast. Does not accept diagnostic steps.",
+      "description": "Search or enumerate Kotlin declarations by name, kind and scope; start from returned exact references; append prior query outputs, filter with visibility or bounded jq primitive predicates, expand relations, and deduplicate in ordered steps. Exact name matching is default; fuzzy requires explicit opt-in. Use symbol_lookup when candidate discovery by file, location, name or source text is required. Source restrictions do not constrain expansion destinations. Compiler identity, bounded work, and completeness remain owned by Kast.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -639,12 +125,18 @@
                 },
                 {
                   "$ref": "#/$defs/DistinctSymbols"
+                },
+                {
+                  "$ref": "#/$defs/AppendSymbolRefs"
+                },
+                {
+                  "$ref": "#/$defs/FilterJq"
                 }
               ]
             },
             "minItems": 0,
             "maxItems": 1000,
-            "description": "Ordered transformations, executed left to right. null and [] mean no transformations. Filtering before expansion and filtering after expansion have different meanings. Only the three advertised step shapes are supported; diagnostics are a separate tool."
+            "description": "Ordered transformations, executed left to right. null and [] mean no transformations. append_symbol_refs merges prior exact-symbol outputs into the stream; distinct_symbols then forms a set union. filter_jq accepts the documented bounded jq select subset over primitive symbol fields."
           },
           "return_fields": {
             "type": [
@@ -656,12 +148,13 @@
               "enum": [
                 "name",
                 "location",
-                "signature"
+                "signature",
+                "source"
               ]
             },
             "minItems": 0,
-            "maxItems": 3,
-            "description": "null returns name and location, [] requests mandatory identity and kind only. Symbol references and completeness evidence are always retained. Duplicate fields are rejected by server admission.",
+            "maxItems": 4,
+            "description": "null returns name and location, [] requests mandatory identity and kind only. Symbol references and completeness evidence are always retained. Duplicate fields are rejected by server admission. The source field adds committed declaration text with five surrounding lines, subject to the query budget.",
             "uniqueItems": true
           },
           "continuation": {
@@ -1018,10 +511,62 @@
             },
             "required": [],
             "additionalProperties": false
+          },
+          "AppendSymbolRefs": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "append_symbol_refs"
+                ]
+              },
+              "symbol_refs": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "description": "Opaque exact-symbol reference from a previous query_symbols result.",
+                  "minLength": 1,
+                  "maxLength": 1048576
+                },
+                "minItems": 1,
+                "maxItems": 1000,
+                "description": "Append exact symbols from one or more earlier query results in this workspace and generation. Follow with distinct_symbols to form a set union."
+              }
+            },
+            "required": [
+              "type",
+              "symbol_refs"
+            ],
+            "additionalProperties": false,
+            "description": "Append prior exact-symbol outputs at this pipeline position. Later steps transform both the original stream and appended symbols."
+          },
+          "FilterJq": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "filter_jq"
+                ]
+              },
+              "expression": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512,
+                "description": "Bounded jq select expression over exact symbol primitive fields name, kind, and file. Supported: select(.field == \"value\"), select(.field != \"value\"), select(.field | startswith(\"value\")), and select(.field | endswith(\"value\")). Other jq syntax is rejected."
+              }
+            },
+            "required": [
+              "type",
+              "expression"
+            ],
+            "additionalProperties": false,
+            "description": "Keep symbols for which the supported jq predicate selects the primitive projection."
           }
         }
       },
-      "deferLoading": true
+      "deferLoading": false
     }
   ]
 }

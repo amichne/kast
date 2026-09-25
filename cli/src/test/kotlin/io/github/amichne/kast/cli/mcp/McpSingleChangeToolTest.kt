@@ -24,7 +24,7 @@ class McpSingleChangeToolTest {
     fun `direct MCP advertises one mutation tool instead of its internal phases`() {
         val visible = mcpVisibleDefinitions(CanonicalAgentToolDefinitions.all).map { it.name.value }
         assertFalse(visible.any { it in setOf("change_plan", "change_apply", "change_recover") })
-        assertTrue(visible.contains("search_classes"))
+        assertTrue(visible.contains("query_symbols"))
     }
 
     @Test

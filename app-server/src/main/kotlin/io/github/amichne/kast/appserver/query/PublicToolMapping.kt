@@ -6,32 +6,6 @@ import io.github.amichne.kast.protocol.contract.*
 /** Pure normalization/lowering; nullable controls exist only in the generated ingress documents. */
 internal fun PublicToolDocument.lower(): Refinement<PublicToolCanonical, PublicToolInputFailure> =
     when (this) {
-        is PublicToolSearchClasses ->
-            search(
-                name,
-                name_match,
-                scope,
-                listOf(PublicToolDeclarationKinds.CLASS),
-                PublicToolParameter.CLASS_NAME,
-                executionBudget,
-            )
-        is PublicToolSearchFunctions ->
-            search(
-                function_name,
-                name_match,
-                scope,
-                listOf(PublicToolDeclarationKinds.FUNCTION),
-                PublicToolParameter.FUNCTION_NAME,
-                executionBudget,
-            )
-        is PublicToolSearchDeclarations ->
-            search(
-                declaration_name,
-                name_match,
-                scope,
-                (declaration_kinds ?: PublicToolDefaults.declarationKinds).values,
-                executionBudget = executionBudget,
-            )
         is PublicToolCheckDiagnostics ->
             when (WorkspaceRelativePath.parse(relative_path.value)) {
                 is Refinement.Rejected ->
@@ -52,46 +26,20 @@ internal fun PublicToolDocument.lower(): Refinement<PublicToolCanonical, PublicT
             when (val from = source.lower()) {
                 is Refinement.Rejected -> from
                 is Refinement.Refined ->
-                    Refinement.Refined(
-                        query(
-                            from.value,
-                            (steps ?: PublicToolDefaults.steps).values.map { it.lower() },
-                            (return_fields ?: PublicToolDefaults.returnFields).values,
-                            continuation,
-                            executionBudget,
-                        )
-                    )
+                    when (val loweredSteps = (steps ?: PublicToolDefaults.steps).values.lower()) {
+                        is Refinement.Rejected -> loweredSteps
+                        is Refinement.Refined ->
+                            Refinement.Refined(
+                                query(
+                                    from.value,
+                                    loweredSteps.value,
+                                    (return_fields ?: PublicToolDefaults.returnFields).values,
+                                    continuation,
+                                    executionBudget,
+                                )
+                            )
+                    }
             }
-    }
-
-private fun search(
-    name: ProtocolText,
-    match: PublicToolNameMatch?,
-    scope: PublicToolScope?,
-    kinds: List<PublicToolDeclarationKinds>,
-    parameter: PublicToolParameter = PublicToolParameter.DECLARATION_NAME,
-    executionBudget: ExecutionBudgetDocument? = null,
-): Refinement<PublicToolCanonical, PublicToolInputFailure> =
-    when (
-        val source =
-            searchSource(
-                name,
-                match ?: PublicToolDefaults.nameMatch,
-                scope ?: PublicToolDefaults.scope,
-                kinds,
-                parameter,
-            )
-    ) {
-        is Refinement.Rejected -> source
-        is Refinement.Refined ->
-            Refinement.Refined(
-                query(
-                    source.value,
-                    emptyList(),
-                    PublicToolDefaults.searchFields.values,
-                    executionBudget = executionBudget,
-                )
-            )
     }
 
 private fun PublicToolSource.lower(): Refinement<QueryFromDocument, PublicToolInputFailure> =
@@ -150,7 +98,7 @@ private fun searchSource(
     match: PublicToolNameMatch,
     scope: PublicToolScope,
     kinds: List<PublicToolDeclarationKinds>,
-    parameter: PublicToolParameter = PublicToolParameter.DECLARATION_NAME,
+    parameter: PublicToolParameter,
 ): Refinement<QueryFromDocument, PublicToolInputFailure> {
     val admittedName =
         when (val result = DeclarationName.admit(name, parameter)) {
@@ -233,12 +181,33 @@ private fun query(
         )
     )
 
-private fun PublicToolStep.lower(): QueryStepDocument =
+private fun List<PublicToolStep>.lower(): Refinement<List<QueryStepDocument>, PublicToolInputFailure> {
+    val result = mutableListOf<QueryStepDocument>()
+    for (step in this) {
+        when (val lowered = step.lower()) {
+            is Refinement.Refined -> result += lowered.value
+            is Refinement.Rejected -> return lowered
+        }
+    }
+    return Refinement.Refined(result)
+}
+
+private fun PublicToolStep.lower(): Refinement<QueryStepDocument, PublicToolInputFailure> =
     when (this) {
         is PublicToolFilterVisibility ->
-            QueryStepDocument.Where(QueryPredicateDocument.Visibility(bounded(visibilities.values.map { it.lower() })))
-        is PublicToolExpandRelation -> QueryStepDocument.Related(relation.lower())
-        PublicToolDistinctSymbols -> QueryStepDocument.Distinct
+            Refinement.Refined(
+                QueryStepDocument.Where(
+                    QueryPredicateDocument.Visibility(bounded(visibilities.values.map { it.lower() }))
+                )
+            )
+        is PublicToolExpandRelation -> Refinement.Refined(QueryStepDocument.Related(relation.lower()))
+        PublicToolDistinctSymbols -> Refinement.Refined(QueryStepDocument.Distinct)
+        is PublicToolAppendSymbolRefs -> Refinement.Refined(QueryStepDocument.AppendReferences(symbol_refs))
+        is PublicToolFilterJq ->
+            when (val predicate = PrimitiveJqFilter.admit(expression)) {
+                is Refinement.Refined -> Refinement.Refined(QueryStepDocument.Where(predicate.value))
+                is Refinement.Rejected -> predicate
+            }
     }
 
 private fun PublicToolDeclarationKinds.lower(): QueryDeclarationKindDocument =
@@ -274,6 +243,7 @@ private fun PublicToolReturnFields.lower(): QuerySymbolFieldDocument =
         PublicToolReturnFields.NAME -> QuerySymbolFieldDocument.NAME
         PublicToolReturnFields.LOCATION -> QuerySymbolFieldDocument.LOCATION
         PublicToolReturnFields.SIGNATURE -> QuerySymbolFieldDocument.SIGNATURE
+        PublicToolReturnFields.SOURCE -> QuerySymbolFieldDocument.SOURCE
     }
 
 private fun rejected(parameter: PublicToolParameter, rule: PublicToolRule) =

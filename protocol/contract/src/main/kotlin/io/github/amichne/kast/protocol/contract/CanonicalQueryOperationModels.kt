@@ -11,6 +11,8 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonClassDiscriminator
 
+private const val MAX_QUERY_PRIMITIVE_VALUE_LENGTH = 512
+
 @Serializable
 enum class QueryDeclarationKindDocument {
     @SerialName("class") CLASS,
@@ -137,36 +139,6 @@ sealed interface QueryFromDocument {
 }
 
 @Serializable
-enum class QueryVisibilityDocument {
-    @SerialName("public") PUBLIC,
-    @SerialName("protected") PROTECTED,
-    @SerialName("internal") INTERNAL,
-    @SerialName("private") PRIVATE,
-    @SerialName("local") LOCAL,
-}
-
-@Serializable
-sealed interface QueryPredicateDocument {
-    @Serializable
-    @SerialName("visibility")
-    data class Visibility(
-        @ProtocolCollectionConstraint(minimumItems = 1, uniqueItems = true)
-        val values: BoundedProtocolList<QueryVisibilityDocument>
-    ) : QueryPredicateDocument
-}
-
-@Serializable
-sealed interface QueryStepDocument {
-    @Serializable @SerialName("inspect") data object Inspect : QueryStepDocument
-
-    @Serializable @SerialName("where") data class Where(val predicate: QueryPredicateDocument) : QueryStepDocument
-
-    @Serializable @SerialName("related") data class Related(val relation: RelationKindDocument) : QueryStepDocument
-
-    @Serializable @SerialName("distinct") data object Distinct : QueryStepDocument
-}
-
-@Serializable
 enum class QueryCandidateFieldDocument {
     @SerialName("name") NAME,
     @SerialName("location") LOCATION,
@@ -177,6 +149,7 @@ enum class QuerySymbolFieldDocument {
     @SerialName("name") NAME,
     @SerialName("location") LOCATION,
     @SerialName("signature") SIGNATURE,
+    @SerialName("source") SOURCE,
 }
 
 @Serializable
@@ -281,9 +254,11 @@ private fun QueryStepDocument.hasCanonicalSyntax(): Boolean =
         QueryStepDocument.Inspect,
         is QueryStepDocument.Related,
         QueryStepDocument.Distinct -> true
+        is QueryStepDocument.AppendReferences -> values.values.isNotEmpty()
         is QueryStepDocument.Where ->
             when (val value = predicate) {
                 is QueryPredicateDocument.Visibility -> value.values.values.isUniqueNonEmpty()
+                is QueryPredicateDocument.Primitive -> value.value.value.length <= MAX_QUERY_PRIMITIVE_VALUE_LENGTH
             }
     }
 
@@ -321,6 +296,7 @@ sealed interface QueryResultItemDocument {
         val signature: CompilerSignatureDocument?,
         val connections: BoundedProtocolList<RelationFactDocument>,
         val symbolId: SymbolIdDocument,
+        val source: QuerySourceWindowDocument? = null,
     ) : QueryResultItemDocument
 }
 
@@ -338,6 +314,11 @@ sealed interface QueryItemFailureDocument {
     data class Predicate(
         val ref: QueryReferenceDocument.ExactSymbol,
         val reason: QueryPredicateFailureDocument,
+    ) : QueryItemFailureDocument
+
+    data class Source(
+        val ref: QueryReferenceDocument.ExactSymbol,
+        val reason: QuerySourceFailureDocument,
     ) : QueryItemFailureDocument
 
     data class Relation(
@@ -462,6 +443,12 @@ sealed interface QueryRunRejection : QueryRunFailure {
 
     data class ReferenceRejected(
         val position: ProtocolOffset,
+        val reason: QueryReferenceRejectionReason,
+    ) : QueryRunRejection
+
+    data class StepReferenceRejected(
+        val stepPosition: ProtocolOffset,
+        val referencePosition: ProtocolOffset,
         val reason: QueryReferenceRejectionReason,
     ) : QueryRunRejection
 

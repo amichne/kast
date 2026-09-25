@@ -334,10 +334,7 @@ internal object KastProviderQualifier {
         val budget = OperationExecutionBudget.forOperation(definition.operation.operation)
         if (!matchesMetadata(tool, definition, budget)) return Refinement.Rejected(KastCatalogStage.TOOL_METADATA)
         val name = refined(ToolName.admit(tool.name)) ?: return Refinement.Rejected(KastCatalogStage.TOOL_METADATA)
-        val aliases =
-            definition.inputAliases.mapTo(linkedSetOf()) { alias ->
-                refined(ToolName.admit(alias.value)) ?: return Refinement.Rejected(KastCatalogStage.TOOL_METADATA)
-            }
+        val aliases = emptySet<ToolName>()
         val description =
             refined(ToolDescription.admit(tool.description))
                 ?: return Refinement.Rejected(KastCatalogStage.TOOL_METADATA)

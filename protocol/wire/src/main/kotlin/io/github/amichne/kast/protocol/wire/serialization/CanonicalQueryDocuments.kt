@@ -54,44 +54,14 @@ internal sealed interface QueryResultItemWireDocument {
         val signature: CompilerSignatureWireDocument?,
         val connections: List<RelationFactWireDocument>,
         val symbolId: String,
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        val source: QuerySourceWindowWireDocument? = null,
     ) : QueryResultItemWireDocument
 }
 
 @Serializable internal data class QueryCandidateLocationWireDocument(val file: String, val offset: Int)
 
 @Serializable internal data class QueryExactLocationWireDocument(val file: String, val range: SourceRangeWireDocument)
-
-@Serializable
-internal sealed interface QueryItemFailureWireDocument {
-    @Serializable
-    @SerialName("refinement")
-    data class Refinement(
-        val ref: QueryReferenceWireDocument.DeclarationCandidate,
-        val reason: QueryExactFailureWireDocument,
-    ) : QueryItemFailureWireDocument
-
-    @Serializable
-    @SerialName("exact-reference")
-    data class ExactReference(
-        val ref: QueryReferenceWireDocument.ExactSymbol,
-        val reason: QueryExactFailureWireDocument,
-    ) : QueryItemFailureWireDocument
-
-    @Serializable
-    @SerialName("predicate")
-    data class Predicate(
-        val ref: QueryReferenceWireDocument.ExactSymbol,
-        val reason: QueryPredicateFailureWireDocument,
-    ) : QueryItemFailureWireDocument
-
-    @Serializable
-    @SerialName("relation")
-    data class Relation(
-        val ref: QueryReferenceWireDocument.ExactSymbol,
-        val relation: RelationKindWireDocument,
-        val reason: QueryRelationFailureWireDocument,
-    ) : QueryItemFailureWireDocument
-}
 
 @Serializable
 internal enum class QueryExactFailureWireDocument {
@@ -164,6 +134,14 @@ internal sealed interface QueryRunRejectionWireDocument {
     @SerialName("reference-rejected")
     data class ReferenceRejected(
         val position: Int,
+        val reason: QueryReferenceRejectionReasonWireDocument,
+    ) : QueryRunRejectionWireDocument
+
+    @Serializable
+    @SerialName("step-reference-rejected")
+    data class StepReferenceRejected(
+        val stepPosition: Int,
+        val referencePosition: Int,
         val reason: QueryReferenceRejectionReasonWireDocument,
     ) : QueryRunRejectionWireDocument
 
@@ -278,6 +256,12 @@ private fun QueryResultItemDocument.toWire(): QueryResultItemWireDocument =
                 signature?.toWireDocument(),
                 connections.values.map(RelationFactDocument::toWireDocument),
                 symbolId.value,
+                source?.let {
+                    QuerySourceWindowWireDocument(
+                        it.text.value,
+                        SourceLineRangeWireDocument(it.lines.startInclusive.value, it.lines.endInclusive.value),
+                    )
+                },
             )
     }
 
@@ -303,19 +287,22 @@ private fun QueryResultItemWireDocument.toContract(): WireDocumentConversion<Que
                         optionalSignature(signature).flatMapConverted { projectedSignature ->
                             connections.convertEach(RelationFactWireDocument::toContract).flatMapConverted { facts ->
                                 facts.bounded().flatMapConverted { boundedFacts ->
-                                    io.github.amichne.kast.protocol.contract.SymbolIdDocument.parse(symbolId)
-                                        .toWireDocumentConversion()
-                                        .mapConverted { identity ->
-                                            QueryResultItemDocument.ExactSymbol(
-                                                QueryReferenceDocument.ExactSymbol(token),
-                                                kind.toContract(),
-                                                projectedName,
-                                                projectedLocation,
-                                                projectedSignature,
-                                                boundedFacts,
-                                                identity,
-                                            )
-                                        }
+                                    source.toContract().flatMapConverted { projectedSource ->
+                                        io.github.amichne.kast.protocol.contract.SymbolIdDocument.parse(symbolId)
+                                            .toWireDocumentConversion()
+                                            .mapConverted { identity ->
+                                                QueryResultItemDocument.ExactSymbol(
+                                                    QueryReferenceDocument.ExactSymbol(token),
+                                                    kind.toContract(),
+                                                    projectedName,
+                                                    projectedLocation,
+                                                    projectedSignature,
+                                                    boundedFacts,
+                                                    identity,
+                                                    projectedSource,
+                                                )
+                                            }
+                                    }
                                 }
                             }
                         }
@@ -367,6 +354,11 @@ private fun QueryItemFailureDocument.toWire(): QueryItemFailureWireDocument =
                 ref.toWire() as QueryReferenceWireDocument.ExactSymbol,
                 QueryPredicateFailureWireDocument.valueOf(reason.name),
             )
+        is QueryItemFailureDocument.Source ->
+            QueryItemFailureWireDocument.Source(
+                ref.toWire() as QueryReferenceWireDocument.ExactSymbol,
+                QuerySourceFailureWireDocument.valueOf(reason.name),
+            )
         is QueryItemFailureDocument.Relation ->
             QueryItemFailureWireDocument.Relation(
                 ref.toWire() as QueryReferenceWireDocument.ExactSymbol,
@@ -396,6 +388,13 @@ private fun QueryItemFailureWireDocument.toContract(): WireDocumentConversion<Qu
                 QueryItemFailureDocument.Predicate(
                     QueryReferenceDocument.ExactSymbol(token),
                     QueryPredicateFailureDocument.valueOf(reason.name),
+                )
+            }
+        is QueryItemFailureWireDocument.Source ->
+            ref.token.protocolText().mapConverted { token ->
+                QueryItemFailureDocument.Source(
+                    QueryReferenceDocument.ExactSymbol(token),
+                    QuerySourceFailureDocument.valueOf(reason.name),
                 )
             }
         is QueryItemFailureWireDocument.Relation ->
@@ -436,6 +435,12 @@ private fun QueryRunRejection.toQueryWireDocument(): QueryRunRejectionWireDocume
                 position.value,
                 reason.toWire(),
             )
+        is QueryRunRejection.StepReferenceRejected ->
+            QueryRunRejectionWireDocument.StepReferenceRejected(
+                stepPosition.value,
+                referencePosition.value,
+                reason.toWire(),
+            )
         is QueryRunRejection.SourceRejected ->
             QueryRunRejectionWireDocument.SourceRejected(
                 kind.toWire(),
@@ -456,6 +461,12 @@ private fun QueryRunRejectionWireDocument.toContract(): WireDocumentConversion<Q
         is QueryRunRejectionWireDocument.ReferenceRejected ->
             position.protocolOffset().mapConverted {
                 QueryRunRejection.ReferenceRejected(it, reason.toContract())
+            }
+        is QueryRunRejectionWireDocument.StepReferenceRejected ->
+            stepPosition.protocolOffset().flatMapConverted { step ->
+                referencePosition.protocolOffset().mapConverted { reference ->
+                    QueryRunRejection.StepReferenceRejected(step, reference, reason.toContract())
+                }
             }
         is QueryRunRejectionWireDocument.SourceRejected ->
             WireDocumentConversion.Converted(

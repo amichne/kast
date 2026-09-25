@@ -20,8 +20,8 @@ internal class NativeModelMovementWorkflow(
         val generated = workspace.resolve("native-fixture-sources/generated/NativeGeneratedTarget.kt")
         val before = listOf(source, movement, generated).associateWith(Files::readAllBytes)
         val read = NativeChangeRead(peer)
-        read.search(tool = "search_classes", field = "name", name = "NativeGeneratedTarget", count = 0)
-        val found = read.search(tool = "search_classes", field = "name", name = "NativeModelMovementTarget", count = 1)
+        read.searchClass("NativeGeneratedTarget", 0)
+        val found = read.searchClass("NativeModelMovementTarget", 1)
         val reference = ((found["items"] as JsonArray).single() as JsonObject).textAt("ref")
         val planned = peer.call("change_plan", nativePlanArguments(reference, "fun modelMoved() = value"))
         demand(!planned.rejected(), NativeFailure.PROVIDER_REJECTED)
@@ -29,8 +29,8 @@ internal class NativeModelMovementWorkflow(
         demand(plan.objectAt("live") == found.objectAt("live"), NativeFailure.SOURCE_CHANGED)
         unchanged(before)
         controls.amendGeneratedProvenance(sha256(Files.readAllBytes(source)))
-        val fresh = read.search(tool = "search_classes", field = "name", name = "NativeModelMovementTarget", count = 0)
-        read.search(tool = "search_classes", field = "name", name = "NativeGeneratedTarget", count = 0)
+        val fresh = read.searchClass("NativeModelMovementTarget", 0)
+        read.searchClass("NativeGeneratedTarget", 0)
         demand(
             fresh.objectAt("live")["host"] == found.objectAt("live")["host"] &&
                 fresh.objectAt("live")["epoch"] != found.objectAt("live")["epoch"],

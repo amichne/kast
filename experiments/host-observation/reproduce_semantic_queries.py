@@ -163,7 +163,6 @@ class Case:
     schema_valid: bool = True
     unique_tokens: bool = True
     issued: tuple[dict, ...] = ()
-    preferred_tool: str = "search_declarations"
 
     def request(self):
         return dict(type="QUERY", **{"from": self.source}, steps=list(self.steps), select=list(self.select))
@@ -176,7 +175,7 @@ class ToolSurface(str, Enum):
     @staticmethod
     def admit(tools):
         names = {tool["name"] for tool in tools}
-        public = {"search_classes", "search_functions", "search_declarations", "check_diagnostics", "query_symbols"}
+        public = {"check_diagnostics", "query_symbols"}
         if public <= names and "query" not in names:
             return ToolSurface.PUBLIC
         if "query" in names and not (public & names):
@@ -202,15 +201,6 @@ def invocation(case, surface):
     if source["type"] == "SEARCH":
         arguments = dict(declaration_name=source["query"], name_match=source["match"].lower(),
                          scope=public_scope(source.get("scope")), declaration_kinds=kinds)
-        if not case.steps and case.select == tuple(FIELDS):
-            tool = case.preferred_tool
-            if tool in {"search_classes", "search_functions"}:
-                name = "name" if tool == "search_classes" else "function_name"
-                arguments[name] = arguments.pop("declaration_name")
-                arguments.pop("declaration_kinds")
-            elif tool != "search_declarations":
-                raise ValueError("UNSUPPORTED_SEARCH_TOOL")
-            return tool, ["tool", tool], arguments
         lowered = dict(type="search_declarations", **arguments)
     elif source["type"] == "ALL":
         lowered = dict(type="all_declarations", declaration_kinds=kinds, scope=public_scope(source.get("scope")))
@@ -295,10 +285,10 @@ def cases(expected, parameters=None):
     result.append(Case("invalid-reference", dict(type="REFS", refs=["exact:v3:NOT_ISSUED"]), reported="malformed-reference"))
     result.append(Case("invalid-reference-syntax", dict(type="REFS", refs=["not-a-reference"]), reported="invalid-arguments", schema_valid=False))
     result.extend([
-        Case("class-facade", search("FixtureLogger"), ids("logger"), preferred_tool="search_classes"),
-        Case("function-facade", search("loggerFunction"), ids("helper"), preferred_tool="search_functions"),
-        Case("function-overloads", search("sharedOperation"), tuple(expected["sameName"]), preferred_tool="search_functions"),
-        Case("class-case-sensitive-negative", search("fixturelogger"), preferred_tool="search_classes"),
+        Case("class-query", search("FixtureLogger"), ids("logger")),
+        Case("function-query", search("loggerFunction"), ids("helper")),
+        Case("function-overloads", search("sharedOperation"), tuple(expected["sameName"])),
+        Case("class-case-sensitive-negative", search("fixturelogger")),
     ])
     return result
 

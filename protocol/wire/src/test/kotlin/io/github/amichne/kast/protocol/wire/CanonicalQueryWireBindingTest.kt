@@ -177,6 +177,51 @@ class CanonicalQueryWireBindingTest {
         assertTrue(CanonicalOperationWireBindings.queryRun.decodeOutcome(ambiguous) is WireDecoding.Rejected)
     }
 
+    @Test
+    fun `exact query source window retains bounded text and rejects malformed wire evidence`() {
+        val live =
+            LiveReadEvidence.create(
+                    "/workspace",
+                    UUID.fromString("b41c43b0-1f11-4ca9-9ec0-b6fc88cd31c4"),
+                    7,
+                    LiveReadContentView.SAVED_PSI_COMMITTED,
+                    1,
+                )
+                .refinedValue()
+        val source =
+            QuerySourceWindowDocument(
+                ProtocolSourceText.parse("fun payment() = 1\n").refinedValue(),
+                SourceLineRangeDocument.parse(1, 1).refinedValue(),
+            )
+        val item =
+            QueryResultItemDocument.ExactSymbol(
+                QueryReferenceDocument.ExactSymbol(text("exact:v2:opaque")),
+                SymbolKindDocument.FUNCTION,
+                null,
+                null,
+                null,
+                bounded(emptyList()),
+                SymbolIdDocument.parse("sym:" + "A".repeat(43)).refinedValue(),
+                source,
+            )
+        val outcome =
+            OperationOutcome.Complete(
+                EvidenceEnvelope(
+                    CanonicalOperation.QUERY_RUN.id,
+                    EvidenceBasis.Live(live),
+                    QueryRunResult(bounded(listOf(item)), bounded(emptyList())),
+                )
+            )
+        val encoded = CanonicalOperationWireBindings.queryRun.encodeOutcome(outcome) as WireEncoding.Encoded
+        assertTrue(encoded.document.contains("\"source\":{\"text\":\"fun payment() = 1\\n\""))
+        assertEquals(
+            outcome,
+            (CanonicalOperationWireBindings.queryRun.decodeOutcome(encoded.document) as WireDecoding.Decoded).value,
+        )
+        val malformed = encoded.document.replace("\"startInclusive\":1", "\"startInclusive\":0")
+        assertTrue(CanonicalOperationWireBindings.queryRun.decodeOutcome(malformed) is WireDecoding.Rejected)
+    }
+
     private fun qualification(progress: QueryQualifiedProgressDocument) =
         QueryRunQualification.create(
                 QueryKnownMinimum.parse(0).refinedValue(),

@@ -10,11 +10,11 @@ from released_acceptance_product import product_executable, ReleaseFailure, Rele
 # Current public spellings only. Each remains bound to the installed canonical operation identifier.
 OPERATIONS = (
     ('workspace_lifecycle', 'workspace.lifecycle'),
-    ('search_classes', 'query.run'), ('search_functions', 'query.run'),
-    ('search_declarations', 'query.run'), ('query_symbols', 'query.run'),
+    ('query_symbols', 'query.run'),
     ('symbol_lookup', 'symbol.discover'), ('symbol_inspect', 'symbol.inspect'),
     ('source_read', 'source.read'), ('read_relations', 'relation.read'), ('traverse_relations', 'traversal.run'),
-    ('check_diagnostics', 'diagnostic.check'), ('change', 'change.run'),
+    ('check_diagnostics', 'diagnostic.check'), ('change_plan', 'change.plan'),
+    ('change_apply', 'change.apply'), ('change_recover', 'change.recover'),
 )
 
 
@@ -31,7 +31,7 @@ def admit_inventory(document, configuration, schema_digest):
     cli = document['serverProjection']['cliInvocations']['operations']
     expected = dict(OPERATIONS)
     names = tuple(tool['name'] for tool in tools)
-    cli_expected = {name: operation for name, operation in expected.items() if name not in ('workspace_lifecycle', 'change')}
+    cli_expected = {name: operation for name, operation in expected.items() if name != 'workspace_lifecycle'}
     if (len(tools) != len(expected) or len(cli) != len(cli_expected) or set(names) != expected.keys()
             or any(tool['operationId'] != expected[tool['name']] for tool in tools)
             or {item['toolName']: item['operationId'] for item in cli} != cli_expected):
@@ -39,8 +39,8 @@ def admit_inventory(document, configuration, schema_digest):
     if any(line.startswith('KAST_APP_SERVER_TOOLS=') for line in configuration.splitlines()):
         raise ReleaseRejected(ReleaseFailure.INVENTORY)
     reads = tuple(tool['name'] for tool in tools if tool['effect'] in ('none', 'intellij_read')
-                  and tool['operationId'] != 'workspace.lifecycle')
-    if len(reads) != 10 or not {'symbol_lookup', 'symbol_inspect'} <= set(reads):
+                  and tool['operationId'] not in ('change.plan', 'workspace.lifecycle'))
+    if len(reads) != 7 or not {'symbol_lookup', 'symbol_inspect'} <= set(reads):
         raise ReleaseRejected(ReleaseFailure.INVENTORY)
     return ReleasedToolInventory(names, names, reads, schema_digest)
 

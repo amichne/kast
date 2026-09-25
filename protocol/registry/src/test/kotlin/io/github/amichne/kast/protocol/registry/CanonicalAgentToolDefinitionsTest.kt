@@ -37,9 +37,6 @@ class CanonicalAgentToolDefinitionsTest {
             listOf(
                 CanonicalOperation.WORKSPACE_LIFECYCLE,
                 CanonicalOperation.QUERY_RUN,
-                CanonicalOperation.QUERY_RUN,
-                CanonicalOperation.QUERY_RUN,
-                CanonicalOperation.QUERY_RUN,
                 CanonicalOperation.SYMBOL_DISCOVER,
                 CanonicalOperation.SYMBOL_INSPECT,
                 CanonicalOperation.SOURCE_READ,
@@ -53,9 +50,6 @@ class CanonicalAgentToolDefinitionsTest {
         assertEquals(
             listOf(
                 "workspace_lifecycle",
-                "search_classes",
-                "search_functions",
-                "search_declarations",
                 "query_symbols",
                 "symbol_lookup",
                 "symbol_inspect",
@@ -76,17 +70,17 @@ class CanonicalAgentToolDefinitionsTest {
             CanonicalAgentToolDefinitions.workspaceLifecycle.approval,
         )
         assertEquals(HostedApprovalPolicy.NONE, CanonicalAgentToolDefinitions.symbolLookup.approval)
-        assertEquals(HostedToolLoading.DEFERRED, CanonicalAgentToolDefinitions.query.loading)
+        assertEquals(HostedToolLoading.EAGER, CanonicalAgentToolDefinitions.query.loading)
         assertEquals(
-            listOf("search_classes", "search_functions", "search_declarations", "check_diagnostics"),
+            listOf("query_symbols", "check_diagnostics"),
             CanonicalAgentToolDefinitions.all.filter { it.loading == HostedToolLoading.EAGER }.map { it.name.value },
         )
         assertEquals(HostedApprovalPolicy.NONE, CanonicalAgentToolDefinitions.change.approval)
-        assertTrue("exact selector" in CanonicalAgentToolDefinitions.semanticQuery.description.value)
-        assertTrue("reachability is qualified" in CanonicalAgentToolDefinitions.impactAnalyze.description.value)
-        assertTrue("does not guarantee breakage" in CanonicalAgentToolDefinitions.impactAnalyze.description.value)
+        assertTrue("exact selector" in CanonicalAgentToolDefinitions.relationRead.description.value)
+        assertTrue("Reachability is qualified" in CanonicalAgentToolDefinitions.traversalRun.description.value)
+        assertTrue("does not guarantee breakage" in CanonicalAgentToolDefinitions.traversalRun.description.value)
         val policy = CanonicalAgentToolDefinitions.policy.text
-        assertTrue("compiler-grounded Kotlin source intelligence" in policy)
+        assertTrue("Use kast.query_symbols for declaration-name search" in policy)
         assertTrue("Preserve returned symbol references" in policy)
         listOf("kast start", "index sync --", "topology build --", "broker serve").forEach { command ->
             assertTrue(command !in policy)

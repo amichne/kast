@@ -22,7 +22,6 @@ from hosted_authority_read_regression import run_authority_read_regression
 from hosted_budget_read_regression import run_budget_read_regression
 from hosted_resume_budget_regression import run_resume_budget_regression
 from hosted_raw_symbol_regression import run_raw_symbol_regression
-from hosted_read_name_regression import run_read_name_regression
 from hosted_enum_read_regression import run_enum_read_regression
 from hosted_repair_budget_regression import run_repair_time_regression
 from hosted_kotlin_call_regression import run_kotlin_call_regression
@@ -222,7 +221,6 @@ class _ReadReplay:
         run_budget_read_regression(self)
         run_repair_time_regression(self)
         run_resume_budget_regression(self)
-        run_read_name_regression(self)
         request = DiagnosticRequest('src/main/kotlin/Fixture.kt', 1000,
             execution_budget=DiagnosticGrant(max_results=1000))
         first, _ = self.transport.invoke_observed(self.surface, 'check_diagnostics', asdict(request))

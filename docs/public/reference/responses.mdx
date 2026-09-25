@@ -136,7 +136,7 @@ Choose the payload model for the invoked tool.
 
 | Tool family | Canonical operation | Payload to inspect |
 | --- | --- | --- |
-| `search_classes`, `search_functions`, `search_declarations`, `query_symbols` | `query.run` | `items[]`: candidate or exact symbol; `failures[]`: per-item failures |
+| `query_symbols` | `query.run` | `items[]`: candidate or exact symbol; `failures[]`: per-item failures |
 | `source_read` | `source.read` | `snapshot`, `region`, `entities[]`, `text` |
 | `read_relations` | `relation.read` | `relations[]`: occurrence-oriented relation facts |
 | `traverse_relations` | `traversal.run` | The graph, traversal coverage, and continuation state in the callable schema |

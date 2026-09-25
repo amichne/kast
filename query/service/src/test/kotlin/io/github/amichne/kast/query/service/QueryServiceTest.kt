@@ -620,7 +620,7 @@ class QueryServiceTest {
             output = QueryOutputSyntax.Symbols(symbolFields()),
         )
 
-    private fun admittedPlan(
+    internal fun admittedPlan(
         source: QuerySourceSyntax,
         steps: List<QueryStepSyntax> = emptyList(),
         output: QueryOutputSyntax,

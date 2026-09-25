@@ -493,6 +493,7 @@ private fun queryResultItemSchema(): JsonObject =
                 ),
             ),
             ServerSchemaProperty("connections", arraySchema(relationFactSchema())),
+            ServerSchemaProperty("source", querySourceWindowSchema(), required = false),
         ),
     )
 
@@ -508,6 +509,7 @@ private fun queryItemFailureSchema(): JsonObject =
         queryItemFailureVariantSchema("refinement", "declaration-candidate", queryExactFailureSchema()),
         queryItemFailureVariantSchema("exact-reference", "exact-symbol", queryExactFailureSchema()),
         queryItemFailureVariantSchema("predicate", "exact-symbol", queryPredicateFailureSchema()),
+        queryItemFailureVariantSchema("source", "exact-symbol", querySourceFailureSchema()),
         objectSchema(
             ServerSchemaProperty("type", constantSchema("relation", "Per-symbol relation failure.")),
             ServerSchemaProperty("ref", queryOutputReferenceSchema("exact-symbol")),
