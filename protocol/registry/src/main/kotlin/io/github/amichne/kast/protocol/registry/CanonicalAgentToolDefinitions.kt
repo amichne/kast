@@ -134,10 +134,13 @@ object CanonicalAgentToolDefinitions {
         tool(
             CanonicalOperationDefinitions.sourceRead,
             "source_read",
-            "Read bounded source and structural context around a candidate, exact symbol, or source " +
-                "selector. Prefer this over unrestricted filesystem reads when the required Kotlin " +
-                "context is representable through Kast. Omit entityLimit for an entity-free read, " +
-                "and omit page and default budgets for the first read.",
+            "Read bounded source and structural context. For an exact selector, pass only " +
+                "{\"symbol\":\"<exact selector from search>\"}; region defaults to declaration, text to complete, " +
+                "entities to none, and format to compact. Optional region, text, entities, and format " +
+                "override those defaults. Candidate and source selectors use the typed anchor request. " +
+                "Preserve selectors verbatim and prefer this tool over unrestricted filesystem reads " +
+                "when Kast can represent the required Kotlin context. Omit entityLimit for an " +
+                "entity-free read, and omit page and default budgets for the first read.",
         )
     val semanticQuery =
         tool(

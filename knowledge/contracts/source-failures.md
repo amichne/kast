@@ -46,6 +46,9 @@ Physical source ingress uses the typed request serializer and finite validation
 owner. It rejects malformed input before provider startup or source execution.
 Public source admission rejects an explicit `entityLimit` with `entities: none`;
 an omitted limit uses the canonical internal default without requesting entities.
+The short exact-symbol request refines its opaque selector before supplying
+canonical source defaults. A mixed `symbol` and `anchor` request is rejected as
+an unknown field, rather than choosing one identity silently.
 Valid unordered declaration-kind and visibility selections are accepted and
 normalized by their existing domain owners; ordering is not a caller predicate.
 Native and retained-output continuation syntax remains distinct and supported.
