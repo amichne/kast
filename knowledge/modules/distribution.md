@@ -70,8 +70,10 @@ code_sources:
   - path: .github/scripts/release/build-assets.sh
   - path: .github/scripts/release/ci-candidate.py
   - path: .github/scripts/release/publish-release.sh
+  - path: .github/scripts/release/publish-developer.sh
   - path: .github/workflows/ci.yml
   - path: .github/workflows/release.yml
+  - path: .github/workflows/developer-release.yml
 ---
 
 # Distribution and packaging
@@ -81,6 +83,16 @@ Distribution contracts own configuration keys, defaults, owners, operational lim
 Root and packaging scripts orchestrate checkout installation, persistent lifecycle, release layout, and acceptance. Stable releases and local checkout installations include a hosted-plugin ZIP named for the IDEA release line (`idea-262.zip`). Local installation builds the control product and matching hosted plugin before staging their checksums. The public installer verifies its checksum, release version, plugin identity, and descriptor release line before atomically replacing only the Kast directory under IDEA's user plugin root; dry-run validates the archive without writing plugin state. Installed-product acceptance also installs the assembled archive and plugin in a private session fixture, exercising the real installer and private service entry point. The checked [configuration schema](../../packaging/configuration-schema.json) is a public boundary and must remain aligned with the Kotlin catalogue.
 
 Successful main CI runs the routine preflight checks, then builds and retains one exact next-patch release candidate with the product gate at that version. Pull-request CI keeps its separate `0.0.0` product gate. Release reuses the main candidate only when its version and source revision match the requested release, the producing main-push CI run completed successfully, and the asset inventory, checksums, and SBOM source/archive identities validate. A missing candidate follows the existing exact-version build gate; an observed but invalid candidate rejects. Minor and major releases use that build path unless a matching candidate exists. The release workflow retains the admitted candidate before publishing.
+
+An explicitly dispatched developer workflow builds an exact commit through the
+same product gate with a unique `0.0.<build>` version. Its read-only build job
+retains the candidate; a separate trusted publication job validates the asset
+inventory, checksums, and SBOM source identity before creating an immutable
+developer prerelease. The public `developer-latest` release contains only a
+mutable pointer to that exact prerelease and source revision. The installer
+accepts `--developer-latest` to resolve the pointer before downloading and
+verifying the versioned control and IDEA plugin assets. Stable release version
+resolution ignores developer tags.
 
 The public installer reports the selected IDEA product version and build before
 fetching release-line-specific plugin bytes. An absent matching plugin is a

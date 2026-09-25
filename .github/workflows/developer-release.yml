@@ -1,0 +1,125 @@
+name: Developer release
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact commit to build and publish before a stable release
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+concurrency:
+  group: developer-release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build exact developer artifact
+    runs-on: macos-15
+    timeout-minutes: 60
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.source_sha }}
+          persist-credentials: false
+
+      - name: Admit exact developer source
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha }}
+        run: |
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
+          git checkout --detach "$SOURCE_SHA"
+          bash .github/scripts/release/admit-source.sh \
+            --repository-root "$PWD" --expected-source-revision "$SOURCE_SHA"
+
+      - name: Set up Java 25
+        id: jdk25
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version-file: ".python-version"
+          cache: pip
+          cache-dependency-path: experiments/host-observation/requirements-test.txt
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6
+        with:
+          validate-wrappers: true
+          gradle-home-cache-includes: |
+            caches
+            notifications
+            kast/workspace-intellij-read-idea-distributions
+            kast/symbol-intellij-idea-distributions
+            kast/topology-intellij-kotlin-plugin
+
+      - name: Build exact developer candidate
+        id: version
+        env:
+          JAVA_HOME: ${{ steps.jdk25.outputs.path }}
+          SOURCE_SHA: ${{ inputs.source_sha }}
+        run: |
+          version="0.0.$((GITHUB_RUN_NUMBER * 100 + GITHUB_RUN_ATTEMPT))"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          bash .github/scripts/release/build-assets.sh \
+            --version "$version" --source-revision "$SOURCE_SHA"
+
+      - name: Retain exact developer candidate
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: developer-candidate-${{ steps.version.outputs.version }}-${{ inputs.source_sha }}
+          path: build/release/v${{ steps.version.outputs.version }}/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+
+  publish:
+    name: Publish developer artifact and latest pointer
+    needs: build
+    runs-on: macos-15
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version-file: ".python-version"
+
+      - name: Download verified candidate
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: developer-candidate-${{ needs.build.outputs.version }}-${{ inputs.source_sha }}
+          path: build/release/v${{ needs.build.outputs.version }}/
+
+      - name: Publish immutable build and latest pointer
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha }}
+          DEVELOPER_VERSION: ${{ needs.build.outputs.version }}
+        run: >-
+          bash .github/scripts/release/publish-developer.sh
+          --version "$DEVELOPER_VERSION"
+          --commit "$SOURCE_SHA"
+          --assets-directory "build/release/v${DEVELOPER_VERSION}"

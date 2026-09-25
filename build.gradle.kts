@@ -403,11 +403,22 @@ tasks.register<Exec>("knowledgeImpact") {
     )
 }
 
+val pythonTestEnvironment = layout.buildDirectory.dir("python-tests/env")
+val pythonTestExecutable = pythonTestEnvironment.map { it.file("bin/python3").asFile.absolutePath }
+val preparePythonTestEnvironment = tasks.register<Exec>("preparePythonTestEnvironment") {
+    group = "verification"
+    description = "Provisions the pinned Python dependencies used by the routine test gate."
+    inputs.file(layout.projectDirectory.file("experiments/host-observation/requirements-test.txt"))
+    inputs.file(layout.projectDirectory.file("packaging/prepare-python-test-environment.py"))
+    commandLine("python3", layout.projectDirectory.file("packaging/prepare-python-test-environment.py"))
+}
+
 val hostObservationTest = tasks.register<Exec>("hostObservationTest") {
+    dependsOn(preparePythonTestEnvironment)
     group = "verification"
     description = "Checks the launch-free experimental host-observation controller."
     inputs.dir(layout.projectDirectory.dir("experiments/host-observation"))
-    commandLine("python3", "-m", "unittest", "discover", "-s", "experiments/host-observation", "-p", "test_*.py")
+    commandLine(pythonTestExecutable.get(), "-m", "unittest", "discover", "-s", "experiments/host-observation", "-p", "test_*.py")
 }
 
 tasks.named("check") { dependsOn(verifyConfigurationIngress, verifyKnowledgeBase, hostObservationTest) }
@@ -472,6 +483,7 @@ val hostedRuntimeObservationTest = tasks.register<Exec>("hostedRuntimeObservatio
 }
 
 val hostedReadRegressionTest = tasks.register<Exec>("hostedReadRegressionTest") {
+    dependsOn(preparePythonTestEnvironment)
     group = "verification"
     description = "Checks the native read fixture oracle and bounded result receipt."
     inputs.files(
@@ -505,7 +517,7 @@ val hostedReadRegressionTest = tasks.register<Exec>("hostedReadRegressionTest") 
         "packaging/test-released-coordinator-acceptance.py",
         "packaging/native_provider_qualification.py", "packaging/test-native-provider-qualification.py",
     )
-    commandLine("python3", layout.projectDirectory.file("packaging/test-hosted-read-regression.py"))
+    commandLine(pythonTestExecutable.get(), layout.projectDirectory.file("packaging/test-hosted-read-regression.py"))
 }
 
 val nativeFixtureProbeTest = tasks.register<Exec>("nativeFixtureProbeTest") {

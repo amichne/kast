@@ -67,7 +67,8 @@ Storage lives under `~/.local/state/kast-host-observation/<host-hash>/<project-h
 
 ## Verification
 
-Routine controller checks require only Python's standard library and are part of root `check`:
+Routine controller checks are part of root `check`. Gradle creates a shared,
+build-owned Python test environment and installs the pinned schema dependency:
 
 ```sh
 ./gradlew hostObservationTest knowledgeImpact verifyKnowledgeBase

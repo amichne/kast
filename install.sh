@@ -75,7 +75,7 @@ usage() {
 Install or remove Kast for the current user.
 
 Usage:
-  install.sh [--idea-home <absolute-path>] [--version <major.minor.patch>] [--force] [--dry-run]
+  install.sh [--idea-home <absolute-path>] [--version <major.minor.patch> | --developer-latest] [--force] [--dry-run]
   install.sh uninstall [--dry-run]
   install.sh --help
 
@@ -89,6 +89,11 @@ Pass arguments to a downloaded installer after Bash's `$0` separator:
 
 `--dry-run` downloads and verifies the matched release, then prints the exact
 installation plan without changing installation state.
+
+`--developer-latest` installs the newest verified developer build from the
+public developer channel. Its exact source revision is recorded in the channel
+pointer and release SBOM. Developer builds are prereleases and change independently
+of the latest stable release.
 
 Development builds use packaging/install-checkout.sh session|persistent.
 
@@ -179,6 +184,20 @@ resolve_latest_version() {
   tag="${tag#v}"
   validate_version "$tag"
   printf '%s\n' "$tag"
+}
+
+resolve_developer_latest() {
+  local pointer tag selected_version source_revision extra
+  pointer="$(curl --fail --location --silent --show-error --max-filesize 256 \
+    --retry "$INSTALL_DOWNLOAD_RETRIES" --retry-delay "$((INSTALL_DOWNLOAD_RETRY_DELAY_MILLIS / 1000))" \
+    "https://github.com/$REPOSITORY/releases/download/developer-latest/latest.txt")" ||
+    fail "developer-latest pointer is unavailable"
+  [[ "$pointer" != *$'\n'* ]] || fail "developer-latest pointer has multiple records"
+  IFS=' ' read -r tag selected_version source_revision extra <<< "$pointer"
+  [[ -z "${extra:-}" && "$selected_version" =~ ^0\.0\.[0-9]+$ &&
+    "$tag" == "developer-v$selected_version" && "$source_revision" =~ ^[0-9a-f]{40}$ ]] ||
+    fail "developer-latest pointer is invalid"
+  printf '%s\t%s\t%s\n' "$tag" "$selected_version" "$source_revision"
 }
 
 fetch_asset() {
@@ -377,6 +396,7 @@ version="${KAST_VERSION:-}"
 idea_home="${KAST_INSTALL_IDEA_HOME:-}"
 mode=apply
 force=0
+developer_latest=0
 
 if [[ "${1:-}" == uninstall ]]; then
   action=uninstall
@@ -398,6 +418,11 @@ while [[ $# -gt 0 ]]; do
       mode=plan
       shift
       ;;
+    --developer-latest)
+      [[ "$action" == install ]] || fail "--developer-latest is valid only for installation"
+      developer_latest=1
+      shift
+      ;;
     --version)
       [[ $# -ge 2 ]] || fail "--version requires a value"
       version="${2#v}"
@@ -411,6 +436,10 @@ while [[ $# -gt 0 ]]; do
     *) fail "unknown argument: $1" ;;
   esac
 done
+
+[[ "$developer_latest" == 0 || -z "$version" ]] || fail "--developer-latest cannot be combined with --version or KAST_VERSION"
+[[ "$developer_latest" == 0 || -z "${KAST_INSTALL_ASSETS_DIRECTORY:-}" ]] ||
+  fail "--developer-latest cannot be combined with local assets"
 
 [[ -n "${HOME:-}" ]] || fail "HOME is unavailable"
 # Local artifacts are an explicit developer entry point; public release installs use standard paths.
@@ -487,7 +516,14 @@ success "found IntelliJ IDEA $idea_version (build $idea_build)"
 info "The IntelliJ plugin gives Kast compiler-grounded access to projects opened in this exact IDEA release line."
 idea_plugin_root="$HOME/Library/Application Support/JetBrains/$idea_data_directory/plugins"
 
-if [[ -z "$version" || "$version" == latest ]]; then
+developer_source=""
+release=""
+if [[ "$developer_latest" == 1 ]]; then
+  [[ -z "${KAST_RELEASE_BASE_URL:-}" ]] || fail "--developer-latest cannot override the public release URL"
+  IFS=$'\t' read -r release version developer_source < <(resolve_developer_latest)
+  validate_version "$version"
+  info "selected developer build $version from $developer_source"
+elif [[ -z "$version" || "$version" == latest ]]; then
   [[ -z "${KAST_RELEASE_BASE_URL:-}" ]] || fail "KAST_RELEASE_BASE_URL requires KAST_VERSION"
   [[ -z "${KAST_INSTALL_ASSETS_DIRECTORY:-}" ]] || fail "local assets require KAST_VERSION"
   version="$(resolve_latest_version)"
@@ -495,7 +531,7 @@ else
   validate_version "$version"
 fi
 
-release="v$version"
+release="${release:-v$version}"
 release_url="${KAST_RELEASE_BASE_URL:-https://github.com/$REPOSITORY/releases/download}"
 release_url="${release_url%/}/$release"
 control_name="kast-control-v$version-macos-aarch64.tar.gz"

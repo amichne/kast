@@ -12,6 +12,7 @@ code_sources:
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceRequestFieldReader.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceReadFailureDetails.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceRequestIngress.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceReadSimpleIngress.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalSourceReadProtocol.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/SourceReferenceFailures.kt
   - path: source/service/src/main/kotlin/io/github/amichne/kast/source/service/SourceReadService.kt

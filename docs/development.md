@@ -87,21 +87,20 @@ complete selectors, resource reductions and observed limits.
 
 ## Build and install the checkout
 
-Prepare the same Python test dependencies used by CI before running Gradle:
+Gradle provisions the pinned Python dependencies for its schema tests in
+`build/python-tests/env`. The build does not depend on the active shell's Python
+packages or the interpreter search path retained by an existing Gradle daemon.
+
+Install the repository's pre-push gate once per Git clone. It preserves other
+hooks and runs `productBuildGate` on a clean checked-out commit before a push:
 
 ```shell
-python3.12 -m venv .venv
-source .venv/bin/activate
-python -m pip install -r experiments/host-observation/requirements-test.txt
+./.githooks/install.sh
 ```
 
-Keep that environment active for the build. Use a fresh Gradle process so Python
-checks inherit its executable search path; a daemon started before activation can
-retain the earlier interpreter.
-
 ```shell
-./gradlew --no-daemon build
-./gradlew --no-daemon assembleRelease
+./gradlew build
+./gradlew assembleRelease
 ```
 
 Dependency verification uses the checked `gradle/verification-metadata.xml` in strict mode.

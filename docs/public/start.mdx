@@ -89,6 +89,20 @@ Install the IDEA plugin, connect Codex, and find a declaration in your repositor
 ## Setup alternatives
 
 <AccordionGroup>
+  <Accordion title="Try the latest developer build">
+    A developer build is published as a public prerelease after its exact
+    source commit passes the product gate. Install the current developer
+    pointer with:
+
+    ```shell
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" \
+      -- --developer-latest
+    ```
+
+    The installer resolves an immutable developer release, verifies its
+    checksums and matched IDEA plugin, and reports its exact source revision.
+    Use `--dry-run` to inspect the installation plan first.
+  </Accordion>
   <Accordion title="Choose among multiple IDEA installations">
     ```shell
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" \

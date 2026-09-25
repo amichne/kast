@@ -39,9 +39,12 @@ internal fun generatedHostedRequestSchema(serializer: KSerializer<*>, variants: 
     val generated = generatedRequestSchema(serializer)
     if (serializer.descriptor.serialName == SourceReadRequest.serializer().descriptor.serialName) {
         return OBJECT_SCHEMA_JSON.encodeToJsonElement(
-            GeneratedUnionSchemaDocument.serializer(),
-            GeneratedUnionSchemaDocument(listOf(generatedRequestSchema(SourceReadSimpleRequest.serializer()), generated)),
-        ).jsonObject
+                GeneratedUnionSchemaDocument.serializer(),
+                GeneratedUnionSchemaDocument(
+                    listOf(generatedRequestSchema(SourceReadSimpleRequest.serializer()), generated)
+                ),
+            )
+            .jsonObject
     }
     return when (variants) {
         HostedVariants.None -> generated

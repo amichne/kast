@@ -28,6 +28,7 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.RefinementDefinition
 import io.github.amichne.kast.kernel.Validation
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.contract.ExactSymbolSelector
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.SourceEntityLimitDocument
 import io.github.amichne.kast.protocol.contract.SourceEntitySelectionDocument
@@ -35,6 +36,7 @@ import io.github.amichne.kast.protocol.contract.SourceReadAnchorDocument
 import io.github.amichne.kast.protocol.contract.SourceReadFailureDetail
 import io.github.amichne.kast.protocol.contract.SourceReadFormatDocument
 import io.github.amichne.kast.protocol.contract.SourceReadRequest
+import io.github.amichne.kast.protocol.contract.SourceReadSimpleRequest
 import io.github.amichne.kast.protocol.contract.SourceRegionSelectionDocument
 import io.github.amichne.kast.protocol.contract.SourceRequestField
 import io.github.amichne.kast.protocol.contract.SourceRequestIngress
@@ -45,6 +47,7 @@ import java.nio.file.Path
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -53,6 +56,28 @@ import org.junit.jupiter.api.io.TempDir
 
 class SourceInputRejectionTest {
     private val json = Json { encodeDefaults = true }
+
+    private fun publishedSourceRead() =
+        json
+            .parseToJsonElement(
+                Path.of("..", "docs", "public", "reference", "callables.openapi.json").toFile().readText()
+            )
+            .jsonObject
+
+    private fun sourceReadMedia(document: JsonObject) =
+        document
+            .getValue("paths")
+            .jsonObject
+            .getValue("/callables/source_read")
+            .jsonObject
+            .getValue("post")
+            .jsonObject
+            .getValue("requestBody")
+            .jsonObject
+            .getValue("content")
+            .jsonObject
+            .getValue("application/json")
+            .jsonObject
 
     @Test
     fun `public source intent lowers exact reference with no entity limit`() {
@@ -111,33 +136,37 @@ class SourceInputRejectionTest {
     @Test
     fun `exact symbol alone reaches typed server admission`() {
         val symbol = "exact:v5:${"A".repeat(21)}Q"
-        val exact = (io.github.amichne.kast.protocol.contract.ExactSymbolSelector.parse(symbol) as Refinement.Refined).value
-        val input = Json.encodeToJsonElement(
-            io.github.amichne.kast.protocol.contract.SourceReadSimpleRequest.serializer(),
-            io.github.amichne.kast.protocol.contract.SourceReadSimpleRequest(exact),
-        )
-        val schema = NetworkntJsonSchemaCompiler.compile(
-            json.encodeToJsonElement(ObjectSchema.serializer(), ObjectSchema()).jsonObject
-        ).refined()
+        val exact = (ExactSymbolSelector.parse(symbol) as Refinement.Refined).value
+        val input =
+            Json.encodeToJsonElement(
+                SourceReadSimpleRequest.serializer(),
+                SourceReadSimpleRequest(exact),
+            )
+        val schema =
+            NetworkntJsonSchemaCompiler.compile(
+                    json.encodeToJsonElement(ObjectSchema.serializer(), ObjectSchema()).jsonObject
+                )
+                .refined()
         val admitted = schema.admit(input).validated()
         val result = admitKastInput(CanonicalOperation.SOURCE_READ, admitted) as Validation.Validated
         val source = result.value as KastInvocationInput.Source
-        assertEquals(symbol,
-            (source.request.anchor as io.github.amichne.kast.protocol.contract.SourceReadAnchorDocument.Symbol).selector.value)
-        assertEquals(io.github.amichne.kast.protocol.contract.SourceReadFormatDocument.COMPACT, source.request.format)
+        assertEquals(symbol, (source.request.anchor as SourceReadAnchorDocument.Symbol).selector.value)
+        assertEquals(SourceReadFormatDocument.COMPACT, source.request.format)
     }
 
     @Test
     fun `every published source example passes the broker schema and typed admission`() {
-        val document = json.parseToJsonElement(
-            Path.of("..", "docs", "public", "reference", "callables.openapi.json").toFile().readText()
-        ).jsonObject
-        val sourceSchema = document.getValue("components").jsonObject.getValue("schemas").jsonObject
-            .getValue("source_readRequest").jsonObject
+        val document = publishedSourceRead()
+        val sourceSchema =
+            document
+                .getValue("components")
+                .jsonObject
+                .getValue("schemas")
+                .jsonObject
+                .getValue("source_readRequest")
+                .jsonObject
         val compiled = NetworkntJsonSchemaCompiler.compile(sourceSchema).refined()
-        val examples = document.getValue("paths").jsonObject.getValue("/callables/source_read").jsonObject
-            .getValue("post").jsonObject.getValue("requestBody").jsonObject.getValue("content").jsonObject
-            .getValue("application/json").jsonObject.getValue("examples").jsonObject
+        val examples = sourceReadMedia(document).getValue("examples").jsonObject
         assertEquals(setOf("exactSymbol", "callableBody"), examples.keys)
         examples.values.forEach { example ->
             val value = example.jsonObject.getValue("value")
@@ -145,15 +174,26 @@ class SourceInputRejectionTest {
             val result = admitKastInput(CanonicalOperation.SOURCE_READ, admitted)
             assertEquals(true, result is Validation.Validated)
         }
-        val invalid = document.getValue("paths").jsonObject.getValue("/callables/source_read").jsonObject
-            .getValue("post").jsonObject.getValue("requestBody").jsonObject.getValue("content").jsonObject
-            .getValue("application/json").jsonObject.getValue("x-kast-invalidExamples").jsonObject
+    }
+
+    @Test
+    fun `every published invalid source example fails schema and server ingress`() {
+        val document = publishedSourceRead()
+        val sourceSchema =
+            document
+                .getValue("components")
+                .jsonObject
+                .getValue("schemas")
+                .jsonObject
+                .getValue("source_readRequest")
+                .jsonObject
+        val compiled = NetworkntJsonSchemaCompiler.compile(sourceSchema).refined()
+        val invalid = sourceReadMedia(document).getValue("x-kast-invalidExamples").jsonObject
         assertEquals(setOf("unsupportedTextMode", "mixedIdentity"), invalid.keys)
         invalid.values.forEach { example ->
             val value = example.jsonObject.getValue("value")
             assertEquals(true, compiled.admit(value) is Validation.Rejected)
-            assertEquals(true,
-                io.github.amichne.kast.protocol.contract.SourceRequestIngress.decode(value, json) is Refinement.Rejected)
+            assertEquals(true, SourceRequestIngress.decode(value, json) is Refinement.Rejected)
         }
     }
 

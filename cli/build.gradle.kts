@@ -146,23 +146,29 @@ val projectSourceReadInputSchema =
         outputFile.set(projectedSourceReadInputSchema)
     }
 
-val generateSourceReadInputSchema = tasks.register<support.tasks.WriteJavaProcessOutputTask>("generateSourceReadInputSchema") {
-    group = "build"
-    dependsOn(tasks.named("classes"))
-    classpath.from(sourceSets.main.get().runtimeClasspath)
-    mainClass.set("io.github.amichne.kast.cli.SourceReadInputSchemaProjection")
-    outputFile.set(publishedSourceReadInputSchema)
-}
+val generateSourceReadInputSchema =
+    tasks.register<support.tasks.WriteJavaProcessOutputTask>("generateSourceReadInputSchema") {
+        group = "build"
+        dependsOn(tasks.named("classes"))
+        classpath.from(sourceSets.main.get().runtimeClasspath)
+        mainClass.set("io.github.amichne.kast.cli.SourceReadInputSchemaProjection")
+        outputFile.set(publishedSourceReadInputSchema)
+    }
 
-val verifySourceReadInputSchema = tasks.register<Exec>("verifySourceReadInputSchema") {
-    group = "verification"
-    dependsOn(projectSourceReadInputSchema)
-    mustRunAfter(generateSourceReadInputSchema)
-    inputs.file(projectedSourceReadInputSchema)
-    inputs.file(publishedSourceReadInputSchema)
-    commandLine("cmp", "-s", projectedSourceReadInputSchema.get().asFile.absolutePath,
-        publishedSourceReadInputSchema.asFile.absolutePath)
-}
+val verifySourceReadInputSchema =
+    tasks.register<Exec>("verifySourceReadInputSchema") {
+        group = "verification"
+        dependsOn(projectSourceReadInputSchema)
+        mustRunAfter(generateSourceReadInputSchema)
+        inputs.file(projectedSourceReadInputSchema)
+        inputs.file(publishedSourceReadInputSchema)
+        commandLine(
+            "cmp",
+            "-s",
+            projectedSourceReadInputSchema.get().asFile.absolutePath,
+            publishedSourceReadInputSchema.asFile.absolutePath,
+        )
+    }
 
 val projectMintlifyCallableReference =
     tasks.register<support.tasks.WriteJavaProcessOutputTask>("projectMintlifyCallableReference") {

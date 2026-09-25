@@ -1,18 +1,18 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ExactSymbolSelector
+import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.SimpleSourceEntities
 import io.github.amichne.kast.protocol.contract.SimpleSourceRegion
 import io.github.amichne.kast.protocol.contract.SimpleSourceText
 import io.github.amichne.kast.protocol.contract.SourceEntityLimitDocument
+import io.github.amichne.kast.protocol.contract.SourceReadAnchorDocument
 import io.github.amichne.kast.protocol.contract.SourceReadFormatDocument
 import io.github.amichne.kast.protocol.contract.SourceReadSimpleRequest
-import io.github.amichne.kast.protocol.contract.SourceReadAnchorDocument
-import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.SourceTextByteLimitDocument
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -98,7 +98,8 @@ private fun InstalledHostedBinding.requestBodyDocument() =
                     MintlifyCallableMediaTypeDocument(
                         schema = MintlifyCallableSchemaReference.component(requestComponentName()),
                         examples = if (operation == CanonicalOperation.SOURCE_READ) sourceReadExamples() else null,
-                        invalidExamples = if (operation == CanonicalOperation.SOURCE_READ) sourceReadInvalidExamples() else null,
+                        invalidExamples =
+                            if (operation == CanonicalOperation.SOURCE_READ) sourceReadInvalidExamples() else null,
                     )
             ),
     )
@@ -275,23 +276,26 @@ private fun sourceReadExamples(): Map<String, MintlifyCallableExampleDocument> {
     val bytes = (SourceTextByteLimitDocument.parse(12_000) as Refinement.Refined).value
     val count = (SourceEntityLimitDocument.parse(50) as Refinement.Refined).value
     val minimal = SourceReadSimpleRequest(symbol)
-    val detailed = SourceReadSimpleRequest(
-        symbol = symbol,
-        region = SimpleSourceRegion.BODY,
-        text = SimpleSourceText.Window(maximumBytes = bytes),
-        entities = SimpleSourceEntities.Declarations(count),
-        format = SourceReadFormatDocument.EXPANDED,
-    )
+    val detailed =
+        SourceReadSimpleRequest(
+            symbol = symbol,
+            region = SimpleSourceRegion.BODY,
+            text = SimpleSourceText.Window(maximumBytes = bytes),
+            entities = SimpleSourceEntities.Declarations(count),
+            format = SourceReadFormatDocument.EXPANDED,
+        )
     val json = Json { classDiscriminator = "type" }
     return mapOf(
-        "exactSymbol" to MintlifyCallableExampleDocument(
-            "Replace this illustrative selector with the exact selector returned by search.",
-            json.encodeToJsonElement(SourceReadSimpleRequest.serializer(), minimal),
-        ),
-        "callableBody" to MintlifyCallableExampleDocument(
-            "A callable body with bounded text and direct declarations.",
-            json.encodeToJsonElement(SourceReadSimpleRequest.serializer(), detailed),
-        ),
+        "exactSymbol" to
+            MintlifyCallableExampleDocument(
+                "Replace this illustrative selector with the exact selector returned by search.",
+                json.encodeToJsonElement(SourceReadSimpleRequest.serializer(), minimal),
+            ),
+        "callableBody" to
+            MintlifyCallableExampleDocument(
+                "A callable body with bounded text and direct declarations.",
+                json.encodeToJsonElement(SourceReadSimpleRequest.serializer(), detailed),
+            ),
     )
 }
 
@@ -305,16 +309,22 @@ private fun sourceReadInvalidExamples(): Map<String, MintlifyCallableExampleDocu
     val symbol = "exact:v5:${"A".repeat(21)}Q"
     val text = (ProtocolText.parse(symbol) as Refinement.Refined).value
     return mapOf(
-        "unsupportedTextMode" to MintlifyCallableExampleDocument(
-            "An unknown text discriminator is rejected.",
-            Json.encodeToJsonElement(InvalidSourceReadMode.serializer(),
-                InvalidSourceReadMode(symbol, InvalidSourceReadText())),
-        ),
-        "mixedIdentity" to MintlifyCallableExampleDocument(
-            "A symbol shortcut cannot be combined with an anchor.",
-            Json.encodeToJsonElement(MixedSourceReadIdentity.serializer(),
-                MixedSourceReadIdentity(symbol, SourceReadAnchorDocument.Symbol(text))),
-        ),
+        "unsupportedTextMode" to
+            MintlifyCallableExampleDocument(
+                "An unknown text discriminator is rejected.",
+                Json.encodeToJsonElement(
+                    InvalidSourceReadMode.serializer(),
+                    InvalidSourceReadMode(symbol, InvalidSourceReadText()),
+                ),
+            ),
+        "mixedIdentity" to
+            MintlifyCallableExampleDocument(
+                "A symbol shortcut cannot be combined with an anchor.",
+                Json.encodeToJsonElement(
+                    MixedSourceReadIdentity.serializer(),
+                    MixedSourceReadIdentity(symbol, SourceReadAnchorDocument.Symbol(text)),
+                ),
+            ),
     )
 }
 
