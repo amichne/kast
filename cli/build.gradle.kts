@@ -72,6 +72,15 @@ val mcpStartScripts =
         dependsOn(tasks.named("jar"))
     }
 
+val toolRpcStartScripts =
+    tasks.register<CreateStartScripts>("toolRpcStartScripts") {
+        applicationName = "kast-tool-rpc"
+        mainClass = "io.github.amichne.kast.cli.rpc.KastToolRpcMain"
+        outputDir = layout.buildDirectory.dir("tool-rpc-scripts").get().asFile
+        classpath = tasks.named<CreateStartScripts>("startScripts").get().classpath
+        dependsOn(tasks.named("jar"))
+    }
+
 val daemonStartScripts =
     tasks.register<CreateStartScripts>("daemonStartScripts") {
         applicationName = "kast-daemon"
@@ -115,6 +124,17 @@ distributions.main {
             into("bin")
             exclude("*.bat")
             filePermissions { unix("755") }
+        }
+        from(toolRpcStartScripts) {
+            into("bin")
+            exclude("*.bat")
+            filePermissions { unix("755") }
+        }
+        from(rootProject.layout.projectDirectory.file("copilot/extension.mjs")) {
+            into("share/kast/adapters/copilot")
+        }
+        from(rootProject.layout.projectDirectory.file("pi/extension.ts")) {
+            into("share/kast/adapters/pi")
         }
     }
 }

@@ -17,6 +17,7 @@ code_sources:
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/AdmittedReadRejections.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ExecutionBudgetPresence.kt
   - path: README.md
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpReadPresentation.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpSourceCompleteness.kt
 ---
@@ -54,6 +55,8 @@ semantic incompleteness has its own stop reason rather than
 being mislabeled as budget exhaustion or host interruption.
 
 Transport success does not imply semantic completeness. A host must preserve the distinction when projecting output, and it must not attach a successful payload to rejection. The [README](../../README.md) exposes the same complete/qualified/rejected semantics to users.
+
+The one-shot tool RPC returns a closed `complete`, `qualified`, `rejected_document`, or boundary `rejected` variant. It preserves the canonical result document under `document` for semantic outcomes, so Copilot and Pi adapters cannot turn qualified evidence into a complete result. The catalog marks `change` as `WRITE` and all direct reads as `READ`.
 
 Canonical query, source, relation and traversal failures derive a closed
 `ReadRecoveryAction`. Their CLI/tool rejected documents require `next_action`
