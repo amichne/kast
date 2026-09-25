@@ -111,6 +111,7 @@ val assembleKastControlDist = tasks.register<Tar>("assembleKastControlDist") {
                 "bin/kast",
                 "bin/kast-codex",
                 "bin/kast-mcp",
+                "bin/kast-tool-rpc",
                 "share/kast/libexec/kast-daemon",
                 "share/kast/libexec/kast-service",
             )

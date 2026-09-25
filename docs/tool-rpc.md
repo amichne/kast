@@ -47,9 +47,8 @@ cp "${XDG_DATA_HOME:-$HOME/.local/share}/kast/current/share/kast/adapters/copilo
 copilot --experimental
 ```
 
-The extension then obtains the live
-or enable experimental features in the CLI. The extension obtains the live
-catalog and registers each tool with the Copilot SDK. Read tools skip per-call
+The extension obtains the live catalog and registers each tool with the Copilot
+SDK. Read tools skip per-call
 permission prompts; `change` retains the Copilot permission prompt. No Copilot
 MCP server is needed.
 
