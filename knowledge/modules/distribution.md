@@ -84,11 +84,12 @@ Root and packaging scripts orchestrate checkout installation, persistent lifecyc
 
 Successful main CI runs the routine preflight checks, then builds and retains one exact next-patch release candidate with the product gate at that version. Pull-request CI keeps its separate `0.0.0` product gate. Release reuses the main candidate only when its version and source revision match the requested release, the producing main-push CI run completed successfully, and the asset inventory, checksums, and SBOM source/archive identities validate. A missing candidate follows the existing exact-version build gate; an observed but invalid candidate rejects. Minor and major releases use that build path unless a matching candidate exists. The release workflow retains the admitted candidate before publishing.
 
-An explicitly dispatched developer workflow builds an exact commit through the
+An explicitly dispatched developer workflow runs only from `main` and builds
+that dispatch's exact commit through the
 same product gate with a unique `0.0.<build>` version. Its read-only build job
 retains the candidate; a separate trusted publication job validates the asset
 inventory, checksums, and SBOM source identity before creating an immutable
-developer prerelease. The public `developer-latest` release contains only a
+developer prerelease. The public `developer-latest` branch contains a
 mutable pointer to that exact prerelease and source revision. The installer
 accepts `--developer-latest` to resolve the pointer before downloading and
 verifying the versioned control and IDEA plugin assets. Stable release version

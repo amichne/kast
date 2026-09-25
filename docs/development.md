@@ -98,6 +98,11 @@ hooks and runs `productBuildGate` on a clean checked-out commit before a push:
 ./.githooks/install.sh
 ```
 
+After a change reaches `main`, publish its tested artifacts before a stable
+release with `gh workflow run developer-release.yml --ref main`. The public
+installer's `--developer-latest` flag selects the immutable build named by the
+channel pointer.
+
 ```shell
 ./gradlew build
 ./gradlew assembleRelease

@@ -29,10 +29,6 @@ python3 .github/scripts/release/ci-candidate.py validate \
   --source-revision "$commit" --directory "$assets_directory"
 
 tag="developer-v$version"
-if gh release view "$tag" --repo "$repository" >/dev/null 2>&1; then
-  fail "immutable developer release already exists: $tag"
-fi
-
 control="$assets_directory/kast-control-v$version-macos-aarch64.tar.gz"
 plugins=("$assets_directory"/kast-ide-hosted-v"$version"-idea-*.zip)
 [[ "${#plugins[@]}" == 1 && -f "${plugins[0]}" ]] || fail "expected one hosted plugin"
@@ -43,18 +39,36 @@ sbom="$assets_directory/kast-sbom-v$version.cdx.json"
 assets=("$control" "$control.sha256" "$plugin" "$plugin.sha256"
   "$catalog" "$catalog.sha256" "$knowledge" "$knowledge.sha256" "$sbom" "$sbom.sha256")
 
-gh release create "$tag" "${assets[@]}" --repo "$repository" --target "$commit" \
-  --prerelease --latest=false --title "Kast developer $version" \
-  --notes "Exact-source developer build from $commit. The SBOM and checksums are included."
-
-if ! gh release view developer-latest --repo "$repository" >/dev/null 2>&1; then
-  gh release create developer-latest --repo "$repository" --target "$commit" \
-    --prerelease --latest=false --title "Kast developer latest" \
-    --notes "Mutable channel pointer only. Read latest.txt for the exact immutable developer release and source revision."
+if gh release view "$tag" --repo "$repository" >/dev/null 2>&1; then
+  published_commit="$(gh release view "$tag" --repo "$repository" --json targetCommitish --jq .targetCommitish)"
+  [[ "$published_commit" == "$commit" ]] || fail "existing developer release targets a different source"
+  expected_assets="$(for asset in "${assets[@]}"; do
+    printf '%s\tsha256:%s\n' "$(basename "$asset")" "$(shasum -a 256 "$asset" | cut -d ' ' -f 1)"
+  done | sort)"
+  published_assets="$(gh release view "$tag" --repo "$repository" --json assets \
+    --jq '.assets[] | [.name, .digest] | @tsv' | sort)"
+  [[ "$published_assets" == "$expected_assets" ]] || fail "existing developer assets differ from verified candidate"
+else
+  gh release create "$tag" "${assets[@]}" --repo "$repository" --target "$commit" \
+    --prerelease --latest=false --title "Kast developer $version" \
+    --notes "Exact-source developer build from $commit. The SBOM and checksums are included."
 fi
 
-pointer="$assets_directory/latest.txt"
+pointer_branch=developer-latest
+if ! gh api "repos/$repository/git/ref/heads/$pointer_branch" >/dev/null 2>&1; then
+  gh api --method POST "repos/$repository/git/refs" \
+    -f "ref=refs/heads/$pointer_branch" -f "sha=$commit" >/dev/null
+fi
+
+pointer="$(mktemp)"
+trap 'rm -f "$pointer"' EXIT
 printf '%s %s %s\n' "$tag" "$version" "$commit" > "$pointer"
-gh release upload developer-latest "$pointer#latest.txt" --clobber --repo "$repository"
+pointer_sha="$(gh api "repos/$repository/contents/latest.txt?ref=$pointer_branch" --jq .sha 2>/dev/null || true)"
+encoded_pointer="$(base64 < "$pointer" | tr -d '\n')"
+put_args=(--method PUT "repos/$repository/contents/latest.txt"
+  -f "message=chore(distribution): point developer latest to $tag"
+  -f "content=$encoded_pointer" -f "branch=$pointer_branch")
+if [[ -n "$pointer_sha" ]]; then put_args+=(-f "sha=$pointer_sha"); fi
+gh api "${put_args[@]}" >/dev/null
 gh release view "$tag" --repo "$repository" --json tagName,targetCommitish,url,assets
-gh release view developer-latest --repo "$repository" --json tagName,url,assets
+printf '%s\n' "https://raw.githubusercontent.com/$repository/$pointer_branch/latest.txt"

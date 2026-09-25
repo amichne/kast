@@ -80,7 +80,7 @@ import sys
 
 arguments = sys.argv[1:]
 url = arguments[-1]
-if url.endswith('/developer-latest/latest.txt'):
+if url == 'https://raw.githubusercontent.com/amichne/kast/developer-latest/latest.txt':
     print({pointer!r})
 elif '/developer-v0.0.123/' in url and '--output' in arguments:
     name = url.rsplit('/', 1)[-1]

@@ -190,7 +190,7 @@ resolve_developer_latest() {
   local pointer tag selected_version source_revision extra
   pointer="$(curl --fail --location --silent --show-error --max-filesize 256 \
     --retry "$INSTALL_DOWNLOAD_RETRIES" --retry-delay "$((INSTALL_DOWNLOAD_RETRY_DELAY_MILLIS / 1000))" \
-    "https://github.com/$REPOSITORY/releases/download/developer-latest/latest.txt")" ||
+    "https://raw.githubusercontent.com/$REPOSITORY/developer-latest/latest.txt")" ||
     fail "developer-latest pointer is unavailable"
   [[ "$pointer" != *$'\n'* ]] || fail "developer-latest pointer has multiple records"
   IFS=' ' read -r tag selected_version source_revision extra <<< "$pointer"

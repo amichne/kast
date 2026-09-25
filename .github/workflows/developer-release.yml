@@ -2,11 +2,6 @@ name: Developer release
 
 on:
   workflow_dispatch:
-    inputs:
-      source_sha:
-        description: Exact commit to build and publish before a stable release
-        required: true
-        type: string
 
 permissions:
   contents: read
@@ -21,6 +16,7 @@ concurrency:
 jobs:
   build:
     name: Build exact developer artifact
+    if: github.ref == 'refs/heads/main'
     runs-on: macos-15
     timeout-minutes: 60
     outputs:
@@ -31,15 +27,14 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-          ref: ${{ inputs.source_sha }}
+          ref: ${{ github.sha }}
           persist-credentials: false
 
       - name: Admit exact developer source
         env:
-          SOURCE_SHA: ${{ inputs.source_sha }}
+          SOURCE_SHA: ${{ github.sha }}
         run: |
           [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
-          git checkout --detach "$SOURCE_SHA"
           bash .github/scripts/release/admit-source.sh \
             --repository-root "$PWD" --expected-source-revision "$SOURCE_SHA"
 
@@ -59,7 +54,7 @@ jobs:
         id: version
         env:
           JAVA_HOME: ${{ steps.jdk25.outputs.path }}
-          SOURCE_SHA: ${{ inputs.source_sha }}
+          SOURCE_SHA: ${{ github.sha }}
         run: |
           version="0.0.$((GITHUB_RUN_NUMBER * 100 + GITHUB_RUN_ATTEMPT))"
           echo "version=$version" >> "$GITHUB_OUTPUT"
@@ -69,7 +64,7 @@ jobs:
       - name: Retain exact developer candidate
         uses: actions/upload-artifact@v7.0.1
         with:
-          name: developer-candidate-${{ steps.version.outputs.version }}-${{ inputs.source_sha }}
+          name: developer-candidate-${{ steps.version.outputs.version }}-${{ github.sha }}
           path: build/release/v${{ steps.version.outputs.version }}/
           if-no-files-found: error
           compression-level: 0
@@ -98,12 +93,12 @@ jobs:
       - name: Download verified candidate
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: developer-candidate-${{ needs.build.outputs.version }}-${{ inputs.source_sha }}
+          name: developer-candidate-${{ needs.build.outputs.version }}-${{ github.sha }}
           path: build/release/v${{ needs.build.outputs.version }}/
 
       - name: Publish immutable build and latest pointer
         env:
-          SOURCE_SHA: ${{ inputs.source_sha }}
+          SOURCE_SHA: ${{ github.sha }}
           DEVELOPER_VERSION: ${{ needs.build.outputs.version }}
         run: >-
           bash .github/scripts/release/publish-developer.sh
