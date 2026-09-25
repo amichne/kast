@@ -2,6 +2,7 @@ package io.github.amichne.kast.runtime.hosted.workspace
 
 import com.intellij.ide.trustedProjects.TrustedProjects
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.externalSystem.importing.ImportSpecBuilder
 import com.intellij.openapi.externalSystem.model.ProjectSystemId
 import com.intellij.openapi.externalSystem.service.execution.ProgressExecutionMode
@@ -82,10 +83,17 @@ internal class IntellijWorkspaceRefreshPort(
     }
 
     private fun startOnEdt(effect: WorkspaceRefreshEffect, complete: (WorkspaceRefreshEffectResult) -> Unit) {
+        val observedComplete: (WorkspaceRefreshEffectResult) -> Unit =
+            if (effect == WorkspaceRefreshEffect.FILE_REFRESH) {
+                { outcome ->
+                    observeForcedRefresh(outcome)
+                    complete(outcome)
+                }
+            } else complete
         try {
             when (val admitted = admission()) {
                 is Refinement.Rejected -> {
-                    complete(
+                    observedComplete(
                         when (admitted.failure) {
                             PublicFailure.UNSAVED_DOCUMENTS -> WorkspaceRefreshEffectResult.UNSAVED_DOCUMENTS
                             PublicFailure.UNLINKED_BUILD -> WorkspaceRefreshEffectResult.UNLINKED_BUILD
@@ -99,13 +107,13 @@ internal class IntellijWorkspaceRefreshPort(
                 is Refinement.Refined -> Unit
             }
             when (effect) {
-                WorkspaceRefreshEffect.FILE_REFRESH -> refreshFiles(complete)
-                WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD -> reloadModel(complete)
+                WorkspaceRefreshEffect.FILE_REFRESH -> refreshFiles(observedComplete)
+                WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD -> reloadModel(observedComplete)
             }
         } catch (_: ProcessCanceledException) {
-            complete(WorkspaceRefreshEffectResult.CANCELLED)
+            observedComplete(WorkspaceRefreshEffectResult.CANCELLED)
         } catch (_: RuntimeException) {
-            complete(WorkspaceRefreshEffectResult.FAILED)
+            observedComplete(WorkspaceRefreshEffectResult.FAILED)
         }
     }
 
@@ -130,16 +138,16 @@ internal class IntellijWorkspaceRefreshPort(
                 true,
                 true,
                 {
-                    complete(
+                    val outcome =
                         if (project.isDisposed) WorkspaceRefreshEffectResult.DISPOSED
                         else WorkspaceRefreshEffectResult.SUCCEEDED
-                    )
+                    complete(outcome)
                 },
                 directory,
             )
     }
 
-    /** Automatic read admission uses this same explicit effect owner. */
+    /** Automatic read admission waits for native recursive refresh without forcing every descendant dirty. */
     fun refreshForRead(complete: (HostedVfsRefreshOutcome) -> Unit) {
         if (project.isDisposed) {
             complete(HostedVfsRefreshOutcome.PROJECT_DISPOSED)
@@ -150,8 +158,7 @@ internal class IntellijWorkspaceRefreshPort(
             complete(HostedVfsRefreshOutcome.ROOT_UNAVAILABLE)
             return
         }
-        // Include nested source and Gradle inputs even when the IDE window is backgrounded.
-        VfsUtil.markDirty(true, true, directory)
+        // Native incremental refresh retains recursive coverage and reports completion through its callback.
         RefreshQueue.getInstance()
             .refresh(
                 true,
@@ -164,6 +171,11 @@ internal class IntellijWorkspaceRefreshPort(
                 },
                 directory,
             )
+    }
+
+    private fun observeForcedRefresh(outcome: WorkspaceRefreshEffectResult) {
+        Logger.getInstance(IntellijWorkspaceRefreshPort::class.java)
+            .info(outcome.refreshObservation())
     }
 
     private fun reloadModel(complete: (WorkspaceRefreshEffectResult) -> Unit) {
@@ -213,6 +225,9 @@ internal class IntellijWorkspaceRefreshPort(
         val GRADLE = ProjectSystemId("GRADLE")
     }
 }
+
+internal fun WorkspaceRefreshEffectResult.refreshObservation(): String =
+    "kast_vfs_refresh policy=FORCED_RECONCILIATION outcome=$name"
 
 /** One policy for initial linking and subsequent reload; never changes IDE preferences. */
 internal fun quietWorkspaceImport(

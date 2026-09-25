@@ -12,6 +12,18 @@ import org.junit.jupiter.api.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class HostedVfsRefreshTest {
     @Test
+    fun `automatic refresh telemetry records finite success and timeout outcomes`() {
+        assertEquals(
+            "kast_readiness stage=VFS_REFRESH policy=NATIVE_INCREMENTAL outcome=READY",
+            HostedVfsRefreshOutcome.READY.refreshObservation(),
+        )
+        assertEquals(
+            "kast_readiness stage=VFS_REFRESH policy=NATIVE_INCREMENTAL outcome=DEADLINE_EXCEEDED",
+            HostedVfsRefreshOutcome.DEADLINE_EXCEEDED.refreshObservation(),
+        )
+    }
+
+    @Test
     fun `read admission waits for refresh callback before reporting ready`() = runTest {
         var complete: ((HostedVfsRefreshOutcome) -> Unit)? = null
         val pending = async { awaitVfsRefresh({ false }) { callback -> complete = callback } }
