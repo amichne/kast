@@ -97,13 +97,14 @@ object CanonicalAgentToolDefinitions {
         tool(
             CanonicalOperationDefinitions.workspaceLifecycle,
             "workspace_lifecycle",
-            "Prepare a workspace for Kast compiler evidence. Inspect the selected IDEA host, open the requested " +
-                "repository when needed, and poll pending work with status before semantic queries. Manage setup " +
-                "through this tool without asking the user to run workspace commands. You can also present, sync, " +
-                "configure an exact task-success refresh rule, " +
-                "release or close an exact project. Opening is background best effort. Preserve returned host and " +
+            "Inspect or explicitly control one selected IDEA workspace. Ordinary semantic calls prepare the exact " +
+                "project and wait for native readiness automatically; " +
+                "do not use this tool as a routine read preflight. " +
+                "For a requested control operation, open, present, release or close an exact project. " +
+                "The host owns document save, VFS refresh and model reload selection. " +
+                "Opening is background best effort. Preserve returned host and " +
                 "project identities and reuse request IDs only for the same operation. Pending work requires " +
-                "status, not repeated open or sync. Unsaved documents and trust require user " +
+                "status, not repeated open. Trust and failed saves require user " +
                 "resolution. Release never closes a project. Borrowed or presented projects are protected from agent " +
                 "cleanup; request_user_close requests exact-target controller approval.",
             approval = HostedApprovalPolicy.EXACT_PROJECT_CLOSE,
@@ -129,9 +130,13 @@ object CanonicalAgentToolDefinitions {
         tool(
             CanonicalOperationDefinitions.sourceRead,
             "source_read",
-            "Read bounded source and structural context around a candidate, exact symbol, or source " +
-                "selector. Prefer this over unrestricted filesystem reads when the required Kotlin " +
-                "context is representable through Kast.",
+            "Read bounded source and structural context. For an exact selector, pass only " +
+                "`{\"symbol\":\"<exact selector from search>\"}`; region defaults to declaration, text to complete, " +
+                "entities to none, and format to compact. Optional region, text, entities, and format " +
+                "override those defaults. Candidate and source selectors use the typed anchor request. " +
+                "Preserve selectors verbatim and prefer this tool over unrestricted filesystem reads " +
+                "when Kast can represent the required Kotlin context. Omit entityLimit for an " +
+                "entity-free read, and omit page and default budgets for the first read.",
         )
     val relationRead =
         tool(
@@ -139,7 +144,7 @@ object CanonicalAgentToolDefinitions {
             "read_relations",
             "Read individual compiler-grounded relation occurrences from one exact selector, including " +
                 "distinct call sites. Use query_symbols for declaration search and traverse_relations for " +
-                "bounded multi-step reachability.",
+                "bounded multi-step reachability. Inspect qualifications and resume with the returned continuation.",
         )
     val traversalRun =
         tool(
@@ -150,6 +155,14 @@ object CanonicalAgentToolDefinitions {
                 "evidence and execution budgets; it does not guarantee breakage or test selection.",
         )
     val diagnosticCheck = facade(PublicToolIdentity.CHECK_DIAGNOSTICS)
+    val change =
+        tool(
+            CanonicalOperationDefinitions.change,
+            "change",
+            "Add one declaration to an existing Kotlin source file in one call. The exact search reference is " +
+                "passed unchanged. Kast plans, applies, verifies, and reports a verified receipt or a finite " +
+                "failure with recovery evidence. No separate approval request is issued.",
+        )
     val changePlan =
         tool(
             CanonicalOperationDefinitions.changePlan,
@@ -185,9 +198,7 @@ object CanonicalAgentToolDefinitions {
             relationRead,
             traversalRun,
             diagnosticCheck,
-            changePlan,
-            changeApply,
-            changeRecover,
+            change,
         )
 
     /** Only published tool names are accepted. */
@@ -223,12 +234,10 @@ object CanonicalAgentToolDefinitions {
                 cache invalidation, forced index synchronization or restarting unrelated IDE sessions.
                 A missing semantic response does not authorize replaying a mutation.
 
-                Pass a returned exact reference unchanged to change_plan. Hosted changes support
-                AddDeclaration in one existing authored Kotlin file. Planning writes no source.
-                Review the stored preview; change_apply and change_recover each require separate
-                explicit approval of the exact plan. Apply includes semantic verification.
-                Preserve qualified unverified and recovery-required outcomes. A missing response
-                does not prove no write occurred; use durable recovery without replaying a plan.
+                Pass a returned exact reference unchanged to change. Hosted changes support
+                AddDeclaration in one existing authored Kotlin file. The single call plans, applies
+                and verifies the change. Keep the returned receipt or finite failure and recovery
+                evidence. A missing response does not prove no write occurred; never replay a plan.
                 """
                     .trimIndent()
             )

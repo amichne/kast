@@ -27,7 +27,7 @@ class HostedExecutionBudgetTest {
                 ),
                 maximumResults = ResultLimit.parse(1_000).proven(),
             )
-        val deadline = HostedReadDeadline(ReadLimits.Default, { now }, request)
+        val deadline = HostedReadDeadline(shortHostLimits(), { now }, request)
         now = 1_000_000_000L
         val grant = deadline.admit(null).proven().executionBudget
         assertEquals(2_750L, grant.elapsed.effective.value)

@@ -21,7 +21,10 @@ class MintlifyCallableReferenceTest {
         val reference = Json.parseToJsonElement(mintlifyCallableReference().value).jsonObject
         val paths = reference.getValue("paths").jsonObject
         val components = reference.getValue("components").jsonObject.getValue("schemas").jsonObject
-        val publicOperationIds = HostedOperationProjection.publicDefinitions.map { it.operation.id.value }
+        val publicOperationIds =
+            io.github.amichne.kast.protocol.registry.CanonicalAgentToolDefinitions.all.map {
+                it.operation.operation.id.value
+            }
         val internalOperationIds = HostedOperationProjection.internalDefinitions.map { it.operation.id.value }
 
         assertEquals("3.1.0", reference.getValue("openapi").jsonPrimitive.content)

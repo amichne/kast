@@ -158,8 +158,9 @@ internal class IdeLifecycleState(val host: UUID, private val capacity: Int = 256
                 (it.command as? IdeLifecycleCommand.Open)?.root == command.root &&
                     it.result is IdeLifecycleResult.Pending
             } ?: return null
-        operations[id] = Entry(command, joined.result)
-        return LifecycleSubmission.Existing(joined.result)
+        val pending = (joined.result as IdeLifecycleResult.Pending).copy(requestId = id.value)
+        operations[id] = Entry(command, pending)
+        return LifecycleSubmission.Existing(pending)
     }
 
     private fun initialStage(command: IdeLifecycleCommand): IdeLifecycleStage =
@@ -209,8 +210,14 @@ internal class IdeLifecycleState(val host: UUID, private val capacity: Int = 256
     @Synchronized
     fun progress(id: LifecycleRequest, stage: IdeLifecycleStage) {
         val entry = operations[id] ?: return
-        val pending = entry.result as? IdeLifecycleResult.Pending ?: return
-        operations.values.filter { it.result == pending }.forEach { it.result = pending.copy(stage = stage) }
+        if (entry.result !is IdeLifecycleResult.Pending) return
+        val open = entry.command as? IdeLifecycleCommand.Open
+        operations.forEach { (request, operation) ->
+            val joinedOpen = open != null && (operation.command as? IdeLifecycleCommand.Open)?.root == open.root
+            if (operation.result is IdeLifecycleResult.Pending && (request == id || joinedOpen)) {
+                operation.result = (operation.result as IdeLifecycleResult.Pending).copy(stage = stage)
+            }
+        }
     }
 
     @Synchronized

@@ -224,10 +224,10 @@ class PublicToolSchemaTest {
                     .jsonObject
             assertFalse("strict" in app)
             assertEquals(JsonPrimitive(true), response["strict"])
-            assertEquals(response["parameters"], app["inputSchema"])
             assertEquals(identity.description, app.getValue("description").jsonPrimitive.content)
-            assertEquals(PublicToolContract.generationParameters(identity), app["inputSchema"])
-            visit(app.getValue("inputSchema").jsonObject) { node ->
+            assertEquals(PublicToolContract.parameters(identity), app["inputSchema"])
+            assertEquals(PublicToolContract.generationParameters(identity), response["parameters"])
+            visit(response.getValue("parameters").jsonObject) { node ->
                 assertTrue(
                     node.keys.intersect(setOf("\$id", "\$schema", "default", "discriminator", "uniqueItems")).isEmpty()
                 )

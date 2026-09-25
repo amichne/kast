@@ -20,6 +20,9 @@ from hosted_transport_observation import TransportSummary, TransportWitnessFailu
 
 from hosted_read_fixture import ReadFixtureRejected, prepare_read_fixture
 from hosted_enum_read_regression import run_enum_read_regression
+from hosted_budget_read_regression import BudgetSource, WorkBudget
+from hosted_source_read_regression import SymbolAnchor, source_budget_anchor_query
+from query_name_request import name_query
 from hosted_read_regression import (_ReadReplay, _read_observation, _reproduction,
     ReadRegressionStage, regression_rejection, MAX_READ_RECEIPTS, ReadReceiptRejected, ReadReceiptFailure)
 from hosted_peer_probe import EndpointAdmissionRejected, EndpointAdmissionFailure
@@ -145,6 +148,20 @@ def enum_response(names):
 
 
 class HostedReadRegressionTest(unittest.TestCase):
+    def test_native_search_and_entity_free_source_requests_use_current_fields(self):
+        searches = (
+            name_query('Mode', ('class',)),
+            source_budget_anchor_query(),
+            name_query('Mode', ('class',)),
+        )
+        for request in searches:
+            payload = asdict(request)
+            self.assertIn('source', payload)
+            self.assertNotIn('class_name', payload)
+        source = asdict(BudgetSource(SymbolAnchor('exact:source'), WorkBudget()))
+        self.assertEqual({'type': 'none'}, source['entities'])
+        self.assertNotIn('entityLimit', source)
+
     def test_receipt_capacity_covers_both_surfaces_and_rejects_overflow_explicitly(self):
         rows = []
         for surface in ('cli', 'provider'):

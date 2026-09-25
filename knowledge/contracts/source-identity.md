@@ -51,6 +51,7 @@ code_sources:
     symbols: [Utf16Coordinate]
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/HostedSymbolHandle.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalSourceReadAnchorDocument.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceReadSimpleRequest.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReferenceStore.kt
 ---
 
@@ -131,8 +132,20 @@ read capability. Native revalidation remains mandatory after lookup.
 
 ## Source output format
 
-`SourceReadRequest.format` defaults to `expanded`. Selecting `compact` changes
+The canonical internal `SourceReadRequest.format` defaults to `expanded` for
+existing anchor callers. The public hosted v4/v5 exact-symbol shortcut uses an admitted
+`ExactSymbolSelector` and defaults to `compact`, declaration region, complete
+text, no entities, and the first page. Its typed request normalizes to the same
+canonical source read; a malformed or wrong-family selector fails admission.
+Selecting `compact` changes
 representation without changing source enumeration or reference authority.
+The hosted public source intent accepts an unchanged exact `anchor.symbolRef`,
+declaration region, text mode and entity mode, then lowers to the canonical
+request with compact format. Entity-free intent has no entity limit field.
+For an exact declaration reference, the public `declaration` region selects
+that reference's anchor. Internal source wire encoding still includes the
+default entity limit, text byte limit, and first page for installed host
+compatibility; these fields are not required in the public request.
 Compact responses return each distinct source selector once in a response-local
 selection table. Integer IDs join selections, parents, callees, and local targets
 to that table; they are not valid follow-up selectors. Pass the table entry's

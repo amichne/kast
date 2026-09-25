@@ -3,25 +3,38 @@ title: "Agent workspace setup"
 description: "Prepare and manage a workspace through the agent tool contract."
 ---
 
-`workspace_lifecycle` is an agent setup capability. Use it to prepare the requested
-repository or worktree for compiler-backed queries; do not ask the user to run
-workspace commands or manage lifecycle identifiers.
+Ordinary semantic calls prepare the selected repository automatically. Kast opens
+or attaches to the exact IDEA project, waits for indexing, and requests one
+linked Gradle model reload on first attach, after changed Gradle inputs, or when
+the cached model is unavailable. The agent does
+not need to invoke `workspace_lifecycle` before a read.
 
-## Setup sequence
+`workspace_lifecycle` remains an explicit control capability for inspecting,
+presenting, releasing, or closing a selected project when requested. Agents do
+not select a refresh effect.
+
+The direct Kast MCP connection starts preparing its bound Gradle root on the
+first valid protocol request. Semantic calls join that preparation and refresh their source
+and model state when needed.
+
+## Explicit control sequence
 
 1. Inspect the selected host and existing projects.
 2. Open the requested absolute repository root if it is not already available.
 3. Poll a pending operation with `status`, preserving its host and request ID.
-4. Wait for an opened result before requesting semantic evidence. Handle any
-   reported blocker according to its finite reason.
+4. Wait for an opened result before performing the requested control action.
+   Handle any reported blocker according to its finite reason.
 5. Release the caller's interest when the workspace is no longer needed. Release
    does not close a project; close only eligible agent-managed projects.
 
 Opening reuses the installer-selected IDEA or launches it when absent. It imports
 and waits for semantic admission without deliberately activating the window.
-Background behavior is best effort. A running IDEA with an unavailable plugin,
-project trust, and unsaved documents can require user intervention. Semantic reads
-do not open projects implicitly.
+Before a semantic operation, the native host requests an asynchronous project
+VFS refresh and waits for its completion even when IDEA is in the background.
+It saves changed editor buffers under that root, then checks semantic readiness.
+A refresh that cannot finish within its bound returns a failure instead of a stale
+result. An unavailable plugin, project trust, or failed save can still require
+user intervention.
 
 ## Requests and identities
 
@@ -31,8 +44,9 @@ Send tagged request documents through the agent tool. For example:
 {"type":"open","root":"/absolute/worktree","requestId":"open-worktree-1"}
 ```
 
-Harnesses use the hosted `workspace_lifecycle` contract supplied by the connected provider.
-This tool has no CLI invocation; workspace setup goes through the connected agent.
+The Codex App Server connection supplies `workspace_lifecycle` for explicit
+project control. It is not in the direct [MCP](/reference/mcp-catalog) or
+[tool RPC](/reference/rpc-catalog) catalog.
 
 An asynchronous result contains `host`, `requestId` and `stage`. Use `status` with the
 host returned by the pending result and that request ID. Preserve returned `target`
@@ -43,10 +57,8 @@ same operation; different input with that ID rejects.
 | Action | Required input and behavior |
 | --- | --- |
 | `inspect` | No additional fields. Passive host, capabilities, projects and ownership. |
-| `open` | `root`, `requestId`. Reuses without activation or reimport; otherwise links, imports and waits for semantic admission. |
+| `open` | `root`, `requestId`. Reuses without activation; imports on first attach, after changed Gradle inputs, or when the cached model is missing. A clean prepared project needs no model reload. |
 | `present` | `target`, `requestId`. Reveals the existing window and protects it from cleanup. |
-| `sync` | `target`, `requestId`, `effect`: `FILE_REFRESH` or `GRADLE_MODEL_RELOAD`. Uses the existing refresh owner. |
-| `configure_sync` | `target`, `requestId`, `rule`: `off` or an exact `task_success` task and effect. Configures that project's existing refresh owner; a `configured` result returns the admitted rule. |
 | `release` | `target`, `requestId`. Removes this caller's interest without closing. |
 | `close` | `target`, `requestId`. Closes only an eligible managed project with no other clients. |
 | `request_user_close` | `target`, `requestId`. Agent broker requests exact-target user approval for a borrowed/presented project. Direct requests have no approval authority. |
@@ -60,18 +72,18 @@ through setup and cleanup; release the same caller's interest when done.
 | Blocker | Next action |
 | --- | --- |
 | `TRUST_REQUIRED` | Review and trust the exact project in IDEA, then submit a new open request. |
-| `UNSAVED_DOCUMENTS` | Resolve unsaved documents across the application yourself; native refresh and close can save all documents, so Kast blocks them. |
+| `UNSAVED_DOCUMENTS` | A document under the selected root could not be saved; resolve its IDE save failure and retry. |
 | `LAUNCH_METADATA_UNAVAILABLE` / `LAUNCH_METADATA_INVALID` / `LAUNCHER_MISSING` / `LAUNCHER_AMBIGUOUS` / `LAUNCHER_INVALID` / `LAUNCH_EXECUTABLE_UNAVAILABLE` | Repair or reselect the IDEA installation. An already-running compatible host remains attachable without launch metadata. |
 | `PLUGIN_UNAVAILABLE` | Load the installed plugin using IDEA's normal restart flow. Kast never restarts the application. |
 | `PROJECT_BUSY` | Let native work finish; inspect the existing operation before requesting new work. |
 | `OTHER_CLIENTS` | Other active callers must release their project use. Approval does not override shared use. |
 | `USER_AUTHORIZATION_REQUIRED` | Use the agent's `request_user_close` flow for the exact target. Session-wide approval is insufficient. |
-| `IMPORT_FAILED` / `UNLINKED_BUILD` | Inspect IDEA's native Gradle errors/settings, correct the cause, and request sync explicitly. |
+| `IMPORT_FAILED` / `UNLINKED_BUILD` | Inspect IDEA's native Gradle errors/settings and correct the cause before retrying the semantic call. |
 | `CLOSE_VETOED` | Resolve the native close veto; the project remains available. |
 | `WRONG_HOST` / `STALE_PROJECT` | Inspect again and acquire the current target; do not reuse an old incarnation. |
 | `CAPACITY` | The application has reached its bounded operation capacity; no new work was admitted. |
 
-Closing uses IDEA's normal veto-respecting path. Kast never saves or discards
-buffers to make it succeed, force-closes a project, kills IDEA, or stops shared
+Closing saves buffers under the selected root, then uses IDEA's normal
+veto-respecting path. Kast does not force-close a project, kill IDEA, or stop shared
 Gradle daemons. Closing the last project leaves application control available.
-Semantic reads remain passive and use the existing project-scoped compiler state.
+Semantic reads use the existing project-scoped compiler state after save and VFS refresh.

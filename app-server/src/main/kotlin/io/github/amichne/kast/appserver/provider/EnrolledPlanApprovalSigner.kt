@@ -1,6 +1,8 @@
 package io.github.amichne.kast.appserver.provider
 
+import io.github.amichne.kast.appserver.core.BrokerInvocationContext
 import io.github.amichne.kast.appserver.runtime.ControllerApprovedPlan
+import io.github.amichne.kast.appserver.runtime.ExactPlanApprovalSubject
 import io.github.amichne.kast.appserver.runtime.HostedPlanApprovalFailure
 import io.github.amichne.kast.appserver.runtime.HostedPlanApprovalGrant
 import io.github.amichne.kast.appserver.runtime.payload
@@ -34,6 +36,17 @@ internal class EnrolledPlanApprovalSigner(private val userHome: Path) {
         }
 
     fun sign(approval: ControllerApprovedPlan): Refinement<HostedPlanApprovalGrant, HostedPlanApprovalFailure> {
+        return when (val assertion = signForInvocation(approval.subject, approval.invocation)) {
+            is Refinement.Refined -> HostedPlanApprovalGrant.fromSignedControllerApproval(approval, assertion.value)
+            is Refinement.Rejected -> assertion
+        }
+    }
+
+    /** Internal one-call mutation authority, bound to the host challenge and broker invocation. */
+    fun signForInvocation(
+        subject: ExactPlanApprovalSubject,
+        invocation: BrokerInvocationContext,
+    ): Refinement<String, HostedPlanApprovalFailure> {
         val keys =
             when (val loaded = load()) {
                 is Refinement.Rejected -> return loaded
@@ -44,14 +57,14 @@ internal class EnrolledPlanApprovalSigner(private val userHome: Path) {
                 .encodeToString(
                     SignedPlanApprovalPayload.serializer(),
                     SignedPlanApprovalPayload(
-                        operation = approval.subject.operation.canonical.name,
-                        root = approval.subject.root.path.toString(),
-                        host = approval.subject.host.value.toString(),
-                        planId = approval.subject.planIdentity,
-                        challenge = approval.subject.hostedChallenge,
-                        threadId = approval.invocation.threadId.value,
-                        turnId = approval.invocation.turnId.value,
-                        callId = approval.invocation.callId.value,
+                        operation = subject.operation.canonical.name,
+                        root = subject.root.path.toString(),
+                        host = subject.host.value.toString(),
+                        planId = subject.planIdentity,
+                        challenge = subject.hostedChallenge,
+                        threadId = invocation.threadId.value,
+                        turnId = invocation.turnId.value,
+                        callId = invocation.callId.value,
                         keyId =
                             HexFormat.of()
                                 .formatHex(MessageDigest.getInstance("SHA-256").digest(keys.publicKey.encoded)),
@@ -74,10 +87,7 @@ internal class EnrolledPlanApprovalSigner(private val userHome: Path) {
             if (!coherent) Refinement.Rejected(HostedPlanApprovalFailure.SIGNING_REJECTED)
             else {
                 val encoder = Base64.getUrlEncoder().withoutPadding()
-                HostedPlanApprovalGrant.fromSignedControllerApproval(
-                    approval,
-                    "${encoder.encodeToString(payload)}.${encoder.encodeToString(signed)}",
-                )
+                Refinement.Refined("${encoder.encodeToString(payload)}.${encoder.encodeToString(signed)}")
             }
         } catch (_: GeneralSecurityException) {
             Refinement.Rejected(HostedPlanApprovalFailure.SIGNING_REJECTED)

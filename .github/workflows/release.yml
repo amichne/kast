@@ -14,6 +14,7 @@ on:
           - major
 
 permissions:
+  actions: read
   contents: write
 
 env:
@@ -46,34 +47,12 @@ jobs:
           fi
           git checkout --detach "$GITHUB_SHA"
 
-      - name: Set up Java 25
-        id: jdk25
-        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
-        with:
-          distribution: temurin
-          java-version: 25
-
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version-file: ".python-version"
           cache: pip
           cache-dependency-path: experiments/host-observation/requirements-test.txt
-
-      - name: Install host protocol test dependencies
-        run: python3 -m pip install --disable-pip-version-check -r experiments/host-observation/requirements-test.txt
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6
-        with:
-          validate-wrappers: true
-          gradle-home-cache-includes: |
-            caches
-            notifications
-            kast/workspace-intellij-read-idea-distributions
-            kast/symbol-intellij-idea-distributions
-            kast/change-intellij-idea-distributions
-            kast/topology-intellij-kotlin-plugin
 
       - name: Resolve release version
         id: release_version
@@ -82,11 +61,57 @@ jobs:
           --repository "$GITHUB_REPOSITORY"
           --bump "${{ inputs.bump }}"
 
+      - name: Reuse exact successful main CI candidate
+        id: ci_candidate
+        env:
+          RELEASE_VERSION: ${{ steps.release_version.outputs.version }}
+        run: >-
+          python3 .github/scripts/release/ci-candidate.py reuse
+          --repository "$GITHUB_REPOSITORY"
+          --version "$RELEASE_VERSION"
+          --source-revision "$GITHUB_SHA"
+          --directory "build/release/v${RELEASE_VERSION}"
+
+      - name: Set up Java 25 for a missing candidate
+        if: steps.ci_candidate.outputs.candidate == 'MISSING'
+        id: jdk25
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - name: Install host protocol test dependencies for a missing candidate
+        if: steps.ci_candidate.outputs.candidate == 'MISSING'
+        run: python3 -m pip install --disable-pip-version-check -r experiments/host-observation/requirements-test.txt
+
+      - name: Set up Gradle for a missing candidate
+        if: steps.ci_candidate.outputs.candidate == 'MISSING'
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6
+        with:
+          validate-wrappers: true
+          gradle-home-cache-includes: |
+            caches
+            notifications
+            kast/workspace-intellij-read-idea-distributions
+            kast/symbol-intellij-idea-distributions
+            kast/topology-intellij-kotlin-plugin
+
       - name: Build exact release candidate
+        if: steps.ci_candidate.outputs.candidate == 'MISSING'
         env:
           KAST_RELEASE_JDK_25: ${{ steps.jdk25.outputs.path }}
           RELEASE_VERSION: ${{ steps.release_version.outputs.version }}
         run: bash .github/scripts/ci/verify.sh --version "$RELEASE_VERSION"
+
+      - name: Admit exact release candidate
+        env:
+          RELEASE_VERSION: ${{ steps.release_version.outputs.version }}
+        run: >-
+          python3 .github/scripts/release/ci-candidate.py validate
+          --repository "$GITHUB_REPOSITORY"
+          --version "$RELEASE_VERSION"
+          --source-revision "$GITHUB_SHA"
+          --directory "build/release/v${RELEASE_VERSION}"
 
       - name: Retain exact release candidate
         uses: actions/upload-artifact@v7.0.1

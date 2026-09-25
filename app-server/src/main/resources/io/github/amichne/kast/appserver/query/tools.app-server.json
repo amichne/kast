@@ -11,7 +11,9 @@
         "properties": {
           "relative_path": {
             "type": "string",
-            "description": "File or directory path relative to the session workspace root, such as src/main/kotlin/orders/OrderService.kt or services/orders. Use '.' for the root. Not a package name, glob, absolute path, or parent traversal."
+            "description": "File or directory path relative to the session workspace root, such as src/main/kotlin/orders/OrderService.kt or services/orders. Use '.' for the root. Not a package name, glob, absolute path, or parent traversal.",
+            "minLength": 1,
+            "maxLength": 1048576
           },
           "max_diagnostics": {
             "type": [
@@ -20,13 +22,15 @@
             ],
             "minimum": 1,
             "maximum": 1000,
-            "description": "Maximum diagnostic entries to return. null selects 100. This limits results, not module admission, indexing, or compiler work; incomplete coverage remains explicit."
+            "description": "Maximum diagnostic entries to return. Omission or null selects 100. This limits results, not module admission, indexing, or compiler work; incomplete coverage remains explicit."
           },
           "continuation": {
             "type": [
               "string",
               "null"
             ],
+            "minLength": 1,
+            "maxLength": 1048576,
             "description": "Opaque same-basis diagnostic continuation. Omit or use null to start. Resume the same relative_path; increase execution_budget if a grant cannot cross the enumeration prefix."
           },
           "execution_budget": {
@@ -34,10 +38,7 @@
           }
         },
         "required": [
-          "relative_path",
-          "max_diagnostics",
-          "continuation",
-          "execution_budget"
+          "relative_path"
         ],
         "additionalProperties": false,
         "$defs": {
@@ -81,12 +82,7 @@
                 "maximum": 9223372036854775807
               }
             },
-            "required": [
-              "max_elapsed_ms",
-              "max_work_units",
-              "max_results",
-              "max_returned_bytes"
-            ],
+            "required": [],
             "additionalProperties": false
           }
         }
@@ -152,13 +148,16 @@
             },
             "minItems": 0,
             "maxItems": 4,
-            "description": "null returns name and location, [] requests mandatory identity and kind only. Symbol references and completeness evidence are always retained. Duplicate fields are rejected by server admission."
+            "description": "null returns name and location, [] requests mandatory identity and kind only. Symbol references and completeness evidence are always retained. Duplicate fields are rejected by server admission. The source field adds committed declaration text with five surrounding lines, subject to the query budget.",
+            "uniqueItems": true
           },
           "continuation": {
             "type": [
               "string",
               "null"
             ],
+            "minLength": 1,
+            "maxLength": 256,
             "description": "Opaque continuation returned by this exact pipeline. Omit or use null to start. Resume with the same source, steps and return_fields; stale or mismatched state rejects."
           },
           "execution_budget": {
@@ -168,9 +167,7 @@
         "required": [
           "source",
           "steps",
-          "return_fields",
-          "continuation",
-          "execution_budget"
+          "return_fields"
         ],
         "additionalProperties": false,
         "$defs": {
@@ -179,7 +176,9 @@
             "properties": {
               "relative_directory_path": {
                 "type": "string",
-                "description": "Directory relative to the session workspace root, such as services/orders. Use '.' for the root. Not a file path, absolute path, glob, or package name. Parent traversal and non-canonical paths are rejected by server admission."
+                "description": "Directory relative to the session workspace root, such as services/orders. Use '.' for the root. Not a file path, absolute path, glob, or package name. Parent traversal and non-canonical paths are rejected by server admission.",
+                "minLength": 1,
+                "maxLength": 1048576
               },
               "include_subdirectories": {
                 "type": "boolean",
@@ -192,17 +191,18 @@
                 ],
                 "items": {
                   "type": "string",
-                  "description": "Exact imported Gradle source-set name, such as main, integrationTest, or commonMain."
+                  "description": "Exact imported Gradle source-set name, such as main, integrationTest, or commonMain.",
+                  "minLength": 1,
+                  "maxLength": 1048576
                 },
                 "minItems": 1,
                 "maxItems": 1000,
-                "description": "null selects the names main and test. Otherwise use exact imported Gradle source-set names, not paths, globs, or production/test categories. Empty and duplicate lists are rejected by server admission."
+                "description": "Omission or null selects the names main and test. Otherwise use exact imported Gradle source-set names, not paths, globs, or production/test categories. Empty and duplicate lists are rejected by server admission.",
+                "uniqueItems": true
               }
             },
             "required": [
-              "relative_directory_path",
-              "include_subdirectories",
-              "source_set_names"
+              "relative_directory_path"
             ],
             "additionalProperties": false
           },
@@ -211,7 +211,9 @@
             "properties": {
               "package_name": {
                 "type": "string",
-                "description": "Semantic Kotlin package name, such as com.example.orders. Not a filesystem path. Uses Kast's supported package-name grammar."
+                "description": "Semantic Kotlin package name, such as com.example.orders. Not a filesystem path. Uses Kast's supported package-name grammar.",
+                "minLength": 1,
+                "maxLength": 1048576
               },
               "include_subpackages": {
                 "type": "boolean",
@@ -224,17 +226,18 @@
                 ],
                 "items": {
                   "type": "string",
-                  "description": "Exact imported Gradle source-set name, such as main, integrationTest, or commonMain."
+                  "description": "Exact imported Gradle source-set name, such as main, integrationTest, or commonMain.",
+                  "minLength": 1,
+                  "maxLength": 1048576
                 },
                 "minItems": 1,
                 "maxItems": 1000,
-                "description": "null selects the names main and test. Otherwise use exact imported Gradle source-set names, not paths, globs, or production/test categories. Empty and duplicate lists are rejected by server admission."
+                "description": "Omission or null selects the names main and test. Otherwise use exact imported Gradle source-set names, not paths, globs, or production/test categories. Empty and duplicate lists are rejected by server admission.",
+                "uniqueItems": true
               }
             },
             "required": [
-              "package_name",
-              "include_subpackages",
-              "source_set_names"
+              "package_name"
             ],
             "additionalProperties": false
           },
@@ -249,7 +252,9 @@
               },
               "declaration_name": {
                 "type": "string",
-                "description": "Simple declaration name. Not a signature, source-text query, or qualified name."
+                "description": "Simple declaration name. Not a signature, source-text query, or qualified name.",
+                "minLength": 1,
+                "maxLength": 256
               },
               "name_match": {
                 "type": [
@@ -261,7 +266,7 @@
                   "fuzzy",
                   null
                 ],
-                "description": "null means exact, case-sensitive declaration-name matching. Exact matching returns every matching overload; it does not select one overload. Fuzzy matching requires explicit opt-in."
+                "description": "Omission or null means exact, case-sensitive declaration-name matching. Exact matching returns every matching overload; it does not select one overload. Fuzzy matching requires explicit opt-in."
               },
               "declaration_kinds": {
                 "type": [
@@ -279,7 +284,8 @@
                 },
                 "minItems": 1,
                 "maxItems": 4,
-                "description": "null includes all four supported declaration families. Supply a non-empty, non-duplicate list to restrict them. The class family means Kast's supported class-like declarations. Constructors are not included."
+                "description": "null includes all four supported declaration families. Supply a non-empty, non-duplicate list to restrict them. The class family means Kast's supported class-like declarations. Constructors are not included.",
+                "uniqueItems": true
               },
               "scope": {
                 "anyOf": [
@@ -293,15 +299,12 @@
                     "type": "null"
                   }
                 ],
-                "description": "null searches the session workspace recursively in source sets main and test. Otherwise choose one directory scope or one package scope. Source-set restrictions intersect with the chosen scope."
+                "description": "Omission or null searches the session workspace recursively in source sets main and test. Otherwise choose one directory scope or one package scope. Source-set restrictions intersect with the chosen scope."
               }
             },
             "required": [
               "type",
-              "declaration_name",
-              "name_match",
-              "declaration_kinds",
-              "scope"
+              "declaration_name"
             ],
             "additionalProperties": false,
             "description": "Find declarations and establish exact symbol identities. Source scope restricts discovery only, not later expansion destinations."
@@ -331,7 +334,8 @@
                 },
                 "minItems": 1,
                 "maxItems": 4,
-                "description": "null includes all four supported declaration families. Supply a non-empty, non-duplicate list to restrict them. The class family means Kast's supported class-like declarations. Constructors are not included."
+                "description": "null includes all four supported declaration families. Supply a non-empty, non-duplicate list to restrict them. The class family means Kast's supported class-like declarations. Constructors are not included.",
+                "uniqueItems": true
               },
               "scope": {
                 "anyOf": [
@@ -345,13 +349,11 @@
                     "type": "null"
                   }
                 ],
-                "description": "null searches the session workspace recursively in source sets main and test. Otherwise choose one directory scope or one package scope. Source-set restrictions intersect with the chosen scope."
+                "description": "Omission or null searches the session workspace recursively in source sets main and test. Otherwise choose one directory scope or one package scope. Source-set restrictions intersect with the chosen scope."
               }
             },
             "required": [
-              "type",
-              "declaration_kinds",
-              "scope"
+              "type"
             ],
             "additionalProperties": false,
             "description": "Enumerate declarations under existing bounded execution. All does not mean unlimited work or guaranteed complete coverage."
@@ -369,7 +371,9 @@
                 "type": "array",
                 "items": {
                   "type": "string",
-                  "description": "Opaque exact-symbol reference returned by Kast. Copy the token verbatim; do not construct, edit, or substitute a candidate reference."
+                  "description": "Opaque exact-symbol reference returned by Kast. Copy the token verbatim; do not construct, edit, or substitute a candidate reference.",
+                  "minLength": 1,
+                  "maxLength": 1048576
                 },
                 "minItems": 1,
                 "maxItems": 1000
@@ -404,7 +408,8 @@
                 },
                 "minItems": 1,
                 "maxItems": 5,
-                "description": "Keep symbols with one of these compiler-established visibilities. Duplicate values are rejected by server admission."
+                "description": "Keep symbols with one of these compiler-established visibilities. Duplicate values are rejected by server admission.",
+                "uniqueItems": true
               }
             },
             "required": [
@@ -498,12 +503,7 @@
                 "maximum": 9223372036854775807
               }
             },
-            "required": [
-              "max_elapsed_ms",
-              "max_work_units",
-              "max_results",
-              "max_returned_bytes"
-            ],
+            "required": [],
             "additionalProperties": false
           }
         }

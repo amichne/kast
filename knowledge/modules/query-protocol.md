@@ -77,6 +77,8 @@ query plan, executes the supplied `QueryOperations`, and projects complete,
 qualified, or rejected results. The other read protocols use the same reference
 and evidence vocabulary around their domain operations. The existing-IDE host uses this boundary; historical published-evidence tests exercise the same contracts without granting a production publication owner.
 
+Diagnostic progress retains the requested path alongside file inventory and analyzed files. The CLI derives discovered, analyzed, skipped, and exhaustive coverage from that progress, and labels the result as IDE file diagnostics.
+
 `QueryReferenceAuthority` separates reference issuance and restoration from
 execution authority. Published references retain their generation. Live
 references require a freshly admitted authority from the original host; decoded
@@ -116,6 +118,10 @@ resumable output schema. Structural schema admission does not authenticate a
 continuation. Decoding checks the authority-specific version and revision, while
 owner admission retains subject, relation and scope checks. Terminal-incomplete upstream relation work has no upstream continuation; retained
 output may still need draining while preserving that terminal coverage.
+The public one-hop relation protocol retains the exact subject reference while
+searching workspace destinations across files and packages. Its continuation
+binds that expansion boundary, subject, and relation; a retained-subject cursor
+cannot resume the expanded read.
 
 Test-only fixtures in `workspace:contract` and `query:protocol` admit a fixed live
 authority through its original owner and provide four ordered relation facts.

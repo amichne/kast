@@ -43,9 +43,7 @@ class CanonicalAgentToolDefinitionsTest {
                 CanonicalOperation.RELATION_READ,
                 CanonicalOperation.TRAVERSAL_RUN,
                 CanonicalOperation.DIAGNOSTIC_CHECK,
-                CanonicalOperation.CHANGE_PLAN,
-                CanonicalOperation.CHANGE_APPLY,
-                CanonicalOperation.CHANGE_RECOVER,
+                CanonicalOperation.CHANGE,
             ),
             CanonicalAgentToolDefinitions.all.map { it.operation.operation },
         )
@@ -59,9 +57,7 @@ class CanonicalAgentToolDefinitionsTest {
                 "read_relations",
                 "traverse_relations",
                 "check_diagnostics",
-                "change_plan",
-                "change_apply",
-                "change_recover",
+                "change",
             ),
             CanonicalAgentToolDefinitions.all.map { it.name.value },
         )
@@ -79,7 +75,7 @@ class CanonicalAgentToolDefinitionsTest {
             listOf("query_symbols", "check_diagnostics"),
             CanonicalAgentToolDefinitions.all.filter { it.loading == HostedToolLoading.EAGER }.map { it.name.value },
         )
-        assertEquals(HostedApprovalPolicy.EXPLICIT, CanonicalAgentToolDefinitions.changeApply.approval)
+        assertEquals(HostedApprovalPolicy.NONE, CanonicalAgentToolDefinitions.change.approval)
         assertTrue("exact selector" in CanonicalAgentToolDefinitions.relationRead.description.value)
         assertTrue("Reachability is qualified" in CanonicalAgentToolDefinitions.traversalRun.description.value)
         assertTrue("does not guarantee breakage" in CanonicalAgentToolDefinitions.traversalRun.description.value)

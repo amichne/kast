@@ -131,4 +131,4 @@ The canonical `workspace.lifecycle.v2` operation has one tagged request family a
 The canonical agent policy delegates preparation for ordinary semantic requests to
 the installed coordinator. Preparation rejection is a broker failure with typed
 workspace cause and operation identity, outside the canonical semantic result.
-It does not weaken native operation admission or exact-plan approval.
+It preserves native operation admission and signs the exact plan inside the one-call change boundary.

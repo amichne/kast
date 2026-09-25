@@ -161,6 +161,20 @@ object CanonicalOperationWireBindings {
                 CanonicalChangeSerializers.changePlanRejection,
             ),
         )
+    val change =
+        OperationWireBinding(
+            CanonicalOperationDefinitions.change,
+            GeneratedOperationSerializers(
+                GeneratedWireCodecFactory(wireJson)
+                    .create(io.github.amichne.kast.protocol.contract.ChangeRequest.serializer()),
+                GeneratedWireCodecFactory(wireJson)
+                    .create(io.github.amichne.kast.protocol.contract.ChangeResult.serializer()),
+                GeneratedWireCodecFactory(wireJson)
+                    .create(io.github.amichne.kast.protocol.contract.ChangeQualification.serializer()),
+                GeneratedWireCodecFactory(wireJson)
+                    .create(io.github.amichne.kast.protocol.contract.ChangeRejection.serializer()),
+            ),
+        )
     val changeApply =
         OperationWireBinding(
             CanonicalOperationDefinitions.changeApply,
@@ -197,6 +211,7 @@ object CanonicalOperationWireBindings {
                         relationRead,
                         traversalRun,
                         diagnosticCheck,
+                        change,
                         changePlan,
                         changeApply,
                         changeRecover,

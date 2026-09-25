@@ -25,33 +25,13 @@ internal class BrokerSessionHub(
     private val sessions = ConcurrentHashMap<ClientConnectionId, Session>()
     val tasks = SharedTaskSessions()
     private val activity = SessionActivityJournal(options.sessionActivitySink)
-    private val planApprovals =
-        BrokerPlanApprovals(
-            tasks = tasks,
-            contracts = options.contracts,
-            gateway = options.planApprovalGateway,
-            delivery =
-                BrokerPlanApprovalDelivery(
-                    send = { client, message ->
-                        sessions[client]?.emitApproval(message) ?: PlanApprovalSend.UNAVAILABLE
-                    }
-                ),
-            publish = activity::publish,
-            waitMillis = options.planApprovalWaitMillis,
-        )
     private val lifecycleApprovals =
         BrokerLifecycleApprovals(scope, tasks, options) { client, message ->
             sessions[client]?.emitApproval(message) ?: PlanApprovalSend.UNAVAILABLE
         }
 
     private fun respondApproval(id: ClientConnectionId, doc: JsonObject): BrokerPlanApprovalReply =
-        when (val response = lifecycleApprovals.respond(id, doc)) {
-            BrokerPlanApprovalReply.Unowned -> planApprovals.respond(id, doc)
-            else -> response
-        }
-
-    private val approvedExecutions = BrokerApprovedExecutions(scope, planApprovals)
-    private val planAdmission = BrokerPlanApprovalAdmission(options, approvedExecutions)
+        lifecycleApprovals.respond(id, doc)
 
     private val fence = InvocationFence(options.invocationJournal)
     private val invocations = InvocationResponses(fence)
@@ -265,7 +245,6 @@ internal class BrokerSessionHub(
                 val turn = params?.text("turnId")?.let(io.github.amichne.kast.appserver.core.BrokerTurnId::admit)
                 if (turn != null && tasks.authorize(thread, id) == ControlResult.Accepted) {
                     lifecycleApprovals.cancel(thread, turn)
-                    approvedExecutions.cancel(thread, turn)
                     when (val bound = adapter.boundWorkspace(thread)) {
                         is io.github.amichne.kast.kernel.Refinement.Refined ->
                             workspaceExecution.cancel(bound.value.id, thread, turn)
@@ -397,7 +376,15 @@ internal class BrokerSessionHub(
                                                             invocation.settle(
                                                                 messages.rejectedInvocation(
                                                                     doc,
-                                                                    InvocationFenceFailure.OUTCOME_UNCERTAIN,
+                                                                    if (
+                                                                        failure is CancellationException &&
+                                                                            currentCoroutineContext()[
+                                                                                    WorkspaceRecoverySettlement]
+                                                                                ?.evidence is
+                                                                                WorkspaceRecoveryEvidence.Proven
+                                                                    )
+                                                                        InvocationFenceFailure.CANCELLED_AFTER_RECOVERY
+                                                                    else InvocationFenceFailure.OUTCOME_UNCERTAIN,
                                                                 )
                                                             )
                                                             throw failure
@@ -410,14 +397,7 @@ internal class BrokerSessionHub(
                                                 params,
                                                 doc,
                                                 submit,
-                                            )
-                                                ?: planAdmission.submit(
-                                                    id = id,
-                                                    binding = WorkspaceInvocationBinding(bound.value, identity),
-                                                    params = params,
-                                                    document = doc,
-                                                    submit = submit,
-                                                )
+                                            ) ?: submit(BrokerInvocationApproval.Absent)
                                         }
                                     }
                                 } catch (_: Exception) {
@@ -631,7 +611,6 @@ internal class BrokerSessionHub(
             activity.publish(SessionActivity(id, SessionStage.SUBSCRIPTION, SessionOutcome.DETACHED))
             attached = false
             lifecycleApprovals.disconnect(id)
-            planApprovals.disconnect(id)
             output.close()
             serverRequests.entries
                 .filter { it.value.recipient == id && it.value.phase == RequestPhase.AWAITING_CLIENT }
@@ -658,7 +637,6 @@ internal class BrokerSessionHub(
                 SessionRetirement.IDLE -> Unit
             }
             lifecycleApprovals.disconnect(id)
-            approvedExecutions.retire(id)
             activity.publish(SessionActivity(id, SessionStage.TRANSPORT, SessionOutcome.RETIRED))
             serverRequests.entries
                 .filter { it.value.source == this }

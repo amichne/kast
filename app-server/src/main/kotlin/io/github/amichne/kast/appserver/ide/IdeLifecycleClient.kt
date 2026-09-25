@@ -47,10 +47,6 @@ class IdeLifecycleClient(private val userHome: Path, private val selectedHome: P
             is WorkspaceLifecycleRequest.Open -> open(request.root, request.requestId, client)
             is WorkspaceLifecycleRequest.Present ->
                 execute(IdeLifecycleCommand.Present(request.requestId, client, request.target))
-            is WorkspaceLifecycleRequest.Sync ->
-                execute(IdeLifecycleCommand.Sync(request.requestId, client, request.target, request.effect))
-            is WorkspaceLifecycleRequest.ConfigureSync ->
-                execute(IdeLifecycleCommand.ConfigureSync(request.requestId, client, request.target, request.rule))
             is WorkspaceLifecycleRequest.Release ->
                 execute(IdeLifecycleCommand.Release(request.requestId, client, request.target))
             is WorkspaceLifecycleRequest.Close ->

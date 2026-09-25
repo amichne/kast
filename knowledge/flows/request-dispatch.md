@@ -72,6 +72,7 @@ host request
 ```
 
 Registry construction proves that every canonical operation has one definition. Wire-table construction proves that each has one serializer binding. Hosted dispatch uses those typed bindings; `HostedSemanticServices` supplies the request-scoped domain services. Host adapters may change presentation, but they must preserve qualification and rejection.
+The Codex-facing provider prepends a bounded search or diagnostic summary when the validated result has enough coverage evidence. The unchanged machine document follows, retaining opaque references, budgets, and exact qualifications.
 
 The optional exact-symbol source projection is performed by the query evaluator inside this same hosted read, before typed query result projection. It uses the source read port rather than a second client exchange, preserving the query's authority, budget, and finite source failure.
 
@@ -109,7 +110,7 @@ rejects digest drift. Installed payload admission and Codex schema qualification
 resolve to the selected preferred tool route; omitted tools and incompatible
 catalog bindings reject before provider invocation. Provider invocation uses the App Server-owned
 IDEA socket client directly, with canonical admission and admitted output and elapsed-time settings. The installed coordinator first prepares the exact root, validates the live application/project identity, and retains that project through descriptor admission. Preparation failures are known pre-execution rejections with typed causes and operation IDs.
-Approval preparation uses the same direct client; exact approval binding precedes effects.
+The one-call `change` route prepares the host challenge through the same direct client and signs it internally before any source effect.
 Pure request preparation and outcome projection are shared from `protocol:wire`. `selectCliRuntimePath` now selects the seven existing-IDE reads before
 installed bootstrap in `KastCliMain`; saved read settings are admitted before the socket is opened. Invalid settings and missing hosts remain distinct rejections. The
 [native acceptance review](../../docs/reviews/live-semantic-read-acceptance.md)
@@ -123,17 +124,14 @@ Codex schema inventory admits the retired `thread/rollback` request and response
 schemas only as a complete pair; a client without both leaves that route as an
 unchanged upstream pass-through while `thread/revert` remains qualified. Their
 raw content remains intact, and the final Kast JSON envelope additionally
-uses the supported structured-result field. For change apply/recovery,
-`CodexPlanApprovalProjection` emits a separate native `fileChange` item containing
-the stored plan's preview and requests approval from the current controller.
-`HostedPlanApprovalGateway` signs only a correlated controller-approved challenge;
-the tool-result projection and approval preview remain distinct. Native schema
-admission and module tests establish the protocol shapes, while desktop rendering
-remains unqualified.
+uses the supported structured-result field. The `change` tool keeps the native plan, apply, and recovery documents in
+one caller-visible completion or finite failure. No source-change approval item
+is sent to a controller. Native schema admission and module tests establish the
+protocol shapes, while desktop rendering remains unqualified.
 
 The entire `change` CLI family routes to the existing-IDE path before installed
-bootstrap. Hosted ingress admits `AddDeclaration` planning and requires the
-broker's approved invocation for apply/recovery. The endpoint protocol is version
+bootstrap. Hosted ingress admits `AddDeclaration` planning; the one-call coordinator signs
+exact host challenges before the private apply/recovery operations. The endpoint protocol is version
 3. Its added change routes retain canonical complete/qualified/rejected envelopes;
 missing hosts, unsupported intents and unapproved writes cannot fall back to an
 isolated worker. A stored verified apply receipt is historical evidence, so its
@@ -160,13 +158,16 @@ Output validity and semantic success remain separate from this settlement decisi
 All writing effects and unknown provider effects retain recovery-required
 handling after output rejection. Provider failures, cancellation, and timeouts
 remain uncertain even for reads; read metadata cannot prove that an execution has
-terminated. Deterministic gates test queued and later calls, mutation without
-replay, independent workspaces, and retirement held across cancellation/deadline.
+terminated. A cancelled change apply is settled as known only when exact native
+recovery completes in `prior_state` or `rolled_back`; its workspace lane can then
+serve later requests. Deterministic gates test queued and later calls, mutation
+without replay, independent workspaces, and retirement held across cancellation/deadline.
 
 `HostedResponse` carries the original typed semantic outcome beside the encoded document until transport ends. Completion, qualification and rejection have separate endpoint observations. Encoding rejection and size rejection retain the semantic value for diagnosis. Read transaction success alone is `EVALUATED`; the canonical path additionally retains semantic `COMPLETE`, `QUALIFIED` or `REJECTED` evidence. Change-storage failures retain their finite cause in schema-admitted `HOST_REJECTED.detail` and in default bounded storage observations.
 
 Model-facing Codex replies retain one JSON envelope as their final content item.
-Compact source presentation can precede it with unchanged returned source text.
+Search and diagnostic presentation can precede it with a bounded human summary;
+compact source presentation can precede it with unchanged returned source text.
 Terminal broker admission,
 capacity and cancellation paths also retain typed JSON rejection or cancellation
 data; uncertainty is not converted into success. A supported native desktop
@@ -182,7 +183,7 @@ operation presentations retain their existing dispatch behavior.
 
 Workspace refresh is a separate typed hosted control path, not a canonical semantic read. Its request and response DTOs retain request identity and finite pending, complete, failed, rejected or configured outcomes. The CLI uses typed serialization for the hosted transport, validates the independent refresh schema, and binds the response to the admitted host and root.
 
-Agent lifecycle dispatch calls the App Server-owned lifecycle client and selected application control endpoint directly. For `request_user_close`, the existing controller lease receives a native command-approval item naming the exact host, project incarnation and root. Only one acceptance for that invocation permits enrolled signing; session-wide acceptance does not. The invocation transports the signed assertion privately and preserves finite lifecycle blockers through the output schema. Native semantic dispatch remains passive; the coordinator may prepare the workspace through the lifecycle owner before sending a semantic request.
+Agent lifecycle dispatch calls the App Server-owned lifecycle client and selected application control endpoint directly. For `request_user_close`, the existing controller lease receives a native command-approval item naming the exact host, project incarnation and root. Only one acceptance for that invocation permits enrolled signing; session-wide acceptance does not. The invocation transports the signed assertion privately and preserves finite lifecycle blockers through the output schema. Native semantic dispatch remains passive; the coordinator prepares the workspace through the lifecycle owner before sending a semantic request. If exact host identity changes during the final inspection, no semantic operation has been sent; the coordinator invalidates that preparation and tries once with a fresh incarnation.
 
 Local controller claim/release enters the owned daemon management route and delegates
 to the existing session owner. The target service generation and connected observer
@@ -191,10 +192,13 @@ cannot claim or release another connection by supplying its identifier. Manageme
 inspection observes pending/prepared/rejected/closed session state without admitting
 an optional host.
 
-Apply and recovery approval challenges share the installed workspace preparation owner. A workspace rejection is projected before controller registration, preserving its operation identity and finite cause. Controller approval and grant redemption remain separate from workspace readiness.
+Apply and recovery challenges share the installed workspace preparation
+owner. A workspace rejection is projected before source effects. The enrolled
+signer binds each challenge to the exact plan, root, host, operation, and caller
+invocation.
 
-Invocation admission persists intent before approval preparation or workspace
-submission. Known approval refusals, binding rejections and queued cancellations
+Invocation admission persists intent before workspace submission. Known binding
+rejections and queued cancellations
 are durably completed before their responses are published. Executing calls settle
 inside the workspace permit so persistence failure remains uncertain before the
 lane can advance. The response owner publishes once, preserves uncertain outcomes,

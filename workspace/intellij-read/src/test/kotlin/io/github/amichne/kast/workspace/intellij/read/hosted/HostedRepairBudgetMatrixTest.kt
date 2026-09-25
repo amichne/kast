@@ -18,7 +18,7 @@ import org.junit.jupiter.api.Test
 /** Admission evidence for #772; native operation and installed transport qualification remain separate. */
 class HostedRepairBudgetMatrixTest {
     @Test
-    fun `ten and twenty second requests retain actual grants under default and enlarged policies`() = runTest {
+    fun `ten and twenty second requests retain actual grants under short and default policies`() = runTest {
         for (policy in Policy.entries) for (requestedMillis in listOf(10_000L, 20_000L)) {
             val receipts = mutableListOf<HostedReadDiagnosticReceipt>()
             val origin = testScheduler.currentTime
@@ -27,7 +27,7 @@ class HostedRepairBudgetMatrixTest {
                 HostedQueryExecutor(backgroundScope, clock) { limits ->
                     HostedReadDiagnostics(clock, limits, receipts::add)
                 }
-            val expectedGrant = if (policy == Policy.DEFAULT) 2_750L else requestedMillis
+            val expectedGrant = if (policy == Policy.SHORT) 2_750L else requestedMillis
             lateinit var report: ExecutionBudgetReport
             val request =
                 HostedExecutionBudgetRequest(
@@ -72,7 +72,7 @@ class HostedRepairBudgetMatrixTest {
         assertEquals((Int.MAX_VALUE - 1).toLong(), elapsed.operatorCeiling.value)
         assertEquals(expectedGrant, elapsed.effective.value)
         assertEquals(
-            if (policy == Policy.DEFAULT) setOf(ExecutionBudgetClamp.DEADLINE_REMAINING) else emptySet(),
+            if (policy == Policy.SHORT) setOf(ExecutionBudgetClamp.DEADLINE_REMAINING) else emptySet(),
             elapsed.clamping,
         )
     }
@@ -89,7 +89,7 @@ class HostedRepairBudgetMatrixTest {
         )
         assertEquals(
             HostedSemanticBudgetObservation.Admitted(
-                if (policy == Policy.DEFAULT) 3_000L else 29_000L,
+                if (policy == Policy.SHORT) 3_000L else 29_000L,
                 250L,
                 expectedGrant,
                 2_000L,
@@ -99,22 +99,13 @@ class HostedRepairBudgetMatrixTest {
     }
 
     private enum class Policy {
-        DEFAULT,
-        ENLARGED;
+        SHORT,
+        DEFAULT;
 
         fun limits(): ReadLimits =
             when (this) {
+                SHORT -> shortHostLimits()
                 DEFAULT -> ReadLimits.Default
-                ENLARGED ->
-                    ReadLimits.resolve(
-                            environment =
-                                mapOf(
-                                    "KAST_READ_HOST_QUERY_MILLIS" to "30000",
-                                    "KAST_READ_HOST_CONNECTION_MILLIS" to "31000",
-                                    "KAST_READ_CLIENT_EXCHANGE_MILLIS" to "32000",
-                                )
-                        )
-                        .proven()
             }
     }
 

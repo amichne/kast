@@ -97,7 +97,7 @@ class RelationContinuationAuthorityTest {
                         RelationMeaning.References,
                         fixture.budget,
                         decoded,
-                        RelationSearchBoundary.WORKSPACE_EXPANSION,
+                        RelationSearchBoundary.RETAINED_SUBJECT,
                     ) as Refinement.Rejected)
                     .failure,
             )

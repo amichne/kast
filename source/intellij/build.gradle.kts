@@ -14,22 +14,9 @@ base {
 private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
 private val ideaPlatformBuild = catalog.findVersion("idea-platform-build").get().requiredVersion
 
-val sourceIdeaDistribution =
-    configurations.create("sourceIdeaDistribution") {
-        isCanBeConsumed = false
-        isCanBeResolved = true
-    }
-
 private val extractedIdeaDistributionDirectory =
     objects.directoryProperty().apply {
-        set(file(gradle.gradleUserHomeDir.resolve("kast/source-intellij-idea-distributions/$ideaPlatformBuild")))
-    }
-
-val extractSourceIdeaDistribution =
-    tasks.register<ExtractIdeaDistributionTask>("extractSourceIdeaDistribution") {
-        archives.from(sourceIdeaDistribution)
-        ideaVersion.set(ideaPlatformBuild)
-        outputDirectory.set(extractedIdeaDistributionDirectory)
+        set(file(gradle.gradleUserHomeDir.resolve("kast/symbol-intellij-idea-distributions/$ideaPlatformBuild")))
     }
 
 private val kotlinPluginLibs: ConfigurableFileCollection =
@@ -42,7 +29,7 @@ private val kotlinPluginLibs: ConfigurableFileCollection =
                 }
             }
         )
-        .builtBy(extractSourceIdeaDistribution)
+        .builtBy(":symbol:intellij:extractSymbolIdeaDistribution")
 
 private val javaPluginLibs: ConfigurableFileCollection =
     files(
@@ -52,17 +39,13 @@ private val javaPluginLibs: ConfigurableFileCollection =
                 }
             }
         )
-        .builtBy(extractSourceIdeaDistribution)
+        .builtBy(":symbol:intellij:extractSymbolIdeaDistribution")
 
 dependencies {
     implementation(project(":source:contract"))
     implementation(project(":symbol:contract"))
     implementation(project(":workspace:contract"))
     implementation(project(":workspace:intellij-read"))
-
-    sourceIdeaDistribution("com.jetbrains.intellij.idea:ideaIC:$ideaPlatformBuild@zip") {
-        isTransitive = false
-    }
 
     compileOnly("com.jetbrains.intellij.platform:core:$ideaPlatformBuild")
     compileOnly("com.jetbrains.intellij.platform:core-impl:$ideaPlatformBuild")
@@ -76,8 +59,11 @@ dependencies {
     compileOnly(javaPluginLibs)
 
     testImplementation("com.jetbrains.intellij.platform:core:$ideaPlatformBuild")
+    testImplementation("com.jetbrains.intellij.platform:core-impl:$ideaPlatformBuild")
+    testImplementation("com.jetbrains.intellij.platform:syntax-psi:$ideaPlatformBuild")
     testImplementation("com.jetbrains.intellij.platform:analysis:$ideaPlatformBuild")
     testImplementation("com.jetbrains.intellij.platform:lang:$ideaPlatformBuild")
     testImplementation("com.jetbrains.intellij.platform:util:$ideaPlatformBuild")
     testImplementation(javaPluginLibs)
+    testImplementation(kotlinPluginLibs)
 }

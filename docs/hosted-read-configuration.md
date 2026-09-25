@@ -51,7 +51,7 @@ All values are positive decimal integers, up to 2,147,483,646. Transport and pro
 | `EPOCH_VFS_EVENTS` | 4,096 | count |
 | `EPOCH_PATH_CHARACTERS` | 4,096 | characters |
 | `EPOCH_PATH_BYTES` | 8,192 | bytes |
-| `HOST_QUERY_MILLIS` | 4,000 | milliseconds |
+| `HOST_QUERY_MILLIS` | 30,000 | milliseconds |
 | `SEMANTIC_MILLIS` | 2,000 | milliseconds |
 | `SEMANTIC_WORK` | 100,000 | count |
 | `SEMANTIC_RESULTS` | 128 | count |
@@ -74,8 +74,8 @@ All values are positive decimal integers, up to 2,147,483,646. Transport and pro
 | `HOST_DESCRIPTOR_BYTES` | 16,384 | bytes |
 | `HOST_ACCEPT_BACKLOG` | 64 | count |
 | `HOST_CONNECTIONS` | 16 | count |
-| `HOST_CONNECTION_MILLIS` | 5,000 | milliseconds |
-| `CLIENT_EXCHANGE_MILLIS` | 6,000 | milliseconds |
+| `HOST_CONNECTION_MILLIS` | 31,000 | milliseconds |
+| `CLIENT_EXCHANGE_MILLIS` | 32,000 | milliseconds |
 | `HOST_FILE_CHARACTERS` | 262,144 | characters |
 | `HOST_CLASS_CANDIDATES` | 32 | count |
 | `DIAGNOSTIC_SCOPE_FILES` | 256 | count |
@@ -105,7 +105,7 @@ The [reproduction guide](../experiments/host-observation/SEMANTIC_REPRODUCTION.m
 ## Deadline admission and search ordering
 
 The host deadline covers admission, model capture, semantic evaluation, freshness
-revalidation and detachment. Its default is 4,000 ms; semantic work retains a
+revalidation and detachment. Its default is 30,000 ms; semantic work retains a
 2,000 ms default. Caller allowances may raise that default within the operator and
 host limits. At semantic entry, the host subtracts elapsed request time and
 reserves the smaller of 250 ms or one eighth of the host limit (at least 1 ms)

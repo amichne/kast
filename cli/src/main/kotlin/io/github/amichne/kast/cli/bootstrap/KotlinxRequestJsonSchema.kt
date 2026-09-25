@@ -7,6 +7,8 @@ import io.github.amichne.kast.protocol.contract.ProtocolCollectionConstraint
 import io.github.amichne.kast.protocol.contract.ProtocolHomogeneousCollection
 import io.github.amichne.kast.protocol.contract.ProtocolIntegerConstraint
 import io.github.amichne.kast.protocol.contract.ProtocolStringConstraint
+import io.github.amichne.kast.protocol.contract.SourceReadRequest
+import io.github.amichne.kast.protocol.contract.SourceReadSimpleRequest
 import io.github.amichne.kast.protocol.registry.HostedVariants
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
@@ -35,6 +37,15 @@ internal fun generatedRequestSchema(serializer: KSerializer<*>): JsonObject =
 /** Retains generated payload constraints while narrowing variants through the canonical hosted owner. */
 internal fun generatedHostedRequestSchema(serializer: KSerializer<*>, variants: HostedVariants): JsonObject {
     val generated = generatedRequestSchema(serializer)
+    if (serializer.descriptor.serialName == SourceReadRequest.serializer().descriptor.serialName) {
+        return OBJECT_SCHEMA_JSON.encodeToJsonElement(
+                GeneratedUnionSchemaDocument.serializer(),
+                GeneratedUnionSchemaDocument(
+                    listOf(generatedRequestSchema(SourceReadSimpleRequest.serializer()), generated)
+                ),
+            )
+            .jsonObject
+    }
     return when (variants) {
         HostedVariants.None -> generated
         is HostedVariants.Intents -> {
@@ -82,6 +93,12 @@ private fun SerialDescriptor.toJsonSchema(
         PrimitiveKind.DOUBLE -> buildJsonObject { put("type", "number") }
         SerialKind.ENUM -> enumSchema(annotations)
         StructureKind.LIST -> arraySchema(annotations)
+        StructureKind.MAP ->
+            if (serialName.removeSuffix("?") == "kotlinx.serialization.json.JsonObject") {
+                OBJECT_SCHEMA_JSON.encodeToJsonElement(OpenObjectSchema.serializer(), OpenObjectSchema()).jsonObject
+            } else {
+                error("Unsupported canonical request descriptor kind $kind at $serialName")
+            }
         StructureKind.CLASS,
         StructureKind.OBJECT -> objectSchema()
         PolymorphicKind.SEALED -> sealedSchema()
@@ -174,6 +191,8 @@ private fun arrayVariant(
 }
 
 /** Property names and child schemas are the JSON Schema contract's dynamic boundary. */
+@Serializable private data class OpenObjectSchema(val type: String = "object", val additionalProperties: Boolean = true)
+
 @Serializable
 private data class GeneratedObjectSchemaDocument(
     val type: String = "object",
@@ -181,6 +200,8 @@ private data class GeneratedObjectSchemaDocument(
     val properties: Map<String, JsonElement>,
     val required: List<String>,
 )
+
+@Serializable private data class GeneratedUnionSchemaDocument(val oneOf: List<JsonElement>)
 
 private val OBJECT_SCHEMA_JSON = Json { encodeDefaults = true }
 

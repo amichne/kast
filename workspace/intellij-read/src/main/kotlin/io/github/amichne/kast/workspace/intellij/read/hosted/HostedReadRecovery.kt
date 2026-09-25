@@ -15,6 +15,14 @@ import kotlinx.serialization.json.JsonClassDiscriminator
 @JsonClassDiscriminator("kind")
 sealed interface HostedReadRecovery {
     @Serializable
+    @SerialName("increase_host_deadline")
+    data object IncreaseHostDeadline : HostedReadRecovery {
+        @kotlinx.serialization.EncodeDefault
+        val instruction: String =
+            "The host deadline expired during project admission or cached Gradle model capture, before semantic search. Inspect the kast_semantic_read stage and elapsed time; narrow search scope only after semantic search begins. Increase the host query, connection, and client exchange deadlines together if this project consistently needs more preparation time."
+    }
+
+    @Serializable
     @SerialName("after_state_change")
     class GradleModel private constructor() : HostedReadRecovery {
         companion object {
@@ -156,3 +164,8 @@ internal fun HostedQueryFailure.recovery(): HostedReadRecovery =
         HostedQueryFailure.INDEXING -> HostedReadRecovery.Indexing.Required
         else -> HostedReadRecovery.ReviewFailure
     }
+
+internal fun HostedQueryFailure.recovery(stage: HostedQueryStage): HostedReadRecovery =
+    if (this == HostedQueryFailure.BUDGET_EXCEEDED && stage.ordinal <= HostedQueryStage.MODEL_CAPTURE.ordinal)
+        HostedReadRecovery.IncreaseHostDeadline
+    else recovery()

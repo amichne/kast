@@ -4,9 +4,11 @@ title: Distribution and packaging
 description: Typed configuration and runtime identity contracts constrain managed installation effects, release assembly, and acceptance harnesses.
 resource: file://distribution
 tags: [distribution, configuration, packaging, release]
-timestamp: 2026-09-22T00:00:00Z
+timestamp: 2026-09-25T00:00:00Z
 code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/KastDaemonMain.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/McpWorkspaceOperationClient.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpSingleChangeTool.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationTrustEnrollment.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/PackagedProviderCatalog.kt
   - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/ControlDistributionAdmissionMain.kt
@@ -55,6 +57,8 @@ code_sources:
   - path: install.sh
   - path: packaging/codex-mcp-registration.py
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/McpWorkspaceOperationClient.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt
     symbols: [InstallationWorkflow]
@@ -66,7 +70,12 @@ code_sources:
   - path: packaging/test-installed-product.sh
   - path: packaging/run-installed-product.py
   - path: .github/scripts/release/build-assets.sh
+  - path: .github/scripts/release/ci-candidate.py
   - path: .github/scripts/release/publish-release.sh
+  - path: .github/scripts/release/publish-developer.sh
+  - path: .github/workflows/ci.yml
+  - path: .github/workflows/release.yml
+  - path: .github/workflows/developer-release.yml
 ---
 
 # Distribution and packaging
@@ -75,10 +84,25 @@ Distribution contracts own configuration keys, defaults, owners, operational lim
 
 Root and packaging scripts orchestrate checkout installation, persistent lifecycle, release layout, and acceptance. Stable releases and local checkout installations include a hosted-plugin ZIP named for the IDEA release line (`idea-262.zip`). Local installation builds the control product and matching hosted plugin before staging their checksums. The public installer verifies its checksum, release version, plugin identity, and descriptor release line before atomically replacing only the Kast directory under IDEA's user plugin root; dry-run validates the archive without writing plugin state. Installed-product acceptance also installs the assembled archive and plugin in a private session fixture, exercising the real installer and private service entry point. The checked [configuration schema](../../packaging/configuration-schema.json) is a public boundary and must remain aligned with the Kotlin catalogue.
 
+The control product also includes `kast-tool-rpc`. Installation publishes its configured `kast-tool-rpc-complete` wrapper alongside the existing command wrappers. The one-shot catalog and call interface is shared by Copilot CLI and Pi extensions without using an MCP connection.
+
+Successful main CI runs the routine preflight checks, then builds and retains one exact next-patch release candidate with the product gate at that version. Pull-request CI keeps its separate `0.0.0` product gate. Release reuses the main candidate only when its version and source revision match the requested release, the producing main-push CI run completed successfully, and the asset inventory, checksums, and SBOM source/archive identities validate. A missing candidate follows the existing exact-version build gate; an observed but invalid candidate rejects. Minor and major releases use that build path unless a matching candidate exists. The release workflow retains the admitted candidate before publishing.
+
+An explicitly dispatched developer workflow runs only from `main` and builds
+that dispatch's exact commit through the
+same product gate with a unique `0.0.<build>` version. Its read-only build job
+retains the candidate; a separate trusted publication job validates the asset
+inventory, checksums, and SBOM source identity before creating an immutable
+developer prerelease. The public `developer-latest` branch contains a
+mutable pointer to that exact prerelease and source revision. The installer
+accepts `--developer-latest` to resolve the pointer before downloading and
+verifying the versioned control and IDEA plugin assets. Stable release version
+resolution ignores developer tags.
+
 The public installer reports the selected IDEA product version and build before
 fetching release-line-specific plugin bytes. An absent matching plugin is a
 fail-closed compatibility result and precedes installation effects. Public installation enables the app-server suite and defaults the per-user login
-LaunchAgent on without a prompt. All installations are non-interactive; command collisions require explicit `--force` or manual removal.
+LaunchAgent on without a prompt. Persistent installation asks in a terminal whether to register a user-level Codex MCP entry. Explicit register and skip flags bypass that prompt; non-interactive installation defaults to registration for compatibility. Skipping registration does not inspect or mutate Codex configuration and still installs the MCP launcher. Command collisions require explicit `--force` or manual removal.
 Local session installation retains the complete payload and defers service activation.
 
 Hosted-only schema-2 installations retire their coordinator without invoking
@@ -131,9 +155,18 @@ Force plugin activation moves the exact same-user Kast plugin entry into private
 The public installer registers `kast-mcp-complete` once in user-level Codex MCP
 configuration. It checks for a foreign `kast` entry before replacing the selected
 installation and removes only its own entry on uninstall. Terminal Codex then
-discovers the exact Gradle root for each session. The MCP adapter uses the
-selected IDEA lifecycle and native workspace preparation on semantic demand;
-apply and recovery consume a separate one-use exact-plan approval grant.
+discovers the exact Gradle root for each session. Modern discovery or legacy
+initialization queues native preparation for that root using the selected IDEA
+lifecycle. Later semantic demand joins the same preparation and waits for exact
+readiness. The initialize response explains that wait, automatic linked-model
+reload, exact-reference reuse, relation coverage, continuations, and stage-specific
+recovery. The terminal MCP catalog does not expose manual refresh or
+`workspace_lifecycle`.
+Its `change` tool plans, signs the exact native challenge, applies, and verifies
+within one call, attempting recovery if application is unverified. The App Server exposes the same single `change` operation and signs its exact
+plan internally. If apply is cancelled, only a complete native `prior_state` or
+`rolled_back` recovery settles the invocation as known and releases the App
+Server workspace lane. Incomplete recovery leaves the lane protected.
 The app-server suite is always installed. Activation may still be pending with
 a finite reason when the host cannot start the service.
 

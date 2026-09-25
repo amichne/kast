@@ -41,6 +41,8 @@ code_sources:
     symbols: [SourceSnapshot]
   - path: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationFact.kt
     symbols: [RelationFact]
+  - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijK2SymbolIdentity.kt
+    symbols: [sourceBoundCallableIdentity]
   - path: traversal/contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalPlan.kt
     symbols: [TraversalPlan]
   - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPlan.kt
@@ -150,6 +152,10 @@ Read [semantic query](../flows/semantic-query.md) for execution order and [compi
 
 Native symbol/relation adapters accept an optional request-local observation capability. Finite counters and termination reasons distinguish name/candidate caps from work/time/result/byte budgets, and unresolved K2 symbols from resolved non-Kotlin PSI or non-Kotlin references. The hosted boundary owns default publication and records effective limits. The [synthetic reproduction report](../../docs/reviews/hosted-semantic-reproduction.md) records the original native causes and the corrected separation of subject selection from workspace expansion.
 
+For reference relations, a K2 identity that differs from the selected subject
+proves an indexed candidate is unrelated and is dismissed without an omission.
+An unavailable K2 identity still qualifies coverage as unresolved.
+
 The corrected scoped `ALL` path enumerates Kotlin declarations through the admitted file-type index without workspace name enumeration. Generated primary-constructor properties retain K2 property identity. Java reference endpoints retain compiler identity, and workspace expansion preserves original subject restrictions separately from destination admission. [Read-limit settings](../../docs/hosted-read-configuration.md) tune operational bounds while default logs preserve stages, outcomes and their effective values.
 
 Search planning applies cheap scope and declaration-family constraints before
@@ -212,10 +218,11 @@ a changed context yields `SOURCE_SNAPSHOT_MISMATCH`; a changed request yields
 
 Kotlin one-hop calls use an explicit lexical ownership boundary. Calls in local
 property initializers belong to the enclosing callable. A named nested function
-keeps its own owner even when that owner cannot become a relation endpoint;
-callers do not climb past it. Both directions refine a literal lambda boundary
-only when a successful K2 call maps that argument to an ordinary function
-parameter of the selected inline callable. Each intervening boundary must pass;
+keeps its own owner; callers do not climb past it. A K2-resolved function without
+a global callable ID receives a source-bound identity from its exact file and
+declaration position plus its compiler signature. Both directions refine a
+literal lambda boundary only when a successful K2 call maps that argument to an
+ordinary function parameter of the selected inline callable. Each intervening boundary must pass;
 returned/stored lambdas, non-inline callbacks, `noinline`, `crossinline`, and
 accessors remain unsupported. Unresolved/ambiguous argument mappings retain
 `UNRESOLVED_TARGET`. The admitted named owner survives until endpoint projection;

@@ -32,11 +32,12 @@ object CanonicalQueryCliDocuments {
             complete = { result, live ->
                 completeFactory.create(
                     QueryCompleteCliDocument(
-                        CanonicalOperation.QUERY_RUN.id.value,
-                        "complete",
-                        result.items.values.map(QueryResultItemDocument::toCliDocument),
-                        result.failures.values.map(QueryItemFailureDocument::toCliDocument),
-                        result.executionBudget,
+                        operation = CanonicalOperation.QUERY_RUN.id.value,
+                        status = "complete",
+                        items = result.items.values.map(QueryResultItemDocument::toCliDocument),
+                        failures = result.failures.values.map(QueryItemFailureDocument::toCliDocument),
+                        coverage = QueryCoverageCliDocument(exhaustive = true),
+                        executionBudget = result.executionBudget,
                         referenceAcquisitions = result.referenceAcquisitions,
                         live = live,
                     )
@@ -45,18 +46,20 @@ object CanonicalQueryCliDocuments {
             qualified = { result, qualification, live ->
                 qualifiedFactory.create(
                     QueryQualifiedCliDocument(
-                        CanonicalOperation.QUERY_RUN.id.value,
-                        "qualified",
-                        result.items.values.map(QueryResultItemDocument::toCliDocument),
-                        result.failures.values.map(QueryItemFailureDocument::toCliDocument),
-                        QueryQualificationCliDocument(
-                            qualification.knownMinimum.value,
-                            qualification.limitations.map(Enum<*>::cliName),
-                            qualification.progress,
-                        ),
-                        qualification.progress.continuationToken?.value,
-                        qualification.progress.terminalReason?.cliName(),
-                        result.executionBudget,
+                        operation = CanonicalOperation.QUERY_RUN.id.value,
+                        status = "qualified",
+                        items = result.items.values.map(QueryResultItemDocument::toCliDocument),
+                        failures = result.failures.values.map(QueryItemFailureDocument::toCliDocument),
+                        coverage = QueryCoverageCliDocument(exhaustive = false),
+                        qualification =
+                            QueryQualificationCliDocument(
+                                qualification.knownMinimum.value,
+                                qualification.limitations.map(Enum<*>::cliName),
+                                qualification.progress,
+                            ),
+                        continuation = qualification.progress.continuationToken?.value,
+                        terminalReason = qualification.progress.terminalReason?.cliName(),
+                        executionBudget = result.executionBudget,
                         referenceAcquisitions = result.referenceAcquisitions,
                         live = live,
                     )
@@ -82,6 +85,7 @@ private data class QueryCompleteCliDocument(
     val status: String,
     val items: List<QueryResultItemCliDocument>,
     val failures: List<QueryItemFailureCliDocument>,
+    val coverage: QueryCoverageCliDocument,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     @SerialName("execution_budget")
     val executionBudget: ExecutionBudgetReport? = null,
@@ -98,6 +102,7 @@ private data class QueryQualifiedCliDocument(
     val status: String,
     val items: List<QueryResultItemCliDocument>,
     val failures: List<QueryItemFailureCliDocument>,
+    val coverage: QueryCoverageCliDocument,
     val qualification: QueryQualificationCliDocument,
     val continuation: String?,
     @SerialName("terminal_reason") val terminalReason: String?,
@@ -110,6 +115,8 @@ private data class QueryQualifiedCliDocument(
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val live: LiveReadCliEvidence? = null,
 )
+
+@Serializable data class QueryCoverageCliDocument(val exhaustive: Boolean)
 
 @Serializable
 private data class QueryRejectedCliDocument(

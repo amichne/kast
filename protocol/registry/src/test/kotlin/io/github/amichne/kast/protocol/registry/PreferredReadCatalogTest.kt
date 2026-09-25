@@ -23,7 +23,7 @@ class PreferredReadCatalogTest {
         assertFalse(
             CanonicalAgentToolDefinitions.all.any { it.name.value in setOf("semantic_query", "impact_analyze") }
         )
-        assertEquals(11, CanonicalAgentToolDefinitions.all.size)
+        assertEquals(9, CanonicalAgentToolDefinitions.all.size)
     }
 
     @Test

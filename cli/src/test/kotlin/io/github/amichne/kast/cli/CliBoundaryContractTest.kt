@@ -82,6 +82,7 @@ class CliBoundaryContractTest {
                             CanonicalOperation.WORKSPACE_LIFECYCLE,
                             CanonicalOperation.QUERY_RUN,
                             CanonicalOperation.DIAGNOSTIC_CHECK,
+                            CanonicalOperation.CHANGE,
                         )
                 }
                 .toSet(),

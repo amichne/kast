@@ -33,19 +33,18 @@ Passing one boundary does not establish another.
 - Runtime evidence retains the complete observed build identities.
 - Protocol, schema, and artifact-integrity checks remain exact.
 
-## Installed agent contract
+## Installed client contracts
 
-Admit the hosted tool definitions supplied by the connected Codex App Server
-provider for the enrolled workspace.
-
-| Contract | Version |
+| Connection | Discover the installed tools |
 | --- | --- |
-| Hosted tool catalog | Admitted at thread start |
+| Direct MCP | Call `tools/list` in the client session. |
+| Tool RPC | Run `kast-tool-rpc-complete catalog` from the selected repository. |
+| Codex App Server | Use the provider catalog supplied for the connected conversation. |
 
-- Validate the catalog, schemas, and policies at provider startup.
-- Bind hosted invocations by tool name because several tools share an operation.
-- Invoke `workspace_lifecycle` through the connected provider.
-- Follow [Harness integration](/agent-harnesses) for the full sequence.
+Use the catalog and schemas from the installed release. After an upgrade, let
+the client discover them again. [Connect an agent client](/agent-harnesses)
+compares these paths; the [MCP](/reference/mcp-catalog) and
+[RPC](/reference/rpc-catalog) pages list the direct tools.
 
 <Note>
   The Codex App Server integration remains a preview, and full Desktop UI
@@ -62,7 +61,7 @@ for the tested boundary.
 
 1. Run the [installer](/start) for the selected release.
 2. Restart IDEA so the matched plugin loads.
-3. Requalify the agent catalog.
+3. Restart the client or rediscover its tool catalog.
 
 The installer verifies control and plugin payloads before activation.
 

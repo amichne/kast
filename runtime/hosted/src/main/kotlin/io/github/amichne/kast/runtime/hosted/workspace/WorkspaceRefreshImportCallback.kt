@@ -1,6 +1,7 @@
 package io.github.amichne.kast.runtime.hosted.workspace
 
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.externalSystem.model.DataNode
 import com.intellij.openapi.externalSystem.model.project.ProjectData
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskId
@@ -13,6 +14,10 @@ import com.intellij.openapi.externalSystem.service.project.ExternalProjectRefres
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 /** The import callback omits cancellation; the task listener supplies that terminal signal after native work ends. */
 internal class WorkspaceRefreshImportCallback(
@@ -40,11 +45,18 @@ internal class WorkspaceRefreshImportCallback(
 
             override fun onEnd(id: ExternalSystemTaskId) = completion.ended(id)
         }
-    private val completion: WorkspaceRefreshImportCompletion = WorkspaceRefreshImportCompletion { result ->
-        manager.removeNotificationListener(listener)
-        if (!Disposer.isDisposed(this)) Disposer.dispose(this)
-        complete(result)
-    }
+    private val completion: WorkspaceRefreshImportCompletion =
+        WorkspaceRefreshImportCompletion(
+            complete = { result ->
+                manager.removeNotificationListener(listener)
+                if (!Disposer.isDisposed(this)) Disposer.dispose(this)
+                complete(result)
+            },
+            observe = { observation ->
+                Logger.getInstance(WorkspaceRefreshImportCallback::class.java)
+                    .info("kast_workspace_import " + Json.encodeToString(observation))
+            },
+        )
 
     init {
         manager.addNotificationListener(listener)
@@ -73,7 +85,10 @@ internal class WorkspaceRefreshImportCallback(
 }
 
 /** Exactly one terminal signal; resolver success alone does not prove that imported data was applied. */
-internal class WorkspaceRefreshImportCompletion(private val complete: (WorkspaceRefreshEffectResult) -> Unit) {
+internal class WorkspaceRefreshImportCompletion(
+    private val complete: (WorkspaceRefreshEffectResult) -> Unit,
+    private val observe: (WorkspaceRefreshImportObservation) -> Unit,
+) {
     private sealed interface State {
         data object Waiting : State
 
@@ -105,6 +120,19 @@ internal class WorkspaceRefreshImportCompletion(private val complete: (Workspace
     fun finished(result: WorkspaceRefreshEffectResult) {
         if (state == State.Finished) return
         state = State.Finished
+        observe(WorkspaceRefreshImportObservation(outcome = result))
         complete(result)
     }
+}
+
+@Serializable
+internal data class WorkspaceRefreshImportObservation(
+    @EncodeDefault(EncodeDefault.Mode.ALWAYS)
+    val stage: WorkspaceRefreshImportStage = WorkspaceRefreshImportStage.IMPORT_CALLBACK,
+    val outcome: WorkspaceRefreshEffectResult,
+)
+
+@Serializable
+internal enum class WorkspaceRefreshImportStage {
+    IMPORT_CALLBACK
 }

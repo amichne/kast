@@ -32,16 +32,19 @@ See [Read a response](/reference/responses) for field names and result layers.
 
 | Symptom | First action |
 | --- | --- |
-| Tools are missing in terminal Codex | Run `codex mcp get kast`, then start a fresh `codex` session in the repository. |
+| Tools are missing in terminal Codex | Run `codex mcp list --json` to inspect the effective `kast` entry, then start a fresh `codex` session in the repository. |
+| Copilot CLI or Pi cannot load Kast tools | Check that the installed adapter and `kast-tool-rpc-complete` exist; see [Tool RPC catalog](/reference/rpc-catalog). |
 | Outer `status: rejected` | Preserve `diagnostic.boundary` and `diagnostic.reason`; collect status below. |
 | The document rejects | Follow its finite reason. Open the intended IDEA project or correct the named input as appropriate. |
 | The answer is qualified | Read limitations and item failures. Narrow scope or relation expansion before increasing bounds. |
+| `BUDGET_EXCEEDED` | Inspect the rejected stage and `execution_budget`, then check `kast_semantic_read` stage durations. A capture or readiness delay can exhaust the host deadline before search starts; its recovery is `increase_host_deadline`. A semantic timeout instead reports `reduce_read_work`. |
+| `MODEL_CAPTURE_REJECTED` | Inspect the finite capture cause. For `CAPTURE_LIMIT`, compare the receipt's IDEA module count with the effective `MODEL_MODULES` limit; apply a larger admitted IDE setting only when the project needs it. |
 | A reference is stale | Search again and reuse the new token unchanged. |
 | A change response is lost or uncertain | Keep the plan ID and durable records; follow [Change recovery](/change#recover-an-interrupted-change). |
 
 ## Collect status from the same repository
 
-For terminal Codex, run `codex mcp get kast` and retry the semantic call after
+For terminal Codex, run `codex mcp list --json` and retry the semantic call after
 resolving the reported IDEA blocker. The installed configuration and service logs are under
 `${XDG_DATA_HOME:-$HOME/.local/share}/kast/current`.
 
@@ -66,19 +69,38 @@ For `GRADLE_MODEL_UNAVAILABLE`, expect recovery to identify:
 - required state `CACHED_GRADLE_MODEL_COMPLETE`
 - observation `OBSERVE_IDE_GRADLE_MODEL`
 
-1. Inspect IDEA's existing Gradle project state.
-2. Wait for that state to change.
-3. Check status again.
-4. Retry after admission becomes ready.
+The installed read path waits for an active import. If the imported model is
+still unavailable, it requests one linked-project reload. If this fails,
+inspect IDEA's Gradle error and the returned lifecycle failure before retrying.
 
 A missing cached model does not prove that import is running.
 
-The installed Codex MCP server prepares the IDEA project when a semantic read
-arrives. If IDEA rejects or stalls during Gradle import, the read returns a
-failure rather than an empty successful search. In the older app-server
-connection, an agent can request an explicit refresh through `workspace_lifecycle`.
+The installed Kast service prepares the IDEA project for direct tool calls.
+If IDEA rejects or stalls during Gradle import, the read returns a
+failure rather than an empty successful search. The app-server
+`workspace_lifecycle` tool remains available for explicitly requested control.
 
 Older output without `recovery` provides no automated retry instruction.
+
+Normal terminal MCP reads prepare the exact project and wait for indexing inside
+the call. If the cached Gradle model is missing and no import is active, Kast
+requests one linked-project reload and waits for its admission. For an explicit
+`workspace_lifecycle` operation in a connected app-server session, call `status`
+with its returned request ID until the exact project is ready or a finite
+failure is reported. A pending result does not establish a failed search.
+If indexing starts between preparation and read admission, Kast waits briefly
+for smart mode and retries once when semantic evaluation has not begun.
+The host also refreshes the project VFS and waits for its completion before
+semantic dispatch, including while IDEA is in the background. An unavailable
+root returns `IO_UNAVAILABLE`; a refresh deadline returns `DEADLINE_EXCEEDED`.
+Kast saves unsaved editor buffers under the selected project root before this
+refresh. A buffer that cannot be saved returns `UNSAVED_DOCUMENTS`; buffers in
+other projects are left alone. A changed Gradle input blocks semantic dispatch
+until the coordinator completes native model import and retries a safe read once.
+An import failure remains a finite rejection. When a relation is `qualified`, keep its known facts and omission
+reasons. Resume only when a continuation is returned; terminal incomplete
+coverage has no resumable upstream work. `read_relations` can find callees in
+another package even when the subject was found with a narrow discovery scope.
 
 If Codex MCP registration fails, the installer reports the collision or
 configuration failure. The older private `kast-service register` action writes
@@ -86,16 +108,21 @@ a finite reason to stderr.
 
 Set `KAST_DEBUG=1` for bounded launch-stage output.
 
-## Refresh an already linked workspace
+## Automatic refresh of a linked workspace
 
-Use file refresh to make external file changes visible, or Gradle model reload after changing dependencies or modules. The project must already be open, trusted and linked at the selected root. Save your editor changes first; Kast does not save or discard them. In a connected agent session, call `workspace_lifecycle` with `inspect`, then `sync` using its exact project `target`, a new `requestId`, and `FILE_REFRESH` or `GRADLE_MODEL_RELOAD`. Poll a pending result with `status` and the same request ID. A deadline or failed import remains an explicit failure. Search again after refresh to acquire current references.
-
-Automatic refresh is off for every new IDE host. To opt in for one exact Gradle task executed successfully by IDEA, call `workspace_lifecycle` with `configure_sync`, the exact project `target`, a new `requestId`, and a `task_success` rule. Use an `off` rule to disable it. The rule applies to that project and matches an invocation containing exactly the selected task. Terminal builds and Gradle imports do not trigger it. See [workspace lifecycle](/workspaces) for the input and result variants.
+Ordinary reads save project-owned editor buffers and wait for native incremental
+recursive VFS refresh before semantic admission. Explicit workspace file refresh
+forces disk reconciliation for external writes. Kast waits for a missing cached Gradle
+model through native import and requests one linked-project reload on first
+attach, after changed Gradle inputs, or when the cached model is missing.
+Agents do not choose `FILE_REFRESH` or `GRADLE_MODEL_RELOAD` through
+`workspace_lifecycle`. An import failure remains a finite blocker; inspect the
+IDE's Gradle error, correct its cause, and retry the semantic operation.
 
 ## Resolve the common boundaries
 
 <AccordionGroup>
-  <Accordion title="The Codex integration cannot start">
+  <Accordion title="The Codex App Server connection cannot start">
     - Register the intended Kotlin Gradle root through the private service control.
     - Verify the selected installation and connected Codex client.
     - Remove retired `KAST_ENABLE_APP_SERVER` and `KAST_APP_SERVER_TOOLS` assignments.
@@ -123,7 +150,7 @@ Automatic refresh is off for every new IDE host. To opt in for one exact Gradle 
   <Accordion title="The broker reports WORKSPACE_RECOVERY_REQUIRED">
     1. Retain the invocation journal, thread store, and IDE change records.
     2. Replace the broker.
-    3. Request fresh exact-plan recovery approval.
+    3. Preserve the plan identity and recovery evidence for manual repair.
 
     Broker replacement does not undo an effect or permit replay.
 

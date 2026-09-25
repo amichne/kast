@@ -64,13 +64,27 @@
         ]
       },
       {
-        "tab": "Tool contracts",
+        "tab": "How Kast works",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "concepts/architecture",
+              "concepts/background-startup"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Tool catalog",
         "openapi": "reference/callables.openapi.json",
         "groups": [
           {
             "group": "Integration",
             "pages": [
               "agent-harnesses",
+              "reference/mcp-catalog",
+              "reference/rpc-catalog",
               "workspaces",
               "POST /callables/workspace_lifecycle"
             ]
@@ -93,9 +107,7 @@
           {
             "group": "Change source",
             "pages": [
-              "POST /callables/change_plan",
-              "POST /callables/change_apply",
-              "POST /callables/change_recover"
+              "POST /callables/change"
             ]
           },
           {
@@ -144,7 +156,7 @@
             "href": "/start"
           },
           {
-            "label": "Agent harnesses",
+            "label": "Connect a client",
             "href": "/agent-harnesses"
           }
         ]

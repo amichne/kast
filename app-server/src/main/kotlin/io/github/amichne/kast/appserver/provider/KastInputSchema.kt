@@ -10,7 +10,7 @@ internal fun closedKastInputSchema(document: JsonObject): Boolean =
     closedObject(document) || closedAlternatives(document["anyOf"]) || closedAlternatives(document["oneOf"])
 
 private fun closedAlternatives(element: JsonElement?): Boolean =
-    element is JsonArray && element.isNotEmpty() && element.all { it is JsonObject && closedObject(it) }
+    element is JsonArray && element.isNotEmpty() && element.all { it is JsonObject && closedKastInputSchema(it) }
 
 private fun closedObject(document: JsonObject): Boolean =
     document["type"] == JsonPrimitive("object") && document["additionalProperties"] == JsonPrimitive(false)

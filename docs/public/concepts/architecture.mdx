@@ -1,0 +1,58 @@
+---
+type: "Concept"
+title: "How Kast runs"
+description: "A short map of the client, Kast service, and IntelliJ IDEA processes."
+resource: "file://docs/public/concepts/architecture.mdx"
+tags: ["architecture", "processes", "IntelliJ"]
+timestamp: "2026-09-25T00:00:00-04:00"
+code_sources:
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt"
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt"
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt"
+  - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledWorkspacePreparation.kt"
+  - path: "app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/IdeLifecycleClient.kt"
+  - path: "runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleApplication.kt"
+icon: "workflow"
+keywords: ["architecture", "startup", "background IntelliJ", "daemon"]
+---
+
+Kast lets an agent ask questions about the Kotlin project in IntelliJ IDEA.
+The agent connection carries the request; IDEA's Kast plugin uses the open
+project and its compiler state to answer it.
+
+```mermaid
+flowchart TB
+  Client[Agent client] -->|MCP session or tool RPC call| Bridge[Kast client process]
+  Client -->|optional Codex App Server connection| Broker[Kast App Server]
+  Bridge -->|prepare workspace| Service[Kast service]
+  Broker -->|prepare workspace| Service
+  Service -->|open or reuse project| IDE[IntelliJ IDEA with Kast plugin]
+  Bridge -->|semantic request| IDE
+  Broker -->|semantic request| IDE
+  IDE --> Project[Open Kotlin Gradle project]
+```
+
+The installer sets up a per user Kast service. It can remain available between
+agent sessions. The direct MCP process belongs to one client session; an RPC
+process handles one `catalog` or `call`. The optional Codex App Server
+connection manages its own conversations and asks the same service to prepare
+workspaces. Semantic requests then use the IDEA plugin's project state. The
+selected IDEA application owns project opening and evaluation.
+
+## What happens on the first request
+
+Kast finds the exact Gradle root from the client's working directory. For MCP,
+preparation starts with the first valid protocol request. An RPC tool call starts
+preparation for its request. The service attaches to the selected IDEA when it
+is running or launches it in the background, then opens the requested project.
+Kast waits for the Gradle model and indexing before a compiler backed answer.
+Later calls reuse the prepared project when it is still valid.
+
+The IDE is launched without deliberately taking focus. You may still need to
+respond in IDEA if it asks whether to trust a project or reports an import or
+save problem. Kast returns a specific failure when it cannot establish the
+required state.
+
+[Background startup](/concepts/background-startup) follows those stages in
+more detail. [Connect an agent client](/agent-harnesses) compares the public
+connections.

@@ -3,6 +3,7 @@
 import hashlib
 import io
 import json
+import os
 from pathlib import Path
 import platform
 import re
@@ -100,7 +101,12 @@ done
         self.write_script(self.installer, '''#!/bin/bash
 set -eu
 echo install >> "$TEST_LOG"
-for argument in "$@"; do [[ "$argument" != --force ]] || echo force-requested >> "$TEST_LOG"; done
+for argument in "$@"; do
+  case "$argument" in
+    --force) echo force-requested >> "$TEST_LOG" ;;
+    --skip-codex-mcp) echo skip-codex-mcp-requested >> "$TEST_LOG" ;;
+  esac
+done
 plugin="kast-ide-hosted-v$KAST_VERSION-idea-262.zip"
 [[ -f "$KAST_INSTALL_ASSETS_DIRECTORY/$plugin" && -f "$KAST_INSTALL_ASSETS_DIRECTORY/$plugin.sha256" ]] || exit 32
 (cd "$KAST_INSTALL_ASSETS_DIRECTORY" && shasum -a 256 -c "$plugin.sha256") >&2
@@ -177,6 +183,11 @@ physical=$(cd "$KAST_INSTALL_ROOT/current" && pwd -P)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("force-requested\n", (self.root / "calls").read_text())
 
+    def test_codex_mcp_choice_is_forwarded_to_persistent_installer(self):
+        result = self.run_install("persistent", "--skip-codex-mcp")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("skip-codex-mcp-requested\n", (self.root / "calls").read_text())
+
     def test_non_public_checkout_options_have_no_effects(self):
         for args in (
             ("unknown",),
@@ -212,6 +223,7 @@ class BootstrapInstallTest(IsolatedInstallerTest):
         super().setUp()
         self.write_script(self.fixture.root / "tools/codex", '''#!/bin/bash
 set -eu
+printf '%s\n' "$*" >> "$MCP_LOG"
 if [[ "$1" == mcp && "$2" == list && "${3:-}" == --json ]]; then
   printf '[]\\n'
 elif [[ "$1" == mcp && "$2" == add ]]; then
@@ -220,6 +232,7 @@ else
   exit 2
 fi
 ''')
+        self.env["MCP_LOG"] = str(self.root / "mcp-calls")
         self.idea = self.root / "IDEA.app/Contents"
         for child in ("Resources", "plugins/Kotlin", "jbr/Contents/Home/bin"):
             (self.idea / child).mkdir(parents=True)
@@ -309,6 +322,18 @@ PYTHON
             text=True,
         )
 
+    def run_interactive_installer(self, answer):
+        master, slave = os.openpty()
+        try:
+            os.write(master, answer.encode())
+            return subprocess.run(
+                ["/bin/bash", str(PUBLIC_INSTALLER), "--idea-home", str(self.idea)],
+                env=self.env, stdin=slave, capture_output=True, text=True, timeout=10,
+            )
+        finally:
+            os.close(master)
+            os.close(slave)
+
     def write_control_with_member_count(self, member_count):
         launcher = (self.product / "bin/kast").read_bytes()
         with tarfile.open(self.control, "w:gz") as archive:
@@ -365,9 +390,29 @@ PYTHON
     def test_programmatic_plugin_install_uses_verified_release_line_archive(self):
         result = self.run_installer()
         self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("mcp add kast", (self.root / "mcp-calls").read_text())
         installed = self.root / "Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted"
         self.assertTrue((installed / "lib/kast-ide-hosted-1.2.3.jar").is_file())
         self.assertIn("Restart IntelliJ IDEA", result.stderr)
+
+    def test_skip_codex_mcp_installs_without_inspecting_or_registering_codex(self):
+        (self.fixture.root / "tools/codex").unlink()
+        result = self.run_installer("--skip-codex-mcp")
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertFalse((self.root / "mcp-calls").exists())
+        self.assertTrue((self.root / "install/current/bin/kast-mcp-complete").is_file())
+
+    def test_interactive_decline_skips_codex_mcp_registration(self):
+        result = self.run_interactive_installer("n\n")
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("Register a user-level Kast MCP server in Codex? [Y/n]", result.stderr)
+        self.assertFalse((self.root / "mcp-calls").exists())
+
+    def test_interactive_acceptance_registers_codex_mcp(self):
+        result = self.run_interactive_installer("\n")
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("Register a user-level Kast MCP server in Codex? [Y/n]", result.stderr)
+        self.assertIn("mcp add kast", (self.root / "mcp-calls").read_text())
 
     def test_staged_installer_receives_no_tool_selection(self):
         self.env.pop("KAST_APP_SERVER_TOOLS", None)

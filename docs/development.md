@@ -87,21 +87,25 @@ complete selectors, resource reductions and observed limits.
 
 ## Build and install the checkout
 
-Prepare the same Python test dependencies used by CI before running Gradle:
+Gradle provisions the pinned Python dependencies for its schema tests in
+`build/python-tests/env`. The build does not depend on the active shell's Python
+packages or the interpreter search path retained by an existing Gradle daemon.
+
+Install the repository's pre-push gate once per Git clone. It preserves other
+hooks and runs `productBuildGate` on a clean checked-out commit before a push:
 
 ```shell
-python3.12 -m venv .venv
-source .venv/bin/activate
-python -m pip install -r experiments/host-observation/requirements-test.txt
+./.githooks/install.sh
 ```
 
-Keep that environment active for the build. Use a fresh Gradle process so Python
-checks inherit its executable search path; a daemon started before activation can
-retain the earlier interpreter.
+After a change reaches `main`, publish its tested artifacts before a stable
+release with `gh workflow run developer-release.yml --ref main`. The public
+installer's `--developer-latest` flag selects the immutable build named by the
+channel pointer.
 
 ```shell
-./gradlew --no-daemon build
-./gradlew --no-daemon assembleRelease
+./gradlew build
+./gradlew assembleRelease
 ```
 
 Dependency verification uses the checked `gradle/verification-metadata.xml` in strict mode.
@@ -112,6 +116,7 @@ metadata still require checked SHA-256 values. Source attachments are not checke
 tampering; do not treat them as evidence for release provenance. For an intentional
 dependency update, review newly generated checksums against the publisher before
 committing the metadata; keep verification enabled for builds and IDE sync.
+A successful CLI build does not establish that IDEA imported the Gradle model.
 
 Choose a local installation from the repository root:
 
@@ -127,6 +132,8 @@ Both modes build the working tree, including uncommitted changes, and verify the
 matched control and IDEA plugin archives. Restart IDEA to load the plugin.
 Session mode isolates configuration and broker sockets, disables persistent
 services, and keeps temporary files under `$KAST_SESSION_ROOT`.
+It still stages the Kast plugin in the selected IDEA profile. Restore the
+persistent plugin before the next IDEA restart when leaving a session install.
 
 Run persistent installation from a shell without an active Kast session. It
 honors `KAST_INSTALL_ROOT` and `KAST_BIN_DIR`, stops the previous installed App

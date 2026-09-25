@@ -110,6 +110,8 @@ class InstalledBrokerServerTest {
                         as InstalledBrokerServerConfiguration.Configured)
                     .options
 
+            assertEquals(user, configured(base).kastOptions.userHome)
+
             assertEquals(
                 listOf(
                     "-c",
@@ -368,9 +370,7 @@ class InstalledBrokerServerTest {
                         "read_relations",
                         "traverse_relations",
                         "check_diagnostics",
-                        "change_plan",
-                        "change_apply",
-                        "change_recover",
+                        "change",
                     ),
                     kastNamespace.getValue("tools").jsonArray.map { tool ->
                         tool.jsonObject.getValue("name").jsonPrimitive.content

@@ -15,11 +15,14 @@ import org.jetbrains.kotlin.cli.jvm.compiler.EnvironmentConfigFiles
 import org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment
 import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
 import org.jetbrains.kotlin.config.CompilerConfiguration
+import org.jetbrains.kotlin.psi.KtCallElement
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtPsiFactory
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNotEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Test
@@ -27,6 +30,22 @@ import org.junit.jupiter.api.io.TempDir
 
 /** PSI-only lexical policy proof. K1 supplies the parser; this does not claim K2 resolution. */
 class KotlinCallOwnershipTest {
+    @Test
+    fun `local callable identity retains its file and exact declaration position`(@TempDir home: Path) =
+        withParser(home) { factory ->
+            val file = factory.createFile("fun outer() { val instance = object { fun run() {} ; fun stop() {} } }")
+            val members = PsiTreeUtil.findChildrenOfType(file, KtNamedFunction::class.java)
+            val run = members.single { it.name == "run" }
+            val stop = members.single { it.name == "stop" }
+            val runIdentity = run.sourceBoundCallableIdentity("file:///workspace/Probe.kt")
+            val stopIdentity = stop.sourceBoundCallableIdentity("file:///workspace/Probe.kt")
+            assertNotNull(runIdentity)
+            assertNotNull(stopIdentity)
+            assertNotEquals(runIdentity, stopIdentity)
+            assertEquals(runIdentity, run.sourceBoundCallableIdentity("file:///workspace/Probe.kt"))
+            assertNotEquals(runIdentity, run.sourceBoundCallableIdentity("file:///workspace/Other.kt"))
+        }
+
     @Test
     fun `local initializers share callable ownership and lambdas retain deferred boundaries`(@TempDir home: Path) =
         withParser(home) { factory ->
@@ -71,6 +90,45 @@ class KotlinCallOwnershipTest {
             observation.counts,
         )
     }
+
+    @Test
+    fun `anonymous object construction belongs to enclosing callable while member body stays nested`(
+        @TempDir home: Path
+    ) =
+        withParser(home) { factory ->
+            val file =
+                factory.createFile(
+                    "fun outer() { val loader = object : ClassLoader() { " +
+                        "override fun loadClass(name: String): Class<*> = target() }; use(loader) }"
+                )
+            assertNull(PsiTreeUtil.findChildOfType(file, PsiErrorElement::class.java))
+            val outer = file.declarations.single() as KtNamedFunction
+            val calls = PsiTreeUtil.findChildrenOfType(file, KtCallElement::class.java)
+            val member =
+                PsiTreeUtil.findChildrenOfType(file, KtNamedFunction::class.java).single { it.name == "loadClass" }
+            assertSame(
+                outer,
+                (calls.single { it.calleeExpression?.text == "ClassLoader" }.nearestDeclaration()
+                        as ContainingDeclaration.Found)
+                    .declaration,
+            )
+            assertEquals(
+                "ClassLoader",
+                calls.single { it.calleeExpression?.text == "ClassLoader" }.calleeReferenceSite()?.text,
+            )
+            assertSame(
+                member,
+                (calls.single { it.calleeExpression?.text == "target" }.nearestDeclaration()
+                        as ContainingDeclaration.Found)
+                    .declaration,
+            )
+            assertSame(
+                outer,
+                (calls.single { it.calleeExpression?.text == "use" }.nearestDeclaration()
+                        as ContainingDeclaration.Found)
+                    .declaration,
+            )
+        }
 
     @Test
     fun `owner admission preserves named proof and finite unavailable observations`(@TempDir home: Path) =

@@ -288,7 +288,9 @@ def render_tools(authority: dict) -> dict[Path, str]:
         for kind, kotlin in [('string', 'ProtocolText'), ('boolean', 'Boolean'), ('integer', 'Int')]:
             if tagged_type(spec, kind): return kotlin + nullable_suffix
         raise ValueError(f'Unsupported facade schema {spec}')
-    lines = [HEADER.replace('query.schema.json', 'tools.schema.json'),
+    lines = [HEADER.replace('query.schema.json', 'tools.schema.json')
+             .replace('@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)',
+                      '@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)\n@file:Suppress("ConstructorParameterNaming")'),
              'import io.github.amichne.kast.protocol.registry.PublicToolIdentity\n',
              'import kotlinx.serialization.json.*\n\n',
              'internal sealed interface PublicToolDocument\n\n']
@@ -306,7 +308,14 @@ def render_tools(authority: dict) -> dict[Path, str]:
             body.append(annotation + f'internal data class PublicTool{key}(\n')
             for prop, value in props:
                 resolved = definitions[value['$ref'].split('/')[-1]] if '$ref' in value else value
-                default = ' = null' if prop not in spec.get('required', []) and nullable(resolved) else ''
+                default = ''
+                if prop not in spec.get('required', []):
+                    if typ(value, prop).endswith('?'):
+                        default = ' = null'
+                    elif isinstance(resolved.get('default'), bool):
+                        default = ' = ' + str(resolved['default']).lower()
+                    else:
+                        raise ValueError(f'Optional facade field lacks a supported default: {key}.{prop}')
                 parameter = prop
                 if 'x-kotlin-type' in resolved and '_' in prop:
                     parameter = prop.split('_')[0] + ''.join(part.title() for part in prop.split('_')[1:])
@@ -384,7 +393,7 @@ def render_tools(authority: dict) -> dict[Path, str]:
         strict = project(schema, strict=True)
         outputs[RESOURCES / (tool['name'] + '.parameters.json')] = json.dumps(full, indent=2) + '\n'
         outputs[RESOURCES / (tool['name'] + '.openai-parameters.json')] = json.dumps(strict, indent=2) + '\n'
-        registrations.append(dict(type='function', name=tool['name'], description=tool['description'], inputSchema=strict, deferLoading=tool['deferLoading']))
+        registrations.append(dict(type='function', name=tool['name'], description=tool['description'], inputSchema=full, deferLoading=tool['deferLoading']))
         responses.append(dict(type='function', name='kast_' + tool['name'], description=tool['description'], parameters=strict, strict=True))
     outputs[RESOURCES / 'tools.app-server.json'] = json.dumps(dict(type='namespace', name='kast', tools=registrations), indent=2) + '\n'
     outputs[RESOURCES / 'tools.responses.json'] = json.dumps(responses, indent=2) + '\n'

@@ -6,9 +6,7 @@ import java.nio.file.attribute.PosixFilePermissions
 import java.security.KeyPairGenerator
 import java.security.Signature
 import java.util.Base64
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -18,35 +16,8 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
-class McpApprovalStoreTest {
+class McpChallengeSignerTest {
     @TempDir lateinit var temporary: Path
-
-    @Test
-    fun `approved plan is consumed once for the same root and operation`() {
-        val home = Files.createDirectory(temporary.resolve("home"))
-        Files.createDirectory(
-            home.resolve(".kast"),
-            PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------")),
-        )
-        val root = Files.createDirectory(temporary.resolve("project")).toRealPath()
-        val plan = "a".repeat(64)
-        val store = McpApprovalStore(home)
-        val challenge =
-            ApprovalChallenge(
-                1,
-                "CHANGE_APPLY",
-                root.toString(),
-                "host",
-                plan,
-                "b".repeat(64),
-                ApprovalPreview("File.kt", "@@ -1 +1 @@"),
-            )
-        assertTrue(store.put("apply", root, challenge, "signed-assertion"))
-        val arguments = Json.encodeToJsonElement(TestPlanIdentity("plan:$plan")).jsonObject
-        assertNull(store.take("change_recover", arguments, root))
-        assertEquals("signed-assertion", store.take("change_apply", arguments, root))
-        assertNull(store.take("change_apply", arguments, root))
-    }
 
     @Test
     @Suppress("LongMethod")
@@ -106,5 +77,3 @@ class McpApprovalStoreTest {
         assertNull(McpApprovalHelper.sign(home, challenge))
     }
 }
-
-@Serializable private data class TestPlanIdentity(val planIdentity: String)

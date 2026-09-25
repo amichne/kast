@@ -14,6 +14,7 @@ ide-kotlin-plugin-build = "262.10315.125-IJ"
 sqlite-jdbc = "3.53.2.0"
 json-schema-validator = "3.0.3"
 ktor = "3.5.2"
+mcp-kotlin = "0.15.0"
 
 [libraries]
 coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
@@ -37,6 +38,7 @@ ktor-server-websockets = { module = "io.ktor:ktor-server-websockets-jvm", versio
 ktor-client-core = { module = "io.ktor:ktor-client-core-jvm", version.ref = "ktor" }
 ktor-client-cio = { module = "io.ktor:ktor-client-cio-jvm", version.ref = "ktor" }
 ktor-client-websockets = { module = "io.ktor:ktor-client-websockets-jvm", version.ref = "ktor" }
+mcp-kotlin-core = { module = "io.modelcontextprotocol:kotlin-sdk-core", version.ref = "mcp-kotlin" }
 
 [bundles]
 test = [

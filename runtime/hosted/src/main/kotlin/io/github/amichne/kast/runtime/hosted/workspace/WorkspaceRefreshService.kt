@@ -54,6 +54,7 @@ internal enum class WorkspaceRefreshReadiness {
     DISPOSED,
 }
 
+@kotlinx.serialization.Serializable
 internal enum class WorkspaceRefreshEffectResult {
     BUSY,
     UNSAVED_DOCUMENTS,

@@ -53,7 +53,7 @@
       },
       "minItems": 0,
       "maxItems": 4,
-      "description": "null returns name and location, [] requests mandatory identity and kind only. Symbol references and completeness evidence are always retained. Duplicate fields are rejected by server admission.",
+      "description": "null returns name and location, [] requests mandatory identity and kind only. Symbol references and completeness evidence are always retained. Duplicate fields are rejected by server admission. The source field adds committed declaration text with five surrounding lines, subject to the query budget.",
       "uniqueItems": true
     },
     "continuation": {
@@ -102,14 +102,12 @@
           },
           "minItems": 1,
           "maxItems": 1000,
-          "description": "null selects the names main and test. Otherwise use exact imported Gradle source-set names, not paths, globs, or production/test categories. Empty and duplicate lists are rejected by server admission.",
+          "description": "Omission or null selects the names main and test. Otherwise use exact imported Gradle source-set names, not paths, globs, or production/test categories. Empty and duplicate lists are rejected by server admission.",
           "uniqueItems": true
         }
       },
       "required": [
-        "relative_directory_path",
-        "include_subdirectories",
-        "source_set_names"
+        "relative_directory_path"
       ],
       "additionalProperties": false
     },
@@ -139,14 +137,12 @@
           },
           "minItems": 1,
           "maxItems": 1000,
-          "description": "null selects the names main and test. Otherwise use exact imported Gradle source-set names, not paths, globs, or production/test categories. Empty and duplicate lists are rejected by server admission.",
+          "description": "Omission or null selects the names main and test. Otherwise use exact imported Gradle source-set names, not paths, globs, or production/test categories. Empty and duplicate lists are rejected by server admission.",
           "uniqueItems": true
         }
       },
       "required": [
-        "package_name",
-        "include_subpackages",
-        "source_set_names"
+        "package_name"
       ],
       "additionalProperties": false
     },
@@ -175,7 +171,7 @@
             "fuzzy",
             null
           ],
-          "description": "null means exact, case-sensitive declaration-name matching. Exact matching returns every matching overload; it does not select one overload. Fuzzy matching requires explicit opt-in."
+          "description": "Omission or null means exact, case-sensitive declaration-name matching. Exact matching returns every matching overload; it does not select one overload. Fuzzy matching requires explicit opt-in."
         },
         "declaration_kinds": {
           "type": [
@@ -208,15 +204,12 @@
               "type": "null"
             }
           ],
-          "description": "null searches the session workspace recursively in source sets main and test. Otherwise choose one directory scope or one package scope. Source-set restrictions intersect with the chosen scope."
+          "description": "Omission or null searches the session workspace recursively in source sets main and test. Otherwise choose one directory scope or one package scope. Source-set restrictions intersect with the chosen scope."
         }
       },
       "required": [
         "type",
-        "declaration_name",
-        "name_match",
-        "declaration_kinds",
-        "scope"
+        "declaration_name"
       ],
       "additionalProperties": false,
       "description": "Find declarations and establish exact symbol identities. Source scope restricts discovery only, not later expansion destinations."
@@ -261,13 +254,11 @@
               "type": "null"
             }
           ],
-          "description": "null searches the session workspace recursively in source sets main and test. Otherwise choose one directory scope or one package scope. Source-set restrictions intersect with the chosen scope."
+          "description": "Omission or null searches the session workspace recursively in source sets main and test. Otherwise choose one directory scope or one package scope. Source-set restrictions intersect with the chosen scope."
         }
       },
       "required": [
-        "type",
-        "declaration_kinds",
-        "scope"
+        "type"
       ],
       "additionalProperties": false,
       "description": "Enumerate declarations under existing bounded execution. All does not mean unlimited work or guaranteed complete coverage."

@@ -59,26 +59,6 @@ class LiveReadOutputSchemaTest {
     }
 
     @Test
-    fun `every finite relation rejection satisfies its installed schema`() {
-        for (reason in RelationReadRejection.entries) {
-            val document = CanonicalReadCliDocuments.projectRelation(OperationOutcome.Rejected(reason)).document()
-            assertAdmits(CanonicalOperation.RELATION_READ, document)
-            assertEquals(JsonPrimitive(reason.name.lowercase().replace('_', '-')), document["reason"])
-        }
-    }
-
-    @Test
-    fun `owner issued relation continuations satisfy advertised output schemas`() = runTest {
-        for (fixture in listOf(RelationPagingFixture.published(), RelationPagingFixture.live())) {
-            val outcome = fixture.page() as OperationOutcome.Qualified
-            assertAdmits(
-                CanonicalOperation.RELATION_READ,
-                CanonicalReadCliDocuments.projectRelation(outcome).document(),
-            )
-        }
-    }
-
-    @Test
     fun `owner issued relation continuations satisfy advertised resume input and reach the remaining page`() = runTest {
         val schema = relationInputSchema()
         for (fixture in listOf(RelationPagingFixture.published(), RelationPagingFixture.live())) {
@@ -545,6 +525,31 @@ class LiveReadOutputSchemaTest {
 
     internal fun qualifiedEnvelope(operation: CanonicalOperation): String =
         completedSchemaEnvelope(qualifiedDocuments(published).first { it.first == operation }.second)
+
+    internal fun completeEnvelope(operation: CanonicalOperation): String =
+        completedSchemaEnvelope(completeDocuments(published).first { it.first == operation }.second)
+
+    internal fun diagnosticEnvelopeWithMessage(message: String): String {
+        val finding =
+            DiagnosticDocument(
+                severity = DiagnosticSeverityDocument.WARNING,
+                code = text("LONG_MESSAGE"),
+                message = text(message),
+                location =
+                    DiagnosticLocationDocument(
+                        candidateSelector = text("candidate:diagnostic"),
+                        file = text("src/A.kt"),
+                        range = DiagnosticRangeDocument.create(offset(0), offset(0)).refined(),
+                    ),
+            )
+        val result = DiagnosticCheckResult(BoundedProtocolList.create(listOf(finding)).refined())
+        return completedSchemaEnvelope(
+            CanonicalReadCliDocuments.projectDiagnostics(
+                    complete(CanonicalOperation.DIAGNOSTIC_CHECK, published, result)
+                )
+                .document()
+        )
+    }
 
     internal fun assertAdmits(operation: CanonicalOperation, document: JsonObject) {
         val errors = validate(operation, document)

@@ -86,6 +86,7 @@ private constructor(
         executionBudget: HostedExecutionBudgetRequest = HostedExecutionBudgetRequest(),
         publication: HostedReadPublicationAdmission = HostedReadPublicationAdmission.Containment,
         completion: HostedReadCompletionPolicy = HostedReadCompletionPolicy.HOST_CONTAINMENT,
+        replay: HostedReadReplayPolicy = HostedReadReplayPolicy.SINGLE_EVALUATION,
         evaluate: suspend (HostedSemanticReadContext) -> Value,
     ): HostedSemanticReadResult<Value> {
         if (
@@ -122,70 +123,76 @@ private constructor(
                 },
             ) { progress ->
                 progress.diagnostics?.bindHost(hostLifetime)
-                val compatibility =
-                    when (val admitted = packagedCompatibility) {
-                        is Refinement.Refined -> admitted.value
-                        is Refinement.Rejected -> return@execute HostedSemanticRead.Rejected(admitted.failure)
-                    }
-                progress.advance(HostedQueryStage.PROJECT_ADMISSION)
-                val admitted =
-                    when (val admission = session.admit(project, root, compatibility.candidate, compatibility.policy)) {
-                        is ExistingProjectAdmission.Admitted -> admission.project
-                        is ExistingProjectAdmission.Rejected ->
-                            return@execute HostedSemanticRead.Rejected(
-                                HostedQueryFailure.ProjectAdmission(admission.failure)
+                retryMovedHostedRead(replay, progress.observation, onRetry = progress::restartAfterMovedRead) {
+                    val compatibility =
+                        when (val admitted = packagedCompatibility) {
+                            is Refinement.Refined -> admitted.value
+                            is Refinement.Rejected ->
+                                return@retryMovedHostedRead HostedSemanticRead.Rejected(admitted.failure)
+                        }
+                    progress.advance(HostedQueryStage.PROJECT_ADMISSION)
+                    val admitted =
+                        when (
+                            val admission = session.admit(project, root, compatibility.candidate, compatibility.policy)
+                        ) {
+                            is ExistingProjectAdmission.Admitted -> admission.project
+                            is ExistingProjectAdmission.Rejected ->
+                                return@retryMovedHostedRead HostedSemanticRead.Rejected(
+                                    HostedQueryFailure.ProjectAdmission(admission.failure)
+                                )
+                        }
+                    epochDiagnostics.bind(admitted, progress.limits)
+                    progress.advance(HostedQueryStage.EPOCH_OBSERVATION)
+                    val admittedEpoch =
+                        when (
+                            val observed =
+                                awaitHostedEpochAdmission(
+                                    admitted::observeReadEpoch,
+                                    admitted::admitVfsPassiveRead,
+                                    progress.observation,
+                                )
+                        ) {
+                            is Refinement.Refined -> observed.value
+                            is Refinement.Rejected ->
+                                return@retryMovedHostedRead HostedSemanticRead.Rejected(observed.failure)
+                        }
+                    progress.advance(HostedQueryStage.MODEL_CAPTURE)
+                    val sourceScope =
+                        when (
+                            val captured = admitted.captureNamedGradleSourceScope(progress.observation, progress.limits)
+                        ) {
+                            is Refinement.Refined -> captured.value
+                            is Refinement.Rejected ->
+                                return@retryMovedHostedRead HostedSemanticRead.Rejected(
+                                    HostedQueryFailure.NamedSourceScope(captured.failure)
+                                )
+                        }
+                    val authority =
+                        when (val current = liveAuthorities.admit(admittedEpoch.freshness)) {
+                            is Refinement.Refined -> current.value
+                            is Refinement.Rejected ->
+                                return@retryMovedHostedRead HostedSemanticRead.Rejected(
+                                    HostedQueryFailure.LiveAuthority(current.failure)
+                                )
+                        }
+                    progress.diagnostics?.bind(authority.reference)
+                    val freshnessCheck = freshnessOwner.capture(admitted, admittedEpoch.epoch, authority)
+                    runHostedReadTransaction(progress, freshnessCheck.current) { timeAllowance ->
+                        val context =
+                            HostedSemanticReadContext(
+                                authority = authority,
+                                model = sourceScope.model,
+                                sourceFiles = IntellijSemanticSourceFileAdmission(sourceScope::contains),
+                                observation = progress.observation,
+                                limits = progress.limits,
+                                timeAllowance = timeAllowance,
+                                freshness = freshnessCheck,
                             )
-                    }
-                epochDiagnostics.bind(admitted, progress.limits)
-                progress.advance(HostedQueryStage.EPOCH_OBSERVATION)
-                val epoch =
-                    when (val observed = admitted.observeReadEpoch()) {
-                        is ProjectReadEpochObservation.Observed -> observed.epoch
-                        is ProjectReadEpochObservation.Rejected ->
-                            return@execute HostedSemanticRead.Rejected(HostedQueryFailure.ReadEpoch(observed.failure))
-                    }
-                progress.advance(HostedQueryStage.MODEL_CAPTURE)
-                val sourceScope =
-                    when (
-                        val captured = admitted.captureNamedGradleSourceScope(progress.observation, progress.limits)
-                    ) {
-                        is Refinement.Refined -> captured.value
-                        is Refinement.Rejected ->
-                            return@execute HostedSemanticRead.Rejected(
-                                HostedQueryFailure.NamedSourceScope(captured.failure)
-                            )
-                    }
-                val freshness =
-                    when (val current = admitted.admitVfsPassiveRead(epoch)) {
-                        is VfsPassiveReadAdmission.Admitted -> current.capability
-                        is VfsPassiveReadAdmission.Rejected ->
-                            return@execute HostedSemanticRead.Rejected(HostedQueryFailure.Freshness(current.failure))
-                    }
-                val authority =
-                    when (val current = liveAuthorities.admit(freshness)) {
-                        is Refinement.Refined -> current.value
-                        is Refinement.Rejected ->
-                            return@execute HostedSemanticRead.Rejected(
-                                HostedQueryFailure.LiveAuthority(current.failure)
-                            )
-                    }
-                progress.diagnostics?.bind(authority.reference)
-                val freshnessCheck = freshnessOwner.capture(admitted, epoch, authority)
-                runHostedReadTransaction(progress, freshnessCheck.current) { timeAllowance ->
-                    val context =
-                        HostedSemanticReadContext(
-                            authority = authority,
-                            model = sourceScope.model,
-                            sourceFiles = IntellijSemanticSourceFileAdmission(sourceScope::contains),
-                            observation = progress.observation,
-                            limits = progress.limits,
-                            timeAllowance = timeAllowance,
-                            freshness = freshnessCheck,
-                        )
-                    try {
-                        evaluate(context)
-                    } finally {
-                        context.end()
+                        try {
+                            evaluate(context)
+                        } finally {
+                            context.end()
+                        }
                     }
                 }
             }

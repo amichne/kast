@@ -4,6 +4,7 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.IdeLifecycleCommand
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
+import io.github.amichne.kast.protocol.contract.IdeLifecycleStage
 import io.github.amichne.kast.protocol.contract.IdeProjectOwnership
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshEffect
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshRule
@@ -68,6 +69,37 @@ class IdeLifecycleStateTest {
             LifecycleSubmission.Existing(IdeLifecycleResult.Blocked(IdeLifecycleFailure.REQUEST_CONFLICT)),
             state.begin(command.copy(root = "/other"), LifecycleRequest("first"), client),
         )
+    }
+
+    @Test
+    fun `joined opens retain each request identity through progress and completion`() {
+        val first = IdeLifecycleCommand.Open(state.host.toString(), "first", client.value, root.value)
+        val second = first.copy(requestId = "second", client = "other")
+        assertEquals(
+            LifecycleSubmission.Start(
+                IdeLifecycleResult.Pending("first", IdeLifecycleStage.OPENING, state.host.toString())
+            ),
+            state.begin(first, LifecycleRequest("first"), client),
+        )
+        assertEquals(
+            LifecycleSubmission.Existing(
+                IdeLifecycleResult.Pending("second", IdeLifecycleStage.OPENING, state.host.toString())
+            ),
+            state.begin(second, LifecycleRequest("second"), LifecycleClient("other")),
+        )
+        state.progress(LifecycleRequest("first"), IdeLifecycleStage.IMPORTING)
+        assertEquals(
+            IdeLifecycleResult.Pending("first", IdeLifecycleStage.IMPORTING, state.host.toString()),
+            state.status(LifecycleRequest("first")),
+        )
+        assertEquals(
+            IdeLifecycleResult.Pending("second", IdeLifecycleStage.IMPORTING, state.host.toString()),
+            state.status(LifecycleRequest("second")),
+        )
+        val target = project(IdeProjectOwnership.MANAGED)
+        state.complete(LifecycleRequest("first"), IdeLifecycleResult.Opened(target))
+        assertEquals(IdeLifecycleResult.Opened(target), state.status(LifecycleRequest("second")))
+        assertEquals(2, state.inspect().single().users)
     }
 
     @Test

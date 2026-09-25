@@ -21,6 +21,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -32,13 +33,24 @@ class CopilotInputSchemaCompatibilityTest {
     private val schemas = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12)
     private val fixtureJson = Json { encodeDefaults = true }
     private val publishedEntities by lazy {
-        installedTools()
-            .single { it.getValue("name").jsonPrimitive.content == "source_read" }
-            .getValue("inputSchema")
+        val choices =
+            installedTools()
+                .single { it.getValue("name").jsonPrimitive.content == "source_read" }
+                .getValue("inputSchema")
+                .jsonObject
+                .getValue("anyOf")
+                .jsonArray
+        Json.encodeToJsonElement(
+                mapOf(
+                    "anyOf" to
+                        Json.encodeToJsonElement(
+                            choices.mapNotNull { choice ->
+                                choice.jsonObject["properties"]?.jsonObject?.get("entities")
+                            }
+                        )
+                )
+            )
             .jsonObject
-            .getValue("properties")
-            .jsonObject
-            .getValue("entities")
     }
     private val generatedEntities by lazy {
         generatedRequestSchema(SourceReadRequest.serializer()).getValue("properties").jsonObject.getValue("entities")

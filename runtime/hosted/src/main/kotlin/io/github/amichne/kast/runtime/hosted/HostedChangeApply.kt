@@ -102,9 +102,14 @@ private suspend fun readFreshHostedMutation(
 ): Refinement<FreshHostedMutation, ChangeApplyRejection> =
     when (
         val read =
-            query.read(query.endpoint, plan.basis.observation.reference.workspaceRoot) { context ->
-                observeHostedMutation(project, context, plan)
-            }
+            retryPresemanticIndexing(
+                read = {
+                    query.read(query.endpoint, plan.basis.observation.reference.workspaceRoot) { context ->
+                        observeHostedMutation(project, context, plan)
+                    }
+                },
+                wait = { awaitHostedSmartMode(project) },
+            )
     ) {
         is HostedSemanticReadResult.Completed -> read.value
         is HostedSemanticReadResult.Rejected -> Refinement.Rejected(ChangeApplyRejection.CONTENT_CHANGED)

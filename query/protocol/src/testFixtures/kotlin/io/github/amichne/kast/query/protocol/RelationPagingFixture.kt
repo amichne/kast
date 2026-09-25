@@ -50,9 +50,11 @@ class RelationPagingFixture(val authority: SemanticReadAuthority, subjectName: S
             RelationByteLimit.parse(100_000).refined(),
         )
     val consumed = mutableListOf<Long>()
+    val observedBoundaries = mutableListOf<RelationSearchBoundary>()
     val operations = RelationOperations(::read)
     val protocol = CanonicalRelationReadProtocol(operations, references)
-    private val startRequest = RelationRequest.start(selector, RelationMeaning.References, budget)
+    private val startRequest =
+        RelationRequest.start(selector, RelationMeaning.References, budget, RelationSearchBoundary.WORKSPACE_EXPANSION)
     private val cursors =
         (0L..3L).runningFold(startRequest.providerCursor) { cursor, index ->
             cursor.advance(
@@ -72,6 +74,7 @@ class RelationPagingFixture(val authority: SemanticReadAuthority, subjectName: S
         )
 
     private suspend fun read(request: RelationRequest): RelationReadResult {
+        observedBoundaries += request.boundary
         val start = request.providerCursor.nextPosition.value
         check(request.providerCursor == cursors[start.toInt()]) { "Provider prefix changed" }
         val end = minOf(4, start + request.budget.resources.resultLimit.value)

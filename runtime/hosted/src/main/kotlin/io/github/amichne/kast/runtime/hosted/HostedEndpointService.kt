@@ -89,6 +89,21 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
     }
 
     private val refreshOwner = java.util.concurrent.atomic.AtomicReference<RefreshOwner>(RefreshOwner.Starting)
+    private val modelTracker = java.util.concurrent.atomic.AtomicReference<HostedGradleChangeTracker?>()
+
+    internal fun lifecycleModelRevision(): Long? = modelTracker.get()?.currentRevision()
+
+    internal fun lifecycleShouldReloadModel(): Boolean = modelTracker.get()?.needsOpeningImport() ?: true
+
+    internal fun lifecycleModelImported(startedAt: Long) {
+        modelTracker.get()?.modelImported(startedAt)
+    }
+
+    internal suspend fun lifecycleVfsRefresh(root: CanonicalWorkspaceRoot): HostedVfsRefreshOutcome =
+        when (val owner = refreshOwner.get()) {
+            is RefreshOwner.Available -> awaitHostedVfsRefresh(project, root, owner.value::refreshForRead)
+            else -> HostedVfsRefreshOutcome.FAILED
+        }
 
     internal fun lifecycleInitialImport(
         requestId: String
@@ -195,6 +210,8 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
                 }
             val refresh =
                 io.github.amichne.kast.runtime.hosted.workspace.HostedWorkspaceRefresh(project, root, query, scope)
+            val gradleChanges = HostedGradleChangeTracker(project, root)
+            modelTracker.set(gradleChanges)
             refreshOwner.set(RefreshOwner.Available(refresh))
             observer.observe(HostedEndpointStage.BIND, HostedEndpointOutcome.COMPLETED)
             try {
@@ -202,7 +219,7 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
                     if (!lifecycleAdmission.enter()) HostedResponse.Rejected(HostedEndpointFailure.PLATFORM_UNAVAILABLE)
                     else
                         try {
-                            dispatch(root, request, continuations, limits, refresh)
+                            dispatch(root, request, continuations, limits, refresh, gradleChanges)
                         } finally {
                             lifecycleAdmission.leave()
                         }
@@ -213,6 +230,8 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
                     try {
                         try {
                             refreshOwner.set(RefreshOwner.Retired)
+                            modelTracker.set(null)
+                            gradleChanges.dispose()
                             refresh.dispose()
                             changes.close()
                             query.detach()
@@ -235,9 +254,18 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
         continuations: io.github.amichne.kast.source.intellij.IntellijSourceReadContinuations,
         limits: io.github.amichne.kast.kernel.ReadLimits,
         refresh: io.github.amichne.kast.runtime.hosted.workspace.HostedWorkspaceRefresh,
+        gradleChanges: HostedGradleChangeTracker,
     ): HostedResponse {
         if (request.root != root) {
             return HostedResponse.Rejected(HostedEndpointFailure.WRONG_ROOT)
+        }
+        if (request !is HostedRequest.Describe && request !is HostedRequest.Refresh) {
+            val refreshFailure = awaitHostedVfsRefresh(project, root, refresh::refreshForRead).failure()
+            if (refreshFailure != null) return HostedResponse.Rejected(refreshFailure)
+            if (gradleChanges.needsModelReload()) {
+                observer.rejected(HostedEndpointStage.READINESS, HostedEndpointFailure.MODEL_REFRESH_REQUIRED)
+                return HostedResponse.Rejected(HostedEndpointFailure.MODEL_REFRESH_REQUIRED)
+            }
         }
         return when (request) {
             is HostedRequest.Refresh -> HostedResponse.Completed(Json.encodeToString(refresh.execute(request.command)))
@@ -281,16 +309,24 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
     ): HostedResponse =
         when (
             val result =
-                query.read(
-                    query.endpoint,
-                    request.root,
-                    outcome = { it.outcome },
-                    executionBudget = request.executionBudget(),
-                    publication = hostedReadPublicationAdmission,
-                    completion = request.completionPolicy(),
-                ) { context ->
-                    evaluateHostedCanonicalQuery(project, context, request, continuations)
-                }
+                retryPresemanticIndexing(
+                    read = {
+                        query.read(
+                            query.endpoint,
+                            request.root,
+                            outcome = { it.outcome },
+                            executionBudget = request.executionBudget(),
+                            publication = hostedReadPublicationAdmission,
+                            completion = request.completionPolicy(),
+                            replay =
+                                io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadReplayPolicy
+                                    .RETRY_MOVED_READ,
+                        ) { context ->
+                            evaluateHostedCanonicalQuery(project, context, request, continuations)
+                        }
+                    },
+                    wait = { awaitHostedSmartMode(project) },
+                )
         ) {
             is HostedSemanticReadResult.Completed -> result.value
             is HostedSemanticReadResult.Rejected ->

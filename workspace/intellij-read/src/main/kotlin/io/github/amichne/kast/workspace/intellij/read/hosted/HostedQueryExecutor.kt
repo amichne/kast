@@ -190,6 +190,12 @@ internal class HostedQueryProgress(
         private set
 
     @Synchronized
+    fun restartAfterMovedRead() {
+        check(stage == HostedQueryStage.MODEL_CAPTURE || stage == HostedQueryStage.CONTENT_REVALIDATION)
+        stage = HostedQueryStage.REQUEST_ADMISSION
+    }
+
+    @Synchronized
     fun advance(next: HostedQueryStage) {
         check(next.ordinal >= stage.ordinal)
         stage = next

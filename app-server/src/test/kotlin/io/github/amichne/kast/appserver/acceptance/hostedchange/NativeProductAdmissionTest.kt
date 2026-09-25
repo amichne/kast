@@ -17,7 +17,7 @@ class NativeProductAdmissionTest {
     @Test
     fun `native read coverage excludes changes from complete installed catalog`() {
         val catalog = CanonicalAgentToolDefinitions.all
-        assertEquals(11, catalog.size)
+        assertEquals(9, catalog.size)
         assertEquals(7, nativeReadToolNames.size)
         assertEquals(
             emptySet<String>(),

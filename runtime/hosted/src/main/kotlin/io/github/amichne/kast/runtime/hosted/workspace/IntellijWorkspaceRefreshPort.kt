@@ -2,12 +2,12 @@ package io.github.amichne.kast.runtime.hosted.workspace
 
 import com.intellij.ide.trustedProjects.TrustedProjects
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.externalSystem.importing.ImportSpecBuilder
 import com.intellij.openapi.externalSystem.model.ProjectSystemId
 import com.intellij.openapi.externalSystem.service.execution.ProgressExecutionMode
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.openapi.externalSystem.util.ExternalSystemUtil
-import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
@@ -16,6 +16,8 @@ import com.intellij.openapi.vfs.newvfs.RefreshQueue
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshEffect
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshFailure as PublicFailure
+import io.github.amichne.kast.runtime.hosted.HostedVfsRefreshOutcome
+import io.github.amichne.kast.runtime.hosted.saveProjectDocuments
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryService
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadinessDocument
@@ -39,8 +41,7 @@ internal class IntellijWorkspaceRefreshPort(
         com.intellij.openapi.application.ApplicationManager.getApplication().assertIsDispatchThread()
         if (project.isDisposed) return Refinement.Rejected(PublicFailure.DISPOSED)
         if (!TrustedProjects.isProjectTrusted(project)) return Refinement.Rejected(PublicFailure.UNLINKED_BUILD)
-        if (FileDocumentManager.getInstance().unsavedDocuments.isNotEmpty())
-            return Refinement.Rejected(PublicFailure.UNSAVED_DOCUMENTS)
+        if (!saveProjectDocuments(root)) return Refinement.Rejected(PublicFailure.UNSAVED_DOCUMENTS)
         if (ExternalSystemApiUtil.getSettings(project, GRADLE).linkedProjectsSettings.isNotEmpty())
             return Refinement.Rejected(PublicFailure.UNLINKED_BUILD)
         linkState =
@@ -71,9 +72,7 @@ internal class IntellijWorkspaceRefreshPort(
                 settings.linkedProjectsSettings.none { it.externalProjectPath == root.value }
         )
             return Refinement.Rejected(PublicFailure.UNLINKED_BUILD)
-        // Native lifecycle must never silently save or discard an editor buffer.
-        if (FileDocumentManager.getInstance().unsavedDocuments.isNotEmpty())
-            return Refinement.Rejected(PublicFailure.UNSAVED_DOCUMENTS)
+        if (!saveProjectDocuments(root)) return Refinement.Rejected(PublicFailure.UNSAVED_DOCUMENTS)
         return Refinement.Refined(Unit)
     }
 
@@ -84,10 +83,17 @@ internal class IntellijWorkspaceRefreshPort(
     }
 
     private fun startOnEdt(effect: WorkspaceRefreshEffect, complete: (WorkspaceRefreshEffectResult) -> Unit) {
+        val observedComplete: (WorkspaceRefreshEffectResult) -> Unit =
+            if (effect == WorkspaceRefreshEffect.FILE_REFRESH) {
+                { outcome ->
+                    observeForcedRefresh(outcome)
+                    complete(outcome)
+                }
+            } else complete
         try {
             when (val admitted = admission()) {
                 is Refinement.Rejected -> {
-                    complete(
+                    observedComplete(
                         when (admitted.failure) {
                             PublicFailure.UNSAVED_DOCUMENTS -> WorkspaceRefreshEffectResult.UNSAVED_DOCUMENTS
                             PublicFailure.UNLINKED_BUILD -> WorkspaceRefreshEffectResult.UNLINKED_BUILD
@@ -101,13 +107,13 @@ internal class IntellijWorkspaceRefreshPort(
                 is Refinement.Refined -> Unit
             }
             when (effect) {
-                WorkspaceRefreshEffect.FILE_REFRESH -> refreshFiles(complete)
-                WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD -> reloadModel(complete)
+                WorkspaceRefreshEffect.FILE_REFRESH -> refreshFiles(observedComplete)
+                WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD -> reloadModel(observedComplete)
             }
         } catch (_: ProcessCanceledException) {
-            complete(WorkspaceRefreshEffectResult.CANCELLED)
+            observedComplete(WorkspaceRefreshEffectResult.CANCELLED)
         } catch (_: RuntimeException) {
-            complete(WorkspaceRefreshEffectResult.FAILED)
+            observedComplete(WorkspaceRefreshEffectResult.FAILED)
         }
     }
 
@@ -132,13 +138,43 @@ internal class IntellijWorkspaceRefreshPort(
                 true,
                 true,
                 {
-                    complete(
+                    val outcome =
                         if (project.isDisposed) WorkspaceRefreshEffectResult.DISPOSED
                         else WorkspaceRefreshEffectResult.SUCCEEDED
+                    complete(outcome)
+                },
+                directory,
+            )
+    }
+
+    /** Automatic read admission waits for native recursive refresh without forcing every descendant dirty. */
+    fun refreshForRead(complete: (HostedVfsRefreshOutcome) -> Unit) {
+        if (project.isDisposed) {
+            complete(HostedVfsRefreshOutcome.PROJECT_DISPOSED)
+            return
+        }
+        val directory = LocalFileSystem.getInstance().findFileByPath(root.value)
+        if (directory == null) {
+            complete(HostedVfsRefreshOutcome.ROOT_UNAVAILABLE)
+            return
+        }
+        // Native incremental refresh retains recursive coverage and reports completion through its callback.
+        RefreshQueue.getInstance()
+            .refresh(
+                true,
+                true,
+                {
+                    complete(
+                        if (project.isDisposed) HostedVfsRefreshOutcome.PROJECT_DISPOSED
+                        else HostedVfsRefreshOutcome.READY
                     )
                 },
                 directory,
             )
+    }
+
+    private fun observeForcedRefresh(outcome: WorkspaceRefreshEffectResult) {
+        Logger.getInstance(IntellijWorkspaceRefreshPort::class.java).info(outcome.refreshObservation())
     }
 
     private fun reloadModel(complete: (WorkspaceRefreshEffectResult) -> Unit) {
@@ -188,6 +224,9 @@ internal class IntellijWorkspaceRefreshPort(
         val GRADLE = ProjectSystemId("GRADLE")
     }
 }
+
+internal fun WorkspaceRefreshEffectResult.refreshObservation(): String =
+    "kast_vfs_refresh policy=FORCED_RECONCILIATION outcome=$name"
 
 /** One policy for initial linking and subsequent reload; never changes IDE preferences. */
 internal fun quietWorkspaceImport(

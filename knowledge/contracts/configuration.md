@@ -4,7 +4,7 @@ title: Installation configuration
 description: Every external configuration input has declared ownership, parsing, defaults, and projection before it can affect the broker, installation or existing-IDE request.
 resource: file://distribution/contract
 tags: [configuration, distribution, installation]
-timestamp: 2026-09-21T00:00:00Z
+timestamp: 2026-09-25T00:00:00Z
 code_sources:
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationMetadata.kt
@@ -30,6 +30,8 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/KastServiceMain.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpApproval.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledKastCliComposition.kt
   - path: cli/src/test/kotlin/io/github/amichne/kast/cli/SavedConfigurationAdmissionTest.kt
@@ -83,7 +85,7 @@ byte-for-byte agreement with that owner-generated output.
 
 Broker configuration identity remains owner-correlated while coordinator status admits zero workers. The private executable admits only product version inspection; former semantic and configuration commands reject.
 
-The default host query limit is 4,000 ms. At semantic entry the host derives smaller positive semantic and diagnostic-scope allowances from remaining request time, preserving the configured policy separately in diagnostics. See the deadline admission rules in the read configuration guide.
+The default host query limit is 30,000 ms, with 31,000 ms for the host connection and 32,000 ms for the client exchange. This gives cached Gradle model capture time before semantic search while retaining strict outer deadlines. At semantic entry the host derives smaller positive semantic and diagnostic-scope allowances from remaining request time, preserving the configured policy separately in diagnostics. See the deadline admission rules in the read configuration guide.
 
 `HOST_REFERENCE_ENTRIES` and `HOST_REFERENCE_BYTES` bound the project-owned compact-reference table. Their defaults are 16,384 entries and 33,554,432 UTF-8 bytes; both are positive typed read limits. Capacity preserves a valid inline representation instead of evicting current-epoch handles.
 
@@ -119,5 +121,5 @@ coordinator and login service; session defers activation while retaining the sam
 complete payload. The public installer always selects persistent. The checkout
 entrypoint derives the profile from its required session or persistent argument.
 
-The private daemon entry point is a declared raw-environment ingress owner. It checks managed readiness inputs and the saved-configuration rejection marker before invoking the existing coordinator configuration admission. Its generated launcher uses the existing derived `KAST_OPTS` JVM boundary; it adds no saved configuration setting. The installed MCP process and its interactive approval helper are also declared ingress owners. They resolve the selected installation and IDEA host from saved configuration for each session; they add no saved configuration setting.
+The private daemon entry point is a declared raw-environment ingress owner. It checks managed readiness inputs and the saved-configuration rejection marker before invoking the existing coordinator configuration admission. Its generated launcher uses the existing derived `KAST_OPTS` JVM boundary; it adds no saved configuration setting. The installed MCP process is also a declared ingress owner. It resolves the selected installation and IDEA host from saved configuration for each session; it adds no saved configuration setting. After exact Gradle-root discovery, the first valid modern request or legacy initialization starts workspace preparation through that selected host. Direct MCP file refresh and one-call change reuse the session's selected host and exact root. The harness-neutral tool RPC uses that same direct tool composition and selected configuration. Its process command adds no saved configuration setting or Codex App Server request.
 The private service-control entry point is also a declared raw-environment ingress owner. It selects the installed release's saved configuration only when no selector was supplied, then delegates registration, enable, disable, stop, repair, or trust enrollment to the existing owners.

@@ -35,6 +35,25 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
 
+internal enum class PlanApprovalSend {
+    SENT,
+    UNAVAILABLE,
+}
+
+internal sealed interface BrokerPlanApprovalReply {
+    data object Unowned : BrokerPlanApprovalReply
+
+    data object Handled : BrokerPlanApprovalReply
+
+    data class Rejected(val failure: PlanApprovalFailure) : BrokerPlanApprovalReply
+}
+
+/** Preserves both the selected registered workspace and admitted call identity. */
+internal data class WorkspaceInvocationBinding(
+    val workspace: io.github.amichne.kast.appserver.WorkspaceRegistration,
+    val identity: InvocationIdentity,
+)
+
 /** Uses the existing controller lease, native approval exchange, and enrolled signing authority. */
 internal class BrokerLifecycleApprovals(
     private val scope: CoroutineScope,

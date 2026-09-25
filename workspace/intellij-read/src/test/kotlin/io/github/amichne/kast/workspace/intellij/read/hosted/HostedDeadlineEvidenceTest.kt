@@ -2,7 +2,6 @@
 
 package io.github.amichne.kast.workspace.intellij.read.hosted
 
-import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetPresence
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
@@ -48,7 +47,7 @@ class HostedDeadlineEvidenceTest {
     @Test
     fun `fractional elapsed milliseconds cannot consume the publication reserve`() {
         var now = 0L
-        val deadline = HostedReadDeadline(ReadLimits.Default, { now })
+        val deadline = HostedReadDeadline(shortHostLimits(), { now })
         now = 3_749_000_000L
         val lastMillisecond = deadline.admit(null).proven()
         assertEquals(1L, lastMillisecond.semantic.value)
@@ -68,7 +67,7 @@ class HostedDeadlineEvidenceTest {
                 HostedReadDiagnostics({ testScheduler.currentTime * 1_000_000L }, policy, receipts::add)
             }
         val result =
-            executor.execute(executor.endpoint) { progress ->
+            executor.execute(executor.endpoint, shortHostLimits()) { progress ->
                 runHostedReadTransaction(progress, { Refinement.Refined(Unit) }) { allowance ->
                     admittedReport = ExecutionBudgetReport.from(allowance.executionBudget)
                     assertEquals(2_000L, allowance.semantic.value)

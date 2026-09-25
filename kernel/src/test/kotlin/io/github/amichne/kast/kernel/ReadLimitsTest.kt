@@ -29,7 +29,7 @@ class ReadLimitsTest {
         }
         assertTrue(ReadLimits.resolve(mapOf("KAST_READ_UNKNOWN" to "secret")) is Refinement.Rejected)
         assertTrue(
-            ReadLimits.resolve(mapOf(ReadLimitParameter.HOST_QUERY_MILLIS.environmentKey to "6000"))
+            ReadLimits.resolve(mapOf(ReadLimitParameter.HOST_QUERY_MILLIS.environmentKey to "32000"))
                 is Refinement.Rejected
         )
         assertTrue(

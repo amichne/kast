@@ -197,8 +197,10 @@ envelope preserves process completion separately from the canonical
 `complete`, `qualified`, or `rejected` outcome, including its qualifications and
 failure details. No summary prefix or newline splitting is required. Broker
 admission and result-size failures also return a JSON rejection with their exact
-finite failure code. Cancellation retains its cancelled status and uncertain
-effect.
+finite failure code. Cancellation during an attempted change apply runs bounded
+recovery. A complete `prior_state` or `rolled_back` recovery settles the
+invocation as `CANCELLED_AFTER_RECOVERY` and releases the workspace lane;
+incomplete recovery retains an uncertain effect and blocks later work there.
 For display, the broker projects its owned `dynamicToolCall` items into the standard
 expandable `mcpToolCall` shape, with the provider namespace as `server`, unchanged
 arguments, and raw text in `result.content`. The final JSON envelope from Kast also

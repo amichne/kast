@@ -57,7 +57,6 @@ class BudgetSource:
     region: FileRegion = field(default_factory=FileRegion)
     entities: NoEntities = field(default_factory=NoEntities)
     text: NoText = field(default_factory=NoText)
-    entityLimit: int = 100
     textByteLimit: int = 65536
     page: FirstPage = field(default_factory=FirstPage)
 

@@ -8,8 +8,6 @@ import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckFailure
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckQualification
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckResult
-import io.github.amichne.kast.protocol.contract.DiagnosticDocument
-import io.github.amichne.kast.protocol.contract.DiagnosticLimitationDocument
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
 import io.github.amichne.kast.protocol.contract.ReadRecoveryGuidance
 import io.github.amichne.kast.protocol.contract.RelationFactDocument
@@ -139,42 +137,8 @@ object CanonicalReadCliDocuments {
         )
 
     fun projectDiagnostics(
-        outcome:
-            OperationOutcome<
-                DiagnosticCheckResult,
-                DiagnosticCheckQualification,
-                DiagnosticCheckFailure,
-            >
-    ) =
-        projectClosedOutcome(
-            outcome,
-            complete = { result, live ->
-                diagnosticCompleteFactory.create(
-                    DiagnosticCompleteCliDocument(
-                        operation = CanonicalOperation.DIAGNOSTIC_CHECK.id.value,
-                        status = "complete",
-                        diagnostics = result.diagnostics.values.map { it.toCliDocument() },
-                        progress = result.progress,
-                        live = live,
-                    )
-                )
-            },
-            qualified = { result, qualification, live ->
-                diagnosticQualifiedFactory.create(
-                    DiagnosticQualifiedCliDocument(
-                        operation = CanonicalOperation.DIAGNOSTIC_CHECK.id.value,
-                        status = "qualified",
-                        diagnostics = result.diagnostics.values.map { it.toCliDocument() },
-                        progress = result.progress,
-                        qualification = qualification.toCliDocument(),
-                        live = live,
-                    )
-                )
-            },
-            rejected = { rejection ->
-                canonicalDiagnosticRejectedDocument(rejection)
-            },
-        )
+        outcome: OperationOutcome<DiagnosticCheckResult, DiagnosticCheckQualification, DiagnosticCheckFailure>
+    ): ProjectedOperationOutcome = CanonicalDiagnosticCliDocuments.project(outcome)
 }
 
 @Serializable
@@ -233,45 +197,6 @@ private sealed interface RelationQualificationCliDocument {
 }
 
 @Serializable
-private data class DiagnosticCompleteCliDocument(
-    val operation: String,
-    val status: String,
-    val diagnostics: List<DiagnosticCliDocument>,
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    val progress: io.github.amichne.kast.protocol.contract.DiagnosticProgressDocument? = null,
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    val live: LiveReadCliEvidence? = null,
-)
-
-@Serializable
-private data class DiagnosticQualifiedCliDocument(
-    val operation: String,
-    val status: String,
-    val diagnostics: List<DiagnosticCliDocument>,
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    val progress: io.github.amichne.kast.protocol.contract.DiagnosticProgressDocument? = null,
-    val qualification: DiagnosticQualificationCliDocument,
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    val live: LiveReadCliEvidence? = null,
-)
-
-@Serializable
-private data class DiagnosticQualificationCliDocument(
-    val knownDiagnosticCount: Int,
-    val resultLimitReached: Boolean,
-    val analyzedFiles: List<String>,
-    val limitations: List<DiagnosticLimitationCliDocument>,
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    val continuation: String? = null,
-)
-
-@Serializable
-private data class DiagnosticLimitationCliDocument(
-    val file: String,
-    val reason: String,
-)
-
-@Serializable
 data class RelationFactCliDocument(
     val meaning: String,
     val source: SymbolCliDocument,
@@ -283,21 +208,6 @@ data class RelationFactCliDocument(
 
 @Serializable
 data class RelationOccurrenceCliDocument(
-    val candidateSelector: String,
-    val file: String,
-    val range: SourceRangeCliDocument,
-)
-
-@Serializable
-private data class DiagnosticCliDocument(
-    val severity: String,
-    val code: String,
-    val message: String,
-    val location: DiagnosticLocationCliDocument,
-)
-
-@Serializable
-private data class DiagnosticLocationCliDocument(
     val candidateSelector: String,
     val file: String,
     val range: SourceRangeCliDocument,
@@ -315,21 +225,6 @@ fun RelationFactDocument.toCliDocument(): RelationFactCliDocument =
         ),
         provenance.cliName(),
         coverage.cliName(),
-    )
-
-private fun DiagnosticDocument.toCliDocument(): DiagnosticCliDocument =
-    DiagnosticCliDocument(
-        severity.cliName(),
-        code.value,
-        message.value,
-        DiagnosticLocationCliDocument(
-            location.candidateSelector.value,
-            location.file.value,
-            SourceRangeCliDocument(
-                location.range.startInclusive.value,
-                location.range.endExclusive.value,
-            ),
-        ),
     )
 
 private fun RelationReadQualification.toCliDocument(report: ExecutionBudgetReport?): RelationQualificationCliDocument =
@@ -351,24 +246,7 @@ private fun RelationReadQualification.toCliDocument(report: ExecutionBudgetRepor
             )
     }
 
-private fun DiagnosticCheckQualification.toCliDocument() =
-    DiagnosticQualificationCliDocument(
-        knownDiagnosticCount = knownDiagnosticCount.value,
-        resultLimitReached = resultLimitReached,
-        analyzedFiles = analyzedFiles.map { it.value },
-        limitations = limitations.map(DiagnosticLimitationDocument::toCliDocument),
-        continuation = continuation?.value,
-    )
-
-private fun DiagnosticLimitationDocument.toCliDocument() =
-    DiagnosticLimitationCliDocument(
-        file.value,
-        reason.cliName(),
-    )
-
 private fun SourceRangeDocument.toReadCliDocument() = SourceRangeCliDocument(startInclusive.value, endExclusive.value)
 
 private val relationCompleteFactory = CanonicalJsonDocument.generated(RelationCompleteCliDocument.serializer())
 private val relationQualifiedFactory = CanonicalJsonDocument.generated(RelationQualifiedCliDocument.serializer())
-private val diagnosticCompleteFactory = CanonicalJsonDocument.generated(DiagnosticCompleteCliDocument.serializer())
-private val diagnosticQualifiedFactory = CanonicalJsonDocument.generated(DiagnosticQualifiedCliDocument.serializer())

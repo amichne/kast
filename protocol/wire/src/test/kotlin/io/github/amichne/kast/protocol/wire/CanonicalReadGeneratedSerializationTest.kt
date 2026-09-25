@@ -46,7 +46,6 @@ class CanonicalReadGeneratedSerializationTest {
         assertEquals(WireValueEncoding.Encoded(document), codec.encode(request, WireValueRole.REQUEST))
         assertEquals(WireDecoding.Decoded(request), codec.decode(document, WireValueRole.REQUEST))
         listOf(
-                """{"exactSelector":"exact:Target","relation":"callers"}""",
                 """{"exactSelector":"exact:Target","relation":"callers","limit":25,"position":{"type":"start"},"extra":true}""",
                 """{"exactSelector":"exact:Target","relation":"unknown","limit":25,"position":{"type":"start"}}""",
                 """{"exactSelector":"exact:Target","relation":"callers","limit":0,"position":{"type":"start"}}""",
@@ -57,6 +56,13 @@ class CanonicalReadGeneratedSerializationTest {
                     codec.decode(json(malformed), WireValueRole.REQUEST),
                 )
             }
+        val defaulted = RelationReadRequest(text("exact:Target"), RelationKindDocument.CALLERS)
+        val defaultedDocument = (codec.encode(defaulted, WireValueRole.REQUEST) as WireValueEncoding.Encoded).value
+        org.junit.jupiter.api.Assertions.assertFalse(defaultedDocument.toString().contains("\"limit\""))
+        assertEquals(
+            WireDecoding.Decoded(defaulted),
+            codec.decode(defaultedDocument, WireValueRole.REQUEST),
+        )
         val continuation = relationContinuation("resume")
         val resumed = request.copy(position = RelationReadPositionDocument.Resume(continuation))
         val resumedDocument =

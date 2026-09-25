@@ -31,6 +31,7 @@ enum class OperationExecutionBudget(operationMillis: Long) {
                 CanonicalOperation.RELATION_READ,
                 CanonicalOperation.QUERY_RUN,
                 CanonicalOperation.DIAGNOSTIC_CHECK,
+                CanonicalOperation.CHANGE,
                 CanonicalOperation.CHANGE_PLAN,
                 CanonicalOperation.CHANGE_APPLY,
                 CanonicalOperation.CHANGE_RECOVER -> SEMANTIC_READ
