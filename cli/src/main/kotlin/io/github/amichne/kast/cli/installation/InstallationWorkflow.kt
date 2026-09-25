@@ -419,6 +419,7 @@ internal object InstallationWorkflow {
             writeLauncher(plan, staged, "kast")
             writeLauncher(plan, staged, "kast-codex")
             writeLauncher(plan, staged, "kast-mcp")
+            writeLauncher(plan, staged, "kast-tool-rpc")
             writeConfiguration(plan, staged.resolve("config/environment"))
             Files.writeString(
                 staged.resolve("config/selected-ide.json"),
@@ -812,7 +813,7 @@ private fun sha256(bytes: ByteArray): Sha256 =
 private fun ByteArray.hex(): String = joinToString("") { byte -> "%02x".format(byte) }
 
 private fun verifyControlLayout(root: Path): ControlInventoryAdmission {
-    if (listOf("kast", "kast-codex", "kast-mcp").any { !regularExecutable(root.resolve("bin/$it")) })
+    if (listOf("kast", "kast-codex", "kast-mcp", "kast-tool-rpc").any { !regularExecutable(root.resolve("bin/$it")) })
         return ControlInventoryAdmission.Rejected(ControlInventoryFailure.UNSUPPORTED_ENTRY)
     val required =
         listOf(

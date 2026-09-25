@@ -19,6 +19,7 @@ Contains the public Mintlify documentation source plus scripts and styles for ob
 
 - [development.md](development.md) - build, local installation, docs preview, and native acceptance.
 - [installation-recovery.md](installation-recovery.md) - offline recovery of damaged installations.
+- [tool-rpc.md](tool-rpc.md) - one-shot tool contract and Copilot/Pi extension setup.
 
 ## Subdirectories
 

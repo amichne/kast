@@ -11,7 +11,7 @@ and follow their relationships with the compiler’s identities and evidence.
 ## Get started
 
 You need macOS on Apple silicon, a Kotlin Gradle repository, IntelliJ IDEA
-`262.*` with its bundled Kotlin plugin and Java 25 JBR, and a compatible MCP client.
+`262.*` with its bundled Kotlin plugin and Java 25 JBR, and an agent client.
 
 1. Install Kast and its IDEA plugin:
 
@@ -53,6 +53,10 @@ You need macOS on Apple silicon, a Kotlin Gradle repository, IntelliJ IDEA
 
 See [Install and connect](https://kast.michne.com/start/) for IDE selection,
 Desktop setup, other harnesses, and uninstall instructions.
+
+Copilot CLI and Pi can call Kast without MCP through the
+[tool RPC and thin extensions](docs/tool-rpc.md). The command exposes the same
+IDE-backed reads and one-call `change` workflow to either harness.
 
 The Kast MCP session starts preparing the exact repository or worktree on its
 first valid request: any 2026-07-28 request, commonly `server/discover`, or

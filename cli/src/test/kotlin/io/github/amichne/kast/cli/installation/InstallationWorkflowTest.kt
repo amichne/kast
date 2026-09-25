@@ -352,6 +352,7 @@ private fun writeControlFiles(
     Files.setPosixFilePermissions(executable, PosixFilePermissions.fromString("rwxr-xr-x"))
     Files.copy(executable, bin.resolve("kast-codex"), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
     Files.copy(executable, bin.resolve("kast-mcp"), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+    Files.copy(executable, bin.resolve("kast-tool-rpc"), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
     Files.copy(Path.of("../packaging/codex-mcp-registration.py"), metadata.resolve("codex-mcp-registration.py"))
     Files.writeString(metadata.resolve("operation-registry.json"), emptyDocument)
     Files.writeString(metadata.resolve("wire-schema.json"), emptyDocument)

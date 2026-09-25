@@ -26,6 +26,7 @@ Kast is a Kotlin/Gradle system that gives coding agents compiler-grounded search
 - [`indexer/`](indexer/AGENTS.md) - retirement record for the former isolated semantic sidecar.
 - [`app-server/`](app-server/AGENTS.md) - persistent coordinator, host adapters, workspace lanes, and Codex protocol integration.
 - [`cli/`](cli/AGENTS.md) - command graph, configuration, projections, and executable bootstrap.
+- [`copilot/`](copilot/extension.mjs) and [`pi/`](pi/extension.ts) - thin agent extensions over the shared tool RPC.
 - [`distribution/`](distribution/AGENTS.md) and [`packaging/`](packaging/AGENTS.md) - installation contracts, managed artifacts, release assembly, and acceptance harnesses.
 - [`build-logic/`](build-logic/AGENTS.md) - Gradle conventions and architecture enforcement.
 - [`docs/`](docs/AGENTS.md) - public Mintlify documentation and visual evidence helpers.
@@ -39,6 +40,7 @@ Kast is a Kotlin/Gradle system that gives coding agents compiler-grounded search
 - Semantic host: `runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt`.
 - Codex/App Server main: `app-server/src/main/kotlin/io/github/amichne/kast/appserver/KastCodexMain.kt`.
 - Codex MCP main: `cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt`.
+- Harness-neutral tool RPC main: `cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt`.
 
 ## Navigation Hints
 
