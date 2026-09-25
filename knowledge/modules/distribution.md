@@ -68,7 +68,10 @@ code_sources:
   - path: packaging/test-installed-product.sh
   - path: packaging/run-installed-product.py
   - path: .github/scripts/release/build-assets.sh
+  - path: .github/scripts/release/ci-candidate.py
   - path: .github/scripts/release/publish-release.sh
+  - path: .github/workflows/ci.yml
+  - path: .github/workflows/release.yml
 ---
 
 # Distribution and packaging
@@ -76,6 +79,8 @@ code_sources:
 Distribution contracts own configuration keys, defaults, owners, operational limits, runtime identity, and bootstrap outcomes. Managed adapters own installation trees, recovery receipts, selected IDE discovery, and endpoints. The retired isolated runtime downloader, archive store, heap observer, and network/trust-store bootstrap have been removed; IDEA owns its import environment and trust configuration.
 
 Root and packaging scripts orchestrate checkout installation, persistent lifecycle, release layout, and acceptance. Stable releases and local checkout installations include a hosted-plugin ZIP named for the IDEA release line (`idea-262.zip`). Local installation builds the control product and matching hosted plugin before staging their checksums. The public installer verifies its checksum, release version, plugin identity, and descriptor release line before atomically replacing only the Kast directory under IDEA's user plugin root; dry-run validates the archive without writing plugin state. Installed-product acceptance also installs the assembled archive and plugin in a private session fixture, exercising the real installer and private service entry point. The checked [configuration schema](../../packaging/configuration-schema.json) is a public boundary and must remain aligned with the Kotlin catalogue.
+
+Successful main CI builds and retains an exact next-patch release candidate after the routine product gate. Release reuses that candidate only when its version and source revision match the requested release, the producing main-push CI run completed successfully, and the asset inventory, checksums, and SBOM source/archive identities validate. A missing candidate follows the existing exact-version build gate; an observed but invalid candidate rejects. Minor and major releases use that build path unless a matching candidate exists. The release workflow retains the admitted candidate before publishing.
 
 The public installer reports the selected IDEA product version and build before
 fetching release-line-specific plugin bytes. An absent matching plugin is a
