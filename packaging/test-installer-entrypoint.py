@@ -163,7 +163,7 @@ else:
         self.assertIn("IntelliJ IDEA 2026.2.1 (build 262.1234)", result.stderr)
         self.assertIn("app server", result.stderr.lower())
         self.assertIn("login", result.stderr)
-        self.assertNotIn("[y/N]", result.stderr)
+        self.assertNotIn("Register a user-level Kast MCP server", result.stderr)
         self.assertIn("profile=persistent mode=plan", result.stderr)
 
     def test_discovers_idea_in_user_applications_without_explicit_home(self):
@@ -190,7 +190,7 @@ else:
                 cwd=ROOT, env=environment, stdin=subprocess.DEVNULL, text=True, capture_output=True, timeout=10,
             )
         self.assertEqual(0, result.returncode, result.stderr)
-        self.assertNotIn("[y/N]", result.stderr)
+        self.assertNotIn("Register a user-level Kast MCP server", result.stderr)
         self.assertIn("profile=persistent mode=plan force=1", result.stderr)
 
     def test_developer_latest_installs_pinned_public_candidate(self):
@@ -220,6 +220,18 @@ else:
             )
         self.assertNotEqual(0, result.returncode)
         self.assertIn("developer-latest pointer is invalid", result.stderr)
+
+    def test_codex_mcp_flags_are_mutually_exclusive_before_installation(self):
+        with tempfile.TemporaryDirectory(prefix="kast-installer-mcp-choice-") as directory:
+            idea, _, environment = self.installer_fixture(directory)
+            result = subprocess.run(
+                ["bash", str(INSTALLER), "--idea-home", str(idea),
+                 "--register-codex-mcp", "--skip-codex-mcp"],
+                cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
+            )
+            self.assertNotEqual(0, result.returncode)
+            self.assertIn("choose only one Codex MCP registration option", result.stderr)
+            self.assertFalse((Path(directory) / "install").exists())
 
     def test_missing_matching_idea_plugin_explains_why_nothing_is_installed(self):
         with tempfile.TemporaryDirectory(prefix="kast-installer-entrypoint-") as directory:

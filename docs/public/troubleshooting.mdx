@@ -32,7 +32,7 @@ See [Read a response](/reference/responses) for field names and result layers.
 
 | Symptom | First action |
 | --- | --- |
-| Tools are missing in terminal Codex | Run `codex mcp get kast`, then start a fresh `codex` session in the repository. |
+| Tools are missing in terminal Codex | Run `codex mcp list --json` to inspect the effective `kast` entry, then start a fresh `codex` session in the repository. |
 | Copilot CLI or Pi cannot load Kast tools | Check that the installed adapter and `kast-tool-rpc-complete` exist; see [Tool RPC catalog](/reference/rpc-catalog). |
 | Outer `status: rejected` | Preserve `diagnostic.boundary` and `diagnostic.reason`; collect status below. |
 | The document rejects | Follow its finite reason. Open the intended IDEA project or correct the named input as appropriate. |
@@ -44,7 +44,7 @@ See [Read a response](/reference/responses) for field names and result layers.
 
 ## Collect status from the same repository
 
-For terminal Codex, run `codex mcp get kast` and retry the semantic call after
+For terminal Codex, run `codex mcp list --json` and retry the semantic call after
 resolving the reported IDEA blocker. The installed configuration and service logs are under
 `${XDG_DATA_HOME:-$HOME/.local/share}/kast/current`.
 

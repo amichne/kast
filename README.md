@@ -20,9 +20,14 @@ You need macOS on Apple silicon, a Kotlin Gradle repository, IntelliJ IDEA
    ```
 
    The installer reports the detected IntelliJ version, verifies its matching
-   plugin, registers Kast's MCP server with Codex, and enables the app-server suite and its per-user login
+   plugin and enables the app-server suite and its per-user login
    LaunchAgent. If no matching IDEA plugin exists, it installs nothing.
-   Installation never prompts. It uses `${XDG_DATA_HOME:-$HOME/.local/share}/kast`
+   In an interactive terminal, it asks whether to register a user-level Kast
+   MCP server with Codex. Pass `-- --skip-codex-mcp` to use an MCP declaration
+   supplied elsewhere, or `-- --register-codex-mcp` to select Kast's global
+   registration without a prompt. Non-interactive installs register by default.
+   Skipping registration leaves existing Codex MCP entries untouched. The
+   installer uses `${XDG_DATA_HOME:-$HOME/.local/share}/kast`
    without publishing a `kast` command on `PATH`. An upgrade retires only
    command links owned by a previous Kast installation.
    An ordinary upgrade keeps the current release selected when the prior daemon

@@ -45,9 +45,24 @@ Install the IDEA plugin, connect an agent client, and find a declaration in your
     ```
 
     The installer reports the detected IntelliJ version, verifies Kast and the
-    matching IDEA plugin, registers Kast's MCP server with Codex, and enables the Kast service and its
+    matching IDEA plugin and enables the Kast service and its
     per-user macOS login LaunchAgent. The LaunchAgent keeps the service
     available across logins and restarts it after an unexpected exit.
+
+    In an interactive terminal, the installer asks whether to register a
+    user-level `kast` MCP server with Codex. If another installation or plugin
+    already supplies the declaration, choose **No**. To skip the prompt in a
+    script, pass `-- --skip-codex-mcp`:
+
+    ```shell
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" \
+      -- --skip-codex-mcp
+    ```
+
+    Pass `-- --register-codex-mcp` to select global registration explicitly.
+    Non-interactive installs register by default. Skipping registration does
+    not inspect or change existing Codex MCP entries. The Kast MCP executable
+    remains installed for an external declaration to launch.
 
     It does not install IDEA.
 

@@ -7,7 +7,7 @@ fail() { printf 'kast-install: %s\n' "$*" >&2; exit 1; }
 quote() { printf "'"; printf '%s' "$1" | sed "s/'/'\"'\"'/g"; printf "'"; }
 installer="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd -P)/install.sh"
 mode=${1:-}
-case "$mode" in session|persistent) shift ;; *) fail 'usage: packaging/install-checkout.sh session|persistent --idea-home <path> [--force]'  ;; esac
+case "$mode" in session|persistent) shift ;; *) fail 'usage: packaging/install-checkout.sh session|persistent --idea-home <path> [--force] [--register-codex-mcp|--skip-codex-mcp]'  ;; esac
 checkout=$(pwd -P)
 [[ -x "$checkout/gradlew" && -f "$checkout/packaging/install-local.sh" && -f "$checkout/build.gradle.kts" ]] ||
   fail 'run packaging/install-checkout.sh from the root of a Kast checkout'
@@ -20,6 +20,9 @@ idea_home="${KAST_INSTALL_IDEA_HOME:-}"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --force) options+=(--force); shift; continue ;;
+    --register-codex-mcp|--skip-codex-mcp)
+      [[ $mode == persistent ]] || fail "$1 requires a persistent installation"
+      options+=("$1"); shift; continue ;;
     --idea-home) idea_home="${2:-}" ;;
     *) fail "unsupported checkout installation option: $1" ;;
   esac

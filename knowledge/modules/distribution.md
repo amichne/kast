@@ -102,7 +102,7 @@ resolution ignores developer tags.
 The public installer reports the selected IDEA product version and build before
 fetching release-line-specific plugin bytes. An absent matching plugin is a
 fail-closed compatibility result and precedes installation effects. Public installation enables the app-server suite and defaults the per-user login
-LaunchAgent on without a prompt. All installations are non-interactive; command collisions require explicit `--force` or manual removal.
+LaunchAgent on without a prompt. Persistent installation asks in a terminal whether to register a user-level Codex MCP entry. Explicit register and skip flags bypass that prompt; non-interactive installation defaults to registration for compatibility. Skipping registration does not inspect or mutate Codex configuration and still installs the MCP launcher. Command collisions require explicit `--force` or manual removal.
 Local session installation retains the complete payload and defers service activation.
 
 Hosted-only schema-2 installations retire their coordinator without invoking
