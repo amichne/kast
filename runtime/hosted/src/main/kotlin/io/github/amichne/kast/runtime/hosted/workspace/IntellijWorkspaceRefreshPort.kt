@@ -174,8 +174,7 @@ internal class IntellijWorkspaceRefreshPort(
     }
 
     private fun observeForcedRefresh(outcome: WorkspaceRefreshEffectResult) {
-        Logger.getInstance(IntellijWorkspaceRefreshPort::class.java)
-            .info(outcome.refreshObservation())
+        Logger.getInstance(IntellijWorkspaceRefreshPort::class.java).info(outcome.refreshObservation())
     }
 
     private fun reloadModel(complete: (WorkspaceRefreshEffectResult) -> Unit) {

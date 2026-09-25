@@ -50,8 +50,7 @@ internal suspend fun awaitHostedVfsRefresh(
         } catch (_: RuntimeException) {
             HostedVfsRefreshOutcome.FAILED
         }
-    Logger.getInstance(HostedEndpointService::class.java)
-        .info(outcome.refreshObservation())
+    Logger.getInstance(HostedEndpointService::class.java).info(outcome.refreshObservation())
     return outcome
 }
 

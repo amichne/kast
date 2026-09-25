@@ -37,8 +37,10 @@ class WorkspaceRefreshVfsOrderTest {
                                         owner == "io/github/amichne/kast/runtime/hosted/HostedVfsRefreshOutcomeKt" &&
                                             name.startsWith("awaitHostedVfsRefresh-")
                                     ) {
-                                        callers +=
-                                            if (callerMethod.startsWith("lifecycleVfsRefresh-")) "lifecycle" else "dispatch"
+                                        val caller =
+                                            if (callerMethod.startsWith("lifecycleVfsRefresh-")) "lifecycle"
+                                            else "dispatch"
+                                        callers += caller
                                     }
                                 }
                             }
@@ -113,7 +115,8 @@ class WorkspaceRefreshVfsOrderTest {
                                         if (
                                             owner == "com/intellij/openapi/vfs/newvfs/RefreshQueue\$Companion" &&
                                                 name == "getInstance"
-                                        ) refreshQueueSelected = true
+                                        )
+                                            refreshQueueSelected = true
                                         if (
                                             owner == "com/intellij/openapi/vfs/newvfs/RefreshQueue" && name == "refresh"
                                         )
