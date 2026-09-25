@@ -10,6 +10,7 @@ import io.github.amichne.kast.cli.CliTextDocument
 import io.github.amichne.kast.cli.CliTextDocumentAdmission
 import io.github.amichne.kast.cli.InstalledHostedToolDocument
 import io.github.amichne.kast.cli.InstalledServerExecutionBudgetDocument
+import io.github.amichne.kast.cli.installedHostedBootstrap
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import java.io.BufferedInputStream
@@ -33,6 +34,68 @@ import org.junit.jupiter.api.io.TempDir
 @Suppress("LargeClass")
 class KastMcpServerTest {
     @TempDir lateinit var temporary: Path
+
+    @Test
+    fun `semantic reads advertise safe MCP hints while change retains write hints`() {
+        val readNames =
+            setOf(
+                "check_diagnostics",
+                "query_symbols",
+                "read_relations",
+                "search_classes",
+                "search_declarations",
+                "search_functions",
+                "source_read",
+                "symbol_inspect",
+                "symbol_lookup",
+                "traverse_relations",
+            )
+        val installed = installedHostedBootstrap().tools
+        val reads = installed.filter { it.name in readNames }
+        assertEquals(readNames, reads.mapTo(linkedSetOf()) { it.name })
+        val change = installed.single { it.name == "change" }
+        val output = ByteArrayOutputStream()
+        KastMcpServer(
+                catalog = reads,
+                invoke = { _, _ -> error("no invocation expected") },
+                root = { CanonicalRootDiscovery.Rejected(CanonicalRootFailure.ROOT_MARKER_NOT_FOUND) },
+                supplemental =
+                    listOf(
+                        McpSupplementalTool(
+                            name = "change",
+                            description = change.description,
+                            inputSchema = change.inputSchema,
+                            readOnly = false,
+                            invoke = { error("no invocation expected") },
+                        )
+                    ),
+                diagnostic = PrintStream(ByteArrayOutputStream()),
+            )
+            .run(
+                BufferedInputStream(
+                    ByteArrayInputStream(
+                        """{"jsonrpc":"2.0","id":1,"method":"initialize"}
+                           {"jsonrpc":"2.0","id":2,"method":"tools/list"}
+                        """.trimIndent().plus("\n").toByteArray()
+                    )
+                ),
+                PrintStream(output),
+            )
+        val tools =
+            output.toString(Charsets.UTF_8).lineSequence().filter(String::isNotBlank).last().let {
+                Json.parseToJsonElement(it).jsonObject.getValue("result").jsonObject.getValue("tools").jsonArray
+            }
+        assertEquals(readNames + "change", tools.mapTo(linkedSetOf()) { it.jsonObject.getValue("name").jsonPrimitive.content })
+        for (tool in tools) {
+            val document = tool.jsonObject
+            val read = document.getValue("name").jsonPrimitive.content in readNames
+            val hints = document.getValue("annotations").jsonObject
+            assertEquals(read.toString(), hints.getValue("readOnlyHint").jsonPrimitive.content)
+            assertEquals((!read).toString(), hints.getValue("destructiveHint").jsonPrimitive.content)
+            assertEquals(read.toString(), hints.getValue("idempotentHint").jsonPrimitive.content)
+            assertEquals("false", hints.getValue("openWorldHint").jsonPrimitive.content)
+        }
+    }
 
     private fun admittedRoot(): CanonicalRootDiscovery {
         Files.writeString(temporary.resolve("settings.gradle.kts"), "rootProject.name = \"fixture\"")
@@ -323,7 +386,7 @@ class KastMcpServerTest {
                             name = "search_classes",
                             description = "Search classes",
                             deferLoading = false,
-                            effect = "read",
+                            effect = "intellij_read",
                             approvalPolicy = "none",
                             executionBudget = InstalledServerExecutionBudgetDocument(1000, 1000),
                             inputSchema = Json.encodeToJsonElement(TestSchema("object")),
@@ -394,7 +457,7 @@ class KastMcpServerTest {
                             "search_classes",
                             "Search classes",
                             false,
-                            "read",
+                            "intellij_read",
                             "none",
                             InstalledServerExecutionBudgetDocument(1000, 1000),
                             Json.encodeToJsonElement(TestSchema("object")),
@@ -456,7 +519,7 @@ class KastMcpServerTest {
                             "search_classes",
                             "Search classes",
                             false,
-                            "read",
+                            "intellij_read",
                             "none",
                             InstalledServerExecutionBudgetDocument(1000, 1000),
                             Json.encodeToJsonElement(TestSchema("object")),

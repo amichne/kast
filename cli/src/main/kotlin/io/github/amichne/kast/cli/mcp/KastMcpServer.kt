@@ -5,6 +5,7 @@ import io.github.amichne.kast.appserver.ide.CanonicalRoot
 import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
 import io.github.amichne.kast.cli.CliExit
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.registry.OperationEffect
 import io.modelcontextprotocol.kotlin.sdk.types.ToolAnnotations
 import java.io.BufferedInputStream
 import java.io.PrintStream
@@ -106,7 +107,9 @@ internal class KastMcpServer(
 
     private fun toolCatalog(): List<McpTool> =
         (catalog.map {
-                val readOnly = it.effect == "read"
+                val effect = OperationEffect.entries.singleOrNull { value -> value.name.lowercase() == it.effect }
+                    ?: error("Unknown canonical operation effect")
+                val readOnly = effect == OperationEffect.NONE || effect == OperationEffect.INTELLIJ_READ
                 McpTool(
                     it.name,
                     it.description,
