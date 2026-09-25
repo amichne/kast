@@ -262,7 +262,7 @@ def render_tools(authority: dict) -> dict[Path, str]:
     enums = {}
     unions = {'Scope': ['DirectoryScope', 'PackageScope'],
               'Source': ['SearchSource', 'AllSource', 'ReferenceSource'],
-              'Step': ['FilterVisibility', 'ExpandRelation', 'DistinctSymbols']}
+              'Step': ['FilterVisibility', 'ExpandRelation', 'DistinctSymbols', 'AppendSymbolRefs', 'FilterJq']}
     parents = {child: parent for parent, children in unions.items() for child in children}
     def typ(spec, prop):
         if '$ref' in spec:

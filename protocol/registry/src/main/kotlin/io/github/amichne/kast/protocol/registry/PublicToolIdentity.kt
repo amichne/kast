@@ -19,11 +19,11 @@ enum class PublicToolIdentity(
     ),
     QUERY_SYMBOLS("query_symbols", CanonicalOperation.QUERY_RUN,
         "Search or enumerate Kotlin declarations by name, kind and scope; start from returned exact" +
-            " references; filter visibility, expand relations, or deduplicate in ordered steps. Exact n" +
-            "ame matching is default; fuzzy requires explicit opt-in. Use symbol_lookup when candidate " +
-            "discovery by file, location, name or source text is required. Source restrictions do not c" +
-            "onstrain expansion destinations. Compiler identity, bounded work, and completeness remain " +
-            "owned by Kast.",
+            " references; append prior query outputs, filter with visibility or bounded jq primitive pr" +
+            "edicates, expand relations, and deduplicate in ordered steps. Exact name matching is defau" +
+            "lt; fuzzy requires explicit opt-in. Use symbol_lookup when candidate discovery by file, lo" +
+            "cation, name or source text is required. Source restrictions do not constrain expansion de" +
+            "stinations. Compiler identity, bounded work, and completeness remain owned by Kast.",
         HostedToolLoading.EAGER,
     ),
 }

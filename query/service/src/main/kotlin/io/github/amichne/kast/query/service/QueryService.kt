@@ -98,6 +98,13 @@ class QueryService(
                 is PipelineTask.Candidate -> candidate(task)
                 is PipelineTask.Symbol -> symbol(task)
                 is PipelineTask.Related -> related(task)
+                is PipelineTask.AppendReferences -> {
+                    tasks.removeFirst()
+                    task.stage.references.values.asReversed().forEach {
+                        tasks.addFirst(PipelineTask.Revalidate(it, task.stage.next))
+                    }
+                    true
+                }
                 is PipelineTask.Discover -> {
                     when (val result = stages.discover(task.syntax, state)) {
                         DiscoveryExecution.NotStarted -> false
@@ -169,22 +176,36 @@ class QueryService(
                         tasks.addFirst(task.copy(stage = stage.next))
                     true
                 }
-                is ExactQueryStage.Where -> {
-                    when (val admitted = state.sourceResources()) {
-                        is Refinement.Rejected -> false
-                        is Refinement.Refined -> {
-                            val values = stages.where(task.value, stage.predicate, state, admitted.value)
-                            tasks.removeFirst()
-                            values.asReversed().forEach { tasks.addFirst(PipelineTask.Symbol(it, stage.next)) }
-                            true
-                        }
-                    }
+                is ExactQueryStage.Where -> where(task, stage)
+                is ExactQueryStage.AppendReferences -> {
+                    tasks.removeFirst()
+                    tasks.addFirst(task.copy(stage = stage.next))
+                    true
                 }
                 is ExactQueryStage.Related -> {
                     tasks.removeFirst()
                     tasks.addFirst(PipelineTask.Related(task.value, stage, null))
                     true
                 }
+            }
+
+        private suspend fun where(task: PipelineTask.Symbol, stage: ExactQueryStage.Where): Boolean =
+            when (val predicate = stage.predicate) {
+                is io.github.amichne.kast.query.contract.QueryPredicate.Primitive -> {
+                    tasks.removeFirst()
+                    if (stages.matchesPrimitive(task.value, predicate)) tasks.addFirst(task.copy(stage = stage.next))
+                    true
+                }
+                is io.github.amichne.kast.query.contract.QueryPredicate.Visibility ->
+                    when (val admitted = state.sourceResources()) {
+                        is Refinement.Rejected -> false
+                        is Refinement.Refined -> {
+                            val values = stages.whereVisibility(task.value, predicate, state, admitted.value)
+                            tasks.removeFirst()
+                            values.asReversed().forEach { tasks.addFirst(PipelineTask.Symbol(it, stage.next)) }
+                            true
+                        }
+                    }
             }
 
         private suspend fun emitSymbol(task: PipelineTask.Symbol, stage: ExactQueryStage.Emit): Boolean {

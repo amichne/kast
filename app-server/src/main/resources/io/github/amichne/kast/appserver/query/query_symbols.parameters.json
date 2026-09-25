@@ -30,12 +30,18 @@
           },
           {
             "$ref": "#/$defs/DistinctSymbols"
+          },
+          {
+            "$ref": "#/$defs/AppendSymbolRefs"
+          },
+          {
+            "$ref": "#/$defs/FilterJq"
           }
         ]
       },
       "minItems": 0,
       "maxItems": 1000,
-      "description": "Ordered transformations, executed left to right. null and [] mean no transformations. Filtering before expansion and filtering after expansion have different meanings. Only the three advertised step shapes are supported; diagnostics are a separate tool."
+      "description": "Ordered transformations, executed left to right. null and [] mean no transformations. append_symbol_refs merges prior exact-symbol outputs into the stream; distinct_symbols then forms a set union. filter_jq accepts the documented bounded jq select subset over primitive symbol fields."
     },
     "return_fields": {
       "type": [
@@ -410,6 +416,58 @@
       },
       "required": [],
       "additionalProperties": false
+    },
+    "AppendSymbolRefs": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "append_symbol_refs"
+          ]
+        },
+        "symbol_refs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "description": "Opaque exact-symbol reference from a previous query_symbols result.",
+            "minLength": 1,
+            "maxLength": 1048576
+          },
+          "minItems": 1,
+          "maxItems": 1000,
+          "description": "Append exact symbols from one or more earlier query results in this workspace and generation. Follow with distinct_symbols to form a set union."
+        }
+      },
+      "required": [
+        "type",
+        "symbol_refs"
+      ],
+      "additionalProperties": false,
+      "description": "Append prior exact-symbol outputs at this pipeline position. Later steps transform both the original stream and appended symbols."
+    },
+    "FilterJq": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "filter_jq"
+          ]
+        },
+        "expression": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "description": "Bounded jq select expression over exact symbol primitive fields name, kind, and file. Supported: select(.field == \"value\"), select(.field != \"value\"), select(.field | startswith(\"value\")), and select(.field | endswith(\"value\")). Other jq syntax is rejected."
+        }
+      },
+      "required": [
+        "type",
+        "expression"
+      ],
+      "additionalProperties": false,
+      "description": "Keep symbols for which the supported jq predicate selects the primitive projection."
     }
   }
 }

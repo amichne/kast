@@ -17,6 +17,8 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt
   - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPlan.kt
     symbols: [QueryPlanCompiler, AdmittedQueryPlan]
+  - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt
+    symbols: [QueryStepSyntax, QueryPredicate]
   - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryExecution.kt
   - path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryExecutionState.kt
     symbols: [QueryExecutionState]
@@ -56,6 +58,8 @@ host admission -> current authority + request budget
 ```
 
 The pure plan compiler prevents candidate-only and exact-symbol stages from being combined incorrectly. Execution uses a single request state to track `SemanticReadAuthority`, time, work units, encoded bytes, result capacity, limitations, and item failures. A live authority is supplied by its admitted host; decoding a reference never creates one.
+
+An append-reference stage admits exact outputs from earlier queries under the current authority, then schedules them after the upstream stream. Later predicates, relation hops, and distinct stages see both inputs. Appended items share the parent work and checkpoint budget; distinct is the explicit set-union choice. The public bounded jq spelling is refined to a typed predicate over compiler-grounded name, kind, or file text before the service evaluates it without a source read. A resumed request uses the checkpoint's already admitted plan after exact request and authority matching, so it does not reacquire old tokens for each page.
 
 An exact-symbol output may request `SOURCE`. At its emit stage, the service calls the existing source port with the same exact selector and read authority, a file region, no entity enumeration, and a fixed five-line window on each side. Returned text keeps its normalized committed-text proof and one-based line range. Source rejection or withheld text qualifies the query with a finite item cause; output and checkpoint bytes account for returned text. This adds one source read per emitted symbol and does not alter candidate-only results.
 

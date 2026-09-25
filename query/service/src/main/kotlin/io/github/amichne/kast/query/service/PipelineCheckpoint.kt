@@ -33,6 +33,8 @@ internal sealed interface PipelineTask {
 
     data class Revalidate(val selector: SymbolSelector, val next: ExactQueryStage) : PipelineTask
 
+    data class AppendReferences(val stage: ExactQueryStage.AppendReferences) : PipelineTask
+
     data class Candidate(val value: SymbolDiscoverySelection, val stage: CandidateQueryStage) : PipelineTask
 
     data class Symbol(val value: QuerySymbol, val stage: ExactQueryStage) : PipelineTask
@@ -59,6 +61,7 @@ internal data class PipelineCheckpoint(
                     is PipelineTask.Candidate -> QueryCandidate(task.value).projectedUtf8Size() * 4L
                     is PipelineTask.Revalidate ->
                         QuerySymbol(SymbolDescription.from(task.selector), emptyList()).projectedUtf8Size() * 4L
+                    is PipelineTask.AppendReferences -> task.stage.references.values.size.toLong() * 512L
                     is PipelineTask.Discover -> 4096L
                 }
         } +
@@ -66,7 +69,9 @@ internal data class PipelineCheckpoint(
             symbolDistinct.values.sumOf { it.size.toLong() * 512L }
 }
 
-internal fun initialTasks(plan: AdmittedQueryPlan): List<PipelineTask> =
+internal fun initialTasks(plan: AdmittedQueryPlan): List<PipelineTask> = sourceTasks(plan) + appendTasks(plan)
+
+private fun sourceTasks(plan: AdmittedQueryPlan): List<PipelineTask> =
     when (plan) {
         is AdmittedQueryPlan.Candidates -> listOf(PipelineTask.Discover(plan.source, plan.stage))
         is AdmittedQueryPlan.Symbols ->
@@ -78,6 +83,30 @@ internal fun initialTasks(plan: AdmittedQueryPlan): List<PipelineTask> =
             )
         is AdmittedQueryPlan.CandidateReferences -> plan.source.values.map { PipelineTask.Candidate(it, plan.stage) }
         is AdmittedQueryPlan.ExactReferences -> plan.source.values.map { PipelineTask.Revalidate(it, plan.stage) }
+    }
+
+private fun appendTasks(plan: AdmittedQueryPlan): List<PipelineTask> =
+    when (plan) {
+        is AdmittedQueryPlan.Candidates -> appendTasks(plan.stage)
+        is AdmittedQueryPlan.Symbols -> appendTasks(plan.stage)
+        is AdmittedQueryPlan.CandidateReferences -> appendTasks(plan.stage)
+        is AdmittedQueryPlan.ExactReferences -> appendTasks(plan.stage)
+    }
+
+private fun appendTasks(stage: CandidateQueryStage): List<PipelineTask> =
+    when (stage) {
+        is CandidateQueryStage.Distinct -> appendTasks(stage.next)
+        is CandidateQueryStage.Inspect -> appendTasks(stage.next)
+        is CandidateQueryStage.Emit -> emptyList()
+    }
+
+private fun appendTasks(stage: ExactQueryStage): List<PipelineTask> =
+    when (stage) {
+        is ExactQueryStage.AppendReferences -> listOf(PipelineTask.AppendReferences(stage)) + appendTasks(stage.next)
+        is ExactQueryStage.Distinct -> appendTasks(stage.next)
+        is ExactQueryStage.Where -> appendTasks(stage.next)
+        is ExactQueryStage.Related -> appendTasks(stage.next)
+        is ExactQueryStage.Emit -> emptyList()
     }
 
 internal fun discoverySyntax(plan: AdmittedQueryPlan): QueryDiscoverySyntax? =

@@ -2,37 +2,7 @@ package io.github.amichne.kast.query.contract
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.RelationMeaning
-import io.github.amichne.kast.source.contract.DeclarationVisibility
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
-
-class QueryVisibilitySelection private constructor(val values: List<DeclarationVisibility>) {
-    companion object {
-        fun from(raw: Set<DeclarationVisibility>): Refinement<QueryVisibilitySelection, QueryCollectionFailure> =
-            if (raw.isEmpty()) {
-                Refinement.Rejected(QueryCollectionFailure.EMPTY)
-            } else {
-                Refinement.Refined(QueryVisibilitySelection(raw.sortedBy { it.ordinal }))
-            }
-    }
-
-    override fun equals(other: Any?): Boolean = other is QueryVisibilitySelection && values == other.values
-
-    override fun hashCode(): Int = values.hashCode()
-}
-
-sealed interface QueryPredicate {
-    data class Visibility(val values: QueryVisibilitySelection) : QueryPredicate
-}
-
-sealed interface QueryStepSyntax {
-    data object Inspect : QueryStepSyntax
-
-    data class Where(val predicate: QueryPredicate) : QueryStepSyntax
-
-    data class Related(val meaning: RelationMeaning) : QueryStepSyntax
-
-    data object Distinct : QueryStepSyntax
-}
 
 enum class QueryCandidateField {
     NAME,
@@ -141,6 +111,8 @@ sealed interface ExactQueryStage {
     data class Related(val meaning: RelationMeaning, val next: ExactQueryStage) : ExactQueryStage
 
     data class Distinct(val next: ExactQueryStage) : ExactQueryStage
+
+    data class AppendReferences(val references: QueryExactReferences, val next: ExactQueryStage) : ExactQueryStage
 
     data class Emit(val fields: QuerySymbolFields) : ExactQueryStage
 }
@@ -275,7 +247,8 @@ object QueryPlanCompiler {
                     is ExactStageAdmission.Rejected -> CandidateStageAdmission.Rejected(next.failure)
                 }
             is QueryStepSyntax.Related,
-            is QueryStepSyntax.Where ->
+            is QueryStepSyntax.Where,
+            is QueryStepSyntax.AppendReferences ->
                 CandidateStageAdmission.Rejected(
                     stageMismatch(
                         index,
@@ -316,6 +289,8 @@ object QueryPlanCompiler {
                 exactStage(steps, index + 1, output).map { ExactQueryStage.Where(step.predicate, it) }
             is QueryStepSyntax.Related ->
                 exactStage(steps, index + 1, output).map { ExactQueryStage.Related(step.meaning, it) }
+            is QueryStepSyntax.AppendReferences ->
+                exactStage(steps, index + 1, output).map { ExactQueryStage.AppendReferences(step.references, it) }
         }
     }
 
@@ -376,4 +351,31 @@ private fun ExactStageAdmission.map(transform: (ExactQueryStage) -> ExactQuerySt
     when (this) {
         is ExactStageAdmission.Admitted -> ExactStageAdmission.Admitted(transform(stage))
         is ExactStageAdmission.Rejected -> this
+    }
+
+internal fun AdmittedQueryPlan.appendedReferenceLeases():
+    List<io.github.amichne.kast.workspace.contract.SemanticReadAuthority> =
+    when (this) {
+        is AdmittedQueryPlan.Candidates -> stage.appendedReferenceLeases()
+        is AdmittedQueryPlan.Symbols -> stage.appendedReferenceLeases()
+        is AdmittedQueryPlan.CandidateReferences -> stage.appendedReferenceLeases()
+        is AdmittedQueryPlan.ExactReferences -> stage.appendedReferenceLeases()
+    }
+
+private fun CandidateQueryStage.appendedReferenceLeases():
+    List<io.github.amichne.kast.workspace.contract.SemanticReadAuthority> =
+    when (this) {
+        is CandidateQueryStage.Distinct -> next.appendedReferenceLeases()
+        is CandidateQueryStage.Inspect -> next.appendedReferenceLeases()
+        is CandidateQueryStage.Emit -> emptyList()
+    }
+
+private fun ExactQueryStage.appendedReferenceLeases():
+    List<io.github.amichne.kast.workspace.contract.SemanticReadAuthority> =
+    when (this) {
+        is ExactQueryStage.AppendReferences -> references.values.map { it.lease } + next.appendedReferenceLeases()
+        is ExactQueryStage.Distinct -> next.appendedReferenceLeases()
+        is ExactQueryStage.Where -> next.appendedReferenceLeases()
+        is ExactQueryStage.Related -> next.appendedReferenceLeases()
+        is ExactQueryStage.Emit -> emptyList()
     }

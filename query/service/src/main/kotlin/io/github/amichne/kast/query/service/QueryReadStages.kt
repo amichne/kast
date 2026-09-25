@@ -146,36 +146,57 @@ internal class QueryReadStages(
         state.observeTime()
     }
 
-    suspend fun where(
+    suspend fun whereVisibility(
         symbol: QuerySymbol,
-        predicate: QueryPredicate,
+        predicate: QueryPredicate.Visibility,
         state: QueryExecutionState,
         resources: io.github.amichne.kast.kernel.ResourceBudget,
-    ): List<QuerySymbol> =
-        when (predicate) {
-            is QueryPredicate.Visibility ->
-                buildList {
-                    when (val result = source.read(visibilityRequest(symbol.selector, state, resources))) {
-                        is SourceReadResult.Complete ->
-                            when (val evidence = SourceDeclarationVisibility.admit(symbol.selector, result)) {
-                                is Refinement.Refined ->
-                                    if (evidence.value.visibility in predicate.values.values) add(symbol)
-                                is Refinement.Rejected -> {
-                                    state.failure(QueryItemFailure.PredicateUnproven(symbol.selector))
-                                    state.limit(QueryLimitation.VISIBILITY_INCOMPLETE)
-                                }
-                            }
-                        is SourceReadResult.Qualified -> {
-                            state.failure(QueryItemFailure.PredicateUnproven(symbol.selector))
-                            state.limit(QueryLimitation.VISIBILITY_INCOMPLETE)
-                        }
-                        is SourceReadResult.Rejected -> {
-                            state.failure(QueryItemFailure.Visibility(symbol.selector, result.reason))
-                            state.limit(QueryLimitation.VISIBILITY_INCOMPLETE)
-                        }
+    ): List<QuerySymbol> = buildList {
+        when (val result = source.read(visibilityRequest(symbol.selector, state, resources))) {
+            is SourceReadResult.Complete ->
+                when (val evidence = SourceDeclarationVisibility.admit(symbol.selector, result)) {
+                    is Refinement.Refined -> if (evidence.value.visibility in predicate.values.values) add(symbol)
+                    is Refinement.Rejected -> {
+                        state.failure(QueryItemFailure.PredicateUnproven(symbol.selector))
+                        state.limit(QueryLimitation.VISIBILITY_INCOMPLETE)
                     }
-                    state.observeTime()
                 }
+            is SourceReadResult.Qualified -> {
+                state.failure(QueryItemFailure.PredicateUnproven(symbol.selector))
+                state.limit(QueryLimitation.VISIBILITY_INCOMPLETE)
+            }
+            is SourceReadResult.Rejected -> {
+                state.failure(QueryItemFailure.Visibility(symbol.selector, result.reason))
+                state.limit(QueryLimitation.VISIBILITY_INCOMPLETE)
+            }
+        }
+        state.observeTime()
+    }
+
+    fun matchesPrimitive(symbol: QuerySymbol, predicate: QueryPredicate.Primitive): Boolean =
+        with(symbol) {
+            val primitive =
+                when (predicate.field) {
+                    io.github.amichne.kast.query.contract.QueryPrimitiveField.NAME -> description.name.value
+                    io.github.amichne.kast.query.contract.QueryPrimitiveField.KIND ->
+                        when (description.kind) {
+                            io.github.amichne.kast.symbol.contract.CompilerSymbolKind.CLASSLIKE -> "class"
+                            io.github.amichne.kast.symbol.contract.CompilerSymbolKind.CONSTRUCTOR -> "constructor"
+                            io.github.amichne.kast.symbol.contract.CompilerSymbolKind.FUNCTION -> "function"
+                            io.github.amichne.kast.symbol.contract.CompilerSymbolKind.PROPERTY -> "property"
+                            io.github.amichne.kast.symbol.contract.CompilerSymbolKind.TYPE_ALIAS -> "type_alias"
+                        }
+                    io.github.amichne.kast.query.contract.QueryPrimitiveField.FILE -> description.file.stableValue
+                }
+            when (predicate.operator) {
+                io.github.amichne.kast.query.contract.QueryPrimitiveOperator.EQUALS -> primitive == predicate.value.text
+                io.github.amichne.kast.query.contract.QueryPrimitiveOperator.NOT_EQUALS ->
+                    primitive != predicate.value.text
+                io.github.amichne.kast.query.contract.QueryPrimitiveOperator.STARTS_WITH ->
+                    primitive.startsWith(predicate.value.text)
+                io.github.amichne.kast.query.contract.QueryPrimitiveOperator.ENDS_WITH ->
+                    primitive.endsWith(predicate.value.text)
+            }
         }
 
     suspend fun sourceWindow(

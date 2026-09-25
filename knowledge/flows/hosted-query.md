@@ -424,6 +424,7 @@ explicit read settings; epoch replacement and disposal clear project state.
 Resumption acquires fresh host admission before state lookup. No checkpoint holds
 PSI, K2 symbols or an IDE observer callback. The serialized output budget is
 checked after compact references and selected projection fields are encoded.
+After exact request and authority matching, query protocol execution uses the retained admitted plan and pending append-reference tasks without reacquiring prior tokens or replaying emitted items.
 
 Relation output uses the same detached output-page retention implementation as
 query output. If the full encoded relation response exceeds its byte cap, the

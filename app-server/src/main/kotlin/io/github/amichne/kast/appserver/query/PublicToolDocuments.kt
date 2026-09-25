@@ -125,6 +125,18 @@ internal data class PublicToolExpandRelation(
 internal data object PublicToolDistinctSymbols : PublicToolStep
 
 @Serializable
+@SerialName("append_symbol_refs")
+internal data class PublicToolAppendSymbolRefs(
+    val symbol_refs: BoundedProtocolList<ProtocolText>,
+) : PublicToolStep
+
+@Serializable
+@SerialName("filter_jq")
+internal data class PublicToolFilterJq(
+    val expression: ProtocolText,
+) : PublicToolStep
+
+@Serializable
 internal data class PublicToolCheckDiagnostics(
     val relative_path: ProtocolText,
     val max_diagnostics: Int? = null,

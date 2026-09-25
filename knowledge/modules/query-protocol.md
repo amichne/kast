@@ -86,6 +86,8 @@ root, host, epoch, version, and content view must match it. Restoration does not
 open an IDE or prove a declaration is current. Native read adapters must still
 revalidate scope, location, compiler evidence, and content.
 
+First-page query admission reacquires exact references from both the source and append-reference steps through one bounded request capability. An invalid appended token reports its step and position. A continuation is first matched against its stored request and authority, then executes the retained admitted plan; old tokens are not reacquired on each page.
+
 Selector documents retain directory, package, declaration-kind, and exact Gradle
 source-set constraints. Batch issuance preserves these facts for declaration,
 file, and text candidates. Legacy unrestricted published selectors retain their

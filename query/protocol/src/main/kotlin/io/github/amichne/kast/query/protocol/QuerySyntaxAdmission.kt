@@ -12,34 +12,22 @@ import io.github.amichne.kast.protocol.contract.QueryDiscoveryDocument
 import io.github.amichne.kast.protocol.contract.QueryElementTypeDocument
 import io.github.amichne.kast.protocol.contract.QueryFromDocument
 import io.github.amichne.kast.protocol.contract.QueryMatchDocument
-import io.github.amichne.kast.protocol.contract.QueryOutputDocument
-import io.github.amichne.kast.protocol.contract.QueryPredicateDocument
 import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryReferenceRejectionReason
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.QuerySourceRejectionReason
 import io.github.amichne.kast.protocol.contract.QueryStepDocument
-import io.github.amichne.kast.protocol.contract.RelationKindDocument
-import io.github.amichne.kast.query.contract.QueryCandidateField
-import io.github.amichne.kast.query.contract.QueryCandidateFields
 import io.github.amichne.kast.query.contract.QueryCandidateReferences
 import io.github.amichne.kast.query.contract.QueryDeclarationKinds
 import io.github.amichne.kast.query.contract.QueryDiscoverySyntax
 import io.github.amichne.kast.query.contract.QueryExactReferences
 import io.github.amichne.kast.query.contract.QueryMatch
-import io.github.amichne.kast.query.contract.QueryOutputSyntax
 import io.github.amichne.kast.query.contract.QueryPlanAdmissionFailure
 import io.github.amichne.kast.query.contract.QueryPlanSyntax
-import io.github.amichne.kast.query.contract.QueryPredicate
 import io.github.amichne.kast.query.contract.QueryScope
 import io.github.amichne.kast.query.contract.QuerySourceSyntax
 import io.github.amichne.kast.query.contract.QueryStepSyntax
-import io.github.amichne.kast.query.contract.QuerySymbolField
-import io.github.amichne.kast.query.contract.QuerySymbolFields
-import io.github.amichne.kast.query.contract.QueryVisibilitySelection
-import io.github.amichne.kast.relation.contract.RelationMeaning
-import io.github.amichne.kast.source.contract.DeclarationVisibility
 import io.github.amichne.kast.symbol.contract.CandidateSelector
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryContainment
@@ -61,6 +49,12 @@ internal sealed interface QuerySyntaxAdmission {
 
     data class ReferenceRejected(
         val position: Int,
+        val reason: QueryReferenceRejectionReason,
+    ) : QuerySyntaxAdmission
+
+    data class StepReferenceRejected(
+        val stepPosition: Int,
+        val referencePosition: Int,
         val reason: QueryReferenceRejectionReason,
     ) : QuerySyntaxAdmission
 
@@ -89,7 +83,25 @@ internal fun QueryRunRequest.admitSyntax(
                     QueryReferenceSourceAdmission.RequestRejected -> return QuerySyntaxAdmission.RequestRejected
                 }
         }
-    val querySteps = steps.values.map { it.syntax() ?: return QuerySyntaxAdmission.RequestRejected }
+    val querySteps = mutableListOf<QueryStepSyntax>()
+    steps.values.forEachIndexed { index, step ->
+        if (step is QueryStepDocument.AppendReferences) {
+            val references = step.values.values.map(QueryReferenceDocument::ExactSymbol)
+            when (val admitted = references.admitExactReferences(lease, authority)) {
+                is QueryReferenceSourceAdmission.Admitted -> {
+                    val source =
+                        admitted.source as? QuerySourceSyntax.ExactReferences
+                            ?: return QuerySyntaxAdmission.RequestRejected
+                    querySteps += QueryStepSyntax.AppendReferences(source.references)
+                }
+                is QueryReferenceSourceAdmission.Rejected ->
+                    return QuerySyntaxAdmission.StepReferenceRejected(index, admitted.position, admitted.reason)
+                QueryReferenceSourceAdmission.RequestRejected -> return QuerySyntaxAdmission.RequestRejected
+            }
+        } else {
+            querySteps += step.syntax() ?: return QuerySyntaxAdmission.RequestRejected
+        }
+    }
     val queryOutput = output.syntax() ?: return QuerySyntaxAdmission.RequestRejected
     return QuerySyntaxAdmission.Admitted(QueryPlanSyntax(source, querySteps, queryOutput))
 }
@@ -220,42 +232,6 @@ private fun QueryDiscoveryDocument.syntax(): QueryDiscoverySyntax? {
     )
 }
 
-private fun QueryStepDocument.syntax(): QueryStepSyntax? =
-    when (this) {
-        QueryStepDocument.Inspect -> QueryStepSyntax.Inspect
-        is QueryStepDocument.Related -> QueryStepSyntax.Related(relation.meaning())
-        QueryStepDocument.Distinct -> QueryStepSyntax.Distinct
-        is QueryStepDocument.Where ->
-            when (val value = predicate) {
-                is QueryPredicateDocument.Visibility -> {
-                    val visibilities =
-                        value.values.values.uniqueValues()?.mapTo(linkedSetOf()) {
-                            DeclarationVisibility.valueOf(it.name)
-                        } ?: return null
-                    QueryStepSyntax.Where(
-                        QueryPredicate.Visibility(
-                            QueryVisibilitySelection.from(visibilities).refinedOrNull() ?: return null
-                        )
-                    )
-                }
-            }
-    }
-
-private fun QueryOutputDocument.syntax(): QueryOutputSyntax? =
-    when (this) {
-        is QueryOutputDocument.Candidates -> {
-            val selected =
-                fields.values.uniqueValues()?.mapTo(linkedSetOf()) { QueryCandidateField.valueOf(it.name) }
-                    ?: return null
-            QueryOutputSyntax.Candidates(QueryCandidateFields.from(selected).refinedOrNull() ?: return null)
-        }
-        is QueryOutputDocument.Symbols -> {
-            val selected =
-                fields.values.uniqueValues()?.mapTo(linkedSetOf()) { QuerySymbolField.valueOf(it.name) } ?: return null
-            QueryOutputSyntax.Symbols(QuerySymbolFields.from(selected).refinedOrNull() ?: return null)
-        }
-    }
-
 private fun QueryDeclarationKindDocument.compilerKind(): CompilerSymbolKind =
     when (this) {
         QueryDeclarationKindDocument.CLASS -> CompilerSymbolKind.CLASSLIKE
@@ -263,17 +239,6 @@ private fun QueryDeclarationKindDocument.compilerKind(): CompilerSymbolKind =
         QueryDeclarationKindDocument.FUNCTION -> CompilerSymbolKind.FUNCTION
         QueryDeclarationKindDocument.PROPERTY -> CompilerSymbolKind.PROPERTY
         QueryDeclarationKindDocument.TYPE_ALIAS -> CompilerSymbolKind.TYPE_ALIAS
-    }
-
-private fun RelationKindDocument.meaning(): RelationMeaning =
-    when (this) {
-        RelationKindDocument.REFERENCES -> RelationMeaning.References
-        RelationKindDocument.CALLERS -> RelationMeaning.Callers
-        RelationKindDocument.CALLEES -> RelationMeaning.Callees
-        RelationKindDocument.IMPLEMENTATIONS -> RelationMeaning.Implementations
-        RelationKindDocument.INHERITORS -> RelationMeaning.Inheritors
-        RelationKindDocument.OVERRIDES -> RelationMeaning.Overrides
-        RelationKindDocument.TYPE_USES -> RelationMeaning.TypeUses
     }
 
 internal fun QueryPlanAdmissionFailure.protocolRejection(): QueryRunRejection =

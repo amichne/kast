@@ -23,6 +23,7 @@ code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonOperationClient.kt
     symbols: [InstalledDaemonOperationClient]
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolMapping.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PrimitiveJqFilter.kt
   - path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt
   - path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastQueryInput.kt
@@ -51,6 +52,8 @@ The authored tool bundle generates Kotlin request DTOs, concrete normalization d
 Hosted tools pass admitted requests through the provider and shared workspace preparation owner. The daemon checks exact workspace identity before the existing-IDE operation. Complete, qualified, and rejected results retain their distinct documents. There is no semantic CLI operation RPC or direct-IDE fallback.
 
 The advanced pipeline preserves source meaning, step order, repeated steps and empty projections. Expansion returns related declarations; occurrence-oriented relation facts remain the relation-read contract. Query items and per-item failures expose one scalar `ref`, preserving the issued candidate or exact token verbatim. Named output schemas `CandidateRef`, `ExactSymbolRef`, and query-scoped `ContinuationRef` describe these opaque representations. No token spelling creates authority: existing runtime owners re-admit workspace, lifetime, epoch and compiler evidence.
+
+The `append_symbol_refs` step accepts prior exact query outputs at any pipeline position. It revalidates each reference in the current read authority, appends it after the upstream stream, and sends it through later steps under the same query budget. `distinct_symbols` is the explicit set-union operation. `filter_jq` admits only bounded `select` predicates over compiler-grounded `name`, `kind`, and `file` primitives; the facade refines their spelling into a closed predicate before execution, and unsupported jq syntax rejects.
 
 `query_symbols.return_fields` accepts `source`. It returns a committed source window for each exact symbol, extending five whole lines before and after the declaration and clipping at the file boundary. The same `SOURCE` selection is available in the public query syntax. It is opt-in because each selected symbol incurs a source read within the one admitted query transaction. A failed or withheld window retains a finite per-item source cause and `SOURCE_INCOMPLETE` qualification; it never supplies guessed text.
 

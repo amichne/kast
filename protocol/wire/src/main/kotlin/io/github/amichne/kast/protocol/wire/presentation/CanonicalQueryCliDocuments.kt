@@ -292,6 +292,11 @@ private fun QueryRunRejection.toCliDocument(): QueryRejectionCliDocument =
                 "from.values[${position.value}]",
                 reason.cliName(),
             )
+        is QueryRunRejection.StepReferenceRejected ->
+            QueryRejectionCliDocument.ReferenceRejected(
+                "steps[${stepPosition.value}].values[${referencePosition.value}]",
+                reason.cliName(),
+            )
         is QueryRunRejection.SourceRejected ->
             QueryRejectionCliDocument.SourceRejected(
                 kind.cliName(),

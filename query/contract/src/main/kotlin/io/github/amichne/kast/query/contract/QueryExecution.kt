@@ -72,7 +72,7 @@ private constructor(
             if (checkpoint != null && (checkpoint.plan != plan || checkpoint.lease != lease)) {
                 return Refinement.Rejected(QueryExecutionRequestFailure.CHECKPOINT_MISMATCH)
             }
-            return if (referenceLeases.any { it != lease }) {
+            return if ((referenceLeases + plan.appendedReferenceLeases()).any { it != lease }) {
                 Refinement.Rejected(QueryExecutionRequestFailure.REFERENCE_LEASE_MISMATCH)
             } else {
                 Refinement.Refined(QueryExecutionRequest(plan, lease, budget, checkpoint))

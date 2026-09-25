@@ -138,6 +138,14 @@ internal sealed interface QueryRunRejectionWireDocument {
     ) : QueryRunRejectionWireDocument
 
     @Serializable
+    @SerialName("step-reference-rejected")
+    data class StepReferenceRejected(
+        val stepPosition: Int,
+        val referencePosition: Int,
+        val reason: QueryReferenceRejectionReasonWireDocument,
+    ) : QueryRunRejectionWireDocument
+
+    @Serializable
     @SerialName("source-rejected")
     data class SourceRejected(
         val kind: QueryDeclarationKindWireDocument,
@@ -427,6 +435,12 @@ private fun QueryRunRejection.toQueryWireDocument(): QueryRunRejectionWireDocume
                 position.value,
                 reason.toWire(),
             )
+        is QueryRunRejection.StepReferenceRejected ->
+            QueryRunRejectionWireDocument.StepReferenceRejected(
+                stepPosition.value,
+                referencePosition.value,
+                reason.toWire(),
+            )
         is QueryRunRejection.SourceRejected ->
             QueryRunRejectionWireDocument.SourceRejected(
                 kind.toWire(),
@@ -447,6 +461,12 @@ private fun QueryRunRejectionWireDocument.toContract(): WireDocumentConversion<Q
         is QueryRunRejectionWireDocument.ReferenceRejected ->
             position.protocolOffset().mapConverted {
                 QueryRunRejection.ReferenceRejected(it, reason.toContract())
+            }
+        is QueryRunRejectionWireDocument.StepReferenceRejected ->
+            stepPosition.protocolOffset().flatMapConverted { step ->
+                referencePosition.protocolOffset().mapConverted { reference ->
+                    QueryRunRejection.StepReferenceRejected(step, reference, reason.toContract())
+                }
             }
         is QueryRunRejectionWireDocument.SourceRejected ->
             WireDocumentConversion.Converted(

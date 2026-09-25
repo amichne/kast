@@ -26,15 +26,19 @@ internal fun PublicToolDocument.lower(): Refinement<PublicToolCanonical, PublicT
             when (val from = source.lower()) {
                 is Refinement.Rejected -> from
                 is Refinement.Refined ->
-                    Refinement.Refined(
-                        query(
-                            from.value,
-                            (steps ?: PublicToolDefaults.steps).values.map { it.lower() },
-                            (return_fields ?: PublicToolDefaults.returnFields).values,
-                            continuation,
-                            executionBudget,
-                        )
-                    )
+                    when (val loweredSteps = (steps ?: PublicToolDefaults.steps).values.lower()) {
+                        is Refinement.Rejected -> loweredSteps
+                        is Refinement.Refined ->
+                            Refinement.Refined(
+                                query(
+                                    from.value,
+                                    loweredSteps.value,
+                                    (return_fields ?: PublicToolDefaults.returnFields).values,
+                                    continuation,
+                                    executionBudget,
+                                )
+                            )
+                    }
             }
     }
 
@@ -177,12 +181,33 @@ private fun query(
         )
     )
 
-private fun PublicToolStep.lower(): QueryStepDocument =
+private fun List<PublicToolStep>.lower(): Refinement<List<QueryStepDocument>, PublicToolInputFailure> {
+    val result = mutableListOf<QueryStepDocument>()
+    for (step in this) {
+        when (val lowered = step.lower()) {
+            is Refinement.Refined -> result += lowered.value
+            is Refinement.Rejected -> return lowered
+        }
+    }
+    return Refinement.Refined(result)
+}
+
+private fun PublicToolStep.lower(): Refinement<QueryStepDocument, PublicToolInputFailure> =
     when (this) {
         is PublicToolFilterVisibility ->
-            QueryStepDocument.Where(QueryPredicateDocument.Visibility(bounded(visibilities.values.map { it.lower() })))
-        is PublicToolExpandRelation -> QueryStepDocument.Related(relation.lower())
-        PublicToolDistinctSymbols -> QueryStepDocument.Distinct
+            Refinement.Refined(
+                QueryStepDocument.Where(
+                    QueryPredicateDocument.Visibility(bounded(visibilities.values.map { it.lower() }))
+                )
+            )
+        is PublicToolExpandRelation -> Refinement.Refined(QueryStepDocument.Related(relation.lower()))
+        PublicToolDistinctSymbols -> Refinement.Refined(QueryStepDocument.Distinct)
+        is PublicToolAppendSymbolRefs -> Refinement.Refined(QueryStepDocument.AppendReferences(symbol_refs))
+        is PublicToolFilterJq ->
+            when (val predicate = PrimitiveJqFilter.admit(expression)) {
+                is Refinement.Refined -> Refinement.Refined(QueryStepDocument.Where(predicate.value))
+                is Refinement.Rejected -> predicate
+            }
     }
 
 private fun PublicToolDeclarationKinds.lower(): QueryDeclarationKindDocument =

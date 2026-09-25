@@ -11,6 +11,62 @@ import org.junit.jupiter.api.Test
 
 class PublicToolContractTest {
     @Test
+    fun `query symbols admits appended outputs and jq filtering as ordered steps`() {
+        val reference = (ProtocolText.parse("NON_ISSUED_SCHEMA_TEST_ONLY") as Refinement.Refined).value
+        val expression = (ProtocolText.parse("select(.kind == \"class\")") as Refinement.Refined).value
+        val refs = (BoundedProtocolList.create(listOf(reference)) as Refinement.Refined).value
+        val steps =
+            (BoundedProtocolList.create(
+                    listOf<PublicToolStep>(
+                        PublicToolAppendSymbolRefs(refs),
+                        PublicToolFilterJq(expression),
+                        PublicToolDistinctSymbols,
+                    )
+                ) as Refinement.Refined)
+                .value
+        val input = PublicToolQuerySymbols(PublicToolReferenceSource(refs), steps, null)
+        val admitted =
+            PublicToolContract.admit(
+                PublicToolIdentity.QUERY_SYMBOLS,
+                Json.encodeToJsonElement(PublicToolQuerySymbols.serializer(), input),
+            ) as Refinement.Refined
+        val lowered = (admitted.value.canonical as PublicToolCanonical.Query).request.steps.values
+        assertEquals(
+            listOf(
+                QueryStepDocument.AppendReferences::class,
+                QueryStepDocument.Where::class,
+                QueryStepDocument.Distinct::class,
+            ),
+            lowered.map { it::class },
+        )
+        assertEquals(refs, (lowered[0] as QueryStepDocument.AppendReferences).values)
+        assertEquals(
+            QueryPrimitiveFieldDocument.KIND,
+            ((lowered[1] as QueryStepDocument.Where).predicate as QueryPredicateDocument.Primitive).field,
+        )
+    }
+
+    @Test
+    fun `unsupported jq expression rejects at public admission`() {
+        val reference = (ProtocolText.parse("NON_ISSUED_SCHEMA_TEST_ONLY") as Refinement.Refined).value
+        val expression = (ProtocolText.parse("select(.name | test(\".*\"))") as Refinement.Refined).value
+        val refs = (BoundedProtocolList.create(listOf(reference)) as Refinement.Refined).value
+        val steps =
+            (BoundedProtocolList.create(listOf<PublicToolStep>(PublicToolFilterJq(expression))) as Refinement.Refined)
+                .value
+        val input = PublicToolQuerySymbols(PublicToolReferenceSource(refs), steps, null)
+        val result =
+            PublicToolContract.admit(
+                PublicToolIdentity.QUERY_SYMBOLS,
+                Json.encodeToJsonElement(PublicToolQuerySymbols.serializer(), input),
+            )
+        assertEquals(
+            PublicToolInputFailure.Parameter(PublicToolParameter.JQ_EXPRESSION, PublicToolRule.SUPPORTED_JQ_FILTER),
+            (result as Refinement.Rejected).failure,
+        )
+    }
+
+    @Test
     fun `query symbols source field lowers to canonical source projection`() {
         val refs =
             (BoundedProtocolList.create(listOf((ProtocolText.parse("NON_ISSUED") as Refinement.Refined).value))

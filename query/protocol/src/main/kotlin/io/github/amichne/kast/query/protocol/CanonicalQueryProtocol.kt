@@ -45,23 +45,13 @@ class CanonicalQueryProtocol(
         budget: QueryBudget,
         checkpoint: QueryCheckpoint?,
     ): OperationOutcome<QueryRunResult, QueryRunQualification, QueryRunRejection> {
-        val admissionAuthority = admissionAuthority(request, lease, checkpoint)
-        val syntax =
-            when (val admission = request.admitSyntax(lease, admissionAuthority)) {
-                is QuerySyntaxAdmission.Admitted -> admission.syntax
-                is QuerySyntaxAdmission.ReferenceRejected ->
-                    return OperationOutcome.Rejected(
-                        QueryRunRejection.ReferenceRejected(queryPosition(admission.position), admission.reason)
-                    )
-                QuerySyntaxAdmission.RequestRejected ->
-                    return OperationOutcome.Rejected(
-                        QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.REQUEST_REJECTED)
-                    )
-            }
         val plan =
-            when (val admitted = QueryPlanCompiler.admit(syntax)) {
-                is QueryPlanAdmission.Admitted -> admitted.plan
-                is QueryPlanAdmission.Rejected -> return OperationOutcome.Rejected(admitted.failure.protocolRejection())
+            when (
+                val admission =
+                    if (checkpoint == null) admitPlan(request, lease) else Refinement.Refined(checkpoint.plan)
+            ) {
+                is Refinement.Refined -> admission.value
+                is Refinement.Rejected -> return OperationOutcome.Rejected(admission.failure)
             }
         val resources =
             when (val remaining = remainingResources(budget)) {
@@ -72,7 +62,7 @@ class CanonicalQueryProtocol(
             when (
                 val admitted =
                     QueryExecutionRequest.create(
-                        plan = checkpoint?.plan ?: plan,
+                        plan = plan,
                         lease = lease,
                         budget = if (resources == budget.resources) budget else budget.copy(resources = resources),
                         checkpoint = checkpoint,
@@ -85,6 +75,38 @@ class CanonicalQueryProtocol(
                     )
             }
         return projectExecution(request, lease, operations.run(execution))
+    }
+
+    /** A restored checkpoint already contains the plan proven for this exact request and lease. */
+    private suspend fun admitPlan(
+        request: QueryRunRequest,
+        lease: SemanticReadAuthority,
+    ): Refinement<AdmittedQueryPlan, QueryRunRejection> {
+        val admissionAuthority = admissionAuthority(request, lease)
+        val syntax =
+            when (val admission = request.admitSyntax(lease, admissionAuthority)) {
+                is QuerySyntaxAdmission.Admitted -> admission.syntax
+                is QuerySyntaxAdmission.ReferenceRejected ->
+                    return Refinement.Rejected(
+                        QueryRunRejection.ReferenceRejected(queryPosition(admission.position), admission.reason)
+                    )
+                is QuerySyntaxAdmission.StepReferenceRejected ->
+                    return Refinement.Rejected(
+                        QueryRunRejection.StepReferenceRejected(
+                            queryPosition(admission.stepPosition),
+                            queryPosition(admission.referencePosition),
+                            admission.reason,
+                        )
+                    )
+                QuerySyntaxAdmission.RequestRejected ->
+                    return Refinement.Rejected(
+                        QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.REQUEST_REJECTED)
+                    )
+            }
+        return when (val admitted = QueryPlanCompiler.admit(syntax)) {
+            is QueryPlanAdmission.Admitted -> Refinement.Refined(admitted.plan)
+            is QueryPlanAdmission.Rejected -> Refinement.Rejected(admitted.failure.protocolRejection())
+        }
     }
 
     private fun remainingResources(
@@ -109,18 +131,19 @@ class CanonicalQueryProtocol(
     private suspend fun admissionAuthority(
         request: QueryRunRequest,
         lease: SemanticReadAuthority,
-        checkpoint: QueryCheckpoint?,
-    ): QueryReferenceAuthority =
-        if (checkpoint == null && request.from is QueryFromDocument.References)
-            authority.admitReadReferences(
-                (request.from as QueryFromDocument.References)
-                    .values
-                    .values
-                    .filterIsInstance<QueryReferenceDocument.ExactSymbol>()
-                    .map { it.token },
-                lease,
-            )
-        else authority
+    ): QueryReferenceAuthority {
+        val sourceReferences =
+            (request.from as? QueryFromDocument.References)
+                ?.values
+                ?.values
+                ?.filterIsInstance<QueryReferenceDocument.ExactSymbol>()
+                ?.map { it.token }
+                .orEmpty()
+        val appendedReferences =
+            request.steps.values.filterIsInstance<QueryStepDocument.AppendReferences>().flatMap { it.values.values }
+        val references = sourceReferences + appendedReferences
+        return if (references.isEmpty()) authority else authority.admitReadReferences(references, lease)
+    }
 
     private fun projectExecution(
         request: QueryRunRequest,
