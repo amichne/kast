@@ -109,8 +109,9 @@ Set `KAST_DEBUG=1` for bounded launch-stage output.
 
 ## Automatic refresh of a linked workspace
 
-Ordinary reads save project-owned editor buffers and force a disk comparison of
-the project VFS before semantic admission. Kast waits for a missing cached Gradle
+Ordinary reads save project-owned editor buffers and wait for native incremental
+recursive VFS refresh before semantic admission. Explicit workspace file refresh
+forces disk reconciliation for external writes. Kast waits for a missing cached Gradle
 model through native import and requests one linked-project reload on first
 attach, after changed Gradle inputs, or when the cached model is missing.
 Agents do not choose `FILE_REFRESH` or `GRADLE_MODEL_RELOAD` through

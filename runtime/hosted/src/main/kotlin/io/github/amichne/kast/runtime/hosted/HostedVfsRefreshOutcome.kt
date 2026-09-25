@@ -21,6 +21,9 @@ internal enum class HostedVfsRefreshOutcome {
     FAILED,
 }
 
+internal fun HostedVfsRefreshOutcome.refreshObservation(): String =
+    "kast_readiness stage=VFS_REFRESH policy=NATIVE_INCREMENTAL outcome=$name"
+
 internal fun HostedVfsRefreshOutcome.failure(): HostedEndpointFailure? =
     when (this) {
         HostedVfsRefreshOutcome.READY -> null
@@ -31,7 +34,7 @@ internal fun HostedVfsRefreshOutcome.failure(): HostedEndpointFailure? =
         HostedVfsRefreshOutcome.DEADLINE_EXCEEDED -> HostedEndpointFailure.DEADLINE_EXCEEDED
     }
 
-/** Mirrors foreground project synchronization before a semantic operation enters its read epoch. */
+/** Awaits native incremental VFS completion before a semantic operation enters its read epoch. */
 internal suspend fun awaitHostedVfsRefresh(
     project: Project,
     root: CanonicalWorkspaceRoot,
@@ -47,8 +50,7 @@ internal suspend fun awaitHostedVfsRefresh(
         } catch (_: RuntimeException) {
             HostedVfsRefreshOutcome.FAILED
         }
-    Logger.getInstance(HostedEndpointService::class.java)
-        .info("kast_readiness stage=VFS_REFRESH outcome=${outcome.name}")
+    Logger.getInstance(HostedEndpointService::class.java).info(outcome.refreshObservation())
     return outcome
 }
 

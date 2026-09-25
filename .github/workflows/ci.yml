@@ -78,6 +78,45 @@ jobs:
           compression-level: 0
           retention-days: 7
 
+      - name: Resolve next patch release candidate
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        id: candidate_version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          python3 distribution/release/resolve_version.py
+          --repository "$GITHUB_REPOSITORY"
+          --bump patch
+
+      - name: Build exact patch release candidate
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          KAST_RELEASE_JDK_25: ${{ steps.jdk25.outputs.path }}
+          RELEASE_VERSION: ${{ steps.candidate_version.outputs.version }}
+        run: bash .github/scripts/ci/verify.sh --version "$RELEASE_VERSION"
+
+      - name: Admit exact patch release candidate
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          RELEASE_VERSION: ${{ steps.candidate_version.outputs.version }}
+        run: >-
+          python3 .github/scripts/release/ci-candidate.py validate
+          --repository "$GITHUB_REPOSITORY"
+          --version "$RELEASE_VERSION"
+          --source-revision "$GITHUB_SHA"
+          --directory "build/release/v${RELEASE_VERSION}"
+
+      - name: Retain exact patch release candidate
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: ci-release-candidate-v${{ steps.candidate_version.outputs.version }}-${{ github.sha }}
+          path: build/release/v${{ steps.candidate_version.outputs.version }}/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+
       - name: Retain verification reports
         if: always()
         uses: actions/upload-artifact@v7.0.1
