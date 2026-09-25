@@ -21,9 +21,9 @@ icon: "rocket"
 keywords: ["install", "Codex", "IntelliJ", "agent integration"]
 ---
 
-Install the IDEA plugin, connect Codex, and find a declaration in your repository.
+Install the IDEA plugin, connect an agent client, and find a declaration in your repository.
 
-<Note>The Codex integration is a preview. See the [compatibility record](/reference/compatibility) for tested boundaries.</Note>
+<Note>See [Compatibility](/reference/compatibility) for tested hosts and client boundaries.</Note>
 
 ## Requirements
 
@@ -34,7 +34,7 @@ Install the IDEA plugin, connect Codex, and find a declaration in your repositor
 | IDE | IntelliJ IDEA in the `262` release line |
 | Kotlin | The Kotlin plugin bundled with that IDEA installation |
 | Runtime | The Java 25 JBR bundled with IDEA |
-| Agent | A compatible Codex client |
+| Agent | A compatible MCP client, Copilot CLI or Pi with its tool RPC adapter, or a compatible Codex App Server client |
 
 <Steps>
   <Step title="Install the matched release">
@@ -45,9 +45,9 @@ Install the IDEA plugin, connect Codex, and find a declaration in your repositor
     ```
 
     The installer reports the detected IntelliJ version, verifies Kast and the
-    matching IDEA plugin, registers Kast's MCP server with Codex, and enables the app-server suite and its
-    per-user macOS login LaunchAgent. The LaunchAgent keeps the Kast
-    app server available across logins and restarts it after an unexpected exit.
+    matching IDEA plugin, registers Kast's MCP server with Codex, and enables the Kast service and its
+    per-user macOS login LaunchAgent. The LaunchAgent keeps the service
+    available across logins and restarts it after an unexpected exit.
 
     It does not install IDEA.
 
@@ -58,7 +58,7 @@ Install the IDEA plugin, connect Codex, and find a declaration in your repositor
   </Step>
   <Step title="Prepare IDEA">
     - Restart IDEA to load the plugin.
-    Kast starts opening the bound repository when the MCP session connects.
+    Kast starts opening the bound repository on the first valid MCP request.
     Semantic requests save project editor buffers, refresh changed files or
     the Gradle model, and wait for import and indexing. Resolve project trust
     or a failed save if the agent reports it; see [troubleshooting](/troubleshooting).
@@ -72,7 +72,8 @@ Install the IDEA plugin, connect Codex, and find a declaration in your repositor
     Kast starts its MCP process for the session, discovers the exact Gradle
     root, and starts preparing the IDEA project in the background. It uses the
     selected IDEA without deliberately taking focus. No worktree
-    registration is needed.
+    registration is needed. [How Kast runs](/concepts/architecture) shows the
+    process flow.
   </Step>
   <Step title="Ask for a declaration">
     Ask: **“Use Kast to find the class OrderService.”** Replace `OrderService`
@@ -102,6 +103,12 @@ Install the IDEA plugin, connect Codex, and find a declaration in your repositor
     The installer resolves an immutable developer release, verifies its
     checksums and matched IDEA plugin, and reports its exact source revision.
     Use `--dry-run` to inspect the installation plan first.
+  </Accordion>
+  <Accordion title="Connect Copilot CLI or Pi">
+    The installed release includes extensions that use Kast's tool RPC without
+    MCP. Copy the adapter for your client using the
+    [tool RPC guide](/reference/rpc-catalog), then start that client from the
+    Kotlin Gradle repository or worktree.
   </Accordion>
   <Accordion title="Choose among multiple IDEA installations">
     ```shell

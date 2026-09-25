@@ -29,7 +29,7 @@ absence. The tool name must appear in the current catalog.
 
 ```shell
 printf '%s\n' '{"name":"OrderService"}' |
-  "$HOME/.local/share/kast/current/bin/kast-tool-rpc-complete" call search_classes
+  "${XDG_DATA_HOME:-$HOME/.local/share}/kast/current/bin/kast-tool-rpc-complete" call search_classes
 ```
 
 Use the exact `ref` and qualification returned by one tool in follow-up calls.
@@ -48,9 +48,8 @@ copilot --experimental
 ```
 
 The extension obtains the live catalog and registers each tool with the Copilot
-SDK. Read tools skip per-call
-permission prompts; `change` retains the Copilot permission prompt. No Copilot
-MCP server is needed.
+SDK. Read tools skip per-call permission prompts; `change` retains the Copilot
+permission prompt. No Copilot MCP server is needed.
 
 ## Pi
 

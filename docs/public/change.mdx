@@ -2,7 +2,7 @@
 type: "Workflow Guide"
 title: "Add a Kotlin declaration"
 sidebarTitle: "Change source"
-description: "Add a declaration in one MCP call and inspect the verified or recovery outcome."
+description: "Add a declaration in one tool call and inspect the verified or recovery outcome."
 resource: "file://docs/public/change.mdx"
 tags: ["change", "verification", "recovery"]
 timestamp: "2026-09-14T00:00:00-04:00"
@@ -42,7 +42,9 @@ before planning or applying a change. A trust or import blocker is
 returned for you to resolve.
 
 - A change does not enroll trust automatically.
-- Direct MCP and App Server expose one `change` tool. The native plan, apply, and recovery phases remain private.
+- Direct MCP, tool RPC, and App Server expose one `change` tool. The native plan,
+  apply, and recovery phases remain private. RPC adapters request client write
+  permission before invocation.
 
 ## Add a declaration
 
@@ -89,11 +91,12 @@ unloaded or closed project owner.
 | `applied_unverified` | A write occurred, but verification or receipt persistence did not complete. | Inspect the automatic recovery result and retain the plan identity. |
 | `recovery_required` | An attempted effect remains uncertain or needs reconciliation. | Inspect the automatic recovery result and retain the plan identity. |
 
-Read the top-level `status` first. On a rejected result, inspect
+Read the top-level `status` first, or the RPC `type` followed by its `document`.
+On a rejected result, inspect
 `error.application` and `error.recovery` for the retained phase outcomes.
 
 - A verified apply is `complete`.
-- Direct MCP and App Server report uncertain outcomes as `rejected` with the
+- Direct MCP, tool RPC, and App Server report uncertain outcomes as `rejected` with the
   retained plan, application, and recovery evidence.
 - A pre-mutation rejection proves that the attempt wrote nothing.
 - A lost response does not prove that nothing was written.

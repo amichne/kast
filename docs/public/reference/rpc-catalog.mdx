@@ -1,0 +1,90 @@
+---
+type: "Reference"
+title: "Tool RPC catalog"
+description: "Discover and call Kast tools from Copilot CLI, Pi, or a local extension."
+resource: "file://docs/public/reference/rpc-catalog.mdx"
+tags: ["RPC", "tools", "Copilot", "Pi"]
+timestamp: "2026-09-25T00:00:00-04:00"
+code_sources:
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt"
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt"
+  - path: "copilot/extension.mjs"
+  - path: "pi/extension.ts"
+icon: "terminal"
+keywords: ["tool RPC", "catalog", "Copilot CLI", "Pi"]
+---
+
+`kast-tool-rpc-complete` is an installed, one shot process interface. It uses
+the current working directory to identify the exact Kotlin Gradle workspace.
+Copilot CLI and Pi use the included extensions to call it without an MCP server.
+
+## Discover the live catalog
+
+From a repository or worktree, run:
+
+```shell
+"${XDG_DATA_HOME:-$HOME/.local/share}/kast/current/bin/kast-tool-rpc-complete" catalog
+```
+
+The command returns one JSON object with `type: "catalog"` and
+`catalog.schemaVersion: 1`. Each `catalog.tools[]` entry has a `name`,
+`description`, `inputSchema`, and `effect` of `READ` or `WRITE`. Read this catalog
+again after an upgrade. Its input schemas are the exact contract for the
+installed command.
+
+The RPC and direct MCP catalogs expose the same tools:
+
+| Purpose | Tools | Effect |
+| --- | --- | --- |
+| Search and diagnostics | `search_classes`, `search_functions`, `search_declarations`, `check_diagnostics` | `READ` |
+| Read and explore | `query_symbols`, `source_read`, `read_relations`, `traverse_relations` | `READ` |
+| Candidate inspection | `symbol_lookup`, `symbol_inspect` | `READ` |
+| Check the workspace | `health_check`, `validate_workspace` | `READ` |
+| Change source | `change` | `WRITE` |
+
+## Call a tool
+
+Pass one JSON object on standard input and the tool name after `call`:
+
+```shell
+printf '%s\n' '{"name":"OrderService"}' |
+  "${XDG_DATA_HOME:-$HOME/.local/share}/kast/current/bin/kast-tool-rpc-complete" call search_classes
+```
+
+The command writes one JSON object. `type` is `complete`, `qualified`,
+`rejected_document`, or `rejected`. The first three contain the Kast result in
+`document`; `rejected` contains a finite boundary `failure`. A qualified result
+is partial evidence, and rejection does not prove absence. Keep returned
+`ref` values and limitations with follow-up calls.
+
+## Tool inputs
+
+The generated callable pages in this tab describe shared operation inputs and
+canonical result models. Their hosted response envelope differs from the RPC
+`type` and `document` wrapper above. `POST /callables/...` paths are reference
+labels, not RPC or HTTP endpoints. The live `catalog` includes the additional
+`health_check` and `validate_workspace` schemas and excludes the App Server's
+`workspace_lifecycle` control tool.
+
+## Connect Copilot CLI or Pi
+
+The installed release includes both adapters. Copy the one for your client:
+
+```shell
+mkdir -p "$HOME/.copilot/extensions/kast"
+cp "${XDG_DATA_HOME:-$HOME/.local/share}/kast/current/share/kast/adapters/copilot/extension.mjs" \
+  "$HOME/.copilot/extensions/kast/extension.mjs"
+copilot --experimental
+```
+
+```shell
+mkdir -p "$HOME/.pi/agent/extensions"
+cp "${XDG_DATA_HOME:-$HOME/.local/share}/kast/current/share/kast/adapters/pi/extension.ts" \
+  "$HOME/.pi/agent/extensions/kast.ts"
+```
+
+Start the client from the repository or worktree. Copilot requests its normal
+permission for `change`; Pi asks through its interactive UI and declines the
+call when no approval UI is present. Read tools do not require that write
+permission. [Connect an agent client](/agent-harnesses) compares the
+connections.
