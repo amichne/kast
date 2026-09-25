@@ -107,8 +107,9 @@ internal class KastMcpServer(
 
     private fun toolCatalog(): List<McpTool> =
         (catalog.map {
-                val effect = OperationEffect.entries.singleOrNull { value -> value.name.lowercase() == it.effect }
-                    ?: error("Unknown canonical operation effect")
+                val effect =
+                    OperationEffect.entries.singleOrNull { value -> value.name.lowercase() == it.effect }
+                        ?: error("Unknown canonical operation effect")
                 val readOnly = effect == OperationEffect.NONE || effect == OperationEffect.INTELLIJ_READ
                 McpTool(
                     it.name,
