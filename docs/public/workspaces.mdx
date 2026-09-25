@@ -13,8 +13,8 @@ not need to invoke `workspace_lifecycle` before a read.
 presenting, releasing, or closing a selected project when requested. Agents do
 not select a refresh effect.
 
-The direct Kast MCP connection starts preparing its bound Gradle root during
-initialization. Semantic calls join that preparation and refresh their source
+The direct Kast MCP connection starts preparing its bound Gradle root on the
+first valid protocol request. Semantic calls join that preparation and refresh their source
 and model state when needed.
 
 ## Explicit control sequence
@@ -44,8 +44,9 @@ Send tagged request documents through the agent tool. For example:
 {"type":"open","root":"/absolute/worktree","requestId":"open-worktree-1"}
 ```
 
-Harnesses use the hosted `workspace_lifecycle` contract supplied by the connected provider.
-This tool has no CLI invocation; workspace setup goes through the connected agent.
+The Codex App Server connection supplies `workspace_lifecycle` for explicit
+project control. It is not in the direct [MCP](/reference/mcp-catalog) or
+[tool RPC](/reference/rpc-catalog) catalog.
 
 An asynchronous result contains `host`, `requestId` and `stage`. Use `status` with the
 host returned by the pending result and that request ID. Preserve returned `target`

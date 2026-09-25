@@ -10,10 +10,17 @@ code_sources:
   - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/MintlifyCallableReference.kt"
   - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpReadPresentation.kt"
   - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpStructuredResults.kt"
+  - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt"
   - path: "relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijK2SymbolIdentity.kt"
 ---
 
 Read every Kast response as **invocation → semantic outcome → payload → coverage**.
+
+Tool RPC returns one JSON object. Its `type` is `complete`, `qualified`,
+`rejected_document`, or `rejected`. The first three contain the Kast result
+under `document`; `rejected` carries a boundary `failure`. Read the document's
+own semantic status and coverage before using its payload. See the
+[tool RPC catalog](/reference/rpc-catalog) for the command shape.
 
 The Kast MCP transport puts a short human summary first and returns a
 consistent machine envelope in `structuredContent` for semantic reads:

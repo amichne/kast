@@ -27,7 +27,7 @@ keywords: ["kast.search_classes", "symbol search", "semantic relationships", "ag
 Ask your agent to use Kast to find a declaration by name. For example:
 **“Use Kast to find OrderService, then show its callers.”**
 
-The examples below show the tool inputs for direct calls or harness integration.
+The examples below show inputs shared by the direct MCP and tool RPC connections.
 
 <Note>
   Every search uses the session workspace's saved, indexed IntelliJ state.
@@ -35,16 +35,16 @@ The examples below show the tool inputs for direct calls or harness integration.
 
 | Intent | Tool |
 |---|---|
-| Known class-like declaration name | `kast.search_classes` |
-| Known function or method name | `kast.search_functions` |
-| Unknown/mixed kinds, properties or type aliases | `kast.search_declarations` |
-| Compiler diagnostics for a file or directory | `kast.check_diagnostics` |
-| Enumeration, returned references or ordered transformations | `kast.query_symbols` (deferred) |
-| Passive host and workspace readiness | `kast.health_check` |
-| Explicit read-only semantic probes | `kast.validate_workspace` |
+| Known class-like declaration name | `search_classes` |
+| Known function or method name | `search_functions` |
+| Unknown/mixed kinds, properties or type aliases | `search_declarations` |
+| Compiler diagnostics for a file or directory | `check_diagnostics` |
+| Enumeration, returned references or ordered transformations | `query_symbols` |
+| Passive host and workspace readiness | `health_check` |
+| Explicit read-only semantic probes | `validate_workspace` |
 
 `health_check` takes `{}` and reports the bound workspace and saved/indexed state.
-Discover callable tools through MCP `tools/list`. An immediate check can find launch or import still in
+Discover callable tools through MCP `tools/list` or RPC `catalog`. An immediate check can find launch or import still in
 progress; semantic calls wait for that preparation. It does not establish that
 semantic answers are correct.
 
@@ -72,13 +72,13 @@ without a rendered view.
 
 ## Find your first declaration
 
-Call `kast.search_classes` with:
+Call `search_classes` with:
 
 ```json
 {"name":"OrderService"}
 ```
 
-Send that input to the hosted `kast.search_classes` tool in the connected session.
+Send that input to `search_classes` in your connected client.
 
 Use these request rules:
 

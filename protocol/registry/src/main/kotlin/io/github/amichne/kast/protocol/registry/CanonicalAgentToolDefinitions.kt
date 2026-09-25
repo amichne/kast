@@ -135,7 +135,7 @@ object CanonicalAgentToolDefinitions {
             CanonicalOperationDefinitions.sourceRead,
             "source_read",
             "Read bounded source and structural context. For an exact selector, pass only " +
-                "{\"symbol\":\"<exact selector from search>\"}; region defaults to declaration, text to complete, " +
+                "`{\"symbol\":\"<exact selector from search>\"}`; region defaults to declaration, text to complete, " +
                 "entities to none, and format to compact. Optional region, text, entities, and format " +
                 "override those defaults. Candidate and source selectors use the typed anchor request. " +
                 "Preserve selectors verbatim and prefer this tool over unrestricted filesystem reads " +

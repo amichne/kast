@@ -33,6 +33,7 @@ See [Read a response](/reference/responses) for field names and result layers.
 | Symptom | First action |
 | --- | --- |
 | Tools are missing in terminal Codex | Run `codex mcp get kast`, then start a fresh `codex` session in the repository. |
+| Copilot CLI or Pi cannot load Kast tools | Check that the installed adapter and `kast-tool-rpc-complete` exist; see [Tool RPC catalog](/reference/rpc-catalog). |
 | Outer `status: rejected` | Preserve `diagnostic.boundary` and `diagnostic.reason`; collect status below. |
 | The document rejects | Follow its finite reason. Open the intended IDEA project or correct the named input as appropriate. |
 | The answer is qualified | Read limitations and item failures. Narrow scope or relation expansion before increasing bounds. |
@@ -74,8 +75,8 @@ inspect IDEA's Gradle error and the returned lifecycle failure before retrying.
 
 A missing cached model does not prove that import is running.
 
-The installed Kast MCP server prepares the IDEA project when a semantic read
-arrives. If IDEA rejects or stalls during Gradle import, the read returns a
+The installed Kast service prepares the IDEA project for direct tool calls.
+If IDEA rejects or stalls during Gradle import, the read returns a
 failure rather than an empty successful search. The app-server
 `workspace_lifecycle` tool remains available for explicitly requested control.
 
@@ -121,7 +122,7 @@ IDE's Gradle error, correct its cause, and retry the semantic operation.
 ## Resolve the common boundaries
 
 <AccordionGroup>
-  <Accordion title="The Codex integration cannot start">
+  <Accordion title="The Codex App Server connection cannot start">
     - Register the intended Kotlin Gradle root through the private service control.
     - Verify the selected installation and connected Codex client.
     - Remove retired `KAST_ENABLE_APP_SERVER` and `KAST_APP_SERVER_TOOLS` assignments.
