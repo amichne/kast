@@ -133,6 +133,43 @@ val projectedMintlifyCallableReference = layout.buildDirectory.file("generated/d
 val publishedMintlifyCallableReference =
     rootProject.layout.projectDirectory.file("docs/public/reference/callables.openapi.json")
 
+val projectedSourceReadInputSchema = layout.buildDirectory.file("generated/contracts/source-read.input.schema.json")
+val publishedSourceReadInputSchema =
+    rootProject.layout.projectDirectory.file("docs/public/reference/source-read.input.schema.json")
+
+val projectSourceReadInputSchema =
+    tasks.register<support.tasks.WriteJavaProcessOutputTask>("projectSourceReadInputSchema") {
+        group = "verification"
+        dependsOn(tasks.named("classes"))
+        classpath.from(sourceSets.main.get().runtimeClasspath)
+        mainClass.set("io.github.amichne.kast.cli.SourceReadInputSchemaProjection")
+        outputFile.set(projectedSourceReadInputSchema)
+    }
+
+val generateSourceReadInputSchema =
+    tasks.register<support.tasks.WriteJavaProcessOutputTask>("generateSourceReadInputSchema") {
+        group = "build"
+        dependsOn(tasks.named("classes"))
+        classpath.from(sourceSets.main.get().runtimeClasspath)
+        mainClass.set("io.github.amichne.kast.cli.SourceReadInputSchemaProjection")
+        outputFile.set(publishedSourceReadInputSchema)
+    }
+
+val verifySourceReadInputSchema =
+    tasks.register<Exec>("verifySourceReadInputSchema") {
+        group = "verification"
+        dependsOn(projectSourceReadInputSchema)
+        mustRunAfter(generateSourceReadInputSchema)
+        inputs.file(projectedSourceReadInputSchema)
+        inputs.file(publishedSourceReadInputSchema)
+        commandLine(
+            "cmp",
+            "-s",
+            projectedSourceReadInputSchema.get().asFile.absolutePath,
+            publishedSourceReadInputSchema.asFile.absolutePath,
+        )
+    }
+
 val projectMintlifyCallableReference =
     tasks.register<support.tasks.WriteJavaProcessOutputTask>("projectMintlifyCallableReference") {
         group = "documentation"
@@ -169,8 +206,23 @@ val verifyMintlifyCallableReference =
         )
     }
 
+val verifySourceReadTypes =
+    tasks.register<Exec>("verifySourceReadTypes") {
+        group = "verification"
+        description = "Rejects drift in TypeScript source-read request types generated from the public schema."
+        dependsOn(verifyMintlifyCallableReference, verifySourceReadInputSchema)
+        commandLine("python3", rootProject.file("packaging/generate-source-read-types.py"), "--check")
+    }
+
+tasks.register<Exec>("generateSourceReadTypes") {
+    group = "documentation"
+    description = "Generates TypeScript source-read request types from the published callable schema."
+    dependsOn(generateMintlifyCallableReference)
+    commandLine("python3", rootProject.file("packaging/generate-source-read-types.py"))
+}
+
 tasks.named("check") {
-    dependsOn(verifyMintlifyCallableReference)
+    dependsOn(verifySourceReadTypes)
 }
 
 // Pure schema projection at build time; App Server never launches Kast for qualification.

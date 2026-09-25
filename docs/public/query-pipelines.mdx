@@ -203,7 +203,20 @@ A larger page grant cannot increase depth or erase a provider omission.
 
 ### Read source structure
 
-`source_read` selects `region` and `entities` separately.
+For a hosted v4 or v5 exact selector returned by search or inspection, `source_read` accepts a
+single `symbol` field. It reads the declaration with complete text, no entities,
+and compact output. The selector stays opaque; pass it unchanged. A selector
+that cannot be reacquired in the current IDE epoch returns a closed read failure.
+
+The short request can override `region` (`declaration`, callable `body`,
+`class-body`, or `file`), `text` (`complete`, `none`, or a `window`), `entities`
+(`none` or direct `declarations`), and `format` (`compact` or `expanded`). A
+window defaults to 20 lines before and after the anchor and requires
+`maximumBytes`; declarations require a `limit`. The generated callable reference
+contains executable request examples and the exact field schema.
+
+Candidate and source selectors use the existing typed `anchor` request. In that
+request, `region` and `entities` are selected separately.
 
 For `entities.type: "matching"`:
 
