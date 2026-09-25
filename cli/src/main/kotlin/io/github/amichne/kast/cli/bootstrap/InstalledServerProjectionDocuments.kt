@@ -267,7 +267,11 @@ private enum class InstalledServerTool(
                 when (val input = definition.inputBinding) {
                     is AgentToolInputBinding.Facade -> PublicToolContract.parameters(input.identity)
                     AgentToolInputBinding.Canonical ->
-                        generatedHostedRequestSchema(requestSerializer, definition.operation.hostedVariants)
+                        installedCanonicalRequestSchema(
+                            operation,
+                            requestSerializer,
+                            definition.operation.hostedVariants,
+                        )
                 },
             outputSchema = installedServerOutputSchema(operation),
         )
@@ -683,6 +687,7 @@ private fun queryQualificationSchema(): JsonObject =
                         "discovery-incomplete",
                         "refinement-incomplete",
                         "visibility-incomplete",
+                        "source-incomplete",
                         "relation-incomplete",
                     ),
                     "Every aggregate query limitation.",
@@ -740,6 +745,11 @@ private fun queryResultItemSchema(): JsonObject =
                 ),
             ),
             ServerSchemaProperty("connections", arraySchema(relationFactSchema())),
+            ServerSchemaProperty(
+                "source",
+                querySourceWindowSchema(),
+                required = false,
+            ),
         ),
     )
 
@@ -755,6 +765,7 @@ private fun queryItemFailureSchema(): JsonObject =
         queryItemFailureVariantSchema("refinement", "declaration-candidate", queryExactFailureSchema()),
         queryItemFailureVariantSchema("exact-reference", "exact-symbol", queryExactFailureSchema()),
         queryItemFailureVariantSchema("predicate", "exact-symbol", queryPredicateFailureSchema()),
+        queryItemFailureVariantSchema("source", "exact-symbol", querySourceFailureSchema()),
         objectSchema(
             ServerSchemaProperty("type", constantSchema("relation", "Per-symbol relation failure.")),
             ServerSchemaProperty("ref", queryOutputReferenceSchema("exact-symbol")),

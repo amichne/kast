@@ -15,8 +15,9 @@ import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
 import io.github.amichne.kast.appserver.ide.ExistingIdeClient
 import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
-import io.github.amichne.kast.appserver.ide.ExistingIdeReadOperation
 import io.github.amichne.kast.appserver.installedKastCatalogFixture
+import io.github.amichne.kast.appserver.publicNameQuery
+import io.github.amichne.kast.appserver.publicToolCase
 import io.github.amichne.kast.appserver.query.PublicToolCanonical
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.kernel.Refinement
@@ -47,10 +48,10 @@ class KastPublicQueryProviderTest {
     fun `provider preserves schema-bound facade syntax without preparing lifecycle`(@TempDir root: Path) = runBlocking {
         val executor = RecordingExecutor(capability())
         val broker = broker(root, executor)
-        val raw = """{"class_name":"Order","name_match":null,"scope":null}"""
-        assertTrue(broker.dispatch(request(root, PublicToolIdentity.SEARCH_CLASSES, raw)) is BrokerDispatch.Completed)
+        val raw = publicNameQuery()
+        assertTrue(broker.dispatch(request(root, PublicToolIdentity.QUERY_SYMBOLS, raw)) is BrokerDispatch.Completed)
         val read = assertInstanceOf(ExistingIdeOperation.Read::class.java, executor.operations.single())
-        val parsed = PublicToolContract.admit(PublicToolIdentity.SEARCH_CLASSES, Json.parseToJsonElement(raw)).refined()
+        val parsed = PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, raw).refined()
         val expected =
             canonicalCliRequestPreparers().queryRun.prepare((parsed.canonical as PublicToolCanonical.Query).request)
                 as OperationPreparation.Prepared
@@ -58,62 +59,21 @@ class KastPublicQueryProviderTest {
     }
 
     @Test
-    fun `multiple search presentations bind distinct schemas to one operation`(@TempDir root: Path) = runBlocking {
-        val executor = RecordingExecutor(capability())
-        val broker = broker(root, executor)
-        assertTrue(
-            broker.dispatch(
-                request(
-                    root,
-                    PublicToolIdentity.SEARCH_CLASSES,
-                    """{"class_name":"Order","name_match":null,"scope":null}""",
-                )
-            ) is BrokerDispatch.Completed
-        )
-        assertTrue(
-            broker.dispatch(
-                request(
-                    root,
-                    PublicToolIdentity.SEARCH_FUNCTIONS,
-                    """{"function_name":"createOrder","name_match":null,"scope":null}""",
-                )
-            ) is BrokerDispatch.Completed
-        )
-        assertTrue(
-            broker.dispatch(
-                request(
-                    root,
-                    PublicToolIdentity.SEARCH_FUNCTIONS,
-                    """{"class_name":"Order","name_match":null,"scope":null}""",
-                )
-            ) is BrokerDispatch.Rejected
-        )
-        assertEquals(2, executor.operations.size)
-        assertTrue(
-            executor.operations.all { it is ExistingIdeOperation.Read && it.kind == ExistingIdeReadOperation.QUERY_RUN }
-        )
-    }
-
-    @Test
     fun `invalid controls and lexical paths fail before semantic invocation`(@TempDir root: Path) = runBlocking {
         val executor = RecordingExecutor(capability())
         val broker = broker(root, executor)
-        listOf(
-                """{"class_name":"Order","name_match":null,"scope":null,"execution":{"kind":"exhaustive"}}""",
-                """{"class_name":"Order","name_match":null,"scope":{"relative_directory_path":"../src","include_subdirectories":true,"source_set_names":null}}""",
-                """{"class_name":"Order","name_match":null}""",
+        listOf("provider-unknown-execution", "invalid-directory-1", "provider-missing-controls").forEach { id ->
+            assertTrue(
+                broker.dispatch(request(root, PublicToolIdentity.QUERY_SYMBOLS, publicToolCase(id)))
+                    is BrokerDispatch.Rejected
             )
-            .forEach {
-                assertTrue(
-                    broker.dispatch(request(root, PublicToolIdentity.SEARCH_CLASSES, it)) is BrokerDispatch.Rejected
-                )
-            }
+        }
         val pathFailure =
             broker.dispatch(
                 request(
                     root,
-                    PublicToolIdentity.SEARCH_CLASSES,
-                    """{"class_name":"Order","name_match":null,"scope":{"relative_directory_path":"/PRIVATE_SECRET_PATH","include_subdirectories":true,"source_set_names":null}}""",
+                    PublicToolIdentity.QUERY_SYMBOLS,
+                    publicToolCase("invalid-directory-8"),
                 )
             ) as BrokerDispatch.Rejected
         val guidance = (pathFailure.failure as BrokerFailure.InvalidArguments).guidance.single().value
@@ -172,9 +132,12 @@ class KastPublicQueryProviderTest {
     }
 
     private fun request(root: Path, identity: PublicToolIdentity, input: String) =
+        request(root, identity, Json.parseToJsonElement(input))
+
+    private fun request(root: Path, identity: PublicToolIdentity, input: kotlinx.serialization.json.JsonElement) =
         BrokerDispatchRequest(
             ToolAddress(ProviderNamespace.admit("kast").refined(), ToolName.admit(identity.toolName).refined()),
-            Json.parseToJsonElement(input),
+            input,
             BrokerInvocationContext.admit("query-thread", "query-turn", "query-call", root.toRealPath()).refined(),
         )
 

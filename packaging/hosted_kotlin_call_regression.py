@@ -4,6 +4,7 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import asdict, dataclass, field
 from enum import Enum
+from query_name_request import name_query
 
 
 @dataclass(frozen=True)
@@ -11,13 +12,6 @@ class KotlinCallScope:
     package_name: str = field(default='fixture.calls', init=False)
     include_subpackages: bool = field(default=False, init=False)
     source_set_names: tuple[str, ...] = field(default=('main',), init=False)
-
-
-@dataclass(frozen=True)
-class KotlinCallSearch:
-    function_name: str
-    name_match: str = field(default='exact', init=False)
-    scope: KotlinCallScope = field(default_factory=KotlinCallScope, init=False)
 
 
 @dataclass(frozen=True)
@@ -74,10 +68,10 @@ def run_kotlin_call_regression(replay):
             _site(source, 'return client.fetch()', 'fetch', base),)),
     )
     for name, status, expected in cases:
-        discovery = replay.transport.invoke(replay.surface, 'search_functions', asdict(KotlinCallSearch(name)))
+        discovery = replay.transport.invoke(replay.surface, 'query_symbols', asdict(name_query(name, ('function',), KotlinCallScope())))
         items = discovery.get('items', [])
         if discovery.get('status') != 'complete' or len(items) != 1 or not items[0].get('ref'):
-            replay.record('kotlin-call-' + name, 'search_functions', {'exactIssuerAvailable': False},
+            replay.record('kotlin-call-' + name, 'query_symbols', {'exactIssuerAvailable': False},
                           len(items), discovery)
             continue
         response = replay.transport.invoke(replay.surface, 'read_relations',
@@ -206,7 +200,7 @@ def _extended_call_cases(replay, source, path):
             _obligation(source, 'Fetcher { client.fetch()', 'fetch', unsupported),)),
     )
     for name, expected, obligations in cases:
-        discovery = replay.transport.invoke(replay.surface, 'search_functions', asdict(KotlinCallSearch(name)))
+        discovery = replay.transport.invoke(replay.surface, 'query_symbols', asdict(name_query(name, ('function',), KotlinCallScope())))
         items = discovery.get('items', [])
         admitted = discovery.get('status') == 'complete' and len(items) == 1 and bool(items[0].get('ref'))
         checks[name + 'Issuer'] = admitted
@@ -270,7 +264,7 @@ def _qualified_partial(pages, source):
 
 
 def _cycle_checks(replay, source):
-    discovery = replay.transport.invoke(replay.surface, 'search_functions', asdict(KotlinCallSearch('callCycleEntry')))
+    discovery = replay.transport.invoke(replay.surface, 'query_symbols', asdict(name_query('callCycleEntry', ('function',), KotlinCallScope())))
     items = discovery.get('items', [])
     if discovery.get('status') != 'complete' or len(items) != 1 or not items[0].get('ref'):
         return {'cycleIssuer': False}
@@ -551,10 +545,10 @@ def run_inline_ownership_regression(replay, source, path, *, unresolved_path=Non
     unresolved = ('unresolvedMapping', 'ambiguousMapping') if unresolved_path is not None else ()
     for name in positive + negative + unresolved:
         occurrence_source, occurrence_path = (unresolved_source, unresolved_path) if name in unresolved else (source, path)
-        discovered = replay.transport.invoke(replay.surface, 'search_functions', asdict(KotlinCallSearch(name)))
+        discovered = replay.transport.invoke(replay.surface, 'query_symbols', asdict(name_query(name, ('function',), KotlinCallScope())))
         items = discovered.get('items', [])
         if discovered.get('status') != 'complete' or len(items) != 1 or not items[0].get('ref'):
-            replay.record('inline-' + name, 'search_functions', {'exactIssuerAvailable': False})
+            replay.record('inline-' + name, 'query_symbols', {'exactIssuerAvailable': False})
             continue
         high = _drain_inline(replay, items[0]['ref'], KotlinCallMeaning.CALLEES, 100)
         low = _drain_inline(replay, items[0]['ref'], KotlinCallMeaning.CALLEES, 1)
@@ -602,7 +596,7 @@ def run_inline_ownership_regression(replay, source, path, *, unresolved_path=Non
         if inner:
             target_selector = inner[0].get('target', {}).get('selector')
     if target_selector is None:
-        discovered = replay.transport.invoke(replay.surface, 'search_functions', asdict(KotlinCallSearch('inlineTarget')))
+        discovered = replay.transport.invoke(replay.surface, 'query_symbols', asdict(name_query('inlineTarget', ('function',), KotlinCallScope())))
         items = discovered.get('items', [])
         target_selector = items[0].get('ref') if len(items) == 1 else None
     if target_selector:

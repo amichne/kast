@@ -177,6 +177,7 @@ enum class QuerySymbolFieldDocument {
     @SerialName("name") NAME,
     @SerialName("location") LOCATION,
     @SerialName("signature") SIGNATURE,
+    @SerialName("source") SOURCE,
 }
 
 @Serializable
@@ -321,6 +322,7 @@ sealed interface QueryResultItemDocument {
         val signature: CompilerSignatureDocument?,
         val connections: BoundedProtocolList<RelationFactDocument>,
         val symbolId: SymbolIdDocument,
+        val source: QuerySourceWindowDocument? = null,
     ) : QueryResultItemDocument
 }
 
@@ -338,6 +340,11 @@ sealed interface QueryItemFailureDocument {
     data class Predicate(
         val ref: QueryReferenceDocument.ExactSymbol,
         val reason: QueryPredicateFailureDocument,
+    ) : QueryItemFailureDocument
+
+    data class Source(
+        val ref: QueryReferenceDocument.ExactSymbol,
+        val reason: QuerySourceFailureDocument,
     ) : QueryItemFailureDocument
 
     data class Relation(

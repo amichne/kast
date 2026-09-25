@@ -218,11 +218,11 @@ JSON
 
 ## Historical replacement request
 
-Projection 8 expressed the same discovery intent with the former public query CLI contract. The current route is `kast tool search_classes` with the schema-bound tool request:
+Projection 8 expressed the same discovery intent with the former public query CLI contract. The current route is `kast tool query_symbols` with the schema-bound tool request:
 
 ```sh
-kast tool search_classes <<'JSON'
-{"class_name":"KtorBrokerServer","name_match":null,"scope":{"relative_directory_path":"app-server","include_subdirectories":true,"source_set_names":["main"]}}
+kast tool query_symbols <<'JSON'
+{"source":{"type":"search_declarations","declaration_name":"KtorBrokerServer","name_match":null,"declaration_kinds":["class"],"scope":{"relative_directory_path":"app-server","include_subdirectories":true,"source_set_names":["main"]}},"steps":null,"return_fields":["name","location","signature"]}
 JSON
 ```
 

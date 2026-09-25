@@ -8,10 +8,13 @@ import io.github.amichne.kast.query.contract.QueryItemFailure
 import io.github.amichne.kast.query.contract.QueryLimitation
 import io.github.amichne.kast.query.contract.QueryMatch
 import io.github.amichne.kast.query.contract.QueryPredicate
+import io.github.amichne.kast.query.contract.QuerySourceFailure
 import io.github.amichne.kast.query.contract.QuerySymbol
+import io.github.amichne.kast.query.contract.QuerySymbolSource
 import io.github.amichne.kast.source.contract.SourceDeclarationVisibility
 import io.github.amichne.kast.source.contract.SourceReadOperations
 import io.github.amichne.kast.source.contract.SourceReadResult
+import io.github.amichne.kast.source.contract.SourceTextProjection
 import io.github.amichne.kast.symbol.contract.ExactSymbolRequest
 import io.github.amichne.kast.symbol.contract.SymbolDescription
 import io.github.amichne.kast.symbol.contract.SymbolDescriptionResult
@@ -174,6 +177,37 @@ internal class QueryReadStages(
                     state.observeTime()
                 }
         }
+
+    suspend fun sourceWindow(
+        symbol: QuerySymbol,
+        state: QueryExecutionState,
+        resources: io.github.amichne.kast.kernel.ResourceBudget,
+    ): QuerySymbol {
+        val result = source.read(sourceWindowRequest(symbol.selector, state, resources))
+        state.observeTime()
+        val projection =
+            when (result) {
+                is SourceReadResult.Complete -> result.text
+                is SourceReadResult.Qualified -> result.text
+                is SourceReadResult.Rejected -> {
+                    state.failure(QueryItemFailure.Source(symbol.selector, QuerySourceFailure.Rejected(result.reason)))
+                    state.limit(QueryLimitation.SOURCE_INCOMPLETE)
+                    return symbol.copy(source = QuerySymbolSource.Rejected(result.reason))
+                }
+            }
+        return when (projection) {
+            is SourceTextProjection.Returned -> symbol.copy(source = QuerySymbolSource.Returned(projection))
+            is SourceTextProjection.Withheld -> {
+                state.failure(QueryItemFailure.Source(symbol.selector, QuerySourceFailure.Withheld(projection.reason)))
+                state.limit(QueryLimitation.SOURCE_INCOMPLETE)
+                symbol.copy(source = QuerySymbolSource.Withheld(projection.reason))
+            }
+            SourceTextProjection.NotRequested -> {
+                state.contractViolation = true
+                symbol
+            }
+        }
+    }
 }
 
 internal sealed interface DiscoveryExecution {

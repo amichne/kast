@@ -55,6 +55,7 @@ enum class QuerySymbolField {
     NAME,
     LOCATION,
     SIGNATURE,
+    SOURCE,
 }
 
 /** Optional presentation fields. Exact identity remains present through the returned ref. */

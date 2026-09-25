@@ -59,6 +59,7 @@ internal enum class PublicToolReturnFields {
     @SerialName("name") NAME,
     @SerialName("location") LOCATION,
     @SerialName("signature") SIGNATURE,
+    @SerialName("source") SOURCE,
 }
 
 @Serializable(with = PublicToolScopeSerializer::class)
@@ -123,37 +124,6 @@ internal data class PublicToolExpandRelation(
 internal data object PublicToolDistinctSymbols : PublicToolStep
 
 @Serializable
-internal data class PublicToolSearchClasses(
-    val class_name: ProtocolText,
-    val name_match: PublicToolNameMatch?,
-    val scope: PublicToolScope?,
-    @SerialName("execution_budget")
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    val executionBudget: ExecutionBudgetDocument? = null,
-) : PublicToolDocument
-
-@Serializable
-internal data class PublicToolSearchFunctions(
-    val function_name: ProtocolText,
-    val name_match: PublicToolNameMatch?,
-    val scope: PublicToolScope?,
-    @SerialName("execution_budget")
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    val executionBudget: ExecutionBudgetDocument? = null,
-) : PublicToolDocument
-
-@Serializable
-internal data class PublicToolSearchDeclarations(
-    val declaration_name: ProtocolText,
-    val name_match: PublicToolNameMatch?,
-    val scope: PublicToolScope?,
-    val declaration_kinds: BoundedProtocolList<PublicToolDeclarationKinds>?,
-    @SerialName("execution_budget")
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    val executionBudget: ExecutionBudgetDocument? = null,
-) : PublicToolDocument
-
-@Serializable
 internal data class PublicToolCheckDiagnostics(
     val relative_path: ProtocolText,
     val max_diagnostics: Int?,
@@ -187,24 +157,17 @@ internal object PublicToolDefaults {
     val sourceSets = toolDefault(BoundedProtocolList.create(listOf(toolDefault(ProtocolText.parse("main")), toolDefault(ProtocolText.parse("test")))))
     val declarationKinds = toolDefault(BoundedProtocolList.create(listOf(PublicToolDeclarationKinds.CLASS, PublicToolDeclarationKinds.FUNCTION, PublicToolDeclarationKinds.PROPERTY, PublicToolDeclarationKinds.TYPE_ALIAS)))
     val returnFields = toolDefault(BoundedProtocolList.create(listOf(PublicToolReturnFields.NAME, PublicToolReturnFields.LOCATION)))
-    val searchFields = toolDefault(BoundedProtocolList.create(listOf(PublicToolReturnFields.NAME, PublicToolReturnFields.LOCATION, PublicToolReturnFields.SIGNATURE)))
     val steps: BoundedProtocolList<PublicToolStep> = toolDefault(BoundedProtocolList.create(emptyList()))
     const val maxDiagnostics = 100
     val scope: PublicToolScope = PublicToolDirectoryScope(toolDefault(ProtocolText.parse(".")), true, sourceSets)
 }
 
 internal fun decodePublicTool(identity: PublicToolIdentity, raw: JsonElement, json: Json): PublicToolDocument = when (identity) {
-    PublicToolIdentity.SEARCH_CLASSES -> json.decodeFromJsonElement(PublicToolSearchClasses.serializer(), raw)
-    PublicToolIdentity.SEARCH_FUNCTIONS -> json.decodeFromJsonElement(PublicToolSearchFunctions.serializer(), raw)
-    PublicToolIdentity.SEARCH_DECLARATIONS -> json.decodeFromJsonElement(PublicToolSearchDeclarations.serializer(), raw)
     PublicToolIdentity.CHECK_DIAGNOSTICS -> json.decodeFromJsonElement(PublicToolCheckDiagnostics.serializer(), raw)
     PublicToolIdentity.QUERY_SYMBOLS -> json.decodeFromJsonElement(PublicToolQuerySymbols.serializer(), raw)
 }
 
 internal fun encodePublicTool(value: PublicToolDocument, json: Json): JsonElement = when (value) {
-    is PublicToolSearchClasses -> json.encodeToJsonElement(PublicToolSearchClasses.serializer(), value)
-    is PublicToolSearchFunctions -> json.encodeToJsonElement(PublicToolSearchFunctions.serializer(), value)
-    is PublicToolSearchDeclarations -> json.encodeToJsonElement(PublicToolSearchDeclarations.serializer(), value)
     is PublicToolCheckDiagnostics -> json.encodeToJsonElement(PublicToolCheckDiagnostics.serializer(), value)
     is PublicToolQuerySymbols -> json.encodeToJsonElement(PublicToolQuerySymbols.serializer(), value)
 }

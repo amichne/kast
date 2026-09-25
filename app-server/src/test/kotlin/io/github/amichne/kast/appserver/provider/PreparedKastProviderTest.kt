@@ -16,7 +16,7 @@ import io.github.amichne.kast.appserver.installedKastCatalogFixture
 import io.github.amichne.kast.appserver.protocol.codex.BrokerFailureDocument
 import io.github.amichne.kast.appserver.protocol.codex.InvocationCertainty
 import io.github.amichne.kast.appserver.protocol.codex.certainty
-import io.github.amichne.kast.appserver.query.PublicToolSearchClasses
+import io.github.amichne.kast.appserver.publicNameQuery
 import io.github.amichne.kast.appserver.runtime.PreparedWorkspaceDemand
 import io.github.amichne.kast.appserver.runtime.WorkspaceDemandCause
 import io.github.amichne.kast.appserver.runtime.WorkspaceDemandFailure
@@ -25,7 +25,6 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.Validation
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
-import io.github.amichne.kast.protocol.contract.ProtocolText
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -84,12 +83,9 @@ class PreparedKastProviderTest {
         BrokerDispatchRequest(
             ToolAddress(
                 (ProviderNamespace.admit("kast") as Refinement.Refined).value,
-                (ToolName.admit("search_classes") as Refinement.Refined).value,
+                (ToolName.admit("query_symbols") as Refinement.Refined).value,
             ),
-            Json.encodeToJsonElement(
-                PublicToolSearchClasses.serializer(),
-                PublicToolSearchClasses((ProtocolText.parse("Order") as Refinement.Refined).value, null, null),
-            ),
+            publicNameQuery(),
             (BrokerInvocationContext.admit("thread", "turn", "call", root) as Refinement.Refined).value,
         )
 }

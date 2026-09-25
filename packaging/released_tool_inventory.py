@@ -10,8 +10,7 @@ from released_acceptance_product import product_executable, ReleaseFailure, Rele
 # Current public spellings only. Each remains bound to the installed canonical operation identifier.
 OPERATIONS = (
     ('workspace_lifecycle', 'workspace.lifecycle'),
-    ('search_classes', 'query.run'), ('search_functions', 'query.run'),
-    ('search_declarations', 'query.run'), ('query_symbols', 'query.run'),
+    ('query_symbols', 'query.run'),
     ('symbol_lookup', 'symbol.discover'), ('symbol_inspect', 'symbol.inspect'),
     ('source_read', 'source.read'), ('read_relations', 'relation.read'), ('traverse_relations', 'traversal.run'),
     ('check_diagnostics', 'diagnostic.check'), ('change_plan', 'change.plan'),
@@ -41,7 +40,7 @@ def admit_inventory(document, configuration, schema_digest):
         raise ReleaseRejected(ReleaseFailure.INVENTORY)
     reads = tuple(tool['name'] for tool in tools if tool['effect'] in ('none', 'intellij_read')
                   and tool['operationId'] not in ('change.plan', 'workspace.lifecycle'))
-    if len(reads) != 10 or not {'symbol_lookup', 'symbol_inspect'} <= set(reads):
+    if len(reads) != 7 or not {'symbol_lookup', 'symbol_inspect'} <= set(reads):
         raise ReleaseRejected(ReleaseFailure.INVENTORY)
     return ReleasedToolInventory(names, names, reads, schema_digest)
 

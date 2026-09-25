@@ -35,18 +35,12 @@ internal object DaemonOperationProtocol {
 /** Closed RPC presentations. Adding a public tool requires an explicit routing decision. */
 @Serializable
 internal enum class DaemonOperationTool(val identity: PublicToolIdentity) {
-    SEARCH_CLASSES(PublicToolIdentity.SEARCH_CLASSES),
-    SEARCH_FUNCTIONS(PublicToolIdentity.SEARCH_FUNCTIONS),
-    SEARCH_DECLARATIONS(PublicToolIdentity.SEARCH_DECLARATIONS),
     CHECK_DIAGNOSTICS(PublicToolIdentity.CHECK_DIAGNOSTICS),
     QUERY_SYMBOLS(PublicToolIdentity.QUERY_SYMBOLS);
 
     companion object {
         fun from(identity: PublicToolIdentity): DaemonOperationTool =
             when (identity) {
-                PublicToolIdentity.SEARCH_CLASSES -> SEARCH_CLASSES
-                PublicToolIdentity.SEARCH_FUNCTIONS -> SEARCH_FUNCTIONS
-                PublicToolIdentity.SEARCH_DECLARATIONS -> SEARCH_DECLARATIONS
                 PublicToolIdentity.CHECK_DIAGNOSTICS -> CHECK_DIAGNOSTICS
                 PublicToolIdentity.QUERY_SYMBOLS -> QUERY_SYMBOLS
             }

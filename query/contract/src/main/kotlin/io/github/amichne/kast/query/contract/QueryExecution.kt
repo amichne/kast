@@ -6,6 +6,8 @@ import io.github.amichne.kast.relation.contract.RelationFact
 import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationReadRejection
 import io.github.amichne.kast.source.contract.SourceReadRejection
+import io.github.amichne.kast.source.contract.SourceTextProjection
+import io.github.amichne.kast.source.contract.SourceTextWithheldReason
 import io.github.amichne.kast.symbol.contract.SymbolDescription
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRejection
 import io.github.amichne.kast.symbol.contract.SymbolDiscoverySelection
@@ -85,9 +87,21 @@ data class QueryCandidate(val selection: SymbolDiscoverySelection)
 data class QuerySymbol(
     val description: SymbolDescription,
     val connections: List<RelationFact>,
+    val source: QuerySymbolSource = QuerySymbolSource.Pending,
 ) {
     val selector: SymbolSelector
         get() = description.selector
+}
+
+/** Source is obtained only after exact-symbol admission, within the same read authority. */
+sealed interface QuerySymbolSource {
+    data object Pending : QuerySymbolSource
+
+    data class Returned(val value: SourceTextProjection.Returned) : QuerySymbolSource
+
+    data class Rejected(val reason: SourceReadRejection) : QuerySymbolSource
+
+    data class Withheld(val reason: SourceTextWithheldReason) : QuerySymbolSource
 }
 
 sealed interface QueryResultSet {
@@ -114,11 +128,19 @@ sealed interface QueryItemFailure {
 
     data class PredicateUnproven(val selector: SymbolSelector) : QueryItemFailure
 
+    data class Source(val selector: SymbolSelector, val reason: QuerySourceFailure) : QueryItemFailure
+
     data class Relation(
         val selector: SymbolSelector,
         val meaning: RelationMeaning,
         val reason: RelationReadRejection,
     ) : QueryItemFailure
+}
+
+sealed interface QuerySourceFailure {
+    data class Rejected(val reason: SourceReadRejection) : QuerySourceFailure
+
+    data class Withheld(val reason: SourceTextWithheldReason) : QuerySourceFailure
 }
 
 data class QueryResult(
@@ -150,6 +172,7 @@ enum class QueryLimitation {
     DISCOVERY_INCOMPLETE,
     REFINEMENT_INCOMPLETE,
     VISIBILITY_INCOMPLETE,
+    SOURCE_INCOMPLETE,
     RELATION_INCOMPLETE,
 }
 

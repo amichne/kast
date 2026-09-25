@@ -6,6 +6,7 @@ fixture. A caller-created sibling <report>.stop file ends the bounded hold perio
 This runner qualifies fixture readiness, not the hosted mutation workflow.
 """
 import argparse
+from dataclasses import asdict
 from enum import Enum
 import json
 import hashlib
@@ -16,6 +17,7 @@ import time
 from acceptance_environment import AcceptanceEnvironment, GradleRetirement, NetworkPolicy, admitted_tools
 from acceptance_idea import digest
 from hosted_acceptance_fixture import admit_hosted_idea, prepare_hosted_fixture
+from query_name_request import name_query
 
 
 class Stage(Enum):
@@ -94,9 +96,9 @@ def main():
                             raise RuntimeError('native-endpoint-timeout')
                         time.sleep(0.5)
                         continue
-                    result = subprocess.run([str(product / 'bin/kast'), 'tool', 'search_classes'],
+                    result = subprocess.run([str(product / 'bin/kast'), 'tool', 'query_symbols'],
                         cwd=fixture.workspace, env=fixture.environment,
-                        input=json.dumps({'class_name': 'NativeChangeTarget', 'name_match': None, 'scope': None}),
+                        input=json.dumps(asdict(name_query('NativeChangeTarget', ('class',)))),
                         capture_output=True, text=True, timeout=15)
                     try:
                         document = json.loads(result.stdout) if result.stdout else {}

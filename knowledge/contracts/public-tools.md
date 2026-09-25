@@ -1,10 +1,10 @@
 ---
 type: API Contract
 title: Public intent tools
-description: Schema-bound search and diagnostics presentations lower into existing canonical operations without transferring compiler authority.
+description: One declaration-query and one diagnostic presentation lower into canonical operations without transferring compiler authority.
 resource: file://app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json
 tags: [tools, query, protocol, agents]
-timestamp: 2026-09-16T00:00:00Z
+timestamp: 2026-09-25T00:00:00Z
 code_sources:
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/WorkspaceLifecycleRequest.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReadRecoveryAction.kt
@@ -30,6 +30,8 @@ code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexSessionProjection.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/tool/PublicToolCommands.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/SourceReadToolInputSchema.kt
+  - path: cli/src/test/kotlin/io/github/amichne/kast/cli/CopilotInputSchemaCompatibilityTest.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalReadOperationModels.kt
     symbols: [RelationContinuationDocument]
   - path: cli/src/test/kotlin/io/github/amichne/kast/cli/LiveReadOutputSchemaTest.kt
@@ -44,13 +46,17 @@ code_sources:
 
 The authored tool bundle generates Kotlin request DTOs, concrete normalization defaults, closed presentation identities, full admission schemas, Codex registration schemas and separate Responses strict registrations. The hosted `query_symbols` and `check_diagnostics` presentations lower to canonical query and diagnostic operations. The former CLI routes are retired; provider admission retains distinct schemas for these presentations.
 
-`search_classes`, `search_functions`, `search_declarations` and `check_diagnostics` are eager. `query_symbols` is deferred. Ordinary searches fix or admit declaration kinds and request names, locations and signatures; diagnostics lower to the path, semantic diagnostic limit, optional continuation and execution grant request. Required nullable controls normalize before canonical construction. Directory/package scope shapes are exclusive, and duplicates and invalid lexical values reject.
+`query_symbols` and `check_diagnostics` are eager. Symbol queries admit declaration kinds, names, locations, signatures, and optional source windows; diagnostics lower to the path, semantic diagnostic limit, optional continuation and execution grant request. Required nullable controls normalize before canonical construction. Directory/package scope shapes are exclusive, and duplicates and invalid lexical values reject.
 
 Hosted tools pass admitted requests through the provider and shared workspace preparation owner. The daemon checks exact workspace identity before the existing-IDE operation. Complete, qualified, and rejected results retain their distinct documents. There is no semantic CLI operation RPC or direct-IDE fallback.
 
 The advanced pipeline preserves source meaning, step order, repeated steps and empty projections. Expansion returns related declarations; occurrence-oriented relation facts remain the relation-read contract. Query items and per-item failures expose one scalar `ref`, preserving the issued candidate or exact token verbatim. Named output schemas `CandidateRef`, `ExactSymbolRef`, and query-scoped `ContinuationRef` describe these opaque representations. No token spelling creates authority: existing runtime owners re-admit workspace, lifetime, epoch and compiler evidence.
 
-Installed projection 15 retains the full canonical hosted tool inventory. App Server qualifies the packaged hosted catalog directly; CLI invocation version 4 remains a separate public CLI projection and omits hosted-only `workspace_lifecycle`. Repeated canonical operation IDs are allowed only with consistent effect, approval, budget and output metadata. Private admitted requests retain their presentation and schema identities through transport encoding, excluding cross-tool substitution. Old persisted catalogs reject rather than silently accepting a new grammar. Source, relation and traversal defaults remain unchanged. Raw candidate lookup/refinement requires explicit selection. Native-qualified change tools are deferred defaults; `change_plan` has approval policy `NONE`, while apply and recovery retain
+`query_symbols.return_fields` accepts `source`. It returns a committed source window for each exact symbol, extending five whole lines before and after the declaration and clipping at the file boundary. The same `SOURCE` selection is available in the public query syntax. It is opt-in because each selected symbol incurs a source read within the one admitted query transaction. A failed or withheld window retains a finite per-item source cause and `SOURCE_INCOMPLETE` qualification; it never supplies guessed text.
+
+The installed `source_read` input projection distributes declaration visibility alternatives into its filter choices. This preserves the canonical request variants while keeping every advertised tool input within two composition levels for Copilot catalog loading. `CopilotInputSchemaCompatibilityTest` checks both the depth limit and acceptance parity for every source filter variant.
+
+Installed projection 15 retains the full canonical hosted tool inventory. App Server qualifies the packaged hosted catalog directly; CLI invocation version 4 remains a separate public CLI projection and omits hosted-only `workspace_lifecycle`. Repeated canonical operation IDs are allowed only with consistent effect, approval, budget and output metadata. Private admitted requests retain their presentation and schema identities through transport encoding, excluding cross-tool substitution. Old persisted catalogs reject rather than silently accepting a new grammar. Source, relation and traversal defaults remain unchanged. File or text lookup and candidate refinement require explicit selection. Native-qualified change tools are deferred defaults; `change_plan` has approval policy `NONE`, while apply and recovery retain
 `EXPLICIT` exact-plan approval. The hosted planning schema admits only
 `add-declaration`; unsupported canonical intents do not enter another runtime.
 
@@ -145,15 +151,7 @@ Unknown or absent actions fail the installed schema. The
 [outcome contract](operation-outcomes.md) defines the six recovery directions;
 action text does not authorize silent reference refresh or an automatic retry.
 
-Server projection version 15 advertises `read_relations` and `traverse_relations`
-for the unchanged `relation.read` and `traversal.run` operations. Canonical
-registry definitions own the input-only `semantic_query` and `impact_analyze`
-aliases. Configuration resolves aliases before rejecting duplicate identities;
-provider qualification carries those aliases into the selected registration.
-Provider registration rejects advertised-name and alias collisions, while catalog
-publication includes only preferred names. Legacy inputs remain supported through
-0.40.x, with removal no earlier than 0.41.0. Catalog digest binding remains
-required before either input spelling dispatches.
+Server projection version 15 advertises `read_relations` for individual occurrence facts and `traverse_relations` for bounded multi-step reachability. The retired `semantic_query` and `impact_analyze` names are rejected; catalog digest binding remains required before dispatch.
 
 Workspace setup belongs to the agent catalog, separately from the user CLI surface.
 The private invocation binding remains available to the harness, while root help

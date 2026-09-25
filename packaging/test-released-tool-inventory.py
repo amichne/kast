@@ -53,11 +53,11 @@ class InventoryTest(unittest.TestCase):
     def schema(self, tools):
         return asdict(Schema(Projection(Bootstrap(tools), self.cli)))
 
-    def test_all_fourteen_advertised_tools_and_defaults_are_distinct_from_ten_explicit_reads(self):
+    def test_eleven_advertised_tools_and_defaults_are_distinct_from_seven_explicit_reads(self):
         admitted = admit_inventory(self.schema(self.tools), self.configuration, 'a' * 64)
-        self.assertEqual(len(admitted.advertisedTools), 14)
-        self.assertEqual(len(admitted.configuredDefaultTools), 14)
-        self.assertEqual(len(admitted.explicitReadTools), 10)
+        self.assertEqual(len(admitted.advertisedTools), 11)
+        self.assertEqual(len(admitted.configuredDefaultTools), 11)
+        self.assertEqual(len(admitted.explicitReadTools), 7)
         self.assertIn('symbol_lookup', admitted.explicitReadTools)
         self.assertIn('symbol_lookup', admitted.configuredDefaultTools)
 

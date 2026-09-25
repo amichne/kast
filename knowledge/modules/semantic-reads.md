@@ -4,7 +4,7 @@ title: Semantic read domains
 description: Domain contracts refine discovery into exact compiler identity and compose source, relation, traversal, diagnostics, and queries without erasing evidence.
 resource: file://query
 tags: [kotlin, semantic, query, compiler]
-timestamp: 2026-09-16T00:00:00Z
+timestamp: 2026-09-25T00:00:00Z
 code_sources:
   - path: diagnostic/intellij/src/main/kotlin/io/github/amichne/kast/diagnostic/intellij/DiagnosticReadAttempts.kt
   - path: diagnostic/intellij/src/test/kotlin/io/github/amichne/kast/diagnostic/intellij/DiagnosticReadAttemptTest.kt
@@ -80,6 +80,8 @@ code_sources:
 # Semantic read domains
 
 Symbol discovery returns bounded candidates; exact resolution refines a candidate into compiler identity. Source reads, relation reads, traversal, and diagnostics consume exact, workspace-bound requests rather than re-parsing loose names.
+
+An exact-symbol query can opt into a five-line source window. The query service asks the source port for the symbol's file region within the same admitted read; the source adapter revalidates the exact anchor and committed document before returning text. Returned text and line coordinates retain that source proof through query projection. Failure stays a finite query item cause and incomplete qualification.
 
 Read contracts share `SemanticReadAuthority`, retaining either a published lease
 or original-owner live IDE admission. Symbol, relation, and diagnostic services

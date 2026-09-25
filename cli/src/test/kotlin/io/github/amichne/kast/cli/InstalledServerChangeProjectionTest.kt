@@ -27,9 +27,6 @@ class InstalledServerChangeProjectionTest {
         assertEquals(
             listOf(
                 "workspace_lifecycle",
-                "search_classes",
-                "search_functions",
-                "search_declarations",
                 "query_symbols",
                 "symbol_lookup",
                 "symbol_inspect",

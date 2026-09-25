@@ -4,7 +4,7 @@ title: Query protocol
 description: Shared semantic-read admission and projection bind canonical requests and detached references to an authority supplied by the owning host.
 resource: file://query/protocol
 tags: [kotlin, protocol, query, authority]
-timestamp: 2026-09-16T00:00:00Z
+timestamp: 2026-09-25T00:00:00Z
 code_sources:
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ReacquiringQueryReferences.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/ReadAcquisitionAccounting.kt
@@ -27,6 +27,7 @@ code_sources:
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryPreparedCoverage.kt
   - path: query/protocol/build.gradle.kts
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryItemProjector.kt
     symbols: [CanonicalQueryProtocol, evidenceBasis]
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalSymbolProtocols.kt
     symbols: [CanonicalSymbolDiscoverProtocol, CanonicalSymbolInspectProtocol]
@@ -105,6 +106,8 @@ The live variant carries detached provenance and cannot enter a published write
 or topology admission. See [source identity](../contracts/source-identity.md),
 [semantic query](../flows/semantic-query.md), and
 [operation outcomes](../contracts/operation-outcomes.md).
+
+An exact query's optional `SOURCE` field carries bounded normalized text and an inclusive one-based line range. Its projection admits the existing source-text and line-range types before wire encoding. Malformed source text or line coordinates reject at wire decoding; a missing requested window is reported through the finite source item failure and `SOURCE_INCOMPLETE` query qualification.
 
 Relation and traversal upstream continuations preserve their authority version:
 published continuations use version 1 and live continuations use version 2. Each document

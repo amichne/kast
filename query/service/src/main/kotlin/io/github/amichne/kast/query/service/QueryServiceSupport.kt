@@ -14,6 +14,7 @@ import io.github.amichne.kast.source.contract.DeclarationKind
 import io.github.amichne.kast.source.contract.DeclarationKindSelection
 import io.github.amichne.kast.source.contract.EntityFilter
 import io.github.amichne.kast.source.contract.EntitySelection
+import io.github.amichne.kast.source.contract.LineCount
 import io.github.amichne.kast.source.contract.RegionSelection
 import io.github.amichne.kast.source.contract.SourceEntityLimit
 import io.github.amichne.kast.source.contract.SourceReadAnchor
@@ -31,6 +32,9 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
 import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 import java.nio.charset.StandardCharsets
+
+private const val SOURCE_CONTEXT_LINES = 5
+private const val SOURCE_WINDOW_PROJECTION_OVERHEAD_BYTES = 64L
 
 /** SYMBOL already owns every Kotlin declaration family, including classes. */
 internal fun discoveryKinds(syntax: QueryDiscoverySyntax): List<SymbolNameDiscoveryKind> =
@@ -80,6 +84,27 @@ internal fun visibilityRequest(
         text = TextProjection.None,
         entityLimit = SourceEntityLimit.parse(1).refined(),
         textByteLimit = SourceTextByteLimit.parse(state.request.budget.returnedBytes.value.coerceAtLeast(1L)).refined(),
+        page = SourceReadPage.First,
+        resources = resources,
+    )
+
+/** Five whole lines on either side of the exact symbol, clipped to its admitted file. */
+internal fun sourceWindowRequest(
+    symbol: SymbolSelector,
+    state: QueryExecutionState,
+    resources: io.github.amichne.kast.kernel.ResourceBudget,
+): SourceReadRequest =
+    SourceReadRequest(
+        anchor = SourceReadAnchor.Symbol(symbol),
+        region = RegionSelection.File,
+        entities = EntitySelection.None,
+        text =
+            TextProjection.window(
+                LineCount.parse(SOURCE_CONTEXT_LINES).refined(),
+                LineCount.parse(SOURCE_CONTEXT_LINES).refined(),
+            ),
+        entityLimit = SourceEntityLimit.parse(1).refined(),
+        textByteLimit = SourceTextByteLimit.parse(state.request.budget.returnedBytes.value).refined(),
         page = SourceReadPage.First,
         resources = resources,
     )
@@ -137,7 +162,14 @@ internal fun QueryCandidate.projectedUtf8Size(): Long = selection.candidate.proj
 
 internal fun QuerySymbol.projectedUtf8Size(): Long =
     saturatedSum(
-        listOf(description.selector.projectedUtf8Size()) + connections.map { it.canonicalProjection().utf8Size() }
+        listOf(
+            description.selector.projectedUtf8Size(),
+            when (val projected = source) {
+                is io.github.amichne.kast.query.contract.QuerySymbolSource.Returned ->
+                    projected.value.text.utf8Size() + SOURCE_WINDOW_PROJECTION_OVERHEAD_BYTES
+                else -> 0L
+            },
+        ) + connections.map { it.canonicalProjection().utf8Size() }
     )
 
 internal fun QueryItemFailure.projectedUtf8Size(): Long =
@@ -158,6 +190,7 @@ internal fun QueryItemFailure.projectedUtf8Size(): Long =
                 reason.name.utf8Size(),
             )
         is QueryItemFailure.PredicateUnproven -> selector.projectedUtf8Size()
+        is QueryItemFailure.Source -> selector.projectedUtf8Size() + reason.toString().utf8Size()
         is QueryItemFailure.Relation ->
             saturatedSum(listOf(selector.projectedUtf8Size(), meaning.toString().utf8Size(), reason.name.utf8Size()))
     }

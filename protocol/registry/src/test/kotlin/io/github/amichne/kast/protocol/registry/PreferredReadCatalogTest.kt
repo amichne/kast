@@ -23,24 +23,26 @@ class PreferredReadCatalogTest {
         assertFalse(
             CanonicalAgentToolDefinitions.all.any { it.name.value in setOf("semantic_query", "impact_analyze") }
         )
-        assertEquals(14, CanonicalAgentToolDefinitions.all.size)
-        assertEquals(14, CanonicalAgentToolDefinitions.all.size)
+        assertEquals(11, CanonicalAgentToolDefinitions.all.size)
     }
 
     @Test
-    fun `every accepted input has one canonical authority and aliases remain closed`() {
+    fun `every accepted input has one canonical authority and removed aliases stay closed`() {
         val definitions = CanonicalAgentToolDefinitions.all
-        val names = definitions.flatMap { listOf(it.name) + it.inputAliases }
+        val names = definitions.map { it.name }
         assertEquals(names.size, names.toSet().size)
         for (definition in definitions) {
-            for (name in listOf(definition.name) + definition.inputAliases) {
+            for (name in listOf(definition.name)) {
                 assertEquals(Refinement.Refined(definition), CanonicalAgentToolDefinitions.resolveInput(name.value))
             }
         }
-        assertEquals(
-            setOf("semantic_query", "impact_analyze"),
-            definitions.flatMap { it.inputAliases }.map { it.value }.toSet(),
-        )
+        for (removed in
+            listOf("semantic_query", "impact_analyze", "search_classes", "search_functions", "search_declarations")) {
+            assertEquals(
+                Refinement.Rejected(AgentToolInputFailure.UNKNOWN),
+                CanonicalAgentToolDefinitions.resolveInput(removed),
+            )
+        }
         assertEquals(
             Refinement.Rejected(AgentToolInputFailure.UNKNOWN),
             CanonicalAgentToolDefinitions.resolveInput("unknown_read"),

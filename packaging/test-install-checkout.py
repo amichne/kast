@@ -377,7 +377,7 @@ PYTHON
         self.assertNotIn("KAST_APP_SERVER_TOOLS", contract)
 
     def test_retired_tool_selection_rejects_before_staged_installer(self):
-        self.env["KAST_APP_SERVER_TOOLS"] = "search_classes,check_diagnostics"
+        self.env["KAST_APP_SERVER_TOOLS"] = "query_symbols,check_diagnostics"
         result = self.run_installer("--dry-run")
         self.assertNotEqual(0, result.returncode)
         self.assertIn("KAST_APP_SERVER_TOOLS is retired", result.stderr)

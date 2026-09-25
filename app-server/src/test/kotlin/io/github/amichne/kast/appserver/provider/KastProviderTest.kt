@@ -33,7 +33,6 @@ import io.github.amichne.kast.appserver.runtime.SharedTaskSessions
 import io.github.amichne.kast.appserver.runtime.document
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.Validation
-import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import java.nio.file.Files
 import java.nio.file.Path
@@ -127,15 +126,7 @@ class KastProviderTest {
             CanonicalJsonDocument.generated(HostRejection.serializer()).create(HostRejection())
         )
 
-    private fun searchInput(): JsonElement =
-        Json.encodeToJsonElement(
-            io.github.amichne.kast.appserver.query.PublicToolSearchClasses.serializer(),
-            io.github.amichne.kast.appserver.query.PublicToolSearchClasses(
-                ProtocolText.parse("Thing").refinedValue(),
-                null,
-                null,
-            ),
-        )
+    private fun searchInput(): JsonElement = io.github.amichne.kast.appserver.publicNameQuery("Thing")
 
     private suspend fun approvedBroker(
         temporary: Path,
@@ -213,7 +204,7 @@ class KastProviderTest {
                         BrokerDispatch.Completed::class.java,
                         broker.dispatch(
                             BrokerDispatchRequest(
-                                ToolAddress(namespace("kast"), toolName("search_classes")),
+                                ToolAddress(namespace("kast"), toolName("query_symbols")),
                                 searchInput(),
                                 context(cwd),
                             )
@@ -338,7 +329,7 @@ class KastProviderTest {
             val result =
                 broker.dispatch(
                     BrokerDispatchRequest(
-                        ToolAddress(namespace("kast"), toolName("search_classes")),
+                        ToolAddress(namespace("kast"), toolName("query_symbols")),
                         searchInput(),
                         context(cwd),
                     )

@@ -52,4 +52,5 @@ internal fun PublicQueryField.canonical(): QuerySymbolFieldDocument =
         PublicQueryField.NAME -> QuerySymbolFieldDocument.NAME
         PublicQueryField.LOCATION -> QuerySymbolFieldDocument.LOCATION
         PublicQueryField.SIGNATURE -> QuerySymbolFieldDocument.SIGNATURE
+        PublicQueryField.SOURCE -> QuerySymbolFieldDocument.SOURCE
     }

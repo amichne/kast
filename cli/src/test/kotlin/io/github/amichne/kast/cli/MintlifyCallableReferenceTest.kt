@@ -113,7 +113,7 @@ class MintlifyCallableReferenceTest {
         assertTrue(components.values.none { "\$defs" in it.jsonObject })
         val symbolVariants = components.getValue("read_relationsResponse_symbol").jsonObject.getValue("anyOf").jsonArray
         assertEquals("constructor symbol", symbolVariants[1].jsonObject.getValue("title").jsonPrimitive.content)
-        val item = components.getValue("search_classesResponse_queryResultItem").jsonObject
+        val item = components.getValue("query_symbolsResponse_queryResultItem").jsonObject
         assertEquals("queryResultItem", item.getValue("title").jsonPrimitive.content)
         val variants = item.getValue("anyOf").jsonArray
         assertEquals(
@@ -131,7 +131,7 @@ class MintlifyCallableReferenceTest {
     fun `live outcomes carry distinct navigation labels`() {
         val reference = Json.parseToJsonElement(mintlifyCallableReference().value).jsonObject
         val components = reference.getValue("components").jsonObject.getValue("schemas").jsonObject
-        val response = components.getValue("search_classesResponse").jsonObject
+        val response = components.getValue("query_symbolsResponse").jsonObject
         val document =
             response
                 .getValue("anyOf")

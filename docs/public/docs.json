@@ -78,9 +78,6 @@
           {
             "group": "Search and diagnostics",
             "pages": [
-              "POST /callables/search_classes",
-              "POST /callables/search_functions",
-              "POST /callables/search_declarations",
               "POST /callables/check_diagnostics"
             ]
           },

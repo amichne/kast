@@ -6,6 +6,9 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import io.github.amichne.kast.protocol.wire.*
 import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
@@ -15,13 +18,15 @@ class PublicToolCommandTest {
     fun `all public tools share CLI admission and canonical wire lowering`() {
         val examples =
             mapOf(
-                PublicToolIdentity.SEARCH_CLASSES to """{"class_name":"Order","name_match":null,"scope":null}""",
-                PublicToolIdentity.SEARCH_FUNCTIONS to """{"function_name":"order","name_match":null,"scope":null}""",
-                PublicToolIdentity.SEARCH_DECLARATIONS to
-                    """{"declaration_name":"order","name_match":null,"scope":null,"declaration_kinds":["property","type_alias"]}""",
-                PublicToolIdentity.CHECK_DIAGNOSTICS to """{"relative_path":".","max_diagnostics":null}""",
+                PublicToolIdentity.CHECK_DIAGNOSTICS to Json.encodeToString(DiagnosticFixture(".", null)),
                 PublicToolIdentity.QUERY_SYMBOLS to
-                    """{"source":{"type":"all_declarations","declaration_kinds":null,"scope":null},"steps":null,"return_fields":[]}""",
+                    Json.encodeToString(
+                        QueryFixture(
+                            SearchFixture("search_declarations", "order", null, listOf("property", "type_alias"), null),
+                            null,
+                            emptyList(),
+                        )
+                    ),
             )
         val graph =
             (CliCommandGraphFactory.create(canonicalCliRequestPreparers()) as CliCommandGraphConstruction.Created)
@@ -49,8 +54,30 @@ class PublicToolCommandTest {
         assertTrue(
             graph.parse(
                 listOf("tool", "search_classes"),
-                CliRequestDocumentInput.Provided(examples.getValue(PublicToolIdentity.SEARCH_FUNCTIONS)),
+                CliRequestDocumentInput.Provided(examples.getValue(PublicToolIdentity.QUERY_SYMBOLS)),
             ) is CliCommandParsing.Rejected
         )
     }
 }
+
+@Serializable
+private data class DiagnosticFixture(
+    @SerialName("relative_path") val path: String,
+    @SerialName("max_diagnostics") val maximum: Int?,
+)
+
+@Serializable
+private data class QueryFixture(
+    val source: SearchFixture,
+    val steps: List<String>?,
+    @SerialName("return_fields") val fields: List<String>,
+)
+
+@Serializable
+private data class SearchFixture(
+    val type: String,
+    @SerialName("declaration_name") val name: String,
+    @SerialName("name_match") val matching: String?,
+    @SerialName("declaration_kinds") val kinds: List<String>,
+    val scope: String?,
+)

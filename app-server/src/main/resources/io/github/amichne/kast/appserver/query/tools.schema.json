@@ -25,12 +25,7 @@
         "main",
         "test"
       ]
-    },
-    "search_fields": [
-      "name",
-      "location",
-      "signature"
-    ]
+    }
   },
   "$defs": {
     "DirectoryScope": {
@@ -381,182 +376,6 @@
   },
   "tools": [
     {
-      "name": "search_classes",
-      "description": "Find named class-like declarations supported by Kast. This searches declaration names, not use sites or source text. Constructors are not included. Returns names, locations, signatures, opaque symbol references, and completeness evidence. Uses the session workspace's saved, indexed IntelliJ state; unavailable or unready hosts reject the read. No hidden fuzzy retry or scope widening.",
-      "deferLoading": false,
-      "schema": {
-        "type": "object",
-        "properties": {
-          "class_name": {
-            "type": "string",
-            "description": "Simple class-like declaration name, such as OrderService. Not a qualified name, signature, regex, glob, or natural-language request. Use package_name in scope for package qualification. All matching declarations remain separate results.",
-            "minLength": 1,
-            "maxLength": 256
-          },
-          "name_match": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "enum": [
-              "exact",
-              "fuzzy",
-              null
-            ],
-            "description": "null means exact, case-sensitive declaration-name matching. Exact matching returns every matching overload; it does not select one overload. Fuzzy matching requires explicit opt-in."
-          },
-          "scope": {
-            "anyOf": [
-              {
-                "$ref": "#/$defs/DirectoryScope"
-              },
-              {
-                "$ref": "#/$defs/PackageScope"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "null searches the session workspace recursively in source sets main and test. Otherwise choose one directory scope or one package scope. Source-set restrictions intersect with the chosen scope."
-          },
-          "execution_budget": {
-            "$ref": "#/$defs/ExecutionBudget"
-          }
-        },
-        "required": [
-          "class_name",
-          "name_match",
-          "scope"
-        ],
-        "additionalProperties": false
-      },
-      "operation": "query.run"
-    },
-    {
-      "name": "search_functions",
-      "description": "Find named functions and methods. This searches declaration names, not call sites or source text. Returns every matching overload separately. Returns names, locations, signatures, opaque symbol references, and completeness evidence. Uses the session workspace's saved, indexed IntelliJ state; unavailable or unready hosts reject the read. No hidden fuzzy retry or scope widening.",
-      "deferLoading": false,
-      "schema": {
-        "type": "object",
-        "properties": {
-          "function_name": {
-            "type": "string",
-            "description": "Simple function or method declaration name, such as createOrder. Not a qualified name, signature, regex, glob, or natural-language request. Use package_name in scope for package qualification. All matching declarations remain separate results.",
-            "minLength": 1,
-            "maxLength": 256
-          },
-          "name_match": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "enum": [
-              "exact",
-              "fuzzy",
-              null
-            ],
-            "description": "null means exact, case-sensitive declaration-name matching. Exact matching returns every matching overload; it does not select one overload. Fuzzy matching requires explicit opt-in."
-          },
-          "scope": {
-            "anyOf": [
-              {
-                "$ref": "#/$defs/DirectoryScope"
-              },
-              {
-                "$ref": "#/$defs/PackageScope"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "null searches the session workspace recursively in source sets main and test. Otherwise choose one directory scope or one package scope. Source-set restrictions intersect with the chosen scope."
-          },
-          "execution_budget": {
-            "$ref": "#/$defs/ExecutionBudget"
-          }
-        },
-        "required": [
-          "function_name",
-          "name_match",
-          "scope"
-        ],
-        "additionalProperties": false
-      },
-      "operation": "query.run"
-    },
-    {
-      "name": "search_declarations",
-      "description": "Find named declarations when the kind is unknown or when searching properties or type aliases. Prefer search_classes or search_functions when that kind is known. Not a source-text or usage search. Returns names, locations, signatures, opaque symbol references, and completeness evidence. Uses the session workspace's saved, indexed IntelliJ state; unavailable or unready hosts reject the read. No hidden fuzzy retry or scope widening.",
-      "deferLoading": false,
-      "schema": {
-        "type": "object",
-        "properties": {
-          "declaration_name": {
-            "type": "string",
-            "description": "Simple declaration name, such as createOrder. Not a qualified name, signature, regex, glob, or natural-language request. Use package_name in scope for package qualification. All matching declarations remain separate results.",
-            "minLength": 1,
-            "maxLength": 256
-          },
-          "name_match": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "enum": [
-              "exact",
-              "fuzzy",
-              null
-            ],
-            "description": "null means exact, case-sensitive declaration-name matching. Exact matching returns every matching overload; it does not select one overload. Fuzzy matching requires explicit opt-in."
-          },
-          "scope": {
-            "anyOf": [
-              {
-                "$ref": "#/$defs/DirectoryScope"
-              },
-              {
-                "$ref": "#/$defs/PackageScope"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "null searches the session workspace recursively in source sets main and test. Otherwise choose one directory scope or one package scope. Source-set restrictions intersect with the chosen scope."
-          },
-          "declaration_kinds": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "type": "string",
-              "enum": [
-                "class",
-                "function",
-                "property",
-                "type_alias"
-              ]
-            },
-            "minItems": 1,
-            "maxItems": 4,
-            "description": "null includes all four supported declaration families. Supply a non-empty, non-duplicate list to restrict them. The class family means Kast's supported class-like declarations. Constructors are not included.",
-            "uniqueItems": true
-          },
-          "execution_budget": {
-            "$ref": "#/$defs/ExecutionBudget"
-          }
-        },
-        "required": [
-          "declaration_name",
-          "name_match",
-          "scope",
-          "declaration_kinds"
-        ],
-        "additionalProperties": false
-      },
-      "operation": "query.run"
-    },
-    {
       "name": "check_diagnostics",
       "description": "Check compiler diagnostics for a file or recursively beneath a directory in the session workspace. Use '.' explicitly for the workspace root. This is not symbol search and does not build the project. Results retain incomplete-coverage evidence; an incomplete empty result does not establish that the scope is clean. Requires the saved, indexed IntelliJ state.",
       "deferLoading": false,
@@ -601,8 +420,8 @@
     },
     {
       "name": "query_symbols",
-      "description": "Advanced ordered symbol pipelines: search or enumerate declarations, start from returned references, filter visibility, expand semantic relations, and explicitly deduplicate. Prefer the dedicated search tools for ordinary name searches. Source restrictions do not constrain expansion destinations. Compiler identity, bounded work, and completeness remain owned by Kast. Does not accept diagnostic steps.",
-      "deferLoading": true,
+      "description": "Search or enumerate Kotlin declarations by name, kind and scope; start from returned exact references; filter visibility, expand relations, or deduplicate in ordered steps. Exact name matching is default; fuzzy requires explicit opt-in. Use symbol_lookup when candidate discovery by file, location, name or source text is required. Source restrictions do not constrain expansion destinations. Compiler identity, bounded work, and completeness remain owned by Kast.",
+      "deferLoading": false,
       "schema": {
         "type": "object",
         "properties": {
@@ -652,11 +471,12 @@
               "enum": [
                 "name",
                 "location",
-                "signature"
+                "signature",
+                "source"
               ]
             },
             "minItems": 0,
-            "maxItems": 3,
+            "maxItems": 4,
             "description": "null returns name and location, [] requests mandatory identity and kind only. Symbol references and completeness evidence are always retained. Duplicate fields are rejected by server admission.",
             "uniqueItems": true
           },

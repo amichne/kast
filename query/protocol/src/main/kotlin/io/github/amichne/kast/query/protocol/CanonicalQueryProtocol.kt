@@ -158,7 +158,7 @@ class CanonicalQueryProtocol(
         continuationState: QueryContinuationState?,
     ): OperationOutcome<QueryRunResult, QueryRunQualification, QueryRunRejection> {
         val items =
-            when (val projected = projectItems(request.output, result.items)) {
+            when (val projected = QueryItemProjector(authority).projectItems(request.output, result.items)) {
                 is QueryProjection.Projected -> projected.values
                 QueryProjection.Rejected -> return contractRejected()
             }
@@ -167,8 +167,8 @@ class CanonicalQueryProtocol(
                 is QueryProjection.Projected -> projected.values
                 QueryProjection.Rejected -> return contractRejected()
             }
-        val boundedItems = BoundedProtocolList.create(items).refinedOrNull() ?: return contractRejected()
-        val boundedFailures = BoundedProtocolList.create(failures).refinedOrNull() ?: return contractRejected()
+        val boundedItems = BoundedProtocolList.create(items).refinedForQueryOrNull() ?: return contractRejected()
+        val boundedFailures = BoundedProtocolList.create(failures).refinedForQueryOrNull() ?: return contractRejected()
         val envelope =
             EvidenceEnvelope(
                 CanonicalOperation.QUERY_RUN.id,
@@ -187,76 +187,14 @@ class CanonicalQueryProtocol(
         val progress = projectQueryProgress(request, continuationState, items.size, checkpoints)
         val qualification =
             QueryRunQualification.create(
-                    QueryKnownMinimum.parse(coverage.knownMinimum.value).refinedOrNull() ?: return contractRejected(),
+                    QueryKnownMinimum.parse(coverage.knownMinimum.value).refinedForQueryOrNull()
+                        ?: return contractRejected(),
                     coverage.limitations.map { QueryLimitationDocument.valueOf(it.name) },
                     progress,
                 )
-                .refinedOrNull() ?: return contractRejected()
+                .refinedForQueryOrNull() ?: return contractRejected()
         return OperationOutcome.Qualified(envelope, qualification)
     }
-
-    private fun projectItems(
-        output: QueryOutputDocument,
-        items: QueryResultSet,
-    ): QueryProjection<QueryResultItemDocument> =
-        when {
-            output is QueryOutputDocument.Candidates && items is QueryResultSet.Candidates ->
-                items.values.mapProjected { candidate ->
-                    val token =
-                        when (val issued = authority.issueDeclarationCandidate(candidate.selection)) {
-                            is CandidateSelectorTokenIssuance.Issued -> issued.selector
-                            is CandidateSelectorTokenIssuance.Rejected -> return@mapProjected null
-                        }
-                    val document =
-                        candidate.selection.candidate.protocolDocument(token) as? SymbolDiscoveryDocument.Declaration
-                            ?: return@mapProjected null
-                    QueryResultItemDocument.Candidate(
-                        QueryReferenceDocument.DeclarationCandidate(token),
-                        document.kind,
-                        document.name.takeIf { QueryCandidateFieldDocument.NAME in output.fields.values },
-                        QueryCandidateLocationDocument(document.file, document.offset).takeIf {
-                            QueryCandidateFieldDocument.LOCATION in output.fields.values
-                        },
-                    )
-                }
-            output is QueryOutputDocument.Symbols && items is QueryResultSet.Symbols ->
-                items.values.mapProjected { symbol ->
-                    val token =
-                        when (val issued = authority.issueExact(symbol.selector)) {
-                            is ExactSelectorIssuance.Issued -> issued.selector
-                            is ExactSelectorIssuance.Rejected -> return@mapProjected null
-                        }
-                    val document = symbol.description.protocolDocument(token) ?: return@mapProjected null
-                    val connections = symbol.connections.mapProjected { it.protocolDocument(authority) }
-                    val boundedConnections =
-                        when (connections) {
-                            is QueryProjection.Projected ->
-                                BoundedProtocolList.create(connections.values).refinedOrNull()
-                                    ?: return@mapProjected null
-                            QueryProjection.Rejected -> return@mapProjected null
-                        }
-                    QueryResultItemDocument.ExactSymbol(
-                        ref = QueryReferenceDocument.ExactSymbol(token),
-                        kind = document.kind,
-                        name = document.name.takeIf { QuerySymbolFieldDocument.NAME in output.fields.values },
-                        location =
-                            QueryExactLocationDocument(document.file, document.range).takeIf {
-                                QuerySymbolFieldDocument.LOCATION in output.fields.values
-                            },
-                        signature =
-                            document.compilerEvidence.signature.takeIf {
-                                QuerySymbolFieldDocument.SIGNATURE in output.fields.values
-                            },
-                        connections = boundedConnections,
-                        symbolId =
-                            io.github.amichne.kast.protocol.contract.SymbolIdDocument.parse(
-                                    io.github.amichne.kast.symbol.contract.CanonicalSymbolId.from(symbol.selector).value
-                                )
-                                .refinedOrNull() ?: return@mapProjected null,
-                    )
-                }
-            else -> QueryProjection.Rejected
-        }
 
     private fun projectFailure(failure: QueryItemFailure): QueryItemFailureDocument? =
         when (failure) {
@@ -279,6 +217,16 @@ class CanonicalQueryProtocol(
                 QueryItemFailureDocument.Predicate(
                     exactReference(failure.selector) ?: return null,
                     QueryPredicateFailureDocument.PREDICATE_UNPROVEN,
+                )
+            is QueryItemFailure.Source ->
+                QueryItemFailureDocument.Source(
+                    exactReference(failure.selector) ?: return null,
+                    QuerySourceFailureDocument.valueOf(
+                        when (val cause = failure.reason) {
+                            is QuerySourceFailure.Rejected -> cause.reason.name
+                            is QuerySourceFailure.Withheld -> cause.reason.name
+                        }
+                    ),
                 )
             is QueryItemFailure.Relation ->
                 QueryItemFailureDocument.Relation(
@@ -309,13 +257,13 @@ class CanonicalQueryProtocol(
         )
 }
 
-private sealed interface QueryProjection<out Value> {
+internal sealed interface QueryProjection<out Value> {
     data class Projected<Value>(val values: List<Value>) : QueryProjection<Value>
 
     data object Rejected : QueryProjection<Nothing>
 }
 
-private inline fun <Input, Output : Any> Iterable<Input>.mapProjected(
+internal inline fun <Input, Output : Any> Iterable<Input>.mapProjected(
     transform: (Input) -> Output?
 ): QueryProjection<Output> {
     val values = mutableListOf<Output>()
@@ -323,7 +271,7 @@ private inline fun <Input, Output : Any> Iterable<Input>.mapProjected(
     return QueryProjection.Projected(values)
 }
 
-private fun <Value, Failure> Refinement<Value, Failure>.refinedOrNull(): Value? =
+internal fun <Value, Failure> Refinement<Value, Failure>.refinedForQueryOrNull(): Value? =
     when (this) {
         is Refinement.Refined -> value
         is Refinement.Rejected -> null

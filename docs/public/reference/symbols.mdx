@@ -25,12 +25,14 @@ Read `type` before every other field.
 | `location` | File and range, or `null` | Navigating to the projected declaration |
 | `signature` | A closed signature variant, or `null` | Distinguishing compiler identities and callable shapes |
 | `connections` | Array of relation facts | Reading projected semantic relationships |
+| `source` | Committed text with one-based `startLine` and `endLine`, when requested and available | Reading up to five context lines around the exact symbol |
 
-Every field remains present when a projection is `null`.
+The original optional fields remain present when their projection is `null`. `source` is omitted unless requested and returned.
 
 - `null` does not mean an empty name or signature.
 - `null` does not weaken the exact identity.
 - `return_fields: []` requests only mandatory identity and kind values.
+- `return_fields: ["source"]` requests the fixed source window; a rejected or withheld window appears as a per-item source failure with `SOURCE_INCOMPLETE` coverage.
 
 [Open the complete query-item model](/reference/models/query-item).
 

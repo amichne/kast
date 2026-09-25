@@ -1,7 +1,7 @@
 ---
 type: "Usage Guide"
 title: "Find Kotlin declarations"
-description: "Choose a search tool, narrow its scope, and reuse the exact compiler result."
+description: "Query declarations, narrow scope, and reuse the exact compiler result."
 resource: "file://docs/public/search.mdx"
 tags: ["search", "query", "agents", "Kotlin"]
 timestamp: "2026-09-14T00:00:00-04:00"
@@ -17,7 +17,7 @@ code_sources:
   - path: "query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryExecution.kt"
     symbols: ["QueryExecutionResult", "QueryCoverage"]
 icon: "scan-search"
-keywords: ["kast.search_classes", "symbol search", "semantic relationships", "agent use"]
+keywords: ["kast.query_symbols", "symbol search", "semantic relationships", "agent use"]
 ---
 
 Ask your agent to use Kast to find a declaration by name. For example:
@@ -31,25 +31,26 @@ The examples below show the tool inputs for direct calls or harness integration.
 
 | Intent | Tool |
 |---|---|
-| Known class-like declaration name | `kast.search_classes` |
-| Known function or method name | `kast.search_functions` |
-| Unknown/mixed kinds, properties or type aliases | `kast.search_declarations` |
+| Declaration names, enumeration, returned references, or ordered transformations | `kast.query_symbols` |
+| File, location, name, or source-text candidate discovery | `kast.symbol_lookup` |
+| Candidate refinement or exact-selector revalidation | `kast.symbol_inspect` |
+| Individual relation occurrences | `kast.read_relations` |
+| Multi-step reachability | `kast.traverse_relations` |
 | Compiler diagnostics for a file or directory | `kast.check_diagnostics` |
-| Enumeration, returned references or ordered transformations | `kast.query_symbols` (deferred) |
 
 ## Find your first declaration
 
-Call `kast.search_classes` with:
+Call `kast.query_symbols` with:
 
 ```json
-{"class_name":"OrderService","name_match":null,"scope":null}
+{"source":{"type":"search_declarations","declaration_name":"OrderService","name_match":null,"declaration_kinds":["class"],"scope":null},"steps":null,"return_fields":["name","location","signature"]}
 ```
 
-Send that input to the hosted `kast.search_classes` tool in the connected session.
+Send that input to the hosted `kast.query_symbols` tool in the connected session.
 
 Use these request rules:
 
-- Use `function_name` with `search_functions`.
+- Set `declaration_kinds` to `["function"]` for methods or `["property"]` for properties.
 - Keep every control field present.
 - Use `null` for exact, case-sensitive matching under recursive directory `.`.
 - Expect the default source sets to be exactly `main` and `test`.
@@ -71,14 +72,13 @@ equality key.
 
 ### Search properties or mixed kinds
 
-For a property or an unknown declaration kind, call `search_declarations`:
+For a property or an unknown declaration kind, use `query_symbols`:
 
 ```json
 {
-  "declaration_name": "retryCount",
-  "name_match": null,
-  "scope": null,
-  "declaration_kinds": ["property"]
+  "source": {"type": "search_declarations", "declaration_name": "retryCount", "name_match": null, "scope": null, "declaration_kinds": ["property"]},
+  "steps": null,
+  "return_fields": null
 }
 ```
 
@@ -89,19 +89,33 @@ Empty or duplicate selections reject.
 
 Constructor discovery is not advertised.
 
+## Include source with a symbol query
+
+Request `source` in `query_symbols.return_fields` when the result needs code as well as identity:
+
+```json
+{
+  "source": {"type": "search_declarations", "declaration_name": "submitOrder", "name_match": "exact", "declaration_kinds": ["function"], "scope": null},
+  "steps": [],
+  "return_fields": ["name", "location", "source"]
+}
+```
+
+Each exact symbol receives its committed declaration lines plus up to five whole lines before and after them, clipped to the file. The result includes the text and its one-based start and end lines. This projection costs one source read per emitted symbol and shares the query's work, time, and output limits. If a window cannot be proved, Kast qualifies the query with `SOURCE_INCOMPLETE` and a finite per-item source failure.
+
 ## Narrow the search
 
 A directory scope uses paths relative to the session workspace root:
 
 ```json
 {
-  "function_name": "submitOrder",
-  "name_match": null,
-  "scope": {
+  "source": {"type": "search_declarations", "declaration_name": "submitOrder", "name_match": null, "declaration_kinds": ["function"], "scope": {
     "relative_directory_path": "services/orders",
     "include_subdirectories": true,
     "source_set_names": ["main"]
-  }
+  }},
+  "steps": null,
+  "return_fields": null
 }
 ```
 
@@ -109,13 +123,13 @@ A package scope instead uses semantic Kotlin package names:
 
 ```json
 {
-  "class_name": "OrderService",
-  "name_match": null,
-  "scope": {
+  "source": {"type": "search_declarations", "declaration_name": "OrderService", "name_match": null, "declaration_kinds": ["class"], "scope": {
     "package_name": "com.example.orders",
     "include_subpackages": false,
     "source_set_names": null
-  }
+  }},
+  "steps": null,
+  "return_fields": null
 }
 ```
 

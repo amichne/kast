@@ -1,6 +1,7 @@
 """Installed enum-entry admission and member traversal with bounded candidate capacity."""
 from collections import Counter
 from dataclasses import asdict, dataclass, field
+from query_name_request import name_query
 
 
 @dataclass(frozen=True)
@@ -16,22 +17,6 @@ class EnumBudget:
     max_work_units: int = field(default=32, init=False)
     max_results: int = field(default=8, init=False)
     max_returned_bytes: int = field(default=65536, init=False)
-
-
-@dataclass(frozen=True)
-class EnumClassSearch:
-    class_name: str
-    name_match: str
-    scope: EnumScope = field(default_factory=EnumScope, init=False)
-    execution_budget: EnumBudget = field(default_factory=EnumBudget, init=False)
-
-
-@dataclass(frozen=True)
-class EnumFunctionSearch:
-    function_name: str = field(default='act', init=False)
-    name_match: str = field(default='exact', init=False)
-    scope: EnumScope = field(default_factory=EnumScope, init=False)
-    execution_budget: EnumBudget = field(default_factory=EnumBudget, init=False)
 
 
 @dataclass(frozen=True)
@@ -70,10 +55,10 @@ class DistinctSymbols:
 
 def run_enum_read_regression(replay):
     cases = (
-        ('enum-entry-exact-exclusion', 'search_classes', EnumClassSearch('ACTIVE', 'exact'), ()),
-        ('enum-entry-fuzzy-exclusion', 'search_classes', EnumClassSearch('Mode', 'fuzzy'), ('Mode',)),
+        ('enum-entry-exact-exclusion', 'query_symbols', name_query('ACTIVE', ('class',), EnumScope(), 'exact', EnumBudget()), ()),
+        ('enum-entry-fuzzy-exclusion', 'query_symbols', name_query('Mode', ('class',), EnumScope(), 'fuzzy', EnumBudget()), ('Mode',)),
         ('enum-entry-scoped-all-capacity', 'query_symbols', EnumClassEnumeration(), ('Mode', 'Nested', 'Ordinary')),
-        ('enum-entry-body-members', 'search_functions', EnumFunctionSearch(), ('act', 'act')),
+        ('enum-entry-body-members', 'query_symbols', name_query('act', ('function',), EnumScope(), budget=EnumBudget()), ('act', 'act')),
     )
     for name, tool, request, expected in cases:
         response = replay.transport.invoke(replay.surface, tool, asdict(request))

@@ -4,7 +4,7 @@ title: Existing-IDE semantic query
 description: An existing IDEA project owns seven canonical read operations, with bounded live authority and scoped native CLI/provider acceptance.
 resource: file://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted
 tags: [intellij, kotlin, semantic-query, lifecycle]
-timestamp: 2026-09-16T00:00:00Z
+timestamp: 2026-09-25T00:00:00Z
 code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeCli.kt
     symbols: [selectCliRuntimePath]
@@ -31,6 +31,7 @@ code_sources:
   - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/acceptance/hostedchange/NativeReadRequest.kt
   - path: packaging/hosted_transport_observation.py
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryLifetime.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedTransportObservation.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceQualifiedProgressDocument.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceReadOutcomeDocuments.kt
@@ -241,6 +242,8 @@ operations. Queue admission reserves the configured host-query allowance and
 100 ms of connection time for publication; insufficient time returns
 `ADMISSION_DEADLINE_EXCEEDED` before dispatch. A blocked request frame therefore
 occupies one connection slot without blocking other frame reads.
+
+This means parallel callers can overlap framing and admission but one project endpoint still executes semantic requests one at a time. `HostedQueryLifetime` also admits only one invocation; removing the transport mutex alone would turn overlap into `BUSY` rejection. The connected provider and App Server are persistent JVM processes; ordinary hosted calls use a direct Unix socket exchange and do not start a JVM per request. See the [throughput evaluation](../../docs/reviews/semantic-read-throughput.md) for the measured transport-only baseline and the semantic concurrency limit.
 
 `kast_transport` records a per-connection correlation ID, finite stage/outcome,
 monotonic stage duration, and observed byte counts. Stages cover accept, request

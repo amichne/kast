@@ -40,21 +40,23 @@ import org.junit.jupiter.api.io.TempDir
 /** Registration fixture proves name routing and canonical request admission, not semantic execution. */
 class PreferredReadRoutingTest {
     @Test
-    fun `old and preferred relation input reach the same canonical request admission`(@TempDir root: Path) = runTest {
-        assertRoutes(root = root, legacy = "semantic_query", preferred = "read_relations")
-    }
+    fun `old relation name is rejected while the published name reaches request admission`(@TempDir root: Path) =
+        runTest {
+            assertRoutes(root = root, removed = "semantic_query", preferred = "read_relations")
+        }
 
     @Test
-    fun `old and preferred traversal input reach the same canonical request admission`(@TempDir root: Path) = runTest {
-        assertRoutes(
-            root = root,
-            legacy = "impact_analyze",
-            preferred = "traverse_relations",
-        )
-    }
+    fun `old traversal name is rejected while the published name reaches request admission`(@TempDir root: Path) =
+        runTest {
+            assertRoutes(
+                root = root,
+                removed = "impact_analyze",
+                preferred = "traverse_relations",
+            )
+        }
 
     @Test
-    fun `old and preferred inputs cannot bypass a different bound catalog`(@TempDir root: Path) = runTest {
+    fun `published inputs cannot bypass a different bound catalog`(@TempDir root: Path) = runTest {
         val (broker, executor) = fixture(root)
         val store = MemoryThreadCatalogStore()
         store.write(
@@ -94,7 +96,7 @@ class PreferredReadRoutingTest {
         }
     }
 
-    private suspend fun assertRoutes(root: Path, legacy: String, preferred: String) {
+    private suspend fun assertRoutes(root: Path, removed: String, preferred: String) {
         val (broker, executor) = fixture(root)
         val context =
             BrokerInvocationContext.admit(
@@ -105,7 +107,7 @@ class PreferredReadRoutingTest {
                 )
                 .refined()
         val arguments = Json.encodeToJsonElement(EmptyArguments).jsonObject
-        for (name in listOf(legacy, preferred)) {
+        for (name in listOf(removed, preferred)) {
             val result =
                 broker.dispatch(
                     BrokerDispatchRequest(
@@ -115,8 +117,12 @@ class PreferredReadRoutingTest {
                     )
                 )
             val rejected = assertInstanceOf(BrokerDispatch.Rejected::class.java, result, "$name: $result")
-            val failure = assertInstanceOf(BrokerFailure.ProviderInvocationRejected::class.java, rejected.failure)
-            assertEquals(ProviderFailureCode.IDE_INVALID_REQUEST, failure.code)
+            if (name == removed) {
+                assertInstanceOf(BrokerFailure.UnknownTool::class.java, rejected.failure)
+            } else {
+                val failure = assertInstanceOf(BrokerFailure.ProviderInvocationRejected::class.java, rejected.failure)
+                assertEquals(ProviderFailureCode.IDE_INVALID_REQUEST, failure.code)
+            }
         }
 
         assertEquals(
@@ -124,7 +130,7 @@ class PreferredReadRoutingTest {
             broker.catalog.namespaces
                 .single()
                 .tools
-                .filter { it.name.value in setOf(legacy, preferred) }
+                .filter { it.name.value in setOf(removed, preferred) }
                 .map { it.name.value },
         )
     }
@@ -167,7 +173,7 @@ class PreferredReadRoutingTest {
             is Validation.Rejected -> fail("Expected validation: $this")
         }
 
-    private val readNames = listOf("semantic_query", "read_relations", "impact_analyze", "traverse_relations")
+    private val readNames = listOf("read_relations", "traverse_relations")
 
     @Serializable private data object EmptyArguments
 

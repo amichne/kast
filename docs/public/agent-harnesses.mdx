@@ -65,8 +65,8 @@ Requalify whenever the provider starts or the installed release changes.
 
 | Availability | Tools | Why |
 | --- | --- | --- |
-| Eager defaults | `search_classes`, `search_functions`, `search_declarations`, `check_diagnostics` | Directly express common reader intent |
-| Deferred defaults | `query_symbols`, `source_read`, `read_relations`, `traverse_relations` | Add pipelines, source, relations, and traversal when needed |
+| Eager defaults | `query_symbols`, `check_diagnostics` | Declaration queries and diagnostics |
+| Deferred defaults | `source_read`, `read_relations`, `traverse_relations` | Source, occurrence facts, and reachability |
 | Deferred changes | `change_plan`, `change_apply`, `change_recover` | Keep planning and approval attached to stored changes |
 | Explicit opt-in | `symbol_lookup`, `symbol_inspect` | Expose candidate discovery and refinement when required |
 
@@ -131,24 +131,15 @@ Never render `applied_unverified` or `recovery_required` as verified success.
     - `kast.diagnostic_check` is not an alias in the new agent catalog.
     - Use the intent tools for new registrations.
     - Replace former CLI calls with the matching hosted tool, such as
-      `query_symbols`, `search_classes`, or `check_diagnostics`.
+      `query_symbols` or `check_diagnostics`.
   </Accordion>
 </AccordionGroup>
 
-## Relation tool name compatibility
+## Relation tools
 
-Version 11 advertises the preferred relation tool names:
-
-| Operation | Preferred name | `0.40.x` alias |
-| --- | --- | --- |
-| `relation.read` | `read_relations` | `semantic_query` |
-| `traversal.run` | `traverse_relations` | `impact_analyze` |
-
-- Alias removal occurs no earlier than `0.41.0`.
-- Saved selections normalize to the preferred names.
-- Selecting both names for one operation rejects as a duplicate.
-- An alias cannot enable an omitted tool.
-- Older persisted catalogs must requalify before dispatch.
-- Aliases do not bypass catalog digest binding.
+`read_relations` returns individual relation occurrences, including separate use sites.
+`traverse_relations` returns bounded multi-step reachability from an exact selector.
+The retired names `semantic_query` and `impact_analyze` are rejected. Older
+persisted catalogs must requalify before dispatch.
 
 The CLI commands remain `kast relation read` and `kast traversal run`.

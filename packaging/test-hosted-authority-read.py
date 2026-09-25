@@ -174,7 +174,7 @@ class AuthorityReadTest(unittest.TestCase):
         self.calls.append((surface, tool, arguments))
         live = replace(self.live, epoch=self.epoch)
         selector = 'ref-' + str(self.epoch)
-        if tool == 'search_classes':
+        if tool == 'query_symbols':
             document = SearchFixture(live, (ItemFixture(selector),))
         elif tool == 'symbol_inspect':
             acquisition = 'reacquired' if arguments['target']['type'] == 'revalidate_exact' else 'strict'

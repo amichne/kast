@@ -34,7 +34,7 @@ class SemanticReproductionTest(unittest.TestCase):
         tool, command, request = r.invocation(case, r.ToolSurface.LEGACY)
         self.assertEqual(("query", ["query", "run"], case.request()), (tool, command, request))
         with self.assertRaises(ValueError):
-            r.ToolSurface.admit([dict(name="query"), dict(name="search_classes")])
+            r.ToolSurface.admit([dict(name="query"), dict(name="query_symbols")])
 
     def test_incomplete_empty_is_not_a_complete_negative(self):
         case = r.Case("negative", r.search("UnusedMarker"))
