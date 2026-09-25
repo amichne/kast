@@ -11,7 +11,7 @@ object KastMcpMain {
         if (args.isNotEmpty()) return
         val directory = Path.of("").toAbsolutePath()
         val home = Path.of(System.getProperty("user.home"))
-        val tools = KastDirectToolSession.installed(directory, home) ?: return
+        val tools = KastDirectToolSession.installed(directory, home, System.getenv()) ?: return
         KastMcpServer(
                 catalog = tools.catalog,
                 invoke = tools.invokeCanonical,

@@ -20,7 +20,7 @@ object KastToolRpcMain {
     fun main(args: Array<String>) {
         val directory = Path.of("").toAbsolutePath()
         val home = Path.of(System.getProperty("user.home"))
-        val session = KastDirectToolSession.installed(directory, home)
+        val session = KastDirectToolSession.installed(directory, home, System.getenv())
         val bridge = session?.let(::KastToolRpcBridge)
         val response =
             when {

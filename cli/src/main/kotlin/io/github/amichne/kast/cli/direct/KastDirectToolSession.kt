@@ -43,7 +43,7 @@ internal class KastDirectToolSession(
 
     companion object {
         @Suppress("CognitiveComplexMethod", "CyclomaticComplexMethod", "LongMethod")
-        fun installed(directory: Path, home: Path): KastDirectToolSession? {
+        fun installed(directory: Path, home: Path, environment: Map<String, String>): KastDirectToolSession? {
             val graph = CliCommandGraphFactory.create(canonicalCliRequestPreparers())
             if (graph !is CliCommandGraphConstruction.Created) return null
             val catalog = installedHostedBootstrap().tools.associateBy { it.name }
@@ -53,11 +53,11 @@ internal class KastDirectToolSession(
             if (selected.any { it.name.value !in catalog || it.name.value !in bindings }) return null
             val root = { FilesystemCanonicalRootDiscovery.discover(directory) }
             val boundRoot = (root() as? CanonicalRootDiscovery.Discovered)?.root?.path ?: directory
-            val read = mcpWorkspaceOperationClient(home, System.getenv())
+            val read = mcpWorkspaceOperationClient(home, environment)
             val capabilities =
                 ExistingIdeCliCapabilities(
                     FilesystemCanonicalRootDiscovery,
-                    configuredExistingIdeClient(home, System.getenv()),
+                    configuredExistingIdeClient(home, environment),
                     read,
                 )
             val invokeCanonical: (String, JsonObject) -> CliExit = invokeCanonical@{ name, arguments ->
