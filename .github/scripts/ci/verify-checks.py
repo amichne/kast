@@ -3,7 +3,7 @@
 from pathlib import Path
 import os
 import subprocess
-from routine_gate import GRADLE
+from routine_gate import PRODUCT_GATE_COMMAND
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -29,7 +29,7 @@ def main() -> None:
     run(["python3", ".github/scripts/ci/test_routine_gate.py"], environment)
     run(["python3", ".github/scripts/ci/routine_gate.py"], environment)
     # The installer admits release-shaped versions; Git-describe PR versions are not installable.
-    run(GRADLE + ["-Pversion=0.0.0", "productBuildGate"], environment)
+    run(PRODUCT_GATE_COMMAND, environment)
     run([
         "bash", ".github/scripts/release/admit-source.sh",
         "--repository-root", str(ROOT),

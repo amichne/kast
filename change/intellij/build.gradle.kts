@@ -15,22 +15,9 @@ base {
 private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
 private val ideaDistributionVersion = catalog.findVersion("idea-platform-build").get().requiredVersion
 
-val changeIdeaDistribution =
-    configurations.create("changeIdeaDistribution") {
-        isCanBeConsumed = false
-        isCanBeResolved = true
-    }
-
 private val extractedIdeaDistributionDirectory =
     objects.directoryProperty().apply {
-        set(file(gradle.gradleUserHomeDir.resolve("kast/change-intellij-idea-distributions/$ideaDistributionVersion")))
-    }
-
-val extractChangeIdeaDistribution =
-    tasks.register<ExtractIdeaDistributionTask>("extractChangeIdeaDistribution") {
-        archives.from(changeIdeaDistribution)
-        ideaVersion.set(ideaDistributionVersion)
-        outputDirectory.set(extractedIdeaDistributionDirectory)
+        set(file(gradle.gradleUserHomeDir.resolve("kast/symbol-intellij-idea-distributions/$ideaDistributionVersion")))
     }
 
 private fun extractedIdeaFiles(configure: ConfigurableFileTree.() -> Unit) =
@@ -41,7 +28,7 @@ private fun extractedIdeaFiles(configure: ConfigurableFileTree.() -> Unit) =
                 }
             }
         )
-        .builtBy(extractChangeIdeaDistribution)
+        .builtBy(":symbol:intellij:extractSymbolIdeaDistribution")
 
 private val ideaLibs: ConfigurableFileCollection = extractedIdeaFiles {
     include("**/lib/**/*.jar")
@@ -70,9 +57,6 @@ dependencies {
     implementation(project(":workspace:contract"))
     implementation(project(":workspace:intellij-read"))
 
-    changeIdeaDistribution("com.jetbrains.intellij.idea:ideaIC:$ideaDistributionVersion@zip") {
-        isTransitive = false
-    }
     compileOnly(catalog.findLibrary("serialization-json").get())
     testImplementation(catalog.findLibrary("serialization-json").get())
     compileOnly(ideaLibs)
