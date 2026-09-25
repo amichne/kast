@@ -72,8 +72,10 @@ code_sources:
   - path: .github/scripts/release/build-assets.sh
   - path: .github/scripts/release/ci-candidate.py
   - path: .github/scripts/release/publish-release.sh
+  - path: .github/scripts/release/publish-developer.sh
   - path: .github/workflows/ci.yml
   - path: .github/workflows/release.yml
+  - path: .github/workflows/developer-release.yml
 ---
 
 # Distribution and packaging
@@ -85,6 +87,17 @@ Root and packaging scripts orchestrate checkout installation, persistent lifecyc
 The control product also includes `kast-tool-rpc`. Installation publishes its configured `kast-tool-rpc-complete` wrapper alongside the existing command wrappers. The one-shot catalog and call interface is shared by Copilot CLI and Pi extensions without using an MCP connection.
 
 Successful main CI runs the routine preflight checks, then builds and retains one exact next-patch release candidate with the product gate at that version. Pull-request CI keeps its separate `0.0.0` product gate. Release reuses the main candidate only when its version and source revision match the requested release, the producing main-push CI run completed successfully, and the asset inventory, checksums, and SBOM source/archive identities validate. A missing candidate follows the existing exact-version build gate; an observed but invalid candidate rejects. Minor and major releases use that build path unless a matching candidate exists. The release workflow retains the admitted candidate before publishing.
+
+An explicitly dispatched developer workflow runs only from `main` and builds
+that dispatch's exact commit through the
+same product gate with a unique `0.0.<build>` version. Its read-only build job
+retains the candidate; a separate trusted publication job validates the asset
+inventory, checksums, and SBOM source identity before creating an immutable
+developer prerelease. The public `developer-latest` branch contains a
+mutable pointer to that exact prerelease and source revision. The installer
+accepts `--developer-latest` to resolve the pointer before downloading and
+verifying the versioned control and IDEA plugin assets. Stable release version
+resolution ignores developer tags.
 
 The public installer reports the selected IDEA product version and build before
 fetching release-line-specific plugin bytes. An absent matching plugin is a

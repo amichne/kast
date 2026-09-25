@@ -27,7 +27,7 @@ BASH = Path('/bin/bash').resolve(strict=True)
 
 
 class InstallerEntrypointTest(unittest.TestCase):
-    def installer_fixture(self, directory: str, *, plugin_line: str = "262"):
+    def installer_fixture(self, directory: str, *, plugin_line: str = "262", version: str = "1.2.3"):
         root = Path(directory)
         home = root / "home"
         idea = root / "IntelliJ IDEA.app/Contents"
@@ -44,10 +44,9 @@ class InstallerEntrypointTest(unittest.TestCase):
         (idea / "jbr/Contents/Home/bin/java").write_text("")
         (idea / "jbr/Contents/Home/bin/java").chmod(0o755)
 
-        version = "1.2.3"
         control_name = f"kast-control-v{version}-macos-aarch64.tar.gz"
         control = assets / control_name
-        executable = b"#!/bin/sh\nprintf 'profile=%s mode=%s force=%s\\n' \"$KAST_INSTALL_PROFILE\" \"$KAST_INSTALL_MODE\" \"$KAST_INSTALL_FORCE\" >&2\n"
+        executable = b"#!/bin/sh\nprintf 'profile=%s mode=%s force=%s idea=%s\\n' \"$KAST_INSTALL_PROFILE\" \"$KAST_INSTALL_MODE\" \"$KAST_INSTALL_FORCE\" \"$KAST_INSTALL_IDEA_HOME\" >&2\n"
         info = tarfile.TarInfo("share/kast/libexec/kast-service")
         info.mode = 0o755
         info.size = len(executable)
@@ -71,6 +70,26 @@ class InstallerEntrypointTest(unittest.TestCase):
             "KAST_INSTALL_ROOT": str(root / "install"), "KAST_BIN_DIR": str(bin_directory),
         }
         return idea, assets, environment
+
+    def developer_curl(self, directory: str, assets: Path, pointer: str):
+        binary = Path(directory) / "bin/curl"
+        binary.write_text(f"""#!/usr/bin/env python3
+from pathlib import Path
+import shutil
+import sys
+
+arguments = sys.argv[1:]
+url = arguments[-1]
+if url == 'https://raw.githubusercontent.com/amichne/kast/developer-latest/latest.txt':
+    print({pointer!r})
+elif '/developer-v0.0.123/' in url and '--output' in arguments:
+    name = url.rsplit('/', 1)[-1]
+    shutil.copyfile(Path({str(assets)!r}) / name, arguments[arguments.index('--output') + 1])
+else:
+    raise SystemExit('unexpected curl request: ' + url)
+""")
+        binary.chmod(0o755)
+        return {"PATH": str(binary.parent) + ":/usr/bin:/bin"}
 
     def test_documented_remote_invocations_use_bash_c(self):
         for document in DOCUMENTS:
@@ -147,6 +166,22 @@ class InstallerEntrypointTest(unittest.TestCase):
         self.assertNotIn("[y/N]", result.stderr)
         self.assertIn("profile=persistent mode=plan", result.stderr)
 
+    def test_discovers_idea_in_user_applications_without_explicit_home(self):
+        with tempfile.TemporaryDirectory(prefix="kast-user-applications-") as directory:
+            idea, _, environment = self.installer_fixture(directory)
+            applications = Path(directory) / "home/Applications"
+            applications.mkdir()
+            discovered = applications / "IntelliJ IDEA.app"
+            idea.parent.rename(discovered)
+            environment["KAST_INSTALL_IDEA_SEARCH_ROOT"] = str(applications)
+            result = subprocess.run(
+                ["bash", str(INSTALLER), "--dry-run"],
+                cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
+            )
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("IntelliJ IDEA 2026.2.1 (build 262.1234)", result.stderr)
+        self.assertIn("idea=" + str((discovered / "Contents").resolve()), result.stderr)
+
     def test_force_dry_run_enables_suite_and_preserves_state(self):
         with tempfile.TemporaryDirectory(prefix="kast-installer-entrypoint-") as directory:
             idea, _, environment = self.installer_fixture(directory)
@@ -157,6 +192,34 @@ class InstallerEntrypointTest(unittest.TestCase):
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertNotIn("[y/N]", result.stderr)
         self.assertIn("profile=persistent mode=plan force=1", result.stderr)
+
+    def test_developer_latest_installs_pinned_public_candidate(self):
+        with tempfile.TemporaryDirectory(prefix="kast-developer-install-") as directory:
+            idea, assets, environment = self.installer_fixture(directory, version="0.0.123")
+            for key in ("KAST_VERSION", "KAST_INSTALL_ASSETS_DIRECTORY", "KAST_INSTALL_ROOT", "KAST_BIN_DIR"):
+                environment.pop(key)
+            source = "a" * 40
+            environment.update(self.developer_curl(directory, assets, f"developer-v0.0.123 0.0.123 {source}"))
+            result = subprocess.run(
+                ["bash", str(INSTALLER), "--developer-latest", "--idea-home", str(idea), "--dry-run"],
+                cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
+            )
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn(f"selected developer build 0.0.123 from {source}", result.stderr)
+        self.assertIn("profile=persistent mode=plan", result.stderr)
+
+    def test_developer_latest_rejects_ambiguous_pointer(self):
+        with tempfile.TemporaryDirectory(prefix="kast-developer-install-") as directory:
+            idea, assets, environment = self.installer_fixture(directory, version="0.0.123")
+            for key in ("KAST_VERSION", "KAST_INSTALL_ASSETS_DIRECTORY", "KAST_INSTALL_ROOT", "KAST_BIN_DIR"):
+                environment.pop(key)
+            environment.update(self.developer_curl(directory, assets, "developer-v0.0.122 0.0.123 " + "a" * 40))
+            result = subprocess.run(
+                ["bash", str(INSTALLER), "--developer-latest", "--idea-home", str(idea), "--dry-run"],
+                cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
+            )
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("developer-latest pointer is invalid", result.stderr)
 
     def test_missing_matching_idea_plugin_explains_why_nothing_is_installed(self):
         with tempfile.TemporaryDirectory(prefix="kast-installer-entrypoint-") as directory:

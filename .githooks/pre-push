@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+fail() {
+  echo "kast pre-push: $*" >&2
+  exit 1
+}
+
+repo_root="$(git rev-parse --show-toplevel)"
+head="$(git rev-parse HEAD)"
+validate=false
+while read -r local_ref local_sha remote_ref remote_sha; do
+  [[ -n "${local_ref}" ]] || continue
+  if [[ "${local_sha}" =~ ^0+$ ]]; then
+    continue
+  fi
+  [[ "${local_sha}" == "${head}" ]] || fail "pushed ref ${local_ref} is not the checked-out HEAD"
+  validate=true
+done
+
+[[ "${validate}" == true ]] || exit 0
+[[ -z "$(git status --porcelain --untracked-files=all)" ]] || fail "commit or remove working-tree changes before pushing"
+
+echo "kast pre-push: validating ${head} with productBuildGate" >&2
+"${repo_root}/gradlew" --max-workers=2 -Dorg.gradle.jvmargs=-Xmx5g -Pversion=0.0.0 productBuildGate --console=plain

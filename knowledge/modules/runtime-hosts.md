@@ -199,8 +199,8 @@ admitted user home independently of catalog qualification.
 
 Catalog qualification emits one bounded typed stage/outcome observation per contract
 read. It retains source, document, projection, metadata, input-schema and output-schema
-failures without logging catalog contents. Request unions are admitted only when
-every alternative is a closed object; empty or open alternatives reject.
+failures without logging catalog contents. Request unions may nest, but every
+leaf must be a closed object; empty unions and open leaves reject.
 
 The coordinator also owns `/kast-management` on the same private Unix socket.
 Versioned typed coordinator/session status, registration and controller requests

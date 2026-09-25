@@ -6,6 +6,7 @@ import io.github.amichne.kast.cli.command.CliCommandGraphFactory
 import io.github.amichne.kast.cli.command.CliCommandParsing
 import io.github.amichne.kast.cli.command.CliRequestDocumentInput
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.ExactSymbolSelector
 import io.github.amichne.kast.protocol.contract.SourceContainmentDocument
 import io.github.amichne.kast.protocol.contract.SourceDeclarationKindDocument
 import io.github.amichne.kast.protocol.contract.SourceDeclarationVisibilityDocument
@@ -15,8 +16,10 @@ import io.github.amichne.kast.protocol.contract.SourceEntityLimitDocument
 import io.github.amichne.kast.protocol.contract.SourceEntitySelectionDocument
 import io.github.amichne.kast.protocol.contract.SourceLineCountDocument
 import io.github.amichne.kast.protocol.contract.SourceReadAnchorDocument
+import io.github.amichne.kast.protocol.contract.SourceReadFormatDocument
 import io.github.amichne.kast.protocol.contract.SourceReadPageDocument
 import io.github.amichne.kast.protocol.contract.SourceReadRequest
+import io.github.amichne.kast.protocol.contract.SourceReadSimpleRequest
 import io.github.amichne.kast.protocol.contract.SourceRegionSelectionDocument
 import io.github.amichne.kast.protocol.contract.SourceTextByteLimitDocument
 import io.github.amichne.kast.protocol.contract.SourceTextRequestDocument
@@ -35,6 +38,22 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class SourceReadCliContractTest {
+    @Test
+    fun `cli one-field exact read refines to canonical source request`() {
+        val token = "exact:v5:${"A".repeat(21)}Q"
+        val exact = (ExactSymbolSelector.parse(token) as Refinement.Refined).value
+        val document = Json.encodeToString(SourceReadSimpleRequest.serializer(), SourceReadSimpleRequest(exact))
+        val parsed =
+            commandGraphFactory()
+                .parse(
+                    listOf("source", "read"),
+                    CliRequestDocumentInput.Provided(document),
+                )
+                .sourceRequest()
+        assertEquals(SourceReadAnchorDocument.Symbol(protocolText(token)), parsed.anchor)
+        assertEquals(SourceReadFormatDocument.COMPACT, parsed.format)
+    }
+
     @Test
     fun `minimal source read resolves every canonical default before wire encoding`() {
         val token = selectorToken("exact", "v2")

@@ -28,6 +28,7 @@ object SourceRequestIngress {
     ): Refinement<SourceReadRequest, SourceReadCause> =
         try {
             val root = sourceRoot(element)
+            if ("symbol" in root) return Refinement.Refined(decodeSimpleSource(root, json))
             validateSourceAnchor(root)
             validateSourceRegion(root)
             validateSourceEntities(root)
@@ -344,24 +345,3 @@ private fun String.role(): SourceReferenceRole =
         "symbol" -> SourceReferenceRole.SYMBOL
         else -> SourceReferenceRole.SOURCE
     }
-
-private fun sourceRoot(element: JsonElement): JsonObject {
-    val root = sourceObjectAt(element, SourceRequestPath.DOCUMENT)
-    sourceFields(
-        root,
-        SourceRequestPath.DOCUMENT,
-        setOf(
-            "anchor",
-            "region",
-            "entities",
-            "text",
-            "entityLimit",
-            "textByteLimit",
-            "page",
-            "format",
-            "execution_budget",
-        ),
-    )
-
-    return root
-}

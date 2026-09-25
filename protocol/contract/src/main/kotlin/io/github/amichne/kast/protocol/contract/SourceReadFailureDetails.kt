@@ -47,6 +47,7 @@ data class SourceRequestField(
 @Serializable
 enum class SourceRequestPath {
     @SerialName("$") DOCUMENT,
+    @SerialName("symbol") SYMBOL,
     @SerialName("anchor") ANCHOR,
     @SerialName("anchor.type") ANCHOR_TYPE,
     @SerialName("anchor.selector") ANCHOR_SELECTOR,
