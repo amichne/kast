@@ -28,6 +28,7 @@
     "packaging/test-acceptance-environment.py",
     "packaging/test-hosted-acceptance-fixture.py",
     "packaging/test-install-checkout.py",
+    "packaging/test-installer-entrypoint.py",
     "packaging/test-installed-codex-host.py",
     "packaging/test-installed-product.sh",
     "packaging/test-released-coordinator-acceptance.py",

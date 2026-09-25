@@ -180,6 +180,10 @@ object retains its shape. An omitted report describes an unadmitted rejection;
 an explicit null does not satisfy either schema variant.
 
 Source output derives cursor availability from required qualified progress.
+The public `source_read` input schema is projected from two disjoint typed
+requests: one required exact `symbol` with documented defaults, or the existing
+required `anchor` and explicit source controls. The published callable examples
+are encoded from the exact-symbol request and execute through physical ingress.
 `upstream` checkpoints resume the native source page owner; `retained_output`
 checkpoints drain detached entities while preserving original upstream coverage.
 Terminal qualifications retain a finite reason and all source limitations. These

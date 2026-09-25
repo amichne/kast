@@ -485,7 +485,7 @@ class InstalledServerProjectionTest {
             is CliCommandGraphConstruction.Rejected -> error(construction.failures)
         }
 
-    private fun projectionTools(): List<JsonObject> {
+    internal fun projectionTools(): List<JsonObject> {
         return installedProjection()
             .getValue("hostedBootstrap")
             .jsonObject

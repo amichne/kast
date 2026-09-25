@@ -12,6 +12,7 @@ code_sources:
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceRequestFieldReader.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceReadFailureDetails.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceRequestIngress.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceReadSimpleIngress.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalSourceReadProtocol.kt
   - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/SourceReferenceFailures.kt
   - path: source/service/src/main/kotlin/io/github/amichne/kast/source/service/SourceReadService.kt
@@ -46,6 +47,9 @@ Physical source ingress uses the typed request serializer and finite validation
 owner. It rejects malformed input before provider startup or source execution.
 Public source admission rejects an explicit `entityLimit` with `entities: none`;
 an omitted limit uses the canonical internal default without requesting entities.
+The short exact-symbol request refines its opaque selector before supplying
+canonical source defaults. A mixed `symbol` and `anchor` request is rejected as
+an unknown field, rather than choosing one identity silently.
 Valid unordered declaration-kind and visibility selections are accepted and
 normalized by their existing domain owners; ordering is not a caller predicate.
 Native and retained-output continuation syntax remains distinct and supported.
