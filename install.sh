@@ -83,6 +83,8 @@ The default command installs the latest release into:
   ${XDG_DATA_HOME:-$HOME/.local/share}/kast
 
 and configures the persistent daemon without adding a Kast command to PATH.
+When `--idea-home` is omitted, installation checks `/Applications`,
+`~/Applications`, and the JetBrains Toolbox app directory for a compatible IDEA.
 
 Pass arguments to a downloaded installer after Bash's `$0` separator:
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --help

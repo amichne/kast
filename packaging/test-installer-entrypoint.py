@@ -46,7 +46,7 @@ class InstallerEntrypointTest(unittest.TestCase):
 
         control_name = f"kast-control-v{version}-macos-aarch64.tar.gz"
         control = assets / control_name
-        executable = b"#!/bin/sh\nprintf 'profile=%s mode=%s force=%s\\n' \"$KAST_INSTALL_PROFILE\" \"$KAST_INSTALL_MODE\" \"$KAST_INSTALL_FORCE\" >&2\n"
+        executable = b"#!/bin/sh\nprintf 'profile=%s mode=%s force=%s idea=%s\\n' \"$KAST_INSTALL_PROFILE\" \"$KAST_INSTALL_MODE\" \"$KAST_INSTALL_FORCE\" \"$KAST_INSTALL_IDEA_HOME\" >&2\n"
         info = tarfile.TarInfo("share/kast/libexec/kast-service")
         info.mode = 0o755
         info.size = len(executable)
@@ -165,6 +165,21 @@ else:
         self.assertIn("login", result.stderr)
         self.assertNotIn("[y/N]", result.stderr)
         self.assertIn("profile=persistent mode=plan", result.stderr)
+
+    def test_discovers_idea_in_user_applications_without_explicit_home(self):
+        with tempfile.TemporaryDirectory(prefix="kast-user-applications-") as directory:
+            idea, _, environment = self.installer_fixture(directory)
+            applications = Path(directory) / "home/Applications"
+            applications.mkdir()
+            discovered = applications / "IntelliJ IDEA.app"
+            idea.parent.rename(discovered)
+            result = subprocess.run(
+                ["bash", str(INSTALLER), "--dry-run"],
+                cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
+            )
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("IntelliJ IDEA 2026.2.1 (build 262.1234)", result.stderr)
+        self.assertIn("idea=" + str((discovered / "Contents").resolve()), result.stderr)
 
     def test_force_dry_run_enables_suite_and_preserves_state(self):
         with tempfile.TemporaryDirectory(prefix="kast-installer-entrypoint-") as directory:
