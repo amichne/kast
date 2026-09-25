@@ -173,6 +173,7 @@ else:
             applications.mkdir()
             discovered = applications / "IntelliJ IDEA.app"
             idea.parent.rename(discovered)
+            environment["KAST_INSTALL_IDEA_SEARCH_ROOT"] = str(applications)
             result = subprocess.run(
                 ["bash", str(INSTALLER), "--dry-run"],
                 cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,

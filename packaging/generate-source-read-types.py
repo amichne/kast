@@ -42,6 +42,24 @@ def render(schema: dict, depth: int = 0, symbol: bool = False) -> str:
     raise ValueError(f"unhandled source_read schema node: {schema}")
 
 
+def render_closed_union(schema: dict) -> str:
+    """Keep each published top-level branch disjoint in structural TypeScript."""
+    branches = [
+        variant
+        for branch in schema.get("anyOf", schema.get("oneOf", []))
+        for variant in branch.get("oneOf", [branch])
+    ]
+    if not branches or any(branch.get("type") != "object" for branch in branches):
+        raise ValueError("expected closed source_read object branches")
+    all_fields = set().union(*(branch.get("properties", {}) for branch in branches))
+    rendered = []
+    for branch in branches:
+        excluded = sorted(all_fields - branch.get("properties", {}).keys())
+        forbidden = " & { " + "; ".join(json.dumps(name) + "?: never" for name in excluded) + " }" if excluded else ""
+        rendered.append("(" + render(branch) + forbidden + ")")
+    return " | ".join(rendered)
+
+
 def generated() -> str:
     document = json.loads(SCHEMA.read_text())
     schema = document["components"]["schemas"]["source_readRequest"]
@@ -69,7 +87,7 @@ def generated() -> str:
         "    ? { type: \"accepted\", value: raw as ExactSymbolSelector }\n"
         "    : { type: \"rejected\", reason: \"malformed\" };\n"
         "}\n\n"
-        "export type SourceReadRequest = " + render(schema) + ";\n"
+        "export type SourceReadRequest = " + render_closed_union(schema) + ";\n"
     )
 
 

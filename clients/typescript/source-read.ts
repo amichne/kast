@@ -9,12 +9,12 @@ export type ExactSymbolSelectorAdmission =
   | { readonly type: "rejected"; readonly reason: "malformed" };
 
 export function admitExactSymbolSelector(raw: string): ExactSymbolSelectorAdmission {
-  return new RegExp("^exact:(?:v4:[0-9a-f]{64}|v5:[A-Za-z0-9_-]{21}[AQgw]|v[23]:[A-Za-z0-9_-]+:[0-9a-f]{64})$").test(raw)
+  return new RegExp("^exact:(?:v4:[0-9a-f]{64}|v5:[A-Za-z0-9_-]{21}[AQgw])$").test(raw)
     ? { type: "accepted", value: raw as ExactSymbolSelector }
     : { type: "rejected", reason: "malformed" };
 }
 
-export type SourceReadRequest = {
+export type SourceReadRequest = ({
   "symbol": ExactSymbolSelector;
   "region"?: "declaration" | "body" | "class-body" | "file";
   "text"?: {
@@ -34,7 +34,7 @@ export type SourceReadRequest = {
     "mode": "none";
   };
   "format"?: "expanded" | "compact";
-} | {
+} & { "anchor"?: never; "entityLimit"?: never; "execution_budget"?: never; "page"?: never; "textByteLimit"?: never }) | ({
   "anchor": {
     "type": "candidate";
     "selector": string;
@@ -102,7 +102,7 @@ export type SourceReadRequest = {
     "max_returned_bytes"?: number | null;
   } | null;
   "format"?: "expanded" | "compact";
-} | {
+} & { "symbol"?: never }) | ({
   "anchor": {
     "symbolRef": string;
   };
@@ -153,4 +153,4 @@ export type SourceReadRequest = {
     "max_results"?: number | null;
     "max_returned_bytes"?: number | null;
   } | null;
-};
+} & { "entityLimit"?: never; "format"?: never; "symbol"?: never; "textByteLimit"?: never });

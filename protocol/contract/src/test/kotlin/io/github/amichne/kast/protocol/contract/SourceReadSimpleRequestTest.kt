@@ -38,6 +38,17 @@ class SourceReadSimpleRequestTest {
     }
 
     @Test
+    fun `short request rejects unchecked legacy selector`() {
+        val unchecked = "exact:v2:A:${"0".repeat(64)}"
+        assertEquals(
+            Refinement.Rejected(ExactSymbolSelectorFailure.MALFORMED),
+            ExactSymbolSelector.parse(unchecked),
+        )
+        val input = json.encodeToJsonElement(UncheckedSourceInput.serializer(), UncheckedSourceInput(unchecked))
+        assertTrue(SourceRequestIngress.decode(input, json) is Refinement.Rejected)
+    }
+
+    @Test
     fun `simple request rejects an unknown text discriminator as finite data`() {
         val input =
             json.encodeToJsonElement(
@@ -123,6 +134,8 @@ class SourceReadSimpleRequestTest {
 }
 
 @Serializable private data class MixedSourceInput(val symbol: String, val anchor: SourceReadAnchorDocument)
+
+@Serializable private data class UncheckedSourceInput(val symbol: String)
 
 @Serializable private data class UnknownTextRequest(val symbol: String, val text: UnknownTextMode)
 

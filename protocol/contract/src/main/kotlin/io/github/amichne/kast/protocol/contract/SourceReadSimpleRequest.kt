@@ -15,7 +15,7 @@ import kotlinx.serialization.json.JsonClassDiscriminator
 
 private const val DEFAULT_WINDOW_LINES = 20
 private const val EXACT_SELECTOR_PATTERN =
-    "^exact:(?:v4:[0-9a-f]{64}|" + "v5:[A-Za-z0-9_-]{21}[AQgw]|" + "v[23]:[A-Za-z0-9_-]+:[0-9a-f]{64})$"
+    "^exact:(?:v4:[0-9a-f]{64}|v5:[A-Za-z0-9_-]{21}[AQgw])$"
 
 enum class ExactSymbolSelectorFailure {
     MALFORMED,
@@ -33,9 +33,9 @@ value class ExactSymbolSelector private constructor(val encoded: String) {
                     is Refinement.Refined -> admitted.value
                     is Refinement.Rejected -> return Refinement.Rejected(ExactSymbolSelectorFailure.MALFORMED)
                 }
-            return when (val admitted = SourceReadAnchorDocument.admit(text)) {
+            return when (val admitted = HostedSymbolHandle.parse(text)) {
                 is Refinement.Refined ->
-                    if (admitted.value is SourceReadAnchorDocument.Symbol) Refinement.Refined(ExactSymbolSelector(raw))
+                    if (admitted.value.family == HostedSymbolHandleFamily.EXACT) Refinement.Refined(ExactSymbolSelector(raw))
                     else Refinement.Rejected(ExactSymbolSelectorFailure.WRONG_FAMILY)
                 is Refinement.Rejected -> Refinement.Rejected(ExactSymbolSelectorFailure.MALFORMED)
             }

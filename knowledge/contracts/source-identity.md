@@ -133,7 +133,7 @@ read capability. Native revalidation remains mandatory after lookup.
 ## Source output format
 
 The canonical internal `SourceReadRequest.format` defaults to `expanded` for
-existing anchor callers. The public exact-symbol shortcut uses an admitted
+existing anchor callers. The public hosted v4/v5 exact-symbol shortcut uses an admitted
 `ExactSymbolSelector` and defaults to `compact`, declaration region, complete
 text, no entities, and the first page. Its typed request normalizes to the same
 canonical source read; a malformed or wrong-family selector fails admission.
