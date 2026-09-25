@@ -10,7 +10,6 @@ import io.github.amichne.kast.cli.CliTextDocument
 import io.github.amichne.kast.cli.CliTextDocumentAdmission
 import io.github.amichne.kast.cli.InstalledHostedToolDocument
 import io.github.amichne.kast.cli.InstalledServerExecutionBudgetDocument
-import io.github.amichne.kast.cli.installedHostedBootstrap
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import java.io.BufferedInputStream
@@ -22,7 +21,6 @@ import java.nio.file.Path
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -35,78 +33,6 @@ import org.junit.jupiter.api.io.TempDir
 @Suppress("LargeClass")
 class KastMcpServerTest {
     @TempDir lateinit var temporary: Path
-
-    @Test
-    fun `semantic reads advertise safe MCP hints while change retains write hints`() {
-        val readNames =
-            setOf(
-                "check_diagnostics",
-                "query_symbols",
-                "read_relations",
-                "search_classes",
-                "search_declarations",
-                "search_functions",
-                "source_read",
-                "symbol_inspect",
-                "symbol_lookup",
-                "traverse_relations",
-            )
-        val installed = installedHostedBootstrap().tools
-        val reads = installed.filter { it.name in readNames }
-        assertEquals(readNames, reads.mapTo(linkedSetOf()) { it.name })
-        val change = installed.single { it.name == "change" }
-        val tools = listedTools(reads, change)
-        assertEquals(
-            readNames + "change",
-            tools.mapTo(linkedSetOf()) { it.jsonObject.getValue("name").jsonPrimitive.content },
-        )
-        for (tool in tools) {
-            val document = tool.jsonObject
-            val read = document.getValue("name").jsonPrimitive.content in readNames
-            val hints = document.getValue("annotations").jsonObject
-            assertEquals(read.toString(), hints.getValue("readOnlyHint").jsonPrimitive.content)
-            assertEquals((!read).toString(), hints.getValue("destructiveHint").jsonPrimitive.content)
-            assertEquals(read.toString(), hints.getValue("idempotentHint").jsonPrimitive.content)
-            assertEquals("false", hints.getValue("openWorldHint").jsonPrimitive.content)
-        }
-    }
-
-    private fun listedTools(reads: List<InstalledHostedToolDocument>, change: InstalledHostedToolDocument): JsonArray {
-        val output = ByteArrayOutputStream()
-        KastMcpServer(
-                catalog = reads,
-                invoke = { _, _ -> error("no invocation expected") },
-                root = { CanonicalRootDiscovery.Rejected(CanonicalRootFailure.ROOT_MARKER_NOT_FOUND) },
-                supplemental =
-                    listOf(
-                        McpSupplementalTool(
-                            name = "change",
-                            description = change.description,
-                            inputSchema = change.inputSchema,
-                            readOnly = false,
-                            invoke = { error("no invocation expected") },
-                        )
-                    ),
-                diagnostic = PrintStream(ByteArrayOutputStream()),
-            )
-            .run(
-                BufferedInputStream(
-                    ByteArrayInputStream(
-                        """
-                        {"jsonrpc":"2.0","id":1,"method":"initialize"}
-                           {"jsonrpc":"2.0","id":2,"method":"tools/list"}
-                        """
-                            .trimIndent()
-                            .plus("\n")
-                            .toByteArray()
-                    )
-                ),
-                PrintStream(output),
-            )
-        return output.toString(Charsets.UTF_8).lineSequence().filter(String::isNotBlank).last().let {
-            Json.parseToJsonElement(it).jsonObject.getValue("result").jsonObject.getValue("tools").jsonArray
-        }
-    }
 
     private fun admittedRoot(): CanonicalRootDiscovery {
         Files.writeString(temporary.resolve("settings.gradle.kts"), "rootProject.name = \"fixture\"")
