@@ -8,6 +8,7 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[3]
 GRADLE = ["./gradlew", "--max-workers=2", "-Dorg.gradle.jvmargs=-Xmx5g"]
+PRODUCT_GATE_COMMAND = GRADLE + ["-Pversion=0.0.0", "productBuildGate"]
 QUALIFICATION = frozenset({
     ":installedTwoWorkspaceTest", ":installedCodexHostTest",
     ":app-server:generateCodexHostIntegrationManifest", ":runtimeQualification",
@@ -39,7 +40,7 @@ def inspect(output):
 
 
 def main():
-    command = GRADLE + ["productBuildGate", "--dry-run", "--console=plain"]
+    command = PRODUCT_GATE_COMMAND + ["--dry-run", "--console=plain"]
     result = subprocess.run(command, cwd=ROOT, text=True, stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT, check=False)
     if result.returncode:

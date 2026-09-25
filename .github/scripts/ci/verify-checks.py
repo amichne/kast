@@ -4,7 +4,7 @@ from pathlib import Path
 import argparse
 import os
 import subprocess
-from routine_gate import GRADLE
+from routine_gate import PRODUCT_GATE_COMMAND
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -35,7 +35,7 @@ def main() -> None:
     # Main CI runs the exact-version product gate through verify.sh after these preflight checks.
     if not args.preflight_only:
         # The installer admits release-shaped versions; Git-describe PR versions are not installable.
-        run(GRADLE + ["-Pversion=0.0.0", "productBuildGate"], environment)
+        run(PRODUCT_GATE_COMMAND, environment)
     run([
         "bash", ".github/scripts/release/admit-source.sh",
         "--repository-root", str(ROOT),
