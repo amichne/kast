@@ -41,11 +41,7 @@ internal class QueryReadStages(
         syntax: QueryDiscoverySyntax,
         state: QueryExecutionState,
     ): DiscoveryExecution {
-        val selections =
-            linkedMapOf<
-                io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidate,
-                SymbolDiscoverySelection,
-            >()
+        val selections = mutableListOf<SymbolDiscoverySelection>()
         var progress: DiscoveryExecution = DiscoveryExecution.NotStarted
         for (kind in discoveryKinds(syntax)) {
             val remainingResults = state.remainingResultCapacity(selections.size) ?: return progress
@@ -93,15 +89,11 @@ internal class QueryReadStages(
             }
             batch.candidates.indices.forEach { ordinal ->
                 when (val selected = SymbolDiscoverySelection.select(batch, ordinal)) {
-                    is Refinement.Refined ->
-                        selections.putIfAbsent(
-                            selected.value.candidate,
-                            selected.value,
-                        )
+                    is Refinement.Refined -> selections += selected.value
                     is Refinement.Rejected -> state.contractViolation = true
                 }
             }
-            progress = DiscoveryExecution.Discovered(selections.values.toList())
+            progress = DiscoveryExecution.Discovered(selections.toList())
         }
         return progress
     }

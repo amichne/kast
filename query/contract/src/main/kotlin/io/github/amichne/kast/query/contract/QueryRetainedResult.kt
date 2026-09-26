@@ -10,6 +10,9 @@ private const val MAX_UTF8_BYTES_PER_UTF16_CODE_UNIT = 3L
 enum class QueryRetainedResultFailure {
     EXECUTION_REJECTED,
     BASIS_MISMATCH,
+    INCONSISTENT_COVERAGE,
+    UNKNOWN_ROW,
+    DUPLICATE_ROW,
 }
 
 /** Detached, immutable semantic rows from one read basis. Presentation fields are selected later. */
@@ -33,6 +36,37 @@ private constructor(
     /** Conservative detached-state accounting includes source text and unfinished producer work. */
     val retainedBytes: Long = retainedStorageBytes(rows, itemFailures, resultCoverage, producerProgress, lease)
 
+    /** Select original proven rows; excluded rows remain unchecked rather than proven nonmatches. */
+    fun selectRows(indices: List<Int>): Refinement<QueryRetainedResult, QueryRetainedResultFailure> {
+        if (indices.any { it !in rows.indices }) return Refinement.Rejected(QueryRetainedResultFailure.UNKNOWN_ROW)
+        if (indices.distinct().size != indices.size)
+            return Refinement.Rejected(QueryRetainedResultFailure.DUPLICATE_ROW)
+        val selected = indices.map(rows::get)
+        val coverage =
+            if (selected.size == rows.size) {
+                resultCoverage.copyCoverage()
+            } else {
+                val prior = (resultCoverage as? QueryCoverage.Qualified)?.limitations.orEmpty()
+                when (
+                    val refined =
+                        QueryCoverage.Qualified.create(
+                            QueryCount.parse(selected.size).refinedCount(),
+                            prior.toSet() + QueryLimitation.ROW_SELECTION_INCOMPLETE,
+                        )
+                ) {
+                    is Refinement.Refined -> refined.value
+                    is Refinement.Rejected -> error("A partial row selection lost its limitation")
+                }
+            }
+        val progress =
+            if (coverage is QueryCoverage.Qualified && producerProgress == null) {
+                QueryContinuationState.Terminal(QueryTerminalReason.UPSTREAM_INCOMPLETE)
+            } else {
+                producerProgress
+            }
+        return Refinement.Refined(QueryRetainedResult(lease, selected, itemFailures, coverage, progress))
+    }
+
     companion object {
         fun capture(
             lease: SemanticReadAuthority,
@@ -43,6 +77,9 @@ private constructor(
             val progress: QueryContinuationState?
             when (execution) {
                 is QueryExecutionResult.Complete -> {
+                    if (execution.result.failures.isNotEmpty()) {
+                        return Refinement.Rejected(QueryRetainedResultFailure.INCONSISTENT_COVERAGE)
+                    }
                     result = execution.result
                     coverage = execution.coverage
                     progress = null
@@ -75,6 +112,12 @@ private constructor(
         }
     }
 }
+
+private fun Refinement<QueryCount, QueryCountFailure>.refinedCount(): QueryCount =
+    when (this) {
+        is Refinement.Refined -> value
+        is Refinement.Rejected -> error("A collection size cannot be negative")
+    }
 
 private fun QueryCoverage.copyCoverage(): QueryCoverage =
     when (this) {

@@ -147,7 +147,9 @@ fun QueryRunFailure.recoveryAction(): ReadRecoveryAction =
                 QueryExecutionRejectionDocument.RESULT_STALE_BASIS -> ReadRecoveryAction.RESTART_READ
                 QueryExecutionRejectionDocument.CONTINUATION_MISMATCH,
                 QueryExecutionRejectionDocument.RESULT_CURSOR_OUT_OF_RANGE,
+                QueryExecutionRejectionDocument.RESULT_ROW_UNAVAILABLE,
                 QueryExecutionRejectionDocument.RESULT_FIELD_UNAVAILABLE,
+                QueryExecutionRejectionDocument.RIGHT_INPUT_INCOMPLETE,
                 QueryExecutionRejectionDocument.REQUEST_REJECTED,
                 QueryExecutionRejectionDocument.BUDGET_REJECTED -> ReadRecoveryAction.CORRECT_REQUEST
                 QueryExecutionRejectionDocument.REFERENCE_STALE -> ReadRecoveryAction.REACQUIRE_AUTHORITY

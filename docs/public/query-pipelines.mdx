@@ -4,11 +4,14 @@ sidebarTitle: "Query pipelines"
 type: "API Contract"
 title: "Follow relationships and reuse symbols"
 description: "Compose ordered queries without losing symbol identity or completeness evidence."
-timestamp: "2026-09-14T00:00:00-04:00"
+timestamp: "2026-09-25T00:00:00-04:00"
 code_sources:
   - path: "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json"
   - path: "query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPlan.kt"
   - path: "query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt"
+  - path: "query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt"
+  - path: "query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryIdentityRows.kt"
+  - path: "query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryOutcomeProjection.kt"
 ---
 
 `kast.query_symbols` applies an ordered pipeline to Kotlin declarations.
@@ -25,7 +28,7 @@ This example filters public functions before finding their callers:
       "scope": null
     },
     "steps": [
-      {"type":"filter_visibility","visibilities":["public"]},
+      {"type":"where","predicate":{"type":"visibility","values":["public"]}},
       {"type":"expand_relation","relation":"callers"}
     ],
     "return_fields": ["name","location","signature"]
@@ -38,7 +41,7 @@ This example filters public functions before finding their callers:
 | Part | Supported values |
 | --- | --- |
 | Sources | `search_declarations`, `all_declarations`, `symbol_refs`, `result` |
-| Steps | `filter_visibility`, `filter_jq`, `expand_relation`, `append_symbol_refs`, `distinct_symbols` |
+| Steps | `where`, `expand_relation`, `concat`, `intersect`, `union`, `difference`, `distinct_symbols` |
 
 Put the source, steps, and returned fields inside `request` with `action: "run"`.
 The other actions are `resume` and `read_result`; each accepts only its own fields.
@@ -47,9 +50,9 @@ Step order changes the result:
 
 - Filter before expansion to find callers of public functions.
 - Filter after expansion to keep only public callers.
-- Expect discovery sources to deduplicate after compiler refinement.
+- Expect discovery sources to preserve repeated rows in order after compiler refinement; add `distinct_symbols` where you want one row per identity.
 - Add `distinct_symbols` to deduplicate downstream results.
-- Append exact references from earlier query results at any point; later steps act on the combined stream.
+- Concatenate exact references or a retained result at any point; later steps act on the combined stream.
 
 Kast preserves every explicit step in order.
 
@@ -77,36 +80,59 @@ Copy an exact symbol's `ref` verbatim into the `symbol_refs` source of a new run
 
 ## Combine earlier query results
 
-Run each input query, copy its returned exact `ref` values, and append them in a later pipeline. For example, start from one query result and combine it with another:
+Run each input query with `"retention":"retain"`, then use their issued result references as inputs. For example, concatenate two retained results, explicitly remove duplicate identities, and select functions:
 
 ```json
 {
   "request": {
     "action": "run",
-    "source": {"type":"symbol_refs","symbol_refs":["<first exact ref>"]},
+    "source": {"type":"result","result":"<first retained result reference>"},
     "steps": [
-      {"type":"append_symbol_refs","symbol_refs":["<second exact ref>","<third exact ref>"]},
+      {"type":"concat","input":{"type":"result","result":"<second retained result reference>"}},
       {"type":"distinct_symbols"},
-      {"type":"filter_jq","expression":"select(.kind == \"function\")"}
+      {"type":"where","predicate":{"type":"primitive","field":"kind","operator":"equals","value":"function"}}
     ],
     "return_fields": ["name","location"]
   }
 }
 ```
 
-`append_symbol_refs` retains stream order and duplicates. `distinct_symbols`
-forms a set by canonical semantic identity, not by name or opaque token spelling.
-Every appended reference is revalidated against the current workspace generation
-and spends the same query budget. A stale reference rejects with its step and
-reference positions.
+`concat` retains stream order and multiplicity. Its `input` can also be
+`{"type":"symbol_refs","symbol_refs":["<issued exact ref>"]}`. Every exact
+reference is revalidated in the current read authority under the same query
+budget; an invalid reference reports its step and position. `distinct_symbols`
+removes duplicates by canonical semantic identity at that point only. It does
+not compare names or opaque token spellings.
 
-The bounded `filter_jq` step accepts these jq `select` forms over primitive symbol fields `name`, `kind`, and `file`:
+`where` accepts one structured predicate. A `visibility` predicate has a
+nonempty, unique list of compiler-established `values`: `public`, `protected`,
+`internal`, `private`, or `local`. A `primitive` predicate chooses `name`,
+`kind`, or `file`; an operator `equals`, `not_equals`, `starts_with`, or
+`ends_with`; and a nonblank literal of at most 512 characters. For example:
 
-- `select(.name == "PaymentService")` and `select(.kind != "property")`
-- `select(.file | startswith("/workspace/services"))`
-- `select(.file | endswith(".kt"))`
+```json
+{"type":"where","predicate":{"type":"primitive","field":"file","operator":"ends_with","value":".kt"}}
+```
 
-The literal must be a non-empty JSON string and the expression is limited to 512 characters. Other jq syntax rejects during admission. The predicate reads the compiler-grounded symbol description and does not start a source read. `file` is the symbol's stable file path or URL; `kind` uses `class`, `constructor`, `function`, `property`, or `type_alias`.
+The predicate reads the compiler-grounded symbol description without starting
+a source read. `file` is the symbol's stable file path or URL; `kind` uses
+`class`, `constructor`, `function`, `property`, or `type_alias`. Unknown fields,
+operators, and predicate variants reject at public admission.
+
+For set composition, use `intersect`, `union`, or `difference` with a retained
+result as `right`:
+
+```json
+{"type":"intersect","right":{"type":"result","result":"<issued retained result reference>"}}
+```
+
+These steps compare canonical semantic identities. `intersect` retains matching
+left rows and merges evidence from matching right rows. `union` keeps identities
+from either side; `difference` keeps left identities absent on the right.
+Set operations form sets at their stage, while `concat` preserves multiplicity.
+Right-hand omissions and qualification remain visible. `difference` rejects an
+incomplete right input because it cannot establish absence. Selecting fewer
+than all rows on the right makes that input incomplete too.
 
 
 ## Retain and reuse a query result
@@ -117,22 +143,27 @@ The response's `retention` is `retained` with an issued `reference`,
 current query answer. A retained result is immutable, bounded, and tied to the
 semantic basis that produced it. An empty retained result is a valid input.
 
-Start the next run from the issued reference:
+Start the next run from the issued reference. A retained item also carries a
+`row_id` when Kast issues a result reference. Pass `row_ids` with that owning
+result reference to select specific rows; omit it or use null for all rows, or
+use `[]` for an empty selection:
 
 ```json
 {
   "request": {
     "action": "run",
-    "source": {"type":"result","result":"<issued result reference>"},
-    "steps": [{"type":"filter_visibility","visibilities":["public"]}],
+    "source": {"type":"result","result":"<issued result reference>","row_ids":["<issued row_id from this result>"]},
+    "steps": [{"type":"where","predicate":{"type":"visibility","values":["public"]}}],
     "return_fields": ["name","location"]
   }
 }
 ```
 
-The next run keeps the retained result's qualification and omissions. Known
-positive rows remain usable; an incomplete input cannot prove absence. Copy
-the result reference as issued. It is distinct from an exact symbol `ref`.
+The next run keeps the retained result's qualification and omissions. A subset
+also records that excluded rows were not examined. Known positive rows remain
+usable; an incomplete input cannot prove absence. Copy result and row references
+as issued. A row ID is bound to one retained result and is distinct from an
+exact symbol `ref`.
 
 To present the saved rows again without running query stages, use
 `read_result`. Its `cursor` starts at zero when omitted. The returned
@@ -160,14 +191,14 @@ The checkpoint retains:
 
 - unfinished relation expansion
 - pending output
-- identities seen by each distinct stage
-- pending appended references
+- identities and accumulated rows at distinct and set stages
+- pending concatenated input
 
 Resuming does not rerun an emitted prefix.
 
-`distinct_symbols` keeps the first occurrence and its connections.
-
-Later occurrences do not add connections to that result.
+`distinct_symbols` groups rows by canonical semantic identity and merges their
+relation connections before emitting one row per identity. This preserves
+repeated occurrence evidence even when the result cardinality shrinks.
 
 Use `read_relations` when individual occurrences matter.
 

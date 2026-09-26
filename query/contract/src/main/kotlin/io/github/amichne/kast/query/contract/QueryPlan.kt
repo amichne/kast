@@ -34,6 +34,14 @@ data class QueryPlanSyntax(
 
 sealed interface QueryPlanAdmissionFailure {
     data class UnsupportedDeclarationKind(val kind: CompilerSymbolKind) : QueryPlanAdmissionFailure
+
+    data object IncompleteRightInput : QueryPlanAdmissionFailure
+}
+
+enum class QuerySetOperator {
+    INTERSECTION,
+    UNION,
+    DIFFERENCE,
 }
 
 sealed interface ExactQueryStage {
@@ -43,7 +51,14 @@ sealed interface ExactQueryStage {
 
     data class Distinct(val next: ExactQueryStage) : ExactQueryStage
 
-    data class AppendReferences(val references: QueryExactReferences, val next: ExactQueryStage) : ExactQueryStage
+    data class Concat(val input: QueryCompositionInput, val next: ExactQueryStage) : ExactQueryStage
+
+    data class Set
+    internal constructor(
+        val operator: QuerySetOperator,
+        val right: QueryRetainedResult,
+        val next: ExactQueryStage,
+    ) : ExactQueryStage
 
     data class Emit(val fields: QuerySymbolFields) : ExactQueryStage
 }
@@ -86,6 +101,9 @@ object QueryPlanCompiler {
                 QueryPlanAdmissionFailure.UnsupportedDeclarationKind(CompilerSymbolKind.CONSTRUCTOR)
             )
         }
+        if (syntax.steps.filterIsInstance<QueryStepSyntax.Difference>().any { !it.right.provesAbsence() }) {
+            return QueryPlanAdmission.Rejected(QueryPlanAdmissionFailure.IncompleteRightInput)
+        }
         val stage = exactStage(syntax.steps, syntax.output.fields)
         val plan =
             when (source) {
@@ -104,25 +122,37 @@ object QueryPlanCompiler {
                     QueryStepSyntax.Distinct -> ExactQueryStage.Distinct(stage)
                     is QueryStepSyntax.Where -> ExactQueryStage.Where(step.predicate, stage)
                     is QueryStepSyntax.Related -> ExactQueryStage.Related(step.meaning, stage)
-                    is QueryStepSyntax.AppendReferences -> ExactQueryStage.AppendReferences(step.references, stage)
+                    is QueryStepSyntax.Concat -> ExactQueryStage.Concat(step.input, stage)
+                    is QueryStepSyntax.Intersect ->
+                        ExactQueryStage.Set(QuerySetOperator.INTERSECTION, step.right, stage)
+                    is QueryStepSyntax.Union -> ExactQueryStage.Set(QuerySetOperator.UNION, step.right, stage)
+                    is QueryStepSyntax.Difference -> ExactQueryStage.Set(QuerySetOperator.DIFFERENCE, step.right, stage)
                 }
         }
         return stage
     }
 }
 
-internal fun AdmittedQueryPlan.appendedReferenceLeases(): List<SemanticReadAuthority> =
+private fun QueryRetainedResult.provesAbsence(): Boolean =
+    coverage is QueryCoverage.Complete && failures.isEmpty() && producerProgress == null
+
+internal fun AdmittedQueryPlan.composedInputLeases(): List<SemanticReadAuthority> =
     when (this) {
-        is AdmittedQueryPlan.Symbols -> stage.appendedReferenceLeases()
-        is AdmittedQueryPlan.ExactReferences -> stage.appendedReferenceLeases()
-        is AdmittedQueryPlan.Retained -> stage.appendedReferenceLeases()
+        is AdmittedQueryPlan.Symbols -> stage.composedInputLeases()
+        is AdmittedQueryPlan.ExactReferences -> stage.composedInputLeases()
+        is AdmittedQueryPlan.Retained -> stage.composedInputLeases()
     }
 
-private fun ExactQueryStage.appendedReferenceLeases(): List<SemanticReadAuthority> =
+private fun ExactQueryStage.composedInputLeases(): List<SemanticReadAuthority> =
     when (this) {
-        is ExactQueryStage.AppendReferences -> references.values.map { it.lease } + next.appendedReferenceLeases()
-        is ExactQueryStage.Distinct -> next.appendedReferenceLeases()
-        is ExactQueryStage.Where -> next.appendedReferenceLeases()
-        is ExactQueryStage.Related -> next.appendedReferenceLeases()
+        is ExactQueryStage.Concat ->
+            (when (val source = input) {
+                is QueryCompositionInput.ExactReferences -> source.references.values.map { it.lease }
+                is QueryCompositionInput.Retained -> listOf(source.result.lease)
+            }) + next.composedInputLeases()
+        is ExactQueryStage.Set -> listOf(right.lease) + next.composedInputLeases()
+        is ExactQueryStage.Distinct -> next.composedInputLeases()
+        is ExactQueryStage.Where -> next.composedInputLeases()
+        is ExactQueryStage.Related -> next.composedInputLeases()
         is ExactQueryStage.Emit -> emptyList()
     }

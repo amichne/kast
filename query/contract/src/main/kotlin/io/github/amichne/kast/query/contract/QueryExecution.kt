@@ -71,7 +71,7 @@ private constructor(
             if (checkpoint != null && (checkpoint.plan != plan || checkpoint.lease != lease)) {
                 return Refinement.Rejected(QueryExecutionRequestFailure.CHECKPOINT_MISMATCH)
             }
-            return if ((referenceLeases + plan.appendedReferenceLeases()).any { it != lease }) {
+            return if ((referenceLeases + plan.composedInputLeases()).any { it != lease }) {
                 Refinement.Rejected(QueryExecutionRequestFailure.REFERENCE_LEASE_MISMATCH)
             } else {
                 Refinement.Refined(QueryExecutionRequest(plan, lease, budget, checkpoint))
@@ -165,6 +165,7 @@ enum class QueryLimitation {
     VISIBILITY_INCOMPLETE,
     SOURCE_INCOMPLETE,
     RELATION_INCOMPLETE,
+    ROW_SELECTION_INCOMPLETE,
 }
 
 sealed interface QueryCoverage {

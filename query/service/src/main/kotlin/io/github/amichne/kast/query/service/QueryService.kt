@@ -1,7 +1,6 @@
 package io.github.amichne.kast.query.service
 
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.query.contract.AdmittedQueryPlan
 import io.github.amichne.kast.query.contract.ExactQueryStage
 import io.github.amichne.kast.query.contract.QueryContinuationState
 import io.github.amichne.kast.query.contract.QueryCoverage
@@ -32,7 +31,7 @@ private object SystemQueryNanoClock : QueryNanoClock {
     override fun now(): Long = System.nanoTime()
 }
 
-/** In-process evaluator for the closed linear candidate/exact-symbol query algebra. */
+/** In-process evaluator for the closed compositional exact-symbol query algebra. */
 class QueryService(
     discovery: io.github.amichne.kast.symbol.contract.SymbolDiscoveryOperations,
     exact: SymbolExactOperations,
@@ -53,8 +52,7 @@ class QueryService(
     private inner class Execution(private val request: QueryExecutionRequest, checkpoint: PipelineCheckpoint?) {
         private val state = QueryExecutionState(request, clock)
         private val tasks = ArrayDeque(checkpoint?.tasks ?: initialTasks(request.plan))
-        private val seenSymbols =
-            checkpoint?.symbolDistinct?.mapValues { it.value.toMutableSet() }?.toMutableMap() ?: mutableMapOf()
+        private val identityRows = QueryIdentityRows(checkpoint?.identityRows.orEmpty())
         private val symbols = mutableListOf<QuerySymbol>()
         private val completedFailures = mutableListOf<QueryItemFailure>()
         private var progressed = false
@@ -64,13 +62,7 @@ class QueryService(
         init {
             state.limitations += checkpoint?.limitations.orEmpty()
             state.upstreamLimitations += checkpoint?.limitations.orEmpty()
-            if (checkpoint == null) {
-                val retained = (request.plan as? AdmittedQueryPlan.Retained)?.source
-                completedFailures += retained?.failures.orEmpty()
-                val inherited = retained?.coverage as? QueryCoverage.Qualified
-                state.limitations += inherited?.limitations.orEmpty()
-                state.upstreamLimitations += inherited?.limitations.orEmpty()
-            }
+            request.plan.retainedInputs().forEach(state::inheritRetainedLimitations)
         }
 
         suspend fun run(): QueryExecutionResult {
@@ -87,7 +79,7 @@ class QueryService(
             }
             val task = tasks.first()
             val needsWork =
-                task !is PipelineTask.Candidate && task !is PipelineTask.Symbol && task !is PipelineTask.Failure
+                task is PipelineTask.Discover || task is PipelineTask.Revalidate || task is PipelineTask.Related
             if (!state.canContinue(needsWork) || !advance(task)) return false
             state.drainFailures().asReversed().forEach { tasks.addFirst(PipelineTask.Failure(it)) }
             progressed = true
@@ -100,13 +92,9 @@ class QueryService(
                 is PipelineTask.Candidate -> candidate(task)
                 is PipelineTask.Symbol -> symbol(task)
                 is PipelineTask.Related -> related(task)
-                is PipelineTask.AppendReferences -> {
-                    tasks.removeFirst()
-                    task.stage.references.values.asReversed().forEach {
-                        tasks.addFirst(PipelineTask.Revalidate(it, task.stage.next))
-                    }
-                    true
-                }
+                is PipelineTask.Feed -> feed(task)
+                is PipelineTask.FlushSet -> flushSet(task)
+                is PipelineTask.FlushDistinct -> flushDistinct(task)
                 is PipelineTask.Discover -> {
                     when (val result = stages.discover(task.syntax, state)) {
                         DiscoveryExecution.NotStarted -> false
@@ -132,6 +120,48 @@ class QueryService(
                 }
             }
 
+        private fun feed(task: PipelineTask.Feed): Boolean {
+            tasks.removeFirst()
+            task.expand().asReversed().forEach(tasks::addFirst)
+            return true
+        }
+
+        private fun flushSet(task: PipelineTask.FlushSet): Boolean {
+            val stage = task.stage
+            val rows =
+                when (val merged = identityRows.flushSet(stage)) {
+                    is Refinement.Refined -> merged.value
+                    is Refinement.Rejected -> {
+                        state.contractViolation = true
+                        return false
+                    }
+                }
+            tasks.removeFirst()
+            val values =
+                rows.map { PipelineTask.Symbol(it, stage.next) } + stage.right.failures.map(PipelineTask::Failure)
+            values.asReversed().forEach(tasks::addFirst)
+            return true
+        }
+
+        private fun flushDistinct(task: PipelineTask.FlushDistinct): Boolean {
+            val rows = identityRows.flushDistinct(task.stage)
+            tasks.removeFirst()
+            rows.asReversed().forEach { tasks.addFirst(PipelineTask.Symbol(it, task.stage.next)) }
+            return true
+        }
+
+        private fun set(task: PipelineTask.Symbol, stage: ExactQueryStage.Set): Boolean {
+            when (identityRows.acceptSet(stage, task.value)) {
+                is Refinement.Refined -> Unit
+                is Refinement.Rejected -> {
+                    state.contractViolation = true
+                    return false
+                }
+            }
+            tasks.removeFirst()
+            return true
+        }
+
         private fun emit(bytes: Long, append: () -> Unit): Boolean {
             if (!state.consumeOutput(bytes)) {
                 if (bytes > request.budget.returnedBytes.value) terminal = QueryTerminalReason.OUTPUT_ITEM_TOO_LARGE
@@ -154,21 +184,23 @@ class QueryService(
             when (val stage = task.stage) {
                 is ExactQueryStage.Emit -> emitSymbol(task, stage)
                 is ExactQueryStage.Distinct -> {
+                    when (identityRows.acceptDistinct(stage, task.value)) {
+                        is Refinement.Refined -> Unit
+                        is Refinement.Rejected -> {
+                            state.contractViolation = true
+                            return false
+                        }
+                    }
                     tasks.removeFirst()
-                    if (
-                        seenSymbols
-                            .getOrPut(stage) { mutableSetOf() }
-                            .add(io.github.amichne.kast.symbol.contract.CanonicalSymbolId.from(task.value.selector))
-                    )
-                        tasks.addFirst(task.copy(stage = stage.next))
                     true
                 }
                 is ExactQueryStage.Where -> where(task, stage)
-                is ExactQueryStage.AppendReferences -> {
+                is ExactQueryStage.Concat -> {
                     tasks.removeFirst()
                     tasks.addFirst(task.copy(stage = stage.next))
                     true
                 }
+                is ExactQueryStage.Set -> set(task, stage)
                 is ExactQueryStage.Related -> {
                     tasks.removeFirst()
                     tasks.addFirst(PipelineTask.Related(task.value, stage, null))
@@ -304,7 +336,7 @@ class QueryService(
                     plan = request.plan,
                     lease = request.lease,
                     tasks = tasks.toList(),
-                    symbolDistinct = seenSymbols.mapValues { it.value.toSet() },
+                    identityRows = identityRows.snapshot(),
                     limitations =
                         state.limitations.filterTo(linkedSetOf()) { it !in pageLimits } + state.upstreamLimitations,
                 )

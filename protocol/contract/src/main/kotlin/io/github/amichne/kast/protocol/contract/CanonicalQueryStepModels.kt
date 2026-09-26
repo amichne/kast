@@ -53,9 +53,13 @@ sealed interface QueryStepDocument {
 
     @Serializable @SerialName("distinct") data object Distinct : QueryStepDocument
 
+    @Serializable @SerialName("concat") data class Concat(val input: QueryCompositionInputDocument) : QueryStepDocument
+
+    @Serializable @SerialName("intersect") data class Intersect(val right: QueryFromDocument.Result) : QueryStepDocument
+
+    @Serializable @SerialName("union") data class Union(val right: QueryFromDocument.Result) : QueryStepDocument
+
     @Serializable
-    @SerialName("append-references")
-    data class AppendReferences(
-        @ProtocolCollectionConstraint(minimumItems = 1) val values: BoundedProtocolList<ProtocolText>
-    ) : QueryStepDocument
+    @SerialName("difference")
+    data class Difference(val right: QueryFromDocument.Result) : QueryStepDocument
 }

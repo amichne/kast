@@ -21,6 +21,11 @@ normalize omission or explicit null once through the generated defaults before c
 those requests through `AdmittedPublicTool`, retaining tool identity and schema
 identity in addition to the canonical operation. Invalid and empty are not synonyms for omitted. Preserve ordered stages and exact token bytes. Keep all workspace,
 generation, semantic identity and completeness checks in their existing owners.
+The `where` step carries the canonical closed visibility or primitive predicate directly;
+the full public schema bounds primitive literals and rejects unknown fields and operators.
+`concat` reuses the exact-reference and retained-result source DTOs. Set stages accept
+only a retained-result right operand. Issued row IDs select retained rows without
+reconstructing weaker exact references or treating a subset as complete coverage.
 
 Encoding is a transport projection of retained typed syntax, not a reverse parser
 for arbitrary canonical requests. No public constructor/copy may bypass admission.

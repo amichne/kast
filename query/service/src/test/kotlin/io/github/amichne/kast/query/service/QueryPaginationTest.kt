@@ -140,15 +140,19 @@ class QueryPaginationTest {
     }
 
     @Test
-    fun `relation cursor and distinct state survive a full output page`() = runTest {
+    fun `relation cursor and distinct evidence survive a work page without prefix replay`() = runTest {
         QueryServiceTest().apply {
             val selected = selector(selection())
             val positions = mutableListOf<Long>()
+            var descriptions = 0
             val service =
                 QueryService(
                     discoveryEmpty(false),
                     exactOperations(
-                        describe = { SymbolDescriptionResult.Described(SymbolDescription.from(it)) },
+                        describe = {
+                            descriptions++
+                            SymbolDescriptionResult.Described(SymbolDescription.from(it))
+                        },
                         resolve = { error("No discovery expected") },
                     ),
                     SourceReadOperations { error("No source expected") },
@@ -160,18 +164,23 @@ class QueryPaginationTest {
                         listOf(selected),
                         listOf(QueryStepSyntax.Related(RelationMeaning.Callees), QueryStepSyntax.Distinct),
                     ),
-                    workLimit = 8L,
+                    workLimit = 2L,
                     resultLimit = 1,
                 )
             val page = service.run(first) as QueryExecutionResult.Qualified
-            assertEquals(1, page.symbolCount())
+            assertEquals(0, page.symbolCount())
+            assertEquals(listOf(0L), positions)
+            assertEquals(1, descriptions)
             val checkpoint =
                 (page.continuation as io.github.amichne.kast.query.contract.QueryContinuationState.Resumable).checkpoint
+            val resumed = request(first.plan, workLimit = 8L, resultLimit = 1)
             val last =
-                service.run(QueryExecutionRequest.create(first.plan, first.lease, first.budget, checkpoint).refined())
-            assertInstanceOf(QueryExecutionResult.Complete::class.java, last)
-            assertEquals(0, last.symbolCount())
+                service.run(QueryExecutionRequest.create(first.plan, first.lease, resumed.budget, checkpoint).refined())
+            val complete = assertInstanceOf(QueryExecutionResult.Complete::class.java, last)
+            assertEquals(1, complete.symbolCount())
+            assertEquals(2, complete.result.items.single().connections.size)
             assertEquals(listOf(0L, 1L), positions)
+            assertEquals(1, descriptions)
         }
     }
 
@@ -243,34 +252,42 @@ class QueryPaginationTest {
     }
 
     @Test
-    fun `distinct retains seen state across pages`() = runTest {
+    fun `distinct accumulation survives a work page without prefix replay`() = runTest {
         QueryServiceTest().apply {
             val selected = selector(selection())
+            var descriptions = 0
             val service =
                 service(
                     exact =
                         exactOperations(
-                            describe = { SymbolDescriptionResult.Described(SymbolDescription.from(it)) },
+                            describe = {
+                                descriptions++
+                                SymbolDescriptionResult.Described(SymbolDescription.from(it))
+                            },
                             resolve = { error("No discovery expected") },
                         )
                 )
             val first =
                 request(
                     exactReferencePlan(List(3) { selected }, listOf(QueryStepSyntax.Distinct)),
-                    workLimit = 8L,
+                    workLimit = 1L,
                     resultLimit = 1,
                 )
             val page = service.run(first) as QueryExecutionResult.Qualified
-            assertEquals(1, page.symbolCount())
+            assertEquals(0, page.symbolCount())
+            assertEquals(1, descriptions)
             val continuation =
                 page.continuation as io.github.amichne.kast.query.contract.QueryContinuationState.Resumable
+            val resumed = request(first.plan, workLimit = 8L, resultLimit = 1)
             val last =
                 service.run(
-                    QueryExecutionRequest.create(first.plan, first.lease, first.budget, continuation.checkpoint)
+                    QueryExecutionRequest.create(first.plan, first.lease, resumed.budget, continuation.checkpoint)
                         .refined()
                 )
-            assertInstanceOf(QueryExecutionResult.Complete::class.java, last)
-            assertEquals(0, last.symbolCount())
+            val complete = assertInstanceOf(QueryExecutionResult.Complete::class.java, last)
+            assertEquals(1, complete.symbolCount())
+            assertEquals(selected, complete.result.items.single().selector)
+            assertEquals(3, descriptions)
         }
     }
 
@@ -285,7 +302,8 @@ class QueryPaginationTest {
                     read,
                     read.subject,
                     read.subject,
-                    RelationOccurrence.fromBoundary(selected.file, 8, 9).refined(),
+                    RelationOccurrence.fromBoundary(selected.file, 8 + position.toInt(), 9 + position.toInt())
+                        .refined(),
                     RelationProvenance.K2_AUTHORED_SOURCE,
                 )
                 .refined()

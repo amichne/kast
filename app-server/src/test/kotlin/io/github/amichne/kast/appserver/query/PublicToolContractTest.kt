@@ -11,15 +11,21 @@ import org.junit.jupiter.api.Test
 
 class PublicToolContractTest {
     @Test
-    fun `query symbols admits appended outputs and jq filtering as ordered steps`() {
+    fun `query symbols admits typed concatenation and structured filtering as ordered steps`() {
         val reference = (ProtocolText.parse("NON_ISSUED_SCHEMA_TEST_ONLY") as Refinement.Refined).value
-        val expression = (ProtocolText.parse("select(.kind == \"class\")") as Refinement.Refined).value
+        val value = (ProtocolText.parse("class") as Refinement.Refined).value
         val refs = (BoundedProtocolList.create(listOf(reference)) as Refinement.Refined).value
+        val predicate =
+            QueryPredicateDocument.Primitive(
+                QueryPrimitiveFieldDocument.KIND,
+                QueryPrimitiveOperatorDocument.EQUALS,
+                value,
+            )
         val steps =
             (BoundedProtocolList.create(
                     listOf<PublicToolStep>(
-                        PublicToolAppendSymbolRefs(refs),
-                        PublicToolFilterJq(expression),
+                        PublicToolConcat(PublicToolReferenceSource(refs)),
+                        PublicToolWhere(predicate),
                         PublicToolDistinctSymbols,
                     )
                 ) as Refinement.Refined)
@@ -34,37 +40,54 @@ class PublicToolContractTest {
             ((admitted.value.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run).steps.values
         assertEquals(
             listOf(
-                QueryStepDocument.AppendReferences::class,
+                QueryStepDocument.Concat::class,
                 QueryStepDocument.Where::class,
                 QueryStepDocument.Distinct::class,
             ),
             lowered.map { it::class },
         )
-        assertEquals(refs, (lowered[0] as QueryStepDocument.AppendReferences).values)
         assertEquals(
-            QueryPrimitiveFieldDocument.KIND,
-            ((lowered[1] as QueryStepDocument.Where).predicate as QueryPredicateDocument.Primitive).field,
+            refs.values,
+            ((lowered[0] as QueryStepDocument.Concat).input as QueryFromDocument.References).values.values.map {
+                it.token
+            },
         )
+        assertEquals(predicate, (lowered[1] as QueryStepDocument.Where).predicate)
     }
 
     @Test
-    fun `unsupported jq expression rejects at public admission`() {
-        val reference = (ProtocolText.parse("NON_ISSUED_SCHEMA_TEST_ONLY") as Refinement.Refined).value
-        val expression = (ProtocolText.parse("select(.name | test(\".*\"))") as Refinement.Refined).value
-        val refs = (BoundedProtocolList.create(listOf(reference)) as Refinement.Refined).value
-        val steps =
-            (BoundedProtocolList.create(listOf<PublicToolStep>(PublicToolFilterJq(expression))) as Refinement.Refined)
-                .value
-        val input = PublicToolQuerySymbols(PublicToolRunAction(PublicToolReferenceSource(refs), steps, null))
-        val result =
-            PublicToolContract.admit(
-                PublicToolIdentity.QUERY_SYMBOLS,
-                Json.encodeToJsonElement(PublicToolQuerySymbols.serializer(), input),
+    fun `structured predicates preserve each legal primitive field and operator through lowering`() {
+        val cases =
+            listOf(
+                Triple(QueryPrimitiveFieldDocument.NAME, QueryPrimitiveOperatorDocument.EQUALS, "PaymentService"),
+                Triple(QueryPrimitiveFieldDocument.KIND, QueryPrimitiveOperatorDocument.NOT_EQUALS, "function"),
+                Triple(QueryPrimitiveFieldDocument.FILE, QueryPrimitiveOperatorDocument.STARTS_WITH, "/workspace"),
+                Triple(QueryPrimitiveFieldDocument.FILE, QueryPrimitiveOperatorDocument.ENDS_WITH, ".kt"),
+                Triple(QueryPrimitiveFieldDocument.KIND, QueryPrimitiveOperatorDocument.STARTS_WITH, "func"),
             )
-        assertEquals(
-            PublicToolInputFailure.Parameter(PublicToolParameter.JQ_EXPRESSION, PublicToolRule.SUPPORTED_JQ_FILTER),
-            (result as Refinement.Rejected).failure,
-        )
+        cases.forEach { (field, operator, rawValue) ->
+            val predicate =
+                QueryPredicateDocument.Primitive(
+                    field,
+                    operator,
+                    (ProtocolText.parse(rawValue) as Refinement.Refined).value,
+                )
+            val steps =
+                (BoundedProtocolList.create(listOf<PublicToolStep>(PublicToolWhere(predicate))) as Refinement.Refined)
+                    .value
+            val input = PublicToolQuerySymbols(PublicToolRunAction(PublicToolAllSource(), steps, null))
+            val admitted =
+                PublicToolContract.admit(
+                    PublicToolIdentity.QUERY_SYMBOLS,
+                    Json.encodeToJsonElement(PublicToolQuerySymbols.serializer(), input),
+                ) as Refinement.Refined
+            val lowered =
+                ((admitted.value.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run)
+                    .steps
+                    .values
+                    .single()
+            assertEquals(predicate, (lowered as QueryStepDocument.Where).predicate)
+        }
     }
 
     @Test
@@ -152,6 +175,51 @@ class PublicToolContractTest {
     }
 
     @Test
+    fun `selected retained rows lower through source concat and retained only set steps`() {
+        val reference =
+            (QueryResultReference.parse("result:v1:00000000-0000-0000-0000-000000000000") as Refinement.Refined).value
+        val rowId =
+            (QueryResultRowReference.parse("result-row:v1:00000000-0000-0000-0000-000000000001") as Refinement.Refined)
+                .value
+        val rowIds = (BoundedProtocolList.create(listOf(rowId)) as Refinement.Refined).value
+        val selected = PublicToolResultSource(reference, rowIds)
+        val steps =
+            (BoundedProtocolList.create(
+                    listOf<PublicToolStep>(
+                        PublicToolConcat(selected),
+                        PublicToolIntersect(selected),
+                        PublicToolUnion(selected),
+                        PublicToolDifference(selected),
+                    )
+                ) as Refinement.Refined)
+                .value
+        val input = PublicToolQuerySymbols(PublicToolRunAction(selected, steps, null))
+        val admitted =
+            PublicToolContract.admit(
+                PublicToolIdentity.QUERY_SYMBOLS,
+                Json.encodeToJsonElement(PublicToolQuerySymbols.serializer(), input),
+            ) as Refinement.Refined
+        val request = (admitted.value.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run
+        val expected = QueryFromDocument.Result(reference, rowIds)
+        assertEquals(expected, request.from)
+        assertEquals(expected, (request.steps.values[0] as QueryStepDocument.Concat).input)
+        assertEquals(expected, (request.steps.values[1] as QueryStepDocument.Intersect).right)
+        assertEquals(expected, (request.steps.values[2] as QueryStepDocument.Union).right)
+        assertEquals(expected, (request.steps.values[3] as QueryStepDocument.Difference).right)
+
+        val emptyRows = (BoundedProtocolList.create(emptyList<QueryResultRowReference>()) as Refinement.Refined).value
+        val emptyInput =
+            PublicToolQuerySymbols(PublicToolRunAction(PublicToolResultSource(reference, emptyRows), null, null))
+        val emptyAdmitted =
+            PublicToolContract.admit(
+                PublicToolIdentity.QUERY_SYMBOLS,
+                Json.encodeToJsonElement(PublicToolQuerySymbols.serializer(), emptyInput),
+            ) as Refinement.Refined
+        val emptyRequest = (emptyAdmitted.value.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run
+        assertEquals(emptyRows, (emptyRequest.from as QueryFromDocument.Result).rowIds)
+    }
+
+    @Test
     fun `read result carries a presentation cursor and projection without execution plan`() {
         val reference =
             (QueryResultReference.parse("result:v1:00000000-0000-0000-0000-000000000000") as Refinement.Refined).value
@@ -222,7 +290,7 @@ class PublicToolSchemaTest {
             requireNotNull(javaClass.getResourceAsStream("/public-tools/schema-cases.json")).bufferedReader().use {
                 Json.parseToJsonElement(it.readText()).jsonArray
             }
-        assertEquals(36, cases.size)
+        assertEquals(51, cases.size)
         cases.forEach { case ->
             val row = case.jsonObject
             val identity =
@@ -305,7 +373,7 @@ class PublicToolSchemaTest {
         val source =
             ((admitted.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run).from
                 as QueryFromDocument.References
-        assertEquals(token, (source.values.values.single() as QueryReferenceDocument.ExactSymbol).token.value)
+        assertEquals(token, source.values.values.single().token.value)
         // Authenticity is deliberately deferred to the existing exact-reference owner.
     }
 
@@ -318,9 +386,12 @@ class PublicToolSchemaTest {
         val steps =
             (BoundedProtocolList.create(
                     listOf<PublicToolStep>(
-                        PublicToolFilterVisibility(
-                            (BoundedProtocolList.create(listOf(PublicToolVisibilities.PUBLIC)) as Refinement.Refined)
-                                .value
+                        PublicToolWhere(
+                            QueryPredicateDocument.Visibility(
+                                (BoundedProtocolList.create(listOf(QueryVisibilityDocument.PUBLIC))
+                                        as Refinement.Refined)
+                                    .value
+                            )
                         ),
                         PublicToolExpandRelation(PublicToolRelation.CALLERS),
                         PublicToolDistinctSymbols,

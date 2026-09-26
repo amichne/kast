@@ -4,7 +4,7 @@ sidebarTitle: "Read a response"
 type: "API Contract"
 title: "Read a tool response"
 description: "Separate invocation success from semantic evidence, then choose the next action."
-timestamp: "2026-09-14T00:00:00-04:00"
+timestamp: "2026-09-25T00:00:00-04:00"
 code_sources:
   - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt"
   - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/MintlifyCallableReference.kt"
@@ -12,6 +12,9 @@ code_sources:
   - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpStructuredResults.kt"
   - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt"
   - path: "relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijK2SymbolIdentity.kt"
+  - path: "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalQueryOperationModels.kt"
+  - path: "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryResultReferences.kt"
+  - path: "query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryOutcomeProjection.kt"
 ---
 
 Read every Kast response as **invocation → semantic outcome → payload → coverage**.
@@ -181,11 +184,12 @@ Successful items remain usable, but failures still limit completeness claims.
 
 ### Query result references and progress
 
-For `query_symbols`, keep four returned concepts separate:
+For `query_symbols`, keep five returned concepts separate:
 
 | Field | Meaning |
 | --- | --- |
 | `items[].ref` | Exact-symbol reference for one declaration |
+| `items[].row_id` when the result is retained | Issued identity of this row within its owning retained result; use with `source.row_ids` or a composed result operand |
 | `retention.reference` when `retention.kind` is `retained` | Immutable retained result for another query run or a later presentation read |
 | `continuation` on a qualified response | Interrupted execution to resume with `request.action: "resume"` |
 | `next_cursor` | Next presentation page of the same retained result, read with `request.action: "read_result"` |
@@ -195,6 +199,8 @@ Capacity failure leaves the current answer intact. A result reference is
 bounded and valid only in its original semantic basis. An empty retained result
 can be reused. A qualified retained result keeps its limitations and omissions;
 reading or composing its positive rows does not prove missing rows absent.
+An empty `row_ids` list selects no rows; selecting a proper subset records
+incomplete selection. A row ID from another result rejects during restoration.
 
 `read_result` presents saved rows without running query stages. The caller
 supplies the result reference and may supply `cursor`; copy `next_cursor` into

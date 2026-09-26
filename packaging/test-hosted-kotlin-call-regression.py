@@ -239,7 +239,7 @@ class KotlinCallRegressionTest(unittest.TestCase):
         }
         def invoke(surface, tool, request):
             if tool == 'query_symbols':
-                return json.loads(json.dumps(asdict(SearchResponse((SearchItem(request['source']['declaration_name']),)))))
+                return json.loads(json.dumps(asdict(SearchResponse((SearchItem(request['request']['source']['declaration_name']),)))))
             return json.loads(json.dumps(asdict(responses[request['exactSelector']])))
         replay = SimpleNamespace(live='same-test-authority', surface='test', transport=SimpleNamespace(invoke=invoke))
         with redirect_stderr(StringIO()):
@@ -342,12 +342,13 @@ class KotlinCallRegressionTest(unittest.TestCase):
         self.assertEqual(expected, asdict(replace(request, position=CallResume('issued-cursor'))))
 
     def test_fixed_request_shapes(self):
-        self.assertEqual({'source': {'type': 'search_declarations', 'declaration_name': 'outer',
+        self.assertEqual({'request': {'action': 'run',
+                          'source': {'type': 'search_declarations', 'declaration_name': 'outer',
                                      'name_match': 'exact', 'declaration_kinds': ('function',),
                                      'scope': {'package_name': 'fixture.calls', 'include_subpackages': False,
                                                'source_set_names': ('main',)}},
                           'steps': None, 'return_fields': ('name', 'location', 'signature'),
-                          'execution_budget': None},
+                          'execution_budget': None}},
                          asdict(name_query('outer', ('function',), KotlinCallScope())))
         self.assertEqual({'exactSelector': 'issued-ref', 'relation': 'callees', 'limit': 100,
                           'position': {'type': 'start'}}, asdict(KotlinCallRead('issued-ref')))

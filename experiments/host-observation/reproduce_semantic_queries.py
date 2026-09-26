@@ -164,12 +164,8 @@ class Case:
     unique_tokens: bool = True
     issued: tuple[dict, ...] = ()
 
-    def request(self):
-        return dict(type="QUERY", **{"from": self.source}, steps=list(self.steps), select=list(self.select))
-
 
 class ToolSurface(str, Enum):
-    LEGACY = "query"
     PUBLIC = "public-tools-v1"
 
     @staticmethod
@@ -178,8 +174,6 @@ class ToolSurface(str, Enum):
         public = {"check_diagnostics", "query_symbols"}
         if public <= names and "query" not in names:
             return ToolSurface.PUBLIC
-        if "query" in names and not (public & names):
-            return ToolSurface.LEGACY
         raise ValueError("UNSUPPORTED_TOOL_SURFACE")
 
 
@@ -194,8 +188,8 @@ def public_scope(selected):
 
 
 def invocation(case, surface):
-    if surface is ToolSurface.LEGACY:
-        return "query", ["query", "run"], case.request()
+    if surface is not ToolSurface.PUBLIC:
+        raise ValueError("UNSUPPORTED_TOOL_SURFACE")
     source = case.source
     kinds = [kind.lower() for kind in source["kinds"]] if "kinds" in source else None
     if source["type"] == "SEARCH":
@@ -211,15 +205,16 @@ def invocation(case, surface):
     steps = []
     for step in case.steps:
         if step["type"] == "FILTER":
-            steps.append(dict(type="filter_visibility", visibilities=[v.lower() for v in step["visibility"]]))
+            steps.append(dict(type="where", predicate=dict(type="visibility",
+                values=[v.lower() for v in step["visibility"]])))
         elif step["type"] == "EXPAND":
             steps.append(dict(type="expand_relation", relation=step["relation"].lower()))
         elif step["type"] == "DISTINCT":
             steps.append(dict(type="distinct_symbols"))
         else:
             raise ValueError("UNSUPPORTED_REPLAY_STEP")
-    return "query_symbols", ["tool", "query_symbols"], dict(source=lowered, steps=steps,
-        return_fields=[field.lower() for field in case.select])
+    return "query_symbols", ["tool", "query_symbols"], dict(request=dict(action="run", source=lowered,
+        steps=steps, return_fields=[field.lower() for field in case.select]))
 
 
 def search(name, scope=None, match="EXACT"):
@@ -419,7 +414,7 @@ def replay(args):
     def invoke(case, phase):
         nonlocal first_live
         directory = fresh(output / (case.name + "-" + phase))
-        if surface is ToolSurface.PUBLIC and case.name == "invalid-reference-syntax":
+        if case.name == "invalid-reference-syntax":
             case = replace(case, schema_valid=True, reported="malformed-reference")
         tool, command, request = invocation(case, surface)
         query_schema = tool_schemas[tool]

@@ -66,7 +66,20 @@ sealed interface QueryStepSyntax {
 
     data class Related(val meaning: RelationMeaning) : QueryStepSyntax
 
-    data class AppendReferences(val references: QueryExactReferences) : QueryStepSyntax
+    data class Concat(val input: QueryCompositionInput) : QueryStepSyntax
+
+    data class Intersect(val right: QueryRetainedResult) : QueryStepSyntax
+
+    data class Union(val right: QueryRetainedResult) : QueryStepSyntax
+
+    data class Difference(val right: QueryRetainedResult) : QueryStepSyntax
 
     data object Distinct : QueryStepSyntax
+}
+
+/** A proven result can retain evidence; exact references must be revalidated during execution. */
+sealed interface QueryCompositionInput {
+    data class ExactReferences(val references: QueryExactReferences) : QueryCompositionInput
+
+    data class Retained(val result: QueryRetainedResult) : QueryCompositionInput
 }

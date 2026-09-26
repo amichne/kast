@@ -139,24 +139,6 @@ internal fun RelationFact.toQuerySymbol(
     )
 }
 
-internal fun distinct(
-    values: List<QuerySymbol>,
-    state: QueryExecutionState,
-): List<QuerySymbol> =
-    values
-        .groupBy { it.selector.fingerprint }
-        .values
-        .map { group ->
-            group.first().copy(connections = state.boundConnections(group.flatMap { it.connections }))
-        }
-        .sortedWith(
-            compareBy(
-                { it.description.file.stableValue },
-                { it.description.range.startInclusive },
-                { it.description.compilerIdentity.value },
-            )
-        )
-
 internal fun QuerySymbol.projectedUtf8Size(): Long =
     saturatedSum(
         listOf(

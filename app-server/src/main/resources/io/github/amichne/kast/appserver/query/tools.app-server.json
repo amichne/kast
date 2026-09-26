@@ -92,7 +92,7 @@
     {
       "type": "function",
       "name": "query_symbols",
-      "description": "Run, resume, and read a compositional compiler-grounded Kotlin symbol query. Start from name/scope discovery, exact-symbol references, or an immutable retained result. Apply ordered filters, relation expansion, explicit append, and distinct steps. Retain a completed result when needed for later composition; resume uses only the opaque execution continuation, and read_result uses a separate presentation cursor. Incomplete coverage and bounded work remain explicit.",
+      "description": "Run, resume, and read a compositional compiler-grounded Kotlin symbol query. Start from name/scope discovery, exact-symbol references, or selected rows of an immutable retained result. Apply structured predicates, relation expansion, concatenation, set operations, and explicit deduplication. Retain a completed result when needed for later composition; resume uses only the opaque execution continuation, and read_result uses a separate presentation cursor. Incomplete coverage and bounded work remain explicit.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -330,16 +330,27 @@
             ],
             "additionalProperties": false
           },
-          "FilterVisibility": {
+          "Predicate": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/VisibilityPredicate"
+              },
+              {
+                "$ref": "#/$defs/PrimitivePredicate"
+              }
+            ],
+            "description": "A closed predicate over compiler-grounded symbol facts."
+          },
+          "VisibilityPredicate": {
             "type": "object",
             "properties": {
               "type": {
                 "type": "string",
                 "enum": [
-                  "filter_visibility"
+                  "visibility"
                 ]
               },
-              "visibilities": {
+              "values": {
                 "type": "array",
                 "items": {
                   "type": "string",
@@ -359,9 +370,72 @@
             },
             "required": [
               "type",
-              "visibilities"
+              "values"
             ],
             "additionalProperties": false
+          },
+          "PrimitivePredicate": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "primitive"
+                ]
+              },
+              "field": {
+                "type": "string",
+                "enum": [
+                  "name",
+                  "kind",
+                  "file"
+                ],
+                "description": "Compiler-grounded name, declaration kind, or stable file identity."
+              },
+              "operator": {
+                "type": "string",
+                "enum": [
+                  "equals",
+                  "not_equals",
+                  "starts_with",
+                  "ends_with"
+                ]
+              },
+              "value": {
+                "type": "string",
+                "pattern": "[\\s\\S]*\\S[\\s\\S]*",
+                "minLength": 1,
+                "maxLength": 512,
+                "description": "Nonblank literal compared with the selected compiler-grounded field."
+              }
+            },
+            "required": [
+              "type",
+              "field",
+              "operator",
+              "value"
+            ],
+            "additionalProperties": false
+          },
+          "Where": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "where"
+                ]
+              },
+              "predicate": {
+                "$ref": "#/$defs/Predicate"
+              }
+            },
+            "required": [
+              "type",
+              "predicate"
+            ],
+            "additionalProperties": false,
+            "description": "Keep symbols satisfying one structured compiler-grounded predicate."
           },
           "ExpandRelation": {
             "type": "object",
@@ -451,57 +525,105 @@
             "required": [],
             "additionalProperties": false
           },
-          "AppendSymbolRefs": {
+          "Concat": {
             "type": "object",
             "properties": {
               "type": {
                 "type": "string",
                 "enum": [
-                  "append_symbol_refs"
+                  "concat"
                 ]
               },
-              "symbol_refs": {
-                "type": "array",
-                "items": {
-                  "type": "string",
-                  "description": "Opaque exact-symbol reference from a previous query_symbols result.",
-                  "minLength": 1,
-                  "maxLength": 1048576
-                },
-                "minItems": 1,
-                "maxItems": 1000,
-                "description": "Append exact symbols from one or more earlier query results in this workspace and generation. Follow with distinct_symbols to form a set union."
+              "input": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/ReferenceSource"
+                  },
+                  {
+                    "$ref": "#/$defs/ResultSource"
+                  }
+                ],
+                "description": "Append exact-symbol references or selected rows from one retained result, preserving stream order and multiplicity."
               }
             },
             "required": [
               "type",
-              "symbol_refs"
+              "input"
             ],
             "additionalProperties": false,
-            "description": "Append prior exact-symbol outputs at this pipeline position. Later steps transform both the original stream and appended symbols."
+            "description": "Concatenate a typed input at this pipeline position. Later steps transform both streams."
           },
-          "FilterJq": {
+          "Intersect": {
             "type": "object",
             "properties": {
               "type": {
                 "type": "string",
                 "enum": [
-                  "filter_jq"
+                  "intersect"
                 ]
               },
-              "expression": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 512,
-                "description": "Bounded jq select expression over exact symbol primitive fields name, kind, and file. Supported: select(.field == \"value\"), select(.field != \"value\"), select(.field | startswith(\"value\")), and select(.field | endswith(\"value\")). Other jq syntax is rejected."
+              "right": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/ResultSource"
+                  }
+                ]
               }
             },
             "required": [
               "type",
-              "expression"
+              "right"
             ],
             "additionalProperties": false,
-            "description": "Keep symbols for which the supported jq predicate selects the primitive projection."
+            "description": "Keep left rows whose canonical semantic identity occurs in the retained right result."
+          },
+          "Union": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "union"
+                ]
+              },
+              "right": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/ResultSource"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "type",
+              "right"
+            ],
+            "additionalProperties": false,
+            "description": "Form a set union by canonical semantic identity while retaining source qualification."
+          },
+          "Difference": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "difference"
+                ]
+              },
+              "right": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/ResultSource"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "type",
+              "right"
+            ],
+            "additionalProperties": false,
+            "description": "Exclude right-hand canonical identities only when retained right coverage establishes absence."
           },
           "ResultReference": {
             "type": "string",
@@ -509,6 +631,13 @@
             "minLength": 46,
             "maxLength": 46,
             "description": "Opaque retained-result reference returned by Kast. It is separate from an exact-symbol reference and an execution continuation."
+          },
+          "ResultRowReference": {
+            "type": "string",
+            "pattern": "^result-row:v1:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "minLength": 50,
+            "maxLength": 50,
+            "description": "Issued identity of one row in one retained result. Supply it with its owning result reference; restoration checks ownership."
           },
           "ResultCursor": {
             "type": [
@@ -530,6 +659,19 @@
               },
               "result": {
                 "$ref": "#/$defs/ResultReference"
+              },
+              "row_ids": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "$ref": "#/$defs/ResultRowReference"
+                },
+                "minItems": 0,
+                "maxItems": 1000,
+                "uniqueItems": true,
+                "description": "Omission or null selects all rows. [] selects no rows. Otherwise select these issued rows, in order, from this result; a subset keeps its source qualification and cannot prove coverage of omitted rows."
               }
             },
             "required": [
@@ -537,7 +679,7 @@
               "result"
             ],
             "additionalProperties": false,
-            "description": "Seed a new pipeline from a retained immutable result. The same semantic basis is checked when Kast restores it, including an empty result and any incomplete-coverage qualification."
+            "description": "Seed a new pipeline from a retained immutable result or selected issued rows. The same semantic basis is checked when Kast restores it, including empty selections and incomplete-coverage qualification."
           },
           "RunAction": {
             "type": "object",
@@ -573,7 +715,7 @@
                 "items": {
                   "anyOf": [
                     {
-                      "$ref": "#/$defs/FilterVisibility"
+                      "$ref": "#/$defs/Where"
                     },
                     {
                       "$ref": "#/$defs/ExpandRelation"
@@ -582,16 +724,22 @@
                       "$ref": "#/$defs/DistinctSymbols"
                     },
                     {
-                      "$ref": "#/$defs/AppendSymbolRefs"
+                      "$ref": "#/$defs/Concat"
                     },
                     {
-                      "$ref": "#/$defs/FilterJq"
+                      "$ref": "#/$defs/Intersect"
+                    },
+                    {
+                      "$ref": "#/$defs/Union"
+                    },
+                    {
+                      "$ref": "#/$defs/Difference"
                     }
                   ]
                 },
                 "minItems": 0,
                 "maxItems": 1000,
-                "description": "Ordered transformations, executed left to right. null and [] mean no transformations. append_symbol_refs merges prior exact-symbol outputs into the stream; distinct_symbols then forms a set union. filter_jq accepts the documented bounded jq select subset over primitive symbol fields."
+                "description": "Ordered transformations, executed left to right. null and [] mean no transformations. where applies one structured predicate. concat preserves order and multiplicity; intersect, union, and difference use canonical semantic identity. distinct_symbols removes duplicate identities only when requested."
               },
               "return_fields": {
                 "type": [

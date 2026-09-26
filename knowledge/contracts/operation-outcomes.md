@@ -4,7 +4,7 @@ title: Operation outcomes
 description: Semantic success is complete or explicitly qualified and carries either published or live evidence; rejection carries no successful payload.
 resource: file://kernel/src/main/kotlin/io/github/amichne/kast/kernel/OperationOutcome.kt
 tags: [outcome, evidence, failure]
-timestamp: 2026-09-16T00:00:00Z
+timestamp: 2026-09-25T00:00:00Z
 code_sources:
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReadRecoveryGuidance.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReadReferenceAcquisitions.kt
@@ -64,7 +64,7 @@ for both unadmitted and budget-bearing rejections. The wire retains the finite
 failure and budget; projection derives the action again after decoding rather
 than accepting a separate action as authority.
 
-An appended query reference rejection retains both the step and reference positions. It uses the same finite reference reason and recovery action as a source reference rejection.
+A `concat` exact-reference rejection retains both the step and reference positions. It uses the same finite reference reason and recovery action as a source reference rejection. An unavailable retained row or incomplete right operand is a request correction, while an unavailable or stale retained result directs a fresh read.
 
 | Action | Required direction |
 | --- | --- |

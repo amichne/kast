@@ -5,9 +5,11 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
+import io.github.amichne.kast.query.contract.QueryCoverage
 import io.github.amichne.kast.query.contract.QueryExecutionRequest
 import io.github.amichne.kast.query.contract.QueryItemFailure
 import io.github.amichne.kast.query.contract.QueryLimitation
+import io.github.amichne.kast.query.contract.QueryRetainedResult
 import io.github.amichne.kast.relation.contract.RelationBudget
 import io.github.amichne.kast.relation.contract.RelationByteLimit
 import io.github.amichne.kast.relation.contract.RelationFact
@@ -28,6 +30,23 @@ internal class QueryExecutionState(
     val limitations = linkedSetOf<QueryLimitation>()
     val upstreamLimitations = linkedSetOf<QueryLimitation>()
     var contractViolation: Boolean = false
+
+    fun inheritRetainedLimitations(result: QueryRetainedResult) {
+        val inherited = (result.coverage as? QueryCoverage.Qualified)?.limitations.orEmpty()
+        val failures =
+            result.failures.map { failure ->
+                when (failure) {
+                    is QueryItemFailure.Refinement,
+                    is QueryItemFailure.ExactReference -> QueryLimitation.REFINEMENT_INCOMPLETE
+                    is QueryItemFailure.Visibility,
+                    is QueryItemFailure.PredicateUnproven -> QueryLimitation.VISIBILITY_INCOMPLETE
+                    is QueryItemFailure.Source -> QueryLimitation.SOURCE_INCOMPLETE
+                    is QueryItemFailure.Relation -> QueryLimitation.RELATION_INCOMPLETE
+                }
+            }
+        limitations += inherited + failures
+        upstreamLimitations += inherited + failures
+    }
 
     fun canContinue(workRequired: Boolean): Boolean {
         if (workRequired && remainingWork() < 1L) {

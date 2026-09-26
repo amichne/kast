@@ -85,6 +85,9 @@ sealed interface QueryReferenceDocument {
     data class ExactSymbol(override val token: ProtocolText) : QueryReferenceDocument
 }
 
+/** Inputs that can be composed after a query has started. Discovery is a source only. */
+@Serializable sealed interface QueryCompositionInputDocument
+
 @Serializable
 sealed interface QueryFromDocument {
     @Serializable
@@ -113,9 +116,17 @@ sealed interface QueryFromDocument {
     data class References(
         @ProtocolCollectionConstraint(minimumItems = 1)
         val values: BoundedProtocolList<QueryReferenceDocument.ExactSymbol>
-    ) : QueryFromDocument
+    ) : QueryFromDocument, QueryCompositionInputDocument
 
-    @Serializable @SerialName("result") data class Result(val reference: QueryResultReference) : QueryFromDocument
+    @Serializable
+    @SerialName("result")
+    data class Result(
+        val reference: QueryResultReference,
+        @ProtocolCollectionConstraint(uniqueItems = true)
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        @SerialName("row_ids")
+        val rowIds: BoundedProtocolList<QueryResultRowReference>? = null,
+    ) : QueryFromDocument, QueryCompositionInputDocument
 }
 
 @Serializable
@@ -221,7 +232,7 @@ private fun QueryRunRequest.Run.hasCanonicalRequestSyntax(): Boolean {
         when (val source = from) {
             is QueryFromDocument.Symbols -> source.discovery.isCanonical()
             is QueryFromDocument.References -> source.values.values.isNotEmpty()
-            is QueryFromDocument.Result -> true
+            is QueryFromDocument.Result -> source.rowIds?.values?.isUnique() ?: true
         }
     if (!sourceIsCanonical) return false
     if (steps.values.any { !it.hasCanonicalSyntax() }) return false
@@ -254,7 +265,14 @@ private fun QueryStepDocument.hasCanonicalSyntax(): Boolean =
     when (this) {
         is QueryStepDocument.Related,
         QueryStepDocument.Distinct -> true
-        is QueryStepDocument.AppendReferences -> values.values.isNotEmpty()
+        is QueryStepDocument.Concat ->
+            when (val source = input) {
+                is QueryFromDocument.References -> source.values.values.isNotEmpty()
+                is QueryFromDocument.Result -> source.rowIds?.values?.isUnique() ?: true
+            }
+        is QueryStepDocument.Intersect -> right.rowIds?.values?.isUnique() ?: true
+        is QueryStepDocument.Union -> right.rowIds?.values?.isUnique() ?: true
+        is QueryStepDocument.Difference -> right.rowIds?.values?.isUnique() ?: true
         is QueryStepDocument.Where ->
             when (val value = predicate) {
                 is QueryPredicateDocument.Visibility -> value.values.values.isUniqueNonEmpty()
@@ -285,6 +303,7 @@ sealed interface QueryResultItemDocument {
         val connections: BoundedProtocolList<RelationFactDocument>,
         val symbolId: SymbolIdDocument,
         val source: QuerySourceWindowDocument? = null,
+        val rowId: QueryResultRowReference? = null,
     ) : QueryResultItemDocument
 }
 

@@ -1,7 +1,7 @@
 """Installed enum-entry admission and member traversal with bounded candidate capacity."""
 from collections import Counter
 from dataclasses import asdict, dataclass, field
-from query_name_request import name_query
+from query_name_request import QueryInput, QueryRun, name_query
 
 
 @dataclass(frozen=True)
@@ -27,25 +27,9 @@ class AllEnumClasses:
 
 
 @dataclass(frozen=True)
-class EnumClassEnumeration:
-    source: AllEnumClasses = field(default_factory=AllEnumClasses, init=False)
-    steps: None = field(default=None, init=False)
-    return_fields: None = field(default=None, init=False)
-    execution_budget: EnumBudget = field(default_factory=EnumBudget, init=False)
-
-
-@dataclass(frozen=True)
 class EnumMemberReferences:
     symbol_refs: tuple[str, ...]
     type: str = field(default='symbol_refs', init=False)
-
-
-@dataclass(frozen=True)
-class EnumMemberRoundtrip:
-    source: EnumMemberReferences
-    steps: tuple['DistinctSymbols', ...] = ()
-    return_fields: tuple[str, ...] = field(default=('name', 'signature'), init=False)
-    execution_budget: EnumBudget = field(default_factory=EnumBudget, init=False)
 
 
 @dataclass(frozen=True)
@@ -57,7 +41,9 @@ def run_enum_read_regression(replay):
     cases = (
         ('enum-entry-exact-exclusion', 'query_symbols', name_query('ACTIVE', ('class',), EnumScope(), 'exact', EnumBudget()), ()),
         ('enum-entry-fuzzy-exclusion', 'query_symbols', name_query('Mode', ('class',), EnumScope(), 'fuzzy', EnumBudget()), ('Mode',)),
-        ('enum-entry-scoped-all-capacity', 'query_symbols', EnumClassEnumeration(), ('Mode', 'Nested', 'Ordinary')),
+        ('enum-entry-scoped-all-capacity', 'query_symbols',
+         QueryInput(QueryRun(AllEnumClasses(), return_fields=None, execution_budget=EnumBudget())),
+         ('Mode', 'Nested', 'Ordinary')),
         ('enum-entry-body-members', 'query_symbols', name_query('act', ('function',), EnumScope(), budget=EnumBudget()), ('act', 'act')),
     )
     for name, tool, request, expected in cases:
@@ -83,7 +69,7 @@ def _roundtrip_members(replay, discovery):
         replay.record('enum-entry-member-reference-reuse', 'query_symbols', {'issuerAvailable': False})
         return
     response = replay.transport.invoke(replay.surface, 'query_symbols',
-        asdict(EnumMemberRoundtrip(EnumMemberReferences(references))))
+        asdict(QueryInput(QueryRun(EnumMemberReferences(references), (), ('name', 'signature'), EnumBudget()))))
     exact = response.get('items', [])
     replay.record('enum-entry-member-reference-reuse', 'query_symbols', {
         'complete': response.get('status') == 'complete',
@@ -101,7 +87,8 @@ def _roundtrip_members(replay, discovery):
         replay.record('enum-entry-member-canonical-equality', 'query_symbols', {'issuerAvailable': False})
         return
     distinct = replay.transport.invoke(replay.surface, 'query_symbols',
-        asdict(EnumMemberRoundtrip(EnumMemberReferences(references + restored), (DistinctSymbols(),))))
+        asdict(QueryInput(QueryRun(EnumMemberReferences(references + restored),
+                                   (DistinctSymbols(),), ('name', 'signature'), EnumBudget()))))
     unique = distinct.get('items', [])
     replay.record('enum-entry-member-canonical-equality', 'query_symbols', {
         'complete': distinct.get('status') == 'complete',

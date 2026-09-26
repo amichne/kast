@@ -18,6 +18,7 @@ import io.github.amichne.kast.protocol.contract.QueryPredicateFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryRelationFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
+import io.github.amichne.kast.protocol.contract.QueryResultRowReference
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.QueryRunResult
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
@@ -65,6 +66,16 @@ class QueryReferenceSurfaceTest {
         assertEquals(JsonNull, output["location"])
         assertEquals(JsonNull, output["signature"])
         assertTrue(output.getValue("connections").jsonArray.isEmpty())
+    }
+
+    @Test
+    fun `retained query item carries its separate row identity through the advertised output schema`() {
+        val rowId = QueryResultRowReference.parse("result-row:v1:00000000-0000-0000-0000-000000000001").refined()
+        val document = project(listOf(exact().copy(rowId = rowId)))
+        schema.assertAdmits(CanonicalOperation.QUERY_RUN, document)
+        val output = document.getValue("items").jsonArray.single().jsonObject
+        assertEquals(JsonPrimitive(rowId.value), output["row_id"])
+        assertEquals(JsonPrimitive(exactToken), output["ref"])
     }
 
     @Test

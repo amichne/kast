@@ -204,15 +204,17 @@ class HostedBudgetReadRegressionTest(unittest.TestCase):
 
     def test_one_axis_request_omits_other_dimensions_without_null_or_default_substitution(self):
         for request in (BudgetSource(SymbolAnchor('admitted-selector'), ResultsBudget(1)),
-                        BudgetTraversal('admitted-selector', ResultsBudget(1)),
-                        name_query('pageItem00', budget=ResultsBudget(1))):
+                        BudgetTraversal('admitted-selector', ResultsBudget(1))):
             self.assertEqual({'max_results': 1}, asdict(request)['execution_budget'])
+        self.assertEqual({'max_results': 1},
+                         asdict(name_query('pageItem00', budget=ResultsBudget(1)))['request']['execution_budget'])
 
     def test_declaration_search_retains_unrestricted_kind_and_exact_name_contract(self):
-        self.assertEqual({'source': {'type': 'search_declarations', 'declaration_name': 'pageItem00',
+        self.assertEqual({'request': {'action': 'run',
+                          'source': {'type': 'search_declarations', 'declaration_name': 'pageItem00',
                                      'name_match': 'exact', 'scope': None, 'declaration_kinds': None},
                           'steps': None, 'return_fields': ('name', 'location', 'signature'),
-                          'execution_budget': {'max_work_units': 100000}},
+                          'execution_budget': {'max_work_units': 100000}}},
                          asdict(name_query('pageItem00', budget=WorkBudget())))
 
     def test_grant_checker_rejects_lost_request_unexplained_clamp_and_cross_axis_override(self):

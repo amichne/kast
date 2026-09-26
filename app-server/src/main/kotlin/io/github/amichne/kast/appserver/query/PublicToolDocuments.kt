@@ -9,8 +9,10 @@ import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetDocument
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
+import io.github.amichne.kast.protocol.contract.QueryPredicateDocument
 import io.github.amichne.kast.protocol.contract.QueryResultCursor
 import io.github.amichne.kast.protocol.contract.QueryResultReference
+import io.github.amichne.kast.protocol.contract.QueryResultRowReference
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -32,15 +34,6 @@ internal enum class PublicToolDeclarationKinds {
     @SerialName("function") FUNCTION,
     @SerialName("property") PROPERTY,
     @SerialName("type_alias") TYPE_ALIAS,
-}
-
-@Serializable
-internal enum class PublicToolVisibilities {
-    @SerialName("public") PUBLIC,
-    @SerialName("protected") PROTECTED,
-    @SerialName("internal") INTERNAL,
-    @SerialName("private") PRIVATE,
-    @SerialName("local") LOCAL,
 }
 
 @Serializable
@@ -73,6 +66,12 @@ internal sealed interface PublicToolScope
 
 @Serializable
 internal sealed interface PublicToolSource
+
+@Serializable
+internal sealed interface PublicToolCompositionInput
+
+@Serializable
+internal sealed interface PublicToolRetainedInput
 
 @Serializable
 internal sealed interface PublicToolStep
@@ -115,12 +114,12 @@ internal data class PublicToolAllSource(
 @SerialName("symbol_refs")
 internal data class PublicToolReferenceSource(
     val symbol_refs: BoundedProtocolList<ProtocolText>,
-) : PublicToolSource
+) : PublicToolSource, PublicToolCompositionInput
 
 @Serializable
-@SerialName("filter_visibility")
-internal data class PublicToolFilterVisibility(
-    val visibilities: BoundedProtocolList<PublicToolVisibilities>,
+@SerialName("where")
+internal data class PublicToolWhere(
+    val predicate: QueryPredicateDocument,
 ) : PublicToolStep
 
 @Serializable
@@ -134,22 +133,35 @@ internal data class PublicToolExpandRelation(
 internal data object PublicToolDistinctSymbols : PublicToolStep
 
 @Serializable
-@SerialName("append_symbol_refs")
-internal data class PublicToolAppendSymbolRefs(
-    val symbol_refs: BoundedProtocolList<ProtocolText>,
+@SerialName("concat")
+internal data class PublicToolConcat(
+    val input: PublicToolCompositionInput,
 ) : PublicToolStep
 
 @Serializable
-@SerialName("filter_jq")
-internal data class PublicToolFilterJq(
-    val expression: ProtocolText,
+@SerialName("intersect")
+internal data class PublicToolIntersect(
+    val right: PublicToolRetainedInput,
+) : PublicToolStep
+
+@Serializable
+@SerialName("union")
+internal data class PublicToolUnion(
+    val right: PublicToolRetainedInput,
+) : PublicToolStep
+
+@Serializable
+@SerialName("difference")
+internal data class PublicToolDifference(
+    val right: PublicToolRetainedInput,
 ) : PublicToolStep
 
 @Serializable
 @SerialName("result")
 internal data class PublicToolResultSource(
     val result: QueryResultReference,
-) : PublicToolSource
+    val row_ids: BoundedProtocolList<QueryResultRowReference>? = null,
+) : PublicToolSource, PublicToolCompositionInput, PublicToolRetainedInput
 
 @Serializable
 @SerialName("run")

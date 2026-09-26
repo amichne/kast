@@ -23,8 +23,10 @@ import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetDocument
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
+import io.github.amichne.kast.protocol.contract.QueryPredicateDocument
 import io.github.amichne.kast.protocol.contract.QueryResultCursor
 import io.github.amichne.kast.protocol.contract.QueryResultReference
+import io.github.amichne.kast.protocol.contract.QueryResultRowReference
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -102,9 +104,14 @@ def render_tools(authority: dict) -> dict[Path, str]:
     enums = {}
     unions = {'Scope': ['DirectoryScope', 'PackageScope'],
               'Source': ['SearchSource', 'AllSource', 'ReferenceSource', 'ResultSource'],
-              'Step': ['FilterVisibility', 'ExpandRelation', 'DistinctSymbols', 'AppendSymbolRefs', 'FilterJq'],
+              'CompositionInput': ['ReferenceSource', 'ResultSource'],
+              'RetainedInput': ['ResultSource'],
+              'Step': ['Where', 'ExpandRelation', 'DistinctSymbols', 'Concat', 'Intersect', 'Union', 'Difference'],
               'Action': ['RunAction', 'ResumeAction', 'ReadResultAction']}
-    parents = {child: parent for parent, children in unions.items() for child in children}
+    parents = {}
+    for parent, children in unions.items():
+        for child in children:
+            parents.setdefault(child, []).append(parent)
     def typ(spec, prop):
         if '$ref' in spec:
             key = spec['$ref'].split('/')[-1]
@@ -136,12 +143,12 @@ def render_tools(authority: dict) -> dict[Path, str]:
              'internal sealed interface PublicToolDocument\n\n']
     body = []
     for key, spec in objects.items():
-        parent = parents.get(key)
-        discriminator = 'action' if parent == 'Action' else 'type'
+        inherited = parents.get(key, [])
+        discriminator = 'action' if 'Action' in inherited else 'type'
         props = [(p,s) for p,s in spec['properties'].items() if p != discriminator]
-        suffix = ' : PublicTool' + parent if parent else ' : PublicToolDocument'
+        suffix = ' : ' + ', '.join('PublicTool' + parent for parent in inherited) if inherited else ' : PublicToolDocument'
         annotation = '@Serializable\n'
-        if parent and parent != 'Scope':
+        if inherited and 'Scope' not in inherited:
             annotation += '@SerialName(' + json.dumps(spec['properties'][discriminator]['enum'][0]) + ')\n'
         if not props:
             body.append(annotation + f'internal data object PublicTool{key}{suffix}\n\n')

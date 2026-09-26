@@ -81,20 +81,9 @@ class CanonicalQueryProtocol(
         lease: SemanticReadAuthority,
     ): Refinement<AdmittedQueryPlan, QueryRunRejection> {
         val retained =
-            when (val source = request.from) {
-                is QueryFromDocument.Result ->
-                    when (val restored = state.restoreResult(source.reference, lease)) {
-                        is QueryResultRestoration.Restored -> restored.result
-                        QueryResultRestoration.Unavailable ->
-                            return Refinement.Rejected(
-                                QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.RESULT_UNAVAILABLE)
-                            )
-                        QueryResultRestoration.StaleBasis ->
-                            return Refinement.Rejected(
-                                QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.RESULT_STALE_BASIS)
-                            )
-                    }
-                else -> null
+            when (val restored = restoreInputs(request, lease)) {
+                is Refinement.Refined -> restored.value
+                is Refinement.Rejected -> return restored
             }
         val admissionAuthority = admissionAuthority(request, lease)
         val syntax =
@@ -122,6 +111,32 @@ class CanonicalQueryProtocol(
             is QueryPlanAdmission.Rejected -> Refinement.Rejected(admitted.failure.protocolRejection())
         }
     }
+
+    private fun restoreInputs(
+        request: QueryRunRequest.Run,
+        lease: SemanticReadAuthority,
+    ): Refinement<Map<QueryFromDocument.Result, QueryRetainedResult>, QueryRunRejection> {
+        val retained = linkedMapOf<QueryFromDocument.Result, QueryRetainedResult>()
+        for (source in request.resultInputs()) {
+            if (source in retained) continue
+            when (val restored = state.restoreResult(source.reference, lease)) {
+                is QueryResultRestoration.Restored -> {
+                    val selected =
+                        restored.selectRows(source.rowIds?.values)
+                            ?: return rejectedResultInput(QueryExecutionRejectionDocument.RESULT_ROW_UNAVAILABLE)
+                    retained[source] = selected
+                }
+                QueryResultRestoration.Unavailable ->
+                    return rejectedResultInput(QueryExecutionRejectionDocument.RESULT_UNAVAILABLE)
+                QueryResultRestoration.StaleBasis ->
+                    return rejectedResultInput(QueryExecutionRejectionDocument.RESULT_STALE_BASIS)
+            }
+        }
+        return Refinement.Refined(retained)
+    }
+
+    private fun rejectedResultInput(reason: QueryExecutionRejectionDocument): Refinement.Rejected<QueryRunRejection> =
+        Refinement.Rejected(QueryRunRejection.ExecutionRejected(reason))
 
     private fun remainingResources(
         budget: QueryBudget
@@ -153,12 +168,41 @@ class CanonicalQueryProtocol(
                 ?.filterIsInstance<QueryReferenceDocument.ExactSymbol>()
                 ?.map { it.token }
                 .orEmpty()
-        val appendedReferences =
-            request.steps.values.filterIsInstance<QueryStepDocument.AppendReferences>().flatMap { it.values.values }
-        val references = sourceReferences + appendedReferences
+        val concatenatedReferences =
+            request.steps.values
+                .filterIsInstance<QueryStepDocument.Concat>()
+                .mapNotNull { it.input as? QueryFromDocument.References }
+                .flatMap { it.values.values.map(QueryReferenceDocument.ExactSymbol::token) }
+        val references = sourceReferences + concatenatedReferences
         return if (references.isEmpty()) authority else authority.admitReadReferences(references, lease)
     }
 
     private fun rejected(reason: QueryExecutionRejectionDocument): OperationOutcome.Rejected<QueryRunRejection> =
         OperationOutcome.Rejected(QueryRunRejection.ExecutionRejected(reason))
+}
+
+private fun QueryRunRequest.Run.resultInputs(): List<QueryFromDocument.Result> = buildList {
+    (from as? QueryFromDocument.Result)?.let(::add)
+    steps.values.forEach { step ->
+        when (step) {
+            is QueryStepDocument.Concat -> (step.input as? QueryFromDocument.Result)?.let(::add)
+            is QueryStepDocument.Intersect -> add(step.right)
+            is QueryStepDocument.Union -> add(step.right)
+            is QueryStepDocument.Difference -> add(step.right)
+            else -> Unit
+        }
+    }
+}
+
+private fun QueryResultRestoration.Restored.selectRows(
+    selectedIds: List<QueryResultRowReference>?
+): QueryRetainedResult? {
+    if (selectedIds == null) return result
+    if (selectedIds.distinct().size != selectedIds.size) return null
+    val positions = rowIds.withIndex().associate { (position, rowId) -> rowId to position }
+    val indices = selectedIds.map { positions[it] ?: return null }
+    return when (val selected = result.selectRows(indices)) {
+        is Refinement.Refined -> selected.value
+        is Refinement.Rejected -> null
+    }
 }
