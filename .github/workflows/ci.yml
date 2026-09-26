@@ -69,6 +69,7 @@ jobs:
 
       - name: Build and verify product
         env:
+          GH_TOKEN: ${{ github.token }}
           KAST_RELEASE_JDK_25: ${{ steps.jdk25.outputs.path }}
           CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |

@@ -303,11 +303,23 @@ val localInstallationTest = tasks.register<Exec>("localInstallationTest") {
     commandLine("python3", layout.projectDirectory.file("packaging/test-install-local.py"))
 }
 
+val productGateVersionTest = tasks.register<Exec>("productGateVersionTest") {
+    group = "verification"
+    description = "Proves routine gates refresh published release authority before invoking Gradle."
+    inputs.files(
+        "distribution/release/resolve_version.py",
+        "distribution/release/run_product_gate.py",
+        "distribution/release/test_run_product_gate.py",
+    )
+    commandLine("python3", layout.projectDirectory.file("distribution/release/test_run_product_gate.py"))
+}
+
 val productBuildGate = tasks.register("productBuildGate") {
     group = "verification"
     description = "Builds every module and verifies deterministic contracts, architecture and packaging without runtime qualification."
     dependsOn(
         "check",
+        productGateVersionTest,
         isolatedAcceptanceEnvironmentTest,
         acceptanceIdeaInputTest,
         installationLifecycleTest,

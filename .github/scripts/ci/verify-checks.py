@@ -28,6 +28,7 @@ def main() -> None:
         "--expected-source-revision", sha,
     ], environment)
     run(["python3", "distribution/release/test_resolve_version.py"], environment)
+    run(["python3", "distribution/release/test_run_product_gate.py"], environment)
     run(["python3", "distribution/release/test_ci_candidate.py"], environment)
     run(["python3", "distribution/release/test_verify_environment.py"], environment)
     run(["python3", ".github/scripts/ci/test_routine_gate.py"], environment)

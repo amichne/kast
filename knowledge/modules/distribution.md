@@ -4,7 +4,7 @@ title: Distribution and packaging
 description: Typed configuration and runtime identity contracts constrain managed installation effects, release assembly, and acceptance harnesses.
 resource: file://distribution
 tags: [distribution, configuration, packaging, release]
-timestamp: 2026-09-25T00:00:00Z
+timestamp: 2026-09-26T00:00:00Z
 code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/KastDaemonMain.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/McpWorkspaceOperationClient.kt
@@ -65,6 +65,12 @@ code_sources:
     symbols: [InstallationRequest, InstallationProfile]
   - path: build-logic/src/main/kotlin/support/tasks/control/GenerateControlMetadataTask.kt
   - path: build-logic/src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt
+  - path: distribution/release/resolve_version.py
+    symbols: [observe_releases, published_versions]
+  - path: distribution/release/run_product_gate.py
+    symbols: [latest_version, run_gate]
+  - path: .github/scripts/ci/routine_gate.py
+  - path: .githooks/pre-push
   - path: distribution/release/plugin-release.gradle.kts
   - path: packaging/test-installed-product.sh
   - path: packaging/run-installed-product.py
@@ -85,7 +91,7 @@ Root and packaging scripts orchestrate checkout installation, persistent lifecyc
 
 The control product also includes `kast-tool-rpc`. Installation publishes its configured `kast-tool-rpc-complete` wrapper alongside the existing command wrappers. The one-shot catalog and call interface is shared by Copilot CLI and Pi extensions without using an MCP connection.
 
-Successful main CI runs the routine preflight checks, then builds and retains one exact next-patch release candidate with the product gate at that version. Pull-request CI keeps its separate `0.0.0` product gate. Release reuses the main candidate only when its version and source revision match the requested release, the producing main-push CI run completed successfully, and the asset inventory, checksums, and SBOM source/archive identities validate. A missing candidate follows the existing exact-version build gate; an observed but invalid candidate rejects. Minor and major releases use that build path unless a matching candidate exists. The release workflow retains the admitted candidate before publishing.
+Successful main CI runs the routine preflight checks, then builds and retains one exact next-patch release candidate with the product gate at that version. Pull-request CI and pre-push fetch the published release catalog anew for each gate invocation, select its highest stable semantic version, and pass that version to the checkout build. Missing release authority rejects without a local-tag or placeholder fallback. Exact release-candidate builds retain their explicitly resolved candidate version. Release reuses the main candidate only when its version and source revision match the requested release, the producing main-push CI run completed successfully, and the asset inventory, checksums, and SBOM source/archive identities validate. A missing candidate follows the existing exact-version build gate; an observed but invalid candidate rejects. Minor and major releases use that build path unless a matching candidate exists. The release workflow retains the admitted candidate before publishing.
 
 An explicitly dispatched developer workflow runs only from `main` and builds
 that dispatch's exact commit through the

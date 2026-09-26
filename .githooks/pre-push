@@ -22,4 +22,4 @@ done
 [[ -z "$(git status --porcelain --untracked-files=all)" ]] || fail "commit or remove working-tree changes before pushing"
 
 echo "kast pre-push: validating ${head} with productBuildGate" >&2
-"${repo_root}/gradlew" --max-workers=2 -Dorg.gradle.jvmargs=-Xmx5g -Pversion=0.0.0 productBuildGate --console=plain
+python3 "${repo_root}/distribution/release/run_product_gate.py"
