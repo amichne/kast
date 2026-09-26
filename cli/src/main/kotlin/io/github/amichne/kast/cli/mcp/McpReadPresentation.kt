@@ -21,7 +21,6 @@ private val semanticReadNames =
         "symbol_lookup",
         "symbol_inspect",
         "source_read",
-        "read_relations",
         "traverse_relations",
         "check_diagnostics",
     )
@@ -127,6 +126,8 @@ private fun summaryFor(name: String, header: McpCanonicalHeader, complete: Boole
         "search_declarations",
         "query_symbols" -> {
             val items = header.items.orEmpty()
+            if (items.isNotEmpty() && items.all { it.type == "occurrence" })
+                return "${items.size} exact relation facts; $completion"
             val lines =
                 items.take(MAX_SUMMARY_ITEMS).mapNotNull { item ->
                     item.name?.let { name ->
@@ -157,7 +158,6 @@ private fun summaryFor(name: String, header: McpCanonicalHeader, complete: Boole
             val finding = if (count == 0 && complete) "No diagnostics" else "$count diagnostics"
             "$finding in $files; $completion. IDE analysis; project build not run."
         }
-        "read_relations" -> "${header.relations?.size ?: 0} exact relation facts; $completion"
         "source_read" -> "Source read; $completion"
         "symbol_lookup" -> "${header.items?.size ?: 0} declaration candidates; $completion"
         "symbol_inspect" -> "Exact symbol inspection; $completion"
@@ -220,7 +220,6 @@ private data class McpCanonicalHeader(
     val progress: McpNativeProgress? = null,
     val items: List<McpSummaryItem>? = null,
     val diagnostics: List<JsonElement>? = null,
-    val relations: List<JsonElement>? = null,
 )
 
 @Serializable
@@ -269,6 +268,7 @@ private enum class McpNativeFailure {
 
 @Serializable
 private data class McpSummaryItem(
+    val type: String? = null,
     val name: String? = null,
     val kind: String? = null,
     val location: McpSummaryLocation? = null,

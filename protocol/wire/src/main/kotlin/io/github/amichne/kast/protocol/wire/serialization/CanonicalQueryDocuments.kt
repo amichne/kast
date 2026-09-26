@@ -51,7 +51,24 @@ internal sealed interface QueryResultItemWireDocument {
         @SerialName("row_id")
         val rowId: String? = null,
     ) : QueryResultItemWireDocument
+
+    @Serializable
+    @SerialName("occurrence")
+    data class Occurrence(
+        val ref: QueryReferenceWireDocument.ExactSymbol,
+        val relation: RelationFactWireDocument,
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        @SerialName("row_id")
+        val rowId: String? = null,
+    ) : QueryResultItemWireDocument
 }
+
+@Serializable
+internal data class QueryRelationOmissionWireDocument(
+    val subject: QueryReferenceWireDocument.ExactSymbol,
+    val relation: RelationKindWireDocument,
+    val evidence: RelationOmissionWireDocument,
+)
 
 @Serializable internal data class QueryExactLocationWireDocument(val file: String, val range: SourceRangeWireDocument)
 
@@ -178,6 +195,7 @@ private fun QueryRunResult.toQueryWireDocument() =
     QueryRunResultWireDocument(
         items = items.values.map(QueryResultItemDocument::toWire),
         failures = failures.values.map(QueryItemFailureDocument::toWire),
+        omissions = omissions.values.map(QueryRelationOmissionDocument::toWire),
         retention = retention,
         nextCursor = nextCursor,
         executionBudget = executionBudget,
@@ -189,16 +207,19 @@ private fun QueryRunResultWireDocument.toContract(): WireDocumentConversion<Quer
         queryItems.bounded().flatMapConverted { boundedItems ->
             failures.convertEach(QueryItemFailureWireDocument::toContract).flatMapConverted { queryFailures ->
                 queryFailures.bounded().flatMapConverted { boundedFailures ->
-                    WireDocumentConversion.Converted(
-                        QueryRunResult(
-                            items = boundedItems,
-                            failures = boundedFailures,
-                            retention = retention,
-                            nextCursor = nextCursor,
-                            executionBudget = executionBudget,
-                            referenceAcquisitions = referenceAcquisitions,
-                        )
-                    )
+                    omissions.convertEach(QueryRelationOmissionWireDocument::toContract).flatMapConverted { omissions ->
+                        omissions.bounded().mapConverted { boundedOmissions ->
+                            QueryRunResult(
+                                items = boundedItems,
+                                failures = boundedFailures,
+                                omissions = boundedOmissions,
+                                retention = retention,
+                                nextCursor = nextCursor,
+                                executionBudget = executionBudget,
+                                referenceAcquisitions = referenceAcquisitions,
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -221,6 +242,12 @@ private fun QueryResultItemDocument.toWire(): QueryResultItemWireDocument =
                         SourceLineRangeWireDocument(it.lines.startInclusive.value, it.lines.endInclusive.value),
                     )
                 },
+                rowId?.value,
+            )
+        is QueryResultItemDocument.Occurrence ->
+            QueryResultItemWireDocument.Occurrence(
+                ref.toWire() as QueryReferenceWireDocument.ExactSymbol,
+                relation.toWireDocument(),
                 rowId?.value,
             )
     }
@@ -259,6 +286,28 @@ private fun QueryResultItemWireDocument.toContract(): WireDocumentConversion<Que
                     }
                 }
             }
+        is QueryResultItemWireDocument.Occurrence ->
+            ref.token.protocolText().flatMapConverted { token ->
+                relation.toContract().flatMapConverted { fact ->
+                    optionalRowId(rowId).mapConverted { id ->
+                        QueryResultItemDocument.Occurrence(QueryReferenceDocument.ExactSymbol(token), fact, id)
+                    }
+                }
+            }
+    }
+
+private fun QueryRelationOmissionDocument.toWire(): QueryRelationOmissionWireDocument =
+    QueryRelationOmissionWireDocument(
+        subject = subject.toWire() as QueryReferenceWireDocument.ExactSymbol,
+        relation = relation.toWireDocument(),
+        evidence = evidence.toWireDocument(),
+    )
+
+private fun QueryRelationOmissionWireDocument.toContract(): WireDocumentConversion<QueryRelationOmissionDocument> =
+    subject.token.protocolText().flatMapConverted { token ->
+        evidence.toContract().mapConverted { omission ->
+            QueryRelationOmissionDocument(QueryReferenceDocument.ExactSymbol(token), relation.toContract(), omission)
+        }
     }
 
 private fun QueryExactLocationWireDocument?.toContract(): WireDocumentConversion<QueryExactLocationDocument?> =

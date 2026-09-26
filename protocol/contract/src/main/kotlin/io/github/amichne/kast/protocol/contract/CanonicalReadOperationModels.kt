@@ -155,43 +155,6 @@ enum class RelationKindDocument {
     @SerialName("type_uses") TYPE_USES,
 }
 
-@Serializable
-sealed interface RelationReadPositionDocument {
-    @Serializable @SerialName("start") data object Start : RelationReadPositionDocument
-
-    @Serializable
-    @SerialName("resume")
-    data class Resume(val continuation: RelationContinuationDocument) : RelationReadPositionDocument
-}
-
-@Serializable
-data class RelationReadRequest(
-    val exactSelector: ProtocolText,
-    val relation: RelationKindDocument,
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    val limit: ProtocolCount = defaultRelationLimit,
-    val position: RelationReadPositionDocument = RelationReadPositionDocument.Start,
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    @kotlinx.serialization.SerialName("execution_budget")
-    val executionBudget: ExecutionBudgetDocument? = null,
-) : OperationRequest
-
-private val defaultRelationLimit: ProtocolCount =
-    when (val parsed = ProtocolCount.parse(100)) {
-        is Refinement.Refined -> parsed.value
-        is Refinement.Rejected -> error("Invalid relation limit default")
-    }
-
-data class RelationReadResult(
-    val relations: BoundedProtocolList<RelationFactDocument>,
-    val omissions: BoundedProtocolList<RelationOmissionDocument> = RelationOmissionDocument.Empty,
-    val executionBudget: ExecutionBudgetReport? = null,
-    val referenceAcquisitions: ReadReferenceAcquisitions? = null,
-) : OperationResult {
-    val soundness: RelationSoundnessDocument
-        get() = RelationSoundnessDocument.EXACT_RETURNED_FACTS
-}
-
 enum class RelationProvenanceDocument {
     K2_AUTHORED_SOURCE,
     K2_GENERATED_SOURCE,
@@ -232,22 +195,6 @@ enum class RelationLimitationDocument {
     PROVIDER_STALLED,
 }
 
-enum class RelationKnownMinimumDocumentFailure {
-    NEGATIVE
-}
-
-@JvmInline
-value class RelationKnownMinimumDocument private constructor(val value: Int) {
-    companion object {
-        fun parse(raw: Int): Refinement<RelationKnownMinimumDocument, RelationKnownMinimumDocumentFailure> =
-            if (raw < 0) {
-                Refinement.Rejected(RelationKnownMinimumDocumentFailure.NEGATIVE)
-            } else {
-                Refinement.Refined(RelationKnownMinimumDocument(raw))
-            }
-    }
-}
-
 enum class RelationContinuationDocumentFailure {
     UNKNOWN_TOKEN_FAMILY,
     INVALID_TOKEN_STRUCTURE,
@@ -259,15 +206,9 @@ enum class RelationContinuationDocumentFailure {
 @Serializable(with = RelationContinuationDocumentSerializer::class)
 value class RelationContinuationDocument private constructor(val value: String) {
     companion object {
-        const val OUTPUT_PREFIX: String = "relation-output:v1:"
-        const val TOKEN_PATTERN: String =
-            "^(relation-continuation:v[12]:|relation-output:v1:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$)"
+        const val TOKEN_PATTERN: String = "^relation-continuation:v[12]:[A-Za-z0-9_-]+:[0-9a-f]{64}$"
 
         fun parse(raw: String): Refinement<RelationContinuationDocument, RelationContinuationDocumentFailure> {
-            if (raw.startsWith(OUTPUT_PREFIX)) {
-                return if (Regex(TOKEN_PATTERN).matches(raw)) Refinement.Refined(RelationContinuationDocument(raw))
-                else Refinement.Rejected(RelationContinuationDocumentFailure.INVALID_TOKEN_STRUCTURE)
-            }
             val parts = raw.split(':')
             if (parts.firstOrNull() != RELATION_CONTINUATION_TOKEN_FAMILY) {
                 return Refinement.Rejected(RelationContinuationDocumentFailure.UNKNOWN_TOKEN_FAMILY)
@@ -321,49 +262,6 @@ private fun relationContinuationSha256(bytes: ByteArray): String =
 private const val RELATION_CONTINUATION_TOKEN_FAMILY = "relation-continuation"
 private const val RELATION_CONTINUATION_TOKEN_VERSION = "v1"
 private const val RELATION_CONTINUATION_TOKEN_PART_COUNT = 4
-
-enum class RelationReadRejection : RelationReadFailure {
-    REVALIDATION_WRONG_KIND,
-    REVALIDATION_UNRETAINED,
-    REVALIDATION_EXPIRED,
-    REVALIDATION_CAPACITY,
-    REVALIDATION_WORK_LIMIT_REACHED,
-    REVALIDATION_TIME_LIMIT_REACHED,
-    REVALIDATION_RETIRED,
-    REVALIDATION_CAPTURE_UNAVAILABLE,
-    REVALIDATION_WORKSPACE_MISMATCH,
-    REVALIDATION_OWNER_MISMATCH,
-    REVALIDATION_WORKSPACE_NOT_READY,
-    REVALIDATION_BASIS_MOVED,
-    REVALIDATION_CONTENT_CHANGED,
-    REVALIDATION_CONTENT_UNCOMMITTED,
-    REVALIDATION_SCOPE_REJECTED,
-    REVALIDATION_DECLARATION_MISSING,
-    REVALIDATION_UNSUPPORTED_DECLARATION,
-    REVALIDATION_AMBIGUOUS,
-    REVALIDATION_COMPILER_IDENTITY_CHANGED,
-    REVALIDATION_COMPILER_UNAVAILABLE,
-    SCOPE_REJECTED,
-    WORKSPACE_INDEX_UNAVAILABLE,
-    OUTSIDE_SCOPE,
-    AMBIGUOUS_SUBJECT,
-    COMPILER_IDENTITY_UNAVAILABLE,
-    COMPILER_CONTRACT_VIOLATION,
-    WORKSPACE_NOT_READY,
-    SELECTOR_WRONG_KIND,
-    SELECTOR_MALFORMED,
-    SELECTOR_WORKSPACE_MISMATCH,
-    SELECTOR_STALE,
-    RELATION_UNSUPPORTED,
-    CONTINUATION_MALFORMED,
-    CONTINUATION_UNAVAILABLE,
-    CONTINUATION_REQUEST_MISMATCH,
-    CONTINUATION_SUBJECT_MISMATCH,
-    CONTINUATION_RELATION_MISMATCH,
-    CONTINUATION_SCOPE_MISMATCH,
-    CONTINUATION_GENERATION_MISMATCH,
-    CONTINUATION_CURSOR_MOVED,
-}
 
 /** Wire-bound cumulative committed traversal work, independent of page size. */
 @Serializable

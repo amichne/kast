@@ -1,9 +1,11 @@
 package io.github.amichne.kast.query.service
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.query.contract.QueryArrivalEvidence
 import io.github.amichne.kast.query.contract.QueryCount
 import io.github.amichne.kast.query.contract.QueryDiscoverySyntax
 import io.github.amichne.kast.query.contract.QueryItemFailure
+import io.github.amichne.kast.query.contract.QueryRelationOmission
 import io.github.amichne.kast.query.contract.QueryScope
 import io.github.amichne.kast.query.contract.QuerySymbol
 import io.github.amichne.kast.relation.contract.RelationEndpoint
@@ -34,6 +36,7 @@ import java.nio.charset.StandardCharsets
 
 private const val SOURCE_CONTEXT_LINES = 5
 private const val SOURCE_WINDOW_PROJECTION_OVERHEAD_BYTES = 64L
+private const val RELATION_OMISSION_PROJECTION_MULTIPLIER = 4
 
 /** SYMBOL already owns every Kotlin declaration family, including classes. */
 internal fun discoveryKinds(syntax: QueryDiscoverySyntax): List<SymbolNameDiscoveryKind> =
@@ -136,6 +139,7 @@ internal fun RelationFact.toQuerySymbol(
     return QuerySymbol(
         SymbolDescription.from(selector),
         state.boundConnections(prior + this),
+        arrival = QueryArrivalEvidence.Proven.one(this),
     )
 }
 
@@ -173,6 +177,14 @@ internal fun QueryItemFailure.projectedUtf8Size(): Long =
         is QueryItemFailure.Relation ->
             saturatedSum(listOf(selector.projectedUtf8Size(), meaning.toString().utf8Size(), reason.name.utf8Size()))
     }
+
+internal fun QueryRelationOmission.projectedUtf8Size(): Long {
+    val evidenceBytes = evidence.toString().utf8Size()
+    return saturatedAdd(
+        subject.projectedUtf8Size(),
+        saturatedSum(List(RELATION_OMISSION_PROJECTION_MULTIPLIER) { evidenceBytes }),
+    )
+}
 
 private fun SymbolSelector.projectedUtf8Size(): Long = buildString {
     append(lease.workspaceRoot.value)

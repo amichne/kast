@@ -23,7 +23,6 @@ class KastMcpToolHintsTest {
             setOf(
                 "check_diagnostics",
                 "query_symbols",
-                "read_relations",
                 "source_read",
                 "symbol_inspect",
                 "symbol_lookup",

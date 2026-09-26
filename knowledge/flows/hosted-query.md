@@ -1,7 +1,7 @@
 ---
 type: Runtime Flow
 title: Existing-IDE semantic query
-description: An existing IDEA project owns seven canonical read operations, with bounded live authority and scoped native CLI/provider acceptance.
+description: An existing IDEA project owns six canonical read operations, with bounded live authority and scoped native CLI/provider acceptance.
 resource: file://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted
 tags: [intellij, kotlin, semantic-query, lifecycle]
 timestamp: 2026-09-25T00:00:00Z
@@ -29,7 +29,6 @@ code_sources:
   - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryResultReferences.kt
   - path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/QueryCheckpointReplayTest.kt
-  - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedRelationReplayTest.kt
   - path: packaging/hosted_authority_read_regression.py
   - path: packaging/hosted_read_transport.py
   - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/acceptance/hostedchange/NativeReadRequest.kt
@@ -63,8 +62,6 @@ code_sources:
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedExecutionBudgetRequest.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReadBudgetAdmission.kt
   - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmissionTest.kt
-  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedRelationResponse.kt
-  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalRelation.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedOutputPages.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceResponse.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalSource.kt
@@ -222,9 +219,10 @@ evaluation, and ends its context before returning. Saved documents and committed
 PSI remain live obligations. Original-owner retirement and epoch movement reject
 references instead of falling back to a publication or another IDE.
 
-`HostedCanonicalQuery` composes all seven public canonical reads: `query.run`,
-`symbol.discover`, `symbol.inspect`, `source.read`, `relation.read`,
-`traversal.run`, and `diagnostic.check`. It supplies pure services, project-bound
+`HostedCanonicalQuery` composes six public canonical reads: `query.run`,
+`symbol.discover`, `symbol.inspect`, `source.read`, `traversal.run`, and
+`diagnostic.check`. Query expansion supplies one-hop relation facts through
+query occurrence output. The host supplies pure services, project-bound
 ports, current-model reference restoration, and explicit budgets to the reusable
 [`query:protocol`](../modules/query-protocol.md) boundary. Query evaluation keeps
 one request budget across its stages; specialist request limits intersect bounded
@@ -435,29 +433,21 @@ When a result is retained, the store issues row IDs scoped to that result and th
 query projection returns them with its rows. A composed run can select issued
 rows without turning their IDs into exact-symbol references.
 
-Relation output uses the same detached output-page retention implementation as
-query output. If the full encoded relation response exceeds its byte cap, the
-host retains the suffix before publishing a nonempty fitting prefix. The suffix
-preserves omissions and the provider's original resumable or terminal coverage.
-`relation-output:v1` cursors identify host-owned retained output, while
-`relation-continuation:v1` and `v2` remain provider checkpoints. Restoring output
-cannot prove an unfinished provider scan complete.
-
 Transport output cursors are replayable until expiry or eviction. Equal retained requests
 and outcomes have equal child identities; replay does not refresh expiry. The
-request identity retains selector and relationship but excludes the page limit
-and position. Changed authority or semantic request is rejected. Each of the
-query state, query output, relation output, source output, traversal output,
+request identity retains the semantic request while excluding caller execution
+controls. Changed authority or semantic request is rejected. Each of the
+query state, query output, source output, traversal output,
 diagnostic output and diagnostic checkpoint stores has the configured entry/byte
 bound. No retained entry contains PSI or K2 state.
 
-Relation and query/search reads admit optional caller execution controls once at
+Query/search reads admit optional caller execution controls once at
 semantic entry.
 `HostedReadDeadline` subtracts elapsed request time and its completion reserve;
 `HostedSemanticTimeAllowance` retains the resulting immutable grant. Domain
 budgets derive their resource values from that grant. Their response metadata
 projects its effective values and clamping causes, and byte fitting includes the
-metadata. Retained query, relation, and source suffixes omit previous-call grant metadata; resume
+metadata. Retained query and source suffixes omit previous-call grant metadata; resume
 publishes the newly admitted grant and excludes execution controls from retained
 semantic identity.
 
@@ -481,7 +471,7 @@ Source requests require an explicit resource grant. Hosted source admission reta
 
 Source and traversal result projections preserve their admitted execution report through canonical wire decoding and CLI output. Their complete and qualified envelopes share the same closed installed execution schema. Hosted encoding measures the full response, including this report, against the current grant.
 
-Canonical source, relation, traversal, and query semantic rejections now retain
+Canonical source, traversal, and query semantic rejections now retain
 the current hosted grant in operation-owned admitted failure variants. Their
 wire/CLI documents preserve the original finite reason and add a sibling
 `execution_budget`; clearing retained output payload reports cannot erase an
@@ -546,12 +536,12 @@ variants and mismatched checkpoint families.
 
 ### Hosted continuation retention bounds
 
-Each `HostedQueryContinuations.Active` owns seven independently bounded stores:
+Each `HostedQueryContinuations.Active` owns six independently bounded stores:
 one query state store sharing its capacity between execution checkpoints and
-immutable results, five output-suffix stores for query, relation, source,
+immutable results, four output-suffix stores for query, source,
 traversal and diagnostic reads, and one diagnostic checkpoint store. For
 configured entry bound `C` and charged-byte bound `B`, these owners have an
-aggregate upper bound of `7 × C` entries and `7 × B` charged bytes. `B` is an
+aggregate upper bound of `6 × C` entries and `6 × B` charged bytes. `B` is an
 accounting bound, not measured JVM heap use: output stores charge four times
 encoded request plus outcome bytes; query state charges each detached payload
 plus four times its normalized run request bytes. The separate native source
@@ -564,10 +554,10 @@ access-order policies are distinct from the hosted stores. Hosted output and
 query-state entries expire when age is strictly greater than TTL. An entry
 remains available at exactly TTL; restore and identical reissuance do not renew
 its creation time. Capacity eviction removes the oldest inserted entry even if
-it was replayed. Owner retirement clears all seven stores. Focused tests cover
+it was replayed. Owner retirement clears all six stores. Focused tests cover
 TTL−1, exact TTL, TTL+1, replay, eviction and clear for the relevant store
-owners; the five-store shared-owner test exercises query state plus query,
-relation, source and traversal suffixes, without claiming seven-store aggregate
+owners; the four-store shared-owner test exercises query state plus query,
+source and traversal suffixes, without claiming six-store aggregate
 measurement. Retained values are detached identities and results; these stores
 do not retain PSI, K2 sessions or a live project.
 
@@ -608,25 +598,25 @@ Query `take` steps and query fanout fields are unsupported and reject at the
 public wire boundary; traversal bounded fanout remains a supported strategy
 whose value participates in continuation identity.
 
-A shared-owner test configures one entry per exercised store, retains five
-entries simultaneously, and verifies that changing the epoch retires all five.
+A shared-owner test configures one entry per exercised store, retains four
+entries simultaneously, and verifies that changing the epoch retires all four.
 This is entry-composition and detached-identity evidence. It does not measure
 heap use or replace unchanged-fixture native execution parity for larger grants.
 
 The installed resume-budget helper defines twelve bounded cases per surface:
-query, source and relation reads, each with independently larger elapsed-time,
+query symbols, source and query occurrences, each with independently larger elapsed-time,
 work, result and byte allowances. Complete query and source drains retain exact
-record order, source child ranges, snapshots and saved text. Relation drains retain
+record order, source child ranges, snapshots and saved text. Query occurrence drains retain
 the multiset of full occurrences and compiler evidence, including duplicates, plus
 canonical order within each returned page. Native cursor order and page-local
 relation sorting can change global concatenation order when grants change page
 boundaries; this does not relax occurrence identity or per-page order. Issued upstream
-and retained-output checkpoints keep their distinct request positions and
-compatibility aliases. Each drain admits at most sixteen pages and one thousand
+and retained-output checkpoints keep their distinct request positions.
+Each drain admits at most sixteen pages and one thousand
 records, rejects repeated tokens or changed authority/grants, and records only
 finite assertion names and counts. A complete low-grant page requires no invented
 continuation; time/work cases do not claim a deterministic wall-clock cutoff.
-A relation page stopped by a result, byte, time or work limit retains an
+A query occurrence page stopped by a result, byte, time or work limit retains an
 `unmeasured_on_page` omission, matching limitation, available checkpoint, empty
 samples and `INCREASE_READ_LIMIT` remediation. Permanent omissions remain equal
 to the baseline; the final drain restores its final omissions. An unmeasured

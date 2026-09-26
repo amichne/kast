@@ -4,7 +4,6 @@ import com.networknt.schema.InputFormat
 import com.networknt.schema.SchemaRegistry
 import com.networknt.schema.SpecificationVersion
 import io.github.amichne.kast.kernel.OperationOutcome
-import io.github.amichne.kast.protocol.contract.AdmittedRelationReadRejection
 import io.github.amichne.kast.protocol.contract.AdmittedSourceReadRejection
 import io.github.amichne.kast.protocol.contract.AdmittedTraversalRunRejection
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
@@ -14,7 +13,6 @@ import io.github.amichne.kast.protocol.contract.OperationQualification
 import io.github.amichne.kast.protocol.contract.OperationRejection
 import io.github.amichne.kast.protocol.contract.OperationRequest
 import io.github.amichne.kast.protocol.contract.OperationResult
-import io.github.amichne.kast.protocol.contract.RelationReadRejection
 import io.github.amichne.kast.protocol.contract.SourceReadRejection
 import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
@@ -55,25 +53,6 @@ class ReadRejectionSchemaParityTest {
                 AdmittedSourceReadRejection(reason, report),
                 reason.name.lowercase().replace('_', '-'),
                 CanonicalSourceReadCliDocuments::project,
-                admitted = true,
-            )
-        }
-    }
-
-    @Test
-    fun `every relation rejection survives wire and installed envelope with unknown reasons rejected`() {
-        RelationReadRejection.entries.forEach { reason ->
-            verify(
-                CanonicalOperationWireBindings.relationRead,
-                reason,
-                reason.name.lowercase().replace('_', '-'),
-                CanonicalReadCliDocuments::projectRelation,
-            )
-            verify(
-                CanonicalOperationWireBindings.relationRead,
-                AdmittedRelationReadRejection(reason, report),
-                reason.name.lowercase().replace('_', '-'),
-                CanonicalReadCliDocuments::projectRelation,
                 admitted = true,
             )
         }

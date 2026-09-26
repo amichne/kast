@@ -26,8 +26,7 @@ class PreferredReadProjectionTest {
         val projection = projection()
         val tools = projection.getValue("hostedBootstrap").jsonObject.getValue("tools").jsonArray
         val invocations = projection.getValue("cliInvocations").jsonObject.getValue("operations").jsonArray
-        for ((operation, preferred) in
-            listOf("relation.read" to "read_relations", "traversal.run" to "traverse_relations")) {
+        for ((operation, preferred) in listOf("traversal.run" to "traverse_relations")) {
             val tool =
                 tools.single { it.jsonObject.getValue("operationId").jsonPrimitive.content == operation }.jsonObject
             val invocation =

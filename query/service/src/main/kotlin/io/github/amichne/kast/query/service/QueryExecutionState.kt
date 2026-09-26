@@ -44,8 +44,9 @@ internal class QueryExecutionState(
                     is QueryItemFailure.Relation -> QueryLimitation.RELATION_INCOMPLETE
                 }
             }
-        limitations += inherited + failures
-        upstreamLimitations += inherited + failures
+        val omissions = if (result.omissions.isEmpty()) emptyList() else listOf(QueryLimitation.RELATION_INCOMPLETE)
+        limitations += inherited + failures + omissions
+        upstreamLimitations += inherited + failures + omissions
     }
 
     fun canContinue(workRequired: Boolean): Boolean {
@@ -241,17 +242,15 @@ internal class QueryExecutionState(
         val elapsedMillis = elapsedNanos / 1_000_000L
         return (request.budget.resources.elapsedTimeLimit.value - elapsedMillis).coerceAtLeast(0L)
     }
-
-    private companion object {
-        val recoverableRelationPageLimits =
-            setOf(
-                RelationLimitation.RESULT_LIMIT_REACHED,
-                RelationLimitation.BYTE_LIMIT_REACHED,
-                RelationLimitation.WORK_LIMIT_REACHED,
-                RelationLimitation.TIME_LIMIT_REACHED,
-            )
-    }
 }
+
+internal val recoverableRelationPageLimits =
+    setOf(
+        RelationLimitation.RESULT_LIMIT_REACHED,
+        RelationLimitation.BYTE_LIMIT_REACHED,
+        RelationLimitation.WORK_LIMIT_REACHED,
+        RelationLimitation.TIME_LIMIT_REACHED,
+    )
 
 private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value =
     when (this) {

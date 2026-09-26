@@ -31,7 +31,7 @@ consistent machine envelope in `structuredContent` for semantic reads:
 ```json
 {
   "status": "complete",
-  "data": {"operation": "query.run", "status": "complete", "items": [], "failures": [], "retention": {"kind": "not_requested"}, "coverage": {"exhaustive": true}},
+  "data": {"operation": "query.run", "status": "complete", "items": [], "failures": [], "omissions": [], "retention": {"kind": "not_requested"}, "coverage": {"exhaustive": true}},
   "coverage": {"exhaustive": true},
   "basis": {"root": "/workspace", "host": "host-id", "epoch": 1, "contentView": "SAVED_PSI_COMMITTED", "version": 1, "hostState": "INDEXED"}
 }
@@ -105,6 +105,7 @@ This illustrative published query response is complete and empty:
     "status": "complete",
     "items": [],
     "failures": [],
+    "omissions": [],
     "retention": {"kind": "not_requested"},
     "coverage": {"exhaustive": true}
   }
@@ -123,6 +124,7 @@ This qualified illustration does not establish absence:
     "status": "qualified",
     "items": [],
     "failures": [],
+    "omissions": [],
     "retention": {"kind": "not_requested"},
     "coverage": {"exhaustive": false},
     "continuation": null,
@@ -141,9 +143,8 @@ Choose the payload model for the invoked tool.
 
 | Tool family | Canonical operation | Payload to inspect |
 | --- | --- | --- |
-| `query_symbols` | `query.run` | `items[]`: exact symbols; `failures[]`: per-item failures |
+| `query_symbols` | `query.run` | `items[]`: exact symbols or individual occurrences by requested output; `failures[]`: per-item failures; `omissions[]`: incomplete relation evidence |
 | `source_read` | `source.read` | `snapshot`, `region`, `entities[]`, `text` |
-| `read_relations` | `relation.read` | `relations[]`: occurrence-oriented relation facts |
 | `traverse_relations` | `traversal.run` | The graph, traversal coverage, and continuation state in the callable schema |
 | `check_diagnostics` | `diagnostic.check` | `diagnostics[]`, `analysisKind`, and `coverage`: requested path, discovered, analyzed, and skipped files |
 | `change` | `change.run` composed from private native `change.plan`, `change.apply`, and, when needed, `change.recover` | Preview, verified receipt or failure, and any recovery evidence; see [Change source](/change) |
@@ -181,6 +182,10 @@ Each `failures[]` entry retains its affected reference and finite reason.
 | `relation` | Relation expansion failed and names the relation |
 
 Successful items remain usable, but failures still limit completeness claims.
+Each query `omissions[]` entry retains the exact subject, relation kind, and
+structured provider omission evidence. It qualifies relation coverage without
+discarding known occurrence rows. An occurrence item keeps `ref`, one `relation`
+fact, and an issued `row_id` when retained.
 
 ### Query result references and progress
 

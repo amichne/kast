@@ -112,7 +112,6 @@ enum class ExistingIdeReadOperation(val canonical: CanonicalOperation) {
     SYMBOL_DISCOVER(CanonicalOperation.SYMBOL_DISCOVER),
     SYMBOL_INSPECT(CanonicalOperation.SYMBOL_INSPECT),
     SOURCE_READ(CanonicalOperation.SOURCE_READ),
-    RELATION_READ(CanonicalOperation.RELATION_READ),
     TRAVERSAL_RUN(CanonicalOperation.TRAVERSAL_RUN),
     DIAGNOSTIC_CHECK(CanonicalOperation.DIAGNOSTIC_CHECK);
 

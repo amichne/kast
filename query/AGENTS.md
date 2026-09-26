@@ -16,6 +16,7 @@ Models and executes multi-stage semantic queries while retaining scope, budgets,
 - [QueryStateStore.kt](protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateStore.kt) - one bounded lifetime and quota for typed execution checkpoints and immutable results.
 - [QueryOutcomeProjection.kt](protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryOutcomeProjection.kt) - canonical projection of semantic rows, qualification, retention, and result pages.
 - [QueryRetainedResult.kt](contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt) - detached semantic rows, producer progress, coverage, and failures bound to one read basis.
+- [QueryRelationEvidence.kt](contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRelationEvidence.kt) - occurrence arrival facts and subject-linked relation omissions retained through composition.
 - [QueryReferenceTransport.kt](protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryReferenceTransport.kt) - detached token representation before canonical authority validation.
 
 - [contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPlan.kt](contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPlan.kt) - query plan model.

@@ -213,7 +213,7 @@ class HostedBudgetReadRegressionTest(unittest.TestCase):
         self.assertEqual({'request': {'action': 'run',
                           'source': {'type': 'search_declarations', 'declaration_name': 'pageItem00',
                                      'name_match': 'exact', 'scope': None, 'declaration_kinds': None},
-                          'steps': None, 'return_fields': ('name', 'location', 'signature'),
+                          'steps': None, 'output': {'type': 'symbols', 'fields': ('name', 'location', 'signature')},
                           'execution_budget': {'max_work_units': 100000}}},
                          asdict(name_query('pageItem00', budget=WorkBudget())))
 

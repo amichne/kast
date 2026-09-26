@@ -19,8 +19,6 @@
     <ID>CyclomaticComplexMethod:CanonicalTraversalContinuationCodec.kt:CanonicalTraversalContinuationCodec$fun decode: CanonicalTraversalContinuationDecoding</ID>
     <ID>LongMethod:CanonicalDiagnosticCheckProtocol.kt:CanonicalDiagnosticCheckProtocol$private fun project: OperationOutcome&lt; DiagnosticCheckResult, DiagnosticCheckQualification, DiagnosticCheckRejection, ></ID>
     <ID>LongMethod:CanonicalDiscoveryAdmission.kt:internal fun admitDiscoveryRequest: DiscoveryRequestAdmission</ID>
-    <ID>LongMethod:CanonicalGraphProtocols.kt:CanonicalRelationReadProtocol$suspend fun execute: OperationOutcome&lt; RelationReadResult, RelationReadQualification, RelationReadRejection, ></ID>
-    <ID>LongMethod:CanonicalGraphProtocols.kt:CanonicalTraversalRunProtocol$suspend fun execute: OperationOutcome&lt; TraversalRunResult, TraversalRunQualification, TraversalRunRejection, ></ID>
     <ID>LongMethod:CanonicalQueryProtocol.kt:CanonicalQueryProtocol$private fun projectItems: QueryProjection&lt;QueryResultItemDocument></ID>
     <ID>LongMethod:CanonicalRelationContinuationCodec.kt:CanonicalRelationContinuationCodec$fun decode: CanonicalRelationContinuationDecoding</ID>
     <ID>LongMethod:CanonicalSelectorCodec.kt:CanonicalSelectorCodec$fun encodeCandidate: CanonicalSelectorEncoding</ID>
@@ -49,8 +47,6 @@
     <ID>NamedArguments:CanonicalDiagnosticCheckProtocol.kt:CanonicalDiagnosticCheckProtocol$project( result.batch.facts, scope, minOf(request.limit.value, maximumResults.value), DiagnosticProjection.Complete(result.coverage.analyzedFiles), )</ID>
     <ID>NamedArguments:CanonicalDiagnosticCheckProtocol.kt:CanonicalDiagnosticCheckProtocol$project( result.batch.facts, scope, minOf(request.limit.value, maximumResults.value), DiagnosticProjection.Incomplete(result.coverage), )</ID>
     <ID>NamedArguments:CanonicalDiagnosticCheckProtocol.kt:issueRangeCandidate( scope.lease, workspaceFile, location.range.start.value, location.range.endExclusive.value, )</ID>
-    <ID>NamedArguments:CanonicalGraphProtocols.kt:CanonicalRelationReadProtocol$resume( subject, meaning, budget, continuation, )</ID>
-    <ID>NamedArguments:CanonicalGraphProtocols.kt:CanonicalTraversalRunProtocol$decode( position.continuation, budget, authority, current, )</ID>
     <ID>NamedArguments:CanonicalQueryProtocol.kt:CanonicalQueryProtocol$Candidate( QueryReferenceDocument.DeclarationCandidate(token), document.kind, document.name.takeIf { QueryCandidateFieldDocument.NAME in output.fields.values }, QueryCandidateLocationDocument(document.file, document.offset).takeIf { QueryCandidateFieldDocument.LOCATION in output.fields.values }, )</ID>
     <ID>NamedArguments:CanonicalQueryProtocol.kt:CanonicalQueryProtocol$ExactSymbol( QueryReferenceDocument.ExactSymbol(token), document.kind, document.name.takeIf { QuerySymbolFieldDocument.NAME in output.fields.values }, QueryExactLocationDocument(document.file, document.range).takeIf { QuerySymbolFieldDocument.LOCATION in output.fields.values }, document.compilerEvidence.signature.takeIf { QuerySymbolFieldDocument.SIGNATURE in output.fields.values }, boundedConnections, )</ID>
     <ID>NamedArguments:CanonicalQueryProtocol.kt:CanonicalQueryProtocol$project( request.output, lease, result.result, result.coverage, )</ID>

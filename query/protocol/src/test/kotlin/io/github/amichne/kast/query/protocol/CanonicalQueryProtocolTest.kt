@@ -52,7 +52,10 @@ class CanonicalQueryProtocolTest {
         val reference = (first.evidence.payload.retention as QueryResultRetention.Retained).reference
         val read =
             protocol.execute(
-                QueryRunRequest.ReadResult(reference, output = QueryOutputDocument.Symbols(bounded(emptyList()))),
+                QueryRunRequest.ReadResult.symbols(
+                    reference,
+                    output = QueryOutputDocument.Symbols(bounded(emptyList())),
+                ),
                 lease,
                 budget,
             ) as OperationOutcome.Complete
@@ -64,7 +67,10 @@ class CanonicalQueryProtocolTest {
         assertEquals(
             QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.RESULT_STALE_BASIS),
             (protocol.execute(
-                    QueryRunRequest.ReadResult(reference, output = QueryOutputDocument.Symbols(bounded(emptyList()))),
+                    QueryRunRequest.ReadResult.symbols(
+                        reference,
+                        output = QueryOutputDocument.Symbols(bounded(emptyList())),
+                    ),
                     SemanticReadLease(root, EvidenceGeneration.parse(8).refined()),
                     budget,
                 ) as OperationOutcome.Rejected)

@@ -4,7 +4,9 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import asdict, dataclass, field
 from enum import Enum
-from query_name_request import name_query
+from query_name_request import (ExpandRelation, QueryInput, QueryResume, QueryRun, SymbolOutput,
+    SymbolReferences, name_query, relation_query, occurrence_facts, occurrence_omissions)
+from hosted_budget_read_regression import ResultsBudget
 
 
 @dataclass(frozen=True)
@@ -24,14 +26,6 @@ class KotlinCallMeaning(str, Enum):
     CALLERS = 'callers'
 
 
-@dataclass(frozen=True)
-class KotlinCallRead:
-    exactSelector: str
-    relation: KotlinCallMeaning = KotlinCallMeaning.CALLEES
-    limit: int = field(default=100, init=False)
-    position: CallStart = field(default_factory=CallStart, init=False)
-
-
 def _site(source, fragment, name, declaration):
     start = source.index(fragment) + fragment.index(name)
     return (source.index(declaration), start, start + len(name))
@@ -41,7 +35,7 @@ def _facts(response):
     return Counter((fact.get('target', {}).get('range', {}).get('startInclusive'),
                     fact.get('occurrence', {}).get('range', {}).get('startInclusive'),
                     fact.get('occurrence', {}).get('range', {}).get('endExclusive'))
-                   for fact in response.get('relations', []))
+                   for fact in occurrence_facts(response))
 
 
 def _has_scoped_unsupported(omissions):
@@ -74,11 +68,11 @@ def run_kotlin_call_regression(replay):
             replay.record('kotlin-call-' + name, 'query_symbols', {'exactIssuerAvailable': False},
                           len(items), discovery)
             continue
-        response = replay.transport.invoke(replay.surface, 'read_relations',
-                                           asdict(KotlinCallRead(items[0]['ref'])))
-        facts = response.get('relations', [])
-        omissions = response.get('omissions', [])
-        replay.record('kotlin-call-' + name, 'read_relations', {
+        response = replay.transport.invoke(replay.surface, 'query_symbols',
+                                           asdict(relation_query(items[0]['ref'])))
+        facts = occurrence_facts(response)
+        omissions = occurrence_omissions(response)
+        replay.record('kotlin-call-' + name, 'query_symbols', {
             'expectedCoverage': response.get('status') == status,
             'exactOccurrencesAndEndpoints': _facts(response) == Counter(expected),
             'authoredStaticEvidence': all(fact.get('coverage') == 'exact-compiler-confirmed'
@@ -94,25 +88,25 @@ def run_kotlin_call_regression(replay):
             if len(inherited) == 1 and inherited[0].get('target', {}).get('selector'):
                 _inherited_callers(replay, source, inherited[0]['target']['selector'])
             else:
-                replay.record('kotlin-call-inherited-callers', 'read_relations', {'exactIssuerAvailable': False})
+                replay.record('kotlin-call-inherited-callers', 'query_symbols', {'exactIssuerAvailable': False})
 
     run_inline_ownership_regression(replay, source, path)
     _run_extended_calls(replay, source, path)
 
 def _inherited_callers(replay, source, reference):
-    response = replay.transport.invoke(replay.surface, 'read_relations',
-                                       asdict(KotlinCallRead(reference, KotlinCallMeaning.CALLERS)))
+    response = replay.transport.invoke(replay.surface, 'query_symbols',
+                                       asdict(relation_query(reference, KotlinCallMeaning.CALLERS.value)))
     expected = Counter((
         _site(source, 'val value = client.fetch()', 'fetch', 'fun outer('),
         _site(source, 'client.fetch() + client.fetch()', 'fetch', 'fun repeated('),
         _site(source, '+ client.fetch()', 'fetch', 'fun repeated('),
         _site(source, 'return client.fetch()', 'fetch', 'fun qualified('),
     ))
-    facts = response.get('relations', [])
+    facts = occurrence_facts(response)
     actual = Counter((fact.get('source', {}).get('range', {}).get('startInclusive'),
                       fact.get('occurrence', {}).get('range', {}).get('startInclusive'),
                       fact.get('occurrence', {}).get('range', {}).get('endExclusive')) for fact in facts)
-    replay.record('kotlin-call-inherited-callers', 'read_relations', {
+    replay.record('kotlin-call-inherited-callers', 'query_symbols', {
         'qualifiedNestedOwners': response.get('status') == 'qualified',
         'exactOccurrencesAndOwners': actual == expected,
         'sameStaticTarget': all(fact.get('target', {}).get('range', {}).get('startInclusive') ==
@@ -163,7 +157,7 @@ def _obligation(source, fragment, name, reasons):
 
 def _scoped_obligations(response, path, obligations):
     """Each unavailable call needs finite measured evidence at its own occurrence."""
-    omissions = response.get('omissions', [])
+    omissions = occurrence_omissions(response)
     if response.get('status') != 'qualified' or not omissions or not obligations:
         return False
     covered = set()
@@ -206,12 +200,12 @@ def _extended_call_cases(replay, source, path):
         checks[name + 'Issuer'] = admitted
         if not admitted:
             continue
-        response = replay.transport.invoke(replay.surface, 'read_relations', asdict(KotlinCallRead(items[0]['ref'])))
-        count += len(response.get('relations', []))
+        response = replay.transport.invoke(replay.surface, 'query_symbols', asdict(relation_query(items[0]['ref'])))
+        count += len(occurrence_facts(response))
         _emit_native_observation(_call_observation(name, response, path, source))
         checks[name + 'ExactStaticFacts'] = _facts(response) == Counter(expected)
         checks[name + 'Coverage'] = (_scoped_obligations(response, path, obligations) if obligations else
-            response.get('status') == 'complete' and response.get('omissions') == [])
+            response.get('status') == 'complete' and occurrence_omissions(response) == [])
         checks[name + 'Authority'] = response.get('live') == replay.live
     return checks, count
 
@@ -297,7 +291,7 @@ def _cycle_checks(replay, source):
 def _run_extended_calls(replay, source, path):
     checks, count = _extended_call_cases(replay, source, path)
     checks.update(_cycle_checks(replay, source))
-    replay.record('kotlin-call-extended-and-cycle', 'read_relations+traverse_relations', checks, count)
+    replay.record('kotlin-call-extended-and-cycle', 'query_symbols+traverse_relations', checks, count)
 
 
 class CallObservationCase(str, Enum):
@@ -410,7 +404,7 @@ def _call_observation(name, response, path, source):
                  'localFunction': ('return nested()', 'nested'), 'sam': ('= Fetcher {', 'Fetcher')}
     call = _obligation(source, *fragments[name], ())
     nested = _obligation(source, 'Fetcher { client.fetch()', 'fetch', ())
-    facts, omissions = response.get('relations', []), response.get('omissions', [])
+    facts, omissions = occurrence_facts(response), occurrence_omissions(response)
     endpoints = Counter(_fixture_endpoint(fact.get('target', {}), path, source) for fact in facts[:100])
     observed = []
     for omission in omissions[:8]:
@@ -487,14 +481,6 @@ def _same_cycle_graph(high, low):
         record for page in low for record in graph_records(page))
 
 
-@dataclass(frozen=True)
-class InlineCallRead:
-    exactSelector: str
-    relation: KotlinCallMeaning = KotlinCallMeaning.CALLEES
-    limit: int = 100
-    position: CallStart | CallResume = field(default_factory=CallStart)
-
-
 def _inline_sites(source, name):
     start = source.index('fun ' + name + '(')
     end = source.find('\n', start)
@@ -507,20 +493,20 @@ def _inline_sites(source, name):
 
 
 def _drain_inline(replay, selector, meaning, limit):
-    from dataclasses import replace
-    request = InlineCallRead(selector, meaning, limit)
+    budget = ResultsBudget(limit)
+    request = relation_query(selector, meaning.value, budget)
     pages, tokens = [], set()
     for _ in range(32):
-        response = replay.transport.invoke(replay.surface, 'read_relations', asdict(request))
+        response = replay.transport.invoke(replay.surface, 'query_symbols', asdict(request))
         pages.append(response)
-        token = response.get('qualification', {}).get('continuation')
+        token = response.get('continuation')
         if not token:
             return pages
         if token in tokens:
-            raise ValueError('Inline relation continuation did not advance')
+            raise ValueError('Inline query continuation did not advance')
         tokens.add(token)
-        request = replace(request, position=CallResume(token))
-    raise ValueError('Inline relation pages did not drain')
+        request = QueryInput(QueryResume(token, budget))
+    raise ValueError('Inline query occurrence pages did not drain')
 
 
 def _inline_key(fact):
@@ -552,7 +538,7 @@ def run_inline_ownership_regression(replay, source, path, *, unresolved_path=Non
             continue
         high = _drain_inline(replay, items[0]['ref'], KotlinCallMeaning.CALLEES, 100)
         low = _drain_inline(replay, items[0]['ref'], KotlinCallMeaning.CALLEES, 1)
-        facts = [fact for page in high for fact in page.get('relations', [])]
+        facts = [fact for page in high for fact in occurrence_facts(page)]
         inner = [fact for fact in facts if fact.get('target', {}).get('range', {}).get('startInclusive') == target_start]
         sites = _inline_sites(occurrence_source, name)
         supported = sites[-1:] if name == 'mixedInline' else sites if name in positive else []
@@ -560,7 +546,7 @@ def run_inline_ownership_regression(replay, source, path, *, unresolved_path=Non
         actual = [(fact.get('source', {}).get('range', {}).get('startInclusive'),
                    fact.get('occurrence', {}).get('range', {}).get('startInclusive'),
                    fact.get('occurrence', {}).get('range', {}).get('endExclusive')) for fact in inner]
-        omissions = [omission for page in high for omission in page.get('omissions', [])]
+        omissions = [omission for page in high for omission in occurrence_omissions(page)]
         deferred = name in negative + unresolved or name == 'mixedInline'
         owner_reason = 'UNRESOLVED_TARGET' if name in unresolved else 'UNSUPPORTED_ITEM'
         # Local named functions retain their owner, even if no detached local endpoint is supported.
@@ -579,7 +565,7 @@ def run_inline_ownership_regression(replay, source, path, *, unresolved_path=Non
                 and sample.get('range', {}).get('endExclusive', -1) >= site[2]
                 for omission in omissions for sample in omission.get('samples', [])) for site in obligation_sites),
             'paginationPreservesExactOccurrences': Counter(map(_inline_key, facts)) == Counter(
-                _inline_key(fact) for page in low for fact in page.get('relations', [])),
+                _inline_key(fact) for page in low for fact in occurrence_facts(page)),
             'sameAuthority': all(page.get('live') == replay.live for page in high + low),
             'qualifiedOmissions': not deferred or high[-1].get('status') == 'qualified',
             'authoredExactEvidence': all(fact.get('coverage') == 'exact-compiler-confirmed'
@@ -589,7 +575,7 @@ def run_inline_ownership_regression(replay, source, path, *, unresolved_path=Non
                 and all(fact.get(end, {}).get('compilerEvidence', {}).get('identity', '').startswith('canonical-signature-sha256-v1|')
                     for end in ('source', 'target')) for fact in inner),
         }
-        replay.record('inline-' + name, 'read_relations', checks, len(inner), high[-1])
+        replay.record('inline-' + name, 'query_symbols', checks, len(inner), high[-1])
         if name == 'stdlibInline':
             run_inline_composition(replay, items[0]['ref'])
         forward.extend(inner)
@@ -602,37 +588,25 @@ def run_inline_ownership_regression(replay, source, path, *, unresolved_path=Non
     if target_selector:
         high = _drain_inline(replay, target_selector, KotlinCallMeaning.CALLERS, 100)
         low = _drain_inline(replay, target_selector, KotlinCallMeaning.CALLERS, 1)
-        facts = [fact for page in high for fact in page.get('relations', [])]
+        facts = [fact for page in high for fact in occurrence_facts(page)]
         actual = [(fact.get('source', {}).get('range', {}).get('startInclusive'),
                    fact.get('occurrence', {}).get('range', {}).get('startInclusive'),
                    fact.get('occurrence', {}).get('range', {}).get('endExclusive')) for fact in facts]
-        replay.record('inline-inverse-parity', 'read_relations', {
+        replay.record('inline-inverse-parity', 'query_symbols', {
             'expectedOwnersAndOccurrences': Counter(actual) == Counter(expected_callers),
             'forwardInverseParity': Counter(map(_inline_key, forward)) == Counter(map(_inline_key, facts)),
             'paginationPreservesExactOccurrences': Counter(map(_inline_key, facts)) == Counter(
-                _inline_key(fact) for page in low for fact in page.get('relations', [])),
-            'retainedUnsupportedEvidence': _has_scoped_unsupported([omission for page in high for omission in page.get('omissions', [])]),
+                _inline_key(fact) for page in low for fact in occurrence_facts(page)),
+            'retainedUnsupportedEvidence': _has_scoped_unsupported([omission for page in high for omission in occurrence_omissions(page)]),
             'sameAuthority': all(page.get('live') == replay.live for page in high + low),
         }, len(facts), high[-1])
 
 
-@dataclass(frozen=True)
-class InlineExpansion:
-    type: str = field(default='expand_relation', init=False)
-    relation: str = field(default='callees', init=False)
-
-
-@dataclass(frozen=True)
-class InlineQuery:
-    source: 'ExactReferences'
-    steps: tuple[InlineExpansion, ...] = (InlineExpansion(), InlineExpansion())
-    return_fields: tuple[str, ...] = ('name', 'location', 'signature')
-    execution_budget: CallPageBudget = field(default_factory=lambda: CallPageBudget(100))
-
-
 def run_inline_composition(replay, selector):
-    from hosted_budget_read_regression import ExactReferences
-    query = replay.transport.invoke(replay.surface, 'query_symbols', asdict(InlineQuery(ExactReferences((selector,)))))
+    query = replay.transport.invoke(replay.surface, 'query_symbols',
+                                    asdict(QueryInput(QueryRun(SymbolReferences((selector,)),
+                                        (ExpandRelation('callees'), ExpandRelation('callees')),
+                                        SymbolOutput(('name', 'location', 'signature')), CallPageBudget(100)))))
     items = query.get('items', [])
     connections = [fact for item in items for fact in item.get('connections', [])]
     chain = Counter((fact.get('source', {}).get('qualifiedIdentity'), fact.get('target', {}).get('qualifiedIdentity'))

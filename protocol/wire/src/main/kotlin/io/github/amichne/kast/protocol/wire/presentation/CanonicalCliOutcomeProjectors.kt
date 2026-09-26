@@ -25,9 +25,6 @@ import io.github.amichne.kast.protocol.contract.OperationResult
 import io.github.amichne.kast.protocol.contract.QueryRunFailure
 import io.github.amichne.kast.protocol.contract.QueryRunQualification
 import io.github.amichne.kast.protocol.contract.QueryRunResult
-import io.github.amichne.kast.protocol.contract.RelationReadFailure
-import io.github.amichne.kast.protocol.contract.RelationReadQualification
-import io.github.amichne.kast.protocol.contract.RelationReadResult
 import io.github.amichne.kast.protocol.contract.SourceReadFailure
 import io.github.amichne.kast.protocol.contract.SourceReadQualification
 import io.github.amichne.kast.protocol.contract.SourceReadResult
@@ -76,15 +73,6 @@ val sourceReadCliProjector =
         SourceReadFailure,
     > { outcome ->
         CanonicalSourceReadCliDocuments.project(outcome)
-    }
-
-val relationReadCliProjector =
-    OperationOutcomeProjector<
-        RelationReadResult,
-        RelationReadQualification,
-        RelationReadFailure,
-    > { outcome ->
-        CanonicalReadCliDocuments.projectRelation(outcome)
     }
 
 val traversalRunCliProjector =

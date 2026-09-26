@@ -9,10 +9,12 @@ import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetDocument
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
+import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryPredicateDocument
 import io.github.amichne.kast.protocol.contract.QueryResultCursor
 import io.github.amichne.kast.protocol.contract.QueryResultReference
 import io.github.amichne.kast.protocol.contract.QueryResultRowReference
+import io.github.amichne.kast.protocol.contract.QuerySymbolFieldDocument
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -45,14 +47,6 @@ internal enum class PublicToolRelation {
     @SerialName("inheritors") INHERITORS,
     @SerialName("overrides") OVERRIDES,
     @SerialName("type_uses") TYPE_USES,
-}
-
-@Serializable
-internal enum class PublicToolReturnFields {
-    @SerialName("name") NAME,
-    @SerialName("location") LOCATION,
-    @SerialName("signature") SIGNATURE,
-    @SerialName("source") SOURCE,
 }
 
 @Serializable
@@ -168,7 +162,7 @@ internal data class PublicToolResultSource(
 internal data class PublicToolRunAction(
     val source: PublicToolSource,
     val steps: BoundedProtocolList<PublicToolStep>?,
-    val return_fields: BoundedProtocolList<PublicToolReturnFields>?,
+    val output: QueryOutputDocument? = null,
     val retention: PublicToolRetention? = null,
     @SerialName("execution_budget")
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
@@ -189,7 +183,7 @@ internal data class PublicToolResumeAction(
 internal data class PublicToolReadResultAction(
     val result: QueryResultReference,
     val cursor: QueryResultCursor? = null,
-    val return_fields: BoundedProtocolList<PublicToolReturnFields>?,
+    val output: QueryOutputDocument? = null,
     @SerialName("execution_budget")
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val executionBudget: ExecutionBudgetDocument? = null,
@@ -222,7 +216,17 @@ internal object PublicToolDefaults {
     val nameMatch = PublicToolNameMatch.EXACT
     val sourceSets = toolDefault(BoundedProtocolList.create(listOf(toolDefault(ProtocolText.parse("main")), toolDefault(ProtocolText.parse("test")))))
     val declarationKinds = toolDefault(BoundedProtocolList.create(listOf(PublicToolDeclarationKinds.CLASS, PublicToolDeclarationKinds.FUNCTION, PublicToolDeclarationKinds.PROPERTY, PublicToolDeclarationKinds.TYPE_ALIAS)))
-    val returnFields = toolDefault(BoundedProtocolList.create(listOf(PublicToolReturnFields.NAME, PublicToolReturnFields.LOCATION)))
+    val output: QueryOutputDocument.Symbols =
+        QueryOutputDocument.Symbols(
+            toolDefault(
+                BoundedProtocolList.create(
+                    listOf(
+                        QuerySymbolFieldDocument.NAME,
+                        QuerySymbolFieldDocument.LOCATION,
+                    )
+                )
+            )
+        )
     val steps: BoundedProtocolList<PublicToolStep> = toolDefault(BoundedProtocolList.create(emptyList()))
     const val maxDiagnostics = 100
     val scope: PublicToolScope = PublicToolDirectoryScope(toolDefault(ProtocolText.parse(".")), true, sourceSets)

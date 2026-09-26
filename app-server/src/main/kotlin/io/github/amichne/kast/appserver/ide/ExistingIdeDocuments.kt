@@ -283,7 +283,6 @@ fun ExistingIdeReadOperation.admitOutcome(
             ExistingIdeReadOperation.SYMBOL_DISCOVER -> CanonicalOperationWireBindings.symbolDiscover.decodeOutcome(raw)
             ExistingIdeReadOperation.SYMBOL_INSPECT -> CanonicalOperationWireBindings.symbolInspect.decodeOutcome(raw)
             ExistingIdeReadOperation.SOURCE_READ -> CanonicalOperationWireBindings.sourceRead.decodeOutcome(raw)
-            ExistingIdeReadOperation.RELATION_READ -> CanonicalOperationWireBindings.relationRead.decodeOutcome(raw)
             ExistingIdeReadOperation.TRAVERSAL_RUN -> CanonicalOperationWireBindings.traversalRun.decodeOutcome(raw)
             ExistingIdeReadOperation.DIAGNOSTIC_CHECK ->
                 CanonicalOperationWireBindings.diagnosticCheck.decodeOutcome(raw)

@@ -111,8 +111,7 @@ class HostedApprovalChallengeTest {
 
     @Test
     fun `old descriptor protocol is unavailable even with otherwise valid metadata`() {
-        val raw =
-            """{"type":"KAST_IDE_ENDPOINT","protocol":2,"root":"/workspace","socket":"/tmp/host.sock","hostPid":123,"host":"${descriptor.host}","querySchema":"kast.query.run.v2","operations":["DESCRIBE","CLASS_LOOKUP","DIRECT_SUPERTYPE","QUERY_RUN","SYMBOL_DISCOVER","SYMBOL_INSPECT","SOURCE_READ","RELATION_READ","TRAVERSAL_RUN","DIAGNOSTIC_CHECK"]}"""
+        val raw = HostedDescriptorFixture.endpoint("/workspace", "/tmp/host.sock", descriptor.host, protocol = 2)
         assertEquals(
             Refinement.Rejected(ExistingIdeFailure.DESCRIPTOR_REJECTED),
             ExistingIdeDocuments.descriptor(raw.toByteArray(), root, Path.of("/tmp/host.sock")),

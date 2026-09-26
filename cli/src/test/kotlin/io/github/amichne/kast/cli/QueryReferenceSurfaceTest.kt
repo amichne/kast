@@ -9,7 +9,6 @@ import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
-import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryExactFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryFromDocument
@@ -22,7 +21,6 @@ import io.github.amichne.kast.protocol.contract.QueryResultRowReference
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.QueryRunResult
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
-import io.github.amichne.kast.protocol.contract.RelationReadRequest
 import io.github.amichne.kast.protocol.contract.SourceReadAnchorDocument
 import io.github.amichne.kast.protocol.contract.SymbolIdDocument
 import io.github.amichne.kast.protocol.contract.SymbolKindDocument
@@ -92,7 +90,7 @@ class QueryReferenceSurfaceTest {
     }
 
     @Test
-    fun `the returned exact reference is copied verbatim into query relation and source admission`() {
+    fun `the returned exact reference is copied verbatim into query and source admission`() {
         val returned =
             project(listOf(exact()))
                 .getValue("items")
@@ -109,12 +107,6 @@ class QueryReferenceSurfaceTest {
         assertEquals(returned, references.values.values.single().token.value)
         assertTrue(request.steps.values.isEmpty())
 
-        val relation =
-            RelationReadRequest(text(returned), RelationKindDocument.CALLERS, ProtocolCount.parse(10).refined())
-        assertEquals(
-            JsonPrimitive(returned),
-            json.encodeToJsonElement(RelationReadRequest.serializer(), relation).jsonObject["exactSelector"],
-        )
         val source = SourceReadAnchorDocument.admit(text(returned)).refined()
         assertTrue(source is SourceReadAnchorDocument.Symbol)
         assertEquals(text(returned), (source as SourceReadAnchorDocument.Symbol).selector)

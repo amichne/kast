@@ -166,7 +166,7 @@ class QueryRetainedRowAdmissionTest {
                 CanonicalQueryReferences(),
                 store,
             )
-        val request = QueryRunRequest.ReadResult(issued.reference, output = output)
+        val request = QueryRunRequest.ReadResult.symbols(issued.reference, output = output)
         val first = protocol.execute(request, fixture.authority, budget) as OperationOutcome.Complete
         val second = protocol.execute(request, fixture.authority, budget) as OperationOutcome.Complete
         val firstIds = first.evidence.payload.items.values.map { (it as QueryResultItemDocument.ExactSymbol).rowId }

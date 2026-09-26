@@ -39,7 +39,7 @@ private fun PublicToolAction.lower(): Refinement<PublicToolCanonical, PublicTool
                                     QueryRunRequest.Run(
                                         from = from.value,
                                         steps = bounded(loweredSteps.value),
-                                        output = output(return_fields),
+                                        output = output ?: PublicToolDefaults.output,
                                         execution =
                                             QueryExecutionDocument(
                                                 QueryExecutionKindDocument.EXHAUSTIVE,
@@ -60,20 +60,21 @@ private fun PublicToolAction.lower(): Refinement<PublicToolCanonical, PublicTool
         is PublicToolResumeAction ->
             Refinement.Refined(PublicToolCanonical.Query(QueryRunRequest.Resume(continuation, executionBudget)))
         is PublicToolReadResultAction ->
-            Refinement.Refined(
-                PublicToolCanonical.Query(
-                    QueryRunRequest.ReadResult(
-                        result,
-                        cursor ?: QueryResultCursor.Start,
-                        output(return_fields),
-                        executionBudget,
+            when (val selected = output ?: PublicToolDefaults.output) {
+                is QueryOutputDocument.Symbols ->
+                    Refinement.Refined(
+                        PublicToolCanonical.Query(
+                            QueryRunRequest.ReadResult.symbols(
+                                result,
+                                cursor ?: QueryResultCursor.Start,
+                                selected,
+                                executionBudget,
+                            )
+                        )
                     )
-                )
-            )
+                QueryOutputDocument.Occurrences -> Refinement.Rejected(PublicToolInputFailure.SchemaRejected)
+            }
     }
-
-private fun output(fields: BoundedProtocolList<PublicToolReturnFields>?): QueryOutputDocument.Symbols =
-    QueryOutputDocument.Symbols(bounded((fields ?: PublicToolDefaults.returnFields).values.map { it.lower() }))
 
 private fun PublicToolSource.lower(): Refinement<QueryFromDocument, PublicToolInputFailure> =
     when (this) {
@@ -249,14 +250,6 @@ private fun PublicToolRelation.lower(): RelationKindDocument =
         PublicToolRelation.INHERITORS -> RelationKindDocument.INHERITORS
         PublicToolRelation.OVERRIDES -> RelationKindDocument.OVERRIDES
         PublicToolRelation.TYPE_USES -> RelationKindDocument.TYPE_USES
-    }
-
-private fun PublicToolReturnFields.lower(): QuerySymbolFieldDocument =
-    when (this) {
-        PublicToolReturnFields.NAME -> QuerySymbolFieldDocument.NAME
-        PublicToolReturnFields.LOCATION -> QuerySymbolFieldDocument.LOCATION
-        PublicToolReturnFields.SIGNATURE -> QuerySymbolFieldDocument.SIGNATURE
-        PublicToolReturnFields.SOURCE -> QuerySymbolFieldDocument.SOURCE
     }
 
 private fun rejected(parameter: PublicToolParameter, rule: PublicToolRule) =

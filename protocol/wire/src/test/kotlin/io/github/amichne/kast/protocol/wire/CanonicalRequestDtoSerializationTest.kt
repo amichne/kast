@@ -27,7 +27,6 @@ import io.github.amichne.kast.protocol.contract.QueryResultRowReference
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.QueryScopeDocument
 import io.github.amichne.kast.protocol.contract.QueryStepDocument
-import io.github.amichne.kast.protocol.contract.RelationReadRequest
 import io.github.amichne.kast.protocol.contract.SourceReadRequest
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
 import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
@@ -75,17 +74,23 @@ class CanonicalRequestDtoSerializationTest {
         val read =
             strictJson.encodeToString(
                 QueryRunRequest.serializer(),
-                QueryRunRequest.ReadResult(result, output = QueryOutputDocument.Symbols(fields)),
+                QueryRunRequest.ReadResult.symbols(result, output = QueryOutputDocument.Symbols(fields)),
             )
         val readShape = strictJson.parseToJsonElement(read).jsonObject
         assertEquals(setOf("action", "result", "cursor", "output"), readShape.keys)
         assertEquals("read-result", readShape.getValue("action").jsonPrimitive.content)
         assertEquals(result.value, readShape.getValue("result").jsonPrimitive.content)
         assertEquals("0", readShape.getValue("cursor").jsonPrimitive.content)
-        assertEquals(setOf("fields"), readShape.getValue("output").jsonObject.keys)
+        assertEquals(setOf("type", "fields"), readShape.getValue("output").jsonObject.keys)
+        assertEquals("symbols", readShape.getValue("output").jsonObject.getValue("type").jsonPrimitive.content)
         assertTrue(readShape.getValue("output").jsonObject.getValue("fields").jsonArray.isEmpty())
         assertThrows(SerializationException::class.java) {
             strictJson.decodeFromString(QueryRunRequest.serializer(), read.replace("\"cursor\":0", "\"cursor\":-1"))
+        }
+        val occurrenceOutput = read.replace("\"type\":\"symbols\",\"fields\":[]", "\"type\":\"occurrences\"")
+        assertTrue(occurrenceOutput != read)
+        assertThrows(SerializationException::class.java) {
+            strictJson.decodeFromString(QueryRunRequest.serializer(), occurrenceOutput)
         }
     }
 
@@ -140,7 +145,7 @@ class CanonicalRequestDtoSerializationTest {
     fun `all canonical requests own their wire serializer`() {
         val serializers = canonicalRequestSerializers()
 
-        assertEquals(12, serializers.size)
+        assertEquals(11, serializers.size)
         assertFalse(serializers.any { "WireDocument" in it.descriptor.serialName })
     }
 
@@ -218,7 +223,6 @@ class CanonicalRequestDtoSerializationTest {
             SymbolDiscoverRequest.serializer(),
             SymbolInspectRequest.serializer(),
             SourceReadRequest.serializer(),
-            RelationReadRequest.serializer(),
             TraversalRunRequest.serializer(),
             QueryRunRequest.serializer(),
             DiagnosticCheckRequest.serializer(),

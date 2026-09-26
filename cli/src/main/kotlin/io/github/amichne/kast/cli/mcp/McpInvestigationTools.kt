@@ -45,7 +45,7 @@ internal class McpInvestigationTools(
             McpSupplementalTool(
                 name = "validate_workspace",
                 description =
-                    "Run explicit read-only declaration, exact-symbol, source, relation, and IDE diagnostic " +
+                    "Run explicit read-only declaration, exact-symbol, source, query relation, and IDE diagnostic " +
                         "probes. Each probe reports passed, failed, or unverified independently.",
                 inputSchema = validationInputSchema(),
                 invoke = ::validate,

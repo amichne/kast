@@ -46,9 +46,9 @@ class KastObserverProjectorTest {
             assertTrue(presentation.source.value.contains("epoch 7"))
             assertTrue(!presentation.source.value.contains("generation 7"))
         }
-        val query =
-            """{"status":"completed","document":{"operation":"query.run","status":"complete","items":[],"failures":[]}}"""
-        val presentation = project("query.run", withLiveEvidence(query).toString()) as ObserverPresentation.Markdown
+        val presentation =
+            project("query.run", withLiveEvidence(KastObserverFixtures.emptyQuery).toString())
+                as ObserverPresentation.Markdown
         assertTrue(presentation.source.value.contains("0 query results"))
         assertTrue(presentation.source.value.contains("Live IDE evidence"))
     }

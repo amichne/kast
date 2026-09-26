@@ -214,7 +214,7 @@ def invocation(case, surface):
         else:
             raise ValueError("UNSUPPORTED_REPLAY_STEP")
     return "query_symbols", ["tool", "query_symbols"], dict(request=dict(action="run", source=lowered,
-        steps=steps, return_fields=[field.lower() for field in case.select]))
+        steps=steps, output=dict(type="symbols", fields=[field.lower() for field in case.select])))
 
 
 def search(name, scope=None, match="EXACT"):

@@ -9,6 +9,7 @@ import kotlinx.serialization.Serializable
 internal data class QueryRunResultWireDocument(
     val items: List<QueryResultItemWireDocument>,
     val failures: List<QueryItemFailureWireDocument>,
+    val omissions: List<QueryRelationOmissionWireDocument>,
     val retention: io.github.amichne.kast.protocol.contract.QueryResultRetention,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     @SerialName("next_cursor")

@@ -62,7 +62,7 @@ class QueryDiscoveryPlanningTest {
                 QueryPlanSyntax(
                     QuerySourceSyntax.Symbols(syntax),
                     emptyList(),
-                    QueryOutputSyntax(QuerySymbolFields.from(emptySet()).refined()),
+                    QueryOutputSyntax.Symbols(QuerySymbolFields.from(emptySet()).refined()),
                 )
             ) as QueryPlanAdmission.Admitted
         assertTrue(service.run(fixture.request(plan.plan, workLimit = 8L)) is QueryExecutionResult.Complete)
@@ -96,7 +96,7 @@ class QueryDiscoveryPlanningTest {
                     QueryPlanSyntax(
                         QuerySourceSyntax.Symbols(syntax),
                         steps,
-                        QueryOutputSyntax(QuerySymbolFields.from(emptySet()).refined()),
+                        QueryOutputSyntax.Symbols(QuerySymbolFields.from(emptySet()).refined()),
                     )
                 ) as QueryPlanAdmission.Admitted)
                 .plan

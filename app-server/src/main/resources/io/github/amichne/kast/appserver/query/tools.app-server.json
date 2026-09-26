@@ -92,7 +92,7 @@
     {
       "type": "function",
       "name": "query_symbols",
-      "description": "Run, resume, and read a compositional compiler-grounded Kotlin symbol query. Start from name/scope discovery, exact-symbol references, or selected rows of an immutable retained result. Apply structured predicates, relation expansion, concatenation, set operations, and explicit deduplication. Retain a completed result when needed for later composition; resume uses only the opaque execution continuation, and read_result uses a separate presentation cursor. Incomplete coverage and bounded work remain explicit.",
+      "description": "Run, resume, and read a compositional compiler-grounded Kotlin symbol query. Start from name/scope discovery, exact-symbol references, or selected rows of an immutable retained result. Apply structured predicates, relation expansion, concatenation, set operations, and explicit deduplication. Choose symbol fields or individual relation occurrences as output; structured omissions retain incomplete relation coverage. Retain a completed result when needed for later composition; resume uses only the opaque execution continuation, and read_result uses a separate presentation cursor. Incomplete coverage and bounded work remain explicit.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -330,6 +330,78 @@
             ],
             "additionalProperties": false
           },
+          "Output": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/SymbolsOutput"
+              },
+              {
+                "$ref": "#/$defs/OccurrencesOutput"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Omission or null returns symbols with name and location. Choose occurrence output to retain individual relation facts."
+          },
+          "ReadResultOutput": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/SymbolsOutput"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Present retained symbol rows with selected fields. Omission or null returns name and location."
+          },
+          "SymbolsOutput": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "symbols"
+                ]
+              },
+              "fields": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "name",
+                    "location",
+                    "signature",
+                    "source"
+                  ]
+                },
+                "minItems": 0,
+                "maxItems": 4,
+                "uniqueItems": true,
+                "description": "[] requests mandatory identity and kind only. Source adds a committed bounded source window."
+              }
+            },
+            "required": [
+              "type",
+              "fields"
+            ],
+            "additionalProperties": false
+          },
+          "OccurrencesOutput": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "occurrences"
+                ]
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "additionalProperties": false
+          },
           "Predicate": {
             "anyOf": [
               {
@@ -457,7 +529,7 @@
                   "overrides",
                   "type_uses"
                 ],
-                "description": "One semantic hop. callers means declarations calling the current symbols; callees means declarations called by them. This pipeline produces related symbols. Use the relation-read tool for occurrence-oriented relation facts."
+                "description": "One semantic hop. callers means declarations calling the current symbols; callees means declarations called by them. Choose output type occurrences to return individual relation facts, including repeated use sites."
               }
             },
             "required": [
@@ -741,24 +813,8 @@
                 "maxItems": 1000,
                 "description": "Ordered transformations, executed left to right. null and [] mean no transformations. where applies one structured predicate. concat preserves order and multiplicity; intersect, union, and difference use canonical semantic identity. distinct_symbols removes duplicate identities only when requested."
               },
-              "return_fields": {
-                "type": [
-                  "array",
-                  "null"
-                ],
-                "items": {
-                  "type": "string",
-                  "enum": [
-                    "name",
-                    "location",
-                    "signature",
-                    "source"
-                  ]
-                },
-                "minItems": 0,
-                "maxItems": 4,
-                "description": "null returns name and location, [] requests mandatory identity and kind only. Symbol references and completeness evidence are always retained. Duplicate fields are rejected by server admission. The source field adds committed declaration text with five surrounding lines, subject to the query budget.",
-                "uniqueItems": true
+              "output": {
+                "$ref": "#/$defs/Output"
               },
               "retention": {
                 "type": [
@@ -779,8 +835,7 @@
             "required": [
               "action",
               "source",
-              "steps",
-              "return_fields"
+              "steps"
             ],
             "additionalProperties": false,
             "description": "Run a query from the supplied source and ordered steps. Retain the completed result only when requested."
@@ -823,24 +878,8 @@
               "cursor": {
                 "$ref": "#/$defs/ResultCursor"
               },
-              "return_fields": {
-                "type": [
-                  "array",
-                  "null"
-                ],
-                "items": {
-                  "type": "string",
-                  "enum": [
-                    "name",
-                    "location",
-                    "signature",
-                    "source"
-                  ]
-                },
-                "minItems": 0,
-                "maxItems": 4,
-                "description": "Optional symbol fields for this presentation page. null uses name and location; [] returns mandatory identity and kind only. No semantic provider is invoked.",
-                "uniqueItems": true
+              "output": {
+                "$ref": "#/$defs/ReadResultOutput"
               },
               "execution_budget": {
                 "$ref": "#/$defs/ExecutionBudget"
@@ -848,8 +887,7 @@
             },
             "required": [
               "action",
-              "result",
-              "return_fields"
+              "result"
             ],
             "additionalProperties": false,
             "description": "Present an immutable retained result, starting at the supplied result cursor; this performs no query evaluation."

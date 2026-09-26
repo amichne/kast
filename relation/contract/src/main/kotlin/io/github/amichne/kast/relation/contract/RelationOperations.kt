@@ -366,7 +366,7 @@ sealed interface RelationReadResult {
     data class Rejected(val reason: RelationReadRejection) : RelationReadResult
 }
 
-/** Public `relation.read` boundary. */
+/** One-hop semantic engine composed by query and traversal. */
 fun interface RelationOperations {
     /**
      * Proof transition: `RelationRequest -> RelationReadResult`.

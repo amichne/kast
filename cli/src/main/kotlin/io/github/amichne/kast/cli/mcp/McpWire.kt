@@ -66,11 +66,11 @@ private const val KAST_MCP_INSTRUCTIONS =
         "and follow its finite recovery instruction if preparation rejects. Kast saves project editor buffers " +
         "and refreshes the VFS or Gradle model when needed; callers do not need to request a manual sync. " +
         "Search classes or functions by name first, preserve returned symbol references verbatim, then use " +
-        "read_relations with callees or callers for one semantic hop. " +
+        "query_symbols with a related step and occurrences output for exact relation facts. " +
         "Relation destinations may be in other packages. " +
         "Read both the outer invocation status and inner semantic status: qualified results are a known minimum, " +
         "never proof of absence. Inspect limitations and omission reasons such as UNSUPPORTED_ITEM; resume only when " +
-        "a continuation is returned, using the same subject and relation. " +
+        "a continuation is returned. " +
         "For BUDGET_EXCEEDED inspect the reported stage and execution_budget. A MODEL_CAPTURE timeout " +
         "precedes semantic search; a SEMANTIC_READ timeout may benefit from a narrower scope. " +
         "MODEL_CAPTURE_REJECTED happens before semantic search; " +

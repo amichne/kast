@@ -6,7 +6,6 @@ import io.github.amichne.kast.protocol.contract.ChangeRecoverRequest
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRequest
 import io.github.amichne.kast.protocol.contract.IndexSyncRequest
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
-import io.github.amichne.kast.protocol.contract.RelationReadRequest
 import io.github.amichne.kast.protocol.contract.SourceReadRequest
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
 import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
@@ -21,7 +20,6 @@ class CanonicalCliRequestPreparers(
     val symbolDiscover: OperationRequestPreparer<SymbolDiscoverRequest>,
     val symbolInspect: OperationRequestPreparer<SymbolInspectRequest>,
     val sourceRead: OperationRequestPreparer<SourceReadRequest>,
-    val relationRead: OperationRequestPreparer<RelationReadRequest>,
     val traversalRun: OperationRequestPreparer<TraversalRunRequest>,
     val queryRun: OperationRequestPreparer<QueryRunRequest>,
     val diagnosticCheck: OperationRequestPreparer<DiagnosticCheckRequest>,
@@ -41,7 +39,6 @@ fun canonicalCliRequestPreparers(): CanonicalCliRequestPreparers =
         symbolInspect =
             TypedOperationProjection(CanonicalOperationWireBindings.symbolInspect, symbolInspectCliProjector),
         sourceRead = TypedOperationProjection(CanonicalOperationWireBindings.sourceRead, sourceReadCliProjector),
-        relationRead = TypedOperationProjection(CanonicalOperationWireBindings.relationRead, relationReadCliProjector),
         traversalRun = TypedOperationProjection(CanonicalOperationWireBindings.traversalRun, traversalRunCliProjector),
         queryRun = TypedOperationProjection(CanonicalOperationWireBindings.queryRun, queryRunCliProjector),
         diagnosticCheck =

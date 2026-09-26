@@ -108,12 +108,6 @@ enum class ReadBudgetField {
     @SerialName("max_returned_bytes") BYTES,
 }
 
-fun RelationReadQualification.recoveryGuidance(report: ExecutionBudgetReport?): List<ReadRecoveryGuidance> =
-    when (this) {
-        is RelationReadQualification.Resumable -> listOf(ReadRecoveryGuidance.Resume.Required)
-        is RelationReadQualification.TerminalIncomplete -> limitations.map { it.guidance(report) }.distinct()
-    }
-
 fun TraversalRunQualification.recoveryGuidance(report: ExecutionBudgetReport?): List<ReadRecoveryGuidance> =
     when (this) {
         is TraversalRunQualification.Resumable -> listOf(ReadRecoveryGuidance.Resume.Required)

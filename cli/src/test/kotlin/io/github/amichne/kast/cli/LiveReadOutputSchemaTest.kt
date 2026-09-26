@@ -3,8 +3,6 @@ package io.github.amichne.kast.cli
 import com.networknt.schema.InputFormat
 import com.networknt.schema.SchemaRegistry
 import com.networknt.schema.SpecificationVersion
-import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
-import io.github.amichne.kast.cli.command.CliCommandGraphFactory
 import io.github.amichne.kast.kernel.*
 import io.github.amichne.kast.protocol.contract.*
 import io.github.amichne.kast.protocol.contract.SourceQualifiedProgressDocument
@@ -14,11 +12,7 @@ import io.github.amichne.kast.protocol.wire.presentation.CanonicalReadCliDocumen
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalSourceReadCliDocuments
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalSymbolCliDocuments
 import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
-import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
-import io.github.amichne.kast.query.protocol.RelationPagingFixture
 import java.util.UUID
-import kotlinx.coroutines.test.runTest
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -58,89 +52,6 @@ class LiveReadOutputSchemaTest {
         }
     }
 
-    @Test
-    fun `owner issued relation continuations satisfy advertised resume input and reach the remaining page`() = runTest {
-        val schema = relationInputSchema()
-        for (fixture in listOf(RelationPagingFixture.published(), RelationPagingFixture.live())) {
-            val first = fixture.page() as OperationOutcome.Qualified
-            val token = (first.qualification as RelationReadQualification.Resumable).continuation
-            val position = RelationReadPositionDocument.Resume(token)
-            val errors = schema.validate(Json.encodeToString(fixture.request(position)), InputFormat.JSON)
-            assertTrue(errors.isEmpty(), "read_relations rejected its emitted continuation: $errors")
-            val second = fixture.page(position) as OperationOutcome.Complete
-            assertEquals(3, first.evidence.payload.relations.values.size)
-            assertEquals(1, second.evidence.payload.relations.values.size)
-            assertEquals(listOf(0L, 1L, 2L, 3L), fixture.consumed)
-        }
-    }
-
-    @Test
-    fun `relation schemas reject unsupported continuation versions and families`() = runTest {
-        val fixture = RelationPagingFixture.live()
-        val first = fixture.page() as OperationOutcome.Qualified
-        val token = (first.qualification as RelationReadQualification.Resumable).continuation
-        val document = CanonicalReadCliDocuments.projectRelation(first).document()
-        val request = Json.encodeToJsonElement(fixture.request(RelationReadPositionDocument.Resume(token))).jsonObject
-        for (raw in listOf(token.value.replaceFirst(":v2:", ":v3:"), "unsupported-family:v2:payload")) {
-            val invalid = JsonPrimitive(raw)
-            val outputErrors =
-                validate(
-                    CanonicalOperation.RELATION_READ,
-                    document.with(
-                        "qualification",
-                        document.getValue("qualification").jsonObject.with("continuation", invalid),
-                    ),
-                )
-            assertTrue(
-                outputErrors.any {
-                    it.keyword == "pattern" && it.instanceLocation.toString() == "/document/qualification/continuation"
-                },
-                outputErrors.toString(),
-            )
-            val inputErrors =
-                relationInputSchema()
-                    .validate(
-                        request
-                            .with("position", request.getValue("position").jsonObject.with("continuation", invalid))
-                            .toString(),
-                        InputFormat.JSON,
-                    )
-            assertTrue(
-                inputErrors.any {
-                    it.keyword == "pattern" && it.instanceLocation.toString() == "/position/continuation"
-                },
-                inputErrors.toString(),
-            )
-        }
-    }
-
-    internal fun relationInputSchema(): com.networknt.schema.Schema {
-        val graph =
-            (CliCommandGraphFactory.create(canonicalCliRequestPreparers()) as CliCommandGraphConstruction.Created)
-                .factory
-        val unusedMetadata = Json.encodeToString(UnusedMetadata)
-        val tool =
-            (installedSchema(
-                    operationRegistry = unusedMetadata,
-                    wireSchema = unusedMetadata,
-                    commandSurface = graph.surface,
-                )
-                    as InstalledSchemaConstruction.Constructed)
-                .document
-                .value
-                .let(Json::parseToJsonElement)
-                .jsonObject
-                .getValue("serverProjection")
-                .jsonObject
-                .getValue("hostedBootstrap")
-                .jsonObject
-                .getValue("tools")
-                .jsonArray
-                .map { it.jsonObject }
-                .single { it.getValue("name").jsonPrimitive.content == "read_relations" }
-        return schemas.getSchema(tool.getValue("inputSchema").toString())
-    }
-
     private val live =
         EvidenceBasis.Live(
             LiveReadEvidence.create(
@@ -156,7 +67,7 @@ class LiveReadOutputSchemaTest {
     private val schemas = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12)
 
     @Test
-    fun `all seven actual complete projections satisfy their advertised published and live schemas`() {
+    fun `all six actual complete projections satisfy their advertised published and live schemas`() {
         for (basis in listOf(published, live)) for ((operation, document) in completeDocuments(basis)) {
             assertAdmits(operation, document)
             assertEquals(basis is EvidenceBasis.Live, document.containsKey("live"), operation.name)
@@ -164,15 +75,10 @@ class LiveReadOutputSchemaTest {
     }
 
     @Test
-    fun `all seven actual qualified projections retain compatible evidence`() {
+    fun `all six actual qualified projections retain compatible evidence`() {
         for (basis in listOf(published, live)) for ((operation, document) in qualifiedDocuments(basis)) {
             assertAdmits(operation, document)
             assertEquals(JsonPrimitive("qualified"), document["status"])
-            if (operation == CanonicalOperation.RELATION_READ) {
-                val qualification = document.getValue("qualification").jsonObject
-                assertEquals(JsonPrimitive("terminal_incomplete"), qualification["type"])
-                assertTrue("continuation" !in qualification)
-            }
         }
     }
 
@@ -289,11 +195,6 @@ class LiveReadOutputSchemaTest {
                         complete(CanonicalOperation.SOURCE_READ, basis, sourceResult(basis))
                     )
                     .document(),
-            CanonicalOperation.RELATION_READ to
-                CanonicalReadCliDocuments.projectRelation(
-                        complete(CanonicalOperation.RELATION_READ, basis, RelationReadResult(empty()))
-                    )
-                    .document(),
             CanonicalOperation.TRAVERSAL_RUN to
                 CanonicalReadCliDocuments.projectTraversal(
                         complete(
@@ -389,18 +290,6 @@ class LiveReadOutputSchemaTest {
                                     SourceQualifiedProgressDocument.TerminalIncomplete(
                                         SourceTerminalReasonDocument.UPSTREAM_INCOMPLETE
                                     ),
-                                )
-                                .refined(),
-                        )
-                    )
-                    .document(),
-            CanonicalOperation.RELATION_READ to
-                CanonicalReadCliDocuments.projectRelation(
-                        OperationOutcome.Qualified(
-                            EvidenceEnvelope(CanonicalOperation.RELATION_READ.id, basis, RelationReadResult(empty())),
-                            RelationReadQualification.terminalIncomplete(
-                                    RelationKnownMinimumDocument.parse(0).refined(),
-                                    listOf(RelationLimitationDocument.WORK_LIMIT_REACHED),
                                 )
                                 .refined(),
                         )
@@ -566,8 +455,6 @@ class LiveReadOutputSchemaTest {
                 completedSchemaEnvelope(document),
                 InputFormat.JSON,
             )
-
-    @Serializable private data object UnusedMetadata
 
     internal fun ProjectedOperationOutcome.document(): JsonObject =
         when (this) {

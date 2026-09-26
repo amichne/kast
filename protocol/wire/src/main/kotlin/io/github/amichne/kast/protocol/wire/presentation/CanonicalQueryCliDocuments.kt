@@ -9,6 +9,7 @@ import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
 import io.github.amichne.kast.protocol.contract.QueryItemFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument
 import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
+import io.github.amichne.kast.protocol.contract.QueryRelationOmissionDocument
 import io.github.amichne.kast.protocol.contract.QueryResultCursor
 import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
 import io.github.amichne.kast.protocol.contract.QueryResultRetention
@@ -38,6 +39,7 @@ object CanonicalQueryCliDocuments {
                         status = "complete",
                         items = result.items.values.map(QueryResultItemDocument::toCliDocument),
                         failures = result.failures.values.map(QueryItemFailureDocument::toCliDocument),
+                        omissions = result.omissions.values.map(QueryRelationOmissionDocument::toCliDocument),
                         retention = result.retention,
                         nextCursor = result.nextCursor,
                         coverage = QueryCoverageCliDocument(exhaustive = true),
@@ -73,6 +75,7 @@ private fun projectQualified(
             status = "qualified",
             items = result.items.values.map(QueryResultItemDocument::toCliDocument),
             failures = result.failures.values.map(QueryItemFailureDocument::toCliDocument),
+            omissions = result.omissions.values.map(QueryRelationOmissionDocument::toCliDocument),
             retention = result.retention,
             nextCursor = result.nextCursor,
             coverage = QueryCoverageCliDocument(exhaustive = false),
@@ -96,6 +99,7 @@ private data class QueryCompleteCliDocument(
     val status: String,
     val items: List<QueryResultItemCliDocument>,
     val failures: List<QueryItemFailureCliDocument>,
+    val omissions: List<QueryRelationOmissionCliDocument>,
     val retention: QueryResultRetention,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     @SerialName("next_cursor")
@@ -117,6 +121,7 @@ private data class QueryQualifiedCliDocument(
     val status: String,
     val items: List<QueryResultItemCliDocument>,
     val failures: List<QueryItemFailureCliDocument>,
+    val omissions: List<QueryRelationOmissionCliDocument>,
     val retention: QueryResultRetention,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     @SerialName("next_cursor")
@@ -172,7 +177,24 @@ private sealed interface QueryResultItemCliDocument {
         @SerialName("row_id")
         val rowId: String? = null,
     ) : QueryResultItemCliDocument
+
+    @Serializable
+    @SerialName("occurrence")
+    data class Occurrence(
+        val ref: String,
+        val relation: RelationFactCliDocument,
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        @SerialName("row_id")
+        val rowId: String? = null,
+    ) : QueryResultItemCliDocument
 }
+
+@Serializable
+private data class QueryRelationOmissionCliDocument(
+    val subject: String,
+    val relation: String,
+    val evidence: RelationOmissionCliDocument,
+)
 
 @Serializable
 private data class QuerySourceWindowCliDocument(
@@ -251,7 +273,12 @@ private fun QueryResultItemDocument.toCliDocument(): QueryResultItemCliDocument 
                 },
                 rowId?.value,
             )
+        is QueryResultItemDocument.Occurrence ->
+            QueryResultItemCliDocument.Occurrence(ref.toCliDocument(), relation.toCliDocument(), rowId?.value)
     }
+
+private fun QueryRelationOmissionDocument.toCliDocument() =
+    QueryRelationOmissionCliDocument(subject.toCliDocument(), relation.cliName(), evidence.toCliDocument())
 
 private fun QueryItemFailureDocument.toCliDocument(): QueryItemFailureCliDocument =
     when (this) {

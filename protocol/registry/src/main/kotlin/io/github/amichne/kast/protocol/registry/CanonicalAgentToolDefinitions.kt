@@ -138,21 +138,13 @@ object CanonicalAgentToolDefinitions {
                 "when Kast can represent the required Kotlin context. Omit entityLimit for an " +
                 "entity-free read, and omit page and default budgets for the first read.",
         )
-    val relationRead =
-        tool(
-            CanonicalOperationDefinitions.relationRead,
-            "read_relations",
-            "Read individual compiler-grounded relation occurrences from one exact selector, including " +
-                "distinct call sites. Use query_symbols for declaration search and traverse_relations for " +
-                "bounded multi-step reachability. Inspect qualifications and resume with the returned continuation.",
-        )
     val traversalRun =
         tool(
             CanonicalOperationDefinitions.traversalRun,
             "traverse_relations",
-            "Traverse multi-step compiler-grounded relations from an exact selector. Use read_relations " +
-                "for individual occurrence facts. Reachability is qualified by depth, scope, relation " +
-                "evidence and execution budgets; it does not guarantee breakage or test selection.",
+            "Traverse multi-step compiler-grounded relations from an exact selector. " +
+                "Reachability is qualified by depth, scope, relation evidence and execution budgets; " +
+                "it does not guarantee breakage or test selection.",
         )
     val diagnosticCheck = facade(PublicToolIdentity.CHECK_DIAGNOSTICS)
     val change =
@@ -195,7 +187,6 @@ object CanonicalAgentToolDefinitions {
             symbolLookup,
             symbolInspect,
             sourceRead,
-            relationRead,
             traversalRun,
             diagnosticCheck,
             change,
@@ -216,8 +207,8 @@ object CanonicalAgentToolDefinitions {
                 expensive work; exact matching is default and fuzzy requires explicit opt-in.
                 Use symbol_lookup only when candidate discovery by file, location, name or
                 source text is required; use symbol_inspect to refine a candidate or revalidate
-                an exact selector. Use source_read
-                for bounded source context, read_relations for occurrence facts, and
+                an exact selector. Use source_read for bounded source context and
+                query_symbols with occurrence output for relation facts. Use
                 traverse_relations for multi-step reachability. Use kast.check_diagnostics
                 for compiler diagnostics.
                 Preserve returned symbol references verbatim, including compact host handles.

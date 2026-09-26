@@ -114,13 +114,31 @@ class MintlifyCallableReferenceTest {
         val reference = Json.parseToJsonElement(mintlifyCallableReference().value).jsonObject
         val components = reference.getValue("components").jsonObject.getValue("schemas").jsonObject
         assertTrue(components.values.none { "\$defs" in it.jsonObject })
-        val symbolVariants = components.getValue("read_relationsResponse_symbol").jsonObject.getValue("anyOf").jsonArray
-        assertEquals("constructor symbol", symbolVariants[1].jsonObject.getValue("title").jsonPrimitive.content)
         val item = components.getValue("query_symbolsResponse_queryResultItem").jsonObject
         assertEquals("queryResultItem", item.getValue("title").jsonPrimitive.content)
-        assertEquals(
-            "exact-symbol",
-            item.getValue("properties").jsonObject.getValue("type").jsonObject.getValue("const").jsonPrimitive.content,
+        assertTrue(
+            item.getValue("anyOf").jsonArray.any {
+                it.jsonObject
+                    .getValue("properties")
+                    .jsonObject
+                    .getValue("type")
+                    .jsonObject
+                    .getValue("const")
+                    .jsonPrimitive
+                    .content == "exact-symbol"
+            }
+        )
+        assertTrue(
+            item.getValue("anyOf").jsonArray.any {
+                it.jsonObject
+                    .getValue("properties")
+                    .jsonObject
+                    .getValue("type")
+                    .jsonObject
+                    .getValue("const")
+                    .jsonPrimitive
+                    .content == "occurrence"
+            }
         )
         components.values
             .flatMap { it.localReferences() }

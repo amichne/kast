@@ -163,7 +163,7 @@ class QuerySetCompositionTest {
                     QueryPlanSyntax(
                         QuerySourceSyntax.Retained(right),
                         listOf(QueryStepSyntax.Difference(right)),
-                        QueryOutputSyntax(QuerySymbolFields.from(emptySet()).refined()),
+                        QueryOutputSyntax.Symbols(QuerySymbolFields.from(emptySet()).refined()),
                     )
                 )
             assertEquals(QueryPlanAdmission.Rejected(QueryPlanAdmissionFailure.IncompleteRightInput), rejected)
@@ -216,7 +216,7 @@ class QuerySetCompositionTest {
                     QueryPlanSyntax(
                         QuerySourceSyntax.Retained(retained),
                         listOf(QueryStepSyntax.Difference(selection)),
-                        QueryOutputSyntax(QuerySymbolFields.from(emptySet()).refined()),
+                        QueryOutputSyntax.Symbols(QuerySymbolFields.from(emptySet()).refined()),
                     )
                 )
             assertEquals(QueryPlanAdmission.Rejected(QueryPlanAdmissionFailure.IncompleteRightInput), difference)
@@ -238,7 +238,7 @@ class QuerySetCompositionTest {
                     admittedPlan(
                         QuerySourceSyntax.Retained(left),
                         listOf(step),
-                        QueryOutputSyntax(QuerySymbolFields.from(emptySet()).refined()),
+                        QueryOutputSyntax.Symbols(QuerySymbolFields.from(emptySet()).refined()),
                     )
                 val result = service.run(request(plan, 8L))
                 assertEquals(listOf(first, second).sorted(), result.rows().single().connections)

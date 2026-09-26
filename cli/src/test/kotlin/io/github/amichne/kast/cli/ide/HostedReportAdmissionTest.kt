@@ -33,7 +33,6 @@ class HostedReportAdmissionTest {
             listOf(
                 ExistingIdeReadOperation.QUERY_RUN,
                 ExistingIdeReadOperation.SOURCE_READ,
-                ExistingIdeReadOperation.RELATION_READ,
                 ExistingIdeReadOperation.TRAVERSAL_RUN,
             )) {
             val operation =

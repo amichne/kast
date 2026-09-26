@@ -271,7 +271,7 @@ class HostedReadRegressionTest(unittest.TestCase):
         self.assertTrue(all(request['request']['execution_budget']['max_work_units'] == 32 for request in requests))
         self.assertEqual(['private-reference-0', 'private-reference-1'],
                          list(requests[-2]['request']['source']['symbol_refs']))
-        self.assertEqual(('name', 'signature'), requests[-1]['request']['return_fields'])
+        self.assertEqual({'type': 'symbols', 'fields': ('name', 'signature')}, requests[-1]['request']['output'])
         self.assertEqual([{'type': 'distinct_symbols'}], list(requests[-1]['request']['steps']))
         self.assertEqual(4, len(requests[-1]['request']['source']['symbol_refs']))
         self.assertNotIn('private-', json.dumps(replay.rows))

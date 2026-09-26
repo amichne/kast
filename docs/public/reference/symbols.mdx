@@ -10,8 +10,9 @@ code_sources:
   - path: "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/MintlifyCallableReference.kt"
 ---
 
-A `query_symbols` item is an **exact symbol**. Candidate discovery remains a
-separate `symbol_lookup` capability.
+A `query_symbols` item is an **exact symbol** when the request selects symbol
+output. Occurrence output carries an exact reference and one relation fact per
+row. Candidate discovery remains a separate `symbol_lookup` capability.
 
 Read `type` before every other field.
 
@@ -32,8 +33,8 @@ The original optional fields remain present when their projection is `null`. `so
 
 - `null` does not mean an empty name or signature.
 - `null` does not weaken the exact identity.
-- `request.return_fields: []` requests only mandatory identity and kind values.
-- `request.return_fields: ["source"]` requests the fixed source window; a rejected or withheld window appears as a per-item source failure with `SOURCE_INCOMPLETE` coverage.
+- `request.output: {"type":"symbols","fields":[]}` requests only mandatory identity and kind values.
+- `request.output: {"type":"symbols","fields":["source"]}` requests the fixed source window; a rejected or withheld window appears as a per-item source failure with `SOURCE_INCOMPLETE` coverage.
 
 [Open the complete query-item model](/reference/models/query-item).
 
@@ -128,12 +129,14 @@ An exact location also contains a half-open `range`.
 - A separately returned `symbol_lookup` candidate has one `offset` instead of an exact range.
 - Use locations only with the corresponding source state.
 
-An `expand_relation` step returns related **declarations**.
+An `expand_relation` step can present related **declarations** with symbol output
+or individual **occurrences** with `output: {"type":"occurrences"}`.
 
 A relation fact can describe one **use site**.
 
-Use `read_relations` for occurrence-oriented facts and inspect the tagged
-[relation model](/reference/models/relation-fact).
+For occurrence output, inspect each row's tagged
+[relation model](/reference/models/relation-fact) and the response's structured
+`omissions` before claiming complete coverage.
 
 Preserve relation kind, endpoints, use-site location, and unavailable evidence.
 

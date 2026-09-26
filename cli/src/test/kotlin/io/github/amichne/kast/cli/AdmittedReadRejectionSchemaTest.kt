@@ -3,7 +3,6 @@ package io.github.amichne.kast.cli
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.protocol.contract.AdmittedDiagnosticCheckRejection
 import io.github.amichne.kast.protocol.contract.AdmittedQueryRunRejection
-import io.github.amichne.kast.protocol.contract.AdmittedRelationReadRejection
 import io.github.amichne.kast.protocol.contract.AdmittedSourceReadRejection
 import io.github.amichne.kast.protocol.contract.AdmittedTraversalRunRejection
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
@@ -11,7 +10,6 @@ import io.github.amichne.kast.protocol.contract.DiagnosticCheckRejection
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetDocument
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
-import io.github.amichne.kast.protocol.contract.RelationReadRejection
 import io.github.amichne.kast.protocol.contract.SourceReadRejection
 import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
@@ -82,15 +80,6 @@ class AdmittedReadRejectionSchemaTest {
                     )
                 ),
                 "compiler-analysis-unavailable",
-            ),
-            Case(
-                CanonicalOperation.RELATION_READ,
-                CanonicalReadCliDocuments.projectRelation(
-                    OperationOutcome.Rejected(
-                        AdmittedRelationReadRejection(RelationReadRejection.SELECTOR_STALE, report)
-                    )
-                ),
-                "selector-stale",
             ),
             Case(
                 CanonicalOperation.TRAVERSAL_RUN,

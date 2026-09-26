@@ -46,18 +46,12 @@ import io.github.amichne.kast.protocol.contract.OperationResult
 import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
-import io.github.amichne.kast.protocol.contract.RelationContinuationDocument
 import io.github.amichne.kast.protocol.contract.RelationFactCoverageDocument
 import io.github.amichne.kast.protocol.contract.RelationFactDocument
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
-import io.github.amichne.kast.protocol.contract.RelationKnownMinimumDocument
 import io.github.amichne.kast.protocol.contract.RelationLimitationDocument
 import io.github.amichne.kast.protocol.contract.RelationOccurrenceDocument
 import io.github.amichne.kast.protocol.contract.RelationProvenanceDocument
-import io.github.amichne.kast.protocol.contract.RelationReadQualification
-import io.github.amichne.kast.protocol.contract.RelationReadRejection
-import io.github.amichne.kast.protocol.contract.RelationReadRequest
-import io.github.amichne.kast.protocol.contract.RelationReadResult
 import io.github.amichne.kast.protocol.contract.SchemaIdentity
 import io.github.amichne.kast.protocol.contract.SourceRangeDocument
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverLimitation
@@ -187,24 +181,6 @@ class CanonicalOperationWireBindingsTest {
             SymbolInspectResult(symbol("exact:v1:Target", "Target")),
             SymbolInspectQualification.EVIDENCE_INCOMPLETE,
             SymbolInspectRejection.EXACT_SELECTOR_STALE,
-        )
-        assertRoundTrips(
-            CanonicalOperationWireBindings.relationRead,
-            RelationReadRequest(text("exact:Target"), RelationKindDocument.CALLERS, count(50)),
-            RelationReadResult(
-                BoundedProtocolList.create(
-                        listOf(
-                            relation(
-                                RelationKindDocument.CALLERS,
-                                symbol("exact:v1:Caller", "Caller"),
-                                symbol("exact:v1:Target", "Target"),
-                            )
-                        )
-                    )
-                    .refinedValue()
-            ),
-            relationQualification(),
-            RelationReadRejection.RELATION_UNSUPPORTED,
         )
         assertRoundTrips(
             CanonicalOperationWireBindings.traversalRun,
@@ -449,17 +425,6 @@ class CanonicalOperationWireBindingsTest {
     private fun traversal(depth: Int, relation: RelationFactDocument): TraversalRecordDocument =
         TraversalRecordDocument(TraversalDepthDocument.parse(depth).refinedValue(), relation)
 
-    private fun relationQualification(): RelationReadQualification =
-        RelationReadQualification.resumable(
-                RelationKnownMinimumDocument.parse(1).refinedValue(),
-                listOf(
-                    RelationLimitationDocument.RESULT_LIMIT_REACHED,
-                    RelationLimitationDocument.PROVIDER_INCOMPLETE,
-                ),
-                relationContinuation("binding"),
-            )
-            .refinedValue()
-
     private fun traversalQualification(): TraversalRunQualification =
         TraversalRunQualification.resumable(
                 listOf(
@@ -491,16 +456,6 @@ class CanonicalOperationWireBindingsTest {
     private fun text(raw: String): ProtocolText = ProtocolText.parse(raw).refinedValue()
 
     private fun count(raw: Int): ProtocolCount = ProtocolCount.parse(raw).refinedValue()
-
-    private fun relationContinuation(payloadText: String): RelationContinuationDocument {
-        val payload = payloadText.toByteArray()
-        val encoded = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(payload)
-        val digest =
-            java.security.MessageDigest.getInstance("SHA-256").digest(payload).joinToString("") { byte ->
-                (byte.toInt() and 0xff).toString(16).padStart(2, '0')
-            }
-        return RelationContinuationDocument.parse("relation-continuation:v1:$encoded:$digest").refinedValue()
-    }
 
     private fun traversalContinuation(payloadText: String): TraversalContinuationDocument {
         val payload = payloadText.toByteArray()

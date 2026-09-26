@@ -24,7 +24,11 @@ class QuerySymbolFields private constructor(val values: List<QuerySymbolField>) 
     override fun hashCode(): Int = values.hashCode()
 }
 
-data class QueryOutputSyntax(val fields: QuerySymbolFields)
+sealed interface QueryOutputSyntax {
+    data class Symbols(val fields: QuerySymbolFields) : QueryOutputSyntax
+
+    data object Occurrences : QueryOutputSyntax
+}
 
 data class QueryPlanSyntax(
     val source: QuerySourceSyntax,
@@ -60,7 +64,7 @@ sealed interface ExactQueryStage {
         val next: ExactQueryStage,
     ) : ExactQueryStage
 
-    data class Emit(val fields: QuerySymbolFields) : ExactQueryStage
+    data class Emit(val output: QueryOutputSyntax) : ExactQueryStage
 }
 
 sealed interface AdmittedQueryPlan {
@@ -104,7 +108,7 @@ object QueryPlanCompiler {
         if (syntax.steps.filterIsInstance<QueryStepSyntax.Difference>().any { !it.right.provesAbsence() }) {
             return QueryPlanAdmission.Rejected(QueryPlanAdmissionFailure.IncompleteRightInput)
         }
-        val stage = exactStage(syntax.steps, syntax.output.fields)
+        val stage = exactStage(syntax.steps, syntax.output)
         val plan =
             when (source) {
                 is QuerySourceSyntax.Symbols -> AdmittedQueryPlan.Symbols(source.discovery, stage)
@@ -114,8 +118,8 @@ object QueryPlanCompiler {
         return QueryPlanAdmission.Admitted(plan)
     }
 
-    private fun exactStage(steps: List<QueryStepSyntax>, fields: QuerySymbolFields): ExactQueryStage {
-        var stage: ExactQueryStage = ExactQueryStage.Emit(fields)
+    private fun exactStage(steps: List<QueryStepSyntax>, output: QueryOutputSyntax): ExactQueryStage {
+        var stage: ExactQueryStage = ExactQueryStage.Emit(output)
         for (step in steps.asReversed()) {
             stage =
                 when (step) {
@@ -134,7 +138,7 @@ object QueryPlanCompiler {
 }
 
 private fun QueryRetainedResult.provesAbsence(): Boolean =
-    coverage is QueryCoverage.Complete && failures.isEmpty() && producerProgress == null
+    coverage is QueryCoverage.Complete && failures.isEmpty() && omissions.isEmpty() && producerProgress == null
 
 internal fun AdmittedQueryPlan.composedInputLeases(): List<SemanticReadAuthority> =
     when (this) {

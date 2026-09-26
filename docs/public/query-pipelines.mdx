@@ -31,7 +31,7 @@ This example filters public functions before finding their callers:
       {"type":"where","predicate":{"type":"visibility","values":["public"]}},
       {"type":"expand_relation","relation":"callers"}
     ],
-    "return_fields": ["name","location","signature"]
+    "output": {"type":"symbols","fields":["name","location","signature"]}
   }
 }
 ```
@@ -43,7 +43,8 @@ This example filters public functions before finding their callers:
 | Sources | `search_declarations`, `all_declarations`, `symbol_refs`, `result` |
 | Steps | `where`, `expand_relation`, `concat`, `intersect`, `union`, `difference`, `distinct_symbols` |
 
-Put the source, steps, and returned fields inside `request` with `action: "run"`.
+Put the source and steps inside `request` with `action: "run"`. Choose an optional
+typed `output` to present symbols or individual relation occurrences.
 The other actions are `resume` and `read_result`; each accepts only its own fields.
 
 Step order changes the result:
@@ -56,27 +57,28 @@ Step order changes the result:
 
 Kast preserves every explicit step in order.
 
-## Choose returned fields
+## Choose result presentation
 
 | Input | Result |
 | --- | --- |
 | `request.steps: null` or `[]` | No transformations |
-| `request.return_fields: null` | Name and location |
-| `request.return_fields: []` | Mandatory identity and kind only |
-| Duplicate projection fields | Rejected request |
+| `request.output: null` or omitted | Symbols with name and location |
+| `request.output: {"type":"symbols","fields":[]}` | Mandatory identity and kind only |
+| `request.output: {"type":"occurrences"}` | One row per relation occurrence, including repeated use sites |
+| Duplicate symbol projection fields | Rejected request |
 
 ## Reuse an exact symbol
 
 Copy an exact symbol's `ref` verbatim into the `symbol_refs` source of a new run:
 
 ```json
-{"request":{"action":"run","source":{"type":"symbol_refs","symbol_refs":["<returned exact ref>"]},"steps":null,"return_fields":null}}
+{"request":{"action":"run","source":{"type":"symbol_refs","symbol_refs":["<returned exact ref>"]},"steps":null,"output":null}}
 ```
 
 - Do not construct, shorten, or edit a reference.
 - Expect the original owner to re-admit its workspace, lifetime, epoch, and scope.
-- Use `read_relations` for occurrence-oriented facts such as use-site locations.
-- Use query expansion for related declarations.
+- Add `expand_relation` and select `output: {"type":"occurrences"}` for use-site facts.
+- Select symbol output for related declarations.
 
 ## Combine earlier query results
 
@@ -92,7 +94,7 @@ Run each input query with `"retention":"retain"`, then use their issued result r
       {"type":"distinct_symbols"},
       {"type":"where","predicate":{"type":"primitive","field":"kind","operator":"equals","value":"function"}}
     ],
-    "return_fields": ["name","location"]
+    "output": {"type":"symbols","fields":["name","location"]}
   }
 }
 ```
@@ -154,7 +156,7 @@ use `[]` for an empty selection:
     "action": "run",
     "source": {"type":"result","result":"<issued result reference>","row_ids":["<issued row_id from this result>"]},
     "steps": [{"type":"where","predicate":{"type":"visibility","values":["public"]}}],
-    "return_fields": ["name","location"]
+    "output": {"type":"symbols","fields":["name","location"]}
   }
 }
 ```
@@ -165,12 +167,14 @@ usable; an incomplete input cannot prove absence. Copy result and row references
 as issued. A row ID is bound to one retained result and is distinct from an
 exact symbol `ref`.
 
-To present the saved rows again without running query stages, use
-`read_result`. Its `cursor` starts at zero when omitted. The returned
+To present saved symbol rows again without running query stages, use
+`read_result`. It accepts symbol output only. To present relation occurrences,
+start a new run from the retained result with occurrence output. The
+`read_result` cursor starts at zero when omitted. The returned
 `next_cursor` identifies the next presentation page when present:
 
 ```json
-{"request":{"action":"read_result","result":"<issued result reference>","cursor":0,"return_fields":["name","location"]}}
+{"request":{"action":"read_result","result":"<issued result reference>","cursor":0,"output":{"type":"symbols","fields":["name","location"]}}}
 ```
 
 ## Continue an interrupted pipeline
@@ -183,7 +187,7 @@ sending only that token and, optionally, a new `execution_budget`:
 ```
 
 Append each returned page in order. The token restores the original source,
-steps, returned fields, and retention request; resending those fields is
+steps, output choice, and retention request; resending those fields is
 rejected. `continuation` resumes semantic execution. `next_cursor` only pages
 through one separately supplied retained result.
 
@@ -200,7 +204,12 @@ Resuming does not rerun an emitted prefix.
 relation connections before emitting one row per identity. This preserves
 repeated occurrence evidence even when the result cardinality shrinks.
 
-Use `read_relations` when individual occurrences matter.
+For individual relation occurrences, run `expand_relation` with
+`output: {"type":"occurrences"}`. Each returned occurrence keeps its exact
+reference and relation fact, including endpoint identities, use-site location,
+and provenance. Repeated call sites remain separate rows. Read `omissions` for
+the exact subject, relation kind, and structured provider evidence whenever
+coverage is incomplete.
 
 ### Know why continuation stopped
 
@@ -235,7 +244,7 @@ define checkpoint size, count, aggregate bytes, and lifetime.
 - Read qualification and item failures.
 - Apply source-set restrictions to `query_symbols` discovery subjects only.
 - Keep expansion destinations outside that discovery restriction.
-- Preserve the exact subject reference for `read_relations`; its destinations may be in other files and packages. A returned continuation stays bound to that subject and relation.
+- Preserve each exact subject reference through expansion; destinations may be in other files and packages. A returned execution continuation stays bound to the query and semantic basis.
 - Keep incomplete upstream coverage after buffered output drains.
 
 ## Traverse a large graph
@@ -341,8 +350,8 @@ Source containment is separate from recursive directory or package discovery.
 
 | Tool | Evidence shape |
 | --- | --- |
-| Query expansion | Related declarations with retained connections |
-| `read_relations` | Individual occurrences, including repeated call sites |
+| Query symbol output | Related declarations with retained connections |
+| Query occurrence output | Individual relation facts, including repeated call sites |
 | `distinct_symbols` | Changed declaration cardinality at its pipeline stage |
 | `traverse_relations` | Bounded reachability with depth, strategy, and coverage |
 

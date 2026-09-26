@@ -5,7 +5,6 @@ package io.github.amichne.kast.protocol.wire.presentation
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetPresence
 import io.github.amichne.kast.protocol.contract.ReadRecoveryAction
-import io.github.amichne.kast.protocol.contract.RelationReadFailure
 import io.github.amichne.kast.protocol.contract.SourceReadFailure
 import io.github.amichne.kast.protocol.contract.TraversalRunFailure
 import io.github.amichne.kast.protocol.contract.budgetPresence
@@ -48,17 +47,6 @@ fun canonicalReadRejectedDocument(failure: SourceReadFailure): CanonicalJsonDocu
             CanonicalOperation.SOURCE_READ.id.value,
             "rejected",
             failure.reason(),
-            failure.recoveryAction(),
-            failure.budgetPresence(),
-        )
-    )
-
-fun canonicalReadRejectedDocument(failure: RelationReadFailure): CanonicalJsonDocument =
-    readRejectedFactory.create(
-        ReadRejectedCliDocument(
-            CanonicalOperation.RELATION_READ.id.value,
-            "rejected",
-            failure.reason().cliName(),
             failure.recoveryAction(),
             failure.budgetPresence(),
         )

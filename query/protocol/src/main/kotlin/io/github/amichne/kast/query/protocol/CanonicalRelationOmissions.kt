@@ -37,7 +37,7 @@ internal fun RelationBatch.protocolOmissions(
     return BoundedProtocolList.create(documents).valueOrNull()
 }
 
-private fun RelationOmissionEvidence.protocolDocument(): RelationOmissionDocument? {
+internal fun RelationOmissionEvidence.protocolDocument(): RelationOmissionDocument? {
     val measure =
         when (val measured = measurement) {
             is RelationOmissionMeasurement.ObservedOnPage ->

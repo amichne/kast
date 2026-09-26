@@ -21,20 +21,25 @@ private constructor(
     val lease: SemanticReadAuthority,
     private val rows: List<QuerySymbol>,
     private val itemFailures: List<QueryItemFailure>,
+    private val relationOmissions: List<QueryRelationOmission>,
     private val resultCoverage: QueryCoverage,
     val producerProgress: QueryContinuationState?,
 ) {
     val symbols: List<QuerySymbol>
-        get() = rows.map { it.copy(connections = it.connections.toList()) }
+        get() = rows.map { row -> row.copy(connections = row.connections.toList()) }
 
     val failures: List<QueryItemFailure>
         get() = itemFailures.toList()
+
+    val omissions: List<QueryRelationOmission>
+        get() = relationOmissions.toList()
 
     val coverage: QueryCoverage
         get() = resultCoverage.copyCoverage()
 
     /** Conservative detached-state accounting includes source text and unfinished producer work. */
-    val retainedBytes: Long = retainedStorageBytes(rows, itemFailures, resultCoverage, producerProgress, lease)
+    val retainedBytes: Long =
+        retainedStorageBytes(rows, itemFailures, relationOmissions, resultCoverage, producerProgress, lease)
 
     /** Select original proven rows; excluded rows remain unchecked rather than proven nonmatches. */
     fun selectRows(indices: List<Int>): Refinement<QueryRetainedResult, QueryRetainedResultFailure> {
@@ -64,7 +69,9 @@ private constructor(
             } else {
                 producerProgress
             }
-        return Refinement.Refined(QueryRetainedResult(lease, selected, itemFailures, coverage, progress))
+        return Refinement.Refined(
+            QueryRetainedResult(lease, selected, itemFailures, relationOmissions, coverage, progress)
+        )
     }
 
     companion object {
@@ -77,7 +84,7 @@ private constructor(
             val progress: QueryContinuationState?
             when (execution) {
                 is QueryExecutionResult.Complete -> {
-                    if (execution.result.failures.isNotEmpty()) {
+                    if (execution.result.failures.isNotEmpty() || execution.result.omissions.isNotEmpty()) {
                         return Refinement.Rejected(QueryRetainedResultFailure.INCONSISTENT_COVERAGE)
                     }
                     result = execution.result
@@ -94,8 +101,7 @@ private constructor(
             }
             val symbols = result.items
             if (
-                symbols.any { it.hasForeignBasis(lease) } ||
-                    result.failures.any { it.hasForeignBasis(lease) } ||
+                result.hasForeignBasis(lease) ||
                     (progress as? QueryContinuationState.Resumable)?.checkpoint?.lease?.let { it != lease } == true
             ) {
                 return Refinement.Rejected(QueryRetainedResultFailure.BASIS_MISMATCH)
@@ -105,6 +111,7 @@ private constructor(
                     lease,
                     symbols.map { it.copy(connections = it.connections.toList()) },
                     result.failures.toList(),
+                    result.omissions.toList(),
                     coverage.copyCoverage(),
                     progress,
                 )
@@ -138,6 +145,11 @@ private fun QuerySymbol.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
                 fact.target.lease != lease
         }
 
+private fun QueryResult.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
+    items.any { it.hasForeignBasis(lease) } ||
+        failures.any { it.hasForeignBasis(lease) } ||
+        omissions.any { it.subject.lease != lease }
+
 private fun QueryItemFailure.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
     when (this) {
         is QueryItemFailure.Refinement -> candidate.lease != lease
@@ -151,6 +163,7 @@ private fun QueryItemFailure.hasForeignBasis(lease: SemanticReadAuthority): Bool
 private fun retainedStorageBytes(
     rows: List<QuerySymbol>,
     failures: List<QueryItemFailure>,
+    omissions: List<QueryRelationOmission>,
     coverage: QueryCoverage,
     progress: QueryContinuationState?,
     lease: SemanticReadAuthority,
@@ -170,6 +183,7 @@ private fun retainedStorageBytes(
     val priorRetainedSource = (checkpoint?.plan as? AdmittedQueryPlan.Retained)?.source?.retainedBytes ?: 0L
     return RETAINED_STATE_BASE_BYTES.saturatedAdd(rows.toString().utf8UpperBound())
         .saturatedAdd(failures.toString().utf8UpperBound())
+        .saturatedAdd(omissions.toString().utf8UpperBound())
         .saturatedAdd(coverage.toString().utf8UpperBound())
         .saturatedAdd(lease.toString().utf8UpperBound())
         .saturatedAdd(sourceText)

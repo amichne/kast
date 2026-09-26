@@ -11,7 +11,6 @@ import io.github.amichne.kast.protocol.contract.ChangeRequest
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRequest
 import io.github.amichne.kast.protocol.contract.IndexSyncRequest
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
-import io.github.amichne.kast.protocol.contract.RelationReadRequest
 import io.github.amichne.kast.protocol.contract.SourceReadRequest
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
 import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
@@ -201,11 +200,6 @@ private enum class InstalledServerTool(
         operation = CanonicalOperation.SOURCE_READ,
         requestSerializer = SourceReadRequest.serializer(),
         route = InstalledToolRoute.Cli(listOf("source", "read")),
-    ),
-    RELATION_READ(
-        operation = CanonicalOperation.RELATION_READ,
-        requestSerializer = RelationReadRequest.serializer(),
-        route = InstalledToolRoute.Cli(listOf("relation", "read")),
     ),
     TRAVERSAL_RUN(
         operation = CanonicalOperation.TRAVERSAL_RUN,

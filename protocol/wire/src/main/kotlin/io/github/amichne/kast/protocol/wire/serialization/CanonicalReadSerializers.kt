@@ -4,9 +4,6 @@ import io.github.amichne.kast.protocol.contract.DiagnosticCheckFailure
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckQualification
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRequest
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckResult
-import io.github.amichne.kast.protocol.contract.RelationReadFailure
-import io.github.amichne.kast.protocol.contract.RelationReadQualification
-import io.github.amichne.kast.protocol.contract.RelationReadRequest
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverQualification
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRejection
 import io.github.amichne.kast.protocol.contract.SymbolInspectQualification
@@ -47,21 +44,6 @@ internal object CanonicalReadSerializers {
         factory.create(
             SymbolInspectRejectionWireDocument.serializer(),
             SymbolInspectRejection::toWireDocument,
-            { document -> WireDocumentConversion.Converted(document.toContract()) },
-        )
-
-    val relationReadRequest = factory.create(RelationReadRequest.serializer())
-    val relationReadResult = CanonicalSymbolSerializers.relationResult
-    val relationReadQualification =
-        factory.create(
-            RelationReadQualificationWireDocument.serializer(),
-            RelationReadQualification::toWireDocument,
-            RelationReadQualificationWireDocument::toContract,
-        )
-    val relationReadRejection: WireValueCodec<RelationReadFailure> =
-        factory.create(
-            RelationReadRejectionWireDocument.serializer(),
-            { value: RelationReadFailure -> value.reason().toWireDocument() },
             { document -> WireDocumentConversion.Converted(document.toContract()) },
         )
 

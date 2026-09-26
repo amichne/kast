@@ -6,9 +6,9 @@ import io.github.amichne.kast.protocol.contract.ExecutionBudgetDocument
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
 import io.github.amichne.kast.protocol.contract.ReadBudgetField
 import io.github.amichne.kast.protocol.contract.ReadRecoveryGuidance
-import io.github.amichne.kast.protocol.contract.RelationKnownMinimumDocument
 import io.github.amichne.kast.protocol.contract.RelationLimitationDocument
-import io.github.amichne.kast.protocol.contract.RelationReadQualification
+import io.github.amichne.kast.protocol.contract.TraversalLimitationDocument
+import io.github.amichne.kast.protocol.contract.TraversalRunQualification
 import io.github.amichne.kast.protocol.contract.recoveryGuidance
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
@@ -74,7 +74,10 @@ class ReadRecoveryGuidanceTest {
     @kotlinx.serialization.Serializable private data class UnknownRecovery(val action: String)
 
     private fun qualification(cause: RelationLimitationDocument) =
-        RelationReadQualification.terminalIncomplete(RelationKnownMinimumDocument.parse(0).proven(), listOf(cause))
+        TraversalRunQualification.terminalIncomplete(
+                listOf(TraversalLimitationDocument.ONE_HOP_INCOMPLETE),
+                listOf(cause),
+            )
             .proven()
 
     private fun <V> Refinement<V, *>.proven(): V = (this as Refinement.Refined).value

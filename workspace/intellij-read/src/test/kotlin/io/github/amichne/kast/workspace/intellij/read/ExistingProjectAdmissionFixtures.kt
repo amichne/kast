@@ -28,7 +28,6 @@ internal val FIXTURE_COMPATIBILITY =
                 "symbol.discover",
                 "symbol.inspect",
                 "source.read",
-                "relation.read",
                 "traversal.run",
                 "diagnostic.check",
                 "change.plan",

@@ -36,11 +36,6 @@ import io.github.amichne.kast.protocol.contract.QueryRunFailure
 import io.github.amichne.kast.protocol.contract.QueryRunQualification
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.QueryRunResult
-import io.github.amichne.kast.protocol.contract.RelationReadCapability
-import io.github.amichne.kast.protocol.contract.RelationReadFailure
-import io.github.amichne.kast.protocol.contract.RelationReadQualification
-import io.github.amichne.kast.protocol.contract.RelationReadRequest
-import io.github.amichne.kast.protocol.contract.RelationReadResult
 import io.github.amichne.kast.protocol.contract.SourceReadCapability
 import io.github.amichne.kast.protocol.contract.SourceReadFailure
 import io.github.amichne.kast.protocol.contract.SourceReadQualification
@@ -166,23 +161,6 @@ object CanonicalOperationDefinitions {
             CompletenessPolicy.QUALIFIED_ALLOWED,
             HostedExposure.PUBLIC,
             schema = schema("kast.source.read.v5"),
-        )
-
-    val relationRead =
-        definition(
-            CanonicalOperation.RELATION_READ,
-            RelationReadRequest::class,
-            RelationReadResult::class,
-            RelationReadQualification::class,
-            RelationReadFailure::class,
-            RelationReadCapability::class,
-            OperationLane.BOUNDED_RELATION_READ,
-            OperationEffect.INTELLIJ_READ,
-            OperationCost.BOUNDED_READ,
-            OperationScope.SYMBOL,
-            CompletenessPolicy.QUALIFIED_ALLOWED,
-            HostedExposure.PUBLIC,
-            schema = schema("kast.relation.read.v3"),
         )
 
     val traversalRun =
@@ -312,7 +290,6 @@ object CanonicalOperationDefinitions {
             symbolDiscover,
             symbolInspect,
             sourceRead,
-            relationRead,
             traversalRun,
             diagnosticCheck,
             change,

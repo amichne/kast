@@ -11,6 +11,7 @@ import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.contract.CanonicalOperationResolution
 import io.github.amichne.kast.protocol.contract.OperationQualification
 import io.github.amichne.kast.protocol.contract.OperationRejection
 import io.github.amichne.kast.protocol.contract.OperationRequest
@@ -22,13 +23,12 @@ import org.junit.jupiter.api.Test
 
 class OperationRegistryContractTest {
     @Test
-    fun `operation lanes retain the seven admitted authority classes`() {
+    fun `operation lanes retain the six admitted authority classes`() {
         assertEquals(
             listOf(
                 OperationLane.METADATA,
                 OperationLane.INDEX_LOOKUP,
                 OperationLane.SCOPED_SEMANTIC_READ,
-                OperationLane.BOUNDED_RELATION_READ,
                 OperationLane.REGISTERED_LONG_WORK,
                 OperationLane.DERIVED_WRITE,
                 OperationLane.SOURCE_WRITE,
@@ -48,7 +48,6 @@ class OperationRegistryContractTest {
                 "symbol.discover",
                 "symbol.inspect",
                 "source.read",
-                "relation.read",
                 "traversal.run",
                 "diagnostic.check",
                 "change.run",
@@ -57,6 +56,12 @@ class OperationRegistryContractTest {
                 "change.recover",
             ),
             CanonicalOperation.entries.map { it.id.value },
+        )
+        val retiredRelation = operationId("relation.read")
+        assertEquals(CanonicalOperationResolution.Unknown(retiredRelation), CanonicalOperation.resolve(retiredRelation))
+        assertEquals(
+            OperationLookup.Unknown(retiredRelation),
+            CanonicalOperationDefinitions.registry.lookup(retiredRelation),
         )
     }
 

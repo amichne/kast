@@ -12,6 +12,7 @@ import io.github.amichne.kast.protocol.contract.TraversalPreparedCoverageDocumen
 import io.github.amichne.kast.protocol.contract.TraversalRunQualification
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalReadCliDocuments
 import io.github.amichne.kast.query.protocol.RelationPagingFixture
+import io.github.amichne.kast.query.protocol.evidenceBasis
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
@@ -34,13 +35,12 @@ class TraversalRetainedOutputSchemaTest {
                 TraversalPreparedCoverageDocument.TERMINAL_INCOMPLETE to "terminal_incomplete",
             )
         for (owner in listOf(RelationPagingFixture.published(), RelationPagingFixture.live())) {
-            val page = owner.page() as OperationOutcome.Qualified
             for ((coverage, expected) in cases) {
                 val outcome =
                     OperationOutcome.Qualified(
                         EvidenceEnvelope(
                             CanonicalOperation.TRAVERSAL_RUN.id,
-                            page.evidence.basis,
+                            owner.authority.evidenceBasis(),
                             fixture.traversalResult(),
                         ),
                         qualification(coverage),

@@ -10,7 +10,6 @@ internal object HostedReadCapabilities {
             CanonicalOperationWireBindings.symbolDiscover,
             CanonicalOperationWireBindings.symbolInspect,
             CanonicalOperationWireBindings.sourceRead,
-            CanonicalOperationWireBindings.relationRead,
             CanonicalOperationWireBindings.traversalRun,
             CanonicalOperationWireBindings.diagnosticCheck,
         )

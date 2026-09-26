@@ -14,7 +14,6 @@ import io.github.amichne.kast.protocol.contract.QueryRunFailure
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.QuerySourceRejectionReason
 import io.github.amichne.kast.protocol.contract.ReadRecoveryAction
-import io.github.amichne.kast.protocol.contract.RelationReadRejection
 import io.github.amichne.kast.protocol.contract.SourceReadRejection
 import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import io.github.amichne.kast.protocol.contract.recoveryAction
@@ -43,12 +42,6 @@ class ReadRecoveryActionTest {
                     CanonicalOperation.SOURCE_READ,
                     CanonicalSourceReadCliDocuments.project(
                         OperationOutcome.Rejected(SourceReadRejection.STALE_GENERATION)
-                    ),
-                ),
-                Case(
-                    CanonicalOperation.RELATION_READ,
-                    CanonicalReadCliDocuments.projectRelation(
-                        OperationOutcome.Rejected(RelationReadRejection.SELECTOR_STALE)
                     ),
                 ),
                 Case(
@@ -87,22 +80,13 @@ class ReadRecoveryActionTest {
         assertEquals(ReadRecoveryAction.SAVE_SOURCE, SourceReadRejection.PSI_DOCUMENT_UNCOMMITTED.recoveryAction())
         assertEquals(ReadRecoveryAction.WAIT_FOR_WORKSPACE, QueryRunRejection.WorkspaceNotReady.recoveryAction())
         assertEquals(ReadRecoveryAction.RESTART_READ, SourceReadRejection.CONTINUATION_UNAVAILABLE.recoveryAction())
-        assertEquals(ReadRecoveryAction.RESTART_READ, RelationReadRejection.CONTINUATION_UNAVAILABLE.recoveryAction())
         assertEquals(ReadRecoveryAction.RESTART_READ, TraversalRunRejection.CONTINUATION_UNAVAILABLE.recoveryAction())
-        assertEquals(
-            ReadRecoveryAction.CORRECT_REQUEST,
-            RelationReadRejection.CONTINUATION_SCOPE_MISMATCH.recoveryAction(),
-        )
         assertEquals(ReadRecoveryAction.CORRECT_REQUEST, TraversalRunRejection.PLAN_REJECTED.recoveryAction())
         assertEquals(ReadRecoveryAction.REPORT_FAILURE, SourceReadRejection.CONTRACT_VIOLATION.recoveryAction())
         assertEquals(
             ReadRecoveryAction.REPORT_FAILURE,
             QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.INTERNAL_CONTRACT_VIOLATION)
                 .recoveryAction(),
-        )
-        assertEquals(
-            ReadRecoveryAction.REACQUIRE_AUTHORITY,
-            RelationReadRejection.CONTINUATION_MALFORMED.recoveryAction(),
         )
         assertEquals(
             ReadRecoveryAction.REACQUIRE_AUTHORITY,

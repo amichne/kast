@@ -20,8 +20,6 @@
     <ID>LargeClass:CanonicalQueryProtocolTest.kt:CanonicalQueryProtocolTest</ID>
     <ID>LongMethod:CanonicalDiagnosticCheckProtocol.kt:CanonicalDiagnosticCheckProtocol$private fun project: OperationOutcome&lt; DiagnosticCheckResult, DiagnosticCheckQualification, DiagnosticCheckRejection, ></ID>
     <ID>LongMethod:CanonicalDiscoveryAdmission.kt:internal fun admitDiscoveryRequest: DiscoveryRequestAdmission</ID>
-    <ID>LongMethod:CanonicalGraphProtocols.kt:CanonicalRelationReadProtocol$suspend fun execute: OperationOutcome&lt; RelationReadResult, RelationReadQualification, RelationReadRejection, ></ID>
-    <ID>LongMethod:CanonicalGraphProtocols.kt:CanonicalTraversalRunProtocol$suspend fun execute: OperationOutcome&lt; TraversalRunResult, TraversalRunQualification, TraversalRunRejection, ></ID>
     <ID>LongMethod:CanonicalQueryProtocol.kt:CanonicalQueryProtocol$private fun projectItems: QueryProjection&lt;QueryResultItemDocument></ID>
     <ID>LongMethod:CanonicalQueryProtocolTest.kt:CanonicalQueryProtocolTest$@Test fun `file and text batch references retain their original read scope`</ID>
     <ID>LongMethod:CanonicalRelationContinuationCodec.kt:CanonicalRelationContinuationCodec$fun decode: CanonicalRelationContinuationDecoding</ID>

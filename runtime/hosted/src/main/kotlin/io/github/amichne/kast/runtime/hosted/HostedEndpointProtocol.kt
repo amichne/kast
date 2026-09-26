@@ -13,7 +13,6 @@ import io.github.amichne.kast.protocol.contract.ChangePlanRequest
 import io.github.amichne.kast.protocol.contract.ChangeRecoverRequest
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRequest
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
-import io.github.amichne.kast.protocol.contract.RelationReadRequest
 import io.github.amichne.kast.protocol.contract.SourceReadRequest
 import io.github.amichne.kast.protocol.contract.SymbolDiscoverRequest
 import io.github.amichne.kast.protocol.contract.SymbolInspectRequest
@@ -114,8 +113,6 @@ internal sealed interface HostedRequest {
 
     data class Source(override val root: CanonicalWorkspaceRoot, val request: SourceReadRequest) : Read
 
-    data class Relation(override val root: CanonicalWorkspaceRoot, val request: RelationReadRequest) : Read
-
     data class Traversal(override val root: CanonicalWorkspaceRoot, val request: TraversalRunRequest) : Read
 
     data class Diagnostic(override val root: CanonicalWorkspaceRoot, val request: DiagnosticCheckRequest) : Read
@@ -191,7 +188,6 @@ internal object HostedRequests {
                 "SYMBOL_DISCOVER",
                 "SYMBOL_INSPECT",
                 "SOURCE_READ",
-                "RELATION_READ",
                 "TRAVERSAL_RUN",
                 "DIAGNOSTIC_CHECK",
                 "CHANGE_PLAN" -> {
@@ -221,10 +217,6 @@ internal object HostedRequests {
                         "SOURCE_READ" ->
                             decode(CanonicalOperationWireBindings.sourceRead.decodeRequest(envelope)) {
                                 HostedRequest.Source(root, it)
-                            }
-                        "RELATION_READ" ->
-                            decode(CanonicalOperationWireBindings.relationRead.decodeRequest(envelope)) {
-                                HostedRequest.Relation(root, it)
                             }
                         "TRAVERSAL_RUN" ->
                             decode(CanonicalOperationWireBindings.traversalRun.decodeRequest(envelope)) {

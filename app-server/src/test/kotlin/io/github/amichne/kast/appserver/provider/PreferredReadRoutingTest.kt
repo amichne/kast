@@ -40,10 +40,9 @@ import org.junit.jupiter.api.io.TempDir
 /** Registration fixture proves name routing and canonical request admission, not semantic execution. */
 class PreferredReadRoutingTest {
     @Test
-    fun `old relation name is rejected while the published name reaches request admission`(@TempDir root: Path) =
-        runTest {
-            assertRoutes(root = root, removed = "semantic_query", preferred = "read_relations")
-        }
+    fun `retired relation route is rejected while query reaches request admission`(@TempDir root: Path) = runTest {
+        assertRoutes(root = root, removed = "read_relations", preferred = "query_symbols")
+    }
 
     @Test
     fun `old traversal name is rejected while the published name reaches request admission`(@TempDir root: Path) =
@@ -119,6 +118,8 @@ class PreferredReadRoutingTest {
             val rejected = assertInstanceOf(BrokerDispatch.Rejected::class.java, result, "$name: $result")
             if (name == removed) {
                 assertInstanceOf(BrokerFailure.UnknownTool::class.java, rejected.failure)
+            } else if (name == "query_symbols") {
+                assertInstanceOf(BrokerFailure.InvalidArguments::class.java, rejected.failure)
             } else {
                 val failure = assertInstanceOf(BrokerFailure.ProviderInvocationRejected::class.java, rejected.failure)
                 assertEquals(ProviderFailureCode.IDE_INVALID_REQUEST, failure.code)
@@ -173,7 +174,7 @@ class PreferredReadRoutingTest {
             is Validation.Rejected -> fail("Expected validation: $this")
         }
 
-    private val readNames = listOf("read_relations", "traverse_relations")
+    private val readNames = listOf("query_symbols", "traverse_relations")
 
     @Serializable private data object EmptyArguments
 

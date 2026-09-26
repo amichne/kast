@@ -15,7 +15,6 @@ import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetPresence
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
-import io.github.amichne.kast.protocol.contract.RelationReadRejection
 import io.github.amichne.kast.protocol.contract.SourceReadRejection
 import io.github.amichne.kast.protocol.contract.TraversalRunRejection
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryFailure
@@ -76,14 +75,6 @@ class HostedContainmentBudgetTest {
                 ),
                 encodeHostedSourceResponse(
                     OperationOutcome.Rejected(SourceReadRejection.CONTRACT_VIOLATION).withSourceBudget(report),
-                    ReadLimits.Default,
-                    resultLimit,
-                    bytes,
-                ) {
-                    error("No suffix")
-                },
-                encodeHostedRelationResponse(
-                    OperationOutcome.Rejected(RelationReadRejection.SELECTOR_STALE).withRelationBudget(report),
                     ReadLimits.Default,
                     resultLimit,
                     bytes,

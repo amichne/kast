@@ -20,6 +20,9 @@ import io.github.amichne.kast.protocol.contract.TraversalRunRequest
 import io.github.amichne.kast.protocol.contract.TraversalRunResult
 import io.github.amichne.kast.protocol.contract.TraversalStrategyDocument
 import io.github.amichne.kast.query.protocol.RelationPagingFixture
+import io.github.amichne.kast.query.protocol.evidenceBasis
+import io.github.amichne.kast.query.protocol.protocolDocument
+import io.github.amichne.kast.relation.contract.RelationReadResult
 
 internal class HostedTraversalPagingFixture
 private constructor(
@@ -29,10 +32,13 @@ private constructor(
 ) {
     companion object {
         suspend fun create(owner: RelationPagingFixture = RelationPagingFixture.live()): HostedTraversalPagingFixture {
-            val relation = owner.page() as OperationOutcome.Qualified
+            val relation = owner.firstPage() as RelationReadResult.Qualified
             val records =
-                relation.evidence.payload.relations.values.map {
-                    TraversalRecordDocument(TraversalDepthDocument.parse(1).proven(), it)
+                relation.batch.facts.map {
+                    TraversalRecordDocument(
+                        TraversalDepthDocument.parse(1).proven(),
+                        checkNotNull(it.protocolDocument(owner.references)),
+                    )
                 }
             val partial =
                 TraversalPartialExpansionDocument.create(
@@ -70,7 +76,7 @@ private constructor(
                 owner,
                 request,
                 OperationOutcome.Qualified(
-                    EvidenceEnvelope(CanonicalOperation.TRAVERSAL_RUN.id, relation.evidence.basis, result),
+                    EvidenceEnvelope(CanonicalOperation.TRAVERSAL_RUN.id, owner.authority.evidenceBasis(), result),
                     qualification,
                 ),
             )

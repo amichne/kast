@@ -1,16 +1,12 @@
 package io.github.amichne.kast.query.protocol
 
 import io.github.amichne.kast.kernel.*
-import io.github.amichne.kast.protocol.contract.ProtocolCount
-import io.github.amichne.kast.protocol.contract.RelationKindDocument
-import io.github.amichne.kast.protocol.contract.RelationReadPositionDocument
-import io.github.amichne.kast.protocol.contract.RelationReadRequest
 import io.github.amichne.kast.relation.contract.*
 import io.github.amichne.kast.symbol.contract.*
 import io.github.amichne.kast.workspace.contract.*
 import java.nio.file.Path
 
-/** Four deterministic ordered facts through the real admission, continuation and projection owners. */
+/** Four deterministic ordered domain facts with a resumable provider cursor. */
 class RelationPagingFixture(val authority: SemanticReadAuthority, subjectName: String = "subject") {
     val references = CanonicalQueryReferences()
     val selector =
@@ -52,7 +48,6 @@ class RelationPagingFixture(val authority: SemanticReadAuthority, subjectName: S
     val consumed = mutableListOf<Long>()
     val observedBoundaries = mutableListOf<RelationSearchBoundary>()
     val operations = RelationOperations(::read)
-    val protocol = CanonicalRelationReadProtocol(operations, references)
     private val startRequest =
         RelationRequest.start(selector, RelationMeaning.References, budget, RelationSearchBoundary.WORKSPACE_EXPANSION)
     private val cursors =
@@ -62,16 +57,7 @@ class RelationPagingFixture(val authority: SemanticReadAuthority, subjectName: S
             )
         }
 
-    suspend fun page(position: RelationReadPositionDocument = RelationReadPositionDocument.Start) =
-        protocol.execute(request(position), authority, budget)
-
-    fun request(position: RelationReadPositionDocument) =
-        RelationReadRequest(
-            exact,
-            RelationKindDocument.REFERENCES,
-            ProtocolCount.parse(3).refined(),
-            position,
-        )
+    suspend fun firstPage(): RelationReadResult = operations.read(startRequest)
 
     private suspend fun read(request: RelationRequest): RelationReadResult {
         observedBoundaries += request.boundary

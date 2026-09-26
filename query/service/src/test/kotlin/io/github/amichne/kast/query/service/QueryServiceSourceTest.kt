@@ -125,7 +125,7 @@ class QueryServiceSourceTest {
         with(fixture) {
             admittedPlan(
                 source = QuerySourceSyntax.ExactReferences(QueryExactReferences.from(listOf(selected)).refined()),
-                output = QueryOutputSyntax(QuerySymbolFields.from(setOf(QuerySymbolField.SOURCE)).refined()),
+                output = QueryOutputSyntax.Symbols(QuerySymbolFields.from(setOf(QuerySymbolField.SOURCE)).refined()),
             )
         }
 

@@ -8,12 +8,8 @@ import org.junit.jupiter.api.Test
 
 class PreferredReadCatalogTest {
     @Test
-    fun `catalog advertises preferred relation names with unchanged canonical identities`() {
-        val expected =
-            mapOf(
-                CanonicalOperation.RELATION_READ to "read_relations",
-                CanonicalOperation.TRAVERSAL_RUN to "traverse_relations",
-            )
+    fun `catalog advertises the remaining traversal name with canonical identity`() {
+        val expected = mapOf(CanonicalOperation.TRAVERSAL_RUN to "traverse_relations")
         for ((operation, preferred) in expected) {
             assertEquals(
                 preferred,
@@ -23,7 +19,7 @@ class PreferredReadCatalogTest {
         assertFalse(
             CanonicalAgentToolDefinitions.all.any { it.name.value in setOf("semantic_query", "impact_analyze") }
         )
-        assertEquals(9, CanonicalAgentToolDefinitions.all.size)
+        assertEquals(8, CanonicalAgentToolDefinitions.all.size)
     }
 
     @Test
@@ -37,7 +33,14 @@ class PreferredReadCatalogTest {
             }
         }
         for (removed in
-            listOf("semantic_query", "impact_analyze", "search_classes", "search_functions", "search_declarations")) {
+            listOf(
+                "read_relations",
+                "semantic_query",
+                "impact_analyze",
+                "search_classes",
+                "search_functions",
+                "search_declarations",
+            )) {
             assertEquals(
                 Refinement.Rejected(AgentToolInputFailure.UNKNOWN),
                 CanonicalAgentToolDefinitions.resolveInput(removed),

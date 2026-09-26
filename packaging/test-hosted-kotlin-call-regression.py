@@ -8,11 +8,11 @@ from pathlib import Path
 from contextlib import redirect_stderr
 from io import StringIO
 
-from hosted_kotlin_call_regression import (KotlinCallRead, KotlinCallScope, _site, _has_scoped_unsupported,
+from hosted_kotlin_call_regression import (KotlinCallScope, _site, _has_scoped_unsupported,
     CallCycleTraversal, CallPageBudget, CallResume, CallObligation, _scoped_obligations, _drain_call_cycle,
-    InlineCallRead, _inline_key, _cycle_observation, _call_observation, _emit_native_observation, FixtureEndpoint, EndpointCount,
+    _inline_key, _cycle_observation, _call_observation, _emit_native_observation, FixtureEndpoint, EndpointCount,
     ObservedCallStatus, _extended_call_cases, _same_cycle_graph, _same_cycle_page)
-from query_name_request import name_query
+from query_name_request import QueryInput, QueryResume, name_query, relation_query
 
 
 @dataclass(frozen=True)
@@ -43,9 +43,16 @@ class OmissionEvidence:
 
 
 @dataclass(frozen=True)
+class AttributedOmission:
+    evidence: OmissionEvidence
+    subject: str = 'exact:subject'
+    relation: str = 'callees'
+
+
+@dataclass(frozen=True)
 class LimitedResponse:
     status: str = 'qualified'
-    omissions: tuple[OmissionEvidence, ...] = (OmissionEvidence(),)
+    omissions: tuple[AttributedOmission, ...] = (AttributedOmission(OmissionEvidence()),)
 
 
 @dataclass(frozen=True)
@@ -174,10 +181,21 @@ class ObservedFact:
 
 @dataclass(frozen=True)
 class ObservedFacts:
-    relations: tuple[ObservedFact, ...]
+    items: tuple['OccurrenceItem', ...]
     live: str = 'same-test-authority'
     status: str = 'complete'
-    omissions: tuple[OmissionEvidence, ...] = ()
+    omissions: tuple[AttributedOmission, ...] = ()
+
+
+@dataclass(frozen=True)
+class OccurrenceItem:
+    relation: ObservedFact
+    type: str = 'occurrence'
+
+
+def observed(*facts, status='complete', omissions=()):
+    return ObservedFacts(tuple(OccurrenceItem(fact) for fact in facts), status=status,
+                         omissions=tuple(AttributedOmission(evidence) for evidence in omissions))
 
 
 @dataclass(frozen=True)
@@ -193,9 +211,9 @@ class SearchResponse:
 
 class KotlinCallRegressionTest(unittest.TestCase):
     def test_inline_relation_resume_shape_and_canonical_parity_key(self):
-        request = InlineCallRead('opaque', limit=1, position=CallResume('next'))
-        self.assertEqual({'exactSelector': 'opaque', 'relation': 'callees', 'limit': 1,
-                          'position': {'type': 'resume', 'continuation': 'next'}}, asdict(request))
+        request = QueryInput(QueryResume('next'))
+        self.assertEqual({'request': {'action': 'resume', 'continuation': 'next',
+                                      'execution_budget': None}}, asdict(request))
         fact = ObservedFact(NativeSymbol(Range(), '/fixture/Calls.kt'))
         inverse = replace(fact, meaning='callers', target=replace(fact.target, selector='new-handle'))
         self.assertEqual(_inline_key(asdict(fact)), _inline_key(asdict(inverse)))
@@ -226,28 +244,28 @@ class KotlinCallRegressionTest(unittest.TestCase):
             start = source.index(call) + len(prefix)
             return OmissionEvidence(samples=(Sample(str(fixture), Range(start, start + len(name))),))
         responses = {
-            'explicitInvoke': ObservedFacts((fact('operator fun invoke()', 'fetcher.invoke()', 'fetcher.', 'invoke'),)),
-            'implicitInvoke': ObservedFacts((), status='qualified',
+            'explicitInvoke': observed(fact('operator fun invoke()', 'fetcher.invoke()', 'fetcher.', 'invoke')),
+            'implicitInvoke': observed(status='qualified',
                 omissions=(omitted('String = fetcher()', 'String = ', 'fetcher'),)),
-            'localFunction': ObservedFacts((), status='qualified',
+            'localFunction': observed(status='qualified',
                 omissions=(omitted('return nested()', 'return ', 'nested'),)),
-            'delegated': ObservedFacts((fact('fun fetch(): String',
+            'delegated': observed(fact('fun fetch(): String',
                 'fun delegated(client: DelegatingClient): String = client.fetch()',
-                'fun delegated(client: DelegatingClient): String = client.', 'fetch'),)),
-            'sam': ObservedFacts((fact('fun interface Fetcher', '= Fetcher {', '= ', 'Fetcher'),),
+                'fun delegated(client: DelegatingClient): String = client.', 'fetch')),
+            'sam': observed(fact('fun interface Fetcher', '= Fetcher {', '= ', 'Fetcher'),
                 status='qualified', omissions=(omitted('Fetcher { client.fetch()', 'Fetcher { client.', 'fetch'),)),
         }
         def invoke(surface, tool, request):
-            if tool == 'query_symbols':
+            if request['request']['source']['type'] == 'search_declarations':
                 return json.loads(json.dumps(asdict(SearchResponse((SearchItem(request['request']['source']['declaration_name']),)))))
-            return json.loads(json.dumps(asdict(responses[request['exactSelector']])))
+            return json.loads(json.dumps(asdict(responses[request['request']['source']['symbol_refs'][0]])))
         replay = SimpleNamespace(live='same-test-authority', surface='test', transport=SimpleNamespace(invoke=invoke))
         with redirect_stderr(StringIO()):
             checks, count = _extended_call_cases(replay, source, fixture)
         self.assertTrue(all(checks.values()), checks)
         self.assertEqual(3, count)
         responses['sam'] = replace(responses['sam'], omissions=())
-        responses['delegated'] = replace(responses['delegated'], relations=())
+        responses['delegated'] = replace(responses['delegated'], items=())
         with redirect_stderr(StringIO()):
             rejected, _ = _extended_call_cases(replay, source, fixture)
         self.assertFalse(rejected['samCoverage'])
@@ -295,13 +313,13 @@ class KotlinCallRegressionTest(unittest.TestCase):
         source = fixture.read_text()
         node = NativeSymbol(Range(source.index('fun fetch(): String'), source.index('fun fetch(): String') + 19),
                             file=str(fixture))
-        observed = _call_observation('delegated', asdict(ObservedFacts((ObservedFact(node),))), fixture, source)
-        self.assertEqual(ObservedCallStatus.COMPLETE, observed.status)
-        self.assertEqual((EndpointCount(FixtureEndpoint.BASE_FETCH, 1),), observed.endpoints)
-        self.assertEqual(1, observed.exact_authored_facts)
+        observed_value = _call_observation('delegated', asdict(observed(ObservedFact(node))), fixture, source)
+        self.assertEqual(ObservedCallStatus.COMPLETE, observed_value.status)
+        self.assertEqual((EndpointCount(FixtureEndpoint.BASE_FETCH, 1),), observed_value.endpoints)
+        self.assertEqual(1, observed_value.exact_authored_facts)
         output = StringIO()
         with redirect_stderr(output):
-            _emit_native_observation(observed)
+            _emit_native_observation(observed_value)
         self.assertNotIn(str(fixture), output.getvalue())
         self.assertNotIn('secret', output.getvalue())
         self.assertIn('base-fetch', output.getvalue())
@@ -323,9 +341,9 @@ class KotlinCallRegressionTest(unittest.TestCase):
         for rejected in (
             replace(admitted, status='complete'), replace(admitted, status='rejected'),
             replace(admitted, omissions=()),
-            replace(admitted, omissions=(OmissionEvidence(reason='PROVIDER_FAILURE'),)),
-            replace(admitted, omissions=(OmissionEvidence(measurement=Measurement(items=0)),)),
-            replace(admitted, omissions=(OmissionEvidence(samples=()),)),
+            replace(admitted, omissions=(AttributedOmission(OmissionEvidence(reason='PROVIDER_FAILURE')),)),
+            replace(admitted, omissions=(AttributedOmission(OmissionEvidence(measurement=Measurement(items=0))),)),
+            replace(admitted, omissions=(AttributedOmission(OmissionEvidence(samples=())),)),
         ):
             self.assertFalse(_scoped_obligations(asdict(rejected), '/fixture/Calls.kt', (obligation,)))
         self.assertFalse(_scoped_obligations(asdict(admitted), '/other/Calls.kt', (obligation,)))
@@ -347,11 +365,13 @@ class KotlinCallRegressionTest(unittest.TestCase):
                                      'name_match': 'exact', 'declaration_kinds': ('function',),
                                      'scope': {'package_name': 'fixture.calls', 'include_subpackages': False,
                                                'source_set_names': ('main',)}},
-                          'steps': None, 'return_fields': ('name', 'location', 'signature'),
+                          'steps': None, 'output': {'fields': ('name', 'location', 'signature'), 'type': 'symbols'},
                           'execution_budget': None}},
                          asdict(name_query('outer', ('function',), KotlinCallScope())))
-        self.assertEqual({'exactSelector': 'issued-ref', 'relation': 'callees', 'limit': 100,
-                          'position': {'type': 'start'}}, asdict(KotlinCallRead('issued-ref')))
+        self.assertEqual({'request': {'action': 'run', 'source': {'symbol_refs': ('issued-ref',),
+                          'type': 'symbol_refs'}, 'steps': ({'relation': 'callees', 'type': 'expand_relation'},),
+                          'output': {'type': 'occurrences'}, 'execution_budget': None}},
+                         asdict(relation_query('issued-ref')))
 
     def test_occurrence_offsets_distinguish_repeated_calls(self):
         source = 'fun fetch() = 1\nfun repeat() = client.fetch() + client.fetch()'

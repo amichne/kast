@@ -13,6 +13,7 @@ import io.github.amichne.kast.protocol.contract.QueryItemFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryKnownMinimum
 import io.github.amichne.kast.protocol.contract.QueryLimitationDocument
 import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
+import io.github.amichne.kast.protocol.contract.QueryRelationOmissionDocument
 import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
 import io.github.amichne.kast.protocol.contract.QueryRunQualification
 import io.github.amichne.kast.protocol.contract.QueryRunResult
@@ -112,6 +113,7 @@ class HostedQueryResponseTest {
                 QueryRunResult(
                     BoundedProtocolList.create(items).refined(),
                     BoundedProtocolList.create(listOf(failure())).refined(),
+                    BoundedProtocolList.create(emptyList<QueryRelationOmissionDocument>()).refined(),
                 ),
             )
         val qualification =
@@ -244,7 +246,11 @@ class HostedQueryResponseTest {
         EvidenceEnvelope(
             CanonicalOperationWireBindings.queryRun.operation.id,
             EvidenceGeneration.parse(1).refined(),
-            QueryRunResult(BoundedProtocolList.create(items).refined(), BoundedProtocolList.create(failures).refined()),
+            QueryRunResult(
+                BoundedProtocolList.create(items).refined(),
+                BoundedProtocolList.create(failures).refined(),
+                BoundedProtocolList.create(emptyList<QueryRelationOmissionDocument>()).refined(),
+            ),
         )
 
     private fun item(): QueryResultItemDocument =

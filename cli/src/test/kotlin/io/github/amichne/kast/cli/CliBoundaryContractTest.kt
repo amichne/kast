@@ -19,12 +19,24 @@ import java.nio.file.Path
 import java.security.MessageDigest
 import java.util.Base64
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
 class CliBoundaryContractTest {
+    @Test
+    fun `retired relation command cannot parse into a semantic read`() {
+        val parsed =
+            commandGraphFactory()
+                .parse(
+                    listOf("relation", "read"),
+                    CliRequestDocumentInput.Provided(Json.encodeToString(EmptyRequest.serializer(), EmptyRequest)),
+                )
+        assertTrue(parsed is CliCommandParsing.Rejected)
+    }
+
     @Test
     fun `every public command projection parses to its canonical operation`() {
         val selector = exactSelectorToken()
@@ -44,11 +56,6 @@ class CliBoundaryContractTest {
                     listOf("source", "read"),
                     """{"anchor":{"type":"symbol","selector":"$selector"},"region":{"type":"anchor"},"entities":{"type":"none"},"text":{"type":"complete"},"entityLimit":250,"textByteLimit":65536,"page":{"type":"first"}}""",
                     CanonicalOperation.SOURCE_READ,
-                ),
-                SemanticCase(
-                    listOf("relation", "read"),
-                    """{"exactSelector":"selector","relation":"references","limit":10,"position":{"type":"start"}}""",
-                    CanonicalOperation.RELATION_READ,
                 ),
                 SemanticCase(
                     listOf("traversal", "run"),
@@ -235,6 +242,8 @@ class CliBoundaryContractTest {
         val operation: CanonicalOperation,
     )
 }
+
+@Serializable private data object EmptyRequest
 
 @Serializable
 private data class TestRejectedCliDocument(

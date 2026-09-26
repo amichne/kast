@@ -151,19 +151,13 @@ class InstalledServerProjectionTest {
                 "symbol.discover",
                 "symbol.inspect",
                 "source.read",
-                "relation.read",
                 "traversal.run",
                 "diagnostic.check",
                 "change.run",
             ),
             tools.map { it.getValue("operationId").jsonPrimitive.content },
         )
-        assertEquals(listOf("relation", "read"), invocations.invocation("read_relations").cliCommand())
         assertEquals(listOf("tool", "check_diagnostics"), invocations.invocation("check_diagnostics").cliCommand())
-        tools
-            .tool("read_relations")
-            .outputSchema()
-            .assertAdmits(requireNotNull(javaClass.getResource("/projection/complete-relation.json")).readText())
         tools
             .tool("check_diagnostics")
             .outputSchema()
@@ -217,7 +211,7 @@ class InstalledServerProjectionTest {
             }
         val internalOperations = HostedOperationProjection.internalDefinitions.map { it.operation.id.value }
 
-        assertEquals(9, tools.size)
+        assertEquals(8, tools.size)
         assertEquals(15, projection.getValue("schemaVersion").jsonPrimitive.content.toInt())
         assertEquals("kast", projection.getValue("namespace").jsonPrimitive.content)
         assertEquals(
@@ -231,7 +225,6 @@ class InstalledServerProjectionTest {
                 "symbol_lookup",
                 "symbol_inspect",
                 "source_read",
-                "read_relations",
                 "traverse_relations",
                 "check_diagnostics",
                 "change",
@@ -280,7 +273,6 @@ class InstalledServerProjectionTest {
                 "symbol_lookup" to listOf("symbol", "discover"),
                 "symbol_inspect" to listOf("symbol", "inspect"),
                 "source_read" to listOf("source", "read"),
-                "read_relations" to listOf("relation", "read"),
                 "traverse_relations" to listOf("traversal", "run"),
                 "check_diagnostics" to listOf("tool", "check_diagnostics"),
             ),
@@ -289,7 +281,7 @@ class InstalledServerProjectionTest {
             },
         )
         assertTrue(invocations.all { "bindings" !in it.getValue("invocation").jsonObject })
-        assertEquals(9, tools.map { it.getValue("outputSchema") }.distinct().size)
+        assertEquals(8, tools.map { it.getValue("outputSchema") }.distinct().size)
 
         assertTrue(
             tools

@@ -22,6 +22,8 @@ import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPrep
 import io.github.amichne.kast.protocol.wire.presentation.traversalRunCliProjector
 import java.security.MessageDigest
 import java.util.Base64
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -39,13 +41,9 @@ class CliContinuationAdmissionTest {
     }
 
     @Test
-    fun `both continuation families preserve canonical text bound beyond sixty four KiB`() {
+    fun `traversal continuation preserves canonical text bound beyond sixty four KiB`() {
         for (payloadSize in listOf(4_200, 70_000, 780_000)) {
             assertResumed(traversalArguments(), continuationEnvelope("traversal", payloadSize))
-            assertResumed(
-                listOf("relation", "read"),
-                continuationEnvelope("relation", payloadSize),
-            )
         }
     }
 
@@ -69,10 +67,9 @@ class CliContinuationAdmissionTest {
             listOf(
                 traversalArguments() to "x".repeat(4_097),
                 traversalArguments() to (token.dropLast(1) + "z"),
-                listOf("relation", "read") to token,
                 traversalArguments() to continuationEnvelope("traversal", 800_000),
             )) {
-            val rejection = rejected(command, requestDocument(command, supplied))
+            val rejection = rejected(command, requestDocument(supplied))
             assertEquals(CliCommandFailure.ARGUMENTS_REJECTED, rejection.failure)
             assertTrue(rejection.diagnostic.value.contains("canonical, bounded request document"))
         }
@@ -85,7 +82,7 @@ class CliContinuationAdmissionTest {
                 factory()
                     .parse(
                         command,
-                        CliRequestDocumentInput.Provided(requestDocument(command, token)),
+                        CliRequestDocumentInput.Provided(requestDocument(token)),
                     ),
             )
         val action = assertInstanceOf(CliAction.Semantic::class.java, parsed.action)
@@ -101,12 +98,21 @@ class CliContinuationAdmissionTest {
             factory().parse(arguments, CliRequestDocumentInput.Provided(document)),
         )
 
-    private fun requestDocument(command: List<String>, continuation: String): String =
-        if (command.first() == "relation") {
-            """{"exactSelector":"exact:fixture","relation":"callees","limit":1,"position":{"type":"resume","continuation":"$continuation"}}"""
-        } else {
-            """{"exactSelector":"exact:fixture","relation":"callees","maximumDepth":3,"maximumResults":1,"position":{"type":"resume","continuation":"$continuation"}}"""
-        }
+    private fun requestDocument(continuation: String): String = Json {
+        encodeDefaults = true
+    }
+        .encodeToString(TraversalResumeRequest(position = TraversalResumePosition(continuation = continuation)))
+
+    @Serializable
+    private data class TraversalResumeRequest(
+        val position: TraversalResumePosition,
+        val exactSelector: String = "exact:fixture",
+        val relation: String = "callees",
+        val maximumDepth: Int = 3,
+        val maximumResults: Int = 1,
+    )
+
+    @Serializable private data class TraversalResumePosition(val continuation: String, val type: String = "resume")
 
     private fun factory(): CliCommandGraphFactory =
         when (val result = CliCommandGraphFactory.create(canonicalCliRequestPreparers())) {

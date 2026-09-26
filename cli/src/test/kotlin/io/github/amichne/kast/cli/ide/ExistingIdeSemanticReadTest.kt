@@ -73,11 +73,6 @@ class ExistingIdeSemanticReadTest {
                 """{"anchor":{"type":"symbol","selector":"exact:v2:e30:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"},"region":{"type":"anchor"},"entities":{"type":"none"},"text":{"type":"complete"},"entityLimit":10,"textByteLimit":4096,"page":{"type":"first"}}""",
             ),
             Triple(
-                "relation read",
-                ExistingIdeReadOperation.RELATION_READ,
-                """{"exactSelector":"exact:v2:e30:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","relation":"references","limit":10}""",
-            ),
-            Triple(
                 "traversal run",
                 ExistingIdeReadOperation.TRAVERSAL_RUN,
                 """{"exactSelector":"exact:v2:e30:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","relation":"references","maximumDepth":1,"maximumResults":10}""",
@@ -142,7 +137,6 @@ class ExistingIdeSemanticReadTest {
             is DaemonCanonicalRead.SymbolDiscover -> ExistingIdeReadOperation.SYMBOL_DISCOVER
             is DaemonCanonicalRead.SymbolInspect -> ExistingIdeReadOperation.SYMBOL_INSPECT
             is DaemonCanonicalRead.SourceRead -> ExistingIdeReadOperation.SOURCE_READ
-            is DaemonCanonicalRead.RelationRead -> ExistingIdeReadOperation.RELATION_READ
             is DaemonCanonicalRead.TraversalRun -> ExistingIdeReadOperation.TRAVERSAL_RUN
         }
 
@@ -209,10 +203,6 @@ class ExistingIdeSemanticReadTest {
                 ExistingIdeReadOperation.SYMBOL_DISCOVER to
                     { basis ->
                         encoded(CanonicalOperationWireBindings.symbolDiscover, SymbolDiscoverResult(empty()), basis)
-                    },
-                ExistingIdeReadOperation.RELATION_READ to
-                    { basis ->
-                        encoded(CanonicalOperationWireBindings.relationRead, RelationReadResult(empty()), basis)
                     },
                 ExistingIdeReadOperation.TRAVERSAL_RUN to
                     { basis ->

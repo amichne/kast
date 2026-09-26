@@ -54,8 +54,9 @@ internal fun QueryOutputDocument.syntax(): QueryOutputSyntax? =
         is QueryOutputDocument.Symbols -> {
             val selected =
                 fields.values.uniqueValues()?.mapTo(linkedSetOf()) { QuerySymbolField.valueOf(it.name) } ?: return null
-            QueryOutputSyntax(QuerySymbolFields.from(selected).refinedOrNull() ?: return null)
+            QueryOutputSyntax.Symbols(QuerySymbolFields.from(selected).refinedOrNull() ?: return null)
         }
+        QueryOutputDocument.Occurrences -> QueryOutputSyntax.Occurrences
     }
 
 private fun RelationKindDocument.meaning(): RelationMeaning =

@@ -44,8 +44,8 @@ internal object KastObserverSnapshotMain {
                             items =
                                 listOf(
                                     presentation(
-                                        "relation.read",
-                                        KastObserverFixtures.semanticQuery,
+                                        "query.run",
+                                        KastObserverFixtures.queryOccurrences,
                                         observerDirectory,
                                     ),
                                     presentation(
